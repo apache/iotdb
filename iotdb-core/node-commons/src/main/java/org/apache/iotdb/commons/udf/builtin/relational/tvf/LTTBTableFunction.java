@@ -95,10 +95,11 @@ import static org.apache.iotdb.udf.api.relational.table.argument.ScalarArgumentC
  * <p>{@code NULL} participant values are ignored per column; every non-null value, including {@code
  * NaN} and the infinities, is eligible and is reproduced in the output. A non-finite value cannot
  * serve as a triangle vertex, though: the anchor is the most recent finite selected point (or the
- * first finite eligible point), the lookahead average uses finite points only and skips buckets
- * without one, and a bucket without a finite candidate returns its earliest point without moving
- * the anchor. Ties in the triangle area are broken deterministically by the earliest timestamp
- * (stable input order).
+ * first finite eligible point), {@code C} averages only the finite points of the next bucket that
+ * has one — where the final point is the last bucket, and the last finite eligible point stands in
+ * when no later bucket has a finite point — and a bucket without a finite candidate returns its
+ * earliest point without moving the anchor. Ties in the triangle area are broken deterministically
+ * by the earliest timestamp (stable input order).
  *
  * <p>The timestamps of the input rows of one partition must be unique. As soon as two rows of the
  * same partition carry the same timestamp the query fails with a semantic error ({@code 701}); the
@@ -418,16 +419,17 @@ public class LTTBTableFunction implements TableFunction {
    * <p>When {@code count <= n} every index is returned. Otherwise the first and last points are
    * retained, bucket {@code i} covers {@code [floor(i*(count-2)/(n-2))+1,
    * floor((i+1)*(count-2)/(n-2))+1)}, and for every bucket the candidate forming the largest
-   * triangle with the anchor and the lookahead average wins. The last bucket uses the final point
-   * as the lookahead, and ties are broken by the earliest timestamp.
+   * triangle with the anchor and the lookahead average wins. The final point is a bucket of its
+   * own, so the last bucket looks ahead to it, and ties are broken by the earliest timestamp.
    *
    * <p>{@code NaN} and infinite values are eligible points, but they cannot serve as a triangle
    * vertex: an undefined area would make every candidate tie and the bucket would return its
    * earliest point regardless of the data. The anchor is therefore the most recent finite selected
-   * point (or the first finite point), the lookahead average uses only finite points and skips
-   * buckets without one, and a bucket with no finite candidate returns its earliest point without
-   * moving the anchor. Non-finite points are still selected and returned when their bucket has no
-   * finite alternative.
+   * point (or the first finite point), and {@code C} averages only the finite points of the next
+   * bucket that has one — skipping buckets without one, and falling back to the last finite point
+   * of the partition when there is no such bucket, which includes a non-finite final point. A
+   * bucket with no finite candidate returns its earliest point without moving the anchor.
+   * Non-finite points are still selected and returned when their bucket has no finite alternative.
    *
    * @return ascending indexes of the selected points
    */
@@ -458,53 +460,63 @@ public class LTTBTableFunction implements TableFunction {
       anchor++;
     }
     boolean hasAnchor = anchor < count;
+    // C averages the finite points of the next bucket that has one, so the lookahead bucket only
+    // moves forward and every bucket is scanned at most once. A value past the last bucket marks
+    // that there is none left and C becomes the last finite point of the partition.
+    int lastFinite = count - 1;
+    while (lastFinite >= 0 && !isFiniteValue(values, integralValues, lastFinite)) {
+      lastFinite--;
+    }
+    long lookaheadBucket = -1;
     for (long bucket = 0; bucket < bucketCount; bucket++) {
-      int currentStart = (int) (bucket * intermediate / bucketCount) + 1;
-      int currentEnd = (int) ((bucket + 1) * intermediate / bucketCount) + 1;
-      int nextEnd =
-          bucket == bucketCount - 1 ? count : (int) ((bucket + 2) * intermediate / bucketCount) + 1;
+      int currentStart = bucketBoundary(bucket, intermediate, bucketCount);
+      int currentEnd = bucketBoundary(bucket + 1, intermediate, bucketCount);
 
       long anchorTime = times[hasAnchor ? anchor : 0];
       double anchorValue = hasAnchor ? values[anchor] : 0;
       long integralAnchor = hasAnchor && integralValues != null ? integralValues[anchor] : 0;
+      long next = Math.max(bucket + 1, lookaheadBucket);
+      while (next <= bucketCount
+          && !hasFinitePoint(values, integralValues, next, count, intermediate, bucketCount)) {
+        next++;
+      }
+      lookaheadBucket = next;
+      int lookaheadStart;
+      int lookaheadEnd;
+      if (lookaheadBucket == bucketCount + 1) {
+        // No later bucket has a finite point: use the last finite point, or the final point when
+        // the whole partition is non-finite.
+        lookaheadStart = lastFinite >= 0 ? lastFinite : count - 1;
+        lookaheadEnd = lookaheadStart + 1;
+      } else {
+        lookaheadStart = bucketBoundary(lookaheadBucket, intermediate, bucketCount);
+        lookaheadEnd =
+            lookaheadBucket == bucketCount
+                ? count
+                : bucketBoundary(lookaheadBucket + 1, intermediate, bucketCount);
+      }
+      double sumTime = 0;
+      double sumValue = 0;
+      int finiteCount = 0;
+      for (int i = lookaheadStart; i < lookaheadEnd; i++) {
+        if (!isFiniteValue(values, integralValues, i)) {
+          continue;
+        }
+        sumTime += differenceAsDouble(times[i], anchorTime);
+        sumValue += relativeValue(values, integralValues, i, anchorValue, integralAnchor);
+        finiteCount++;
+      }
+      // A non-finite lookahead point means the whole partition is non-finite; every area is then
+      // undefined and the bucket keeps its earliest point.
       double avgTime;
       double avgValue;
-      int lookaheadEnd;
-      if (bucket == bucketCount - 1) {
-        lookaheadEnd = count;
+      if (finiteCount == 0) {
+        avgTime = differenceAsDouble(times[lookaheadStart], anchorTime);
+        avgValue =
+            relativeValue(values, integralValues, lookaheadStart, anchorValue, integralAnchor);
       } else {
-        lookaheadEnd = nextEnd;
-      }
-      if (bucket == bucketCount - 1) {
-        avgTime = differenceAsDouble(times[count - 1], anchorTime);
-        avgValue = relativeValue(values, integralValues, count - 1, anchorValue, integralAnchor);
-      } else {
-        double sumTime = 0;
-        double sumValue = 0;
-        int finiteCount = 0;
-        for (int i = currentEnd; i < lookaheadEnd; i++) {
-          if (!isFiniteValue(values, integralValues, i)) {
-            continue;
-          }
-          sumTime += differenceAsDouble(times[i], anchorTime);
-          sumValue += relativeValue(values, integralValues, i, anchorValue, integralAnchor);
-          finiteCount++;
-        }
-        if (finiteCount == 0) {
-          // No finite point in the next bucket: use the last finite point of the partition.
-          int fallback = count - 1;
-          while (fallback >= 0 && !isFiniteValue(values, integralValues, fallback)) {
-            fallback--;
-          }
-          if (fallback < 0) {
-            fallback = count - 1;
-          }
-          avgTime = differenceAsDouble(times[fallback], anchorTime);
-          avgValue = relativeValue(values, integralValues, fallback, anchorValue, integralAnchor);
-        } else {
-          avgTime = sumTime / finiteCount;
-          avgValue = sumValue / finiteCount;
-        }
+        avgTime = sumTime / finiteCount;
+        avgValue = sumValue / finiteCount;
       }
 
       int pick =
@@ -520,6 +532,7 @@ public class LTTBTableFunction implements TableFunction {
               avgTime,
               avgValue);
       if (pick == NOT_SELECTED) {
+        // The exact fallback has to score the candidates against the same C as the normal path.
         pick =
             argMaxAreaExactly(
                 times,
@@ -533,7 +546,7 @@ public class LTTBTableFunction implements TableFunction {
                 times,
                 values,
                 integralValues,
-                currentEnd,
+                lookaheadStart,
                 lookaheadEnd);
       }
       selected[selectedCount++] = pick;
@@ -544,6 +557,29 @@ public class LTTBTableFunction implements TableFunction {
     }
     selected[selectedCount] = count - 1;
     return selected;
+  }
+
+  /** First index of bucket {@code bucket}; bucket {@code bucketCount} is the final point. */
+  private static int bucketBoundary(long bucket, long intermediate, long bucketCount) {
+    return (int) (bucket * intermediate / bucketCount) + 1;
+  }
+
+  /** Whether {@code bucket} holds a point that can serve as {@code C}. */
+  private static boolean hasFinitePoint(
+      double[] values,
+      long[] integralValues,
+      long bucket,
+      int count,
+      long intermediate,
+      long bucketCount) {
+    int start = bucketBoundary(bucket, intermediate, bucketCount);
+    int end = bucket == bucketCount ? count : bucketBoundary(bucket + 1, intermediate, bucketCount);
+    for (int i = start; i < end; i++) {
+      if (isFiniteValue(values, integralValues, i)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**

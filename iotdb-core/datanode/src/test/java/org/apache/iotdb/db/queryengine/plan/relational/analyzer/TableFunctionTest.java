@@ -966,29 +966,33 @@ public class TableFunctionTest {
   }
 
   /**
-   * A window function input plans a per-branch GroupNode that is not registered in the ordering
-   * map, so the non-split branch has to take the ordering from the GroupNode itself. Without that
-   * the children are merged by a CollectNode and partitions are mixed.
+   * A window partitioned by every tag is planned per region, so each branch below the LTTB ends in
+   * a GroupNode. The branch therefore does not hold a complete partition, and the function has to
+   * run once over the branches merged in order: a CollectNode would interleave the partitions of
+   * different regions, and an LTTB inside the region fragments would sample each region on its own.
    */
   @Test
   public void testLTTBOverWindowFunctionInputIsMergedInOrder() {
     PlanTester planTester = new PlanTester();
     String sql =
-        "SELECT * FROM LTTB(DATA => (SELECT time, tag3, s1, "
-            + "row_number() OVER (PARTITION BY tag3, s1 ORDER BY time) AS rn FROM table1) "
+        "SELECT * FROM LTTB(DATA => (SELECT time, tag3, s1, row_number() OVER "
+            + "(PARTITION BY tag3, tag1, tag2 ORDER BY time) AS rn FROM table1 WHERE time < 100) "
             + "PARTITION BY tag3 ORDER BY time, TIMECOL => 'time', N => 4)";
-    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    planTester.createPlan(sql);
 
-    // The per-branch GroupNode is not registered in the ordering map, so the non-split branch must
-    // read its ordering from the node itself and merge the children with a MergeSort. With a
-    // CollectNode the partitions of different regions would be interleaved, and splitting LTTB per
-    // region would return one sample per region instead of one sample per partition.
+    /*
+     *   fragment 0:   Output - TableFunctionProcessor (lttb) - MergeSort - Exchange, Exchange
+     *   fragments 1-2: Group - Project - Window - DeviceTableScan (one region each)
+     */
     assertPlan(
         planTester.getFragmentPlan(0),
-        output(
-            node(
-                TableFunctionProcessorNode.class,
-                group(node(WindowNode.class, mergeSort(exchange(), exchange(), exchange()))))));
+        output(node(TableFunctionProcessorNode.class, mergeSort(exchange(), exchange()))));
+    assertPlan(
+        planTester.getFragmentPlan(1),
+        group(project(node(WindowNode.class, tableScan("testdb.table1")))));
+    assertPlan(
+        planTester.getFragmentPlan(2),
+        group(project(node(WindowNode.class, tableScan("testdb.table1")))));
   }
 
   @Test

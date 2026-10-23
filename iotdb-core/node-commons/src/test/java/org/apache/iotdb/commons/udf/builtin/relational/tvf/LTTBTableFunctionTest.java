@@ -163,6 +163,52 @@ public class LTTBTableFunctionTest {
         new int[] {0, 1, 5}, LTTBTableFunction.selectTargetCount(times, values, 6, 3));
   }
 
+  /**
+   * {@code C} must never be a non-finite point, because every area of the bucket would then be
+   * undefined and the bucket would fall back to its earliest point. A non-finite final point
+   * therefore hands {@code C} to the last finite point of the partition instead.
+   */
+  @Test
+  public void testTargetCountNonFiniteFinalPointDoesNotBecomeLookahead() {
+    long[] times = {0, 1, 2, 3, 4, 5};
+    assertArrayEquals(
+        new int[] {0, 2, 5},
+        LTTBTableFunction.selectTargetCount(times, new double[] {0, 1, 9, 2, 0, Double.NaN}, 6, 3));
+    assertArrayEquals(
+        new int[] {0, 2, 5},
+        LTTBTableFunction.selectTargetCount(
+            times, new double[] {0, 1, 9, 2, 0, Double.POSITIVE_INFINITY}, 6, 3));
+    assertArrayEquals(
+        new int[] {0, 2, 5},
+        LTTBTableFunction.selectTargetCount(
+            times, new double[] {0, 1, 9, 2, Double.NaN, Double.NaN}, 6, 3));
+    // Control: a finite final point is C of the last bucket and selects the same peak.
+    assertArrayEquals(
+        new int[] {0, 2, 5},
+        LTTBTableFunction.selectTargetCount(times, new double[] {0, 1, 9, 2, 0, 0}, 6, 3));
+  }
+
+  /**
+   * A next bucket without a finite point is skipped: {@code C} averages the finite points of the
+   * next bucket that has one instead of collapsing to the last finite point of the partition.
+   */
+  @Test
+  public void testTargetCountSkipsNonFiniteLookaheadBuckets() {
+    long[] times = {0, 1, 2, 3, 4, 5, 6, 7};
+    double[] values = {0, 5, 4, Double.NaN, Double.NaN, 10, 10, -20};
+
+    // N => 5: C of the first bucket is (t5 + t6) / 2 = (5.5, 10), so t1 (area 17.5) beats t2
+    // (area 2). C of the last bucket is the last finite point t6.
+    assertArrayEquals(
+        new int[] {0, 1, 3, 6, 7},
+        LTTBTableFunction.selectTargetCount(times, values, times.length, 5));
+    // N => 4: buckets [1,4) and [4,7); the first one skips its NaN point and picks t1, and the
+    // second one scores t5 and t6 against the final point t7.
+    assertArrayEquals(
+        new int[] {0, 1, 6, 7},
+        LTTBTableFunction.selectTargetCount(times, values, times.length, 4));
+  }
+
   @Test
   public void testTimestampUniquenessAcceptsDistinctAndRejectsRepeatedTimestamps() {
     LTTBTableFunction.TimestampUniquenessChecker checker =

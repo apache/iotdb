@@ -183,6 +183,64 @@ public class LTTBRegressionTest {
   }
 
   /**
+   * A non-finite point stays eligible, but it never serves as {@code A} or {@code C}: the last
+   * window looks ahead to the last finite eligible point instead of the non-finite last point, so
+   * the selections do not depend on whether the final value is finite.
+   */
+  @Test
+  public void testWindowModeIgnoresNonFiniteValuesAsTriangleVertices() {
+    Double[][] finiteTail = {{0.0}, {5.0}, {1.0}, {2.0}, {9.0}, {3.0}, {0.0}};
+    Double[][] nonFiniteTail = {{0.0}, {5.0}, {1.0}, {2.0}, {9.0}, {3.0}, {Double.NaN}};
+    for (String mode : new String[] {"COUNT_WINDOW", "TIME_WINDOW"}) {
+      int timeIndex = mode.equals("TIME_WINDOW") ? 2 : 1;
+      List<ColumnBuilder> finite = sample(mode, 3, 3, 0, finiteTail);
+      List<ColumnBuilder> nonFinite = sample(mode, 3, 3, 0, nonFiniteTail);
+      // W0 reports F(t0) and picks t1; W1 picks t4; the last window reports L. The last row of
+      // the non-finite run is the non-finite point itself, which is still returned.
+      assertEquals(4, nonFinite.get(timeIndex).getPositionCount());
+      assertEquals(0, nonFinite.get(timeIndex).build().getLong(0));
+      assertEquals(1, nonFinite.get(timeIndex).build().getLong(1));
+      assertEquals(4, nonFinite.get(timeIndex).build().getLong(2));
+      assertEquals(6, nonFinite.get(timeIndex).build().getLong(3));
+      assertEquals(5.0, nonFinite.get(timeIndex + 1).build().getDouble(1), 0.0);
+      assertEquals(9.0, nonFinite.get(timeIndex + 1).build().getDouble(2), 0.0);
+      assertTrue(Double.isNaN(nonFinite.get(timeIndex + 1).build().getDouble(3)));
+      for (int i = 0; i < 3; i++) {
+        assertEquals(
+            finite.get(timeIndex).build().getLong(i), nonFinite.get(timeIndex).build().getLong(i));
+      }
+    }
+  }
+
+  /**
+   * A column whose only eligible point in a window is non-finite still returns it as the pick of
+   * that window, and the columns stay aligned by output position.
+   */
+  @Test
+  public void testWindowModeReturnsNonFiniteCandidate() {
+    Double[][] rows = {{0.0, 1.0}, {1.0, 2.0}, {2.0, 3.0}, {3.0, Double.NaN}};
+    for (String mode : new String[] {"COUNT_WINDOW", "TIME_WINDOW"}) {
+      List<ColumnBuilder> out = sample(mode, 2, 2, 0, rows);
+      int timeIndex = mode.equals("TIME_WINDOW") ? 2 : 1;
+      // W0 reports F(t0) for both columns and picks t1; W1 picks t2 and reports L(t3). The second
+      // column's last eligible point is non-finite, so it is returned as L of the last window.
+      assertEquals(4, out.get(timeIndex).getPositionCount());
+      assertEquals(0, out.get(timeIndex).build().getLong(0));
+      assertEquals(1, out.get(timeIndex).build().getLong(1));
+      assertEquals(2, out.get(timeIndex).build().getLong(2));
+      assertEquals(3, out.get(timeIndex).build().getLong(3));
+      assertEquals(0.0, out.get(timeIndex + 1).build().getDouble(0), 0.0);
+      assertEquals(1.0, out.get(timeIndex + 1).build().getDouble(1), 0.0);
+      assertEquals(2.0, out.get(timeIndex + 1).build().getDouble(2), 0.0);
+      assertEquals(3.0, out.get(timeIndex + 1).build().getDouble(3), 0.0);
+      assertEquals(1.0, out.get(timeIndex + 3).build().getDouble(0), 0.0);
+      assertEquals(2.0, out.get(timeIndex + 3).build().getDouble(1), 0.0);
+      assertEquals(3.0, out.get(timeIndex + 3).build().getDouble(2), 0.0);
+      assertTrue(Double.isNaN(out.get(timeIndex + 3).build().getDouble(3)));
+    }
+  }
+
+  /**
    * A window without any eligible point emits no row, like M4: the number of rows is the largest
    * number of points selected by a participant column, so an all-NULL partition emits nothing.
    */

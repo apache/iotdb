@@ -176,7 +176,8 @@ public class IoTDBLTTBTableFunctionIT {
         new String[] {
           "0,d1,1970-01-01T00:00:00.000Z,0.0,1970-01-01T00:00:00.000Z,0.0,",
           "0,d1,1970-01-01T00:00:00.002Z,8.0,1970-01-01T00:00:00.003Z,9.0,",
-          "0,d1,1970-01-01T00:00:00.005Z,0.0,1970-01-01T00:00:00.005Z,0.0,"
+          "0,d1,1970-01-01T00:00:00.005Z,0.0,1970-01-01T00:00:00.005Z,0.0,",
+          "0,d2,1970-01-01T00:00:00.000Z,0.0,1970-01-01T00:00:00.000Z,0.0,"
         },
         DATABASE_NAME);
   }
@@ -396,12 +397,12 @@ public class IoTDBLTTBTableFunctionIT {
     tableAssertTestFail(
         "SELECT * FROM LTTB(DATA => metrics PARTITION BY device ORDER BY time, "
             + "TIMECOL => 's1', N => 3)",
-        "701: ",
+        "701: The type of the column [s1] is not as expected.",
         DATABASE_NAME);
     tableAssertTestFail(
         "SELECT * FROM LTTB(DATA => metrics PARTITION BY device ORDER BY time, "
             + "TIMECOL => 'missing', N => 3)",
-        "701: ",
+        "701: Required column [missing] not found in the source table argument.",
         DATABASE_NAME);
   }
 
@@ -422,50 +423,68 @@ public class IoTDBLTTBTableFunctionIT {
     // Every timestamp of the partition is written by all eight devices, whose series slots are
     // spread over the four DataRegionGroups of the database, so the duplicate rows are read from
     // different regions. The function runs once over the merged partition, so the check sees the
-    // duplicates regardless of how many fragments supplied them.
+    // duplicates regardless of how many fragments supplied them. The window-function and SESSION
+    // inputs are the ones that used to lose the partition boundary.
     String expected =
         "701: LTTB does not support duplicate timestamps, but timestamp 0 appears more than once"
             + " in the same partition.";
-    String prefix =
-        "SELECT * FROM LTTB(DATA => (SELECT time, part, s1 FROM frag_dup) "
-            + "PARTITION BY part ORDER BY time, TIMECOL => 'time', ";
-
-    tableAssertTestFail(prefix + "N => 3)", expected, DATABASE_NAME);
-    tableAssertTestFail(prefix + "SIZE => 3)", expected, DATABASE_NAME);
-    tableAssertTestFail(
-        prefix + "SIZE => 2ms, ORIGIN => 1970-01-01T00:00:00.000+00:00)", expected, DATABASE_NAME);
+    String[] inputs = {
+      "(SELECT time, part, s1 FROM frag_dup)",
+      "(SELECT time, part, s1, "
+          + "row_number() OVER (PARTITION BY part, device ORDER BY time) AS rn FROM frag_dup)",
+      "(SELECT time, part, s1 FROM SESSION(DATA => frag_dup PARTITION BY (part, device) "
+          + "ORDER BY time, TIMECOL => 'time', GAP => 1m))"
+    };
+    for (String input : inputs) {
+      String prefix =
+          "SELECT * FROM LTTB(DATA => "
+              + input
+              + " PARTITION BY part ORDER BY time, TIMECOL => 'time', ";
+      tableAssertTestFail(prefix + "N => 3)", expected, DATABASE_NAME);
+      tableAssertTestFail(prefix + "SIZE => 3)", expected, DATABASE_NAME);
+      tableAssertTestFail(
+          prefix + "SIZE => 2ms, ORIGIN => 1970-01-01T00:00:00.000+00:00)",
+          expected,
+          DATABASE_NAME);
+    }
   }
 
   /**
    * A partitioned GroupNode does not make a partition complete within one branch, so LTTB has to
    * run once over the partitions merged in order. With four data region groups and a partition
-   * whose devices carry disjoint time ranges, a per-region sample or an unordered merge changes the
-   * result; {@code N => 1000} returns every eligible point, so all three inputs must agree.
+   * whose devices carry disjoint time ranges, all three inputs must agree. {@code N => 1000}
+   * returns every point, so it checks that each partition receives exactly its rows; {@code N => 8}
+   * samples, so it also catches an LTTB that runs once per region.
    */
   @Test
   public void testNonDirectScanInputsMatchTheDirectScan() throws SQLException {
-    String direct =
-        "SELECT window_index, part, s1_time, s1 FROM LTTB("
-            + "DATA => regions PARTITION BY part ORDER BY time, TIMECOL => 'time', N => 1000) "
-            + "ORDER BY part, s1_time";
-    String windowFunctionInput =
-        "SELECT window_index, part, s1_time, s1 FROM LTTB("
-            + "DATA => (SELECT time, part, s1, "
-            + "row_number() OVER (PARTITION BY part, device ORDER BY time) AS rn FROM regions) "
-            + "PARTITION BY part ORDER BY time, TIMECOL => 'time', N => 1000) "
-            + "ORDER BY part, s1_time";
-    String sessionInput =
-        "SELECT window_index, part, s1_time, s1 FROM LTTB("
-            + "DATA => (SELECT time, part, s1 FROM SESSION("
-            + "DATA => regions PARTITION BY (part, device) ORDER BY time, TIMECOL => 'time', "
-            + "GAP => 1m)) PARTITION BY part ORDER BY time, TIMECOL => 'time', N => 1000) "
-            + "ORDER BY part, s1_time";
+    for (int n : new int[] {1000, 8}) {
+      String rest =
+          " PARTITION BY part ORDER BY time, TIMECOL => 'time', N => "
+              + n
+              + ") ORDER BY part, s1_time";
+      String direct =
+          "SELECT window_index, part, s1_time, s1 FROM LTTB("
+              + "DATA => (SELECT time, part, s1 FROM regions)"
+              + rest;
+      String windowFunctionInput =
+          "SELECT window_index, part, s1_time, s1 FROM LTTB("
+              + "DATA => (SELECT time, part, s1, "
+              + "row_number() OVER (PARTITION BY part, device ORDER BY time) AS rn FROM regions)"
+              + rest;
+      String sessionInput =
+          "SELECT window_index, part, s1_time, s1 FROM LTTB("
+              + "DATA => (SELECT time, part, s1 FROM SESSION("
+              + "DATA => regions PARTITION BY (part, device) ORDER BY time, TIMECOL => 'time', "
+              + "GAP => 1m))"
+              + rest;
 
-    List<String> expected = queryRows(direct);
-    // 8 devices x 4 rows per partition, 2 partitions.
-    assertEquals(64, expected.size());
-    assertEquals(expected, queryRows(windowFunctionInput));
-    assertEquals(expected, queryRows(sessionInput));
+      List<String> expected = queryRows(direct);
+      // 2 partitions of 32 points each: all of them for N => 1000, 8 each for N => 8.
+      assertEquals(n == 1000 ? 64 : 16, expected.size());
+      assertEquals(expected, queryRows(windowFunctionInput));
+      assertEquals(expected, queryRows(sessionInput));
+    }
   }
 
   private static List<String> queryRows(String sql) throws SQLException {
