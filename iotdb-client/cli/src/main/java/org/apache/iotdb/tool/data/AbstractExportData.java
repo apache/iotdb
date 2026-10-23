@@ -20,6 +20,7 @@
 package org.apache.iotdb.tool.data;
 
 import org.apache.iotdb.cli.utils.IoTPrinter;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -30,6 +31,8 @@ import org.apache.thrift.TException;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -40,7 +43,31 @@ public abstract class AbstractExportData extends AbstractDataTool {
   public abstract void init()
       throws IoTDBConnectionException, StatementExecutionException, TException;
 
-  public abstract void exportBySql(String sql, int index);
+  public abstract boolean exportBySql(String sql, int index);
+
+  protected static String formatSqlValue(String value, String type) {
+    if (value == null) {
+      return "NULL";
+    }
+    if ("TEXT".equalsIgnoreCase(type) || "STRING".equalsIgnoreCase(type)) {
+      return "'" + value.replace("'", "''") + "'";
+    }
+    return value;
+  }
+
+  protected static List<String> getCsvHeaders(SessionDataSet dataSet, boolean treeModel) {
+    List<String> headers = new ArrayList<>(dataSet.getColumnNames());
+    if (Boolean.TRUE.equals(needDataTypePrinted)) {
+      List<String> types = dataSet.getColumnTypes();
+      for (int i = 0; i < headers.size(); i++) {
+        String name = headers.get(i);
+        if (!"Time".equalsIgnoreCase(name) && !(treeModel && "Device".equals(name))) {
+          headers.set(i, String.format("%s(%s)", name, types.get(i)));
+        }
+      }
+    }
+    return headers;
+  }
 
   protected static void legalCheck(String sql) {
     String aggregatePattern =

@@ -117,7 +117,7 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
                 treeDeviceViewScanNode.getTreeDBName(),
                 treeDeviceViewScanNode.getMeasurementColumnNameMap());
         prunedNode.setRegionReplicaSet(deviceTableScanNode.getRegionReplicaSet());
-        return Optional.of(prunedNode);
+        return Optional.of(deviceTableScanNode.copyDeviceEntryDataSetTo(prunedNode));
       } else if (node instanceof TreeNonAlignedDeviceViewScanNode) {
         TreeNonAlignedDeviceViewScanNode treeDeviceViewScanNode =
             (TreeNonAlignedDeviceViewScanNode) deviceTableScanNode;
@@ -139,11 +139,11 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
                 treeDeviceViewScanNode.getTreeDBName(),
                 treeDeviceViewScanNode.getMeasurementColumnNameMap());
         prunedNode.setRegionReplicaSet(deviceTableScanNode.getRegionReplicaSet());
-        return Optional.of(prunedNode);
+        return Optional.of(deviceTableScanNode.copyDeviceEntryDataSetTo(prunedNode));
       } else if (node instanceof TreeDeviceViewScanNode) {
         TreeDeviceViewScanNode treeDeviceViewScanNode =
             (TreeDeviceViewScanNode) deviceTableScanNode;
-        return Optional.of(
+        TreeDeviceViewScanNode prunedNode =
             new TreeDeviceViewScanNode(
                 deviceTableScanNode.getPlanNodeId(),
                 deviceTableScanNode.getQualifiedObjectName(),
@@ -159,7 +159,9 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
                 deviceTableScanNode.isPushLimitToEachDevice(),
                 deviceTableScanNode.containsNonAlignedDevice(),
                 treeDeviceViewScanNode.getTreeDBName(),
-                treeDeviceViewScanNode.getMeasurementColumnNameMap()));
+                treeDeviceViewScanNode.getMeasurementColumnNameMap());
+        prunedNode.setRegionReplicaSet(deviceTableScanNode.getRegionReplicaSet());
+        return Optional.of(deviceTableScanNode.copyDeviceEntryDataSetTo(prunedNode));
       } else if (node instanceof ExternalTsFileScanNode externalTsFileScanNode) {
         ExternalTsFileScanNode prunedNode =
             new ExternalTsFileScanNode(
@@ -179,7 +181,7 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
                 externalTsFileScanNode.getDeviceTaskPartitionIndex(),
                 externalTsFileScanNode.getSchemaFilter());
         prunedNode.setRegionReplicaSet(deviceTableScanNode.getRegionReplicaSet());
-        return Optional.of(prunedNode);
+        return Optional.of(deviceTableScanNode.copyDeviceEntryDataSetTo(prunedNode));
       } else {
         DeviceTableScanNode prunedNode =
             new DeviceTableScanNode(
@@ -197,7 +199,7 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
                 deviceTableScanNode.isPushLimitToEachDevice(),
                 deviceTableScanNode.containsNonAlignedDevice());
         prunedNode.setRegionReplicaSet(deviceTableScanNode.getRegionReplicaSet());
-        return Optional.of(prunedNode);
+        return Optional.of(deviceTableScanNode.copyDeviceEntryDataSetTo(prunedNode));
       }
     } else if (node instanceof InformationSchemaTableScanNode) {
       // For the convenience of process in execution stage, column-prune for

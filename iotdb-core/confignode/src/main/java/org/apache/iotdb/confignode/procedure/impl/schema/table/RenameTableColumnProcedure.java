@@ -94,7 +94,7 @@ public class RenameTableColumnProcedure
               ProcedureMessages.COMMIT_RELEASE_INFO_OF_TABLE_WHEN_RENAMING_COLUMN,
               database,
               tableName);
-          commitRelease(env);
+          commitReleaseWithHA(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(
@@ -151,6 +151,23 @@ public class RenameTableColumnProcedure
       setFailure(new ProcedureException(new IoTDBException(status)));
     } else {
       setNextState(RenameTableColumnState.COMMIT_RELEASE);
+    }
+  }
+
+  /**
+   * The column is renamed on the ConfigNode once RENAME_COLUMN has completed, and the ConfigNode
+   * schema is the source of truth the DataNodes resync from. The procedure therefore stays
+   * rollbackable up to RENAME_COLUMN and not after it.
+   */
+  @Override
+  protected boolean isRollbackSupported(final RenameTableColumnState state) {
+    switch (state) {
+      case COLUMN_CHECK:
+      case PRE_RELEASE:
+      case RENAME_COLUMN:
+        return true;
+      default:
+        return false;
     }
   }
 

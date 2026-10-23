@@ -24,20 +24,13 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.ValueRecorder;
 import org.apache.iotdb.db.utils.CommonUtils;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.common.block.column.BinaryColumn;
-import org.apache.tsfile.read.common.block.column.BooleanColumn;
-import org.apache.tsfile.read.common.block.column.DoubleColumn;
-import org.apache.tsfile.read.common.block.column.FloatColumn;
-import org.apache.tsfile.read.common.block.column.IntColumn;
-import org.apache.tsfile.read.common.block.column.LongColumn;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.util.Objects;
-import java.util.Optional;
 
 public class TransformUtils {
 
@@ -54,33 +47,13 @@ public class TransformUtils {
           CommonUtils.parseValue(constantOperand.getDataType(), constantOperand.getValueString());
       if (value == null) {
         throw new UnsupportedOperationException(
-            String.format(
-                DataNodeQueryMessages.QUERY_EXCEPTION_INVALID_CONSTANT_OPERAND_S_939F3B8D,
-                constantOperand.getExpressionString()));
+            DataNodeQueryMessages.UNSUPPORTED_CONSTANT_OPERAND
+                + constantOperand.getExpressionString());
       }
 
-      switch (constantOperand.getDataType()) {
-        case INT32:
-          return new IntColumn(1, Optional.empty(), new int[] {(int) value});
-        case INT64:
-          return new LongColumn(1, Optional.empty(), new long[] {(long) value});
-        case FLOAT:
-          return new FloatColumn(1, Optional.empty(), new float[] {(float) value});
-        case DOUBLE:
-          return new DoubleColumn(1, Optional.empty(), new double[] {(double) value});
-        case TEXT:
-          return new BinaryColumn(1, Optional.empty(), new Binary[] {(Binary) value});
-        case BOOLEAN:
-          return new BooleanColumn(1, Optional.empty(), new boolean[] {(boolean) value});
-        case STRING:
-        case BLOB:
-        case OBJECT:
-        case DATE:
-        case TIMESTAMP:
-        default:
-          throw new UnSupportedDataTypeException(
-              DataNodeQueryMessages.UNSUPPORTED_TYPE + constantOperand.getDataType());
-      }
+      return TypeServices.Transformation.CONSTANT_COLUMN_BUILDER_SERVICE
+          .call(Type.fromTsDataType(constantOperand.getDataType()))
+          .apply(value);
     } catch (QueryProcessException e) {
       throw new UnsupportedOperationException(e);
     }
@@ -88,80 +61,8 @@ public class TransformUtils {
 
   public static boolean splitWindowForStateWindow(
       TSDataType dataType, ValueRecorder valueRecorder, double delta, Column values, int index) {
-    boolean res;
-    switch (dataType) {
-      case INT32:
-        if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordInt(values.getInt(index - 1));
-          valueRecorder.setRecorded(true);
-        }
-        res = Math.abs(values.getInt(index) - valueRecorder.getInt()) > delta;
-        if (res) {
-          valueRecorder.recordInt(values.getInt(index));
-        }
-        break;
-      case INT64:
-        if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordLong(values.getLong(index - 1));
-          valueRecorder.setRecorded(true);
-        }
-        res = Math.abs(values.getLong(index) - valueRecorder.getLong()) > delta;
-        if (res) {
-          valueRecorder.recordLong(values.getLong(index));
-        }
-        break;
-      case FLOAT:
-        if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordFloat(values.getFloat(index - 1));
-          valueRecorder.setRecorded(true);
-        }
-        res = Math.abs(values.getFloat(index) - valueRecorder.getFloat()) > delta;
-        if (res) {
-          valueRecorder.recordFloat(values.getFloat(index));
-        }
-        break;
-      case DOUBLE:
-        if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordDouble(values.getDouble(index - 1));
-          valueRecorder.setRecorded(true);
-        }
-        res = Math.abs(values.getDouble(index) - valueRecorder.getDouble()) > delta;
-        if (res) {
-          valueRecorder.recordDouble(values.getDouble(index));
-        }
-        break;
-      case BOOLEAN:
-        if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordBoolean(values.getBoolean(index - 1));
-          valueRecorder.setRecorded(true);
-        }
-        res = values.getBoolean(index) != valueRecorder.getBoolean();
-        if (res) {
-          valueRecorder.recordBoolean(values.getBoolean(index));
-        }
-        break;
-      case TEXT:
-        if (!valueRecorder.hasRecorded()) {
-          Binary binary = values.getBinary(index - 1);
-          valueRecorder.recordString(binary.toString());
-          valueRecorder.setRecorded(true);
-        }
-        String str = values.getBinary(index).toString();
-        res = !str.equals(valueRecorder.getString());
-        if (res) {
-          valueRecorder.recordString(str);
-        }
-        break;
-      case TIMESTAMP:
-      case DATE:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-      default:
-        throw new UnsupportedOperationException(
-            DataNodeQueryMessages
-                .QUERY_EXCEPTION_THE_DATA_TYPE_OF_THE_STATE_WINDOW_STRATEGY_IS_NOT_VALID_DFFBF210);
-    }
-    return res;
+    return TypeServices.Transformation.STATE_WINDOW_SPLITTER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .split(valueRecorder, delta, values, index);
   }
 }

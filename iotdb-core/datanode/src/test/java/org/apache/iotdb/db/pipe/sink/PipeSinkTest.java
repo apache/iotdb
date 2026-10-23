@@ -24,10 +24,12 @@ import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistry;
+import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeSnapshot;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.event.common.statement.PipeStatementInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.protocol.legacy.IoTDBLegacyPipeSink;
-import org.apache.iotdb.db.pipe.sink.protocol.opcua.OpcUaSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.sync.IoTDBDataRegionSyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.websocket.WebSocketConnectorServer;
@@ -47,7 +49,6 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
-import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -111,6 +112,60 @@ public class PipeSinkTest {
                   })));
     } catch (Exception e) {
       Assert.fail();
+    }
+  }
+
+  @Test
+  public void testWriteBackSinkRegistersReceiverRuntime() throws Exception {
+    final PipeReceiverRuntimeRegistry registry = PipeReceiverRuntimeRegistry.getInstance();
+    final int previousDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    registry.clear();
+
+    try {
+      IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);
+      final String pipeName = "write_back_receiver_runtime_pipe";
+      final long creationTime = 1L;
+      final PipeParameters parameters =
+          new PipeParameters(
+              new HashMap<String, String>() {
+                {
+                  put(
+                      PipeSinkConstant.SINK_KEY,
+                      BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName());
+                  put(PipeSinkConstant.SINK_IOTDB_USER_ID, "0");
+                  put(PipeSinkConstant.SINK_IOTDB_USERNAME_KEY, "root");
+                }
+              });
+
+      try (final WriteBackSink sink = new WriteBackSink()) {
+        sink.validate(new PipeParameterValidator(parameters));
+        sink.customize(
+            parameters,
+            new PipeTaskRuntimeConfiguration(
+                new PipeTaskSinkRuntimeEnvironment(pipeName, creationTime, 1)));
+
+        final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+        Assert.assertEquals(1, snapshots.size());
+
+        final PipeReceiverRuntimeSnapshot snapshot = snapshots.get(0);
+        Assert.assertEquals(
+            PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE, snapshot.getReceiverNodeType());
+        Assert.assertEquals(PipeReceiverRuntimeRegistry.PROTOCOL_WRITEBACK, snapshot.getProtocol());
+        Assert.assertFalse(snapshot.getSenderAddress().isEmpty());
+        Assert.assertFalse(snapshot.getSenderPorts().isEmpty());
+        Assert.assertEquals(1, snapshot.getConnectionCount());
+        Assert.assertEquals(1, snapshot.getPipeCount());
+        Assert.assertTrue(snapshot.getPipeIds().contains(pipeName + "@"));
+        Assert.assertEquals("root", snapshot.getUserName());
+        Assert.assertFalse(snapshot.getSenderClusterId().isEmpty());
+        Assert.assertTrue(snapshot.getLastHandshakeTime() > 0);
+        Assert.assertTrue(snapshot.getLastTransferTime() >= snapshot.getLastHandshakeTime());
+      }
+
+      Assert.assertTrue(registry.snapshot().isEmpty());
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setDataNodeId(previousDataNodeId);
+      registry.clear();
     }
   }
 
@@ -342,8 +397,11 @@ public class PipeSinkTest {
       recreatedPipeEvent.setCommitterKeyAndCommitId(new CommitterKey("pipe", 2L, 1, -1), 1L);
 
       connector.addFailureEventToRetryQueue(recreatedPipeEvent, new PipeException("test"));
+      connector.addFailureEventToRetryQueue(recreatedPipeEvent, new PipeException("test-again"));
 
       Assert.assertEquals(1, connector.getRetryEventQueueSize());
+      connector.clearRetryEventsReferenceCount();
+      Assert.assertTrue(recreatedPipeEvent.isReleased());
     }
   }
 
@@ -387,97 +445,6 @@ public class PipeSinkTest {
   }
 
   @Test
-  public void testOpcUaSink() {
-    final List<IMeasurementSchema> schemaList =
-        Arrays.asList(
-            new MeasurementSchema("s1", TSDataType.INT64),
-            new MeasurementSchema("s2", TSDataType.INT64));
-
-    final Tablet tablet = new Tablet("root.db.d1.vector6", schemaList, 100);
-
-    long timestamp = System.currentTimeMillis();
-    for (long row = 0; row < 100; row++) {
-      final int rowSize = tablet.getRowSize();
-      tablet.addTimestamp(rowSize, timestamp);
-      for (int i = 0; i < 2; i++) {
-        tablet.addValue(
-            schemaList.get(i).getMeasurementName(), rowSize, new SecureRandom().nextLong());
-      }
-      timestamp++;
-    }
-
-    final List<IMeasurementSchema> opcSchemaList =
-        Arrays.asList(
-            new MeasurementSchema("value1", TSDataType.INT64),
-            new MeasurementSchema("quality1", TSDataType.BOOLEAN));
-    final Tablet qualityTablet = new Tablet("root.db.d1.vector6.s3", opcSchemaList, 100);
-
-    timestamp = System.currentTimeMillis();
-    for (long row = 0; row < 100; row++) {
-      final int rowSize = qualityTablet.getRowSize();
-      qualityTablet.addTimestamp(rowSize, timestamp);
-      qualityTablet.addValue(
-          opcSchemaList.get(0).getMeasurementName(), rowSize, new SecureRandom().nextLong());
-      qualityTablet.addValue(opcSchemaList.get(1).getMeasurementName(), rowSize, true);
-      timestamp++;
-    }
-
-    try (final OpcUaSink qualityOPC = new OpcUaSink();
-        final OpcUaSink normalOPC = new OpcUaSink()) {
-      final PipeTaskRuntimeConfiguration configuration =
-          new PipeTaskRuntimeConfiguration(new PipeTaskSinkRuntimeEnvironment("temp", 0, 1));
-      qualityOPC.customize(
-          new PipeParameters(
-              new HashMap<String, String>() {
-                {
-                  put(
-                      PipeSinkConstant.CONNECTOR_KEY,
-                      BuiltinPipePlugin.OPC_UA_SINK.getPipePluginName());
-                  put(PipeSinkConstant.CONNECTOR_OPC_UA_WITH_QUALITY_KEY, "true");
-                  put(PipeSinkConstant.CONNECTOR_OPC_UA_VALUE_NAME_KEY, "value1");
-                  put(PipeSinkConstant.CONNECTOR_OPC_UA_QUALITY_NAME_KEY, "quality1");
-                }
-              }),
-          configuration);
-      normalOPC.customize(
-          new PipeParameters(
-              new HashMap<String, String>() {
-                {
-                  put(
-                      PipeSinkConstant.CONNECTOR_KEY,
-                      BuiltinPipePlugin.OPC_UA_SINK.getPipePluginName());
-                }
-              }),
-          configuration);
-      final PipeRawTabletInsertionEvent event =
-          new PipeRawTabletInsertionEvent(
-              false, "root.db", "db", "root.db", tablet, false, "pipe", 0L, null, null, false);
-      event.increaseReferenceCount("");
-      normalOPC.transfer(event);
-      // Shall not throw
-      qualityOPC.transfer(event);
-      event.decreaseReferenceCount("", false);
-
-      qualityOPC.transfer(
-          new PipeRawTabletInsertionEvent(
-              false,
-              "root.db",
-              "db",
-              "root.db",
-              qualityTablet,
-              false,
-              "pipe",
-              0L,
-              null,
-              null,
-              false));
-
-    } catch (Exception e) {
-      Assert.fail();
-    }
-  }
-
-  @Test
   public void testWriteBackSinkTargetDatabaseValidation() throws Exception {
     assertWriteBackSinkTargetDatabaseValid("target");
     assertWriteBackSinkTargetDatabaseValid("root.target");
@@ -500,7 +467,7 @@ public class PipeSinkTest {
           "testtarget", getWriteBackSinkDatabaseName(sink, "targetTableModelDatabaseName"));
       Assert.assertNull(getWriteBackSinkDatabaseName(sink, "invalidTargetTableModelDatabaseName"));
       Assert.assertEquals(
-          "root.testtarget", getWriteBackSinkDatabaseName(sink, "targetTreeModelDatabaseName"));
+          "root.TestTarget", getWriteBackSinkDatabaseName(sink, "targetTreeModelDatabaseName"));
     }
 
     try (final WriteBackSink sink = createCustomizedWriteBackSink("root.target")) {

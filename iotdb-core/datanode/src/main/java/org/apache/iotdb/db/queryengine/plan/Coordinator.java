@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
@@ -42,6 +43,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeManager;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -116,6 +118,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
@@ -155,6 +158,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewr
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipeMemoryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.queryengine.udf.InternalQueryExecutor;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -200,7 +204,6 @@ import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfCharArray;
 public class Coordinator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Coordinator.class);
-  private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 10;
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
@@ -284,7 +287,10 @@ public class Coordinator {
     this.typeManager = new InternalTypeManager();
     this.executor = getQueryExecutor();
     this.scheduledExecutor = getScheduledExecutor();
-    int dispatchThreadNum = Math.max(20, Runtime.getRuntime().availableProcessors() * 2);
+    int dispatchThreadNum = CONFIG.getFragmentInstanceDispatchThreadCount();
+    if (dispatchThreadNum == 0) {
+      dispatchThreadNum = Math.max(20, Runtime.getRuntime().availableProcessors() * 2);
+    }
     this.dispatchExecutor =
         IoTDBThreadPoolFactory.newCachedThreadPool(
             ThreadName.FRAGMENT_INSTANCE_DISPATCH.getName(),
@@ -393,20 +399,28 @@ public class Coordinator {
       long timeOut,
       boolean userQuery,
       boolean debug) {
-    return execution(
-        queryId,
-        session,
-        sql,
-        userQuery,
-        debug,
-        ((queryContext, startTime) ->
-            createQueryExecutionForTreeModel(
-                statement,
-                queryContext,
-                partitionFetcher,
-                schemaFetcher,
-                timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
-                startTime)));
+    ExecutionResult result = null;
+    try {
+      result =
+          execution(
+              queryId,
+              session,
+              sql,
+              userQuery,
+              debug,
+              ((queryContext, startTime) ->
+                  createQueryExecutionForTreeModel(
+                      statement,
+                      queryContext,
+                      partitionFetcher,
+                      schemaFetcher,
+                      timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
+                      startTime)));
+      return result;
+    } finally {
+      DNAuditLogger.getInstance()
+          .logRevokeFailure(statement, session, sql, result == null ? null : result.status);
+    }
   }
 
   private IQueryExecution createQueryExecutionForTreeModel(
@@ -418,6 +432,27 @@ public class Coordinator {
       long startTime) {
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
+    if (statement instanceof ShowPipeMemoryStatement) {
+      // Reuse the information_schema scan and access checks.
+      // The fragment planner selects its operators using the query's session dialect.
+      final SessionInfo session = queryContext.getSession();
+      queryContext.setSession(
+          new SessionInfo(
+              session.getSessionId(),
+              session.getUserEntity(),
+              session.getZoneId(),
+              session.getVersion(),
+              session.getDatabaseName().orElse(null),
+              SqlDialect.TABLE));
+      return createQueryExecutionForTableModel(
+          statement,
+          new SqlParser(),
+          null,
+          queryContext,
+          LocalExecutionPlanner.getInstance().metadata,
+          timeOut,
+          startTime);
+    }
     final Statement configStatement =
         statement instanceof PipeEnrichedStatement
                 && ((PipeEnrichedStatement) statement).getInnerStatement()
@@ -531,22 +566,30 @@ public class Coordinator {
       boolean userQuery,
       boolean debug,
       boolean readOnlyInternalQuery) {
-    return execution(
-        queryId,
-        session,
-        sql,
-        userQuery,
-        debug,
-        readOnlyInternalQuery,
-        ((queryContext, startTime) ->
-            createQueryExecutionForTableModel(
-                statement,
-                sqlParser,
-                clientSession,
-                queryContext,
-                metadata,
-                timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
-                startTime)));
+    ExecutionResult result = null;
+    try {
+      result =
+          execution(
+              queryId,
+              session,
+              sql,
+              userQuery,
+              debug,
+              readOnlyInternalQuery,
+              ((queryContext, startTime) ->
+                  createQueryExecutionForTableModel(
+                      statement,
+                      sqlParser,
+                      clientSession,
+                      queryContext,
+                      metadata,
+                      timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
+                      startTime)));
+      return result;
+    } finally {
+      DNAuditLogger.getInstance()
+          .logRevokeFailure(statement, session, sql, result == null ? null : result.status);
+    }
   }
 
   /** For compatibility of MQTT and REST, this method should never be called. */
@@ -677,6 +720,7 @@ public class Coordinator {
         || statement instanceof AddColumn
         || statement instanceof AlterColumnDataType
         || statement instanceof SetProperties
+        || statement instanceof SetColumnProperties
         || statement instanceof DropColumn
         || statement instanceof DropTable
         || statement instanceof SetTableComment
@@ -856,7 +900,7 @@ public class Coordinator {
 
   private ScheduledExecutorService getScheduledExecutor() {
     return IoTDBThreadPoolFactory.newScheduledThreadPool(
-        COORDINATOR_SCHEDULED_EXECUTOR_SIZE,
+        CONFIG.getCoordinatorScheduledExecutorSize(),
         ThreadName.MPP_COORDINATOR_SCHEDULED_EXECUTOR.getName());
   }
 

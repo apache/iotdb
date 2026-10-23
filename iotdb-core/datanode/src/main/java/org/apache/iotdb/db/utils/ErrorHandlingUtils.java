@@ -116,6 +116,8 @@ public class ErrorHandlingUtils {
         if (status.getCode() == TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
             || status.getCode() == TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             || status.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode()
+            || (status.getCode() >= TSStatusCode.LBAC_ACCESS_DENIED.getStatusCode()
+                && status.getCode() <= TSStatusCode.INVALID_LABEL_VALUE.getStatusCode())
             || status.getCode() == TSStatusCode.ILLEGAL_PATH.getStatusCode()
             || status.getCode() == TSStatusCode.NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode()
             || status.getCode() == TSStatusCode.DIVISION_BY_ZERO.getStatusCode()
@@ -134,7 +136,12 @@ public class ErrorHandlingUtils {
             || status.getCode() == TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode()
             || status.getCode() == TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()
             || status.getCode() == TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode()
-            || status.getCode() == TSStatusCode.QUERY_TIMEOUT.getStatusCode()) {
+            || status.getCode() == TSStatusCode.QUERY_TIMEOUT.getStatusCode()
+            || status.getCode() == TSStatusCode.CANNOT_READ_TSFILE.getStatusCode()
+            || status.getCode() == TSStatusCode.COPY_TO_WRITE_ERROR.getStatusCode()
+            || status.getCode() == TSStatusCode.METADATA_LEASE_FENCED.getStatusCode()
+            || status.getCode()
+                == TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode()) {
           LOGGER.info(message);
         } else {
           LOGGER.warn(message, e);
@@ -190,6 +197,13 @@ public class ErrorHandlingUtils {
       if (t.getCause() instanceof IoTDBException) {
         return RpcUtils.getStatus(
             ((IoTDBException) t.getCause()).getErrorCode(), rootCause.getMessage());
+      }
+      // A SemanticException is reported as SEMANTIC_ERROR whatever code it carries, except
+      // TABLE_IN_PRE_DELETE, which the client needs in order to tell a table that is being deleted
+      // from an ordinary semantic error.
+      if (((SemanticException) t).getErrorCode()
+          == TSStatusCode.TABLE_IN_PRE_DELETE.getStatusCode()) {
+        return RpcUtils.getStatus(TSStatusCode.TABLE_IN_PRE_DELETE, rootCause.getMessage());
       }
       return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR, rootCause.getMessage());
     } else if (t instanceof IoTDBRuntimeException) {

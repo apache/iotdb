@@ -24,8 +24,10 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.partition.PartitionCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.SchemaCacheEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
@@ -273,6 +275,33 @@ public class TreeDeviceSchemaCacheManagerTest {
 
     treeDeviceSchemaCacheManager.cleanUp();
     Assert.assertEquals(0, TableDeviceSchemaCache.getInstance().getMemoryUsage());
+  }
+
+  @Test
+  public void testLastCacheIsInvalidatedWhenDatabaseNeedLastCacheSetFalse()
+      throws IllegalPathException {
+    final String database = "root.db";
+    final PartialPath device = new PartialPath("root.db.d");
+    final MeasurementSchema s1 = new MeasurementSchema("s1", TSDataType.INT32);
+    final TimeValuePair tv1 = new TimeValuePair(1, new TsPrimitiveType.TsInt(1));
+    final MeasurementPath measurementPath = new MeasurementPath(device.concatNode("s1"), s1);
+
+    treeDeviceSchemaCacheManager.declareLastCache(database, measurementPath);
+    treeDeviceSchemaCacheManager.updateLastCacheIfExists(
+        database,
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
+            StringArrayDeviceID.splitDeviceIdString(device.getNodes())),
+        new String[] {"s1"},
+        new TimeValuePair[] {tv1},
+        false,
+        new MeasurementSchema[] {s1});
+    Assert.assertEquals(tv1, treeDeviceSchemaCacheManager.getLastCache(measurementPath));
+
+    final TDatabaseSchema disabledSchema = new TDatabaseSchema();
+    disabledSchema.setNeedLastCache(false);
+    new PartitionCache().updateDatabaseCache(Collections.singletonMap(database, disabledSchema));
+
+    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(measurementPath));
   }
 
   @Test

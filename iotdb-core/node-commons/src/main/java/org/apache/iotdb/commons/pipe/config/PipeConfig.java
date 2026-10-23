@@ -67,6 +67,7 @@ public class PipeConfig {
   }
 
   public double getPipeTotalFloatingMemoryProportion() {
+    // This is the upper limit of floating memory, not a statically reserved partition.
     return COMMON_CONFIG.getPipeTotalFloatingMemoryProportion();
   }
 
@@ -82,6 +83,14 @@ public class PipeConfig {
 
   public long getTsFileParserMemory() {
     return COMMON_CONFIG.getPipeTsFileParserMemory();
+  }
+
+  public int getPipeTsFileParserInFlightMaxNum() {
+    return COMMON_CONFIG.getPipeTsFileParserInFlightMaxNum();
+  }
+
+  public int getPipeTsFileParserInFlightMaxNumPerPipeRegion() {
+    return COMMON_CONFIG.getPipeTsFileParserInFlightMaxNumPerPipeRegion();
   }
 
   public long getSinkBatchMemoryInsertNode() {
@@ -506,6 +515,12 @@ public class PipeConfig {
 
     LOGGER.info(PipeMessages.CONFIG_IS_PIPE_ENABLE_MEMORY_CHECK, isPipeEnableMemoryCheck());
     LOGGER.info(PipeMessages.CONFIG_PIPE_TSFILE_PARSER_MEMORY, getTsFileParserMemory());
+    LOGGER.info(
+        PipeMessages.CONFIG_PIPE_TSFILE_PARSER_IN_FLIGHT_MAX_NUM,
+        getPipeTsFileParserInFlightMaxNum());
+    LOGGER.info(
+        PipeMessages.CONFIG_PIPE_TSFILE_PARSER_IN_FLIGHT_MAX_NUM_PER_PIPE_REGION,
+        getPipeTsFileParserInFlightMaxNumPerPipeRegion());
     LOGGER.info(PipeMessages.CONFIG_SINK_BATCH_MEMORY_INSERT_NODE, getSinkBatchMemoryInsertNode());
     LOGGER.info(PipeMessages.CONFIG_SINK_BATCH_MEMORY_TSFILE, getSinkBatchMemoryTsFile());
     LOGGER.info(PipeMessages.CONFIG_SEND_TSFILE_READ_BUFFER, getSendTsFileReadBuffer());

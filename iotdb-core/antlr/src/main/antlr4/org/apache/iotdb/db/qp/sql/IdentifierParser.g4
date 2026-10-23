@@ -148,6 +148,7 @@ keyWords
     | LOAD
     | LOCAL
     | LOCK
+    | MEMORY
     | MERGE
     | METADATA
     | MIGRATE
@@ -156,6 +157,7 @@ keyWords
     | MODELS
     | MODIFY
     | NAN
+    | NEED_LAST_CACHE
     | NODEID
     | NODES
     | NONE
@@ -197,6 +199,7 @@ keyWords
     | QUERY
     | QUERYID
     | QUOTA
+    | RECEIVERS
     | RANGE
     | READONLY
     | READ

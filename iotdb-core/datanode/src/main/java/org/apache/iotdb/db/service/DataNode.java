@@ -51,6 +51,7 @@ import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
@@ -119,6 +120,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadAgent;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
+import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.service.TriggerInformationUpdater;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
@@ -190,6 +192,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   private volatile boolean schemaRegionConsensusStarted = false;
   private volatile boolean dataRegionConsensusStarted = false;
+  private long schemaEngineRecoveryTimeInMs;
   private static Thread watcherThread;
   protected DataNodeContext context;
 
@@ -298,6 +301,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       // TierManager need DataNodeId to do some operations so the reset method need to be invoked
       // after DataNode adding
       TierManager.getInstance().resetFolders();
+      if (SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+        ConsensusSubscriptionSetupHandler.ensureNewRegionListenerRegistered();
+      }
       // Active DataNode
       active();
 
@@ -493,11 +499,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       List<TConfigNodeLocation> configNodeLocations, TRuntimeConfiguration runtimeConfiguration)
       throws StartupException {
     /* Store ConfigNodeList */
-    List<TEndPoint> configNodeList = new ArrayList<>();
-    for (TConfigNodeLocation configNodeLocation : configNodeLocations) {
-      configNodeList.add(configNodeLocation.getInternalEndPoint());
-    }
-    ConfigNodeInfo.getInstance().updateConfigNodeList(configNodeList);
+    ConfigNodeInfo.getInstance().updateConfigNodeLocations(configNodeLocations);
 
     /* Store templateSetInfo */
     ClusterTemplateManager.getInstance()
@@ -596,7 +598,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       /* Store runtime configurations when register success */
       int dataNodeID = dataNodeRegisterResp.getDataNodeId();
       config.setDataNodeId(dataNodeID);
-      IoTDBStartCheck.getInstance().serializeDataNodeId(dataNodeID);
+      IoTDBStartCheck.getInstance().serializeNodeId(dataNodeID);
 
       storeRuntimeConfigurations(
           dataNodeRegisterResp.getConfigNodeList(), dataNodeRegisterResp.getRuntimeConfiguration());
@@ -817,12 +819,11 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       logger.error(DataNodeMiscMessages.MEET_ERROR_STARTING_UP, e);
       throw e;
     }
-    logger.info(DataNodeMiscMessages.IOTDB_DATANODE_HAS_STARTED);
-
     try {
       long startTime = System.currentTimeMillis();
       SchemaRegionConsensusImpl.getInstance().start();
       long schemaRegionEndTime = System.currentTimeMillis();
+      logger.info(DataNodeMiscMessages.RECOVER_SCHEMA_SUCCESSFULLY, schemaEngineRecoveryTimeInMs);
       logger.info(
           DataNodeMiscMessages
               .MISC_LOG_SCHEMAREGION_CONSENSUS_START_SUCCESSFULLY_WHICH_TAKES_MS_3D1B8523,
@@ -840,6 +841,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     } catch (IOException e) {
       throw new StartupException(e);
     }
+    logger.info(DataNodeMiscMessages.IOTDB_DATANODE_HAS_STARTED);
   }
 
   void processPid() {
@@ -899,7 +901,10 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       }
     }
     long endTime = System.currentTimeMillis();
-    logger.info(DataNodeMiscMessages.WAIT_DATABASES_READY, (endTime - startTime));
+    logger.info(
+        DataNodeMiscMessages
+            .MISC_LOG_WAIT_FOR_LOCAL_DATAREGION_RECOVERY_TASKS_TO_FINISH_WHICH_TAKES_ARG_MS_8B33DC6C,
+        (endTime - startTime));
     // Must init after SchemaEngine and StorageEngine prepared well
     DataNodeRegionManager.getInstance().init();
 
@@ -937,7 +942,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     registerInternalRPCService();
 
     // Register subscription agent before pipe agent
-    registerManager.register(SubscriptionAgent.runtime());
+    if (SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      registerManager.register(SubscriptionAgent.runtime());
+    }
     registerManager.register(PipeDataNodeAgent.runtime());
 
     // Start GRASS Service
@@ -1333,8 +1340,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   private void initSchemaEngine() {
     long startTime = System.currentTimeMillis();
     SchemaEngine.getInstance().init();
-    long endTime = System.currentTimeMillis();
-    logger.info(DataNodeMiscMessages.RECOVER_SCHEMA_SUCCESSFULLY, (endTime - startTime));
+    schemaEngineRecoveryTimeInMs = System.currentTimeMillis() - startTime;
   }
 
   private void classLoader() {

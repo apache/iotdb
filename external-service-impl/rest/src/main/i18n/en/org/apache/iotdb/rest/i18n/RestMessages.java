@@ -77,6 +77,49 @@ public final class RestMessages {
       "The number of values in the %dth row is not equal to the data_types size";
   public static final String ERROR_MESSAGE_SEPARATOR = ",";
 
+  // --- RequestSizeLimitFilter ---
+  public static final String
+      MESSAGE_REST_REQUEST_BODY_EXCEEDS_LIMIT_ARG_BYTES_USE_SET_CONFIGURATION_REST_MAX_REQUEST_BODY_SIZE_IN_BYTES_BYTES_TO_INCREASE_IT_424392C6 =
+          "REST request body exceeds limit %d bytes. Use SET CONFIGURATION"
+              + " 'rest_max_request_body_size_in_bytes'='<bytes>' to increase it.";
+  public static final String
+      MESSAGE_REST_REQUEST_BODY_MEMORY_QUOTA_EXCEEDS_LIMIT_ARG_BYTES_USE_SET_CONFIGURATION_REST_MAX_TOTAL_CONCURRENT_REQUEST_BODY_SIZE_IN_BYTES_BYTES_TO_INCREASE_IT_F07B9DDD =
+          "REST request body memory quota exceeds limit %d bytes. Use SET CONFIGURATION"
+              + " 'rest_max_total_concurrent_request_body_size_in_bytes'='<bytes>' to increase it.";
+
+  // --- RequestLimitChecker ---
+  public static final String MESSAGE_INSERTTABLET_REQUEST_8647CA58 = "insertTablet request";
+  public static final String MESSAGE_INSERTRECORDS_REQUEST_93E12369 = "insertRecords request";
+  public static final String MESSAGE_TABLE_INSERTTABLET_REQUEST_573D371C =
+      "table insertTablet request";
+  public static final String EXCEPTION_ARG_ROW_COUNT_ARG_EXCEEDS_LIMIT_ARG_EE427E4B =
+      "%s row count %d exceeds limit %d";
+  public static final String EXCEPTION_ARG_COLUMN_COUNT_ARG_EXCEEDS_LIMIT_ARG_DEE9637E =
+      "%s column count %d exceeds limit %d";
+  public static final String EXCEPTION_ARG_VALUE_COUNT_ARG_EXCEEDS_LIMIT_ARG_77F95703 =
+      "%s value count %d exceeds limit %d";
+
+  // --- RequestValidationHandler ---
+  public static final String
+      EXCEPTION_MEASUREMENTS_AND_DATATYPES_SHOULD_HAVE_THE_SAME_SIZE_FF715FA9 =
+          "measurements and dataTypes should have the same size";
+  public static final String EXCEPTION_VALUES_AND_DATATYPES_SHOULD_HAVE_THE_SAME_SIZE_5BC1D604 =
+      "values and dataTypes should have the same size";
+  public static final String
+      EXCEPTION_EACH_VALUE_COLUMN_SHOULD_HAVE_THE_SAME_SIZE_AS_TIMESTAMPS_523598BD =
+          "Each value column should have the same size as timestamps";
+  public static final String
+      EXCEPTION_MEASUREMENTS_AND_DATA_TYPES_SHOULD_HAVE_THE_SAME_SIZE_8526F19A =
+          "measurements and data_types should have the same size";
+  public static final String EXCEPTION_VALUES_AND_DATA_TYPES_SHOULD_HAVE_THE_SAME_SIZE_0BAE701D =
+      "values and data_types should have the same size";
+  public static final String
+      EXCEPTION_DEVICES_TIMESTAMPS_MEASUREMENTS_LIST_DATA_TYPES_LIST_AND_VALUES_LIST_SHOULD_HAVE_THE_SAME_SIZE_5983AAC2 =
+          "devices, timestamps, measurements_list, data_types_list and values_list should have the same size";
+  public static final String
+      EXCEPTION_EACH_INSERTRECORDS_ROW_SHOULD_HAVE_THE_SAME_NUMBER_OF_MEASUREMENTS_DATA_TYPES_AND_VALUES_AD58AEF2 =
+          "Each insertRecords row should have the same number of measurements, data types and values";
+
   private RestMessages() {}
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages

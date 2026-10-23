@@ -52,7 +52,7 @@ CI 发版（[client-cpp-package.yml](../../.github/workflows/client-cpp-package.
 | macOS arm64 | `macos-aarch64` |
 | Windows + 与工程相同的 VS 版本 | `windows-x86_64-msvc14.1` ... `msvc14.4` |
 
-当前 CMake 构建在配置阶段从源码编译 Thrift 0.23，**不再**通过
+当前 CMake 构建在配置阶段从源码编译 Thrift 0.24，**不再**通过
 `-Diotdb-tools-thrift.version=0.14.1.1-gcc4-SNAPSHOT` 等旧参数控制 glibc；
 Linux 发版包在 `manylinux_2_28` 容器中构建，部署机需要 glibc 2.28 或更新版本。
 详见 [client-cpp README](../../iotdb-client/client-cpp/README.md)。
@@ -146,9 +146,9 @@ iotdb_session.dll
 **目标机器前置条件**
 
 - **64 位 Windows**（示例为 x64 构建）。
-- 安装 **[Microsoft Visual C++ 2015–2022 可再发行组件包（x64）](https://learn.microsoft.com/zh-cn/cpp/windows/latest-supported-vc-redist)**。  
+- 安装 **[Microsoft Visual C++ 2015–2022 可再发行组件包（x64）](https://learn.microsoft.com/zh-cn/cpp/windows/latest-supported-vc-redist)**。
   SDK 与示例均使用 **`/MD`**（动态 CRT），该安装包提供 `vcruntime140.dll`、
-  `msvcp140.dll` 等运行时。  
+  `msvcp140.dll` 等运行时。
   **仅安装此 Redistributable 即可**，目标机 **不需要** Visual Studio，也
   **不需要** IoTDB SDK 头文件或 Thrift/Boost。
 

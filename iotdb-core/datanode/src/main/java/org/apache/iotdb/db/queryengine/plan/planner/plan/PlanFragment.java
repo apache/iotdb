@@ -251,6 +251,10 @@ public class PlanFragment {
     typeProvider = null;
   }
 
+  public void clearUselessFieldsAfterRouting() {
+    planNodeTree.clearUselessFieldsAfterRouting();
+  }
+
   public void clearTypeProvider() {
     typeProvider = null;
   }

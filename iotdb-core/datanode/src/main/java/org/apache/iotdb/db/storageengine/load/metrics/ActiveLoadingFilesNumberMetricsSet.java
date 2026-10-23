@@ -35,17 +35,23 @@ public class ActiveLoadingFilesNumberMetricsSet extends ActiveLoadingFilesMetric
 
   private Counter queuingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter loadingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  // The queuing and loading counters are levels maintained by deltas, so keep the levels to restore
+  // them when the metric service recreates the counters
+  private long queuingFileNumber = 0;
+  private long loadingFileNumber = 0;
 
-  public void increaseQueuingFileCounter(final long number) {
+  public synchronized void increaseQueuingFileCounter(final long number) {
+    queuingFileNumber += number;
     queuingFileCounter.inc(number);
   }
 
-  public void increaseLoadingFileCounter(final long number) {
+  public synchronized void increaseLoadingFileCounter(final long number) {
+    loadingFileNumber += number;
     loadingFileCounter.inc(number);
   }
 
   @Override
-  protected void bindOtherCounters(final AbstractMetricService metricService) {
+  protected synchronized void bindOtherCounters(final AbstractMetricService metricService) {
     totalPendingFileCounter =
         metricService.getOrCreateCounter(
             Metric.ACTIVE_LOADING_FILES_NUMBER.toString(),
@@ -58,16 +64,18 @@ public class ActiveLoadingFilesNumberMetricsSet extends ActiveLoadingFilesMetric
             MetricLevel.IMPORTANT,
             Tag.TYPE.toString(),
             QUEUING);
+    queuingFileCounter.inc(queuingFileNumber - queuingFileCounter.getCount());
     loadingFileCounter =
         metricService.getOrCreateCounter(
             Metric.ACTIVE_LOADING_FILES_NUMBER.toString(),
             MetricLevel.IMPORTANT,
             Tag.TYPE.toString(),
             LOADING);
+    loadingFileCounter.inc(loadingFileNumber - loadingFileCounter.getCount());
   }
 
   @Override
-  protected void unbindOtherCounters(final AbstractMetricService metricService) {
+  protected synchronized void unbindOtherCounters(final AbstractMetricService metricService) {
     totalPendingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
     queuingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
     loadingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;

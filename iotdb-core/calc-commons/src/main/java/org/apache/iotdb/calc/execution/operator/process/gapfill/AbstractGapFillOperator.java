@@ -124,11 +124,12 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
       }
 
       Column timeColumn = block.getColumn(timeColumnIndex);
-      // -1 because we should not include current row, current row will be appended in
-      // writeCurrentRow
-      long currentEndTime =
-          timeColumn.isNull(i) ? endTime : block.getColumn(timeColumnIndex).getLong(i) - 1;
-      fillGaps(block, i, currentEndTime);
+      if (timeColumn.isNull(i)) {
+        fillGaps(block, i, endTime, true);
+      } else {
+        // The real row is appended by writeCurrentRow, so its timestamp is an exclusive bound.
+        fillGaps(block, i, timeColumn.getLong(i), false);
+      }
       writeCurrentRow(block, i);
     }
     lastGroupKey = new SortKey(block, size - 1);
@@ -156,9 +157,18 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
   }
 
   private void fillGaps(TsBlock block, int rowIndex, long currentEndTime) {
-    while (currentTime <= currentEndTime) {
+    fillGaps(block, rowIndex, currentEndTime, true);
+  }
+
+  private void fillGaps(
+      TsBlock block, int rowIndex, long currentEndTime, boolean endTimeInclusive) {
+    while (currentTime < currentEndTime || (endTimeInclusive && currentTime == currentEndTime)) {
+      long previousTime = currentTime;
       gapFillRow(currentTime, block, rowIndex);
       nextTime();
+      if (currentTime <= previousTime) {
+        break;
+      }
     }
   }
 

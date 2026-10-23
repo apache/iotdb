@@ -21,16 +21,24 @@ package org.apache.iotdb.consensus.iot;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.request.IConsensusRequest;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.request.DeserializedBatchIndexedConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
 import org.apache.iotdb.consensus.iot.util.TestEntry;
 import org.apache.iotdb.consensus.iot.util.TestStateMachine;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
@@ -48,6 +56,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 public class ReplicateTest {
@@ -313,6 +324,139 @@ public class ReplicateTest {
     }
   }
 
+  /**
+   * Verifies that a SyncLog request interrupted while waiting for its turn is rejected without
+   * being applied, and that the thread's interrupted status is preserved.
+   */
+  @Test
+  public void syncLogInterruptedWhileWaitingTest() throws Exception {
+    servers.get(0).createLocalPeer(group.getGroupId(), group.getPeers());
+    IoTConsensusServerImpl server = servers.get(0).getImpl(gid);
+    DeserializedBatchIndexedConsensusRequest request =
+        new DeserializedBatchIndexedConsensusRequest(1, 1, 1, peers.get(1).getNodeId(), 1);
+    request.add(
+        new IndexedConsensusRequest(
+            1, 1, Collections.singletonList(new TestEntry(1, peers.get(1)))));
+    AtomicReference<TSStatus> status = new AtomicReference<>();
+    AtomicBoolean interrupted = new AtomicBoolean();
+
+    Thread syncLogThread =
+        new Thread(
+            () -> {
+              Thread.currentThread().interrupt();
+              status.set(server.syncLog(peers.get(1).getNodeId(), request));
+              interrupted.set(Thread.currentThread().isInterrupted());
+            });
+    syncLogThread.start();
+    syncLogThread.join();
+
+    Assert.assertTrue(interrupted.get());
+    Assert.assertEquals(1, status.get().getSubStatusSize());
+    Assert.assertEquals(
+        TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(),
+        status.get().getSubStatus().get(0).getCode());
+    Assert.assertEquals(
+        String.format(
+            IoTConsensusMessages
+                .MESSAGE_SYNC_LOG_REQUEST_WITH_SYNC_INDEX_ARG_WAS_INTERRUPTED_WHILE_WAITING_81B4ABB2,
+            request.getStartSyncIndex()),
+        status.get().getSubStatus().get(0).getMessage());
+    Assert.assertTrue(stateMachines.get(0).getRequestSet().isEmpty());
+  }
+
+  /**
+   * Verifies that WRITE_PROCESS_ERROR returned by a follower SyncLog write is retried by the leader
+   * and the request is eventually applied after the transient failure disappears.
+   */
+  @Test
+  public void syncLogWriteProcessErrorTriggersLeaderRetryTest() throws Exception {
+    IoTConsensusConfig retryConfig =
+        IoTConsensusConfig.newBuilder()
+            .setReplication(
+                IoTConsensusConfig.Replication.newBuilder()
+                    .setMaxWaitingTimeForWaitBatchInMs(50)
+                    .setBasicRetryWaitTimeMs(10)
+                    .setMaxRetryWaitTimeMs(100)
+                    .build())
+            .build();
+    ConsensusConfig consensusConfig =
+        ConsensusConfig.newBuilder().setIoTConsensusConfig(retryConfig).build();
+    servers.forEach(server -> server.reloadConsensusConfig(consensusConfig));
+
+    WriteProcessErrorOnceTestStateMachine failingStateMachine =
+        new WriteProcessErrorOnceTestStateMachine();
+    stateMachines.set(1, failingStateMachine);
+    for (IoTConsensus server : servers) {
+      server.createLocalPeer(group.getGroupId(), group.getPeers());
+    }
+
+    TestEntry entry = new TestEntry(1, peers.get(0));
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), servers.get(0).write(gid, entry).getCode());
+    long deadline = System.currentTimeMillis() + 5_000;
+    while (!failingStateMachine.getData().contains(entry)
+        && System.currentTimeMillis() < deadline) {
+      Thread.sleep(20);
+    }
+
+    Assert.assertTrue(failingStateMachine.getWriteAttempts() >= 2);
+    Assert.assertTrue(failingStateMachine.getData().contains(entry));
+  }
+
+  /**
+   * Verifies that retrying a SyncLog batch after a transient write failure preserves the original
+   * application order on the follower.
+   */
+  @Test
+  public void syncLogWriteProcessErrorRetryPreservesRequestOrderTest() throws Exception {
+    IoTConsensusConfig retryConfig =
+        IoTConsensusConfig.newBuilder()
+            .setReplication(
+                IoTConsensusConfig.Replication.newBuilder().setMaxPendingBatchesNum(1).build())
+            .build();
+    servers
+        .get(0)
+        .reloadConsensusConfig(
+            ConsensusConfig.newBuilder().setIoTConsensusConfig(retryConfig).build());
+
+    OrderTrackingWriteProcessErrorOnceTestStateMachine failingStateMachine =
+        new OrderTrackingWriteProcessErrorOnceTestStateMachine();
+    stateMachines.set(0, failingStateMachine);
+    servers.get(0).createLocalPeer(group.getGroupId(), group.getPeers());
+    IoTConsensusServerImpl server = servers.get(0).getImpl(gid);
+
+    DeserializedBatchIndexedConsensusRequest request =
+        new DeserializedBatchIndexedConsensusRequest(1, 2, 2, peers.get(1).getNodeId(), 2);
+    request.add(
+        new IndexedConsensusRequest(
+            1, 1, Collections.singletonList(new TestEntry(1, peers.get(1)))));
+    request.add(
+        new IndexedConsensusRequest(
+            2, 2, Collections.singletonList(new TestEntry(2, peers.get(1)))));
+
+    TSStatus firstAttempt = server.syncLog(peers.get(1).getNodeId(), request);
+    Assert.assertEquals(
+        TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode(),
+        firstAttempt.getSubStatus().get(0).getCode());
+    Assert.assertEquals(
+        TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode(),
+        firstAttempt.getSubStatus().get(1).getCode());
+    Assert.assertEquals(
+        IoTConsensusMessages
+            .MESSAGE_THE_REQUEST_MUST_WAIT_FOR_THE_PREVIOUS_REQUEST_TO_COMPLETE_470849A7,
+        firstAttempt.getSubStatus().get(1).getMessage());
+    Assert.assertTrue(
+        firstAttempt.getSubStatus().stream()
+            .anyMatch(status -> RetryUtils.needRetryForWrite(status.getCode())));
+
+    TSStatus retryAttempt = server.syncLog(peers.get(1).getNodeId(), request);
+    Assert.assertTrue(
+        retryAttempt.getSubStatus().stream()
+            .allMatch(status -> status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    Assert.assertEquals(
+        Arrays.asList(1L, 2L), failingStateMachine.getFirstSuccessfullyAppliedSyncIndexes());
+  }
+
   @Test
   public void parsingAndConstructIDTest() throws Exception {
     logger.info("Start ParsingAndConstructIDTest");
@@ -346,5 +490,50 @@ public class ReplicateTest {
     Assert.assertEquals(
         peers.stream().map(Peer::getNodeId).collect(Collectors.toSet()),
         iotServerImpl.getConfiguration().stream().map(Peer::getNodeId).collect(Collectors.toSet()));
+  }
+
+  private static class WriteProcessErrorOnceTestStateMachine extends TestStateMachine {
+
+    private final AtomicInteger writeAttempts = new AtomicInteger();
+
+    @Override
+    public TSStatus write(IConsensusRequest request) {
+      if (writeAttempts.incrementAndGet() == 1) {
+        return new TSStatus(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
+      }
+      return super.write(request);
+    }
+
+    private int getWriteAttempts() {
+      return writeAttempts.get();
+    }
+  }
+
+  private static class OrderTrackingWriteProcessErrorOnceTestStateMachine
+      extends WriteProcessErrorOnceTestStateMachine {
+
+    private final List<Long> firstSuccessfullyAppliedSyncIndexes =
+        Collections.synchronizedList(new ArrayList<>());
+
+    @Override
+    public TSStatus write(IConsensusRequest request) {
+      TSStatus status = super.write(request);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && request instanceof IndexedConsensusRequest) {
+        long syncIndex = ((IndexedConsensusRequest) request).getSyncIndex();
+        synchronized (firstSuccessfullyAppliedSyncIndexes) {
+          if (!firstSuccessfullyAppliedSyncIndexes.contains(syncIndex)) {
+            firstSuccessfullyAppliedSyncIndexes.add(syncIndex);
+          }
+        }
+      }
+      return status;
+    }
+
+    private List<Long> getFirstSuccessfullyAppliedSyncIndexes() {
+      synchronized (firstSuccessfullyAppliedSyncIndexes) {
+        return new ArrayList<>(firstSuccessfullyAppliedSyncIndexes);
+      }
+    }
   }
 }

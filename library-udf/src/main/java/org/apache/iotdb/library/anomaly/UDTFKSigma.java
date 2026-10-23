@@ -21,7 +21,7 @@ package org.apache.iotdb.library.anomaly;
 
 import org.apache.iotdb.library.util.CircularQueue;
 import org.apache.iotdb.library.util.LongCircularQueue;
-import org.apache.iotdb.library.util.Util;
+import org.apache.iotdb.library.util.TypeServices;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -42,6 +42,9 @@ public class UDTFKSigma implements UDTF {
   private CircularQueue<Object> v;
   private LongCircularQueue t;
   private Type dataType;
+  private TypeServices.RowValueReader valueReader;
+  private TypeServices.NumericRowReader numericReader;
+  private TypeServices.RowValueWriter valueWriter;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -66,6 +69,9 @@ public class UDTFKSigma implements UDTF {
         .setOutputDataType(udfParameters.getDataType(0));
     this.multipleK = udfParameters.getDoubleOrDefault("k", 3);
     this.dataType = udfParameters.getDataType(0);
+    valueReader = TypeServices.ROW_VALUE_READER_SERVICE.call(TypeServices.toReadType(dataType));
+    numericReader = TypeServices.NUMERIC_ROW_READER_SERVICE.call(TypeServices.toReadType(dataType));
+    valueWriter = TypeServices.rowValueWriter(dataType);
     this.windowSize = udfParameters.getIntOrDefault("window", 10000);
     this.v = new CircularQueue<>(windowSize);
     this.t = new LongCircularQueue(windowSize);
@@ -73,33 +79,12 @@ public class UDTFKSigma implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
-    double value = Util.getValueAsDouble(row);
+    double value = numericReader.read(row);
     long timestamp = row.getTime();
     if (Double.isFinite(value) && !Double.isNaN(value)) {
       if (v.isFull()) {
         final double frontValue = Double.parseDouble(v.pop().toString());
-        switch (dataType) {
-          case INT32:
-            v.push(row.getInt(0));
-            break;
-          case INT64:
-            v.push(row.getLong(0));
-            break;
-          case DOUBLE:
-            v.push(row.getDouble(0));
-            break;
-          case FLOAT:
-            v.push(row.getFloat(0));
-            break;
-          case TIMESTAMP:
-          case DATE:
-          case TEXT:
-          case STRING:
-          case BLOB:
-          case BOOLEAN:
-          default:
-            break;
-        }
+        v.push(valueReader.read(row));
         t.pop();
         t.push(timestamp);
         this.sumX1 = this.sumX1 - frontValue + value;
@@ -108,31 +93,10 @@ public class UDTFKSigma implements UDTF {
         this.variance = this.sumX2 / v.getSize() - this.mean * this.mean;
         if (Math.abs(value - mean)
             > multipleK * Math.sqrt(this.variance * v.getSize() / (v.getSize() - 1))) {
-          Util.putValue(collector, dataType, timestamp, Util.getValueAsObject(row));
+          valueWriter.write(collector, timestamp, valueReader.read(row));
         }
       } else {
-        switch (dataType) {
-          case INT32:
-            v.push(row.getInt(0));
-            break;
-          case INT64:
-            v.push(row.getLong(0));
-            break;
-          case DOUBLE:
-            v.push(row.getDouble(0));
-            break;
-          case FLOAT:
-            v.push(row.getFloat(0));
-            break;
-          case BLOB:
-          case BOOLEAN:
-          case STRING:
-          case TEXT:
-          case DATE:
-          case TIMESTAMP:
-          default:
-            break;
-        }
+        v.push(valueReader.read(row));
         t.push(timestamp);
         this.sumX1 = this.sumX1 + value;
         this.sumX2 = this.sumX2 + value * value;
@@ -144,7 +108,7 @@ public class UDTFKSigma implements UDTF {
             Object vi = this.v.get(i);
             timestamp = this.t.get(i);
             if (Math.abs(Double.parseDouble(vi.toString()) - mean) > multipleK * stddev) {
-              Util.putValue(collector, dataType, timestamp, vi);
+              valueWriter.write(collector, timestamp, vi);
             }
           }
         }
@@ -160,7 +124,7 @@ public class UDTFKSigma implements UDTF {
         Object vi = this.v.get(i);
         long timestamp = this.t.get(i);
         if (Math.abs(Double.parseDouble(vi.toString()) - mean) > multipleK * stddev) {
-          Util.putValue(collector, dataType, timestamp, vi);
+          valueWriter.write(collector, timestamp, vi);
         }
       }
     }

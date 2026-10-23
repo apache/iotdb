@@ -31,6 +31,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
@@ -133,6 +134,17 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   }
 
   /**
+   * Returns whether the specified state is already present in the persisted state history.
+   *
+   * <p>The current state is included once it has been scheduled. This is useful when an append-only
+   * state is added to a procedure and the new execution path needs to coexist with procedures
+   * persisted by an older version.
+   */
+  protected final boolean hasReachedState(final TState state) {
+    return states.contains(getStateId(state));
+  }
+
+  /**
    * Add a child procedure to execute.
    *
    * @param childProcedure the child procedure
@@ -224,11 +236,15 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
       states.removeLast();
     }
 
+    boolean completed = false;
     try {
       updateTimestamp();
       rollbackState(env, getCurrentState());
+      completed = true;
     } finally {
-      states.removeLast();
+      if ((completed || getRollbackRetryTimeout() < 0) && !states.isEmpty()) {
+        states.removeLast();
+      }
       updateTimestamp();
     }
   }
@@ -237,12 +253,49 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
     return !states.isEmpty() && states.getLast() == EOF_STATE;
   }
 
+  @Override
+  protected synchronized void abandonRollback() {
+    super.abandonRollback();
+    states.clear();
+  }
+
   /**
-   * Used by the default implementation of abort() to know if the current state can be aborted and
-   * rollback can be triggered.
+   * Whether a failure in the specified state can be rolled back. A procedure asks this in its error
+   * handling to tell a fatal failure from a retriable one; the executor asks it once, through the
+   * overload without a state, to decide whether the procedure may be rolled back at all.
+   *
+   * <p>The executor asks with the state the procedure is at: the state which failed or is
+   * scheduled, or the last state executed when every state has already run. A procedure which
+   * returns false for the states after its commit point is therefore not rolled back once that
+   * point has been passed.
    */
   protected boolean isRollbackSupported(final TState state) {
-    return false;
+    return true;
+  }
+
+  /**
+   * Whether the states this procedure has executed may still be rolled back. The answer comes from
+   * the state the procedure is at, through the per-state overload above.
+   */
+  @Override
+  protected final boolean isRollbackSupported() {
+    return isRollbackSupported(getRollbackDecisionState());
+  }
+
+  /**
+   * The state a rollback decision is taken at. The last element of the history is the state which
+   * failed or is scheduled; once every state has run, the end marker is last and the decision falls
+   * on the state before it.
+   */
+  private TState getRollbackDecisionState() {
+    final Iterator<Integer> stateIds = states.descendingIterator();
+    while (stateIds.hasNext()) {
+      final int stateId = stateIds.next();
+      if (stateId != EOF_STATE) {
+        return getState(stateId);
+      }
+    }
+    return getInitialState();
   }
 
   private boolean noMoreState() {

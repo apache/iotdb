@@ -62,6 +62,7 @@ public class CopyToTsFileOptions implements CopyToOptions {
   private final long targetMemoryThreshold;
 
   private boolean generateNewTimeColumn = false;
+  private boolean generateNewTableName = false;
 
   public CopyToTsFileOptions(
       String targetTableName,
@@ -82,6 +83,10 @@ public class CopyToTsFileOptions implements CopyToOptions {
     return generateNewTimeColumn;
   }
 
+  public boolean isGenerateNewTableName() {
+    return generateNewTableName;
+  }
+
   @Override
   public void infer(
       Analysis analysis, RelationPlan queryRelationPlan, List<ColumnHeader> columnHeaders) {
@@ -91,8 +96,12 @@ public class CopyToTsFileOptions implements CopyToOptions {
       onlyOneQueriedTable = tables.iterator().next();
     }
     if (targetTableName == null) {
-      targetTableName =
-          onlyOneQueriedTable == null ? DEFAULT_TABLE_NAME : onlyOneQueriedTable.getTableName();
+      if (onlyOneQueriedTable == null) {
+        targetTableName = DEFAULT_TABLE_NAME;
+        generateNewTableName = true;
+      } else {
+        targetTableName = onlyOneQueriedTable.getTableName();
+      }
     }
     if (onlyOneQueriedTable != null) {
       inferTimeAndTagsWithTable(onlyOneQueriedTable, columnHeaders);
@@ -191,6 +200,13 @@ public class CopyToTsFileOptions implements CopyToOptions {
     }
     if (columns.size() != columnHeaders.size()) {
       throw new SemanticException(DataNodeQueryMessages.DUPLICATE_COLUMN_NAMES_IN_QUERY_DATASET);
+    }
+    if (!generateNewTimeColumn && !columns.contains(targetTimeColumn)) {
+      throw new SemanticException(
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_SPECIFIED_TIME_COLUMN_ARG_DOES_NOT_EXIST_IN_THE_QUERY_RESULT_34791B26,
+              targetTimeColumn));
     }
     if (foundTagColumns != targetTagColumns.size()) {
       throw new SemanticException(

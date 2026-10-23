@@ -36,6 +36,10 @@ public class PipeRuntimeCriticalException extends PipeRuntimeException {
     super(message);
   }
 
+  public PipeRuntimeCriticalException(final String message, final Throwable cause) {
+    super(message, cause);
+  }
+
   public PipeRuntimeCriticalException(final String message, final long timeStamp) {
     super(message, timeStamp);
   }

@@ -167,6 +167,12 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
     results.clear();
   }
 
+  @Override
+  public void clearUselessFieldsAfterRouting() {
+    super.clearUselessFieldsAfterRouting();
+    insertRowNodeList.forEach(InsertRowNode::clearUselessFieldsAfterRouting);
+  }
+
   public TSStatus[] getFailingStatus() {
     return StatusUtils.getFailingStatus(results, insertRowNodeList.size());
   }
@@ -223,10 +229,9 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
 
   public static InsertRowsNode deserialize(ByteBuffer byteBuffer) {
     PlanNodeId planNodeId;
-    List<InsertRowNode> insertRowNodeList = new ArrayList<>();
-    List<Integer> insertRowNodeIndex = new ArrayList<>();
-
     int size = byteBuffer.getInt();
+    List<InsertRowNode> insertRowNodeList = new ArrayList<>(size);
+    List<Integer> insertRowNodeIndex = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       InsertRowNode insertRowNode = new InsertRowNode(new PlanNodeId(""));
       insertRowNode.subDeserialize(byteBuffer);
@@ -273,6 +278,15 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
     for (Integer index : insertRowNodeIndexList) {
       ReadWriteIOUtils.write(index, stream);
     }
+  }
+
+  @Override
+  protected int serializedAttributesSize() {
+    int size = PlanNodeType.BYTES + Integer.BYTES;
+    for (InsertRowNode node : insertRowNodeList) {
+      size += node.serializedSubAttributesSize();
+    }
+    return size + insertRowNodeIndexList.size() * Integer.BYTES;
   }
 
   @Override

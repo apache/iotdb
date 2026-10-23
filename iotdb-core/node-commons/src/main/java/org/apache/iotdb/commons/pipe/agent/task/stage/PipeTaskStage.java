@@ -116,6 +116,14 @@ public abstract class PipeTaskStage {
 
   protected abstract void stopSubtask() throws PipeException;
 
+  public void registerReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    // Do nothing by default.
+  }
+
+  public void discardReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    // Do nothing by default.
+  }
+
   /**
    * Drop a {@link PipeTaskStage}.
    *

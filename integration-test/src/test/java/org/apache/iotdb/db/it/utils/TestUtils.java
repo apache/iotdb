@@ -26,9 +26,11 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.read.common.RowRecord;
 import org.junit.Assert;
@@ -63,6 +65,7 @@ import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.iotdb.itbase.env.BaseEnv.TABLE_SQL_DIALECT;
 import static org.apache.iotdb.itbase.env.BaseEnv.TREE_SQL_DIALECT;
+import static org.apache.iotdb.itbase.runtime.ClusterTestResultSet.getNodeResultSets;
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -73,6 +76,7 @@ import static org.junit.Assert.fail;
 public class TestUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TestUtils.class);
+  private static final int MAX_RESULT_SET_DIFF_ROWS = 20;
 
   public static final ZoneId DEFAULT_ZONE_ID = ZoneId.ofOffset("UTC", ZoneOffset.of("Z"));
 
@@ -81,6 +85,58 @@ public class TestUtils {
   public static final String TIME_PRECISION_IN_US = "us";
 
   public static final String TIME_PRECISION_IN_NS = "ns";
+
+  static boolean isHalfTimeoutElapsed(final long elapsedTimeInMillis, final long timeoutSeconds) {
+    return elapsedTimeInMillis > TimeUnit.SECONDS.toMillis(timeoutSeconds) / 2;
+  }
+
+  /**
+   * Creates a statement on the write node without comparing results across DataNodes.
+   *
+   * <p>Use this for node-local diagnostics or changing progress snapshots. Closing the statement
+   * does not close the supplied connection.
+   */
+  public static Statement createSingleNodeStatement(final Connection connection)
+      throws SQLException {
+    final Connection singleNodeConnection =
+        connection instanceof ClusterTestConnection
+            ? ((ClusterTestConnection) connection).writeConnection.getUnderlyingConnection()
+            : connection;
+    return singleNodeConnection.createStatement();
+  }
+
+  /** Drops a table and waits for the asynchronous procedure to finish on a single DataNode. */
+  public static void dropTable(
+      final Connection connection, final String database, final String tableName)
+      throws SQLException {
+    try (final Statement statement = createSingleNodeStatement(connection)) {
+      statement.execute("DROP TABLE " + database + "." + tableName);
+      await()
+          .atMost(60, TimeUnit.SECONDS)
+          .pollInSameThread()
+          .pollInterval(20, TimeUnit.MILLISECONDS)
+          .until(
+              () -> {
+                try (final ResultSet resultSet =
+                    statement.executeQuery(
+                        "SELECT state, error_message FROM information_schema.drop_table_procedures "
+                            + "WHERE database = '"
+                            + database.replace("'", "''")
+                            + "' AND table_name = '"
+                            + tableName.replace("'", "''")
+                            + "' ORDER BY procedure_id DESC LIMIT 1")) {
+                  if (!resultSet.next()) {
+                    return false;
+                  }
+                  final String state = resultSet.getString(1);
+                  if ("ROLLEDBACK".equals(state)) {
+                    throw new SQLException(resultSet.getString(2));
+                  }
+                  return "SUCCESS".equals(state);
+                }
+              });
+    }
+  }
 
   public static String defaultFormatDataTime(long time) {
     return RpcUtils.formatDatetime(
@@ -752,6 +808,15 @@ public class TestUtils {
       final String expectedHeader,
       final Collection<String> expectedResult,
       final boolean printResult) {
+    if (expectedResult instanceof Set) {
+      List<ResultSet> nodeResults = getNodeResultSets(actualResultSet);
+      if (nodeResults.size() != 1 || nodeResults.get(0) != actualResultSet) {
+        for (ResultSet nodeResult : nodeResults) {
+          assertResultSetEqual(nodeResult, expectedHeader, expectedResult, printResult);
+        }
+        return;
+      }
+    }
     try {
       final ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
       final StringBuilder header = new StringBuilder();
@@ -790,7 +855,11 @@ public class TestUtils {
           System.out.println(builder);
         }
       }
-      assertEquals(expectedResult, actualRetSet);
+      if (expectedResult instanceof Set) {
+        assertStringSetEqual((Set<String>) expectedResult, (Set<String>) actualRetSet);
+      } else {
+        assertEquals(expectedResult, actualRetSet);
+      }
     } catch (final Exception e) {
       e.printStackTrace();
       Assert.fail(String.valueOf(e));
@@ -809,27 +878,81 @@ public class TestUtils {
       String expectedHeader,
       Set<String> expectedRetSet,
       Consumer consumer) {
-    try {
-      ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
+    assertResultSetEqual(actualResultSet, expectedHeader, expectedRetSet, false);
+  }
+
+  /**
+   * Checks unordered rows on every node, preserving duplicate multiplicity.
+   *
+   * <p>The caller is responsible for ensuring that the query's final result has no ordering or
+   * arbitrary slice semantics that require deterministic row order.
+   */
+  public static void assertResultSetEqualUnordered(
+      ResultSet resultSet, String expectedHeader, List<String> expectedRows) throws SQLException {
+    List<String> sortedExpected = new ArrayList<>(expectedRows);
+    Collections.sort(sortedExpected);
+    for (ResultSet nodeResult : getNodeResultSets(resultSet)) {
+      ResultSetMetaData metadata = nodeResult.getMetaData();
       StringBuilder header = new StringBuilder();
-      for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-        header.append(resultSetMetaData.getColumnName(i)).append(",");
+      for (int i = 1; i <= metadata.getColumnCount(); i++) {
+        header.append(metadata.getColumnName(i)).append(",");
       }
       assertEquals(expectedHeader, header.toString());
-
-      Set<String> actualRetSet = new HashSet<>();
-
-      while (actualResultSet.next()) {
-        StringBuilder builder = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          builder.append(actualResultSet.getString(i)).append(",");
+      List<String> actualRows = new ArrayList<>();
+      while (nodeResult.next()) {
+        StringBuilder row = new StringBuilder();
+        for (int i = 1; i <= metadata.getColumnCount(); i++) {
+          row.append(nodeResult.getString(i)).append(",");
         }
-        actualRetSet.add(builder.toString());
+        actualRows.add(row.toString());
       }
-      assertEquals(expectedRetSet, actualRetSet);
-    } catch (Exception e) {
-      e.printStackTrace();
-      Assert.fail(String.valueOf(e));
+      Collections.sort(actualRows);
+      assertEquals(sortedExpected, actualRows);
+    }
+  }
+
+  private static void assertStringSetEqual(
+      final Set<String> expectedResult, final Set<String> actualResult) {
+    if (expectedResult.equals(actualResult)) {
+      return;
+    }
+
+    final List<String> missingRows = new ArrayList<>(expectedResult);
+    missingRows.removeAll(actualResult);
+    Collections.sort(missingRows);
+
+    final List<String> unexpectedRows = new ArrayList<>(actualResult);
+    unexpectedRows.removeAll(expectedResult);
+    Collections.sort(unexpectedRows);
+
+    final StringBuilder diff =
+        new StringBuilder("Result set mismatch: expected ")
+            .append(expectedResult.size())
+            .append(" rows but got ")
+            .append(actualResult.size())
+            .append(" rows.");
+    appendResultSetDiff(diff, "Missing rows", missingRows);
+    appendResultSetDiff(diff, "Unexpected rows", unexpectedRows);
+    fail(diff.toString());
+  }
+
+  private static void appendResultSetDiff(
+      final StringBuilder diff, final String title, final List<String> rows) {
+    diff.append(System.lineSeparator()).append(title).append(" (").append(rows.size()).append("):");
+    if (rows.isEmpty()) {
+      diff.append(" <none>");
+      return;
+    }
+
+    final int displayedRowCount = Math.min(rows.size(), MAX_RESULT_SET_DIFF_ROWS);
+    for (int i = 0; i < displayedRowCount; i++) {
+      diff.append(System.lineSeparator()).append("  ").append(rows.get(i));
+    }
+    if (rows.size() > displayedRowCount) {
+      diff.append(System.lineSeparator())
+          .append("  ... and ")
+          .append(rows.size() - displayedRowCount)
+          .append(" more");
     }
   }
 
@@ -916,6 +1039,29 @@ public class TestUtils {
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  public static void dropDatabaseWithRetry(final Statement statement, final String database)
+      throws SQLException {
+    // Asynchronous DROP TABLE may still be running when a test starts database cleanup.
+    final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
+    while (true) {
+      try {
+        statement.execute("DROP DATABASE IF EXISTS " + database);
+        return;
+      } catch (final SQLException e) {
+        if (e.getErrorCode() != TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode()
+            || System.nanoTime() >= deadline) {
+          throw e;
+        }
+      }
+      try {
+        Thread.sleep(100);
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new SQLException(e);
+      }
     }
   }
 
@@ -1570,7 +1716,7 @@ public class TestUtils {
       // Keep retrying if there are execution failures
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.SECONDS)
           .pollInterval(1L, TimeUnit.SECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
@@ -1579,7 +1725,9 @@ public class TestUtils {
                   // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
                   // sync requires tsFile to process. We flush in the middle of assertion because we
                   // don't know when the data reaches the receiver in general cases
-                  if (!flushed[0] && System.currentTimeMillis() - startTime > timeoutSeconds >> 1) {
+                  if (!flushed[0]
+                      && isHalfTimeoutElapsed(
+                          System.currentTimeMillis() - startTime, timeoutSeconds)) {
                     flushed[0] = true;
                     statement.execute("flush");
                   }
@@ -1612,7 +1760,7 @@ public class TestUtils {
       // Keep retrying if there are execution failures
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.SECONDS)
           .pollInterval(1L, TimeUnit.SECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
@@ -1648,7 +1796,7 @@ public class TestUtils {
       // Keep retrying if there are execution failures
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.SECONDS)
           .pollInterval(1L, TimeUnit.SECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
@@ -1660,7 +1808,9 @@ public class TestUtils {
                   // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
                   // sync requires tsFile to process. We flush in the middle of assertion because we
                   // don't know when the data reaches the receiver in general cases
-                  if (!flushed[0] && System.currentTimeMillis() - startTime > timeoutSeconds >> 1) {
+                  if (!flushed[0]
+                      && isHalfTimeoutElapsed(
+                          System.currentTimeMillis() - startTime, timeoutSeconds)) {
                     flushed[0] = true;
                     statement.execute("flush");
                   }
@@ -1690,7 +1840,7 @@ public class TestUtils {
       // Keep retrying if there are execution failures
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.SECONDS)
           .pollInterval(1L, TimeUnit.SECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
@@ -1699,7 +1849,9 @@ public class TestUtils {
                   // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
                   // sync requires tsFile to process. We flush in the middle of assertion because we
                   // don't know when the data reaches the receiver in general cases
-                  if (!flushed[0] && System.currentTimeMillis() - startTime > timeoutSeconds >> 1) {
+                  if (!flushed[0]
+                      && isHalfTimeoutElapsed(
+                          System.currentTimeMillis() - startTime, timeoutSeconds)) {
                     flushed[0] = true;
                     statement.execute("flush");
                   }
@@ -1769,7 +1921,7 @@ public class TestUtils {
       // Keep retrying if there are execution failures
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.SECONDS)
           .pollInterval(1L, TimeUnit.SECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
@@ -1781,7 +1933,9 @@ public class TestUtils {
                   // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
                   // sync requires tsFile to process. We flush in the middle of assertion because we
                   // don't know when the data reaches the receiver in general cases
-                  if (!flushed[0] && System.currentTimeMillis() - startTime > timeoutSeconds >> 1) {
+                  if (!flushed[0]
+                      && isHalfTimeoutElapsed(
+                          System.currentTimeMillis() - startTime, timeoutSeconds)) {
                     flushed[0] = true;
                     statement.execute("flush");
                   }
@@ -1806,7 +1960,7 @@ public class TestUtils {
     }
   }
 
-  // Note that this class will accept any exceptions
+  /** Asserts that a query keeps failing with an SQLException throughout the observation period. */
   public static void assertAlwaysFail(final BaseEnv env, final String sql) {
     assertAlwaysFail(env, sql, 10);
   }
@@ -1815,13 +1969,15 @@ public class TestUtils {
       final BaseEnv env, final String sql, final long consistentSeconds) {
     try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      // Keep retrying if there are execution failures
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.SECONDS)
           .pollInterval(1L, TimeUnit.SECONDS)
-          .atMost(consistentSeconds, TimeUnit.SECONDS)
-          .failFast(() -> Assert.assertThrows(Exception.class, () -> statement.executeQuery(sql)));
+          .during(consistentSeconds, TimeUnit.SECONDS)
+          .atMost(consistentSeconds + 5, TimeUnit.SECONDS)
+          .failFast(
+              () -> Assert.assertThrows(SQLException.class, () -> statement.executeQuery(sql)))
+          .until(() -> true);
     } catch (final Exception e) {
       fail(e.getMessage());
     }
@@ -1846,7 +2002,7 @@ public class TestUtils {
       // Keep retrying if there are execution failures
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.SECONDS)
           .pollInterval(1L, TimeUnit.SECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
@@ -1890,7 +2046,7 @@ public class TestUtils {
       // Keep retrying if there are execution failures
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.SECONDS)
           .pollInterval(1L, TimeUnit.SECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
@@ -1899,7 +2055,9 @@ public class TestUtils {
                   // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
                   // sync requires tsFile to process. We flush in the middle of assertion because we
                   // don't know when the data reaches the receiver in general cases
-                  if (!flushed[0] && System.currentTimeMillis() - startTime > timeoutSeconds >> 1) {
+                  if (!flushed[0]
+                      && isHalfTimeoutElapsed(
+                          System.currentTimeMillis() - startTime, timeoutSeconds)) {
                     flushed[0] = true;
                     statement.execute("flush");
                   }
@@ -1954,12 +2112,12 @@ public class TestUtils {
             env.getConnection(
                 Objects.isNull(database) ? TREE_SQL_DIALECT : BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      // Keep retrying if there are execution failures
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.SECONDS)
           .pollInterval(1L, TimeUnit.SECONDS)
-          .atMost(consistentSeconds, TimeUnit.SECONDS)
+          .during(consistentSeconds, TimeUnit.SECONDS)
+          .atMost(consistentSeconds + 5, TimeUnit.SECONDS)
           .failFast(
               () -> {
                 try {
@@ -1970,7 +2128,8 @@ public class TestUtils {
                   // sync requires tsFile to process. We flush in the middle of assertion because we
                   // don't know when the data reaches the receiver in general cases
                   if (!flushed[0]
-                      && System.currentTimeMillis() - startTime > consistentSeconds >> 1) {
+                      && isHalfTimeoutElapsed(
+                          System.currentTimeMillis() - startTime, consistentSeconds)) {
                     flushed[0] = true;
                     statement.execute("flush");
                   }
@@ -1979,7 +2138,8 @@ public class TestUtils {
                 } catch (Exception e) {
                   Assert.fail();
                 }
-              });
+              })
+          .until(() -> true);
     } catch (Exception e) {
       e.printStackTrace();
       fail();
@@ -1999,9 +2159,10 @@ public class TestUtils {
         Statement statement = connection.createStatement()) {
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.SECONDS)
           .pollInterval(1L, TimeUnit.SECONDS)
-          .atMost(consistentSeconds, TimeUnit.SECONDS)
+          .during(consistentSeconds, TimeUnit.SECONDS)
+          .atMost(consistentSeconds + 5, TimeUnit.SECONDS)
           .failFast(
               () -> {
                 try {
@@ -2009,7 +2170,8 @@ public class TestUtils {
                   // sync requires tsFile to process. We flush in the middle of assertion because we
                   // don't know when the data reaches the receiver in general cases
                   if (!flushed[0]
-                      && System.currentTimeMillis() - startTime > consistentSeconds >> 1) {
+                      && isHalfTimeoutElapsed(
+                          System.currentTimeMillis() - startTime, consistentSeconds)) {
                     flushed[0] = true;
                     statement.execute("flush");
                   }
@@ -2026,7 +2188,8 @@ public class TestUtils {
                   }
                   throw e;
                 }
-              });
+              })
+          .until(() -> true);
     } catch (Exception e) {
       e.printStackTrace();
       fail();
@@ -2043,14 +2206,15 @@ public class TestUtils {
       Consumer<String> handleFailure) {
     final long startTime = System.currentTimeMillis();
     final boolean[] flushed = {false};
-    try (Connection connection = env.getConnection();
+    try (Connection connection =
+            env.getConnection(database == null ? TREE_SQL_DIALECT : BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      // Keep retrying if there are execution failures
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.SECONDS)
           .pollInterval(1L, TimeUnit.SECONDS)
-          .atMost(consistentSeconds, TimeUnit.SECONDS)
+          .during(consistentSeconds, TimeUnit.SECONDS)
+          .atMost(consistentSeconds + 5, TimeUnit.SECONDS)
           .failFast(
               () -> {
                 try {
@@ -2061,7 +2225,8 @@ public class TestUtils {
                   // sync requires tsFile to process. We flush in the middle of assertion because we
                   // don't know when the data reaches the receiver in general cases
                   if (!flushed[0]
-                      && System.currentTimeMillis() - startTime > consistentSeconds >> 1) {
+                      && isHalfTimeoutElapsed(
+                          System.currentTimeMillis() - startTime, consistentSeconds)) {
                     flushed[0] = true;
                     statement.execute("flush");
                   }
@@ -2078,7 +2243,8 @@ public class TestUtils {
                   }
                   throw e;
                 }
-              });
+              })
+          .until(() -> true);
     } catch (Exception e) {
       e.printStackTrace();
       fail();

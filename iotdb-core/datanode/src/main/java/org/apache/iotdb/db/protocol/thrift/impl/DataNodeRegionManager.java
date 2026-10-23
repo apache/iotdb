@@ -138,7 +138,7 @@ public class DataNodeRegionManager {
       tsStatus.setMessage(
           String.format(DataNodeMiscMessages.CREATE_SCHEMA_REGION_FAILED_FMT, e2.getMessage()));
     } catch (final ConsensusGroupAlreadyExistException e) {
-      tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      tsStatus = new TSStatus(TSStatusCode.REGION_ALREADY_EXISTS.getStatusCode());
       tsStatus.setMessage(
           String.format(
               DataNodeMiscMessages.SCHEMA_REGION_ALREADY_EXISTS_FMT, schemaRegionId.getId()));
@@ -171,7 +171,7 @@ public class DataNodeRegionManager {
       tsStatus.setMessage(
           String.format(DataNodeMiscMessages.CREATE_DATA_REGION_FAILED_FMT, e.getMessage()));
     } catch (ConsensusGroupAlreadyExistException e) {
-      tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      tsStatus = new TSStatus(TSStatusCode.REGION_ALREADY_EXISTS.getStatusCode());
       tsStatus.setMessage(
           String.format(DataNodeMiscMessages.DATA_REGION_ALREADY_EXISTS_FMT, dataRegionId.getId()));
     } catch (ConsensusException e) {
@@ -208,17 +208,21 @@ public class DataNodeRegionManager {
   }
 
   public TSStatus deleteDataRegion(DataRegionId dataRegionId) {
-    storageEngine.deleteDataRegion(dataRegionId);
-    dataRegionLockMap.remove(dataRegionId);
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
+    TSStatus status = storageEngine.deleteDataRegion(dataRegionId);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      dataRegionLockMap.remove(dataRegionId);
+    }
+    return status;
   }
 
   public TSStatus deleteSchemaRegion(SchemaRegionId schemaRegionId) {
     try {
-      schemaEngine.deleteSchemaRegion(schemaRegionId);
+      if (!schemaEngine.deleteSchemaRegion(schemaRegionId)) {
+        return RpcUtils.getStatus(TSStatusCode.REGION_NOT_EXIST);
+      }
       PipeDataNodeAgent.runtime().schemaListener(schemaRegionId).close();
       schemaRegionLockMap.remove(schemaRegionId);
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (MetadataException e) {
       LOGGER.error(DataNodeMiscMessages.METADATA_ERROR, IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());

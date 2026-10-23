@@ -29,6 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.load.LoadTsFileSnapshot;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,6 +106,7 @@ public class SnapshotTaker {
         success = createSnapshot(seqFiles, tempSnapshotId);
         success = success && createSnapshot(unseqFiles, tempSnapshotId);
         success = success && snapshotCompressionRatio(snapshotDirPath);
+        success = success && LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir);
       } finally {
         readUnlockTheFile();
       }
@@ -226,12 +228,10 @@ public class SnapshotTaker {
     try {
       for (TsFileResource resource : resources) {
         if (!resource.isClosed()) {
-          continue;
+          LOGGER.error(StorageEngineMessages.CANNOT_SNAPSHOT_UNCLOSED_TSFILE, resource);
+          return false;
         }
         File tsFile = resource.getTsFile();
-        if (!resource.isClosed()) {
-          continue;
-        }
         File snapshotTsFile = getSnapshotFilePathForTsFile(tsFile, snapshotId);
         File snapshotResourceFile =
             new File(snapshotTsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);

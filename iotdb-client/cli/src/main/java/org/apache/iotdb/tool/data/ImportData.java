@@ -333,7 +333,8 @@ public class ImportData extends AbstractDataTool {
     if (!sqlDialectTree
         && Constants.CSV_SUFFIXS.equalsIgnoreCase(fileType)
         && StringUtils.isBlank(table)) {
-      ioTPrinter.println("Invalid args: Required values for option table not provided.");
+      ioTPrinter.println(
+          CliMessages.MESSAGE_INVALID_ARGS_REQUIRED_VALUES_FOR_OPTION_TABLE_NOT_PROVIDED_4BC3FCFA);
       System.exit(Constants.CODE_ERROR);
     }
   }
@@ -437,8 +438,7 @@ public class ImportData extends AbstractDataTool {
         ioTPrinter.println(String.format("Source file or directory %s does not exist", targetPath));
         System.exit(Constants.CODE_ERROR);
       }
-      AbstractImportData.init(importData);
-      return Constants.CODE_OK;
+      return AbstractImportData.init(importData) ? Constants.CODE_OK : Constants.CODE_ERROR;
     } catch (InterruptedException e) {
       ioTPrinter.println(String.format("Import tsfile fail: %s", e.getMessage()));
       Thread.currentThread().interrupt();
