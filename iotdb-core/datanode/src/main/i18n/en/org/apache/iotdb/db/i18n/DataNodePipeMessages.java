@@ -68,6 +68,9 @@ public final class DataNodePipeMessages {
 
   // ===================== CONSENSUS =====================
 
+  public static final String EXCEPTION_DELETION_RESOURCE_EXCEEDS_THE_DAL_BUFFER_SIZE_E2A17CAC =
+      "Deletion resource exceeds the DAL buffer size";
+
   public static final String CLOSING_DELETION_RESOURCE_MANAGER_FOR =
       "Closing deletion resource manager for {}...";
   public static final String DAL_THREAD_STILL_DOESN_T_EXIT_AFTER =

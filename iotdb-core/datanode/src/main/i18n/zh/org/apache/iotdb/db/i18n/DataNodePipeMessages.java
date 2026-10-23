@@ -68,6 +68,9 @@ public final class DataNodePipeMessages {
 
   // ===================== CONSENSUS =====================
 
+  public static final String EXCEPTION_DELETION_RESOURCE_EXCEEDS_THE_DAL_BUFFER_SIZE_E2A17CAC =
+      "删除资源超过 DAL 缓冲区大小";
+
   public static final String CLOSING_DELETION_RESOURCE_MANAGER_FOR = "正在关闭 {} 的删除资源管理器...";
   public static final String DAL_THREAD_STILL_DOESN_T_EXIT_AFTER = "DAL 线程 {} 在 30 秒后仍未退出";
   public static final String DELETIONMANAGER_CURRENT_DAL_DIR_IS_DELETED_SUCCESSFULLY =
