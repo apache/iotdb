@@ -296,6 +296,11 @@ public class PredicateUtils {
     return predicateRemoveNot(predicate, null);
   }
 
+  /**
+   * @param predicate the predicate to remove not() from
+   * @return the predicate with safely invertible not() operators removed. The original instance is
+   *     returned when no not() could be removed, so callers can detect that nothing changed.
+   */
   public static Expression predicateRemoveNot(
       Expression predicate, Function<Expression, TSDataType> typeProvider) {
     if (predicate.getExpressionType().equals(ExpressionType.LOGIC_AND)) {
@@ -319,7 +324,14 @@ public class PredicateUtils {
       }
       return ExpressionFactory.or(leftExpression, rightExpression);
     } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_NOT)) {
-      return reversePredicate(((LogicNotExpression) predicate).getExpression(), typeProvider);
+      Expression innerExpression = ((LogicNotExpression) predicate).getExpression();
+      Expression reversedExpression = reversePredicate(innerExpression, typeProvider);
+      if (reversedExpression.getExpressionType().equals(ExpressionType.LOGIC_NOT)
+          && ((LogicNotExpression) reversedExpression).getExpression() == innerExpression) {
+        // The operand cannot be inverted safely, so the not() is kept as is.
+        return predicate;
+      }
+      return reversedExpression;
     }
     return predicate;
   }

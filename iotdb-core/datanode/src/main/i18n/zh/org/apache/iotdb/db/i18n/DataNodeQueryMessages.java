@@ -622,8 +622,6 @@ public final class DataNodeQueryMessages {
       "TIMESTAMP 的 IN 列表字面量只能是 LongLiteral、DoubleLiteral 或 GenericLiteral，实际类型为 %s";
   public static final String IS_NULL_CAN_BE_PUSHED_DOWN =
       "IS NULL 可以下推";
-  public static final String GROUP_BY_TIME_CANNOT_BE_REVERSED =
-      "GROUP BY TIME 不能反转";
 
   // --- Plan / Optimization ---
 

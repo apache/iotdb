@@ -30,12 +30,14 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.LinkedHashSet;
+import java.util.function.Function;
 
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.predicateRemoveNot;
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.reversePredicate;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.and;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.between;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.eq;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.function;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gt;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gte;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.in;
@@ -51,6 +53,16 @@ import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.timeSeries;
 
 public class PredicateRemoveNotTest {
+
+  private static Function<Expression, TSDataType> typeProvider(TSDataType seriesType) {
+    return expression ->
+        expression instanceof TimeSeriesOperand
+            ? seriesType
+            : ((ConstantOperand) expression).getDataType();
+  }
+
+  private static final Function<Expression, TSDataType> DOUBLE_TYPE_PROVIDER =
+      typeProvider(TSDataType.DOUBLE);
 
   @Test
   public void testReverse() {
@@ -105,7 +117,36 @@ public class PredicateRemoveNotTest {
     Expression booleanSeries = timeSeries("root.sg.d.s1");
     Expression predicate = not(booleanSeries);
 
-    Assert.assertEquals(predicate, predicateRemoveNot(predicate));
+    // The kept not() must be the original instance so callers can detect that nothing changed.
+    Assert.assertSame(predicate, predicateRemoveNot(predicate));
+  }
+
+  @Test
+  public void testRemoveNotKeepsFunctionPredicate() throws IllegalPathException {
+    Expression predicate = not(function("udf", timeSeries("root.sg.d.s1")));
+
+    Assert.assertSame(predicate, predicateRemoveNot(predicate));
+  }
+
+  @Test
+  public void testRemoveNotKeepsBetweenOnDouble() throws IllegalPathException {
+    Expression series = timeSeries("root.sg.d.s1");
+    Expression predicate =
+        not(
+            between(
+                series,
+                new ConstantOperand(TSDataType.DOUBLE, "1.0"),
+                new ConstantOperand(TSDataType.DOUBLE, "5.0")));
+
+    Assert.assertSame(predicate, predicateRemoveNot(predicate, DOUBLE_TYPE_PROVIDER));
+  }
+
+  @Test
+  public void testRemoveNotKeepsComparisonWithUnknownType() throws IllegalPathException {
+    Expression predicate = not(gt(timeSeries("root.sg.d.s1"), longValue(1)));
+
+    // An operand of unknown type cannot be inverted safely either.
+    Assert.assertSame(predicate, predicateRemoveNot(predicate, expression -> null));
   }
 
   @Test
@@ -121,14 +162,8 @@ public class PredicateRemoveNotTest {
     Expression series = timeSeries("root.sg.d.s1");
     Expression predicate = not(gt(series, new ConstantOperand(TSDataType.DOUBLE, "5.0")));
 
-    Expression result =
-        predicateRemoveNot(
-            predicate,
-            expression ->
-                expression instanceof TimeSeriesOperand
-                    ? TSDataType.DOUBLE
-                    : ((ConstantOperand) expression).getDataType());
+    Expression result = predicateRemoveNot(predicate, DOUBLE_TYPE_PROVIDER);
 
-    Assert.assertEquals(predicate, result);
+    Assert.assertSame(predicate, result);
   }
 }
