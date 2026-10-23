@@ -116,4 +116,117 @@ public final class CliMessages {
   public static final String LOG_INPUT_TIME_FORMAT_ARG_NOT_SUPPORTED_00172A7B = "Input time format {} is not supported, ";
   public static final String LOG_PLEASE_INPUT_LIKE_YYYY_MM_DD_HH_MM_SS_SSS_9318BFC7 = "please input like yyyy-MM-dd\\ HH:mm:ss.SSS or yyyy-MM-dd'T'HH:mm:ss.SSS%n";
 
+  // Pipe logical backup tool
+  public static final String EXCEPTION_LOGICAL_BACKUP_COMMAND_FAILED_ARG_9973B0C0 =
+      "Logical backup command failed: %s";
+  public static final String EXCEPTION_UNKNOWN_LOGICAL_BACKUP_COMMAND_ARG_79275619 =
+      "Unknown logical backup command: %s";
+  public static final String EXCEPTION_OUTPUT_IS_REQUIRED_FOR_LOGICAL_BACKUP_EXPORT_603340B1 =
+      "--output is required for logical backup export";
+  public static final String LOG_STREAM_ARG_ARG_RECORDS_ARG_COMMITTED_EVENT_GROUPS_DE6BBAD0 =
+      "Stream %s: %d records, %d committed event groups";
+  public static final String
+      LOG_LOGICAL_BACKUP_VERIFIED_ARG_STREAMS_ARG_RECORDS_ARG_COMMITTED_EVENT_GROUPS_5210360B =
+          "Logical backup verified: %d streams, %d records, %d committed event groups";
+  public static final String
+      EXCEPTION_LOGICAL_BACKUP_EXPORT_TARGET_MUST_NOT_BE_INSIDE_SOURCE_A499F994 =
+          "Logical backup export target must not be inside source";
+  public static final String LOG_LOGICAL_BACKUP_EXPORTED_FROM_ARG_TO_ARG_B3E8D280 =
+      "Logical backup exported from %s to %s";
+  public static final String LOG_DRY_RUN_COMPLETED_NO_DATA_WAS_WRITTEN_38AE244B =
+      "Dry run completed; no data was written";
+  public static final String
+      LOG_LOGICAL_BACKUP_IMPORT_COMPLETED_ARG_EVENT_GROUPS_CHECKPOINT_ARG_16F6A72D =
+          "Logical backup import completed: %d event groups, checkpoint %s";
+  public static final String EXCEPTION_LOGICAL_BACKUP_OPTION_ARG_IS_REQUIRED_1E7449AA =
+      "Logical backup option --%s is required";
+  public static final String
+      EXCEPTION_LOGICAL_BACKUP_PASSWORD_ENVIRONMENT_VARIABLE_IS_NOT_SET_616738A2 =
+          "Logical backup password environment variable is not set";
+  public static final String EXCEPTION_LOGICAL_BACKUP_HANDSHAKE_FAILED_ARG_7CDD4697 =
+      "Logical backup handshake failed: %s";
+  public static final String EXCEPTION_LOGICAL_BACKUP_REQUEST_TYPE_ARG_FAILED_ARG_75EE2D11 =
+      "Logical backup request type %d failed: %s";
+  public static final String
+      LOG_USE_INPUT_TO_SPECIFY_THE_INPUT_EXPORT_ALSO_REQUIRES_OUTPUT_EXPORT_CAN_USE_BACKUP_DIR_TO_CREATE_MONITOR_AND_CLEAN_UP_A_SNAPSHOT_PIPE_AUTOMATICALLY_IMPORT_REQUIRES_HOST_AND_PORT_USE_PASSWORD_STDIN_OR_PASSWORD_ENV_TO_AVOID_COMMAND_LINE_PASSWORDS_F5B223CB =
+          "Use --input to specify the input. Export also requires --output; export can use --backup-dir to create, monitor, and clean up a snapshot Pipe automatically. Import requires --host and --port. Use --password-stdin or --password-env to avoid command-line passwords.";
+  public static final String LOG_PIPE_LOGICAL_BACKUP_INSPECT_VERIFY_EXPORT_IMPORT_6D62F9CE =
+      "logical-backup <inspect|verify|export|import>";
+  public static final String EXCEPTION_LOGICAL_BACKUP_ARCHIVE_ENTRY_IS_UNSAFE_ARG_3E548152 =
+      "Logical backup archive entry is unsafe: %s";
+  public static final String EXCEPTION_LOGICAL_BACKUP_ARCHIVE_EXCEEDS_SAFETY_LIMIT_FFC54432 =
+      "Logical backup archive exceeds safety limit";
+  public static final String
+      EXCEPTION_LOGICAL_BACKUP_EXPORT_SOURCE_MUST_BE_A_DIRECTORY_OR_MANIFEST_ARG_0BBDE9F0 =
+          "Logical backup export source must be a directory or manifest: %s";
+  public static final String
+      EXCEPTION_SPECIFY_EXACTLY_ONE_OF_PASSWORD_STDIN_AND_PASSWORD_ENV_FOR_LOGICAL_BACKUP_IMPORT_A96813D9 =
+          "Specify exactly one of --password-stdin and --password-env for logical backup import";
+  public static final String EXCEPTION_NO_PASSWORD_WAS_READ_FROM_STANDARD_INPUT_6294AB8E =
+      "No password was read from standard input";
+  public static final String
+      EXCEPTION_LOGICAL_BACKUP_CHECKPOINT_DOES_NOT_MATCH_THE_SOURCE_OR_TARGET_ARG_B978184D =
+          "Logical backup checkpoint does not match the source or target: %s";
+  public static final String EXCEPTION_LOGICAL_BACKUP_CHECKPOINT_IS_INVALID_ARG_71E82F4C =
+      "Logical backup checkpoint is invalid: %s";
+  public static final String EXCEPTION_UNSUPPORTED_LOGICAL_BACKUP_EXPORT_FORMAT_ARG_A6D7DEB1 =
+      "Unsupported logical backup export format: %s";
+  public static final String
+      EXCEPTION_LOGICAL_BACKUP_EXPORT_TIMEOUT_AND_POLL_INTERVAL_MUST_BE_POSITIVE_38622769 =
+      "Logical backup export timeout and poll interval must be positive";
+  public static final String
+      LOG_LOGICAL_BACKUP_EXPORT_ARG_STATE_ARG_REMAINING_ARG_ESTIMATED_SECONDS_ARG_6256B85B =
+      "Logical backup export %s: state=%s, remaining=%s, estimated_seconds=%s";
+  public static final String EXCEPTION_LOGICAL_BACKUP_EXPORT_PIPE_ARG_FAILED_ARG_F52EB190 =
+      "Logical backup export pipe %s failed: %s";
+  public static final String
+      EXCEPTION_LOGICAL_BACKUP_EXPORT_PIPE_ARG_TIMED_OUT_AFTER_ARG_SECONDS_76CF4B4B =
+      "Logical backup export pipe %s timed out after %d seconds";
+  public static final String
+      EXCEPTION_LOGICAL_BACKUP_OPTION_ARG_MUST_BE_AN_INTEGER_C9B397BE =
+      "Logical backup option --%s must be an integer";
+  public static final String
+      EXCEPTION_LOGICAL_BACKUP_OPTION_ARG_HAS_INVALID_IDENTIFIER_ARG_BB015204 =
+      "Logical backup option --%s has invalid identifier: %s";
+
+  public static final String LOG_EXPORT_IS_DEPRECATED_USE_DUMP_TO_GENERATE_A_BACKUP_AND_PACK_TO_CREATE_A_ZIP_47709D2D =
+      "export is deprecated; use dump to generate a backup and pack to create a ZIP.";
+  public static final String LOG_IMPORT_IS_DEPRECATED_USE_RESTORE_2F1AE2CE =
+      "import is deprecated; use restore.";
+  public static final String LOG_LOGICAL_BACKUP_ARG_1E5C23CE =
+      "Logical backup: %s";
+  public static final String LOG_LOGICAL_BACKUP_PACKED_FROM_ARG_TO_ARG_CB9D5304 =
+      "Logical backup packed from %s to %s";
+public static final String EXCEPTION_STOP_SEQUENCE_REQUIRES_A_STABLE_SOURCE_SEQUENCE_CAPABILITY_USE_UNTIL_WITH_THIS_SERVER_VERSION_8323B09E =
+      "--stop-sequence requires a stable source sequence capability; use --until with this server version.";
+  public static final String EXCEPTION_OBJECT_FILTERS_REQUIRE_MODEL_TREE_OR_MODEL_TABLE_SPLIT_MIXED_MODEL_FILTERED_DUMPS_INTO_SEPARATE_BACKUPS_0488699E =
+      "Object filters require --model tree or --model table; split mixed-model filtered dumps into separate backups.";
+  public static final String EXCEPTION_TABLE_FILTERS_USE_DATABASE_REGEX_TABLE_REGEX_EXCLUSIONS_MUST_USE_FOR_EITHER_DATABASE_OR_TABLE_42F0FA23 =
+      "Table filters use database-regex/table-regex; exclusions must use .* for either database or table.";
+  public static final String EXCEPTION_INVALID_LOGICAL_BACKUP_DUMP_OPTION_ARG_894E11E0 =
+      "Invalid logical backup dump option: --%s";
+  public static final String EXCEPTION_INVALID_OR_CONFLICTING_LOGICAL_BACKUP_ARGUMENTS_76233F81 =
+      "Invalid or conflicting logical backup arguments.";
+  public static final String EXCEPTION_ONLY_CONFLICT_FAIL_IS_SUPPORTED_RESTORE_NEVER_IMPLICITLY_OVERWRITES_OR_DELETES_TARGET_OBJECTS_70C9523E =
+      "Only --conflict fail is supported; restore never implicitly overwrites or deletes target objects.";
+  public static final String EXCEPTION_THE_EXISTING_BACKUP_TASK_DOES_NOT_MATCH_THIS_BACKUP_IDENTITY_OR_CAPTURE_OPTIONS_50E6388F =
+      "The existing backup task does not match this backup identity or capture options.";
+  public static final String EXCEPTION_ANOTHER_DUMP_PROCESS_IS_MANAGING_THIS_BACKUP_FE8EE828 =
+      "Another dump process is managing this backup.";
+  public static final String EXCEPTION_BACKUP_ARG_TASK_ARG_DIRECTORY_ARG_ARG_THE_TASK_IS_RETAINED_QUERY_SHOW_PIPE_OR_REPEAT_DUMP_WITH_THE_SAME_OPTIONS_AND_RESUME_APPEND_6F8C1E87 =
+      "Backup %s, task %s, directory %s: %s. The task is retained; query SHOW PIPE or repeat dump with the same options and --resume append.";
+  public static final String EXCEPTION_THE_BACKUP_TASK_HAS_NOT_PRODUCED_SEALED_STREAMS_YET_RESUME_THE_SAME_TASK_TO_FINISH_SEALING_87C9B599 =
+      "The backup task has not produced sealed streams yet; resume the same task to finish sealing.";
+  public static final String EXCEPTION_AN_EXISTING_CHECKPOINT_REQUIRES_RESUME_RESUME_REQUIRES_AN_EXISTING_CHECKPOINT_FB6D0B7D =
+      "An existing checkpoint requires --resume; --resume requires an existing checkpoint.";
+  public static final String EXCEPTION_THE_TARGET_TIMESTAMP_PRECISION_DOES_NOT_MATCH_THE_BACKUP_70B225CB =
+      "The target timestamp precision does not match the backup.";
+  public static final String EXCEPTION_THE_TARGET_VERSION_OR_DATA_MODEL_IS_INCOMPATIBLE_WITH_THE_BACKUP_220EB40C =
+      "The target version or data model is incompatible with the backup.";
+  public static final String EXCEPTION_THE_CHECKPOINT_MUST_BE_OUTSIDE_THE_INPUT_BACKUP_15B70F59 =
+      "The checkpoint must be outside the input backup.";
+  public static final String EXCEPTION_RESTORING_AUTHORIZATION_OBJECTS_REQUIRES_INCLUDE_AUTH_TRUE_INSPECT_THE_BACKUP_OR_USE_DRY_RUN_FIRST_83DDCD79 =
+      "Restoring authorization objects requires --include-auth true; inspect the backup or use --dry-run first.";
+  public static final String LOG_LOGICAL_BACKUP_DUMP_VERIFY_INSPECT_PACK_RESTORE_OPTIONS_DUMP_CONNECT_TO_A_SOURCE_AND_SEAL_A_BACKUP_DIRECTORY_DOES_NOT_CREATE_A_ZIP_INSPECT_SHOW_BACKUP_IDENTITY_SCOPE_STREAMS_SEGMENTS_COUNTS_AND_STATUS_VERIFY_CHECK_STRUCTURE_CHECKSUMS_AND_SEMANTICS_WITHOUT_CHANGING_THE_INPUT_PACK_VERIFY_AND_PACKAGE_AN_EXISTING_DIRECTORY_AS_ZIP_ACCEPTS_NO_CONNECTION_OPTIONS_RESTORE_PREFLIGHT_AND_REPLAY_A_DIRECTORY_ROOT_MANIFEST_JSON_OR_ZIP_INSPECT_VERIFY_INPUT_PATH_JSON_ALLOW_INCOMPLETE_PACK_INPUT_DIR_OUTPUT_ZIP_JSON_ALLOW_INCOMPLETE_DUMP_HOST_HOST_PORT_PORT_USER_ROOT_PASSWORD_STDIN_PASSWORD_ENV_NAME_BACKUP_DIR_DIR_BACKUP_ID_ID_SCOPE_CONFIG_SCHEMA_DATA_MODEL_TREE_TABLE_INCLUDE_PATTERN_EXCLUDE_PATTERN_START_TIME_TIME_END_TIME_TIME_INCLUDE_AUTH_TRUE_FALSE_MODE_SNAPSHOT_CONTINUOUS_UNTIL_ISO_8601_RESUME_FAIL_IF_EXISTS_APPEND_NEW_PIPE_NAME_NAME_SEGMENT_SIZE_BYTES_268435456_MAX_RECORD_BYTES_67108864_FSYNC_POLICY_ALWAYS_BATCH_PERIODIC_NONE_FSYNC_BATCH_OPERATIONS_N_FSYNC_PERIOD_MS_N_ON_UNSUPPORTED_FAIL_SKIP_INCLUDE_HEARTBEAT_TRUE_FALSE_TIMEOUT_SECONDS_3600_POLL_INTERVAL_SECONDS_2_JSON_ALLOW_INCOMPLETE_CONTINUOUS_REQUIRES_UNTIL_STOP_SEQUENCE_IS_RESERVED_AND_CURRENTLY_REJECTED_OBJECT_FILTERS_REQUIRE_ONE_MODEL_TREE_USES_PATH_LISTS_TABLE_USES_DATABASE_REGEX_TABLE_REGEX_TREE_CONFIG_SCHEMA_CAPTURE_ACCEPTS_A_SINGLE_PREFIX_FULL_PATH_WITHOUT_EXCLUSIONS_TABLE_EXCLUSIONS_MUST_SELECT_WHOLE_DATABASES_OR_WHOLE_TABLE_NAME_PATTERNS_RESTORE_INPUT_PATH_HOST_HOST_PORT_PORT_USER_USER_PASSWORD_STDIN_PASSWORD_ENV_NAME_DRY_RUN_CHECKPOINT_FILE_RESUME_CONFLICT_FAIL_INCLUDE_AUTH_TRUE_FALSE_JSON_ALLOW_INCOMPLETE_RESTORING_AUTHORIZATION_OBJECTS_REQUIRES_INCLUDE_AUTH_TRUE_LEGACY_CONFIG_IS_CONSERVATIVE_A_TARGET_CONNECTION_IS_REQUIRED_FOR_REPLAY_LOCAL_DRY_RUN_NEEDS_NO_CONNECTION_TARGET_PREFLIGHT_CHECKS_VERSION_PRECISION_AUTHENTICATION_AND_HANDSHAKE_SUPPORT_OBJECT_CONFLICTS_AND_PER_OBJECT_PRIVILEGES_ARE_CHECKED_DURING_REPLAY_DEPRECATED_ALIASES_EXPORT_INPUT_DIR_OUTPUT_ZIP_PACK_EXPORT_WITH_SOURCE_CONNECTION_OPTIONS_DUMP_THEN_PACK_IMPORT_RESTORE_EXIT_CODE_0_SUCCESS_1_FAILURE_ERRORS_AND_DEPRECATION_NOTICES_GO_TO_STDERR_B1983BE8 =
+      "logical-backup <dump|verify|inspect|pack|restore> [options]\n  dump     Connect to a source and seal a backup directory; does not create a ZIP.\n  inspect  Show backup identity, scope, streams, segments, counts and status.\n  verify   Check structure, checksums and semantics without changing the input.\n  pack     Verify and package an existing directory as ZIP; accepts no connection options.\n  restore  Preflight and replay a directory, root manifest.json or ZIP.\n\ninspect/verify: --input PATH [--json] [--allow-incomplete]\npack: --input DIR --output ZIP [--json] [--allow-incomplete]\ndump: --host HOST --port PORT [--user root] (--password-stdin|--password-env NAME)\n  --backup-dir DIR --backup-id ID --scope config,schema,data [--model tree,table]\n  [--include PATTERN] [--exclude PATTERN] [--start-time TIME] [--end-time TIME]\n  [--include-auth true|false] [--mode snapshot|continuous] [--until ISO-8601]\n  [--resume fail-if-exists|append|new] [--pipe-name NAME]\n  [--segment-size-bytes 268435456] [--max-record-bytes 67108864]\n  [--fsync-policy always|batch|periodic|none] [--fsync-batch-operations N|--fsync-period-ms N]\n  [--on-unsupported fail|skip] [--include-heartbeat true|false]\n  [--timeout-seconds 3600] [--poll-interval-seconds 2] [--json] [--allow-incomplete]\n  continuous requires --until; --stop-sequence is reserved and currently rejected.\n  Object filters require one model: Tree uses path lists; Table uses database-regex/table-regex.\n  Tree config/schema capture accepts a single prefix/full path without exclusions.\n  Table exclusions must select whole databases or whole table-name patterns.\nrestore: --input PATH [--host HOST --port PORT --user USER\n  (--password-stdin|--password-env NAME)] [--dry-run] [--checkpoint FILE] [--resume]\n  [--conflict fail] [--include-auth true|false] [--json] [--allow-incomplete]\n  Restoring authorization objects requires --include-auth true (legacy config is conservative).\n  A target connection is required for replay; local dry-run needs no connection.\n  Target preflight checks version, precision, authentication and handshake support;\n  object conflicts and per-object privileges are checked during replay.\n\nDeprecated aliases: export --input DIR --output ZIP = pack;\n  export with source connection options = dump then pack; import = restore.\nExit code: 0 success, 1 failure. Errors and deprecation notices go to stderr.";
 }

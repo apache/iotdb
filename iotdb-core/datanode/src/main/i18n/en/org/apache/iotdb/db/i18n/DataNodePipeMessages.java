@@ -2719,6 +2719,20 @@ public final class DataNodePipeMessages {
       "Interrupted while reading OPC UA server operation limits, use defaults: maxNodesPerWrite={}, maxNodesPerNodeManagement={}";
   public static final String LOG_FAILED_TO_READ_OPC_UA_SERVER_OPERATION_LIMITS_USE_DEFAULTS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_65460871 =
       "Failed to read OPC UA server operation limits, use defaults: maxNodesPerWrite={}, maxNodesPerNodeManagement={}";
+  public static final String EXCEPTION_UNSUPPORTED_LOGICAL_BACKUP_EVENT_POLICY_ARG_BF42E405 =
+      "Unsupported logical backup event policy: %s";
+  public static final String EXCEPTION_UNSUPPORTED_LOGICAL_BACKUP_RESUME_POLICY_ARG_583FCCF9 =
+      "Unsupported logical backup resume policy: %s";
+  public static final String
+      EXCEPTION_CONFIGREGION_AND_DATAREGION_LOGICAL_BACKUP_REQUIRE_EXPLICIT_SINK_RESUME_APPEND_OR_CONNECTOR_RESUME_APPEND_AND_A_SHARED_BACKUP_DIRECTORY_B041371B =
+          "ConfigRegion and DataRegion logical backup require explicit sink.resume=append (or connector.resume=append) and a shared backup directory";
+  public static final String EXCEPTION_UNSUPPORTED_PIPE_EVENT_FOR_LOGICAL_BACKUP_ARG_521AEE97 =
+      "Unsupported Pipe event for logical backup: %s";
+  public static final String
+      EXCEPTION_LOGICAL_BACKUP_ID_MUST_RESOLVE_BELOW_THE_CONFIGURED_BACKUP_DIRECTORY_ARG_25BE4B22 =
+          "Logical backup ID must resolve below the configured backup directory: %s";
+  public static final String EXCEPTION_LOGICAL_BACKUP_DIRECTORY_MUST_NOT_BE_EMPTY_99DB3EDB =
+      "Logical backup directory must not be empty";
   public static final String MESSAGE_ARG_SUBSCRIPTION_ENTRY_REQUIRES_ARG_BYTES_ABOVE_THE_CURRENT_PER_QUEUE_MAXIMUM_ARG_BYTES_DATANODE_BUDGET_ARG_BYTES_REDUCE_THE_WRITE_BATCH_FIELD_SIZE_OR_INCREASE_SUBSCRIPTION_MATERIALIZATION_MEMORY_WAL_PROGRESS_HAS_NOT_ADVANCED_AFCBC7FC =
       "[%s] Subscription entry requires %d bytes, above the current per-queue maximum %d bytes (DataNode budget %d bytes). Reduce the write batch/field size or increase subscription materialization memory. WAL progress has not advanced.";
   public static final String LOG_SUBSCRIPTION_FAILED_TO_REPLAY_DELIVERY_BATCH_ARG_FROM_WAL_RETAINING_UNCOMMITTED_STATE_0654EACD =
