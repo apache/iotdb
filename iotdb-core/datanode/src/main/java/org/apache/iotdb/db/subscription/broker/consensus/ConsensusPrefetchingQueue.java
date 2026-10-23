@@ -200,6 +200,10 @@ public class ConsensusPrefetchingQueue {
   private final Map<SubscriptionCommitContext, SubscriptionEvent> outstandingEventsByCommitContext =
       new ConcurrentHashMap<>();
 
+  /** Events whose commit is being persisted outside the in-flight map callback. */
+  private final Set<SubscriptionEvent> acknowledgementInProgressEvents =
+      ConcurrentHashMap.newKeySet();
+
   /**
    * Compact batch boundaries and source positions; no Tablet or serialized response is retained.
    */
@@ -1580,6 +1584,10 @@ public class ConsensusPrefetchingQueue {
         }
 
         synchronized (event) {
+          if (acknowledgementInProgressEvents.contains(event)) {
+            prefetchingQueue.add(event);
+            continue;
+          }
           // ACK may have removed a recycled event while it was being claimed from the queue.
           if (event.isCommitted()
               || (event.getCommitContext().hasWriterProgress()
@@ -3549,6 +3557,22 @@ public class ConsensusPrefetchingQueue {
     requestPrefetch();
   }
 
+  /** Releases a requeued event's materialized payload; it can be restored from its WAL record. */
+  private void detachPayloadForReplay(final SubscriptionEvent event) {
+    synchronized (event) {
+      if (Objects.isNull(deliveryBatches.get(event))
+          || event.isCommitted()
+          || outstandingEventsByCommitContext.get(event.getCommitContext()) != event
+          || !event.detachCurrentPayload(event.getCurrentResponse())) {
+        return;
+      }
+      final Long retainedBytes = retainedBytesByEvent.remove(event);
+      if (Objects.nonNull(retainedBytes)) {
+        releaseTabletMemory(retainedBytes);
+      }
+    }
+  }
+
   private boolean restorePayloadForDelivery(final SubscriptionEvent event) {
     if (!event.isPayloadDetached()) {
       return true;
@@ -4095,6 +4119,7 @@ public class ConsensusPrefetchingQueue {
     final WriterProgress commitWriterProgress = extractCommitWriterProgress(commitContext);
     final AtomicBoolean found = new AtomicBoolean(false);
     final AtomicBoolean acked = new AtomicBoolean(false);
+    final SubscriptionEvent[] eventToCommit = new SubscriptionEvent[1];
     inFlightEvents.compute(
         new InFlightEventKey(consumerId, commitContext),
         (key, ev) -> {
@@ -4115,29 +4140,40 @@ public class ConsensusPrefetchingQueue {
             return null;
           }
 
-          final boolean committed = commitWriterProgress(commitWriterId, commitWriterProgress);
-          if (!committed) {
-            if (!silent) {
-              LOGGER.warn(
-                  DataNodePipeMessages
-                      .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_ADVANCE_COMMIT_FRONTIER_56E606C0,
-                  this,
-                  commitContext);
-            }
-            return ev;
-          }
-
-          ev.ack();
-          ev.recordCommittedTimestamp();
-          acked.set(true);
-          cleanUpEvent(ev, false);
-          return null;
+          eventToCommit[0] = ev;
+          acknowledgementInProgressEvents.add(ev);
+          return ev;
         });
-    if (acked.get()) {
-      // Retention refresh can read metadata from every newly relevant WAL file. Keep that I/O out
-      // of ConcurrentHashMap.compute so recycling and requeueing other in-flight events can
-      // proceed while an ACK advances committed progress.
-      refreshCommittedWalRetentionBoundAndNotify();
+    final SubscriptionEvent event = eventToCommit[0];
+    if (event != null) {
+      try {
+        final boolean committed = commitWriterProgress(commitWriterId, commitWriterProgress);
+        if (committed) {
+          final InFlightEventKey key = new InFlightEventKey(consumerId, commitContext);
+          inFlightEvents.compute(
+              key,
+              (ignored, inFlightEvent) -> {
+                synchronized (event) {
+                  event.ack();
+                  event.recordCommittedTimestamp();
+                  acked.set(true);
+                  cleanUpEvent(event, false);
+                }
+                return inFlightEvent == event ? null : inFlightEvent;
+              });
+          inFlightEvents.entrySet().removeIf(entry -> entry.getValue() == event);
+          prefetchingQueue.remove(event);
+          refreshCommittedWalRetentionBoundAndNotify();
+        } else if (!silent) {
+          LOGGER.warn(
+              DataNodePipeMessages
+                  .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_ADVANCE_COMMIT_FRONTIER_56E606C0,
+              this,
+              commitContext);
+        }
+      } finally {
+        acknowledgementInProgressEvents.remove(event);
+      }
     }
     return !found.get()
         ? InFlightAckResult.MISSING
@@ -4295,6 +4331,9 @@ public class ConsensusPrefetchingQueue {
                 ev.recordCommittedTimestamp();
                 cleanUpEvent(ev, false);
                 return null;
+              }
+              if (acknowledgementInProgressEvents.contains(ev)) {
+                detachPayloadForReplay(ev);
               }
               prefetchingQueue.add(ev);
               LOGGER.debug(
