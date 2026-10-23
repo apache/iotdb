@@ -842,7 +842,7 @@ public class TestUtils {
       // Keep retrying if there are execution failures
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.SECONDS)
           .pollInterval(1L, TimeUnit.SECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
@@ -872,7 +872,7 @@ public class TestUtils {
       // Keep retrying if there are execution failures
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.SECONDS)
           .pollInterval(1L, TimeUnit.SECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
@@ -921,7 +921,7 @@ public class TestUtils {
       // Keep retrying if there are execution failures
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.SECONDS)
           .pollInterval(1L, TimeUnit.SECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
@@ -952,7 +952,7 @@ public class TestUtils {
       // Keep retrying if there are execution failures
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.SECONDS)
           .pollInterval(1L, TimeUnit.SECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
@@ -986,7 +986,7 @@ public class TestUtils {
       // Keep retrying if there are execution failures
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.SECONDS)
           .pollInterval(1L, TimeUnit.SECONDS)
           .atMost(consistentSeconds, TimeUnit.SECONDS)
           .failFast(
