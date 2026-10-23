@@ -1314,6 +1314,22 @@ struct TShowTable4InformationSchemaResp {
    2: optional map<string, list<TTableInfo>> databaseTableInfoMap
 }
 
+struct TShowDropTableProceduresResp {
+   1: required common.TSStatus status
+   2: optional list<TDropTableProcedureInfo> dropTableProcedureInfoList
+}
+
+struct TDropTableProcedureInfo {
+   1: required string database
+   2: required string tableName
+   3: required i64 procedureId
+   4: required string state
+   5: required string progress
+   6: optional string errorMessage
+   7: optional i64 writtenModFileCount
+   8: optional i64 remainingModFileCount
+}
+
 struct TDescTableResp {
    1: required common.TSStatus status
    2: optional binary tableInfo
@@ -1351,6 +1367,23 @@ struct TCreateTableViewReq {
     1: required binary tableInfo
     2: required bool replace
 }
+
+ struct TAutoSyncViewColumnsFailure {
+      1: required string database
+      2: required string tableName
+      3: required common.TSStatus status
+  }
+
+
+struct TAutoSyncViewColumnsResp{
+    1: required common.TSStatus status
+    2: optional list<TAutoSyncViewColumnsFailure> failedViews
+}
+
+struct TAutoSyncViewColumnsReq{
+    1:required list<TAlterOrDropTableReq> viewInfos
+}
+
 
 service IConfigNodeRPCService {
 
@@ -2142,6 +2175,7 @@ service IConfigNodeRPCService {
   TShowTableResp showTables(string database, bool isDetails)
 
   TShowTable4InformationSchemaResp showTables4InformationSchema()
+  TShowDropTableProceduresResp showDropTableProcedures()
 
   TDescTableResp describeTable(string database, string tableName, bool isDetails)
 
@@ -2154,4 +2188,6 @@ service IConfigNodeRPCService {
   // Table view
 
   common.TSStatus createTableView(TCreateTableViewReq req)
+
+  TAutoSyncViewColumnsResp autoSyncViewColumns(TAutoSyncViewColumnsReq req)
 }

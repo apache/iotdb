@@ -42,7 +42,6 @@ import org.apache.iotdb.common.rpc.thrift.TShowAppliedConfigurationsResp;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
@@ -63,8 +62,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.consensus.index.ProgressIndex;
-import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.enums.DataPartitionTableGeneratorState;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -189,16 +186,19 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Rollb
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableAttributeColumnDropNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQueryWriteVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
-import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.req.SchemaRegionReadPlanFactory;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.TreeToTableViewCache;
+import org.apache.iotdb.db.schemaengine.table.ViewColumnAutoSyncTrigger;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
@@ -215,6 +215,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.settle.SettleRequestHandler;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DropTableModProgress;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -271,6 +272,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TExecuteCQ;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceInfoReq;
@@ -285,6 +287,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableResp;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataPartitionTableGeneratorProgressResp;
+import org.apache.iotdb.mpp.rpc.thrift.TGetDropTableModProgressReq;
+import org.apache.iotdb.mpp.rpc.thrift.TGetDropTableModProgressResp;
 import org.apache.iotdb.mpp.rpc.thrift.TGetEarliestTimeslotsResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
@@ -406,6 +410,7 @@ import java.util.stream.Stream;
 import static org.apache.iotdb.commons.client.request.TestConnectionUtils.testConnectionsImpl;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement.AlterType.SET_DATA_TYPE;
+import static org.apache.iotdb.db.schemaengine.table.ViewColumnAutoSyncTrigger.EXTEND_DEVICE_TEMPLATE_ID_PREFIX;
 import static org.apache.iotdb.db.service.RegionMigrateService.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
@@ -684,30 +689,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return createTLoadResp(resultStatus);
   }
 
+  /**
+   * The LOAD command protocol (EXECUTE / ROLLBACK of a task identified by its uuid) was replaced by
+   * the consensus protocol, which drives a task through BEGIN / PIECE / PREPARE / COMMIT / ABORT.
+   * The entry point is kept because it is part of the internal service interface, and a node of an
+   * older version may still send a command.
+   */
   @Override
   public TLoadResp sendLoadCommand(TLoadCommandReq req) {
-    final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap = new HashMap<>();
-    if (req.isSetTimePartition2ProgressIndex()) {
-      for (Map.Entry<TTimePartitionSlot, ByteBuffer> entry :
-          req.getTimePartition2ProgressIndex().entrySet()) {
-        timePartitionProgressIndexMap.put(
-            entry.getKey(), ProgressIndexType.deserializeFrom(entry.getValue()));
-      }
-    } else {
-      final TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-      status.setMessage(
-          DataNodeMiscMessages.LOAD_COMMAND_REQUIRES_TIME_PARTITION_TO_PROGRESS_INDEX_MAP);
-      return createTLoadResp(status);
-    }
-
-    return createTLoadResp(
-        StorageEngine.getInstance()
-            .executeLoadCommand(
-                LoadTsFileScheduler.LoadCommand.values()[req.commandType],
-                req.uuid,
-                req.isSetIsGeneratedByPipe() && req.isGeneratedByPipe,
-                timePartitionProgressIndexMap));
+    final TSStatus status = new TSStatus();
+    status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+    status.setMessage(
+        DataNodeMiscMessages
+            .MESSAGE_THE_LOAD_COMMAND_PROTOCOL_WAS_REMOVED_LOAD_TRAVELS_THROUGH_CONSENSUS_NOW_0165EE16);
+    return createTLoadResp(status);
   }
 
   @Override
@@ -1969,14 +1964,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             .rollbackUpdateTable(
                 ReadWriteIOUtils.readString(req.tableInfo),
                 ReadWriteIOUtils.readString(req.tableInfo),
-                req.oldName);
+                req.oldName,
+                req.updateTree2TableViewInfo);
         break;
       case COMMIT_UPDATE_TABLE:
         DataNodeTableCache.getInstance()
             .commitUpdateTable(
                 ReadWriteIOUtils.readString(req.tableInfo),
                 ReadWriteIOUtils.readString(req.tableInfo),
-                req.oldName);
+                req.oldName,
+                req.updateTree2TableViewInfo);
         break;
       default:
         LOGGER.warn(DataNodeMiscMessages.UNSUPPORTED_TYPE_UPDATING_TABLE, req.type);
@@ -2009,13 +2006,35 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 .execute(
                     new DataRegionId(consensusGroupId.getId()),
                     new RelationalDeleteDataNode(
-                        new PlanNodeId(""),
+                        req.isSetProcedureId()
+                            ? DropTableModProgress.planNodeId(req.getProcedureId())
+                            : new PlanNodeId(""),
                         new TableDeletionEntry(
                             new DeletionPredicate(req.getTableName()),
                             new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
                         // the request is only sent to associated region
                         null))
                 .getStatus());
+  }
+
+  @Override
+  public TGetDropTableModProgressResp getDropTableModProgress(
+      final TGetDropTableModProgressReq req) {
+    final Map<Integer, TDropTableModProgress> progress = new HashMap<>();
+    for (final TConsensusGroupId regionId : req.getRegionIdList()) {
+      final DataRegion region =
+          StorageEngine.getInstance().getDataRegion(new DataRegionId(regionId.getId()));
+      if (region != null) {
+        final TDropTableModProgress regionProgress =
+            region.getDropTableModProgress(req.getProcedureId());
+        // Regions in the same deletion request execute sequentially. Report zero written and
+        // an unknown total until this region starts, so other regions' live counts are visible.
+        progress.put(
+            regionId.getId(),
+            regionProgress == null ? new TDropTableModProgress(0) : regionProgress);
+      }
+    }
+    return new TGetDropTableModProgressResp(StatusUtils.OK).setRegionProgress(progress);
   }
 
   @Override
@@ -2137,13 +2156,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               for (int i = 0; i < req.getPrefixPattern().size() - 1; ++i) {
                 nodes[i] = req.getPrefixPattern().get(i);
               }
+              final ExtendedPartialPath pathPattern =
+                  new ExtendedPartialPath(nodes, req.isRestrict());
               final ISchemaSource<ITimeSeriesSchemaInfo> schemaSource =
                   SchemaSourceFactory.getTimeSeriesSchemaCountSource(
-                      new ExtendedPartialPath(nodes, req.isRestrict()),
+                      pathPattern,
                       false,
                       // Does not support logical view currently
                       SchemaFilterFactory.createViewTypeFilter(ViewType.BASE),
-                      null,
+                      ClusterTemplateManager.getInstance().checkAllRelatedTemplate(pathPattern),
                       SchemaConstant.ALL_MATCH_SCOPE,
                       true,
                       true);
@@ -2161,11 +2182,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   }
                   if (!updateMap.containsKey(measurementName)) {
                     updateMap.put(measurementName, schema.getTypeInByte());
-                  } else if (schema.getTypeInByte() != updateMap.get(measurementName)) {
+                  } else if (schema.getTypeInByte() != updateMap.get(measurementName)
+                      && !req.isTolerateTypeMismatch()) {
                     return RpcUtils.getStatus(
                         TSStatusCode.DATA_TYPE_MISMATCH,
                         String.format(
-                            "Multiple types encountered when auto detecting type of measurement '%s', please check",
+                            DataNodeMiscMessages
+                                .MESSAGE_MULTIPLE_TYPES_ENCOUNTERED_WHEN_AUTO_DETECTING_TYPE_OF_MEASUREMENT_ARG_PLEASE_CHECK_6EDF48DB,
                             measurementName));
                   }
                 }
@@ -2890,12 +2913,91 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           SchemaEngine.getInstance()
               .updateSubtreeMeasurementCountForTemplate(newTemplate.getId(), delta);
         }
+        if (TreeToTableViewCache.getInstance().hasView()) {
+          // ViewColumnAutoSync.sync, which collects the views from the index and asks CN to add the
+          // columns.
+          try {
+            final Map<PartialPath, List<Pair<String, TSDataType>>> device2Measurements =
+                collectDevicesUsingExtendedTemplate(oldTemplate, newTemplate);
+            ViewColumnAutoSyncTrigger.sync(
+                device2Measurements, EXTEND_DEVICE_TEMPLATE_ID_PREFIX + newTemplate.getId());
+          } catch (final Exception e) {
+            ViewColumnAutoSyncTrigger.LOGGER.warn(
+                DataNodeMiscMessages
+                    .LOG_FAILED_TO_COLLECT_THE_DEVICES_USING_THE_EXTENDED_TEMPLATE_ARG_AB32D554,
+                newTemplate.getName(),
+                e);
+          }
+        }
+
         break;
       default:
         LOGGER.warn(DataNodeMiscMessages.UNSUPPORTED_TYPE_UPDATING_TEMPLATE, req.type);
         return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER);
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  /**
+   * The devices which activated the template, each with the measurements the extension added to it:
+   * the tree-to-table views covering these devices need them as columns.
+   *
+   * <p>The measurements come from comparing the new template with the old one. The devices come
+   * from the schema regions, where every device which uses a template records its id, see {@code
+   * EntityTraverser}; the template manager only knows where a template is mounted, so it cannot
+   * tell which devices use it.
+   */
+  private Map<PartialPath, List<Pair<String, TSDataType>>> collectDevicesUsingExtendedTemplate(
+      final Template oldTemplate, final Template newTemplate) throws Exception {
+    final List<Pair<String, TSDataType>> extendedMeasurements =
+        newTemplate.getSchemaMap().values().stream()
+            .filter(
+                schema ->
+                    Objects.isNull(oldTemplate)
+                        || !oldTemplate.getSchemaMap().containsKey(schema.getMeasurementName()))
+            .map(schema -> new Pair<>(schema.getMeasurementName(), schema.getType()))
+            .toList();
+    final Pair<Template, List<PartialPath>> templateSetInfo =
+        ClusterTemplateManager.getInstance().getAllPathsSetTemplate(newTemplate.getName());
+    final List<PartialPath> setPaths =
+        Objects.isNull(templateSetInfo) ? null : templateSetInfo.getRight();
+    if (extendedMeasurements.isEmpty() || Objects.isNull(setPaths)) {
+      return Collections.emptyMap();
+    }
+
+    final Map<PartialPath, List<Pair<String, TSDataType>>> device2Measurements = new HashMap<>();
+    Collection<ISchemaRegion> allSchemaRegions = SchemaEngine.getInstance().getAllSchemaRegions();
+    for (final PartialPath setPath : setPaths) {
+      // A device which is exactly the mount path has the template too, but "setPath.**" only
+      // matches its descendants, so the mount path itself is read with a pattern of its own.
+      final List<PartialPath> devicePatterns =
+          Arrays.asList(setPath, setPath.concatNode(MULTI_LEVEL_PATH_WILDCARD));
+      for (final ISchemaRegion schemaRegion : allSchemaRegions) {
+        if (!setPath.startsWithOrPrefixOf(
+            PathUtils.splitPathToDetachedNodes(schemaRegion.getDatabaseFullPath()))) {
+          continue;
+        }
+        for (final PartialPath devicePattern : devicePatterns) {
+          try (final ISchemaReader<IDeviceSchemaInfo> deviceReader =
+              schemaRegion.getDeviceReader(
+                  SchemaRegionReadPlanFactory.getShowDevicesPlan(
+                      devicePattern,
+                      0,
+                      0,
+                      false,
+                      newTemplate.getId(),
+                      SchemaConstant.ALL_MATCH_SCOPE))) {
+            while (deviceReader.hasNext()) {
+              device2Measurements
+                  .computeIfAbsent(
+                      deviceReader.next().getPartialPath(), device -> new ArrayList<>())
+                  .addAll(extendedMeasurements);
+            }
+          }
+        }
+      }
+    }
+    return device2Measurements;
   }
 
   @Override

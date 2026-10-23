@@ -72,6 +72,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
@@ -151,6 +153,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDropTableProceduresResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -918,11 +921,15 @@ public interface IManager {
 
   TSStatus alterOrDropTable(final TAlterOrDropTableReq req);
 
+  TAutoSyncViewColumnsResp autoSyncViewColumns(TAutoSyncViewColumnsReq req);
+
   TDeleteTableDeviceResp deleteDevice(final TDeleteTableDeviceReq req);
 
   TShowTableResp showTables(final String database, final boolean isDetails);
 
   TShowTable4InformationSchemaResp showTables4InformationSchema();
+
+  TShowDropTableProceduresResp showDropTableProcedures();
 
   TDescTableResp describeTable(
       final String database, final String tableName, final boolean isDetails);

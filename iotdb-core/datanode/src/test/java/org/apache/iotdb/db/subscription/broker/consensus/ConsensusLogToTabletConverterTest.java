@@ -39,6 +39,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
+import org.apache.iotdb.db.subscription.tagfilter.TagFilterMatcher;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -57,10 +60,36 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 public class ConsensusLogToTabletConverterTest {
 
   private static final String DATABASE_NAME = "db";
+
+  @Test
+  public void testReplayRequiresCompleteAndDecodableWalFragments() {
+    final List<IConsensusRequest> fragments = new ArrayList<>();
+    final RelationalInsertRowNode node = StatementTestUtils.genInsertRowNode(1);
+    node.setSearchIndex(1);
+    final WALInfoEntry entry = new WALInfoEntry(1L, node);
+    final ByteBuffer buffer = ByteBuffer.allocate(entry.serializedSize());
+    entry.serialize(new WALByteBufferForTest(buffer));
+    buffer.flip();
+    fragments.add(new IoTConsensusRequest(buffer));
+    final IndexedConsensusRequest request = new IndexedConsensusRequest(1, fragments);
+    Assert.assertNull(ConsensusLogToTabletConverter.deserializeCompleteInsertNode(request));
+
+    node.setLastFragment(true);
+    final WALInfoEntry completeEntry = new WALInfoEntry(1L, node);
+    final ByteBuffer complete = ByteBuffer.allocate(completeEntry.serializedSize());
+    completeEntry.serialize(new WALByteBufferForTest(complete));
+    complete.flip();
+    request.getRequests().set(0, new IoTConsensusRequest(complete));
+    Assert.assertNotNull(ConsensusLogToTabletConverter.deserializeCompleteInsertNode(request));
+
+    request.getRequests().add(0, new IoTConsensusRequest(ByteBuffer.allocate(1)));
+    Assert.assertNull(ConsensusLogToTabletConverter.deserializeCompleteInsertNode(request));
+  }
 
   @Test
   public void testRepeatedWalDeserializationPreservesAllFragments() {
@@ -199,6 +228,66 @@ public class ConsensusLogToTabletConverterTest {
   }
 
   @Test
+  public void testConvertRelationalInsertTabletNodeIgnoresDateCapacityBeyondRowCount() {
+    final ConsensusLogToTabletConverter converter = createConverter("value");
+    final LocalDate date = LocalDate.of(2026, 2, 1);
+    final RelationalInsertTabletNode node =
+        new RelationalInsertTabletNode(
+            new PlanNodeId("date-capacity"),
+            new PartialPath(new String[] {StatementTestUtils.tableName()}),
+            true,
+            new String[] {"device_id", "value"},
+            new TSDataType[] {TSDataType.STRING, TSDataType.DATE},
+            new long[] {1L, 2L, 3L, 4L},
+            null,
+            new Object[] {
+              new Binary[] {
+                new Binary("device_0".getBytes(StandardCharsets.UTF_8)), null, null, null
+              },
+              new int[] {DateUtils.parseDateExpressionToInt(date), 0, 0, 0}
+            },
+            1,
+            new TsTableColumnCategory[] {TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD});
+
+    final List<Tablet> tablets = converter.convert(node);
+
+    Assert.assertEquals(1, tablets.size());
+    final LocalDate[] convertedDates = (LocalDate[]) tablets.get(0).getValues()[1];
+    Assert.assertEquals(date, convertedDates[0]);
+    Assert.assertNull(convertedDates[1]);
+    Assert.assertNull(convertedDates[2]);
+    Assert.assertNull(convertedDates[3]);
+  }
+
+  @Test
+  public void testConvertTreeInsertTabletNodeIgnoresDateCapacityBeyondRowCount()
+      throws IllegalPathException {
+    final ConsensusLogToTabletConverter converter = createTreeConverter();
+    final LocalDate date = LocalDate.of(2026, 2, 1);
+    final InsertTabletNode node =
+        new InsertTabletNode(
+            new PlanNodeId("tree-date-capacity"),
+            new PartialPath("root.sg.d1"),
+            false,
+            new String[] {"value"},
+            new TSDataType[] {TSDataType.DATE},
+            new MeasurementSchema[] {new MeasurementSchema("value", TSDataType.DATE)},
+            new long[] {1L, 2L, 3L, 4L},
+            null,
+            new Object[] {new int[] {DateUtils.parseDateExpressionToInt(date), 0, 0, 0}},
+            1);
+
+    final List<Tablet> tablets = converter.convert(node);
+
+    Assert.assertEquals(1, tablets.size());
+    final LocalDate[] convertedDates = (LocalDate[]) tablets.get(0).getValues()[0];
+    Assert.assertEquals(date, convertedDates[0]);
+    Assert.assertNull(convertedDates[1]);
+    Assert.assertNull(convertedDates[2]);
+    Assert.assertNull(convertedDates[3]);
+  }
+
+  @Test
   public void testConvertRelationalInsertTabletNodeKeepsNullMatchedFieldColumn() {
     final ConsensusLogToTabletConverter converter = createConverter("m1");
 
@@ -308,6 +397,69 @@ public class ConsensusLogToTabletConverterTest {
   }
 
   @Test
+  public void testConvertRelationalInsertTabletFiltersRowsBeforeColumns() throws Exception {
+    final ConsensusLogToTabletConverter converter =
+        createConverterWithTagFilter("id1 IN (\"id:10\", \"id:12\")", "m1");
+
+    final List<Tablet> tablets = converter.convert(StatementTestUtils.genInsertTabletNode(3, 10));
+
+    Assert.assertEquals(1, tablets.size());
+    final Tablet tablet = tablets.get(0);
+    Assert.assertEquals(2, tablet.getRowSize());
+    Assert.assertArrayEquals(new long[] {10L, 12L}, tablet.getTimestamps());
+    Assert.assertEquals("id:10", toUtf8(((Binary[]) tablet.getValues()[0])[0]));
+    Assert.assertEquals("id:12", toUtf8(((Binary[]) tablet.getValues()[0])[1]));
+    Assert.assertArrayEquals(new double[] {10.0, 12.0}, (double[]) tablet.getValues()[1], 0.0);
+  }
+
+  @Test
+  public void testConvertRelationalInsertRowReturnsEmptyWhenTagDoesNotMatch() throws Exception {
+    final ConsensusLogToTabletConverter converter =
+        createConverterWithTagFilter("id1 = \"missing\"", "m1");
+
+    Assert.assertTrue(converter.convert(StatementTestUtils.genInsertRowNode(7)).isEmpty());
+  }
+
+  @Test
+  public void testReplaySnapshotPreservesTagFilter() throws Exception {
+    final ConsensusLogToTabletConverter converter =
+        createConverterWithTagFilter("id1 IN (\"id:10\", \"id:12\")", "m1");
+    final ConsensusLogToTabletConverter snapshot = converter.snapshotForReplay();
+
+    final List<Tablet> tablets = snapshot.convert(StatementTestUtils.genInsertTabletNode(3, 10));
+
+    Assert.assertEquals(1, tablets.size());
+    Assert.assertEquals(2, tablets.get(0).getRowSize());
+    Assert.assertArrayEquals(new long[] {10L, 12L}, tablets.get(0).getTimestamps());
+    Assert.assertTrue(converter.hasSameReplayProjection(snapshot));
+  }
+
+  @Test
+  public void testReplayProjectionChangesWhenTagFilterChanges() throws Exception {
+    final TablePattern tablePattern =
+        new TablePattern(true, DATABASE_NAME, StatementTestUtils.tableName());
+    final ColumnFilterMatcher columnFilterMatcher =
+        ColumnFilterMatcher.ofSelectedColumnNames(new HashSet<>(Arrays.asList("m1")));
+    final ConsensusLogToTabletConverter original =
+        new ConsensusLogToTabletConverter(
+            null, tablePattern, columnFilterMatcher, TagFilterMatcher.matchAll(), DATABASE_NAME);
+    final TagFilterMatcher tagFilterMatcher =
+        TagFilterMatcher.fromTopicConfig(
+            new TopicConfig(
+                Map.of(
+                    "__system.sql-dialect",
+                    "table",
+                    TopicConstant.TAG_FILTER_KEY,
+                    "id1 = \"id:10\"")));
+    final ConsensusLogToTabletConverter updated =
+        new ConsensusLogToTabletConverter(
+            null, tablePattern, columnFilterMatcher, tagFilterMatcher, DATABASE_NAME);
+
+    Assert.assertFalse(
+        original.snapshotForReplay().hasSameReplayProjection(updated.snapshotForReplay()));
+  }
+
+  @Test
   public void testConvertInsertRowsOfOneDeviceNodeGroupsRowsWithSameSchema()
       throws IllegalPathException {
     final ConsensusLogToTabletConverter converter = createTreeConverter();
@@ -389,6 +541,19 @@ public class ConsensusLogToTabletConverterTest {
         null,
         new TablePattern(true, DATABASE_NAME, StatementTestUtils.tableName()),
         ColumnFilterMatcher.ofSelectedColumnNames(new HashSet<>(Arrays.asList(selectedColumns))),
+        DATABASE_NAME);
+  }
+
+  private static ConsensusLogToTabletConverter createConverterWithTagFilter(
+      final String tagFilter, final String... selectedColumns) throws Exception {
+    final TopicConfig topicConfig =
+        new TopicConfig(
+            Map.of("__system.sql-dialect", "table", TopicConstant.TAG_FILTER_KEY, tagFilter));
+    return new ConsensusLogToTabletConverter(
+        null,
+        new TablePattern(true, DATABASE_NAME, StatementTestUtils.tableName()),
+        ColumnFilterMatcher.ofSelectedColumnNames(new HashSet<>(Arrays.asList(selectedColumns))),
+        TagFilterMatcher.fromTopicConfig(topicConfig),
         DATABASE_NAME);
   }
 

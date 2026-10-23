@@ -52,6 +52,7 @@ public class ConsumerGroupMeta {
   private long creationTime;
   private Map<String, Set<String>> topicNameToSubscribedConsumerIdSet;
   private Map<String, ConsumerMeta> consumerIdToConsumerMeta;
+  private boolean tableModel;
   private Map<String, Long> topicNameToSubscriptionCreationTime; // used when creationTime < 0
 
   public ConsumerGroupMeta() {
@@ -68,6 +69,7 @@ public class ConsumerGroupMeta {
     this.creationTime = -creationTime;
 
     consumerIdToConsumerMeta.put(firstConsumerMeta.getConsumerId(), firstConsumerMeta);
+    tableModel = isTableConsumer(firstConsumerMeta);
   }
 
   public ConsumerGroupMeta deepCopy() {
@@ -80,6 +82,7 @@ public class ConsumerGroupMeta {
             copied.topicNameToSubscribedConsumerIdSet.put(
                 topicName, new HashSet<>(subscribedConsumerIds)));
     copied.consumerIdToConsumerMeta = new ConcurrentHashMap<>(consumerIdToConsumerMeta);
+    copied.tableModel = tableModel;
     copied.topicNameToSubscriptionCreationTime =
         new ConcurrentHashMap<>(topicNameToSubscriptionCreationTime);
     return copied;
@@ -145,11 +148,10 @@ public class ConsumerGroupMeta {
 
   public void checkAuthorityBeforeJoinConsumerGroup(final ConsumerMeta consumerMeta)
       throws SubscriptionException {
-    if (isEmpty()) {
-      return;
-    }
-    final ConsumerMeta existedConsumerMeta = consumerIdToConsumerMeta.values().iterator().next();
-    final String expectedSqlDialect = existedConsumerMeta.getConfig().getSqlDialect();
+    final String expectedSqlDialect =
+        visibleUnder(true)
+            ? SystemConstant.SQL_DIALECT_TABLE_VALUE
+            : SystemConstant.SQL_DIALECT_TREE_VALUE;
     final String actualSqlDialect = consumerMeta.getConfig().getSqlDialect();
     final boolean isExpectedTableModel =
         SystemConstant.SQL_DIALECT_TABLE_VALUE.equalsIgnoreCase(expectedSqlDialect);
@@ -169,6 +171,7 @@ public class ConsumerGroupMeta {
   }
 
   public void addConsumer(final ConsumerMeta consumerMeta) {
+    tableModel = isTableConsumer(consumerMeta);
     consumerIdToConsumerMeta.put(consumerMeta.getConsumerId(), consumerMeta);
   }
 
@@ -200,12 +203,12 @@ public class ConsumerGroupMeta {
   }
 
   public boolean visibleUnder(final boolean isTableModel) {
-    if (consumerIdToConsumerMeta.isEmpty()) {
-      return false;
-    }
-    final String sqlDialect =
-        consumerIdToConsumerMeta.values().iterator().next().getConfig().getSqlDialect();
-    return isTableModel == SystemConstant.SQL_DIALECT_TABLE_VALUE.equalsIgnoreCase(sqlDialect);
+    return isTableModel == tableModel;
+  }
+
+  private static boolean isTableConsumer(final ConsumerMeta consumerMeta) {
+    return SystemConstant.SQL_DIALECT_TABLE_VALUE.equalsIgnoreCase(
+        consumerMeta.getConfig().getSqlDialect());
   }
 
   ////////////////////////// subscription //////////////////////////
@@ -345,7 +348,11 @@ public class ConsumerGroupMeta {
       }
     }
 
-    ReadWriteIOUtils.write(consumerIdToConsumerMeta.size(), outputStream);
+    // A negative empty-consumer count preserves the dialect of a retained table group. Older
+    // readers also treat this count as an empty map, without changing the following fields.
+    ReadWriteIOUtils.write(
+        consumerIdToConsumerMeta.isEmpty() && tableModel ? -1 : consumerIdToConsumerMeta.size(),
+        outputStream);
     for (final Map.Entry<String, ConsumerMeta> entry : consumerIdToConsumerMeta.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       entry.getValue().serialize(outputStream);
@@ -382,10 +389,12 @@ public class ConsumerGroupMeta {
 
     consumerGroupMeta.consumerIdToConsumerMeta = new ConcurrentHashMap<>();
     size = ReadWriteIOUtils.readInt(inputStream);
+    consumerGroupMeta.tableModel = size < 0;
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(inputStream);
       final ConsumerMeta value = ConsumerMeta.deserialize(inputStream);
       consumerGroupMeta.consumerIdToConsumerMeta.put(key, value);
+      consumerGroupMeta.tableModel = isTableConsumer(value);
     }
 
     consumerGroupMeta.topicNameToSubscriptionCreationTime = new ConcurrentHashMap<>();
@@ -423,10 +432,12 @@ public class ConsumerGroupMeta {
 
     consumerGroupMeta.consumerIdToConsumerMeta = new ConcurrentHashMap<>();
     size = ReadWriteIOUtils.readInt(byteBuffer);
+    consumerGroupMeta.tableModel = size < 0;
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(byteBuffer);
       final ConsumerMeta value = ConsumerMeta.deserialize(byteBuffer);
       consumerGroupMeta.consumerIdToConsumerMeta.put(key, value);
+      consumerGroupMeta.tableModel = isTableConsumer(value);
     }
 
     consumerGroupMeta.topicNameToSubscriptionCreationTime = new ConcurrentHashMap<>();
@@ -455,6 +466,7 @@ public class ConsumerGroupMeta {
     final ConsumerGroupMeta that = (ConsumerGroupMeta) obj;
     return Objects.equals(this.consumerGroupId, that.consumerGroupId)
         && this.creationTime == that.creationTime
+        && this.tableModel == that.tableModel
         && Objects.equals(
             this.topicNameToSubscribedConsumerIdSet, that.topicNameToSubscribedConsumerIdSet)
         && Objects.equals(this.consumerIdToConsumerMeta, that.consumerIdToConsumerMeta)
@@ -467,6 +479,7 @@ public class ConsumerGroupMeta {
     return Objects.hash(
         consumerGroupId,
         creationTime,
+        tableModel,
         topicNameToSubscribedConsumerIdSet,
         consumerIdToConsumerMeta,
         topicNameToSubscriptionCreationTime);

@@ -40,9 +40,11 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
+import org.apache.iotdb.db.queryengine.execution.memory.MemorySide;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent;
 
+import org.apache.tsfile.read.common.block.TsBlock;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -180,6 +182,13 @@ public class MPPDataExchangeManagerTest {
     Assert.assertEquals(
         ((LocalSinkChannel) shuffleSinkHandle.getChannel(0)).getSharedTsBlockQueue(),
         ((LocalSourceHandle) localSourceHandle).getSharedTsBlockQueue());
+    assertProducerOwnsQueue(
+        spyMemoryPool,
+        shuffleSinkHandle,
+        localSourceHandle,
+        localFragmentInstanceId,
+        remoteFragmentInstanceId,
+        localPlanNodeId);
   }
 
   @Test
@@ -237,5 +246,49 @@ public class MPPDataExchangeManagerTest {
     Assert.assertEquals(
         ((LocalSinkChannel) shuffleSinkHandle.getChannel(0)).getSharedTsBlockQueue(),
         ((LocalSourceHandle) localSourceHandle).getSharedTsBlockQueue());
+    assertProducerOwnsQueue(
+        spyMemoryPool,
+        shuffleSinkHandle,
+        localSourceHandle,
+        localFragmentInstanceId,
+        remoteFragmentInstanceId,
+        localPlanNodeId);
+  }
+
+  private static void assertProducerOwnsQueue(
+      MemoryPool pool,
+      ISinkHandle sink,
+      ISourceHandle source,
+      TFragmentInstanceId producer,
+      TFragmentInstanceId consumer,
+      String planNodeId) {
+    SharedTsBlockQueue queue = ((LocalSourceHandle) source).getSharedTsBlockQueue();
+    sink.setMaxBytesCanReserve(512);
+    source.setMaxBytesCanReserve(128);
+    Assert.assertEquals(512, queue.getMaxBytesCanReserve());
+    String producerId =
+        FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(producer);
+    String consumerId =
+        FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(consumer);
+    TsBlock block = Utils.createMockTsBlock(256);
+    synchronized (queue) {
+      Assert.assertTrue(queue.add(block).isDone());
+      Assert.assertEquals(256, pool.getReservedBytes());
+      Assert.assertEquals(
+          256, pool.getPlanNodeMemoryReservedBytes(producer.queryId, producerId, planNodeId));
+      Assert.assertEquals(
+          256,
+          pool.getFragmentMemoryReservedBytes(producer.queryId, producerId, MemorySide.OUTPUT));
+      Assert.assertEquals(
+          0, pool.getFragmentMemoryReservedBytes(producer.queryId, producerId, MemorySide.INPUT));
+      Assert.assertEquals(
+          0, pool.getFragmentMemoryReservedBytes(consumer.queryId, consumerId, MemorySide.INPUT));
+      Assert.assertEquals(
+          0, pool.getFragmentMemoryReservedBytes(consumer.queryId, consumerId, MemorySide.OUTPUT));
+      Assert.assertSame(block, queue.remove());
+      Assert.assertEquals(0, pool.getReservedBytes());
+      Assert.assertEquals(
+          0, pool.getFragmentMemoryReservedBytes(producer.queryId, producerId, MemorySide.OUTPUT));
+    }
   }
 }

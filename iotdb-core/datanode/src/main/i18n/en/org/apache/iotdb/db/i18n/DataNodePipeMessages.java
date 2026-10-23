@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodePipeMessages {
+  public static final String LOG_SUBSCRIPTION_REPLAY_STALLED_FOR_ARG_MS_ARG_DIAGNOSTICS_ARG_INSPECT_PREFETCH_WORKER_STACKS_AND_WAL_I_O_CB012F98 =
+      "Subscription replay stalled for {} ms: {}; diagnostics={}. Inspect prefetch worker stacks and WAL I/O.";
 
   public static final String
       LOG_SUBSCRIPTION_PREFETCH_ROUND_STARTING_FOR_ARG_ACTIVE_ARG_INITIALIZED_ARG_CLOSED_ARG_PENDINGENTRIES_ARG_PREFETCHEDEVENTS_ARG_INFLIGHTEVENTS_ARG_NEXTREADSEARCHINDEX_ARG_F75FF2CD =
@@ -65,6 +67,9 @@ public final class DataNodePipeMessages {
       "Failed to resolve transfer exception.";
 
   // ===================== CONSENSUS =====================
+
+  public static final String EXCEPTION_DELETION_RESOURCE_EXCEEDS_THE_DAL_BUFFER_SIZE_E2A17CAC =
+      "Deletion resource exceeds the DAL buffer size";
 
   public static final String CLOSING_DELETION_RESOURCE_MANAGER_FOR =
       "Closing deletion resource manager for {}...";
@@ -2269,6 +2274,12 @@ public final class DataNodePipeMessages {
           "Subscription WAL replay skipped %d unreadable retained WAL file(s) in queue %s, region %s. Historical data may be lost. Details (recent files; full details in server log): %s";
   public static final String MESSAGE_UNKNOWN_AD921D60 = "unknown";
   public static final String
+      MESSAGE_WAL_METADATA_SNAPSHOT_FOR_FILE_ARG_VERSIONID_ARG_IS_UNAVAILABLE_AFTER_ROTATION_REPLAY_WILL_RETRY_WITHOUT_SKIPPING_D99C12A0 =
+          "WAL metadata snapshot for file %s (versionId=%d) is unavailable after rotation; replay will retry without skipping";
+  public static final String
+      EXCEPTION_WAL_FILE_ARG_VERSIONID_ARG_IS_MISSING_FROM_TWO_SUCCESSIVE_DIRECTORY_SCANS_AFTER_A_NEWER_WAL_FILE_BECAME_VISIBLE_1E170B4B =
+          "WAL file %s (versionId=%d) is missing from two successive directory scans after a newer WAL file became visible";
+  public static final String
       MESSAGE_WAL_FILE_ARG_VERSIONID_ARG_ENTRYOFFSET_ARG_IS_TEMPORARILY_UNREADABLE_REPLAY_WILL_RETRY_WITHOUT_SKIPPING_ARG_EA11FBDD =
           "WAL file %s (versionId=%d, entryOffset=%d) is temporarily unreadable; replay will retry without skipping: %s";
   public static final String
@@ -2395,6 +2406,10 @@ public final class DataNodePipeMessages {
   public static final String PIPE_EXCEPTION_FORCERESIZE_FAILED_TO_ALLOCATE_MEMORY_AFTER_D_RETRIES_TOTAL_8C6948BC =
       "forceResize: failed to allocate memory after %d retries, total memory size %d bytes, used "
           + "memory size %d bytes, requested memory size %d bytes";
+  public static final String EXCEPTION_FORCERESIZE_FAILED_AFTER_ARG_RETRIES_TOTAL_ARG_BYTES_USED_ARG_BYTES_USEDTABLETS_ARG_BYTES_USEDTSFILES_ARG_BYTES_TABLETLIMIT_ARG_BYTES_TSFILELIMIT_ARG_BYTES_TABLETANDTSFILELIMIT_ARG_BYTES_PROTECTEDPARSERLIMIT_ARG_BYTES_REQUESTED_ARG_BYTES_311C8C7E =
+      "forceResize failed after %d retries: total=%d bytes, used=%d bytes, "
+          + "usedTablets=%d bytes, usedTsFiles=%d bytes, tabletLimit=%d bytes, tsFileLimit=%d bytes, "
+          + "tabletAndTsFileLimit=%d bytes, protectedParserLimit=%d bytes, requested=%d bytes";
   public static final String
       EXCEPTION_UNSUPPORTED_BATCH_TYPE_ARG_WHEN_TRANSFERRING_TABLET_INSERTION_EVENT_66153E12 =
           "Unsupported batch type %s when transferring tablet insertion event.";
@@ -2692,6 +2707,8 @@ public final class DataNodePipeMessages {
       "Topic metadata for %s is unavailable during consensus subscription setup";
   public static final String EXCEPTION_TOPIC_CONFIG_FOR_ARG_IS_UNAVAILABLE_DURING_CONSENSUS_SUBSCRIPTION_SETUP_B94404EE =
       "Topic config for %s is unavailable during consensus subscription setup";
+  public static final String LOG_FAILED_TO_RESTORE_DETACHED_CONSENSUS_SUBSCRIPTION_WAL_RETENTION_FOR_CONSUMER_GROUP_ARG_TOPIC_ARG_REGION_ARG_296129FE =
+      "Failed to restore detached consensus subscription WAL retention for consumer group {}, topic {}, region {}";
   public static final String LOG_FAILED_TO_RELEASE_TSFILE_PARSER_MEMORY_FOR_PIPE_ARG_CREATION_TIME_ARG_IN_DATAREGION_ARG_BECAUSE_NO_RESERVATION_EXISTS_BB8321C0 =
       "Failed to release TsFile parser memory for Pipe {} (creation time {}) in DataRegion {} because no reservation exists.";
   public static final String LOG_PIPE_PROCESSOR_WORKER_ARG_HAS_BEEN_PROCESSING_THE_SAME_EVENT_FOR_ARG_MS_PIPE_ARG_DATAREGION_ARG_SUBTASK_ARG_EVENT_ARG_THREAD_STATE_ARG_STACK_ARG_63B40775 =
@@ -2704,4 +2721,89 @@ public final class DataNodePipeMessages {
       "Failed to read OPC UA server operation limits, use defaults: maxNodesPerWrite={}, maxNodesPerNodeManagement={}";
   public static final String MESSAGE_ARG_SUBSCRIPTION_ENTRY_REQUIRES_ARG_BYTES_ABOVE_THE_CURRENT_PER_QUEUE_MAXIMUM_ARG_BYTES_DATANODE_BUDGET_ARG_BYTES_REDUCE_THE_WRITE_BATCH_FIELD_SIZE_OR_INCREASE_SUBSCRIPTION_MATERIALIZATION_MEMORY_WAL_PROGRESS_HAS_NOT_ADVANCED_AFCBC7FC =
       "[%s] Subscription entry requires %d bytes, above the current per-queue maximum %d bytes (DataNode budget %d bytes). Reduce the write batch/field size or increase subscription materialization memory. WAL progress has not advanced.";
+  public static final String LOG_SUBSCRIPTION_FAILED_TO_REPLAY_DELIVERY_BATCH_ARG_FROM_WAL_RETAINING_UNCOMMITTED_STATE_0654EACD =
+      "Subscription failed to replay delivery batch {} from WAL; retaining uncommitted state";
+
+  // ===================== SUBSCRIPTION RECEIVER RESPONSES =====================
+
+  public static final String
+      MESSAGE_SUBSCRIPTION_MALFORMED_REQUEST_SLICE_RESEND_THE_COMPLETE_REQUEST_STARTING_FROM_SLICE_INDEX_0_D91FD262 =
+          "Subscription: malformed request slice. Resend the complete request starting from slice index 0.";
+  public static final String
+      MESSAGE_SUBSCRIPTION_INVALID_OR_OUT_OF_ORDER_REQUEST_SLICE_ORDERID_ARG_SLICEINDEX_ARG_SLICECOUNT_ARG_ORIGINBODYSIZE_ARG_BYTES_RESEND_THE_COMPLETE_REQUEST_STARTING_FROM_SLICE_INDEX_0_A08D6D8E =
+          "Subscription: invalid or out-of-order request slice (orderId %d, sliceIndex %d, sliceCount %d, originBodySize %d bytes). Resend the complete request starting from slice index 0.";
+  public static final String
+      MESSAGE_SUBSCRIPTION_REQUEST_BODY_SIZE_ARG_BYTES_EXCEEDS_THE_RECEIVER_LIMIT_OF_ARG_BYTES_SPLIT_THE_OPERATION_INTO_SMALLER_REQUESTS_C9513027 =
+          "Subscription: request body size %d bytes exceeds the receiver limit of %d bytes. Split the operation into smaller requests.";
+
+  public static final String MESSAGE_MISSING_CONSUMER_CONFIG_PLEASE_HANDSHAKE_FIRST_CE588329 =
+      "Missing consumer config, please handshake first.";
+  public static final String MESSAGE_UNKNOWN_PIPESUBSCRIBEREQUESTTYPE_ARG_7EBB93F8 =
+      "Unknown PipeSubscribeRequestType %s.";
+  public static final String
+      MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_HANDSHAKING_WITH_REQUEST_ARG_ARG_C1BC903B =
+          "Subscription: something unexpected happened when handshaking with request %s: %s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_HEARTBEAT_WITH_REQUEST_ARG_ARG_790B328F =
+          "Subscription: something unexpected happened when heartbeat with request %s: %s";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_FETCH_ENDPOINTS_FOR_CONSUMER_ARG_IN_CONFIG_NODE_EXCEPTION_IS_ARG_267904CB =
+          "Subscription: Failed to fetch endpoints for consumer %s in config node, exception is %s.";
+  public static final String
+      MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_SUBSCRIBING_WITH_REQUEST_ARG_ARG_084648A4 =
+          "Subscription: something unexpected happened when subscribing with request %s: %s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_UNSUBSCRIBING_WITH_REQUEST_ARG_ARG_1C15D8EC =
+          "Subscription: something unexpected happened when unsubscribing with request %s: %s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_POLLING_WITH_REQUEST_ARG_ARG_DE2CF98B =
+          "Subscription: something unexpected happened when polling with request %s: %s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_COMMITTING_WITH_REQUEST_ARG_ARG_9AA9866F =
+          "Subscription: something unexpected happened when committing with request %s: %s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_CLOSING_WITH_REQUEST_ARG_ARG_1E3215D2 =
+          "Subscription: something unexpected happened when closing with request %s: %s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_SEEKING_WITH_REQUEST_ARG_ARG_97D0AD1C =
+          "Subscription: something unexpected happened when seeking with request %s: %s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_UNSUPPORTED_SEEKTYPE_ARG_FOR_TOPIC_ARG_CONSENSUS_SUBSCRIPTION_ONLY_SUPPORTS_SEEKTOBEGINNING_SEEKTOEND_SEEK_TOPICPROGRESS_AND_SEEKAFTER_TOPICPROGRESS_5A3436C3 =
+          "Subscription: unsupported seekType %s for topic %s. Consensus subscription only supports seekToBeginning, seekToEnd, seek(topicProgress), and seekAfter(topicProgress).";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_CREATE_CONSUMER_ARG_IN_CONFIG_NODE_STATUS_IS_ARG_051923FB =
+          "Subscription: Failed to create consumer %s in config node, status is %s.";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_CREATE_CONSUMER_ARG_IN_CONFIG_NODE_EXCEPTION_IS_ARG_6152986E =
+          "Subscription: Failed to create consumer %s in config node, exception is %s.";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_CLOSE_CONSUMER_ARG_IN_CONFIG_NODE_STATUS_IS_ARG_F31E2A0F =
+          "Subscription: Failed to close consumer %s in config node, status is %s.";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_CLOSE_CONSUMER_ARG_IN_CONFIG_NODE_EXCEPTION_IS_ARG_11845DE5 =
+          "Subscription: Failed to close consumer %s in config node, exception is %s.";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_SUBSCRIBE_TOPICS_ARG_FOR_CONSUMER_ARG_IN_CONFIG_NODE_STATUS_IS_ARG_9F933EBA =
+          "Subscription: Failed to subscribe topics %s for consumer %s in config node, status is %s.";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_SUBSCRIBE_TOPICS_ARG_FOR_CONSUMER_ARG_IN_CONFIG_NODE_EXCEPTION_IS_ARG_0B6D1355 =
+          "Subscription: Failed to subscribe topics %s for consumer %s in config node, exception is %s.";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_UNSUBSCRIBE_TOPICS_ARG_FOR_CONSUMER_ARG_IN_CONFIG_NODE_STATUS_IS_ARG_74DF0145 =
+          "Subscription: Failed to unsubscribe topics %s for consumer %s in config node, status is %s.";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_UNSUBSCRIBE_TOPICS_ARG_FOR_CONSUMER_ARG_IN_CONFIG_NODE_EXCEPTION_IS_ARG_A92043B5 =
+          "Subscription: Failed to unsubscribe topics %s for consumer %s in config node, exception is %s.";
+
+  // ===================== LEGACY PIPE RECEIVER RESPONSES =====================
+
+  public static final String MESSAGE_PIPE_DATA_TRANSPORT_ERROR_ARG_ECE6A238 =
+      "Pipe data transport error, %s";
+  public static final String MESSAGE_FAIL_TO_LOAD_PIPEDATA_BECAUSE_ARG_49526D0C =
+      "Fail to load pipeData because %s";
+  public static final String MESSAGE_FAILED_TO_RESOLVE_LEGACY_PIPE_RECEIVER_FILE_ARG_ARG_9B82CF3F =
+      "Failed to resolve legacy pipe receiver file %s: %s";
+  public static final String
+      MESSAGE_FAILED_TO_APPEND_LEGACY_PIPE_RECEIVER_FILE_ARG_AT_OFFSET_ARG_WITH_ARG_BYTES_ARG_57428A06 =
+          "Failed to append legacy pipe receiver file %s at offset %d with %d bytes: %s";
 }

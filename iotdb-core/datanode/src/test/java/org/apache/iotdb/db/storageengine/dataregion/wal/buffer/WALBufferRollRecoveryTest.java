@@ -57,6 +57,7 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doCallRealMethod;
@@ -138,6 +139,28 @@ public class WALBufferRollRecoveryTest {
     assertEquals(Arrays.asList(1L), readTimes(firstWriter.getLogFile()));
     roll(Status.SUCCESS);
     assertEquals(Arrays.asList(2L), readTimes(successor));
+  }
+
+  @Test
+  public void testMetadataSnapshotIsBoundToWriterDuringVersionPublication() throws Exception {
+    writeAndAwait(entry(1, 1, "first"), Status.SUCCESS);
+    assertEquals(1, buffer.getWALMetaDataSnapshot(0L).getBuffersSize().size());
+    roll(Status.SUCCESS);
+    writeAndAwait(entry(2, 2, "second"), Status.SUCCESS);
+    assertNull(buffer.getWALMetaDataSnapshot(0L));
+    final WALMetaData successorMetadata = buffer.getWALMetaDataSnapshot(1L);
+    assertEquals(1, successorMetadata.getBuffersSize().size());
+
+    // Reproduce the interval in rollLogWriter between publishing the new writer and publishing
+    // its version. Checking the version field before and after snapshot capture is insufficient.
+    buffer.currentWALFileVersion = 0L;
+    try {
+      assertNull(buffer.getWALMetaDataSnapshot(0L));
+      assertEquals(
+          successorMetadata.getBuffersSize(), buffer.getWALMetaDataSnapshot(1L).getBuffersSize());
+    } finally {
+      buffer.currentWALFileVersion = 1L;
+    }
   }
 
   /** A retry containing only the roll signal should open exactly one successor. */

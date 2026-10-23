@@ -1174,9 +1174,13 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   private long loadCleanupTaskExecutionDelayTimeSeconds = 1800L; // 30 min
 
+  private long loadCleanupTaskIdleTimeoutSeconds = 900L; // 15 min, idle LOAD staging is reclaimed
+
   private int loadTsFileRetryCountOnRegionChange = 10;
 
   private double loadWriteThroughputBytesPerSecond = -1; // Bytes/s
+
+  private int loadTsFileWriteBufferSize = 1024 * 1024; // 1 MiB
 
   private long loadTabletConversionThresholdBytes = -1;
 
@@ -1702,6 +1706,11 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   public String[] getLoadTsFileDirs() {
     return this.loadTsFileDirs;
+  }
+
+  public void setLoadTsFileDirs(final String[] loadTsFileDirs) {
+    this.loadTsFileDirs = loadTsFileDirs;
+    this.loadTsFileDirCanonicalPaths = canonicalPaths(loadTsFileDirs);
   }
 
   public String[] getLoadTsFileAllowedDirs() {
@@ -4295,6 +4304,14 @@ public class IoTDBConfig implements DefaultEncodingProvider {
     this.loadCleanupTaskExecutionDelayTimeSeconds = loadCleanupTaskExecutionDelayTimeSeconds;
   }
 
+  public long getLoadCleanupTaskIdleTimeoutSeconds() {
+    return loadCleanupTaskIdleTimeoutSeconds;
+  }
+
+  public void setLoadCleanupTaskIdleTimeoutSeconds(final long loadCleanupTaskIdleTimeoutSeconds) {
+    this.loadCleanupTaskIdleTimeoutSeconds = loadCleanupTaskIdleTimeoutSeconds;
+  }
+
   public int getLoadTsFileRetryCountOnRegionChange() {
     return loadTsFileRetryCountOnRegionChange;
   }
@@ -4309,6 +4326,19 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   public void setLoadWriteThroughputBytesPerSecond(double loadWriteThroughputBytesPerSecond) {
     this.loadWriteThroughputBytesPerSecond = loadWriteThroughputBytesPerSecond;
+  }
+
+  public int getLoadTsFileWriteBufferSize() {
+    return loadTsFileWriteBufferSize;
+  }
+
+  public void setLoadTsFileWriteBufferSize(final int loadTsFileWriteBufferSize) {
+    if (loadTsFileWriteBufferSize <= 0) {
+      throw new IllegalArgumentException(
+          DataNodeMiscMessages
+              .MISC_EXCEPTION_LOAD_TSFILE_WRITE_BUFFER_SIZE_SHOULD_BE_GREATER_THAN_0_AB1BA936);
+    }
+    this.loadTsFileWriteBufferSize = loadTsFileWriteBufferSize;
   }
 
   public long getLoadTabletConversionThresholdBytes() {
@@ -4481,10 +4511,12 @@ public class IoTDBConfig implements DefaultEncodingProvider {
   }
 
   public void setLoadTsFileSpiltPartitionMaxSize(int loadTsFileSpiltPartitionMaxSize) {
+    // A cap of 0 would reject every LOAD whose source file spans at least one time partition,
+    // i.e. every LOAD, so the smallest usable value is 1.
     if (loadTsFileSpiltPartitionMaxSize <= 0) {
       throw new IllegalArgumentException(
           DataNodeMiscMessages
-              .MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_OR_95B4DB23);
+              .MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_0_17B75192);
     }
 
     if (this.loadTsFileSpiltPartitionMaxSize == loadTsFileSpiltPartitionMaxSize) {

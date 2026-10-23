@@ -120,6 +120,11 @@ public class FragmentInstanceContext extends QueryContext {
 
   private final MemoryReservationManager memoryReservationManager;
 
+  // Initialized after the complete local plan is generated, before drivers start. Both are zero
+  // when this FI uses independent per-plan-node exchange quotas.
+  private long inputMaxBytes;
+  private long outputMaxBytes;
+
   protected IDataRegionForQuery dataRegion;
   private Filter globalTimeFilter;
   private List<TimeRange> globalTimeFilterTimeRanges;
@@ -492,9 +497,7 @@ public class FragmentInstanceContext extends QueryContext {
         getQueryModificationLoader(
             tsFileResource,
             modification ->
-                deviceID.isTableModel()
-                    ? modification.affects(deviceID)
-                    : modification.affectsAll(deviceID),
+                isTableModel() ? modification.affects(deviceID) : modification.affectsAll(deviceID),
             mods -> getPathModifications(mods, deviceID))) {
       return modificationLoader.getPathModifications();
     }
@@ -551,6 +554,19 @@ public class FragmentInstanceContext extends QueryContext {
 
   public FragmentInstanceId getId() {
     return id;
+  }
+
+  public void initializeExchangeMemoryBudget(long inputMaxBytes, long outputMaxBytes) {
+    this.inputMaxBytes = inputMaxBytes;
+    this.outputMaxBytes = outputMaxBytes;
+  }
+
+  public long getInputMaxBytes() {
+    return inputMaxBytes;
+  }
+
+  public long getOutputMaxBytes() {
+    return outputMaxBytes;
   }
 
   public void failed(Throwable cause) {

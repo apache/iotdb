@@ -174,9 +174,16 @@ public abstract class AbstractSubscriptionProvider {
   private TPipeSubscribeResp pipeSubscribe(final TPipeSubscribeReq req)
       throws TException, IoTDBConnectionException {
     rpcLock.lock();
+    SubscriptionSessionConnection connection = null;
     try {
-      final SubscriptionSessionConnection connection = getSessionConnection();
+      connection = getSessionConnection();
       return pipeSubscribeWithOptionalSlicing(req, requestBodySizeLimit, connection::pipeSubscribe);
+    } catch (final TException | IoTDBConnectionException e) {
+      setUnavailable();
+      if (connection != null) {
+        connection.forceClose();
+      }
+      throw e;
     } finally {
       rpcLock.unlock();
     }

@@ -183,6 +183,15 @@ public class AnalyzerTest {
   }
 
   @Test
+  public void testLimitZeroRejected() {
+    TestUtils.assertAnalyzeSemanticException(
+        "SELECT * FROM table1 LIMIT 0", "LIMIT row count must be greater than 0 (actual value: 0)");
+    TestUtils.assertAnalyzeSemanticException(
+        "SELECT * FROM table1 ORDER BY time LIMIT 0",
+        "LIMIT row count must be greater than 0 (actual value: 0)");
+  }
+
+  @Test
   public void testMockQuery() throws OperatorNotFoundException {
     final String sql =
         "SELECT s1, (s1 + 1) as t from table1 where time > 100 and s2 > 10 offset 2 limit 3";
@@ -1140,7 +1149,7 @@ public class AnalyzerTest {
     tsTable.addColumnSchema(new AttributeColumnSchema("attr1", TSDataType.STRING));
     tsTable.addColumnSchema(new FieldColumnSchema("s1", TSDataType.INT64));
     DataNodeTableCache.getInstance().preUpdateTable(database, tsTable, null);
-    DataNodeTableCache.getInstance().commitUpdateTable(database, table, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database, table, null, null);
 
     try {
       final Update statement =
@@ -1202,7 +1211,7 @@ public class AnalyzerTest {
     tsTable.addColumnSchema(new AttributeColumnSchema("attr1", TSDataType.STRING));
     tsTable.addColumnSchema(new FieldColumnSchema("s1", TSDataType.INT64));
     DataNodeTableCache.getInstance().preUpdateTable(database, tsTable, null);
-    DataNodeTableCache.getInstance().commitUpdateTable(database, table, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database, table, null, null);
 
     try {
       assertUpdateSemanticException(
@@ -1267,7 +1276,7 @@ public class AnalyzerTest {
     tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
     tsTable.addColumnSchema(new AttributeColumnSchema("attr1", TSDataType.STRING));
     DataNodeTableCache.getInstance().preUpdateTable(database, tsTable, null);
-    DataNodeTableCache.getInstance().commitUpdateTable(database, table, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database, table, null, null);
 
     try {
       final ShowDevice statement = new ShowDevice(database, table);
@@ -1307,7 +1316,7 @@ public class AnalyzerTest {
     tsTable.addColumnSchema(new AttributeColumnSchema("attr1", TSDataType.STRING));
     tsTable.addColumnSchema(new AttributeColumnSchema("attr2", TSDataType.STRING));
     DataNodeTableCache.getInstance().preUpdateTable(database, tsTable, null);
-    DataNodeTableCache.getInstance().commitUpdateTable(database, table, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database, table, null, null);
 
     try {
       final SqlParser sqlParser = new SqlParser();
@@ -1361,7 +1370,7 @@ public class AnalyzerTest {
   private Metadata mockMetadataForInsertion() {
     final TsTable tsTable = StatementTestUtils.genTsTable();
     DataNodeTableCache.getInstance().preUpdateTable(database, tsTable, null);
-    DataNodeTableCache.getInstance().commitUpdateTable(database, table, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database, table, null, null);
     return new TestMetadata() {
       @Override
       public Optional<TableSchema> validateTableHeaderSchema4TsFile(

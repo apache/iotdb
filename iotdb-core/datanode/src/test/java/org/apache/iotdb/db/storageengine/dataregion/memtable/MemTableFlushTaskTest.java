@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
@@ -53,13 +54,23 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class MemTableFlushTaskTest {
 
@@ -86,6 +97,95 @@ public class MemTableFlushTaskTest {
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
   }
 
+  @Test(timeout = 20000)
+  public void testIoFailureReleasesTemporaryReservation() throws Exception {
+    MemTableTestUtils.produceVectorData(memTable);
+    SystemInfo system = SystemInfo.getInstance();
+    boolean old = system.isEncodingFasterThanIo();
+    long before = system.getFlushMemoryManager().getMemoryUsageInBytes();
+    RestorableTsFileIOWriter failing = mock(RestorableTsFileIOWriter.class);
+    when(failing.getFile()).thenReturn(new File(filePath));
+    IOException error = new IOException("injected IO failure");
+    doThrow(error).when(failing).startChunkGroup(any(IDeviceID.class));
+    try {
+      system.setEncodingFasterThanIo(true);
+      ExecutionException actual =
+          assertThrows(
+              ExecutionException.class,
+              () ->
+                  new MemTableFlushTask(memTable, failing, storageGroup, dataRegionId, true)
+                      .syncFlushMemTable());
+      assertSame(error, actual.getCause());
+      assertEquals(before, system.getFlushMemoryManager().getMemoryUsageInBytes());
+    } finally {
+      system.setEncodingFasterThanIo(old);
+    }
+  }
+
+  @Test(timeout = 20000)
+  public void testInterruptedFlushWaitsForIoExitBeforeRelease() throws Exception {
+    MemTableTestUtils.produceVectorData(memTable);
+    SystemInfo system = SystemInfo.getInstance();
+    boolean old = system.isEncodingFasterThanIo();
+    long before = system.getFlushMemoryManager().getMemoryUsageInBytes();
+    CountDownLatch entered = new CountDownLatch(1);
+    CountDownLatch interrupted = new CountDownLatch(1);
+    CountDownLatch mayExit = new CountDownLatch(1);
+    RestorableTsFileIOWriter slow = mock(RestorableTsFileIOWriter.class);
+    when(slow.getFile()).thenReturn(new File(filePath));
+    doAnswer(
+            invocation -> {
+              entered.countDown();
+              while (true) {
+                try {
+                  mayExit.await();
+                  break;
+                } catch (InterruptedException e) {
+                  interrupted.countDown();
+                }
+              }
+              return null;
+            })
+        .when(slow)
+        .startChunkGroup(any(IDeviceID.class));
+    AtomicReference<Throwable> failure = new AtomicReference<>();
+    Thread caller =
+        new Thread(
+            () -> {
+              try {
+                new MemTableFlushTask(memTable, slow, storageGroup, dataRegionId, true)
+                    .syncFlushMemTable();
+                failure.set(new AssertionError("flush should be interrupted"));
+              } catch (InterruptedException expected) {
+                if (!Thread.currentThread().isInterrupted())
+                  failure.set(new AssertionError("interrupt flag lost"));
+              } catch (Throwable e) {
+                failure.set(e);
+              }
+            });
+    try {
+      system.setEncodingFasterThanIo(true);
+      caller.start();
+      assertTrue(entered.await(5, TimeUnit.SECONDS));
+      caller.interrupt();
+      assertTrue(interrupted.await(5, TimeUnit.SECONDS));
+      // Another interruption during cancellation must not let cleanup release live worker memory.
+      caller.interrupt();
+      assertTrue(caller.isAlive());
+      assertTrue(system.getFlushMemoryManager().getMemoryUsageInBytes() > before);
+      mayExit.countDown();
+      caller.join(5000);
+      assertFalse(caller.isAlive());
+      if (failure.get() != null) throw new AssertionError(failure.get());
+      assertEquals(before, system.getFlushMemoryManager().getMemoryUsageInBytes());
+    } finally {
+      mayExit.countDown();
+      caller.interrupt();
+      caller.join(5000);
+      system.setEncodingFasterThanIo(old);
+    }
+  }
+
   @Test
   public void testFlushMemTable()
       throws ExecutionException, InterruptedException, IllegalPathException {
@@ -97,7 +197,7 @@ public class MemTableFlushTaskTest {
         MemTableTestUtils.measurementId0,
         MemTableTestUtils.dataType0);
     MemTableFlushTask memTableFlushTask =
-        new MemTableFlushTask(memTable, writer, storageGroup, dataRegionId);
+        new MemTableFlushTask(memTable, writer, storageGroup, dataRegionId, true);
     assertTrue(
         writer
             .getVisibleMetadataList(
@@ -134,7 +234,7 @@ public class MemTableFlushTaskTest {
       throws ExecutionException, InterruptedException, IllegalPathException, WriteProcessException {
     MemTableTestUtils.produceVectorData(memTable);
     MemTableFlushTask memTableFlushTask =
-        new MemTableFlushTask(memTable, writer, storageGroup, dataRegionId);
+        new MemTableFlushTask(memTable, writer, storageGroup, dataRegionId, true);
     assertTrue(
         writer
             .getVisibleMetadataList(MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
@@ -162,7 +262,7 @@ public class MemTableFlushTaskTest {
       throws ExecutionException, InterruptedException, IllegalPathException, WriteProcessException {
     MemTableTestUtils.produceNullableVectorData(memTable);
     MemTableFlushTask memTableFlushTask =
-        new MemTableFlushTask(memTable, writer, storageGroup, dataRegionId);
+        new MemTableFlushTask(memTable, writer, storageGroup, dataRegionId, true);
     assertTrue(
         writer
             .getVisibleMetadataList(MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
@@ -192,7 +292,7 @@ public class MemTableFlushTaskTest {
     memChunk.sortTvListForFlush();
 
     BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
-    memChunk.encodeWorkingAlignedTVList(ioTaskQueue, 100, 100);
+    memChunk.encodeWorkingAlignedTVList(ioTaskQueue, 100, 100, true);
 
     assertFalse(memChunk.isColumnMappingBuilt());
     assertFalse(ioTaskQueue.isEmpty());
@@ -206,7 +306,7 @@ public class MemTableFlushTaskTest {
     memChunk.sortTvListForFlush();
 
     BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
-    memChunk.encodeWorkingAlignedTVList(ioTaskQueue, 100, 100);
+    memChunk.encodeWorkingAlignedTVList(ioTaskQueue, 100, 100, true);
 
     assertTrue(memChunk.isColumnMappingBuilt());
     assertFalse(ioTaskQueue.isEmpty());
@@ -228,7 +328,7 @@ public class MemTableFlushTaskTest {
         Arrays.asList(
             new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN),
             new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
-    AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas, true);
+    AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas);
     String alignedFilePath =
         TestConstant.OUTPUT_DATA_DIR.concat(
             "duplicateAlignedRows-" + removeSecondMeasurement + ".tsfile");
@@ -245,7 +345,7 @@ public class MemTableFlushTaskTest {
       memChunk.sortTvListForFlush();
 
       BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
-      memChunk.encodeWorkingAlignedTVList(ioTaskQueue, 100, 100);
+      memChunk.encodeWorkingAlignedTVList(ioTaskQueue, 100, 100, false);
       try (TsFileIOWriter alignedWriter = new TsFileIOWriter(new File(alignedFilePath))) {
         alignedWriter.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.d"));
         Object task;
@@ -304,7 +404,7 @@ public class MemTableFlushTaskTest {
         Arrays.asList(
             new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN),
             new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
-    AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas, false);
+    AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas);
     String alignedFilePath = TestConstant.OUTPUT_DATA_DIR.concat("testAlignedFastPath.tsfile");
 
     try {
@@ -320,7 +420,7 @@ public class MemTableFlushTaskTest {
       memChunk.sortTvListForFlush();
 
       BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
-      memChunk.encodeWorkingAlignedTVList(ioTaskQueue, rowCount, 1024);
+      memChunk.encodeWorkingAlignedTVList(ioTaskQueue, rowCount, 1024, true);
       try (TsFileIOWriter alignedWriter = new TsFileIOWriter(new File(alignedFilePath))) {
         alignedWriter.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.d"));
         Object task;
@@ -373,7 +473,7 @@ public class MemTableFlushTaskTest {
           Arrays.asList(
               new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN),
               new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
-      AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas, false);
+      AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas);
       String alignedFilePath =
           TestConstant.OUTPUT_DATA_DIR.concat("testAlignedTimeDeletion" + pageSize + ".tsfile");
       try {
@@ -389,7 +489,7 @@ public class MemTableFlushTaskTest {
 
         BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
         // Cover a single page and boundaries between pages and chunks.
-        memChunk.encodeWorkingAlignedTVList(ioTaskQueue, pageSize + 1, pageSize);
+        memChunk.encodeWorkingAlignedTVList(ioTaskQueue, pageSize + 1, pageSize, true);
         try (TsFileIOWriter alignedWriter = new TsFileIOWriter(new File(alignedFilePath))) {
           alignedWriter.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.d"));
           Object task;
@@ -464,7 +564,7 @@ public class MemTableFlushTaskTest {
       schemas.add(new MeasurementSchema("s" + column, types.get(column), TSEncoding.PLAIN));
     }
     schemas.add(new MeasurementSchema("empty", TSDataType.INT64, TSEncoding.PLAIN));
-    AlignedWritableMemChunk chunk = new AlignedWritableMemChunk(schemas, true);
+    AlignedWritableMemChunk chunk = new AlignedWritableMemChunk(schemas);
     Object[][] expected = new Object[rowCount][types.size()];
     String path = TestConstant.OUTPUT_DATA_DIR.concat("unmaterialized-" + moved + ".tsfile");
     try {
@@ -502,7 +602,7 @@ public class MemTableFlushTaskTest {
       }
       chunk.sortTvListForFlush();
       BlockingQueue<Object> queue = new LinkedBlockingQueue<>();
-      chunk.encodeWorkingAlignedTVList(queue, ARRAY_SIZE * 5 + 3, ARRAY_SIZE + 3);
+      chunk.encodeWorkingAlignedTVList(queue, ARRAY_SIZE * 5 + 3, ARRAY_SIZE + 3, false);
       try (TsFileIOWriter fileWriter = new TsFileIOWriter(new File(path))) {
         fileWriter.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.d"));
         Object task;
@@ -559,7 +659,7 @@ public class MemTableFlushTaskTest {
     private boolean columnMappingBuilt;
 
     private TrackingAlignedWritableMemChunk(List<IMeasurementSchema> schemaList) {
-      super(schemaList, false);
+      super(schemaList);
     }
 
     @Override

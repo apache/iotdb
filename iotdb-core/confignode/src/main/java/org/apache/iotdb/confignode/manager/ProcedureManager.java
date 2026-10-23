@@ -32,12 +32,15 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
@@ -60,6 +63,7 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
+import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.subscription.SubscriptionCoordinator;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.PartitionTableAutoCleaner;
@@ -148,6 +152,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsFailure;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
@@ -159,6 +166,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTableProcedureInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
@@ -167,6 +175,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.exception.BatchProcessException;
+import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
@@ -187,6 +196,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -196,6 +206,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -210,6 +221,15 @@ public class ProcedureManager {
   public static final int PROCEDURE_WAIT_RETRY_TIMEOUT = 10;
   private static final String PROCEDURE_TIMEOUT_MESSAGE =
       "Timed out to wait for procedure return. The procedure is still running.";
+
+  /** One addColumnForTree2TableViews call waits at most this long for its procedures to finish. */
+  private static final long ADD_VIEW_COLUMN_WAIT_TIME_OUT_MS = 30_000L;
+
+  /** How many times a request which overlapped with another task is submitted again. */
+  private static final int OVERLAP_RETRY_ROUNDS = 4;
+
+  /** How long a retry round waits for the overlapping task to finish before submitting again. */
+  private static final long OVERLAP_RETRY_WAIT_MS = 2_000L;
 
   private final ConfigManager configManager;
   private ProcedureExecutor<ConfigNodeProcedureEnv> executor;
@@ -537,17 +557,27 @@ public class ProcedureManager {
       SetTemplateProcedure setTemplateProcedure;
       for (Procedure<?> runningProcedure : executor.getProcedures().values()) {
         type = ProcedureFactory.getProcedureType(runningProcedure);
-        if (type == null || !type.equals(ProcedureType.SET_TEMPLATE_PROCEDURE)) {
+        if (Objects.isNull(type)) {
           continue;
         }
-        setTemplateProcedure = (SetTemplateProcedure) runningProcedure;
-        if (queryId.equals(setTemplateProcedure.getQueryId())) {
-          procedure = setTemplateProcedure;
-          break;
-        }
-        if (templateSetPath.equals(setTemplateProcedure.getTemplateSetPath())) {
-          hasOverlappedTask = true;
-          break;
+        if (type.equals(ProcedureType.SET_TEMPLATE_PROCEDURE)) {
+          setTemplateProcedure = (SetTemplateProcedure) runningProcedure;
+          if (queryId.equals(setTemplateProcedure.getQueryId())) {
+            procedure = setTemplateProcedure;
+            break;
+          }
+          if (templateSetPath.equals(setTemplateProcedure.getTemplateSetPath())) {
+            hasOverlappedTask = true;
+            break;
+          }
+        } else if (type.equals(ProcedureType.UNSET_TEMPLATE_PROCEDURE)) {
+          // A path is set with one template at a time, so setting and unsetting the same path
+          // overlap as well.
+          if (templateSetPath.equals(
+              ((UnsetTemplateProcedure) runningProcedure).getPath().getFullPath())) {
+            hasOverlappedTask = true;
+            break;
+          }
         }
       }
 
@@ -555,7 +585,10 @@ public class ProcedureManager {
         if (hasOverlappedTask) {
           return RpcUtils.getStatus(
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
-              "Some other task is setting template on target path.");
+              String.format(
+                  ProcedureMessages
+                      .MESSAGE_SOME_OTHER_TASK_IS_SETTING_OR_UNSETTING_A_TEMPLATE_ON_TARGET_PATH_ARG_D4FEE38F,
+                  templateSetPath));
         }
         procedure =
             new SetTemplateProcedure(queryId, templateName, templateSetPath, isGeneratedByPipe);
@@ -621,18 +654,28 @@ public class ProcedureManager {
       UnsetTemplateProcedure unsetTemplateProcedure;
       for (Procedure<?> runningProcedure : executor.getProcedures().values()) {
         type = ProcedureFactory.getProcedureType(runningProcedure);
-        if (type == null || !type.equals(ProcedureType.UNSET_TEMPLATE_PROCEDURE)) {
+        if (Objects.isNull(type)) {
           continue;
         }
-        unsetTemplateProcedure = (UnsetTemplateProcedure) runningProcedure;
-        if (queryId.equals(unsetTemplateProcedure.getQueryId())) {
-          procedure = unsetTemplateProcedure;
-          break;
-        }
-        if (template.getId() == unsetTemplateProcedure.getTemplateId()
-            && path.equals(unsetTemplateProcedure.getPath())) {
-          hasOverlappedTask = true;
-          break;
+        if (type.equals(ProcedureType.UNSET_TEMPLATE_PROCEDURE)) {
+          unsetTemplateProcedure = (UnsetTemplateProcedure) runningProcedure;
+          if (queryId.equals(unsetTemplateProcedure.getQueryId())) {
+            procedure = unsetTemplateProcedure;
+            break;
+          }
+          if (template.getId() == unsetTemplateProcedure.getTemplateId()
+              && path.equals(unsetTemplateProcedure.getPath())) {
+            hasOverlappedTask = true;
+            break;
+          }
+        } else if (type.equals(ProcedureType.SET_TEMPLATE_PROCEDURE)) {
+          // A path is set with one template at a time, so setting and unsetting the same path
+          // overlap as well.
+          if (path.getFullPath()
+              .equals(((SetTemplateProcedure) runningProcedure).getTemplateSetPath())) {
+            hasOverlappedTask = true;
+            break;
+          }
         }
       }
 
@@ -640,8 +683,10 @@ public class ProcedureManager {
         if (hasOverlappedTask) {
           return RpcUtils.getStatus(
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
-              "Some other task is unsetting target template from target path "
-                  + path.getFullPath());
+              String.format(
+                  ProcedureMessages
+                      .MESSAGE_SOME_OTHER_TASK_IS_SETTING_OR_UNSETTING_A_TEMPLATE_ON_TARGET_PATH_ARG_D4FEE38F,
+                  path.getFullPath()));
         }
         procedure = new UnsetTemplateProcedure(queryId, template, path, isGeneratedByPipe);
         this.executor.submitProcedure(procedure);
@@ -2264,6 +2309,167 @@ public class ProcedureManager {
                 false));
   }
 
+  public TAutoSyncViewColumnsResp autoSyncViewColumns(TAutoSyncViewColumnsReq req) {
+    if (req == null || !req.isSetViewInfos()) {
+      return new TAutoSyncViewColumnsResp(RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER));
+    }
+
+    final List<TAutoSyncViewColumnsFailure> failedViews = new ArrayList<>();
+    final List<Pair<TAlterOrDropTableReq, Procedure<ConfigNodeProcedureEnv>>> procedures =
+        new ArrayList<>();
+    // The requests which overlapped with another task on the same table, together with the status
+    // of the last submission attempt, see processOverlappingTask.
+    final List<Pair<TAlterOrDropTableReq, TSStatus>> overlappingReqs = new ArrayList<>();
+
+    // Submit every view before waiting, so procedures for different views can run concurrently.
+    for (final TAlterOrDropTableReq addColumnReq : req.getViewInfos()) {
+      if (!isAddViewColumnReq(addColumnReq)) {
+        failedViews.add(illegalAddViewColumnFailure(addColumnReq));
+        continue;
+      }
+
+      final TSStatus submissionStatus = submitAddViewColumn(addColumnReq, procedures, failedViews);
+      if (submissionStatus.getCode() == TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode()) {
+        overlappingReqs.add(new Pair<>(addColumnReq, submissionStatus));
+      }
+    }
+
+    processOverlappingTask(overlappingReqs, procedures, failedViews);
+
+    final long waitDeadline = System.currentTimeMillis() + ADD_VIEW_COLUMN_WAIT_TIME_OUT_MS;
+    for (final Pair<TAlterOrDropTableReq, Procedure<ConfigNodeProcedureEnv>> procedure :
+        procedures) {
+      final long remainingWaitTime = Math.max(0, waitDeadline - System.currentTimeMillis());
+      final TSStatus status = waitingProcedureFinished(procedure.getRight(), remainingWaitTime);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        failedViews.add(
+            new TAutoSyncViewColumnsFailure(
+                procedure.getLeft().database, procedure.getLeft().tableName, status));
+      }
+    }
+
+    final TSStatus status = failedViews.isEmpty() ? StatusUtils.OK : StatusUtils.INTERNAL_ERROR;
+    final TAutoSyncViewColumnsResp response = new TAutoSyncViewColumnsResp(status);
+    if (!failedViews.isEmpty()) {
+      response.setFailedViews(failedViews);
+    }
+    return response;
+  }
+
+  /** Whether the request carries everything an add-column operation on a view needs. */
+  private static boolean isAddViewColumnReq(final @Nullable TAlterOrDropTableReq addColumnReq) {
+    return Objects.nonNull(addColumnReq)
+        && addColumnReq.isSetDatabase()
+        && addColumnReq.isSetTableName()
+        && addColumnReq.isSetQueryId()
+        && addColumnReq.isSetOperationType()
+        && addColumnReq.getOperationType()
+            == AlterOrDropTableOperationType.ADD_COLUMN.getTypeValue()
+        && addColumnReq.isSetUpdateInfo()
+        && addColumnReq.isSetIsView()
+        && addColumnReq.isIsView();
+  }
+
+  private static TAutoSyncViewColumnsFailure illegalAddViewColumnFailure(
+      final TAlterOrDropTableReq addColumnReq) {
+    return new TAutoSyncViewColumnsFailure(
+        Objects.isNull(addColumnReq) ? "" : Objects.toString(addColumnReq.getDatabase(), ""),
+        Objects.isNull(addColumnReq) ? "" : Objects.toString(addColumnReq.getTableName(), ""),
+        RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER));
+  }
+
+  /**
+   * Submits the add-column procedure of one view and settles everything but an overlap with another
+   * task on the same table.
+   */
+  private TSStatus submitAddViewColumn(
+      final TAlterOrDropTableReq addColumnReq,
+      final List<Pair<TAlterOrDropTableReq, Procedure<ConfigNodeProcedureEnv>>> procedures,
+      final List<TAutoSyncViewColumnsFailure> failedViews) {
+    final AddViewColumnProcedure procedure;
+    procedure =
+        new AddViewColumnProcedure(
+            addColumnReq.database,
+            addColumnReq.tableName,
+            addColumnReq.queryId,
+            Collections.emptyList(),
+            false);
+
+    final Pair<TSStatus, Long> submissionResult =
+        executeWithoutDuplicateWithoutWaiting(
+            addColumnReq.database,
+            null,
+            addColumnReq.tableName,
+            null,
+            addColumnReq.queryId,
+            ProcedureType.ADD_VIEW_COLUMN_PROCEDURE,
+            procedure,
+            proc -> {
+              if (proc instanceof AddViewColumnProcedure) {
+                ((AddViewColumnProcedure) proc)
+                    .setAddedColumnList(
+                        TsTableColumnSchemaUtil.deserializeColumnSchemaList(
+                            addColumnReq.updateInfo));
+              }
+            });
+    final TSStatus status = submissionResult.getLeft();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      procedures.add(new Pair<>(addColumnReq, procedure));
+    } else if (status.getCode() == TSStatusCode.REPEATED_WITH_EXISTING_TASK.getStatusCode()) {
+      final Procedure<ConfigNodeProcedureEnv> repeatedProcedure =
+          executor.getProcedures().get(submissionResult.getRight());
+      // null means the procedure could have finished at this moment
+      if (Objects.isNull(repeatedProcedure)) {
+        failedViews.add(
+            new TAutoSyncViewColumnsFailure(
+                addColumnReq.database,
+                addColumnReq.tableName,
+                RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR)));
+      } else {
+        procedures.add(new Pair<>(addColumnReq, repeatedProcedure));
+      }
+    } else if (status.getCode() != TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode()) {
+      failedViews.add(
+          new TAutoSyncViewColumnsFailure(addColumnReq.database, addColumnReq.tableName, status));
+    }
+    return status;
+  }
+
+  /**
+   * Retries the requests which overlapped with another task on the same table, A request which
+   * still overlaps after the last round is reported as a failure, with the status of its last
+   * attempt.
+   */
+  private void processOverlappingTask(
+      final List<Pair<TAlterOrDropTableReq, TSStatus>> overlappingReqs,
+      final List<Pair<TAlterOrDropTableReq, Procedure<ConfigNodeProcedureEnv>>> procedures,
+      final List<TAutoSyncViewColumnsFailure> failedViews) {
+    List<Pair<TAlterOrDropTableReq, TSStatus>> pending = overlappingReqs;
+    for (int round = 0; round < OVERLAP_RETRY_ROUNDS && !pending.isEmpty(); round++) {
+      try {
+        Thread.sleep(OVERLAP_RETRY_WAIT_MS);
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+        break;
+      }
+      final List<Pair<TAlterOrDropTableReq, TSStatus>> stillOverlapping =
+          new ArrayList<>(pending.size());
+      for (final Pair<TAlterOrDropTableReq, TSStatus> request : pending) {
+        final TSStatus status = submitAddViewColumn(request.getLeft(), procedures, failedViews);
+        if (status.getCode() == TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode()) {
+          stillOverlapping.add(new Pair<>(request.getLeft(), status));
+        }
+      }
+      pending = stillOverlapping;
+    }
+
+    for (final Pair<TAlterOrDropTableReq, TSStatus> request : pending) {
+      failedViews.add(
+          new TAutoSyncViewColumnsFailure(
+              request.getLeft().database, request.getLeft().tableName, request.getRight()));
+    }
+  }
+
   public TSStatus alterTableSetProperties(final TAlterOrDropTableReq req) {
     final boolean isView = req.isSetIsView() && req.isIsView();
     return executeWithoutDuplicate(
@@ -2378,15 +2584,63 @@ public class ProcedureManager {
 
   public TSStatus dropTable(final TAlterOrDropTableReq req) {
     final boolean isView = req.isSetIsView() && req.isIsView();
-    return executeWithoutDuplicate(
-        req.database,
-        null,
-        req.tableName,
-        req.queryId,
-        isView ? ProcedureType.DROP_VIEW_PROCEDURE : ProcedureType.DROP_TABLE_PROCEDURE,
-        isView
-            ? new DropViewProcedure(req.database, req.tableName, req.queryId, false)
-            : new DropTableProcedure(req.database, req.tableName, req.queryId, false));
+    if (isView) {
+      return executeWithoutDuplicate(
+          req.database,
+          null,
+          req.tableName,
+          req.queryId,
+          ProcedureType.DROP_VIEW_PROCEDURE,
+          new DropViewProcedure(req.database, req.tableName, req.queryId, false));
+    }
+    synchronized (this) {
+      if (!executor.isRunning()) {
+        return RpcUtils.getStatus(TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP);
+      }
+      final Pair<Long, Boolean> duplicate =
+          checkDuplicateTableTask(
+              req.database,
+              null,
+              req.tableName,
+              null,
+              req.queryId,
+              ProcedureType.DROP_TABLE_PROCEDURE);
+      if (duplicate.getLeft() != -1) {
+        return StatusUtils.OK;
+      }
+      if (Boolean.TRUE.equals(duplicate.getRight())) {
+        return RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+      }
+      try {
+        final Optional<Pair<TsTable, TableNodeStatus>> table =
+            configManager
+                .getClusterSchemaManager()
+                .getTableAndStatusIfExists(req.database, req.tableName);
+        if (table.isEmpty()) {
+          final TableNotExistsException e =
+              new TableNotExistsException(req.database, req.tableName);
+          return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+        }
+        if (table.get().getRight() == TableNodeStatus.PRE_DELETE) {
+          return RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+        }
+        final Optional<Pair<TSStatus, TsTable>> viewCheck =
+            ClusterSchemaManager.checkTable4View(req.database, table.get().getLeft(), false);
+        if (viewCheck.isPresent()) {
+          return viewCheck.get().getLeft();
+        }
+      } catch (final MetadataException e) {
+        return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+      }
+      final Procedure<ConfigNodeProcedureEnv> procedure =
+          new DropTableProcedure(req.database, req.tableName, req.queryId, false);
+      try {
+        executor.submitProcedureAndPersist(procedure);
+        return StatusUtils.OK;
+      } catch (final Exception e) {
+        return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+      }
+    }
   }
 
   public TSStatus renameTable(final TAlterOrDropTableReq req) {
@@ -2486,6 +2740,45 @@ public class ProcedureManager {
     return result;
   }
 
+  /** Returns running drops and completed results retained by the executor's shared TTL cleaner. */
+  public List<TDropTableProcedureInfo> getDropTableProcedures() {
+    final Map<Long, DropTableProcedure> dropProcedures = new HashMap<>();
+    Stream.concat(
+            executor.getProcedures().values().stream(), executor.getCompletedProcedures().stream())
+        .filter(
+            procedure ->
+                procedure instanceof DropTableProcedure
+                    && !(procedure instanceof DropViewProcedure))
+        .map(procedure -> (DropTableProcedure) procedure)
+        .forEach(procedure -> dropProcedures.put(procedure.getProcId(), procedure));
+    dropProcedures.values().stream()
+        .filter(procedure -> !procedure.isFinished())
+        .forEach(DropTableProcedure::updateModFileProgress);
+    return dropProcedures.values().stream()
+        .map(
+            procedure -> {
+              final TDropTableProcedureInfo info =
+                  new TDropTableProcedureInfo(
+                      procedure.getDatabase(),
+                      procedure.getTableName(),
+                      procedure.getProcId(),
+                      procedure.getState().name(),
+                      procedure.getDropProgress());
+              final TDropTableModProgress modProgress = procedure.getModFileProgress();
+              if (modProgress != null) {
+                info.setWrittenModFileCount(modProgress.getWrittenModFileCount());
+                if (modProgress.isSetRemainingModFileCount()) {
+                  info.setRemainingModFileCount(modProgress.getRemainingModFileCount());
+                }
+              }
+              if (procedure.hasException()) {
+                info.setErrorMessage(procedure.getException().getMessage());
+              }
+              return info;
+            })
+        .collect(Collectors.toList());
+  }
+
   public TSStatus executeWithoutDuplicate(
       final String database,
       final TsTable table,
@@ -2523,6 +2816,38 @@ public class ProcedureManager {
       }
     }
     return waitingProcedureFinished(procedureToWait);
+  }
+
+  public Pair<TSStatus, Long> executeWithoutDuplicateWithoutWaiting(
+      final String database,
+      final TsTable table,
+      final String tableName,
+      final @Nullable String newName,
+      final String queryId,
+      final ProcedureType thisType,
+      final Procedure<ConfigNodeProcedureEnv> procedure,
+      final Consumer<Procedure<ConfigNodeProcedureEnv>> consumer) {
+    final long procedureId;
+    synchronized (this) {
+      final Pair<Long, Boolean> procedureIdDuplicatePair =
+          checkDuplicateTableTask(database, table, tableName, newName, queryId, thisType);
+      procedureId = procedureIdDuplicatePair.getLeft();
+      if (procedureId == -1) {
+        if (Boolean.TRUE.equals(procedureIdDuplicatePair.getRight())) {
+          TSStatus status =
+              RpcUtils.getStatus(
+                  TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+                  "Some other task is operating table with same name.");
+          return new Pair<>(status, -1L);
+        }
+        consumer.accept(procedure);
+        this.executor.submitProcedure(procedure);
+        return new Pair<>(StatusUtils.OK, procedure.getProcId());
+      } else {
+        TSStatus status = RpcUtils.getStatus(TSStatusCode.REPEATED_WITH_EXISTING_TASK, "");
+        return new Pair<>(status, procedureId);
+      }
+    }
   }
 
   public Pair<Long, Boolean> checkDuplicateTableTask(

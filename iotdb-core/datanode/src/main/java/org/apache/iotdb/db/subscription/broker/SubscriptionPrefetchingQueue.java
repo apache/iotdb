@@ -70,6 +70,7 @@ public abstract class SubscriptionPrefetchingQueue {
 
   private final String brokerId; // consumer group id
   private final String topicName;
+  private final boolean tableModel;
 
   /** Contains events coming from the upstream pipeline, corresponding to the pipe sink stage. */
   private final SubscriptionBlockingPendingQueue inputPendingQueue;
@@ -129,6 +130,7 @@ public abstract class SubscriptionPrefetchingQueue {
       final long maxBatchSizeInBytes) {
     this.brokerId = brokerId;
     this.topicName = topicName;
+    this.tableModel = SubscriptionAgent.consumer().isTableModel(brokerId);
     this.inputPendingQueue = inputPendingQueue;
     this.commitIdGenerator = commitIdGenerator;
     this.initialCommitId = commitIdGenerator.get();
@@ -155,6 +157,11 @@ public abstract class SubscriptionPrefetchingQueue {
 
   public String getConsumerGroupId() {
     return brokerId;
+  }
+
+  private long getRecycleUncommittedEventIntervalMs() {
+    return SubscriptionAgent.topic()
+        .getTopicRecycleUncommittedEventIntervalMs(topicName, tableModel);
   }
 
   protected void cleanUpInternal() {
@@ -329,7 +336,7 @@ public abstract class SubscriptionPrefetchingQueue {
         continue;
       }
 
-      if (!event.pollable()) {
+      if (!event.pollable(getRecycleUncommittedEventIntervalMs())) {
         LOGGER.warn(
             DataNodePipeMessages
                 .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_POLL_NON_POLLABLE_644D5D6B,
@@ -373,7 +380,7 @@ public abstract class SubscriptionPrefetchingQueue {
         continue;
       }
 
-      if (!event.pollable()) {
+      if (!event.pollable(getRecycleUncommittedEventIntervalMs())) {
         LOGGER.warn(
             DataNodePipeMessages
                 .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_POLL_NON_POLLABLE_644D5D6B,
@@ -729,12 +736,11 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   private boolean canPassThroughTsFile(final PipeTsFileInsertionEvent event) {
+    final boolean isTableModelSubscription = SubscriptionAgent.consumer().isTableModel(brokerId);
     return PipeEventCollector.canSkipParsing4TsFileEvent(event)
-        && (!event.isTableModelEvent()
-            || SubscriptionAgent.broker()
-                .getColumnFilterMatcher(
-                    topicName, SubscriptionAgent.consumer().isTableModel(brokerId))
-                .isMatchAll());
+        && (!isTableModelSubscription
+            || (SubscriptionAgent.broker().getColumnFilterMatcher(topicName, true).isMatchAll()
+                && SubscriptionAgent.broker().getTagFilterMatcher(topicName, true).isMatchAll()));
   }
 
   private RetryableState onRetryableTabletInsertionEvent(
@@ -1232,7 +1238,7 @@ public abstract class SubscriptionPrefetchingQueue {
           prefetchEvent(ev);
           // no need to log warn for eagerly pollable event
           return null; // remove this entry
-        } else if (ev.pollable()) {
+        } else if (ev.pollable(getRecycleUncommittedEventIntervalMs())) {
           ev.nack(); // now pollable
           if (ev.isPoisoned()) {
             LOGGER.error(

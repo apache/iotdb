@@ -20,10 +20,12 @@
 package org.apache.iotdb.session;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -44,10 +46,12 @@ import org.junit.Test;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -706,6 +710,79 @@ public class SessionCacheLeaderTest {
   }
 
   @Test
+  public void testGroupedRelationalTabletPreservesStatementFailures() throws Exception {
+    AtomicBoolean failWrites = new AtomicBoolean();
+    session =
+        new MockSession("127.0.0.1", 55560, true, "table") {
+          @Override
+          public SessionConnection constructSessionConnection(
+              Session owner, TEndPoint endpoint, ZoneId zoneId) {
+            return new MockSessionConnection(owner, endpoint, zoneId) {
+              @Override
+              protected void insertTablet(TSInsertTabletReq request)
+                  throws RedirectException, IoTDBConnectionException, StatementExecutionException {
+                if (failWrites.get()) {
+                  TSStatusCode code =
+                      endpoint.getPort() == 55560
+                          ? TSStatusCode.METADATA_ERROR
+                          : TSStatusCode.DATA_TYPE_MISMATCH;
+                  throw new StatementExecutionException(
+                      new TSStatus(code.getStatusCode()).setMessage("incompatible field"));
+                }
+                super.insertTablet(request);
+              }
+            };
+          }
+        };
+    session.open();
+    try {
+      Tablet tablet =
+          new Tablet(
+              "table1",
+              Arrays.asList("id", "field"),
+              Arrays.asList(TSDataType.STRING, TSDataType.INT64),
+              Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD),
+              50);
+      for (int i = 0; i < 50; i++) {
+        int row = tablet.getRowSize();
+        tablet.addTimestamp(row, row);
+        tablet.addValue("id", row, "id" + (row % 4));
+        tablet.addValue("field", row, 1L);
+      }
+      session.insertRelationalTablet(tablet);
+      assertEquals(4, session.tableModelDeviceIdToEndpoint.size());
+
+      failWrites.set(true);
+      tablet.reset();
+      for (int i = 0; i < 4; i++) {
+        int row = tablet.getRowSize();
+        tablet.addTimestamp(row, row);
+        tablet.addValue("id", row, "id" + row);
+        tablet.addValue("field", row, 1L);
+      }
+      StatementExecutionException failure =
+          Assert.assertThrows(
+              StatementExecutionException.class, () -> session.insertRelationalTablet(tablet));
+      assertEquals(4, failure.getSuppressed().length);
+      long metadataFailures = 0;
+      long typeFailures = 0;
+      for (Throwable cause : failure.getSuppressed()) {
+        Assert.assertTrue(cause instanceof StatementExecutionException);
+        int code = ((StatementExecutionException) cause).getStatusCode();
+        if (code == TSStatusCode.METADATA_ERROR.getStatusCode()) {
+          metadataFailures++;
+        } else if (code == TSStatusCode.DATA_TYPE_MISMATCH.getStatusCode()) {
+          typeFailures++;
+        }
+      }
+      assertEquals(1, metadataFailures);
+      assertEquals(3, typeFailures);
+    } finally {
+      session.close();
+    }
+  }
+
+  @Test
   public void testInsertRecordsWithSessionBroken() throws StatementExecutionException {
     // without leader cache
     session = new MockSession("127.0.0.1", 55560, false);
@@ -1281,7 +1358,7 @@ public class SessionCacheLeaderTest {
 
     @Override
     protected void insertTablet(TSInsertTabletReq request)
-        throws RedirectException, IoTDBConnectionException {
+        throws RedirectException, IoTDBConnectionException, StatementExecutionException {
       if (isConnectionBroken()) {
         throw ioTDBConnectionException;
       }

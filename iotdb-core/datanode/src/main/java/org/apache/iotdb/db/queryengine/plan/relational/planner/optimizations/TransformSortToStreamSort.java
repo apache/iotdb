@@ -97,6 +97,10 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       context.setCanTransform(false);
 
       DeviceTableScanNode deviceTableScanNode = context.getTableScanNode();
+      if (deviceTableScanNode == null) {
+        node.setChild(child);
+        return node;
+      }
       Map<Symbol, ColumnSchema> tableColumnSchema;
       if (deviceTableScanNode instanceof ExternalTsFileScanNode) {
         tableColumnSchema =

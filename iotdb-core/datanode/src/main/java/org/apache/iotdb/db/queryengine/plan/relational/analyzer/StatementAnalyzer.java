@@ -1410,7 +1410,9 @@ public class StatementAnalyzer {
       queryContext.setExplainType(ExplainType.EXPLAIN);
       queryContext.setExplainOutputFormat(node.getOutputFormat());
       analysis.setFinishQueryAfterAnalyze();
-      return visitQuery((Query) node.getStatement(), context);
+      Scope scope = process(node.getStatement(), context);
+      analysis.setScope(node, scope);
+      return scope;
     }
 
     @Override
@@ -1437,7 +1439,9 @@ public class StatementAnalyzer {
       queryContext.setExplainType(ExplainType.EXPLAIN_ANALYZE);
       queryContext.setVerbose(node.isVerbose());
       queryContext.setExplainOutputFormat(node.getOutputFormat());
-      return visitQuery((Query) node.getStatement(), context);
+      Scope scope = process(node.getStatement(), context);
+      analysis.setScope(node, scope);
+      return scope;
     }
 
     @Override
@@ -5058,11 +5062,11 @@ public class StatementAnalyzer {
       }
       rowCount.ifPresent(
           count -> {
-            if (count < 0) {
+            if (count <= 0) {
               throw new SemanticException(
                   String.format(
                       DataNodeQueryMessages
-                          .LIMIT_ROW_COUNT_MUST_BE_GREATER_OR_EQUAL_TO_0_ACTUAL_VALUE_S,
+                          .EXCEPTION_LIMIT_ROW_COUNT_MUST_BE_GREATER_THAN_0_ACTUAL_VALUE_ARG_79F8F1A3,
                       count));
             }
           });

@@ -228,14 +228,14 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
           receiverEnv,
           "count timeseries root.ln0.**",
           "count(timeseries),",
-          Collections.singleton("1,"));
+          Collections.singleton("0,"));
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
           "count timeseries root.db.**",
           "count(timeseries),",
-          Collections.singleton("1,"));
+          Collections.singleton("2,"));
       TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "count databases root.ln0", "count,", Collections.singleton("1,"));
+          receiverEnv, "count databases root.ln0", "count,", Collections.singleton("0,"));
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv, "count databases root.db", "count,", Collections.singleton("1,"));
 
@@ -322,7 +322,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList("insert into root.db.d1(time, s1) values (3, 3)", "flush"),
           null);
 
-      TestUtils.assertDataEventuallyOnEnv(
+      // A stopped pipe must keep the receiver data unchanged.
+      TestUtils.assertDataAlwaysOnEnv(
           receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
     }
   }
@@ -387,7 +388,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList("insert into root.db.d1(time, s1) values (3, 3)", "flush"),
           null);
 
-      TestUtils.assertDataEventuallyOnEnv(
+      // A stopped pipe must keep the receiver data unchanged.
+      TestUtils.assertDataAlwaysOnEnv(
           receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
     }
   }
@@ -452,7 +454,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList("insert into root.db.d1(time, s1) values (3, 3)", "flush"),
           null);
 
-      TestUtils.assertDataEventuallyOnEnv(
+      // A stopped pipe must keep the receiver data unchanged.
+      TestUtils.assertDataAlwaysOnEnv(
           receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
     }
   }
@@ -659,8 +662,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList("insert into root.db.d1(time, s1) values (3, 3)", "flush"),
           null);
 
-      Thread.sleep(5000);
-      TestUtils.assertDataEventuallyOnEnv(
+      // A stopped pipe must keep the receiver data unchanged.
+      TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
           "select count(*) from root.db.**",
           "count(root.db.d1.s1),",

@@ -158,6 +158,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
@@ -243,6 +245,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDropTableProceduresResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -310,6 +313,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
 
 /** Entry of all management, AssignPartitionManager, AssignRegionManager. */
@@ -823,8 +827,9 @@ public class ConfigManager implements IManager {
               .getMatchedDatabaseSchemasByName(
                   deletedPaths, tDeleteReq.isSetIsTableModel() && tDeleteReq.isIsTableModel());
 
-      // remove root.__audit
+      // remove audit databases
       deleteDatabaseSchemaMap.remove(TREE_MODEL_AUDIT_DATABASE);
+      deleteDatabaseSchemaMap.remove(TABLE_MODEL_AUDIT_DATABASE);
 
       if (deleteDatabaseSchemaMap.isEmpty()) {
         return RpcUtils.getStatus(
@@ -2285,7 +2290,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public synchronized TSStatus setSchemaTemplate(TSetSchemaTemplateReq req) {
+  public TSStatus setSchemaTemplate(TSetSchemaTemplateReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return procedureManager.setSchemaTemplate(
@@ -2367,7 +2372,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public synchronized TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req) {
+  public TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;
@@ -3378,6 +3383,14 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TAutoSyncViewColumnsResp autoSyncViewColumns(TAutoSyncViewColumnsReq req) {
+    final TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? procedureManager.autoSyncViewColumns(req)
+        : new TAutoSyncViewColumnsResp(status);
+  }
+
+  @Override
   public TDeleteTableDeviceResp deleteDevice(final TDeleteTableDeviceReq req) {
     final TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -3399,6 +3412,15 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? clusterSchemaManager.showTables4InformationSchema()
         : new TShowTable4InformationSchemaResp(status);
+  }
+
+  @Override
+  public TShowDropTableProceduresResp showDropTableProcedures() {
+    final TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? new TShowDropTableProceduresResp(status)
+            .setDropTableProcedureInfoList(procedureManager.getDropTableProcedures())
+        : new TShowDropTableProceduresResp(status);
   }
 
   @Override

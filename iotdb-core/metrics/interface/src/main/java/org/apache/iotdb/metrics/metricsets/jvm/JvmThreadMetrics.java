@@ -104,7 +104,8 @@ public class JvmThreadMetrics implements IMetricSet {
   }
 
   // VisibleForTesting
-  static long getThreadStateCount(ThreadMXBean threadBean, Thread.State state) {
+  static synchronized long getThreadStateCount(ThreadMXBean threadBean, Thread.State state) {
+    // Keep reads and refreshes under the same lock to avoid observing a partially rebuilt EnumMap.
     checkAndUpdate(threadBean);
     return threadStateCountMap.getOrDefault(state, 0);
   }

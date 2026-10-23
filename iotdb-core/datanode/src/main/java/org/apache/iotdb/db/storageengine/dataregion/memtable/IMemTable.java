@@ -32,6 +32,8 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.FlushStatus;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
+import org.apache.iotdb.db.storageengine.rescon.memory.WriteMemoryBlock;
+import org.apache.iotdb.db.storageengine.rescon.memory.WriteMemoryManager;
 
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -68,16 +70,26 @@ public interface IMemTable extends WALEntryValue {
       Object[] objectValue);
 
   /**
+   * @param ignoreAllNullRows whether rows whose values are all null should be ignored, it is
+   *     determined by the data model of the database the memtable belongs to
    * @return the number of points
    */
-  long size();
+  long size(boolean ignoreAllNullRows);
 
   /**
    * @return memory usage
    */
   long memSize();
 
-  /** only used when mem control enabled */
+  void setWriteMemoryManager(WriteMemoryManager manager);
+
+  WriteMemoryBlock getArrayMemoryBlock();
+
+  WriteMemoryBlock getBinaryMemoryBlock();
+
+  WriteMemoryBlock getStructureMemoryBlock();
+
+  /** Adds TVList array memory; containers and Binary payload have separate blocks. */
   void addTVListRamCost(long cost);
 
   /** only used when mem control enabled */
@@ -170,7 +182,7 @@ public interface IMemTable extends WALEntryValue {
    *
    * @return
    */
-  long delete(ModEntry modEntry);
+  long delete(ModEntry modEntry, boolean ignoreAllNullRows);
 
   /**
    * Make a copy of this MemTable.
@@ -214,7 +226,7 @@ public interface IMemTable extends WALEntryValue {
 
   void setFlushStatus(FlushStatus flushStatus);
 
-  Map<IDeviceID, Long> getMaxTime();
+  Map<IDeviceID, Long> getMaxTime(boolean ignoreAllNullRows);
 
   String getDatabase();
 

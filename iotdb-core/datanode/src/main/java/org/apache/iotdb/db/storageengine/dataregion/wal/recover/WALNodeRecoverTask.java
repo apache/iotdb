@@ -332,7 +332,8 @@ public class WALNodeRecoverTask implements Runnable {
             StorageEngineMessages
                 .STORAGE_LOG_FAIL_TO_READ_MEMTABLE_IDS_FROM_THE_WAL_FILE_OF_WAL_NODE_5325B5AB,
             walFile.getAbsoluteFile(),
-            e.getMessage());
+            logDirectory.getName(),
+            e);
       } catch (IOException e) {
         logger.warn(
             StorageEngineMessages

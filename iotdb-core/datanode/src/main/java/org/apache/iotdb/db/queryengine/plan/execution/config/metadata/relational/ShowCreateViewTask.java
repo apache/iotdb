@@ -147,14 +147,20 @@ public class ShowCreateViewTask extends AbstractTableTask {
     if (ttlString.equals(TTL_INFINITE)) {
       ttlString = "'" + ttlString + "'";
     }
-    builder.append(" WITH (ttl=").append(ttlString).append(")");
+    builder.append(" WITH (ttl=").append(ttlString);
+    // An absent auto_sync_schema means false, so it only has to be given back when it is stored
+    table
+        .getPropValue(TsTable.AUTO_SYNC_SCHEMA)
+        .ifPresent(autoSyncSchema -> builder.append(", auto_sync_schema=").append(autoSyncSchema));
+    builder.append(")");
 
     builder.append(" AS ");
 
     final String[] pathNodes = TreeViewSchema.getPrefixPattern(table).getNodes();
     builder.append(pathNodes[0]);
     for (int i = 1; i < pathNodes.length - 1; ++i) {
-      builder.append(".\"").append(pathNodes[i].replace("`", "")).append("\"");
+      // Preserve tree-model quoting inside the table-model identifier for round-trip parsing.
+      builder.append(".").append(getIdentifier(pathNodes[i]));
     }
     builder.append(".").append(pathNodes[pathNodes.length - 1]);
 

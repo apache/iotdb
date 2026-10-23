@@ -20,6 +20,8 @@
 package org.apache.iotdb.tool.tsfile;
 
 import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -89,6 +91,12 @@ public class ImportTsFileScanTool {
     return new File(sourceFullPath).isDirectory()
         ? ImportTsFileScanTool.sourceFullPath.length()
         : new File(ImportTsFileScanTool.sourceFullPath).getParent().length();
+  }
+
+  public static String getRelativePath(String file) {
+    Path source = Paths.get(sourceFullPath).toAbsolutePath().normalize();
+    Path directory = source.toFile().isDirectory() ? source : source.getParent();
+    return directory.relativize(Paths.get(file).toAbsolutePath().normalize()).toString();
   }
 
   public static int getTsFileQueueSize() {
