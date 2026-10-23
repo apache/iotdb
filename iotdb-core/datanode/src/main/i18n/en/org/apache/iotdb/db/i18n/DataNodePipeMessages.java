@@ -23,6 +23,12 @@ public final class DataNodePipeMessages {
 
   private DataNodePipeMessages() {}
 
+  public static final String
+      EXCEPTION_FORCERESIZE_FAILED_AFTER_ARG_RETRIES_TOTAL_ARG_BYTES_USED_ARG_BYTES_USEDTABLETS_ARG_BYTES_USEDTSFILES_ARG_BYTES_TABLETLIMIT_ARG_BYTES_TSFILELIMIT_ARG_BYTES_TABLETANDTSFILELIMIT_ARG_BYTES_PROTECTEDPARSERLIMIT_ARG_BYTES_REQUESTED_ARG_BYTES_311C8C7E =
+          "forceResize failed after %d retries: total=%d bytes, used=%d bytes, "
+              + "usedTablets=%d bytes, usedTsFiles=%d bytes, tabletLimit=%d bytes, tsFileLimit=%d bytes, "
+              + "tabletAndTsFileLimit=%d bytes, protectedParserLimit=%d bytes, requested=%d bytes";
+
   // ===================== LEGACY PIPE RECEIVER RESPONSES =====================
 
   public static final String MESSAGE_PIPE_DATA_TRANSPORT_ERROR_ARG_ECE6A238 =
