@@ -32,7 +32,7 @@ import static org.junit.Assert.assertTrue;
 public class PathPatternNodeTest {
 
   @Test
-  public void testNonTrivialWildcardChildCacheLifecycle() {
+  public void testNonTrivialWildcardChildCacheOnAddAndDelete() {
     final PathPatternNode<Void, VoidSerializer> parent = newNode("parent");
     final PathPatternNode<Void, VoidSerializer> wildcardChild = newNode("device*");
 
@@ -43,10 +43,6 @@ public class PathPatternNodeTest {
     assertSame(wildcardChild, matchedChildren.get(0));
 
     parent.deleteChild(wildcardChild);
-    assertTrue(parent.getMatchChildren("device1").isEmpty());
-
-    parent.addChild(wildcardChild);
-    parent.clear();
     assertTrue(parent.getMatchChildren("device1").isEmpty());
   }
 

@@ -254,14 +254,6 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
     }
   }
 
-  void clear() {
-    if (Objects.nonNull(valueSet)) {
-      valueSet.clear();
-    }
-    children.clear();
-    childrenPatternsWithNonTrivialWildcard.clear();
-  }
-
   public static <V, T extends PathPatternNode.Serializer<V>> PathPatternNode<V, T> deserializeNode(
       ByteBuffer buffer, T serializer, Consumer<String> nodeNameProcessor) {
     PathPatternNode<V, T> node =
