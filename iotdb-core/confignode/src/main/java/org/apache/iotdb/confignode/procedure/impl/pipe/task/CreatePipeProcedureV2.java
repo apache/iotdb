@@ -105,7 +105,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     this.createPipeRequest = normalizeCreatePipeRequest(createPipeRequest);
   }
 
-  private TCreatePipeReq normalizeCreatePipeRequest(final TCreatePipeReq createPipeRequest) {
+  static TCreatePipeReq normalizeCreatePipeRequest(final TCreatePipeReq createPipeRequest) {
     if (createPipeRequest.getExtractorAttributes() == null) {
       createPipeRequest.setExtractorAttributes(new HashMap<>());
     }
@@ -118,6 +118,16 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     }
     if (createPipeRequest.getConnectorAttributes() == null) {
       createPipeRequest.setConnectorAttributes(new HashMap<>());
+    }
+    final PipeParameters sinkParameters =
+        new PipeParameters(createPipeRequest.getConnectorAttributes());
+    if (PipeType.USER.equals(PipeType.getPipeType(createPipeRequest.getPipeName()))
+        && !sinkParameters.hasAnyAttributes(
+            PipeSinkConstant.CONNECTOR_ENABLE_COMPACTION_KEY,
+            PipeSinkConstant.SINK_ENABLE_COMPACTION_KEY)) {
+      createPipeRequest
+          .getConnectorAttributes()
+          .put(PipeSinkConstant.SINK_ENABLE_COMPACTION_KEY, Boolean.TRUE.toString());
     }
     return createPipeRequest;
   }
