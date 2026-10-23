@@ -1,0 +1,82 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+name: Logical Backup Daily IT
+
+on:
+  pull_request:
+    branches:
+      - feat/pipe-logical-backup-sink
+    paths:
+      - .github/workflows/logical-backup-daily-it.yml
+      - integration-test/src/test/java/org/apache/iotdb/pipe/it/dual/treemodel/manual/IoTDBPipeLogicalBackupIT.java
+
+concurrency:
+  group: logical-backup-daily-it-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  logical-backup:
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        senderCluster: [ScalableSingleNodeMode, HighPerformanceMode]
+    runs-on: ubuntu-latest
+    name: Logical Backup IT (${{ matrix.senderCluster }} source)
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: corretto
+          java-version: 17
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cache Maven packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Run logical backup daily IT
+        run: >-
+          mvn -B -ntp clean verify
+          -Pwith-integration-tests
+          -DskipUTs
+          -Dtest=NoSuchSurefireTest
+          -Dsurefire.failIfNoSpecifiedTests=false
+          -Dit.test=IoTDBPipeLogicalBackupIT
+          -Dfailsafe.failIfNoSpecifiedTests=false
+          -DintegrationTest.forkCount=1
+          -DConfigNodeMaxHeapSize=256
+          -DDataNodeMaxHeapSize=1024
+          -DDataNodeMaxDirectMemorySize=768
+          -DClusterConfigurations=${{ matrix.senderCluster }},ScalableSingleNodeMode
+          -Drat.skip=true
+          -pl integration-test
+          -am
+          -PMultiClusterIT2DualTreeManual
+      - name: Upload test logs
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: logical-backup-${{ matrix.senderCluster }}
+          path: |
+            integration-test/target/cluster-logs
+            integration-test/target/failsafe-reports
+          retention-days: 7
