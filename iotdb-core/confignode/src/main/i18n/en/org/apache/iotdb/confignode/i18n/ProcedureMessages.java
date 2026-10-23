@@ -1453,4 +1453,6 @@ public final class ProcedureMessages {
       "finish procedure without rollback";
   public static final String LOG_DELETE_CHILD_PROCEDURES_WITHOUT_ROLLBACK_6E62D1C1 =
       "delete child procedures without rollback";
+  public static final String LOG_PERSIST_PARENT_AND_CHILD_PROCEDURES_54E2D0D2 =
+      "persist parent and child procedures";
 }

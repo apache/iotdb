@@ -84,6 +84,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStat
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusWithStoppedByRuntimeExceptionPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProceduresPlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
@@ -279,6 +280,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case DeleteProcedure:
           plan = new DeleteProcedurePlan();
+          break;
+        case UpdateProcedures:
+          plan = new UpdateProceduresPlan();
           break;
         case UpdateProcedure:
           plan = new UpdateProcedurePlan();

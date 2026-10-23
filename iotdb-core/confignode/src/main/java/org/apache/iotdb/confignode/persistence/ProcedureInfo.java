@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProceduresPlan;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.Procedure;
@@ -142,6 +143,15 @@ public class ProcedureInfo implements SnapshotProcessor {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
+  // Recovery and snapshots must not observe only part of a parent/children batch.
+  public synchronized TSStatus updateProcedures(UpdateProceduresPlan plan) {
+    for (Procedure<ConfigNodeProcedureEnv> procedure : plan.getProcedures()) {
+      procedureMap.put(procedure.getProcId(), procedure);
+      lastProcId.updateAndGet(id -> Math.max(id, procedure.getProcId()));
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
   @TestOnly
   public TSStatus oldUpdateProcedure(UpdateProcedurePlan updateProcedurePlan) {
     Procedure procedure = updateProcedurePlan.getProcedure();
@@ -194,7 +204,7 @@ public class ProcedureInfo implements SnapshotProcessor {
   }
 
   @Override
-  public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
+  public synchronized boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
     File procedureSnapshotDir = new File(snapshotDir, PROCEDURE_SNAPSHOT_DIR);
     if (procedureSnapshotDir.exists()) {
       LOGGER.error(
@@ -275,7 +285,7 @@ public class ProcedureInfo implements SnapshotProcessor {
             });
   }
 
-  public List<Procedure<ConfigNodeProcedureEnv>> getProcedures() {
+  public synchronized List<Procedure<ConfigNodeProcedureEnv>> getProcedures() {
     return new ArrayList<>(procedureMap.values());
   }
 
