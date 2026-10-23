@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it.aggregation;
 
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -358,7 +359,9 @@ public class IoTDBTimeDurationIT {
     // GROUP BY TAGS does not guarantee row order, so check each DataNode independently.
     for (DataNodeWrapper dataNode : EnvFactory.getEnv().getDataNodeWrapperList()) {
       try (Connection connection =
-              EnvFactory.getEnv().getConnectionWithSpecifiedDataNode(dataNode);
+              EnvFactory.getEnv()
+                  .getConnection(
+                      dataNode, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
           Statement statement = connection.createStatement();
           ResultSet resultSet =
               statement.executeQuery(
