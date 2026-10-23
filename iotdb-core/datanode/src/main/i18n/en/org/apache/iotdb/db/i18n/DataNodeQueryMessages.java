@@ -642,8 +642,6 @@ public final class DataNodeQueryMessages {
       "TIMESTAMP IN-list literal can only be LongLiteral, DoubleLiteral, or GenericLiteral; actual type: %s";
   public static final String IS_NULL_CAN_BE_PUSHED_DOWN =
       "IS NULL can be pushed down";
-  public static final String GROUP_BY_TIME_CANNOT_BE_REVERSED =
-      "GROUP BY TIME cannot be reversed";
 
   // --- Plan / Optimization ---
 
