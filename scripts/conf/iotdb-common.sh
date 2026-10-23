@@ -508,3 +508,42 @@ calculate_memory_sizes()
     ON_HEAP_MEMORY="${on_heap_memory_size_in_mb}M"
     OFF_HEAP_MEMORY="${off_heap_memory_size_in_mb}M"
 }
+
+# Prints the physical absolute path of directory $1, or nothing if it cannot be
+# entered. "cd -P" is required: a plain "cd" collapses ".." logically, which
+# would resolve "<symlink>/../x" against the symlink's parent instead of its
+# target. CDPATH is cleared so that a relative name is not looked up in it.
+resolvePhysicalDir()
+{
+  [ -n "$1" ] || return 1
+  (CDPATH= cd -P -- "$1" 2>/dev/null && pwd -P)
+}
+
+# Sets IOTDB_HOME for start-edge.sh and stop-edge.sh, which both call this with
+# their own "$0". start-edge.sh hands the value to the JVM as -DIOTDB_HOME and
+# stop-edge.sh finds the process by it, so the two must derive it the same way.
+# The value is only made absolute; symlinks are deliberately not resolved, so
+# that an installation started through a symlink keeps that identity after the
+# symlink is re-pointed to another version.
+initEdgeHome()
+{
+  if [ -z "${IOTDB_HOME}" ]; then
+    IOTDB_HOME="$(CDPATH= cd -- "$(dirname "$1")"/.. && pwd)" || return 1
+  fi
+  case "${IOTDB_HOME}" in
+    /*) ;;
+    *) IOTDB_HOME="$(pwd)/${IOTDB_HOME}" ;;
+  esac
+  local physical_home
+  local script_home
+  physical_home="$(resolvePhysicalDir "${IOTDB_HOME}")"
+  if [ -z "${physical_home}" ]; then
+    echo "IOTDB_HOME ${IOTDB_HOME} is not an accessible directory." >&2
+    return 1
+  fi
+  script_home="$(resolvePhysicalDir "$(dirname "$1")/..")"
+  if [ "${physical_home}" != "${script_home}" ]; then
+    echo "Warning: IOTDB_HOME is ${IOTDB_HOME}, but $(basename "$1") belongs to ${script_home}." >&2
+  fi
+  export IOTDB_HOME
+}

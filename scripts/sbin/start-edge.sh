@@ -20,17 +20,9 @@
 
 # Start IoTDB Edge: ConfigNode + DataNode in one JVM process.
 
-if [ -z "${IOTDB_HOME}" ]; then
-    IOTDB_HOME="$(dirname "$0")/.."
-fi
-# Normalise to a physical absolute path. This value is handed to the JVM as
-# -DIOTDB_HOME and is what stop-edge.sh matches on, so it has to identify the
-# installation on its own, independently of the path used to launch.
-IOTDB_HOME_PHYSICAL="$(cd -P -- "${IOTDB_HOME}" 2>/dev/null && pwd -P)"
-if [ -n "${IOTDB_HOME_PHYSICAL}" ]; then
-    IOTDB_HOME="${IOTDB_HOME_PHYSICAL}"
-fi
-export IOTDB_HOME
+source "$(dirname "$0")/../conf/iotdb-common.sh"
+# stop-edge.sh derives IOTDB_HOME with the same function and matches on it.
+initEdgeHome "$0" || exit 1
 if [ -z "${IOTDB_CONF}" ]; then
     export IOTDB_CONF=${IOTDB_HOME}/conf
 fi
@@ -38,7 +30,6 @@ export IOTDB_DATA_HOME=${IOTDB_DATA_HOME:-${IOTDB_HOME}}
 export IOTDB_LOG_DIR=${IOTDB_LOG_DIR:-${IOTDB_HOME}/logs}
 mkdir -p "${IOTDB_LOG_DIR}"
 
-source "$(dirname "$0")/../conf/iotdb-common.sh"
 export CONFIGNODE_HOME=${IOTDB_HOME}
 export CONFIGNODE_DATA_HOME=${IOTDB_DATA_HOME}
 export CONFIGNODE_CONF=${IOTDB_CONF}
