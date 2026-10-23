@@ -64,7 +64,7 @@ public class PipeRealtimePriorityBlockingQueueTest {
 
   @Test
   public void testReplaceOnlyRemovesEventsForCompactionSourceFiles() throws Exception {
-    final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue();
+    final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue(true);
     final CommitterKey committerKey = new CommitterKey("pipe", 1L, 1, 0);
     final File sourceFile = temporaryFolder.newFile("source.tsfile");
     final File unrelatedFile = temporaryFolder.newFile("unrelated.tsfile");
@@ -85,7 +85,7 @@ public class PipeRealtimePriorityBlockingQueueTest {
 
   @Test
   public void testReplaceDoesNotMatchUnrelatedEventsByCount() throws Exception {
-    final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue();
+    final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue(true);
     final CommitterKey committerKey = new CommitterKey("pipe", 1L, 1, 0);
     final File sourceFile = temporaryFolder.newFile("source.tsfile");
     final PipeTsFileInsertionEvent unrelatedEvent =
@@ -101,7 +101,7 @@ public class PipeRealtimePriorityBlockingQueueTest {
 
   @Test
   public void testPollCanRaceWithReplacementWithoutCorruptingQueue() throws Exception {
-    final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue();
+    final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue(true);
     final CommitterKey committerKey = new CommitterKey("pipe", 1L, 1, 0);
     final File sourceFile = temporaryFolder.newFile("source.tsfile");
     final PipeTsFileInsertionEvent event = createEvent(sourceFile, committerKey, 1L);
@@ -139,6 +139,23 @@ public class PipeRealtimePriorityBlockingQueueTest {
       allowReplacementToContinue.countDown();
       executor.shutdownNow();
     }
+  }
+
+  @Test
+  public void testReplaceIsDisabledByDefault() throws Exception {
+    final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue();
+    final CommitterKey committerKey = new CommitterKey("pipe", 1L, 1, 0);
+    final File sourceFile = temporaryFolder.newFile("source.tsfile");
+    final PipeTsFileInsertionEvent sourceEvent = createEvent(sourceFile, committerKey, 1L);
+
+    queue.offer(sourceEvent);
+    queue.replace(
+        "1", Collections.singleton(new TsFileResource(sourceFile)), Collections.emptyList());
+
+    Assert.assertSame(sourceEvent, queue.directPoll());
+    Assert.assertNull(queue.directPoll());
+    verify(sourceEvent, never())
+        .decreaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName(), false);
   }
 
   private PipeTsFileInsertionEvent createEvent(

@@ -62,6 +62,8 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   private final BlockingDeque<TsFileInsertionEvent> tsfileInsertEventDeque =
       new LinkedBlockingDeque<>();
 
+  private final boolean enableCompaction;
+
   private final AtomicInteger pollTsFileCounter = new AtomicInteger(0);
 
   private final AtomicLong pollHistoricalTsFileCounter = new AtomicLong(0);
@@ -70,7 +72,12 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   private AtomicInteger offerTsFileCounter = new AtomicInteger(0);
 
   public PipeRealtimePriorityBlockingQueue() {
+    this(false);
+  }
+
+  public PipeRealtimePriorityBlockingQueue(final boolean enableCompaction) {
     super(new PipeDataRegionEventCounter());
+    this.enableCompaction = enableCompaction;
   }
 
   @Override
@@ -192,6 +199,9 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
   public synchronized void replace(
       String dataRegionId, Set<TsFileResource> sourceFiles, List<TsFileResource> targetFiles) {
+    if (!enableCompaction) {
+      return;
+    }
 
     final int regionId = Integer.parseInt(dataRegionId);
     final Set<Path> sourceFilePaths =
