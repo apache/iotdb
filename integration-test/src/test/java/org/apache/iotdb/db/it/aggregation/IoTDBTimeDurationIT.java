@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.it.aggregation;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -31,9 +32,20 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
 import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -213,7 +225,7 @@ public class IoTDBTimeDurationIT {
   }
 
   @Test
-  public void testTimeDurationManyColumnOnManyDataRegion() {
+  public void testTimeDurationManyColumnOnManyDataRegion() throws SQLException {
     // normal
     String[] expectedHeader =
         new String[] {
@@ -345,10 +357,27 @@ public class IoTDBTimeDurationIT {
     // group by tags
     expectedHeader = new String[] {"city", "time_duration(s1)"};
     retArray = new String[] {"Beijing,1677570933,", "Nanjing,1677570938,"};
-    resultSetEqualTest(
-        "select time_duration(s1) from root.db1.**,root.db.** group by tags(city)",
-        expectedHeader,
-        retArray);
+    // GROUP BY TAGS does not guarantee row order, so check each DataNode independently.
+    for (DataNodeWrapper dataNode : EnvFactory.getEnv().getDataNodeWrapperList()) {
+      try (Connection connection = EnvFactory.getEnv().getConnection(dataNode);
+          Statement statement = connection.createStatement();
+          ResultSet resultSet =
+              statement.executeQuery(
+                  "select time_duration(s1) from root.db1.**,root.db.** group by tags(city)")) {
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(expectedHeader.length, metaData.getColumnCount());
+        for (int i = 0; i < expectedHeader.length; i++) {
+          assertEquals(expectedHeader[i], metaData.getColumnName(i + 1));
+        }
+        Set<String> remainingRows = new HashSet<>(Arrays.asList(retArray));
+        while (resultSet.next()) {
+          String row =
+              resultSet.getString("city") + "," + resultSet.getString("time_duration(s1)") + ",";
+          assertTrue(dataNode.getIpAndPortString() + ": " + row, remainingRows.remove(row));
+        }
+        assertTrue(dataNode.getIpAndPortString() + ": " + remainingRows, remainingRows.isEmpty());
+      }
+    }
 
     // group by time
     expectedHeader =
