@@ -14,7 +14,13 @@ concurrency:
 
 jobs:
   logical-backup:
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        senderCluster: [ScalableSingleNodeMode, HighPerformanceMode]
     runs-on: ubuntu-latest
+    name: Logical Backup IT (${{ matrix.senderCluster }} source)
     steps:
       - uses: actions/checkout@v5
       - name: Set up JDK 17
@@ -41,7 +47,7 @@ jobs:
           -DConfigNodeMaxHeapSize=256
           -DDataNodeMaxHeapSize=1024
           -DDataNodeMaxDirectMemorySize=768
-          -DClusterConfigurations=ScalableSingleNodeMode,ScalableSingleNodeMode
+          -DClusterConfigurations=${{ matrix.senderCluster }},ScalableSingleNodeMode
           -Drat.skip=true
           -pl integration-test
           -am

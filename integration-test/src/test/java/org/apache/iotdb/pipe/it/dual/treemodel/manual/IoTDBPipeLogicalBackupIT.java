@@ -78,7 +78,19 @@ public class IoTDBPipeLogicalBackupIT extends AbstractPipeDualTreeModelManualIT 
       statement.execute("create table measurements(device STRING TAG, reading INT32 FIELD)");
       statement.execute("create table other_table(device STRING TAG, reading INT32 FIELD)");
       statement.execute("insert into measurements(time,device,reading) values(1,'d1',10)");
-      statement.execute("insert into other_table(time,device,reading) values(1,'d1',100)");
+      statement.execute("insert into measurements(time,device,reading) values(4,'d1',40)");
+      statement.execute("insert into other_table(time,device,reading) values(2,'d1',200)");
+      statement.execute("flush");
+    }
+    try (final Connection connection = receiverEnv.getTableConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database backup_db");
+      statement.execute("use backup_db");
+      statement.execute("create table measurements(device STRING TAG, reading INT32 FIELD)");
+      statement.execute("create table other_table(device STRING TAG, reading INT32 FIELD)");
+      statement.execute("insert into measurements(time,device,reading) values(0,'d1',0)");
+      statement.execute("insert into measurements(time,device,reading) values(4,'d1',400)");
+      statement.execute("insert into other_table(time,device,reading) values(2,'d1',200)");
       statement.execute("flush");
     }
     final String pipeName = "logical_backup_continuous_table";
@@ -103,10 +115,8 @@ public class IoTDBPipeLogicalBackupIT extends AbstractPipeDualTreeModelManualIT 
                   statement.execute(
                       "insert into measurements(time,device,reading) values(2,'d1',20)");
                   statement.execute(
-                      "insert into measurements(time,device,reading) values(4,'d1',40)");
-                  statement.execute(
-                      "insert into other_table(time,device,reading) values(2,'d1',200)");
-                  statement.execute("delete from measurements where time <= 1");
+                      "insert into measurements(time,device,reading) values(3,'d1',30)");
+                  statement.execute("delete from measurements where time <= 4");
                 }
               } catch (final Exception e) {
                 throw new CompletionException(e);
@@ -123,13 +133,13 @@ public class IoTDBPipeLogicalBackupIT extends AbstractPipeDualTreeModelManualIT 
         "--pipe-name",
         pipeName,
         "--scope",
-        "schema,data",
+        "data",
         "--model",
         "table",
         "--include",
         "backup_db/measurements",
         "--start-time",
-        "0",
+        "1",
         "--end-time",
         "3",
         "--mode",
@@ -152,15 +162,21 @@ public class IoTDBPipeLogicalBackupIT extends AbstractPipeDualTreeModelManualIT 
       statement.execute("use backup_db");
       try (final ResultSet result = statement.executeQuery("select * from measurements")) {
         Assert.assertTrue(result.next());
-        Assert.assertEquals(2L, result.getLong("time"));
+        Assert.assertEquals(0L, result.getLong("time"));
         Assert.assertEquals("d1", result.getString("device"));
-        Assert.assertEquals(20, result.getInt("reading"));
+        Assert.assertEquals(0, result.getInt("reading"));
+        Assert.assertTrue(result.next());
+        Assert.assertEquals(4L, result.getLong("time"));
+        Assert.assertEquals("d1", result.getString("device"));
+        Assert.assertEquals(400, result.getInt("reading"));
         Assert.assertFalse(result.next());
       }
-      try (final ResultSet result = statement.executeQuery("show tables")) {
-        while (result.next()) {
-          Assert.assertNotEquals("other_table", result.getString(1));
-        }
+      try (final ResultSet result = statement.executeQuery("select * from other_table")) {
+        Assert.assertTrue(result.next());
+        Assert.assertEquals(2L, result.getLong("time"));
+        Assert.assertEquals("d1", result.getString("device"));
+        Assert.assertEquals(200, result.getInt("reading"));
+        Assert.assertFalse(result.next());
       }
     }
   }
@@ -260,13 +276,27 @@ public class IoTDBPipeLogicalBackupIT extends AbstractPipeDualTreeModelManualIT 
   }
 
   @Test
-  public void testTreeContinuousCapturePreservesFilteredDeletionRange() throws Exception {
+  public void testTreeContinuousCaptureFiltersDeleteByPathAndTime() throws Exception {
     TestUtils.executeNonQueries(
         senderEnv,
         Arrays.asList(
             "create database root.logical_backup_delete",
             "create timeseries root.logical_backup_delete.d.s with datatype=INT32,encoding=PLAIN",
+            "create timeseries root.logical_backup_delete.d.other with datatype=INT32,encoding=PLAIN",
             "insert into root.logical_backup_delete.d(time,s) values(1,10)",
+            "insert into root.logical_backup_delete.d(time,s) values(4,40)",
+            "insert into root.logical_backup_delete.d(time,other) values(2,200)",
+            "flush"),
+        null);
+    TestUtils.executeNonQueries(
+        receiverEnv,
+        Arrays.asList(
+            "create database root.logical_backup_delete",
+            "create timeseries root.logical_backup_delete.d.s with datatype=INT32,encoding=PLAIN",
+            "create timeseries root.logical_backup_delete.d.other with datatype=INT32,encoding=PLAIN",
+            "insert into root.logical_backup_delete.d(time,s) values(0,0)",
+            "insert into root.logical_backup_delete.d(time,s) values(4,400)",
+            "insert into root.logical_backup_delete.d(time,other) values(2,200)",
             "flush"),
         null);
     final String pipeName = "logical_backup_tree_delete";
@@ -291,7 +321,9 @@ public class IoTDBPipeLogicalBackupIT extends AbstractPipeDualTreeModelManualIT 
                       "insert into root.logical_backup_delete.d(time,s) values(2,20)");
                   statement.execute(
                       "insert into root.logical_backup_delete.d(time,s) values(3,30)");
-                  statement.execute("delete from root.logical_backup_delete.d.s where time <= 2");
+                  statement.execute(
+                      "delete from root.logical_backup_delete.d.s, "
+                          + "root.logical_backup_delete.d.other where time <= 4");
                 }
               } catch (final Exception e) {
                 throw new CompletionException(e);
@@ -312,7 +344,7 @@ public class IoTDBPipeLogicalBackupIT extends AbstractPipeDualTreeModelManualIT 
         "--model",
         "tree",
         "--include",
-        "root.logical_backup_delete.**",
+        "root.logical_backup_delete.d.s",
         "--start-time",
         "1",
         "--end-time",
@@ -331,9 +363,16 @@ public class IoTDBPipeLogicalBackupIT extends AbstractPipeDualTreeModelManualIT 
     runConnected(receiverEnv, "restore", "--input", backup.toString());
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "select * from root.logical_backup_delete.d",
+        "select s from root.logical_backup_delete.d",
         "Time,root.logical_backup_delete.d.s,",
-        new HashSet<>(Arrays.asList("3,30,")));
+        new HashSet<>(Arrays.asList("0,0,", "4,400,")),
+        30);
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "select other from root.logical_backup_delete.d",
+        "Time,root.logical_backup_delete.d.other,",
+        new HashSet<>(Arrays.asList("2,200,")),
+        30);
   }
 
   @Test
