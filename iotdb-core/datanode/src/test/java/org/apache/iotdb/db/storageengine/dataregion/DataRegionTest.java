@@ -241,8 +241,9 @@ public class DataRegionTest {
       final DataRegionInfo regionInfo = (DataRegionInfo) regionInfoField.get(dataRegion);
       final long memoryBefore = regionInfo.getMemCost();
       setMemoryAdmissionTestThreshold("memorySizeForMemtable", 2 * memoryBefore);
-      setMemoryAdmissionTestThreshold(
-          "FLUSH_THRESHOLD", (double) memoryBefore - selected.getWorkMemTableRamCost() / 2);
+      // One new row pushes memory above this threshold. Flushing the largest (selected) memtable
+      // brings it back below the threshold, so the current processor remains unselected.
+      setMemoryAdmissionTestThreshold("FLUSH_THRESHOLD", (double) memoryBefore);
       setMemoryAdmissionTestThreshold("REJECT_THRESHOLD", (double) memoryBefore - 1);
       config.setMaxWaitingTimeWhenInsertBlocked(5_000);
       config.setCheckPeriodWhenInsertBlocked(10);
