@@ -47,6 +47,7 @@ import java.text.DateFormat;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -278,6 +279,26 @@ public class TestUtils {
   public static void resultSetEqualTest(
       String sql, String[] expectedHeader, String[] expectedRetArray) {
     resultSetEqualTest(sql, expectedHeader, expectedRetArray, null);
+  }
+
+  /**
+   * Executes a tree-model query and checks unordered rows on every read node, including duplicate
+   * multiplicity. Use only when the query's final result does not require a particular row order or
+   * select a nondeterministic subset of rows.
+   */
+  public static void resultSetEqualTestUnordered(
+      String sql, String[] expectedHeader, String[] expectedRetArray) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      connection.setClientInfo("time_zone", "+00:00");
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        assertResultSetEqualUnordered(
+            resultSet, String.join(",", expectedHeader) + ",", Arrays.asList(expectedRetArray));
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 
   public static void tableResultSetEqualTest(
