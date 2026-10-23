@@ -819,6 +819,41 @@ public class IoTDBSessionRelationalIT {
   }
 
   @Test
+  public void insertAllFieldDataTypeMismatchWithoutTagTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      session.executeNonQueryStatement(
+          "CREATE TABLE field_wrong_type_no_tag (f1 int32 field, f2 int32 field)");
+
+      Tablet tablet =
+          new Tablet(
+              "field_wrong_type_no_tag",
+              Arrays.asList("f1", "f2"),
+              Arrays.asList(TSDataType.DOUBLE, TSDataType.DOUBLE),
+              Arrays.asList(ColumnCategory.FIELD, ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 1);
+      tablet.addValue("f1", 0, 1.5);
+      tablet.addValue("f2", 0, 2.5);
+
+      try {
+        session.insert(tablet);
+        fail("Insert should fail");
+      } catch (StatementExecutionException e) {
+        assertEquals(
+            "507: Fail to insert measurements [f1, f2] "
+                + "caused by [Incompatible data type of column f1: DOUBLE/INT32, "
+                + "Incompatible data type of column f2: DOUBLE/INT32]",
+            e.getMessage());
+      }
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("select * from field_wrong_type_no_tag")) {
+        assertFalse(dataSet.hasNext());
+      }
+    }
+  }
+
+  @Test
   public void insertRelationalTabletWithCacheLeaderTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
