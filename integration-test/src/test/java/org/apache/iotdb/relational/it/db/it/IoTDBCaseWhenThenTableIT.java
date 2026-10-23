@@ -695,4 +695,224 @@ public class IoTDBCaseWhenThenTableIT {
     String[] retArray = new String[] {"0,", "11,", "22,", "33,"};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE);
   }
+
+  @Test
+  public void testCaseWhenReusesAggregationAcrossBlocks() {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE case_aggregation_cache (dev STRING TAG, c DOUBLE FIELD, q INT32 FIELD)",
+          "INSERT INTO case_aggregation_cache(time, dev, c, q) VALUES "
+              + "(0, 'd0', 1.0, 0), (0, 'd1', 1.0, 0), (3600000, 'd1', 1.0, 0)"
+        });
+
+    // The non-pushdown predicate and the different device/window shapes make the aggregation
+    // produce multiple blocks. CASE clears the shared aggregate before the next output uses it.
+    String suffix = " FROM case_aggregation_cache WHERE q % 2 < 1 GROUP BY dev, date_bin(1h, time)";
+    for (String projection :
+        new String[] {
+          "CASE WHEN sum(c) > 0 THEN 1.0 END AS case_result, CAST(sum(c) AS DOUBLE) AS total",
+          "CASE WHEN sum(c) > 0 THEN 1.0 END AS case_result, sum(c) + 0 AS total",
+          "CASE WHEN sum(c) > 0 THEN CAST(sum(c) AS DOUBLE) / CAST(sum(c) AS DOUBLE) END "
+              + "AS case_result, CAST(sum(c) AS DOUBLE) AS total"
+        }) {
+      tableResultSetEqualTest(
+          "SELECT " + projection + suffix,
+          new String[] {"case_result", "total"},
+          new String[] {"1.0,1.0,", "1.0,1.0,", "1.0,1.0,"},
+          DATABASE);
+    }
+  }
+
+  @Test
+  public void testReusingCasePreservesPendingSiblingColumn() {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE case_sibling_cache (dev STRING TAG, x DOUBLE FIELD)",
+          "INSERT INTO case_sibling_cache(time, dev, x) VALUES "
+              + "(0, 'd0', -3.0), (1, 'd0', 0.0), (2, 'd0', 2.0)"
+        });
+
+    String sharedCase = "CASE WHEN x > 0 THEN 1.0 ELSE 0.0 END";
+    tableResultSetEqualTest(
+        "SELECT "
+            + sharedCase
+            + " AS a, x + CASE WHEN ("
+            + sharedCase
+            + ") > 0 THEN 2.0 ELSE 3.0 END AS b FROM case_sibling_cache ORDER BY time",
+        new String[] {"a", "b"},
+        new String[] {"0.0,0.0,", "0.0,3.0,", "1.0,4.0,"},
+        DATABASE);
+  }
+
+  @Test
+  public void testSharedDiffAcrossCaseFilterAndProjection() {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE case_shared_diff (dev STRING TAG, x DOUBLE FIELD)",
+          "INSERT INTO case_shared_diff(time, dev, x) VALUES "
+              + "(1, 'd0', 1.0), (2, 'd0', 3.0), (3, 'd0', 6.0)",
+          "FLUSH",
+          "INSERT INTO case_shared_diff(time, dev, x) VALUES (4, 'd0', 10.0), (5, 'd0', 11.0)",
+          "FLUSH"
+        });
+    tableResultSetEqualTest(
+        "SELECT time, diff(x) AS d FROM case_shared_diff "
+            + "WHERE CASE WHEN diff(x) > 1.0 THEN 1.0 ELSE 0.0 END > 0.0",
+        new String[] {"time", "d"},
+        new String[] {
+          "1970-01-01T00:00:00.002Z,2.0,",
+          "1970-01-01T00:00:00.003Z,3.0,",
+          "1970-01-01T00:00:00.004Z,4.0,"
+        },
+        DATABASE);
+    tableResultSetEqualTest(
+        "SELECT diff(x) AS d FROM case_shared_diff "
+            + "WHERE CASE WHEN diff(x) > 1.0 THEN true ELSE true END",
+        new String[] {"d"},
+        new String[] {"null,", "2.0,", "3.0,", "4.0,", "1.0,"},
+        DATABASE);
+    tableResultSetEqualTest(
+        "SELECT CASE WHEN x > 5 THEN diff(x) ELSE 100.0 END AS a, "
+            + "CASE WHEN x > 5 THEN 200.0 ELSE diff(x) END AS b, diff(x) AS d "
+            + "FROM case_shared_diff",
+        new String[] {"a", "b", "d"},
+        new String[] {
+          "100.0,null,null,", "100.0,2.0,2.0,", "3.0,200.0,3.0,", "4.0,200.0,4.0,", "1.0,200.0,1.0,"
+        },
+        DATABASE);
+  }
+
+  @Test
+  public void testDynamicIgnoreNullDiffAcrossCaseFilterAndProjection() {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE case_dynamic_diff "
+              + "(dev STRING TAG, x DOUBLE FIELD, ignore_null BOOLEAN FIELD)",
+          "INSERT INTO case_dynamic_diff(time, dev, x, ignore_null) VALUES "
+              + "(1, 'd0', 1.0, true), (2, 'd0', 3.0, false), (3, 'd0', null, true), "
+              + "(4, 'd0', 10.0, null), (5, 'd0', null, false)",
+          "FLUSH",
+          "INSERT INTO case_dynamic_diff(time, dev, x, ignore_null) VALUES "
+              + "(6, 'd0', 20.0, true), (7, 'd0', 25.0, false), "
+              + "(8, 'd0', null, true), (9, 'd0', 30.0, true)",
+          "FLUSH"
+        });
+    String diff = "diff(x, ignore_null)";
+    tableResultSetEqualTest(
+        "SELECT " + diff + " AS d FROM case_dynamic_diff ORDER BY time",
+        new String[] {"d"},
+        new String[] {"null,", "2.0,", "null,", "7.0,", "null,", "null,", "5.0,", "null,", "5.0,"},
+        DATABASE);
+    tableResultSetEqualTest(
+        "SELECT CASE WHEN x > 5 THEN "
+            + diff
+            + " ELSE 100.0 END AS a, CASE WHEN x > 5 THEN 200.0 ELSE "
+            + diff
+            + " END AS b, "
+            + diff
+            + " AS d FROM case_dynamic_diff ORDER BY time",
+        new String[] {"a", "b", "d"},
+        new String[] {
+          "100.0,null,null,",
+          "100.0,2.0,2.0,",
+          "100.0,null,null,",
+          "null,200.0,7.0,",
+          "100.0,null,null,",
+          "null,200.0,null,",
+          "5.0,200.0,5.0,",
+          "100.0,null,null,",
+          "null,200.0,5.0,"
+        },
+        DATABASE);
+    // The expected values preserve master's masked WHEN evaluation of the binary diff: a full
+    // evaluation of the same predicate would also select the 7.0 and the trailing 5.0 rows.
+    tableResultSetEqualTest(
+        "SELECT "
+            + diff
+            + " AS d FROM case_dynamic_diff WHERE CASE WHEN x IS NULL THEN false WHEN "
+            + diff
+            + " > 1.0 THEN true ELSE false END ORDER BY time",
+        new String[] {"d"},
+        new String[] {"2.0,", "5.0,"},
+        DATABASE);
+  }
+
+  @Test
+  public void testLocalDiffPreservesMasterSelectionsAndCaseGuards() {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE case_partial_diff (dev STRING TAG, x DOUBLE FIELD, ignore_null BOOLEAN FIELD)",
+          "INSERT INTO case_partial_diff(time, dev, x, ignore_null) VALUES "
+              + "(1, 'd0', 1.0, true), (2, 'd0', -2.0, false), "
+              + "(3, 'd0', 3.0, true), (4, 'd0', -4.0, false)",
+          "CREATE TABLE case_guarded_diff (dev STRING TAG, src STRING FIELD)",
+          "INSERT INTO case_guarded_diff(time, dev, src) VALUES "
+              + "(1, 'd0', 'n/a'), (2, 'd0', '5'), (3, 'd0', '8')"
+        });
+    for (String diff : new String[] {"diff(x)", "diff(x, ignore_null)"}) {
+      // The binary variant's nulls at the CASE's ELSE rows preserve master's masked branch
+      // evaluation; a full evaluation of the same expression would produce -3.0 and -7.0 there.
+      tableResultSetEqualTest(
+          "SELECT CASE WHEN x > 0 THEN x ELSE "
+              + diff
+              + " END AS a, "
+              + diff
+              + " AS d FROM case_partial_diff ORDER BY time",
+          new String[] {"a", "d"},
+          diff.equals("diff(x)")
+              ? new String[] {"1.0,null,", "-3.0,-3.0,", "3.0,5.0,", "-7.0,-7.0,"}
+              : new String[] {"1.0,null,", "null,-3.0,", "3.0,5.0,", "null,-7.0,"},
+          DATABASE);
+    }
+    tableResultSetEqualTest(
+        "SELECT CASE WHEN x > 0 THEN diff(diff(x)) ELSE 0.0 END AS a, "
+            + "diff(diff(x)) AS d FROM case_partial_diff ORDER BY time",
+        new String[] {"a", "d"},
+        new String[] {"null,null,", "0.0,null,", "8.0,8.0,", "0.0,-12.0,"},
+        DATABASE);
+    String guardedDiff = "diff(CASE WHEN src <> 'n/a' THEN CAST(src AS DOUBLE) END)";
+    tableResultSetEqualTest(
+        "SELECT CASE WHEN src = 'n/a' THEN -1.0 ELSE "
+            + guardedDiff
+            + " END AS a, "
+            + guardedDiff
+            + " AS d FROM case_guarded_diff ORDER BY time",
+        new String[] {"a", "d"},
+        new String[] {"-1.0,null,", "null,null,", "3.0,3.0,"},
+        DATABASE);
+  }
+
+  @Test
+  public void testBinaryDiffPreservesOuterCaseCastGuard() {
+    prepareTableData(
+        new String[] {
+          "USE " + DATABASE,
+          "CREATE TABLE case_binary_guard (dev STRING TAG, src STRING FIELD, ignore_null BOOLEAN FIELD)",
+          "INSERT INTO case_binary_guard(time, dev, src, ignore_null) VALUES "
+              + "(1, 'd0', 'n/a', true), (2, 'd0', '5', true), (3, 'd0', '8', true)",
+          "FLUSH",
+          "INSERT INTO case_binary_guard(time, dev, src, ignore_null) VALUES "
+              + "(4, 'd0', 'n/a', true), (5, 'd0', '10', true), (6, 'd0', '14', true)",
+          "FLUSH"
+        });
+    // The second block's first value is null on master: the first block's trailing masked row
+    // flips the binary diff's carried null flag, which a full evaluation would not do.
+    tableResultSetEqualTest(
+        "SELECT CASE WHEN src <> 'n/a' THEN diff(CAST(src AS DOUBLE), ignore_null) END AS d "
+            + "FROM case_binary_guard ORDER BY time",
+        new String[] {"d"},
+        new String[] {"null,", "null,", "3.0,", "null,", "null,", "4.0,"},
+        DATABASE);
+    // Literal flags use the unary transformer, which already evaluates all input rows on master.
+    tableAssertTestFail(
+        "SELECT CASE WHEN src <> 'n/a' THEN diff(CAST(src AS DOUBLE), true) END "
+            + "FROM case_binary_guard ORDER BY time",
+        "701: Cannot cast n/a to DOUBLE type",
+        DATABASE);
+  }
 }

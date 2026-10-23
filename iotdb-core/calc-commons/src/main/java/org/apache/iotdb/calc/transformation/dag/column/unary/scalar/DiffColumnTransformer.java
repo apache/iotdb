@@ -34,9 +34,26 @@ public class DiffColumnTransformer extends BinaryColumnTransformer {
   // indicate whether lastValue is null
   private boolean lastValueIsNull = true;
 
+  // Re-evaluation in the same block must start from the state before this input.
+  private double lastValueBeforeCurrentInput;
+  private boolean lastValueIsNullBeforeCurrentInput = true;
+
   public DiffColumnTransformer(
       Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
     super(returnType, leftTransformer, rightTransformer);
+  }
+
+  @Override
+  protected void resetForNewInput() {
+    lastValueBeforeCurrentInput = lastValue;
+    lastValueIsNullBeforeCurrentInput = lastValueIsNull;
+  }
+
+  @Override
+  public boolean canEvaluateWithSelection() {
+    // The full-width transform reads the masked children at unselected rows as nulls, which
+    // corrupts the running state and the values of the selected rows that follow them.
+    return false;
   }
 
   @Override
@@ -47,6 +64,8 @@ public class DiffColumnTransformer extends BinaryColumnTransformer {
   @Override
   protected void doTransform(
       Column leftColumn, Column rightColumn, ColumnBuilder builder, int positionCount) {
+    lastValue = lastValueBeforeCurrentInput;
+    lastValueIsNull = lastValueIsNullBeforeCurrentInput;
     Type leftType = leftTransformer.getType();
     Type rightType = rightTransformer.getType();
     for (int i = 0; i < positionCount; i++) {

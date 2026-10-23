@@ -25,6 +25,13 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Set;
+import java.util.function.Consumer;
+
 import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isNumericType;
 
 public abstract class ColumnTransformer {
@@ -45,6 +52,30 @@ public abstract class ColumnTransformer {
     if (!columnCache.hasCached()) {
       evaluate();
     }
+  }
+
+  /** Reuses a cached result, or recomputes only selected rows when it is missing. */
+  public void tryEvaluateWithSelection(boolean[] selection) {
+    if (!columnCache.hasCached()) {
+      evaluateWithSelection(selection);
+    }
+  }
+
+  /**
+   * Whether evaluating with a row-selection mask yields the same values at the selected rows
+   * (unselected rows are nulled by design) and the same cross-block running state as a full
+   * evaluation, for this node and its whole subtree. Stateful transformers override this to return
+   * {@code false} so that callers re-evaluate them over every row.
+   */
+  public boolean canEvaluateWithSelection() {
+    boolean[] result = {true};
+    forEachChild(
+        child -> {
+          if (result[0] && !child.canEvaluateWithSelection()) {
+            result[0] = false;
+          }
+        });
+    return result[0];
   }
 
   public Column getColumn() {
@@ -115,4 +146,36 @@ public abstract class ColumnTransformer {
   public void clearCache() {
     this.columnCache.clear();
   }
+
+  /** Clears this node only. Call on every collected node before feeding a new input block. */
+  public final void clearCacheForNewInput() {
+    this.columnCache.clear();
+    resetForNewInput();
+  }
+
+  /** Prepares per-input state while preserving state carried between input blocks. */
+  protected void resetForNewInput() {
+    // Most transformers keep no state outside the ordinary column cache.
+  }
+
+  /** Collects the DAG once, deduplicating by identity, for allocation-free block resets. */
+  public static ColumnTransformer[] collectTransformers(Iterable<ColumnTransformer> roots) {
+    List<ColumnTransformer> transformers = new ArrayList<>();
+    Set<ColumnTransformer> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+    for (ColumnTransformer root : roots) {
+      root.collectTransformers(transformers, visited);
+    }
+    return transformers.toArray(new ColumnTransformer[0]);
+  }
+
+  private void collectTransformers(
+      List<ColumnTransformer> transformers, Set<ColumnTransformer> visited) {
+    if (visited.add(this)) {
+      transformers.add(this);
+      forEachChild(child -> child.collectTransformers(transformers, visited));
+    }
+  }
+
+  /** Child edges used to collect block-boundary reset nodes; evaluation cleanup is unchanged. */
+  protected abstract void forEachChild(Consumer<ColumnTransformer> action);
 }
