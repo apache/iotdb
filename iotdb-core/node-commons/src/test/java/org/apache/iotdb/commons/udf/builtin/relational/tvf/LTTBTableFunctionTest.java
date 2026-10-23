@@ -182,6 +182,11 @@ public class LTTBTableFunctionTest {
         new int[] {0, 2, 5},
         LTTBTableFunction.selectTargetCount(
             times, new double[] {0, 1, 9, 2, Double.NaN, Double.NaN}, 6, 3));
+    // The last bucket looks ahead to the last finite point t5 = 3, so t4 = 9 wins over t3 = 2.
+    assertArrayEquals(
+        new int[] {0, 1, 4, 6},
+        LTTBTableFunction.selectTargetCount(
+            new long[] {0, 1, 2, 3, 4, 5, 6}, new double[] {0, 5, 1, 2, 9, 3, Double.NaN}, 7, 4));
     // Control: a finite final point is C of the last bucket and selects the same peak.
     assertArrayEquals(
         new int[] {0, 2, 5},
