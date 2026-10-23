@@ -405,6 +405,21 @@ public class IoTDBPredicateConversionTreeIT {
   }
 
   @Test
+  public void testNotPredicateWithTimeAndMultipleSeries() {
+    resultSetEqualTest(
+        "SELECT s1, s2 FROM " + NOT_DATABASE_NAME + ".d1 WHERE NOT (time > 2 OR s1 > 5)",
+        new String[] {TIMESTAMP_STR, NOT_DATABASE_NAME + ".d1.s1", NOT_DATABASE_NAME + ".d1.s2"},
+        new String[] {"1,1,10,"});
+
+    resultSetEqualTest(
+        "SELECT s1, s2 FROM "
+            + NOT_DATABASE_NAME
+            + ".d1 WHERE NOT (time > 2 OR s1 > 5) ALIGN BY DEVICE",
+        new String[] {TIMESTAMP_STR, DEVICE, "s1", "s2"},
+        new String[] {"1," + NOT_DATABASE_NAME + ".d1,1,10,"});
+  }
+
+  @Test
   public void testNestedNotPredicate() {
     String[] expectedHeader =
         new String[] {TIMESTAMP_STR, NOT_DATABASE_NAME + ".d1.s1", NOT_DATABASE_NAME + ".d1.s2"};

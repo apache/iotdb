@@ -472,7 +472,8 @@ public class PredicateUtils {
 
   /**
    * Extract the source symbol (full path for non-aligned path, device path for aligned path) from
-   * the given predicate. If the predicate contains multiple source symbols, return null.
+   * the given predicate. If the predicate contains no source symbols or multiple source symbols,
+   * return null.
    *
    * @param predicate given predicate
    * @return the source symbol extracted from the given predicate
@@ -483,6 +484,9 @@ public class PredicateUtils {
         sourceExpressions.stream()
             .map(expression -> ((TimeSeriesOperand) expression).getPath())
             .collect(Collectors.toSet());
+    if (sourcePaths.isEmpty()) {
+      return null;
+    }
     Iterator<PartialPath> pathIterator = sourcePaths.iterator();
     MeasurementPath firstPath = (MeasurementPath) pathIterator.next();
 
