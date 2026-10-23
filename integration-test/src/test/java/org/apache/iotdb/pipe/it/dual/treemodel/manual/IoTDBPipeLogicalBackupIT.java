@@ -39,6 +39,7 @@ import org.junit.runner.RunWith;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -256,6 +257,146 @@ public class IoTDBPipeLogicalBackupIT extends AbstractPipeDualTreeModelManualIT 
         }
       }
     }
+  }
+
+  @Test
+  public void testTreeContinuousCapturePreservesFilteredDeletionRange() throws Exception {
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "create database root.logical_backup_delete",
+            "create timeseries root.logical_backup_delete.d.s with datatype=INT32,encoding=PLAIN",
+            "insert into root.logical_backup_delete.d(time,s) values(1,10)",
+            "flush"),
+        null);
+    final String pipeName = "logical_backup_tree_delete";
+    final CompletableFuture<Void> writes =
+        CompletableFuture.runAsync(
+            () -> {
+              try {
+                Awaitility.await()
+                    .atMost(30, TimeUnit.SECONDS)
+                    .until(
+                        () -> {
+                          try (final Connection connection = senderEnv.getConnection();
+                              final Statement statement = connection.createStatement();
+                              final ResultSet result =
+                                  statement.executeQuery("show pipe " + pipeName)) {
+                            return result.next();
+                          }
+                        });
+                try (final Connection connection = senderEnv.getConnection();
+                    final Statement statement = connection.createStatement()) {
+                  statement.execute(
+                      "insert into root.logical_backup_delete.d(time,s) values(2,20)");
+                  statement.execute(
+                      "insert into root.logical_backup_delete.d(time,s) values(3,30)");
+                  statement.execute("delete from root.logical_backup_delete.d.s where time <= 2");
+                }
+              } catch (final Exception e) {
+                throw new CompletionException(e);
+              }
+            });
+    final Path parent = temporaryFolder.getRoot().toPath().toAbsolutePath();
+    runConnected(
+        senderEnv,
+        "dump",
+        "--backup-dir",
+        parent.toString(),
+        "--backup-id",
+        "tree-delete",
+        "--pipe-name",
+        pipeName,
+        "--scope",
+        "schema,data",
+        "--model",
+        "tree",
+        "--include",
+        "root.logical_backup_delete.**",
+        "--start-time",
+        "1",
+        "--end-time",
+        "3",
+        "--mode",
+        "continuous",
+        "--until",
+        Instant.now().plusSeconds(20).toString(),
+        "--timeout-seconds",
+        "180",
+        "--poll-interval-seconds",
+        "1");
+    writes.get(30, TimeUnit.SECONDS);
+    final Path backup = parent.resolve("tree-delete");
+    assertLogicalRequests(backup);
+    runConnected(receiverEnv, "restore", "--input", backup.toString());
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "select * from root.logical_backup_delete.d",
+        "Time,root.logical_backup_delete.d.s,",
+        new HashSet<>(Arrays.asList("3,30,")));
+  }
+
+  @Test
+  public void testInspectPackAndDeprecatedAliasesKeepBackupPortable() throws Exception {
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "create database root.logical_backup_alias",
+            "create timeseries root.logical_backup_alias.d.s with datatype=INT32,encoding=PLAIN",
+            "insert into root.logical_backup_alias.d(time,s) values(1,10)",
+            "flush"),
+        null);
+    final Path parent = temporaryFolder.getRoot().toPath().toAbsolutePath();
+    runConnected(
+        senderEnv,
+        "dump",
+        "--backup-dir",
+        parent.toString(),
+        "--backup-id",
+        "portable",
+        "--scope",
+        "config,schema,data",
+        "--model",
+        "tree",
+        "--include",
+        "root.logical_backup_alias.**",
+        "--timeout-seconds",
+        "180",
+        "--poll-interval-seconds",
+        "1");
+    final Path backup = parent.resolve("portable");
+    final byte[] manifestBeforePack = Files.readAllBytes(backup.resolve("manifest.json"));
+    Assert.assertEquals(
+        0,
+        PipeLogicalBackupTool.run(
+            new String[] {"inspect", "--input", backup.toString(), "--json"}));
+    Assert.assertEquals(
+        0,
+        PipeLogicalBackupTool.run(new String[] {"verify", "--input", backup.toString(), "--json"}));
+    final Path archive = parent.resolve("portable.zip");
+    Assert.assertEquals(
+        0,
+        PipeLogicalBackupTool.run(
+            new String[] {"pack", "--input", backup.toString(), "--output", archive.toString()}));
+    final Path aliasArchive = parent.resolve("portable-alias.zip");
+    Assert.assertEquals(
+        0,
+        PipeLogicalBackupTool.run(
+            new String[] {
+              "export", "--input", backup.toString(), "--output", aliasArchive.toString()
+            }));
+    Assert.assertArrayEquals(
+        manifestBeforePack, Files.readAllBytes(backup.resolve("manifest.json")));
+    Assert.assertEquals(
+        0,
+        PipeLogicalBackupTool.run(
+            new String[] {"verify", "--input", archive.toString(), "--json"}));
+    runConnected(receiverEnv, "import", "--input", aliasArchive.toString());
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "select * from root.logical_backup_alias.d",
+        "Time,root.logical_backup_alias.d.s,",
+        new HashSet<>(Arrays.asList("1,10,")));
   }
 
   private static void assertLogicalRequests(final Path backup) throws Exception {
