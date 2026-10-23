@@ -39,6 +39,7 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
@@ -59,9 +60,9 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
 
   private final VSerializer serializer;
 
-  // Children names with wildcard, for accelerating wildcard searching.
-  // Here we do not include "*" or "**" to ensure that the set is empty in most cases.
-  private final Set<String> childrenNamesWithNonTrivialWildcard = new HashSet<>();
+  // Compiled patterns for child names with wildcard, for accelerating wildcard searching.
+  // Here we do not include "*" or "**" to ensure that the map is empty most of the time.
+  private final Map<String, Pattern> childrenPatternsWithNonTrivialWildcard = new HashMap<>();
 
   public PathPatternNode(String name, VSerializer serializer) {
     this.name = name;
@@ -95,10 +96,12 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
     if (children.containsKey(MULTI_LEVEL_PATH_WILDCARD)) {
       res.add(children.get(MULTI_LEVEL_PATH_WILDCARD));
     }
-    childrenNamesWithNonTrivialWildcard.stream()
-        .filter(path -> PathPatternUtil.isNodeMatch(path, nodeName))
-        .map(children::get)
-        .forEach(res::add);
+    for (final Map.Entry<String, Pattern> entry :
+        childrenPatternsWithNonTrivialWildcard.entrySet()) {
+      if (entry.getValue().matcher(nodeName).matches()) {
+        res.add(children.get(entry.getKey()));
+      }
+    }
     return res;
   }
 
@@ -111,13 +114,16 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
     if (PathPatternUtil.hasWildcard(nodeName)
         && !PathPatternUtil.isMultiLevelMatchWildcard(nodeName)
         && !ONE_LEVEL_PATH_WILDCARD.equals(nodeName)) {
-      childrenNamesWithNonTrivialWildcard.add(nodeName);
+      childrenPatternsWithNonTrivialWildcard.computeIfAbsent(
+          nodeName, PathPatternUtil::compileNodePattern);
     }
     children.put(nodeName, tmpNode);
   }
 
-  public void deleteChild(PathPatternNode<V, VSerializer> tmpNode) {
-    children.remove(tmpNode.getName());
+  public void deleteChild(final PathPatternNode<V, VSerializer> tmpNode) {
+    final String nodeName = tmpNode.getName();
+    children.remove(nodeName);
+    childrenPatternsWithNonTrivialWildcard.remove(nodeName);
   }
 
   public void appendValue(V value, BiConsumer<V, Set<V>> remappingFunction) {
@@ -280,7 +286,10 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
     return SHALLOW_SIZE
         + RamUsageEstimator.sizeOf(name)
         + RamUsageEstimator.sizeOfHashSet(valueSet)
-        + RamUsageEstimator.sizeOfHashSet(childrenNamesWithNonTrivialWildcard)
+        + RamUsageEstimator.sizeOfMapWithKnownShallowSize(
+            childrenPatternsWithNonTrivialWildcard,
+            RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP,
+            RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP_ENTRY)
         + RamUsageEstimator.sizeOfMapWithKnownShallowSize(
             children,
             RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP,
