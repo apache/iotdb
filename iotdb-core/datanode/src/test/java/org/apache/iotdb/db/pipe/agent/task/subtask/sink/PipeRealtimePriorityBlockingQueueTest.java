@@ -129,10 +129,10 @@ public class PipeRealtimePriorityBlockingQueueTest {
                       Collections.emptyList()));
       Assert.assertTrue(sourcePathRead.await(5, TimeUnit.SECONDS));
       final Future<Event> pollFuture = executor.submit(queue::directPoll);
+      Assert.assertSame(event, pollFuture.get(5, TimeUnit.SECONDS));
 
       allowReplacementToContinue.countDown();
       replacementFuture.get(5, TimeUnit.SECONDS);
-      Assert.assertSame(event, pollFuture.get(5, TimeUnit.SECONDS));
       verify(event, never())
           .decreaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName(), false);
     } finally {
