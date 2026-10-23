@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.tool.data;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
+import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.pool.ITableSessionPool;
@@ -33,6 +35,8 @@ import org.apache.iotdb.tool.tsfile.ImportTsFileScanTool;
 import org.apache.commons.csv.CSVParser;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
 import org.junit.After;
 import org.junit.Before;
@@ -40,15 +44,19 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
+import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -61,12 +69,16 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.AdditionalMatchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -87,8 +99,6 @@ public class DataToolRegressionTest extends AbstractDataTool {
     for (Class<?> owner :
         Arrays.asList(
             AbstractDataTool.class,
-            ExportDataTree.class,
-            ExportDataTable.class,
             ImportDataTree.class,
             ImportDataTable.class,
             ImportTsFileBase.class,
@@ -101,20 +111,14 @@ public class DataToolRegressionTest extends AbstractDataTool {
       }
     }
     directory = temporaryFolder.getRoot().toPath();
-    targetDirectory = directory + File.separator;
-    targetFile = "dump";
-    exportType = "sql";
     fileType = "csv";
-    timeFormat = "timestamp";
     timeColumn = "Time";
     timestampPrecision = "ms";
     database = "db";
     table = "t";
     aligned = false;
-    linesPerFile = 10000;
     batchPointSize = 100;
     threadNum = 1;
-    needDataTypePrinted = false;
   }
 
   @After
@@ -126,31 +130,37 @@ public class DataToolRegressionTest extends AbstractDataTool {
 
   @Test
   public void testMultiDeviceSqlPreservesColumnMappingAndSplitsFiles() throws Exception {
-    linesPerFile = 1;
-    mockTree(
-        dataSet(
-            List.of("Time", "root.a.d1.s1", "root.a.d2.s2", "root.a.d1.s3"),
-            List.of("INT64", "INT32", "INT32", "INT32"),
-            new Object[] {1L, 11, 22, 33},
-            new Object[] {2L, null, 44, null}));
-    assertTrue(new ExportDataTree().exportBySql("select * from root.a.*", 0));
-    assertEquals("INSERT INTO root.a.d1(TIMESTAMP,s1,s3) VALUES (1,11,33);\n", read("dump0_0.sql"));
-    assertEquals("INSERT INTO root.a.d2(TIMESTAMP,s2) VALUES (1,22);\n", read("dump0_1.sql"));
-    assertEquals("INSERT INTO root.a.d2(TIMESTAMP,s2) VALUES (2,44);\n", read("dump0_2.sql"));
-    assertFalse(Files.exists(directory.resolve("dump0_3.sql")));
+    Session session =
+        mockTree(
+            dataSet(
+                List.of("Time", "root.a.d1.s1", "root.a.d2.s2", "root.a.d1.s3"),
+                List.of("INT64", "INT32", "INT32", "INT32"),
+                new Object[] {1L, 11, 22, 33},
+                new Object[] {2L, null, 44, null}));
+    exportTree(session, "select * from root.a.*", 0, "-ft", "sql", "-lpf", "1");
+    // -lpf counts data rows, so the statements of one row share a file.
+    assertEquals(
+        "INSERT INTO root.a.d1(TIMESTAMP,s1,s3) VALUES (1,11,33);\n"
+            + "INSERT INTO root.a.d2(TIMESTAMP,s2) VALUES (1,22);\n",
+        read("dump0_0.sql"));
+    assertEquals("INSERT INTO root.a.d2(TIMESTAMP,s2) VALUES (2,44);\n", read("dump0_1.sql"));
+    assertFalse(Files.exists(directory.resolve("dump0_2.sql")));
   }
 
   @Test
   public void testCustomTableQueriesUseDistinctFilesAndActualTables() throws Exception {
     ITableSession session = mockTable("table_a", "table_b");
+    describe(session, "table_a", "v", "INT32", "FIELD");
+    describe(session, "table_b", "v", "INT32", "FIELD");
+    String qualified = "SELECT * FROM \"db\".\"table_b\" WHERE tag = 'from table_a'";
     SessionDataSet first =
         dataSet(List.of("time", "v"), List.of("TIMESTAMP", "INT32"), new Object[] {1L, 11});
+    when(session.executeQueryStatement(eq("select * from table_a"), anyLong())).thenReturn(first);
     SessionDataSet second =
         dataSet(List.of("time", "v"), List.of("TIMESTAMP", "INT32"), new Object[] {2L, 22});
-    when(session.executeQueryStatement(anyString(), anyLong())).thenReturn(first, second);
-    ExportDataTable tool = new ExportDataTable();
-    assertTrue(tool.exportBySql("select * from table_a", 0));
-    assertTrue(tool.exportBySql("SELECT * FROM \"db\".\"table_b\" WHERE tag = 'from table_a'", 1));
+    when(session.executeQueryStatement(eq(qualified), anyLong())).thenReturn(second);
+    exportTable(session, "select * from table_a", 0, "-ft", "sql");
+    exportTable(session, qualified, 1, "-ft", "sql");
     assertEquals("insert into \"table_a\"(\"time\",\"v\") values(1,11);\n", read("dump0_0.sql"));
     assertEquals("insert into \"table_b\"(\"time\",\"v\") values(2,22);\n", read("dump1_0.sql"));
   }
@@ -158,27 +168,26 @@ public class DataToolRegressionTest extends AbstractDataTool {
   @Test
   public void testCustomTableQueryOverridesTableFilter() throws Exception {
     ITableSession session = mockTable("table_a", "table_b");
-    table = "table_a";
-    set(ExportDataTable.class, "tables", new ArrayList<>(List.of("table_a")));
+    describe(session, "table_b", "v", "INT32", "FIELD");
     SessionDataSet result =
         dataSet(List.of("time", "v"), List.of("TIMESTAMP", "INT32"), new Object[] {1L, 11});
-    when(session.executeQueryStatement(anyString(), anyLong())).thenReturn(result);
+    when(session.executeQueryStatement(eq("select * from table_b"), anyLong())).thenReturn(result);
 
-    assertTrue(new ExportDataTable().exportBySql("select * from table_b", 0));
+    exportTable(session, "select * from table_b", 0, "-ft", "sql", "-table", "table_a");
     assertEquals("insert into \"table_b\"(\"time\",\"v\") values(1,11);\n", read("dump0_0.sql"));
   }
 
   @Test
   public void testDefaultTableExportStillUsesTableFilter() throws Exception {
     ITableSession session = mockTable("table_a", "table_b");
-    table = "table_a";
-    set(ExportDataTable.class, "tables", new ArrayList<>(List.of("table_a")));
+    describe(session, "table_a", "v", "INT32", "FIELD");
     SessionDataSet result =
         dataSet(List.of("time", "v"), List.of("TIMESTAMP", "INT32"), new Object[] {1L, 11});
-    when(session.executeQueryStatement(anyString(), anyLong())).thenReturn(result);
+    when(session.executeQueryStatement(eq("SELECT * FROM \"table_a\""), anyLong()))
+        .thenReturn(result);
 
-    assertTrue(new ExportDataTable().exportBySql(null, 0));
-    verify(session).executeQueryStatement("select * from \"table_a\"", timeout);
+    exportTable(session, null, 0, "-ft", "sql", "-table", "table_a");
+    verify(session).executeQueryStatement(eq("SELECT * FROM \"table_a\""), anyLong());
     assertEquals("insert into \"table_a\"(\"time\",\"v\") values(1,11);\n", read("dump0_0.sql"));
     assertFalse(Files.exists(directory.resolve("dump1_0.sql")));
   }
@@ -186,10 +195,12 @@ public class DataToolRegressionTest extends AbstractDataTool {
   @Test
   public void testQuotedTableAndColumnNames() throws Exception {
     ITableSession session = mockTable("odd\"name");
+    describe(session, "odd\"name", "select", "INT32", "FIELD");
     SessionDataSet result =
         dataSet(List.of("time", "select"), List.of("TIMESTAMP", "INT32"), new Object[] {1L, 11});
-    when(session.executeQueryStatement(anyString(), anyLong())).thenReturn(result);
-    assertTrue(new ExportDataTable().exportBySql("select * from \"ODD\"\"NAME\"", 0));
+    when(session.executeQueryStatement(eq("select * from \"ODD\"\"NAME\""), anyLong()))
+        .thenReturn(result);
+    exportTable(session, "select * from \"ODD\"\"NAME\"", 0, "-ft", "sql");
     assertEquals(
         "insert into \"odd\"\"name\"(\"time\",\"select\") values(1,11);\n", read("dump0_0.sql"));
   }
@@ -197,26 +208,165 @@ public class DataToolRegressionTest extends AbstractDataTool {
   @Test
   public void testAmbiguousAndCrossDatabaseTableQueriesFailBeforeWriting() throws Exception {
     ITableSession session = mockTable("table_a", "table_b");
-    ExportDataTable tool = new ExportDataTable();
-    assertFalse(
-        tool.exportBySql("select * from table_a join table_b on table_a.time = table_b.time", 0));
-    assertFalse(tool.exportBySql("select * from other_db.table_b", 1));
-    assertFalse(tool.exportBySql("select * from", 2));
-    assertFalse(tool.exportBySql("select * from table_b #invalid_character", 3));
-    verify(session, never()).executeQueryStatement(anyString(), anyLong());
+    String message =
+        String.format(
+            CliMessages
+                .EXCEPTION_SQL_TSFILE_EXPORT_REQUIRES_A_QUERY_FROM_A_SINGLE_TABLE_IN_DATABASE_ARG_C9EB3768,
+            "db");
+    for (String query :
+        List.of(
+            "select * from table_a join table_b on table_a.time = table_b.time",
+            "select * from other_db.table_b",
+            "select * from",
+            "select * from table_b #invalid_character",
+            "explain select * from table_a",
+            "with a as (select * from table_a) select * from a",
+            "select * from table_a where v > (select 1)",
+            "select * from table_a union all select * from table_a",
+            // Column aliases rename the columns the rows are written to.
+            "select * from table_a as a(time, w)",
+            // All queries are checked before the first one runs.
+            "select * from table_a; select * from table_a, table_b")) {
+      ArgsErrorException e =
+          assertThrows(
+              query,
+              ArgsErrorException.class,
+              () -> exportTable(session, null, 0, "-ft", "sql", "-q", query));
+      assertEquals(query, message, e.getMessage());
+    }
+    verify(session, never()).executeQueryStatement(not(eq("show tables")), anyLong());
+    assertFalse(Files.exists(directory.resolve("dump0_0.sql")));
+  }
+
+  @Test
+  public void testTableQueriesCannotWriteComputedValuesBack() throws Exception {
+    ITableSession session = mockTable("t");
+    describe(session, "t", "tag", "STRING", "TAG", "v", "INT32", "FIELD", "w", "INT32", "FIELD");
+    for (String query :
+        List.of(
+            // Aliases, expressions and FILL can store values that the table does not hold.
+            "select time, tag, v + 1 as v from t",
+            "select time, tag, w as v, v as w from t",
+            "select time as time, tag, v from t",
+            "select time, tag, abs(v) from t",
+            "select time, tag, v from t fill method previous")) {
+      for (String format : List.of("sql", "tsfile")) {
+        ArgsErrorException e =
+            assertThrows(
+                query,
+                ArgsErrorException.class,
+                () -> exportTable(session, query, 0, "-ft", format));
+        assertEquals(
+            query,
+            CliMessages
+                .EXCEPTION_SQL_TSFILE_EXPORT_CAN_ONLY_SELECT_OR_COLUMN_NAMES_WITHOUT_FILL_EC83126D,
+            e.getMessage());
+      }
+    }
+    verify(session, never()).executeQueryStatement(not(eq("show tables")), anyLong());
+  }
+
+  @Test
+  public void testTableQuerySelectingColumnsIsExported() throws Exception {
+    ITableSession session = mockTable("t");
+    describe(session, "t", "tag", "STRING", "TAG", "v", "INT32", "FIELD", "w", "INT32", "FIELD");
+    String query = "SELECT \"TIME\", Tag, v FROM t AS x WHERE x.w > 1 ORDER BY time LIMIT 5";
+    SessionDataSet result =
+        dataSet(
+            List.of("time", "tag", "v"),
+            List.of("TIMESTAMP", "STRING", "INT32"),
+            new Object[] {2L, "d1", 5});
+    when(session.executeQueryStatement(eq(query), anyLong())).thenReturn(result);
+    exportTable(session, query, 0, "-ft", "sql");
+    assertEquals(
+        "insert into \"t\"(\"time\",\"tag\",\"v\") values(2,'d1',5);\n", read("dump0_0.sql"));
+  }
+
+  @Test
+  public void testTableQueriesNeedAFieldColumnBeforeAnyQueryRuns() throws Exception {
+    ITableSession session = mockTable("t");
+    describe(session, "t", "tag", "STRING", "TAG", "v", "INT32", "FIELD");
+    // IoTDB rejects an INSERT without a FIELD column, so this SQL could not be imported.
+    ArgsErrorException e =
+        assertThrows(
+            ArgsErrorException.class,
+            () ->
+                exportTable(
+                    session,
+                    null,
+                    0,
+                    "-ft",
+                    "sql",
+                    "-q",
+                    "select * from t; select time, tag from t"));
+    assertEquals(
+        String.format(
+            CliMessages.EXCEPTION_SQL_TSFILE_OUTPUT_REQUIRES_A_FIELD_COLUMN_FROM_TABLE_ARG_1C08B044,
+            "t"),
+        e.getMessage());
+    verify(session, never()).executeQueryStatement(startsWith("select"), anyLong());
+    assertFalse(Files.exists(directory.resolve("dump0_0.sql")));
+  }
+
+  @Test
+  public void testTableQueryColumnsAreCheckedAgainstTheTable() throws Exception {
+    ITableSession session = mockTable("t");
+    describe(session, "t", "tag", "STRING", "TAG", "v", "INT32", "FIELD");
+    String message =
+        CliMessages
+            .EXCEPTION_SQL_TSFILE_OUTPUT_REQUIRES_THE_TIME_COLUMN_AND_COLUMNS_OF_TABLE_ARG_14B7FB67;
+    String invalid = String.format(message, "t");
+    for (String query :
+        List.of("select tag, v from t", "select *, v from t", "select time, tag, missing from t")) {
+      ArgsErrorException e =
+          assertThrows(
+              query, ArgsErrorException.class, () -> exportTable(session, query, 0, "-ft", "sql"));
+      assertEquals(query, invalid, e.getMessage());
+    }
+    // Without its TAG columns, a TsFile would merge the rows of every device.
+    ArgsErrorException e =
+        assertThrows(
+            ArgsErrorException.class,
+            () -> exportTable(session, "select time, v from t", 0, "-ft", "tsfile"));
+    assertEquals(
+        String.format(
+            CliMessages.EXCEPTION_TSFILE_OUTPUT_REQUIRES_EVERY_TAG_COLUMN_FROM_TABLE_ARG_901F420F,
+            "t"),
+        e.getMessage());
+    verify(session, never()).executeQueryStatement(startsWith("select"), anyLong());
+  }
+
+  @Test
+  public void testExportChecksTheColumnsTheQueryReturns() throws Exception {
+    ITableSession session = mockTable("t");
+    describe(session, "t", "tag", "STRING", "TAG", "v", "INT32", "FIELD");
+    // The table can change between planning and the query, so the returned columns are checked.
+    SessionDataSet result =
+        dataSet(List.of("time", "tag"), List.of("TIMESTAMP", "STRING"), new Object[] {1L, "d1"});
+    when(session.executeQueryStatement(eq("select * from t"), anyLong())).thenReturn(result);
+    ArgsErrorException e =
+        assertThrows(
+            ArgsErrorException.class,
+            () -> exportTable(session, "select * from t", 0, "-ft", "sql"));
+    assertEquals(
+        String.format(
+            CliMessages.EXCEPTION_SQL_TSFILE_OUTPUT_REQUIRES_A_FIELD_COLUMN_FROM_TABLE_ARG_1C08B044,
+            "t"),
+        e.getMessage());
     assertFalse(Files.exists(directory.resolve("dump0_0.sql")));
   }
 
   @Test
   public void testTableSqlEscapesStringsAndPreservesNull() throws Exception {
     ITableSession session = mockTable("t");
+    describe(session, "t", "tag", "STRING", "TAG", "value", "TEXT", "FIELD");
     SessionDataSet result =
         dataSet(
             List.of("time", "tag", "value"),
             List.of("TIMESTAMP", "STRING", "TEXT"),
             new Object[] {1L, "O'Brien\\path", null});
-    when(session.executeQueryStatement(anyString(), anyLong())).thenReturn(result);
-    assertTrue(new ExportDataTable().exportBySql("select * from t", 0));
+    when(session.executeQueryStatement(eq("select * from t"), anyLong())).thenReturn(result);
+    exportTable(session, "select * from t", 0, "-ft", "sql");
     assertEquals(
         "insert into \"t\"(\"time\",\"tag\",\"value\") values(1,'O''Brien\\path',NULL);\n",
         read("dump0_0.sql"));
@@ -224,12 +374,13 @@ public class DataToolRegressionTest extends AbstractDataTool {
 
   @Test
   public void testAlignedTreeSqlEscapesStringsAndPreservesNull() throws Exception {
-    mockTree(
-        dataSet(
-            List.of("Time", "Device", "s1", "s2"),
-            List.of("INT64", "TEXT", "TEXT", "STRING"),
-            new Object[] {1L, "root.a.d1", "a'b\"\\c", null}));
-    assertTrue(new ExportDataTree().exportBySql("select * from root.a.* align by device", 0));
+    Session session =
+        mockTree(
+            dataSet(
+                List.of("Time", "Device", "s1", "s2"),
+                List.of("INT64", "TEXT", "TEXT", "STRING"),
+                new Object[] {1L, "root.a.d1", "a'b\"\\c", null}));
+    exportTree(session, "select * from root.a.* align by device", 0, "-ft", "sql");
     assertEquals(
         "INSERT INTO root.a.d1(TIMESTAMP,s1,s2) ALIGNED VALUES (1,'a''b\"\\c',NULL);\n",
         read("dump0_0.sql"));
@@ -237,43 +388,49 @@ public class DataToolRegressionTest extends AbstractDataTool {
 
   @Test
   public void testTreeCsvTypeHeadersInEverySplitFile() throws Exception {
-    exportType = "csv";
-    linesPerFile = 1;
-    needDataTypePrinted = true;
-    mockTree(
-        dataSet(
-            List.of("Time", "Device", "s1"),
-            List.of("INT64", "TEXT", "DOUBLE"),
-            new Object[] {1L, "root.a.d1", 1.5},
-            new Object[] {2L, "root.a.d1", 2.5}));
-    assertTrue(new ExportDataTree().exportBySql("select * from root.a.* align by device", 0));
+    Session typed =
+        mockTree(
+            dataSet(
+                List.of("Time", "Device", "s1"),
+                List.of("INT64", "TEXT", "DOUBLE"),
+                new Object[] {1L, "root.a.d1", 1.5},
+                new Object[] {2L, "root.a.d1", 2.5}));
+    exportTree(
+        typed,
+        "select * from root.a.* align by device",
+        0,
+        "-ft",
+        "csv",
+        "-lpf",
+        "1",
+        "-dt",
+        "true");
     assertEquals("Time,Device,s1(DOUBLE)", firstLine("dump0_0.csv"));
     assertEquals("Time,Device,s1(DOUBLE)", firstLine("dump0_1.csv"));
-    needDataTypePrinted = false;
-    mockTree(
-        dataSet(
-            List.of("Time", "root.a.d1.s1"), List.of("INT64", "DOUBLE"), new Object[] {1L, 1.5}));
-    assertTrue(new ExportDataTree().exportBySql("select * from root.a.d1", 1));
+    Session plain =
+        mockTree(
+            dataSet(
+                List.of("Time", "root.a.d1.s1"),
+                List.of("INT64", "DOUBLE"),
+                new Object[] {1L, 1.5}));
+    exportTree(plain, "select * from root.a.d1", 1, "-ft", "csv");
     assertEquals("Time,root.a.d1.s1", firstLine("dump1_0.csv"));
   }
 
   @Test
   public void testTableCsvTypeHeadersAndMultipleQueryFiles() throws Exception {
-    exportType = "csv";
-    needDataTypePrinted = true;
     ITableSession session = mockTable("t");
     SessionDataSet first =
         dataSet(
             List.of("time", "device", "v"),
             List.of("TIMESTAMP", "STRING", "DOUBLE"),
             new Object[] {1L, "sensor", 1.5});
+    when(session.executeQueryStatement(eq("select * from t"), anyLong())).thenReturn(first);
     SessionDataSet second =
         dataSet(List.of("time", "v"), List.of("TIMESTAMP", "DOUBLE"), new Object[] {2L, 2.5});
-    when(session.executeQueryStatement(anyString(), anyLong())).thenReturn(first, second);
-    ExportDataTable tool = new ExportDataTable();
-    assertTrue(tool.exportBySql("select * from t", 0));
-    needDataTypePrinted = false;
-    assertTrue(tool.exportBySql("select time,v from t", 1));
+    when(session.executeQueryStatement(eq("select time,v from t"), anyLong())).thenReturn(second);
+    exportTable(session, "select * from t", 0, "-ft", "csv", "-dt", "true");
+    exportTable(session, "select time,v from t", 1, "-ft", "csv");
     assertEquals("time,device(STRING),v(DOUBLE)", firstLine("dump0_0.csv"));
     assertEquals("time,v", firstLine("dump1_0.csv"));
   }
@@ -283,8 +440,12 @@ public class DataToolRegressionTest extends AbstractDataTool {
     Session session = mock(Session.class);
     when(session.executeQueryStatement(anyString(), anyLong()))
         .thenThrow(new IoTDBConnectionException("disconnect"));
-    set(ExportDataTree.class, "session", session);
-    assertFalse(new ExportDataTree().exportBySql("select * from root.a.d1", 0));
+    // ExportData.run reports the failure: FINISH is FAILED and the exit code is 1.
+    IoTDBConnectionException e =
+        assertThrows(
+            IoTDBConnectionException.class,
+            () -> exportTree(session, "select * from root.a.d1", 0, "-ft", "sql"));
+    assertEquals("disconnect", e.getMessage());
   }
 
   @Test
@@ -709,8 +870,6 @@ public class DataToolRegressionTest extends AbstractDataTool {
             })
         .when(session)
         .insert(any(Tablet.class));
-    exportType = "csv";
-    needDataTypePrinted = typed;
     for (int i = 0; i < 2; i++) {
       List<String> columns =
           i == 0
@@ -719,7 +878,7 @@ public class DataToolRegressionTest extends AbstractDataTool {
       Object[] row = i == 0 ? new Object[] {1L, 1.5, 2.5} : new Object[] {1L, 2.5, 1.5};
       SessionDataSet result = dataSet(columns, List.of("TIMESTAMP", "DOUBLE", "DOUBLE"), row);
       when(session.executeQueryStatement(anyString(), anyLong())).thenReturn(result);
-      assertTrue(new ExportDataTable().exportBySql("select * from t", i));
+      exportTable(session, "select * from t", i, "-ft", "csv", "-dt", String.valueOf(typed));
       long failedFiles = loadFileFailedNum.sum();
       long successfulFiles = loadFileSuccessfulNum.sum();
       ImportDataScanTool.putToQueue(directory.resolve("dump" + i + "_0.csv").toString());
@@ -750,14 +909,12 @@ public class DataToolRegressionTest extends AbstractDataTool {
             })
         .when(session)
         .insert(any(Tablet.class));
-    exportType = "csv";
     for (boolean typed : List.of(false, true)) {
-      needDataTypePrinted = typed;
       SessionDataSet result =
           dataSet(List.of("time", column), List.of("TIMESTAMP", "DOUBLE"), new Object[] {1L, 1.5});
       when(session.executeQueryStatement(anyString(), anyLong())).thenReturn(result);
       int index = typed ? 1 : 0;
-      assertTrue(new ExportDataTable().exportBySql("select * from t", index));
+      exportTable(session, "select * from t", index, "-ft", "csv", "-dt", String.valueOf(typed));
       String csv = "dump" + index + "_0.csv";
       assertEquals("time," + column + (typed ? "(DOUBLE)" : ""), firstLine(csv));
       try (CSVParser records = readCsvFile(directory.resolve(csv).toString())) {
@@ -1001,18 +1158,107 @@ public class DataToolRegressionTest extends AbstractDataTool {
     }
   }
 
-  private static void mockTree(SessionDataSet dataSet) throws Exception {
-    Session session = mock(Session.class);
-    when(session.executeQueryStatement(anyString(), anyLong())).thenReturn(dataSet);
-    set(ExportDataTree.class, "session", session);
+  /** Exports one query to dump<index> files, as ExportData.run does for one -q statement. */
+  private void exportTree(Session session, String sql, int index, String... options)
+      throws Exception {
+    ExportConfig config = exportConfig(false, options);
+    try (ExportProgressReporter progress = progress();
+        ExportDataTree exporter = new ExportDataTree(config, progress, session)) {
+      exporter.export(
+          new ExportTask(sql, config.targetDirectory.resolve(config.prefix + index), null, null));
+    }
   }
 
+  /**
+   * Plans and exports like ExportData.run: the given query is written to dump<index> files, a null
+   * query exports the -q option or, without one, the tables of the database.
+   */
+  private void exportTable(ITableSession session, String sql, int index, String... options)
+      throws Exception {
+    ExportConfig config = exportConfig(true, options);
+    try (ExportProgressReporter progress = progress();
+        ExportDataTable exporter = new ExportDataTable(config, progress, session)) {
+      List<ExportTask> tasks;
+      if (sql != null) {
+        tasks =
+            exporter.planQueries(
+                List.of(
+                    new ExportTask(
+                        sql, config.targetDirectory.resolve(config.prefix + index), null, null)));
+      } else if (config.query != null) {
+        tasks = exporter.planQueries(ExportData.queryTasks(config, config.query));
+      } else {
+        tasks = exporter.planTables(exporter.timeRange());
+      }
+      for (ExportTask task : tasks) {
+        exporter.export(task);
+      }
+    }
+  }
+
+  private ExportConfig exportConfig(boolean table, String... options) throws Exception {
+    List<String> args = new ArrayList<>(List.of("-t", directory.toString(), "-tf", "timestamp"));
+    if (table) {
+      args.addAll(List.of("-sql_dialect", "table", "-db", "db"));
+    }
+    args.addAll(Arrays.asList(options));
+    return ExportConfig.parse(args.toArray(new String[0]), ZonedDateTime.now());
+  }
+
+  private static ExportProgressReporter progress() {
+    return new ExportProgressReporter(
+        new StringWriter(),
+        "tree",
+        System.nanoTime(),
+        new PrintStream(OutputStream.nullOutputStream()));
+  }
+
+  private static Session mockTree(SessionDataSet dataSet) throws Exception {
+    Session session = mock(Session.class);
+    when(session.executeQueryStatement(anyString(), anyLong())).thenReturn(dataSet);
+    return session;
+  }
+
+  /** A table session whose SHOW TABLES lists the given tables. */
   private static ITableSession mockTable(String... names) throws Exception {
     ITableSession session = mock(ITableSession.class);
-    set(ExportDataTable.class, "tableSession", session);
-    set(ExportDataTable.class, "tables", new ArrayList<>(Arrays.asList(names)));
-    set(ExportDataTable.class, "allTables", new ArrayList<>(Arrays.asList(names)));
+    String[][] rows = new String[names.length][];
+    for (int i = 0; i < names.length; i++) {
+      rows[i] = new String[] {names[i]};
+    }
+    when(session.executeQueryStatement(eq("show tables"), anyLong()))
+        .thenAnswer(invocation -> rows(rows));
     return session;
+  }
+
+  /** Answers DESCRIBE for a table: its time column, then name, type and category per column. */
+  private static void describe(ITableSession session, String table, String... columns)
+      throws Exception {
+    List<String[]> rows = new ArrayList<>();
+    rows.add(new String[] {"time", "TIMESTAMP", "TIME"});
+    for (int i = 0; i < columns.length; i += 3) {
+      rows.add(Arrays.copyOfRange(columns, i, i + 3));
+    }
+    when(session.executeQueryStatement(
+            eq("DESCRIBE \"" + table.replace("\"", "\"\"") + "\""), anyLong()))
+        .thenAnswer(invocation -> rows(rows.toArray(new String[0][])));
+  }
+
+  /** A metadata result whose rows hold the given strings. */
+  private static SessionDataSet rows(String[]... rows) throws Exception {
+    SessionDataSet dataSet = mock(SessionDataSet.class);
+    AtomicInteger row = new AtomicInteger();
+    when(dataSet.hasNext()).thenAnswer(invocation -> row.get() < rows.length);
+    when(dataSet.next())
+        .thenAnswer(
+            invocation -> {
+              RowRecord record = new RowRecord(0);
+              for (String value : rows[row.getAndIncrement()]) {
+                record.addField(new Binary(value, StandardCharsets.UTF_8), TSDataType.TEXT);
+              }
+              return record;
+            });
+    return dataSet;
   }
 
   private static SessionDataSet dataSet(List<String> names, List<String> types, Object[]... rows)
