@@ -765,7 +765,8 @@ public class WALBuffer extends AbstractWALBuffer {
                 "Fail to read memTable ids from the wal file {} of wal node {}: {}",
                 id,
                 identifier,
-                e.getMessage());
+                e.getMessage(),
+                e);
           } catch (IOException e) {
             logger.warn(
                 "Fail to read memTable ids from the wal file {} of wal node {}.",

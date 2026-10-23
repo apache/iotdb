@@ -243,9 +243,12 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       return StatusUtils.OK;
     } catch (WriteProcessRejectException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } catch (IOException | IllegalPathException e) {
+    } catch (IOException e) {
       LOGGER.error("Error in executing plan node: {}", node, e);
-      return new TSStatus(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
+      return RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_ERROR, e.getMessage());
+    } catch (IllegalPathException e) {
+      LOGGER.error("{}: {}", node, e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_ERROR, e.getMessage());
     } finally {
       dataRegion.writeUnlock();
     }
