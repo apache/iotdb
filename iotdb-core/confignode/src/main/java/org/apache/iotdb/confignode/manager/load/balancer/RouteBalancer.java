@@ -84,7 +84,9 @@ public class RouteBalancer implements IClusterStatusSubscriber {
   private static final String SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS =
       CONF.getSchemaRegionConsensusProtocolClass();
   private static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
-      CONF.getDataRegionConsensusProtocolClass();
+      // Normalize here as well so the cached value can never disable DataRegion leader balance
+      // merely because the configuration used a legacy IoTConsensusV2 class name.
+      ConsensusFactory.normalizeConsensusProtocolClass(CONF.getDataRegionConsensusProtocolClass());
   private static final boolean IS_ENABLE_AUTO_LEADER_BALANCE_FOR_DATA_REGION =
       (CONF.isEnableAutoLeaderBalanceForRatisConsensus()
               && ConsensusFactory.RATIS_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))

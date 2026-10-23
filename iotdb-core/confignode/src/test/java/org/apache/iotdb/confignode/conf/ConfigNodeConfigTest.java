@@ -20,11 +20,36 @@
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.commons.snapshot.SnapshotStreamFactory;
+import org.apache.iotdb.consensus.ConsensusFactory;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 public class ConfigNodeConfigTest {
+
+  @Test
+  public void testDataRegionConsensusProtocolClassNormalizesLegacyNames() {
+    final ConfigNodeConfig configNodeConfig = new ConfigNodeConfig();
+
+    // Both the old PipeConsensus name and the implementation class name must be stored in their
+    // canonical form, otherwise ConfigNode compares them against IOT_CONSENSUS_V2 and concludes
+    // that IoTConsensusV2 is not configured.
+    configNodeConfig.setDataRegionConsensusProtocolClass(ConsensusFactory.LEGACY_IOT_CONSENSUS_V2);
+    Assert.assertEquals(
+        ConsensusFactory.IOT_CONSENSUS_V2, configNodeConfig.getDataRegionConsensusProtocolClass());
+
+    configNodeConfig.setDataRegionConsensusProtocolClass(ConsensusFactory.REAL_IOT_CONSENSUS_V2);
+    Assert.assertEquals(
+        ConsensusFactory.IOT_CONSENSUS_V2, configNodeConfig.getDataRegionConsensusProtocolClass());
+
+    // Canonical and unrelated values must be preserved.
+    configNodeConfig.setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS_V2);
+    Assert.assertEquals(
+        ConsensusFactory.IOT_CONSENSUS_V2, configNodeConfig.getDataRegionConsensusProtocolClass());
+    configNodeConfig.setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    Assert.assertEquals(
+        ConsensusFactory.RATIS_CONSENSUS, configNodeConfig.getDataRegionConsensusProtocolClass());
+  }
 
   @Test
   public void testSnapshotBufferSizeMaxDefault() {

@@ -445,6 +445,9 @@ public final class ConfigNodeMessages {
   public static final String SUCCESSFULLY_ON_DATANODE = "Successfully {} on DataNode: {}";
   public static final String SUCCESSFULLY_REMOVE_CONFIGNODE_CURRENT_CONFIGNODEGROUP =
       "Successfully remove ConfigNode: {}. Current ConfigNodeGroup: {}";
+  public static final String
+      LOG_NORMALIZE_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_FROM_ARG_TO_ARG_FOR_COMPATIBILITY_6E662489 =
+          "Normalize data_region_consensus_protocol_class from {} to {} for compatibility.";
   public static final String SUCCESSFULLY_SETUP_INTERNAL_SERVICES =
       "Successfully setup internal services.";
   public static final String SUCCESSFULLY_UPDATE_NODE_S_VERSION =

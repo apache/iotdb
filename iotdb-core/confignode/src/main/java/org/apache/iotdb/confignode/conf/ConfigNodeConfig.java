@@ -642,7 +642,14 @@ public class ConfigNodeConfig {
   }
 
   public void setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
-    this.dataRegionConsensusProtocolClass = dataRegionConsensusProtocolClass;
+    // DataNode normalizes the legacy PipeConsensus / implementation class names before it
+    // dispatches the consensus implementation, but ConfigNode used to keep and compare the raw
+    // value. Keeping the in-memory value canonical makes every ConfigNode decision (consensus
+    // pipe creation and repair, leader balance, ...) agree with DataNode, no matter whether the
+    // value came from iotdb-system.properties, confignode-system.properties or programmatic
+    // configuration.
+    this.dataRegionConsensusProtocolClass =
+        ConsensusFactory.normalizeConsensusProtocolClass(dataRegionConsensusProtocolClass);
   }
 
   public String getIotConsensusV2Mode() {
