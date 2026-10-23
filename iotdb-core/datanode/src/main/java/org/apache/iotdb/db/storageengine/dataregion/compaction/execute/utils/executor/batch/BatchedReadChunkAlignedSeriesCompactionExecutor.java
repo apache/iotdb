@@ -430,6 +430,9 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       @Override
       public boolean canCompactCurrentChunkByDirectlyFlush(
           ChunkLoader timeChunk, List<ChunkLoader> valueChunks) throws IOException {
+        if (requiresPageRewrite()) {
+          return false;
+        }
         CompactChunkPlan compactChunkPlan =
             batchCompactionPlan.getCompactChunkPlan(currentCompactChunk);
         boolean isCurrentChunkCompactedByDirectlyFlush =
@@ -452,6 +455,9 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       @Override
       protected boolean canCompactCurrentPageByDirectlyFlush(
           PageLoader timePage, List<PageLoader> valuePages) {
+        if (requiresPageRewrite()) {
+          return false;
+        }
         int currentPage =
             ((FollowingBatchCompactionAlignedChunkWriter) chunkWriter).getCurrentPage();
         for (int i = 0; i < valuePages.size(); i++) {

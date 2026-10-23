@@ -148,6 +148,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
           DataNodeMiscMessages
               .MISC_EXCEPTION_THE_VERSION_OF_THIS_TSFILE_IS_TOO_LOW_PLEASE_UPGRADE_IT_19CC276C);
     }
+    reader.position(reader.getDataStartOffset());
     // start to scan chunks and chunkGroups
     byte marker;
     IDeviceID deviceId = null;
@@ -178,16 +179,24 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
             List<ByteBuffer> dataInChunk = new ArrayList<>();
             List<Boolean> needToDecodeInfo = new ArrayList<>();
             int dataSize = header.getDataSize();
+            int pageIndex = 0;
             while (dataSize > 0) {
               // a new Page
               PageHeader pageHeader =
                   reader.readPageHeader(dataType, header.getChunkType() == MetaMarker.CHUNK_HEADER);
-              boolean needToDecode = checkIfNeedToDecode(measurementSchema, deviceId, pageHeader);
+              boolean needToDecode =
+                  reader.hasFileEncryptionHeader()
+                      || checkIfNeedToDecode(measurementSchema, deviceId, pageHeader);
               needToDecodeInfo.add(needToDecode);
               ByteBuffer pageData =
                   !needToDecode
                       ? reader.readCompressedPage(pageHeader)
-                      : reader.readPage(pageHeader, header.getCompressionType());
+                      : reader.readPage(
+                          pageHeader,
+                          header.getCompressionType(),
+                          pageIndex,
+                          header.getChunkOrdinal());
+              pageIndex++;
               pageHeadersInChunk.add(pageHeader);
               dataInChunk.add(pageData);
               dataSize -= pageHeader.getSerializedPageSize();

@@ -71,6 +71,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -1347,6 +1348,11 @@ public class FragmentInstanceContext extends QueryContext {
    * be decreased.
    */
   public synchronized void releaseResource() {
+    try {
+      getQueryChunkReaders().close();
+    } catch (IOException e) {
+      LOGGER.warn(DataNodeQueryMessages.LOG_FAILED_TO_RELEASE_QUERY_CHUNK_RESOURCES_91573FE5, e);
+    }
     batchQueryDataSourceLeases.forEach(QueryDataSourceLease::close);
     // For schema related query FI, closedFilePaths and unClosedFilePaths will be null
     if (closedFilePaths != null) {

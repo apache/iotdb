@@ -20,6 +20,10 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String EXCEPTION_QUERY_CHUNK_RESOURCES_ARE_ALREADY_CLOSED_CA6A0559 =
+      "查询 Chunk 资源已关闭";
+  public static final String LOG_FAILED_TO_RELEASE_QUERY_CHUNK_RESOURCES_91573FE5 =
+      "释放查询 Chunk 资源失败";
   public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477 =
       "将 TsFile %s 转换为 tablet 失败。状态：%s";
   public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD =

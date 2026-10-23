@@ -49,6 +49,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -70,6 +71,28 @@ public class AbstractCompactionWriterTest {
     compactionWriter.checkChunkSizeAndMayOpenANewChunk(null, chunkWriter, SUB_TASK_ID);
 
     Assert.assertEquals(1, chunkWriter.chunkSizeCheckCount);
+  }
+
+  @Test
+  public void testChunkWriterFactoryCanSwitchFileEncryptionParameter() {
+    TestCompactionWriter compactionWriter = new TestCompactionWriter();
+    EncryptParameter first = new EncryptParameter("UNENCRYPTED", null);
+    EncryptParameter second = new EncryptParameter("UNENCRYPTED", null);
+    List<EncryptParameter> createdWith = new ArrayList<>();
+    compactionWriter.setEncryptParameter(first);
+
+    compactionWriter.startMeasurement(
+        "s1",
+        encryptParameter -> {
+          createdWith.add(encryptParameter);
+          return new CountingChunkWriter();
+        },
+        SUB_TASK_ID);
+    compactionWriter.switchEncryptionParameter(second);
+
+    Assert.assertEquals(2, createdWith.size());
+    Assert.assertSame(first, createdWith.get(0));
+    Assert.assertSame(second, createdWith.get(1));
   }
 
   @Test
@@ -197,6 +220,8 @@ public class AbstractCompactionWriterTest {
 
   private static class TestCompactionWriter extends AbstractCompactionWriter {
 
+    private EncryptParameter encryptParameter;
+
     private void writePoint(TsPrimitiveType value, IChunkWriter chunkWriter) {
       writeDataPoint(1, value, chunkWriter, SUB_TASK_ID);
     }
@@ -211,6 +236,14 @@ public class AbstractCompactionWriterTest {
 
     private int getCompressedSizeToReachSizeCheckpoint() {
       return (int) Math.max(targetChunkSize / 10, 1L);
+    }
+
+    private void setEncryptParameter(EncryptParameter encryptParameter) {
+      this.encryptParameter = encryptParameter;
+    }
+
+    private void switchEncryptionParameter(EncryptParameter encryptParameter) {
+      switchChunkWriterEncryptionParameter(encryptParameter, SUB_TASK_ID);
     }
 
     @Override
@@ -241,7 +274,7 @@ public class AbstractCompactionWriterTest {
 
     @Override
     public EncryptParameter getEncryptParameter() {
-      return null;
+      return encryptParameter;
     }
 
     @Override

@@ -184,6 +184,7 @@ public class TsFileSplitTool {
             int dataSize = chunkHeader.getDataSize();
             Decoder valueDecoder =
                 Decoder.getDecoderByType(chunkHeader.getEncodingType(), dataType);
+            int pageIndex = 0;
             Decoder defaultTimeDecoder =
                 Decoder.getDecoderByType(
                     TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
@@ -197,7 +198,12 @@ public class TsFileSplitTool {
                   reader.readPageHeader(
                       dataType,
                       ((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.CHUNK_HEADER);
-              ByteBuffer pageData = reader.readPage(pageHeader, chunkHeader.getCompressionType());
+              ByteBuffer pageData =
+                  reader.readPage(
+                      pageHeader,
+                      chunkHeader.getCompressionType(),
+                      pageIndex++,
+                      chunkHeader.getChunkOrdinal());
               PageReader pageReader =
                   new PageReader(pageData, dataType, valueDecoder, defaultTimeDecoder);
               BatchData batchData = pageReader.getAllSatisfiedPageData();

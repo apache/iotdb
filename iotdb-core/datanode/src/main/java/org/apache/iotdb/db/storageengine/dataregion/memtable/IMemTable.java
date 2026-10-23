@@ -35,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.rescon.memory.WriteMemoryBlock;
 import org.apache.iotdb.db.storageengine.rescon.memory.WriteMemoryManager;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -233,6 +234,10 @@ public interface IMemTable extends WALEntryValue {
   String getDataRegionId();
 
   void setDatabaseAndDataRegionId(String database, String dataRegionId);
+
+  EncryptParameter getEncryptParameter();
+
+  void setEncryptParameter(EncryptParameter encryptParameter);
 
   void checkDataType(InsertNode node) throws DataTypeInconsistentException;
 }

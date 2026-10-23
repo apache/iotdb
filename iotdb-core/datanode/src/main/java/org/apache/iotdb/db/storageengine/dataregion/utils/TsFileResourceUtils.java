@@ -158,7 +158,7 @@ public class TsFileResourceUtils {
 
       List<List<long[]>> alignedTimeBatches = new ArrayList<>();
       Map<String, Integer> valueColumn2TimeBatchIndex = new HashMap<>();
-      reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
+      reader.position(reader.getDataStartOffset());
       int pageIndex = 0;
       byte marker;
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
@@ -211,7 +211,9 @@ public class TsFileResourceUtils {
             while (dataSize > 0) {
               valueDecoder.reset();
               PageHeader pageHeader = reader.readPageHeader(header.getDataType(), isHasStatistic);
-              ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
+              ByteBuffer pageData =
+                  reader.readPage(
+                      pageHeader, header.getCompressionType(), pageIndex, header.getChunkOrdinal());
 
               if ((header.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
                   == TsFileConstant.TIME_COLUMN_MASK) { // Time Chunk

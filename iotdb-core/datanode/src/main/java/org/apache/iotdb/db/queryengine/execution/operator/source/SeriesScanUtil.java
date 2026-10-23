@@ -81,6 +81,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.io.UncheckedIOException;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
@@ -887,6 +888,13 @@ public class SeriesScanUtil implements Accountable {
   }
 
   public void skipCurrentPage() {
+    if (firstPageReader != null) {
+      try {
+        context.getQueryChunkReaders().release(firstPageReader.getPageReader());
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+    }
     firstPageReader = null;
   }
 
@@ -1740,6 +1748,7 @@ public class SeriesScanUtil implements Accountable {
         }
         throw e;
       } finally {
+        context.getQueryChunkReaders().release(data);
         long time = System.nanoTime() - startTime;
         if (isAligned) {
           if (isMem) {
