@@ -87,7 +87,7 @@ public class LoadTsFileTableSchemaTest {
     table.addColumnSchema(
         new FieldColumnSchema("value", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.LZ4));
     DataNodeTableCache.getInstance().preUpdateTable(DATABASE, table, null);
-    DataNodeTableCache.getInstance().commitUpdateTable(DATABASE, TABLE, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(DATABASE, TABLE, null, null);
   }
 
   @After

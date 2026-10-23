@@ -2621,6 +2621,12 @@ public class IoTDBDescriptor {
                 "load_write_throughput_bytes_per_second",
                 String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
 
+    conf.setLoadTsFileWriteBufferSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_write_buffer_size_in_byte",
+                String.valueOf(conf.getLoadTsFileWriteBufferSize()))));
+
     conf.setLoadTsFileAllowedDirs(
         Arrays.stream(properties.getProperty("load_tsfile_allowed_dirs", "").trim().split(","))
             .filter(dir -> !dir.isEmpty())
@@ -2769,6 +2775,12 @@ public class IoTDBDescriptor {
                 "load_write_throughput_bytes_per_second",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "load_write_throughput_bytes_per_second"))));
+
+    conf.setLoadTsFileWriteBufferSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_write_buffer_size_in_byte",
+                String.valueOf(conf.getLoadTsFileWriteBufferSize()))));
 
     conf.setLoadTsFileAllowedDirs(
         Arrays.stream(

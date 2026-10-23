@@ -158,6 +158,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
@@ -2286,7 +2288,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public synchronized TSStatus setSchemaTemplate(TSetSchemaTemplateReq req) {
+  public TSStatus setSchemaTemplate(TSetSchemaTemplateReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return procedureManager.setSchemaTemplate(
@@ -2368,7 +2370,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public synchronized TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req) {
+  public TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;
@@ -3376,6 +3378,14 @@ public class ConfigManager implements IManager {
     } else {
       return status;
     }
+  }
+
+  @Override
+  public TAutoSyncViewColumnsResp autoSyncViewColumns(TAutoSyncViewColumnsReq req) {
+    final TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? procedureManager.autoSyncViewColumns(req)
+        : new TAutoSyncViewColumnsResp(status);
   }
 
   @Override

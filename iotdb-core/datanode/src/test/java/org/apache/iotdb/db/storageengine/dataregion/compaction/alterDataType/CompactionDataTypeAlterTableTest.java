@@ -188,8 +188,11 @@ public class CompactionDataTypeAlterTableTest extends AbstractCompactionAlterDat
     tsTable.addColumnSchema(new TagColumnSchema("id_column", TSDataType.STRING));
     tsTable.addColumnSchema(
         new FieldColumnSchema("s1", dataType, TSEncoding.PLAIN, CompressionType.LZ4));
+    DataNodeTableCache.getInstance().preUpdateTable(this.COMPACTION_TEST_SG, tsTable, null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(this.COMPACTION_TEST_SG, tableName, null, null);
     DataNodeTableCache.getInstance().preUpdateTable(TABLE_MODEL_TEST_SG, tsTable, null);
-    DataNodeTableCache.getInstance().commitUpdateTable(TABLE_MODEL_TEST_SG, tableName, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(TABLE_MODEL_TEST_SG, tableName, null, null);
   }
 
   private TsFileResource generateInt32TableFile(TimeRange timeRange, boolean seq)

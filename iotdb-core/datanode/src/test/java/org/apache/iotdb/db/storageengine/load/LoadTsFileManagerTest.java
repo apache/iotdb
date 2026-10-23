@@ -417,6 +417,42 @@ public class LoadTsFileManagerTest {
     }
   }
 
+  @Test
+  public void testChunkPayloadRefStreamsPayloadsLargerThanItsScratchBuffer() throws Exception {
+    // Stage a piece first so the shared staging directory follows this test's tempDir, then append
+    // a payload larger than the 8 KiB scratch buffer to the staged file.
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    final LoadTsFileConsensusNode piece = stagedPiece("large-payload-load", laidOutChunk());
+    manager.writePiece(piece);
+    final File staged = new File(tempDir, piece.getPieceRefs().get(0).getRelativePath());
+    final long offset = staged.length();
+    final byte[] payload = new byte[20_000];
+    for (int i = 0; i < payload.length; i++) {
+      payload[i] = (byte) (i * 31);
+    }
+    Files.write(staged.toPath(), payload, StandardOpenOption.APPEND);
+
+    final ChunkPayloadRef ref =
+        new ChunkPayloadRef(staged.getAbsolutePath(), offset, payload.length);
+    final ByteArrayOutputStream output = new ByteArrayOutputStream(payload.length);
+    ref.writePayloadTo(new DataOutputStream(output));
+
+    assertArrayEquals(payload, output.toByteArray());
+  }
+
+  @Test
+  public void testEmptyChunkPayloadRefNeedsNoStagedFile() throws Exception {
+    // An empty payload owns no bytes, so it can be read back even after the staged file is gone:
+    // resolving a missing file first would fail a forward that has nothing to copy.
+    final File cleanedUp = new File(tempDir, "cleaned-up.tsfile");
+    final ChunkPayloadRef empty = new ChunkPayloadRef(cleanedUp.getAbsolutePath(), 0L, 0L);
+
+    assertArrayEquals(new byte[0], empty.readPayload());
+    final ByteArrayOutputStream output = new ByteArrayOutputStream();
+    empty.writePayloadTo(new DataOutputStream(output));
+    assertEquals(0, output.size());
+  }
+
   /**
    * A PREPARE of a task that is still missing a piece must fail instead of sealing the file.
    *

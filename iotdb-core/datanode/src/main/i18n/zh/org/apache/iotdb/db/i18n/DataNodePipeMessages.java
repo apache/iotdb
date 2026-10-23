@@ -68,6 +68,9 @@ public final class DataNodePipeMessages {
 
   // ===================== CONSENSUS =====================
 
+  public static final String EXCEPTION_DELETION_RESOURCE_EXCEEDS_THE_DAL_BUFFER_SIZE_E2A17CAC =
+      "删除资源超过 DAL 缓冲区大小";
+
   public static final String CLOSING_DELETION_RESOURCE_MANAGER_FOR = "正在关闭 {} 的删除资源管理器...";
   public static final String DAL_THREAD_STILL_DOESN_T_EXIT_AFTER = "DAL 线程 {} 在 30 秒后仍未退出";
   public static final String DELETIONMANAGER_CURRENT_DAL_DIR_IS_DELETED_SUCCESSFULLY =
@@ -2233,6 +2236,10 @@ public final class DataNodePipeMessages {
       "forceAllocate：重试 %d 次后仍无法分配内存，总内存大小 %d bytes，已用内存大小 %d bytes，请求内存大小 %d bytes";
   public static final String PIPE_EXCEPTION_FORCERESIZE_FAILED_TO_ALLOCATE_MEMORY_AFTER_D_RETRIES_TOTAL_8C6948BC =
       "forceResize：重试 %d 次后仍无法分配内存，总内存大小 %d bytes，已用内存大小 %d bytes，请求内存大小 %d bytes";
+  public static final String EXCEPTION_FORCERESIZE_FAILED_AFTER_ARG_RETRIES_TOTAL_ARG_BYTES_USED_ARG_BYTES_USEDTABLETS_ARG_BYTES_USEDTSFILES_ARG_BYTES_TABLETLIMIT_ARG_BYTES_TSFILELIMIT_ARG_BYTES_TABLETANDTSFILELIMIT_ARG_BYTES_PROTECTEDPARSERLIMIT_ARG_BYTES_REQUESTED_ARG_BYTES_311C8C7E =
+      "forceResize 重试 %d 次后仍无法分配内存：total=%d bytes，used=%d bytes，"
+          + "usedTablets=%d bytes，usedTsFiles=%d bytes，tabletLimit=%d bytes，tsFileLimit=%d bytes，"
+          + "tabletAndTsFileLimit=%d bytes，protectedParserLimit=%d bytes，requested=%d bytes";
   public static final String
       EXCEPTION_UNSUPPORTED_BATCH_TYPE_ARG_WHEN_TRANSFERRING_TABLET_INSERTION_EVENT_66153E12 =
           "传输 tablet insertion event 时不支持 batch 类型 %s。";

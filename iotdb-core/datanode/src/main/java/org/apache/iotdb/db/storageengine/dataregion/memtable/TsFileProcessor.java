@@ -1587,6 +1587,9 @@ public class TsFileProcessor {
         if (workMemTable.shouldFlush()) {
           break;
         }
+        // The asynchronous submitter needs the region write lock held by this insertion.
+        // Submit other already-selected MemTables here so they can release memory while we wait.
+        submitOtherSelectedMemTablesToFlush();
         try {
           TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
           if (System.currentTimeMillis() - startTime
@@ -1599,6 +1602,19 @@ public class TsFileProcessor {
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
         }
+      }
+    }
+  }
+
+  private void submitOtherSelectedMemTablesToFlush() {
+    for (TsFileProcessor processor : dataRegionInfo.getAllReportedTsp()) {
+      // This processor still owns the pending write and its memory reservations.
+      if (processor == this) {
+        continue;
+      }
+      IMemTable memTable = processor.getWorkMemTable();
+      if (memTable != null && memTable.shouldFlush()) {
+        processor.submitAFlushTask();
       }
     }
   }

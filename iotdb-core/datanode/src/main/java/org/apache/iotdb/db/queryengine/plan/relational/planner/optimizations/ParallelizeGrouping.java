@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNod
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
@@ -99,6 +100,21 @@ public class ParallelizeGrouping implements PlanOptimizer {
         newNode.addChild(child.accept(this, context));
       }
       return newNode;
+    }
+
+    @Override
+    public PlanNode visitUnion(UnionNode node, Context context) {
+      if (node.getChildren().size() <= 1) {
+        return visitPlan(node, context);
+      }
+      if (!context.canSkip()) {
+        context.canOptimized = TO_SORT;
+      }
+      // Neither branch may establish a property for the interleaved Union output.
+      return node.replaceChildren(
+          node.getChildren().stream()
+              .map(child -> child.accept(this, new Context(null, 0)))
+              .collect(Collectors.toList()));
     }
 
     /** We need to make sure: context#partitionKey can match the prefix of childOrderSchema */
