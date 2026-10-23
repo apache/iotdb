@@ -357,7 +357,8 @@ public class IoTDBTimeDurationIT {
     retArray = new String[] {"Beijing,1677570933,", "Nanjing,1677570938,"};
     // GROUP BY TAGS does not guarantee row order, so check each DataNode independently.
     for (DataNodeWrapper dataNode : EnvFactory.getEnv().getDataNodeWrapperList()) {
-      try (Connection connection = EnvFactory.getEnv().getConnection(dataNode);
+      try (Connection connection =
+              EnvFactory.getEnv().getConnectionWithSpecifiedDataNode(dataNode);
           Statement statement = connection.createStatement();
           ResultSet resultSet =
               statement.executeQuery(
