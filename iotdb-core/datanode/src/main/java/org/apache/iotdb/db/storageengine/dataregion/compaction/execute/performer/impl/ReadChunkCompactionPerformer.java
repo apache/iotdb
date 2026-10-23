@@ -137,26 +137,6 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
           InterruptedException,
           StorageEngineException,
           PageException {
-    if (EncryptDBUtils.requiresFileRewrite()) {
-      ReadPointCompactionPerformer rewriting =
-          new ReadPointCompactionPerformer(
-              seqFiles, Collections.emptyList(), targetResources, firstEncryptParameter);
-      rewriting.setSummary(summary);
-      try {
-        rewriting.perform();
-      } catch (IOException
-          | MetadataException
-          | InterruptedException
-          | StorageEngineException
-          | PageException e) {
-        throw e;
-      } catch (RuntimeException e) {
-        throw e;
-      } catch (Exception e) {
-        throw new IOException(e);
-      }
-      return;
-    }
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(seqFiles)) {
       schema =
           CompactionTableSchemaCollector.collectSchema(
@@ -233,7 +213,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
 
   private void useNewWriter() throws IOException {
     currentWriter =
-        CompactionTsFileWriter.create(
+        new CompactionTsFileWriter(
             targetResources.get(currentTargetFileIndex).getTsFile(),
             memoryBudgetForFileWriter,
             CompactionType.INNER_SEQ_COMPACTION,

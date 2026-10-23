@@ -143,23 +143,20 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   public void startMeasurement(String measurement, IChunkWriter chunkWriter, int subTaskId) {
     chunkWriterFactories[subTaskId] = null;
-    initializeChunkWriter(measurement, chunkWriter, subTaskId);
+    resetChunkWriterStatistics(subTaskId);
+    lastTimeSet[subTaskId] = false;
+    chunkWriters[subTaskId] = chunkWriter;
+    measurementId[subTaskId] = measurement;
+    hasVariableLengthTypeArray[subTaskId] = containsVariableLengthType(chunkWriter);
   }
 
   public void startMeasurement(
       String measurement,
       Function<EncryptParameter, IChunkWriter> chunkWriterFactory,
       int subTaskId) {
+    // Preserve measurement initialization performed by specialized writers, including repair.
+    startMeasurement(measurement, chunkWriterFactory.apply(getEncryptParameter()), subTaskId);
     chunkWriterFactories[subTaskId] = chunkWriterFactory;
-    initializeChunkWriter(measurement, chunkWriterFactory.apply(getEncryptParameter()), subTaskId);
-  }
-
-  private void initializeChunkWriter(String measurement, IChunkWriter chunkWriter, int subTaskId) {
-    resetChunkWriterStatistics(subTaskId);
-    lastTimeSet[subTaskId] = false;
-    chunkWriters[subTaskId] = chunkWriter;
-    measurementId[subTaskId] = measurement;
-    hasVariableLengthTypeArray[subTaskId] = containsVariableLengthType(chunkWriter);
   }
 
   protected void switchChunkWriterEncryptionParameter(

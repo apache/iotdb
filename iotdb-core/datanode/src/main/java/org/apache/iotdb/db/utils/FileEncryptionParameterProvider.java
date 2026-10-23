@@ -22,7 +22,12 @@ import org.apache.tsfile.encrypt.EncryptParameter;
 
 import java.io.File;
 
-/** Optional file-level policy, discovered once through {@link java.util.ServiceLoader}. */
+/**
+ * Optional file-level policy, discovered once through {@link java.util.ServiceLoader}.
+ *
+ * <p>File-scoped compaction contexts are supported only by ReadPoint compaction. An extension using
+ * them must select ReadPoint; this SPI does not adapt or redirect Fast/ReadChunk compaction.
+ */
 @FunctionalInterface
 public interface FileEncryptionParameterProvider {
   /**
@@ -32,7 +37,7 @@ public interface FileEncryptionParameterProvider {
    */
   EncryptParameter createForNewFile(File file, String database, EncryptParameter legacyParameter);
 
-  /** Whether new target files require rewriting rather than copying source chunks verbatim. */
+  /** Whether Load must rewrite input files through the regular tablet write pipeline. */
   default boolean requiresFileRewrite() {
     return false;
   }

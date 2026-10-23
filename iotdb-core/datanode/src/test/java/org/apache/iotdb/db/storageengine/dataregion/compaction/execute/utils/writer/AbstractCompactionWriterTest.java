@@ -96,6 +96,38 @@ public class AbstractCompactionWriterTest {
   }
 
   @Test
+  public void testChunkWriterFactoryPreservesSubclassMeasurementInitialization() {
+    List<IChunkWriter> initializedWriters = new ArrayList<>();
+    TestCompactionWriter compactionWriter =
+        new TestCompactionWriter() {
+          @Override
+          public void startMeasurement(
+              String measurement, IChunkWriter chunkWriter, int subTaskId) {
+            initializedWriters.add(chunkWriter);
+            super.startMeasurement(measurement, chunkWriter, subTaskId);
+          }
+        };
+    CountingChunkWriter first = new CountingChunkWriter();
+    List<EncryptParameter> createdWith = new ArrayList<>();
+    compactionWriter.startMeasurement(
+        "s1",
+        parameter -> {
+          createdWith.add(parameter);
+          return createdWith.size() == 1 ? first : new CountingChunkWriter();
+        },
+        SUB_TASK_ID);
+
+    Assert.assertEquals(1, initializedWriters.size());
+    Assert.assertSame(first, initializedWriters.get(0));
+
+    EncryptParameter next = new EncryptParameter("UNENCRYPTED", null);
+    compactionWriter.switchEncryptionParameter(next);
+    Assert.assertEquals(2, createdWith.size());
+    Assert.assertSame(next, createdWith.get(1));
+    Assert.assertEquals(1, initializedWriters.size());
+  }
+
+  @Test
   public void testEstimateWrittenPointTotalSize() throws Exception {
     TestCompactionWriter compactionWriter = new TestCompactionWriter();
     TsPrimitiveType binaryValue =

@@ -78,9 +78,6 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
   @Override
   public boolean flushNonAlignedChunk(Chunk chunk, ChunkMetadata chunkMetadata, int subTaskId)
       throws IOException {
-    if (requiresPageRewrite()) {
-      return false;
-    }
     checkPreviousTimestamp(chunkMetadata.getStartTime(), subTaskId);
     if (chunkPointNumArray[subTaskId] != 0
         && chunkWriters[subTaskId].checkIsChunkSizeOverThreshold(
@@ -110,9 +107,6 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
   @Override
   public boolean flushAlignedChunk(ChunkMetadataElement chunkMetadataElement, int subTaskId)
       throws IOException {
-    if (requiresPageRewrite()) {
-      return false;
-    }
     AbstractAlignedChunkMetadata alignedChunkMetadata =
         (AbstractAlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
     IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
@@ -146,9 +140,6 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
       int subTaskId,
       AbstractCompactionFlushController flushController)
       throws IOException {
-    if (requiresPageRewrite()) {
-      return false;
-    }
     AbstractAlignedChunkMetadata alignedChunkMetadata =
         (AbstractAlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
     IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
@@ -185,9 +176,6 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
    */
   public boolean flushAlignedPage(AlignedPageElement alignedPageElement, int subTaskId)
       throws IOException, PageException {
-    if (requiresPageRewrite()) {
-      return false;
-    }
     PageHeader timePageHeader = alignedPageElement.getTimePageHeader();
     List<PageHeader> valuePageHeaders = alignedPageElement.getValuePageHeaders();
     ByteBuffer compressedTimePageData = alignedPageElement.getTimePageData();
@@ -224,9 +212,6 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
       int subTaskId,
       AbstractCompactionFlushController flushController)
       throws PageException, IOException {
-    if (requiresPageRewrite()) {
-      return false;
-    }
     PageHeader timePageHeader = alignedPageElement.getTimePageHeader();
     List<PageHeader> valuePageHeaders = alignedPageElement.getValuePageHeaders();
     ByteBuffer compressedTimePageData = alignedPageElement.getTimePageData();
@@ -270,9 +255,6 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
   public boolean flushNonAlignedPage(
       ByteBuffer compressedPageData, PageHeader pageHeader, int subTaskId)
       throws IOException, PageException {
-    if (requiresPageRewrite()) {
-      return false;
-    }
     checkPreviousTimestamp(pageHeader.getStartTime(), subTaskId);
     boolean isUnsealedPageOverThreshold =
         chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
@@ -331,10 +313,5 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
   private boolean checkIsPageLargeEnough(PageHeader pageHeader) {
     return pageHeader.getStatistics().getCount() >= pagePointNumLowerBoundInCompaction
         || pageHeader.getSerializedPageSize() >= pageSizeLowerBoundInCompaction;
-  }
-
-  private boolean requiresPageRewrite() {
-    return fileWriter != null
-        && !EncryptDBUtils.canCopyChunk(null, fileWriter.getEncryptParameter());
   }
 }

@@ -38,7 +38,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -572,9 +571,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
 
     public boolean canCompactCurrentChunkByDirectlyFlush(
         ChunkLoader timeChunk, List<ChunkLoader> valueChunks) throws IOException {
-      return !requiresPageRewrite()
-          && canFlushCurrentChunkWriter()
-          && canFlushChunk(timeChunk, valueChunks);
+      return canFlushCurrentChunkWriter() && canFlushChunk(timeChunk, valueChunks);
     }
 
     protected boolean canFlushCurrentChunkWriter() {
@@ -615,9 +612,6 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
 
     protected boolean canCompactCurrentPageByDirectlyFlush(
         PageLoader timePage, List<PageLoader> valuePages) {
-      if (requiresPageRewrite()) {
-        return false;
-      }
       boolean isHighLevelCompaction = compactionTargetFileLevel > largeFileLevelSeparator;
       if (isHighLevelCompaction) {
         return canFlushPage(timePage, valuePages);
@@ -628,10 +622,6 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
 
     private boolean canSealCurrentPageWriter() {
       return chunkWriter.checkIsUnsealedPageOverThreshold(targetPageSize, targetPagePointNum, true);
-    }
-
-    protected boolean requiresPageRewrite() {
-      return !EncryptDBUtils.canCopyChunk(null, writer.getEncryptParameter());
     }
 
     private boolean canFlushPage(PageLoader timePage, List<PageLoader> valuePages) {

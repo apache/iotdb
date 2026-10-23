@@ -200,17 +200,6 @@ public class FileEncryptionContextTest {
     }
   }
 
-  @Test
-  public void testDirectChunkCopyRejectsFileBoundContexts() {
-    EncryptParameter plain = EncryptDBUtils.getDefaultFirstEncryptParam();
-    try (EncryptParameter file = TestFileEncryptionParameterProvider.newParameter()) {
-      assertTrue(EncryptDBUtils.canCopyChunk(plain, plain));
-      assertFalse(EncryptDBUtils.canCopyChunk(file, plain));
-      assertFalse(EncryptDBUtils.canCopyChunk(plain, file));
-      assertFalse(EncryptDBUtils.canCopyChunk(file, file));
-    }
-  }
-
   private static QueryContext externalContext() {
 
     return new QueryContext(false, false) {

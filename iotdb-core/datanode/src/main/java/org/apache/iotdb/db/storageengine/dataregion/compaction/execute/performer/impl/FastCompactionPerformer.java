@@ -49,7 +49,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimato
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCrossSpaceCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.utils.EncryptDBUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -158,13 +157,6 @@ public class FastCompactionPerformer
 
   @Override
   public void perform() throws Exception {
-    if (EncryptDBUtils.requiresFileRewrite()) {
-      ReadPointCompactionPerformer rewriting =
-          new ReadPointCompactionPerformer(seqFiles, unseqFiles, targetFiles, encryptParameter);
-      rewriting.setSummary(subTaskSummary);
-      rewriting.perform();
-      return;
-    }
     this.subTaskSummary.setTemporalFileNum(targetFiles.size());
     try (MultiTsFileDeviceIterator deviceIterator =
             new MultiTsFileDeviceIterator(seqFiles, unseqFiles, readerCacheMap);

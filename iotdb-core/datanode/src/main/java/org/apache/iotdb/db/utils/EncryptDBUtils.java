@@ -83,12 +83,6 @@ public class EncryptDBUtils {
     return ProviderHolder.PROVIDER.requiresFileRewrite();
   }
 
-  public static boolean canCopyChunk(EncryptParameter source, EncryptParameter target) {
-    return !requiresFileRewrite()
-        && (source == null || !source.isTdePageAead())
-        && (target == null || !target.isTdePageAead());
-  }
-
   public static RestorableTsFileIOWriter createRestorableWriterForNewFile(
       File file, String database) throws IOException {
     return createRestorableWriterForNewFile(

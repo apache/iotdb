@@ -25,7 +25,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.file.MetaMarker;
@@ -154,12 +153,6 @@ public class SingleSeriesCompactionExecutor {
         }
         if (this.chunkWriter == null) {
           constructChunkWriterFromReadChunk(currentChunk);
-        }
-
-        if (!EncryptDBUtils.canCopyChunk(
-            currentChunk.getEncryptParam(), fileWriter.getEncryptParameter())) {
-          processModifiedChunk(currentChunk);
-          continue;
         }
 
         // if this chunk is modified, deserialize it into points
