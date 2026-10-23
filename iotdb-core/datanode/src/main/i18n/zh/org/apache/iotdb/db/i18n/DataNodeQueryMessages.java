@@ -4829,6 +4829,39 @@ public final class DataNodeQueryMessages {
   public static final String MESSAGE_TAGCOLUMNS_ARG_6520A0C2 = "TAG 列：%s";
   public static final String MESSAGE_MEMORYTHRESHOLD_ARG_3676AB46 = "内存阈值：%s";
 
+
+  public static final String EXCEPTION_DATABASENAME_IS_NULL_A811DE1B =
+      "databaseName 为空";
+
+  public static final String EXCEPTION_VALUES_IS_NULL_A580EDAA =
+      "values 为空";
+
+  public static final String EXCEPTION_ZONEID_IS_NULL_7DAA5E2C =
+      "zoneId 为空";
+
+  public static final String EXCEPTION_INSERT_TARGET_TABLE_DOES_NOT_EXIST_ARG_ARG_78F05787 =
+      "写入目标表不存在：%s.%s";
+
+  public static final String EXCEPTION_EXPRESSIONS_AND_COLUMNS_DO_NOT_MATCH_EXPRESSIONS_SIZE_ARG_COLUMNS_SIZE_ARG_F933A8C1 =
+      "表达式与列不匹配，表达式数量：%s，列数量：%s";
+
+  public static final String EXCEPTION_INSERT_EXPRESSION_MUST_BE_CONSTANT_AFTER_CONSTANT_FOLDING_ARG_FOLDED_TO_ARG_D9EE1433 =
+      "写入表达式在常量折叠后必须为常量：%s（折叠结果为 %s）";
+
+  public static final String EXCEPTION_CANNOT_EVALUATE_INSERT_EXPRESSION_AS_A_CONSTANT_ARG_ARG_F478C134 =
+      "无法将写入表达式计算为常量：%s。%s";
+
+  public static final String EXCEPTION_THE_ARG_IS_OUT_OF_RANGE_OF_INT_F8E58471 =
+      "%s 超出 int 的范围。";
+
+  public static final String EXCEPTION_THE_ARG_IS_OUT_OF_RANGE_OF_LONG_9B1C872A =
+      "%s 超出 long 的范围。";
+
+  public static final String EXCEPTION_INT_OVERFLOW_ARG_ARG_BB287017 =
+      "int 溢出：%s / %s";
+
+  public static final String EXCEPTION_LONG_OVERFLOW_ARG_ARG_46CC95E2 =
+      "long 溢出：%s / %s";
   public static final String EXCEPTION_CHUNKDATA_CONTAINS_NO_PHYSICAL_CHUNK_607BCFC8 =
       "ChunkData 中不包含任何物理 chunk";
   public static final String EXCEPTION_DEVICE_CANNOT_BE_NULL_F1EB20B6 = "device 不能为 null";
