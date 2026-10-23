@@ -34,7 +34,7 @@ import org.junit.runner.RunWith;
 import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
-import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTestUnordered;
+import static org.apache.iotdb.db.it.utils.TestUtils.treeResultSetEqualTestUnordered;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -346,7 +346,7 @@ public class IoTDBTimeDurationIT {
     // group by tags
     expectedHeader = new String[] {"city", "time_duration(s1)"};
     retArray = new String[] {"Beijing,1677570933,", "Nanjing,1677570938,"};
-    resultSetEqualTestUnordered(
+    treeResultSetEqualTestUnordered(
         "select time_duration(s1) from root.db1.**,root.db.** group by tags(city)",
         expectedHeader,
         retArray);
