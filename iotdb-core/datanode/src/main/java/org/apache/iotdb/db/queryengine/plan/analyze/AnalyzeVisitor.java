@@ -1485,9 +1485,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           deviceToWhereExpression.entrySet()) {
         IDeviceID deviceName = deviceWhereExpressionEntry.getKey();
         Expression whereExpression = deviceWhereExpressionEntry.getValue();
-        deviceToSourceExpressions
-            .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
-            .addAll(searchSourceExpressions(whereExpression));
+        // null means the predicate of this device is always true, so it needs no value filter
+        if (whereExpression != null) {
+          deviceToSourceExpressions
+              .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
+              .addAll(searchSourceExpressions(whereExpression));
+        }
       }
     }
 
