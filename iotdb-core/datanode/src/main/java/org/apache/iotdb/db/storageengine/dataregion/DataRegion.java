@@ -1854,7 +1854,8 @@ public class DataRegion implements IDataRegionForQuery {
                   logger.error(
                       StorageEngineMessages
                           .STORAGE_LOG_REMOTE_REQUEST_CONFIG_NODE_FAILED_THAT_JUDGMENT_IF_TABLE_25FE3602,
-                      e.getMessage());
+                      e.getMessage(),
+                      e);
                   CommonMetadataUtils.throwTableNotExistsException(getDatabaseName(), tableName);
                   return null; // unreachable, throwTableNotExistsException always throws
                 }
