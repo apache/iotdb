@@ -84,13 +84,15 @@ public class DWTUtil {
       String[] coefString = coef.split(",");
       ncof = coefString.length;
       if (ncof == 0) {
-        throw new IllegalArgumentException("Wavelet coefficients should not be empty.");
+        throw new IllegalArgumentException(
+            LibraryUdfMessages.EXCEPTION_WAVELET_COEFFICIENTS_SHOULD_NOT_BE_EMPTY_2C78B047);
       }
       cc = new double[ncof];
       for (int i = 0; i < ncof; i++) {
         cc[i] = Double.parseDouble(coefString[i]);
         if (!Double.isFinite(cc[i])) {
-          throw new IllegalArgumentException("Wavelet coefficients should be finite.");
+          throw new IllegalArgumentException(
+              LibraryUdfMessages.EXCEPTION_WAVELET_COEFFICIENTS_SHOULD_BE_FINITE_D764C838);
         }
       }
     }

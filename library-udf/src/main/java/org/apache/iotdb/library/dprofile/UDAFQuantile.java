@@ -65,14 +65,14 @@ public class UDAFQuantile implements UDTF {
         }
 
         public long encode(Row row) throws IOException {
-          float value = row.getFloat(0);
-          long bits = Float.floatToIntBits(value);
-          return value >= 0f ? bits : bits ^ Long.MAX_VALUE;
+          int bits = Float.floatToIntBits(row.getFloat(0));
+          return bits >= 0 ? bits : bits ^ Integer.MAX_VALUE;
         }
 
         public void write(long result, PointCollector collector) throws IOException {
-          result = (result >>> 31) == 0 ? result : result ^ Long.MAX_VALUE;
-          collector.putFloat(0, Float.intBitsToFloat((int) result));
+          int bits = (int) result;
+          bits = bits >= 0 ? bits : bits ^ Integer.MAX_VALUE;
+          collector.putFloat(0, Float.intBitsToFloat(bits));
         }
       };
   private static final QuantileOperations DOUBLE_OPERATIONS =
@@ -82,9 +82,8 @@ public class UDAFQuantile implements UDTF {
         }
 
         public long encode(Row row) throws IOException {
-          double value = row.getDouble(0);
-          long bits = Double.doubleToLongBits(value);
-          return value >= 0d ? bits : bits ^ Long.MAX_VALUE;
+          long bits = Double.doubleToLongBits(row.getDouble(0));
+          return bits >= 0 ? bits : bits ^ Long.MAX_VALUE;
         }
 
         public void write(long result, PointCollector collector) throws IOException {

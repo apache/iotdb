@@ -20,6 +20,7 @@
 package org.apache.iotdb.library.frequency;
 
 import org.apache.iotdb.library.frequency.util.DWTUtil;
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -67,7 +68,8 @@ public class UDTFIDWT implements UDTF {
                 !((String) params[0]).equals("")
                     || ((String) params[1]).equals("")
                     || DWTUtil.isFiniteCoefficientList((String) params[1]),
-            "coef should be finite double,double... when method is blank.",
+            LibraryUdfMessages
+                .EXCEPTION_COEF_SHOULD_BE_FINITE_DOUBLE_DOUBLE_WHEN_METHOD_IS_BLANK_F72B1092,
             validator.getParameters().getStringOrDefault("method", ""),
             validator.getParameters().getStringOrDefault("coef", ""));
   }

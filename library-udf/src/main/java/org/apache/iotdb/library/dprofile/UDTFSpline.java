@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.dprofile;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -52,7 +53,7 @@ public class UDTFSpline implements UDTF {
         .validateRequiredAttribute("points")
         .validate(
             x -> (int) x >= 2,
-            "Parameter points should be at least 2.",
+            LibraryUdfMessages.EXCEPTION_PARAMETER_POINTS_SHOULD_BE_AT_LEAST_2_A4F55048,
             validator.getParameters().getInt("points"));
   }
 

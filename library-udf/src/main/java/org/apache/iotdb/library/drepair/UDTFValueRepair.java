@@ -53,23 +53,25 @@ public class UDTFValueRepair implements UDTF {
         .validateInputSeriesDataType(0, Type.FLOAT, Type.DOUBLE, Type.INT32, Type.INT64)
         .validate(
             x -> Double.isFinite((double) x) && (double) x > 0,
-            "Parameter $sigma$ should be finite and larger than 0.",
+            LibraryUdfMessages
+                .EXCEPTION_PARAMETER_SIGMA_SHOULD_BE_FINITE_AND_LARGER_THAN_0_538FEDBA,
             validator.getParameters().getDoubleOrDefault("sigma", 1.0))
         .validate(
             params ->
                 Double.isFinite((double) params[0])
                     && Double.isFinite((double) params[1])
                     && (double) params[0] < (double) params[1],
-            "parameter $minSpeed$ and $maxSpeed$ should be finite, and $minSpeed$ should be smaller than $maxSpeed$.",
+            LibraryUdfMessages
+                .EXCEPTION_PARAMETER_MINSPEED_AND_MAXSPEED_SHOULD_BE_FINITE_AND_MINSPEED_SHOULD_BE_SMALLER_THAN_MAXSPEED_5998EA69,
             validator.getParameters().getDoubleOrDefault("minSpeed", -1),
             validator.getParameters().getDoubleOrDefault("maxSpeed", 1))
         .validate(
             x -> Double.isFinite((double) x),
-            "Parameter $center$ should be finite.",
+            LibraryUdfMessages.EXCEPTION_PARAMETER_CENTER_SHOULD_BE_FINITE_21F289A3,
             validator.getParameters().getDoubleOrDefault("center", 0))
         .validate(
             method -> isValidMethod((String) method),
-            "Method should be screen or lsgreedy.",
+            LibraryUdfMessages.EXCEPTION_METHOD_SHOULD_BE_SCREEN_OR_LSGREEDY_B5975D7A,
             validator.getParameters().getStringOrDefault("method", METHOD_SCREEN));
   }
 

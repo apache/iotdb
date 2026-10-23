@@ -34,7 +34,8 @@ public class BooleanCircularQueue {
 
   public BooleanCircularQueue(int capacity) {
     if (capacity <= 0) {
-      throw new IllegalArgumentException("Capacity should be larger than 0.");
+      throw new IllegalArgumentException(
+          LibraryUdfMessages.EXCEPTION_CAPACITY_SHOULD_BE_LARGER_THAN_0_055372C7);
     }
     head = tail = size = 0;
     data = new boolean[capacity];

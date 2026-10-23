@@ -319,7 +319,8 @@ public class Util {
         || !Double.isFinite(duration)
         || duration > Long.MAX_VALUE
         || duration < Long.MIN_VALUE) {
-      throw new IllegalArgumentException("Time value should be finite.");
+      throw new IllegalArgumentException(
+          LibraryUdfMessages.EXCEPTION_TIME_VALUE_SHOULD_BE_FINITE_A661DDB0);
     }
     return (long) duration;
   }
@@ -346,7 +347,8 @@ public class Util {
     ParsePosition position = new ParsePosition(0);
     Date date = format.parse(s, position);
     if (date == null || position.getIndex() != s.length()) {
-      throw new ParseException("Invalid datetime format.", position.getErrorIndex());
+      throw new ParseException(
+          LibraryUdfMessages.EXCEPTION_INVALID_DATETIME_FORMAT_A3DC435A, position.getErrorIndex());
     }
     return date.getTime();
   }

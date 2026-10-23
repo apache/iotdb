@@ -20,6 +20,7 @@
 package org.apache.iotdb.library.anomaly;
 
 import org.apache.iotdb.library.anomaly.util.WindowDetect;
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.TypeServices;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.RowWindow;
@@ -46,11 +47,12 @@ public class UDTFTwoSidedFilter implements UDTF {
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             x -> Double.isFinite((double) x) && (double) x > 0,
-            "Parameter len should be finite and larger than 0.",
+            LibraryUdfMessages.EXCEPTION_PARAMETER_LEN_SHOULD_BE_FINITE_AND_LARGER_THAN_0_F93F1EC9,
             validator.getParameters().getDoubleOrDefault("len", 5))
         .validate(
             x -> Double.isFinite((double) x) && (double) x >= 0,
-            "Parameter threshold should be finite and non-negative.",
+            LibraryUdfMessages
+                .EXCEPTION_PARAMETER_THRESHOLD_SHOULD_BE_FINITE_AND_NON_NEGATIVE_93B393D7,
             validator.getParameters().getDoubleOrDefault("threshold", 0.4));
   }
 

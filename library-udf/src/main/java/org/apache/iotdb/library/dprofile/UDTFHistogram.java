@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.dprofile;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -54,7 +55,8 @@ public class UDTFHistogram implements UDTF {
                 Double.isFinite((double) params[0])
                     && Double.isFinite((double) params[1])
                     && (double) params[0] < (double) params[1],
-            "parameter $end$ should be finite and larger than $start$",
+            LibraryUdfMessages
+                .EXCEPTION_PARAMETER_END_SHOULD_BE_FINITE_AND_LARGER_THAN_START_A5FB7AEC,
             validator.getParameters().getDoubleOrDefault("min", -Double.MAX_VALUE),
             validator.getParameters().getDoubleOrDefault("max", Double.MAX_VALUE));
   }

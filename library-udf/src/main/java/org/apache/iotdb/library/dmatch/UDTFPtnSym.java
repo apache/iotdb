@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.dmatch;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -49,7 +50,7 @@ public class UDTFPtnSym implements UDTF {
             validator.getParameters().getIntOrDefault("window", 10))
         .validate(
             x -> Double.isFinite((double) x) && (double) x >= 0.0d,
-            "threshold has to be finite and non-negative.",
+            LibraryUdfMessages.EXCEPTION_THRESHOLD_HAS_TO_BE_FINITE_AND_NON_NEGATIVE_45C26FD0,
             validator.getParameters().getDoubleOrDefault("threshold", Double.MAX_VALUE));
   }
 

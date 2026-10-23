@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.anomaly;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.TypeServices;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -48,7 +49,8 @@ public class UDTFRange implements UDTF {
                 Double.isFinite((double) params[0])
                     && Double.isFinite((double) params[1])
                     && (double) params[0] < (double) params[1],
-            "parameter \"lower_bound\" and \"upper_bound\" should be finite, and \"lower_bound\" should be smaller than \"upper_bound\".",
+            LibraryUdfMessages
+                .EXCEPTION_PARAMETER_LOWER_BOUND_AND_UPPER_BOUND_SHOULD_BE_FINITE_AND_LOWER_BOUND_SHOULD_BE_SMALLER_THAN_UPPER_BOUND_06A9FCA8,
             validator.getParameters().getDouble("lower_bound"),
             validator.getParameters().getDouble("upper_bound"));
   }

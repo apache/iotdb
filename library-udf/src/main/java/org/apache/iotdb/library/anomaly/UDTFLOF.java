@@ -130,15 +130,15 @@ public class UDTFLOF implements UDTF {
     validator
         .validate(
             k -> (int) k > 0,
-            "Parameter k should be a positive integer.",
+            LibraryUdfMessages.EXCEPTION_PARAMETER_K_SHOULD_BE_A_POSITIVE_INTEGER_62AC8458,
             validator.getParameters().getIntOrDefault("k", 3))
         .validate(
             window -> (int) window > 0,
-            "Parameter window should be a positive integer.",
+            LibraryUdfMessages.EXCEPTION_PARAMETER_WINDOW_SHOULD_BE_A_POSITIVE_INTEGER_54FB7DBB,
             validator.getParameters().getIntOrDefault("window", 10000))
         .validate(
             method -> isValidMethod((String) method),
-            "Method should be default or series.",
+            LibraryUdfMessages.EXCEPTION_METHOD_SHOULD_BE_DEFAULT_OR_SERIES_181EEECF,
             validator.getParameters().getStringOrDefault("method", DEFAULT_METHOD));
   }
 

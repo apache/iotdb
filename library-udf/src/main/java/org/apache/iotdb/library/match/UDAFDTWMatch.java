@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.match;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.match.model.DTWMatchResult;
 import org.apache.iotdb.library.match.model.DTWState;
 import org.apache.iotdb.library.util.TypeServices;
@@ -197,11 +198,13 @@ public class UDAFDTWMatch implements UDAF {
         .validateRequiredAttribute("threshold")
         .validate(
             x -> isFiniteDoubleList((String) x),
-            "Illegal parameter, pattern must be finite double,double...",
+            LibraryUdfMessages
+                .EXCEPTION_ILLEGAL_PARAMETER_PATTERN_MUST_BE_FINITE_DOUBLE_DOUBLE_612DE434,
             validator.getParameters().getStringOrDefault("pattern", ""))
         .validate(
             x -> isFiniteNonNegativeFloat((String) x),
-            "Illegal parameter, threshold must be a finite non-negative number.",
+            LibraryUdfMessages
+                .EXCEPTION_ILLEGAL_PARAMETER_THRESHOLD_MUST_BE_A_FINITE_NON_NEGATIVE_NUMBER_1C438942,
             validator.getParameters().getStringOrDefault("threshold", ""));
   }
 

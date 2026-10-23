@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.string;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -57,7 +58,8 @@ public class UDTFRegexReplace implements UDTF {
         .validateRequiredAttribute("replace")
         .validate(
             regex -> ((String) regex).length() > 0 && isValidRegex((String) regex),
-            "regex should not be empty and has to be a valid regular expression.",
+            LibraryUdfMessages
+                .EXCEPTION_REGEX_SHOULD_NOT_BE_EMPTY_AND_HAS_TO_BE_A_VALID_REGULAR_EXPRESSION_751072ED,
             validator.getParameters().getString("regex"))
         .validate(
             limit -> (int) limit >= -1,

@@ -51,7 +51,7 @@ public class UDTFTimestampRepair implements UDTF {
         .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
         .validate(
             method -> isValidMethod((String) method),
-            "Method should be Median, Mode, or Cluster.",
+            LibraryUdfMessages.EXCEPTION_METHOD_SHOULD_BE_MEDIAN_MODE_OR_CLUSTER_7C3B0F56,
             validator.getParameters().getStringOrDefault("method", METHOD_MEDIAN));
 
     String intervalString = validator.getParameters().getStringOrDefault("interval", null);

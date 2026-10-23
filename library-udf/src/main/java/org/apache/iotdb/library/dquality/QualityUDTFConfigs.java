@@ -44,7 +44,8 @@ final class QualityUDTFConfigs {
     if (validator.getParameters().hasAttribute(WINDOW_KEY)) {
       validator.validate(
           window -> isValidWindow((String) window, validator.getParameters()),
-          "Parameter window should be a positive duration or a positive integer.",
+          LibraryUdfMessages
+              .EXCEPTION_PARAMETER_WINDOW_SHOULD_BE_A_POSITIVE_DURATION_OR_A_POSITIVE_INTEGER_41E4F4DB,
           validator.getParameters().getString(WINDOW_KEY));
     }
   }
@@ -87,7 +88,8 @@ final class QualityUDTFConfigs {
 
     long sizeWindow = Long.parseLong(window.replace(" ", ""));
     if (sizeWindow <= 0 || sizeWindow > Integer.MAX_VALUE) {
-      throw new IllegalArgumentException("Window size should be in (0, Integer.MAX_VALUE].");
+      throw new IllegalArgumentException(
+          LibraryUdfMessages.EXCEPTION_WINDOW_SIZE_SHOULD_BE_IN_0_INTEGER_MAX_VALUE_52F02FF6);
     }
     return new WindowConfig(false, sizeWindow);
   }

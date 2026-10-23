@@ -57,7 +57,7 @@ public class UDTFValueFill implements UDTF {
         .validateInputSeriesDataType(0, Type.FLOAT, Type.DOUBLE, Type.INT32, Type.INT64)
         .validate(
             method -> isValidMethod((String) method),
-            "Illegal fill method.",
+            LibraryUdfMessages.EXCEPTION_ILLEGAL_FILL_METHOD_45FB5556,
             validator.getParameters().getStringOrDefault("method", METHOD_LINEAR));
   }
 

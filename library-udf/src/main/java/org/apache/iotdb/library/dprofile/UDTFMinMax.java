@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.dprofile;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -58,7 +59,8 @@ public class UDTFMinMax implements UDTF {
                 Double.isFinite((double) params[0])
                     && Double.isFinite((double) params[1])
                     && (double) params[0] < (double) params[1],
-            "parameter $min$ and $max$ should be finite, and $min$ should be smaller than $max$.",
+            LibraryUdfMessages
+                .EXCEPTION_PARAMETER_MIN_AND_MAX_SHOULD_BE_FINITE_AND_MIN_SHOULD_BE_SMALLER_THAN_MAX_1EDB33AF,
             validator.getParameters().getDoubleOrDefault("min", -Double.MAX_VALUE),
             validator.getParameters().getDoubleOrDefault("max", Double.MAX_VALUE));
     if (validator

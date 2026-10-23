@@ -961,6 +961,47 @@ public class UDFWindowAndQueueTest {
   }
 
   @Test
+  public void testQuantilePreservesNegativeZero() throws Exception {
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("rank", "0.5");
+    UDFParameters doubleParameters = createSingleDoubleSeriesParameters(attributes);
+    UDAFQuantile doubleQuantile = new UDAFQuantile();
+    RecordingPointCollector doubleCollector = new RecordingPointCollector();
+
+    doubleQuantile.validate(new UDFParameterValidator(doubleParameters));
+    doubleQuantile.beforeStart(doubleParameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    doubleQuantile.transform(new DoubleRow(1, -1.0), doubleCollector);
+    doubleQuantile.transform(new DoubleRow(2, -0.0), doubleCollector);
+    doubleQuantile.transform(new DoubleRow(3, 0.0), doubleCollector);
+    doubleQuantile.transform(new DoubleRow(4, 1.0), doubleCollector);
+    doubleQuantile.terminate(doubleCollector);
+
+    Assert.assertEquals(1, doubleCollector.values.size());
+    Assert.assertEquals(
+        Double.doubleToRawLongBits(-0.0),
+        Double.doubleToRawLongBits(doubleCollector.values.get(0)));
+
+    UDFParameters floatParameters =
+        new UDFParameters(
+            Collections.singletonList("s1"), Collections.singletonList(Type.FLOAT), attributes);
+    UDAFQuantile floatQuantile = new UDAFQuantile();
+    RecordingPointCollector floatCollector = new RecordingPointCollector();
+
+    floatQuantile.validate(new UDFParameterValidator(floatParameters));
+    floatQuantile.beforeStart(floatParameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    floatQuantile.transform(new FloatRow(1, -1.0f), floatCollector);
+    floatQuantile.transform(new FloatRow(2, -0.0f), floatCollector);
+    floatQuantile.transform(new FloatRow(3, 0.0f), floatCollector);
+    floatQuantile.transform(new FloatRow(4, 1.0f), floatCollector);
+    floatQuantile.terminate(floatCollector);
+
+    Assert.assertEquals(1, floatCollector.values.size());
+    Assert.assertEquals(
+        Float.floatToRawIntBits(-0.0f),
+        Float.floatToRawIntBits(floatCollector.values.get(0).floatValue()));
+  }
+
+  @Test
   public void testExactMadUsesAbsoluteDeviations() throws Exception {
     UDFParameters parameters = createSingleDoubleSeriesParameters(Collections.emptyMap());
     UDAFMad mad = new UDAFMad();
@@ -2510,6 +2551,23 @@ public class UDFWindowAndQueueTest {
     @Override
     public int size() {
       return values.length;
+    }
+  }
+
+  private static class FloatRow extends DoubleRow {
+
+    private FloatRow(long time, float value) {
+      super(time, value);
+    }
+
+    @Override
+    public float getFloat(int columnIndex) {
+      return (float) getDouble(columnIndex);
+    }
+
+    @Override
+    public Type getDataType(int columnIndex) {
+      return Type.FLOAT;
     }
   }
 

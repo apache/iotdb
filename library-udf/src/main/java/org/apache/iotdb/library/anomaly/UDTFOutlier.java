@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.anomaly;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -55,19 +56,19 @@ public class UDTFOutlier implements UDTF {
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             x -> (int) x > 0,
-            "Parameter k should be a positive integer.",
+            LibraryUdfMessages.EXCEPTION_PARAMETER_K_SHOULD_BE_A_POSITIVE_INTEGER_62AC8458,
             validator.getParameters().getIntOrDefault("k", 3))
         .validate(
             x -> Double.isFinite((double) x) && (double) x >= 0,
-            "Parameter r should be finite and non-negative.",
+            LibraryUdfMessages.EXCEPTION_PARAMETER_R_SHOULD_BE_FINITE_AND_NON_NEGATIVE_4FFDF663,
             validator.getParameters().getDoubleOrDefault("r", 5))
         .validate(
             x -> (int) x > 0,
-            "Parameter w should be a positive integer.",
+            LibraryUdfMessages.EXCEPTION_PARAMETER_W_SHOULD_BE_A_POSITIVE_INTEGER_C6C838D2,
             validator.getParameters().getIntOrDefault("w", 1000))
         .validate(
             x -> (int) x > 0,
-            "Parameter s should be a positive integer.",
+            LibraryUdfMessages.EXCEPTION_PARAMETER_S_SHOULD_BE_A_POSITIVE_INTEGER_B941BE85,
             validator.getParameters().getIntOrDefault("s", 500));
   }
 

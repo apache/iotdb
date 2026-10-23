@@ -220,11 +220,13 @@ public class UDAFPatternMatch implements UDAF {
         .validate(
             (UDFParameterValidator.SingleObjectValidationRule)
                 payload -> Arrays.stream((Double[]) payload).allMatch(Double::isFinite),
-            "Illegal parameter, valuePattern values must be finite.",
+            LibraryUdfMessages
+                .EXCEPTION_ILLEGAL_PARAMETER_VALUEPATTERN_VALUES_MUST_BE_FINITE_FFD05AC9,
             valuePattern)
         .validate(
             x -> isFiniteNonNegativeFloat((String) x),
-            "Illegal parameter, threshold must be a finite non-negative number.",
+            LibraryUdfMessages
+                .EXCEPTION_ILLEGAL_PARAMETER_THRESHOLD_MUST_BE_A_FINITE_NON_NEGATIVE_NUMBER_1C438942,
             validator.getParameters().getStringOrDefault(THRESHOLD_PARAM, ""));
   }
 

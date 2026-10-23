@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.anomaly;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.CircularQueue;
 import org.apache.iotdb.library.util.LongCircularQueue;
 import org.apache.iotdb.library.util.TypeServices;
@@ -59,7 +60,7 @@ public class UDTFKSigma implements UDTF {
             validator.getParameters().getIntOrDefault("window", DEFAULT_WINDOW_SIZE))
         .validate(
             x -> Double.isFinite((double) x) && (double) x > 0,
-            "Parameter k should be finite and larger than 0.",
+            LibraryUdfMessages.EXCEPTION_PARAMETER_K_SHOULD_BE_FINITE_AND_LARGER_THAN_0_ECE1B163,
             validator.getParameters().getDoubleOrDefault("k", 3));
   }
 

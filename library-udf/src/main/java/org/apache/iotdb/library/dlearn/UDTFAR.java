@@ -46,7 +46,7 @@ public class UDTFAR implements UDTF {
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             x -> (int) x > 0,
-            "Parameter p should be a positive integer.",
+            LibraryUdfMessages.EXCEPTION_PARAMETER_P_SHOULD_BE_A_POSITIVE_INTEGER_D7914C8A,
             validator.getParameters().getIntOrDefault("p", 1));
   }
 

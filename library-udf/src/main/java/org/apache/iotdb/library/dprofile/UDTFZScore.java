@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.dprofile;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -59,11 +60,12 @@ public class UDTFZScore implements UDTF {
             validator.getParameters().getStringOrDefault("compute", BATCH_COMPUTE))
         .validate(
             x -> Double.isFinite((double) x),
-            "Parameter \"avg\" is illegal. It should be finite.",
+            LibraryUdfMessages.EXCEPTION_PARAMETER_AVG_IS_ILLEGAL_IT_SHOULD_BE_FINITE_D4B6B4FF,
             validator.getParameters().getDoubleOrDefault("avg", 0.0))
         .validate(
             x -> Double.isFinite((double) x) && (double) x > 0,
-            "Parameter \"sd\" is illegal. It should be finite and larger than 0.",
+            LibraryUdfMessages
+                .EXCEPTION_PARAMETER_SD_IS_ILLEGAL_IT_SHOULD_BE_FINITE_AND_LARGER_THAN_0_CCE0B275,
             validator.getParameters().getDoubleOrDefault("sd", 1.0));
     if (validator
         .getParameters()

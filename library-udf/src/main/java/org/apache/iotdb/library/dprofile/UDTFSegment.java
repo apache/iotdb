@@ -20,6 +20,7 @@
 package org.apache.iotdb.library.dprofile;
 
 import org.apache.iotdb.library.dprofile.util.Segment;
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -55,7 +56,7 @@ public class UDTFSegment implements UDTF {
             validator.getParameters().getIntOrDefault("window", 10))
         .validate(
             x -> Double.isFinite((double) x) && (double) x >= 0,
-            "Error bound should be finite and no less than 0.",
+            LibraryUdfMessages.EXCEPTION_ERROR_BOUND_SHOULD_BE_FINITE_AND_NO_LESS_THAN_0_E2C80B2C,
             validator.getParameters().getDoubleOrDefault("error", 0.1))
         .validate(
             x ->
