@@ -20,6 +20,7 @@
 package org.apache.iotdb.library.dprofile;
 
 import org.apache.iotdb.library.dprofile.util.Segment;
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -42,8 +43,8 @@ public class UDTFSegment implements UDTF {
   private static final String METHOD_BOTTOM_UP = "bottom-up";
   private String output;
   private static final String OUTPUT_FIRST = "first";
-  private static final List<Long> timestamp = new ArrayList<>();
-  private static final List<Double> value = new ArrayList<>();
+  private final List<Long> timestamp = new ArrayList<>();
+  private final List<Double> value = new ArrayList<>();
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -54,8 +55,8 @@ public class UDTFSegment implements UDTF {
             "Window size should be a positive integer.",
             validator.getParameters().getIntOrDefault("window", 10))
         .validate(
-            x -> (double) x >= 0,
-            "Error bound should be no less than 0.",
+            x -> Double.isFinite((double) x) && (double) x >= 0,
+            LibraryUdfMessages.EXCEPTION_ERROR_BOUND_SHOULD_BE_FINITE_AND_NO_LESS_THAN_0_E2C80B2C,
             validator.getParameters().getDoubleOrDefault("error", 0.1))
         .validate(
             x ->
@@ -86,15 +87,21 @@ public class UDTFSegment implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     double v = Util.getValueAsDouble(row);
     if (Double.isFinite(v)) {
       timestamp.add(row.getTime());
-      value.add(Util.getValueAsDouble(row));
+      value.add(v);
     }
   }
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
+    if (value.isEmpty()) {
+      return;
+    }
     long[] ts = timestamp.stream().mapToLong(Long::valueOf).toArray();
     double[] v = value.stream().mapToDouble(Double::valueOf).toArray();
     List<double[]> seg = new ArrayList<>();

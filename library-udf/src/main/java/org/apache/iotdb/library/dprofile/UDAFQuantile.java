@@ -60,23 +60,30 @@ public class UDAFQuantile implements UDTF {
       };
   private static final QuantileOperations FLOAT_OPERATIONS =
       new QuantileOperations() {
+        public boolean isValid(Row row) throws IOException {
+          return Float.isFinite(row.getFloat(0));
+        }
+
         public long encode(Row row) throws IOException {
-          float value = row.getFloat(0);
-          long bits = Float.floatToIntBits(value);
-          return value >= 0f ? bits : bits ^ Long.MAX_VALUE;
+          int bits = Float.floatToIntBits(row.getFloat(0));
+          return bits >= 0 ? bits : bits ^ Integer.MAX_VALUE;
         }
 
         public void write(long result, PointCollector collector) throws IOException {
-          result = (result >>> 31) == 0 ? result : result ^ Long.MAX_VALUE;
-          collector.putFloat(0, Float.intBitsToFloat((int) result));
+          int bits = (int) result;
+          bits = bits >= 0 ? bits : bits ^ Integer.MAX_VALUE;
+          collector.putFloat(0, Float.intBitsToFloat(bits));
         }
       };
   private static final QuantileOperations DOUBLE_OPERATIONS =
       new QuantileOperations() {
+        public boolean isValid(Row row) throws IOException {
+          return Double.isFinite(row.getDouble(0));
+        }
+
         public long encode(Row row) throws IOException {
-          double value = row.getDouble(0);
-          long bits = Double.doubleToLongBits(value);
-          return value >= 0d ? bits : bits ^ Long.MAX_VALUE;
+          long bits = Double.doubleToLongBits(row.getDouble(0));
+          return bits >= 0 ? bits : bits ^ Long.MAX_VALUE;
         }
 
         public void write(long result, PointCollector collector) throws IOException {
@@ -133,27 +140,34 @@ public class UDAFQuantile implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0) || !operations.isValid(row)) {
+      return;
+    }
     sketch.update(operations.encode(row));
   }
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
     long n = sketch.getN();
+    if (n == 0) {
+      return;
+    }
     // Nearest-rank: k-th smallest uses getApproxRank (strictly-less-than count) in [0, n-1];
     // rank=1 must map to k=n-1, not k=n which is unreachable and can overshoot the max sample.
-    long k = 0;
-    if (n > 0) {
-      k = (long) Math.ceil(rank * n) - 1;
-      if (k < 0) {
-        k = 0;
-      } else if (k >= n) {
-        k = n - 1;
-      }
+    long k = (long) Math.ceil(rank * n) - 1;
+    if (k < 0) {
+      k = 0;
+    } else if (k >= n) {
+      k = n - 1;
     }
-    operations.write(sketch.findMinValueWithRank(k), collector);
+    operations.write(sketch.findMaxValueWithRank(k), collector);
   }
 
   private interface QuantileOperations {
+    default boolean isValid(Row row) throws IOException {
+      return true;
+    }
+
     long encode(Row row) throws IOException;
 
     void write(long result, PointCollector collector) throws IOException;

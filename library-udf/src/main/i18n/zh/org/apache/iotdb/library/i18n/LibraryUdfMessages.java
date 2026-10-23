@@ -153,5 +153,44 @@ public final class LibraryUdfMessages {
   public static final String EXCEPTION_FAIL_TO_GET_DATA_TYPE_IN_ROW_8CD82629 =
       "获取该行数据类型失败，行时间戳为 ";
 
+  // Parameter validation and utility exceptions added for UDF edge cases.
+  public static final String EXCEPTION_PARAMETER_Q1_AND_Q3_SHOULD_BE_FINITE_AND_Q1_SHOULD_BE_SMALLER_THAN_Q3_EB122E6C = "参数 $q1$ 和 $q3$ 必须为有限值，且 $q1$ 必须小于 $q3$";
+  public static final String EXCEPTION_PARAMETER_K_SHOULD_BE_FINITE_AND_LARGER_THAN_0_ECE1B163 = "参数 k 必须为有限且大于 0。";
+  public static final String EXCEPTION_PARAMETER_K_SHOULD_BE_A_POSITIVE_INTEGER_62AC8458 = "参数 k 必须为正整数。";
+  public static final String EXCEPTION_PARAMETER_WINDOW_SHOULD_BE_A_POSITIVE_INTEGER_54FB7DBB = "参数 window 必须为正整数。";
+  public static final String EXCEPTION_METHOD_SHOULD_BE_DEFAULT_OR_SERIES_181EEECF = "method 必须为 default 或 series。";
+  public static final String EXCEPTION_PARAMETER_R_SHOULD_BE_FINITE_AND_NON_NEGATIVE_4FFDF663 = "参数 r 必须为有限且非负。";
+  public static final String EXCEPTION_PARAMETER_W_SHOULD_BE_A_POSITIVE_INTEGER_C6C838D2 = "参数 w 必须为正整数。";
+  public static final String EXCEPTION_PARAMETER_S_SHOULD_BE_A_POSITIVE_INTEGER_B941BE85 = "参数 s 必须为正整数。";
+  public static final String EXCEPTION_PARAMETER_LOWER_BOUND_AND_UPPER_BOUND_SHOULD_BE_FINITE_AND_LOWER_BOUND_SHOULD_BE_SMALLER_THAN_UPPER_BOUND_06A9FCA8 = "参数 lower_bound 和 upper_bound 必须为有限值，且 lower_bound 必须小于 upper_bound。";
+  public static final String EXCEPTION_PARAMETER_LEN_SHOULD_BE_FINITE_AND_LARGER_THAN_0_F93F1EC9 = "参数 len 必须为有限且大于 0。";
+  public static final String EXCEPTION_PARAMETER_THRESHOLD_SHOULD_BE_FINITE_AND_NON_NEGATIVE_93B393D7 = "参数 threshold 必须为有限且非负。";
+  public static final String EXCEPTION_PARAMETER_P_SHOULD_BE_A_POSITIVE_INTEGER_D7914C8A = "参数 p 必须为正整数。";
+  public static final String EXCEPTION_THRESHOLD_HAS_TO_BE_FINITE_AND_NON_NEGATIVE_45C26FD0 = "threshold 必须为有限且非负。";
+  public static final String EXCEPTION_PARAMETER_END_SHOULD_BE_FINITE_AND_LARGER_THAN_START_A5FB7AEC = "参数 $end$ 必须为有限值且大于 $start$。";
+  public static final String EXCEPTION_PARAMETER_MIN_AND_MAX_SHOULD_BE_FINITE_AND_MIN_SHOULD_BE_SMALLER_THAN_MAX_1EDB33AF = "参数 $min$ 和 $max$ 必须为有限值，且 $min$ 必须小于 $max$。";
+  public static final String EXCEPTION_ERROR_BOUND_SHOULD_BE_FINITE_AND_NO_LESS_THAN_0_E2C80B2C = "误差界必须为有限且不小于 0。";
+  public static final String EXCEPTION_PARAMETER_POINTS_SHOULD_BE_AT_LEAST_2_A4F55048 = "参数 points 至少为 2。";
+  public static final String EXCEPTION_PARAMETER_AVG_IS_ILLEGAL_IT_SHOULD_BE_FINITE_D4B6B4FF = "参数 avg 无效，必须为有限值。";
+  public static final String EXCEPTION_PARAMETER_SD_IS_ILLEGAL_IT_SHOULD_BE_FINITE_AND_LARGER_THAN_0_CCE0B275 = "参数 sd 无效，必须为有限且大于 0。";
+  public static final String EXCEPTION_PARAMETER_WINDOW_SHOULD_BE_A_POSITIVE_DURATION_OR_A_POSITIVE_INTEGER_41E4F4DB = "参数 window 必须为正时长或正整数。";
+  public static final String EXCEPTION_WINDOW_SIZE_SHOULD_BE_IN_0_INTEGER_MAX_VALUE_52F02FF6 = "窗口大小必须在 (0, Integer.MAX_VALUE] 范围内。";
+  public static final String EXCEPTION_METHOD_SHOULD_BE_MEDIAN_MODE_OR_CLUSTER_7C3B0F56 = "method 必须为 Median、Mode 或 Cluster。";
+  public static final String EXCEPTION_ILLEGAL_FILL_METHOD_45FB5556 = "填充方法无效。";
+  public static final String EXCEPTION_PARAMETER_SIGMA_SHOULD_BE_FINITE_AND_LARGER_THAN_0_538FEDBA = "参数 $sigma$ 必须为有限且大于 0。";
+  public static final String EXCEPTION_PARAMETER_MINSPEED_AND_MAXSPEED_SHOULD_BE_FINITE_AND_MINSPEED_SHOULD_BE_SMALLER_THAN_MAXSPEED_5998EA69 = "参数 $minSpeed$ 和 $maxSpeed$ 必须为有限值，且 $minSpeed$ 必须小于 $maxSpeed$。";
+  public static final String EXCEPTION_PARAMETER_CENTER_SHOULD_BE_FINITE_21F289A3 = "参数 $center$ 必须为有限值。";
+  public static final String EXCEPTION_METHOD_SHOULD_BE_SCREEN_OR_LSGREEDY_B5975D7A = "method 必须为 screen 或 lsgreedy。";
+  public static final String EXCEPTION_COEF_SHOULD_BE_FINITE_DOUBLE_DOUBLE_WHEN_METHOD_IS_BLANK_F72B1092 = "method 为空时，coef 必须为有限的 double,double,...。";
+  public static final String EXCEPTION_WAVELET_COEFFICIENTS_SHOULD_NOT_BE_EMPTY_2C78B047 = "Wavelet 系数不能为空。";
+  public static final String EXCEPTION_WAVELET_COEFFICIENTS_SHOULD_BE_FINITE_D764C838 = "Wavelet 系数必须为有限值。";
+  public static final String EXCEPTION_ILLEGAL_PARAMETER_PATTERN_MUST_BE_FINITE_DOUBLE_DOUBLE_612DE434 = "非法参数，pattern 必须为有限的 double,double,...。";
+  public static final String EXCEPTION_ILLEGAL_PARAMETER_THRESHOLD_MUST_BE_A_FINITE_NON_NEGATIVE_NUMBER_1C438942 = "非法参数，threshold 必须为有限且非负数。";
+  public static final String EXCEPTION_ILLEGAL_PARAMETER_VALUEPATTERN_VALUES_MUST_BE_FINITE_FFD05AC9 = "非法参数，valuePattern 的值必须为有限数。";
+  public static final String EXCEPTION_REGEX_SHOULD_NOT_BE_EMPTY_AND_HAS_TO_BE_A_VALID_REGULAR_EXPRESSION_751072ED = "regex 不能为空且必须是有效的正则表达式。";
+  public static final String EXCEPTION_CAPACITY_SHOULD_BE_LARGER_THAN_0_055372C7 = "容量必须大于 0。";
+  public static final String EXCEPTION_TIME_VALUE_SHOULD_BE_FINITE_A661DDB0 = "时间值必须为有限值。";
+  public static final String EXCEPTION_INVALID_DATETIME_FORMAT_A3DC435A = "日期时间格式无效。";
+
   private LibraryUdfMessages() {}
 }
