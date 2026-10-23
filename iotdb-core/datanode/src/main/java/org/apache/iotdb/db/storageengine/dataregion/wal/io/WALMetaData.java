@@ -254,7 +254,12 @@ public class WALMetaData implements SerializedSize {
         memTablesId.add(buffer.getLong());
       }
     }
-    WALMetaData result = new WALMetaData(firstSearchIndex, buffersSize, memTablesId, entriesNum);
+    WALMetaData result =
+        new WALMetaData(
+            firstSearchIndex,
+            buffersSize,
+            memTablesId,
+            version == WALFileVersion.V3 ? entriesNum : 0);
     // V3 extension: file-level timestamp range + per-entry writer progress metadata
     if (version == WALFileVersion.V3 && buffer.hasRemaining()) {
       result.minDataTs = buffer.getLong();

@@ -4147,18 +4147,23 @@ public class ConsensusPrefetchingQueue {
     final SubscriptionEvent event = eventToCommit[0];
     if (event != null) {
       try {
-        final boolean committed =
-            commitAndRefreshWalRetention(commitWriterId, commitWriterProgress);
+        final boolean committed = commitWriterProgress(commitWriterId, commitWriterProgress);
         if (committed) {
-          synchronized (event) {
-            event.ack();
-            event.recordCommittedTimestamp();
-            inFlightEvents.remove(new InFlightEventKey(consumerId, commitContext), event);
-            inFlightEvents.entrySet().removeIf(entry -> entry.getValue() == event);
-            prefetchingQueue.remove(event);
-            acked.set(true);
-            cleanUpEvent(event, false);
-          }
+          final InFlightEventKey key = new InFlightEventKey(consumerId, commitContext);
+          inFlightEvents.compute(
+              key,
+              (ignored, inFlightEvent) -> {
+                synchronized (event) {
+                  event.ack();
+                  event.recordCommittedTimestamp();
+                  acked.set(true);
+                  cleanUpEvent(event, false);
+                }
+                return inFlightEvent == event ? null : inFlightEvent;
+              });
+          inFlightEvents.entrySet().removeIf(entry -> entry.getValue() == event);
+          prefetchingQueue.remove(event);
+          refreshCommittedWalRetentionBoundAndNotify();
         } else if (!silent) {
           LOGGER.warn(
               DataNodePipeMessages
