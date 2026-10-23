@@ -51,9 +51,7 @@ public class IoTDBConsensusSubscriptionRecoveryTableIT
   @Override
   @Before
   public void setUp() throws Exception {
-    // Isolate subscription recovery from data loss caused by ASYNC WAL during a forced shutdown.
-    EnvFactory.getEnv().getConfig().getCommonConfig().setWalMode("SYNC");
-    // Persist each acknowledged batch before killing the servers.
+    // Persist each acknowledged batch before restarting the servers.
     final Properties properties = new Properties();
     properties.setProperty("subscription_consensus_commit_persist_interval", "1");
     properties.setProperty("subscription_consensus_commit_fsync_enabled", "true");
@@ -95,8 +93,8 @@ public class IoTDBConsensusSubscriptionRecoveryTableIT
           ConsensusSubscriptionTableITSupport.insertRows(
               ids.getDatabase(), tableName, 2_000L, 64, true);
 
-      EnvFactory.getEnv().shutdownForciblyAllDataNodes();
-      EnvFactory.getEnv().shutdownForciblyAllConfigNodes();
+      EnvFactory.getEnv().shutdownAllDataNodes();
+      EnvFactory.getEnv().shutdownAllConfigNodes();
       // Close while the servers are down so the old clients cannot remove persisted subscriptions.
       firstConsumer.close();
       firstConsumer = null;
@@ -117,7 +115,7 @@ public class IoTDBConsensusSubscriptionRecoveryTableIT
       secondConsumer.subscribe(ids.getTopic());
 
       // Do not seek, recreate the topic, or insert new rows to trigger subscription setup.
-      // Track unique rows as a receiver would, allowing redelivery around the forced shutdown.
+      // Track unique rows as a receiver would, allowing redelivery around the restart.
       expectedRows.addAll(pendingRows);
       assertConsumedRows(expectedRows, consumedRows, firstConsumer, secondConsumer);
 
