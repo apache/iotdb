@@ -23,6 +23,7 @@ import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALFileVersion;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALFormatException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter;
 
@@ -146,6 +147,9 @@ public class WALRepairWriter {
       WALMetaData.readFromWALFileWithoutRecovery(logFile, channel);
       return true;
     } catch (IOException | RuntimeException e) {
+      if (WALFormatException.isFatal(e)) {
+        throw new IllegalStateException(e);
+      }
       return false;
     }
   }
