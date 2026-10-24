@@ -71,12 +71,16 @@ These instructions apply to `integration-test/` and supplement the repository-le
 ### Result ordering across DataNodes
 
 - When row order is not part of the query's contract and may differ across DataNodes, use
-  `TestUtils.resultSetEqualTestUnordered(sql, expectedHeader, expectedRetArray)` for tree-model
-  SQL cases. When the test already owns a result set (including table-model queries), use
+  `TestUtils.treeResultSetEqualTestUnordered(sql, expectedHeader, expectedRetArray)` for tree-model
+  SQL cases, or
+  `TestUtils.tableResultSetEqualTestUnordered(sql, expectedHeader, expectedRetArray, database)`
+  for table-model SQL cases (`database` may be `null` when no `USE` is needed).
+  When the test already owns a result set, use
   `TestUtils.assertResultSetEqualUnordered(resultSet, expectedHeader, expectedRows)` and close
   the original result set after the assertion. Reuse these helpers instead of writing per-node
   comparison loops in individual tests.
 - These helpers check every node independently, including headers, values, and duplicate counts.
+  They use `ClusterTestResultSet.getNodeResultSets` to read each DataNode's underlying result set.
   The default `ClusterTestResultSet` compares nodes at the same cursor position; collecting or
   sorting rows after reading through that wrapper cannot avoid row-order mismatches. Do not
   replace the helpers with set equality or single-node checks that weaken these assertions.

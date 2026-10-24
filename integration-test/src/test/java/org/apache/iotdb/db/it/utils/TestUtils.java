@@ -27,6 +27,7 @@ import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
+import org.apache.iotdb.itbase.runtime.ClusterTestResultSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -283,10 +284,17 @@ public class TestUtils {
 
   /**
    * Executes a tree-model query and checks unordered rows on every read node, including duplicate
-   * multiplicity. Use only when the query's final result does not require a particular row order or
-   * select a nondeterministic subset of rows.
+   * multiplicity.
+   *
+   * <p>Delegates to {@link #assertResultSetEqualUnordered(ResultSet, String, List)}, which uses
+   * {@link ClusterTestResultSet#getNodeResultSets(ResultSet)} to obtain each DataNode's underlying
+   * result set. Iterating those results bypasses the cluster wrapper's default cross-node,
+   * row-by-row comparison.
+   *
+   * <p>Use only when the query's final result does not require a particular row order or select a
+   * nondeterministic subset of rows.
    */
-  public static void resultSetEqualTestUnordered(
+  public static void treeResultSetEqualTestUnordered(
       String sql, String[] expectedHeader, String[] expectedRetArray) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -294,6 +302,37 @@ public class TestUtils {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         assertResultSetEqualUnordered(
             resultSet, String.join(",", expectedHeader) + ",", Arrays.asList(expectedRetArray));
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  /**
+   * Executes a table-model query and checks unordered rows on every read node, including duplicate
+   * multiplicity. Selects {@code database} before the query when it is non-null.
+   *
+   * <p>Delegates to {@link #assertResultSetEqualUnordered(ResultSet, String, List)}, which uses
+   * {@link ClusterTestResultSet#getNodeResultSets(ResultSet)} to obtain each DataNode's underlying
+   * result set. Iterating those results bypasses the cluster wrapper's default cross-node,
+   * row-by-row comparison.
+   *
+   * <p>Use only when the query's final result does not require a particular row order or select a
+   * nondeterministic subset of rows.
+   */
+  public static void tableResultSetEqualTestUnordered(
+      String sql, String[] expectedHeader, String[] expectedRetArray, String database) {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection()) {
+      connection.setClientInfo("time_zone", "+00:00");
+      try (Statement statement = connection.createStatement()) {
+        if (database != null) {
+          statement.execute("use " + database);
+        }
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          assertResultSetEqualUnordered(
+              resultSet, String.join(",", expectedHeader) + ",", Arrays.asList(expectedRetArray));
+        }
       }
     } catch (SQLException e) {
       e.printStackTrace();
