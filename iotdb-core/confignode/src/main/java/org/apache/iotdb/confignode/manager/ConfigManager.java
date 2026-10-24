@@ -316,7 +316,10 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
 import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
 
-/** Entry of all management, AssignPartitionManager, AssignRegionManager. */
+/**
+ * Coordinates ConfigNode control-plane managers and routes requests related to nodes, schema,
+ * partitions, procedures, load management, plugins, quotas, TTL, and subscriptions.
+ */
 public class ConfigManager implements IManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
@@ -324,7 +327,7 @@ public class ConfigManager implements IManager {
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
 
-  /** Manage PartitionTable read/write requests through the ConsensusLayer. */
+  /** Manages replicated ConfigRegion plans and reads through the consensus layer. */
   private final AtomicReference<ConsensusManager> consensusManager = new AtomicReference<>();
 
   /** Manage cluster-level info */

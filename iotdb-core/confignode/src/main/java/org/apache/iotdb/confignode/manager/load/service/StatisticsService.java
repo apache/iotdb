@@ -33,7 +33,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-/** StatisticsService periodically update load statistics for all load cache. */
+/** Periodically aggregates heartbeat samples into cluster load statistics. */
 public class StatisticsService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StatisticsService.class);
@@ -44,7 +44,7 @@ public class StatisticsService {
     this.loadCache = loadCache;
   }
 
-  /** Load statistics executor service. */
+  /** Guards load-statistics scheduling across lifecycle and leadership transitions. */
   private final Object statisticsScheduleMonitor = new Object();
 
   private Future<?> currentLoadStatisticsFuture;
