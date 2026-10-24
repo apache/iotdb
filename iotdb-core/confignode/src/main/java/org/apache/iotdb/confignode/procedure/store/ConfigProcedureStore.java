@@ -19,23 +19,27 @@
 
 package org.apache.iotdb.confignode.procedure.store;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProceduresPlan;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -109,9 +113,18 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
   }
 
   @Override
-  public void update(Procedure[] subprocs) throws Exception {
-    for (Procedure subproc : subprocs) {
-      update(subproc);
+  public void update(Procedure[] procedures) throws Exception {
+    for (Procedure procedure : procedures) {
+      Objects.requireNonNull(
+          ProcedureFactory.getProcedureType(procedure),
+          ConfigNodeMessages.EXCEPTION_PROCEDURE_TYPE_IS_NULL_93147BD3);
+    }
+    TSStatus status =
+        configManager
+            .getConsensusManager()
+            .write(new UpdateProceduresPlan(Arrays.asList(procedures)));
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new ConsensusException(status.toString());
     }
   }
 

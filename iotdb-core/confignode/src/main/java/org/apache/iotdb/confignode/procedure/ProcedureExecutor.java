@@ -537,7 +537,7 @@ public class ProcedureExecutor<Env> {
       // state (e.g. AddRegionPeerProcedure parking at DO_ADD_REGION_PEER after waitTaskFinish() is
       // interrupted) would re-execute forever here and join() would hang. The persisted state lets
       // the next leader resume from where it stopped.
-      if (!isRunning() || !store.isRunning()) {
+      if (!isRunning() || !store.isRunning() || Thread.currentThread().isInterrupted()) {
         return;
       }
 
@@ -603,13 +603,14 @@ public class ProcedureExecutor<Env> {
       if (LOG.isDebugEnabled()) {
         LOG.debug(ProcedureMessages.STORED_CHILDREN, proc, Arrays.toString(subprocs));
       }
-      try {
-        store.update(subprocs);
-      } catch (Exception e) {
-        // Do nothing since this step is idempotent. New CN leader can converge to the correct
-        // state when restore this procedure.
-        LOG.warn(ProcedureMessages.FAILED_TO_UPDATE_SUBPROCS_ON_EXECUTION, e);
-      }
+      // Persist the parent's next state and its children in one consensus entry before any child
+      // can run. Otherwise recovery can replay the parent's submission and create duplicate
+      // children.
+      Procedure<Env>[] proceduresToStore = Arrays.copyOf(subprocs, subprocs.length + 1);
+      proceduresToStore[subprocs.length] = proc;
+      RetryUtils.executeWithEndlessBackoffRetry(
+          () -> store.update(proceduresToStore),
+          ProcedureMessages.LOG_PERSIST_PARENT_AND_CHILD_PROCEDURES_54E2D0D2);
     } else {
       LOG.debug(ProcedureMessages.STORE_UPDATE, proc);
       if (proc.isFinished() && !proc.hasParent()) {

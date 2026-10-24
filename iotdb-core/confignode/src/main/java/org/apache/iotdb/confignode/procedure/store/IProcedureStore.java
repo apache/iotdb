@@ -40,7 +40,8 @@ public interface IProcedureStore<Env> {
 
   void update(Procedure<Env> procedure) throws Exception;
 
-  void update(Procedure<Env>[] subprocs) throws Exception;
+  /** Persist the entire batch atomically, including a parent and its newly created children. */
+  void update(Procedure<Env>[] procedures) throws Exception;
 
   void delete(long procId) throws Exception;
 
