@@ -20,6 +20,12 @@
 package org.apache.iotdb.db.i18n;
 
 public final class StorageEngineMessages {
+  public static final String EXCEPTION_FILE_ENCRYPTION_PARAMETER_PROVIDER_RETURNED_NULL_15C41723 =
+      "文件加密参数 Provider 返回 null";
+  public static final String EXCEPTION_PRECALCULATED_CHUNK_STAGING_IS_NOT_SUPPORTED_BY_THE_FILE_ENCRYPTION_POLICY_13DA8C32 =
+      "文件加密策略不支持预计算 Chunk 暂存";
+  public static final String EXCEPTION_MULTIPLE_FILE_ENCRYPTION_PARAMETER_PROVIDERS_ARE_CONFIGURED_5E7DDA5B =
+      "配置了多个文件加密参数 Provider";
 
   public static final String LOG_REBUILT_UNREADABLE_WAL_FOOTER_FILE_ARG_VERSION_ARG_ORIGINALFILEBYTES_ARG_WRITERPROGRESS_ARG_1DBF836E =
       "已重建不可读的 WAL footer：file={}，version={}，originalFileBytes={}，writerProgress={}。";

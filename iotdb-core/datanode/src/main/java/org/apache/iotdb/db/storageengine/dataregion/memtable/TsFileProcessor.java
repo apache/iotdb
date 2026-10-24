@@ -86,6 +86,7 @@ import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
@@ -243,10 +244,8 @@ public class TsFileProcessor {
     this.tsFileResource = new TsFileResource(tsfile, this);
     this.dataRegionInfo = dataRegionInfo;
     this.writer =
-        new RestorableTsFileIOWriter(
-            tsfile,
-            EncryptDBUtils.getFirstEncryptParamFromDatabase(
-                dataRegionInfo.getDataRegion().getDatabaseName()));
+        EncryptDBUtils.createRestorableWriterForNewFile(
+            tsfile, dataRegionInfo.getDataRegion().getDatabaseName());
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.walNode =
         WALManager.getInstance()
@@ -544,6 +543,8 @@ public class TsFileProcessor {
                 dataRegionInfo.getDataRegion().getDatabaseName(),
                 dataRegionInfo.getDataRegion().getDataRegionIdString());
     workMemTable.setWriteMemoryManager(dataRegionInfo.getWriteMemoryManager());
+    workMemTable.setEncryptParameter(
+        EncryptUtils.getEncryptParameter(writer.getEncryptParameter()));
     walNode.onMemTableCreated(workMemTable, tsFileResource.getTsFilePath());
   }
 

@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.service.RegionMigrateService;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import io.airlift.units.Duration;
 import org.slf4j.Logger;
@@ -458,6 +459,9 @@ public class LoadTsFileScheduler implements IScheduler {
    */
   private TsFileLoadStrategy resolveStrategy(final LoadSingleTsFileNode node, final String userName)
       throws Exception {
+    if (EncryptDBUtils.requiresFileRewrite()) {
+      return new TabletRewriteLoadStrategy(queryContext, isGeneratedByPipe);
+    }
     // The judgement resolves the partitions of the devices anyway, so the routing reuses them.
     final DataPartitionResolver partitionResolver =
         new DataPartitionResolver(partitionFetcher, userName);

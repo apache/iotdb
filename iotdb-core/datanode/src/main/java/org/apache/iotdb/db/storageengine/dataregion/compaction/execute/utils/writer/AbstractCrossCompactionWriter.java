@@ -98,7 +98,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
                 / targetResources.size());
     for (int i = 0; i < targetResources.size(); i++) {
       this.targetFileWriters.add(
-          new CompactionTsFileWriter(
+          CompactionTsFileWriter.create(
               targetResources.get(i).getTsFile(),
               memorySizeForEachWriter,
               CompactionType.CROSS_COMPACTION,
@@ -141,6 +141,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     sealChunk(
         targetFileWriters.get(seqFileIndexArray[subTaskId]), chunkWriters[subTaskId], subTaskId);
     seqFileIndexArray[subTaskId] = 0;
+    clearChunkWriterFactory(subTaskId);
   }
 
   @Override
@@ -211,6 +212,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     checkPreviousTimestamp(timestamp, subTaskId);
 
     int fileIndex = seqFileIndexArray[subTaskId];
+    int previousFileIndex = fileIndex;
     boolean hasFlushedCurrentChunk = false;
     // If timestamp is later than the current source seq tsfile, then flush chunk writer and move to
     // next file
@@ -223,6 +225,10 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
         hasFlushedCurrentChunk = true;
       }
       seqFileIndexArray[subTaskId] = ++fileIndex;
+    }
+    if (fileIndex != previousFileIndex) {
+      switchChunkWriterEncryptionParameter(
+          targetFileWriters.get(fileIndex).getEncryptParameter(), subTaskId);
     }
   }
 
@@ -278,6 +284,8 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
 
   @Override
   public EncryptParameter getEncryptParameter() {
-    return encryptParameter;
+    return targetFileWriters.isEmpty()
+        ? encryptParameter
+        : targetFileWriters.get(0).getEncryptParameter();
   }
 }
