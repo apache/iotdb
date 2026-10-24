@@ -23,12 +23,16 @@ import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.service.TypeService;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,6 +56,25 @@ import java.util.Map;
 public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAbstractDatabaseMetadata.class);
+
+  private static final TypeService<ColumnValueWriter> COLUMN_VALUE_WRITER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case TEXT, STRING, BLOB, OBJECT ->
+                (builder, value) ->
+                    builder.writeBinary(new Binary(value.toString(), TSFileConfig.STRING_CHARSET));
+            case FLOAT -> (builder, value) -> builder.writeFloat((float) value);
+            case INT32, DATE -> (builder, value) -> builder.writeInt((int) value);
+            case INT64, TIMESTAMP -> (builder, value) -> builder.writeLong((long) value);
+            case DOUBLE -> (builder, value) -> builder.writeDouble((double) value);
+            case BOOLEAN -> (builder, value) -> builder.writeBoolean((boolean) value);
+            case ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(
+                    String.format(
+                        JdbcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_B411C29E,
+                        type.getTypeEnum()));
+          };
+
   private static final String METHOD_NOT_SUPPORTED_STRING = JdbcMessages.METHOD_NOT_SUPPORTED;
   protected static final String CONVERT_ERROR_MSG = "Convert tsBlock error: {}";
 
@@ -69,6 +92,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
   protected static final String BLOB = "BLOB";
   protected static final String TIMESTAMP = "TIMESTAMP";
   protected static final String DATE = "DATE";
+  protected static final String OBJECT = "OBJECT";
 
   protected static String sqlKeywordsThatArentSQL92;
 
@@ -392,38 +416,15 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     for (List<Object> valuesInRow : valuesList) {
       tsBlockBuilder.getTimeColumnBuilder().writeLong(0);
       for (int j = 0; j < tsDataTypeList.size(); j++) {
-        TSDataType columnType = tsDataTypeList.get(j);
-        switch (columnType) {
-          case TEXT:
-          case STRING:
-          case BLOB:
-          case OBJECT:
-            tsBlockBuilder
-                .getColumnBuilder(j)
-                .writeBinary(
-                    new Binary(valuesInRow.get(j).toString(), TSFileConfig.STRING_CHARSET));
-            break;
-          case FLOAT:
-            tsBlockBuilder.getColumnBuilder(j).writeFloat((float) valuesInRow.get(j));
-            break;
-          case INT32:
-          case DATE:
-            tsBlockBuilder.getColumnBuilder(j).writeInt((int) valuesInRow.get(j));
-            break;
-          case INT64:
-          case TIMESTAMP:
-            tsBlockBuilder.getColumnBuilder(j).writeLong((long) valuesInRow.get(j));
-            break;
-          case DOUBLE:
-            tsBlockBuilder.getColumnBuilder(j).writeDouble((double) valuesInRow.get(j));
-            break;
-          case BOOLEAN:
-            tsBlockBuilder.getColumnBuilder(j).writeBoolean((boolean) valuesInRow.get(j));
-            break;
-          default:
-            LOGGER.error(JdbcMessages.NO_DATA_TYPE_MATCHED, columnType);
-            break;
+        Object value = valuesInRow.get(j);
+        if (value == null) {
+          tsBlockBuilder.getColumnBuilder(j).appendNull();
+          continue;
         }
+        TSDataType columnType = tsDataTypeList.get(j);
+        COLUMN_VALUE_WRITER_SERVICE
+            .call(Type.fromTsDataType(columnType))
+            .write(tsBlockBuilder.getColumnBuilder(j), value);
       }
       tsBlockBuilder.declarePosition();
     }
@@ -433,6 +434,11 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     } else {
       return serde.serialize(tsBlock);
     }
+  }
+
+  @FunctionalInterface
+  private interface ColumnValueWriter {
+    void write(ColumnBuilder builder, Object value);
   }
 
   protected void close(ResultSet rs, Statement stmt) {
@@ -474,6 +480,9 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         return Types.TIMESTAMP;
       case DATE:
         return Types.DATE;
+      case OBJECT:
+        // Database-specific: getObject() describes the value instead of returning it
+        return Types.OTHER;
       default:
         break;
     }
@@ -495,6 +504,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
       case "TEXT":
       case BLOB:
       case STRING:
+      case OBJECT:
         return Integer.MAX_VALUE;
       case TIMESTAMP:
         return 3;

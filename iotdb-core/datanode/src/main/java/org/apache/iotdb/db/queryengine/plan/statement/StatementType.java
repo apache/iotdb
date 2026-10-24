@@ -165,6 +165,7 @@ public enum StatementType {
   SHOW_PIPEPLUGINS,
 
   SHOW_PIPES,
+  SHOW_PIPE_MEMORY,
 
   BATCH_ACTIVATE_TEMPLATE,
 
@@ -203,4 +204,5 @@ public enum StatementType {
   SHOW_EXTERNAL_SERVICE,
 
   SHOW_DISK_USAGE,
+  SHOW_RECEIVERS,
 }

@@ -37,6 +37,7 @@ public class DataNodeMemoryConfig {
   private static final int LEGACY_QUERY_MEMORY_COMPONENT_COUNT = 8;
   private static final int QUERY_MEMORY_COMPONENT_COUNT = 9;
   private static final int SUBSCRIPTION_MEMORY_INDEX = 8;
+  private static final int DEVICE_ENTRY_RPC_FRAME_RESERVED_BYTES = 1024;
   private static final int[] DEFAULT_QUERY_MEMORY_PROPORTIONS = {
     1, 100, 200, 50, 200, 200, 200, 50, 250
   };
@@ -133,6 +134,9 @@ public class DataNodeMemoryConfig {
   /** Memory manager for operators */
   private MemoryManager operatorsMemoryManager;
 
+  /** Maximum DeviceEntry bytes kept in memory before a table-query spill. */
+  private long tableQueryDeviceEntryBatchSizeInBytes;
+
   /** Memory manager for operators */
   private MemoryManager dataExchangeMemoryManager;
 
@@ -175,7 +179,7 @@ public class DataNodeMemoryConfig {
         getMemoryAllocateProportion(properties, false));
   }
 
-  public void init(TrimProperties properties) {
+  public void init(TrimProperties properties, int thriftMaxFrameSize, Logger logger) {
     // on heap memory
     String memoryAllocateProportion = getMemoryAllocateProportion(properties, true);
     // Get global memory manager here
@@ -252,6 +256,8 @@ public class DataNodeMemoryConfig {
     initSchemaMemoryAllocate(schemaEngineMemoryManager, properties);
     initStorageEngineAllocate(storageEngineMemoryManager, properties);
     initQueryEngineMemoryAllocate(queryEngineMemoryManager, properties);
+    tableQueryDeviceEntryBatchSizeInBytes = 0;
+    loadTableQueryDeviceEntryBatchSize(properties, thriftMaxFrameSize, logger);
 
     String offHeapMemoryStr = System.getProperty("OFF_HEAP_MEMORY");
     offHeapMemoryManager =
@@ -393,59 +399,30 @@ public class DataNodeMemoryConfig {
                 Double.toString(getBufferedArraysMemoryProportion()))));
 
     long storageMemoryTotal = storageEngineMemoryManager.getTotalMemorySizeInBytes();
-    String valueOfStorageEngineMemoryProportion =
-        properties.getProperty("storage_engine_memory_proportion");
-    long writeMemorySize = storageMemoryTotal * 8 / 10;
-    long compactionMemorySize = storageMemoryTotal * 2 / 10;
-    long memtableMemorySize = writeMemorySize * 19 / 20;
-    long timePartitionInfoMemorySize = writeMemorySize / 20;
-    if (valueOfStorageEngineMemoryProportion != null) {
-      String[] storageProportionArray = valueOfStorageEngineMemoryProportion.split(":");
-      int storageEngineMemoryProportion = 0;
-      for (String proportion : storageProportionArray) {
-        int proportionValue = Integer.parseInt(proportion.trim());
-        if (proportionValue <= 0) {
-          LOGGER.warn(
-              DataNodeMiscMessages
-                  .MISC_LOG_THE_VALUE_OF_STORAGE_ENGINE_MEMORY_PROPORTION_IS_ILLEGAL_22CA9433);
-          return;
-        }
-        storageEngineMemoryProportion += proportionValue;
-      }
-      writeMemorySize =
-          storageMemoryTotal
-              * Integer.parseInt(storageProportionArray[0].trim())
-              / storageEngineMemoryProportion;
-      compactionMemorySize =
-          storageMemoryTotal
-              * Integer.parseInt(storageProportionArray[1].trim())
-              / storageEngineMemoryProportion;
-
-      String valueOfWriteMemoryProportion = properties.getProperty("write_memory_proportion");
-      if (valueOfWriteMemoryProportion != null) {
-        String[] writeProportionArray = valueOfWriteMemoryProportion.split(":");
-        int writeMemoryProportion = 0;
-        for (String proportion : writeProportionArray) {
-          int proportionValue = Integer.parseInt(proportion.trim());
-          writeMemoryProportion += proportionValue;
-          if (proportionValue <= 0) {
-            LOGGER.warn(
-                DataNodeMiscMessages
-                    .MISC_LOG_THE_VALUE_OF_WRITE_MEMORY_PROPORTION_IS_ILLEGAL_USE_DEFAULT_EE4FA112);
-            return;
-          }
-        }
-
-        memtableMemorySize =
-            writeMemorySize
-                * Integer.parseInt(writeProportionArray[0].trim())
-                / writeMemoryProportion;
-        timePartitionInfoMemorySize =
-            writeMemorySize
-                * Integer.parseInt(writeProportionArray[1].trim())
-                / writeMemoryProportion;
-      }
-    }
+    int[] storageProportions =
+        resolveStorageMemoryProportions(
+            properties.getProperty("storage_engine_memory_proportion"),
+            8,
+            2,
+            DataNodeMiscMessages
+                .MISC_LOG_THE_VALUE_OF_STORAGE_ENGINE_MEMORY_PROPORTION_IS_ILLEGAL_22CA9433);
+    long storageProportionSum = (long) storageProportions[0] + storageProportions[1];
+    long writeMemorySize =
+        calculateMemoryShare(storageMemoryTotal, storageProportions[0], storageProportionSum);
+    long compactionMemorySize =
+        calculateMemoryShare(storageMemoryTotal, storageProportions[1], storageProportionSum);
+    int[] writeProportions =
+        resolveStorageMemoryProportions(
+            properties.getProperty("write_memory_proportion"),
+            19,
+            1,
+            DataNodeMiscMessages
+                .MISC_LOG_THE_VALUE_OF_WRITE_MEMORY_PROPORTION_IS_ILLEGAL_USE_DEFAULT_EE4FA112);
+    long writeProportionSum = (long) writeProportions[0] + writeProportions[1];
+    long memtableMemorySize =
+        calculateMemoryShare(writeMemorySize, writeProportions[0], writeProportionSum);
+    long timePartitionInfoMemorySize =
+        calculateMemoryShare(writeMemorySize, writeProportions[1], writeProportionSum);
     writeMemoryManager =
         storageEngineMemoryManager.getOrCreateMemoryManager("Write", writeMemorySize);
     initCompactionMemoryManager(compactionMemorySize);
@@ -465,6 +442,31 @@ public class DataNodeMemoryConfig {
     long walBufferQueueMemorySize = (long) (memtableMemorySize * getWalBufferQueueProportion());
     walBufferQueueMemoryManager =
         memtableMemoryManager.getOrCreateMemoryManager("WalBufferQueue", walBufferQueueMemorySize);
+  }
+
+  private static int[] resolveStorageMemoryProportions(
+      String configuredProportions, int defaultFirst, int defaultSecond, String warningMessage) {
+    if (configuredProportions != null) {
+      String[] proportions = configuredProportions.split(":", -1);
+      if (proportions.length == 2) {
+        try {
+          int first = Integer.parseInt(proportions[0].trim());
+          int second = Integer.parseInt(proportions[1].trim());
+          if (first > 0 && second > 0) {
+            return new int[] {first, second};
+          }
+        } catch (NumberFormatException e) {
+          // Malformed or out-of-range configuration values use the default proportions.
+        }
+      }
+      LOGGER.warn(warningMessage);
+    }
+    return new int[] {defaultFirst, defaultSecond};
+  }
+
+  private static long calculateMemoryShare(long total, int proportion, long proportionSum) {
+    // Divide first to avoid overflowing when a valid proportion is close to Integer.MAX_VALUE.
+    return total / proportionSum * proportion + total % proportionSum * proportion / proportionSum;
   }
 
   private void initCompactionMemoryManager(long compactionMemorySize) {
@@ -626,6 +628,32 @@ public class DataNodeMemoryConfig {
             properties.getProperty("query_thread_count", Integer.toString(getQueryThreadCount()))));
   }
 
+  public void loadTableQueryDeviceEntryBatchSize(
+      TrimProperties properties, int thriftMaxFrameSize, Logger logger) {
+    long defaultTableQueryDeviceEntryBatchSizeInBytes =
+        operatorsMemoryManager.getTotalMemorySizeInBytes() / queryThreadCount / 4;
+    long deviceEntryBatchSize =
+        Long.parseLong(
+            properties.getProperty(
+                "table_query_device_entry_batch_size_in_bytes",
+                Long.toString(tableQueryDeviceEntryBatchSizeInBytes)));
+    if (deviceEntryBatchSize <= 0) {
+      deviceEntryBatchSize = defaultTableQueryDeviceEntryBatchSizeInBytes;
+    }
+    long maxBatchSize = Math.max(1, thriftMaxFrameSize - DEVICE_ENTRY_RPC_FRAME_RESERVED_BYTES);
+    long effectiveBatchSize = Math.min(deviceEntryBatchSize, maxBatchSize);
+    if (deviceEntryBatchSize > maxBatchSize) {
+      logger.warn(
+          String.format(
+              DataNodeMiscMessages
+                  .LOG_TABLE_QUERY_DEVICE_ENTRY_BATCH_SIZE_IN_BYTES_ARG_EXCEEDS_DN_THRIFT_MAX_FRAME_SIZE_ARG_USING_ARG_AS_THE_EFFECTIVE_VALUE_2AE1BEDA,
+              deviceEntryBatchSize,
+              thriftMaxFrameSize,
+              effectiveBatchSize));
+    }
+    tableQueryDeviceEntryBatchSizeInBytes = effectiveBatchSize;
+  }
+
   public double getRejectProportion() {
     return rejectProportion;
   }
@@ -772,6 +800,14 @@ public class DataNodeMemoryConfig {
 
   public MemoryManager getOperatorsMemoryManager() {
     return operatorsMemoryManager;
+  }
+
+  public long getTableQueryDeviceEntryBatchSizeInBytes() {
+    return tableQueryDeviceEntryBatchSizeInBytes;
+  }
+
+  public void setTableQueryDeviceEntryBatchSizeInBytes(long tableQueryDeviceEntryBatchSizeInBytes) {
+    this.tableQueryDeviceEntryBatchSizeInBytes = tableQueryDeviceEntryBatchSizeInBytes;
   }
 
   public MemoryManager getDataExchangeMemoryManager() {

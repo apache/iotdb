@@ -40,6 +40,7 @@ public class ConsumerConstant {
 
   public static final String CONSUMER_ID_KEY = "consumer-id";
   public static final String CONSUMER_GROUP_ID_KEY = "group-id";
+  public static final String CONSUMER_INSTANCE_ID_KEY = "consumer-instance-id";
   public static final String OWNER_ID_KEY = "owner-id";
   public static final String OWNER_EPOCH_KEY = "owner-epoch";
 
@@ -61,7 +62,7 @@ public class ConsumerConstant {
   public static final String THRIFT_MAX_FRAME_SIZE_KEY = "thrift-max-frame-size";
 
   public static final String CONNECTION_TIMEOUT_MS_KEY = "connection-timeout-ms";
-  public static final int CONNECTION_TIMEOUT_MS_DEFAULT_VALUE = 0;
+  public static final int CONNECTION_TIMEOUT_MS_DEFAULT_VALUE = 10_000;
 
   public static final String MAX_POLL_PARALLELISM_KEY = "max-poll-parallelism";
   public static final int MAX_POLL_PARALLELISM_DEFAULT_VALUE = 1;

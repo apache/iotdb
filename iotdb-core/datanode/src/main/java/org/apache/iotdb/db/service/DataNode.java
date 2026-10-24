@@ -120,6 +120,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadAgent;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
+import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.service.TriggerInformationUpdater;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
@@ -316,6 +317,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       // TierManager need DataNodeId to do some operations so the reset method need to be invoked
       // after DataNode adding
       TierManager.getInstance().resetFolders();
+      if (SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+        ConsensusSubscriptionSetupHandler.ensureNewRegionListenerRegistered();
+      }
       // Active DataNode
       active();
 
@@ -511,11 +515,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       List<TConfigNodeLocation> configNodeLocations, TRuntimeConfiguration runtimeConfiguration)
       throws StartupException {
     /* Store ConfigNodeList */
-    List<TEndPoint> configNodeList = new ArrayList<>();
-    for (TConfigNodeLocation configNodeLocation : configNodeLocations) {
-      configNodeList.add(configNodeLocation.getInternalEndPoint());
-    }
-    ConfigNodeInfo.getInstance().updateConfigNodeList(configNodeList);
+    ConfigNodeInfo.getInstance().updateConfigNodeLocations(configNodeLocations);
 
     /* Store templateSetInfo */
     ClusterTemplateManager.getInstance()

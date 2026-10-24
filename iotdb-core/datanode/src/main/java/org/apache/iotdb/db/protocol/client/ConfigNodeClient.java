@@ -63,6 +63,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerRelationalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatReq;
@@ -164,6 +166,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDropTableProceduresResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -229,6 +232,10 @@ public class ConfigNodeClient extends AbstractConfigNodeClient<ConfigNodeClient>
     super(configNodes, property, clientManager);
   }
 
+  public TEndPoint getConfigNode() {
+    return configNode;
+  }
+
   @Override
   protected final String getNodeTypeName() {
     return NODE_TYPE_NAME;
@@ -281,6 +288,7 @@ public class ConfigNodeClient extends AbstractConfigNodeClient<ConfigNodeClient>
           for (TConfigNodeLocation configNodeLocation : resp.getConfigNodeList()) {
             newConfigNodes.add(configNodeLocation.getInternalEndPoint());
           }
+          ConfigNodeInfo.getInstance().updateConfigNodeLocations(resp.getConfigNodeList());
           configNodes = newConfigNodes;
         }
       } catch (TException e) {
@@ -1270,6 +1278,12 @@ public class ConfigNodeClient extends AbstractConfigNodeClient<ConfigNodeClient>
   }
 
   @Override
+  public TShowDropTableProceduresResp showDropTableProcedures() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showDropTableProcedures(), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
   public TDescTableResp describeTable(
       final String database, final String tableName, final boolean isDetails) throws TException {
     return executeRemoteCallWithRetry(
@@ -1301,6 +1315,13 @@ public class ConfigNodeClient extends AbstractConfigNodeClient<ConfigNodeClient>
   public TSStatus createTableView(TCreateTableViewReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.createTableView(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TAutoSyncViewColumnsResp autoSyncViewColumns(TAutoSyncViewColumnsReq req)
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.autoSyncViewColumns(req), status -> !updateConfigNodeLeader(status.status));
   }
 
   @Override

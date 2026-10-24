@@ -33,6 +33,7 @@ import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.enums.EncryptionType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.Chunk;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.reader.chunk.AbstractChunkReader;
 import org.apache.tsfile.read.reader.page.LazyLoadPageData;
 import org.apache.tsfile.read.reader.page.PageReader;
@@ -190,6 +191,7 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
 
   private static int countSinglePageTimeValues(final Chunk chunk) throws IOException {
     final ByteBuffer chunkDataBuffer = chunk.getData().duplicate();
+    chunkDataBuffer.rewind();
     final PageHeader pageHeader = deserializePageHeader(chunkDataBuffer, chunk.getHeader());
     final ByteBuffer pageData =
         deserializePageData(
@@ -221,25 +223,42 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
       final long pageUncompressedSizeInBytes,
       final int rowCount,
       final List<TSDataType> valueDataTypeList) {
+    final int valueCount = valueDataTypeList.size();
+    return estimatePageMemoryUsageInBytesWithBatchData(
+        pageUncompressedSizeInBytes,
+        rowCount,
+        valueCount,
+        valueCount == 1 ? valueDataTypeList.get(0) : null,
+        estimateVectorValueMemoryUsageInBytes(valueDataTypeList));
+  }
+
+  static long estimatePageMemoryUsageInBytesWithBatchData(
+      final long pageUncompressedSizeInBytes,
+      final int rowCount,
+      final int valueCount,
+      final TSDataType singleValueDataType,
+      final long vectorValueMemoryUsageInBytes) {
     return pageUncompressedSizeInBytes
-        + estimateBatchDataMemoryUsageInBytes(rowCount, valueDataTypeList);
+        + estimateBatchDataMemoryUsageInBytes(
+            rowCount, valueCount, singleValueDataType, vectorValueMemoryUsageInBytes);
   }
 
   private static long estimateBatchDataMemoryUsageInBytes(
-      final int rowCount, final List<TSDataType> valueDataTypeList) {
-    final int valueCount = valueDataTypeList.size();
+      final int rowCount,
+      final int valueCount,
+      final TSDataType singleValueDataType,
+      final long vectorValueMemoryUsageInBytes) {
     final long segmentCount = Math.max(1, (rowCount + 15L) / 16);
     long estimatedMemoryUsageInBytes = RamUsageEstimator.sizeOfLongArray(16) * segmentCount;
 
     if (valueCount == 1) {
       estimatedMemoryUsageInBytes +=
-          estimateSingleValueArrayMemoryUsageInBytes(rowCount, valueDataTypeList.get(0));
+          estimateSingleValueArrayMemoryUsageInBytes(rowCount, singleValueDataType);
     } else if (valueCount > 1) {
       estimatedMemoryUsageInBytes += RamUsageEstimator.sizeOfObjectArray(16) * segmentCount;
       estimatedMemoryUsageInBytes +=
           (long) rowCount
-              * (RamUsageEstimator.sizeOfObjectArray(valueCount)
-                  + estimateVectorValueMemoryUsageInBytes(valueDataTypeList));
+              * (RamUsageEstimator.sizeOfObjectArray(valueCount) + vectorValueMemoryUsageInBytes);
     }
 
     return estimatedMemoryUsageInBytes;
@@ -252,63 +271,30 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
       return 0;
     }
 
-    switch (dataType) {
-      case BOOLEAN:
-        return RamUsageEstimator.sizeOfBooleanArray(16) * segmentCount;
-      case INT32:
-      case DATE:
-        return RamUsageEstimator.sizeOfIntArray(16) * segmentCount;
-      case INT64:
-      case TIMESTAMP:
-        return RamUsageEstimator.sizeOfLongArray(16) * segmentCount;
-      case FLOAT:
-        return RamUsageEstimator.sizeOfFloatArray(16) * segmentCount;
-      case DOUBLE:
-        return RamUsageEstimator.sizeOfDoubleArray(16) * segmentCount;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        return RamUsageEstimator.sizeOfObjectArray(16) * segmentCount;
-      default:
-        return 0;
-    }
+    return Type.fromTsDataType(dataType).estimateArraySize(16) * segmentCount;
   }
 
   private static long estimateVectorValueMemoryUsageInBytes(
       final List<TSDataType> valueDataTypeList) {
     long estimatedMemoryUsageInBytes = 0;
     for (final TSDataType dataType : valueDataTypeList) {
-      if (Objects.isNull(dataType)) {
-        continue;
-      }
-
-      estimatedMemoryUsageInBytes +=
-          RamUsageEstimator.alignObjectSize(
-              RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
-                  + estimateTsPrimitiveTypeValueMemoryUsageInBytes(dataType));
+      estimatedMemoryUsageInBytes += estimateVectorValueMemoryUsageInBytes(dataType);
     }
     return estimatedMemoryUsageInBytes;
   }
 
-  private static long estimateTsPrimitiveTypeValueMemoryUsageInBytes(final TSDataType dataType) {
-    switch (dataType) {
-      case BOOLEAN:
-        return 1;
-      case INT32:
-      case DATE:
-      case FLOAT:
-        return Integer.BYTES;
-      case INT64:
-      case TIMESTAMP:
-      case DOUBLE:
-        return Long.BYTES;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        return RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-      default:
-        return 0;
+  static long estimateVectorValueMemoryUsageInBytes(final TSDataType dataType) {
+    if (Objects.isNull(dataType)) {
+      return 0;
     }
+
+    return RamUsageEstimator.alignObjectSize(
+        RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
+            + estimateTsPrimitiveTypeValueMemoryUsageInBytes(dataType));
+  }
+
+  private static long estimateTsPrimitiveTypeValueMemoryUsageInBytes(final TSDataType dataType) {
+    return Type.fromTsDataType(dataType).estimateValueSize();
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////

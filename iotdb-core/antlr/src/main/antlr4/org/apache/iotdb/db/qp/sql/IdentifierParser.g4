@@ -148,6 +148,7 @@ keyWords
     | LOAD
     | LOCAL
     | LOCK
+    | MEMORY
     | MERGE
     | METADATA
     | MIGRATE
@@ -198,6 +199,7 @@ keyWords
     | QUERY
     | QUERYID
     | QUOTA
+    | RECEIVERS
     | RANGE
     | READONLY
     | READ

@@ -23,18 +23,21 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.TsFileUtilsForRecoverTest;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -66,6 +69,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -689,6 +693,54 @@ public class TsFilePlanRedoerTest {
     IMemTable recoveryMemTable = planRedoer.getRecoveryMemTable();
     Assert.assertEquals(2, recoveryMemTable.getMemTableMap().size());
     Assert.assertFalse(recoveryMemTable.getMemTableMap().containsKey(existDevice));
+  }
+
+  @Test
+  public void testRedoRelationalInsertWithoutFieldValues() throws Exception {
+    File file = new File(FILE_NAME);
+    generateCompleteFile(file);
+    tsFileResource = new TsFileResource(file);
+
+    RelationalInsertRowNode row =
+        new RelationalInsertRowNode(
+            new PlanNodeId("row"),
+            new PartialPath("table1", false),
+            true,
+            new String[] {null},
+            new TSDataType[] {null},
+            new MeasurementSchema[] {null},
+            101,
+            new Object[] {null},
+            false,
+            new TsTableColumnCategory[] {TsTableColumnCategory.FIELD});
+    RelationalInsertTabletNode tablet =
+        new RelationalInsertTabletNode(
+            new PlanNodeId("tablet"),
+            new PartialPath("table1", false),
+            true,
+            new String[] {null},
+            new TSDataType[] {null},
+            new MeasurementSchema[] {null},
+            new long[] {102, 103},
+            null,
+            new Object[] {null},
+            2,
+            new TsTableColumnCategory[] {TsTableColumnCategory.FIELD});
+
+    TsFilePlanRedoer redoer = new TsFilePlanRedoer(tsFileResource);
+    ByteBuffer rowBuffer = ByteBuffer.allocate(row.serializedSize());
+    row.serializeToWAL(new WALByteBufferForTest(rowBuffer));
+    rowBuffer.flip();
+    redoer.redoInsert((RelationalInsertRowNode) PlanNodeType.deserializeFromWAL(rowBuffer));
+
+    ByteBuffer tabletBuffer = ByteBuffer.allocate(tablet.serializedSize());
+    tablet.serializeToWAL(new WALByteBufferForTest(tabletBuffer));
+    tabletBuffer.flip();
+    redoer.redoInsert((RelationalInsertTabletNode) PlanNodeType.deserializeFromWAL(tabletBuffer));
+
+    assertEquals(1, redoer.getRecoveryMemTable().getMemTableMap().size());
+    assertEquals(
+        3, redoer.getRecoveryMemTable().getMemTableMap().values().iterator().next().count(false));
   }
 
   @Test

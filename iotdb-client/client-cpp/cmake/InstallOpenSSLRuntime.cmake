@@ -26,8 +26,8 @@
 # OPENSSL_SSL_LIBRARY / OPENSSL_CRYPTO_LIBRARY / OPENSSL_ROOT_DIR /
 # OPENSSL_VERSION_MAJOR.
 #
-# When OpenSSL was linked statically (the from-source fallback uses no-shared),
-# there is nothing to bundle: those objects are already inside libiotdb_session.
+# When a user opts into a statically linked system OpenSSL, there is nothing to
+# bundle because those objects are already inside libiotdb_session.
 # =============================================================================
 
 # Windows: find_package resolves the import .lib; the runtime DLLs live in

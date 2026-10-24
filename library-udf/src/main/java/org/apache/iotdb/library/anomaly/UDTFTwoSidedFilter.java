@@ -20,7 +20,7 @@
 package org.apache.iotdb.library.anomaly;
 
 import org.apache.iotdb.library.anomaly.util.WindowDetect;
-import org.apache.iotdb.library.i18n.LibraryUdfMessages;
+import org.apache.iotdb.library.util.TypeServices;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -28,7 +28,6 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
-import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.type.Type;
 
 /**
@@ -38,6 +37,7 @@ import org.apache.iotdb.udf.api.type.Type;
 public class UDTFTwoSidedFilter implements UDTF {
   private double len;
   private double threshold;
+  private TypeServices.NumericWindowWriter windowWriter;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -54,6 +54,9 @@ public class UDTFTwoSidedFilter implements UDTF {
         .setOutputDataType(parameters.getDataType(0));
     this.len = parameters.getDoubleOrDefault("len", 5);
     this.threshold = parameters.getDoubleOrDefault("threshold", 0.4);
+    windowWriter =
+        TypeServices.NUMERIC_WINDOW_WRITER_SERVICE.call(
+            TypeServices.toReadType(parameters.getDataType(0)));
   }
 
   @Override
@@ -61,36 +64,7 @@ public class UDTFTwoSidedFilter implements UDTF {
     WindowDetect wd = new WindowDetect(rowWindow.getRowIterator(), len, threshold);
     double[] repaired = wd.getRepaired();
     long[] time = wd.getTime();
-    switch (rowWindow.getDataType(0)) {
-      case DOUBLE:
-        for (int i = 0; i < time.length; i++) {
-          collector.putDouble(time[i], repaired[i]);
-        }
-        break;
-      case FLOAT:
-        for (int i = 0; i < time.length; i++) {
-          collector.putFloat(time[i], (float) repaired[i]);
-        }
-        break;
-      case INT32:
-        for (int i = 0; i < time.length; i++) {
-          collector.putInt(time[i], (int) Math.round(repaired[i]));
-        }
-        break;
-      case INT64:
-        for (int i = 0; i < time.length; i++) {
-          collector.putLong(time[i], Math.round(repaired[i]));
-        }
-        break;
-      case BOOLEAN:
-      case BLOB:
-      case STRING:
-      case TEXT:
-      case TIMESTAMP:
-      case DATE:
-      default:
-        throw new UDFException(LibraryUdfMessages.NO_SUCH_DATA_TYPE);
-    }
+    windowWriter.write(time, repaired, collector);
   }
 
   @Override

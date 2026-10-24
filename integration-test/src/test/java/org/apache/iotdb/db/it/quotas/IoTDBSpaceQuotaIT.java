@@ -25,6 +25,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.exception.InconsistentDataException;
 
 import org.awaitility.Awaitility;
 import org.junit.After;
@@ -515,6 +516,10 @@ public class IoTDBSpaceQuotaIT {
         .pollDelay(0, TimeUnit.MILLISECONDS)
         .pollInterval(1, TimeUnit.SECONDS)
         .atMost(30, TimeUnit.SECONDS)
+        // Cluster queries compare results from all DataNodes. Space quota usage is refreshed
+        // asynchronously by heartbeats, so the comparison can observe different snapshots while
+        // the usage converges. Awaitility does not retry runtime exceptions by default.
+        .ignoreExceptionsMatching(e -> e instanceof InconsistentDataException)
         .untilAsserted(
             () -> {
               try {

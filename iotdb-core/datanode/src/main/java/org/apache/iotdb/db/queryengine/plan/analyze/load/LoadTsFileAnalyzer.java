@@ -26,8 +26,10 @@ import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeInvalidPathException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
@@ -42,6 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
@@ -68,6 +71,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -489,11 +493,26 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           DataNodeQueryMessages.EMPTY_FILE_DETECTED_WILL_SKIP_LOADING_THIS_FILE,
           tsFile.getAbsolutePath());
       if (isDeleteAfterLoad) {
-        org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tsFile);
+        deleteFile(tsFile);
+        deleteFile(new File(LoadUtil.getTsFileResourcePath(tsFile.getAbsolutePath())));
+        deleteFile(ModificationFile.getExclusiveMods(tsFile));
+        deleteFile(new File(LoadUtil.getTsFileModsV1Path(tsFile.getAbsolutePath())));
       }
     } finally {
       // reset the session info to the original one
       context.setSession(sessionInfo);
+    }
+  }
+
+  private void deleteFile(final File file) {
+    try {
+      RetryUtils.retryOnException(
+          () -> {
+            Files.deleteIfExists(file.toPath());
+            return null;
+          });
+    } catch (final Exception e) {
+      LOGGER.warn(DataNodeQueryMessages.DELETE_AFTER_LOADING_ERROR, file, e);
     }
   }
 
@@ -785,13 +804,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       try {
         getFileModelInfoBeforeTabletConversion();
       } catch (Exception e1) {
-        LOGGER.warn(
-            DataNodeQueryMessages
-                .LOAD_FAILED_TO_CONVERT_TO_TABLETS_FROM_STATEMENT_ARG_BECAUSE_FAILED_TO_READ_MODEL_INFO,
-            isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement,
-            e1.getMessage());
+        final String message =
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_FAILED_TO_READ_TSFILE_MODEL_INFORMATION_BEFORE_TABLET_CONVERSION_FOR_STATEMENT_ARG_ARG_F05C852A,
+                isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement,
+                e1);
+        LOGGER.warn(message, e1);
         analysis.setFailStatus(
-            new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
+            new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(message));
         analysis.setFinishQueryAfterAnalyze(true);
         setRealStatement(analysis);
         return;
@@ -803,6 +824,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     for (int i = 0; i < tsFiles.size(); i++) {
       final long startTime = System.nanoTime();
+      final String filePath = tsFiles.get(i).getPath();
       try {
         final TSStatus status =
             isTableModelTsFile.get(i)
@@ -827,30 +849,37 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                     .orElse(null);
 
         if (status == null) {
-          LOGGER.warn(
-              DataNodeQueryMessages
-                  .LOAD_FAILED_TO_CONVERT_TO_TABLETS_FROM_STATEMENT_ARG_STATUS_IS_NULL,
-              isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement);
+          final String message =
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD,
+                  filePath,
+                  DataNodeQueryMessages.MESSAGE_TABLET_CONVERSION_RETURNED_NO_STATUS_88BAB5D3);
+          LOGGER.warn(message);
           analysis.setFailStatus(
-              new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
-                  .setMessage(e.getMessage()));
+              new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(message));
           break;
         } else if (!loadTsFileDataTypeConverter.isSuccessful(status)) {
-          LOGGER.warn(
-              DataNodeQueryMessages.LOAD_FAILED_TO_CONVERT_TO_TABLETS_FROM_STATEMENT_ARG_STATUS_ARG,
-              isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement,
-              status);
-          analysis.setFailStatus(status);
+          final String message =
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477,
+                  filePath,
+                  status);
+          LOGGER.warn(message);
+          analysis.setFailStatus(status.deepCopy().setMessage(message));
           break;
         }
       } catch (final Exception e2) {
-        LOGGER.warn(
-            DataNodeQueryMessages
-                .LOAD_FAILED_TO_CONVERT_TO_TABLETS_FROM_STATEMENT_ARG_BECAUSE_EXCEPTION_ARG,
-            isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement,
-            e2.getMessage());
+        final String message =
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD,
+                filePath,
+                e2);
+        LOGGER.warn(message, e2);
         analysis.setFailStatus(
-            new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
+            new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(message));
         break;
       } finally {
         LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
@@ -893,7 +922,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   private boolean shouldSkipConversion(LoadAnalyzeException e) {
-    return (e instanceof LoadAnalyzeTypeMismatchException) && !isConvertOnTypeMismatch;
+    return e instanceof LoadAnalyzeInvalidPathException
+        || (e instanceof LoadAnalyzeTypeMismatchException) && !isConvertOnTypeMismatch;
   }
 
   private void getFileModelInfoBeforeTabletConversion() throws IOException {

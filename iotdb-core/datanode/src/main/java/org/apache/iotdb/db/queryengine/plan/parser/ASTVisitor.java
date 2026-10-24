@@ -206,6 +206,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePl
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipeMemoryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePluginsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
@@ -251,6 +252,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectS
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowRepairDataPartitionTableProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
@@ -4477,6 +4479,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   @Override
+  public Statement visitShowPipeMemory(IoTDBSqlParser.ShowPipeMemoryContext ctx) {
+    return new ShowPipeMemoryStatement();
+  }
+
+  @Override
   public Statement visitShowPipes(IoTDBSqlParser.ShowPipesContext ctx) {
     final ShowPipesStatement showPipesStatement = new ShowPipesStatement();
 
@@ -4486,6 +4493,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     showPipesStatement.setWhereClause(ctx.WHERE() != null);
 
     return showPipesStatement;
+  }
+
+  @Override
+  public Statement visitShowReceivers(IoTDBSqlParser.ShowReceiversContext ctx) {
+    return new ShowReceiversStatement();
   }
 
   @Override

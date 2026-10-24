@@ -106,6 +106,9 @@ public final class CommonMessages {
       "比较时基准值不应为 null";
   public static final String SIZE_MUST_BE_POSITIVE = "Size 必须大于 0";
 
+  public static final String EXCEPTION_THREAD_COUNT_MUST_BE_GREATER_THAN_OR_EQUAL_TO_0_988EF69B =
+      "线程数必须大于或等于 0";
+
   // --- sync ---
   public static final String UNEXPECTED_SERIALIZATION_ERROR =
       "序列化 PipeInfo 时发生意外错误。";
@@ -113,18 +116,6 @@ public final class CommonMessages {
   // --- security ---
   public static final String ENCRYPT_PASSWORD_ERROR = "加密密码时出错。";
   public static final String CLASSLOADER_NOT_DETERMINED = "无法确定用于加载类的 ClassLoader。";
-
-  // --- binaryallocator ---
-  public static final String BINARY_ALLOCATOR_RUNNING_GC_EVICTION =
-      "二进制分配器正在执行 GC 驱逐";
-  public static final String BINARY_ALLOCATOR_SHUTTING_DOWN_HIGH_GC =
-      "由于 GC 时间百分比过高 ({}%)，二进制分配器正在关闭。";
-  public static final String AUTO_RELEASER_EXIT_INTERRUPTED =
-      "{} 因 InterruptedException 退出。";
-  public static final String STOPPING_COMPONENT = "正在停止 {}";
-  public static final String UNABLE_TO_STOP_AUTO_RELEASER =
-      "在 {} 毫秒后仍无法停止自动释放器";
-  public static final String UNABLE_TO_STOP_EVICTOR = "在 {} 毫秒后仍无法停止驱逐器";
 
   // --- startcheck / system.properties ---
   public static final String IOTDB_VERSION_TOO_OLD = "IoTDB 版本过旧";
@@ -225,6 +216,9 @@ public final class CommonMessages {
   public static final String EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_DATA_ARGUMENT_MUST_CONTAIN_EXACTLY_THE_TIME_COLUMN_SPECIFIED_BY_THE_TIMECOL_ARGUMENT_4375BAE9 = "DATA 参数的 ORDER BY 子句必须仅包含 TIMECOL 参数指定的时间列。";
   public static final String EXCEPTION_UNSUPPORTED_M4_VALUE_TYPE_AF0EF286 = "不支持的 M4 值类型：";
   public static final String EXCEPTION_DISK_SPACE_WARNING_THRESHOLD_MUST_BE_IN_0_1_BUT_WAS_7B345766 = "disk_space_warning_threshold 必须在 [0, 1) 范围内，但实际为 ";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_CACHE_MEMORY_USAGE_PERCENTAGE_MUST_BE_IN_0_1_BUT_WAS_ARG_57FE2C66 =
+          "subscription_cache_memory_usage_percentage 必须在 [0, 1] 范围内，但实际为 %s。";
   public static final String LOG_TRUSTED_CHANNEL_FUNCTION_FAILED_INITIATOR_ARG_TARGET_ARG_E4C28443 =
       "可信信道功能失效：发起者=%s，目标端=%s";
   public static final String
@@ -241,4 +235,16 @@ public final class CommonMessages {
   public static final String
       EXCEPTION_SNAPSHOT_BUFFER_SIZE_MUST_NOT_EXCEED_ARG_BYTES_BUT_WAS_ARG_D1DA6F7E =
           "快照缓冲区大小不得超过 %d 字节，但实际为 %d。";
+  public static final String
+      EXCEPTION_THE_TABLE_ARG_ARG_IS_IN_THE_PRE_DELETE_STATE_PLEASE_WAIT_A_FEW_SECONDS_IF_THE_TABLE_IS_STILL_IN_THIS_STATE_PLEASE_DROP_IT_AGAIN_13B9D39F =
+          "表 %s.%s 处于预删除的状态，请稍等，如之后重试还是此状态，请输入sql再次删除";
+  public static final String EXCEPTION_MEMORY_BLOCK_ARG_IS_READ_ONLY_D10B3340 = "内存块 %s 为只读";
+  public static final String EXCEPTION_MEMORY_BLOCK_ARG_ALREADY_USES_MUTABLE_ACCOUNTING_6F7DCB3F =
+      "内存块 %s 已使用可变计量";
+  public static final String
+      EXCEPTION_COLUMN_ARG_IN_TABLE_ARG_ARG_IS_BEING_DELETED_PLEASE_WAIT_FOR_DELETION_TO_FINISH_OR_RETRY_DROPPING_THE_COLUMN_IF_IT_IS_STUCK_875DAFFE =
+          "列 '%s'（位于表 '%s.%s'）正在删除中。请等待删除完成；如果删除一直未完成，请重试删除该列。";
+  public static final String
+      EXCEPTION_COLUMN_ARG_IN_TABLE_ARG_ARG_IS_BEING_ALTERED_PLEASE_WAIT_FOR_ALTERATION_TO_FINISH_OR_RETRY_ALTERING_THE_COLUMN_IF_IT_IS_STUCK_11155B55 =
+          "列 '%s'（位于表 '%s.%s'）正在修改中。请等待修改完成；如果修改一直未完成，请重试修改该列。";
 }

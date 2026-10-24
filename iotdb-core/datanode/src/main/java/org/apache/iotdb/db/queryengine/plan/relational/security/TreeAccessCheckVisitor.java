@@ -115,6 +115,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePl
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipeMemoryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePluginsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
@@ -161,6 +162,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectS
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowRepairDataPartitionTableProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
@@ -701,7 +703,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   private TSStatus checkCanAlterUser(AuthorStatement statement, TreeAccessCheckContext context) {
     context.setAuditLogOperation(AuditLogOperation.DDL);
-    if (statement.getUserName().equals(context.getUsername())) {
+    if (Objects.equals(statement.getUserName(), context.getUsername())) {
       // users can change the username and password of themselves
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           context.setResult(true), context::getUsername);
@@ -876,6 +878,25 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   public TSStatus visitShowPipes(ShowPipesStatement statement, TreeAccessCheckContext context) {
     // This query cannot be rejected, but will be filtered at configNode
     // Does not need auth check here
+    return StatusUtils.OK;
+  }
+
+  @Override
+  public TSStatus visitShowPipeMemory(
+      ShowPipeMemoryStatement statement, TreeAccessCheckContext context) {
+    return checkGlobalAuth(
+        context.setAuditLogOperation(AuditLogOperation.QUERY),
+        PrivilegeType.SYSTEM,
+        () -> "SHOW PIPE MEMORY");
+  }
+
+  @Override
+  public TSStatus visitShowReceivers(
+      ShowReceiversStatement statement, TreeAccessCheckContext context) {
+    // This query follows SHOW PIPES: it cannot be rejected here.
+    AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
+        context.setAuditLogOperation(AuditLogOperation.QUERY).setResult(true),
+        () -> "SHOW RECEIVERS");
     return StatusUtils.OK;
   }
 

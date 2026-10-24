@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
@@ -208,7 +209,12 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
       reader.seek(writingOffset);
 
       final PipeTsFileMemoryBlock memoryBlock =
-          PipeDataNodeResourceManager.memory().forceAllocateForTsFileWithRetry(bufferSize);
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForTsFileWithRetry(
+                  SubscriptionEventTsFileResponse.class.getSimpleName(),
+                  bufferSize,
+                  PipeMemoryBlockCategory.SUBSCRIPTION,
+                  SubscriptionEventTsFileResponse.class.getSimpleName());
       final byte[] readBuffer = new byte[(int) bufferSize];
       reader.readFully(readBuffer);
 

@@ -20,6 +20,7 @@
 package org.apache.iotdb.library.dprofile;
 
 import org.apache.iotdb.library.util.NoNumberException;
+import org.apache.iotdb.library.util.TypeServices;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -45,7 +46,27 @@ public class UDAFSpread implements UDTF {
   float floatMax = -Float.MAX_VALUE;
   double doubleMin = Double.MAX_VALUE;
   double doubleMax = -Double.MAX_VALUE;
-  Type dataType;
+  private SpreadTransformer transformer;
+  private SpreadTerminator terminator;
+
+  private static final SpreadTransformer INT_TRANSFORMER = UDAFSpread::transformInt;
+  private static final SpreadTransformer LONG_TRANSFORMER = UDAFSpread::transformLong;
+  private static final SpreadTransformer FLOAT_TRANSFORMER = UDAFSpread::transformFloat;
+  private static final SpreadTransformer DOUBLE_TRANSFORMER = UDAFSpread::transformDouble;
+  private static final SpreadTransformer UNSUPPORTED_TRANSFORMER = (target, row) -> {};
+
+  private static final SpreadTerminator INT_TERMINATOR =
+      (target, collector) -> collector.putInt(0, target.intMax - target.intMin);
+  private static final SpreadTerminator LONG_TERMINATOR =
+      (target, collector) -> collector.putLong(0, target.longMax - target.longMin);
+  private static final SpreadTerminator FLOAT_TERMINATOR =
+      (target, collector) -> collector.putFloat(0, target.floatMax - target.floatMin);
+  private static final SpreadTerminator DOUBLE_TERMINATOR =
+      (target, collector) -> collector.putDouble(0, target.doubleMax - target.doubleMin);
+  private static final SpreadTerminator UNSUPPORTED_TERMINATOR =
+      (target, collector) -> {
+        throw new NoNumberException();
+      };
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -57,60 +78,35 @@ public class UDAFSpread implements UDTF {
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
-    dataType = parameters.getDataType(0);
+    Type dataType = parameters.getDataType(0);
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(dataType);
+    org.apache.tsfile.read.common.type.Type type = TypeServices.toReadType(dataType);
+    transformer =
+        TypeServices.numericService(
+                INT_TRANSFORMER,
+                LONG_TRANSFORMER,
+                FLOAT_TRANSFORMER,
+                DOUBLE_TRANSFORMER,
+                UNSUPPORTED_TRANSFORMER)
+            .call(type);
+    terminator =
+        TypeServices.numericService(
+                INT_TERMINATOR,
+                LONG_TERMINATOR,
+                FLOAT_TERMINATOR,
+                DOUBLE_TERMINATOR,
+                UNSUPPORTED_TERMINATOR)
+            .call(type);
   }
 
   @Override
   public void transform(Row row, PointCollector pc) throws Exception {
-    switch (dataType) {
-      case INT32:
-        transformInt(row);
-        break;
-      case INT64:
-        transformLong(row);
-        break;
-      case FLOAT:
-        transformFloat(row);
-        break;
-      case DOUBLE:
-        transformDouble(row);
-        break;
-      case BLOB:
-      case TIMESTAMP:
-      case BOOLEAN:
-      case STRING:
-      case TEXT:
-      case DATE:
-      default:
-        break;
-    }
+    transformer.transform(this, row);
   }
 
   @Override
   public void terminate(PointCollector pc) throws Exception {
-    switch (dataType) {
-      case INT32:
-        pc.putInt(0, intMax - intMin);
-        break;
-      case INT64:
-        pc.putLong(0, longMax - longMin);
-        break;
-      case FLOAT:
-        pc.putFloat(0, floatMax - floatMin);
-        break;
-      case DOUBLE:
-        pc.putDouble(0, doubleMax - doubleMin);
-        break;
-      case TEXT:
-      case DATE:
-      case STRING:
-      case BOOLEAN:
-      case TIMESTAMP:
-      case BLOB:
-      default:
-        throw new NoNumberException();
-    }
+    terminator.terminate(this, pc);
   }
 
   private void transformInt(Row row) throws IOException {
@@ -139,5 +135,16 @@ public class UDAFSpread implements UDTF {
       doubleMin = Math.min(doubleMin, v);
       doubleMax = Math.max(doubleMax, v);
     }
+  }
+
+  @FunctionalInterface
+  private interface SpreadTransformer {
+    void transform(UDAFSpread target, Row row) throws IOException;
+  }
+
+  @FunctionalInterface
+  private interface SpreadTerminator {
+    void terminate(UDAFSpread target, PointCollector collector)
+        throws IOException, NoNumberException;
   }
 }

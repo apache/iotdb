@@ -46,13 +46,13 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private EncryptParameter encryptParameter;
 
-  public AlignedWritableMemChunkGroup(List<IMeasurementSchema> schemaList, boolean isTableModel) {
-    memChunk = new AlignedWritableMemChunk(schemaList, isTableModel);
+  public AlignedWritableMemChunkGroup(List<IMeasurementSchema> schemaList) {
+    memChunk = new AlignedWritableMemChunk(schemaList);
   }
 
   @TestOnly
   public AlignedWritableMemChunkGroup(
-      AlignedWritableMemChunk memChunk, List<IMeasurementSchema> schemaList, boolean isTableModel) {
+      AlignedWritableMemChunk memChunk, List<IMeasurementSchema> schemaList) {
     this.memChunk = memChunk;
   }
 
@@ -78,8 +78,8 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public long count() {
-    return memChunk.count();
+  public long count(boolean ignoreAllNullRows) {
+    return memChunk.count(ignoreAllNullRows);
   }
 
   /**
@@ -101,20 +101,20 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public Map<String, IWritableMemChunk> getMemChunkMap() {
-    if (memChunk.count() == 0) {
+  public Map<String, IWritableMemChunk> getMemChunkMap(boolean ignoreAllNullRows) {
+    if (memChunk.count(ignoreAllNullRows) == 0) {
       return Collections.emptyMap();
     }
     return Collections.singletonMap("", memChunk);
   }
 
   @Override
-  public boolean isEmpty() {
-    return memChunk.isEmpty() || memChunk.isAllDeleted();
+  public boolean isEmpty(boolean ignoreAllNullRows) {
+    return memChunk.isEmpty(ignoreAllNullRows) || memChunk.isAllDeleted();
   }
 
   @Override
-  public long delete(ModEntry modEntry) {
+  public long delete(ModEntry modEntry, boolean ignoreAllNullRows) {
     int deletedPointsNumber = 0;
     Set<String> measurements = memChunk.getAllMeasurements();
     List<String> columnsToBeRemoved = new ArrayList<>();
@@ -138,7 +138,7 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     return deletedPointsNumber;
   }
 
-  public long deleteTime(ModEntry modEntry) {
+  public long deleteTime(ModEntry modEntry, boolean ignoreAllNullRows) {
     return memChunk.deleteTime(modEntry.getStartTime(), modEntry.getEndTime());
   }
 
@@ -148,8 +148,8 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public long getMaxTime() {
-    return memChunk.getMaxTime();
+  public long getMaxTime(boolean ignoreAllNullRows) {
+    return memChunk.getMaxTime(ignoreAllNullRows);
   }
 
   public AlignedWritableMemChunk getAlignedMemChunk() {
@@ -172,10 +172,10 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     memChunk.setEncryptParameter(encryptParameter);
   }
 
-  protected static AlignedWritableMemChunkGroup deserialize(
-      DataInputStream stream, boolean isTableModel) throws IOException {
+  protected static AlignedWritableMemChunkGroup deserialize(DataInputStream stream)
+      throws IOException {
     AlignedWritableMemChunkGroup memChunkGroup = new AlignedWritableMemChunkGroup();
-    memChunkGroup.memChunk = AlignedWritableMemChunk.deserialize(stream, isTableModel);
+    memChunkGroup.memChunk = AlignedWritableMemChunk.deserialize(stream);
     return memChunkGroup;
   }
 
@@ -185,10 +185,9 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   protected static AlignedWritableMemChunkGroup deserializeSingleTVListMemChunks(
-      DataInputStream stream, boolean isTableModel) throws IOException {
+      DataInputStream stream) throws IOException {
     AlignedWritableMemChunkGroup memChunkGroup = new AlignedWritableMemChunkGroup();
-    memChunkGroup.memChunk =
-        AlignedWritableMemChunk.deserializeSingleTVListMemChunks(stream, isTableModel);
+    memChunkGroup.memChunk = AlignedWritableMemChunk.deserializeSingleTVListMemChunks(stream);
     return memChunkGroup;
   }
 }

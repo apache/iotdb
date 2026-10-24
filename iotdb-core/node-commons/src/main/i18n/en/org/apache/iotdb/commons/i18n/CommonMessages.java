@@ -107,6 +107,8 @@ public final class CommonMessages {
   public static final String BASE_VALUE_SHOULD_NOT_BE_NULL =
       "When comparing, base value should never be null";
   public static final String SIZE_MUST_BE_POSITIVE = "Size must be greater than 0";
+  public static final String EXCEPTION_THREAD_COUNT_MUST_BE_GREATER_THAN_OR_EQUAL_TO_0_988EF69B =
+      "Thread count must be greater than or equal to 0";
 
   // --- sync ---
   public static final String UNEXPECTED_SERIALIZATION_ERROR =
@@ -117,27 +119,17 @@ public final class CommonMessages {
   public static final String CLASSLOADER_NOT_DETERMINED =
       "A ClassLoader to load the class could not be determined.";
 
-  // --- binaryallocator ---
-  public static final String BINARY_ALLOCATOR_RUNNING_GC_EVICTION =
-      "Binary allocator running GC eviction";
-  public static final String BINARY_ALLOCATOR_SHUTTING_DOWN_HIGH_GC =
-      "Binary allocator is shutting down because of high GC time percentage {}%.";
-  public static final String AUTO_RELEASER_EXIT_INTERRUPTED =
-      "{} exits due to interruptedException.";
-  public static final String STOPPING_COMPONENT = "Stopping {}";
-  public static final String UNABLE_TO_STOP_AUTO_RELEASER =
-      "unable to stop auto releaser after {} ms";
-  public static final String UNABLE_TO_STOP_EVICTOR = "unable to stop evictor after {} ms";
-
   // --- startcheck / system.properties ---
   public static final String IOTDB_VERSION_TOO_OLD = "IoTDB version is too old";
   public static final String REPAIR_SYSTEM_PROPERTIES = "repair system.properties, lack {}";
   public static final String PARAMETER_CANNOT_BE_MODIFIED_AFTER_FIRST_STARTUP_FMT =
       "%s can't be modified after first startup";
-  public static final String MISC_LOG_SERIALIZE_MUTABLE_SYSTEM_PROPERTIES_SUCCESSFULLY_WHICH_TAKES_4656A206 =
-      "Serialize mutable system properties successfully, which takes {} ms.";
-  public static final String MISC_LOG_DO_NOT_UPGRADE_IOTDB_FROM_V0_9_OR_LOWER_VERSION_TO_V1_0_9878EC88 =
-      "DO NOT UPGRADE IoTDB from v0.9 or lower version to v1.0! Please upgrade to v0.10 first";
+  public static final String
+      MISC_LOG_SERIALIZE_MUTABLE_SYSTEM_PROPERTIES_SUCCESSFULLY_WHICH_TAKES_4656A206 =
+          "Serialize mutable system properties successfully, which takes {} ms.";
+  public static final String
+      MISC_LOG_DO_NOT_UPGRADE_IOTDB_FROM_V0_9_OR_LOWER_VERSION_TO_V1_0_9878EC88 =
+          "DO NOT UPGRADE IoTDB from v0.9 or lower version to v1.0! Please upgrade to v0.10 first";
 
   private CommonMessages() {}
 
@@ -325,6 +317,9 @@ public final class CommonMessages {
   public static final String
       EXCEPTION_DISK_SPACE_WARNING_THRESHOLD_MUST_BE_IN_0_1_BUT_WAS_7B345766 =
           "disk_space_warning_threshold must be in [0, 1), but was ";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_CACHE_MEMORY_USAGE_PERCENTAGE_MUST_BE_IN_0_1_BUT_WAS_ARG_57FE2C66 =
+          "subscription_cache_memory_usage_percentage must be in [0, 1], but was %s.";
   public static final String EXCEPTION_FILTER_FUNCTION_WPASS_VALIDATION =
       "the value of wpass should be in (0, 1)";
   public static final String EXCEPTION_NO_CALCULATE_COLUMNS = "No columns could be calculated.";
@@ -345,4 +340,17 @@ public final class CommonMessages {
   public static final String
       EXCEPTION_SNAPSHOT_BUFFER_SIZE_MUST_NOT_EXCEED_ARG_BYTES_BUT_WAS_ARG_D1DA6F7E =
           "Snapshot buffer size must not exceed %d bytes, but was %d.";
+  public static final String
+      EXCEPTION_THE_TABLE_ARG_ARG_IS_IN_THE_PRE_DELETE_STATE_PLEASE_WAIT_A_FEW_SECONDS_IF_THE_TABLE_IS_STILL_IN_THIS_STATE_PLEASE_DROP_IT_AGAIN_13B9D39F =
+          "The table %s.%s is in the pre-delete state. Please wait a few seconds. If the table is still in this state, please drop it again.";
+  public static final String
+      EXCEPTION_COLUMN_ARG_IN_TABLE_ARG_ARG_IS_BEING_DELETED_PLEASE_WAIT_FOR_DELETION_TO_FINISH_OR_RETRY_DROPPING_THE_COLUMN_IF_IT_IS_STUCK_875DAFFE =
+          "Column '%s' in table '%s.%s' is being deleted. Please wait for deletion to finish, or retry dropping the column if it is stuck.";
+  public static final String
+      EXCEPTION_COLUMN_ARG_IN_TABLE_ARG_ARG_IS_BEING_ALTERED_PLEASE_WAIT_FOR_ALTERATION_TO_FINISH_OR_RETRY_ALTERING_THE_COLUMN_IF_IT_IS_STUCK_11155B55 =
+          "Column '%s' in table '%s.%s' is being altered. Please wait for alteration to finish, or retry altering the column if it is stuck.";
+  public static final String EXCEPTION_MEMORY_BLOCK_ARG_IS_READ_ONLY_D10B3340 =
+      "Memory block %s is read-only";
+  public static final String EXCEPTION_MEMORY_BLOCK_ARG_ALREADY_USES_MUTABLE_ACCOUNTING_6F7DCB3F =
+      "Memory block %s already uses mutable accounting";
 }

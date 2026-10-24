@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink.protocol.airgap;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.limiter.TsFileSendRateLimiter;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventBatch;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventPlainBatch;
@@ -129,7 +131,17 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       // We need to restore the transfer quickly by retry under this circumstance
       socket.setSoTimeout(PIPE_CONFIG.getPipeAirGapSinkTabletTimeoutMs());
       if (isTabletBatchModeEnabled) {
-        tabletBatchBuilder.onEvent(tabletInsertionEvent);
+        try {
+          tabletBatchBuilder.onEvent(tabletInsertionEvent);
+        } catch (final PipeRuntimeOutOfMemoryCriticalException memoryException) {
+          try {
+            doTransferWrapper(socket);
+          } catch (final Exception transferException) {
+            transferException.addSuppressed(memoryException);
+            throw transferException;
+          }
+          tabletBatchBuilder.onEvent(tabletInsertionEvent);
+        }
         doTransferWrapper(socket);
       } else if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         doTransferWrapper(socket, (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
@@ -542,7 +554,11 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
     final int readFileBufferSize = getReadFileBufferSize(file);
     try (final PipeTsFileMemoryBlock ignored =
             PipeDataNodeResourceManager.memory()
-                .forceAllocateForTsFileWithRetry(readFileBufferSize);
+                .forceAllocateForTsFileWithRetry(
+                    IoTDBDataRegionAirGapSink.class.getSimpleName(),
+                    readFileBufferSize,
+                    PipeMemoryBlockCategory.SINK,
+                    IoTDBDataRegionAirGapSink.class.getSimpleName());
         final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
       final byte[] readBuffer = new byte[readFileBufferSize];
       long position = 0;
@@ -654,7 +670,8 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
 
   @Override
   protected byte[] compressIfNeeded(final byte[] reqInBytes) throws IOException {
-    if (Objects.isNull(compressionTimer) && Objects.nonNull(sinkTaskId)) {
+    if (Objects.nonNull(sinkTaskId)) {
+      // Do not cache the timer, the metric service replaces it when it restarts
       compressionTimer = PipeDataRegionSinkMetrics.getInstance().getCompressionTimer(sinkTaskId);
     }
     return super.compressIfNeeded(reqInBytes);

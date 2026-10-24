@@ -582,12 +582,14 @@ private:
 
 class SessionConnection;
 class TableSession;
+class SessionTestAccessor;
 
 class Session {
   struct Impl;
   std::unique_ptr<Impl> impl_;
   friend class SessionConnection;
   friend class TableSession;
+  friend class SessionTestAccessor;
 
 public:
   Session(const std::string& host, int rpcPort);
@@ -606,6 +608,7 @@ public:
 
   void setSqlDialect(const std::string& dialect);
   void setDatabase(const std::string& database);
+  void setSslConfig(const SslConfig& sslConfig);
   std::string getDatabase();
   void changeDatabase(const std::string& database);
 
@@ -776,6 +779,11 @@ public:
 
   std::unique_ptr<SessionDataSet> executeLastDataQuery(const std::vector<std::string>& paths,
                                                        int64_t lastTime);
+
+  // Query the latest value of each series below a tree-model prefix in a 1C1D deployment.
+  // Pass path nodes without wildcards; result rows are not ordered.
+  std::unique_ptr<SessionDataSet>
+  executeFastLastDataQueryForOnePrefixPath(const std::vector<std::string>& prefixes);
 
   void createSchemaTemplate(const Template& templ);
 

@@ -28,6 +28,7 @@ import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -155,6 +156,12 @@ public class Utils {
     TsBlock mockTsBlock = Mockito.mock(TsBlock.class);
     Mockito.when(mockTsBlock.getRetainedSizeInBytes()).thenReturn(mockTsBlockSize);
     Mockito.when(mockTsBlock.getSizeInBytes()).thenReturn(mockTsBlockSize);
+    try {
+      Mockito.when(mockTsBlockSerde.serialize(Mockito.any(TsBlock.class)))
+          .thenReturn(ByteBuffer.allocate(Math.toIntExact(mockTsBlockSize)));
+    } catch (IOException e) {
+      throw new AssertionError(e);
+    }
     Mockito.when(mockTsBlockSerde.deserialize(Mockito.any(ByteBuffer.class)))
         .thenReturn(mockTsBlock);
     return mockTsBlockSerde;

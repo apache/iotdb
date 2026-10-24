@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
@@ -69,12 +70,46 @@ public class PropertiesTest {
     }
   }
 
+  /** The LOAD write buffer defaults to 1 MiB, can be overridden, and must stay positive. */
+  @Test
+  public void testLoadTsFileWriteBufferSizeDefaultsAndReloads() throws Exception {
+    final IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
+    final int originalValue = descriptor.getConfig().getLoadTsFileWriteBufferSize();
+
+    try {
+      Assert.assertEquals(1024 * 1024, new IoTDBConfig().getLoadTsFileWriteBufferSize());
+
+      final TrimProperties properties = new TrimProperties();
+      properties.setProperty("load_tsfile_write_buffer_size_in_byte", "4096");
+      descriptor.loadProperties(properties);
+      Assert.assertEquals(4096, descriptor.getConfig().getLoadTsFileWriteBufferSize());
+
+      properties.setProperty("load_tsfile_write_buffer_size_in_byte", "8192");
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertEquals(8192, descriptor.getConfig().getLoadTsFileWriteBufferSize());
+
+      properties.setProperty("load_tsfile_write_buffer_size_in_byte", "0");
+      Assert.assertThrows(
+          QueryProcessException.class, () -> descriptor.loadHotModifiedProps(properties));
+      Assert.assertEquals(
+          "an invalid value keeps the current one",
+          8192,
+          descriptor.getConfig().getLoadTsFileWriteBufferSize());
+    } finally {
+      final TrimProperties properties = new TrimProperties();
+      properties.setProperty(
+          "load_tsfile_write_buffer_size_in_byte", Integer.toString(originalValue));
+      descriptor.loadHotModifiedProps(properties);
+    }
+  }
+
   @Test
   public void testDeviceEntryBatchSizeIsCappedByThriftFrameSizeOnStartup() throws Exception {
     final IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
     final IoTDBConfig config = descriptor.getConfig();
     final int originalFrameSize = config.getThriftMaxFrameSize();
-    final long originalBatchSize = config.getTableQueryDeviceEntryBatchSizeInBytes();
+    final long originalBatchSize =
+        descriptor.getMemoryConfig().getTableQueryDeviceEntryBatchSizeInBytes();
 
     try {
       final TrimProperties properties = new TrimProperties();
@@ -83,7 +118,8 @@ public class PropertiesTest {
       descriptor.loadProperties(properties);
 
       Assert.assertEquals(4096, config.getThriftMaxFrameSize());
-      Assert.assertEquals(3072, config.getTableQueryDeviceEntryBatchSizeInBytes());
+      Assert.assertEquals(
+          3072, descriptor.getMemoryConfig().getTableQueryDeviceEntryBatchSizeInBytes());
       Assert.assertEquals(
           "3072",
           ConfigurationFileUtils.getAppliedProperties()
@@ -102,7 +138,8 @@ public class PropertiesTest {
     final IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
     final IoTDBConfig config = descriptor.getConfig();
     final int originalFrameSize = config.getThriftMaxFrameSize();
-    final long originalBatchSize = config.getTableQueryDeviceEntryBatchSizeInBytes();
+    final long originalBatchSize =
+        descriptor.getMemoryConfig().getTableQueryDeviceEntryBatchSizeInBytes();
 
     try {
       config.setThriftMaxFrameSize(4096);
@@ -110,7 +147,8 @@ public class PropertiesTest {
       properties.setProperty("table_query_device_entry_batch_size_in_bytes", "4096");
       descriptor.loadHotModifiedProps(properties);
 
-      Assert.assertEquals(3072, config.getTableQueryDeviceEntryBatchSizeInBytes());
+      Assert.assertEquals(
+          3072, descriptor.getMemoryConfig().getTableQueryDeviceEntryBatchSizeInBytes());
       Assert.assertEquals(
           "3072",
           ConfigurationFileUtils.getAppliedProperties()
@@ -118,7 +156,8 @@ public class PropertiesTest {
 
       properties.setProperty("table_query_device_entry_batch_size_in_bytes", "512");
       descriptor.loadHotModifiedProps(properties);
-      Assert.assertEquals(512, config.getTableQueryDeviceEntryBatchSizeInBytes());
+      Assert.assertEquals(
+          512, descriptor.getMemoryConfig().getTableQueryDeviceEntryBatchSizeInBytes());
     } finally {
       config.setThriftMaxFrameSize(originalFrameSize);
       final TrimProperties properties = new TrimProperties();
@@ -152,6 +191,25 @@ public class PropertiesTest {
       final TrimProperties properties = new TrimProperties();
       properties.setProperty(key, Long.toString(originalThreshold));
       descriptor.loadHotModifiedProps(properties);
+    }
+  }
+
+  @Test
+  public void testHotReloadCopyToAllowedExportDirsRestoresDefaultWhenMissing() throws Exception {
+    final IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
+    final String[] originalDirs = descriptor.getConfig().getCopyToAllowedExportDirs().clone();
+    final TrimProperties properties = new TrimProperties();
+
+    try {
+      properties.setProperty("copy_to_allowed_export_dirs", "copy-to-allowed");
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertEquals(1, descriptor.getConfig().getCopyToAllowedExportDirs().length);
+
+      properties.remove("copy_to_allowed_export_dirs");
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertEquals(0, descriptor.getConfig().getCopyToAllowedExportDirs().length);
+    } finally {
+      descriptor.getConfig().setCopyToAllowedExportDirs(originalDirs);
     }
   }
 
@@ -268,6 +326,34 @@ public class PropertiesTest {
       restConfig.setRestServicePort(originalRestServicePort);
       restConfig.setEnableHttps(originalEnableHttps);
       IoTDBRestServiceDescriptor.getInstance().overwriteAppliedRuntimeLimitProperties();
+    }
+  }
+
+  @Test
+  public void testMppDataExchangeMaxPayloadSizeHotReload() throws Exception {
+    IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
+    int originalPayloadSize = descriptor.getConfig().getMppDataExchangeMaxPayloadSizeInBytes();
+    try {
+      TrimProperties properties = new TrimProperties();
+
+      properties.setProperty("mpp_data_exchange_max_payload_size_in_bytes", "0");
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertEquals(
+          4 * 1024 * 1024, descriptor.getConfig().getMppDataExchangeMaxPayloadSizeInBytes());
+
+      properties.setProperty("mpp_data_exchange_max_payload_size_in_bytes", "1");
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertEquals(
+          128 * 1024, descriptor.getConfig().getMppDataExchangeMaxPayloadSizeInBytes());
+
+      int maximumPayloadSize = descriptor.getConfig().getThriftMaxFrameSize() - 1024;
+      properties.setProperty(
+          "mpp_data_exchange_max_payload_size_in_bytes", Integer.toString(Integer.MAX_VALUE));
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertEquals(
+          maximumPayloadSize, descriptor.getConfig().getMppDataExchangeMaxPayloadSizeInBytes());
+    } finally {
+      descriptor.getConfig().setMppDataExchangeMaxPayloadSizeInBytes(originalPayloadSize);
     }
   }
 

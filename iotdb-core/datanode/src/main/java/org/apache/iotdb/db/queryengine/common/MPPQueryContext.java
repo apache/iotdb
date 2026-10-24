@@ -48,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.OperatorMemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryResource;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryIOContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
@@ -137,6 +138,7 @@ public class MPPQueryContext implements IAuditEntity {
 
   private DeviceEntryIOContext deviceEntryIOContext;
   private final AtomicBoolean deviceEntryDiskIOMetricsRecorded = new AtomicBoolean();
+  private boolean deviceEntrySpilled;
 
   // To avoid query front-end from consuming too much memory, it needs to reserve memory when
   // constructing some Expression and PlanNode.
@@ -414,6 +416,14 @@ public class MPPQueryContext implements IAuditEntity {
       deviceEntryIOContext = new DeviceEntryIOContext(this);
     }
     return deviceEntryIOContext;
+  }
+
+  public void setDeviceEntrySpilled() {
+    deviceEntrySpilled = true;
+  }
+
+  public boolean isDeviceEntrySpilled() {
+    return deviceEntrySpilled;
   }
 
   public void addFailedEndPoint(TEndPoint endPoint) {
@@ -732,7 +742,7 @@ public class MPPQueryContext implements IAuditEntity {
     schemaFetchDeserializedColumnCount = 0;
   }
 
-  private MemoryNotEnoughException enrichResultSetColumnMemoryNotEnoughException(
+  MemoryNotEnoughException enrichResultSetColumnMemoryNotEnoughException(
       MemoryNotEnoughException e, long requestedBytes) {
     if (!resultSetColumnMemoryTrackingEnabled
         || (matchedSourceColumnsForResultSet == 0
@@ -741,10 +751,23 @@ public class MPPQueryContext implements IAuditEntity {
       return e;
     }
 
-    long freeBytes = LocalExecutionPlanner.getInstance().getFreeMemoryForOperators();
+    long freeBytes =
+        e instanceof OperatorMemoryNotEnoughException
+            ? ((OperatorMemoryNotEnoughException) e).getFreeBytes()
+            : LocalExecutionPlanner.getInstance().getFreeMemoryForOperators();
+    long failedReservationBytes =
+        e instanceof OperatorMemoryNotEnoughException
+            ? ((OperatorMemoryNotEnoughException) e).getRequestedBytes()
+            : requestedBytes;
     long shortageBytes =
-        requestedBytes > 0 && requestedBytes > freeBytes ? requestedBytes - freeBytes : -1;
+        failedReservationBytes > 0 && failedReservationBytes > freeBytes
+            ? failedReservationBytes - freeBytes
+            : -1;
     long exceededColumns = estimateExceededColumns(freeBytes, requestedBytes);
+    long columnEquivalentShortage =
+        exceededColumns > 0
+            ? 0
+            : estimateColumnEquivalentShortage(freeBytes, failedReservationBytes, requestedBytes);
 
     return new MemoryNotEnoughException(
         String.format(
@@ -758,7 +781,10 @@ public class MPPQueryContext implements IAuditEntity {
                     Locale.ROOT,
                     DataNodeQueryMessages.RESULT_SET_COLUMNS_EXCEED_MEMORY_CAPACITY,
                     exceededColumns)
-                : "",
+                : String.format(
+                    Locale.ROOT,
+                    DataNodeQueryMessages.RESULT_SET_COLUMN_MEMORY_SHORTAGE_EQUIVALENT,
+                    columnEquivalentShortage),
             formatSeriesPaginationForDiagnostics(),
             alignByDeviceForResultSetColumnTracking
                 ? ""
@@ -771,7 +797,7 @@ public class MPPQueryContext implements IAuditEntity {
                 : DataNodeQueryMessages.FOR_QUERY_ENGINE_OPERATOR_MEMORY_POOL,
             formatBytes(sourceColumnMemoryCostForResultSet),
             formatBytes(generatedResultSetColumnMemoryCost),
-            formatBytes(requestedBytes),
+            formatBytes(failedReservationBytes),
             formatBytes(freeBytes),
             e.getMessage()));
   }
@@ -830,6 +856,26 @@ public class MPPQueryContext implements IAuditEntity {
     long columnsToCompare =
         Math.max(matchedSourceColumnsForResultSet, expandedSourceColumnsForResultSet + 1);
     return Math.max(0, columnsToCompare - estimatedCapacity);
+  }
+
+  /** Converts a failed batch's memory deficit into an observed-column-size equivalent. */
+  private long estimateColumnEquivalentShortage(
+      long freeBytes, long failedReservationBytes, long requestedBytes) {
+    long avgColumnMemory;
+    if (generatedResultSetColumns > 0 && generatedResultSetColumnMemoryCost > 0) {
+      avgColumnMemory =
+          Math.max(1, divideCeil(generatedResultSetColumnMemoryCost, generatedResultSetColumns));
+    } else if (expandedSourceColumnsForResultSet > 0 && sourceColumnMemoryCostForResultSet > 0) {
+      avgColumnMemory =
+          Math.max(
+              1, divideCeil(sourceColumnMemoryCostForResultSet, expandedSourceColumnsForResultSet));
+    } else {
+      avgColumnMemory = Math.max(1, requestedBytes > 0 ? requestedBytes : failedReservationBytes);
+    }
+
+    // The failed allocation proves a shortage, even if memory was released before it was read.
+    long shortageBytes = Math.max(1, failedReservationBytes - freeBytes);
+    return divideCeil(shortageBytes, avgColumnMemory);
   }
 
   private long estimateExceededSchemaFetchColumns(long freeBytes, long requestedBytes) {
