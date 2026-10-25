@@ -21,13 +21,14 @@ package org.apache.iotdb.opcua;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
-import org.eclipse.milo.opcua.stack.client.security.DefaultClientCertificateValidator;
 import org.eclipse.milo.opcua.stack.core.Stack;
-import org.eclipse.milo.opcua.stack.core.security.DefaultTrustListManager;
+import org.eclipse.milo.opcua.stack.core.security.DefaultClientCertificateValidator;
+import org.eclipse.milo.opcua.stack.core.security.FileBasedCertificateQuarantine;
+import org.eclipse.milo.opcua.stack.core.security.FileBasedTrustListManager;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -48,6 +49,7 @@ public class ClientExampleRunner {
   private final CompletableFuture<OpcUaClient> future = new CompletableFuture<>();
 
   private final ClientExample clientExample;
+  private FileBasedTrustListManager trustListManager;
 
   public ClientExampleRunner(ClientExample clientExample) {
     this.clientExample = clientExample;
@@ -61,21 +63,24 @@ public class ClientExampleRunner {
       throw new Exception("unable to create security dir: " + securityTempDir);
     }
 
-    final File pkiDir = securityTempDir.resolve("pki").toFile();
+    final Path pkiDir = securityTempDir.resolve("pki");
 
     System.out.println("security dir: " + securityTempDir.toAbsolutePath());
-    LoggerFactory.getLogger(getClass()).info("security pki dir: {}", pkiDir.getAbsolutePath());
+    LoggerFactory.getLogger(getClass()).info("security pki dir: {}", pkiDir.toAbsolutePath());
 
     final IoTDBKeyStoreLoaderClient loader = new IoTDBKeyStoreLoaderClient().load(securityTempDir);
 
-    final DefaultTrustListManager trustListManager = new DefaultTrustListManager(pkiDir);
+    trustListManager = FileBasedTrustListManager.createAndInitialize(pkiDir);
+    final FileBasedCertificateQuarantine certificateQuarantine =
+        FileBasedCertificateQuarantine.create(pkiDir.resolve("rejected").resolve("certs"));
 
     final DefaultClientCertificateValidator certificateValidator =
-        new DefaultClientCertificateValidator(trustListManager);
+        new DefaultClientCertificateValidator(trustListManager, certificateQuarantine);
 
     return OpcUaClient.create(
         clientExample.getEndpointUrl(),
         endpoints -> endpoints.stream().filter(clientExample.endpointFilter()).findFirst(),
+        transportBuilder -> {},
         configBuilder ->
             configBuilder
                 .setApplicationName(LocalizedText.english("eclipse milo opc-ua client"))
@@ -85,8 +90,7 @@ public class ClientExampleRunner {
                 .setCertificateChain(loader.getClientCertificateChain())
                 .setCertificateValidator(certificateValidator)
                 .setIdentityProvider(clientExample.getIdentityProvider())
-                .setRequestTimeout(uint(5000))
-                .build());
+                .setRequestTimeout(uint(5000)));
   }
 
   public void run() {
@@ -100,11 +104,13 @@ public class ClientExampleRunner {
             }
 
             try {
-              client.disconnect().get();
-              Stack.releaseSharedResources();
+              client.disconnectAsync().get();
             } catch (InterruptedException | ExecutionException e) {
               Thread.currentThread().interrupt();
               System.out.println("Error disconnecting: {}" + e.getMessage());
+            } finally {
+              closeTrustListManager();
+              Stack.releaseSharedResources();
             }
 
             try {
@@ -126,6 +132,7 @@ public class ClientExampleRunner {
     } catch (Throwable t) {
       System.out.println("Error getting client: {}" + t.getMessage());
 
+      closeTrustListManager();
       future.completeExceptionally(t);
 
       try {
@@ -142,6 +149,18 @@ public class ClientExampleRunner {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       e.printStackTrace();
+    }
+  }
+
+  private void closeTrustListManager() {
+    if (trustListManager != null) {
+      try {
+        trustListManager.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+      } finally {
+        trustListManager = null;
+      }
     }
   }
 }
