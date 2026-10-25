@@ -532,7 +532,8 @@ public class NodeManager {
   }
 
   /**
-   * Register AINode. Use synchronized to make sure
+   * Serialize AINode registration so concurrent requests cannot violate the single-AINode
+   * registration constraint.
    *
    * @param req TAINodeRegisterReq
    * @return AINodeConfigurationDataSet. The {@link TSStatus} will be set to {@link
@@ -551,7 +552,7 @@ public class NodeManager {
 
     int aiNodeId = nodeInfo.generateNextNodeId();
     RegisterAINodePlan registerAINodePlan = new RegisterAINodePlan(req.getAiNodeConfiguration());
-    // Register new DataNode
+    // Register new AINode
     registerAINodePlan.getAINodeConfiguration().getLocation().setAiNodeId(aiNodeId);
     TSStatus registerStatus = writeConfigPhysicalPlan(registerAINodePlan);
     if (!isConsensusWriteSuccessful(registerStatus)) {
@@ -561,7 +562,7 @@ public class NodeManager {
       return resp;
     }
 
-    // update datanode's versionInfo
+    // update AINode's versionInfo
     UpdateVersionInfoPlan updateVersionInfoPlan =
         new UpdateVersionInfoPlan(req.getVersionInfo(), aiNodeId);
     TSStatus updateVersionStatus = writeConfigPhysicalPlan(updateVersionInfoPlan);
@@ -680,7 +681,7 @@ public class NodeManager {
   }
 
   /**
-   * Only leader use this interface.
+   * Called only on the ConfigNode leader.
    *
    * @return The number of registered Nodes
    */
@@ -689,7 +690,7 @@ public class NodeManager {
   }
 
   /**
-   * Only leader use this interface.
+   * Called only on the ConfigNode leader.
    *
    * @return The number of registered DataNodes
    */
@@ -698,7 +699,7 @@ public class NodeManager {
   }
 
   /**
-   * Only leader use this interface.
+   * Called only on the ConfigNode leader.
    *
    * @return All registered DataNodes
    */
@@ -707,7 +708,7 @@ public class NodeManager {
   }
 
   /**
-   * Only leader use this interface.
+   * Called only on the ConfigNode leader.
    *
    * <p>Notice: The result will be an empty TDataNodeConfiguration if the specified DataNode doesn't
    * register

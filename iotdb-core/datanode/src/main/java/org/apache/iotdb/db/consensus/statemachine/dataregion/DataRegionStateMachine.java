@@ -55,6 +55,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
+/**
+ * Applies replicated write and query fragment operations to one DataRegion and exposes its snapshot
+ * and region-resource lifecycle to the consensus layer.
+ *
+ * <p>For non-pipe writes, {@code WRITE_PROCESS_REJECT} and {@code
+ * METADATA_LEASE_FENCED_RETRY_REQUIRED} are retried here to preserve write atomicity. Pipe-
+ * generated plans are excluded from these local retries so the Pipe layer can retry the original
+ * event; other statuses are delegated to the consensus retry mechanism.
+ */
 public class DataRegionStateMachine extends BaseStateMachine {
 
   private static final Logger logger = LoggerFactory.getLogger(DataRegionStateMachine.class);
@@ -74,7 +83,8 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   public void start() {
-    // do nothing
+    // The consensus implementation owns the start lifecycle; this state machine has no additional
+    // start action.
   }
 
   @Override

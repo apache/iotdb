@@ -46,6 +46,10 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Applies replicated schema operations to one SchemaRegion and coordinates schema-region snapshot,
+ * Pipe-leader, and attribute-security lifecycle callbacks.
+ */
 public class SchemaRegionStateMachine extends BaseStateMachine {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaRegionStateMachine.class);
@@ -60,7 +64,8 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   public void start() {
-    // Do nothing
+    // The consensus implementation owns the start lifecycle; this state machine has no additional
+    // start action.
   }
 
   @Override
