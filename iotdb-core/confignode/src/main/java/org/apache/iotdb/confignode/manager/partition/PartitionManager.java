@@ -781,9 +781,11 @@ public class PartitionManager {
         allotmentMap.put(database, delta);
 
       } else if (allocatedRegionGroupCount
-              == filterRegionGroupThroughStatus(database, RegionGroupStatus.Disabled).size()
+              == filterRegionGroupThroughStatus(database, RegionGroupStatus.Disabled).stream()
+                  .filter(replicaSet -> replicaSet.getRegionId().getType() == consensusGroupType)
+                  .count()
           && allocatedRegionGroupCount < maxRegionGroupNum) {
-        // 3. All RegionGroups in the specified Database are disabled currently
+        // 3. All RegionGroups of the requested type in the specified Database are disabled.
         allotmentMap.put(database, 1);
       }
     }
