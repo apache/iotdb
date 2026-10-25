@@ -149,6 +149,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   private boolean isRecovering = true;
   private volatile boolean initialized = false;
   private boolean isClearing = false;
+  private boolean ratisLogAppenderBufferReserved = false;
 
   private final String storageGroupDirPath;
   private final String schemaRegionDirPath;
@@ -193,7 +194,10 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       return;
     }
 
-    if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (!ratisLogAppenderBufferReserved
+        && config
+            .getSchemaRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       long memCost = config.getSchemaRatisConsensusLogAppenderBufferSizeMax();
       if (!SystemInfo.getInstance().addDirectBufferMemoryCost(memCost)) {
         throw new MetadataException(
@@ -202,6 +206,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
                 + ", which is greater than limit mem cost: "
                 + SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
       }
+      ratisLogAppenderBufferReserved = true;
     }
 
     initDir();
@@ -481,9 +486,10 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     // delete all the schema region files
     SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
 
-    if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (ratisLogAppenderBufferReserved) {
       SystemInfo.getInstance()
           .decreaseDirectBufferMemoryCost(config.getSchemaRatisConsensusLogAppenderBufferSizeMax());
+      ratisLogAppenderBufferReserved = false;
     }
   }
 
@@ -496,18 +502,20 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       return false;
     }
     logger.info("Start create snapshot of schemaRegion {}", schemaRegionId);
-    boolean isSuccess = true;
+    boolean isSuccess;
+    boolean currentResult;
     long startTime = System.currentTimeMillis();
 
     long mtreeSnapshotStartTime = System.currentTimeMillis();
-    isSuccess = isSuccess && mtree.createSnapshot(snapshotDir);
+    isSuccess = mtree.createSnapshot(snapshotDir);
     logger.info(
         "MTree snapshot creation of schemaRegion {} costs {}ms.",
         schemaRegionId,
         System.currentTimeMillis() - mtreeSnapshotStartTime);
 
     long tagSnapshotStartTime = System.currentTimeMillis();
-    isSuccess = isSuccess && tagManager.createSnapshot(snapshotDir);
+    currentResult = tagManager.createSnapshot(snapshotDir);
+    isSuccess = isSuccess && currentResult;
     logger.info(
         "Tag snapshot creation of schemaRegion {} costs {}ms.",
         schemaRegionId,
@@ -517,7 +525,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
         "Snapshot creation of schemaRegion {} costs {}ms.",
         schemaRegionId,
         System.currentTimeMillis() - startTime);
-    logger.info("Successfully create snapshot of schemaRegion {}", schemaRegionId);
+    if (isSuccess) {
+      logger.info("Successfully create snapshot of schemaRegion {}", schemaRegionId);
+    }
 
     return isSuccess;
   }

@@ -26,12 +26,14 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ISchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.schemaengine.template.Template;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -187,6 +189,44 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
               newSchemaRegion, new PartialPath("root.sg.**"), false, "tag-key", "tag-value");
 
       Assert.assertEquals(0, result.size());
+    } finally {
+      config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
+    }
+  }
+
+  @Test
+  public void testLoadSnapshotDoesNotReserveDirectBufferMemoryRepeatedly() throws Exception {
+    String schemaRegionConsensusProtocolClass = config.getSchemaRegionConsensusProtocolClass();
+    config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    try {
+      long directBufferMemoryCostBeforeRegion =
+          SystemInfo.getInstance().getDirectBufferMemoryCost();
+      ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+      long expectedDirectBufferMemoryCost =
+          directBufferMemoryCostBeforeRegion
+              + config.getSchemaRatisConsensusLogAppenderBufferSizeMax();
+      Assert.assertEquals(
+          expectedDirectBufferMemoryCost, SystemInfo.getInstance().getDirectBufferMemoryCost());
+
+      try {
+        // A failed snapshot load re-initializes the region. Repeated initialization must not
+        // reserve
+        // the Ratis log appender buffer more than once.
+        File missingSnapshotDir =
+            new File(config.getSchemaDir() + File.separator + "non-existent-snapshot");
+        Assert.assertFalse(missingSnapshotDir.exists());
+
+        for (int i = 0; i < 2; i++) {
+          schemaRegion.loadSnapshot(missingSnapshotDir);
+          Assert.assertEquals(
+              expectedDirectBufferMemoryCost, SystemInfo.getInstance().getDirectBufferMemoryCost());
+        }
+      } finally {
+        SchemaEngine.getInstance().deleteSchemaRegion(schemaRegion.getSchemaRegionId());
+        Assert.assertEquals(
+            directBufferMemoryCostBeforeRegion,
+            SystemInfo.getInstance().getDirectBufferMemoryCost());
+      }
     } finally {
       config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
     }
