@@ -132,6 +132,29 @@ public class PipeMetricsRestartTest {
   }
 
   @Test
+  public void testSinglePipeMetricsIgnoreLateEventsAfterDeregister() {
+    final PipeDataNodeSinglePipeMetrics metrics = PipeDataNodeSinglePipeMetrics.getInstance();
+    bind(metrics);
+    metrics.register(mockDataRegionSource());
+    metrics.deregister(PIPE_ID);
+
+    metrics.increaseInsertNodeEventCount(PIPE, CREATION_TIME);
+    metrics.decreaseInsertNodeEventCount(PIPE, CREATION_TIME, 10);
+    metrics.updateInsertNodeTransferTimer(PIPE, CREATION_TIME, 10);
+    metrics.increaseRawTabletEventCount(PIPE, CREATION_TIME);
+    metrics.decreaseRawTabletEventCount(PIPE, CREATION_TIME);
+    metrics.increaseTsFileEventCount(PIPE, CREATION_TIME);
+    metrics.decreaseTsFileEventCount(PIPE, CREATION_TIME, 10);
+    metrics.updateTsFileTransferTimer(PIPE, CREATION_TIME, 10);
+    metrics.increaseHeartbeatEventCount(PIPE, CREATION_TIME);
+    metrics.decreaseHeartbeatEventCount(PIPE, CREATION_TIME);
+
+    assertTrue(metrics.remainingEventAndTimeOperatorMap.isEmpty());
+    service.restartService();
+    assertEquals(0, count(Metric.PIPE_DATANODE_REMAINING_EVENT_COUNT));
+  }
+
+  @Test
   public void testDataRegionSourceMetrics() {
     final PipeDataRegionSourceMetrics metrics = PipeDataRegionSourceMetrics.getInstance();
     bind(metrics);
