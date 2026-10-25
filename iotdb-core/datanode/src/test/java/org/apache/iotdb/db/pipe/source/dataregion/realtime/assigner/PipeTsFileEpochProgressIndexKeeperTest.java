@@ -35,6 +35,8 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.HashMap;
+import java.util.Map;
 
 public class PipeTsFileEpochProgressIndexKeeperTest {
 
@@ -97,8 +99,7 @@ public class PipeTsFileEpochProgressIndexKeeperTest {
   public void testProgressIndexCheckUsesEqualOrAfterCoverage() throws IOException {
     final ProgressIndex registeredProgressIndex =
         hybridProgressIndex(
-            new IoTProgressIndex(1, 90L),
-            new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 10)));
+            iotProgressIndex(1, 90L), new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 10)));
     keeper.registerProgressIndex(
         DATA_REGION_ID,
         TASK_SCOPE_A,
@@ -106,7 +107,7 @@ public class PipeTsFileEpochProgressIndexKeeperTest {
 
     Assert.assertFalse(
         keeper.isProgressIndexAfterOrEquals(
-            DATA_REGION_ID, TASK_SCOPE_A, "current.tsfile", new IoTProgressIndex(1, 100L)));
+            DATA_REGION_ID, TASK_SCOPE_A, "current.tsfile", iotProgressIndex(1, 100L)));
 
     Assert.assertTrue(
         keeper.isProgressIndexAfterOrEquals(
@@ -114,7 +115,7 @@ public class PipeTsFileEpochProgressIndexKeeperTest {
             TASK_SCOPE_A,
             "current.tsfile",
             hybridProgressIndex(
-                new IoTProgressIndex(1, 100L),
+                iotProgressIndex(1, 100L),
                 new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 10)))));
   }
 
@@ -156,5 +157,11 @@ public class PipeTsFileEpochProgressIndexKeeperTest {
       result = result.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex);
     }
     return result;
+  }
+
+  private IoTProgressIndex iotProgressIndex(final int peerId, final long searchIndex) {
+    final Map<Integer, Long> peerId2SearchIndex = new HashMap<>();
+    peerId2SearchIndex.put(peerId, searchIndex);
+    return new IoTProgressIndex(peerId2SearchIndex);
   }
 }
