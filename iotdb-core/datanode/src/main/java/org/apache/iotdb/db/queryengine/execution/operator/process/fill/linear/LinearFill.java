@@ -26,6 +26,7 @@ import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumn;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.commons.utils.CommonDateTimeUtils.timeDifferenceAsDouble;
 
 /**
  * The result of Linear Fill functions at timestamp "T" is calculated by performing a linear fitting
@@ -135,9 +136,8 @@ public abstract class LinearFill implements ILinearFill {
   }
 
   private double getFactor(long currentTime) {
-    return nextTimeInCurrentColumn - previousTime == 0
-        ? 0.0
-        : ((double) (currentTime - previousTime)) / (nextTimeInCurrentColumn - previousTime);
+    double timeRange = timeDifferenceAsDouble(nextTimeInCurrentColumn, previousTime);
+    return timeRange == 0 ? 0.0 : timeDifferenceAsDouble(currentTime, previousTime) / timeRange;
   }
 
   /**

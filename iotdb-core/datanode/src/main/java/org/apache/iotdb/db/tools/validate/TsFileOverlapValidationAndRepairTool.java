@@ -123,8 +123,17 @@ public class TsFileOverlapValidationAndRepairTool {
               tsFileName.getInnerCompactionCnt(),
               0);
       targetFile = new File(targetDir.getAbsolutePath() + File.separator + fileNameStr);
+      if (!targetFile.exists()) {
+        break;
+      }
+      if (tsFileName.getTime() == Long.MAX_VALUE) {
+        throw new IOException(
+            String.format(
+                "Cannot repair %s because the target file already exists and the file timestamp is Long.MAX_VALUE",
+                tsfile.getAbsolutePath()));
+      }
       tsFileName.setTime(tsFileName.getTime() + 1);
-    } while (targetFile.exists());
+    } while (true);
 
     moveFile(tsfile, targetFile);
     moveFile(
