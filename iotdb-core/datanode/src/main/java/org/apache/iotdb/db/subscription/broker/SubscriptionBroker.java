@@ -402,6 +402,13 @@ public class SubscriptionBroker implements ISubscriptionBroker {
         .sum();
   }
 
+  public void requeueInFlightEvents(final String topicName, final String consumerId) {
+    final SubscriptionPrefetchingQueue queue = topicNameToPrefetchingQueue.get(topicName);
+    if (Objects.nonNull(queue)) {
+      queue.requeueInFlightEvents(consumerId);
+    }
+  }
+
   @Override
   public int refreshInFlightEventLeases(
       final String consumerId, final List<SubscriptionCommitContext> commitContexts) {
@@ -491,9 +498,8 @@ public class SubscriptionBroker implements ISubscriptionBroker {
 
   public void updateCompletedTopicNames(final String topicName) {
     // mark topic name completed only for topic of snapshot mode
-    if (SubscriptionAgent.topic()
-        .getTopicMode(topicName, isTableModel())
-        .equals(TopicConstant.MODE_SNAPSHOT_VALUE)) {
+    if (TopicConstant.MODE_SNAPSHOT_VALUE.equals(
+        SubscriptionAgent.topic().getTopicMode(topicName, isTableModel()))) {
       completedTopicNames.put(topicName, topicName);
     }
   }
@@ -514,9 +520,8 @@ public class SubscriptionBroker implements ISubscriptionBroker {
     prefetchingQueue.markClosed();
 
     // mark topic name completed only for topic of snapshot mode
-    if (SubscriptionAgent.topic()
-            .getTopicMode(topicName, isTableModel())
-            .equals(TopicConstant.MODE_SNAPSHOT_VALUE)
+    if (TopicConstant.MODE_SNAPSHOT_VALUE.equals(
+            SubscriptionAgent.topic().getTopicMode(topicName, isTableModel()))
         && prefetchingQueue.isCompleted()) {
       completedTopicNames.put(topicName, topicName);
     }
