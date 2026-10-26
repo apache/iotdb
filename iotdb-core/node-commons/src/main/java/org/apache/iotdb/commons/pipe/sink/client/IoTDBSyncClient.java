@@ -29,21 +29,28 @@ import org.apache.iotdb.commons.pipe.sink.client.port.IoTDBSinkPortBinder;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferSliceReqBuilder;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
+import org.apache.iotdb.rpc.RpcSslUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.rpc.TimeoutChangeableTFastFramedTransport;
 import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocket;
+
+import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.security.GeneralSecurityException;
 
 public class IoTDBSyncClient extends IClientRPCService.Client
     implements ThriftClient, AutoCloseable {
@@ -66,35 +73,95 @@ public class IoTDBSyncClient extends IClientRPCService.Client
       final IntervalManager<PlainInterval> candidatePorts)
       throws TTransportException {
     super(
-        property
-            .getProtocolFactory()
-            .getProtocol(
-                useSSL
-                    ? DeepCopyRpcTransportFactory.INSTANCE.getTransport(
-                        ipAddress,
-                        port,
-                        property.getConnectionTimeoutMs(),
-                        trustStore,
-                        trustStorePwd,
-                        keyStore,
-                        keyStorePwd)
-                    : DeepCopyRpcTransportFactory.INSTANCE.getTransport(
-                        ipAddress, port, property.getConnectionTimeoutMs())));
+        createProtocol(
+            property,
+            ipAddress,
+            port,
+            useSSL,
+            trustStore,
+            trustStorePwd,
+            keyStore,
+            keyStorePwd,
+            candidatePorts));
     this.ipAddress = ipAddress;
     this.port = port;
     this.endPoint = new TEndPoint(ipAddress, port);
     final TTransport transport = getInputProtocol().getTransport();
     if (!transport.isOpen()) {
-      IoTDBSinkPortBinder.bindPort(
-          candidatePorts,
-          (sendPort) -> {
-            final InetSocketAddress isa = new InetSocketAddress(sendPort);
-            ((TSocket) ((TimeoutChangeableTFastFramedTransport) transport).getSocket())
-                .getSocket()
-                .bind(isa);
-            transport.open();
-          });
+      transport.open();
     }
+  }
+
+  private static TProtocol createProtocol(
+      final ThriftClientProperty property,
+      final String ipAddress,
+      final int port,
+      final boolean useSSL,
+      final String trustStore,
+      final String trustStorePwd,
+      final String keyStore,
+      final String keyStorePwd,
+      final IntervalManager<PlainInterval> candidatePorts)
+      throws TTransportException {
+    final int connectionTimeoutMs = property.getConnectionTimeoutMs();
+    if (candidatePorts.isEmpty()) {
+      return property
+          .getProtocolFactory()
+          .getProtocol(
+              useSSL
+                  ? DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+                      ipAddress,
+                      port,
+                      connectionTimeoutMs,
+                      trustStore,
+                      trustStorePwd,
+                      keyStore,
+                      keyStorePwd)
+                  : DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+                      ipAddress, port, connectionTimeoutMs));
+    }
+
+    final SSLContext sslContext;
+    try {
+      sslContext =
+          useSSL
+              ? RpcSslUtils.createSSLContext(keyStore, keyStorePwd, trustStore, trustStorePwd)
+              : null;
+    } catch (final GeneralSecurityException | IOException e) {
+      throw new TTransportException(e);
+    }
+
+    final TTransport[] transport = new TTransport[1];
+    IoTDBSinkPortBinder.bindPort(
+        candidatePorts,
+        (sendPort) -> {
+          Socket socket = new Socket();
+          try {
+            socket.bind(new InetSocketAddress(sendPort));
+            socket.connect(new InetSocketAddress(ipAddress, port), connectionTimeoutMs);
+            socket.setSoTimeout(connectionTimeoutMs);
+            if (sslContext != null) {
+              final SSLSocket sslSocket =
+                  (SSLSocket)
+                      sslContext.getSocketFactory().createSocket(socket, ipAddress, port, true);
+              sslSocket.setSoTimeout(connectionTimeoutMs);
+              sslSocket.startHandshake();
+              socket = sslSocket;
+            }
+
+            final TSocket thriftSocket = new TSocket(socket);
+            thriftSocket.setTimeout(connectionTimeoutMs);
+            transport[0] = DeepCopyRpcTransportFactory.INSTANCE.getTransport(thriftSocket);
+          } catch (final Exception e) {
+            try {
+              socket.close();
+            } catch (final IOException closeException) {
+              e.addSuppressed(closeException);
+            }
+            throw e;
+          }
+        });
+    return property.getProtocolFactory().getProtocol(transport[0]);
   }
 
   public IoTDBSyncClient(

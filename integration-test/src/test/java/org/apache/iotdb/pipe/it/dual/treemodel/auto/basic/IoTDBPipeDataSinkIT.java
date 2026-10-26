@@ -527,53 +527,48 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
-      try {
-        statement.execute(
-            String.format(
-                "create pipe testPipe ('ip'='%s', 'port'='%s', 'send-ports'='22220,22221-2220')",
-                receiverIp, receiverPort));
-      } catch (final SQLException e) {
-        Assert.assertEquals(
-            "1107: The port 22221-2220 is invalid, the min value shall be smaller than the max value in the port range",
-            e.getMessage());
-      }
-      try {
-        statement.execute(
-            String.format(
-                "create pipe testPipe ('ip'='%s', 'port'='%s', 'send-ports'='xxx')",
-                receiverIp, receiverPort));
-      } catch (final SQLException e) {
-        Assert.assertEquals(
-            "1107: The port xxx is invalid, the port must be an integer", e.getMessage());
-      }
-      try {
-        statement.execute(
-            String.format(
-                "create pipe testPipe ('ip'='%s', 'port'='%s', 'send-ports'='10-20-30')",
-                receiverIp, receiverPort));
-      } catch (final SQLException e) {
-        Assert.assertEquals(
-            "1107: The port 10-20-30 is invalid, a port shall either be 'port' or 'minPort-maxPort'.",
-            e.getMessage());
-      }
-      try {
-        statement.execute(
-            String.format(
-                "create pipe testPipe ('ip'='%s', 'port'='%s', 'send-ports'='10, ,30')",
-                receiverIp, receiverPort));
-      } catch (final SQLException e) {
-        Assert.assertEquals(
-            "1107: The port  is invalid, the port must be an integer", e.getMessage());
-      }
-      try {
-        statement.execute(
-            String.format(
-                "create pipe testPipe ('ip'='%s', 'port'='%s', 'send-ports'='100000')",
-                receiverIp, receiverPort));
-      } catch (final SQLException e) {
-        Assert.assertEquals(
-            "1107: The port 100000 is invalid, the port must be >= 0 and <= 65535", e.getMessage());
-      }
+      assertInvalidSendPorts(
+          statement,
+          receiverIp,
+          receiverPort,
+          "22220,22221-2220",
+          "1107: The port 22221-2220 is invalid, the min value shall be smaller than the max value in the port range");
+      assertInvalidSendPorts(
+          statement,
+          receiverIp,
+          receiverPort,
+          "xxx",
+          "1107: The port xxx is invalid, the port must be an integer");
+      assertInvalidSendPorts(
+          statement,
+          receiverIp,
+          receiverPort,
+          "10-20-30",
+          "1107: The port 10-20-30 is invalid, a port shall either be 'port' or 'minPort-maxPort'.");
+      assertInvalidSendPorts(
+          statement,
+          receiverIp,
+          receiverPort,
+          "10, ,30",
+          "1107: The port  is invalid, the port must be an integer");
+      assertInvalidSendPorts(
+          statement,
+          receiverIp,
+          receiverPort,
+          "100000",
+          "1107: The port 100000 is invalid, the port must be >= 0 and <= 65535");
+      assertInvalidSendPorts(
+          statement,
+          receiverIp,
+          receiverPort,
+          "10-",
+          "1107: The port 10- is invalid, a port shall either be 'port' or 'minPort-maxPort'.");
+      assertInvalidSendPorts(
+          statement,
+          receiverIp,
+          receiverPort,
+          "10,",
+          "1107: The port  is invalid, the port must be an integer");
 
       TestUtils.executeNonQueries(
           senderEnv,
@@ -611,6 +606,24 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
           System.out.printf("Delete lock file %s failed%n", lockPath);
         }
       }
+    }
+  }
+
+  private static void assertInvalidSendPorts(
+      final Statement statement,
+      final String receiverIp,
+      final int receiverPort,
+      final String sendPorts,
+      final String expectedMessage)
+      throws SQLException {
+    try {
+      statement.execute(
+          String.format(
+              "create pipe testPipe ('ip'='%s', 'port'='%s', 'send-ports'='%s')",
+              receiverIp, receiverPort, sendPorts));
+      Assert.fail("Invalid send-ports value was accepted: " + sendPorts);
+    } catch (final SQLException e) {
+      Assert.assertEquals(expectedMessage, e.getMessage());
     }
   }
 

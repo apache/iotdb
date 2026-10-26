@@ -627,9 +627,11 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
       return result;
     }
     String[] range;
-    for (String port : ports.split(",")) {
-      range = port.trim().split("-");
-      if (range.length > 2 || range.length == 0) {
+    for (String port : ports.split(",", -1)) {
+      range = port.trim().split("-", -1);
+      if (range.length > 2
+          || range.length == 0
+          || (range.length == 2 && (range[0].isEmpty() || range[1].isEmpty()))) {
         throw new PipeParameterNotValidException(
             String.format(
                 PipeMessages

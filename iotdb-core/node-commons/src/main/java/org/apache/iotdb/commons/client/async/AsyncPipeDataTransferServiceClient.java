@@ -79,14 +79,7 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
     final SocketChannel socketChannel = ((TNonblockingSocket) ___transport).getSocketChannel();
     if (!___transport.isOpen()) {
       IoTDBSinkPortBinder.bindPort(
-          candidatePorts,
-          (sendPort) -> {
-            socketChannel.bind(new InetSocketAddress(sendPort));
-            socketChannel.connect(new InetSocketAddress(endpoint.getIp(), endpoint.getPort()));
-            while (!socketChannel.finishConnect()) {
-              // Empty body, the error is thrown at "finishConnect()"
-            }
-          });
+          candidatePorts, (sendPort) -> socketChannel.bind(new InetSocketAddress(sendPort)));
     }
     setTimeout(property.getConnectionTimeoutMs());
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();

@@ -126,7 +126,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
     receiverAttributes =
         String.format(
-            "%s-%s-%s-%s-%s-%s-%s",
+            "%s-%s-%s-%s-%s-%s-%s-%s",
             Base64.getEncoder()
                 .encodeToString((userEntity.getUsername() + ":" + password).getBytes()),
             shouldReceiverConvertOnTypeMismatch,
@@ -134,6 +134,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
             validateTsFile,
             shouldMarkAsPipeRequest,
             isTSFileUsed,
+            candidatePorts,
             skipIfNoPrivileges);
     clientResourceKey = generateClientResourceKey(receiverAttributes, endPoints);
     synchronized (IoTDBDataNodeAsyncClientManager.class) {

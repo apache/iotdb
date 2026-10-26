@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.datastructure.interval.IntervalManager;
+import org.apache.iotdb.commons.pipe.datastructure.interval.PlainInterval;
 import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeAsyncClientManager;
 import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeCacheLeaderClientManager;
 import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeSyncClientManager;
@@ -128,6 +129,27 @@ public class IoTDBDataNodeAsyncClientManagerTest {
   }
 
   @Test
+  public void testClientResourcesShouldDifferentiateSendPorts() throws Exception {
+    final List<TEndPoint> endPoints = Collections.singletonList(new TEndPoint("127.0.0.1", 6667));
+    final IntervalManager<PlainInterval> firstPorts = new IntervalManager<>();
+    firstPorts.addInterval(new PlainInterval(31000, 31000));
+    final IntervalManager<PlainInterval> secondPorts = new IntervalManager<>();
+    secondPorts.addInterval(new PlainInterval(31001, 31001));
+    final IoTDBDataNodeAsyncClientManager firstManager = createAsyncManager(endPoints, firstPorts);
+    final IoTDBDataNodeAsyncClientManager secondManager =
+        createAsyncManager(endPoints, secondPorts);
+
+    try {
+      Assert.assertNotEquals(
+          getClientResourceKey(firstManager), getClientResourceKey(secondManager));
+      Assert.assertNotSame(getEndPoint2Client(firstManager), getEndPoint2Client(secondManager));
+    } finally {
+      firstManager.close();
+      secondManager.close();
+    }
+  }
+
+  @Test
   public void testAsyncManagerShouldIgnoreWildcardAndAcceptIPv6LeaderEndPoints() {
     final TEndPoint originalEndPoint = new TEndPoint("127.0.0.1", 6667);
     final List<TEndPoint> endPoints = new ArrayList<>(Collections.singletonList(originalEndPoint));
@@ -192,6 +214,11 @@ public class IoTDBDataNodeAsyncClientManagerTest {
 
   private static IoTDBDataNodeAsyncClientManager createAsyncManager(
       final List<TEndPoint> endPoints) {
+    return createAsyncManager(endPoints, new IntervalManager<>());
+  }
+
+  private static IoTDBDataNodeAsyncClientManager createAsyncManager(
+      final List<TEndPoint> endPoints, final IntervalManager<PlainInterval> candidatePorts) {
     return new IoTDBDataNodeAsyncClientManager(
         endPoints,
         true,
@@ -203,7 +230,7 @@ public class IoTDBDataNodeAsyncClientManagerTest {
         true,
         true,
         false,
-        new IntervalManager<>(),
+        candidatePorts,
         true);
   }
 
