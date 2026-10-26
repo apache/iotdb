@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tablemodel;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchema;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -30,12 +31,15 @@ import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.schema.Schema;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class CompactionTableModelTestFileWriter extends CompactionTestFileWriter {
@@ -61,6 +65,22 @@ public class CompactionTableModelTestFileWriter extends CompactionTestFileWriter
     schema.registerTableSchema(tableSchema);
   }
 
+  public void registerTableSchemaWithTagAndTime(String tableName, List<String> idColumnNames) {
+    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+    List<ColumnCategory> columnTypes = new ArrayList<>();
+    for (String idColumnName : idColumnNames) {
+      measurementSchemas.add(
+          new MeasurementSchema(
+              idColumnName, TSDataType.STRING, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
+      columnTypes.add(ColumnCategory.TAG);
+    }
+    measurementSchemas.add(
+        new MeasurementSchema(
+            "time", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
+    columnTypes.add(ColumnCategory.TIME);
+    schema.registerTableSchema(new TableSchema(tableName, measurementSchemas, columnTypes));
+  }
+
   public void registerTableSchemaWithTagField(String tableName, List<String> columnNames) {
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     List<ColumnCategory> columnTypes = new ArrayList<>();
@@ -73,6 +93,19 @@ public class CompactionTableModelTestFileWriter extends CompactionTestFileWriter
       cnt++;
     }
     schema.registerTableSchema(new TableSchema(tableName, measurementSchemas, columnTypes));
+  }
+
+  @TestOnly
+  public void generateTimeOnlyDataToCurrentDevice(TimeRange[] timeRanges) throws IOException {
+    for (TimeRange timeRange : timeRanges) {
+      AlignedChunkWriterImpl chunkWriter = new AlignedChunkWriterImpl(Collections.emptyList());
+      currentDeviceStartTime = Math.min(timeRange.getMin(), currentDeviceStartTime);
+      currentDeviceEndTime = Math.max(timeRange.getMax(), currentDeviceEndTime);
+      for (long time = timeRange.getMin(); time <= timeRange.getMax(); time++) {
+        chunkWriter.getTimeChunkWriter().write(time);
+      }
+      chunkWriter.writeToFileWriter(fileWriter);
+    }
   }
 
   public IDeviceID startChunkGroup(String tableName, List<String> idColumnFields)
