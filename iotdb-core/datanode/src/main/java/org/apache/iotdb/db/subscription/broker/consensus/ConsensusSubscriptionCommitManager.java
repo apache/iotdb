@@ -274,17 +274,36 @@ public class ConsensusSubscriptionCommitManager {
   /** Restores only attempted topics to their exact state before setup began. */
   void restoreSetupSnapshot(
       final SetupSnapshot setupSnapshot, final Set<String> attemptedTopicNames) {
+    restoreSetupSnapshot(setupSnapshot, attemptedTopicNames, Collections.emptyMap());
+  }
+
+  void restoreSetupSnapshot(
+      final SetupSnapshot setupSnapshot,
+      final Set<String> attemptedTopicNames,
+      final Map<String, Set<String>> existingQueueRegionIds) {
     for (final String topicName : attemptedTopicNames) {
       final TopicSetupSnapshot topicSnapshot = setupSnapshot.topicSnapshots.get(topicName);
       if (Objects.isNull(topicSnapshot)) {
         continue;
       }
       synchronized (getTopicPersistLock(topicSnapshot.topicFileKey)) {
-        removeTopicStateFromMemory(setupSnapshot.consumerGroupId, topicName);
+        final Set<String> preservedRegionIds =
+            existingQueueRegionIds.getOrDefault(topicName, Collections.emptySet());
+        // Existing queues can commit while setup is running. Keep their state objects, progress,
+        // and initialization markers instead of rewinding them to the setup snapshot.
+        removeTopicStateFromMemory(setupSnapshot.consumerGroupId, topicName, preservedRegionIds);
 
         CommitStateKey stateKeyForRewrite = null;
+        if (!preservedRegionIds.isEmpty()) {
+          stateKeyForRewrite =
+              getCommitStateKey(
+                  setupSnapshot.consumerGroupId, topicName, preservedRegionIds.iterator().next());
+        }
         for (final Map.Entry<String, StateSetupSnapshot> entry :
             topicSnapshot.stateSnapshots.entrySet()) {
+          if (preservedRegionIds.contains(entry.getKey())) {
+            continue;
+          }
           final CommitStateKey stateKey =
               getCommitStateKey(setupSnapshot.consumerGroupId, topicName, entry.getKey());
           final StateSetupSnapshot stateSnapshot = entry.getValue();
@@ -334,12 +353,14 @@ public class ConsensusSubscriptionCommitManager {
     }
   }
 
-  private void removeTopicStateFromMemory(final String consumerGroupId, final String topicName) {
+  private void removeTopicStateFromMemory(
+      final String consumerGroupId, final String topicName, final Set<String> preservedRegionIds) {
     final Iterator<Map.Entry<String, CommitStateKey>> keyIterator =
         commitStateKeys.entrySet().iterator();
     while (keyIterator.hasNext()) {
       final Map.Entry<String, CommitStateKey> entry = keyIterator.next();
-      if (!entry.getValue().sameTopic(consumerGroupId, topicName)) {
+      if (!entry.getValue().sameTopic(consumerGroupId, topicName)
+          || preservedRegionIds.contains(entry.getValue().regionIdStr)) {
         continue;
       }
       commitStates.remove(entry.getKey());

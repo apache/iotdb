@@ -22,6 +22,10 @@ package org.apache.iotdb.db.subscription.agent;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.consensus.IConsensus;
+import org.apache.iotdb.consensus.iot.IoTConsensus;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.subscription.broker.ISubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
@@ -29,6 +33,7 @@ import org.apache.iotdb.db.subscription.task.subtask.SubscriptionSinkSubtask;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import org.junit.Test;
 
@@ -48,6 +53,11 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class SubscriptionConsumerAgentBrokerRecoveryTest {
 
@@ -72,6 +82,45 @@ public class SubscriptionConsumerAgentBrokerRecoveryTest {
       assertTrue(agent.isConsumerExisted(consumerGroupId, consumerId));
     } finally {
       agent.handleDropConsumerGroup(consumerGroupId);
+    }
+  }
+
+  @Test
+  public void testMetadataPushSetsUpNewConsensusTopicOnce() {
+    final String consumerGroupId = unique("group");
+    final String consumerId = unique("consumer");
+    final String topicName = unique("topic");
+    final SubscriptionConsumerAgent agent = SubscriptionAgent.consumer();
+    final IConsensus originalConsensus = DataRegionConsensusImpl.getInstance();
+    final IoTConsensus consensus = mock(IoTConsensus.class);
+    when(consensus.getAllConsensusGroupIds()).thenReturn(Collections.emptyList());
+    DataRegionConsensusImpl.setInstance(consensus);
+    try {
+      assertNull(
+          SubscriptionAgent.topic()
+              .handleSingleTopicMetaChanges(
+                  new TopicMeta(
+                      topicName,
+                      1L,
+                      Collections.singletonMap(
+                          TopicConstant.MODE_KEY, TopicConstant.MODE_INCREMENTAL_VALUE))));
+      final ConsumerGroupMeta meta = createMeta(consumerGroupId, consumerId);
+      assertNull(agent.handleSingleConsumerGroupMetaChanges(meta));
+      clearInvocations(consensus);
+
+      final ConsumerGroupMeta subscribedMeta = meta.deepCopy();
+      subscribedMeta.addSubscription(consumerId, Collections.singleton(topicName));
+      assertNull(agent.handleSingleConsumerGroupMetaChanges(subscribedMeta));
+
+      // One discovery for setup logging and one for binding the topic's regions.
+      verify(consensus, times(2)).getAllConsensusGroupIds();
+      assertEquals(
+          Collections.singleton(topicName),
+          agent.getTopicNamesSubscribedByConsumer(consumerGroupId, consumerId));
+    } finally {
+      agent.handleDropConsumerGroup(consumerGroupId);
+      SubscriptionAgent.topic().handleDropTopic(topicName, false);
+      DataRegionConsensusImpl.setInstance(originalConsensus);
     }
   }
 
@@ -131,6 +180,9 @@ public class SubscriptionConsumerAgentBrokerRecoveryTest {
     final String topicName = unique("topic");
     final SubscriptionConsumerAgent agent = SubscriptionAgent.consumer();
     try {
+      assertNull(
+          SubscriptionAgent.topic()
+              .handleSingleTopicMetaChanges(new TopicMeta(topicName, 1L, Collections.emptyMap())));
       final ConsumerGroupMeta meta = createMeta(consumerGroupId, consumerId);
       meta.addSubscription(consumerId, Collections.singleton(topicName));
       assertNull(agent.handleSingleConsumerGroupMetaChanges(meta));
@@ -147,6 +199,7 @@ public class SubscriptionConsumerAgentBrokerRecoveryTest {
       assertTrue(getPipeBroker(consumerGroupId).hasQueue(topicName));
     } finally {
       agent.handleDropConsumerGroup(consumerGroupId);
+      SubscriptionAgent.topic().handleDropTopic(topicName, false);
     }
   }
 
@@ -157,6 +210,9 @@ public class SubscriptionConsumerAgentBrokerRecoveryTest {
     final String topicName = unique("topic");
     final SubscriptionConsumerAgent agent = SubscriptionAgent.consumer();
     try {
+      assertNull(
+          SubscriptionAgent.topic()
+              .handleSingleTopicMetaChanges(new TopicMeta(topicName, 1L, Collections.emptyMap())));
       final ConsumerGroupMeta meta = createMeta(consumerGroupId, consumerId);
       meta.addSubscription(consumerId, Collections.singleton(topicName));
       assertNull(agent.handleSingleConsumerGroupMetaChanges(meta));
@@ -176,6 +232,7 @@ public class SubscriptionConsumerAgentBrokerRecoveryTest {
       assertFalse(agent.getAllSubscriptions().containsKey(consumerGroupId));
     } finally {
       agent.handleDropConsumerGroup(consumerGroupId);
+      SubscriptionAgent.topic().handleDropTopic(topicName, false);
     }
   }
 

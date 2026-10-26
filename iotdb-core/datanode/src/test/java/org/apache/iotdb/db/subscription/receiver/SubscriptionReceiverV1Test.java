@@ -222,7 +222,7 @@ public class SubscriptionReceiverV1Test {
   }
 
   @Test
-  public void testHandshakeRepairsMissingBrokerWithoutChangingConsumerMetadata() {
+  public void testHandshakeRepairsMissingBrokerWithoutChangingConsumerMetadata() throws Exception {
     final String consumerGroupId = "group-" + UUID.randomUUID();
     final String consumerId = "consumer-" + UUID.randomUUID();
     final ConsumerConfig consumerConfig =

@@ -420,6 +420,10 @@ public class ConsensusSubscriptionSetupHandler {
         topicNames,
         ioTConsensus.getAllConsensusGroupIds().size());
 
+    // Recovery also visits topics with live queues. Roll back only newly bound regions so a
+    // failure on another topic cannot discard their in-flight events or committed progress.
+    final Map<String, Set<String>> existingQueueRegionIds =
+        SubscriptionAgent.broker().getConsensusQueueRegionIds(consumerGroupId, topicNames);
     final ConsensusSubscriptionCommitManager.SetupSnapshot setupSnapshot =
         commitManager.captureSetupSnapshot(consumerGroupId, topicNames);
     setupConsensusTopics(
@@ -428,22 +432,35 @@ public class ConsensusSubscriptionSetupHandler {
         topicName -> isConsensusBasedTopicRequired(topicName, isTableModel),
         topicName ->
             setupConsensusQueueForTopic(
-                consumerGroupId, topicName, isTableModel, ioTConsensus, commitManager),
+                consumerGroupId,
+                topicName,
+                isTableModel,
+                ioTConsensus,
+                commitManager,
+                existingQueueRegionIds.getOrDefault(topicName, Collections.emptySet())),
         attemptedTopicNames ->
             rollbackConsensusSubscriptionSetup(
-                consumerGroupId, attemptedTopicNames, commitManager, setupSnapshot));
+                consumerGroupId,
+                attemptedTopicNames,
+                commitManager,
+                setupSnapshot,
+                existingQueueRegionIds));
   }
 
   private static void rollbackConsensusSubscriptionSetup(
       final String consumerGroupId,
       final Set<String> attemptedTopicNames,
       final ConsensusSubscriptionCommitManager commitManager,
-      final ConsensusSubscriptionCommitManager.SetupSnapshot setupSnapshot) {
+      final ConsensusSubscriptionCommitManager.SetupSnapshot setupSnapshot,
+      final Map<String, Set<String>> existingQueueRegionIds) {
     RuntimeException rollbackFailure = null;
     for (final String topicName : attemptedTopicNames) {
       try {
         SubscriptionAgent.broker()
-            .unbindConsensusPrefetchingQueue(consumerGroupId, topicName, false);
+            .rollbackConsensusPrefetchingQueues(
+                consumerGroupId,
+                topicName,
+                existingQueueRegionIds.getOrDefault(topicName, Collections.emptySet()));
       } catch (final RuntimeException e) {
         if (Objects.isNull(rollbackFailure)) {
           rollbackFailure = e;
@@ -453,9 +470,14 @@ public class ConsensusSubscriptionSetupHandler {
       }
     }
     try {
-      commitManager.restoreSetupSnapshot(setupSnapshot, attemptedTopicNames);
+      commitManager.restoreSetupSnapshot(
+          setupSnapshot, attemptedTopicNames, existingQueueRegionIds);
       restoreStartupDetachedRetentions(
-          consumerGroupId, attemptedTopicNames, setupSnapshot, commitManager);
+          consumerGroupId,
+          attemptedTopicNames,
+          setupSnapshot,
+          commitManager,
+          existingQueueRegionIds);
     } catch (final RuntimeException e) {
       if (Objects.isNull(rollbackFailure)) {
         rollbackFailure = e;
@@ -472,7 +494,8 @@ public class ConsensusSubscriptionSetupHandler {
       final String consumerGroupId,
       final Set<String> attemptedTopicNames,
       final ConsensusSubscriptionCommitManager.SetupSnapshot setupSnapshot,
-      final ConsensusSubscriptionCommitManager commitManager) {
+      final ConsensusSubscriptionCommitManager commitManager,
+      final Map<String, Set<String>> existingQueueRegionIds) {
     final IConsensus dataRegionConsensus = DataRegionConsensusImpl.getInstance();
     if (!(dataRegionConsensus instanceof IoTConsensus)) {
       return;
@@ -480,6 +503,11 @@ public class ConsensusSubscriptionSetupHandler {
     final IoTConsensus ioTConsensus = (IoTConsensus) dataRegionConsensus;
     for (final String topicName : attemptedTopicNames) {
       for (final String regionId : setupSnapshot.getRegionIds(topicName)) {
+        if (existingQueueRegionIds
+            .getOrDefault(topicName, Collections.emptySet())
+            .contains(regionId)) {
+          continue;
+        }
         final ConsensusGroupId groupId = ConsensusGroupId.Factory.createFromString(regionId);
         final IoTConsensusServerImpl serverImpl = ioTConsensus.getImpl(groupId);
         if (Objects.nonNull(serverImpl)) {
@@ -554,12 +582,13 @@ public class ConsensusSubscriptionSetupHandler {
    * DATABASE_KEY} filter. Additionally, the {@link #onNewRegionCreated} callback ensures that
    * regions created after this method runs are also automatically bound.
    */
-  private static void setupConsensusQueueForTopic(
+  static void setupConsensusQueueForTopic(
       final String consumerGroupId,
       final String topicName,
       final boolean isTableModel,
       final IoTConsensus ioTConsensus,
-      final ConsensusSubscriptionCommitManager commitManager) {
+      final ConsensusSubscriptionCommitManager commitManager,
+      final Set<String> existingRegionIds) {
     final int myNodeId = IOTDB_CONFIG.getDataNodeId();
 
     // Get topic config for building the converter
@@ -596,6 +625,12 @@ public class ConsensusSubscriptionSetupHandler {
 
     for (final ConsensusGroupId groupId : allGroupIds) {
       if (!(groupId instanceof DataRegionId)) {
+        continue;
+      }
+      if (existingRegionIds.contains(groupId.toString())) {
+        // In particular, a queue created by onNewRegionCreated must keep its initialization from
+        // the beginning of the region instead of being reinitialized from a local tail proposal.
+        bound = true;
         continue;
       }
 

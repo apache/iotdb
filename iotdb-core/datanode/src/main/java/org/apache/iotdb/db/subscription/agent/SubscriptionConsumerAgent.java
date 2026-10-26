@@ -146,8 +146,6 @@ public class SubscriptionConsumerAgent {
       return;
     }
 
-    ensureConsumerGroupBrokerInternal(metaFromCoordinator);
-
     // remove prefetching queues for topics unsubscribed by the consumer group
     final Set<String> topicsUnsubByGroup =
         ConsumerGroupMeta.getTopicsUnsubByGroup(metaInAgent, metaFromCoordinator);
@@ -173,12 +171,7 @@ public class SubscriptionConsumerAgent {
         newlySubscribedTopics);
 
     applyTopicDiff(
-        () -> {
-          if (!newlySubscribedTopics.isEmpty()) {
-            ConsensusSubscriptionSetupHandler.handleNewSubscriptions(
-                consumerGroupId, newlySubscribedTopics);
-          }
-        },
+        () -> ensureConsumerGroupBrokerInternal(metaFromCoordinator),
         () -> {
           for (final String topicName : pipeTopicsUnsubByGroup) {
             SubscriptionAgent.broker().removePrefetchingQueue(consumerGroupId, topicName);

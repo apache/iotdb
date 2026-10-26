@@ -751,6 +751,41 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
     closeAndRemoveConsensusPrefetchingQueues(topicName, true, retainProgressAfterUnsubscribe);
   }
 
+  public Set<String> getQueueRegionIds(final String topicName) {
+    synchronized (queueLifecycleLock) {
+      return topicNameToConsensusPrefetchingQueues
+          .getOrDefault(topicName, Collections.emptyList())
+          .stream()
+          .filter(queue -> !queue.isClosed())
+          .map(queue -> queue.getConsensusGroupId().toString())
+          .collect(Collectors.toSet());
+    }
+  }
+
+  public void rollbackConsensusPrefetchingQueues(
+      final String topicName, final Set<String> existingRegionIds) {
+    final List<ConsensusPrefetchingQueue> queuesToClose = new ArrayList<>();
+    synchronized (queueLifecycleLock) {
+      final List<ConsensusPrefetchingQueue> queues =
+          topicNameToConsensusPrefetchingQueues.get(topicName);
+      if (Objects.isNull(queues)) {
+        return;
+      }
+      for (final ConsensusPrefetchingQueue queue : queues) {
+        if (!existingRegionIds.contains(queue.getConsensusGroupId().toString())) {
+          queuesToClose.add(queue);
+        }
+      }
+      queues.removeAll(queuesToClose);
+      if (queues.isEmpty()) {
+        topicNameToConsensusPrefetchingQueues.remove(topicName, queues);
+        topicConsumerLastPollMs.remove(topicName);
+        topicOwnershipSnapshots.remove(topicName);
+      }
+    }
+    queuesToClose.forEach(queue -> queue.closeAsync(false, false));
+  }
+
   public void wakeUpPrefetchingQueues(final String topicName, final boolean isTableModel) {
     final List<ConsensusPrefetchingQueue> queues =
         topicNameToConsensusPrefetchingQueues.get(topicName);
