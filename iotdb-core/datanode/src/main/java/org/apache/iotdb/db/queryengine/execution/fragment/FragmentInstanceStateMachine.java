@@ -156,14 +156,40 @@ public class FragmentInstanceStateMachine {
         doneState);
 
     List<StateChangeListener<FragmentInstanceState>> listeners;
+    RuntimeException stateChangeFailure = null;
+    Error stateChangeError = null;
     synchronized (finalStateChangeListeners) {
-      if (!instanceState.setIf(doneState, currentState -> !currentState.isDone())) {
+      boolean stateChanged;
+      try {
+        stateChanged = instanceState.setIf(doneState, currentState -> !currentState.isDone());
+      } catch (RuntimeException e) {
+        // StateMachine updates its state before submitting asynchronous notifications. Preserve
+        // the final-state callback guarantee if notification submission is rejected afterwards.
+        if (!instanceState.get().isDone()) {
+          throw e;
+        }
+        stateChanged = true;
+        stateChangeFailure = e;
+      } catch (Error e) {
+        if (!instanceState.get().isDone()) {
+          throw e;
+        }
+        stateChanged = true;
+        stateChangeError = e;
+      }
+      if (!stateChanged) {
         return;
       }
       listeners = ImmutableList.copyOf(finalStateChangeListeners);
       finalStateChangeListeners.clear();
     }
     listeners.forEach(listener -> fireFinalStateChangeListener(doneState, listener));
+    if (stateChangeFailure != null) {
+      throw stateChangeFailure;
+    }
+    if (stateChangeError != null) {
+      throw stateChangeError;
+    }
   }
 
   /**

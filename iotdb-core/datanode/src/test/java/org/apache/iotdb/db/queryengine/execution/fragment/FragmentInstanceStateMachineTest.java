@@ -30,6 +30,7 @@ import org.mockito.Mockito;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -147,5 +148,29 @@ public class FragmentInstanceStateMachineTest {
     AtomicReference<FragmentInstanceState> lateNotifiedState = new AtomicReference<>();
     stateMachine.addFinalStateChangeListener(lateNotifiedState::set);
     assertEquals(FragmentInstanceState.FAILED, lateNotifiedState.get());
+  }
+
+  @Test
+  public void testFinalStateChangeListenerIsCalledWhenNotificationIsRejected() {
+    Executor rejectingNotificationExecutor =
+        command -> {
+          throw new RejectedExecutionException();
+        };
+    FragmentInstanceId instanceId =
+        new FragmentInstanceId(new PlanFragmentId(MOCK_QUERY_ID, 0), "0");
+    FragmentInstanceStateMachine stateMachine =
+        new FragmentInstanceStateMachine(instanceId, rejectingNotificationExecutor);
+    AtomicInteger invocationCount = new AtomicInteger();
+    stateMachine.addFinalStateChangeListener(state -> invocationCount.incrementAndGet());
+
+    try {
+      stateMachine.failed(new RuntimeException("Unknown"));
+      fail("Expected notification rejection");
+    } catch (RejectedExecutionException e) {
+      // Preserve the existing state-transition failure while guaranteeing final callbacks run.
+    }
+
+    assertEquals(FragmentInstanceState.FAILED, stateMachine.getState());
+    assertEquals(1, invocationCount.get());
   }
 }
