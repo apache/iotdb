@@ -130,7 +130,7 @@ public class WALFormatExtensionTest {
       assertTrue(
           result.getClass().getMethod("getFailures").invoke(result).toString(),
           (boolean) result.getClass().getMethod("wasSuccessful").invoke(result));
-      assertEquals(13, result.getClass().getMethod("getRunCount").invoke(result));
+      assertEquals(16, result.getClass().getMethod("getRunCount").invoke(result));
     } finally {
       Thread.currentThread().setContextClassLoader(previous);
     }
@@ -304,6 +304,68 @@ public class WALFormatExtensionTest {
             WALFormatException.isFatal(assertThrows(WALRecoverException.class, recovery::recover)));
         assertArrayEquals(original, Files.readAllBytes(wal.toPath()));
         verify(provider).onRecoveryFailure(any());
+      } finally {
+        recovery.clear();
+        CommonDescriptor.getInstance().getConfig().setWalDirs(previous);
+      }
+    }
+
+    @Test
+    public void testOrdinaryFailureDoesNotHideLaterFatalFailure() throws Exception {
+      assertMultipleNodeFailures(false, true);
+    }
+
+    @Test
+    public void testFatalFailureRetainsLaterOrdinaryFailure() throws Exception {
+      assertMultipleNodeFailures(true, true);
+    }
+
+    @Test
+    public void testOrdinaryNodeFailuresKeepExistingRecoveryPolicy() throws Exception {
+      assertMultipleNodeFailures(false, false);
+    }
+
+    private void assertMultipleNodeFailures(boolean fatalFirst, boolean hasFatal) throws Exception {
+      File firstRoot = folder.newFolder("first-wal");
+      File secondRoot = folder.newFolder("second-wal");
+      File[] roots = {firstRoot, secondRoot};
+      IOException ordinary = new IOException("ordinary recovery failure");
+      IOException other = hasFatal ? WALFormatException.unsupported() : new IOException("other");
+      IOException[] failures =
+          fatalFirst ? new IOException[] {other, ordinary} : new IOException[] {ordinary, other};
+      List<File> files = new ArrayList<>();
+      for (int i = 0; i < roots.length; i++) {
+        File node = new File(roots[i], "node");
+        assertTrue(node.mkdir());
+        File wal = new File(node, "_0-0-1.wal");
+        Files.write(wal.toPath(), StubProvider.MAGIC);
+        files.add(wal);
+        doThrow(failures[i]).when(provider).validateForRecovery(wal);
+      }
+      String[] previous = CommonDescriptor.getInstance().getConfig().getWalDirs();
+      WALRecoverManager recovery = WALRecoverManager.getInstance();
+      try {
+        recovery.clear();
+        CommonDescriptor.getInstance()
+            .getConfig()
+            .setWalDirs(new String[] {firstRoot.getAbsolutePath(), secondRoot.getAbsolutePath()});
+        recovery.setAllDataRegionScannedLatch(new ExceptionalCountDownLatch(0));
+        if (hasFatal) {
+          WALRecoverException thrown = assertThrows(WALRecoverException.class, recovery::recover);
+          assertTrue(WALFormatException.isFatal(thrown));
+          Throwable primary = thrown.getCause();
+          assertSame(other, primary.getCause().getCause());
+          assertEquals(1, primary.getSuppressed().length);
+          assertSame(ordinary, primary.getSuppressed()[0].getCause().getCause());
+          verify(provider).onRecoveryFailure(primary);
+        } else {
+          recovery.recover();
+          verify(provider, never()).onRecoveryFailure(any());
+        }
+        for (File wal : files) {
+          verify(provider).validateForRecovery(wal);
+          assertArrayEquals(StubProvider.MAGIC, Files.readAllBytes(wal.toPath()));
+        }
       } finally {
         recovery.clear();
         CommonDescriptor.getInstance().getConfig().setWalDirs(previous);

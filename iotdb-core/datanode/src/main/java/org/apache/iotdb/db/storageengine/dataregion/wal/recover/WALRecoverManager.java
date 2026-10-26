@@ -118,8 +118,23 @@ public class WALRecoverManager {
 
         try {
           allNodesRecoveredLatch.await();
+          ExecutionException failure = null;
           for (Future<?> recovery : recoveries) {
-            recovery.get();
+            try {
+              recovery.get();
+            } catch (ExecutionException e) {
+              if (failure == null) {
+                failure = e;
+              } else if (WALFormatException.isFatal(e) && !WALFormatException.isFatal(failure)) {
+                e.addSuppressed(failure);
+                failure = e;
+              } else {
+                failure.addSuppressed(e);
+              }
+            }
+          }
+          if (failure != null) {
+            throw failure;
           }
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
