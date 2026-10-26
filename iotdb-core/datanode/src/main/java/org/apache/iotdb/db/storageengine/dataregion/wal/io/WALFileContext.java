@@ -45,7 +45,8 @@ public interface WALFileContext extends AutoCloseable {
   void seal(FileChannel channel, WALMetaData metadata, long index) throws IOException;
 
   /**
-   * Releases a returned segment's contents, including any sensitive scratch state; accepts null.
+   * Releases a returned segment, including any sensitive scratch state; accepts null. The provider
+   * owns its allocation and may recycle it. The caller must not separately free its native memory.
    */
   void release(ByteBuffer data);
 

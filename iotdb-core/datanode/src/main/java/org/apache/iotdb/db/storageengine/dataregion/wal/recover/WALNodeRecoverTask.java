@@ -121,11 +121,11 @@ public class WALNodeRecoverTask implements Runnable {
       recoverInfoFromCheckpoints();
       recoverTsFiles();
     } catch (Exception e) {
-      if (WALFormatException.isFatal(e)) {
-        throw new IllegalStateException(e);
-      }
       for (UnsealedTsFileRecoverPerformer recoverPerformer : memTableId2RecoverPerformer.values()) {
         recoverPerformer.getRecoverListener().fail(e);
+      }
+      if (WALFormatException.isFatal(e)) {
+        throw new IllegalStateException(e);
       }
     } finally {
       for (UnsealedTsFileRecoverPerformer recoverPerformer : memTableId2RecoverPerformer.values()) {
@@ -272,6 +272,9 @@ public class WALNodeRecoverTask implements Runnable {
     try {
       return walRepairWriter.repair(metaData);
     } catch (IOException e) {
+      if (WALFormatException.isFatal(e)) {
+        throw new IllegalStateException(e);
+      }
       logger.error(StorageEngineMessages.FAIL_TO_RECOVER_WAL_METADATA, walFile, e);
       DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       return false;
@@ -395,6 +398,9 @@ public class WALNodeRecoverTask implements Runnable {
         recoverPerformer.getRecoverListener().succeed();
       } catch (Exception e) {
         recoverPerformer.getRecoverListener().fail(e);
+        if (WALFormatException.isFatal(e)) {
+          throw new IllegalStateException(e);
+        }
       }
     }
   }

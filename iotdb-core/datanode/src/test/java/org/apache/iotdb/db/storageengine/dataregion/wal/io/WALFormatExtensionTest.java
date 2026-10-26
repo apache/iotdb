@@ -20,11 +20,27 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.commons.concurrent.ExceptionalCountDownLatch;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
+import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointType;
+import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALRecoverException;
+import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALNodeRecoverTask;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRepairWriter;
+import org.apache.iotdb.db.storageengine.dataregion.wal.recover.file.UnsealedTsFileRecoverPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
+import org.apache.iotdb.db.utils.MmapUtil;
 
+import io.netty.util.internal.PlatformDependent;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -36,15 +52,23 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -57,7 +81,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -104,7 +130,7 @@ public class WALFormatExtensionTest {
       assertTrue(
           result.getClass().getMethod("getFailures").invoke(result).toString(),
           (boolean) result.getClass().getMethod("wasSuccessful").invoke(result));
-      assertEquals(7, result.getClass().getMethod("getRunCount").invoke(result));
+      assertEquals(13, result.getClass().getMethod("getRunCount").invoke(result));
     } finally {
       Thread.currentThread().setContextClassLoader(previous);
     }
@@ -290,6 +316,212 @@ public class WALFormatExtensionTest {
       bytes.put(StubProvider.MAGIC).put(new byte[] {1, 2, 3, 4});
       Files.write(file.toPath(), bytes.array());
       return file;
+    }
+
+    @Test
+    public void testProviderOwnsPooledDirectBufferAcrossPauseSeekAndClose() throws Exception {
+      File file = extensionFile();
+      ByteBuffer pooled = ByteBuffer.allocateDirect(4);
+      long address = PlatformDependent.directBufferAddress(pooled);
+      assertTrue(address != 0);
+      when(context.readSegment(any(), anyLong(), anyLong()))
+          .thenAnswer(
+              call -> {
+                FileChannel channel = call.getArgument(0);
+                pooled.clear();
+                while (pooled.hasRemaining()) {
+                  if (channel.read(pooled) < 0) {
+                    throw new EOFException();
+                  }
+                }
+                return pooled.flip();
+              });
+      try {
+        try (WALInputStream reader = new WALInputStream(file)) {
+          assertEquals(1, reader.read());
+          reader.releaseReadBuffers();
+          assertEquals(address, PlatformDependent.directBufferAddress(pooled));
+          assertEquals(2, reader.read());
+          reader.skipToGivenLogicalPosition(3);
+          assertEquals(address, PlatformDependent.directBufferAddress(pooled));
+          assertEquals(4, reader.read());
+        }
+        assertEquals(address, PlatformDependent.directBufferAddress(pooled));
+        verify(context, times(3)).release(pooled);
+      } finally {
+        if (PlatformDependent.directBufferAddress(pooled) != 0) {
+          MmapUtil.clean(pooled);
+        }
+      }
+    }
+
+    @Test
+    public void testFatalRepairWriteFailureKeepsOriginalFile() throws Exception {
+      assertFatalRepairFailure(false);
+    }
+
+    @Test
+    public void testFatalRepairSealFailureKeepsOriginalFile() throws Exception {
+      assertFatalRepairFailure(true);
+    }
+
+    private void assertFatalRepairFailure(boolean seal) throws Exception {
+      File file = extensionFile();
+      byte[] original = Files.readAllBytes(file.toPath());
+      when(provider.readMetadata(any(), any())).thenThrow(new IOException("missing footer"));
+      when(context.writeData(any(), anyLong(), any(), anyInt(), any()))
+          .thenAnswer(
+              call -> {
+                FileChannel channel = call.getArgument(0);
+                ByteBuffer data = call.getArgument(4);
+                int size = data.remaining();
+                while (data.hasRemaining()) {
+                  channel.write(data);
+                }
+                return size;
+              });
+      when(context.readSegment(any(), anyLong(), anyLong()))
+          .thenReturn(ByteBuffer.wrap(new byte[] {1, 2, 3, 4}));
+      WALFormatException failure = WALFormatException.unsupported();
+      if (seal) {
+        doThrow(failure).when(context).seal(any(), any(), anyLong());
+      } else {
+        doThrow(failure).when(context).writeData(any(), anyLong(), any(), anyInt(), any());
+      }
+      WALMetaData metadata = new WALMetaData();
+      metadata.add(4, 0, 1);
+      Method repair =
+          WALNodeRecoverTask.class.getDeclaredMethod(
+              "repairWalFileIfBroken", File.class, WALMetaData.class);
+      repair.setAccessible(true);
+      InvocationTargetException thrown =
+          assertThrows(InvocationTargetException.class, () -> repair.invoke(null, file, metadata));
+      assertTrue(WALFormatException.isFatal(thrown.getCause()));
+      assertArrayEquals(original, Files.readAllBytes(file.toPath()));
+      assertFalse(new File(file + ".broken").exists());
+      assertEquals(1, folder.getRoot().listFiles().length);
+    }
+
+    @Test(timeout = 10000)
+    public void testFatalReplayFailureCompletesAllTaskListeners() throws Exception {
+      assertTaskListenersComplete(false);
+    }
+
+    @Test(timeout = 10000)
+    public void testFatalFinalizationFailureCompletesAllTaskListeners() throws Exception {
+      assertTaskListenersComplete(true);
+    }
+
+    private void assertTaskListenersComplete(boolean failOnEnd) throws Exception {
+      WALRecoverManager recovery = WALRecoverManager.getInstance();
+      recovery.clear();
+      File node = folder.newFolder("node");
+      List<UnsealedTsFileRecoverPerformer> performers = new ArrayList<>();
+      List<MemTableInfo> tables = new ArrayList<>();
+      WALFormatException failure = WALFormatException.unsupported();
+      try {
+        for (int i = 1; i <= 2; i++) {
+          File tsFile = new File(folder.getRoot(), "sequence/root.sg/0/0/" + i + "-1-0-0.tsfile");
+          UnsealedTsFileRecoverPerformer performer = mock(UnsealedTsFileRecoverPerformer.class);
+          WALRecoverListener listener = new WALRecoverListener(tsFile.getAbsolutePath());
+          when(performer.getTsFileResource()).thenReturn(new TsFileResource(tsFile));
+          when(performer.getTsFileAbsolutePath()).thenReturn(tsFile.getAbsolutePath());
+          when(performer.getRecoverListener()).thenReturn(listener);
+          recovery.addRecoverPerformer(performer);
+          performers.add(performer);
+          IMemTable table = mock(IMemTable.class);
+          when(table.getMemTableId()).thenReturn((long) i);
+          when(table.getDataRegionId()).thenReturn("0");
+          tables.add(new MemTableInfo(table, tsFile.getAbsolutePath(), 0));
+        }
+        Checkpoint checkpoint = new Checkpoint(CheckpointType.GLOBAL_MEMORY_TABLE_INFO, tables);
+        ByteBuffer bytes = ByteBuffer.allocate(Long.BYTES + checkpoint.serializedSize());
+        bytes.putLong(2);
+        checkpoint.serialize(bytes);
+        File checkpointFile = new File(node, "_0.checkpoint");
+        ByteBuffer fileBytes = ByteBuffer.allocate(StubProvider.MAGIC.length + bytes.position());
+        fileBytes.put(StubProvider.MAGIC).put(bytes.array());
+        Files.write(checkpointFile.toPath(), fileBytes.array());
+        when(context.readSegment(any(), anyLong(), anyLong()))
+            .thenAnswer(
+                call -> {
+                  FileChannel channel = call.getArgument(0);
+                  ByteBuffer data = ByteBuffer.allocate(bytes.capacity());
+                  while (data.hasRemaining()) {
+                    if (channel.read(data) < 0) {
+                      throw new EOFException();
+                    }
+                  }
+                  return data.flip();
+                });
+        if (failOnEnd) {
+          doThrow(new WALRecoverException(failure.getMessage(), failure))
+              .when(performers.get(0))
+              .endRecovery();
+        } else {
+          doThrow(failure).when(performers.get(0)).startRecovery();
+        }
+        CountDownLatch latch = new CountDownLatch(1);
+        assertTrue(
+            WALFormatException.isFatal(
+                assertThrows(
+                    IllegalStateException.class, () -> new WALNodeRecoverTask(node, latch).run())));
+        assertEquals(0, latch.getCount());
+        for (UnsealedTsFileRecoverPerformer performer : performers) {
+          assertEquals(
+              WALRecoverListener.Status.FAILURE, performer.getRecoverListener().waitForResult());
+          verify(performer).close();
+        }
+        assertTrue(checkpointFile.exists());
+      } finally {
+        recovery.clear();
+      }
+    }
+
+    @Test
+    public void testFatalWalFormatPreventsStorageEngineReadiness() throws Exception {
+      File walRoot = folder.newFolder("startup-wal");
+      File node = new File(walRoot, "node");
+      assertTrue(node.mkdir());
+      Files.writeString(new File(node, "_0-0-1.wal").toPath(), "V99-WAL");
+      String[] previousDirs = CommonDescriptor.getInstance().getConfig().getWalDirs();
+      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+      String previousConsensus = config.getDataRegionConsensusProtocolClass();
+      WALRecoverManager recovery = WALRecoverManager.getInstance();
+      StorageEngine engine = mock(StorageEngine.class, CALLS_REAL_METHODS);
+      setField(engine, "fsFactory", FSFactoryProducer.getFSFactory());
+      setField(engine, "isReadyForReadAndWrite", new AtomicBoolean(true));
+      setField(engine, "isReadyForNonReadWriteFunctions", new AtomicBoolean(true));
+      doReturn(Collections.emptyMap()).when(engine).getLocalDataRegionInfo();
+      try {
+        recovery.clear();
+        CommonDescriptor.getInstance().getConfig().setWalDirs(new String[] {walRoot.getPath()});
+        config.setDataRegionConsensusProtocolClass(ConsensusFactory.SIMPLE_CONSENSUS);
+        Method recover = StorageEngine.class.getDeclaredMethod("asyncRecoverDataRegion");
+        recover.setAccessible(true);
+        InvocationTargetException thrown =
+            assertThrows(InvocationTargetException.class, () -> recover.invoke(engine));
+        assertTrue(thrown.getCause() instanceof StartupException);
+        assertTrue(WALFormatException.isFatal(thrown.getCause()));
+        assertFalse(engine.isReadyForReadAndWrite());
+        assertFalse(engine.isReadyForNonReadWriteFunctions());
+      } finally {
+        Field pool = StorageEngine.class.getDeclaredField("cachedThreadPool");
+        pool.setAccessible(true);
+        ExecutorService executor = (ExecutorService) pool.get(engine);
+        if (executor != null) {
+          executor.shutdownNow();
+        }
+        recovery.clear();
+        CommonDescriptor.getInstance().getConfig().setWalDirs(previousDirs);
+        config.setDataRegionConsensusProtocolClass(previousConsensus);
+      }
+    }
+
+    private static void setField(Object target, String name, Object value) throws Exception {
+      Field field = StorageEngine.class.getDeclaredField(name);
+      field.setAccessible(true);
+      field.set(target, value);
     }
   }
 

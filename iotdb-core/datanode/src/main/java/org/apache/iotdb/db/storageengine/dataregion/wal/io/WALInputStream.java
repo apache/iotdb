@@ -263,7 +263,6 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       suspendedSegmentRemaining = dataBuffer.remaining();
     }
     releaseSegment();
-    MmapUtil.clean(dataBuffer);
     MmapUtil.clean(compressedBuffer);
     dataBuffer = null;
     compressedBuffer = null;
@@ -316,7 +315,6 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
   private void loadNextExtendedSegment() throws IOException {
     releaseSegment();
-    dataBuffer = null;
     currentSegmentOffset = channel.position();
     currentSegmentBlockIndex = blockIndex;
     dataBuffer = fileContext.readSegment(channel, endOffset, blockIndex);
@@ -327,8 +325,15 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   }
 
   private void releaseSegment() {
+    ByteBuffer segment = dataBuffer;
+    dataBuffer = null;
+    if (segment == null) {
+      return;
+    }
     if (fileContext != null) {
-      fileContext.release(dataBuffer);
+      fileContext.release(segment);
+    } else {
+      MmapUtil.clean(segment);
     }
   }
 
