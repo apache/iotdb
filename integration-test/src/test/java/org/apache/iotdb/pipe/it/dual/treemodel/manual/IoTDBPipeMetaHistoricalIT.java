@@ -147,8 +147,8 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
           "list user",
-          ColumnHeaderConstant.USER + ",",
-          Collections.singleton("root,"));
+          ColumnHeaderConstant.USER_ID + "," + ColumnHeaderConstant.USER + ",",
+          Collections.singleton("0,root,"));
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv, "list role", ColumnHeaderConstant.ROLE + ",", Collections.emptySet());
 
@@ -259,7 +259,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
           "Database,SchemaReplicationFactor,DataReplicationFactor,TimePartitionOrigin,TimePartitionInterval,",
           Collections.emptySet());
       TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "select * from root.ln.**", "Time", Collections.emptySet());
+          receiverEnv, "select * from root.ln.**", "Time,", Collections.emptySet());
 
       TestUtils.executeNonQuery(senderEnv, "CREATE ROLE test", null);
 

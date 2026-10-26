@@ -115,10 +115,11 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
 
     // Construct CreatePipeProcedureV2s (for non-consensus topics)
     for (final String topicName : subscribeReq.getTopicNames()) {
-      final TopicMeta topicMeta = subscriptionInfo.get().deepCopyTopicMeta(topicName);
+      final TopicMeta topicMeta =
+          subscriptionInfo.get().deepCopyTopicMeta(topicName, subscribeReq.isTableModel);
 
       final String topicMode = topicMeta.getConfig().getMode();
-      final boolean isConsensusBasedTopic = topicMeta.getConfig().isConsensusMode();
+      final boolean isConsensusBasedTopic = topicMeta.getConfig().isIncrementalMode();
 
       if (isConsensusBasedTopic) {
         // skip pipe creation

@@ -38,9 +38,18 @@ public class ActiveLoadPendingQueue {
       final String pendingDir,
       final boolean isGeneratedByPipe,
       final boolean isTableModel) {
+    return enqueue(file, pendingDir, isGeneratedByPipe, isTableModel, null);
+  }
+
+  public synchronized boolean enqueue(
+      final String file,
+      final String pendingDir,
+      final boolean isGeneratedByPipe,
+      final boolean isTableModel,
+      final String conversionTaskId) {
     if (!loadingFileSet.contains(file) && pendingFileSet.add(file)) {
       pendingFileQueue.offer(
-          new ActiveLoadEntry(file, pendingDir, isGeneratedByPipe, isTableModel));
+          new ActiveLoadEntry(file, pendingDir, isGeneratedByPipe, isTableModel, conversionTaskId));
 
       ActiveLoadingFilesNumberMetricsSet.getInstance().increaseQueuingFileCounter(1);
       return true;
@@ -97,13 +106,24 @@ public class ActiveLoadPendingQueue {
     private final String pendingDir;
     private final boolean isGeneratedByPipe;
     private final boolean isTableModel;
+    private final String conversionTaskId;
 
     public ActiveLoadEntry(
         String file, String pendingDir, boolean isGeneratedByPipe, boolean isTableModel) {
+      this(file, pendingDir, isGeneratedByPipe, isTableModel, null);
+    }
+
+    public ActiveLoadEntry(
+        String file,
+        String pendingDir,
+        boolean isGeneratedByPipe,
+        boolean isTableModel,
+        String conversionTaskId) {
       this.file = file;
       this.pendingDir = pendingDir;
       this.isGeneratedByPipe = isGeneratedByPipe;
       this.isTableModel = isTableModel;
+      this.conversionTaskId = conversionTaskId;
     }
 
     public String getFile() {
@@ -120,6 +140,10 @@ public class ActiveLoadPendingQueue {
 
     public boolean isTableModel() {
       return isTableModel;
+    }
+
+    public String getConversionTaskId() {
+      return conversionTaskId;
     }
   }
 }

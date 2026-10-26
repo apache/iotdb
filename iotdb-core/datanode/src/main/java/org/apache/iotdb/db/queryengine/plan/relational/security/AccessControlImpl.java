@@ -40,6 +40,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -569,10 +570,29 @@ public class AccessControlImpl implements AccessControl {
   @Override
   public void checkMissingPrivileges(
       String username, Collection<PrivilegeType> privilegeTypes, IAuditEntity auditEntity) {
+    List<PrivilegeType> relatedPrivileges = new ArrayList<>(privilegeTypes);
     if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
+      recordMissingPrivilegesAuditLog(auditEntity, relatedPrivileges, true);
       return;
     }
-    authChecker.checkGlobalPrivileges(username, privilegeTypes, auditEntity);
+    try {
+      authChecker.checkGlobalPrivileges(username, privilegeTypes, auditEntity);
+      recordMissingPrivilegesAuditLog(auditEntity, relatedPrivileges, true);
+    } catch (AccessDeniedException e) {
+      recordMissingPrivilegesAuditLog(auditEntity, relatedPrivileges, false);
+      throw e;
+    }
+  }
+
+  private static void recordMissingPrivilegesAuditLog(
+      IAuditEntity auditEntity, List<PrivilegeType> privilegeTypes, boolean result) {
+    DNAuditLogger.getInstance()
+        .recordObjectAuthenticationAuditLog(
+            auditEntity
+                .setResult(result)
+                .setAuditLogOperation(AuditLogOperation.CONTROL)
+                .setPrivilegeTypes(privilegeTypes),
+            () -> "");
   }
 
   @Override

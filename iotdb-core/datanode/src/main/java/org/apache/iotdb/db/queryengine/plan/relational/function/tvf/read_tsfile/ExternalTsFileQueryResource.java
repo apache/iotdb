@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -101,6 +102,7 @@ public class ExternalTsFileQueryResource {
   // deleting temporary run files while drivers are still reading them.
   private int fragmentInstanceUsageCount;
   private boolean closed;
+  private boolean queryExecutionWantsToClose;
 
   public ExternalTsFileQueryResource(
       MPPQueryContext queryContext,
@@ -178,6 +180,7 @@ public class ExternalTsFileQueryResource {
               ? new SequentialDeviceTaskRunCursorManager(partition)
               : new PriorityDeviceTaskRunCursorManager(partition));
     } catch (IOException e) {
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       throw new RuntimeException(
           DataNodeQueryMessages.FAILED_TO_CREATE_EXTERNAL_TSFILE_DEVICE_TASK_RUN_READER, e);
     }
@@ -233,12 +236,13 @@ public class ExternalTsFileQueryResource {
       throw new IllegalStateException(
           DataNodeQueryMessages.EXTERNAL_TSFILE_FRAGMENT_INSTANCE_USAGE_COUNT_CANNOT_BE_NEGATIVE);
     }
-    if (fragmentInstanceUsageCount == 0) {
+    if (fragmentInstanceUsageCount == 0 && queryExecutionWantsToClose) {
       close();
     }
   }
 
   public synchronized void closeByQueryExecution() {
+    queryExecutionWantsToClose = true;
     if (fragmentInstanceUsageCount == 0) {
       close();
     }
@@ -327,6 +331,7 @@ public class ExternalTsFileQueryResource {
             writeDeviceTaskRun(
                 queryTempRoot.resolve(planNodeId.getId()), runFiles.size(), pendingDeviceTasks));
       } catch (IOException e) {
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         throw new RuntimeException(
             DataNodeQueryMessages.FAILED_TO_FLUSH_EXTERNAL_TSFILE_DEVICE_TASK_PARTITION, e);
       }

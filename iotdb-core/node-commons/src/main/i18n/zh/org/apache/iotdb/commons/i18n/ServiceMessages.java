@@ -117,6 +117,8 @@ public final class ServiceMessages {
       "指标服务尝试重启。";
   public static final String METRIC_SERVICE_REBIND_METRIC_SET =
       "指标服务重新绑定指标集：{}";
+  public static final String LOG_FAILED_TO_REBIND_METRIC_SET_ARG_2C440B71 =
+      "重新绑定指标集 {} 失败";
   public static final String METRIC_SERVICE_RESTART_SUCCESSFULLY =
       "指标服务重启成功。";
   public static final String METRIC_SERVICE_TRY_TO_STOP = "指标服务尝试停止。";
@@ -135,6 +137,10 @@ public final class ServiceMessages {
 
   // ---- CpuUsageMetrics ----
   public static final String CPU_USAGE_UPDATE_TIME = "CPU 使用率更新耗时 {} 纳秒";
+
+  // ---- ProcessMetrics ----
+  public static final String FAILED_GET_PROCESS_RESIDENT_MEMORY =
+      "获取进程 {} 的常驻内存失败";
 
   private ServiceMessages() {}
 

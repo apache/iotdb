@@ -92,7 +92,7 @@ public class ExportDataTree extends AbstractExportData {
   }
 
   @Override
-  public void exportBySql(String sql, int index) {
+  public boolean exportBySql(String sql, int index) {
     if (Constants.SQL_SUFFIXS.equalsIgnoreCase(exportType)
         || Constants.TSFILE_SUFFIXS.equalsIgnoreCase(exportType)) {
       legalCheck(sql);
@@ -109,29 +109,17 @@ public class ExportDataTree extends AbstractExportData {
           ioTPrinter.println("Export completely!cost: " + (end - start) + " ms.");
         }
       } else {
-        List<String> headers = new ArrayList<>();
-        List<String> names = sessionDataSet.getColumnNames();
-        List<String> types = sessionDataSet.getColumnTypes();
-        if (Boolean.TRUE.equals(needDataTypePrinted)) {
-          for (int i = 0; i < names.size(); i++) {
-            if (!"Time".equals(names.get(i)) && !"Device".equals(names.get(i))) {
-              headers.add(String.format("%s(%s)", names.get(i), types.get(i)));
-            } else {
-              headers.add(names.get(i));
-            }
-          }
-        } else {
-          headers.addAll(names);
-        }
         exportToCsvFile(sessionDataSet, path);
       }
       sessionDataSet.closeOperationHandle();
       ioTPrinter.println(Constants.EXPORT_COMPLETELY);
+      return true;
     } catch (StatementExecutionException
         | IoTDBConnectionException
         | IOException
         | WriteProcessException e) {
       ioTPrinter.println("Cannot dump result because: " + e.getMessage());
+      return false;
     }
   }
 
@@ -140,7 +128,7 @@ public class ExportDataTree extends AbstractExportData {
     processedRows = 0;
     lastPrintTime = 0;
 
-    List<String> measurementNames = sessionDataSet.getColumnNames();
+    List<String> measurementNames = new ArrayList<>(sessionDataSet.getColumnNames());
     if (CollectionUtils.isEmpty(measurementNames) || measurementNames.size() <= 1) {
       return;
     } else {
@@ -171,12 +159,7 @@ public class ExportDataTree extends AbstractExportData {
       }
       List<String> values = new ArrayList<>();
       for (int index = 2; index < totalColumns; index++) {
-        if ("TEXT".equalsIgnoreCase(columnTypeList.get(index))
-            || "STRING".equalsIgnoreCase(columnTypeList.get(index))) {
-          values.add(String.format("\"%s\"", iterator.getString(index + 1)));
-        } else {
-          values.add(iterator.getString(index + 1));
-        }
+        values.add(formatSqlValue(iterator.getString(index + 1), columnTypeList.get(index)));
       }
       long timestamp = iterator.getLong(1);
       writer.write(String.format(sqlPrefix, deviceName, timestamp, String.join(",", values)));
@@ -205,72 +188,66 @@ public class ExportDataTree extends AbstractExportData {
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     processedRows = 0;
     lastPrintTime = 0;
-
     List<String> headers = sessionDataSet.getColumnNames();
-    List<String> measurementNames = new ArrayList<>();
-    String deviceName = null;
-    if (CollectionUtils.isEmpty(headers) || headers.size() <= 1) {
-      return;
-    } else {
-      headers.remove("Time");
-      Path path = new Path(headers.get(0), true);
-      deviceName = path.getDeviceString();
-      for (String header : headers) {
-        path = new Path(header, true);
-        String meas = path.getMeasurement();
-        if (path.getDeviceString().equals(deviceName)) {
-          measurementNames.add(meas);
-        }
+    Map<String, List<Integer>> deviceColumnIndices = new LinkedHashMap<>();
+    Map<Integer, String> measurements = new HashMap<>();
+    for (int i = 1; i < headers.size(); i++) {
+      Path path = new Path(headers.get(i), true);
+      String device = path.getDeviceString();
+      if (device.startsWith(SYSTEM_DATABASE + ".") || device.startsWith(AUDIT_DATABASE + ".")) {
+        continue;
       }
+      deviceColumnIndices.computeIfAbsent(device, key -> new ArrayList<>()).add(i);
+      measurements.put(i, path.getMeasurement());
     }
-    if (deviceName.startsWith(SYSTEM_DATABASE + ".")
-        || deviceName.startsWith(AUDIT_DATABASE + ".")) {
-      return;
-    }
-    String sqlPrefix =
-        String.format(
-            "INSERT INTO %s(TIMESTAMP,%s) VALUES (%s);\n",
-            "%s", String.join(",", measurementNames), "%d,%s");
 
     SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
-    List<String> columnTypeList = iterator.getColumnTypeList();
-    int totalColumns = measurementNames.size();
+    List<String> columnTypes = iterator.getColumnTypeList();
     int fileIndex = 0;
     int currentLines = 0;
-    String filePathTemplate = filePath + "_%d" + ".sql";
     FileWriter writer = null;
-    while (iterator.next()) {
-      if (writer == null) {
-        writer = new FileWriter(String.format(filePathTemplate, fileIndex));
-      }
-      List<String> values = new ArrayList<>();
-      for (int index = 0; index < totalColumns; index++) {
-        if ("TEXT".equalsIgnoreCase(columnTypeList.get(index + 1))
-            || "STRING".equalsIgnoreCase(columnTypeList.get(index + 1))) {
-          values.add(String.format("\"%s\"", iterator.getString(index + 2)));
-        } else {
-          values.add(iterator.getString(index + 2));
+    try {
+      while (iterator.next()) {
+        for (Map.Entry<String, List<Integer>> entry : deviceColumnIndices.entrySet()) {
+          List<String> names = new ArrayList<>();
+          List<String> values = new ArrayList<>();
+          for (int index : entry.getValue()) {
+            if (!iterator.isNull(index + 1)) {
+              names.add(measurements.get(index));
+              values.add(formatSqlValue(iterator.getString(index + 1), columnTypes.get(index)));
+            }
+          }
+          // A timestamp present in another device must not create an empty record here.
+          if (values.isEmpty()) {
+            continue;
+          }
+          if (writer == null) {
+            writer = new FileWriter(filePath + "_" + fileIndex + ".sql");
+          }
+          writer.write(
+              String.format(
+                  "INSERT INTO %s(TIMESTAMP,%s) VALUES (%d,%s);\n",
+                  entry.getKey(),
+                  String.join(",", names),
+                  iterator.getLong(1),
+                  String.join(",", values)));
+          if (++currentLines >= linesPerFile) {
+            writer.close();
+            writer = null;
+            fileIndex++;
+            currentLines = 0;
+          }
+        }
+        processedRows++;
+        if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
+          ioTPrinter.printf(Constants.PROCESSED_PROGRESS, processedRows);
+          lastPrintTime = System.currentTimeMillis();
         }
       }
-      long timestamp = iterator.getLong(1);
-      writer.write(String.format(sqlPrefix, deviceName, timestamp, String.join(",", values)));
-      processedRows += 1;
-      currentLines += 1;
-      if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
-        ioTPrinter.printf(Constants.PROCESSED_PROGRESS, processedRows);
-        lastPrintTime = System.currentTimeMillis();
-      }
-      if (currentLines >= linesPerFile) {
-        writer.flush();
+    } finally {
+      if (writer != null) {
         writer.close();
-        fileIndex += 1;
-        writer = null;
-        currentLines = 0;
       }
-    }
-    if (writer != null) {
-      writer.flush();
-      writer.close();
     }
     ioTPrinter.print("\n");
   }
@@ -328,7 +305,7 @@ public class ExportDataTree extends AbstractExportData {
       throws IOException, IoTDBConnectionException, StatementExecutionException {
     processedRows = 0;
     lastPrintTime = 0;
-    List<String> headers = sessionDataSet.getColumnNames();
+    List<String> headers = getCsvHeaders(sessionDataSet, true);
     int fileIndex = 0;
     SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
     List<String> columnTypeList = iterator.getColumnTypeList();

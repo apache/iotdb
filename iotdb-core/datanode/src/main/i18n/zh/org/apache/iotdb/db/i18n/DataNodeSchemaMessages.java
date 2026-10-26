@@ -34,11 +34,17 @@ public final class DataNodeSchemaMessages {
   public static final String SCHEMA_REGION_ALREADY_DELETED = "SchemaRegion(id = {}) 已被删除，已跳过";
   public static final String FAILED_TO_GET_TABLE_FOR_TIMESERIES_COUNT =
       "计算时间序列数量时获取表 {}.{} 失败，可能是集群正在重启或表正在被删除。";
+  public static final String
+      LOG_METADATA_LEASE_IS_FENCED_SKIP_REPORTING_SCHEMA_USAGE_IN_THIS_HEARTBEAT_81D36975 =
+          "元数据租约已被隔离，本次心跳跳过上报 schema 使用量。";
   public static final String TREE_VIEW_TABLE_CANNOT_BE_WRITTEN_OR_DELETED =
       "表 %s.%s 是树模型视图，不能写入或删除";
   public static final String PEER_IS_SHUTTING_DOWN = "节点正在关闭中。";
   public static final String SCHEMA_REGION_DUPLICATED =
       "SchemaRegion [%s] 在 [%s] 和 [%s] 之间重复，前者已被恢复。";
+  public static final String
+      EXCEPTION_CANNOT_RECOVER_DUPLICATED_SCHEMAREGION_ARG_FOUND_IN_DATABASES_ARG_AND_ARG_D9F60E05 =
+          "无法恢复重复的 SchemaRegion [%s]，其同时存在于数据库 [%s] 和 [%s] 中。";
 
   // ======================== MemSchemaEngineStatistics 相关消息 ========================
 
@@ -158,7 +164,7 @@ public final class DataNodeSchemaMessages {
   public static final String ERROR_DURING_INIT_SCHEMA_REGION =
       "初始化 schemaRegion {} 过程中发生错误";
   public static final String FAILED_TO_RECOVER_TAG_INDEX =
-      "恢复 {} 的 tagIndex 失败，schemaRegion 为 {}。";
+      "恢复测点 [{}] 的 tag 索引失败，数据库为 [{}]，SchemaRegion 为 [{}]，tag 偏移量为 [{}]。";
   public static final String FAILED_TO_READ_TAG_ATTRIBUTE =
       "读取 tag 和 attribute 信息失败：{}";
 
@@ -200,19 +206,19 @@ public final class DataNodeSchemaMessages {
   public static final String DATABASE_NAME_ILLEGAL_CHARS =
       "数据库名称只能包含中英文字符、数字、反引号和下划线。%s";
   public static final String SDT_COMPRESSION_DEVIATION_REQUIRED =
-      "SDT 压缩偏差为必填项";
+      "SDT 压缩必须设置 compdev 属性";
   public static final String SDT_COMPRESSION_DEVIATION_NEGATIVE =
-      "SDT 压缩偏差不能为负数";
+      "SDT 属性 compdev 必须为非负数，实际值为 [%s]";
   public static final String SDT_COMPRESSION_DEVIATION_FORMAT_ERROR =
-      "SDT 压缩偏差格式错误";
+      "SDT 属性 compdev 必须为数字，实际值为 [%s]";
   public static final String SDT_COMPRESSION_MAX_GREATER_THAN_MIN =
-      "SDT 压缩最大时间必须大于最小时间";
+      "SDT 属性 compmaxtime [%s] 必须大于 compmintime [%s]";
   public static final String SDT_COMPRESSION_TIME_NEGATIVE =
-      "SDT 压缩 %s 时间不能为负数";
+      "SDT 属性 %s 必须为非负数，实际值为 [%s]";
   public static final String SDT_COMPRESSION_TIME_FORMAT_ERROR =
-      "SDT 压缩 %s 时间格式错误";
+      "SDT 属性 %s 必须为 64 位整数，实际值为 [%s]";
   public static final String SDT_ENABLED_NO_COMPRESSION_TIME =
-      "{} 已启用 SDT 但未设置压缩 {} 时间";
+      "时间序列 [{}] 已启用 SDT 但未设置属性 [{}]，使用默认值 [{}]。";
 
   // ======================== Tag/Attribute 相关消息 ========================
 
@@ -474,9 +480,12 @@ public final class DataNodeSchemaMessages {
   public static final String FAILED_TO_CREATE_TEMPLATE =
       "在 ConfigNode 中执行创建设备模板 {} 失败，状态为 {}。";
   public static final String CREATE_TEMPLATE_ERROR_PREFIX = "创建模板出错 - ";
-  public static final String CREATE_TEMPLATE_ERROR = "创建模板出错。";
-  public static final String GET_ALL_TEMPLATE_ERROR = "获取所有模板出错。";
-  public static final String GET_TEMPLATE_INFO_ERROR = "获取模板信息出错。";
+  public static final String CREATE_TEMPLATE_ERROR =
+      "在 ConfigNode 上创建元数据模板 [%s] 失败：%s";
+  public static final String GET_ALL_TEMPLATE_ERROR =
+      "从 ConfigNode 获取元数据模板列表失败：%s";
+  public static final String GET_TEMPLATE_INFO_ERROR =
+      "从 ConfigNode 获取元数据模板 [%s] 失败：%s";
   public static final String FAILED_TO_SET_TEMPLATE =
       "在 ConfigNode 中执行设置设备模板 {} 到路径 {} 失败，状态为 {}。";
 
@@ -559,6 +568,7 @@ public final class DataNodeSchemaMessages {
   // ======================== DataNodeTableCache 相关消息 ========================
 
   public static final String INIT_TABLE_CACHE_SUCCESS = "DataNodeTableCache 初始化成功";
+  public static final String LOG_FAILED_TO_REGISTER_THE_TREE_TO_TABLE_VIEW_ARG_ARG_DURING_INIT_ILLEGAL_PATH_359A451E = "初始化时注册树转表视图 {}.{} 失败：路径非法";
   public static final String PRE_UPDATE_TABLE_SUCCESS = "预更新表 {}.{} 成功";
   public static final String PRE_RENAME_OLD_TABLE_SUCCESS = "预重命名旧表 {}.{} 成功";
   public static final String ROLLBACK_UPDATE_TABLE_SUCCESS = "回滚更新表 {}.{} 成功";
@@ -575,8 +585,6 @@ public final class DataNodeSchemaMessages {
       "尝试获取信号量以从 ConfigNode 获取表时被中断，已忽略。";
   public static final String UPDATE_TABLE_BY_FETCH_WITH_DETAIL = "获取表 {}.{} 信息, {}";
   public static final String UPDATE_TABLE_BY_FETCH = "通过表拉取更新表 {}.{}";
-  public static final String THE_TABLE_IS_IN_PRE_DELETE_STATE =
-      "表 %s.%s 处于预删除的状态，请稍等，如之后重试还是此状态，请输入sql再次删除";
   public static final String COMPARE_TABLE_ADDED = "新增表：";
   public static final String COMPARE_TABLE_REMOVED = "已移除表：";
   public static final String COMPARE_TABLE_NAME = "表名：";
@@ -724,5 +732,25 @@ public final class DataNodeSchemaMessages {
   public static final String EXCEPTION_COMMA_50AD1C01 = ", ";
   public static final String MESSAGE_SKIP_ROLLBACK_RENAMING_OLD_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_664F2456 = "跳过回滚重命名旧表 {}.{}，因为该操作已被处理。";
   public static final String MESSAGE_SKIP_COMMIT_UPDATE_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_31362A1C = "跳过提交更新表 {}.{}，因为该操作已被处理。";
+  public static final String LOG_ADD_VIEW_COLUMN_CN_FAILED_FE4F10AC = "为操作 {} 的树转表视图加列失败，ConfigNode 返回 {}。";
+  public static final String LOG_ADD_VIEW_COLUMN_FAILED_FOR_VIEW_B3EB8144 = "为视图 {}.{} 加列失败（操作 {}），ConfigNode 返回 {}。";
+  public static final String LOG_ADD_VIEW_COLUMN_EMPTY_RESPONSE_B9502E26 = "为操作 {} 的树转表视图加列失败，ConfigNode 返回了空响应。";
+  public static final String LOG_ADD_VIEW_COLUMN_CN_UNREACHABLE_E9BC7652 = "为操作 {} 的树转表视图加列失败，因为无法访问 ConfigNode。";
+  public static final String LOG_TRIGGER_ADD_VIEW_COLUMN_FAILED_B909817F = "计划节点 {} 触发树转表视图加列失败，本次 schema 写入不受影响。";
+  public static final String LOG_TREE_TO_TABLE_VIEW_ARG_ARG_IS_NOT_REGISTERED_BBD78902 = "树转表视图 {}.{} 未注册";
+  public static final String LOG_FAILED_TO_UPDATE_THE_TREE_TO_TABLE_VIEW_INDEX_OF_VIEW_ARG_ARG_E86EAEDE = "更新树转表视图 {}.{} 的索引失败";
+  public static final String
+      LOG_REGISTERED_THE_TREE_TO_TABLE_VIEW_ARG_ARG_AT_ARG_WITH_RESTRICT_ARG_AND_NUM_OF_TAGS_ARG_7538BCB2 =
+          "注册树转表视图 {}.{}，路径 {}，restrict {}，tag 数 {}";
+  public static final String LOG_UNREGISTERED_THE_TREE_TO_TABLE_VIEW_ARG_ARG_C90B661A =
+      "注销树转表视图 {}.{}";
+  public static final String LOG_RENAMED_THE_TREE_TO_TABLE_VIEW_ARG_ARG_FROM_ARG_B5D52D41 =
+      "树转表视图 {}.{} 由 {} 重命名而来";
+  public static final String
+      LOG_UPDATED_THE_PROPERTIES_OF_THE_TREE_TO_TABLE_VIEW_ARG_ARG_TO_ARG_1C3DE984 =
+          "树转表视图 {}.{} 的属性更新为 {}";
+  public static final String
+      LOG_THE_METADATA_LEASE_IS_FENCED_WHILE_ADDING_VIEW_COLUMNS_GIVING_UP_THIS_ROUND_THE_MEASUREMENTS_ARE_ARG_5D1B2D44 =
+          "自动扩列时元数据租约已隔离，本次放弃；涉及的测点为 {}";
 
 }

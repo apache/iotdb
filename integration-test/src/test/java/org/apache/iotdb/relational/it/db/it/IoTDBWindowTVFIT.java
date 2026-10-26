@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -31,17 +32,27 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
+import java.time.Instant;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBWindowTVFIT {
   private static final String DATABASE_NAME = "test";
+  private static final double DELTA = 1e-9;
   private static final String[] sqls =
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
@@ -62,6 +73,13 @@ public class IoTDBWindowTVFIT {
         "insert into multi_type values (2021-01-01T09:05:00, 'device1', 3, 3, 3.0, 3.0, false, '2', X'02', 2021-01-01T10:00:00, '2021-01-02')",
         "create table t1 (value double field, value1 int32 field)",
         "insert into t1 values (1, 1, 0),(2, 2, 0),(3, 1, 0),(4, 1, 0),(5, 1, 0),(6, 1.2, 0),(7, 1, 0),(8, 1, 0),(9, 2, 0),(10, 3, 0),(11, 4, 0),(12, 3, 0),(13, 2, 0),(14, 3, 0),(15, 4, 0),(16, 2, 0),(17, 1, 0),(18, 1, 0),(19, 1, 0),(20, 1, 0),(21, 1, 0),(41, 1, 0),(42, 2, 0),(43, 3, 0),(44, 4, 0),(45, 3, 0),(46, 2, 0),(47, 2, 0),(48, 2, 0),(49, 2, 0),(50, 2, 0),(51, 2, 0),(52, 2, 0)",
+        "CREATE TABLE pattern_partitions(device_id STRING TAG, value DOUBLE FIELD)",
+        "INSERT INTO pattern_partitions(time, device_id, value) VALUES "
+            + "(1, 'd0', 1), "
+            + "(1, 'd1', 1), (2, 'd1', 2), (3, 'd1', 3), (4, 'd1', 2), (5, 'd1', 1), "
+            + "(1, 'd1_singleton', 10), "
+            + "(1, 'd2', 10), (2, 'd2', 20), (3, 'd2', 30), (4, 'd2', 20), (5, 'd2', 10), "
+            + "(1, 'd3', 1)",
         // M4 table function test data
         "CREATE TABLE table1(device_id STRING TAG, s1 DOUBLE FIELD, s2 DOUBLE FIELD, s3 STRING FIELD)",
         "INSERT INTO table1(time, device_id, s1, s2, s3) VALUES (1970-01-01T08:00:00.001+08:00, 'device_1', 15.0, 12.0, 'OK')",
@@ -138,6 +156,8 @@ public class IoTDBWindowTVFIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    assertTimeWindowOrdering(
+        "HOP(DATA => bid, TIMECOL => 'time', SLIDE => 5m, SIZE => 10m)", expectedHeader, retArray);
 
     expectedHeader = new String[] {"window_start", "window_end", "stock_id", "sum"};
     retArray =
@@ -497,6 +517,22 @@ public class IoTDBWindowTVFIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    assertSortedRows(
+        "SELECT * FROM CAPACITY(DATA => bid PARTITION BY stock_id ORDER BY time, SIZE => 2, SLIDE => 1) ORDER BY stock_id DESC, time DESC, window_index DESC",
+        expectedHeader,
+        retArray,
+        Comparator.comparing((String[] row) -> row[2])
+            .thenComparing(row -> Instant.parse(row[1]))
+            .thenComparingLong(row -> Long.parseLong(row[0]))
+            .reversed());
+    tableResultSetEqualTest(
+        "SELECT stock_id FROM CAPACITY(DATA => bid PARTITION BY stock_id ORDER BY time, SIZE => 2, SLIDE => 1) ORDER BY stock_id",
+        new String[] {"stock_id"},
+        new String[] {
+          "AAPL,", "AAPL,", "AAPL,", "AAPL,", "AAPL,",
+          "TESL,", "TESL,", "TESL,", "TESL,", "TESL,"
+        },
+        DATABASE_NAME);
 
     // CAPACITY with SIZE=3, SLIDE=2 (overlapping windows, different params)
     expectedHeader = new String[] {"window_index", "time", "stock_id", "price", "s1"};
@@ -581,6 +617,8 @@ public class IoTDBWindowTVFIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    assertTimeWindowOrdering(
+        "TUMBLE(DATA => bid, TIMECOL => 'time', SIZE => 10m)", expectedHeader, retArray);
 
     // TUMBLE (10m) + origin
     expectedHeader = new String[] {"window_start", "window_end", "time", "stock_id", "price", "s1"};
@@ -647,6 +685,10 @@ public class IoTDBWindowTVFIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    assertTimeWindowOrdering(
+        "CUMULATE(DATA => bid, TIMECOL => 'time', STEP => 6m, SIZE => 12m)",
+        expectedHeader,
+        retArray);
 
     expectedHeader = new String[] {"window_start", "window_end", "time", "stock_id", "price", "s1"};
     retArray =
@@ -1040,6 +1082,113 @@ public class IoTDBWindowTVFIT {
   }
 
   @Test
+  public void testPatternMatchEmptyRepetitionGroups() throws SQLException {
+    assertInvalidPatternMatchPatterns(
+        new String[] {
+          "1,{,}+,1",
+          "1,{}+,1",
+          "1,{ , , }*,1",
+          "{,}+,1,2",
+          "1,2,{,}+",
+          "1,{2,{,}+,3}+,1",
+          "1,{{,}*}+,1"
+        },
+        "Repetition groups must contain at least one numeric data point.");
+  }
+
+  @Test
+  public void testPatternMatchMisplacedRepetitionSigns() throws SQLException {
+    assertInvalidPatternMatchPatterns(
+        new String[] {
+          "1,+,2",
+          "1,*,2",
+          "1, + ,2",
+          "1, * ,2",
+          "+,1,2",
+          "*,1,2",
+          "1,2,+",
+          "1,2,*",
+          "1+,2",
+          "1*,2",
+          "1,{2,+,3}+,1",
+          "1,{2,*,3}*,1",
+          "1,{2,3}++,1",
+          "1,{2,3}+*,1",
+          "1,{2,3}*+,1",
+          "1,{2,3}**,1"
+        },
+        "Repetition signs '+' and '*' must immediately follow '}'.");
+  }
+
+  private void assertInvalidPatternMatchPatterns(String[] patterns, String expectedMessage)
+      throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      for (String data : new String[] {"t1", "(SELECT * FROM t1 WHERE time < 0)"}) {
+        for (String pattern : patterns) {
+          SQLException exception =
+              assertThrows(
+                  SQLException.class,
+                  () ->
+                      statement.execute(
+                          "SELECT * FROM pattern_match(data => "
+                              + data
+                              + " ORDER BY time, data_col => 'value', pattern => '"
+                              + pattern
+                              + "', smooth => 0.0, threshold => 100.0)"));
+          assertEquals(
+              exception.getMessage(),
+              TSStatusCode.SEMANTIC_ERROR.getStatusCode(),
+              exception.getErrorCode());
+          assertTrue(
+              exception.getMessage(),
+              exception
+                  .getMessage()
+                  .contains("Invalid pattern: '" + pattern + "'. " + expectedMessage));
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testPatternMatchPartitions() {
+    assertPatternMatchPartitions("1,2,3,2,1");
+  }
+
+  @Test
+  public void testPatternMatchRegexPartitions() {
+    assertPatternMatchPartitions("1,{2,3,2}+,1");
+  }
+
+  private void assertPatternMatchPartitions(String pattern) {
+    String[] expectedHeader = {"match_index", "time", "device_id", "value"};
+    // Singleton partitions before, between, and after the matching devices produce no rows.
+    String[] expectedRows = {
+      "0,1970-01-01T00:00:00.001Z,d1,1.0,",
+      "0,1970-01-01T00:00:00.002Z,d1,2.0,",
+      "0,1970-01-01T00:00:00.003Z,d1,3.0,",
+      "0,1970-01-01T00:00:00.004Z,d1,2.0,",
+      "0,1970-01-01T00:00:00.005Z,d1,1.0,",
+      "0,1970-01-01T00:00:00.001Z,d2,10.0,",
+      "0,1970-01-01T00:00:00.002Z,d2,20.0,",
+      "0,1970-01-01T00:00:00.003Z,d2,30.0,",
+      "0,1970-01-01T00:00:00.004Z,d2,20.0,",
+      "0,1970-01-01T00:00:00.005Z,d2,10.0,"
+    };
+    tableResultSetEqualTest(
+        "SELECT match_index, time, device_id, value FROM pattern_match("
+            + "DATA => (SELECT time, device_id, value FROM pattern_partitions) "
+            + "PARTITION BY device_id ORDER BY time, DATA_COL => 'value', PATTERN => '"
+            + pattern
+            + "', SMOOTH => 0.0, THRESHOLD => 100.0, WIDTH => 1000.0, HEIGHT => 1000.0, "
+            + "SMOOTH_ON_PATTERN => false) ORDER BY match_index, device_id, time",
+        expectedHeader,
+        expectedRows,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void testM4TimeWindowMode() {
     String[] expectedHeader =
         new String[] {
@@ -1346,5 +1495,332 @@ public class IoTDBWindowTVFIT {
         "SELECT * FROM M4(DATA => table1 PARTITION BY device_id ORDER BY time, TIMECOL => 's1', SIZE => 10ms)",
         "701: The type of the column [s1] is not as expected.",
         DATABASE_NAME);
+  }
+
+  @Test
+  public void testLowPassWithOnePartition() {
+    String[] expectedHeader = new String[] {"stock_id", "time", "lowpass(price)", "lowpass(s1)"};
+    String[] retArray =
+        new String[] {
+          "AAPL,2021-01-01T09:05:00.000Z,101.66666666666667,101.0,",
+          "AAPL,2021-01-01T09:07:00.000Z,101.66666666666667,101.0,",
+          "AAPL,2021-01-01T09:09:00.000Z,101.66666666666667,101.0,",
+          "TESL,2021-01-01T09:06:00.000Z,199.0,212.0,",
+          "TESL,2021-01-01T09:07:00.000Z,199.0,212.0,",
+          "TESL,2021-01-01T09:15:00.000Z,199.0,212.0,"
+        };
+    tableResultSetEqualWithTolerance(
+        "SELECT * FROM LOWPASS(DATA => bid PARTITION BY stock_id ORDER BY time, "
+            + "TIMECOL => 'time', WPASS => 0.5) ORDER BY stock_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testLowPassWithNullValues() {
+    String[] expectedHeader = new String[] {"device_id", "time", "lowpass(s2)"};
+    String[] retArray =
+        new String[] {
+          "device_1,1970-01-01T00:00:00.001Z,23.5,",
+          "device_1,1970-01-01T00:00:00.003Z,null,",
+          "device_1,1970-01-01T00:00:00.006Z,null,",
+          "device_1,1970-01-01T00:00:00.009Z,null,",
+          "device_1,1970-01-01T00:00:00.020Z,23.5,"
+        };
+    tableResultSetEqualWithTolerance(
+        "SELECT * FROM LOWPASS(DATA => "
+            + "(SELECT time, device_id, s2 FROM table1 WHERE device_id = 'device_1') "
+            + "PARTITION BY device_id ORDER BY time, TIMECOL => 'time', WPASS => 0.5) "
+            + "ORDER BY time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testLowPassWithMultiplePartitionColumns() {
+    String[] expectedHeader = new String[] {"factory_id", "device_id", "time", "lowpass(s1)"};
+    String[] retArray =
+        new String[] {
+          "F1,device_1,1970-01-01T00:00:00.001Z,10.0,",
+          "F1,device_1,1970-01-01T00:00:00.005Z,10.0,",
+          "F1,device_1,1970-01-01T00:00:00.009Z,10.0,",
+          "F1,device_2,1970-01-01T00:00:00.002Z,22.5,",
+          "F1,device_2,1970-01-01T00:00:00.011Z,22.5,",
+          "F2,device_1,1970-01-01T00:00:00.003Z,30.0,"
+        };
+    tableResultSetEqualWithTolerance(
+        "SELECT * FROM LOWPASS(DATA => table5 "
+            + "PARTITION BY (factory_id, device_id) ORDER BY time, "
+            + "TIMECOL => 'time', WPASS => 0.5) ORDER BY factory_id, device_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testLowPassRejectsUnsupportedCalculationColumnType() {
+    tableAssertTestFail(
+        "SELECT * FROM LOWPASS(DATA => (SELECT time, device_id, s3 FROM table1) "
+            + "PARTITION BY device_id ORDER BY time, TIMECOL => 'time', WPASS => 0.5)",
+        "701: Only column with double, float, int32, int64 can be calculated by the function, s3 is the STRING.",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testLowPassWithNullArgument() {
+    tableAssertTestFail(
+        "SELECT * FROM LOWPASS(DATA => (SELECT time, device_id, s3 FROM table1) "
+            + "PARTITION BY device_id ORDER BY time, TIMECOL => 'time', WPASS => null)",
+        "701: The parameter WPASS cannot be actively filled with null.",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testHighWithOnePartition() {
+    String[] expectedHeader = new String[] {"stock_id", "time", "highpass(price)", "highpass(s1)"};
+    String[] retArray =
+        new String[] {
+          "AAPL,2021-01-01T09:05:00.000Z,-1.6666666666666667,0.0,",
+          "AAPL,2021-01-01T09:07:00.000Z,1.3333333333333333,0.0,",
+          "AAPL,2021-01-01T09:09:00.000Z,0.3333333333333333,0.0,",
+          "TESL,2021-01-01T09:06:00.000Z,1.0,-110.0,",
+          "TESL,2021-01-01T09:07:00.000Z,3.0,-10.0,",
+          "TESL,2021-01-01T09:15:00.000Z,-4.0,120.0,"
+        };
+    tableResultSetEqualWithTolerance(
+        "SELECT * FROM HIGHPASS(DATA => bid PARTITION BY stock_id ORDER BY time, "
+            + "TIMECOL => 'time', WPASS => 0.5) ORDER BY stock_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testHighPassWithNullValues() {
+    String[] expectedHeader = new String[] {"device_id", "time", "highpass(s2)"};
+    String[] retArray =
+        new String[] {
+          "device_1,1970-01-01T00:00:00.001Z,-11.5,",
+          "device_1,1970-01-01T00:00:00.003Z,null,",
+          "device_1,1970-01-01T00:00:00.006Z,null,",
+          "device_1,1970-01-01T00:00:00.009Z,null,",
+          "device_1,1970-01-01T00:00:00.020Z,11.5,"
+        };
+    tableResultSetEqualWithTolerance(
+        "SELECT * FROM HIGHPASS(DATA => "
+            + "(SELECT time, device_id, s2 FROM table1 WHERE device_id = 'device_1') "
+            + "PARTITION BY device_id ORDER BY time, TIMECOL => 'time', WPASS => 0.5) "
+            + "ORDER BY time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testHighPassWithMultiplePartitionColumns() {
+    String[] expectedHeader = new String[] {"factory_id", "device_id", "time", "highpass(s1)"};
+    String[] retArray =
+        new String[] {
+          "F1,device_1,1970-01-01T00:00:00.001Z,0.0,",
+          "F1,device_1,1970-01-01T00:00:00.005Z,5.0,",
+          "F1,device_1,1970-01-01T00:00:00.009Z,-5.0,",
+          "F1,device_2,1970-01-01T00:00:00.002Z,-2.5,",
+          "F1,device_2,1970-01-01T00:00:00.011Z,2.5,",
+          "F2,device_1,1970-01-01T00:00:00.003Z,0.0,"
+        };
+    tableResultSetEqualWithTolerance(
+        "SELECT * FROM HIGHPASS(DATA => table5 "
+            + "PARTITION BY (factory_id, device_id) ORDER BY time, "
+            + "TIMECOL => 'time', WPASS => 0.5) ORDER BY factory_id, device_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testHighPassRejectsUnsupportedCalculationColumnType() {
+    tableAssertTestFail(
+        "SELECT * FROM HIGHPASS(DATA => (SELECT time, device_id, s3 FROM table1) "
+            + "PARTITION BY device_id ORDER BY time, TIMECOL => 'time', WPASS => 0.5)",
+        "701: Only column with double, float, int32, int64 can be calculated by the function, s3 is the STRING.",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testXCorrP0() {
+    String[] expectedHeader = new String[] {"stock_id", "xcorr(price, s1)"};
+    String[] retArray =
+        new String[] {
+          "AAPL,10100.0,",
+          "AAPL,10251.5,",
+          "AAPL,10268.333333333334,",
+          "AAPL,10352.5,",
+          "AAPL,10302.0,",
+          "TESL,66400.0,",
+          "TESL,53732.0,",
+          "TESL,41981.333333333336,",
+          "TESL,29997.0,",
+          "TESL,19890.0,"
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM XCORR(DATA => bid PARTITION BY stock_id ORDER BY time, "
+            + "TIMECOL => 'time') ORDER BY stock_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testXCorrWithNullValues() {
+    String[] expectedHeader = new String[] {"device_id", "xcorr(s1, s2)"};
+    String[] retArray =
+        new String[] {
+          "device_1,525.0,",
+          "device_1,175.0,",
+          "device_1,1050.0,",
+          "device_1,350.0,",
+          "device_1,790.0,",
+          "device_1,60.0,",
+          "device_1,360.0,",
+          "device_1,120.0,",
+          "device_1,480.0,"
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM XCORR(DATA => "
+            + "(SELECT time, device_id, s1, s2 FROM table1 WHERE device_id = 'device_1') "
+            + "PARTITION BY device_id ORDER BY time, TIMECOL => 'time')",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testXCorrWithMultiplePartitionColumns() {
+    String[] expectedHeader = new String[] {"factory_id", "device_id", "xcorr(s1, s2)"};
+    String[] retArray =
+        new String[] {
+          "F1,device_1,50.0,",
+          "F1,device_1,112.5,",
+          "F1,device_1,116.66666666666667,",
+          "F1,device_1,112.5,",
+          "F1,device_1,50.0,",
+          "F1,device_2,500.0,",
+          "F1,device_2,512.5,",
+          "F1,device_2,500.0,",
+          "F2,device_1,900.0,"
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM XCORR(DATA => "
+            + "(SELECT time, factory_id, device_id, s1, s1 AS s2 FROM table5) "
+            + "PARTITION BY (factory_id, device_id) ORDER BY time, TIMECOL => 'time') "
+            + "ORDER BY factory_id, device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testXCorrRejectsUnsupportedCalculationColumnType() {
+    tableAssertTestFail(
+        "SELECT * FROM XCORR(DATA => (SELECT time, device_id, s1, s3 FROM table1) "
+            + "PARTITION BY device_id ORDER BY time, TIMECOL => 'time')",
+        "701: Only column with double, float, int32, int64 can be calculated by the function, s3 is the STRING.",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testXCorrRejectsUnexpectedCalculationColumnCount() {
+    tableAssertTestFail(
+        "SELECT * FROM XCORR(DATA => (select time, device_id, int_val, long_val, float_val from multi_type) PARTITION BY device_id ORDER BY time, TIMECOL => 'time')",
+        "701: XCorr requires exactly two calculation columns, but found 3.",
+        DATABASE_NAME);
+  }
+
+  private static void assertTimeWindowOrdering(
+      String function, String[] expectedHeader, String[] expectedRows) {
+    // A row can belong to several windows. Device/time no longer uniquely identifies a TVF row,
+    // so the descending window keys must still be sorted, even after all TAGs and TIME.
+    assertSortedRows(
+        "SELECT * FROM "
+            + function
+            + " ORDER BY stock_id, time, window_start DESC, window_end DESC",
+        expectedHeader,
+        expectedRows,
+        Comparator.comparing((String[] row) -> row[3])
+            .thenComparing(row -> Instant.parse(row[2]))
+            .thenComparing(row -> Instant.parse(row[0]), Comparator.reverseOrder())
+            .thenComparing(row -> Instant.parse(row[1]), Comparator.reverseOrder()));
+    assertSortedRows(
+        "SELECT * FROM "
+            + function
+            + " ORDER BY window_start DESC, stock_id, time DESC, window_end DESC",
+        expectedHeader,
+        expectedRows,
+        Comparator.comparing((String[] row) -> Instant.parse(row[0]), Comparator.reverseOrder())
+            .thenComparing(row -> row[3])
+            .thenComparing(row -> Instant.parse(row[2]), Comparator.reverseOrder())
+            .thenComparing(row -> Instant.parse(row[1]), Comparator.reverseOrder()));
+
+    // Project away generated columns to exercise elimination for a descending pass-through order.
+    String[] passThroughRows =
+        Arrays.stream(expectedRows)
+            .map(row -> row.split(","))
+            .map(row -> row[3] + "," + row[2] + "," + row[4] + "," + row[5] + ",")
+            .toArray(String[]::new);
+    assertSortedRows(
+        "SELECT stock_id, time, price, s1 FROM " + function + " ORDER BY stock_id DESC, time DESC",
+        new String[] {"stock_id", "time", "price", "s1"},
+        passThroughRows,
+        Comparator.comparing((String[] row) -> row[0])
+            .thenComparing(row -> Instant.parse(row[1]))
+            .reversed());
+  }
+
+  private static void assertSortedRows(
+      String sql, String[] header, String[] rows, Comparator<String[]> comparator) {
+    String[] sortedRows =
+        Arrays.stream(rows)
+            .map(row -> row.split(","))
+            .sorted(comparator)
+            .map(row -> String.join(",", row) + ",")
+            .toArray(String[]::new);
+    tableResultSetEqualTest(sql, header, sortedRows, DATABASE_NAME);
+  }
+
+  private static void tableResultSetEqualWithTolerance(
+      String sql, String[] expectedHeader, String[] expectedRetArray, String database) {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      connection.setClientInfo("time_zone", "+00:00");
+      statement.execute("USE " + database);
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(expectedHeader.length, metaData.getColumnCount());
+        for (int i = 1; i <= metaData.getColumnCount(); i++) {
+          assertEquals(expectedHeader[i - 1], metaData.getColumnName(i));
+        }
+
+        int rowIndex = 0;
+        while (resultSet.next()) {
+          String[] expectedColumns = expectedRetArray[rowIndex].split(",", -1);
+          for (int i = 1; i <= expectedHeader.length; i++) {
+            String expected = expectedColumns[i - 1];
+            if (resultSet.getString(i) == null) {
+              assertEquals("null", expected);
+            } else if (metaData.getColumnType(i) == Types.DOUBLE) {
+              assertEquals(Double.parseDouble(expected), resultSet.getDouble(i), DELTA);
+            } else {
+              assertEquals(expected, resultSet.getString(i));
+            }
+          }
+          rowIndex++;
+        }
+        assertEquals(expectedRetArray.length, rowIndex);
+      }
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
   }
 }

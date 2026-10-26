@@ -43,6 +43,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceList;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.apache.tsfile.read.TimeValuePair;
@@ -407,7 +408,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
           seqTsFileResourceList.addAll(seqResources);
           TsFileResourceList unseqTsFileResourceList = new TsFileResourceList();
           unseqTsFileResourceList.addAll(unseqResources);
-          long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
+          long timeLowerBound = CommonUtils.getTTLLowerBound(Long.MAX_VALUE);
           CrossSpaceCompactionCandidate mergeResource =
               new CrossSpaceCompactionCandidate(
                   seqTsFileResourceList, unseqTsFileResourceList, timeLowerBound);
@@ -709,7 +710,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
           seqTsFileResourceList.addAll(seqResources);
           TsFileResourceList unseqTsFileResourceList = new TsFileResourceList();
           unseqTsFileResourceList.addAll(unseqResources);
-          long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
+          long timeLowerBound = CommonUtils.getTTLLowerBound(Long.MAX_VALUE);
           CrossSpaceCompactionCandidate mergeResource =
               new CrossSpaceCompactionCandidate(
                   seqTsFileResourceList, unseqTsFileResourceList, timeLowerBound);
@@ -1009,7 +1010,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
           seqTsFileResourceList.addAll(seqResources);
           TsFileResourceList unseqTsFileResourceList = new TsFileResourceList();
           unseqTsFileResourceList.addAll(unseqResources);
-          long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
+          long timeLowerBound = CommonUtils.getTTLLowerBound(Long.MAX_VALUE);
           CrossSpaceCompactionCandidate mergeResource =
               new CrossSpaceCompactionCandidate(
                   seqTsFileResourceList, unseqTsFileResourceList, timeLowerBound);

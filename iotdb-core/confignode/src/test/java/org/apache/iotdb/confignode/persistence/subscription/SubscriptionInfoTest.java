@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.persistence.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.subscription.meta.consumer.CommitProgressKeeper;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
@@ -27,15 +28,19 @@ import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
 import org.apache.iotdb.confignode.consensus.response.subscription.TopicTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTopicOwnerLeaseEntry;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 import java.nio.ByteBuffer;
 import java.util.Collections;
@@ -46,6 +51,135 @@ import java.util.Set;
 import java.util.UUID;
 
 public class SubscriptionInfoTest {
+
+  @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+  @Test
+  public void testLastConsumerClosePreservesConfiguredProgressAcrossSnapshot() throws Exception {
+    for (final boolean tableModel : new boolean[] {false, true}) {
+      for (final boolean unsubscribeFirst : new boolean[] {false, true}) {
+        assertLastConsumerClosePreservesProgress(tableModel, unsubscribeFirst);
+      }
+    }
+  }
+
+  private void assertLastConsumerClosePreservesProgress(
+      final boolean tableModel, final boolean unsubscribeFirst) throws Exception {
+    final SubscriptionInfo info = new SubscriptionInfo();
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_INCREMENTAL_VALUE);
+    attributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "true");
+    attributes.put(SystemConstant.SQL_DIALECT_KEY, tableModel ? "table" : "tree");
+    info.createTopic(new CreateTopicPlan(new TopicMeta("kept", 1L, attributes)));
+    final Map<String, String> discardedAttributes = new HashMap<>(attributes);
+    discardedAttributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "false");
+    info.createTopic(new CreateTopicPlan(new TopicMeta("discarded", 1L, discardedAttributes)));
+    final ConsumerGroupMeta group =
+        new ConsumerGroupMeta(
+            "group",
+            1L,
+            new ConsumerMeta(
+                "consumer",
+                1L,
+                Collections.singletonMap(
+                    ConsumerConstant.SQL_DIALECT_KEY, tableModel ? "table" : "tree")));
+    group.addSubscription(
+        "consumer", new java.util.HashSet<>(java.util.Arrays.asList("kept", "discarded")));
+    info.alterConsumerGroup(new AlterConsumerGroupPlan(group));
+    final String keptKey = CommitProgressKeeper.generateKey("group", "kept", "DataRegion[1]", 1);
+    final String legacyKey =
+        CommitProgressKeeper.generateLegacyKey("group", "kept", "DataRegion[1]", 2);
+    final String discardedKey =
+        CommitProgressKeeper.generateKey("group", "discarded", "DataRegion[1]", 1);
+    for (final String key : new String[] {keptKey, legacyKey, discardedKey}) {
+      info.getCommitProgressKeeper().updateRegionProgress(key, ByteBuffer.wrap(new byte[] {1}));
+    }
+    final ConsumerGroupMeta updated = group.deepCopy();
+    if (unsubscribeFirst) {
+      updated.removeSubscription(
+          "consumer", new java.util.HashSet<>(java.util.Arrays.asList("kept", "discarded")));
+      info.alterConsumerGroup(new AlterConsumerGroupPlan(updated.deepCopy()));
+    }
+    updated.removeConsumer("consumer");
+    info.alterConsumerGroup(new AlterConsumerGroupPlan(updated));
+    Assert.assertNotNull(
+        "tableModel=" + tableModel + ", unsubscribeFirst=" + unsubscribeFirst,
+        info.getCommitProgressKeeper().getRegionProgress(keptKey));
+    Assert.assertNotNull(info.getCommitProgressKeeper().getRegionProgress(legacyKey));
+    Assert.assertNull(info.getCommitProgressKeeper().getRegionProgress(discardedKey));
+    Assert.assertTrue(info.getConsumerGroupMeta("group").isEmpty());
+    Assert.assertTrue(info.getConsumerGroupMeta("group").visibleUnder(tableModel));
+
+    final java.io.File snapshotDir = temporaryFolder.newFolder();
+    Assert.assertTrue(info.processTakeSnapshot(snapshotDir));
+    final SubscriptionInfo restored = new SubscriptionInfo();
+    restored.processLoadSnapshot(snapshotDir);
+    Assert.assertNotNull(restored.getCommitProgressKeeper().getRegionProgress(keptKey));
+    final ConsumerGroupMeta restoredGroup = restored.deepCopyConsumerGroupMeta("group");
+    Assert.assertTrue(restoredGroup.isEmpty());
+    Assert.assertTrue(restoredGroup.visibleUnder(tableModel));
+    final ConsumerMeta replacement =
+        new ConsumerMeta(
+            "replacement",
+            2L,
+            Collections.singletonMap(
+                ConsumerConstant.SQL_DIALECT_KEY, tableModel ? "table" : "tree"));
+    restoredGroup.checkAuthorityBeforeJoinConsumerGroup(replacement);
+    restoredGroup.addConsumer(replacement);
+    restored.alterConsumerGroup(new AlterConsumerGroupPlan(restoredGroup));
+    Assert.assertNotNull(restored.getCommitProgressKeeper().getRegionProgress(keptKey));
+    restoredGroup.removeConsumer("replacement");
+    restored.alterConsumerGroup(new AlterConsumerGroupPlan(restoredGroup));
+
+    // Same-name topics in the other model must not remove this retained group's progress.
+    final Map<String, String> otherAttributes = new HashMap<>(attributes);
+    otherAttributes.put(SystemConstant.SQL_DIALECT_KEY, tableModel ? "tree" : "table");
+    restored.createTopic(new CreateTopicPlan(new TopicMeta("kept", 2L, otherAttributes)));
+    restored.dropTopic(new DropTopicPlan("kept", !tableModel));
+    Assert.assertNotNull(restored.getCommitProgressKeeper().getRegionProgress(keptKey));
+    if (unsubscribeFirst) {
+      attributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "false");
+      restored.alterTopic(new AlterTopicPlan(new TopicMeta("kept", 2L, attributes)));
+    } else {
+      restored.dropTopic(new DropTopicPlan("kept", tableModel));
+    }
+    Assert.assertNull(restored.getCommitProgressKeeper().getRegionProgress(keptKey));
+    Assert.assertNull(restored.getCommitProgressKeeper().getRegionProgress(legacyKey));
+    Assert.assertFalse(restored.isConsumerGroupExisted("group"));
+  }
+
+  @Test
+  public void testSameNameTreeAndTableTopicsCanBeManagedIndependently() {
+    final String topicName = "same-name-topic";
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final TopicMeta treeTopicMeta =
+        new TopicMeta(
+            topicName,
+            1L,
+            Collections.singletonMap(
+                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE));
+    final TopicMeta tableTopicMeta =
+        new TopicMeta(
+            topicName,
+            2L,
+            Collections.singletonMap(
+                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE));
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        subscriptionInfo.createTopic(new CreateTopicPlan(treeTopicMeta)).getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        subscriptionInfo.createTopic(new CreateTopicPlan(tableTopicMeta)).getCode());
+    Assert.assertSame(treeTopicMeta, subscriptionInfo.getTopicMeta(topicName, false));
+    Assert.assertSame(tableTopicMeta, subscriptionInfo.getTopicMeta(topicName, true));
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        subscriptionInfo.dropTopic(new DropTopicPlan(topicName, false)).getCode());
+    Assert.assertFalse(subscriptionInfo.isTopicExisted(topicName, false));
+    Assert.assertTrue(subscriptionInfo.isTopicExisted(topicName, true));
+  }
 
   @Test
   public void testAlterTopicRejectsOwnerEpochRollback() {
@@ -132,6 +266,37 @@ public class SubscriptionInfoTest {
   }
 
   @Test
+  public void testCollectTopicOwnerLeaseEntriesIsolatedByModel() {
+    final String topicName = "topic-" + UUID.randomUUID();
+    final long ownerLeaseDurationMs = 60000;
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+
+    final TopicMeta treeTopicMeta =
+        createTopicMeta(topicName, "tree-owner", 5L, ownerLeaseDurationMs);
+    final TopicMeta tableTopicMeta =
+        createTopicMeta(topicName, "table-owner", 6L, ownerLeaseDurationMs);
+    tableTopicMeta
+        .getConfig()
+        .getAttribute()
+        .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        subscriptionInfo.createTopic(new CreateTopicPlan(treeTopicMeta)).getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        subscriptionInfo.createTopic(new CreateTopicPlan(tableTopicMeta)).getCode());
+
+    final List<TTopicOwnerLeaseEntry> entries =
+        subscriptionInfo.collectTopicOwnerLeaseEntries(
+            Collections.singleton(topicName), Collections.emptySet());
+
+    Assert.assertEquals(1, entries.size());
+    Assert.assertEquals(topicName, entries.get(0).getTopicName());
+    Assert.assertEquals("table-owner", entries.get(0).getOwnerId());
+    Assert.assertTrue(entries.get(0).isIsTableModel());
+  }
+
+  @Test
   public void testAlterTopicOwnerAndShowTopicOwner() {
     final String topicName = "topic-" + UUID.randomUUID();
     final long ownerLeaseDurationMs = 123456L;
@@ -185,6 +350,13 @@ public class SubscriptionInfoTest {
     final String retainedTopic = "retained-topic";
     final String regionId = "DataRegion[1]";
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    subscriptionInfo.createTopic(
+        new CreateTopicPlan(
+            new TopicMeta(
+                removedTopic,
+                1L,
+                Collections.singletonMap(
+                    TopicConstant.MODE_KEY, TopicConstant.MODE_INCREMENTAL_VALUE))));
     final ConsumerGroupMeta currentMeta =
         new ConsumerGroupMeta(
             consumerGroupId, 1, new ConsumerMeta(consumerId, 1, Collections.emptyMap()));
@@ -209,6 +381,124 @@ public class SubscriptionInfoTest {
     Assert.assertNull(keeper.getRegionProgress(removedVersionedKey));
     Assert.assertNull(keeper.getRegionProgress(removedLegacyKey));
     Assert.assertNotNull(keeper.getRegionProgress(retainedKey));
+  }
+
+  @Test
+  public void testAlterConsumerGroupRetainsUnsubscribedTopicProgressWhenConfigured() {
+    final String consumerGroupId = "consumer-group";
+    final String consumerId = "consumer";
+    final String topicName = "retained-topic";
+    final String regionId = "DataRegion[1]";
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> topicAttributes = new HashMap<>();
+    topicAttributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_INCREMENTAL_VALUE);
+    topicAttributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "true");
+    subscriptionInfo.createTopic(
+        new CreateTopicPlan(new TopicMeta(topicName, 1L, topicAttributes)));
+
+    final ConsumerGroupMeta currentMeta =
+        new ConsumerGroupMeta(
+            consumerGroupId, 1, new ConsumerMeta(consumerId, 1, Collections.emptyMap()));
+    currentMeta.addSubscription(consumerId, Collections.singleton(topicName));
+    subscriptionInfo.alterConsumerGroup(new AlterConsumerGroupPlan(currentMeta));
+
+    final CommitProgressKeeper keeper = subscriptionInfo.getCommitProgressKeeper();
+    final String progressKey =
+        CommitProgressKeeper.generateKey(consumerGroupId, topicName, regionId, 1);
+    keeper.updateRegionProgress(progressKey, ByteBuffer.wrap(new byte[] {1}));
+
+    final ConsumerGroupMeta updatedMeta = currentMeta.deepCopy();
+    updatedMeta.removeSubscription(consumerId, Collections.singleton(topicName));
+    subscriptionInfo.alterConsumerGroup(new AlterConsumerGroupPlan(updatedMeta));
+
+    Assert.assertNotNull(keeper.getRegionProgress(progressKey));
+  }
+
+  @Test
+  public void testAlterTopicDisablingRetentionRemovesUnsubscribedProgress() {
+    final String consumerGroupId = "consumer-group";
+    final String consumerId = "consumer";
+    final String topicName = "retained-topic";
+    final String regionId = "DataRegion[1]";
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> topicAttributes = new HashMap<>();
+    topicAttributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_INCREMENTAL_VALUE);
+    topicAttributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "true");
+    subscriptionInfo.createTopic(
+        new CreateTopicPlan(new TopicMeta(topicName, 1L, topicAttributes)));
+
+    final ConsumerGroupMeta currentMeta =
+        new ConsumerGroupMeta(
+            consumerGroupId, 1, new ConsumerMeta(consumerId, 1, Collections.emptyMap()));
+    currentMeta.addSubscription(consumerId, Collections.singleton(topicName));
+    subscriptionInfo.alterConsumerGroup(new AlterConsumerGroupPlan(currentMeta));
+
+    final CommitProgressKeeper keeper = subscriptionInfo.getCommitProgressKeeper();
+    final String progressKey =
+        CommitProgressKeeper.generateKey(consumerGroupId, topicName, regionId, 1);
+    keeper.updateRegionProgress(progressKey, ByteBuffer.wrap(new byte[] {1}));
+
+    final ConsumerGroupMeta unsubscribedMeta = currentMeta.deepCopy();
+    unsubscribedMeta.removeSubscription(consumerId, Collections.singleton(topicName));
+    subscriptionInfo.alterConsumerGroup(new AlterConsumerGroupPlan(unsubscribedMeta));
+    Assert.assertNotNull(keeper.getRegionProgress(progressKey));
+
+    final Map<String, String> updatedAttributes = new HashMap<>(topicAttributes);
+    updatedAttributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "false");
+    subscriptionInfo.alterTopic(
+        new AlterTopicPlan(new TopicMeta(topicName, 2L, updatedAttributes)));
+
+    Assert.assertNull(keeper.getRegionProgress(progressKey));
+  }
+
+  @Test
+  public void testDropTopicRemovesRetainedProgress() {
+    final String consumerGroupId = "consumer-group";
+    final String consumerId = "consumer";
+    final String topicName = "retained-topic";
+    final String regionId = "DataRegion[1]";
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> topicAttributes = new HashMap<>();
+    topicAttributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_INCREMENTAL_VALUE);
+    topicAttributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "true");
+    subscriptionInfo.createTopic(
+        new CreateTopicPlan(new TopicMeta(topicName, 1L, topicAttributes)));
+
+    final ConsumerGroupMeta currentMeta =
+        new ConsumerGroupMeta(
+            consumerGroupId, 1, new ConsumerMeta(consumerId, 1, Collections.emptyMap()));
+    subscriptionInfo.alterConsumerGroup(new AlterConsumerGroupPlan(currentMeta));
+    final CommitProgressKeeper keeper = subscriptionInfo.getCommitProgressKeeper();
+    final String progressKey =
+        CommitProgressKeeper.generateKey(consumerGroupId, topicName, regionId, 1);
+    keeper.updateRegionProgress(progressKey, ByteBuffer.wrap(new byte[] {1}));
+
+    subscriptionInfo.dropTopic(new DropTopicPlan(topicName, false));
+
+    Assert.assertNull(keeper.getRegionProgress(progressKey));
+  }
+
+  @Test
+  public void testDropConsumerGroupRemovesAllRetainedProgress() {
+    final String consumerGroupId = "consumer-group";
+    final String consumerId = "consumer";
+    final String topicName = "retained-topic";
+    final String regionId = "DataRegion[1]";
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final ConsumerGroupMeta currentMeta =
+        new ConsumerGroupMeta(
+            consumerGroupId, 1, new ConsumerMeta(consumerId, 1, Collections.emptyMap()));
+    subscriptionInfo.alterConsumerGroup(new AlterConsumerGroupPlan(currentMeta));
+    final CommitProgressKeeper keeper = subscriptionInfo.getCommitProgressKeeper();
+    final String progressKey =
+        CommitProgressKeeper.generateKey(consumerGroupId, topicName, regionId, 1);
+    keeper.updateRegionProgress(progressKey, ByteBuffer.wrap(new byte[] {1}));
+
+    final ConsumerGroupMeta emptyMeta = currentMeta.deepCopy();
+    emptyMeta.removeConsumer(consumerId);
+    subscriptionInfo.alterConsumerGroup(new AlterConsumerGroupPlan(emptyMeta));
+
+    Assert.assertNull(keeper.getRegionProgress(progressKey));
   }
 
   private TopicMeta createTopicMeta(

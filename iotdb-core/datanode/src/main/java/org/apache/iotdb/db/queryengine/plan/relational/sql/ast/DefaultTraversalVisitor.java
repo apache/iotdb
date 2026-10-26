@@ -516,6 +516,15 @@ public abstract class DefaultTraversalVisitor<C> implements AstVisitor<Void, C> 
   }
 
   @Override
+  public Void visitSetColumnProperties(final SetColumnProperties node, final C context) {
+    for (final Property property : node.getProperties()) {
+      process(property, context);
+    }
+
+    return null;
+  }
+
+  @Override
   public Void visitAddColumn(final AddColumn node, final C context) {
     process(node.getColumn(), context);
 

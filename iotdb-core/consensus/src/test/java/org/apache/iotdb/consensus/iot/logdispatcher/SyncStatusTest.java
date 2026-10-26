@@ -21,6 +21,8 @@ package org.apache.iotdb.consensus.iot.logdispatcher;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.memory.AtomicLongMemoryBlock;
+import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.iot.thrift.TLogEntry;
@@ -36,7 +38,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SyncStatusTest {
 
@@ -241,5 +250,60 @@ public class SyncStatusTest {
         config.getReplication().getMaxPendingBatchesNum(), controller.getCurrentIndex());
     Assert.assertEquals(
         config.getReplication().getMaxPendingBatchesNum() + 1, status.getNextSendingIndex());
+  }
+
+  @Test
+  public void testFirstBatchRetriesMemoryReservation()
+      throws InterruptedException, ExecutionException, TimeoutException {
+    IndexController controller =
+        new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP);
+    IoTConsensusConfig retryConfig =
+        IoTConsensusConfig.newBuilder()
+            .setReplication(
+                IoTConsensusConfig.Replication.newBuilder().setBasicRetryWaitTimeMs(10).build())
+            .build();
+    SyncStatus status = new SyncStatus(controller, retryConfig);
+    TLogEntry logEntry = new TLogEntry().setSearchIndex(1).setMemorySize(1);
+    Batch batch = new Batch(retryConfig);
+    batch.addTLogEntry(logEntry);
+    batch.buildIndex();
+
+    IoTConsensusMemoryManager memoryManager = IoTConsensusMemoryManager.getInstance();
+    IMemoryBlock previousMemoryBlock = memoryManager.getMemoryBlock();
+    CountDownLatch firstAllocationFailed = new CountDownLatch(1);
+    AtomicBoolean rejectAllocation = new AtomicBoolean(true);
+    IMemoryBlock memoryBlock =
+        new AtomicLongMemoryBlock("SyncStatusTest", null, batch.getMemorySize()) {
+          @Override
+          public boolean allocate(long sizeInByte) {
+            if (rejectAllocation.compareAndSet(true, false)) {
+              firstAllocationFailed.countDown();
+              return false;
+            }
+            return super.allocate(sizeInByte);
+          }
+        };
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    memoryManager.setMemoryBlock(memoryBlock);
+    try {
+      Future<?> future =
+          executor.submit(
+              () -> {
+                status.addNextBatch(batch);
+                return null;
+              });
+
+      Assert.assertTrue(firstAllocationFailed.await(5, TimeUnit.SECONDS));
+      future.get(5, TimeUnit.SECONDS);
+
+      Assert.assertEquals(1, status.getPendingBatches().size());
+      status.removeBatch(batch);
+      Assert.assertEquals(0, status.getPendingBatches().size());
+    } finally {
+      executor.shutdownNow();
+      executor.awaitTermination(5, TimeUnit.SECONDS);
+      status.free();
+      memoryManager.setMemoryBlock(previousMemoryBlock);
+    }
   }
 }
