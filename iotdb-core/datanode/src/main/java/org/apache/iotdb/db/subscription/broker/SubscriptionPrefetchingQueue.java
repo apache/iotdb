@@ -920,6 +920,34 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   /**
+   * Replays every uncommitted delivery when the last subscriber leaves a retained initial topic.
+   */
+  public void resetAndRequeueInFlightEvents() {
+    acquireWriteLock();
+    try {
+      if (isClosed()) {
+        return;
+      }
+      for (final Pair<String, SubscriptionCommitContext> key :
+          ImmutableSet.copyOf(inFlightEvents.keySet())) {
+        inFlightEvents.computeIfPresent(
+            key,
+            (ignored, event) -> {
+              if (event.isCommitted()) {
+                event.cleanUp(false);
+              } else {
+                event.resetForRedelivery();
+                prefetchEvent(event);
+              }
+              return null;
+            });
+      }
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  /**
    * @return {@code true} if ack successfully
    */
   public boolean ack(final String consumerId, final SubscriptionCommitContext commitContext) {

@@ -94,6 +94,7 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionAndPipeProced
 
   public boolean shouldSerializeRetainedProgressState() {
     return serializeRetainedProgressState
+        || Objects.nonNull(existedTopicMeta)
         || !retainedConsumerGroupMetas.isEmpty()
         || !retainedPipeProcedures.isEmpty();
   }

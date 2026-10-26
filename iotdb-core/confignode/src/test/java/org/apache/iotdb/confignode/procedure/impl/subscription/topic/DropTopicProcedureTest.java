@@ -71,6 +71,44 @@ import static org.junit.Assert.fail;
 public class DropTopicProcedureTest {
 
   @Test
+  public void testTopicSnapshotSurvivesRecoveryWithoutRetainedGroups() throws Exception {
+    for (final boolean retain : new boolean[] {false, true}) {
+      final SubscriptionInfo subscriptions = new SubscriptionInfo();
+      final TopicMeta topic =
+          new TopicMeta(
+              "topic",
+              1L,
+              Map.of(
+                  TopicConstant.MODE_KEY,
+                  TopicConstant.MODE_INITIAL_VALUE,
+                  TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY,
+                  String.valueOf(retain)));
+      subscriptions.createTopic(new CreateTopicPlan(topic));
+      final DropTopicProcedure procedure = new DropTopicProcedure("topic", false);
+      setField(procedure, "subscriptionInfo", new AtomicReference<>(subscriptions));
+      procedure.executeFromValidate(null);
+      final PublicBAOS bytes = new PublicBAOS();
+      procedure.serialize(new DataOutputStream(bytes));
+      final ByteBuffer buffer = ByteBuffer.wrap(bytes.getBuf(), 0, bytes.size());
+      final DropTopicProcedure recovered =
+          (DropTopicProcedure) ProcedureFactory.getInstance().create(buffer);
+      assertEquals(0, buffer.remaining());
+      assertEquals(procedure, recovered);
+      subscriptions.dropTopic(new DropTopicPlan("topic", false));
+      assertNull(subscriptions.deepCopyTopicMeta("topic", false));
+      final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);
+      final ConfigManager manager = Mockito.mock(ConfigManager.class);
+      final ConsensusManager consensus = Mockito.mock(ConsensusManager.class);
+      Mockito.when(env.getConfigManager()).thenReturn(manager);
+      Mockito.when(manager.getConsensusManager()).thenReturn(consensus);
+      Mockito.when(consensus.write(Mockito.any(CreateTopicPlan.class)))
+          .thenAnswer(invocation -> subscriptions.createTopic(invocation.getArgument(0)));
+      recovered.rollbackFromOperateOnConfigNodes(env);
+      assertEquals(topic, subscriptions.deepCopyTopicMeta("topic", false));
+    }
+  }
+
+  @Test
   public void testRetainedRuntimeCleanupAndRollbackAreModelScoped() throws Exception {
     for (final boolean dropTopic : new boolean[] {false, true}) {
       for (final boolean tableModel : new boolean[] {false, true}) {

@@ -112,8 +112,8 @@ public class SubscriptionConsumerAgent {
         dropConsumerGroupBroker(consumerGroupId);
       }
       if (retainProgress || retainInitialProgress) {
-        requeueRetainedInitialEvents(consumerGroupId, metaInAgent, metaFromCoordinator);
         replaceConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
+        requeueRetainedInitialEvents(consumerGroupId, metaInAgent, metaFromCoordinator);
       } else {
         removeConsumerGroupMeta(consumerGroupId);
       }
@@ -211,8 +211,8 @@ public class SubscriptionConsumerAgent {
         () -> {
           // TODO: Currently we fully replace the entire ConsumerGroupMeta without carefully
           // checking the changes in its fields.
-          requeueRetainedInitialEvents(consumerGroupId, metaInAgent, metaFromCoordinator);
           replaceConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
+          requeueRetainedInitialEvents(consumerGroupId, metaInAgent, metaFromCoordinator);
         });
   }
 
@@ -233,10 +233,9 @@ public class SubscriptionConsumerAgent {
       return;
     }
     for (final String topicName : updatedMeta.getRetainedInitialTopicNames()) {
-      for (final String consumerId : existingMeta.getConsumersSubscribingTopic(topicName)) {
-        SubscriptionAgent.broker()
-            .requeuePipeInFlightEvents(consumerGroupId, topicName, consumerId);
-      }
+      // No consumers remain subscribed to this topic. Include deliveries owned by consumers that
+      // left earlier, and rewind multipart responses so the next subscriber can read them in full.
+      SubscriptionAgent.broker().resetAndRequeuePipeInFlightEvents(consumerGroupId, topicName);
     }
   }
 

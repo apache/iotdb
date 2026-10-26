@@ -29,6 +29,7 @@ import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.metric.SubscriptionPrefetchingQueueMetrics;
 import org.apache.iotdb.db.subscription.resource.SubscriptionDataNodeResourceManager;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
@@ -159,6 +160,13 @@ public class SubscriptionBroker implements ISubscriptionBroker {
         continue;
       }
 
+      // A poll may have captured its topic set before the last subscriber left. Retained queues
+      // stay alive, so check the published subscription again before handing out their events.
+      if (!canDeliverRetainedInitialEvent(consumerId, topicName)) {
+        prefetchingQueue.requeue(consumerId, event.getCommitContext());
+        continue;
+      }
+
       // Try to get the current size of the event
       final long currentSize;
       try {
@@ -204,6 +212,16 @@ public class SubscriptionBroker implements ISubscriptionBroker {
 
     // Return the list of events that are to be polled
     return eventsToPoll;
+  }
+
+  private boolean canDeliverRetainedInitialEvent(final String consumerId, final String topicName) {
+    final TopicConfig config = SubscriptionAgent.topic().getTopicConfig(topicName, isTableModel());
+    return Objects.isNull(config)
+        || !config.isInitialMode()
+        || !config.isProgressRetainedAfterUnsubscribe()
+        || SubscriptionAgent.consumer()
+            .getTopicNamesSubscribedByConsumer(brokerId, consumerId)
+            .contains(topicName);
   }
 
   private Set<String> prepareCandidateTopicNames(
@@ -402,10 +420,10 @@ public class SubscriptionBroker implements ISubscriptionBroker {
         .sum();
   }
 
-  public void requeueInFlightEvents(final String topicName, final String consumerId) {
+  public void resetAndRequeueInFlightEvents(final String topicName) {
     final SubscriptionPrefetchingQueue queue = topicNameToPrefetchingQueue.get(topicName);
     if (Objects.nonNull(queue)) {
-      queue.requeueInFlightEvents(consumerId);
+      queue.resetAndRequeueInFlightEvents();
     }
   }
 

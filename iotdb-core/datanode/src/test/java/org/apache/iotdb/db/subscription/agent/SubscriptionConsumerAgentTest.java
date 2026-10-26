@@ -102,7 +102,7 @@ public class SubscriptionConsumerAgentTest {
           assertNull(agent.handleSingleConsumerGroupMetaChanges(detached));
           assertTrue(brokers.isBrokerExist(groupId));
           assertTrue(broker.hasQueue("topic"));
-          Mockito.verify(queue).requeueInFlightEvents("consumer");
+          Mockito.verify(queue).resetAndRequeueInFlightEvents();
           Mockito.verify(queue, Mockito.never()).cleanUp();
 
           final ConsumerGroupMeta rejoined = detached.deepCopy();

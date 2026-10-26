@@ -1,0 +1,328 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.subscription.agent;
+
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.db.subscription.broker.ISubscriptionBroker;
+import org.apache.iotdb.db.subscription.broker.SubscriptionBlockingPendingQueue;
+import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
+import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
+import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTabletQueue;
+import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
+import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
+import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
+import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEvents;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
+import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.TerminationPayload;
+import org.apache.iotdb.session.subscription.util.PollTimer;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+import java.lang.reflect.Field;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
+
+public class SubscriptionRetainedInitialReplayTest {
+
+  @Rule public final TemporaryFolder folder = new TemporaryFolder();
+
+  @Test
+  public void testDownloadedTsFileReplaysFromBeginningWithoutPoisoning() throws Exception {
+    for (final boolean tableModel : new boolean[] {false, true}) {
+      for (final boolean closeConsumer : new boolean[] {false, true}) {
+        try (final RetainedSubscription subscription = new RetainedSubscription(tableModel)) {
+          final SubscriptionEvent event =
+              new SubscriptionEvent(
+                  mock(SubscriptionPipeEvents.class),
+                  folder.newFile(),
+                  null,
+                  subscription.queue.generateSubscriptionCommitContext());
+          subscription.queue.prefetchEvent(event);
+          // More than ten detach/rejoin cycles must not trigger poison-message auto-commit.
+          for (int i = 0; i < 12; i++) {
+            assertSame(event, subscription.poll("first"));
+            assertEquals(
+                SubscriptionPollResponseType.FILE_INIT.getType(),
+                event.getCurrentResponse().getResponseType());
+            event.fetchNextResponse(0L);
+            assertEquals(
+                SubscriptionPollResponseType.FILE_SEAL.getType(),
+                event.getCurrentResponse().getResponseType());
+            subscription.detach(closeConsumer);
+            subscription.rejoin();
+            assertFalse(event.isCommitted());
+            assertEquals(0L, event.getNackCount());
+          }
+          assertSame(event, subscription.poll("first"));
+          assertEquals(
+              SubscriptionPollResponseType.FILE_INIT.getType(),
+              event.getCurrentResponse().getResponseType());
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testDownloadedTabletPagesReplayTheirRows() throws Exception {
+    try (final RetainedSubscription subscription = new RetainedSubscription(false)) {
+      final Tablet tablet =
+          new Tablet(
+              "root.retained.d",
+              Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT64)),
+              1);
+      tablet.addTimestamp(0, 42L);
+      tablet.addValue("s1", 0, 7L);
+      tablet.setRowSize(1);
+      final AtomicBoolean iterated = new AtomicBoolean();
+      final SubscriptionPipeTabletEventBatch batch = mock(SubscriptionPipeTabletEventBatch.class);
+      when(batch.getColumnFilterMatcher()).thenReturn(ColumnFilterMatcher.matchAll());
+      when(batch.hasNext()).thenAnswer(invocation -> !iterated.get());
+      when(batch.next())
+          .thenAnswer(
+              invocation -> {
+                iterated.set(true);
+                return new Pair<>("", Collections.singletonList(tablet));
+              });
+      doAnswer(
+              invocation -> {
+                iterated.set(false);
+                return null;
+              })
+          .when(batch)
+          .resetForIteration();
+      final SubscriptionEvent event = new SubscriptionEvent(batch, subscription.queue);
+      subscription.queue.prefetchEvent(event);
+      assertSame(event, subscription.poll("first"));
+      event.fetchNextResponse(1L);
+      assertSame(
+          tablet, ((TabletsPayload) event.getCurrentResponse().getPayload()).getTablets().get(0));
+      event.fetchNextResponse(2L);
+      assertEquals(-1, ((TabletsPayload) event.getCurrentResponse().getPayload()).getNextOffset());
+      subscription.detach(false);
+      subscription.rejoin();
+      assertSame(event, subscription.poll("first"));
+      assertEquals(1, ((TabletsPayload) event.getCurrentResponse().getPayload()).getNextOffset());
+      event.fetchNextResponse(1L);
+      assertSame(
+          tablet, ((TabletsPayload) event.getCurrentResponse().getPayload()).getTablets().get(0));
+    }
+  }
+
+  @Test
+  public void testLastUnsubscribeReplaysEarlierConsumersUncommittedEvents() throws Exception {
+    try (final RetainedSubscription subscription = new RetainedSubscription(false)) {
+      subscription.meta.addConsumer(subscription.consumer("second"));
+      subscription.meta.addSubscription("second", Collections.singleton(subscription.topic));
+      assertNull(
+          SubscriptionAgent.consumer()
+              .handleSingleConsumerGroupMetaChanges(subscription.meta.deepCopy()));
+      final SubscriptionEvent committed = subscription.newEvent();
+      subscription.queue.prefetchEvent(committed);
+      assertSame(committed, subscription.poll("first"));
+      assertTrue(subscription.queue.ack("first", committed.getCommitContext()));
+      final SubscriptionEvent uncommitted = subscription.newEvent();
+      subscription.queue.prefetchEvent(uncommitted);
+      assertSame(uncommitted, subscription.poll("first"));
+      subscription.meta.removeSubscription("first", Collections.singleton(subscription.topic));
+      assertNull(
+          SubscriptionAgent.consumer()
+              .handleSingleConsumerGroupMetaChanges(subscription.meta.deepCopy()));
+      subscription.meta.removeSubscription("second", Collections.singleton(subscription.topic));
+      subscription.meta.retainInitialTopic(subscription.topic);
+      assertNull(
+          SubscriptionAgent.consumer()
+              .handleSingleConsumerGroupMetaChanges(subscription.meta.deepCopy()));
+      subscription.rejoin();
+      assertEquals(0L, subscription.queue.getSubscriptionUncommittedEventCount());
+      assertSame(uncommitted, subscription.poll("first"));
+      assertFalse(uncommitted.isCommitted());
+      assertEquals(0, subscription.queue.getPrefetchedEventCount());
+    }
+  }
+
+  @Test
+  public void testRetainFalseStillDiscardsQueueOnConsumerClose() throws Exception {
+    try (final RetainedSubscription subscription = new RetainedSubscription(false, false)) {
+      final SubscriptionEvent event = subscription.newEvent();
+      subscription.queue.prefetchEvent(event);
+      assertSame(event, subscription.poll("first"));
+      subscription.detach(true);
+      assertTrue(subscription.queue.isClosed());
+      assertEquals(0L, subscription.queue.getSubscriptionUncommittedEventCount());
+      assertEquals(0, subscription.queue.getPrefetchedEventCount());
+      assertFalse(SubscriptionAgent.consumer().containsConsumerGroup(subscription.group));
+      assertFalse(SubscriptionAgent.broker().isBrokerExist(subscription.group));
+    }
+  }
+
+  @Test
+  public void testPollWithStaleTopicSetCannotStrandRetainedEvents() throws Exception {
+    for (final boolean closeConsumer : new boolean[] {false, true}) {
+      try (final RetainedSubscription subscription = new RetainedSubscription(false)) {
+        final SubscriptionEvent event = subscription.newEvent();
+        subscription.queue.prefetchEvent(event);
+        assertSame(event, subscription.poll("first"));
+        doAnswer(
+                invocation -> {
+                  invocation.callRealMethod();
+                  // Model a request admitted before unsubscribe that reaches the queue as soon as
+                  // the uncommitted event is released, before the meta-change handler returns.
+                  assertTrue(
+                      subscription
+                          .broker
+                          .poll("first", Collections.singleton(subscription.topic), Long.MAX_VALUE)
+                          .isEmpty());
+                  return null;
+                })
+            .when(subscription.queue)
+            .resetAndRequeueInFlightEvents();
+        subscription.detach(closeConsumer);
+        assertEquals(0L, subscription.queue.getSubscriptionUncommittedEventCount());
+        assertEquals(1, subscription.queue.getPrefetchedEventCount());
+        subscription.rejoin();
+        assertSame(event, subscription.poll("first"));
+      }
+    }
+  }
+
+  private static final class RetainedSubscription implements AutoCloseable {
+    private final String topic = "retained_replay";
+    private final String group = "retained_replay_group";
+    private final boolean tableModel;
+    private final boolean retain;
+    private final SubscriptionPrefetchingQueue queue;
+    private final SubscriptionBroker broker;
+    private ConsumerGroupMeta meta;
+
+    private RetainedSubscription(final boolean tableModel) throws Exception {
+      this(tableModel, true);
+    }
+
+    @SuppressWarnings("unchecked")
+    private RetainedSubscription(final boolean tableModel, final boolean retain) throws Exception {
+      this.tableModel = tableModel;
+      this.retain = retain;
+      assertNull(
+          SubscriptionAgent.topic()
+              .handleSingleTopicMetaChanges(
+                  new TopicMeta(
+                      topic,
+                      1L,
+                      Map.of(
+                          SystemConstant.SQL_DIALECT_KEY,
+                          tableModel ? "table" : "tree",
+                          TopicConstant.MODE_KEY,
+                          TopicConstant.MODE_INITIAL_VALUE,
+                          TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY,
+                          String.valueOf(retain),
+                          TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY,
+                          "0"))));
+      meta = new ConsumerGroupMeta(group, 1L, consumer("first"));
+      meta.addSubscription("first", Collections.singleton(topic));
+      assertNull(
+          SubscriptionAgent.consumer().handleSingleConsumerGroupMetaChanges(meta.deepCopy()));
+      final SubscriptionBlockingPendingQueue input = mock(SubscriptionBlockingPendingQueue.class);
+      when(input.isEmpty()).thenReturn(true);
+      queue = spy(new SubscriptionPrefetchingTabletQueue(group, topic, input, new AtomicLong()));
+      final Field brokersField =
+          SubscriptionBrokerAgent.class.getDeclaredField("consumerGroupIdToBrokers");
+      brokersField.setAccessible(true);
+      final Map<String, List<ISubscriptionBroker>> brokers =
+          (Map<String, List<ISubscriptionBroker>>) brokersField.get(SubscriptionAgent.broker());
+      broker = (SubscriptionBroker) brokers.get(group).get(0);
+      final Field queuesField =
+          SubscriptionBroker.class.getDeclaredField("topicNameToPrefetchingQueue");
+      queuesField.setAccessible(true);
+      ((Map<String, SubscriptionPrefetchingQueue>) queuesField.get(broker)).put(topic, queue);
+    }
+
+    private ConsumerMeta consumer(final String id) {
+      return new ConsumerMeta(
+          id,
+          1L,
+          Collections.singletonMap(
+              ConsumerConstant.SQL_DIALECT_KEY, tableModel ? "table" : "tree"));
+    }
+
+    private SubscriptionEvent newEvent() {
+      return new SubscriptionEvent(
+          SubscriptionPollResponseType.TERMINATION.getType(),
+          new TerminationPayload(),
+          queue.generateSubscriptionCommitContext());
+    }
+
+    private SubscriptionEvent poll(final String consumerId) {
+      return queue.pollV2(consumerId, new PollTimer(System.currentTimeMillis(), 0L));
+    }
+
+    private void detach(final boolean closeConsumer) {
+      meta.removeSubscription("first", Collections.singleton(topic));
+      if (retain) {
+        meta.retainInitialTopic(topic);
+      }
+      if (closeConsumer) {
+        meta.removeConsumer("first");
+      }
+      assertNull(
+          SubscriptionAgent.consumer().handleSingleConsumerGroupMetaChanges(meta.deepCopy()));
+    }
+
+    private void rejoin() {
+      if (!meta.containsConsumer("first")) {
+        meta.addConsumer(consumer("first"));
+      }
+      meta.addSubscription("first", Collections.singleton(topic));
+      meta.removeRetainedInitialTopic(topic);
+      assertNull(
+          SubscriptionAgent.consumer().handleSingleConsumerGroupMetaChanges(meta.deepCopy()));
+    }
+
+    @Override
+    public void close() {
+      assertNull(SubscriptionAgent.consumer().handleDropConsumerGroup(group));
+      assertNull(SubscriptionAgent.topic().handleDropTopic(topic, tableModel));
+    }
+  }
+}
