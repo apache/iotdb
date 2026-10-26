@@ -24,6 +24,7 @@ import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -97,7 +98,7 @@ public class IoTDBTableViewQueryWithCachedDeviceIT {
       EnvFactory.getEnv()
           .ensureNodeStatus(
               Collections.singletonList(dataNodeWrapper),
-              Collections.singletonList(NodeStatus.Unknown));
+              Collections.singletonList(EnvUtils.getNodeStatusAfterLocalStop()));
     }
     EnvFactory.getEnv().startAllDataNodes();
     for (DataNodeWrapper dataNodeWrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {

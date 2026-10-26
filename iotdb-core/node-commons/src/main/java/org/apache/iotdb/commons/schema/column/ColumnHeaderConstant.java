@@ -86,6 +86,7 @@ public class ColumnHeaderConstant {
   public static final String NODE_ID = "NodeID";
   public static final String NODE_TYPE = "NodeType";
   public static final String STATUS = "Status";
+  public static final String STATUS_REASON = "StatusReason";
   public static final String INTERNAL_ADDRESS = "InternalAddress";
   public static final String INTERNAL_PORT = "InternalPort";
   public static final String CONFIG_CONSENSUS_PORT = "ConfigConsensusPort";
@@ -133,6 +134,8 @@ public class ColumnHeaderConstant {
   // column names for show topics statement
   public static final String TOPIC_NAME = "TopicName";
   public static final String TOPIC_CONFIGS = "TopicConfigs";
+  public static final String TAG_FILTER_STATUS = "TagFilterStatus";
+  public static final String TAG_FILTER_MESSAGE = "TagFilterMessage";
   public static final String TOPIC = "Topic";
   public static final String CREATE_TOPIC = "Create Topic";
 
@@ -217,6 +220,20 @@ public class ColumnHeaderConstant {
   public static final String REPAIR_DATA_PARTITION_TABLE_PROGRESS = "Progress(%)";
   public static final String REPAIR_DATA_PARTITION_TABLE_MESSAGE = "Message";
 
+  // column names for show receivers
+  public static final String RECEIVER_NODE_TYPE = "ReceiverNodeType";
+  public static final String RECEIVER_NODE_ID = "ReceiverNodeId";
+  public static final String PROTOCOL = "Protocol";
+  public static final String SENDER_CLUSTER_ID = "SenderClusterId";
+  public static final String SENDER_ADDRESS = "SenderAddress";
+  public static final String RECEIVER_USER_NAME = "UserName";
+  public static final String SENDER_PORTS = "SenderPorts";
+  public static final String CONNECTION_COUNT = "ConnectionCount";
+  public static final String PIPE_COUNT = "PipeCount";
+  public static final String PIPE_IDS = "PipeIDs";
+  public static final String LAST_HANDSHAKE_TIME = "LastHandshakeTime";
+  public static final String LAST_TRANSFER_TIME = "LastTransferTime";
+
   // column names for select into
   public static final String SOURCE_DEVICE = "SourceDevice";
   public static final String SOURCE_COLUMN = "SourceColumn";
@@ -290,11 +307,43 @@ public class ColumnHeaderConstant {
   public static final String PIPE_PROCESSOR_TABLE_MODEL = "pipe_processor";
   public static final String PIPE_SINK_TABLE_MODEL = "pipe_sink";
   public static final String EXCEPTION_MESSAGE_TABLE_MODEL = "exception_message";
+  public static final String PROCEDURE_ID_TABLE_MODEL = "procedure_id";
+  public static final String PROGRESS_TABLE_MODEL = "progress";
+  public static final String ERROR_MESSAGE_TABLE_MODEL = "error_message";
+  public static final String WRITTEN_MOD_FILE_COUNT_TABLE_MODEL = "written_mod_file_count";
+  public static final String REMAINING_MOD_FILE_COUNT_TABLE_MODEL = "remaining_mod_file_count";
   public static final String REMAINING_EVENT_COUNT_TABLE_MODEL = "remaining_event_count";
   public static final String ESTIMATED_REMAINING_SECONDS_TABLE_MODEL =
       "estimated_remaining_seconds";
   public static final String IS_DEGRADED_TABLE_MODEL = "is_degraded";
   public static final String RECENT_FAILURES_TABLE_MODEL = "recent_failures";
+  public static final String NAME_TABLE_MODEL = "name";
+  public static final String PIPE_NAME_TABLE_MODEL = "pipe_name";
+  public static final String PIPE_MODEL_TABLE_MODEL = "pipe_model";
+  public static final String BLOCK_ID_TABLE_MODEL = "block_id";
+  public static final String CATEGORY_TABLE_MODEL = "category";
+  public static final String MEMORY_USAGE_IN_BYTES_TABLE_MODEL = "memory_usage_in_bytes";
+  public static final String PEAK_MEMORY_SIZE_IN_BYTES_TABLE_MODEL = "peak_memory_size_in_bytes";
+  public static final String MAX_MEMORY_SIZE_IN_BYTES_TABLE_MODEL = "max_memory_size_in_bytes";
+  public static final String ALLOCATION_TIME_TABLE_MODEL = "allocation_time";
+  public static final String ASSIGNER_TABLE_MODEL = "assigner";
+  public static final String PARENT_BLOCK_ID_TABLE_MODEL = "parent_block_id";
+  public static final String HIERARCHY_LEVEL_TABLE_MODEL = "hierarchy_level";
+  public static final String ACCOUNTED_MEMORY_USAGE_IN_BYTES_TABLE_MODEL =
+      "accounted_memory_usage_in_bytes";
+
+  public static final String RECEIVER_NODE_TYPE_TABLE_MODEL = "receiver_node_type";
+  public static final String RECEIVER_NODE_ID_TABLE_MODEL = "receiver_node_id";
+  public static final String PROTOCOL_TABLE_MODEL = "protocol";
+  public static final String SENDER_CLUSTER_ID_TABLE_MODEL = "sender_cluster_id";
+  public static final String SENDER_ADDRESS_TABLE_MODEL = "sender_address";
+  public static final String RECEIVER_USER_NAME_TABLE_MODEL = "user_name";
+  public static final String SENDER_PORTS_TABLE_MODEL = "sender_ports";
+  public static final String CONNECTION_COUNT_TABLE_MODEL = "connection_count";
+  public static final String PIPE_COUNT_TABLE_MODEL = "pipe_count";
+  public static final String PIPE_IDS_TABLE_MODEL = "pipe_ids";
+  public static final String LAST_HANDSHAKE_TIME_TABLE_MODEL = "last_handshake_time";
+  public static final String LAST_TRANSFER_TIME_TABLE_MODEL = "last_transfer_time";
 
   public static final String PLUGIN_NAME_TABLE_MODEL = "plugin_name";
   public static final String PLUGIN_TYPE_TABLE_MODEL = "plugin_type";
@@ -318,6 +367,7 @@ public class ColumnHeaderConstant {
 
   public static final String NODE_ID_TABLE_MODEL = "node_id";
   public static final String NODE_TYPE_TABLE_MODEL = "node_type";
+  public static final String STATUS_REASON_TABLE_MODEL = "status_reason";
   public static final String INTERNAL_PORT_TABLE_MODEL = "internal_port";
   public static final String BUILD_INFO_TABLE_MODEL = "build_info";
 
@@ -648,6 +698,13 @@ public class ColumnHeaderConstant {
           new ColumnHeader(TOPIC_NAME, TSDataType.TEXT),
           new ColumnHeader(TOPIC_CONFIGS, TSDataType.TEXT));
 
+  public static final List<ColumnHeader> showTableTopicColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(TOPIC_NAME, TSDataType.TEXT),
+          new ColumnHeader(TOPIC_CONFIGS, TSDataType.TEXT),
+          new ColumnHeader(TAG_FILTER_STATUS, TSDataType.TEXT),
+          new ColumnHeader(TAG_FILTER_MESSAGE, TSDataType.TEXT));
+
   public static final List<ColumnHeader> showCreateTopicColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TOPIC, TSDataType.TEXT),
@@ -728,6 +785,21 @@ public class ColumnHeaderConstant {
           new ColumnHeader(WAIT_TIME_IN_SERVER, TSDataType.FLOAT),
           new ColumnHeader(CLIENT_IP_TREE_MODEL, TSDataType.STRING),
           new ColumnHeader(TIMEOUT, TSDataType.INT64));
+
+  public static final List<ColumnHeader> showReceiversColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(RECEIVER_NODE_TYPE, TSDataType.TEXT),
+          new ColumnHeader(RECEIVER_NODE_ID, TSDataType.INT32),
+          new ColumnHeader(PROTOCOL, TSDataType.TEXT),
+          new ColumnHeader(SENDER_CLUSTER_ID, TSDataType.TEXT),
+          new ColumnHeader(SENDER_ADDRESS, TSDataType.TEXT),
+          new ColumnHeader(RECEIVER_USER_NAME, TSDataType.TEXT),
+          new ColumnHeader(SENDER_PORTS, TSDataType.TEXT),
+          new ColumnHeader(CONNECTION_COUNT, TSDataType.INT32),
+          new ColumnHeader(PIPE_COUNT, TSDataType.INT32),
+          new ColumnHeader(PIPE_IDS, TSDataType.TEXT),
+          new ColumnHeader(LAST_HANDSHAKE_TIME, TSDataType.TEXT),
+          new ColumnHeader(LAST_TRANSFER_TIME, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDiskUsageColumnHeaders =
       ImmutableList.of(

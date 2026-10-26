@@ -20,8 +20,10 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window;
 
 import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.TableMergeSortOperator;
 import org.apache.iotdb.calc.execution.operator.process.window.TopKRankingOperator;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
+import org.apache.iotdb.calc.utils.datastructure.SortKey;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder;
@@ -36,6 +38,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeLinearFillOperator;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
@@ -46,6 +49,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -196,10 +200,71 @@ public class TopKRankingOperatorTest {
         2);
   }
 
-  /**
-   * Verifies top-K results grouped by partition (device). The output order between partitions is
-   * not guaranteed, so we group results by device and verify each partition independently.
-   */
+  @Test
+  public void testTopKWithSmallOutputBlocks() {
+    int originalLimit = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
+    TSFileDescriptor.getInstance().getConfig().setMaxTsBlockLineNumber(2);
+    try {
+      testTopKWithMultipleTsBlocks();
+      testTopKWithPartitionDescending();
+    } finally {
+      TSFileDescriptor.getInstance().getConfig().setMaxTsBlockLineNumber(originalLimit);
+    }
+  }
+
+  @Test
+  public void testTopKConsumesMergeSortInput() throws Exception {
+    DriverContext driver = createDriverContext();
+    OperatorContext context = driver.getOperatorContexts().get(0);
+    List<TSDataType> types = Arrays.asList(TSDataType.TIMESTAMP, TSDataType.TEXT, TSDataType.INT32);
+    Operator left =
+        new ChildOperator(
+            new long[][] {{1, 3}}, new String[][] {{"d1", "d1"}}, new int[][] {{1, 3}}, driver);
+    Operator right =
+        new ChildOperator(
+            new long[][] {{2, 4}}, new String[][] {{"d1", "d1"}}, new int[][] {{2, 4}}, driver);
+    TableMergeSortOperator merge =
+        new TableMergeSortOperator(
+            context,
+            new ArrayList<>(Arrays.asList(left, right)),
+            types,
+            Comparator.comparingLong(
+                (SortKey key) -> key.tsBlock.getColumn(0).getLong(key.rowIndex)));
+    try (TopKRankingOperator operator =
+        new TopKRankingOperator(
+            context,
+            merge,
+            TopKRankingNode.RankingType.ROW_NUMBER,
+            types,
+            Arrays.asList(0, 1, 2),
+            Collections.singletonList(1),
+            Collections.singletonList(TSDataType.TEXT),
+            Collections.singletonList(0),
+            Collections.singletonList(SortOrder.DESC_NULLS_LAST),
+            2,
+            false,
+            Optional.empty(),
+            10,
+            Optional.empty())) {
+      List<Integer> values = new ArrayList<>();
+      int calls = 0;
+      while (!operator.isFinished()) {
+        assertTrue("TopK must make progress through its merge input", ++calls < 100);
+        assertTrue(operator.isBlocked().isDone());
+        if (operator.hasNext()) {
+          TsBlock block = operator.next();
+          if (block != null) {
+            for (int i = 0; i < block.getPositionCount(); i++) {
+              values.add(block.getColumn(2).getInt(i));
+              assertEquals(values.size(), block.getColumn(3).getLong(i));
+            }
+          }
+        }
+      }
+      assertEquals(Arrays.asList(4, 3), values);
+    }
+  }
+
   private void verifyTopKResultsByPartition(
       long[][] timeArray,
       String[][] deviceArray,
@@ -227,7 +292,9 @@ public class TopKRankingOperatorTest {
             sortOrders,
             maxRowCountPerPartition,
             partial)) {
+      int calls = 0;
       while (!operator.isFinished()) {
+        assertTrue("TopK must finish", ++calls < 1000);
         if (operator.hasNext()) {
           TsBlock tsBlock = operator.next();
           if (tsBlock != null && !tsBlock.isEmpty()) {

@@ -29,6 +29,8 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
 
+import static com.google.common.math.LongMath.saturatedSubtract;
+
 public class UDTFTimeDifference implements UDTF {
 
   private boolean hasPrevious = false;
@@ -49,7 +51,7 @@ public class UDTFTimeDifference implements UDTF {
     }
 
     long currentTime = row.getTime();
-    collector.putLong(currentTime, currentTime - previousTime);
+    collector.putLong(currentTime, saturatedSubtract(currentTime, previousTime));
     previousTime = currentTime;
   }
 }

@@ -67,6 +67,7 @@ import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.tree.AlterTimeSeriesOperationType;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.subscription.meta.consumer.CommitProgressKeeper;
 import org.apache.iotdb.commons.subscription.meta.consumer.SubscriptionProgressSnapshot;
 import org.apache.iotdb.commons.utils.AuthUtils;
@@ -119,12 +120,13 @@ import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceInfo;
 import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
-import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 import org.apache.iotdb.confignode.manager.node.ClusterNodeStartUtils;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.node.NodeMetrics;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
+import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
@@ -156,6 +158,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
@@ -241,6 +245,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDropTableProceduresResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -308,6 +313,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
 
 /** Entry of all management, AssignPartitionManager, AssignRegionManager. */
@@ -377,58 +383,44 @@ public class ConfigManager implements IManager {
 
   public ConfigManager() throws IOException {
     // Build the persistence module
-    ClusterInfo clusterInfo = new ClusterInfo();
-    NodeInfo nodeInfo = new NodeInfo();
-    ClusterSchemaInfo clusterSchemaInfo = new ClusterSchemaInfo();
-    PartitionInfo partitionInfo = new PartitionInfo();
-    AuthorInfo authorInfo = createAuthorInfo();
-    ProcedureInfo procedureInfo = new ProcedureInfo(this);
-    UDFInfo udfInfo = new UDFInfo();
-    TriggerInfo triggerInfo = new TriggerInfo();
-    CQInfo cqInfo = new CQInfo();
-    ExternalServiceInfo externalServiceInfo = new ExternalServiceInfo();
-    this.permissionManager = createPermissionManager(authorInfo);
-    PipeInfo pipeInfo = new PipeInfo(userName -> this.permissionManager.login4Pipe(userName, null));
-    QuotaInfo quotaInfo = new QuotaInfo();
-    TTLInfo ttlInfo = new TTLInfo();
-    SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-
+    ConfigManagerContext context = createConfigManagerContext();
+    context.clusterInfo = new ClusterInfo();
+    context.nodeInfo = new NodeInfo();
+    context.clusterSchemaInfo = new ClusterSchemaInfo();
+    context.partitionInfo = new PartitionInfo();
+    context.authorInfo = createAuthorInfo();
+    context.procedureInfo = new ProcedureInfo(this);
+    context.udfInfo = new UDFInfo();
+    context.triggerInfo = new TriggerInfo();
+    context.cqInfo = new CQInfo();
+    context.externalServiceInfo = new ExternalServiceInfo();
+    this.permissionManager = createPermissionManager(context.authorInfo);
+    context.pipeInfo = new PipeInfo(userName -> this.permissionManager.login4Pipe(userName, null));
+    context.quotaInfo = new QuotaInfo();
+    context.ttlInfo = new TTLInfo();
+    context.subscriptionInfo = new SubscriptionInfo();
+    initAdditionalInfos(context);
     // Build state machine and executor
-    ConfigPlanExecutor executor =
-        new ConfigPlanExecutor(
-            clusterInfo,
-            nodeInfo,
-            clusterSchemaInfo,
-            partitionInfo,
-            authorInfo,
-            procedureInfo,
-            udfInfo,
-            triggerInfo,
-            cqInfo,
-            externalServiceInfo,
-            pipeInfo,
-            subscriptionInfo,
-            quotaInfo,
-            ttlInfo);
+    ConfigPlanExecutor executor = createConfigPlanExecutor(context);
     this.stateMachine = new ConfigRegionStateMachine(this, executor);
 
     // Build the manager module
-    this.clusterManager = new ClusterManager(this, clusterInfo);
-    setNodeManager(nodeInfo);
+    this.clusterManager = new ClusterManager(this, context.clusterInfo);
+    setNodeManager(context.nodeInfo);
     this.clusterSchemaManager =
         new ClusterSchemaManager(
             this,
-            clusterSchemaInfo,
+            context.clusterSchemaInfo,
             new ClusterSchemaQuotaStatistics(
                 COMMON_CONF.getSeriesLimitThreshold(), COMMON_CONF.getDeviceLimitThreshold()));
-    this.partitionManager = new PartitionManager(this, partitionInfo);
-    this.procedureManager = createProcedureManager(procedureInfo);
+    this.partitionManager = new PartitionManager(this, context.partitionInfo);
+    this.procedureManager = createProcedureManager(context.procedureInfo);
     this.externalServiceManager = new ExternalServiceManager(this);
-    this.udfManager = new UDFManager(this, udfInfo);
-    this.triggerManager = new TriggerManager(this, triggerInfo);
+    this.udfManager = new UDFManager(this, context.udfInfo);
+    this.triggerManager = new TriggerManager(this, context.triggerInfo);
     this.cqManager = new CQManager(this);
-    this.pipeManager = new PipeManager(this, pipeInfo);
-    this.subscriptionManager = new SubscriptionManager(this, subscriptionInfo);
+    this.pipeManager = new PipeManager(this, context.pipeInfo);
+    this.subscriptionManager = new SubscriptionManager(this, context.subscriptionInfo);
     this.auditLogger = new CNAuditLogger(this);
 
     // 1. keep PipeManager initialization before LoadManager initialization, because
@@ -438,8 +430,8 @@ public class ConfigManager implements IManager {
     setLoadManager();
 
     this.retryFailedTasksThread = new RetryFailedTasksThread(this);
-    this.clusterQuotaManager = new ClusterQuotaManager(this, quotaInfo);
-    this.ttlManager = new TTLManager(this, ttlInfo);
+    this.clusterQuotaManager = new ClusterQuotaManager(this, context.quotaInfo);
+    this.ttlManager = new TTLManager(this, context.ttlInfo);
   }
 
   public void initConsensusManager() throws IOException {
@@ -457,6 +449,16 @@ public class ConfigManager implements IManager {
 
   protected AuthorInfo createAuthorInfo() {
     return new AuthorInfo();
+  }
+
+  protected ConfigManagerContext createConfigManagerContext() {
+    return new ConfigManagerContext();
+  }
+
+  protected void initAdditionalInfos(final ConfigManagerContext context) {}
+
+  protected ConfigPlanExecutor createConfigPlanExecutor(final ConfigManagerContext context) {
+    return new ConfigPlanExecutor(context);
   }
 
   protected void setNodeManager(NodeInfo nodeInfo) {
@@ -577,17 +579,19 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus reportDataNodeShutdown(TDataNodeLocation dataNodeLocation) {
+    return reportNodeShutdown(dataNodeLocation.getDataNodeId());
+  }
+
+  private TSStatus reportNodeShutdown(int nodeId) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // Force updating the target DataNode's status to Unknown
-      getLoadManager()
-          .forceUpdateNodeCache(
-              NodeType.DataNode,
-              dataNodeLocation.getDataNodeId(),
-              new NodeHeartbeatSample(NodeStatus.Unknown));
-      LOGGER.info(
-          ManagerMessages.THE_DATANODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_UNKNOWN,
-          dataNodeLocation.getDataNodeId());
+      status = getLoadManager().trySetNodeStatus(nodeId, NodeStatus.Stopped, false);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.info(
+            ManagerMessages.LOG_NODE_ARG_REPORTED_SHUTDOWN_CURRENT_STATUS_IS_ARG_A375D665,
+            nodeId,
+            getLoadManager().getNodeStatus(nodeId));
+      }
     }
     return status;
   }
@@ -622,7 +626,17 @@ public class ConfigManager implements IManager {
               .sorted(Comparator.comparingInt(TDataNodeLocation::getDataNodeId))
               .collect(Collectors.toList());
       Map<Integer, TNodeVersionInfo> nodeVersionInfo = getNodeManager().getNodeVersionInfo();
-      Map<Integer, String> nodeStatus = getLoadManager().getNodeStatusWithReason();
+      Map<Integer, NodeStatistics> nodeStatisticsSnapshot =
+          getLoadManager().getNodeStatisticsSnapshot();
+      Map<Integer, String> nodeStatus = new HashMap<>();
+      Map<Integer, String> nodeStatusReason = new HashMap<>();
+      nodeStatisticsSnapshot.forEach(
+          (nodeId, statistics) -> {
+            nodeStatus.put(nodeId, statistics.getStatus().getStatus());
+            if (statistics.getStatusReason() != null) {
+              nodeStatusReason.put(nodeId, statistics.getStatusReason());
+            }
+          });
       configNodeLocations.forEach(
           configNodeLocation ->
               nodeStatus.putIfAbsent(
@@ -637,11 +651,9 @@ public class ConfigManager implements IManager {
               .map(TAINodeConfiguration::getLocation)
               .sorted(Comparator.comparingInt(TAINodeLocation::getAiNodeId))
               .collect(Collectors.toList());
-      Map<Integer, String> nodeStatusMap = getLoadManager().getNodeStatusWithReason();
       aiNodeLocations.forEach(
           aiNodeLocation ->
-              nodeStatusMap.putIfAbsent(
-                  aiNodeLocation.getAiNodeId(), NodeStatus.Unknown.toString()));
+              nodeStatus.putIfAbsent(aiNodeLocation.getAiNodeId(), NodeStatus.Unknown.toString()));
 
       return new TShowClusterResp()
           .setStatus(status)
@@ -649,6 +661,7 @@ public class ConfigManager implements IManager {
           .setDataNodeList(dataNodeLocations)
           .setAiNodeList(aiNodeLocations)
           .setNodeStatus(nodeStatus)
+          .setNodeStatusReason(nodeStatusReason)
           .setNodeVersionInfo(nodeVersionInfo);
     } else {
       return new TShowClusterResp()
@@ -657,6 +670,7 @@ public class ConfigManager implements IManager {
           .setDataNodeList(Collections.emptyList())
           .setAiNodeList(Collections.emptyList())
           .setNodeStatus(Collections.emptyMap())
+          .setNodeStatusReason(Collections.emptyMap())
           .setNodeVersionInfo(Collections.emptyMap());
     }
   }
@@ -813,8 +827,9 @@ public class ConfigManager implements IManager {
               .getMatchedDatabaseSchemasByName(
                   deletedPaths, tDeleteReq.isSetIsTableModel() && tDeleteReq.isIsTableModel());
 
-      // remove root.__audit
+      // remove audit databases
       deleteDatabaseSchemaMap.remove(TREE_MODEL_AUDIT_DATABASE);
+      deleteDatabaseSchemaMap.remove(TABLE_MODEL_AUDIT_DATABASE);
 
       if (deleteDatabaseSchemaMap.isEmpty()) {
         return RpcUtils.getStatus(
@@ -909,6 +924,11 @@ public class ConfigManager implements IManager {
   @Override
   public TSchemaPartitionTableResp getSchemaPartition(
       final Map<String, List<TSeriesPartitionSlot>> dbSlotMap) {
+    final TSStatus status = confirmLeader();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return new TSchemaPartitionTableResp().setStatus(status);
+    }
+
     // Construct empty response
     TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();
     // Return empty resp if the partitionSlotsMap is empty
@@ -1626,19 +1646,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus reportConfigNodeShutdown(TConfigNodeLocation configNodeLocation) {
-    TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // Force updating the target ConfigNode's status to Unknown
-      getLoadManager()
-          .forceUpdateNodeCache(
-              NodeType.ConfigNode,
-              configNodeLocation.getConfigNodeId(),
-              new NodeHeartbeatSample(NodeStatus.Unknown));
-      LOGGER.info(
-          ManagerMessages.THE_CONFIGNODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_UNKNOWN,
-          configNodeLocation.getConfigNodeId());
-    }
-    return status;
+    return reportNodeShutdown(configNodeLocation.getConfigNodeId());
   }
 
   @Override
@@ -1831,6 +1839,10 @@ public class ConfigManager implements IManager {
       long previousHeartbeatIntervalInMs = CONF.getHeartbeatIntervalInMs();
       int previousSchemaRegionPerDataNode = CONF.getSchemaRegionPerDataNode();
       int previousDataRegionPerDataNode = CONF.getDataRegionPerDataNode();
+      RegionGroupExtensionPolicy previousSchemaRegionGroupExtensionPolicy =
+          CONF.getSchemaRegionGroupExtensionPolicy();
+      RegionGroupExtensionPolicy previousDataRegionGroupExtensionPolicy =
+          CONF.getDataRegionGroupExtensionPolicy();
       boolean wasTopologyProbingEnabled = CONF.isEnableTopologyProbing();
       int previousProcedureCompletedCleanInterval = CONF.getProcedureCompletedCleanInterval();
       int previousProcedureCompletedEvictTTL = CONF.getProcedureCompletedEvictTTL();
@@ -1861,8 +1873,11 @@ public class ConfigManager implements IManager {
         return tsStatus;
       }
       handleHeartbeatIntervalHotReload(previousHeartbeatIntervalInMs);
-      handleRegionPerDataNodeHotReload(
-          previousSchemaRegionPerDataNode, previousDataRegionPerDataNode);
+      handleRegionGroupConfigHotReload(
+          previousSchemaRegionPerDataNode,
+          previousDataRegionPerDataNode,
+          previousSchemaRegionGroupExtensionPolicy,
+          previousDataRegionGroupExtensionPolicy);
       handleTopologyProbingHotReload(wasTopologyProbingEnabled);
       handleProcedureCleanerHotReload(
           previousProcedureCompletedCleanInterval, previousProcedureCompletedEvictTTL);
@@ -1909,16 +1924,31 @@ public class ConfigManager implements IManager {
     getRetryFailedTasksThread().reloadHeartbeatInterval();
   }
 
-  private void handleRegionPerDataNodeHotReload(
-      int previousSchemaRegionPerDataNode, int previousDataRegionPerDataNode) {
+  private void handleRegionGroupConfigHotReload(
+      int previousSchemaRegionPerDataNode,
+      int previousDataRegionPerDataNode,
+      RegionGroupExtensionPolicy previousSchemaRegionGroupExtensionPolicy,
+      RegionGroupExtensionPolicy previousDataRegionGroupExtensionPolicy) {
     if (previousSchemaRegionPerDataNode == CONF.getSchemaRegionPerDataNode()
-        && previousDataRegionPerDataNode == CONF.getDataRegionPerDataNode()) {
+        && previousDataRegionPerDataNode == CONF.getDataRegionPerDataNode()
+        && previousSchemaRegionGroupExtensionPolicy == CONF.getSchemaRegionGroupExtensionPolicy()
+        && previousDataRegionGroupExtensionPolicy == CONF.getDataRegionGroupExtensionPolicy()) {
       return;
     }
     if (!getConsensusManager().isLeader()) {
       return;
     }
+    // Leaving CUSTOM must replace its stored cap with the resource-derived cap, even when
+    // per-node quotas are unchanged. This preserves existing groups and skips types still CUSTOM.
     getClusterSchemaManager().adjustMaxRegionGroupNum();
+    if (previousDataRegionGroupExtensionPolicy != RegionGroupExtensionPolicy.PROACTIVE
+        && CONF.getDataRegionGroupExtensionPolicy() == RegionGroupExtensionPolicy.PROACTIVE) {
+      // Existing groups may already meet the new target, so no creation procedure would rebalance
+      // their slot assignments. Refresh the policy table for future time partitions on this leader.
+      getClusterSchemaManager()
+          .getDatabaseNames(null)
+          .forEach(database -> getLoadManager().reBalanceDataPartitionPolicy(database));
+    }
   }
 
   private void handleTopologyProbingHotReload(boolean wasEnabled) {
@@ -2260,7 +2290,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public synchronized TSStatus setSchemaTemplate(TSetSchemaTemplateReq req) {
+  public TSStatus setSchemaTemplate(TSetSchemaTemplateReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return procedureManager.setSchemaTemplate(
@@ -2342,7 +2372,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public synchronized TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req) {
+  public TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;
@@ -3317,6 +3347,8 @@ public class ConfigManager implements IManager {
           return procedureManager.alterTableAddColumn(req);
         case SET_PROPERTIES:
           return procedureManager.alterTableSetProperties(req);
+        case SET_COLUMN_PROPERTIES:
+          return procedureManager.alterTableSetColumnProperties(req);
         case RENAME_COLUMN:
           return procedureManager.alterTableRenameColumn(req);
         case DROP_COLUMN:
@@ -3351,6 +3383,14 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TAutoSyncViewColumnsResp autoSyncViewColumns(TAutoSyncViewColumnsReq req) {
+    final TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? procedureManager.autoSyncViewColumns(req)
+        : new TAutoSyncViewColumnsResp(status);
+  }
+
+  @Override
   public TDeleteTableDeviceResp deleteDevice(final TDeleteTableDeviceReq req) {
     final TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -3372,6 +3412,15 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? clusterSchemaManager.showTables4InformationSchema()
         : new TShowTable4InformationSchemaResp(status);
+  }
+
+  @Override
+  public TShowDropTableProceduresResp showDropTableProcedures() {
+    final TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? new TShowDropTableProceduresResp(status)
+            .setDropTableProcedureInfoList(procedureManager.getDropTableProcedures())
+        : new TShowDropTableProceduresResp(status);
   }
 
   @Override
@@ -3467,5 +3516,27 @@ public class ConfigManager implements IManager {
   @TestOnly
   public void setPermissionManager(final PermissionManager permissionManager) {
     this.permissionManager = permissionManager;
+  }
+
+  public static class ConfigManagerContext {
+
+    public ClusterInfo clusterInfo;
+    public NodeInfo nodeInfo;
+    public ClusterSchemaInfo clusterSchemaInfo;
+    public PartitionInfo partitionInfo;
+    public AuthorInfo authorInfo;
+    public ProcedureInfo procedureInfo;
+    public UDFInfo udfInfo;
+    public TriggerInfo triggerInfo;
+    public CQInfo cqInfo;
+    public ExternalServiceInfo externalServiceInfo;
+    public PipeInfo pipeInfo;
+    public SubscriptionInfo subscriptionInfo;
+    public QuotaInfo quotaInfo;
+    public TTLInfo ttlInfo;
+
+    public List<SnapshotProcessor> getAdditionalInfoList() {
+      return Collections.emptyList();
+    }
   }
 }

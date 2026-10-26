@@ -26,11 +26,13 @@ import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMetaKeeper;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
 import org.apache.iotdb.mpp.rpc.thrift.TTopicOwnerLeaseEntry;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -39,14 +41,17 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class SubscriptionTopicAgent {
@@ -54,6 +59,12 @@ public class SubscriptionTopicAgent {
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionTopicAgent.class);
 
   private final TopicMetaKeeper topicMetaKeeper;
+
+  // Queue operations read this derived runtime config without acquiring the topic-meta lock.
+  // Topic-meta updates can wake queues while holding that lock, so taking it from a queue operation
+  // would reverse the lock order. The data model is part of the key to isolate same-name topics.
+  private final Map<Pair<String, Boolean>, Long> topicRecycleIntervalsMs =
+      new ConcurrentHashMap<>();
 
   public SubscriptionTopicAgent() {
     this.topicMetaKeeper = new TopicMetaKeeper();
@@ -108,19 +119,39 @@ public class SubscriptionTopicAgent {
     final boolean isTableModel = metaFromCoordinator.visibleUnderTableModel();
     final TopicMeta oldMeta = topicMetaKeeper.getTopicMeta(topicName, isTableModel);
     TopicMeta.validateOwnerProgression(oldMeta, metaFromCoordinator);
+    metaFromCoordinator
+        .getConfig()
+        .inheritFilterVersion(Objects.isNull(oldMeta) ? null : oldMeta.getConfig());
+    final Long recycleIntervalMs =
+        metaFromCoordinator.getConfig().getRecycleUncommittedEventIntervalMs();
     topicMetaKeeper.removeTopicMeta(topicName, isTableModel);
     topicMetaKeeper.addTopicMeta(topicName, metaFromCoordinator);
+    final Pair<String, Boolean> topicKey = new Pair<>(topicName, isTableModel);
+    final Long oldRecycleIntervalMs =
+        Objects.isNull(recycleIntervalMs)
+            ? topicRecycleIntervalsMs.remove(topicKey)
+            : topicRecycleIntervalsMs.put(topicKey, recycleIntervalMs);
+    if (!Objects.equals(oldRecycleIntervalMs, recycleIntervalMs)) {
+      SubscriptionAgent.broker().wakeUpConsensusPrefetchingQueues(topicName, isTableModel);
+    }
     if (shouldRefreshColumnFilter(oldMeta, metaFromCoordinator)) {
       SubscriptionAgent.broker().refreshColumnFilter(topicName, metaFromCoordinator.getConfig());
-    } else if (!metaFromCoordinator.getConfig().isTableTopic()
+    }
+    if (shouldRefreshTagFilter(oldMeta, metaFromCoordinator)) {
+      SubscriptionAgent.broker().refreshTagFilter(topicName, metaFromCoordinator.getConfig());
+    }
+    if (!metaFromCoordinator.getConfig().isTableTopic()
         && !topicMetaKeeper.containsTopicMeta(topicName, true)) {
       // ConfigNode rejects column-filter on tree topics. Drop defensively in case stale or replayed
       // topic metadata reaches this DataNode after a table-topic to tree-topic transition.
       SubscriptionAgent.broker().dropColumnFilter(topicName);
+      SubscriptionAgent.broker().dropTagFilter(topicName);
     }
     SubscriptionAgent.broker()
         .refreshConsensusQueueOrderMode(
             topicName, isTableModel, metaFromCoordinator.getConfig().getOrderMode());
+    ConsensusSubscriptionSetupHandler.refreshDetachedRetentionsForTopic(
+        topicName, isTableModel, metaFromCoordinator.getConfig());
   }
 
   static boolean shouldRefreshColumnFilter(final TopicMeta oldMeta, final TopicMeta newMeta) {
@@ -152,6 +183,35 @@ public class SubscriptionTopicAgent {
                     newConfig, TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE)));
   }
 
+  static boolean shouldRefreshTagFilter(final TopicMeta oldMeta, final TopicMeta newMeta) {
+    if (Objects.isNull(newMeta) || !newMeta.getConfig().isTableTopic()) {
+      return false;
+    }
+    if (Objects.isNull(oldMeta) || !oldMeta.getConfig().isTableTopic()) {
+      return true;
+    }
+
+    final TopicConfig oldConfig = oldMeta.getConfig();
+    final TopicConfig newConfig = newMeta.getConfig();
+    return !Objects.equals(
+            trimFilterBindingValue(oldConfig.getTagFilter()),
+            trimFilterBindingValue(newConfig.getTagFilter()))
+        || !Objects.equals(
+            trimFilterBindingValue(
+                getAttributeIgnoreCase(
+                    oldConfig, TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE)),
+            trimFilterBindingValue(
+                getAttributeIgnoreCase(
+                    newConfig, TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE)))
+        || !Objects.equals(
+            trimFilterBindingValue(
+                getAttributeIgnoreCase(
+                    oldConfig, TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE)),
+            trimFilterBindingValue(
+                getAttributeIgnoreCase(
+                    newConfig, TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE)));
+  }
+
   private static String getAttributeIgnoreCase(
       final TopicConfig topicConfig, final String key, final String defaultValue) {
     return topicConfig.getAttribute().entrySet().stream()
@@ -166,13 +226,22 @@ public class SubscriptionTopicAgent {
     return Objects.nonNull(value) ? value.trim().toLowerCase(Locale.ROOT) : "";
   }
 
+  private static String trimFilterBindingValue(final String value) {
+    return Objects.nonNull(value) ? value.trim() : "";
+  }
+
   public TPushTopicMetaRespExceptionMessage handleTopicMetaChanges(
       final List<TopicMeta> topicMetasFromCoordinator) {
     acquireWriteLock();
     try {
+      final Set<Pair<String, Boolean>> currentTopics = new HashSet<>();
       for (final TopicMeta topicMetaFromCoordinator : topicMetasFromCoordinator) {
         try {
           handleSingleTopicMetaChangesInternal(topicMetaFromCoordinator);
+          currentTopics.add(
+              new Pair<>(
+                  topicMetaFromCoordinator.getTopicName(),
+                  topicMetaFromCoordinator.visibleUnderTableModel()));
         } catch (final Exception e) {
           final String topicName = topicMetaFromCoordinator.getTopicName();
           LOGGER.warn(
@@ -186,6 +255,15 @@ public class SubscriptionTopicAgent {
                   topicName, e);
           return new TPushTopicMetaRespExceptionMessage(
               topicName, exceptionMessage, System.currentTimeMillis());
+        }
+      }
+      // Remove absent topics only after applying the full snapshot. Clearing first would let queue
+      // operations temporarily use the global timeout and could recycle an event prematurely.
+      for (final Pair<String, Boolean> topicKey : topicRecycleIntervalsMs.keySet()) {
+        if (!currentTopics.contains(topicKey)) {
+          topicRecycleIntervalsMs.remove(topicKey);
+          SubscriptionAgent.broker()
+              .wakeUpConsensusPrefetchingQueues(topicKey.left, topicKey.right);
         }
       }
       return null;
@@ -225,6 +303,8 @@ public class SubscriptionTopicAgent {
         Objects.isNull(isTableModel)
             ? topicMetaKeeper.getTopicMeta(topicName)
             : topicMetaKeeper.getTopicMeta(topicName, isTableModel);
+    ConsensusSubscriptionSetupHandler.cleanupRetainedProgressForDroppedTopic(
+        topicName, Objects.nonNull(topicMeta) ? topicMeta.visibleUnderTableModel() : isTableModel);
     if (Objects.isNull(isTableModel)) {
       topicMetaKeeper.removeTopicMeta(topicName);
     } else {
@@ -232,7 +312,21 @@ public class SubscriptionTopicAgent {
     }
     if (Objects.nonNull(topicMeta) && topicMeta.visibleUnderTableModel()) {
       SubscriptionAgent.broker().dropColumnFilter(topicName);
+      SubscriptionAgent.broker().dropTagFilter(topicName);
     }
+    if (Objects.nonNull(topicMeta) || Objects.nonNull(isTableModel)) {
+      topicRecycleIntervalsMs.remove(
+          new Pair<>(
+              topicName,
+              Objects.nonNull(isTableModel) ? isTableModel : topicMeta.visibleUnderTableModel()));
+    }
+  }
+
+  public long getTopicRecycleUncommittedEventIntervalMs(
+      final String topicName, final boolean isTableModel) {
+    return topicRecycleIntervalsMs.getOrDefault(
+        new Pair<>(topicName, isTableModel),
+        (long) SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalMs());
   }
 
   public boolean isTopicExisted(final String topicName) {
@@ -292,6 +386,16 @@ public class SubscriptionTopicAgent {
 
   public Map<String, TopicConfig> getTopicConfigs(final Set<String> topicNames) {
     return getTopicConfigs(topicNames, false);
+  }
+
+  public TopicConfig getTopicConfig(final String topicName, final boolean isTableModel) {
+    acquireReadLock();
+    try {
+      final TopicMeta topicMeta = topicMetaKeeper.getTopicMeta(topicName, isTableModel);
+      return Objects.isNull(topicMeta) ? null : topicMeta.getConfig();
+    } finally {
+      releaseReadLock();
+    }
   }
 
   public Map<String, TopicConfig> getTopicConfigs(

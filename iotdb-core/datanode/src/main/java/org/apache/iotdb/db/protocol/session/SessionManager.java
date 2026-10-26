@@ -510,7 +510,8 @@ public class SessionManager implements SessionManagerMBean {
         session.getZoneId(),
         session.getClientVersion(),
         session.getDatabaseName(),
-        session.getSqlDialect());
+        session.getSqlDialect(),
+        session.isEnableAutoCreateSchema());
   }
 
   // Sometimes we need to switch from table model to tree model,

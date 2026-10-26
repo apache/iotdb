@@ -56,6 +56,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class PredicateUtils {
@@ -120,8 +121,9 @@ public class PredicateUtils {
       }
       return new GlobalTimePredicateExtractionResult(null, predicate, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_NOT)) {
+      Expression negatedExpression = ((UnaryExpression) predicate).getExpression();
       GlobalTimePredicateExtractionResult childResult =
-          extractGlobalTimePredicate(((UnaryExpression) predicate).getExpression());
+          extractGlobalTimePredicate(negatedExpression);
       if (childResult.getGlobalTimePredicate() != null && !childResult.hasValueFilter()) {
         return new GlobalTimePredicateExtractionResult(
             ExpressionFactory.not(childResult.getGlobalTimePredicate()),
@@ -131,6 +133,14 @@ public class PredicateUtils {
       // NOT(G AND R) cannot in general be represented as NOT(G) AND NOT(R). Do
       // not extract a time predicate when the negated subtree contains a value
       // filter.
+      //
+      // NOT(A OR B) is NOT(A) AND NOT(B) though, so every disjunct that is a pure
+      // time predicate still bounds the time range of the whole negation, e.g.
+      // NOT (time > 2 OR s1 > 5) implies time <= 2.
+      Expression negatedTimePredicate = extractNegatedTimePredicateFromDisjuncts(negatedExpression);
+      if (negatedTimePredicate != null) {
+        return new GlobalTimePredicateExtractionResult(negatedTimePredicate, predicate, true);
+      }
       return new GlobalTimePredicateExtractionResult(null, predicate, true);
     } else if (predicate.isCompareBinaryExpression()) {
       Expression leftExpression = ((BinaryExpression) predicate).getLeftExpression();
@@ -194,6 +204,27 @@ public class PredicateUtils {
     return ExpressionFactory.and(leftExpression, rightExpression);
   }
 
+  /**
+   * Collects the negation of every disjunct that is a pure time predicate. It is only called for
+   * the subtree negated by a {@code not()}, where De Morgan's law turns the disjunction into a
+   * conjunction, so each collected term is a sound time bound for the whole predicate.
+   */
+  private static Expression extractNegatedTimePredicateFromDisjuncts(Expression predicate) {
+    if (predicate.getExpressionType().equals(ExpressionType.LOGIC_OR)) {
+      return combineConjuncts(
+          extractNegatedTimePredicateFromDisjuncts(
+              ((BinaryExpression) predicate).getLeftExpression()),
+          extractNegatedTimePredicateFromDisjuncts(
+              ((BinaryExpression) predicate).getRightExpression()),
+          null);
+    }
+    GlobalTimePredicateExtractionResult result = extractGlobalTimePredicate(predicate);
+    if (result.getGlobalTimePredicate() != null && !result.hasValueFilter()) {
+      return ExpressionFactory.not(result.getGlobalTimePredicate());
+    }
+    return null;
+  }
+
   public static final class GlobalTimePredicateExtractionResult {
 
     private final Expression globalTimePredicate;
@@ -251,33 +282,63 @@ public class PredicateUtils {
    *
    * <p>eg: not(and(eq(), not(eq(y))) -&gt; or(notEq(), eq(y))
    *
-   * <p>The returned predicate should have the same meaning as the original, but without the use of
-   * the not() operator.
+   * <p>The returned predicate has the same meaning as the original. A {@code not()} is retained
+   * when the operand cannot be inverted safely, for example for non-comparison expressions or
+   * ordered comparisons on FLOAT/DOUBLE values where NaN semantics differ.
    *
    * <p>See also {@link PredicateUtils#reversePredicate(Expression)}, which is used to do the
    * inversion.
    *
    * @param predicate the predicate to remove not() from
-   * @return the predicate with all not() operators removed
+   * @return the predicate with safely invertible not() operators removed
    */
   public static Expression predicateRemoveNot(Expression predicate) {
+    return predicateRemoveNot(predicate, null);
+  }
+
+  /**
+   * @param predicate the predicate to remove not() from
+   * @return the predicate with safely invertible not() operators removed. The original instance is
+   *     returned when no not() could be removed, so callers can detect that nothing changed.
+   */
+  public static Expression predicateRemoveNot(
+      Expression predicate, Function<Expression, TSDataType> typeProvider) {
     if (predicate.getExpressionType().equals(ExpressionType.LOGIC_AND)) {
-      return ExpressionFactory.and(
-          predicateRemoveNot(((BinaryExpression) predicate).getLeftExpression()),
-          predicateRemoveNot(((BinaryExpression) predicate).getRightExpression()));
+      Expression leftExpression =
+          predicateRemoveNot(((BinaryExpression) predicate).getLeftExpression(), typeProvider);
+      Expression rightExpression =
+          predicateRemoveNot(((BinaryExpression) predicate).getRightExpression(), typeProvider);
+      if (leftExpression == ((BinaryExpression) predicate).getLeftExpression()
+          && rightExpression == ((BinaryExpression) predicate).getRightExpression()) {
+        return predicate;
+      }
+      return ExpressionFactory.and(leftExpression, rightExpression);
     } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_OR)) {
-      return ExpressionFactory.or(
-          predicateRemoveNot(((BinaryExpression) predicate).getLeftExpression()),
-          predicateRemoveNot(((BinaryExpression) predicate).getRightExpression()));
+      Expression leftExpression =
+          predicateRemoveNot(((BinaryExpression) predicate).getLeftExpression(), typeProvider);
+      Expression rightExpression =
+          predicateRemoveNot(((BinaryExpression) predicate).getRightExpression(), typeProvider);
+      if (leftExpression == ((BinaryExpression) predicate).getLeftExpression()
+          && rightExpression == ((BinaryExpression) predicate).getRightExpression()) {
+        return predicate;
+      }
+      return ExpressionFactory.or(leftExpression, rightExpression);
     } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_NOT)) {
-      return reversePredicate(((LogicNotExpression) predicate).getExpression());
+      Expression innerExpression = ((LogicNotExpression) predicate).getExpression();
+      Expression reversedExpression = reversePredicate(innerExpression, typeProvider);
+      if (reversedExpression.getExpressionType().equals(ExpressionType.LOGIC_NOT)
+          && ((LogicNotExpression) reversedExpression).getExpression() == innerExpression) {
+        // The operand cannot be inverted safely, so the not() is kept as is.
+        return predicate;
+      }
+      return reversedExpression;
     }
     return predicate;
   }
 
   /**
    * Converts a predicate to its logical inverse. The returned predicate should be equivalent to
-   * not(p), but without the use of a not() operator.
+   * not(p). A {@code not()} is retained when the inverse cannot be represented safely.
    *
    * <p>See also {@link PredicateUtils#predicateRemoveNot(Expression)}, which can remove the use of
    * all not() operators without inverting the overall predicate.
@@ -286,7 +347,12 @@ public class PredicateUtils {
    * @return the predicate after reversing
    */
   public static Expression reversePredicate(Expression predicate) {
-    return new ReversePredicateVisitor().process(predicate, null);
+    return reversePredicate(predicate, null);
+  }
+
+  public static Expression reversePredicate(
+      Expression predicate, Function<Expression, TSDataType> typeProvider) {
+    return new ReversePredicateVisitor(typeProvider).process(predicate, null);
   }
 
   /**
@@ -418,7 +484,8 @@ public class PredicateUtils {
 
   /**
    * Extract the source symbol (full path for non-aligned path, device path for aligned path) from
-   * the given predicate. If the predicate contains multiple source symbols, return null.
+   * the given predicate. If the predicate contains no source symbols or multiple source symbols,
+   * return null.
    *
    * @param predicate given predicate
    * @return the source symbol extracted from the given predicate
@@ -429,6 +496,9 @@ public class PredicateUtils {
         sourceExpressions.stream()
             .map(expression -> ((TimeSeriesOperand) expression).getPath())
             .collect(Collectors.toSet());
+    if (sourcePaths.isEmpty()) {
+      return null;
+    }
     Iterator<PartialPath> pathIterator = sourcePaths.iterator();
     MeasurementPath firstPath = (MeasurementPath) pathIterator.next();
 

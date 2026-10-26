@@ -163,8 +163,16 @@ public final class QueryMessages {
       "height must be a non-negative number, but got: %s";
   public static final String INVALID_PATTERN_MISSING_REPEAT_SIGN =
       "Invalid pattern: %s, missing repeat sign after '}'";
+  public static final String EXCEPTION_INVALID_PATTERN_ARG_REPETITION_SIGNS_AND_MUST_IMMEDIATELY_FOLLOW_30FC3998 =
+      "Invalid pattern: '%s'. Repetition signs '+' and '*' must immediately follow '}'.";
   public static final String INVALID_PATTERN_MUST_CONTAIN_DATA_POINTS =
       "Invalid pattern: '%s'. Pattern must contain at least two numeric data points separated by commas, e.g., '1,2,3'";
+  public static final String EXCEPTION_INVALID_PATTERN_ARG_REPETITION_GROUPS_MUST_CONTAIN_AT_LEAST_ONE_NUMERIC_DATA_POINT_E1880CCB =
+      "Invalid pattern: '%s'. Repetition groups must contain at least one numeric data point.";
+  public static final String EXCEPTION_INVALID_PATTERN_ARG_UNMATCHED_OR_9B5E4AE4 =
+      "Invalid pattern: '%s'. Unmatched '{' or '}'.";
+  public static final String EXCEPTION_INVALID_PATTERN_ARG_INVALID_NUMERIC_DATA_POINT_ARG_12165323 =
+      "Invalid pattern: '%s'. Invalid numeric data point: '%s'.";
 
   // ======================== Forecast / Classify TVF ========================
 
@@ -209,6 +217,11 @@ public final class QueryMessages {
       "The forecast result length %d does not match the expected output length %d";
   public static final String FORECAST_RESULT_SINGLE_COLUMN =
       "The forecast result should have only one value column, but got %d";
+  public static final String EXCEPTION_FORECAST_OUTPUT_TIME_IS_OUT_OF_RANGE_0F114E4E =
+      "Forecast output time is out of range.";
+  public static final String
+      EXCEPTION_FORECAST_OUTPUT_INTERVAL_MUST_BE_POSITIVE_WHEN_INPUT_HAS_ONE_ROW_C9DBE14B =
+          "Forecast output interval must be positive when input has one row.";
 
   // ======================== TableSchema ========================
 

@@ -21,10 +21,14 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.memory.MemoryConfig;
+import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import org.junit.Test;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.math.BigInteger;
 import java.util.Arrays;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -35,7 +39,7 @@ import static org.junit.Assert.assertTrue;
 public class DataNodeMemoryConfigTest {
 
   @Test
-  public void testResolveSubscriptionQueryMemoryProportions() {
+  public void testResolveSubscriptionQueryMemoryProportionsWhenEnabled() {
     final int[] defaultProportions = DataNodeMemoryConfig.resolveQueryMemoryProportions(null, true);
     assertArrayEquals(new int[] {1, 100, 200, 50, 200, 200, 200, 50, 250}, defaultProportions);
     assertEquals(
@@ -43,10 +47,52 @@ public class DataNodeMemoryConfigTest {
     assertArrayEquals(
         new int[] {1, 100, 200, 50, 200, 200, 200, 50, 250},
         DataNodeMemoryConfig.resolveQueryMemoryProportions("1:100:200:50:200:200:200:50", true));
+  }
+
+  @Test
+  public void testResolveSubscriptionQueryMemoryProportionsWhenDisabled() {
     assertArrayEquals(
         new int[] {1, 100, 200, 50, 200, 200, 200, 50, 0},
         DataNodeMemoryConfig.resolveQueryMemoryProportions(
             "1:100:200:50:200:200:200:50:1000", false));
+    assertArrayEquals(
+        new int[] {1, 100, 200, 50, 200, 200, 200, 50, 0},
+        DataNodeMemoryConfig.resolveQueryMemoryProportions(null, false));
+  }
+
+  @Test
+  public void testSubscriptionDoesNotReserveQueryMemoryWhenDisabledByDefault()
+      throws ReflectiveOperationException {
+    final TrimProperties properties = new TrimProperties();
+    properties.setProperty("chunk_timeseriesmeta_free_memory_proportion", "0:0:0:0:1:0:0:0:1");
+    final DataNodeMemoryConfig memoryConfig = initializeQueryEngineMemory(properties);
+
+    assertEquals(0, memoryConfig.getSubscriptionMemoryManager().getTotalMemorySizeInBytes());
+    assertEquals(1_000_000L, memoryConfig.getOperatorsMemoryManager().getTotalMemorySizeInBytes());
+  }
+
+  @Test
+  public void testSubscriptionDoesNotReserveQueryMemoryWhenExplicitlyDisabled()
+      throws ReflectiveOperationException {
+    final TrimProperties properties = new TrimProperties();
+    properties.setProperty("chunk_timeseriesmeta_free_memory_proportion", "0:0:0:0:1:0:0:0:1");
+    properties.setProperty("subscription_enabled", Boolean.FALSE.toString());
+    final DataNodeMemoryConfig memoryConfig = initializeQueryEngineMemory(properties);
+
+    assertEquals(0, memoryConfig.getSubscriptionMemoryManager().getTotalMemorySizeInBytes());
+    assertEquals(1_000_000L, memoryConfig.getOperatorsMemoryManager().getTotalMemorySizeInBytes());
+  }
+
+  @Test
+  public void testSubscriptionDoesNotReserveQueryMemoryWhenConfiguredEnabled()
+      throws ReflectiveOperationException {
+    final TrimProperties properties = new TrimProperties();
+    properties.setProperty("chunk_timeseriesmeta_free_memory_proportion", "0:0:0:0:1:0:0:0:1");
+    properties.setProperty("subscription_enabled", Boolean.TRUE.toString());
+    final DataNodeMemoryConfig memoryConfig = initializeQueryEngineMemory(properties);
+
+    assertEquals(0, memoryConfig.getSubscriptionMemoryManager().getTotalMemorySizeInBytes());
+    assertEquals(1_000_000L, memoryConfig.getOperatorsMemoryManager().getTotalMemorySizeInBytes());
   }
 
   @Test
@@ -132,5 +178,112 @@ public class DataNodeMemoryConfigTest {
     assertEquals(
         Runtime.getRuntime().maxMemory() / 7,
         DataNodeMemoryConfig.calculateAutoResizingBufferMemorySizeInBytes(properties));
+  }
+
+  @Test
+  public void testInvalidStorageMemoryProportionsUseDefaults() throws ReflectiveOperationException {
+    for (String invalid :
+        new String[] {
+          "0:10", "10:0", "-1:2", "10", "a:b", "", ":2", "8:", "8:2:", "8:2:1", "2147483648:1"
+        }) {
+      TrimProperties properties = new TrimProperties();
+      properties.setProperty("storage_engine_memory_proportion", invalid);
+      properties.setProperty("write_memory_proportion", "3:1");
+      assertStorageMemoryBudgets(properties, 800_000, 600_000, 200_000);
+
+      properties.setProperty("storage_engine_memory_proportion", "1:1");
+      properties.setProperty("write_memory_proportion", invalid);
+      assertStorageMemoryBudgets(properties, 500_000, 475_000, 25_000);
+    }
+  }
+
+  @Test
+  public void testStorageMemoryProportionsAreResolvedIndependently()
+      throws ReflectiveOperationException {
+    TrimProperties properties = new TrimProperties();
+    assertStorageMemoryBudgets(properties, 800_000, 760_000, 40_000);
+    properties.setProperty("write_memory_proportion", " 3 : 1 ");
+    assertStorageMemoryBudgets(properties, 800_000, 600_000, 200_000);
+    properties.remove("write_memory_proportion");
+    properties.setProperty("storage_engine_memory_proportion", " 1 : 1 ");
+    assertStorageMemoryBudgets(properties, 500_000, 475_000, 25_000);
+    properties.setProperty("storage_engine_memory_proportion", "0:10");
+    properties.setProperty("write_memory_proportion", "0:1");
+    assertStorageMemoryBudgets(properties, 800_000, 760_000, 40_000);
+  }
+
+  @Test
+  public void testLargeStorageMemoryProportionsDoNotOverflow() throws ReflectiveOperationException {
+    TrimProperties properties = new TrimProperties();
+    properties.setProperty("storage_engine_memory_proportion", "2147483647:2147483647");
+    properties.setProperty("write_memory_proportion", "2147483647:2147483647");
+    DataNodeMemoryConfig memoryConfig = initializeStorageEngineMemory(properties, 32L << 30);
+    assertEquals(16L << 30, memoryConfig.getWriteMemoryManager().getTotalMemorySizeInBytes());
+    assertEquals(8L << 30, memoryConfig.getMemtableMemoryManager().getTotalMemorySizeInBytes());
+    assertEquals(
+        8L << 30, memoryConfig.getTimePartitionInfoMemoryManager().getTotalMemorySizeInBytes());
+
+    properties.setProperty("storage_engine_memory_proportion", "2147483646:1");
+    properties.setProperty("write_memory_proportion", "2147483646:1");
+    memoryConfig = initializeStorageEngineMemory(properties, 32L << 30);
+    BigInteger proportion = BigInteger.valueOf(Integer.MAX_VALUE - 1L);
+    BigInteger sum = proportion.add(BigInteger.ONE);
+    BigInteger expectedWrite = BigInteger.valueOf(32L << 30).multiply(proportion).divide(sum);
+    assertEquals(
+        expectedWrite.longValueExact(),
+        memoryConfig.getWriteMemoryManager().getTotalMemorySizeInBytes());
+    assertEquals(
+        expectedWrite.multiply(proportion).divide(sum).longValueExact(),
+        memoryConfig.getMemtableMemoryManager().getTotalMemorySizeInBytes());
+    assertEquals(
+        expectedWrite.divide(sum).longValueExact(),
+        memoryConfig.getTimePartitionInfoMemoryManager().getTotalMemorySizeInBytes());
+  }
+
+  private void assertStorageMemoryBudgets(
+      TrimProperties properties, long write, long memtable, long timePartition)
+      throws ReflectiveOperationException {
+    DataNodeMemoryConfig memoryConfig = initializeStorageEngineMemory(properties, 1_000_000L);
+    assertEquals(write, memoryConfig.getWriteMemoryManager().getTotalMemorySizeInBytes());
+    assertEquals(memtable, memoryConfig.getMemtableMemoryManager().getTotalMemorySizeInBytes());
+    assertEquals(
+        timePartition,
+        memoryConfig.getTimePartitionInfoMemoryManager().getTotalMemorySizeInBytes());
+    assertEquals(
+        1_000_000L - write, memoryConfig.getCompactionMemoryManager().getTotalMemorySizeInBytes());
+    assertEquals(
+        (long) (memtable * memoryConfig.getDevicePathCacheProportion()),
+        memoryConfig.getDevicePathCacheMemoryManager().getTotalMemorySizeInBytes());
+    assertEquals(
+        (long) (memtable * memoryConfig.getWalBufferQueueProportion()),
+        memoryConfig.getWalBufferQueueMemoryManager().getTotalMemorySizeInBytes());
+    assertEquals(
+        600_000L, memoryConfig.getBufferedArraysMemoryManager().getTotalMemorySizeInBytes());
+  }
+
+  private DataNodeMemoryConfig initializeStorageEngineMemory(TrimProperties properties, long total)
+      throws ReflectiveOperationException {
+    DataNodeMemoryConfig memoryConfig = new DataNodeMemoryConfig();
+    MemoryManager storageMemoryManager = new MemoryManager(total);
+    Field storageField = DataNodeMemoryConfig.class.getDeclaredField("storageEngineMemoryManager");
+    storageField.setAccessible(true);
+    storageField.set(memoryConfig, storageMemoryManager);
+    Method initialize =
+        DataNodeMemoryConfig.class.getDeclaredMethod(
+            "initStorageEngineAllocate", MemoryManager.class, TrimProperties.class);
+    initialize.setAccessible(true);
+    initialize.invoke(memoryConfig, storageMemoryManager, properties);
+    return memoryConfig;
+  }
+
+  private DataNodeMemoryConfig initializeQueryEngineMemory(TrimProperties properties)
+      throws ReflectiveOperationException {
+    final DataNodeMemoryConfig memoryConfig = new DataNodeMemoryConfig();
+    final Method initQueryEngineMemoryAllocate =
+        DataNodeMemoryConfig.class.getDeclaredMethod(
+            "initQueryEngineMemoryAllocate", MemoryManager.class, TrimProperties.class);
+    initQueryEngineMemoryAllocate.setAccessible(true);
+    initQueryEngineMemoryAllocate.invoke(memoryConfig, new MemoryManager(1_000_000L), properties);
+    return memoryConfig;
   }
 }

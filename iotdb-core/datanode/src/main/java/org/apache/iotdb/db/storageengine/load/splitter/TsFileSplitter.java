@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -59,6 +60,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -72,7 +74,7 @@ public class TsFileSplitter {
   private final TsFileDataConsumer consumer;
   private Map<Long, IChunkMetadata> offset2ChunkMetadata = new HashMap<>();
   private List<ModEntry> deletions = new ArrayList<>();
-  private Map<Integer, List<AlignedChunkData>> pageIndex2ChunkData = new HashMap<>();
+  private Map<Integer, List<AlignedChunkData>> pageIndex2ChunkData = new LinkedHashMap<>();
   private Map<Integer, long[]> pageIndex2Times = new HashMap<>();
   private boolean isTimeChunkNeedDecode = true;
   private IDeviceID curDevice = null;
@@ -94,6 +96,14 @@ public class TsFileSplitter {
     this.consumer = consumer;
   }
 
+  private ChunkData createChunkData(
+      final boolean aligned,
+      final IDeviceID device,
+      final ChunkHeader header,
+      final TTimePartitionSlot timePartitionSlot) {
+    return ChunkData.createChunkData(aligned, device, header, timePartitionSlot);
+  }
+
   @SuppressWarnings({"squid:S3776", "squid:S6541"})
   public void splitTsFileByDataPartition()
       throws IOException, LoadFileException, IllegalStateException {
@@ -109,6 +119,7 @@ public class TsFileSplitter {
                 tsFile.getPath()));
       }
 
+      reader.readFileMetadata();
       reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
       getChunkMetadata(reader, offset2ChunkMetadata);
       byte marker;
@@ -176,7 +187,7 @@ public class TsFileSplitter {
             == TsFileConstant.TIME_COLUMN_MASK);
     if (isAligned) {
       pageIndex2Times = new HashMap<>();
-      pageIndex2ChunkData = new HashMap<>();
+      pageIndex2ChunkData = new LinkedHashMap<>();
       isTimeChunkNeedDecode = true;
     }
 
@@ -189,8 +200,7 @@ public class TsFileSplitter {
     }
     TTimePartitionSlot timePartitionSlot =
         TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getStartTime());
-    ChunkData chunkData =
-        ChunkData.createChunkData(isAligned, curDevice, header, timePartitionSlot);
+    ChunkData chunkData = createChunkData(isAligned, curDevice, header, timePartitionSlot);
 
     if (!needDecodeChunk(chunkMetadata)) {
       chunkData.setNotDecode();
@@ -244,10 +254,13 @@ public class TsFileSplitter {
             TimePartitionUtils.getTimePartitionSlot(startTime);
         if (!timePartitionSlot.equals(pageTimePartitionSlot)) {
           if (!isAligned) {
+            chunkData.endChunk();
             consumeChunkData(measurementId, chunkOffset, chunkData);
+          } else {
+            chunkData.endChunk();
           }
           timePartitionSlot = pageTimePartitionSlot;
-          chunkData = ChunkData.createChunkData(isAligned, curDevice, header, timePartitionSlot);
+          chunkData = createChunkData(isAligned, curDevice, header, timePartitionSlot);
         }
         if (isAligned) {
           pageIndex2ChunkData
@@ -266,31 +279,31 @@ public class TsFileSplitter {
         }
 
         int satisfiedLength = 0;
+        // The upper bound is the start time of the next time partition, and it is Long.MAX_VALUE
+        // when it overflows. Comparing the point with the bound directly would split off the last
+        // partition, whose upper bound is Long.MAX_VALUE itself, so the helper is used: it keeps
+        // the point that equals Long.MAX_VALUE inside its own partition.
         long endTime =
-            timePartitionSlot.getStartTime() + TimePartitionUtils.getTimePartitionInterval();
-        // beware of overflow
-        if (endTime <= timePartitionSlot.getStartTime()) {
-          endTime = Long.MAX_VALUE;
-        }
+            TimePartitionUtils.getTimePartitionUpperBound(timePartitionSlot.getStartTime());
         for (int i = 0; i < times.length; i++) {
-          if (times[i] >= endTime) {
+          if (TimePartitionUtils.isAfterOrEqualToTimePartitionUpperBound(
+              times[i], timePartitionSlot.getStartTime(), endTime)) {
             chunkData.writeDecodePage(times, values, satisfiedLength);
             if (isAligned) {
+              chunkData.endChunk();
               pageIndex2ChunkData
                   .computeIfAbsent(pageIndex, o -> new ArrayList<>())
                   .add((AlignedChunkData) chunkData);
             } else {
+              chunkData.endChunk();
               consumeChunkData(measurementId, chunkOffset, chunkData);
             }
 
             timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[i]);
             satisfiedLength = 0;
             endTime =
-                timePartitionSlot.getStartTime() + TimePartitionUtils.getTimePartitionInterval();
-            if (endTime <= timePartitionSlot.getStartTime()) {
-              endTime = Long.MAX_VALUE;
-            }
-            chunkData = ChunkData.createChunkData(isAligned, curDevice, header, timePartitionSlot);
+                TimePartitionUtils.getTimePartitionUpperBound(timePartitionSlot.getStartTime());
+            chunkData = createChunkData(isAligned, curDevice, header, timePartitionSlot);
           }
           satisfiedLength += 1;
         }
@@ -307,6 +320,7 @@ public class TsFileSplitter {
     }
 
     if (!isAligned) {
+      chunkData.endChunk();
       consumeChunkData(measurementId, chunkOffset, chunkData);
     }
   }
@@ -442,7 +456,12 @@ public class TsFileSplitter {
 
   private void handleModification(List<ModEntry> deletions) throws LoadFileException {
     for (final ModEntry mod : deletions) {
-      consumer.apply(new DeletionData(mod));
+      if (!consumer.apply(new DeletionData(mod))) {
+        throw new IllegalStateException(
+            String.format(
+                DataNodeQueryMessages.DISPATCH_TSFILEDATA_ERROR_WHEN_PARSING_TSFILE_S,
+                tsFile.getPath()));
+      }
     }
   }
 
@@ -453,26 +472,37 @@ public class TsFileSplitter {
       return;
     }
 
-    Map<AlignedChunkData, BatchedAlignedValueChunkData> chunkDataMap = new HashMap<>();
-    for (Map.Entry<Integer, List<AlignedChunkData>> entry : pageIndex2ChunkData.entrySet()) {
-      List<AlignedChunkData> alignedChunkDataList = entry.getValue();
+    // Insertion-ordered and de-duplicating on purpose: the chunks of a series must keep the page
+    // order of the source TsFile, so that the emitted pieces (and the replicas applying them) write
+    // the time partitions in ascending order, and a chunk filled by more than one page index is
+    // only written once.
+    //
+    // Every entry is swapped for a fresh wrapper while the object that holds the pages is the one
+    // handed to the consumer: a consumed chunk data must not be drained again by a later flush, so
+    // the map keeps objects that start empty instead of the ones that were just emitted.
+    final Map<AlignedChunkData, BatchedAlignedValueChunkData> chunkDataMap = new LinkedHashMap<>();
+    for (final Map.Entry<Integer, List<AlignedChunkData>> entry : pageIndex2ChunkData.entrySet()) {
+      final List<AlignedChunkData> alignedChunkDataList = entry.getValue();
       for (int i = 0; i < alignedChunkDataList.size(); i++) {
-        AlignedChunkData oldChunkData = alignedChunkDataList.get(i);
-        BatchedAlignedValueChunkData chunkData =
+        final AlignedChunkData oldChunkData = alignedChunkDataList.get(i);
+        final BatchedAlignedValueChunkData chunkData =
             chunkDataMap.computeIfAbsent(oldChunkData, BatchedAlignedValueChunkData::new);
         alignedChunkDataList.set(i, chunkData);
       }
     }
-    for (AlignedChunkData chunkData : chunkDataMap.keySet()) {
+    for (final AlignedChunkData chunkData : chunkDataMap.keySet()) {
       timePartitionSlots.add(chunkData.getTimePartitionSlot());
       if (deletions.isEmpty()
           && timePartitionSlots.size() > CONFIG.getLoadTsFileSpiltPartitionMaxSize()) {
+        // Check before encoding: the chunk that crosses the limit does not have to be turned into
+        // standard chunks only to be rejected.
         throw new LoadFileException(
             String.format(
                 StorageEngineMessages
                     .STORAGE_EXCEPTION_TIME_PARTITION_SLOTS_SIZE_IS_GREATER_THAN_S_D076F78E,
                 CONFIG.getLoadTsFileSpiltPartitionMaxSize()));
       }
+      chunkData.endChunk();
       if (Boolean.FALSE.equals(consumer.apply(chunkData))) {
         throw new IllegalStateException(
             String.format(
@@ -482,7 +512,7 @@ public class TsFileSplitter {
                 chunkData));
       }
     }
-    this.pageIndex2ChunkData = new HashMap<>();
+    this.pageIndex2ChunkData = new LinkedHashMap<>();
   }
 
   private void consumeChunkData(String measurement, long offset, ChunkData chunkData)
@@ -532,7 +562,8 @@ public class TsFileSplitter {
     if (isAligned) {
       TimePageReader timePageReader = new TimePageReader(pageHeader, pageData, timeDecoder);
       long[] times = timePageReader.getNextTimeBatch();
-      return new Pair<>(times, new Object[times.length]);
+      // Aligned time pages carry no value array; return null to avoid a dummy Object[].
+      return new Pair<>(times, null);
     }
 
     valueDecoder.reset();
@@ -573,19 +604,6 @@ public class TsFileSplitter {
     }
   }
 
-  /**
-   * handle empty page in aligned chunk, if uncompressedSize and compressedSize are both 0, and the
-   * statistics is null, then the page is empty.
-   *
-   * @param pageHeader page header
-   * @return true if the page is empty
-   */
-  private boolean isEmptyPage(PageHeader pageHeader) {
-    return pageHeader.getUncompressedSize() == 0
-        && pageHeader.getCompressedSize() == 0
-        && pageHeader.getStatistics() == null;
-  }
-
   private TsPrimitiveType[] decodeValuePage(
       TsFileSequenceReader reader,
       ChunkHeader chunkHeader,
@@ -593,7 +611,9 @@ public class TsFileSplitter {
       long[] times,
       Decoder valueDecoder)
       throws IOException {
-    if (pageHeader.getSerializedPageSize() == 0) {
+    // An empty page stands for an all-null slice of the column. It has to expand to one null per
+    // time of the page, otherwise the decoded values would not line up with the decoded times.
+    if (pageHeader.getUncompressedSize() == 0) {
       return new TsPrimitiveType[times.length];
     }
 

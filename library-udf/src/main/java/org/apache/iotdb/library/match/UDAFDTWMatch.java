@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.library.match;
 
-import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.match.model.DTWMatchResult;
 import org.apache.iotdb.library.match.model.DTWState;
+import org.apache.iotdb.library.util.TypeServices;
 import org.apache.iotdb.udf.api.State;
 import org.apache.iotdb.udf.api.UDAF;
 import org.apache.iotdb.udf.api.customizer.config.UDAFConfigurations;
@@ -44,12 +44,16 @@ public class UDAFDTWMatch implements UDAF {
   private Double[] pattern;
   private float threshold;
   private DTWState state;
+  private TypeServices.ColumnNumericReader valueReader;
 
   @Override
   public void beforeStart(UDFParameters udfParameters, UDAFConfigurations udafConfigurations) {
     udafConfigurations.setOutputDataType(Type.TEXT);
     Map<String, String> attributes = udfParameters.getAttributes();
     threshold = Float.parseFloat(attributes.get("threshold"));
+    valueReader =
+        TypeServices.COLUMN_NUMERIC_READER_SERVICE.call(
+            TypeServices.toReadType(udfParameters.getDataType(0)));
     pattern =
         Arrays.stream(attributes.get("pattern").split(","))
             .map(Double::valueOf)
@@ -81,7 +85,7 @@ public class UDAFDTWMatch implements UDAF {
       }
       if (!columns[1].isNull(i)) {
         long timestamp = columns[1].getLong(i);
-        double value = getValue(columns[0], i);
+        double value = valueReader.read(columns[0], i);
         DTWState.updateBuffer(timestamp, value);
         if (DTWState.getValueBuffer().length == pattern.length) {
           float dtw = calculateDTW(DTWState.getValueBuffer(), pattern);
@@ -92,24 +96,6 @@ public class UDAFDTWMatch implements UDAF {
           }
         }
       }
-    }
-  }
-
-  private double getValue(Column column, int i) {
-    switch (column.getDataType()) {
-      case INT32:
-        return column.getInt(i);
-      case INT64:
-        return column.getLong(i);
-      case FLOAT:
-        return column.getFloat(i);
-      case DOUBLE:
-        return column.getDouble(i);
-      case BOOLEAN:
-        return column.getBoolean(i) ? 1.0D : 0.0D;
-      default:
-        throw new RuntimeException(
-            String.format(LibraryUdfMessages.UNSUPPORTED_DATATYPE, column.getDataType()));
     }
   }
 

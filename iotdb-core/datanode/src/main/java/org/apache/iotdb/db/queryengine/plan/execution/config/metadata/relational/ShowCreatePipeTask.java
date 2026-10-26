@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -46,6 +47,8 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 public class ShowCreatePipeTask implements IConfigTask {
+
+  private static final String HIDDEN_VALUE = "******";
 
   private final String pipeName;
   private final String userName;
@@ -167,10 +170,12 @@ public class ShowCreatePipeTask implements IConfigTask {
     }
     final List<String> pairs = new ArrayList<>(attributes.size());
     for (final Map.Entry<String, String> entry : attributes.entrySet()) {
+      final String value =
+          PipeParameters.ValueHider.isHiddenKey(entry.getKey()) ? HIDDEN_VALUE : entry.getValue();
       pairs.add(
           ShowCreateTableTask.getString(entry.getKey())
               + "="
-              + ShowCreateTableTask.getString(entry.getValue()));
+              + ShowCreateTableTask.getString(value));
     }
     builder.append(" ").append(clause).append(" (").append(String.join(",", pairs)).append(")");
   }

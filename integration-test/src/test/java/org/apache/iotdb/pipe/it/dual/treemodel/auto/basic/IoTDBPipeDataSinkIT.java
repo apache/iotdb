@@ -41,15 +41,18 @@ import org.junit.runner.RunWith;
 
 import java.nio.charset.Charset;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import static org.apache.iotdb.db.it.IoTDBRestServiceIT.getHttpPost;
+import static org.awaitility.Awaitility.await;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeAutoBasic.class})
@@ -582,6 +585,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
                 "create pipe test with source ('source.realtime.mode'='stream','inclusion'='data','path'='root.sg_nonAligned.非对齐序列带有encoding和压缩方式.**','source.realtime.enable'='true','mods.enable'='true') with sink ('sink'='iotdb-thrift-sink', 'sink.node-urls'='%s')",
                 receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString())));
 
+    awaitHistoricalPipeCompletion("test");
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "count timeseries root.sg_nonAligned.非对齐序列带有encoding和压缩方式.*",
@@ -602,6 +606,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
                 "create pipe test with source ('source.realtime.mode'='stream','inclusion'='data','path'='root.sg_nonAligned.非对齐序列带有encoding和压缩方式.**','source.realtime.enable'='true','mods.enable'='true') with sink ('sink'='iotdb-thrift-sink', 'sink.node-urls'='%s')",
                 receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString())));
 
+    awaitHistoricalPipeCompletion("test");
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "count timeseries root.sg_nonAligned.非对齐序列带有encoding和压缩方式.*",
@@ -613,5 +618,39 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
         "count timeseries root.sg_nonAligned.非对齐序列带有encoding和压缩方式.*",
         "count(timeseries),",
         Collections.singleton("4,"));
+  }
+
+  private void awaitHistoricalPipeCompletion(final String pipeName) {
+    await()
+        .pollInSameThread()
+        .pollDelay(1L, TimeUnit.SECONDS)
+        .pollInterval(1L, TimeUnit.SECONDS)
+        .atMost(600L, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              boolean sourcePipeFound = false;
+              boolean sourcePipeCompleted = true;
+              boolean realtimePipeFound = false;
+
+              for (final DataNodeWrapper dataNode : senderEnv.getDataNodeWrapperList()) {
+                try (final Connection connection = senderEnv.getConnection(dataNode);
+                    final Statement statement = connection.createStatement();
+                    final ResultSet resultSet = statement.executeQuery("show pipes")) {
+                  while (resultSet.next()) {
+                    final String id = resultSet.getString(1);
+                    if (id.equals(pipeName) || id.equals(pipeName + "_history")) {
+                      sourcePipeFound = true;
+                      sourcePipeCompleted &= "0".equals(resultSet.getString(8));
+                    } else if (id.equals(pipeName + "_realtime")) {
+                      realtimePipeFound = true;
+                    }
+                  }
+                }
+              }
+
+              // The historical sub-pipe may be auto-dropped after all events are committed.
+              Assert.assertTrue(sourcePipeFound || realtimePipeFound);
+              Assert.assertTrue(!sourcePipeFound || sourcePipeCompleted);
+            });
   }
 }

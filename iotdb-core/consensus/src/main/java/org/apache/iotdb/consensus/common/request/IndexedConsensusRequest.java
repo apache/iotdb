@@ -49,6 +49,8 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   private long memorySize = 0;
   private long retainedMemorySize = 0;
   private boolean serializedRequestsBuilt = false;
+  private long queueReservedMemorySize = -1L;
+  private boolean containsUserData = false;
   private final AtomicLong referenceCnt = new AtomicLong();
 
   public IndexedConsensusRequest(long searchIndex, List<IConsensusRequest> requests) {
@@ -85,6 +87,11 @@ public class IndexedConsensusRequest implements IConsensusRequest {
     throw new UnsupportedOperationException();
   }
 
+  /** Returns whether any request of this entry materializes its bytes only when it is sent. */
+  public synchronized boolean hasDeferredRequests() {
+    return requests.stream().anyMatch(IConsensusRequest::isSerializationDeferred);
+  }
+
   public List<IConsensusRequest> getRequests() {
     return requests;
   }
@@ -109,6 +116,20 @@ public class IndexedConsensusRequest implements IConsensusRequest {
       return retainedMemorySize;
     }
     return requests.stream().mapToLong(IConsensusRequest::getMemorySize).sum();
+  }
+
+  /**
+   * Returns the amount to reserve for this entry while it waits in the replication queues.
+   *
+   * <p>The amount is captured on the first call, because a request that deferred its serialization
+   * materializes its bytes only when it is sent and its serialized buffers are accounted for by the
+   * batch that carries them. Releasing an entry therefore has to return exactly what was reserved.
+   */
+  public synchronized long getQueueReservedMemorySize() {
+    if (queueReservedMemorySize < 0) {
+      queueReservedMemorySize = getRetainedMemorySize();
+    }
+    return queueReservedMemorySize;
   }
 
   /**
@@ -168,6 +189,15 @@ public class IndexedConsensusRequest implements IConsensusRequest {
 
   public IndexedConsensusRequest setNodeId(int nodeId) {
     this.nodeId = nodeId;
+    return this;
+  }
+
+  public boolean containsUserData() {
+    return containsUserData;
+  }
+
+  public IndexedConsensusRequest setContainsUserData(boolean containsUserData) {
+    this.containsUserData = containsUserData;
     return this;
   }
 

@@ -357,11 +357,7 @@ public class IoTDBStatement implements Statement {
   private boolean executeSQL(String sql) throws TException, SQLException {
     isCancelled = false;
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
-    int rows = fetchSize;
-    if (maxRows != 0 && fetchSize > maxRows) {
-      rows = maxRows;
-    }
-    execReq.setFetchSize(rows);
+    execReq.setFetchSize(getRequestFetchSize());
     execReq.setTimeout((long) queryTimeout * 1000);
     TSExecuteStatementResp execResp =
         callWithRetryAndReconnect(
@@ -510,11 +506,7 @@ public class IoTDBStatement implements Statement {
   private ResultSet executeQuerySQL(String sql, long timeoutInMS) throws TException, SQLException {
     isCancelled = false;
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
-    int rows = fetchSize;
-    if (maxRows != 0 && fetchSize > maxRows) {
-      rows = maxRows;
-    }
-    execReq.setFetchSize(rows);
+    execReq.setFetchSize(getRequestFetchSize());
     execReq.setTimeout(timeoutInMS);
     execReq.setJdbcQuery(true);
     TSExecuteStatementResp execResp =
@@ -823,6 +815,21 @@ public class IoTDBStatement implements Statement {
 
   public long getStmtId() {
     return stmtId;
+  }
+
+  /** The fetch size to send with an execution request, capped by maxRows when that is set. */
+  int getRequestFetchSize() {
+    return maxRows != 0 && fetchSize > maxRows ? maxRows : fetchSize;
+  }
+
+  /** Lets {@link #cancel()} reach the server again; called when a new execution starts. */
+  void clearCancelled() {
+    isCancelled = false;
+  }
+
+  /** Records the server-side query of the latest execution, which {@link #cancel()} cancels. */
+  void setQueryId(long queryId) {
+    this.queryId = queryId;
   }
 
   public long getMilliSecond(long time) {

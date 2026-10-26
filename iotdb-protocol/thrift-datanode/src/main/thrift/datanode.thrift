@@ -90,10 +90,16 @@ struct TGetDataBlockRequest {
   3: required i32 endSequenceId
   // Index of upstream SinkChannel
   4: required i32 index
+  // Optional byte range for fetching one serialized TsBlock in fragments.
+  5: optional i32 offset
 }
 
 struct TGetDataBlockResponse {
   1: required list<binary> tsBlocks
+  // The start offset of the next fragment. It is set only when the last element in tsBlocks is a fragment.
+  2: optional i32 offset
+  // Total serialized length of the TsBlock when the response starts its first fragment.
+  3: optional i32 totalLength
 }
 
 struct TAcknowledgeDataBlockEvent {
@@ -350,6 +356,14 @@ struct TUpdateTableReq {
   1: required byte type
   2: required binary tableInfo
   3: optional string oldName
+  4: optional TUpdateTree2TableView updateTree2TableViewInfo
+}
+
+struct TUpdateTree2TableView{
+   1: required byte tree2TableOperationType
+   2: optional string treePath
+   3: optional bool isRestrict
+   4: optional i32 tagNum
 }
 
 struct TInvalidateTableCacheReq {
@@ -374,6 +388,23 @@ struct TDeleteColumnDataReq {
 struct TDeleteDataOrDevicesForDropTableReq {
   1: required list<common.TConsensusGroupId> regionIdList
   2: required string tableName
+  3: optional i64 procedureId
+}
+
+struct TDropTableModProgress {
+  1: required i64 writtenModFileCount
+  // Unset until the region has identified all mod files involved in this deletion.
+  2: optional i64 remainingModFileCount
+}
+
+struct TGetDropTableModProgressReq {
+  1: required i64 procedureId
+  2: required list<common.TConsensusGroupId> regionIdList
+}
+
+struct TGetDropTableModProgressResp {
+  1: required common.TSStatus status
+  2: optional map<i32, TDropTableModProgress> regionProgress
 }
 
 struct TTableDeviceDeletionWithPatternAndFilterReq {
@@ -399,6 +430,9 @@ struct TTsFilePieceReq {
     1: required binary body
     2: required string uuid
     3: required common.TConsensusGroupId consensusGroupId
+    4: optional i32 sliceIndex
+    5: optional i32 sliceCount
+    6: optional i32 originBodySize
 }
 
 struct TLoadCommandReq {
@@ -424,6 +458,7 @@ struct TDeviceViewReq {
   3: required i32 tagNumber
   4: required bool restrict
   5: optional set<string> requiredMeasurements
+  6: optional bool tolerateTypeMismatch
 }
 
 struct TDeviceViewResp {
@@ -881,6 +916,17 @@ struct TKillQueryInstanceReq {
   2: optional string allowedUsername
 }
 
+struct TFetchDeviceEntrySegmentReq {
+  1: required string queryId
+  2: required string planNodeId
+  3: required i32 segmentId
+}
+
+struct TFetchDeviceEntrySegmentResp {
+  1: required common.TSStatus status
+  2: optional binary payload
+}
+
 /**
 * END: Used for EXPLAIN ANALYZE
 **/
@@ -908,6 +954,8 @@ service IDataNodeRPCService {
   TCancelResp cancelFragmentInstance(TCancelFragmentInstanceReq req);
 
   TSchemaFetchResponse fetchSchema(TSchemaFetchRequest req);
+
+  i32 getThriftMaxFrameSize();
 
   TLoadResp sendTsFilePieceNode(TTsFilePieceReq req);
 
@@ -1334,6 +1382,8 @@ service IDataNodeRPCService {
   */
   common.TSStatus deleteDataForDropTable(TDeleteDataOrDevicesForDropTableReq req)
 
+  TGetDropTableModProgressResp getDropTableModProgress(TGetDropTableModProgressReq req)
+
   /**
   * Delete devices for drop table
   */
@@ -1441,6 +1491,10 @@ service MPPDataExchangeService {
   void onNewDataBlockEvent(TNewDataBlockEvent e);
 
   void onEndOfDataBlockEvent(TEndOfDataBlockEvent e);
+
+  TFetchDeviceEntrySegmentResp fetchDeviceEntrySegment(TFetchDeviceEntrySegmentReq req);
+
+  common.TSStatus finishDeviceEntrySegment(1: string queryId, 2: string planNodeId);
 
   /** Empty rpc, only for connection test */
   common.TSStatus testConnectionEmptyRPC()

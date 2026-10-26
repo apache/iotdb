@@ -20,16 +20,26 @@
 package org.apache.iotdb.consensus.iot;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserDataTransferAuditHandler;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.request.DeserializedBatchIndexedConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
+import org.apache.iotdb.consensus.config.UserDataTransferAuditClassifier;
 import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
+import org.apache.iotdb.consensus.i18n.ConsensusMessages;
 import org.apache.iotdb.consensus.iot.client.SyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteReq;
 import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteRes;
+import org.apache.iotdb.consensus.iot.util.TestEntry;
 import org.apache.iotdb.consensus.iot.util.TestStateMachine;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -47,8 +57,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
@@ -193,6 +206,123 @@ public class IoTConsensusServerImplTest {
         null,
         clientManager,
         IoTConsensusConfig.newBuilder().build());
+  }
+
+  @Test
+  public void testSyncLogBecomesReadOnlyWhileWaiting() throws Exception {
+    final ScheduledExecutorService backgroundTaskService =
+        Executors.newSingleThreadScheduledExecutor();
+    final AtomicBoolean readOnly = new AtomicBoolean();
+    final TestStateMachine stateMachine =
+        new TestStateMachine() {
+          @Override
+          public boolean isReadOnly() {
+            return readOnly.get();
+          }
+        };
+    final Peer thisNode = new Peer(new DataRegionId(1), 0, new TEndPoint("127.0.0.1", 6667));
+    final IoTConsensusServerImpl server =
+        new IoTConsensusServerImpl(
+            temporaryFolder.getRoot().getAbsolutePath(),
+            null,
+            DirectoryStrategyType.SEQUENCE_STRATEGY,
+            thisNode,
+            Collections.singletonList(thisNode),
+            stateMachine,
+            backgroundTaskService,
+            null,
+            null,
+            IoTConsensusConfig.newBuilder()
+                .setReplication(
+                    IoTConsensusConfig.Replication.newBuilder()
+                        .setMaxWaitingTimeForWaitBatchInMs(100)
+                        .build())
+                .build());
+    final DeserializedBatchIndexedConsensusRequest request =
+        new DeserializedBatchIndexedConsensusRequest(1, 2, 2, 1, 2);
+    for (int index = 1; index <= 2; index++) {
+      request.add(
+          new IndexedConsensusRequest(
+              index, index, Collections.singletonList(new TestEntry(index, thisNode))));
+    }
+    final AtomicReference<TSStatus> status = new AtomicReference<>();
+    final Thread syncLogThread = new Thread(() -> status.set(server.syncLog(1, request)));
+    try {
+      assertFalse(server.isReadOnly());
+      syncLogThread.start();
+      final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+      while (syncLogThread.getState() != Thread.State.TIMED_WAITING
+          && System.nanoTime() < deadline) {
+        Thread.sleep(10);
+      }
+      assertEquals(Thread.State.TIMED_WAITING, syncLogThread.getState());
+      readOnly.set(true);
+      syncLogThread.join(TimeUnit.SECONDS.toMillis(15));
+      assertFalse(syncLogThread.isAlive());
+      assertEquals(2, status.get().getSubStatusSize());
+      assertEquals(
+          TSStatusCode.SYSTEM_READ_ONLY.getStatusCode(),
+          status.get().getSubStatus().get(0).getCode());
+      assertEquals(
+          ConsensusMessages.SYNC_LOG_SYSTEM_READ_ONLY,
+          status.get().getSubStatus().get(0).getMessage());
+      assertEquals(
+          TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode(),
+          status.get().getSubStatus().get(1).getCode());
+      assertTrue(stateMachine.getRequestSet().isEmpty());
+      assertEquals(0, server.getEffectiveSafePhysicalTime(1));
+
+      // The sender must be able to retry the complete batch after the replica becomes writable.
+      readOnly.set(false);
+      server.reloadConsensusConfig(
+          IoTConsensusConfig.newBuilder()
+              .setReplication(
+                  IoTConsensusConfig.Replication.newBuilder()
+                      .setMaxPendingBatchesNum(1)
+                      .setMaxWaitingTimeForWaitBatchInMs(100)
+                      .build())
+              .build());
+      final TSStatus retryStatus = server.syncLog(1, request);
+      assertTrue(
+          retryStatus.getSubStatus().stream()
+              .allMatch(s -> s.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      assertEquals(2, stateMachine.getRequestSet().size());
+    } finally {
+      syncLogThread.interrupt();
+      syncLogThread.join(TimeUnit.SECONDS.toMillis(5));
+      backgroundTaskService.shutdownNow();
+    }
+  }
+
+  @Test
+  public void testSnapshotTransferAppliesGroupClassifier() {
+    final DataRegionId groupId = new DataRegionId(1);
+    final UserDataTransferAuditHandler enabledHandler = event -> {};
+    final UserDataTransferAuditClassifier auditDatabaseClassifier =
+        new UserDataTransferAuditClassifier() {
+          @Override
+          public boolean containsUserData(
+              ConsensusGroupId ignoredGroupId, IConsensusRequest request) {
+            return false;
+          }
+
+          @Override
+          public boolean containsUserData(ConsensusGroupId ignoredGroupId) {
+            return false;
+          }
+        };
+
+    assertTrue(
+        IoTConsensusServerImpl.shouldAuditSnapshotTransfer(
+            enabledHandler, (ignoredGroupId, request) -> false, groupId));
+    assertFalse(
+        IoTConsensusServerImpl.shouldAuditSnapshotTransfer(
+            enabledHandler, auditDatabaseClassifier, groupId));
+    assertFalse(
+        IoTConsensusServerImpl.shouldAuditSnapshotTransfer(
+            UserDataTransferAuditHandler.NO_OP,
+            UserDataTransferAuditClassifier.NO_USER_DATA,
+            groupId));
   }
 
   /**

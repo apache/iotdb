@@ -324,7 +324,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
           "show databases",
           "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
           Collections.singleton("information_schema,INF,null,null,null,"),
-          (String) null);
+          "information_schema");
 
       TestUtils.executeNonQuery(
           "information_schema",
@@ -374,7 +374,11 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
 
       // Shall not be transferred
       TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "count databases", "count,", Collections.singleton("2,"), (String) null);
+          receiverEnv,
+          "count databases",
+          "count,",
+          Collections.singleton("2,"),
+          "information_schema");
 
       TestUtils.executeNonQuery(
           "information_schema",

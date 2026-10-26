@@ -21,6 +21,7 @@ package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
@@ -39,12 +40,15 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class SubscriptionConsumerMultiProviderPollTest {
 
@@ -93,14 +97,70 @@ public class SubscriptionConsumerMultiProviderPollTest {
     }
   }
 
+  @Test
+  public void testFullyFilteredTabletBatchIsAcknowledgedAndPollReturnsNoMessages()
+      throws SubscriptionException {
+    final TestPullConsumer consumer = new TestPullConsumer(1, 0, true);
+    try {
+      consumer.open();
+      consumer.subscribeTopic();
+
+      final List<SubscriptionMessage> messages = consumer.pollForTest(1_000L);
+
+      Assert.assertTrue(messages.isEmpty());
+      Assert.assertEquals(1, consumer.getAcknowledgedCommitContexts().size());
+      Assert.assertEquals(
+          new SubscriptionCommitContext(1, 0, TOPIC, CONSUMER_GROUP_ID, 0L),
+          consumer.getAcknowledgedCommitContexts().get(0));
+    } finally {
+      consumer.close();
+    }
+  }
+
+  @Test
+  public void testPollReconnectsWhenProviderBecomesUnavailable() throws SubscriptionException {
+    final TestPullConsumer consumer = new TestPullConsumer(1, 0, false, true, 1);
+    try {
+      consumer.open();
+      consumer.subscribeTopic();
+
+      final List<SubscriptionMessage> messages = consumer.pollForTest(1_000L);
+
+      Assert.assertEquals(1, messages.size());
+      Assert.assertEquals(2, consumer.getCreatedProviderCount());
+      Assert.assertEquals(2, consumer.getPollCount(1));
+    } finally {
+      consumer.close();
+    }
+  }
+
   private static class TestPullConsumer extends AbstractSubscriptionPullConsumer {
 
     private final Map<Integer, Integer> pollCounts = new HashMap<>();
+    private final List<SubscriptionCommitContext> acknowledgedCommitContexts = new ArrayList<>();
+    private final AtomicInteger createdProviderCount = new AtomicInteger();
+    private final AtomicBoolean failFirstPoll;
     private final int dataProviderId;
     private final int emptyPollsBeforeData;
+    private final boolean emptyTabletBatch;
+    private final int providerCount;
     private int backoffCount;
 
     private TestPullConsumer(final int dataProviderId, final int emptyPollsBeforeData) {
+      this(dataProviderId, emptyPollsBeforeData, false, false, 3);
+    }
+
+    private TestPullConsumer(
+        final int dataProviderId, final int emptyPollsBeforeData, final boolean emptyTabletBatch) {
+      this(dataProviderId, emptyPollsBeforeData, emptyTabletBatch, false, 3);
+    }
+
+    private TestPullConsumer(
+        final int dataProviderId,
+        final int emptyPollsBeforeData,
+        final boolean emptyTabletBatch,
+        final boolean failFirstPoll,
+        final int providerCount) {
       super(
           new AbstractSubscriptionPullConsumerBuilder()
               .host(HOST)
@@ -112,6 +172,9 @@ public class SubscriptionConsumerMultiProviderPollTest {
               .autoCommit(false));
       this.dataProviderId = dataProviderId;
       this.emptyPollsBeforeData = emptyPollsBeforeData;
+      this.emptyTabletBatch = emptyTabletBatch;
+      this.failFirstPoll = new AtomicBoolean(failFirstPoll);
+      this.providerCount = providerCount;
     }
 
     @Override
@@ -127,6 +190,7 @@ public class SubscriptionConsumerMultiProviderPollTest {
         final int thriftMaxFrameSize,
         final long heartbeatIntervalMs,
         final int connectionTimeoutInMs) {
+      createdProviderCount.incrementAndGet();
       return new TestSubscriptionProvider(
           endPoint,
           username,
@@ -141,7 +205,10 @@ public class SubscriptionConsumerMultiProviderPollTest {
           connectionTimeoutInMs,
           pollCounts,
           dataProviderId,
-          emptyPollsBeforeData);
+          emptyPollsBeforeData,
+          emptyTabletBatch,
+          failFirstPoll,
+          providerCount);
     }
 
     private void subscribeTopic() {
@@ -161,6 +228,21 @@ public class SubscriptionConsumerMultiProviderPollTest {
       return backoffCount;
     }
 
+    private List<SubscriptionCommitContext> getAcknowledgedCommitContexts() {
+      return acknowledgedCommitContexts;
+    }
+
+    private int getCreatedProviderCount() {
+      return createdProviderCount.get();
+    }
+
+    @Override
+    protected void ack(final Iterable<SubscriptionMessage> messages) throws SubscriptionException {
+      for (final SubscriptionMessage message : messages) {
+        acknowledgedCommitContexts.add(message.getCommitContext());
+      }
+    }
+
     @Override
     void sleepAfterEmptyPollRound() {
       backoffCount++;
@@ -173,6 +255,9 @@ public class SubscriptionConsumerMultiProviderPollTest {
     private final Map<Integer, Integer> pollCounts;
     private final int dataProviderId;
     private final int emptyPollsBeforeData;
+    private final boolean emptyTabletBatch;
+    private final AtomicBoolean failFirstPoll;
+    private final int providerCount;
 
     private TestSubscriptionProvider(
         final TEndPoint endPoint,
@@ -188,7 +273,10 @@ public class SubscriptionConsumerMultiProviderPollTest {
         final int connectionTimeoutInMs,
         final Map<Integer, Integer> pollCounts,
         final int dataProviderId,
-        final int emptyPollsBeforeData) {
+        final int emptyPollsBeforeData,
+        final boolean emptyTabletBatch,
+        final AtomicBoolean failFirstPoll,
+        final int providerCount) {
       super(
           endPoint,
           username,
@@ -205,6 +293,9 @@ public class SubscriptionConsumerMultiProviderPollTest {
       this.pollCounts = pollCounts;
       this.dataProviderId = dataProviderId;
       this.emptyPollsBeforeData = emptyPollsBeforeData;
+      this.emptyTabletBatch = emptyTabletBatch;
+      this.failFirstPoll = failFirstPoll;
+      this.providerCount = providerCount;
     }
 
     @Override
@@ -247,9 +338,9 @@ public class SubscriptionConsumerMultiProviderPollTest {
         final List<SubscriptionCommitContext> processorBufferedCommitContexts) {
       final PipeSubscribeHeartbeatResp response = new PipeSubscribeHeartbeatResp();
       response.getTopics().put(TOPIC, new TopicConfig());
-      response.getEndPoints().put(1, new TEndPoint(HOST, FIRST_PORT));
-      response.getEndPoints().put(2, new TEndPoint(HOST, FIRST_PORT + 1));
-      response.getEndPoints().put(3, new TEndPoint(HOST, FIRST_PORT + 2));
+      for (int id = 1; id <= providerCount; id++) {
+        response.getEndPoints().put(id, new TEndPoint(HOST, FIRST_PORT + id - 1));
+      }
       return response;
     }
 
@@ -260,11 +351,27 @@ public class SubscriptionConsumerMultiProviderPollTest {
         final Map<String, TopicProgress> progressByTopic)
         throws SubscriptionException {
       pollCounts.merge(dataNodeId, 1, Integer::sum);
+      if (dataNodeId == dataProviderId && failFirstPoll.compareAndSet(true, false)) {
+        setUnavailable();
+        throw new SubscriptionConnectionException("poll timed out");
+      }
       if (dataNodeId != dataProviderId || pollCounts.get(dataNodeId) <= emptyPollsBeforeData) {
         return Collections.emptyList();
       }
       final SubscriptionCommitContext commitContext =
           new SubscriptionCommitContext(dataNodeId, 0, TOPIC, CONSUMER_GROUP_ID, 0L);
+      if (emptyTabletBatch) {
+        final int pollCount = pollCounts.get(dataNodeId);
+        if (pollCount != emptyPollsBeforeData + 1) {
+          return Collections.emptyList();
+        }
+        return new ArrayList<>(
+            Collections.singletonList(
+                new SubscriptionPollResponse(
+                    SubscriptionPollResponseType.TABLETS.getType(),
+                    new TabletsPayload(Collections.emptyMap(), 1),
+                    commitContext)));
+      }
       final List<IMeasurementSchema> schemas =
           Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT64));
       final Tablet tablet = new Tablet("root.sg.d1", schemas, 1);
@@ -276,6 +383,20 @@ public class SubscriptionConsumerMultiProviderPollTest {
               SubscriptionPollResponseType.TABLETS.getType(),
               new TabletsPayload(Collections.singletonList(tablet), -1),
               commitContext));
+    }
+
+    @Override
+    List<SubscriptionPollResponse> pollTablets(
+        final SubscriptionCommitContext commitContext, final int offset, final long timeoutMs)
+        throws SubscriptionException {
+      if (emptyTabletBatch && dataNodeId == dataProviderId && offset == 1) {
+        return Collections.singletonList(
+            new SubscriptionPollResponse(
+                SubscriptionPollResponseType.TABLETS.getType(),
+                new TabletsPayload(Collections.emptyMap(), 0),
+                commitContext));
+      }
+      return Collections.emptyList();
     }
   }
 }

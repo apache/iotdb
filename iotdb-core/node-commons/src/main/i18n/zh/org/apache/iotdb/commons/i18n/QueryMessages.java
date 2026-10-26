@@ -163,8 +163,16 @@ public final class QueryMessages {
       "height 必须为非负数，但传入了：%s";
   public static final String INVALID_PATTERN_MISSING_REPEAT_SIGN =
       "无效的模式：%s，'}' 后缺少重复符号";
+  public static final String EXCEPTION_INVALID_PATTERN_ARG_REPETITION_SIGNS_AND_MUST_IMMEDIATELY_FOLLOW_30FC3998 =
+      "无效的模式：'%s'。重复符号 '+' 和 '*' 必须紧跟在 '}' 后。";
   public static final String INVALID_PATTERN_MUST_CONTAIN_DATA_POINTS =
       "无效的模式：'%s'。模式必须包含至少两个以逗号分隔的数值数据点，例如 '1,2,3'";
+  public static final String EXCEPTION_INVALID_PATTERN_ARG_REPETITION_GROUPS_MUST_CONTAIN_AT_LEAST_ONE_NUMERIC_DATA_POINT_E1880CCB =
+      "无效的模式：'%s'。重复组必须包含至少一个数值数据点。";
+  public static final String EXCEPTION_INVALID_PATTERN_ARG_UNMATCHED_OR_9B5E4AE4 =
+      "无效的模式：'%s'。'{' 或 '}' 不匹配。";
+  public static final String EXCEPTION_INVALID_PATTERN_ARG_INVALID_NUMERIC_DATA_POINT_ARG_12165323 =
+      "无效的模式：'%s'。无效的数值数据点：'%s'。";
 
   // ======================== Forecast / Classify TVF ========================
 
@@ -209,6 +217,12 @@ public final class QueryMessages {
       "预测结果长度 %d 与期望的输出长度 %d 不一致";
   public static final String FORECAST_RESULT_SINGLE_COLUMN =
       "预测结果应仅包含一个值列，但实际有 %d 个";
+
+  public static final String EXCEPTION_FORECAST_OUTPUT_TIME_IS_OUT_OF_RANGE_0F114E4E =
+      "Forecast 输出时间超出范围。";
+  public static final String
+      EXCEPTION_FORECAST_OUTPUT_INTERVAL_MUST_BE_POSITIVE_WHEN_INPUT_HAS_ONE_ROW_C9DBE14B =
+          "当输入只有一行时，Forecast 输出间隔必须为正数。";
 
   // ======================== TableSchema ========================
 

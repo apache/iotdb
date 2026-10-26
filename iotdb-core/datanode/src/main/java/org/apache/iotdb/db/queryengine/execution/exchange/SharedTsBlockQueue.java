@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.LocalSourceHandle;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool.MemoryReservationResult;
+import org.apache.iotdb.db.queryengine.execution.memory.MemorySide;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
@@ -265,7 +266,10 @@ public class SharedTsBlockQueue {
       localMemoryManager
           .getQueryPool()
           .registerPlanNodeIdToQueryMemoryMap(
-              localFragmentInstanceId.queryId, fullFragmentInstanceId, localPlanNodeId);
+              localFragmentInstanceId.queryId,
+              fullFragmentInstanceId,
+              localPlanNodeId,
+              MemorySide.OUTPUT);
       alreadyRegistered = true;
     }
     MemoryReservationResult reserveResult =

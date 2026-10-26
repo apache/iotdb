@@ -47,6 +47,7 @@ import java.io.Serializable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class CompactionTsFileWriter extends TsFileIOWriter {
   CompactionType type;
@@ -181,15 +182,21 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
   }
 
   private void removeUnusedTableSchema() {
-    Map<String, TableSchema> tableSchemaMap = getSchema().getTableSchemaMap();
-    Iterator<Map.Entry<String, TableSchema>> iterator = tableSchemaMap.entrySet().iterator();
+    final Map<String, TableSchema> tableSchemaMap = getSchema().getTableSchemaMap();
+    final Iterator<Map.Entry<String, TableSchema>> iterator = tableSchemaMap.entrySet().iterator();
     while (iterator.hasNext()) {
-      Map.Entry<String, TableSchema> entry = iterator.next();
-      List<ColumnCategory> columnTypes = entry.getValue().getColumnTypes();
-      if (columnTypes.contains(ColumnCategory.FIELD)) {
+      final Map.Entry<String, TableSchema> entry = iterator.next();
+      final List<ColumnCategory> columnTypes = entry.getValue().getColumnTypes();
+      if (hasFieldOrTimeColumn(columnTypes)) {
         continue;
       }
       iterator.remove();
     }
+  }
+
+  private boolean hasFieldOrTimeColumn(final List<ColumnCategory> columnTypes) {
+    return Objects.nonNull(columnTypes)
+        && (columnTypes.contains(ColumnCategory.FIELD)
+            || columnTypes.contains(ColumnCategory.TIME));
   }
 }

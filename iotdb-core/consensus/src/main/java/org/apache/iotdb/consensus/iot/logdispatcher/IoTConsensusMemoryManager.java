@@ -37,7 +37,7 @@ public class IoTConsensusMemoryManager {
   private final AtomicLong syncMemorySizeInByte = new AtomicLong(0);
   private IMemoryBlock memoryBlock =
       new AtomicLongMemoryBlock("Consensus-Default", null, Runtime.getRuntime().maxMemory() / 10);
-  private volatile double maxMemoryRatioForQueue = 0.6;
+  private Double maxMemoryRatioForQueue = 0.6;
 
   private IoTConsensusMemoryManager() {
     MetricService.getInstance().addMetricSet(new IoTConsensusMemoryManagerMetrics(this));
@@ -47,7 +47,9 @@ public class IoTConsensusMemoryManager {
     synchronized (request) {
       long prevRef = request.incRef();
       if (prevRef == 0) {
-        final long retainedMemorySize = request.getRetainedMemorySize();
+        // The amount is captured once, so that an entry that materializes its bytes after it was
+        // queued returns exactly what it reserved when it is released.
+        final long retainedMemorySize = request.getQueueReservedMemorySize();
         boolean reserved = reserve(retainedMemorySize, true);
         if (reserved) {
           if (logger.isDebugEnabled()) {
@@ -114,7 +116,7 @@ public class IoTConsensusMemoryManager {
     synchronized (request) {
       long prevRef = request.decRef();
       if (prevRef == 1) {
-        final long retainedMemorySize = request.getRetainedMemorySize();
+        final long retainedMemorySize = request.getQueueReservedMemorySize();
         free(retainedMemorySize, true);
         if (logger.isDebugEnabled()) {
           logger.debug(
@@ -155,10 +157,6 @@ public class IoTConsensusMemoryManager {
 
   public void init(IMemoryBlock memoryBlock, double maxMemoryRatioForQueue) {
     this.memoryBlock = memoryBlock;
-    this.maxMemoryRatioForQueue = maxMemoryRatioForQueue;
-  }
-
-  public void updateMaxMemoryRatioForQueue(double maxMemoryRatioForQueue) {
     this.maxMemoryRatioForQueue = maxMemoryRatioForQueue;
   }
 

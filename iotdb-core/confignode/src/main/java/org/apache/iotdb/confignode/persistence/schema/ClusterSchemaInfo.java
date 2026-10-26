@@ -69,6 +69,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackPreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnPropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
@@ -98,6 +99,7 @@ import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoRe
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.persistence.schema.ConfigMTree.TableSchemaDetails;
+import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigTableNode;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTableColumnInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
@@ -605,7 +607,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * Only leader use this interface. Get the matched DatabaseSchemas.
    *
    * @param rawPathList Databases' path patterns or full paths
-   * @return All DatabaseSchemas that matches to the specific Database patterns
+   * @return All matching DatabaseSchemas keyed by their database names
    */
   public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByName(
       final List<String> rawPathList, final Boolean isTableModel) {
@@ -636,8 +638,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final List<PartialPath> matchedPaths =
           mTree.getMatchedDatabases(patternPath, ALL_MATCH_SCOPE, false);
       for (final PartialPath path : matchedPaths) {
-        schemaMap.put(
-            path.getFullPath(), mTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema());
+        final TDatabaseSchema schema =
+            mTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema();
+        // Table database "pg" and tree database "root.pg" share the same internal path.
+        schemaMap.put(schema.getName(), schema);
       }
     }
   }
@@ -1352,9 +1356,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                       })
                   .collect(Collectors.toList())
               : tableModelMTree
-                  .getAllUsingTablesUnderSpecificDatabase(
+                  .getAllTablesUnderSpecificDatabase(
                       getQualifiedDatabasePartialPath(plan.getDatabase()))
                   .stream()
+                  .filter(pair -> pair.getRight() != TableNodeStatus.PRE_CREATE)
+                  .map(Pair::getLeft)
                   .map(
                       tsTable ->
                           new TTableInfo(
@@ -1447,7 +1453,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       }
       return new DescTableResp(
           StatusUtils.OK,
-          tableModelMTree.getUsingTableSchema(databasePath, plan.getTableName()),
+          tableModelMTree.getTableSchemaForDesc(databasePath, plan.getTableName()),
           null,
           null);
     } catch (final MetadataException e) {
@@ -1546,11 +1552,33 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
+  /**
+   * The table and its status, or empty when the table does not exist. The table is a copy, which
+   * the caller owns: the stored table is only written by the plans, under the write lock, and never
+   * through a reference handed out here.
+   */
   public Optional<Pair<TsTable, TableNodeStatus>> getTsTableIfExists(
       final String database, final String tableName) throws MetadataException {
     databaseReadWriteLock.readLock().lock();
     try {
-      return tableModelMTree.getTableAndStatusIfExists(
+      final Optional<Pair<TsTable, TableNodeStatus>> storedTable =
+          tableModelMTree.getTableAndStatusIfExists(
+              getQualifiedDatabasePartialPath(database), tableName);
+      if (storedTable.isEmpty()) {
+        return Optional.empty();
+      }
+      return Optional.of(
+          new Pair<>(new TsTable(storedTable.get().getLeft()), storedTable.get().getRight()));
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public Optional<ConfigTableNode> getTableNodeIfExists(
+      final String database, final String tableName) throws MetadataException {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return tableModelMTree.getTableNodeIfExists(
           getQualifiedDatabasePartialPath(database), tableName);
     } finally {
       databaseReadWriteLock.readLock().unlock();
@@ -1590,6 +1618,16 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             tableModelMTree.setTableProperties(
                 getQualifiedDatabasePartialPath(plan.getDatabase()),
                 plan.getTableName(),
+                plan.getProperties()));
+  }
+
+  public TSStatus setTableColumnProperties(final SetTableColumnPropertiesPlan plan) {
+    return executeWithLock(
+        () ->
+            tableModelMTree.setTableColumnProperties(
+                getQualifiedDatabasePartialPath(plan.getDatabase()),
+                plan.getTableName(),
+                plan.getColumnName(),
                 plan.getProperties()));
   }
 
