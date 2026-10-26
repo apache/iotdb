@@ -148,12 +148,12 @@ public class IoTDBTtlIT {
       }
 
       statement.execute("UNSET TTL TO root.TTL_SG1");
-      // make sure other nodes have applied UNSET TTL
-      Thread.sleep(1000);
+      // UNSET TTL waits for the procedure to update all DataNode TTL caches.
+      // Stay outside the previous TTL so these inserts verify that UNSET TTL took effect.
       for (int i = 0; i < 100; i++) {
         statement.execute(
             String.format(
-                "INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)", now - 30000 + i, i));
+                "INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)", now - 8000000 + i, i));
       }
 
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.TTL_SG1")) {
@@ -248,19 +248,19 @@ public class IoTDBTtlIT {
       }
 
       statement.execute("UNSET TTL TO root.sg.**");
-      // make sure other nodes have applied UNSET TTL
-      Thread.sleep(1000);
+      // UNSET TTL waits for the procedure to update all DataNode TTL caches.
+      // Check wildcard UNSET TTL with data that the previous TTL would reject.
       for (int i = 0; i < 100; i++) {
         statement.execute(
             String.format(
                 "INSERT INTO root.sg.TTL_SG3(timestamp, s1) VALUES (%d, %d)",
-                now - 30000000 + i, i));
+                now - 80000000 + i, i));
       }
       for (int i = 100; i < 200; i++) {
         statement.execute(
             String.format(
                 "INSERT INTO root.sg.TTL_SG4(timestamp, s1) VALUES (%d, %d)",
-                now - 30000000 + i, i));
+                now - 80000000 + i, i));
       }
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg.**")) {
         int cnt = 0;
