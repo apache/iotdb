@@ -175,16 +175,8 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
                       .setExtractorAttributes(realtimeSourceAttributes))
               .getCode());
 
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client.startPipe("query_pipe_without_data_region").getCode());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client.startPipe("history_pipe_without_data_region").getCode());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client.startPipe("realtime_pipe_without_data_region").getCode());
-
+      // Pipes start automatically after creation. Explicitly starting finite pipes can race with
+      // their auto-drop when they have no DataRegions to process.
       await()
           .pollInSameThread()
           .pollInterval(1L, TimeUnit.SECONDS)

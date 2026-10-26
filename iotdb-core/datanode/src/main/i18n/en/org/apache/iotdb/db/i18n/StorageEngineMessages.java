@@ -21,6 +21,9 @@ package org.apache.iotdb.db.i18n;
 
 public final class StorageEngineMessages {
 
+  public static final String LOG_REBUILT_UNREADABLE_WAL_FOOTER_FILE_ARG_VERSION_ARG_ORIGINALFILEBYTES_ARG_WRITERPROGRESS_ARG_1DBF836E =
+      "Rebuilt unreadable WAL footer: file={}, version={}, originalFileBytes={}, writerProgress={}.";
+
   public static final String MESSAGE_LOAD_TSFILE_SLICE_BODY_IS_NULL_OR_EMPTY_2A65366C =
       "Load TsFile slice body is null or empty";
   public static final String MESSAGE_INVALID_LOAD_TSFILE_SLICE_METADATA_SLICECOUNT_ARG_ORIGINBODYSIZE_ARG_379BF1B8 =
@@ -81,8 +84,10 @@ public final class StorageEngineMessages {
       "The LOAD snapshot progress file {} cannot be read back: {}";
   public static final String MESSAGE_LOAD_CONSENSUS_PIECE_CHECKSUM_MISMATCH_CF261675 =
       "LOAD consensus piece checksum mismatch, loadId: %s, pieceIndex: %d";
-  public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_EOF_8743387D =
-      "Unexpected end of file when reading staged piece %s at offset %s.";
+  public static final String
+      EXCEPTION_UNEXPECTED_END_OF_FILE_WHEN_READING_THE_STAGED_PIECE_ARG_ARG_BYTES_WERE_REQUESTED_FROM_OFFSET_ARG_BUT_THE_FILE_ENDED_AT_POSITION_ARG_3F9CA32B =
+          "Unexpected end of file when reading the staged piece %s: %d bytes were requested from "
+              + "offset %d, but the file ended at position %d.";
   public static final String EXCEPTION_STAGED_PIECE_FILE_ARG_IS_MISSING_AND_CANNOT_BE_READ_BACK_4F62F9C6 =
       "Staged piece file %s is missing and cannot be read back.";
   public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_CHUNK_PAYLOAD_REF_PATH_ARG_OFFSET_ARG_SIZE_ARG_6B70A61B =
@@ -1669,6 +1674,15 @@ public final class StorageEngineMessages {
           + "or skip this query task and continue.";
   public static final String MESSAGE_THE_ASSOCIATED_RESOURCE_FILE_OF_ARG_IS_NOT_FOUND_IN_THE_SNAPSHOT_CB9152B5 = "The associated resource file of {} is not found in the snapshot";
   public static final String MESSAGE_EVICTED_NON_EXISTING_EXISTING_SERIES_COUNT_ARG_ARG_ARG_TOTAL_REQUEST_ARG_3026ADBD = "Evicted non-existing/existing series count: {}/{}({}), total request: {}";
+
+  public static final String EXCEPTION_WRITE_MEMORY_BLOCK_ARG_IS_CLOSED_9E2561DF =
+      "Write memory block %s is closed";
+  public static final String EXCEPTION_WRITE_MEMORY_SIZE_MUST_BE_NON_NEGATIVE_ARG_2CBCF358 =
+      "Write memory size must be non-negative: %s";
+  public static final String EXCEPTION_CANNOT_RELEASE_ARG_BYTES_FROM_WRITE_MEMORY_BLOCK_ARG_WITH_ARG_BYTES_3783A614 =
+      "Cannot release %s bytes from write memory block %s with %s bytes";
+  public static final String EXCEPTION_WRITE_MEMORY_BLOCK_ARG_ALREADY_BELONGS_TO_ANOTHER_MANAGER_A05A8229 =
+      "Write memory block %s already belongs to another manager";
 
   public static final String EXCEPTION_CHUNK_LAYOUT_IS_MISSING_E87C71C0 = "Chunk layout is missing";
   public static final String EXCEPTION_CHUNK_HEADER_LIST_IS_EMPTY_5DE68C78 =

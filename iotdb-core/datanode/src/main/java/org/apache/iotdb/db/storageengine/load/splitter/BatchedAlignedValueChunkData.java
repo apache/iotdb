@@ -35,6 +35,11 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.apache.tsfile.common.constant.TsFileConstant.VALUE_COLUMN_MASK;
 
@@ -69,9 +74,29 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
     // partition and equals the start when interval == 1.
     final long endTime = TimePartitionUtils.getTimePartitionEndTime(startTime);
 
+    // Group the buffered pages by chunk once; scanning the whole page list once per chunk turns
+    // batched aligned tables into O(columns * pages).
+    final Map<Integer, List<PageBuffer>> pagesByChunkIndex = new LinkedHashMap<>();
+    for (final PageBuffer pageBuffer : pageBuffers) {
+      pagesByChunkIndex
+          .computeIfAbsent(pageBuffer.chunkIndex, ignored -> new ArrayList<>())
+          .add(pageBuffer);
+    }
+
     // Process each standalone value chunk
     for (int i = 0; i < chunkHeaderList.size(); i++) {
       final ChunkHeader chunkHeader = chunkHeaderList.get(i);
+      final List<PageBuffer> chunkPages =
+          pagesByChunkIndex.getOrDefault(i, Collections.emptyList());
+      final Chunk directlyBuiltChunk =
+          buildChunkFromUndecodedPages(chunkHeader, VALUE_COLUMN_MASK, chunkPages);
+      if (directlyBuiltChunk != null) {
+        entireChunks.add(directlyBuiltChunk);
+        dataSize +=
+            directlyBuiltChunk.getData().remaining()
+                + directlyBuiltChunk.getChunkStatistic().getSerializedSize();
+        continue;
+      }
       MeasurementSchema measurementSchema =
           new MeasurementSchema(
               chunkHeader.getMeasurementID(),
@@ -93,11 +118,7 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
       // untouched writer would produce a zero-point page whose data size does not match the bytes
       // actually written, and the resulting TsFile could not be parsed back.
       boolean hasBufferedData = false;
-      for (PageBuffer page : pageBuffers) {
-        if (page.chunkIndex != i) {
-          continue;
-        }
-
+      for (PageBuffer page : chunkPages) {
         if (!page.needDecode) {
           // An undecoded page may carry no data at all (for aligned series an all-null column is
           // stored as an empty page). Writing its page header alone would produce a chunk whose

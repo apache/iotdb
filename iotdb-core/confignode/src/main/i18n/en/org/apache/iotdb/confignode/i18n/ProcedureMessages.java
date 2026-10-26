@@ -490,7 +490,8 @@ public final class ProcedureMessages {
       "Failed to rollback pipe plugin [%s] on data nodes";
   public static final String FAILED_TO_ROLLBACK_PRE_RELEASE_FOR_TABLE_INFO_TO_DATANODE =
       "Failed to rollback pre-release {} for table {}.{} info to DataNode, failure results: {}";
-  public static final String FAILED_TO_PROVE_AN_UNREACHABLE_DN_IS_FENCED = "Failed to prove an unreachable DataNode is fenced";
+  public static final String FAILED_TO_PROVE_AN_UNREACHABLE_DN_IS_FENCED =
+      "Failed to prove an unreachable DataNode is fenced";
   public static final String FAILED_TO_ROLLBACK_PRE_RELEASE_TEMPLATE_INFO_OF_TEMPLATE_SET =
       "Failed to rollback pre release template info of template {} set on path {} on DataNode {}";
   public static final String FAILED_TO_ROLLBACK_PRE_SET_TEMPLATE_ON_PATH_DUE_TO =
@@ -847,6 +848,15 @@ public final class ProcedureMessages {
       "RemoveRegionLocation remove region {} from DataNode {}, result is {}";
   public static final String REMOVEREGIONPEER_STATE_FAILED = "RemoveRegionPeer state {} failed";
   public static final String REMOVEREGIONPEER_STATE_SUCCESS = "RemoveRegionPeer state {} success";
+  public static final String
+      LOG_CANNOT_RECONCILE_PEER_LIST_FOR_ARG_AFTER_REMOVING_DATANODE_ARG_THE_CURRENT_REPLICA_SET_STILL_CONTAINS_THE_REMOVED_DATANODE_DBBF45DC =
+          "Cannot reconcile peer list for {} after removing DataNode {}: the current replica set still contains the removed DataNode.";
+  public static final String
+      LOG_FAILED_TO_RESET_PEER_LIST_FOR_ARG_ON_DATANODE_ARG_TO_ARG_ARG_C8D872B4 =
+          "Failed to reset peer list for {} on DataNode {} to {}: {}";
+  public static final String
+      EXCEPTION_FAILED_TO_FINALIZE_REGION_PEER_REMOVAL_FOR_ARG_AT_STATE_ARG_AFTER_ARG_ATTEMPTS_382EA168 =
+          "Failed to finalize Region peer removal for %s at state %s after %d attempts.";
   public static final String REMOVEREGION_RATIS_TRANSFER_LEADER_FAIL_BUT_PROCEDURE_WILL_CONTINUE =
       "[RemoveRegion] Ratis transfer leader fail, but procedure will continue.";
   public static final String REMOVE_CONFIG_NODE = "Remove Config Node";
@@ -1426,8 +1436,21 @@ public final class ProcedureMessages {
       "rolling back after failure: %s.";
   public static final String MESSAGE_ROLLING_BACK_AFTER_AN_EARLIER_FAILURE_850D0AF5 =
       "rolling back after an earlier failure.";
+  public static final String
+      MESSAGE_SOME_OTHER_TASK_IS_SETTING_OR_UNSETTING_A_TEMPLATE_ON_TARGET_PATH_ARG_D4FEE38F =
+          "Some other task is setting or unsetting a template on target path %s.";
   public static final String EXCEPTION_DATANODE_SETSYSTEMSTATUS_RPC_FAILED_ARG_ARG_ARG_7E8E5F9F =
       "DataNode setSystemStatus RPC failed: %s: %s: %s; ";
   public static final String EXCEPTION_CONFIGNODE_TRYSETNODESTATUS_FAILED_ARG_ARG_ARG_C9BA78F4 =
       "ConfigNode trySetNodeStatus failed: %s: %s: %s; ";
+  public static final String
+      LOG_FAILED_TO_DETECT_THE_TREE_SERIES_UNDER_THE_NEW_VIEW_ARG_ARG_ARG_8F20CAE7 =
+          "Failed to detect the tree series under the new view {}.{}: {}";
+  public static final String
+      LOG_PROCEDURE_ARG_IS_PAST_ITS_COMMIT_POINT_KEEPING_EVERY_STATE_IT_EXECUTED_CA21D7E9 =
+          "Procedure {} is past its commit point; keeping every state it executed.";
+  public static final String LOG_FINISH_PROCEDURE_WITHOUT_ROLLBACK_41F7A354 =
+      "finish procedure without rollback";
+  public static final String LOG_DELETE_CHILD_PROCEDURES_WITHOUT_ROLLBACK_6E62D1C1 =
+      "delete child procedures without rollback";
 }

@@ -351,6 +351,8 @@ public class ConsensusPrefetchingQueue {
   private long lastReplayProgressNanos;
   private boolean replayStallWarningLogged;
   private long lastReplayStallWarningNanos;
+  private WriterFrontier lastBlockedWriterFrontier;
+  private boolean lastWriterBarrierInOrderedReplay;
 
   private volatile String lastConsumerId = "";
 
@@ -528,34 +530,39 @@ public class ConsensusPrefetchingQueue {
           Objects.isNull(reason) ? SubscriptionQueueRejectionReason.QUEUE_CAPACITY : reason;
       lastOfferRejectionReason.set(effectiveReason);
       rejectionListener.accept(effectiveReason);
-      return false;
+      return effectiveReason != SubscriptionQueueRejectionReason.INACTIVE_OR_CLOSED;
     }
 
     @Override
     public boolean offer(final IndexedConsensusRequest request) {
       final boolean offered;
+      boolean wakeupRequired = false;
       synchronized (this) {
         final SubscriptionQueueRejectionReason admissionReason = admissionSupplier.get();
         if (admissionReason != SubscriptionQueueRejectionReason.NONE) {
-          return reject(admissionReason);
-        }
-        if (!requestMemoryManager.reserve(request)) {
-          return reject(SubscriptionQueueRejectionReason.CONSENSUS_REQUEST_MEMORY_LIMIT);
-        }
-        try {
-          offered = super.offer(request);
-        } catch (final Throwable t) {
-          requestMemoryManager.free(request);
-          throw t;
-        }
-        if (offered) {
-          retainedRequestBytes.addAndGet(request.getRetainedMemorySize());
+          wakeupRequired = reject(admissionReason);
+          offered = false;
+        } else if (!requestMemoryManager.reserve(request)) {
+          wakeupRequired = reject(SubscriptionQueueRejectionReason.CONSENSUS_REQUEST_MEMORY_LIMIT);
+          offered = false;
         } else {
-          requestMemoryManager.free(request);
-          reject(SubscriptionQueueRejectionReason.QUEUE_CAPACITY);
+          try {
+            offered = super.offer(request);
+          } catch (final Throwable t) {
+            requestMemoryManager.free(request);
+            throw t;
+          }
+          if (offered) {
+            retainedRequestBytes.addAndGet(request.getRetainedMemorySize());
+          } else {
+            requestMemoryManager.free(request);
+            wakeupRequired = reject(SubscriptionQueueRejectionReason.QUEUE_CAPACITY);
+          }
         }
       }
-      if (offered) {
+      // The rejected request remains available in WAL. Wake the replay worker so a queue that has
+      // already gone dormant does not wait for a later successful realtime offer to make progress.
+      if (offered || wakeupRequired) {
         wakeupHook.run();
       }
       return offered;
@@ -1682,6 +1689,7 @@ public class ConsensusPrefetchingQueue {
   private static final long PREFETCH_STATS_LOG_INTERVAL_MS = 5_000L;
   private static final long REPLAY_STALL_WARNING_THRESHOLD_NANOS = TimeUnit.SECONDS.toNanos(60L);
   private static final long REPLAY_STALL_WARNING_INTERVAL_NANOS = TimeUnit.SECONDS.toNanos(30L);
+  private static final int MAX_REPLAY_DIAGNOSTIC_WRITERS = 4;
 
   private static final long SLOW_PREFETCH_ROUND_THRESHOLD_MS = 10_000L;
 
@@ -1753,6 +1761,34 @@ public class ConsensusPrefetchingQueue {
     }
 
     acquireReadLock();
+    PrefetchRoundResult result = null;
+    try {
+      result = drivePrefetchOnceUnderReadLock();
+      return result;
+    } finally {
+      try {
+        final ProgressWALIterator iterator = subscriptionWALIterator;
+        walReplayState = Objects.nonNull(iterator) ? iterator.toString() : "UNAVAILABLE";
+        // Keep unread segments across immediately rescheduled scan slices. Releasing them here
+        // would reload and decompress the same segment after every entry/time budget yield.
+        // Paused queues still return their direct memory while retaining cursors and fragments.
+        if (Objects.isNull(result) || result.getType() != PrefetchRoundResult.Type.RESCHEDULE_NOW) {
+          if (Objects.nonNull(iterator)) {
+            iterator.releaseReadBuffers();
+          }
+          for (final WriterReplayState state : orderedWriterReplay.values()) {
+            if (Objects.nonNull(state.iterator)) {
+              state.iterator.releaseReadBuffers();
+            }
+          }
+        }
+      } finally {
+        releaseReadLock();
+      }
+    }
+  }
+
+  private PrefetchRoundResult drivePrefetchOnceUnderReadLock() {
     try {
       final ProgressWALIterator.ScanBudget walScanBudget = newWalScanBudget();
       if (isClosed || closeRequested || !prefetchInitialized) {
@@ -1767,6 +1803,8 @@ public class ConsensusPrefetchingQueue {
             getPrefetchDurationMs());
       }
       logPeriodicStatsIfNecessary();
+      // Preserve the previous round's actual ordering decision until the stall reporter sees it.
+      lastBlockedWriterFrontier = null;
 
       final long currentSeekGeneration = seekGeneration.get();
       if (currentSeekGeneration != observedSeekGeneration) {
@@ -1940,10 +1978,6 @@ public class ConsensusPrefetchingQueue {
         return PrefetchRoundResult.dormant();
       }
       return PrefetchRoundResult.rescheduleAfter(100L);
-    } finally {
-      final ProgressWALIterator iterator = subscriptionWALIterator;
-      walReplayState = Objects.nonNull(iterator) ? iterator.toString() : "UNAVAILABLE";
-      releaseReadLock();
     }
   }
 
@@ -2038,6 +2072,8 @@ public class ConsensusPrefetchingQueue {
       }
       final WriterFrontier next = frontiers.peek();
       if (Objects.isNull(next) || next.isBarrier) {
+        lastBlockedWriterFrontier = next;
+        lastWriterBarrierInOrderedReplay = true;
         break;
       }
       final PreparedEntry buffered = peekRealtimeEntry(next.writerNodeId);
@@ -2364,19 +2400,138 @@ public class ConsensusPrefetchingQueue {
     final long stalledNanos = nowNanos - lastReplayProgressNanos;
     if (stalledNanos >= REPLAY_STALL_WARNING_THRESHOLD_NANOS
         && (!replayStallWarningLogged
-            || nowNanos - lastReplayStallWarningNanos >= REPLAY_STALL_WARNING_INTERVAL_NANOS)) {
+            || nowNanos - lastReplayStallWarningNanos >= REPLAY_STALL_WARNING_INTERVAL_NANOS)
+        && LOGGER.isWarnEnabled()) {
       LOGGER.warn(
           DataNodePipeMessages
-              .LOG_SUBSCRIPTION_REPLAY_HAS_MADE_NO_CURSOR_PROGRESS_FOR_ARG_MS_ARG_INSPECT_PREFETCH_WORKER_STACKS_AND_WAL_I_O_FAE1F64B,
+              .LOG_SUBSCRIPTION_REPLAY_STALLED_FOR_ARG_MS_ARG_DIAGNOSTICS_ARG_INSPECT_PREFETCH_WORKER_STACKS_AND_WAL_I_O_CB012F98,
           TimeUnit.NANOSECONDS.toMillis(stalledNanos),
-          this);
+          this,
+          getReplayStallDiagnostics());
       lastReplayStallWarningNanos = nowNanos;
       replayStallWarningLogged = true;
     }
   }
 
+  private Map<String, Object> getReplayStallDiagnostics() {
+    // Only called for the throttled stall warning, on the serialized prefetch worker. Do not
+    // refresh frontiers, probe WAL readers, or dump requests/Tablets while taking this snapshot.
+    final Map<String, Object> result = new LinkedHashMap<>();
+    result.put("runtimeVersion", runtimeVersion);
+    result.put("admissionBlockReason", realtimeAdmissionBlockReason);
+    result.put("memoryBlockReason", memoryBlockReason);
+    result.put("prefetchLimitReached", hasReachedPrefetchLimit());
+    result.put("lingerEntryCount", lingerBatch.entryCount);
+    result.put("lastBlockedFrontier", lastBlockedWriterFrontier);
+    result.put(
+        "lastBarrierInOrderedReplay",
+        Objects.nonNull(lastBlockedWriterFrontier) ? lastWriterBarrierInOrderedReplay : null);
+    final Map<Integer, SafeFrontier> safeFrontiers =
+        serverImpl.getWriterSafeFrontierTracker().snapshotSafeFrontiers();
+    result.put("activeWriterCount", activeWriterNodeIds.size());
+    result.put("activeWriters", sampleWriterDiagnostics(activeWriterNodeIds, safeFrontiers));
+    result.put("realtimeWriterCount", realtimeEntriesByWriter.size());
+    result.put(
+        "realtimeWriters",
+        sampleWriterDiagnostics(realtimeEntriesByWriter.keySet(), safeFrontiers));
+    result.put("orderedWriterCount", orderedWriterReplay.size());
+    result.put(
+        "orderedWriters", sampleWriterDiagnostics(orderedWriterReplay.keySet(), safeFrontiers));
+    final RegionProgress committed =
+        commitManager.getCommittedRegionProgress(consumerGroupId, topicName, consensusGroupId);
+    result.put("committedWriterCount", committed.getWriterPositions().size());
+    final List<String> committedSamples = new ArrayList<>();
+    for (final Map.Entry<WriterId, WriterProgress> entry :
+        committed.getWriterPositions().entrySet()) {
+      if (committedSamples.size() >= MAX_REPLAY_DIAGNOSTIC_WRITERS) {
+        break;
+      }
+      committedSamples.add(entry.toString());
+    }
+    result.put("committedWriters", committedSamples);
+    result.put("committedRetainedMinVersionId", committedRetainedMinVersionId);
+    final WalFileCommitRequirement requirement =
+        walFileCommitRequirements.get(committedRetainedMinVersionId);
+    result.put(
+        "retentionContainsUnsupportedProgress",
+        Objects.nonNull(requirement) ? requirement.containsUnsupportedProgress : null);
+    if (consensusReqReader instanceof WALNode) {
+      result.put("walDirectory", ((WALNode) consensusReqReader).getLogDirectory());
+    }
+    result.put(
+        "walScanState",
+        Objects.nonNull(subscriptionWALIterator)
+            ? subscriptionWALIterator.getDiagnosticState()
+            : null);
+    return result;
+  }
+
+  private List<Map<String, Object>> sampleWriterDiagnostics(
+      final Set<Integer> writerNodeIds, final Map<Integer, SafeFrontier> safeFrontiers) {
+    final List<Map<String, Object>> samples = new ArrayList<>();
+    final Set<Integer> sampledWriterNodeIds = new LinkedHashSet<>();
+    // Keep unknown progress and the actual blocker visible even when other writers fill the cap.
+    if (writerNodeIds.contains(-1)) {
+      sampledWriterNodeIds.add(-1);
+    }
+    if (Objects.nonNull(lastBlockedWriterFrontier)
+        && writerNodeIds.contains(lastBlockedWriterFrontier.writerNodeId)) {
+      sampledWriterNodeIds.add(lastBlockedWriterFrontier.writerNodeId);
+    }
+    for (final int writerNodeId : writerNodeIds) {
+      if (sampledWriterNodeIds.size() >= MAX_REPLAY_DIAGNOSTIC_WRITERS) {
+        break;
+      }
+      sampledWriterNodeIds.add(writerNodeId);
+    }
+    for (final int writerNodeId : sampledWriterNodeIds) {
+      final Map<String, Object> sample = new LinkedHashMap<>();
+      sample.put("writerNodeId", writerNodeId);
+      final WriterState state = writerStates.get(writerNodeId);
+      sample.put("effectiveSafePt", Objects.nonNull(state) ? state.effectiveSafePt : null);
+      sample.put("closed", Objects.nonNull(state) ? state.closed : null);
+      final SafeFrontier safeFrontier = safeFrontiers.get(writerNodeId);
+      if (Objects.nonNull(safeFrontier)) {
+        sample.put("trackerSafePt", safeFrontier.getPhysicalTime());
+        sample.put("trackerAppliedLocalSeq", safeFrontier.getLocalSeq());
+      }
+      final PreparedEntry buffered = peekRealtimeEntry(writerNodeId);
+      if (Objects.nonNull(buffered)) {
+        sample.put("bufferedHead", buffered.getOrderingKey());
+        sample.put("bufferedSearchIndex", buffered.searchIndex);
+        sample.put("bufferedEntryCount", realtimeEntriesByWriter.get(writerNodeId).size());
+      }
+      sample.put("materializedProgress", materializedProgressByWriter.get(writerNodeId));
+      sample.put(
+          "recoveryProgress",
+          recoveryWriterProgressByWriter.get(
+              new WriterId(consensusGroupId.toString(), writerNodeId)));
+      final WriterReplayState replay = orderedWriterReplay.get(writerNodeId);
+      if (Objects.nonNull(replay)) {
+        sample.put("consumedLocalSeq", replay.consumedLocalSeq);
+        sample.put("caughtUp", replay.caughtUp);
+        sample.put("fromPending", replay.fromPending);
+        if (Objects.nonNull(replay.head)) {
+          sample.put(
+              "rawHead",
+              new OrderingKey(
+                  replay.head.getPhysicalTime(),
+                  replay.head.getNodeId(),
+                  replay.head.getProgressLocalSeq()));
+          sample.put("rawSearchIndex", replay.head.getSearchIndex());
+        }
+        sample.put(
+            "walScanState",
+            Objects.nonNull(replay.iterator) ? replay.iterator.getDiagnosticState() : null);
+      }
+      samples.add(sample);
+    }
+    return samples;
+  }
+
   private void resetRoundStateForSeek(final long newSeekGeneration) {
     replayProgressObserved = false;
+    lastBlockedWriterFrontier = null;
     restorePendingSubscriptionWalCursor(newSeekGeneration);
     discardRealtimeEntries();
     discardBatch(lingerBatch);
@@ -3705,6 +3860,8 @@ public class ConsensusPrefetchingQueue {
       }
       final WriterFrontier frontier = frontiers.peek();
       if (Objects.isNull(frontier) || frontier.isBarrier) {
+        lastBlockedWriterFrontier = frontier;
+        lastWriterBarrierInOrderedReplay = false;
         return true;
       }
       final T writerHead = headSupplier.apply(frontier.writerNodeId);
@@ -3958,8 +4115,7 @@ public class ConsensusPrefetchingQueue {
             return null;
           }
 
-          final boolean committed =
-              commitAndRefreshWalRetention(commitWriterId, commitWriterProgress);
+          final boolean committed = commitWriterProgress(commitWriterId, commitWriterProgress);
           if (!committed) {
             if (!silent) {
               LOGGER.warn(
@@ -3977,6 +4133,12 @@ public class ConsensusPrefetchingQueue {
           cleanUpEvent(ev, false);
           return null;
         });
+    if (acked.get()) {
+      // Retention refresh can read metadata from every newly relevant WAL file. Keep that I/O out
+      // of ConcurrentHashMap.compute so recycling and requeueing other in-flight events can
+      // proceed while an ACK advances committed progress.
+      refreshCommittedWalRetentionBoundAndNotify();
+    }
     return !found.get()
         ? InFlightAckResult.MISSING
         : acked.get() ? InFlightAckResult.ACKED : InFlightAckResult.REJECTED;
@@ -4497,12 +4659,20 @@ public class ConsensusPrefetchingQueue {
 
   private boolean commitAndRefreshWalRetention(
       final WriterId writerId, final WriterProgress writerProgress) {
+    final boolean committed = commitWriterProgress(writerId, writerProgress);
+    if (committed) {
+      refreshCommittedWalRetentionBoundAndNotify();
+    }
+    return committed;
+  }
+
+  private boolean commitWriterProgress(
+      final WriterId writerId, final WriterProgress writerProgress) {
     final boolean committed =
         commitManager.commit(
             consumerGroupId, topicName, consensusGroupId, writerId, writerProgress);
     if (committed) {
       lastProgressTimeMs = System.currentTimeMillis();
-      refreshCommittedWalRetentionBoundAndNotify();
     }
     return committed;
   }
@@ -4555,13 +4725,29 @@ public class ConsensusPrefetchingQueue {
     return true;
   }
 
-  private boolean canReuseCommittedWalRetentionBound(final RegionProgress committedRegionProgress) {
+  private boolean canSkipCoveredWalPrefix(final RegionProgress committedRegionProgress) {
     if (!isProgressAtLeast(committedRegionProgress, lastCommittedProgressForRetention)
         || Objects.isNull(lastRetainedWalFileForRetention)
         || !lastRetainedWalFileForRetention.exists()
         || WALFileUtils.parseVersionId(lastRetainedWalFileForRetention.getName())
             != committedRetainedMinVersionId) {
       return false;
+    }
+
+    return true;
+  }
+
+  private boolean canReuseCommittedWalRetentionBound(final RegionProgress committedRegionProgress) {
+    if (!canSkipCoveredWalPrefix(committedRegionProgress)) {
+      return false;
+    }
+
+    // The live WAL file must be retained regardless of committed progress. Its metadata is not
+    // sealed yet, so there is no cached requirement to check until the WAL rolls.
+    if (consensusReqReader instanceof WALNode
+        && committedRetainedMinVersionId
+            == ((WALNode) consensusReqReader).getCurrentWALFileVersion()) {
+      return true;
     }
 
     final WalFileCommitRequirement requirement =
@@ -4611,8 +4797,8 @@ public class ConsensusPrefetchingQueue {
         return false;
       }
 
-      // The previous boundary file remains the first uncommitted file while its cached
-      // requirement is still uncovered by monotonically advancing committed progress.
+      // The previous boundary still applies while its sealed requirement is uncovered, or while
+      // it is the current live WAL file. Both cases require monotonically advancing progress.
       if (canReuseCommittedWalRetentionBound(committedRegionProgress)) {
         lastCommittedProgressForRetention = committedRegionProgress;
         return false;
@@ -4644,8 +4830,18 @@ public class ConsensusPrefetchingQueue {
     }
 
     WALFileUtils.ascSortByVersionId(walFiles);
+    // Sealed WAL files before the previous boundary were already covered by committed progress.
+    // They may remain on disk because of the replay cursor or topic retention; rescanning their
+    // metadata on every later commit makes sparse topics spend most of their time in retention.
+    final long firstVersionToCheck =
+        canSkipCoveredWalPrefix(committedRegionProgress)
+            ? committedRetainedMinVersionId
+            : Long.MIN_VALUE;
     for (final File walFile : walFiles) {
       final long versionId = WALFileUtils.parseVersionId(walFile.getName());
+      if (versionId < firstVersionToCheck) {
+        continue;
+      }
       if (versionId >= currentWalVersion) {
         return new CommittedWalRetentionBound(Math.max(0L, currentWalVersion), walFile);
       }
@@ -4736,8 +4932,8 @@ public class ConsensusPrefetchingQueue {
   private static LiveWALMetaDataSnapshot captureLiveWALMetaDataSnapshot(final WALNode walNode) {
     while (true) {
       final long versionId = walNode.getCurrentWALFileVersion();
-      final WALMetaData metadata = walNode.getCurrentWALMetaDataSnapshot();
-      if (versionId == walNode.getCurrentWALFileVersion()) {
+      final WALMetaData metadata = walNode.getWALMetaDataSnapshot(versionId);
+      if (metadata != null && versionId == walNode.getCurrentWALFileVersion()) {
         return new LiveWALMetaDataSnapshot(versionId, metadata);
       }
     }
@@ -6173,6 +6369,17 @@ public class ConsensusPrefetchingQueue {
     private static WriterFrontier forBarrier(final int writerNodeId, final long effectiveSafePt) {
       return new WriterFrontier(
           writerNodeId, new OrderingKey(effectiveSafePt, Integer.MIN_VALUE, Long.MIN_VALUE), true);
+    }
+
+    @Override
+    public String toString() {
+      return "WriterFrontier{writerNodeId="
+          + writerNodeId
+          + ", orderingKey="
+          + orderingKey
+          + ", barrier="
+          + isBarrier
+          + '}';
     }
 
     @Override

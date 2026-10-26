@@ -1180,6 +1180,8 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   private double loadWriteThroughputBytesPerSecond = -1; // Bytes/s
 
+  private int loadTsFileWriteBufferSize = 1024 * 1024; // 1 MiB
+
   private long loadTabletConversionThresholdBytes = -1;
 
   private boolean loadActiveListeningEnable = true;
@@ -4324,6 +4326,19 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   public void setLoadWriteThroughputBytesPerSecond(double loadWriteThroughputBytesPerSecond) {
     this.loadWriteThroughputBytesPerSecond = loadWriteThroughputBytesPerSecond;
+  }
+
+  public int getLoadTsFileWriteBufferSize() {
+    return loadTsFileWriteBufferSize;
+  }
+
+  public void setLoadTsFileWriteBufferSize(final int loadTsFileWriteBufferSize) {
+    if (loadTsFileWriteBufferSize <= 0) {
+      throw new IllegalArgumentException(
+          DataNodeMiscMessages
+              .MISC_EXCEPTION_LOAD_TSFILE_WRITE_BUFFER_SIZE_SHOULD_BE_GREATER_THAN_0_AB1BA936);
+    }
+    this.loadTsFileWriteBufferSize = loadTsFileWriteBufferSize;
   }
 
   public long getLoadTabletConversionThresholdBytes() {

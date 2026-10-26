@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
@@ -66,6 +67,39 @@ public class PropertiesTest {
       Assert.assertFalse(descriptor.getConfig().isWalFileListCacheEnabled());
     } finally {
       descriptor.getConfig().setWalFileListCacheEnabled(originalValue);
+    }
+  }
+
+  /** The LOAD write buffer defaults to 1 MiB, can be overridden, and must stay positive. */
+  @Test
+  public void testLoadTsFileWriteBufferSizeDefaultsAndReloads() throws Exception {
+    final IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
+    final int originalValue = descriptor.getConfig().getLoadTsFileWriteBufferSize();
+
+    try {
+      Assert.assertEquals(1024 * 1024, new IoTDBConfig().getLoadTsFileWriteBufferSize());
+
+      final TrimProperties properties = new TrimProperties();
+      properties.setProperty("load_tsfile_write_buffer_size_in_byte", "4096");
+      descriptor.loadProperties(properties);
+      Assert.assertEquals(4096, descriptor.getConfig().getLoadTsFileWriteBufferSize());
+
+      properties.setProperty("load_tsfile_write_buffer_size_in_byte", "8192");
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertEquals(8192, descriptor.getConfig().getLoadTsFileWriteBufferSize());
+
+      properties.setProperty("load_tsfile_write_buffer_size_in_byte", "0");
+      Assert.assertThrows(
+          QueryProcessException.class, () -> descriptor.loadHotModifiedProps(properties));
+      Assert.assertEquals(
+          "an invalid value keeps the current one",
+          8192,
+          descriptor.getConfig().getLoadTsFileWriteBufferSize());
+    } finally {
+      final TrimProperties properties = new TrimProperties();
+      properties.setProperty(
+          "load_tsfile_write_buffer_size_in_byte", Integer.toString(originalValue));
+      descriptor.loadHotModifiedProps(properties);
     }
   }
 

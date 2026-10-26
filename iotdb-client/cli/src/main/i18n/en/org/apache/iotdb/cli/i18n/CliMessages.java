@@ -76,7 +76,23 @@ public final class CliMessages {
       MESSAGE_INVALID_ARGS_REQUIRED_VALUES_FOR_OPTION_TABLE_NOT_PROVIDED_4BC3FCFA =
           "Invalid args: Required values for option table not provided.";
 
+  // Data import/export
+  public static final String EXCEPTION_FAILED_TO_INSERT_CSV_BATCH_ARG_159E0269 =
+      "Failed to insert CSV batch: %s";
+  public static final String MESSAGE_ARG_UNEXPECTED_ERROR_OCCURRED_ARG_E7255EE6 =
+      "[%s] - Unexpected error occurred: %s";
+  public static final String
+      EXCEPTION_SQL_TSFILE_EXPORT_REQUIRES_A_QUERY_FROM_A_SINGLE_TABLE_IN_DATABASE_ARG_C9EB3768 =
+          "SQL/TsFile export requires a query from a single table in database %s.";
+  public static final String
+      MESSAGE_QUERY_TO_EXPORT_TABLE_SQL_TSFILE_QUERIES_REQUIRE_A_SINGLE_TABLE_WITHOUT_JOINS_SUBQUERIES_OR_CTES_OVERRIDES_TABLE_START_TIME_AND_END_TIME_OPTIONAL_CC12D400 =
+          "Query to export. Table SQL/TsFile queries require a single table without joins, subqueries or CTEs. Overrides -table, -start_time and -end_time. (optional)";
+  public static final String
+      MESSAGE_MULTIPLE_CSV_HEADERS_RESOLVE_TO_THE_SAME_TARGET_COLUMN_99189563 =
+          "Multiple CSV headers resolve to the same target column.";
+
   private CliMessages() {}
+
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
