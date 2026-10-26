@@ -53,6 +53,8 @@ public class InsertRowsStatement extends InsertBaseStatement {
   /** the InsertRowsStatement list */
   private List<InsertRowStatement> insertRowStatementList;
 
+  private List<InsertRowStatement> schemaValidatedRowStatementList;
+
   /**
    * Whether every row of this statement targets the same table and carries the same column set.
    * Only producers that build all rows from a single (table, column) definition set this, e.g. a
@@ -162,48 +164,50 @@ public class InsertRowsStatement extends InsertBaseStatement {
     for (InsertRowStatement insertRowStatement : insertRowStatementList) {
       insertRowStatement.updateAfterSchemaValidation(context);
     }
+    // Table schema validation can remove rows without valid fields. Keep their failures for
+    // reporting.
+    schemaValidatedRowStatementList = insertRowStatementList;
+  }
+
+  private Stream<InsertRowStatement> getRowsForFailureReporting() {
+    final List<InsertRowStatement> rows =
+        schemaValidatedRowStatementList == null
+            ? insertRowStatementList
+            : schemaValidatedRowStatementList;
+    return rows == null ? Stream.empty() : rows.stream();
   }
 
   @Override
   public boolean hasFailedMeasurements() {
-    return insertRowStatementList != null
-        && insertRowStatementList.stream().anyMatch(InsertBaseStatement::hasFailedMeasurements);
+    return getRowsForFailureReporting().anyMatch(InsertBaseStatement::hasFailedMeasurements);
   }
 
   @Override
   public int getFailedMeasurementNumber() {
-    return insertRowStatementList == null
-        ? 0
-        : insertRowStatementList.stream()
-            .mapToInt(InsertBaseStatement::getFailedMeasurementNumber)
-            .sum();
+    return getRowsForFailureReporting()
+        .mapToInt(InsertBaseStatement::getFailedMeasurementNumber)
+        .sum();
   }
 
   @Override
   public List<String> getFailedMeasurements() {
-    return insertRowStatementList == null
-        ? Collections.emptyList()
-        : insertRowStatementList.stream()
-            .flatMap(statement -> statement.getFailedMeasurements().stream())
-            .collect(Collectors.toList());
+    return getRowsForFailureReporting()
+        .flatMap(statement -> statement.getFailedMeasurements().stream())
+        .collect(Collectors.toList());
   }
 
   @Override
   public List<Exception> getFailedExceptions() {
-    return insertRowStatementList == null
-        ? Collections.emptyList()
-        : insertRowStatementList.stream()
-            .flatMap(statement -> statement.getFailedExceptions().stream())
-            .collect(Collectors.toList());
+    return getRowsForFailureReporting()
+        .flatMap(statement -> statement.getFailedExceptions().stream())
+        .collect(Collectors.toList());
   }
 
   @Override
   public List<String> getFailedMessages() {
-    return insertRowStatementList == null
-        ? Collections.emptyList()
-        : insertRowStatementList.stream()
-            .flatMap(statement -> statement.getFailedMessages().stream())
-            .collect(Collectors.toList());
+    return getRowsForFailureReporting()
+        .flatMap(statement -> statement.getFailedMessages().stream())
+        .collect(Collectors.toList());
   }
 
   @Override

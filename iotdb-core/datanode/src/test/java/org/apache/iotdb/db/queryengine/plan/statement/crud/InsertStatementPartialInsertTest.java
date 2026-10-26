@@ -334,6 +334,42 @@ public class InsertStatementPartialInsertTest {
   }
 
   @Test
+  public void testInsertRowsStatementRetainsFailuresAfterRemovingInvalidRows() throws Exception {
+    final InsertRowStatement validRow = createInsertRowStatement();
+    final InsertRowStatement invalidRow = createInsertRowStatement();
+    final InsertRowStatement partiallyValidRow = createInsertRowStatement();
+    final RuntimeException failure1 = new RuntimeException("failed1");
+    final RuntimeException failure2 = new RuntimeException("failed2");
+    final RuntimeException failure3 = new RuntimeException("failed3");
+    invalidRow.markFailedMeasurement(0, failure1);
+    invalidRow.markFailedMeasurement(1, failure2);
+    partiallyValidRow.markFailedMeasurement(0, failure3);
+
+    final InsertRowsStatement rowsStatement = new InsertRowsStatement();
+    rowsStatement.setInsertRowStatementList(Arrays.asList(validRow, invalidRow, partiallyValidRow));
+    rowsStatement.updateAfterSchemaValidation(null);
+
+    final Analysis analysis = new Analysis();
+    AnalyzeUtils.validateSchema(
+        analysis,
+        rowsStatement,
+        () -> rowsStatement.setInsertRowStatementList(Arrays.asList(validRow, partiallyValidRow)));
+
+    Assert.assertEquals(
+        Arrays.asList(validRow, partiallyValidRow), rowsStatement.getInsertRowStatementList());
+    Assert.assertTrue(rowsStatement.hasFailedMeasurements());
+    Assert.assertEquals(3, rowsStatement.getFailedMeasurementNumber());
+    Assert.assertEquals(Arrays.asList("s1", "s2", "s1"), rowsStatement.getFailedMeasurements());
+    Assert.assertEquals(
+        Arrays.asList(failure1, failure2, failure3), rowsStatement.getFailedExceptions());
+    Assert.assertEquals(
+        Arrays.asList("failed1", "failed2", "failed3"), rowsStatement.getFailedMessages());
+    Assert.assertEquals(
+        "Fail to insert measurements [s1, s2, s1] caused by [failed1, failed2, failed3]",
+        analysis.getFailStatus().getMessage());
+  }
+
+  @Test
   public void testValidateSchemaDeduplicatesFailedMeasurementMessage() throws Exception {
     final InsertRowStatement statement1 = createInsertRowStatement();
     final InsertRowStatement statement2 = createInsertRowStatement();
