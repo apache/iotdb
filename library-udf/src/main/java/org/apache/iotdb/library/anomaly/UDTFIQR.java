@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.anomaly;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -59,10 +60,20 @@ public class UDTFIQR implements UDTF {
             "Parameter \"compute\" is illegal. Please use \"batch\" (for default) or \"stream\".",
             validator.getParameters().getStringOrDefault("compute", BATCH_COMPUTE))
         .validate(
-            params -> (double) params[0] < (double) params[1],
-            "parameter $q1$ should be smaller than $q3$",
+            params ->
+                Double.isFinite((double) params[0])
+                    && Double.isFinite((double) params[1])
+                    && (double) params[0] < (double) params[1],
+            LibraryUdfMessages
+                .EXCEPTION_PARAMETER_Q1_AND_Q3_SHOULD_BE_FINITE_AND_Q1_SHOULD_BE_SMALLER_THAN_Q3_EB122E6C,
             validator.getParameters().getDoubleOrDefault("q1", -1),
             validator.getParameters().getDoubleOrDefault("q3", 1));
+    if (validator
+        .getParameters()
+        .getStringOrDefault("compute", BATCH_COMPUTE)
+        .equalsIgnoreCase(STREAM_COMPUTE)) {
+      validator.validateRequiredAttribute("q1").validateRequiredAttribute("q3");
+    }
   }
 
   @Override
@@ -84,21 +95,29 @@ public class UDTFIQR implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     if (compute.equalsIgnoreCase(STREAM_COMPUTE) && q3 > q1) {
       double v = Util.getValueAsDouble(row);
-      if (v < q1 - 1.5 * iqr || v > q3 + 1.5 * iqr) {
+      if (Double.isFinite(v) && (v < q1 - 1.5 * iqr || v > q3 + 1.5 * iqr)) {
         collector.putDouble(row.getTime(), v);
       }
     } else if (compute.equalsIgnoreCase(BATCH_COMPUTE)) {
       double v = Util.getValueAsDouble(row);
-      value.add(v);
-      timestamp.add(row.getTime());
+      if (Double.isFinite(v)) {
+        value.add(v);
+        timestamp.add(row.getTime());
+      }
     }
   }
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
     if (compute.equalsIgnoreCase(BATCH_COMPUTE)) {
+      if (value.isEmpty()) {
+        return;
+      }
       q1 = Quantiles.quartiles().index(1).compute(value);
       q3 = Quantiles.quartiles().index(3).compute(value);
       iqr = q3 - q1;

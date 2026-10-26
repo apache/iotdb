@@ -58,10 +58,16 @@ public class UDAFPeriod implements UDTF {
     RowIterator iterator = rowWindow.getRowIterator();
     while (iterator.hasNextRow()) {
       Row row = iterator.next();
+      if (row.isNull(0)) {
+        if (!value.isEmpty()) {
+          value.add(value.getLast());
+        }
+        continue;
+      }
       double v = Util.getValueAsDouble(row);
       if (Double.isFinite(v)) {
         value.add(v);
-      } else {
+      } else if (!value.isEmpty()) {
         value.add(value.getLast());
       }
     }

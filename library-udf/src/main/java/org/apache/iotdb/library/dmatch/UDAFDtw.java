@@ -52,6 +52,8 @@ public class UDAFDtw implements UDTF {
     configurations
         .setAccessStrategy(new SlidingSizeWindowAccessStrategy(Integer.MAX_VALUE))
         .setOutputDataType(Type.DOUBLE);
+    dp = null;
+    m = 0;
   }
 
   @Override
@@ -64,10 +66,18 @@ public class UDAFDtw implements UDTF {
       if (row.isNull(0) || row.isNull(1)) {
         continue;
       }
-      a.add(Util.getValueAsDouble(row, 0));
-      b.add(Util.getValueAsDouble(row, 1));
+      double left = Util.getValueAsDouble(row, 0);
+      double right = Util.getValueAsDouble(row, 1);
+      if (Double.isFinite(left) && Double.isFinite(right)) {
+        a.add(left);
+        b.add(right);
+      }
     }
     m = a.size();
+    if (m == 0) {
+      dp = null;
+      return;
+    }
     dp = new double[m + 1][m + 1];
     for (int i = 1; i <= m; i++) {
       dp[0][i] = dp[i][0] = Double.MAX_VALUE;
@@ -84,6 +94,8 @@ public class UDAFDtw implements UDTF {
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
-    collector.putDouble(0, dp[m][m]);
+    if (dp != null) {
+      collector.putDouble(0, dp[m][m]);
+    }
   }
 }

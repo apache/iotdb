@@ -83,9 +83,17 @@ public class DWTUtil {
     } else {
       String[] coefString = coef.split(",");
       ncof = coefString.length;
+      if (ncof == 0) {
+        throw new IllegalArgumentException(
+            LibraryUdfMessages.EXCEPTION_WAVELET_COEFFICIENTS_SHOULD_NOT_BE_EMPTY_2C78B047);
+      }
       cc = new double[ncof];
       for (int i = 0; i < ncof; i++) {
         cc[i] = Double.parseDouble(coefString[i]);
+        if (!Double.isFinite(cc[i])) {
+          throw new IllegalArgumentException(
+              LibraryUdfMessages.EXCEPTION_WAVELET_COEFFICIENTS_SHOULD_BE_FINITE_D764C838);
+        }
       }
     }
     ncof = cc.length;
@@ -100,6 +108,26 @@ public class DWTUtil {
 
   public static boolean isPower2(int x) {
     return x > 0 && (x & (x - 1)) == 0;
+  }
+
+  public static boolean isFiniteCoefficientList(String coef) {
+    if (coef == null || coef.isEmpty()) {
+      return false;
+    }
+    String[] coefString = coef.split(",");
+    if (coefString.length == 0) {
+      return false;
+    }
+    for (String coefficient : coefString) {
+      try {
+        if (!Double.isFinite(Double.parseDouble(coefficient))) {
+          return false;
+        }
+      } catch (NumberFormatException e) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**
@@ -159,12 +187,11 @@ public class DWTUtil {
           LibraryUdfMessages
               .EXCEPTION_THE_DATA_VECTOR_SIZE_IS_LESS_THAN_WAVELET_COEFFICIENT_SIZE_AC6652FF);
     }
-    int nn = n;
     for (int i = 0; i < layer; i++) {
-      if (nn < ncof) {
+      if (n < ncof) {
         break;
       }
-      forward(nn);
+      forward(n);
       n >>= 1;
     }
   }
@@ -217,16 +244,16 @@ public class DWTUtil {
           LibraryUdfMessages
               .EXCEPTION_THE_DATA_VECTOR_SIZE_IS_LESS_THAN_WAVELET_COEFFICIENT_SIZE_AC6652FF);
     }
-    int nn = n;
-    for (int i = 0; i < layer - 1; i++) {
-      nn = n / 2;
+    int nn = n >> Math.max(layer - 1, 0);
+    if (nn == 0) {
+      nn = 1;
     }
     for (int i = 0; i < layer; i++) {
       if (nn > n) {
         break;
       }
       backward(nn);
-      n <<= 1;
+      nn <<= 1;
     }
   }
 

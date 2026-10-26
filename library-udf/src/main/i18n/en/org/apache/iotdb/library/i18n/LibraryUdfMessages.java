@@ -167,5 +167,44 @@ public final class LibraryUdfMessages {
   public static final String EXCEPTION_FAIL_TO_GET_DATA_TYPE_IN_ROW_8CD82629 =
       "Fail to get data type in row ";
 
+  // Parameter validation and utility exceptions added for UDF edge cases.
+  public static final String EXCEPTION_PARAMETER_Q1_AND_Q3_SHOULD_BE_FINITE_AND_Q1_SHOULD_BE_SMALLER_THAN_Q3_EB122E6C = "parameter $q1$ and $q3$ should be finite, and $q1$ should be smaller than $q3$";
+  public static final String EXCEPTION_PARAMETER_K_SHOULD_BE_FINITE_AND_LARGER_THAN_0_ECE1B163 = "Parameter k should be finite and larger than 0.";
+  public static final String EXCEPTION_PARAMETER_K_SHOULD_BE_A_POSITIVE_INTEGER_62AC8458 = "Parameter k should be a positive integer.";
+  public static final String EXCEPTION_PARAMETER_WINDOW_SHOULD_BE_A_POSITIVE_INTEGER_54FB7DBB = "Parameter window should be a positive integer.";
+  public static final String EXCEPTION_METHOD_SHOULD_BE_DEFAULT_OR_SERIES_181EEECF = "Method should be default or series.";
+  public static final String EXCEPTION_PARAMETER_R_SHOULD_BE_FINITE_AND_NON_NEGATIVE_4FFDF663 = "Parameter r should be finite and non-negative.";
+  public static final String EXCEPTION_PARAMETER_W_SHOULD_BE_A_POSITIVE_INTEGER_C6C838D2 = "Parameter w should be a positive integer.";
+  public static final String EXCEPTION_PARAMETER_S_SHOULD_BE_A_POSITIVE_INTEGER_B941BE85 = "Parameter s should be a positive integer.";
+  public static final String EXCEPTION_PARAMETER_LOWER_BOUND_AND_UPPER_BOUND_SHOULD_BE_FINITE_AND_LOWER_BOUND_SHOULD_BE_SMALLER_THAN_UPPER_BOUND_06A9FCA8 = "parameter \"lower_bound\" and \"upper_bound\" should be finite, and \"lower_bound\" should be smaller than \"upper_bound\".";
+  public static final String EXCEPTION_PARAMETER_LEN_SHOULD_BE_FINITE_AND_LARGER_THAN_0_F93F1EC9 = "Parameter len should be finite and larger than 0.";
+  public static final String EXCEPTION_PARAMETER_THRESHOLD_SHOULD_BE_FINITE_AND_NON_NEGATIVE_93B393D7 = "Parameter threshold should be finite and non-negative.";
+  public static final String EXCEPTION_PARAMETER_P_SHOULD_BE_A_POSITIVE_INTEGER_D7914C8A = "Parameter p should be a positive integer.";
+  public static final String EXCEPTION_THRESHOLD_HAS_TO_BE_FINITE_AND_NON_NEGATIVE_45C26FD0 = "threshold has to be finite and non-negative.";
+  public static final String EXCEPTION_PARAMETER_END_SHOULD_BE_FINITE_AND_LARGER_THAN_START_A5FB7AEC = "parameter $end$ should be finite and larger than $start$";
+  public static final String EXCEPTION_PARAMETER_MIN_AND_MAX_SHOULD_BE_FINITE_AND_MIN_SHOULD_BE_SMALLER_THAN_MAX_1EDB33AF = "parameter $min$ and $max$ should be finite, and $min$ should be smaller than $max$.";
+  public static final String EXCEPTION_ERROR_BOUND_SHOULD_BE_FINITE_AND_NO_LESS_THAN_0_E2C80B2C = "Error bound should be finite and no less than 0.";
+  public static final String EXCEPTION_PARAMETER_POINTS_SHOULD_BE_AT_LEAST_2_A4F55048 = "Parameter points should be at least 2.";
+  public static final String EXCEPTION_PARAMETER_AVG_IS_ILLEGAL_IT_SHOULD_BE_FINITE_D4B6B4FF = "Parameter \"avg\" is illegal. It should be finite.";
+  public static final String EXCEPTION_PARAMETER_SD_IS_ILLEGAL_IT_SHOULD_BE_FINITE_AND_LARGER_THAN_0_CCE0B275 = "Parameter \"sd\" is illegal. It should be finite and larger than 0.";
+  public static final String EXCEPTION_PARAMETER_WINDOW_SHOULD_BE_A_POSITIVE_DURATION_OR_A_POSITIVE_INTEGER_41E4F4DB = "Parameter window should be a positive duration or a positive integer.";
+  public static final String EXCEPTION_WINDOW_SIZE_SHOULD_BE_IN_0_INTEGER_MAX_VALUE_52F02FF6 = "Window size should be in (0, Integer.MAX_VALUE].";
+  public static final String EXCEPTION_METHOD_SHOULD_BE_MEDIAN_MODE_OR_CLUSTER_7C3B0F56 = "Method should be Median, Mode, or Cluster.";
+  public static final String EXCEPTION_ILLEGAL_FILL_METHOD_45FB5556 = "Illegal fill method.";
+  public static final String EXCEPTION_PARAMETER_SIGMA_SHOULD_BE_FINITE_AND_LARGER_THAN_0_538FEDBA = "Parameter $sigma$ should be finite and larger than 0.";
+  public static final String EXCEPTION_PARAMETER_MINSPEED_AND_MAXSPEED_SHOULD_BE_FINITE_AND_MINSPEED_SHOULD_BE_SMALLER_THAN_MAXSPEED_5998EA69 = "parameter $minSpeed$ and $maxSpeed$ should be finite, and $minSpeed$ should be smaller than $maxSpeed$.";
+  public static final String EXCEPTION_PARAMETER_CENTER_SHOULD_BE_FINITE_21F289A3 = "Parameter $center$ should be finite.";
+  public static final String EXCEPTION_METHOD_SHOULD_BE_SCREEN_OR_LSGREEDY_B5975D7A = "Method should be screen or lsgreedy.";
+  public static final String EXCEPTION_COEF_SHOULD_BE_FINITE_DOUBLE_DOUBLE_WHEN_METHOD_IS_BLANK_F72B1092 = "coef should be finite double,double... when method is blank.";
+  public static final String EXCEPTION_WAVELET_COEFFICIENTS_SHOULD_NOT_BE_EMPTY_2C78B047 = "Wavelet coefficients should not be empty.";
+  public static final String EXCEPTION_WAVELET_COEFFICIENTS_SHOULD_BE_FINITE_D764C838 = "Wavelet coefficients should be finite.";
+  public static final String EXCEPTION_ILLEGAL_PARAMETER_PATTERN_MUST_BE_FINITE_DOUBLE_DOUBLE_612DE434 = "Illegal parameter, pattern must be finite double,double...";
+  public static final String EXCEPTION_ILLEGAL_PARAMETER_THRESHOLD_MUST_BE_A_FINITE_NON_NEGATIVE_NUMBER_1C438942 = "Illegal parameter, threshold must be a finite non-negative number.";
+  public static final String EXCEPTION_ILLEGAL_PARAMETER_VALUEPATTERN_VALUES_MUST_BE_FINITE_FFD05AC9 = "Illegal parameter, valuePattern values must be finite.";
+  public static final String EXCEPTION_REGEX_SHOULD_NOT_BE_EMPTY_AND_HAS_TO_BE_A_VALID_REGULAR_EXPRESSION_751072ED = "regex should not be empty and has to be a valid regular expression.";
+  public static final String EXCEPTION_CAPACITY_SHOULD_BE_LARGER_THAN_0_055372C7 = "Capacity should be larger than 0.";
+  public static final String EXCEPTION_TIME_VALUE_SHOULD_BE_FINITE_A661DDB0 = "Time value should be finite.";
+  public static final String EXCEPTION_INVALID_DATETIME_FORMAT_A3DC435A = "Invalid datetime format.";
+
   private LibraryUdfMessages() {}
 }

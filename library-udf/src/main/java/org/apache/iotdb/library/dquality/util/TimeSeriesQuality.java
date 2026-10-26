@@ -51,8 +51,14 @@ public class TimeSeriesQuality {
     while (dataIterator.hasNextRow()) {
       Row row = dataIterator.next();
       cnt++;
-      double v = Util.getValueAsDouble(row);
       double t = row.getTime();
+      if (row.isNull(0)) {
+        specialCnt++;
+        timeList.add(t);
+        originList.add(Double.NaN);
+        continue;
+      }
+      double v = Util.getValueAsDouble(row);
       if (Double.isFinite(v)) {
         timeList.add(t);
         originList.add(v);
