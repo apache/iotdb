@@ -38,6 +38,8 @@ public final class SchemaMessages {
   public static final String CANNOT_REMOVE_TAG_COLUMN = "Cannot remove an tag column: %s";
   public static final String UNKNOWN_TABLE_UPDATE_OPERATION_TYPE =
       "Unknown table update operation type%s";
+  public static final String EXCEPTION_UNKNOWN_TREE_TO_TABLE_VIEW_OPERATION_TYPE_ARG_C13CAC3F =
+      "Unknown tree to table view operation type: %s";
 
   // Column messages
   public static final String UNSUPPORTED_COLUMN_TYPE_IN_TSFILE =

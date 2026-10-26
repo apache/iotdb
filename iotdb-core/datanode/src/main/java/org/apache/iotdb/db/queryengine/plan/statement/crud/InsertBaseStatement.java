@@ -767,8 +767,28 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     if (inputLocations != null) {
       CommonUtils.swapArray(inputLocations, src, target);
     }
+    swapFailedMeasurementIndex(src, target);
     tagColumnIndices = null;
     attrColumnIndices = null;
+  }
+
+  /**
+   * Keeps {@link #failedMeasurementIndex2Info} consistent with the measurement arrays after the
+   * columns at {@code src} and {@code target} are swapped, so that the failure records still point
+   * at the columns they were created for.
+   */
+  private void swapFailedMeasurementIndex(final int src, final int target) {
+    if (failedMeasurementIndex2Info == null || failedMeasurementIndex2Info.isEmpty()) {
+      return;
+    }
+    final FailedMeasurementInfo srcInfo = failedMeasurementIndex2Info.remove(src);
+    final FailedMeasurementInfo targetInfo = failedMeasurementIndex2Info.remove(target);
+    if (targetInfo != null) {
+      failedMeasurementIndex2Info.put(src, targetInfo);
+    }
+    if (srcInfo != null) {
+      failedMeasurementIndex2Info.put(target, srcInfo);
+    }
   }
 
   /**
@@ -838,9 +858,35 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     typeConvertors = newTypeConvertors;
     inputLocations = newInputLocations;
 
+    rebuildFailedMeasurementIndex(newToOldMapping);
+
     // Clear cached indices
     tagColumnIndices = null;
     attrColumnIndices = null;
+  }
+
+  /**
+   * Rewrites the keys of {@link #failedMeasurementIndex2Info} from the old array positions to the
+   * new ones described by {@code newToOldMapping} ({@code newToOldMapping[newIdx] = oldIdx}), so
+   * that the failure records follow the reordered columns.
+   */
+  private void rebuildFailedMeasurementIndex(final int[] newToOldMapping) {
+    if (failedMeasurementIndex2Info == null || failedMeasurementIndex2Info.isEmpty()) {
+      return;
+    }
+    final Map<Integer, FailedMeasurementInfo> remapped =
+        new HashMap<>(failedMeasurementIndex2Info.size());
+    for (int newIdx = 0; newIdx < newToOldMapping.length; newIdx++) {
+      final int oldIdx = newToOldMapping[newIdx];
+      if (oldIdx < 0) {
+        continue;
+      }
+      final FailedMeasurementInfo info = failedMeasurementIndex2Info.get(oldIdx);
+      if (info != null) {
+        remapped.put(newIdx, info);
+      }
+    }
+    failedMeasurementIndex2Info = remapped;
   }
 
   private int getRequiredColumnArrayLength(final int index) {

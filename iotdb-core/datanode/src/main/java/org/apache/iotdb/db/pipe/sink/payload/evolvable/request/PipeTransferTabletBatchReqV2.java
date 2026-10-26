@@ -64,8 +64,9 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
     final List<InsertBaseStatement> statements =
         new ArrayList<>(insertNodeReqs.size() + tabletReqs.size());
 
-    final Map<String, List<InsertRowStatement>> tableModelDatabaseInsertRowStatementMap =
-        new LinkedHashMap<>();
+    // Keep permission checks, schema validation, and redirect metadata scoped to one table.
+    final Map<String, Map<String, List<InsertRowStatement>>>
+        tableModelDatabaseInsertRowStatementMap = new LinkedHashMap<>();
     final Map<String, List<InsertRowStatement>> treeModelDatabaseInsertRowStatementMap =
         new LinkedHashMap<>();
     final Map<String, List<InsertTabletStatement>> treeModelDatabaseInsertTabletStatementMap =
@@ -78,17 +79,15 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
       }
       if (statement.isWriteToTable()) {
         if (statement instanceof InsertRowStatement) {
-          tableModelDatabaseInsertRowStatementMap
-              .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
-              .add((InsertRowStatement) statement);
+          addTableModelInsertRowStatement(
+              tableModelDatabaseInsertRowStatementMap, (InsertRowStatement) statement);
         } else if (statement instanceof InsertTabletStatement) {
           statements.add(statement);
         } else if (statement instanceof InsertRowsStatement) {
           for (final InsertRowStatement insertRowStatement :
               ((InsertRowsStatement) statement).getInsertRowStatementList()) {
-            tableModelDatabaseInsertRowStatementMap
-                .computeIfAbsent(insertRowStatement.getDatabaseName().get(), k -> new ArrayList<>())
-                .add(insertRowStatement);
+            addTableModelInsertRowStatement(
+                tableModelDatabaseInsertRowStatementMap, insertRowStatement);
           }
         } else {
           throw new UnsupportedOperationException(
@@ -141,16 +140,31 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
     addTreeModelInsertRowsStatements(statements, treeModelDatabaseInsertRowStatementMap);
     addTreeModelInsertTabletsStatements(statements, treeModelDatabaseInsertTabletStatementMap);
 
-    for (final Map.Entry<String, List<InsertRowStatement>> insertRows :
+    for (final Map.Entry<String, Map<String, List<InsertRowStatement>>> insertRows :
         tableModelDatabaseInsertRowStatementMap.entrySet()) {
-      final InsertRowsStatement statement = new InsertRowsStatement();
-      statement.setWriteToTable(true);
-      statement.setDatabaseName(insertRows.getKey());
-      statement.setInsertRowStatementList(insertRows.getValue());
-      statements.add(statement);
+      for (final Map.Entry<String, List<InsertRowStatement>> tableInsertRows :
+          insertRows.getValue().entrySet()) {
+        final InsertRowsStatement statement = new InsertRowsStatement();
+        statement.setWriteToTable(true);
+        statement.setDatabaseName(insertRows.getKey());
+        statement.setInsertRowStatementList(tableInsertRows.getValue());
+        // Rows merged into this batch share the table but may come from different source inserts
+        // with different column sets, so the statement is intentionally left non-uniform and
+        // analysis traverses every row.
+        statements.add(statement);
+      }
     }
 
     return statements;
+  }
+
+  private static void addTableModelInsertRowStatement(
+      final Map<String, Map<String, List<InsertRowStatement>>> databaseInsertRowStatementMap,
+      final InsertRowStatement insertRowStatement) {
+    databaseInsertRowStatementMap
+        .computeIfAbsent(insertRowStatement.getDatabaseName().get(), k -> new LinkedHashMap<>())
+        .computeIfAbsent(insertRowStatement.getTableName(), k -> new ArrayList<>())
+        .add(insertRowStatement);
   }
 
   private void addTreeModelInsertRowsStatements(

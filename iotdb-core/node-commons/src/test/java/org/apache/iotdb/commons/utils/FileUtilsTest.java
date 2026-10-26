@@ -75,6 +75,28 @@ public class FileUtilsTest {
   }
 
   @Test
+  public void testIsFilePathAllowedRejectsAllowedDirectoryItself() {
+    final File allowedDirectory = new File(tmpDir, "allowed-export-dir");
+    final String[] allowedDirectories = {allowedDirectory.getAbsolutePath()};
+
+    Assert.assertFalse(
+        FileUtils.isFilePathAllowed(allowedDirectory.getAbsolutePath(), allowedDirectories));
+    Assert.assertTrue(
+        FileUtils.isFilePathAllowed(
+            new File(allowedDirectory, "result.tsfile").getAbsolutePath(), allowedDirectories));
+  }
+
+  @Test
+  public void testTruncateFile() throws IOException {
+    File file = new File(tmpDir, "truncate-file");
+    Files.write(file.toPath(), new byte[] {1, 2, 3, 4});
+
+    FileUtils.truncateFile(file, 2);
+
+    Assert.assertArrayEquals(new byte[] {1, 2}, Files.readAllBytes(file.toPath()));
+  }
+
+  @Test
   public void testDeleteFileOrDirectoryWithRateLimiter() throws IOException {
     File deleteDir = new File(tmpDir, "deleteWithRateLimiter");
     File subDir = new File(deleteDir, "subDir");

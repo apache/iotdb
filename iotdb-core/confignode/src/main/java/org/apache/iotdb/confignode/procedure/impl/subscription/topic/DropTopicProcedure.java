@@ -47,6 +47,8 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
   private static final Logger LOGGER = LoggerFactory.getLogger(DropTopicProcedure.class);
 
   private String topicName;
+  private boolean isTableModel;
+  private boolean isTableModelSet;
 
   public DropTopicProcedure() {
     super();
@@ -55,6 +57,12 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
   public DropTopicProcedure(String topicName) {
     super();
     this.topicName = topicName;
+  }
+
+  public DropTopicProcedure(String topicName, boolean isTableModel) {
+    this(topicName);
+    this.isTableModel = isTableModel;
+    this.isTableModelSet = true;
   }
 
   @Override
@@ -66,7 +74,11 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
   protected boolean executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
     LOGGER.info(ProcedureMessages.DROPTOPICPROCEDURE_EXECUTEFROMVALIDATE, topicName);
 
-    subscriptionInfo.get().validateBeforeDroppingTopic(topicName);
+    if (isTableModelSet) {
+      subscriptionInfo.get().validateBeforeDroppingTopic(topicName, isTableModel);
+    } else {
+      subscriptionInfo.get().validateBeforeDroppingTopic(topicName);
+    }
     return true;
   }
 
@@ -77,7 +89,13 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
     TSStatus response;
     try {
-      response = env.getConfigManager().getConsensusManager().write(new DropTopicPlan(topicName));
+      response =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(
+                  isTableModelSet
+                      ? new DropTopicPlan(topicName, isTableModel)
+                      : new DropTopicPlan(topicName));
     } catch (ConsensusException e) {
       LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response =
@@ -94,7 +112,10 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
   protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info(ProcedureMessages.DROPTOPICPROCEDURE_EXECUTEFROMOPERATEONDATANODES, topicName);
 
-    final List<TSStatus> statuses = env.dropSingleTopicOnDataNode(topicName);
+    final List<TSStatus> statuses =
+        isTableModelSet
+            ? env.dropSingleTopicOnDataNode(topicName, isTableModel)
+            : env.dropSingleTopicOnDataNode(topicName);
     if (RpcUtils.squashResponseStatusList(statuses).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // throw exception instead of logging warn, do not rely on metadata synchronization
@@ -125,6 +146,9 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
     super.serialize(stream);
 
     ReadWriteIOUtils.write(topicName, stream);
+    if (isTableModelSet) {
+      ReadWriteIOUtils.write(isTableModel, stream);
+    }
   }
 
   @Override
@@ -132,6 +156,10 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
     super.deserialize(byteBuffer);
 
     topicName = ReadWriteIOUtils.readString(byteBuffer);
+    isTableModelSet = byteBuffer.hasRemaining();
+    if (isTableModelSet) {
+      isTableModel = ReadWriteIOUtils.readBool(byteBuffer);
+    }
   }
 
   @Override
@@ -146,11 +174,14 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
     return Objects.equals(getProcId(), that.getProcId())
         && Objects.equals(getCurrentState(), that.getCurrentState())
         && getCycles() == that.getCycles()
-        && Objects.equals(topicName, that.topicName);
+        && Objects.equals(topicName, that.topicName)
+        && isTableModel == that.isTableModel
+        && isTableModelSet == that.isTableModelSet;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getProcId(), getCurrentState(), getCycles(), topicName);
+    return Objects.hash(
+        getProcId(), getCurrentState(), getCycles(), topicName, isTableModel, isTableModelSet);
   }
 }

@@ -45,6 +45,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.regex.Pattern;
 
 public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
 
@@ -56,7 +57,13 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
           ? IoTDBRelationalDatabaseMetadata.class.getPackage().getImplementationVersion()
           : "UNKNOWN";
 
-  public static final String SHOW_TABLES_ERROR_MSG = "Show tables error: {}";
+  public static final String SHOW_TABLES_ERROR_MSG =
+      JdbcMessages.LOG_SHOW_TABLES_ERROR_ARG_068CF1BA;
+
+  private static final String TABLE_TYPE_TABLE = "TABLE";
+  private static final String TIME_CATEGORY = "TIME";
+  // Same as getSearchStringEscape()
+  private static final char SEARCH_STRING_ESCAPE = '\\';
 
   public static final String[] allIotdbTableSQLKeywords = {
     "ALTER",
@@ -207,117 +214,52 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
       throws SQLException {
 
     Statement stmt = this.connection.createStatement();
-    boolean legacyMode = true;
-
-    ResultSet rs;
+    List<TableInfo> tables;
     try {
-      String sql =
-          String.format(
-              "select * from information_schema.tables where database like '%s' escape '\\'",
-              schemaPattern);
-      rs = stmt.executeQuery(sql);
-    } catch (SQLException e) {
-      LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
-
-      try {
-        String sql = String.format("show tables details from %s", removeEscape(schemaPattern));
-        rs = stmt.executeQuery(sql);
-        legacyMode = false;
-      } catch (SQLException e1) {
-        LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
-        throw e;
-      }
+      // Every table is reported as TABLE, so a type filter without TABLE matches nothing
+      tables =
+          isTableTypeRequested(types)
+              ? listTables(stmt, schemaPattern, tableNamePattern)
+              : Collections.emptyList();
     } finally {
       stmt.close();
     }
 
     // Setup Fields
-    Field[] fields = new Field[6];
-    fields[0] = new Field("", TABLE_SCHEM, "TEXT");
-    fields[1] = new Field("", TABLE_NAME, "TEXT");
-    fields[2] = new Field("", TABLE_TYPE, "TEXT");
-    fields[3] = new Field("", REMARKS, "TEXT");
-    fields[4] = new Field("", COLUMN_SIZE, INT32);
-    fields[5] = new Field("", DECIMAL_DIGITS, INT32);
+    Field[] fields = new Field[7];
+    fields[0] = new Field("", TABLE_CAT, "TEXT");
+    fields[1] = new Field("", TABLE_SCHEM, "TEXT");
+    fields[2] = new Field("", TABLE_NAME, "TEXT");
+    fields[3] = new Field("", TABLE_TYPE, "TEXT");
+    fields[4] = new Field("", REMARKS, "TEXT");
+    fields[5] = new Field("", COLUMN_SIZE, INT32);
+    fields[6] = new Field("", DECIMAL_DIGITS, INT32);
     List<TSDataType> tsDataTypeList =
         Arrays.asList(
             TSDataType.TEXT,
             TSDataType.TEXT,
             TSDataType.TEXT,
             TSDataType.TEXT,
+            TSDataType.TEXT,
             TSDataType.INT32,
             TSDataType.INT32);
-    List<String> columnNameList = new ArrayList<>();
-    List<String> columnTypeList = new ArrayList<>();
-    Map<String, Integer> columnNameIndex = new HashMap<>();
-    List<List<Object>> valuesList = new ArrayList<>();
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
-    }
 
     // Extract Values
-    boolean hasResultSet = false;
-    while (rs.next()) {
-      hasResultSet = true;
+    List<List<Object>> valuesList = new ArrayList<>();
+    for (TableInfo table : tables) {
       List<Object> valueInRow = new ArrayList<>();
-      for (int i = 0; i < fields.length; i++) {
-        if (i == 0) {
-          valueInRow.add(schemaPattern);
-        } else if (i == 1) {
-          // valueInRow.add(rs.getString(2));
-          valueInRow.add(legacyMode ? rs.getString("table_name") : rs.getString("TableName"));
-        } else if (i == 2) {
-          valueInRow.add("TABLE");
-        } else if (i == 3) {
-          // String tgtString = "";
-          // String ttl = rs.getString("ttl(ms)");
-          // tgtString += "TTL(ms): " + ttl;
-          String comment = legacyMode ? rs.getString("comment") : rs.getString("Comment");
-          if (comment != null && !comment.isEmpty()) {
-            valueInRow.add(comment);
-          } else {
-            valueInRow.add("");
-          }
-        } else if (i == 4) {
-          valueInRow.add(getTypePrecision(fields[i].getSqlType()));
-        } else if (i == 5) {
-          valueInRow.add(getTypeScale(fields[i].getSqlType()));
-        } else {
-          valueInRow.add("TABLE");
-        }
-      }
+      // TABLE_CAT: the table model has no catalogs
+      valueInRow.add(null);
+      valueInRow.add(table.database());
+      valueInRow.add(table.tableName());
+      valueInRow.add(TABLE_TYPE_TABLE);
+      valueInRow.add(table.comment() == null ? "" : table.comment());
+      valueInRow.add(getTypePrecision(fields[5].getSqlType()));
+      valueInRow.add(getTypeScale(fields[6].getSqlType()));
       valuesList.add(valueInRow);
     }
 
-    // Convert Values to ByteBuffer
-    ByteBuffer tsBlock = null;
-    try {
-      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
-    } catch (IOException e) {
-      LOGGER.error(CONVERT_ERROR_MSG, e.getMessage());
-    } finally {
-      close(rs, stmt);
-    }
-
-    return hasResultSet
-        ? new IoTDBJDBCResultSet(
-            stmt,
-            columnNameList,
-            columnTypeList,
-            columnNameIndex,
-            true,
-            client,
-            null,
-            -1,
-            sessionId,
-            Collections.singletonList(tsBlock),
-            null,
-            (long) 60 * 1000,
-            false,
-            zoneId)
-        : null;
+    return toResultSet(stmt, fields, tsDataTypeList, valuesList);
   }
 
   /**
@@ -328,7 +270,15 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
    * @return eg. information_schema
    */
   public static String removeEscape(String pattern) {
-    return pattern.replaceAll("\\_", "_");
+    StringBuilder name = new StringBuilder(pattern.length());
+    for (int i = 0; i < pattern.length(); i++) {
+      char c = pattern.charAt(i);
+      if (c == SEARCH_STRING_ESCAPE && i + 1 < pattern.length()) {
+        c = pattern.charAt(++i);
+      }
+      name.append(c);
+    }
+    return name.toString();
   }
 
   @Override
@@ -337,30 +287,9 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
       throws SQLException {
 
     Statement stmt = this.connection.createStatement();
-    boolean legacyMode = true;
-    ResultSet rs;
-
-    // Get Table Metadata
+    List<ColumnInfo> columns;
     try {
-      String sql =
-          String.format(
-              "select * from information_schema.columns where database like '%s' escape '\\' and table_name like '%s' escape '\\'",
-              schemaPattern, tableNamePattern);
-      rs = stmt.executeQuery(sql);
-    } catch (SQLException e) {
-      LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
-
-      try {
-        String sql =
-            String.format(
-                "desc %s.%s details", removeEscape(schemaPattern), removeEscape(tableNamePattern));
-        rs = stmt.executeQuery(sql);
-        legacyMode = false;
-      } catch (SQLException e1) {
-        LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
-        throw e;
-      }
-
+      columns = listColumns(stmt, schemaPattern, tableNamePattern, columnNamePattern);
     } finally {
       stmt.close();
     }
@@ -418,36 +347,27 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
             TSDataType.TEXT,
             TSDataType.TEXT,
             TSDataType.TEXT);
-    List<String> columnNameList = new ArrayList<>();
-    List<String> columnTypeList = new ArrayList<>();
-    Map<String, Integer> columnNameIndex = new HashMap<>();
     List<List<Object>> valuesList = new ArrayList<>();
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
-    }
 
     // Extract Metadata
-    int count = 1;
-    while (rs.next()) {
-      String columnName =
-          legacyMode ? rs.getString("column_name") : rs.getString("ColumnName"); // 3
-      String type = legacyMode ? rs.getString("datatype") : rs.getString("DataType"); // 4
+    for (ColumnInfo column : columns) {
+      // The time column can have any name, so it is recognized by its category
+      boolean isTimeColumn = TIME_CATEGORY.equals(column.category());
       List<Object> valueInRow = new ArrayList<>();
       for (int i = 0; i < fields.length; i++) {
         if (i == 0) {
-          valueInRow.add("");
+          // TABLE_CAT: the table model has no catalogs
+          valueInRow.add(null);
         } else if (i == 1) {
-          valueInRow.add(schemaPattern);
+          valueInRow.add(column.database());
         } else if (i == 2) {
-          valueInRow.add(tableNamePattern);
+          valueInRow.add(column.tableName());
         } else if (i == 3) {
-          valueInRow.add(columnName);
+          valueInRow.add(column.columnName());
         } else if (i == 4) {
-          valueInRow.add(getSQLType(type));
+          valueInRow.add(getSQLType(column.dataType()));
         } else if (i == 5) {
-          valueInRow.add(type);
+          valueInRow.add(column.dataType());
         } else if (i == 6) {
           valueInRow.add(0);
         } else if (i == 7) {
@@ -457,13 +377,13 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
         } else if (i == 9) {
           valueInRow.add(0);
         } else if (i == 10) {
-          if (!columnName.equals("time")) {
+          if (!isTimeColumn) {
             valueInRow.add(ResultSetMetaData.columnNullableUnknown);
           } else {
             valueInRow.add(ResultSetMetaData.columnNoNulls);
           }
         } else if (i == 11) {
-          String comment = legacyMode ? rs.getString("comment") : rs.getString("Comment");
+          String comment = column.comment();
           if (comment != null && !comment.isEmpty()) {
             valueInRow.add(comment);
           } else {
@@ -478,9 +398,9 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
         } else if (i == 15) {
           valueInRow.add(65535);
         } else if (i == 16) {
-          valueInRow.add(count++);
+          valueInRow.add(column.ordinalPosition());
         } else if (i == 17) {
-          if (!columnName.equals("time")) {
+          if (!isTimeColumn) {
             valueInRow.add("YES");
           } else {
             valueInRow.add("NO");
@@ -504,14 +424,167 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
       valuesList.add(valueInRow);
     }
 
-    // Convert Values to ByteBuffer
-    ByteBuffer tsBlock = null;
+    return toResultSet(stmt, fields, tsDataTypeList, valuesList);
+  }
+
+  /** Lists the tables matching the patterns, with their real database and table names. */
+  private List<TableInfo> listTables(Statement stmt, String schemaPattern, String tableNamePattern)
+      throws SQLException {
+    String sql = informationSchemaQuery("tables", schemaPattern, tableNamePattern);
+    try (ResultSet rs = stmt.executeQuery(sql)) {
+      List<TableInfo> tables = new ArrayList<>();
+      while (rs.next()) {
+        tables.add(
+            new TableInfo(
+                rs.getString("database"), rs.getString("table_name"), rs.getString("comment")));
+      }
+      return tables;
+    } catch (SQLException e) {
+      LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
+      try {
+        return listTablesWithShowStatements(stmt, schemaPattern, tableNamePattern);
+      } catch (SQLException fallbackException) {
+        e.addSuppressed(fallbackException);
+        throw e;
+      }
+    }
+  }
+
+  /**
+   * Lists tables with SHOW statements, for users who may not query information_schema. SHOW TABLES
+   * cannot filter by pattern, so the patterns are matched here.
+   */
+  private List<TableInfo> listTablesWithShowStatements(
+      Statement stmt, String schemaPattern, String tableNamePattern) throws SQLException {
+    List<String> databases = new ArrayList<>();
+    if (isLiteral(schemaPattern)) {
+      databases.add(removeEscape(schemaPattern));
+    } else {
+      try (ResultSet rs = stmt.executeQuery(SHOW_DATABASES_SQL)) {
+        while (rs.next()) {
+          String database = rs.getString(1);
+          if (matchesPattern(database, schemaPattern)) {
+            databases.add(database);
+          }
+        }
+      }
+    }
+
+    List<TableInfo> tables = new ArrayList<>();
+    for (String database : databases) {
+      try (ResultSet rs =
+          stmt.executeQuery("show tables details from " + quoteIdentifier(database))) {
+        while (rs.next()) {
+          String tableName = rs.getString("TableName");
+          if (matchesPattern(tableName, tableNamePattern)) {
+            tables.add(new TableInfo(database, tableName, rs.getString("Comment")));
+          }
+        }
+      }
+    }
+    return tables;
+  }
+
+  /**
+   * Lists the columns matching the patterns. ORDINAL_POSITION counts every column of the table, so
+   * the column name pattern is matched here rather than by the server.
+   */
+  private List<ColumnInfo> listColumns(
+      Statement stmt, String schemaPattern, String tableNamePattern, String columnNamePattern)
+      throws SQLException {
+    String sql = informationSchemaQuery("columns", schemaPattern, tableNamePattern);
+    try (ResultSet rs = stmt.executeQuery(sql)) {
+      List<ColumnInfo> columns = new ArrayList<>();
+      // information_schema lists the columns of each table in their defined order
+      Map<List<String>, Integer> ordinalPositions = new HashMap<>();
+      while (rs.next()) {
+        String database = rs.getString("database");
+        String tableName = rs.getString("table_name");
+        int ordinalPosition =
+            ordinalPositions.merge(Arrays.asList(database, tableName), 1, Integer::sum);
+        String columnName = rs.getString("column_name");
+        if (matchesPattern(columnName, columnNamePattern)) {
+          columns.add(
+              new ColumnInfo(
+                  database,
+                  tableName,
+                  columnName,
+                  rs.getString("datatype"),
+                  rs.getString("category"),
+                  rs.getString("comment"),
+                  ordinalPosition));
+        }
+      }
+      return columns;
+    } catch (SQLException e) {
+      LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
+      try {
+        return listColumnsWithDescribe(stmt, schemaPattern, tableNamePattern, columnNamePattern);
+      } catch (SQLException fallbackException) {
+        e.addSuppressed(fallbackException);
+        throw e;
+      }
+    }
+  }
+
+  /** Lists columns with DESC statements, for users who may not query information_schema. */
+  private List<ColumnInfo> listColumnsWithDescribe(
+      Statement stmt, String schemaPattern, String tableNamePattern, String columnNamePattern)
+      throws SQLException {
+    List<ColumnInfo> columns = new ArrayList<>();
+    for (TableInfo table : listTablesWithShowStatements(stmt, schemaPattern, tableNamePattern)) {
+      String sql =
+          "desc "
+              + quoteIdentifier(table.database())
+              + "."
+              + quoteIdentifier(table.tableName())
+              + " details";
+      try (ResultSet rs = stmt.executeQuery(sql)) {
+        int ordinalPosition = 0;
+        while (rs.next()) {
+          ordinalPosition++;
+          String columnName = rs.getString("ColumnName");
+          if (matchesPattern(columnName, columnNamePattern)) {
+            columns.add(
+                new ColumnInfo(
+                    table.database(),
+                    table.tableName(),
+                    columnName,
+                    rs.getString("DataType"),
+                    rs.getString("Category"),
+                    rs.getString("Comment"),
+                    ordinalPosition));
+          }
+        }
+      }
+    }
+    return columns;
+  }
+
+  private ResultSet toResultSet(
+      Statement stmt,
+      Field[] fields,
+      List<TSDataType> tsDataTypeList,
+      List<List<Object>> valuesList)
+      throws SQLException {
+    List<String> columnNameList = new ArrayList<>();
+    List<String> columnTypeList = new ArrayList<>();
+    Map<String, Integer> columnNameIndex = new HashMap<>();
+    for (int i = 0; i < fields.length; i++) {
+      columnNameList.add(fields[i].getName());
+      columnTypeList.add(fields[i].getSqlType());
+      columnNameIndex.put(fields[i].getName(), i);
+    }
+
+    // Convert Values to ByteBuffer. No rows must mean no TsBlock: an empty one reads as one row.
+    List<ByteBuffer> tsBlocks;
     try {
-      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
+      tsBlocks =
+          valuesList.isEmpty()
+              ? Collections.emptyList()
+              : Collections.singletonList(convertTsBlock(valuesList, tsDataTypeList));
     } catch (IOException e) {
-      LOGGER.error(CONVERT_ERROR_MSG, e.getMessage());
-    } finally {
-      close(rs, stmt);
+      throw new SQLException(e);
     }
 
     return new IoTDBJDBCResultSet(
@@ -524,11 +597,86 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
         null,
         -1,
         sessionId,
-        Collections.singletonList(tsBlock),
+        tsBlocks,
         null,
         (long) 60 * 1000,
         false,
         zoneId);
+  }
+
+  /**
+   * getTableTypes() reports the type as "table", so the requested types are compared ignoring case.
+   */
+  private static boolean isTableTypeRequested(String[] types) {
+    if (types == null) {
+      return true;
+    }
+    for (String type : types) {
+      if (TABLE_TYPE_TABLE.equalsIgnoreCase(type)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** A query on information_schema.{@code table}, narrowed by the non-null name patterns. */
+  private static String informationSchemaQuery(
+      String table, String schemaPattern, String tableNamePattern) {
+    StringBuilder sql = new StringBuilder("select * from information_schema.").append(table);
+    String keyword = " where ";
+    if (schemaPattern != null) {
+      sql.append(keyword).append(likePredicate("database", schemaPattern));
+      keyword = " and ";
+    }
+    if (tableNamePattern != null) {
+      sql.append(keyword).append(likePredicate("table_name", tableNamePattern));
+    }
+    return sql.toString();
+  }
+
+  private static String likePredicate(String column, String pattern) {
+    return column + " like '" + pattern.replace("'", "''") + "' escape '\\'";
+  }
+
+  /** Whether the pattern names a single object, i.e. it has no unescaped wildcard. */
+  private static boolean isLiteral(String pattern) {
+    if (pattern == null) {
+      return false;
+    }
+    for (int i = 0; i < pattern.length(); i++) {
+      char c = pattern.charAt(i);
+      if (c == SEARCH_STRING_ESCAPE) {
+        i++;
+      } else if (c == '%' || c == '_') {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /** Matches a name the way LIKE matches it; a null pattern matches every name. */
+  private static boolean matchesPattern(String name, String pattern) {
+    if (pattern == null) {
+      return true;
+    }
+    StringBuilder regex = new StringBuilder();
+    for (int i = 0; i < pattern.length(); i++) {
+      char c = pattern.charAt(i);
+      if (c == SEARCH_STRING_ESCAPE && i + 1 < pattern.length()) {
+        regex.append(Pattern.quote(String.valueOf(pattern.charAt(++i))));
+      } else if (c == '%') {
+        regex.append(".*");
+      } else if (c == '_') {
+        regex.append('.');
+      } else {
+        regex.append(Pattern.quote(String.valueOf(c)));
+      }
+    }
+    return Pattern.compile(regex.toString(), Pattern.DOTALL).matcher(name).matches();
+  }
+
+  private static String quoteIdentifier(String name) {
+    return "\"" + name.replace("\"", "\"\"") + "\"";
   }
 
   @Override
@@ -536,29 +684,11 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
       throws SQLException {
 
     Statement stmt = connection.createStatement();
-    boolean legacyMode = true;
-    ResultSet rs;
-
+    List<ColumnInfo> columns;
     try {
-      String sql =
-          String.format(
-              "select * from information_schema.columns where database like '%s'  escape '\\' and table_name like '%s' escape '\\' and (category='TAG' or category='TIME')",
-              schemaPattern, tableNamePattern);
-      rs = stmt.executeQuery(sql);
-    } catch (SQLException e) {
-      LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
-
-      try {
-        String sql =
-            String.format(
-                "desc %s.%s", removeEscape(schemaPattern), removeEscape(tableNamePattern));
-        rs = stmt.executeQuery(sql);
-        legacyMode = false;
-      } catch (SQLException e1) {
-        LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
-        throw e;
-      }
-
+      // The arguments are names rather than patterns, but some tools escape them anyway
+      columns =
+          listColumns(stmt, toExactPattern(schemaPattern), toExactPattern(tableNamePattern), null);
     } finally {
       stmt.close();
     }
@@ -578,65 +708,41 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
             TSDataType.TEXT,
             TSDataType.INT32,
             TSDataType.TEXT);
-    List<String> columnNameList = new ArrayList<>();
-    List<String> columnTypeList = new ArrayList<>();
-    Map<String, Integer> columnNameIndex = new HashMap<>();
     List<List<Object>> valuesList = new ArrayList<>();
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
-    }
 
-    int count = 1;
-    while (rs.next()) {
-      String columnName = legacyMode ? rs.getString("column_name") : rs.getString("ColumnName");
-      String category = legacyMode ? rs.getString("category") : rs.getString("Category");
+    Map<List<String>, Integer> keySeqs = new HashMap<>();
+    for (ColumnInfo column : columns) {
+      String category = column.category();
       if (category.equals("TAG") || category.equals("TIME")) {
         List<Object> valueInRow = new ArrayList<>();
-        for (int i = 0; i < fields.length; ++i) {
-          if (i == 0) {
-            valueInRow.add(schemaPattern);
-          } else if (i == 1) {
-            valueInRow.add(schemaPattern);
-          } else if (i == 2) {
-            valueInRow.add(tableNamePattern);
-          } else if (i == 3) {
-            valueInRow.add(columnName);
-          } else if (i == 4) {
-            valueInRow.add(count++);
-          } else {
-            valueInRow.add(PRIMARY);
-          }
-        }
+        // TABLE_CAT: the table model has no catalogs
+        valueInRow.add(null);
+        valueInRow.add(column.database());
+        valueInRow.add(column.tableName());
+        valueInRow.add(column.columnName());
+        valueInRow.add(
+            keySeqs.merge(Arrays.asList(column.database(), column.tableName()), 1, Integer::sum));
+        valueInRow.add(PRIMARY);
         valuesList.add(valueInRow);
       }
     }
 
-    ByteBuffer tsBlock = null;
-    try {
-      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
-    } catch (IOException e) {
-      LOGGER.error(JdbcMessages.RELATIONAL_GET_PRIMARY_KEYS_ERROR, e.getMessage());
-    } finally {
-      close(null, stmt);
-    }
+    return toResultSet(stmt, fields, tsDataTypeList, valuesList);
+  }
 
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        -1,
-        sessionId,
-        Collections.singletonList(tsBlock),
-        null,
-        (long) 60 * 1000,
-        false,
-        zoneId);
+  /** A pattern matching exactly the given name, which may already be escaped like a pattern. */
+  private static String toExactPattern(String name) {
+    if (name == null) {
+      return null;
+    }
+    StringBuilder pattern = new StringBuilder();
+    for (char c : removeEscape(name).toCharArray()) {
+      if (c == '%' || c == '_' || c == SEARCH_STRING_ESCAPE) {
+        pattern.append(SEARCH_STRING_ESCAPE);
+      }
+      pattern.append(c);
+    }
+    return pattern.toString();
   }
 
   @Override
@@ -653,4 +759,17 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
   public String getSchemaTerm() throws SQLException {
     return "";
   }
+
+  /** A table as listed by the server, with its real (unescaped) names. */
+  private record TableInfo(String database, String tableName, String comment) {}
+
+  /** A column as listed by the server, with its real (unescaped) names. */
+  private record ColumnInfo(
+      String database,
+      String tableName,
+      String columnName,
+      String dataType,
+      String category,
+      String comment,
+      int ordinalPosition) {}
 }

@@ -72,17 +72,23 @@ public class PipeReceiverTest {
   }
 
   @Test
-  public void testIoTDBThriftReceiverV1HandshakeRejected() {
-    IoTDBDataNodeReceiver receiver = new IoTDBDataNodeReceiver();
+  public void testIoTDBThriftReceiverV1HandshakeDoesNotAuthenticateTransfer() {
+    final IoTDBDataNodeReceiver receiver = new IoTDBDataNodeReceiver();
     try {
       final TPipeTransferResp handshakeResp =
           receiver.receive(
               PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(
                   CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
       Assert.assertEquals(
-          TSStatusCode.PIPE_HANDSHAKE_ERROR.getStatusCode(), handshakeResp.getStatus().getCode());
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), handshakeResp.getStatus().getCode());
+
+      final TPipeTransferResp transferResp = receiver.receive(buildEmptyRawTabletTransferReq());
+      Assert.assertEquals(
+          TSStatusCode.NOT_LOGIN.getStatusCode(), transferResp.getStatus().getCode());
     } catch (IOException e) {
       Assert.fail();
+    } finally {
+      receiver.handleExit();
     }
   }
 

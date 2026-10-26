@@ -78,7 +78,7 @@ public class IoTDBAllTsTsfilePullConsumerIT extends AbstractSubscriptionTreeRegr
         null,
         String.valueOf(nowTimestamp),
         true,
-        TopicConstant.MODE_LIVE_VALUE,
+        TopicConstant.MODE_INITIAL_VALUE,
         TopicConstant.LOOSE_RANGE_ALL_VALUE);
     session_src.createTimeseries(
         device + ".s_0", TSDataType.INT64, TSEncoding.GORILLA, CompressionType.LZ4);

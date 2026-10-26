@@ -125,6 +125,16 @@ final class ConsensusSubscriptionTableITSupport {
       final String tablePattern,
       final String columnFilter)
       throws Exception {
+    createConsensusTopic(topicName, databasePattern, tablePattern, columnFilter, null);
+  }
+
+  static void createConsensusTopic(
+      final String topicName,
+      final String databasePattern,
+      final String tablePattern,
+      final String columnFilter,
+      final String tagFilter)
+      throws Exception {
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
 
@@ -134,12 +144,15 @@ final class ConsensusSubscriptionTableITSupport {
       session.dropTopicIfExists(topicName);
 
       final Properties config = new Properties();
-      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_CONSENSUS_VALUE);
+      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_INCREMENTAL_VALUE);
       config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE);
       config.put(TopicConstant.DATABASE_KEY, databasePattern);
       config.put(TopicConstant.TABLE_KEY, tablePattern);
       if (columnFilter != null) {
         config.put(TopicConstant.COLUMN_FILTER_KEY, columnFilter);
+      }
+      if (tagFilter != null) {
+        config.put(TopicConstant.TAG_FILTER_KEY, tagFilter);
       }
       session.createTopic(topicName, config);
     }
@@ -156,6 +169,21 @@ final class ConsensusSubscriptionTableITSupport {
 
       final Properties config = new Properties();
       config.put(TopicConstant.COLUMN_FILTER_KEY, columnFilter);
+      session.alterTopic(topicName, config);
+    }
+  }
+
+  static void alterConsensusTopicTagFilter(final String topicName, final String tagFilter)
+      throws Exception {
+    final String host = EnvFactory.getEnv().getIP();
+    final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+
+    try (final ISubscriptionTableSession session =
+        new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
+      session.open();
+
+      final Properties config = new Properties();
+      config.put(TopicConstant.TAG_FILTER_KEY, tagFilter);
       session.alterTopic(topicName, config);
     }
   }

@@ -30,7 +30,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -128,7 +127,8 @@ public class ExecutableManager {
   }
 
   private void removeFromTemporaryLibRoot(long requestId) {
-    FileUtils.deleteQuietly(getDirUnderTempRootByRequestId(requestId));
+    org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(
+        getDirUnderTempRootByRequestId(requestId), true);
   }
 
   public void saveTextAsFileUnderTemporaryRoot(String text, String fileName) throws IOException {
@@ -228,12 +228,10 @@ public class ExecutableManager {
         }
         Files.createFile(path);
       }
-      // FileOutPutStream is not in append mode by default, so the file will be
-      // overridden if it
-      // already exists.
-      try (FileOutputStream outputStream = new FileOutputStream(destination)) {
-        outputStream.getChannel().write(byteBuffer);
-        outputStream.getFD().sync();
+      try (FileChannel channel =
+          FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
+        channel.write(byteBuffer);
+        channel.force(true);
       }
     } catch (IOException e) {
       LOGGER.warn(

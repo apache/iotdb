@@ -32,6 +32,7 @@ public class TreeAccessCheckContext implements IAuditEntity {
   private final long userId;
   private final String username;
   private final String cliHostname;
+  private boolean internal;
 
   public TreeAccessCheckContext(long userId, String username, String cliHostname) {
     this.userId = userId;
@@ -52,6 +53,16 @@ public class TreeAccessCheckContext implements IAuditEntity {
   @Override
   public String getCliHostname() {
     return cliHostname;
+  }
+
+  @Override
+  public boolean isInternal() {
+    return internal;
+  }
+
+  public TreeAccessCheckContext setInternal(final boolean internal) {
+    this.internal = internal;
+    return this;
   }
 
   private AuditEventType auditEventType;

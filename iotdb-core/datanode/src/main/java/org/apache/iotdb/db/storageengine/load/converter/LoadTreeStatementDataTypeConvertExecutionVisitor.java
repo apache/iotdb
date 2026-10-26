@@ -33,7 +33,6 @@ import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
@@ -43,6 +42,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil.calculateTabletSizeInBytes;
@@ -58,6 +58,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
           .getLoadTsFileTabletConversionBatchMemorySizeInBytes();
 
   private final StatementExecutor statementExecutor;
+  private final Function<File, LoadTreeTsFileTabletIterator> tabletIteratorFactory;
 
   @FunctionalInterface
   public interface StatementExecutor {
@@ -66,7 +67,14 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
 
   public LoadTreeStatementDataTypeConvertExecutionVisitor(
       final StatementExecutor statementExecutor) {
+    this(statementExecutor, file -> new LoadTreeTsFileTabletIterator(file, true));
+  }
+
+  LoadTreeStatementDataTypeConvertExecutionVisitor(
+      final StatementExecutor statementExecutor,
+      final Function<File, LoadTreeTsFileTabletIterator> tabletIteratorFactory) {
     this.statementExecutor = statementExecutor;
+    this.tabletIteratorFactory = tabletIteratorFactory;
   }
 
   @Override
@@ -80,112 +88,236 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
 
     LOGGER.info(StorageEngineMessages.START_DATA_TYPE_CONVERSION, loadTsFileStatement);
 
-    final LoadTsFileMemoryBlock block =
-        LoadTsFileMemoryManager.getInstance()
-            .allocateMemoryBlock(TABLET_BATCH_MEMORY_SIZE_IN_BYTES);
-    final List<PipeTransferTabletRawReq> tabletRawReqs = new ArrayList<>();
-    final List<Long> tabletRawReqSizes = new ArrayList<>();
+    final boolean isManagedTask = PipeTsFileConversionTaskManager.getCurrentTaskId() != null;
+    final TreeConversionContext conversionContext =
+        isManagedTask
+            ? PipeTsFileConversionTaskManager.getOrCreateCurrentContext(TreeConversionContext::new)
+            : new TreeConversionContext();
+    boolean shouldReleaseContext = !isManagedTask;
 
     try {
-      for (final File file : loadTsFileStatement.getTsFiles()) {
-        try (final LoadTreeTsFileTabletIterator tabletIterator =
-            new LoadTreeTsFileTabletIterator(file, true)) {
-          for (final Pair<Tablet, Boolean> tabletWithIsAligned : tabletIterator) {
-            final PipeTransferTabletRawReq tabletRawReq =
-                PipeTransferTabletRawReq.toTPipeTransferRawReq(
-                    tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight());
-            final long curMemory = calculateTabletSizeInBytes(tabletWithIsAligned.getLeft()) + 1;
-            if (block.hasEnoughMemory(curMemory)) {
-              tabletRawReqs.add(tabletRawReq);
-              tabletRawReqSizes.add(curMemory);
-              block.addMemoryUsage(curMemory);
-              continue;
-            }
-
-            final TSStatus result =
-                executeInsertMultiTabletsWithRetry(
-                    tabletRawReqs, loadTsFileStatement.isConvertOnTypeMismatch());
-
-            for (final long memoryCost : tabletRawReqSizes) {
-              block.reduceMemoryUsage(memoryCost);
-            }
-            tabletRawReqs.clear();
-            tabletRawReqSizes.clear();
-
-            if (!handleTSStatus(result, loadTsFileStatement)) {
-              return Optional.of(result);
-            }
-
-            tabletRawReqs.add(tabletRawReq);
-            tabletRawReqSizes.add(curMemory);
-            block.addMemoryUsage(curMemory);
-          }
-        } catch (final Exception e) {
-          LOGGER.warn(
-              StorageEngineMessages
-                  .STORAGE_LOG_FAILED_TO_CONVERT_DATA_TYPE_FOR_LOADTSFILESTATEMENT_5D132E57,
-              loadTsFileStatement,
-              e);
-          return Optional.of(
-              loadTsFileStatement.accept(
-                  LoadTsFileDataTypeConverter.TREE_STATEMENT_EXCEPTION_VISITOR, e));
+      if (conversionContext.deferredStatus != null) {
+        final TSStatus result =
+            flushPendingTablets(conversionContext, loadTsFileStatement.isConvertOnTypeMismatch());
+        if (!handleTSStatus(result, loadTsFileStatement)) {
+          shouldReleaseContext = !isManagedTask || !isTemporaryUnavailable(result);
+          return Optional.of(result);
         }
+        final TSStatus deferredStatus = conversionContext.deferredStatus;
+        conversionContext.deferredStatus = null;
+        shouldReleaseContext = true;
+        return Optional.of(deferredStatus);
       }
 
-      if (!tabletRawReqs.isEmpty()) {
-        try {
+      final List<File> files = loadTsFileStatement.getTsFiles();
+      while (conversionContext.fileIndex < files.size()) {
+        if (conversionContext.tabletIterator == null) {
+          conversionContext.tabletIterator =
+              tabletIteratorFactory.apply(files.get(conversionContext.fileIndex));
+        }
+
+        if (conversionContext.deferredTabletRawReq != null) {
           final TSStatus result =
-              executeInsertMultiTabletsWithRetry(
-                  tabletRawReqs, loadTsFileStatement.isConvertOnTypeMismatch());
-
-          for (final long memoryCost : tabletRawReqSizes) {
-            block.reduceMemoryUsage(memoryCost);
-          }
-          tabletRawReqs.clear();
-          tabletRawReqSizes.clear();
-
+              flushPendingTablets(conversionContext, loadTsFileStatement.isConvertOnTypeMismatch());
           if (!handleTSStatus(result, loadTsFileStatement)) {
+            shouldReleaseContext = !isManagedTask || !isTemporaryUnavailable(result);
             return Optional.of(result);
           }
-        } catch (final Exception e) {
-          LOGGER.warn(
-              StorageEngineMessages
-                  .STORAGE_LOG_FAILED_TO_CONVERT_DATA_TYPE_FOR_LOADTSFILESTATEMENT_5D132E57,
-              loadTsFileStatement,
-              e);
-          return Optional.of(
-              loadTsFileStatement.accept(
-                  LoadTsFileDataTypeConverter.TREE_STATEMENT_EXCEPTION_VISITOR, e));
+          conversionContext.addDeferredTablet();
+        }
+
+        while (conversionContext.deferredTabletWithIsAligned != null
+            || conversionContext.tabletIterator.hasNext()) {
+          if (conversionContext.deferredTabletWithIsAligned == null) {
+            conversionContext.deferredTabletWithIsAligned = conversionContext.tabletIterator.next();
+          }
+          final Pair<Tablet, Boolean> tabletWithIsAligned =
+              conversionContext.deferredTabletWithIsAligned;
+          final PipeTransferTabletRawReq tabletRawReq =
+              PipeTransferTabletRawReq.toTPipeTransferRawReq(
+                  tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight());
+          final long currentMemory = calculateTabletSizeInBytes(tabletWithIsAligned.getLeft()) + 1;
+          if (conversionContext.block.hasEnoughMemory(currentMemory)) {
+            conversionContext.addTablet(tabletRawReq, currentMemory);
+            conversionContext.deferredTabletWithIsAligned = null;
+            continue;
+          }
+
+          final TSStatus result =
+              flushPendingTablets(conversionContext, loadTsFileStatement.isConvertOnTypeMismatch());
+          if (!handleTSStatus(result, loadTsFileStatement)) {
+            conversionContext.deferredTabletRawReq = tabletRawReq;
+            conversionContext.deferredTabletRawReqSize = currentMemory;
+            conversionContext.deferredTabletWithIsAligned = null;
+            shouldReleaseContext = !isManagedTask || !isTemporaryUnavailable(result);
+            return Optional.of(result);
+          }
+          conversionContext.addTablet(tabletRawReq, currentMemory);
+          conversionContext.deferredTabletWithIsAligned = null;
+        }
+
+        conversionContext.tabletIterator.close();
+        conversionContext.tabletIterator = null;
+        conversionContext.fileIndex++;
+      }
+
+      if (!conversionContext.tabletRawReqs.isEmpty()) {
+        final TSStatus result =
+            flushPendingTablets(conversionContext, loadTsFileStatement.isConvertOnTypeMismatch());
+        if (!handleTSStatus(result, loadTsFileStatement)) {
+          shouldReleaseContext = !isManagedTask || !isTemporaryUnavailable(result);
+          return Optional.of(result);
         }
       }
+
+      shouldReleaseContext = true;
+      if (loadTsFileStatement.isDeleteAfterLoad()) {
+        deleteSourceFiles(loadTsFileStatement);
+      }
+
+      LOGGER.info(
+          StorageEngineMessages
+              .STORAGE_LOG_DATA_TYPE_CONVERSION_FOR_LOADTSFILESTATEMENT_IS_SUCCESSFUL_99016326,
+          loadTsFileStatement);
+      return Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    } catch (final Exception e) {
+      LOGGER.warn(
+          StorageEngineMessages
+              .STORAGE_LOG_FAILED_TO_CONVERT_DATA_TYPE_FOR_LOADTSFILESTATEMENT_5D132E57,
+          loadTsFileStatement,
+          e);
+      final boolean retryable = isRetryableConversionException(e);
+      final TSStatus status =
+          loadTsFileStatement.accept(
+              LoadTsFileDataTypeConverter.TREE_STATEMENT_EXCEPTION_VISITOR, e);
+
+      // A parser can fail after producing tablets that are still waiting for the next batch
+      // boundary. Submit those tablets before reporting the parser error so the error does not
+      // discard successfully converted data.
+      if (!retryable && !conversionContext.tabletRawReqs.isEmpty()) {
+        final TSStatus flushStatus =
+            flushPendingTablets(conversionContext, loadTsFileStatement.isConvertOnTypeMismatch());
+        if (!handleTSStatus(flushStatus, loadTsFileStatement)) {
+          if (isManagedTask && isTemporaryUnavailable(flushStatus)) {
+            conversionContext.deferredStatus = status;
+            shouldReleaseContext = false;
+          } else {
+            shouldReleaseContext = true;
+          }
+          return Optional.of(flushStatus);
+        }
+      }
+
+      shouldReleaseContext = !isManagedTask || !retryable;
+      return Optional.of(status);
     } finally {
+      if (shouldReleaseContext) {
+        if (isManagedTask) {
+          PipeTsFileConversionTaskManager.clearCurrentContext();
+        } else {
+          conversionContext.close();
+        }
+      }
+    }
+  }
+
+  private TSStatus flushPendingTablets(
+      final TreeConversionContext context, final boolean isConvertedOnTypeMismatch) {
+    if (context.tabletRawReqs.isEmpty()) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    final TSStatus result =
+        executeInsertMultiTabletsWithRetry(context.tabletRawReqs, isConvertedOnTypeMismatch);
+    if (handleTSStatus(result, context)) {
+      context.clearPendingTablets();
+    }
+    return result;
+  }
+
+  private static boolean isTemporaryUnavailable(final TSStatus status) {
+    return status != null
+        && (status.getCode() == TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()
+            || status.getCode()
+                == TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode());
+  }
+
+  private static boolean isRetryableConversionException(final Throwable throwable) {
+    if (LoadTsFileDataTypeConverter.isMemoryPressureException(throwable)) {
+      return true;
+    }
+
+    Throwable current = throwable;
+    while (current != null) {
+      if (current instanceof InterruptedException) {
+        return true;
+      }
+      current = current.getCause();
+    }
+    return false;
+  }
+
+  private static void deleteSourceFiles(final LoadTsFileStatement statement) {
+    statement
+        .getTsFiles()
+        .forEach(
+            tsFile -> {
+              org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tsFile);
+              final String tsFilePath = tsFile.getAbsolutePath();
+              org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(
+                  new File(LoadUtil.getTsFileResourcePath(tsFilePath)));
+              org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(
+                  new File(LoadUtil.getTsFileModsV1Path(tsFilePath)));
+              org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(
+                  new File(LoadUtil.getTsFileModsV2Path(tsFilePath)));
+            });
+  }
+
+  private static final class TreeConversionContext implements AutoCloseable {
+    private final LoadTsFileMemoryBlock block =
+        LoadTsFileMemoryManager.getInstance()
+            .allocateMemoryBlock(TABLET_BATCH_MEMORY_SIZE_IN_BYTES);
+    private final List<PipeTransferTabletRawReq> tabletRawReqs = new ArrayList<>();
+    private final List<Long> tabletRawReqSizes = new ArrayList<>();
+    private int fileIndex;
+    private LoadTreeTsFileTabletIterator tabletIterator;
+    private Pair<Tablet, Boolean> deferredTabletWithIsAligned;
+    private PipeTransferTabletRawReq deferredTabletRawReq;
+    private long deferredTabletRawReqSize;
+    private TSStatus deferredStatus;
+
+    private void addTablet(final PipeTransferTabletRawReq request, final long size) {
+      tabletRawReqs.add(request);
+      tabletRawReqSizes.add(size);
+      block.addMemoryUsage(size);
+    }
+
+    private void addDeferredTablet() {
+      addTablet(deferredTabletRawReq, deferredTabletRawReqSize);
+      deferredTabletRawReq = null;
+      deferredTabletRawReqSize = 0;
+    }
+
+    private void clearPendingTablets() {
       for (final long memoryCost : tabletRawReqSizes) {
         block.reduceMemoryUsage(memoryCost);
       }
       tabletRawReqs.clear();
       tabletRawReqSizes.clear();
+    }
+
+    @Override
+    public void close() {
+      if (tabletIterator != null) {
+        tabletIterator.close();
+        tabletIterator = null;
+      }
+      clearPendingTablets();
+      deferredTabletWithIsAligned = null;
+      deferredTabletRawReq = null;
+      deferredTabletRawReqSize = 0;
+      deferredStatus = null;
       block.close();
     }
-
-    if (loadTsFileStatement.isDeleteAfterLoad()) {
-      loadTsFileStatement
-          .getTsFiles()
-          .forEach(
-              tsfile -> {
-                FileUtils.deleteQuietly(tsfile);
-                final String tsFilePath = tsfile.getAbsolutePath();
-                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileResourcePath(tsFilePath)));
-                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileModsV1Path(tsFilePath)));
-                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileModsV2Path(tsFilePath)));
-              });
-    }
-
-    LOGGER.info(
-        StorageEngineMessages
-            .STORAGE_LOG_DATA_TYPE_CONVERSION_FOR_LOADTSFILESTATEMENT_IS_SUCCESSFUL_99016326,
-        loadTsFileStatement);
-
-    return Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
 
   private TSStatus executeInsertMultiTabletsWithRetry(

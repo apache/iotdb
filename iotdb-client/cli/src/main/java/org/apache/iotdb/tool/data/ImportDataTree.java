@@ -103,6 +103,7 @@ public class ImportDataTree extends AbstractImportData {
   @SuppressWarnings("java:S2259")
   protected void importFromSqlFile(File file) {
     ArrayList<List<Object>> failedRecords = new ArrayList<>();
+    boolean fileFailed = false;
     String failedFilePath;
     if (failedFileDirectory == null) {
       failedFilePath = file.getAbsolutePath() + ".failed";
@@ -115,12 +116,18 @@ public class ImportDataTree extends AbstractImportData {
         try {
           sessionPool.executeNonQueryStatement(sql);
         } catch (IoTDBConnectionException | StatementExecutionException e) {
+          fileFailed = true;
           failedRecords.add(Collections.singletonList(sql));
         }
       }
-      processSuccessFile(null);
     } catch (IOException e) {
+      fileFailed = true;
       ioTPrinter.println("SQL file read exception because: " + e.getMessage());
+    }
+    if (fileFailed) {
+      markFileFailed();
+    } else {
+      processSuccessFile(null);
     }
     if (!failedRecords.isEmpty()) {
       try (FileWriter writer = new FileWriter(failedFilePath)) {
@@ -128,6 +135,7 @@ public class ImportDataTree extends AbstractImportData {
           writer.write(failedRecord.get(0).toString() + "\n");
         }
       } catch (IOException e) {
+        markImportFailed();
         ioTPrinter.println("Cannot dump fail result because: " + e.getMessage());
       }
     }
@@ -146,15 +154,16 @@ public class ImportDataTree extends AbstractImportData {
   protected void importFromCsvFile(File file) {
     if (file.getName().endsWith(Constants.CSV_SUFFIXS)
         || file.getName().endsWith(Constants.TXT_SUFFIXS)) {
-      try {
-        CSVParser csvRecords = readCsvFile(file.getAbsolutePath());
+      try (CSVParser csvRecords = readCsvFile(file.getAbsolutePath())) {
         List<String> headerNames = csvRecords.getHeaderNames();
         Stream<CSVRecord> records = csvRecords.stream();
         if (headerNames.isEmpty()) {
+          markFileFailed();
           ioTPrinter.println("Empty file!");
           return;
         }
         if (!timeColumn.equalsIgnoreCase(filterBomHeader(headerNames.get(0)))) {
+          markFileFailed();
           ioTPrinter.println("The first field of header must be `Time`!");
           return;
         }
@@ -171,9 +180,11 @@ public class ImportDataTree extends AbstractImportData {
         }
         processSuccessFile(null);
       } catch (IOException | IllegalPathException e) {
+        markFileFailed();
         ioTPrinter.println("CSV file read exception because: " + e.getMessage());
       }
     } else {
+      markFileFailed();
       ioTPrinter.println("The file name must end with \"csv\" or \"txt\"!");
     }
   }
@@ -401,26 +412,21 @@ public class ImportDataTree extends AbstractImportData {
       List<List<Object>> valuesList,
       List<List<String>> measurementsList,
       int retryTime) {
-    try {
-      if (Boolean.FALSE.equals(aligned)) {
-        sessionPool.insertRecordsOfOneDevice(
-            device, times, measurementsList, typesList, valuesList);
-      } else {
-        sessionPool.insertAlignedRecordsOfOneDevice(
-            device, times, measurementsList, typesList, valuesList);
-      }
-    } catch (IoTDBConnectionException e) {
-      if (retryTime > 0) {
-        writeAndEmptyDataSet(device, times, typesList, valuesList, measurementsList, --retryTime);
-      }
-    } catch (StatementExecutionException e) {
-      ioTPrinter.println(Constants.INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
-    } finally {
-      times.clear();
-      typesList.clear();
-      valuesList.clear();
-      measurementsList.clear();
-    }
+    executeWithRetry(
+        () -> {
+          if (Boolean.FALSE.equals(aligned)) {
+            sessionPool.insertRecordsOfOneDevice(
+                device, times, measurementsList, typesList, valuesList);
+          } else {
+            sessionPool.insertAlignedRecordsOfOneDevice(
+                device, times, measurementsList, typesList, valuesList);
+          }
+        },
+        retryTime);
+    times.clear();
+    typesList.clear();
+    valuesList.clear();
+    measurementsList.clear();
   }
 
   private static void writeAndEmptyDataSet(
@@ -430,27 +436,21 @@ public class ImportDataTree extends AbstractImportData {
       List<List<Object>> valuesList,
       List<List<String>> measurementsList,
       int retryTime) {
-    try {
-      if (Boolean.FALSE.equals(aligned)) {
-        sessionPool.insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
-      } else {
-        sessionPool.insertAlignedRecords(deviceIds, times, measurementsList, typesList, valuesList);
-      }
-    } catch (IoTDBConnectionException e) {
-      if (retryTime > 0) {
-        writeAndEmptyDataSet(
-            deviceIds, times, typesList, valuesList, measurementsList, --retryTime);
-      }
-    } catch (StatementExecutionException e) {
-      ioTPrinter.println(Constants.INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
-      System.exit(1);
-    } finally {
-      deviceIds.clear();
-      times.clear();
-      typesList.clear();
-      valuesList.clear();
-      measurementsList.clear();
-    }
+    executeWithRetry(
+        () -> {
+          if (Boolean.FALSE.equals(aligned)) {
+            sessionPool.insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
+          } else {
+            sessionPool.insertAlignedRecords(
+                deviceIds, times, measurementsList, typesList, valuesList);
+          }
+        },
+        retryTime);
+    deviceIds.clear();
+    times.clear();
+    typesList.clear();
+    valuesList.clear();
+    measurementsList.clear();
   }
 
   private static void queryType(

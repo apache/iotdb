@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateNodeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateVersionInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
@@ -118,6 +119,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackPreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnPropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
@@ -358,6 +360,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case UpdateVersionInfo:
           plan = new UpdateVersionInfoPlan();
           break;
+        case UpdateNodeStatus:
+          plan = new UpdateNodeStatusPlan();
+          break;
         case UpdateClusterId:
           plan = new UpdateClusterIdPlan();
           break;
@@ -429,6 +434,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case SetTableProperties:
           plan = new SetTablePropertiesPlan(configPhysicalPlanType);
+          break;
+        case SetTableColumnProperties:
+          plan = new SetTableColumnPropertiesPlan(configPhysicalPlanType);
           break;
         case SetViewProperties:
           plan = new SetViewPropertiesPlan();

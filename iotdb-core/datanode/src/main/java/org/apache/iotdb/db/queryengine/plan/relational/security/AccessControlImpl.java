@@ -40,6 +40,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -569,10 +570,29 @@ public class AccessControlImpl implements AccessControl {
   @Override
   public void checkMissingPrivileges(
       String username, Collection<PrivilegeType> privilegeTypes, IAuditEntity auditEntity) {
+    List<PrivilegeType> relatedPrivileges = new ArrayList<>(privilegeTypes);
     if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
+      recordMissingPrivilegesAuditLog(auditEntity, relatedPrivileges, true);
       return;
     }
-    authChecker.checkGlobalPrivileges(username, privilegeTypes, auditEntity);
+    try {
+      authChecker.checkGlobalPrivileges(username, privilegeTypes, auditEntity);
+      recordMissingPrivilegesAuditLog(auditEntity, relatedPrivileges, true);
+    } catch (AccessDeniedException e) {
+      recordMissingPrivilegesAuditLog(auditEntity, relatedPrivileges, false);
+      throw e;
+    }
+  }
+
+  private static void recordMissingPrivilegesAuditLog(
+      IAuditEntity auditEntity, List<PrivilegeType> privilegeTypes, boolean result) {
+    DNAuditLogger.getInstance()
+        .recordObjectAuthenticationAuditLog(
+            auditEntity
+                .setResult(result)
+                .setAuditLogOperation(AuditLogOperation.CONTROL)
+                .setPrivilegeTypes(privilegeTypes),
+            () -> "");
   }
 
   @Override
@@ -586,6 +606,12 @@ public class AccessControlImpl implements AccessControl {
       IAuditEntity auditEntity, IDeviceID device, String measurementId) {
     try {
       PartialPath path = new MeasurementPath(device, measurementId);
+      final TSStatus systemDatabaseStatus =
+          TreeAccessCheckVisitor.checkSystemDatabaseWrite(
+              auditEntity, Collections.singletonList(path));
+      if (systemDatabaseStatus != null) {
+        return systemDatabaseStatus;
+      }
       // Apache IoTDB does not support external writes to the audit database.
       if (includeByAuditTreeDB(path)
           && !auditEntity.getUsername().equals(AuthorityChecker.INTERNAL_AUDIT_USER)) {
@@ -613,6 +639,20 @@ public class AccessControlImpl implements AccessControl {
   @Override
   public TSStatus checkCanAlterView(
       IAuditEntity entity, List<PartialPath> sourcePaths, List<PartialPath> targetPaths) {
+    if (sourcePaths != null) {
+      final TSStatus sourceSystemDatabaseStatus =
+          TreeAccessCheckVisitor.checkSystemDatabaseWrite(entity, sourcePaths);
+      if (sourceSystemDatabaseStatus != null) {
+        return sourceSystemDatabaseStatus;
+      }
+    }
+    if (targetPaths != null) {
+      final TSStatus targetSystemDatabaseStatus =
+          TreeAccessCheckVisitor.checkSystemDatabaseWrite(entity, targetPaths);
+      if (targetSystemDatabaseStatus != null) {
+        return targetSystemDatabaseStatus;
+      }
+    }
     if (AuthorityChecker.SUPER_USER_ID == entity.getUserId()) {
       DNAuditLogger.getInstance()
           .recordObjectAuthenticationAuditLog(

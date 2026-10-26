@@ -508,6 +508,7 @@ public class AggregationNode extends SingleChildProcessNode {
     private final Optional<Symbol> filter;
     private final Optional<OrderingScheme> orderingScheme;
     private final Optional<Symbol> mask;
+    private final boolean inputOrderedByTimeAscending;
 
     public Aggregation(
         ResolvedFunction resolvedFunction,
@@ -516,6 +517,17 @@ public class AggregationNode extends SingleChildProcessNode {
         Optional<Symbol> filter,
         Optional<OrderingScheme> orderingScheme,
         Optional<Symbol> mask) {
+      this(resolvedFunction, arguments, distinct, filter, orderingScheme, mask, false);
+    }
+
+    public Aggregation(
+        ResolvedFunction resolvedFunction,
+        List<Expression> arguments,
+        boolean distinct,
+        Optional<Symbol> filter,
+        Optional<OrderingScheme> orderingScheme,
+        Optional<Symbol> mask,
+        boolean inputOrderedByTimeAscending) {
       this.resolvedFunction =
           requireNonNull(
               resolvedFunction, QueryMessages.EXCEPTION_RESOLVEDFUNCTION_IS_NULL_81B5B93A);
@@ -533,6 +545,7 @@ public class AggregationNode extends SingleChildProcessNode {
       this.orderingScheme =
           requireNonNull(orderingScheme, QueryMessages.EXCEPTION_ORDERINGSCHEME_IS_NULL_4D4D2F6F);
       this.mask = requireNonNull(mask, QueryMessages.EXCEPTION_MASK_IS_NULL_5A7CEA49);
+      this.inputOrderedByTimeAscending = inputOrderedByTimeAscending;
     }
 
     public ResolvedFunction getResolvedFunction() {
@@ -559,6 +572,10 @@ public class AggregationNode extends SingleChildProcessNode {
       return mask;
     }
 
+    public boolean isInputOrderedByTimeAscending() {
+      return inputOrderedByTimeAscending;
+    }
+
     public boolean hasMask() {
       return mask.isPresent();
     }
@@ -573,6 +590,7 @@ public class AggregationNode extends SingleChildProcessNode {
       }
       Aggregation that = (Aggregation) o;
       return distinct == that.distinct
+          && inputOrderedByTimeAscending == that.inputOrderedByTimeAscending
           && Objects.equals(resolvedFunction, that.resolvedFunction)
           && Objects.equals(arguments, that.arguments)
           && Objects.equals(filter, that.filter)
@@ -582,7 +600,14 @@ public class AggregationNode extends SingleChildProcessNode {
 
     @Override
     public int hashCode() {
-      return Objects.hash(resolvedFunction, arguments, distinct, filter, orderingScheme, mask);
+      return Objects.hash(
+          resolvedFunction,
+          arguments,
+          distinct,
+          filter,
+          orderingScheme,
+          mask,
+          inputOrderedByTimeAscending);
     }
 
     public void verifyArguments(Step step) {
@@ -622,6 +647,7 @@ public class AggregationNode extends SingleChildProcessNode {
       orderingScheme.ifPresent(scheme -> scheme.serialize(byteBuffer));
       ReadWriteIOUtils.write(mask.isPresent(), byteBuffer);
       mask.ifPresent(symbol -> Symbol.serialize(symbol, byteBuffer));
+      ReadWriteIOUtils.write(inputOrderedByTimeAscending, byteBuffer);
     }
 
     public void serialize(DataOutputStream stream) throws IOException {
@@ -643,6 +669,7 @@ public class AggregationNode extends SingleChildProcessNode {
       if (mask.isPresent()) {
         Symbol.serialize(mask.get(), stream);
       }
+      ReadWriteIOUtils.write(inputOrderedByTimeAscending, stream);
     }
 
     public static Aggregation deserialize(ByteBuffer byteBuffer) {
@@ -665,7 +692,9 @@ public class AggregationNode extends SingleChildProcessNode {
       if (ReadWriteIOUtils.readBool(byteBuffer)) {
         mask = Optional.of(Symbol.deserialize(byteBuffer));
       }
-      return new Aggregation(function, arguments, distinct, filter, orderingScheme, mask);
+      boolean inputOrderedByTimeAscending = ReadWriteIOUtils.readBool(byteBuffer);
+      return new Aggregation(
+          function, arguments, distinct, filter, orderingScheme, mask, inputOrderedByTimeAscending);
     }
   }
 

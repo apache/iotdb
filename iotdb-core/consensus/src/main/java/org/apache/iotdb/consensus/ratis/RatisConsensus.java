@@ -56,7 +56,6 @@ import org.apache.iotdb.consensus.ratis.utils.Utils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
-import org.apache.ratis.RaftConfigKeys;
 import org.apache.ratis.client.RaftClientRpc;
 import org.apache.ratis.conf.Parameters;
 import org.apache.ratis.conf.RaftProperties;
@@ -160,7 +159,6 @@ class RatisConsensus implements IConsensus {
     this.storageDir = new File(config.getStorageDir());
 
     RaftServerConfigKeys.setStorageDir(properties, Collections.singletonList(storageDir));
-    RaftConfigKeys.Rpc.setType(properties, new RateLimitedGrpcRpcType());
     GrpcConfigKeys.Server.setHost(properties, config.getThisNodeEndPoint().getIp());
     GrpcConfigKeys.Server.setPort(properties, config.getThisNodeEndPoint().getPort());
 
@@ -373,6 +371,12 @@ class RatisConsensus implements IConsensus {
       } catch (Exception e) {
         throw new RatisRequestFailedException(e);
       }
+    }
+
+    // A leader-local decision may already be stale after a leadership change. Let the current
+    // leader make its own decision instead of replaying the old leader's request there.
+    if (!request.isForwardable()) {
+      return StatusUtils.getStatus(TSStatusCode.REDIRECTION_RECOMMEND);
     }
 
     // 2. try raft client

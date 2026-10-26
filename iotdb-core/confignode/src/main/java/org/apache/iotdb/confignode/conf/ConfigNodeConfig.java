@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractLeaderBalancer;
@@ -94,34 +95,82 @@ public class ConfigNodeConfig {
 
   private String dataPartitionAllocationStrategy = "INHERIT";
 
-  /** The policy of extension SchemaRegionGroup for each Database. */
+  /**
+   * The policy of extending SchemaRegionGroups for each Database: CUSTOM, AUTO, or PROACTIVE.
+   *
+   * <p>CUSTOM suits known workloads that need manual resource allocation, creating the configured
+   * target number of groups per Database when schema partitions are first allocated. AUTO suits
+   * most routine workloads (roughly 80% as an approximate planning guideline), gradually meeting
+   * the configured minimum and expanding with slot occupancy up to the resource-based maximum to
+   * balance parallelism and group management overhead. PROACTIVE complements AUTO for workloads
+   * such as very few devices with many measurements and a high load, creating groups earlier for
+   * more parallelism at the cost of additional group management overhead.
+   *
+   * <p>AUTO and PROACTIVE use the same per-Database maximum calculation, including resource sharing
+   * across Databases; their group counts match when both reach the same maximum. PROACTIVE targets
+   * one group per distinct schema series slot, not per measurement, and grows toward the configured
+   * minimum incrementally like AUTO. When all groups of this type are disabled, it may add one
+   * group within the maximum. Switching policies does not remove existing groups.
+   */
   private volatile RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy =
-      RegionGroupExtensionPolicy.AUTO;
+      RegionGroupExtensionPolicy.PROACTIVE;
 
   /**
    * When set schema_region_group_extension_policy=CUSTOM, this parameter is the default number of
-   * SchemaRegionGroups for each Database. When set schema_region_group_extension_policy=AUTO, this
-   * parameter is the default minimal number of SchemaRegionGroups for each Database.
+   * SchemaRegionGroups for each Database. For AUTO and PROACTIVE, this parameter is the default
+   * minimum number of SchemaRegionGroups and a lower bound for the per-Database maximum. Both
+   * policies grow toward this minimum incrementally, adding at most the number of series slots in
+   * the pending request to satisfy the minimum. PROACTIVE also grows with the number of active
+   * series slots.
    */
   private volatile int defaultSchemaRegionGroupNumPerDatabase = 1;
 
-  /** The maximum number of SchemaRegions expected to be managed by each DataNode. */
+  /**
+   * The expected number of SchemaRegions per DataNode, used to calculate the same per-Database
+   * maximum for AUTO and PROACTIVE. This is not a hard limit on node or cluster totals:
+   * per-Database minimums, rounding, and existing groups can raise the total above this resource
+   * estimate.
+   */
   private volatile int schemaRegionPerDataNode = 1;
 
-  /** The policy of extension DataRegionGroup for each Database. */
+  /**
+   * The policy of extending DataRegionGroups for each Database: CUSTOM, AUTO, or PROACTIVE.
+   *
+   * <p>CUSTOM suits known workloads that need manual resource allocation, creating the configured
+   * target number of groups per Database when data partitions are first allocated. AUTO suits most
+   * routine workloads (roughly 80% as an approximate planning guideline), gradually meeting the
+   * configured minimum and expanding with slot occupancy up to the resource-based maximum to
+   * balance parallelism and group management overhead. PROACTIVE complements AUTO for workloads
+   * such as very few devices with many measurements and a high load, creating groups earlier for
+   * more parallelism at the cost of additional group management overhead.
+   *
+   * <p>AUTO and PROACTIVE use the same per-Database maximum calculation, including resource sharing
+   * across Databases; their group counts match when both reach the same maximum. PROACTIVE targets
+   * one group per distinct data series slot, not per measurement, and grows toward the configured
+   * minimum incrementally like AUTO. New time partitions in an existing slot can also trigger this
+   * growth toward the minimum. When all groups of this type are disabled, it may add one group
+   * within the maximum. Its allocation policy table balances active slots so new time partitions
+   * can use new groups; existing time-partition assignments are retained. Switching policies does
+   * not remove existing groups.
+   */
   private volatile RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy =
-      RegionGroupExtensionPolicy.AUTO;
+      RegionGroupExtensionPolicy.PROACTIVE;
 
   /**
    * When set data_region_group_extension_policy=CUSTOM, this parameter is the default number of
-   * DataRegionGroups for each Database. When set data_region_group_extension_policy=AUTO, this
-   * parameter is the default minimal number of DataRegionGroups for each Database.
+   * DataRegionGroups for each Database. For AUTO and PROACTIVE, this parameter is the default
+   * minimum number of DataRegionGroups and a lower bound for the per-Database maximum. Both
+   * policies grow toward this minimum incrementally, adding at most the number of series slots in
+   * the pending request to satisfy the minimum. PROACTIVE also grows with the number of active
+   * series slots.
    */
   private volatile int defaultDataRegionGroupNumPerDatabase = 2;
 
   /**
-   * The maximum number of DataRegions expected to be managed by each DataNode. Set to 0 means that
-   * each dataNode automatically has the number of CPU cores / 2 regions.
+   * The expected number of DataRegions per DataNode, used to calculate the same per-Database
+   * maximum for AUTO and PROACTIVE. Set to 0 to use half the CPU core count as the expected number
+   * for each DataNode. This is not a hard limit on node or cluster totals: per-Database minimums,
+   * rounding, and existing groups can raise the total above this resource estimate.
    */
   private volatile int dataRegionPerDataNode = 0;
 
@@ -201,6 +250,9 @@ public class ConfigNodeConfig {
   private int procedureCoreWorkerThreadsCount =
       Math.max(Runtime.getRuntime().availableProcessors() / 4, 16);
 
+  /** Thread pool size for publishing cluster load statistics changes. */
+  private int loadStatisticsPublisherThreadCount = 5;
+
   /** The heartbeat interval in milliseconds. */
   private volatile long heartbeatIntervalInMs = 1000;
 
@@ -244,6 +296,9 @@ public class ConfigNodeConfig {
 
   private long configNodeRatisConsensusLogAppenderBufferSize = 16 * 1024 * 1024L;
   private long schemaRegionRatisConsensusLogAppenderBufferSize = 16 * 1024 * 1024L;
+
+  /** Max size (in bytes) of the in-memory buffer used when taking/loading ConfigNode snapshots. */
+  private long configNodeSnapshotBufferSizeMax = 4 * 1024 * 1024L;
 
   /**
    * RatisConsensus protocol, trigger a snapshot when ratis_snapshot_trigger_threshold logs are
@@ -734,6 +789,17 @@ public class ConfigNodeConfig {
     this.procedureCoreWorkerThreadsCount = procedureCoreWorkerThreadsCount;
   }
 
+  public int getLoadStatisticsPublisherThreadCount() {
+    return loadStatisticsPublisherThreadCount;
+  }
+
+  public void setLoadStatisticsPublisherThreadCount(int loadStatisticsPublisherThreadCount) {
+    if (loadStatisticsPublisherThreadCount <= 0) {
+      throw new IllegalArgumentException(CommonMessages.SIZE_MUST_BE_POSITIVE);
+    }
+    this.loadStatisticsPublisherThreadCount = loadStatisticsPublisherThreadCount;
+  }
+
   public long getHeartbeatIntervalInMs() {
     return heartbeatIntervalInMs;
   }
@@ -971,6 +1037,22 @@ public class ConfigNodeConfig {
       long schemaRegionRatisConsensusLogAppenderBufferSize) {
     this.schemaRegionRatisConsensusLogAppenderBufferSize =
         schemaRegionRatisConsensusLogAppenderBufferSize;
+  }
+
+  public long getConfigNodeSnapshotBufferSizeMax() {
+    return configNodeSnapshotBufferSizeMax;
+  }
+
+  public void setConfigNodeSnapshotBufferSizeMax(long configNodeSnapshotBufferSizeMax) {
+    if (configNodeSnapshotBufferSizeMax > Integer.MAX_VALUE) {
+      throw new IllegalArgumentException(
+          String.format(
+              CommonMessages
+                  .EXCEPTION_SNAPSHOT_BUFFER_SIZE_MUST_NOT_EXCEED_ARG_BYTES_BUT_WAS_ARG_D1DA6F7E,
+              Integer.MAX_VALUE,
+              configNodeSnapshotBufferSizeMax));
+    }
+    this.configNodeSnapshotBufferSizeMax = configNodeSnapshotBufferSizeMax;
   }
 
   public long getSchemaRegionRatisSnapshotTriggerThreshold() {

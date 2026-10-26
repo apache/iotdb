@@ -91,6 +91,9 @@ public class SchemaEngine {
 
   private SchemaMetricManager schemaMetricManager;
 
+  // Published so write handlers can identify teardown failures before region locks are removed.
+  private volatile boolean clearing;
+
   private final DataNodeSchemaQuotaManager schemaQuotaManager =
       DataNodeSchemaQuotaManager.getInstance();
 
@@ -110,6 +113,7 @@ public class SchemaEngine {
   }
 
   public void init() {
+    clearing = false;
     logger.info(
         DataNodeSchemaMessages.USED_SCHEMA_ENGINE_MODE,
         CommonDescriptor.getInstance().getConfig().getSchemaEngineMode());
@@ -184,6 +188,7 @@ public class SchemaEngine {
   private void initSchemaRegion() {
     // recover SchemaRegion concurrently
     final Map<String, List<SchemaRegionId>> localSchemaRegionInfo = getLocalSchemaRegionInfo();
+    validateNoDuplicatedSchemaRegionId(localSchemaRegionInfo);
     final ExecutorService schemaRegionRecoverPools =
         IoTDBThreadPoolFactory.newFixedThreadPool(
             Runtime.getRuntime().availableProcessors(),
@@ -207,6 +212,27 @@ public class SchemaEngine {
     schemaRegionRecoverPools.shutdown();
   }
 
+  static void validateNoDuplicatedSchemaRegionId(
+      final Map<String, List<SchemaRegionId>> localSchemaRegionInfo) {
+    final Map<SchemaRegionId, String> databaseBySchemaRegionId = new HashMap<>();
+    localSchemaRegionInfo.forEach(
+        (database, schemaRegionIds) -> {
+          for (final SchemaRegionId schemaRegionId : schemaRegionIds) {
+            final String existingDatabase =
+                databaseBySchemaRegionId.putIfAbsent(schemaRegionId, database);
+            if (existingDatabase != null) {
+              throw new IllegalStateException(
+                  String.format(
+                      DataNodeSchemaMessages
+                          .EXCEPTION_CANNOT_RECOVER_DUPLICATED_SCHEMAREGION_ARG_FOUND_IN_DATABASES_ARG_AND_ARG_D9F60E05,
+                      schemaRegionId,
+                      existingDatabase,
+                      database));
+            }
+          }
+        });
+  }
+
   private void initSchemaEngineStatistics() {
     if (CommonDescriptor.getInstance().getConfig().getSchemaEngineMode().equals("Memory")) {
       schemaEngineStatistics = new MemSchemaEngineStatistics();
@@ -222,6 +248,7 @@ public class SchemaEngine {
   }
 
   public synchronized void clear() {
+    clearing = true;
     schemaRegionLoader.clear();
 
     // clearSchemaResource will shut down release and flush task in PBTree mode, which must be
@@ -244,6 +271,10 @@ public class SchemaEngine {
       schemaMetricManager.clear();
     }
     ClusterTemplateManager.getInstance().clear();
+  }
+
+  public boolean isClearing() {
+    return clearing;
   }
 
   public ISchemaRegion getSchemaRegion(final SchemaRegionId regionId) {
@@ -306,7 +337,6 @@ public class SchemaEngine {
     return () -> {
       long timeRecord = System.currentTimeMillis();
       try {
-        // TODO: handle duplicated regionId across different database
         ISchemaRegion schemaRegion =
             createSchemaRegionWithoutExistenceCheck(storageGroup, schemaRegionId);
         timeRecord = System.currentTimeMillis() - timeRecord;
@@ -316,12 +346,12 @@ public class SchemaEngine {
             timeRecord);
         return schemaRegion;
       } catch (final MetadataException e) {
-        logger.error(
+        throw new RuntimeException(
             String.format(
                 DataNodeSchemaMessages.SCHEMA_REGION_FAILED_TO_RECOVER,
                 schemaRegionId.getId(),
-                storageGroup));
-        throw new RuntimeException(e);
+                storageGroup),
+            e);
       }
     };
   }
@@ -336,12 +366,12 @@ public class SchemaEngine {
     return schemaRegion;
   }
 
-  public synchronized void deleteSchemaRegion(SchemaRegionId schemaRegionId)
+  public synchronized boolean deleteSchemaRegion(SchemaRegionId schemaRegionId)
       throws MetadataException {
     ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion == null) {
       logger.warn(DataNodeSchemaMessages.SCHEMA_REGION_ALREADY_DELETED, schemaRegionId);
-      return;
+      return false;
     }
     schemaRegion.deleteSchemaRegion();
     schemaMetricManager.removeSchemaRegionMetric(schemaRegionId.getId());
@@ -365,6 +395,7 @@ public class SchemaEngine {
         FileUtils.deleteFileOrDirectory(sgDir);
       }
     }
+    return true;
   }
 
   public int getSchemaRegionNumber() {
@@ -447,11 +478,21 @@ public class SchemaEngine {
     schemaQuotaManager.updateRemain(
         req.getTimeSeriesQuotaRemain(),
         req.isSetDeviceQuotaRemain() ? req.getDeviceQuotaRemain() : -1);
+    // Build both maps on snapshots and publish them together only after all counts succeed, so a
+    // failure cannot leave a partially updated heartbeat response.
+    Map<Integer, Long> regionDeviceUsageMap =
+        resp.getRegionDeviceUsageMap() == null
+            ? null
+            : new HashMap<>(resp.getRegionDeviceUsageMap());
+    Map<Integer, Long> regionSeriesUsageMap =
+        resp.getRegionSeriesUsageMap() == null
+            ? null
+            : new HashMap<>(resp.getRegionSeriesUsageMap());
     if (schemaQuotaManager.isDeviceLimit()) {
-      if (resp.getRegionDeviceUsageMap() == null) {
-        resp.setRegionDeviceUsageMap(new HashMap<>());
+      if (regionDeviceUsageMap == null) {
+        regionDeviceUsageMap = new HashMap<>();
       }
-      final Map<Integer, Long> tmp = resp.getRegionDeviceUsageMap();
+      final Map<Integer, Long> tmp = regionDeviceUsageMap;
       SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIds().stream()
           .filter(
               consensusGroupId ->
@@ -467,10 +508,10 @@ public class SchemaEngine {
                           .orElse(0L)));
     }
     if (schemaQuotaManager.isMeasurementLimit()) {
-      if (resp.getRegionSeriesUsageMap() == null) {
-        resp.setRegionSeriesUsageMap(new HashMap<>());
+      if (regionSeriesUsageMap == null) {
+        regionSeriesUsageMap = new HashMap<>();
       }
-      final Map<Integer, Long> tmp = resp.getRegionSeriesUsageMap();
+      final Map<Integer, Long> tmp = regionSeriesUsageMap;
       SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIds().stream()
           .filter(
               consensusGroupId ->
@@ -489,6 +530,12 @@ public class SchemaEngine {
                       Optional.ofNullable(schemaRegionMap.get(consensusGroupId))
                           .map(this::getTimeSeriesNumber4Quota)
                           .orElse(0L)));
+    }
+    if (regionDeviceUsageMap != null) {
+      resp.setRegionDeviceUsageMap(regionDeviceUsageMap);
+    }
+    if (regionSeriesUsageMap != null) {
+      resp.setRegionSeriesUsageMap(regionSeriesUsageMap);
     }
   }
 

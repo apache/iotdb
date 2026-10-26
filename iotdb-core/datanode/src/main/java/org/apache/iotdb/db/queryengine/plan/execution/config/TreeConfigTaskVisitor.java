@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.audit.PasswordChangeAuditContext;
 import org.apache.iotdb.db.audit.PasswordChangeAuditTask;
+import org.apache.iotdb.db.audit.UserRoleModificationAuditContext;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -339,18 +340,32 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
 
   @Override
   public IConfigTask visitAuthor(AuthorStatement statement, MPPQueryContext context) {
-    statement.setExecutedByUserId(context.getUserId());
-    if (statement.getAuthorType() == AuthorType.UPDATE_USER) {
-      return visitUpdateUser(statement, context);
+    UserRoleModificationAuditContext auditContext =
+        UserRoleModificationAuditContext.forTreeStatement(
+            statement, context.getSession(), context.getSql());
+    boolean executionDelegated = false;
+    try {
+      statement.setExecutedByUserId(context.getUserId());
+      if (statement.getAuthorType() == AuthorType.UPDATE_USER) {
+        IConfigTask task = visitUpdateUser(statement, context);
+        executionDelegated = true;
+        return task;
+      }
+      if (statement.getAuthorType() == AuthorType.RENAME_USER) {
+        visitRenameUser(statement);
+      }
+      TSStatus status = statement.checkStatementIsValid(context.getSession().getUserName());
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new AccessDeniedException(status.getMessage());
+      }
+      IConfigTask task = new AuthorizerTask(statement, auditContext);
+      executionDelegated = true;
+      return task;
+    } finally {
+      if (!executionDelegated) {
+        auditContext.log(null);
+      }
     }
-    if (statement.getAuthorType() == AuthorType.RENAME_USER) {
-      visitRenameUser(statement);
-    }
-    TSStatus status = statement.checkStatementIsValid(context.getSession().getUserName());
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new AccessDeniedException(status.getMessage());
-    }
-    return new AuthorizerTask(statement);
   }
 
   private IConfigTask visitUpdateUser(AuthorStatement statement, MPPQueryContext context) {
@@ -768,7 +783,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     createTopicStatement
         .getTopicAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
-    rejectColumnFilterForTreeTopic(createTopicStatement.getTopicAttributes());
+    rejectTableOnlyFiltersForTreeTopic(createTopicStatement.getTopicAttributes());
 
     return new CreateTopicTask(createTopicStatement);
   }
@@ -779,18 +794,21 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     alterTopicStatement
         .getTopicAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
-    rejectColumnFilterForTreeTopic(alterTopicStatement.getTopicAttributes());
+    rejectTableOnlyFiltersForTreeTopic(alterTopicStatement.getTopicAttributes());
 
     return new AlterTopicTask(alterTopicStatement);
   }
 
-  private static void rejectColumnFilterForTreeTopic(final Map<String, String> topicAttributes) {
+  private static void rejectTableOnlyFiltersForTreeTopic(
+      final Map<String, String> topicAttributes) {
     for (final String key : topicAttributes.keySet()) {
-      if (TopicConstant.COLUMN_FILTER_KEY.equalsIgnoreCase(key)) {
+      if (TopicConstant.COLUMN_FILTER_KEY.equalsIgnoreCase(key)
+          || TopicConstant.TAG_FILTER_KEY.equalsIgnoreCase(key)) {
         throw new SemanticException(
             String.format(
-                "Failed to create or alter topic, %s is only supported for table topics",
-                TopicConstant.COLUMN_FILTER_KEY));
+                DataNodeQueryMessages
+                    .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_IS_ONLY_SUPPORTED_FOR_TABLE_TOPICS_A5126607,
+                key));
       }
     }
   }

@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
@@ -56,6 +58,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTreeRewriter;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TimeRange;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -168,7 +171,9 @@ public class AnalyzeUtils {
     validateSchema(analysis, insertBaseStatement, schemaValidation);
 
     InsertBaseStatement realStatement =
-        removeLogicalView ? removeLogicalView(analysis, insertBaseStatement) : insertBaseStatement;
+        removeLogicalView
+            ? removeLogicalView(analysis, insertBaseStatement, context)
+            : insertBaseStatement;
     if (analysis.isFinishQueryAfterAnalyze()) {
       return realStatement;
     }
@@ -331,7 +336,7 @@ public class AnalyzeUtils {
     }
     boolean hasFailedMeasurement = insertStatement.hasFailedMeasurements();
     String partialInsertMessage;
-    if (hasFailedMeasurement) {
+    if (hasFailedMeasurement && !analysis.isFinishQueryAfterAnalyze()) {
       partialInsertMessage =
           String.format(
               "Fail to insert measurements %s caused by %s",
@@ -343,9 +348,19 @@ public class AnalyzeUtils {
   }
 
   public static InsertBaseStatement removeLogicalView(
-      IAnalysis analysis, InsertBaseStatement insertBaseStatement) {
+      IAnalysis analysis, InsertBaseStatement insertBaseStatement, IAuditEntity context) {
     try {
-      return insertBaseStatement.removeLogicalView();
+      final InsertBaseStatement realStatement = insertBaseStatement.removeLogicalView();
+      // Inserts into a logical view are rewritten to the view's source series. Check the real
+      // target paths so a view created before this restriction cannot write root.__system.
+      final TSStatus systemDatabaseStatus =
+          TreeAccessCheckVisitor.checkSystemDatabaseWrite(
+              context, realStatement.getDevicePathsStream().toList());
+      if (systemDatabaseStatus != null) {
+        analysis.setFinishQueryAfterAnalyze(true);
+        analysis.setFailStatus(systemDatabaseStatus);
+      }
+      return realStatement;
     } catch (SemanticException e) {
       analysis.setFinishQueryAfterAnalyze(true);
       if (e.getCause() instanceof IoTDBException) {
@@ -759,12 +774,26 @@ public class AnalyzeUtils {
 
       switch (comparisonExpression.getOperator()) {
         case LESS_THAN:
+          if (rightHandValue == Long.MIN_VALUE) {
+            throw new SemanticException(
+                String.format(
+                    DataNodeQueryMessages
+                        .EXCEPTION_THE_TIME_PREDICATE_DOES_NOT_SELECT_ANY_TIME_RANGE_ARG_98DBCE32,
+                    comparisonExpression));
+          }
           timeRange.setEndTime(Math.min(timeRange.getEndTime(), rightHandValue - 1));
           break;
         case LESS_THAN_OR_EQUAL:
           timeRange.setEndTime(Math.min(timeRange.getEndTime(), rightHandValue));
           break;
         case GREATER_THAN:
+          if (rightHandValue == Long.MAX_VALUE) {
+            throw new SemanticException(
+                String.format(
+                    DataNodeQueryMessages
+                        .EXCEPTION_THE_TIME_PREDICATE_DOES_NOT_SELECT_ANY_TIME_RANGE_ARG_98DBCE32,
+                    comparisonExpression));
+          }
           timeRange.setStartTime(Math.max(timeRange.getStartTime(), rightHandValue + 1));
           break;
         case GREATER_THAN_OR_EQUAL:

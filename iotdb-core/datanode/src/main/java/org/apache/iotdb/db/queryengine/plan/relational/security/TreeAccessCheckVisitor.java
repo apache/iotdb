@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternTreeUtils;
+import org.apache.iotdb.commons.schema.InternalDatabaseUtils;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -115,6 +116,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePl
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipeMemoryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePluginsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
@@ -161,6 +163,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectS
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowRepairDataPartitionTableProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
@@ -178,6 +181,7 @@ import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -276,6 +280,12 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   public TSStatus visitSetSchemaTemplate(
       SetSchemaTemplateStatement setSchemaTemplateStatement, TreeAccessCheckContext context) {
     context.setAuditLogOperation(AuditLogOperation.DDL);
+    final TSStatus systemDatabaseStatus =
+        checkSystemDatabaseWrite(
+            context, Collections.singletonList(setSchemaTemplateStatement.getPath()));
+    if (systemDatabaseStatus != null) {
+      return systemDatabaseStatus;
+    }
     // root.__audit can never be set template
     TSStatus status =
         checkUnsupportedAuditDatabaseWrite(
@@ -377,6 +387,11 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitUnsetSchemaTemplate(
       UnsetSchemaTemplateStatement unsetSchemaTemplateStatement, TreeAccessCheckContext context) {
+    final TSStatus systemDatabaseStatus =
+        checkSystemDatabaseWrite(context, unsetSchemaTemplateStatement.getPaths());
+    if (systemDatabaseStatus != null) {
+      return systemDatabaseStatus;
+    }
     return checkSystemAuth(
         context.setAuditLogOperation(AuditLogOperation.DDL),
         () -> unsetSchemaTemplateStatement.getPaths().toString());
@@ -433,6 +448,34 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
             context.setPrivilegeType(PrivilegeType.AUDIT).setResult(false), path::toString);
         return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
             .setMessage(getUnsupportedAuditDatabaseOperationMessage(TREE_MODEL_AUDIT_DATABASE));
+      }
+    }
+    final TSStatus systemDatabaseStatus = checkSystemDatabaseWrite(context, paths);
+    if (systemDatabaseStatus != null) {
+      return systemDatabaseStatus;
+    }
+    // A logical view redirects inserts and deletes to its source series during analysis, so the
+    // source paths must be checked here as well.
+    if (statement.getSourcePaths().fullPathList != null) {
+      final TSStatus sourceSystemDatabaseStatus =
+          checkSystemDatabaseWrite(context, statement.getSourcePaths().fullPathList);
+      if (sourceSystemDatabaseStatus != null) {
+        return sourceSystemDatabaseStatus;
+      }
+    }
+    if (statement.getSourcePaths().prefixOfPathsGroup != null) {
+      final TSStatus sourceSystemDatabaseStatus =
+          checkSystemDatabaseWrite(
+              context, Collections.singletonList(statement.getSourcePaths().prefixOfPathsGroup));
+      if (sourceSystemDatabaseStatus != null) {
+        return sourceSystemDatabaseStatus;
+      }
+    }
+    if (statement.getQueryStatement() != null) {
+      final TSStatus sourceSystemDatabaseStatus =
+          checkSystemDatabaseWrite(context, statement.getQueryStatement().getPaths());
+      if (sourceSystemDatabaseStatus != null) {
+        return sourceSystemDatabaseStatus;
       }
     }
 
@@ -494,6 +537,35 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   public TSStatus visitAlterLogicalView(
       AlterLogicalViewStatement statement, TreeAccessCheckContext context) {
     context.setAuditLogOperation(AuditLogOperation.DDL);
+    final List<PartialPath> targetPathList = statement.getTargetPathList();
+    if (targetPathList != null) {
+      final TSStatus systemDatabaseStatus = checkSystemDatabaseWrite(context, targetPathList);
+      if (systemDatabaseStatus != null) {
+        return systemDatabaseStatus;
+      }
+    }
+    if (statement.getSourcePaths().fullPathList != null) {
+      final TSStatus sourceSystemDatabaseStatus =
+          checkSystemDatabaseWrite(context, statement.getSourcePaths().fullPathList);
+      if (sourceSystemDatabaseStatus != null) {
+        return sourceSystemDatabaseStatus;
+      }
+    }
+    if (statement.getSourcePaths().prefixOfPathsGroup != null) {
+      final TSStatus sourceSystemDatabaseStatus =
+          checkSystemDatabaseWrite(
+              context, Collections.singletonList(statement.getSourcePaths().prefixOfPathsGroup));
+      if (sourceSystemDatabaseStatus != null) {
+        return sourceSystemDatabaseStatus;
+      }
+    }
+    if (statement.getQueryStatement() != null) {
+      final TSStatus sourceSystemDatabaseStatus =
+          checkSystemDatabaseWrite(context, statement.getQueryStatement().getPaths());
+      if (sourceSystemDatabaseStatus != null) {
+        return sourceSystemDatabaseStatus;
+      }
+    }
     if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
       statement.setCanSeeAuditDB(true);
       if (statement.getQueryStatement() != null) {
@@ -645,10 +717,16 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
             authorType == AuthorType.CREATE_ROLE || authorType == AuthorType.DROP_ROLE
                 ? statement::getRoleName
                 : () -> "user: " + statement.getUserName() + ", role: " + statement.getRoleName();
-        return checkGlobalAuth(
-            context.setAuditLogOperation(AuditLogOperation.DDL),
-            PrivilegeType.MANAGE_ROLE,
-            auditObject);
+        TSStatus status =
+            checkGlobalAuth(
+                context.setAuditLogOperation(AuditLogOperation.DDL),
+                PrivilegeType.MANAGE_ROLE,
+                auditObject);
+        if (authorType == AuthorType.GRANT_USER_ROLE || authorType == AuthorType.REVOKE_USER_ROLE) {
+          DNAuditLogger.getInstance()
+              .logUserRoleModificationAuthorizationFailure(statement, context, status);
+        }
+        return status;
 
       case REVOKE_USER:
       case GRANT_USER:
@@ -695,7 +773,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   private TSStatus checkCanAlterUser(AuthorStatement statement, TreeAccessCheckContext context) {
     context.setAuditLogOperation(AuditLogOperation.DDL);
-    if (statement.getUserName().equals(context.getUsername())) {
+    if (Objects.equals(statement.getUserName(), context.getUsername())) {
       // users can change the username and password of themselves
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           context.setResult(true), context::getUsername);
@@ -874,6 +952,25 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
+  public TSStatus visitShowPipeMemory(
+      ShowPipeMemoryStatement statement, TreeAccessCheckContext context) {
+    return checkGlobalAuth(
+        context.setAuditLogOperation(AuditLogOperation.QUERY),
+        PrivilegeType.SYSTEM,
+        () -> "SHOW PIPE MEMORY");
+  }
+
+  @Override
+  public TSStatus visitShowReceivers(
+      ShowReceiversStatement statement, TreeAccessCheckContext context) {
+    // This query follows SHOW PIPES: it cannot be rejected here.
+    AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
+        context.setAuditLogOperation(AuditLogOperation.QUERY).setResult(true),
+        () -> "SHOW RECEIVERS");
+    return StatusUtils.OK;
+  }
+
+  @Override
   public TSStatus visitDropPipe(DropPipeStatement statement, TreeAccessCheckContext context) {
     return checkPipeManagement(
         context.setAuditLogOperation(AuditLogOperation.DDL), statement::getPipeName);
@@ -1033,6 +1130,18 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
           .setMessage(getReservedDatabaseNameErrorMsg(TREE_MODEL_AUDIT_DATABASE));
     }
+    // The system database is created by the database itself, not through SQL.
+    if (!context.isInternal()
+        && InternalDatabaseUtils.isSystemDatabasePath(statement.getDatabasePath())) {
+      context
+          .setDatabase(statement.getDatabasePath().getFullPath())
+          .setPrivilegeType(PrivilegeType.MANAGE_DATABASE)
+          .setAuditLogOperation(AuditLogOperation.DDL);
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
+          context.setResult(false), statement.getDatabasePath()::getFullPath);
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage(getReservedDatabaseNameErrorMsg(SchemaConstant.SYSTEM_DATABASE));
+    }
     return checkCreateOrAlterDatabasePermission(
         context.setAuditLogOperation(AuditLogOperation.DDL), statement.getDatabasePath());
   }
@@ -1040,6 +1149,12 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitAlterDatabase(
       DatabaseSchemaStatement databaseSchemaStatement, TreeAccessCheckContext context) {
+    final TSStatus systemDatabaseStatus =
+        checkSystemDatabaseWrite(
+            context, Collections.singletonList(databaseSchemaStatement.getDatabasePath()));
+    if (systemDatabaseStatus != null) {
+      return systemDatabaseStatus;
+    }
     return checkCreateOrAlterDatabasePermission(
         context.setAuditLogOperation(AuditLogOperation.DDL),
         databaseSchemaStatement.getDatabasePath());
@@ -1089,6 +1204,14 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     context
         .setAuditLogOperation(AuditLogOperation.DDL)
         .setDatabase(statement.getPrefixPath().toString());
+    if (!context.isInternal()
+        && SchemaConstant.SYSTEM_DATABASE.equals(String.join(".", statement.getPrefixPath()))) {
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
+          context.setPrivilegeType(PrivilegeType.MANAGE_DATABASE).setResult(false),
+          () -> String.join(".", statement.getPrefixPath()));
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage(getUnsupportedAuditDatabaseOperationMessage(SchemaConstant.SYSTEM_DATABASE));
+    }
     for (String prefixPath : statement.getPrefixPath()) {
       // root.__audit can never be deleted
       if (TREE_MODEL_AUDIT_DATABASE.equals(prefixPath)) {
@@ -1156,6 +1279,27 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   // ==================================== data related ========================================
+  /**
+   * Rejects writes to {@code root.__system} from sessions that are not dedicated internal writers.
+   * Callers must pass the paths that will actually be written, including the source paths of a
+   * writable view, because analysis rewrites inserts and deletes to those source series.
+   */
+  public static TSStatus checkSystemDatabaseWrite(
+      final IAuditEntity context, final Collection<? extends PartialPath> checkedPaths) {
+    if (context.isInternal()) {
+      return null;
+    }
+    for (PartialPath path : checkedPaths) {
+      if (InternalDatabaseUtils.isSystemDatabasePath(path)) {
+        AUDIT_LOGGER.recordObjectAuthenticationAuditLog(context.setResult(false), path::toString);
+        return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage(
+                getUnsupportedAuditDatabaseOperationMessage(SchemaConstant.SYSTEM_DATABASE));
+      }
+    }
+    return null;
+  }
+
   @Override
   public TSStatus visitInsertBase(InsertBaseStatement statement, TreeAccessCheckContext context) {
     context.setAuditLogOperation(AuditLogOperation.DML).setPrivilegeType(PrivilegeType.WRITE_DATA);
@@ -1173,6 +1317,11 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
           context.setResult(false), unsupportedAuditPath::toString);
       return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
           .setMessage(getUnsupportedAuditDatabaseOperationMessage(TREE_MODEL_AUDIT_DATABASE));
+    }
+    final TSStatus unsupportedSystemStatus =
+        checkSystemDatabaseWrite(context, statement.getDevicePathsStream().toList());
+    if (unsupportedSystemStatus != null) {
+      return unsupportedSystemStatus;
     }
 
     if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
@@ -1274,6 +1423,13 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       PrivilegeType permission,
       Function<List<? extends PartialPath>, String> auditObjectFormatter) {
     context.setPrivilegeType(permission);
+    if (permission == PrivilegeType.WRITE_SCHEMA || permission == PrivilegeType.WRITE_DATA) {
+      final TSStatus systemDatabaseStatus =
+          checkSystemDatabaseWrite(context, checkedPathsSupplier.get());
+      if (systemDatabaseStatus != null) {
+        return systemDatabaseStatus;
+      }
+    }
     if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           context.setResult(true), () -> auditObjectFormatter.apply(checkedPathsSupplier.get()));
@@ -1733,6 +1889,11 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
             .setMessage(getUnsupportedAuditDatabaseOperationMessage(TREE_MODEL_AUDIT_DATABASE));
       }
     }
+    final TSStatus systemDatabaseStatus =
+        checkSystemDatabaseWrite(context, statement.getPathPatternList());
+    if (systemDatabaseStatus != null) {
+      return systemDatabaseStatus;
+    }
     return checkTimeSeriesPermission(context, statement::getPaths, PrivilegeType.WRITE_SCHEMA);
   }
 
@@ -1783,7 +1944,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitKillQuery(KillQueryStatement statement, TreeAccessCheckContext context) {
-    if (checkHasGlobalAuth(
+    if (!checkHasGlobalAuth(
         context.setAuditLogOperation(AuditLogOperation.CONTROL),
         PrivilegeType.MAINTAIN,
         () -> "")) {
@@ -1963,7 +2124,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitShowQueries(ShowQueriesStatement statement, TreeAccessCheckContext context) {
-    if (checkHasGlobalAuth(context, PrivilegeType.MAINTAIN, () -> "")) {
+    if (!checkHasGlobalAuth(context, PrivilegeType.MAINTAIN, () -> "")) {
       statement.setAllowedUsername(context.getUsername());
     }
     return SUCCEED;
@@ -2041,6 +2202,10 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   public TSStatus visitSetTTL(SetTTLStatement statement, TreeAccessCheckContext context) {
     context.setPrivilegeType(PrivilegeType.SYSTEM).setAuditLogOperation(AuditLogOperation.DDL);
     List<PartialPath> checkedPaths = statement.getPaths();
+    final TSStatus systemDatabaseStatus = checkSystemDatabaseWrite(context, checkedPaths);
+    if (systemDatabaseStatus != null) {
+      return systemDatabaseStatus;
+    }
     boolean[] pathsNotEndWithMultiLevelWildcard = null;
     for (int i = 0; i < checkedPaths.size(); i++) {
       PartialPath checkedPath = checkedPaths.get(i);

@@ -246,6 +246,8 @@ public final class UtilMessages {
   public static final String MESSAGE_MEET_ERROR_CLOSE_OPERATION_1C7D0589 = "关闭操作中发生错误。";
   public static final String MESSAGE_FAIL_DO_NON_QUERY_OPERATIONS_BECAUSE_SYSTEM_READ_ONLY_10CA1ED2 = "系统只读，无法执行非查询操作。";
   public static final String MESSAGE_DISK_SPACE_INSUFFICIENT_DF6205B0 = "磁盘空间不足。";
+  public static final String MESSAGE_FAILED_TO_WRITE_THE_TARGET_FILE_4C48CE25 =
+      "写入目标文件失败。";
   public static final String MESSAGE_MEET_ERROR_STARTING_UP_22A4CBFE = "启动时发生错误。";
   public static final String MESSAGE_USERNAME_PASSWORD_WRONG_C44C4AF0 = "用户名或密码错误。";
   public static final String MESSAGE_HAS_NOT_LOGGED_A2BA0267 = "尚未登录。";

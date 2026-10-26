@@ -90,7 +90,7 @@ public class AddTableColumnProcedure
               ProcedureMessages.COMMIT_RELEASE_INFO_OF_TABLE_WHEN_ADDING_COLUMN,
               database,
               tableName);
-          commitRelease(env);
+          commitReleaseWithHA(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(
@@ -152,6 +152,23 @@ public class AddTableColumnProcedure
   @Override
   protected String getActionMessage() {
     return "add table column";
+  }
+
+  /**
+   * The column is part of the table on the ConfigNode once ADD_COLUMN has completed, and the
+   * ConfigNode schema is the source of truth the DataNodes resync from. The procedure therefore
+   * stays rollbackable up to ADD_COLUMN and not after it.
+   */
+  @Override
+  protected boolean isRollbackSupported(final AddTableColumnState state) {
+    switch (state) {
+      case COLUMN_CHECK:
+      case PRE_RELEASE:
+      case ADD_COLUMN:
+        return true;
+      default:
+        return false;
+    }
   }
 
   @Override
@@ -240,6 +257,10 @@ public class AddTableColumnProcedure
   public boolean equals(final Object o) {
     return super.equals(o)
         && Objects.equals(this.addedColumnList, ((AddTableColumnProcedure) o).addedColumnList);
+  }
+
+  public void setAddedColumnList(List<TsTableColumnSchema> addedColumnList) {
+    this.addedColumnList = addedColumnList;
   }
 
   @Override

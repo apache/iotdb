@@ -66,7 +66,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TableDiskUsageStatisticUtil;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
-import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
+import org.apache.iotdb.db.storageengine.load.metrics.LoadPointCountMetrics;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -148,7 +148,8 @@ public class IoTConsensusV2Receiver {
     }
 
     try {
-      this.folderManager = new FolderManager(receiveDirs, DirectoryStrategyType.SEQUENCE_STRATEGY);
+      this.folderManager =
+          new FolderManager(receiveDirs, DirectoryStrategyType.SEQUENCE_STRATEGY, false);
       this.iotConsensusV2TsFileWriterPool = new IoTConsensusV2TsFileWriterPool(consensusPipeName);
     } catch (Exception e) {
       LOGGER.error(DataNodePipeMessages.FAIL_TO_CREATE_IOTCONSENSUSV2_RECEIVER_FILE_FOLDERS, e);
@@ -365,7 +366,8 @@ public class IoTConsensusV2Receiver {
             // filename. However, for other files (mod, snapshot, etc.) the content varies for the
             // same name in different times, then we must rewrite the file to apply the newest
             // version.
-            writingFileWriter.setLength(0);
+            org.apache.iotdb.commons.utils.FileUtils.truncateFile(writingFile, 0);
+            writingFileWriter.seek(0);
           }
 
           final TSStatus status =
@@ -741,7 +743,7 @@ public class IoTConsensusV2Receiver {
                     .getNonSystemDatabaseName()
                     .ifPresent(
                         databaseName ->
-                            LoadTsFileManager.updateWritePointCountMetrics(
+                            LoadPointCountMetrics.updateWritePointCountMetrics(
                                 dataRegion, databaseName, writePointCount, true)));
   }
 

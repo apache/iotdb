@@ -29,6 +29,8 @@ public class PipeTransferHandshakeConstant {
   public static final String HANDSHAKE_KEY_USERNAME = "username";
   public static final String HANDSHAKE_KEY_CLI_HOSTNAME = "cliHostname";
   public static final String HANDSHAKE_KEY_PASSWORD = "password";
+  public static final String HANDSHAKE_KEY_PIPE_NAME = "pipeName";
+  public static final String HANDSHAKE_KEY_PIPE_CREATION_TIME = "pipeCreationTime";
   public static final String HANDSHAKE_KEY_VALIDATE_TSFILE = "validateTsFile";
   public static final String HANDSHAKE_KEY_MARK_AS_PIPE_REQUEST = "markAsPipeRequest";
   public static final String HANDSHAKE_KEY_SKIP_IF = "skipIf";

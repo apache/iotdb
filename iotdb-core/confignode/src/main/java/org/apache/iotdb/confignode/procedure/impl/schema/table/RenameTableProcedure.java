@@ -85,7 +85,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
               ProcedureMessages.COMMIT_RELEASE_INFO_OF_TABLE_WHEN_RENAMING_TABLE,
               database,
               tableName);
-          commitRelease(env, tableName);
+          commitReleaseWithHA(env, tableName);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(
@@ -141,6 +141,23 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
       setFailure(new ProcedureException(new IoTDBException(status)));
     } else {
       setNextState(RenameTableState.COMMIT_RELEASE);
+    }
+  }
+
+  /**
+   * The table is renamed on the ConfigNode once RENAME_TABLE has completed, and the ConfigNode
+   * schema is the source of truth the DataNodes resync from. The procedure therefore stays
+   * rollbackable up to RENAME_TABLE and not after it.
+   */
+  @Override
+  protected boolean isRollbackSupported(final RenameTableState state) {
+    switch (state) {
+      case COLUMN_CHECK:
+      case PRE_RELEASE:
+      case RENAME_TABLE:
+        return true;
+      default:
+        return false;
     }
   }
 

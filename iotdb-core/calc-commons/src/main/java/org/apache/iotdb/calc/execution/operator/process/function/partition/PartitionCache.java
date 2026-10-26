@@ -117,6 +117,6 @@ public class PartitionCache {
   }
 
   public void close() {
-    // do nothing
+    clear();
   }
 }

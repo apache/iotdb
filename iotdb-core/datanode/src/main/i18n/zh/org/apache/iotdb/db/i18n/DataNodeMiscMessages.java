@@ -21,6 +21,11 @@ package org.apache.iotdb.db.i18n;
 
 /** 编译时国际化常量 - DataNode 杂项子系统（中文）。 */
 public final class DataNodeMiscMessages {
+  public static final String MESSAGE_QUERY_DOES_NOT_BELONG_TO_CURRENT_SESSION_A1198237 =
+      "请求的查询不属于当前会话。";
+
+  public static final String MESSAGE_MISSING_LOAD_TSFILE_SLICE_METADATA_ARG_DE4333DA =
+      "缺少 Load TsFile 分片元数据：%s";
 
     public static final String INVALID_PIPE_NAME =
       "无效的 pipeName";
@@ -118,9 +123,90 @@ public final class DataNodeMiscMessages {
   public static final String COLUMN_FILTER_LIKE_PATTERN = "LIKE 模式";
   public static final String COLUMN_FILTER_LIKE_ESCAPE = "LIKE 转义符";
   public static final String COLUMN_FILTER_REGEXP_PATTERN = "REGEXP 模式";
+  public static final String EXCEPTION_INVALID_TAG_FILTER_ARG_E4B1C1C6 =
+      "\u65e0\u6548\u7684 tag-filter\uff1a%s";
+  public static final String EXCEPTION_TAG_FILTER_SHOULD_NOT_BE_EMPTY_507CA5B0 =
+      "tag-filter \u4e0d\u5e94\u4e3a\u7a7a";
+  public static final String
+      EXCEPTION_ONLY_AND_COMPARISONS_ARE_SUPPORTED_IN_TAG_FILTER_19946958 =
+          "tag-filter \u4ec5\u652f\u6301 =\u3001!= \u548c <> \u6bd4\u8f83";
+  public static final String EXCEPTION_LEFT_OPERAND_MUST_BE_A_TAG_COLUMN_F9D4548B =
+      "\u5de6\u64cd\u4f5c\u6570\u5fc5\u987b\u662f TAG \u5217";
+  public static final String EXCEPTION_TAG_FILTER_EVALUATION_FAILED_ARG_1B239B2F =
+      "tag-filter \u6c42\u503c\u5931\u8d25\uff1a%s";
+  public static final String EXCEPTION_TAG_FILTER_SCHEMA_BINDING_FAILED_ARG_7A5D2D47 =
+      "tag-filter Schema \u7ed1\u5b9a\u5931\u8d25\uff1a%s";
+  public static final String EXCEPTION_TAG_FILTER_EXCEEDS_MAXIMUM_UTF_8_LENGTH_OF_ARG_BYTES_9C8400F2 =
+      "tag-filter \u8d85\u8fc7 UTF-8 \u6700\u5927\u957f\u5ea6 %s \u5b57\u8282";
+  public static final String EXCEPTION_TAG_FILTER_AST_DEPTH_EXCEEDS_MAXIMUM_OF_ARG_64C92731 =
+      "tag-filter AST \u6df1\u5ea6\u8d85\u8fc7\u6700\u5927\u503c %s";
+  public static final String EXCEPTION_TAG_FILTER_AST_NODE_COUNT_EXCEEDS_MAXIMUM_OF_ARG_40CCE694 =
+      "tag-filter AST \u8282\u70b9\u6570\u8d85\u8fc7\u6700\u5927\u503c %s";
+  public static final String EXCEPTION_TAG_FILTER_IN_LIST_EXCEEDS_MAXIMUM_OF_ARG_VALUES_07E7FC6C =
+      "tag-filter IN \u5217\u8868\u8d85\u8fc7\u6700\u5927\u503c %s";
+  public static final String EXCEPTION_TAG_FILTER_REGEXP_PATTERN_EXCEEDS_MAXIMUM_LENGTH_OF_ARG_CHARACTERS_67590971 =
+      "tag-filter REGEXP \u6a21\u5f0f\u8d85\u8fc7\u6700\u5927\u957f\u5ea6 %s \u5b57\u7b26";
+  public static final String
+      EXCEPTION_TABLE_SCHEMA_ARG_ARG_IS_ABSENT_FROM_THIS_DATANODE_S_TABLE_CACHE_THE_TABLE_MAY_NOT_EXIST_OR_ITS_SCHEMA_HAS_NOT_BEEN_SYNCHRONIZED_YET_23975BDF =
+          "此 DataNode 的表缓存中没有表结构 %s.%s；该表可能不存在，或其结构尚未同步";
+  public static final String
+      EXCEPTION_TABLE_SCHEMA_KEPT_CHANGING_WHILE_BINDING_TAG_FILTER_FOR_DATABASE_PATTERN_ARG_AND_TABLE_PATTERN_ARG_RETRY_AFTER_SCHEMA_SYNCHRONIZATION_77A005E9 =
+          "为数据库模式 %s 和表模式 %s 绑定 tag-filter 时表结构持续变化；请在结构同步后重试";
+  public static final String EXCEPTION_TABLE_SCHEMA_IS_NOT_AVAILABLE_FOR_TAG_FILTER_993AB728 =
+      "tag-filter \u6240\u9700\u8868\u7ed3\u6784\u4e0d\u53ef\u7528";
+  public static final String EXCEPTION_REFERENCED_TAG_COLUMN_IS_MISSING_ARG_F5300BEA =
+      "\u5f15\u7528\u7684 TAG \u5217\u4e0d\u5b58\u5728\uff1a%s";
+  public static final String EXCEPTION_REFERENCED_COLUMN_IS_NOT_A_TAG_COLUMN_ARG_34D60881 =
+      "\u5f15\u7528\u7684\u5217\u4e0d\u662f TAG \u5217\uff1a%s";
+  public static final String EXCEPTION_UNCOMPILED_LIKE_PREDICATE_01AEE439 =
+      "LIKE \u8c13\u8bcd\u672a\u7f16\u8bd1";
+  public static final String EXCEPTION_UNCOMPILED_REGEXP_PREDICATE_2B0DD646 =
+      "REGEXP \u8c13\u8bcd\u672a\u7f16\u8bd1";
+  public static final String EXCEPTION_MATCHER_IS_UNAVAILABLE_1A659D47 =
+      "tag-filter \u5339\u914d\u5668\u4e0d\u53ef\u7528";
+  public static final String EXCEPTION_TABLET_SCHEMA_IS_MISSING_164075B0 =
+      "Tablet Schema \u7f3a\u5931";
+  public static final String EXCEPTION_TABLET_VALUE_COLUMNS_ARE_INCOMPLETE_DCD09F3C =
+      "Tablet \u503c\u5217\u4e0d\u5b8c\u6574";
+  public static final String EXCEPTION_FAILED_TO_EVALUATE_A_TABLET_ROW_7E4E94CE =
+      "Tablet \u884c\u6c42\u503c\u5931\u8d25";
+  public static final String EXCEPTION_TABLE_BINDING_IS_NOT_AVAILABLE_882C5F2F =
+      "\u8868\u7ed1\u5b9a\u4e0d\u53ef\u7528";
+  public static final String EXCEPTION_REFERENCED_COLUMN_IS_NOT_A_TAG_COLUMN_33FA34BC =
+      "\u5f15\u7528\u7684\u5217\u4e0d\u662f TAG \u5217";
+  public static final String EXCEPTION_REFERENCED_COLUMN_CATEGORY_CHANGED_564594D8 =
+      "\u5f15\u7528\u5217\u7684\u7c7b\u522b\u5df2\u53d8\u66f4";
+  public static final String EXCEPTION_REFERENCED_TAG_COLUMN_IS_MISSING_55E07377 =
+      "\u5f15\u7528\u7684 TAG \u5217\u7f3a\u5931";
+  public static final String EXCEPTION_TABLET_MEASUREMENT_SCHEMA_IS_INCOMPLETE_6A813472 =
+      "Tablet \u6d4b\u91cf\u7ed3\u6784\u4e0d\u5b8c\u6574";
+  public static final String EXCEPTION_FAILED_TO_COMPACT_FILTERED_TABLET_5D4AD8AA =
+      "\u538b\u7f29\u8fc7\u6ee4\u540e\u7684 Tablet \u5931\u8d25";
+  public static final String EXCEPTION_TABLET_COLUMN_CATEGORIES_ARE_MISSING_2C660532 =
+      "Tablet \u5217\u7c7b\u522b\u7f3a\u5931";
+  public static final String EXCEPTION_TABLET_COLUMN_CATEGORY_IS_MISSING_A812B500 =
+      "Tablet \u5217\u7c7b\u522b\u7f3a\u5931";
+  public static final String EXCEPTION_TABLET_TIMESTAMPS_ARE_INCOMPLETE_24F8CE6F =
+      "Tablet \u65f6\u95f4\u6233\u4e0d\u5b8c\u6574";
+  public static final String EXCEPTION_TABLET_BITMAPS_ARE_INCOMPLETE_7BBC8035 =
+      "Tablet bitmap \u4e0d\u5b8c\u6574";
+  public static final String EXCEPTION_TABLET_VALUE_COLUMN_IS_INCOMPLETE_845721FE =
+      "Tablet \u503c\u5217\u4e0d\u5b8c\u6574";
+  public static final String EXCEPTION_TREE_VIEW_PROJECTOR_IS_UNAVAILABLE_FOR_FILTERED_SUBSCRIPTION_DATA_B5F396A5 =
+      "\u8fc7\u6ee4\u8ba2\u9605\u6570\u636e\u7684 Tree View \u6295\u5f71\u5668\u4e0d\u53ef\u7528";
+  public static final String
+      EXCEPTION_TOPIC_CONFIGURATION_IS_NOT_AVAILABLE_FOR_TAG_FILTER_1E023E3A =
+          "\u65e0\u6cd5\u83b7\u53d6 tag-filter \u7684 Topic \u914d\u7f6e";
+  public static final String
+      EXCEPTION_TOPIC_CONFIGURATION_CHANGED_WHILE_CAPTURING_TAG_FILTER_SNAPSHOT_984CEB1B =
+          "\u6355\u83b7 tag-filter \u5feb\u7167\u65f6 Topic \u914d\u7f6e\u53d1\u751f\u53d8\u5316";
+  public static final String
+      LOG_SUBSCRIPTION_TABLE_SCHEMA_IS_NOT_AVAILABLE_FOR_TAG_FILTER_TOPIC_ARG_E864C98F =
+      "\u8ba2\u9605：tag-filter Topic \u7684\u8868 Schema \u4e0d\u53ef\u7528 [{}]";
 
   public static final String CREATE_NEW_REGION_ERROR_FMT = "创建新 region %s 错误，异常：%s";
   public static final String CREATE_NEW_REGION_SUCCEED_FMT = "创建新 region %s 成功";
+  public static final String LOG_USER_ARG_ROLE_ARG_422D48D3 = "用户：%s，角色：%s";
   private DataNodeMiscMessages() {}
 
   // ---------------------------------------------------------------------------
@@ -130,33 +216,6 @@ public final class DataNodeMiscMessages {
       "存在多个 ServerContextFactory 实现，请检查。";
   public static final String SET_SERVER_CONTEXT_FACTORY =
       "将从 {} 设置 ServerContextFactory";
-
-  // ---------------------------------------------------------------------------
-  // protocol – ConfigNodeInfo
-  // ---------------------------------------------------------------------------
-  public static final String UPDATE_CONFIG_NODE_SUCCESSFULLY =
-      "成功更新 ConfigNode：{}，耗时 {} 毫秒。";
-  public static final String UPDATE_CONFIG_NODE_FAILED = "更新 ConfigNode 失败。";
-  public static final String SYSTEM_PROPERTIES_NOT_EXIST =
-      "系统属性文件不存在，无需存储 ConfigNode 列表";
-  public static final String LOAD_CONFIG_NODE_SUCCESSFULLY =
-      "成功加载 ConfigNode：{}，耗时 {} 毫秒。";
-  public static final String CANNOT_PARSE_CONFIG_NODE_LIST =
-      "无法解析 system.properties 中的 ConfigNode 列表";
-
-  // ---------------------------------------------------------------------------
-  // protocol – ConfigNodeClient
-  // ---------------------------------------------------------------------------
-  public static final String NODE_LEADER_MAY_DOWN_TRY_NEXT =
-      "当前节点 Leader {} 可能已宕机，尝试下一个节点";
-  public static final String UNEXPECTED_INTERRUPTION_CONNECT_CONFIG_NODE =
-      "等待连接 ConfigNode 时发生意外中断";
-  public static final String NODE_MAY_DOWN_TRY_NEXT =
-      "当前节点 {} 可能已宕机，尝试下一个节点";
-  public static final String FAILED_CONNECT_CONFIG_NODE_NOT_LEADER =
-      "从 DataNode {} 连接 ConfigNode {} 失败，因为当前节点不是 Leader 或尚未就绪，稍后将重试";
-  public static final String UNEXPECTED_INTERRUPTION_CONNECT_CONFIG_NODE_BREAK =
-      "等待连接 ConfigNode 时发生意外中断，可能是当前节点已宕机，将中断当前执行流程以避免无意义等待。";
 
   // ---------------------------------------------------------------------------
   // protocol – DataNodeInternalClient
@@ -444,8 +503,6 @@ public final class DataNodeMiscMessages {
   // ---------------------------------------------------------------------------
   // service – metrics
   // ---------------------------------------------------------------------------
-  public static final String FAILED_GET_PROCESS_RESIDENT_MEMORY =
-      "获取进程 {} 的常驻内存失败";
   public static final String DATANODE_PORT_CHECK_SUCCESSFUL = "DataNode 端口检查通过。";
 
   // ---------------------------------------------------------------------------
@@ -631,7 +688,12 @@ public final class DataNodeMiscMessages {
   public static final String INPUT_DOUBLE_INFINITY = "输入的双精度数值为 Infinity";
   public static final String BOOLEAN_PARSE_ERROR =
       "BOOLEAN 值应为 true/TRUE、false/FALSE 或 0/1";
-  public static final String UNSUPPORTED_DATA_TYPE_FMT = "不支持的数据类型：%s";
+  public static final String EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_ARG_REGISTERED_ARG_0EF32FD3 =
+      "数据类型不一致，输入值 %s，注册类型 %s";
+  public static final String EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_ARG_REGISTERED_ARG_BECAUSE_ARG_C8637858 =
+      "数据类型不一致，输入值 %s，注册类型 %s，原因：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_FMT =
+      "不支持的数据类型：%s";
   public static final String UNSUPPORTED_DATA_TYPE = "不支持的数据类型：";
   public static final String AGGREGATE_FUNCTION_NAME_NULL =
       "聚合函数名称不能为空";
@@ -670,8 +732,6 @@ public final class DataNodeMiscMessages {
   public static final String STARTING_IOTDB = "正在启动 IoTDB {}";
   public static final String CANNOT_CREATE_SCHEMA_DIR = "无法创建 Schema 目录：{}";
   public static final String SCHEMA_DIR_CREATED = " {} 目录已创建。";
-  public static final String IOTDB_VERSION_TOO_OLD = "IoTDB 版本过旧";
-  public static final String REPAIR_SYSTEM_PROPERTIES = "修复 system.properties，缺少 {}";
   public static final String UNEXPECTED_CONSENSUS_GROUP_TYPE =
       "未预期的共识组类型";
   public static final String ENCRYPT_MAGIC_STRING_NOT_MATCHED =
@@ -813,6 +873,14 @@ public final class DataNodeMiscMessages {
       "\u8ba2\u9605\uff1a\u61d2\u52a0\u8f7d\u5237\u65b0\u4e3b\u9898 [{}] \u7684 column-filter \u5339\u914d\u5668\u5931\u8d25";
   public static final String SUBSCRIPTION_DROP_COLUMN_FILTER =
       "\u8ba2\u9605\uff1a\u5220\u9664\u4e3b\u9898 [{}] \u7684 column-filter \u5339\u914d\u5668";
+  public static final String
+      LOG_SUBSCRIPTION_FAILED_TO_REFRESH_TAG_FILTER_MATCHER_FOR_TOPIC_ARG_USE_EMPTY_MATCHER_TO_FAIL_CLOSED_3CB76D70 =
+          "\u8ba2\u9605\uff1a\u5237\u65b0\u4e3b\u9898 [{}] \u7684 tag-filter \u5339\u914d\u5668\u5931\u8d25\uff0c\u4f7f\u7528\u7a7a\u5339\u914d\u5668\u4ee5\u5b89\u5168\u5931\u8d25";
+  public static final String
+      LOG_SUBSCRIPTION_REFRESHED_TAG_FILTER_MATCHER_FOR_TOPIC_ARG_71598849 =
+          "\u8ba2\u9605\uff1a\u5df2\u5237\u65b0\u4e3b\u9898 [{}] \u7684 tag-filter \u5339\u914d\u5668";
+  public static final String LOG_SUBSCRIPTION_DROPPED_TAG_FILTER_MATCHER_FOR_TOPIC_ARG_9EA52458 =
+      "\u8ba2\u9605\uff1a\u5220\u9664\u4e3b\u9898 [{}] \u7684 tag-filter \u5339\u914d\u5668";
   public static final String SUBSCRIPTION_UNSUPPORTED_CONSENSUS_PROGRESS_FILE_VERSION_FMT =
       "不支持的共识订阅进度文件版本 %s";
 
@@ -853,6 +921,8 @@ public final class DataNodeMiscMessages {
       "从批次 {} 封存事件时发生异常";
   public static final String EXCEPTION_CONSTRUCT_NEW_BATCH =
       "构造新批次时发生异常";
+  public static final String EXCEPTION_FAILED_TO_SEAL_SUBSCRIPTION_EVENT_BATCH_1FB7E92C =
+      "\u5c01\u5b58\u8ba2\u9605\u4e8b\u4ef6\u6279\u6b21\u5931\u8d25";
 
   // ---------------------------------------------------------------------------
   // subscription – SubscriptionPrefetchingQueue
@@ -946,11 +1016,6 @@ public final class DataNodeMiscMessages {
   public static final String CACHE_ROLE_PATH_PRIVILEGES_ERROR =
       "缓存角色路径权限时发生错误";
 
-  // ---------------------------------------------------------------------------
-  // auth – BasicAuthorityCache
-  // ---------------------------------------------------------------------------
-  public static final String DATANODE_CACHE_INIT_FAILED =
-      "DataNode 缓存初始化失败";
 
   // ---------------------------------------------------------------------------
   // trigger – TriggerExecutor
@@ -1063,6 +1128,10 @@ public final class DataNodeMiscMessages {
   // --- DataNodeInternalRPCServiceImpl ---
   public static final String LOAD_COMMAND_REQUIRES_TIME_PARTITION_TO_PROGRESS_INDEX_MAP =
       "Load 命令需要时间分区到进度索引的映射";
+  public static final String LOG_THE_LOAD_COMMAND_PROTOCOL_WAS_REMOVED_THE_REQUEST_OF_TASK_ARG_IS_REJECTED_76937A9C =
+      "Load 命令协议已被移除，任务 {} 的请求被拒绝。";
+  public static final String MESSAGE_THE_LOAD_COMMAND_PROTOCOL_WAS_REMOVED_LOAD_TRAVELS_THROUGH_CONSENSUS_NOW_0165EE16 =
+      "Load 命令协议已被移除，LOAD 现在通过共识完成。";
   public static final String TOPOLOGY_PROBING_TIMED_OUT_AFTER_S_MS =
       "拓扑探测在 %s 毫秒后超时";
   public static final String NO_SUCH_QUERY = "查询不存在";
@@ -1105,7 +1174,7 @@ public final class DataNodeMiscMessages {
   public static final String MISC_LOG_DATANODE_EXITS_JVM_MEMORY_USAGE_BE69D1F5 =
       "DataNode 退出。JVM 内存使用情况：{}";
   public static final String MISC_LOG_FAILED_TO_REPORT_DATANODE_S_SHUTDOWN_TO_CONFIGNODE_THE_CLUSTER_E6727497 =
-      "无法向 ConfigNode 上报 DataNode 关闭状态。集群在接下来的几秒内仍会将当前 DataNode 视为 Running。";
+      "未能获得 ConfigNode leader 对 DataNode 关闭报告的确认。";
   public static final String MISC_LOG_SOMETHING_WRONG_HAPPENED_WHILE_CALLING_CONSENSUS_LAYER_S_8B8FBB16 =
       "调用共识层的 triggerSnapshot API 时发生错误。";
   public static final String MISC_LOG_THE_ADDREGIONPEERTASK_HAS_ALREADY_BEEN_SUBMITTED_AND_WILL_4D398F73 =
@@ -1149,12 +1218,8 @@ public final class DataNodeMiscMessages {
       "共找到 {} 个待 settle 的 TsFile。";
   public static final String MISC_LOG_SYSTEM_PROPERTIES_FILE_HAS_BEEN_MOVED_SUCCESSFULLY_4445A448 =
       "system.properties 文件已成功移动：{} -> {}";
-  public static final String MISC_LOG_SERIALIZE_MUTABLE_SYSTEM_PROPERTIES_SUCCESSFULLY_WHICH_TAKES_4656A206 =
-      "成功序列化 mutable system properties，耗时 {} ms。";
   public static final String MISC_LOG_SYSTEMPROPERTIES_NORMALIZE_FROM_TO_FOR_COMPATIBILITY_BE1C725F =
       "[SystemProperties] 为兼容性将 {} 从 {} 规范化为 {}。";
-  public static final String MISC_LOG_DO_NOT_UPGRADE_IOTDB_FROM_V0_9_OR_LOWER_VERSION_TO_V1_0_9878EC88 =
-      "请勿将 IoTDB 从 v0.9 或更低版本直接升级到 v1.0！请先升级到 v0.10";
   public static final String MISC_LOG_CANNOT_FIND_IOTDB_HOME_OR_IOTDB_CONF_ENVIRONMENT_VARIABLE_BE01B2FE =
       "加载配置文件 {} 时找不到 IOTDB_HOME 或 IOTDB_CONF 环境变量，使用默认配置";
   public static final String MISC_LOG_COULDN_T_LOAD_THE_CONFIGURATION_FROM_ANY_OF_THE_KNOWN_SOURCES_EE3ED103 =
@@ -1376,10 +1441,7 @@ public final class DataNodeMiscMessages {
       "配置项 chunkmeta_chunk_timeseriesmeta_free_memory_proportion 的每个子项都应为整数，当前为 %s";
   public static final String MISC_EXCEPTION_ILLEGAL_DEFAULTDATABASELEVEL_D_SHOULD_1_03088B38 =
       "非法的 defaultDatabaseLevel：%d，应 >= 1";
-  public static final String MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_OR_95B4DB23 =
-      "loadTsFileSpiltPartitionMaxSize 应大于或等于 0";
-  public static final String MISC_EXCEPTION_REMOVING_IS_ONLY_ALLOWED_IN_AN_ENVIRONMENT_WHERE_THE_DATANODE_5A3E1FEA =
-      "只有在 DataNode 已成功启动的环境中才允许移除。请检查它是否已在 ConfigNode 上移除，或是否误删了 system.properties 文件。";
+  public static final String MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_0_17B75192 = "loadTsFileSpiltPartitionMaxSize 应大于 0";
   public static final String MISC_EXCEPTION_STATEMENTID_SDOESN_T_EXIST_IN_THIS_SESSION_S_BD5B4733 =
       "StatementId：%s 在会话 %s 中不存在";
   public static final String MISC_EXCEPTION_INTERNALCLIENTSESSION_SHOULD_NEVER_CALL_PREPARE_STATEMENT_CCAB3CDC =
@@ -1402,8 +1464,6 @@ public final class DataNodeMiscMessages {
       "%s 不允许，仅支持 %s";
   public static final String MISC_EXCEPTION_S_IS_NOT_ALLOWED_ONLY_SUPPORT_S_1B06E0B7 =
       " %s 不允许，仅支持 %s";
-  public static final String PARAMETER_CANNOT_BE_MODIFIED_AFTER_FIRST_STARTUP_FMT =
-      "%s 首次启动后不能修改";
   public static final String UNSUPPORTED_INVOCATION_BY_DATANODE =
       "DataNode 不支持调用此方法";
   public static final String UNSUPPORTED_INVOCATION_BY_DATANODE_USE_SUBMIT_LOAD_CONFIGURATION_TASK =
@@ -1464,8 +1524,8 @@ public final class DataNodeMiscMessages {
       "[ChangeRegionLeader] 成功切换 RegionGroup 的 leader：";
   public static final String MESSAGE_MESSAGE_3501C7E6 = " 到 ";
   public static final String MESSAGE_EXECUTEFASTLASTDATAQUERYFORONEPREFIXPATH_DOS_NOT_SUPPORT_WILDCARDS_8E8F44F5 = "\"executeFastLastDataQueryForOnePrefixPath\" 不支持通配符。";
-  public static final String MESSAGE_TEMPLATE_NULL_TRYING_ACTIVATE_TEMPLATE_MAY_TEMPLATE_BEING_UNSET_1CE92779 =
-      "尝试激活模板时模板为空，可能正在取消设置该模板。";
+  public static final String MESSAGE_THE_TEMPLATE_IS_NULL_WHEN_TRYING_TO_ACTIVATE_TEMPLATE_MAY_BE_THE_TEMPLATE_IS_BEING_UNSET_THE_TEMPLATE_IDS_ARE_ARG_7B5F4F72 =
+      "尝试激活模板时模板为空，可能正在取消设置该模板。模板 ID 为 %s。";
   public static final String MESSAGE_DOT_9D9B854A = ".";
   public static final String MESSAGE_ERROR_OCCURRED_WHILE_PARSING_SQL_TO_PHYSICAL_PLAN_COLON_5C9F2C59 =
       "将 SQL 解析为物理计划时发生错误：";
@@ -1479,12 +1539,58 @@ public final class DataNodeMiscMessages {
   public static final String EXCEPTION_RUNTIMESTATE_D4D018BA = "runtimeState";
   public static final String EXCEPTION_STATEMENTNAME_IS_NULL_C03BB8D4 = "statementName 不能为空";
   public static final String EXCEPTION_SQL_IS_NULL_BEDB2B7A = "sql 不能为空";
-  public static final String MESSAGE_CONFIGNODE_LEADER_ARG_IS_WARMING_UP_BEFORE_SERVING_DATANODE_ARG_WILL_WAIT_AND_RETRY_AAB5F962 = "ConfigNode leader {} 正在预热，暂未对 DataNode {} 提供服务，将等待并重试。";
-  public static final String MESSAGE_CONFIGNODE_LEADER_ARG_IS_WARMING_UP_BEFORE_SERVING_DATANODE_ARG_WILL_WAIT_AND_RETRY_REASON_ARG_3A2A4163 =
-      "ConfigNode leader {} 正在预热，暂未对 DataNode {} 提供服务，将等待并重试。原因：{}";
   public static final String EXCEPTION_TRUST_STORE_PATH_MUST_BE_SET_WHEN_THRIFT_SSL_CLIENT_AUTH_IS_TRUE_36016171 = "当 thrift_ssl_client_auth 为 true 时，必须设置 trust_store_path";
   public static final String EXCEPTION_CONTINUOUS_QUERY_MIN_EVERY_INTERVAL_IN_MS_SHOULD_BE_GREATER_THAN_0_BUT_CURRENT_VALUE_IS_F9A1BEC4 = "continuous_query_min_every_interval_in_ms 必须大于 0，但当前值为 ";
   public static final String EXCEPTION_UNKNOWN_READ_CONSISTENCY_LEVEL_ARG_PLEASE_SET_TO_STRONG_OR_WEAK_8CF29949 = "未知的 read_consistency_level：%s，请设置为 \"strong\" 或 \"weak\"";
   public static final String MESSAGE_INITIAL_ALLOCATEMEMORYFORAUTORESIZINGBUFFER_ARG_A0DB6DA0 = "初始 allocateMemoryForAutoResizingBuffer = {}";
+  public static final String LOG_SKIP_SETTING_ARG_TO_ARG_BECAUSE_IT_IS_UNDER_DATA_DIRECTORY_KEEP_USING_ORIGINAL_CONFIGURATION_EE87FFD9 =
+      "跳过设置 {} 为 {}，因为其位于 data 目录下。继续使用原配置：{}。";
+  public static final String LOG_SKIP_SETTING_ARG_TO_ARG_BECAUSE_ITS_CANONICAL_PATH_CANNOT_BE_RESOLVED_ARG_KEEP_USING_ORIGINAL_CONFIGURATION_C0A8ED09 =
+      "跳过设置 {} 为 {}，因为无法解析其 canonical 路径：{}。继续使用原配置：{}。";
+  public static final String MISC_EXCEPTION_FAILED_TO_RESOLVE_CANONICAL_PATH_FOR_ACTIVE_LOAD_LISTENING_DIRECTORY_S_ARG_0E6A508E =
+      "无法解析 Active Load 监听目录 %s 的 canonical 路径：%s";
+
+  public static final String EXCEPTION_COLUMNSTOCLONE_CANNOT_BE_NULL_458FDF37 =
+      "columnsToClone 不能为 null";
+  public static final String EXCEPTION_CLONELIST_CANNOT_BE_NULL_47AEEA8F =
+      "cloneList 不能为 null";
+  public static final String EXCEPTION_TARGET_ALIGNEDTVLIST_HAS_INCOMPATIBLE_COLUMN_CONTAINERS_31FAC613 =
+      "目标 AlignedTVList 的列容器不兼容";
+  public static final String EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_MOVE_08D46037 =
+      "移动过程中缺少对齐列索引 %d 的值数组";
+  public static final String EXCEPTION_TARGET_VALUE_COLUMN_INDEX_ARG_IS_NOT_READY_FOR_MOVE_7889C74F =
+      "目标值列索引 %d 尚未准备好进行移动";
+  public static final String EXCEPTION_TARGET_BITMAP_COLUMN_INDEX_ARG_IS_NOT_READY_FOR_MOVE_AE3B5F88 =
+      "目标 bitmap 列索引 %d 尚未准备好进行移动";
+  public static final String EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_CLONE_795EB1C5 =
+      "克隆过程中缺少对齐列索引 %d 的值数组";
+  public static final String EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_EXPAND_68E0C8B6 =
+      "扩容过程中缺少对齐列索引 %d 的值数组";
+  public static final String EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_MARK_NULL_VALUE_2893628E =
+      "标记空值过程中缺少对齐列索引 %d 的值数组";
+  public static final String
+      LOG_TABLE_QUERY_DEVICE_ENTRY_BATCH_SIZE_IN_BYTES_ARG_EXCEEDS_DN_THRIFT_MAX_FRAME_SIZE_ARG_USING_ARG_AS_THE_EFFECTIVE_VALUE_2AE1BEDA =
+          "table_query_device_entry_batch_size_in_bytes（%d）超过最大 RPC payload（dn_thrift_max_frame_size %d 减去 1024 字节），将使用 %d 作为生效值";
+  public static final String
+      LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_NOT_POSITIVE_USING_DEFAULT_VALUE_ARG_1AA821B2 =
+          "mpp_data_exchange_max_payload_size_in_bytes（%d）不是正数，将使用默认值 %d";
+  public static final String
+      LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_EXCEEDS_MAXIMUM_ALLOWED_VALUE_ARG_USING_ARG_D9BF0BBC =
+          "mpp_data_exchange_max_payload_size_in_bytes（%d）超过允许的最大值 %d，将使用 %d";
+  public static final String
+      LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_BELOW_MINIMUM_ALLOWED_VALUE_ARG_USING_ARG_794ABC76 =
+          "mpp_data_exchange_max_payload_size_in_bytes（%d）低于允许的最小值 %d，将使用 %d";
+
+  public static final String MESSAGE_MULTIPLE_TYPES_ENCOUNTERED_WHEN_AUTO_DETECTING_TYPE_OF_MEASUREMENT_ARG_PLEASE_CHECK_6EDF48DB =
+      "自动检测测点 %s 的类型时遇到多种类型，请检查";
+
+  public static final String LOG_FAILED_TO_COLLECT_THE_DEVICES_USING_THE_EXTENDED_TEMPLATE_ARG_AB32D554 =
+      "收集使用扩展模板 {} 的设备失败";
+
+  public static final String
+      MISC_EXCEPTION_LOAD_TSFILE_WRITE_BUFFER_SIZE_SHOULD_BE_GREATER_THAN_0_AB1BA936 =
+          "loadTsFileWriteBufferSize 应大于 0";
+  public static final String EXCEPTION_BUFFER_SIZE_SHOULD_BE_GREATER_THAN_0_BB68B5C4 =
+      "bufferSize 应大于 0";
 
 }

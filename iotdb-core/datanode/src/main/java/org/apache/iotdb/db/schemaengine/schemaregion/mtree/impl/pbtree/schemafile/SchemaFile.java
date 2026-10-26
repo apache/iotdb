@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -37,6 +38,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafil
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.pagemgr.IPageManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.pagemgr.PageManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -45,11 +47,11 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
 
 /**
@@ -123,7 +125,7 @@ public class SchemaFile implements ISchemaFile {
       pmtFile.createNewFile();
     }
 
-    this.channel = new RandomAccessFile(pmtFile, "rw").getChannel();
+    this.channel = openReadWriteChannel(pmtFile);
     this.headerContent = ByteBuffer.allocate(SchemaFileConfig.FILE_HEADER_SIZE);
     // will be overwritten if to init
     this.dataTTL = ttl;
@@ -138,7 +140,7 @@ public class SchemaFile implements ISchemaFile {
     pmtFile = file;
     filePath = pmtFile.getPath();
     logPath = file.getParent() + File.separator + SchemaConstant.PBTREE_LOG_FILE_NAME;
-    channel = new RandomAccessFile(file, "rw").getChannel();
+    channel = openReadWriteChannel(file);
     headerContent = ByteBuffer.allocate(SchemaFileConfig.FILE_HEADER_SIZE);
 
     if (channel.size() <= 0) {
@@ -293,9 +295,17 @@ public class SchemaFile implements ISchemaFile {
     }
     pmtFile.createNewFile();
 
-    channel = new RandomAccessFile(pmtFile, "rw").getChannel();
+    channel = openReadWriteChannel(pmtFile);
     headerContent = ByteBuffer.allocate(SchemaFileConfig.FILE_HEADER_SIZE);
     initFileHeader();
+  }
+
+  private static FileChannel openReadWriteChannel(File file) throws IOException {
+    return FileChannel.open(
+        file.toPath(),
+        StandardOpenOption.READ,
+        StandardOpenOption.WRITE,
+        StandardOpenOption.CREATE);
   }
 
   public String inspect() throws MetadataException, IOException {
@@ -464,7 +474,7 @@ public class SchemaFile implements ISchemaFile {
         SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.PBTREE_SNAPSHOT);
     try {
       sync();
-      if (schemaFileSnapshot.exists() && !schemaFileSnapshot.delete()) {
+      if (schemaFileSnapshot.exists() && !FileUtils.deleteFileIfExist(schemaFileSnapshot)) {
         logger.error(
             DataNodeSchemaMessages.FAILED_TO_DELETE_OLD_PBTREE_SNAPSHOT,
             schemaFileSnapshot.getName());
@@ -474,7 +484,8 @@ public class SchemaFile implements ISchemaFile {
       return true;
     } catch (IOException e) {
       logger.error(DataNodeSchemaMessages.FAILED_TO_CREATE_SCHEMA_FILE_SNAPSHOT, e.getMessage(), e);
-      schemaFileSnapshot.delete();
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
+      FileUtils.deleteFileIfExist(schemaFileSnapshot);
       return false;
     }
   }

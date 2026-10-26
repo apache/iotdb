@@ -26,9 +26,18 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class DataRegionMetrics implements IMetricSet {
+  // A database has several data regions but a single memory gauge, which sums up the memory of the
+  // regions bound to it. Each region adds itself when binding, and the last region to unbind
+  // removes the gauge.
+  private static final Map<String, Set<DataRegion>> DATABASE_TO_DATA_REGIONS = new HashMap<>();
+
   private final DataRegion dataRegion;
   private final String databaseName;
 
@@ -39,22 +48,38 @@ public class DataRegionMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.createAutoGauge(
-        Metric.MEM.toString(),
-        MetricLevel.IMPORTANT,
-        dataRegion,
-        DataRegion::getMemCost,
-        Tag.NAME.toString(),
-        "database_" + databaseName);
+    synchronized (DATABASE_TO_DATA_REGIONS) {
+      Set<DataRegion> dataRegions =
+          DATABASE_TO_DATA_REGIONS.computeIfAbsent(
+              databaseName, database -> ConcurrentHashMap.newKeySet());
+      dataRegions.add(dataRegion);
+      metricService.createAutoGauge(
+          Metric.MEM.toString(),
+          MetricLevel.IMPORTANT,
+          dataRegions,
+          regions -> regions.stream().mapToLong(DataRegion::getMemCost).sum(),
+          Tag.NAME.toString(),
+          "database_" + databaseName);
+    }
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.MEM.toString(),
-        Tag.NAME.toString(),
-        "database_" + databaseName);
+    synchronized (DATABASE_TO_DATA_REGIONS) {
+      Set<DataRegion> dataRegions = DATABASE_TO_DATA_REGIONS.get(databaseName);
+      if (Objects.nonNull(dataRegions)) {
+        dataRegions.remove(dataRegion);
+        if (!dataRegions.isEmpty()) {
+          return;
+        }
+        DATABASE_TO_DATA_REGIONS.remove(databaseName);
+      }
+      metricService.remove(
+          MetricType.AUTO_GAUGE,
+          Metric.MEM.toString(),
+          Tag.NAME.toString(),
+          "database_" + databaseName);
+    }
   }
 
   @Override

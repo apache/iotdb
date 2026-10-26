@@ -91,6 +91,24 @@
             <onMismatch>DENY</onMismatch>
         </filter>
     </appender>
+    <!-- the error records of the tree-to-table view auto column addition, in a file of their own -->
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="VIEW_COLUMN_AUTO_SYNC_ERROR">
+        <file>${IOTDB_HOME}/logs/log_datanode_view_column_auto_sync_error.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-view-column-auto-sync-error-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <append>true</append>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
+            <charset>utf-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
     <appender class="ch.qos.logback.core.ConsoleAppender" name="stdout">
         <Target>System.out</Target>
         <encoder>
@@ -218,6 +236,9 @@
     <logger level="OFF" name="io.moquette.broker.metrics.MQTTMessageLogger"/>
     <logger level="info" name="org.apache.iotdb.db.service"/>
     <logger level="info" name="org.apache.iotdb.db.conf"/>
+    <logger level="info" name="org.apache.iotdb.db.schemaengine.table.ViewColumnAutoSyncTrigger">
+        <appender-ref ref="VIEW_COLUMN_AUTO_SYNC_ERROR"/>
+    </logger>
     <logger level="info" name="org.apache.iotdb.db.cost.statistic">
         <appender-ref ref="FILE_COST_MEASURE"/>
     </logger>

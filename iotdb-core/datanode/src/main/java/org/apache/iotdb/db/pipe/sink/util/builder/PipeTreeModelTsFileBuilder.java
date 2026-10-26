@@ -23,7 +23,6 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.BitMap;
@@ -88,6 +87,21 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
   }
 
   @Override
+  public Object createCheckpoint() {
+    return new BatchState(tabletList.size(), isTabletAlignedList.size());
+  }
+
+  @Override
+  public void rollbackToCheckpoint(final Object checkpoint) {
+    if (!(checkpoint instanceof BatchState)) {
+      return;
+    }
+    final BatchState batchState = (BatchState) checkpoint;
+    truncate(tabletList, batchState.tabletListSize);
+    truncate(isTabletAlignedList, batchState.isTabletAlignedListSize);
+  }
+
+  @Override
   public void onSuccess() {
     super.onSuccess();
     tabletList.clear();
@@ -99,6 +113,22 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
     super.close();
     tabletList.clear();
     isTabletAlignedList.clear();
+  }
+
+  private static <T> void truncate(final List<T> list, final int size) {
+    if (list.size() > size) {
+      list.subList(size, list.size()).clear();
+    }
+  }
+
+  private static final class BatchState {
+    private final int tabletListSize;
+    private final int isTabletAlignedListSize;
+
+    private BatchState(final int tabletListSize, final int isTabletAlignedListSize) {
+      this.tabletListSize = tabletListSize;
+      this.isTabletAlignedListSize = isTabletAlignedListSize;
+    }
   }
 
   private List<Pair<String, File>> writeTabletsToTsFiles()
@@ -151,7 +181,7 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
         try {
           fileWriter = new TsFileWriter(file);
         } catch (final IOException | RuntimeException e) {
-          FileUtils.deleteQuietly(file);
+          org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(file);
           throw e;
         }
       }
@@ -180,7 +210,8 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
         }
 
         for (final Pair<String, File> sealedFile : sealedFiles) {
-          final boolean deleteSuccess = FileUtils.deleteQuietly(sealedFile.right);
+          final boolean deleteSuccess =
+              org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(sealedFile.right);
           LOGGER.warn(
               DataNodePipeMessages.BATCH_ID_DELETE_THE_TSFILE_AFTER_FAILED,
               currentBatchId.get(),

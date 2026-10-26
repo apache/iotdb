@@ -92,6 +92,9 @@ public abstract class DownSamplingProcessor implements PipeProcessor {
             + TsFileConstant.PATH_SEPARATOR;
 
     pathLastObjectCache = initPathLastObjectCache(memoryLimitInBytes);
+    pathLastObjectCache.setPipeOwner(
+        configuration.getRuntimeEnvironment().getPipeName(),
+        configuration.getRuntimeEnvironment().getCreationTime());
   }
 
   protected abstract PartialPathLastObjectCache<?> initPathLastObjectCache(long memoryLimitInBytes);

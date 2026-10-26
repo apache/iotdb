@@ -20,12 +20,14 @@
 package org.apache.iotdb.db.pipe.agent.plugin;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.agent.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
 import org.apache.iotdb.db.pipe.processor.iotconsensusv2.IoTConsensusV2Processor;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.IoTConsensusV2AsyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
@@ -40,6 +42,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -179,5 +182,26 @@ public class PipeDataNodePluginAgentTest {
                       }
                     }))
             .getClass());
+  }
+
+  @Test
+  public void testPluginLoadFailureIsRecordedForShowPipePlugins() throws Exception {
+    final PipeDataNodePluginAgent agent = new PipeDataNodePluginAgent();
+    final PipePluginMeta plugin =
+        new PipePluginMeta("failed", "test.class", false, "failed.jar", "test-md5");
+
+    agent.markPluginLoadFailure(plugin, new IOException("missing jar"));
+
+    final Field metaKeeperField =
+        PipeDataNodePluginAgent.class.getDeclaredField("pipePluginMetaKeeper");
+    metaKeeperField.setAccessible(true);
+    final DataNodePipePluginMetaKeeper metaKeeper =
+        (DataNodePipePluginMetaKeeper) metaKeeperField.get(agent);
+    final PipePluginMeta recordedPlugin = metaKeeper.getPipePluginMeta("FAILED");
+
+    Assert.assertEquals(
+        "IOException: missing jar", recordedPlugin.getPluginLoadingExceptionMessage());
+    Assert.assertEquals(
+        Visibility.BOTH, metaKeeper.getPipePluginNameToVisibilityMap().get("FAILED"));
   }
 }

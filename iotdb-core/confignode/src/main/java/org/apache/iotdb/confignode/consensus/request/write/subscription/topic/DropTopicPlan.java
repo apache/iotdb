@@ -32,6 +32,8 @@ import java.util.Objects;
 public class DropTopicPlan extends ConfigPhysicalPlan {
 
   private String topicName;
+  private boolean isTableModel;
+  private boolean isTableModelSet;
 
   public DropTopicPlan() {
     super(ConfigPhysicalPlanType.DropTopic);
@@ -42,19 +44,40 @@ public class DropTopicPlan extends ConfigPhysicalPlan {
     this.topicName = topicName;
   }
 
+  public DropTopicPlan(String topicName, boolean isTableModel) {
+    this(topicName);
+    this.isTableModel = isTableModel;
+    this.isTableModelSet = true;
+  }
+
   public String getTopicName() {
     return topicName;
+  }
+
+  public boolean isTableModel() {
+    return isTableModel;
+  }
+
+  public boolean isTableModelSet() {
+    return isTableModelSet;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(topicName, stream);
+    if (isTableModelSet) {
+      ReadWriteIOUtils.write(isTableModel, stream);
+    }
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     topicName = ReadWriteIOUtils.readString(buffer);
+    isTableModelSet = buffer.hasRemaining();
+    if (isTableModelSet) {
+      isTableModel = ReadWriteIOUtils.readBool(buffer);
+    }
   }
 
   @Override
@@ -66,16 +89,18 @@ public class DropTopicPlan extends ConfigPhysicalPlan {
       return false;
     }
     DropTopicPlan that = (DropTopicPlan) obj;
-    return Objects.equals(topicName, that.topicName);
+    return isTableModel == that.isTableModel
+        && isTableModelSet == that.isTableModelSet
+        && Objects.equals(topicName, that.topicName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(topicName);
+    return Objects.hash(topicName, isTableModel, isTableModelSet);
   }
 
   @Override
   public String toString() {
-    return "DropTopicPlan{" + "topicName='" + topicName + "'}";
+    return "DropTopicPlan{" + "topicName='" + topicName + "', isTableModel=" + isTableModel + '}';
   }
 }

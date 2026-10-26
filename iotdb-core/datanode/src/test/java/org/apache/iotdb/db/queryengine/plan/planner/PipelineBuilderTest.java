@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.plan.planner.memory.PipelineMemoryEstimator;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
@@ -44,7 +45,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.ConsumeAllChildrenPipelineMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.ConsumeChildrenOneByOnePipelineMemoryEstimator;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
