@@ -70,7 +70,7 @@ public class UDFClassLoader extends URLClassLoader {
   }
 
   public void release() throws IOException {
-    activeQueriesCount.updateAndGet(count -> count > 0 ? count - 1 : 0);
+    activeQueriesCount.decrementAndGet();
     closeIfPossible();
   }
 
