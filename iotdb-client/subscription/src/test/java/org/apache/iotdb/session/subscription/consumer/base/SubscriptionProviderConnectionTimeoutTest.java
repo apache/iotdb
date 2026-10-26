@@ -138,11 +138,35 @@ public class SubscriptionProviderConnectionTimeoutTest {
   }
 
   @Test
+  public void testMissingFileBrokerPollErrorMarksProviderUnavailable() throws Exception {
+    assertPollError(
+        "Subscription: pipe broker bound to consumer group [group] does not exist", true);
+  }
+
+  @Test
+  public void testMissingTabletBrokerPollErrorMarksProviderUnavailable() throws Exception {
+    assertPollError("Subscription: broker bound to consumer group [group] does not exist", true);
+  }
+
+  @Test
+  public void testMissingTabletBrokerPollErrorFromChineseServerMarksProviderUnavailable()
+      throws Exception {
+    assertPollError("订阅：绑定到消费者组 [group] 的 Broker 不存在", true);
+  }
+
+  @Test
   public void testOtherPollErrorRemainsNonCritical() throws Exception {
     assertPollError("other poll error", false /* broker missing */);
   }
 
+  @Test
+  public void testNullPollErrorRemainsNonCritical() throws Exception {
+    assertPollError(null, false /* broker missing */);
+  }
+
   private void assertPollError(final String message, final boolean brokerMissing) throws Exception {
+    final AtomicInteger subscriptionCloseCount = new AtomicInteger();
+    final AtomicInteger sessionCloseCount = new AtomicInteger();
     final ServerSocket socket = new ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"));
     final TServerSocket serverSocket = new TServerSocket(socket);
     final IClientRPCService.Iface service =
@@ -168,6 +192,9 @@ public class SubscriptionProviderConnectionTimeoutTest {
                             successStatus(), 1, "consumer", "group");
                       }
                       if (request.getType() != PipeSubscribeRequestType.POLL.getType()) {
+                        if (request.getType() == PipeSubscribeRequestType.CLOSE.getType()) {
+                          subscriptionCloseCount.incrementAndGet();
+                        }
                         return new TPipeSubscribeResp(successStatus(), (byte) 1, (short) 6);
                       }
                       return new TPipeSubscribeResp(
@@ -176,6 +203,7 @@ public class SubscriptionProviderConnectionTimeoutTest {
                           (byte) 1,
                           (short) 6);
                     case "closeSession":
+                      sessionCloseCount.incrementAndGet();
                       return successStatus();
                     default:
                       return defaultValue(method.getReturnType());
@@ -194,17 +222,34 @@ public class SubscriptionProviderConnectionTimeoutTest {
     final TestSubscriptionProvider provider = new TestSubscriptionProvider(socket.getLocalPort());
     try {
       provider.handshake();
+      final TTransport transport = getTransport(provider.getSessionConnection());
+      final SubscriptionCommitContext context =
+          new SubscriptionCommitContext(1, 0, "topic", "group", 1L);
 
       if (brokerMissing) {
         Assert.assertThrows(
             SubscriptionConnectionException.class,
             () -> provider.poll(Collections.singleton("topic"), 1_000L));
         Assert.assertFalse(provider.isAvailable());
+        Assert.assertThrows(
+            SubscriptionConnectionException.class, () -> provider.pollFile(context, 0L, 1_000L));
+        Assert.assertThrows(
+            SubscriptionConnectionException.class, () -> provider.pollTablets(context, 0, 1_000L));
+        provider.closeSession();
+        Assert.assertFalse(transport.isOpen());
+        Assert.assertEquals(0, subscriptionCloseCount.get());
+        Assert.assertEquals(0, sessionCloseCount.get());
       } else {
         Assert.assertThrows(
             SubscriptionRuntimeNonCriticalException.class,
             () -> provider.poll(Collections.singleton("topic"), 1_000L));
         Assert.assertTrue(provider.isAvailable());
+        Assert.assertThrows(
+            SubscriptionRuntimeNonCriticalException.class,
+            () -> provider.pollFile(context, 0L, 1_000L));
+        Assert.assertThrows(
+            SubscriptionRuntimeNonCriticalException.class,
+            () -> provider.pollTablets(context, 0, 1_000L));
       }
     } finally {
       provider.close();

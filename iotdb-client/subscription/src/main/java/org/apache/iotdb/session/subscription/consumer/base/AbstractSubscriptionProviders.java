@@ -90,11 +90,14 @@ final class AbstractSubscriptionProviders {
   /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
   void openProviders(final AbstractSubscriptionConsumer consumer) throws SubscriptionException {
     // close stale providers
-    closeProviders();
+    closeProviders(false);
 
     final Map<TEndPoint, String> connectionFailures = new LinkedHashMap<>();
     final List<Throwable> connectionFailureCauses = new ArrayList<>();
     for (final TEndPoint endPoint : initialEndpoints) {
+      if (isClosing.get() || consumer.isFenced()) {
+        return;
+      }
       final AbstractSubscriptionProvider defaultProvider;
       final int defaultDataNodeId;
 
@@ -116,6 +119,9 @@ final class AbstractSubscriptionProviders {
       }
       defaultDataNodeId = defaultProvider.getDataNodeId();
       addProvider(defaultDataNodeId, defaultProvider);
+      if (isClosing.get() || consumer.isFenced()) {
+        return;
+      }
 
       final Map<Integer, TEndPoint> allEndPoints;
       try {
@@ -134,6 +140,9 @@ final class AbstractSubscriptionProviders {
       }
 
       for (final Map.Entry<Integer, TEndPoint> entry : allEndPoints.entrySet()) {
+        if (isClosing.get() || consumer.isFenced()) {
+          return;
+        }
         if (defaultDataNodeId == entry.getKey()) {
           continue;
         }
@@ -243,7 +252,8 @@ final class AbstractSubscriptionProviders {
     }
     final AbstractSubscriptionProvider provider = subscriptionProviders.get(dataNodeId);
     try {
-      provider.close();
+      // Replacing a connection must not unsubscribe topics or drop the shared consumer.
+      provider.closeSession();
     } finally {
       LOGGER.info(SubscriptionMessages.CLOSE_STALE_PROVIDER, provider);
       subscriptionProviders.remove(dataNodeId);
@@ -338,13 +348,19 @@ final class AbstractSubscriptionProviders {
   private void heartbeatProvider(
       final AbstractSubscriptionConsumer consumer, final AbstractSubscriptionProvider provider) {
     try {
-      if (consumer.isClosed() || consumer.isFenced() || !containsProvider(provider)) {
+      if (consumer.isClosed()
+          || consumer.isFenced()
+          || !containsProvider(provider)
+          || !provider.isAvailable()) {
         return;
       }
       final List<SubscriptionCommitContext> processorBufferedCommitContexts =
           consumer.getProcessorBufferedCommitContexts(provider.getDataNodeId());
       final PipeSubscribeHeartbeatResp resp = provider.heartbeat(processorBufferedCommitContexts);
-      if (consumer.isClosed() || consumer.isFenced() || !containsProvider(provider)) {
+      if (consumer.isClosed()
+          || consumer.isFenced()
+          || !containsProvider(provider)
+          || !provider.isAvailable()) {
         return;
       }
       provider.setAvailable();
@@ -360,7 +376,9 @@ final class AbstractSubscriptionProviders {
         }
       }
     } catch (final SubscriptionConsumerFencedException e) {
-      consumer.fence(e);
+      if (containsProvider(provider)) {
+        consumer.fence(e);
+      }
       provider.setUnavailable();
     } catch (final Exception e) {
       LOGGER.warn(
@@ -436,7 +454,7 @@ final class AbstractSubscriptionProviders {
   }
 
   private void syncInternal(final AbstractSubscriptionConsumer consumer) {
-    if (consumer.isFenced()) {
+    if (consumer.isClosed() || consumer.isFenced()) {
       return;
     }
     if (hasNoAvailableProviders()) {
@@ -464,7 +482,7 @@ final class AbstractSubscriptionProviders {
 
     // Add new providers, replace unavailable providers, or heartbeat existing providers.
     for (final Map.Entry<Integer, TEndPoint> entry : allEndPoints.entrySet()) {
-      if (consumer.isFenced()) {
+      if (consumer.isClosed() || consumer.isFenced()) {
         return;
       }
       AbstractSubscriptionProvider provider = getProvider(entry.getKey());
@@ -507,6 +525,9 @@ final class AbstractSubscriptionProviders {
 
       if (Objects.isNull(provider)) {
         // New or replacement provider
+        if (consumer.isClosed() || consumer.isFenced()) {
+          return;
+        }
         final TEndPoint endPoint = entry.getValue();
         final AbstractSubscriptionProvider newProvider;
         try {
