@@ -64,7 +64,7 @@ public class PipeProcessorSubtaskWorkerTest {
     mock(PipeProcessorSubtask.class);
   }
 
-  @Test(timeout = 30000)
+  @Test(timeout = 60000)
   public void testOneHundredWaitingPipesDoNotWaitForWorkerPolling() throws Exception {
     final CommonConfig config = CommonDescriptor.getInstance().getConfig();
     final PipeMemoryManager memoryManager = PipeDataNodeResourceManager.memory();
@@ -130,8 +130,9 @@ public class PipeProcessorSubtaskWorkerTest {
         final AtomicReference<Thread> workerThread = workerThreads.get(i);
         // Consume the scheduling notification before all workers become idle on admission.
         worker.sleepIfNecessary(true);
-        // Make a missed wake-up observable without relying on a tight performance assertion.
-        worker.setSleepingTimeInMilliSecond(60000L);
+        // Object.wait(0) disables polling, so a missed notification cannot be hidden by a timeout.
+        // The completion deadline below only guards against a hang, not slow CI scheduling.
+        worker.setSleepingTimeInMilliSecond(0L);
         futures.add(
             executor.submit(
                 () -> {
@@ -149,14 +150,14 @@ public class PipeProcessorSubtaskWorkerTest {
                       .allMatch(
                           thread ->
                               thread.get() != null
-                                  && thread.get().getState() == Thread.State.TIMED_WAITING));
+                                  && thread.get().getState() == Thread.State.WAITING));
       for (int i = 0; i < 4; i++) {
         memoryManager.releaseTsFileParserMemory("blocker" + i, 0, "0");
         reservedBlockers[i] = false;
       }
       Assert.assertTrue(
           "Admission notifications must wake every queue head",
-          processed.await(5, TimeUnit.SECONDS));
+          processed.await(30, TimeUnit.SECONDS));
       Assert.assertEquals(0, memoryManager.getWaitingTsFileParserCount());
       Assert.assertEquals(0, memoryManager.getReservedTsFileParserCount());
     } finally {
