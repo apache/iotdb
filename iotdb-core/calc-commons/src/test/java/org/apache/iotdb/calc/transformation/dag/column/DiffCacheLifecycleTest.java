@@ -24,9 +24,11 @@ import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.calc.transformation.dag.column.binary.CompareGreaterThanColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.LogicOrColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.ConstantColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.IdentityColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.IsNullColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.CastFunctionColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.DiffColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.DiffFunctionColumnTransformer;
@@ -54,6 +56,131 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class DiffCacheLifecycleTest {
+
+  @Test
+  public void testBinaryFullEvaluationOwnsNextInputStateRegardlessOfMaskOrder() {
+    for (boolean fullFirst : new boolean[] {true, false}) {
+      Fixture fixture = binary();
+      fixture.init(block(new Double[] {1.0, 2.0, 3.0}, new Boolean[] {true, true, true}));
+      if (fullFirst) {
+        assertValues(fixture.full(), null, 1.0, 1.0);
+      }
+      assertValues(fixture.selected(new boolean[3]), null, null, null);
+      if (!fullFirst) {
+        assertValues(fixture.full(), null, 1.0, 1.0);
+      }
+      fixture.init(block(new Double[] {4.0, 5.0, 6.0}, new Boolean[] {true, true, true}));
+      assertValues(fixture.full(), 1.0, 1.0, 1.0);
+    }
+  }
+
+  @Test
+  public void testFreshInputsDoNotReuseMaskedChildCaches() {
+    Fixture fixture = binary();
+    // Model inputs shared by a stateless SET item and DIFF: getColumn need not release them.
+    fixture.input.addReferenceCount();
+    fixture.flags.addReferenceCount();
+    fixture.init(block(new Double[] {1.0, 9.0, 5.0}, new Boolean[] {false, false, false}));
+    boolean[] selection = {false, true, false};
+    fixture.input.evaluateWithSelection(selection);
+    fixture.flags.evaluateWithSelection(selection);
+    fixture.diff.tryEvaluateWithFreshInputs();
+    assertValues(fixture.diff.getColumn(), null, 8.0, -4.0);
+  }
+
+  @Test
+  public void testFullSelectionOwnsNextInputState() {
+    Fixture fixture = binary();
+    fixture.init(block(new Double[] {1.0, 2.0, 3.0}, new Boolean[] {true, true, true}));
+    assertValues(fixture.selected(new boolean[] {true, true, true}), null, 1.0, 1.0);
+    assertValues(fixture.selected(new boolean[3]), null, null, null);
+    fixture.init(block(new Double[] {4.0}, new Boolean[] {true}));
+    assertValues(fixture.full(), 1.0);
+  }
+
+  @Test
+  public void testFullStateDoesNotLeakIntoLaterCaseOnlyInputs() {
+    Fixture fixture = binary();
+    fixture.init(block(new Double[] {1.0, 3.0}, new Boolean[] {true, true}));
+    assertValues(fixture.full(), null, 2.0);
+    assertValues(fixture.selected(new boolean[2]), null, null);
+    fixture.init(block(new Double[] {10.0, 20.0}, new Boolean[] {true, true}));
+    assertValues(fixture.selected(new boolean[] {false, true}), null, null);
+    fixture.init(block(new Double[] {25.0}, new Boolean[] {true}));
+    assertValues(fixture.full(), 5.0);
+  }
+
+  @Test
+  public void testBinaryCaseAndFullProjectionPreserveStateInBothOrders() throws Exception {
+    for (boolean caseFirst : new boolean[] {true, false}) {
+      List<LeafColumnTransformer> leaves = new ArrayList<>();
+      ColumnTransformer input = input(leaves, DOUBLE, 0);
+      ColumnTransformer diff = newDiff(input, input(leaves, BOOLEAN, 1));
+      ColumnTransformer caseResult =
+          caseWhen(greater(input, constant(leaves, 6)), diff, constant(leaves, 100));
+      try (Operator operator =
+          projection(
+              leaves,
+              caseFirst ? Arrays.asList(caseResult, diff) : Arrays.asList(diff, caseResult),
+              block(new Double[] {1.0, 2.0, 3.0}, new Boolean[] {true, true, true}),
+              block(new Double[] {4.0, 5.0, 6.0}, new Boolean[] {true, true, true}),
+              block(new Double[] {7.0}, new Boolean[] {true}))) {
+        int diffIndex = caseFirst ? 1 : 0;
+        int caseIndex = 1 - diffIndex;
+        TsBlock first = operator.next();
+        assertValues(first.getColumn(diffIndex), null, 1.0, 1.0);
+        assertValues(first.getColumn(caseIndex), 100.0, 100.0, 100.0);
+        TsBlock second = operator.next();
+        assertValues(second.getColumn(diffIndex), 1.0, 1.0, 1.0);
+        assertValues(second.getColumn(caseIndex), 100.0, 100.0, 100.0);
+        TsBlock third = operator.next();
+        assertValues(third.getColumn(diffIndex), 1.0);
+        assertValues(third.getColumn(caseIndex), 1.0);
+      }
+    }
+  }
+
+  @Test
+  public void testAddingCaseOrTermDoesNotDropNextBlockFirstRow() throws Exception {
+    for (boolean withCase : new boolean[] {false, true}) {
+      List<LeafColumnTransformer> leaves = new ArrayList<>();
+      ColumnTransformer input = input(leaves, DOUBLE, 0);
+      ColumnTransformer diff = newDiff(input, input(leaves, BOOLEAN, 1));
+      ColumnTransformer predicate = new IsNullColumnTransformer(BOOLEAN, reference(diff), true);
+      if (withCase) {
+        ColumnBuilder falseBuilder = BOOLEAN.createColumnBuilder(1);
+        falseBuilder.writeBoolean(false);
+        ConstantColumnTransformer no = new ConstantColumnTransformer(BOOLEAN, falseBuilder.build());
+        leaves.add(no);
+        ColumnTransformer caseResult =
+            new TableCaseWhenThenColumnTransformer(
+                BOOLEAN,
+                Collections.singletonList(reference(greater(input, constant(leaves, 5)))),
+                Collections.singletonList(reference(greater(diff, constant(leaves, 0)))),
+                reference(no));
+        predicate =
+            new LogicOrColumnTransformer(BOOLEAN, reference(predicate), reference(caseResult));
+      }
+      IdentityColumnTransformer output = new IdentityColumnTransformer(DOUBLE, 0);
+      try (Operator operator =
+          new FilterAndProjectOperator(
+              new TestContext(),
+              new BlocksOperator(
+                  block(new Double[] {1.0, 3.0, 4.0}, new Boolean[] {true, true, true}),
+                  block(new Double[] {10.0, 11.0}, new Boolean[] {true, true})),
+              Arrays.asList(TSDataType.DOUBLE, TSDataType.BOOLEAN),
+              leaves,
+              reference(predicate),
+              Collections.emptyList(),
+              Collections.singletonList(output),
+              Collections.singletonList(reference(output)),
+              false,
+              true)) {
+        assertValues(operator.next().getColumn(0), 3.0, 4.0);
+        assertValues(operator.next().getColumn(0), 10.0, 11.0);
+      }
+    }
+  }
 
   @Test
   public void testUnaryConsumedCacheDoesNotAdvanceStateAgain() {

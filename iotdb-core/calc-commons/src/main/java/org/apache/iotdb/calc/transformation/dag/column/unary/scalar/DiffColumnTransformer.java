@@ -38,6 +38,11 @@ public class DiffColumnTransformer extends BinaryColumnTransformer {
   private double lastValueBeforeCurrentInput;
   private boolean lastValueIsNullBeforeCurrentInput = true;
 
+  // A later masked pass must not replace the state carried by a complete evaluation.
+  private double lastValueAfterFullEvaluation;
+  private boolean lastValueIsNullAfterFullEvaluation;
+  private boolean hasFullEvaluation;
+
   public DiffColumnTransformer(
       Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
     super(returnType, leftTransformer, rightTransformer);
@@ -47,6 +52,7 @@ public class DiffColumnTransformer extends BinaryColumnTransformer {
   protected void resetForNewInput() {
     lastValueBeforeCurrentInput = lastValue;
     lastValueIsNullBeforeCurrentInput = lastValueIsNull;
+    hasFullEvaluation = false;
   }
 
   @Override
@@ -64,6 +70,15 @@ public class DiffColumnTransformer extends BinaryColumnTransformer {
   @Override
   protected void doTransform(
       Column leftColumn, Column rightColumn, ColumnBuilder builder, int positionCount) {
+    transform(leftColumn, rightColumn, builder, positionCount, true);
+  }
+
+  private void transform(
+      Column leftColumn,
+      Column rightColumn,
+      ColumnBuilder builder,
+      int positionCount,
+      boolean fullEvaluation) {
     lastValue = lastValueBeforeCurrentInput;
     lastValueIsNull = lastValueIsNullBeforeCurrentInput;
     Type leftType = leftTransformer.getType();
@@ -90,6 +105,15 @@ public class DiffColumnTransformer extends BinaryColumnTransformer {
         lastValueIsNull = false;
       }
     }
+
+    if (fullEvaluation) {
+      lastValueAfterFullEvaluation = lastValue;
+      lastValueIsNullAfterFullEvaluation = lastValueIsNull;
+      hasFullEvaluation = true;
+    } else if (hasFullEvaluation) {
+      lastValue = lastValueAfterFullEvaluation;
+      lastValueIsNull = lastValueIsNullAfterFullEvaluation;
+    }
   }
 
   @Override
@@ -99,7 +123,14 @@ public class DiffColumnTransformer extends BinaryColumnTransformer {
       ColumnBuilder builder,
       int positionCount,
       boolean[] selection) {
-    // Diff do not support short circuit evaluation
-    doTransform(leftColumn, rightColumn, builder, positionCount);
+    boolean fullEvaluation = true;
+    for (boolean selected : selection) {
+      if (!selected) {
+        fullEvaluation = false;
+        break;
+      }
+    }
+    // Preserve the selected-input results, but retain a complete pass's cross-block state.
+    transform(leftColumn, rightColumn, builder, positionCount, fullEvaluation);
   }
 }

@@ -54,6 +54,14 @@ public abstract class ColumnTransformer {
     }
   }
 
+  /** Reuses a cached result, or rebuilds a missing result after clearing descendant caches. */
+  public void tryEvaluateWithFreshInputs() {
+    if (!columnCache.hasCached()) {
+      clearCache();
+      evaluate();
+    }
+  }
+
   /** Reuses a cached result, or recomputes only selected rows when it is missing. */
   public void tryEvaluateWithSelection(boolean[] selection) {
     if (!columnCache.hasCached()) {

@@ -198,6 +198,69 @@ public class DevicePredicateHandlerTest {
   }
 
   @Test
+  public void testAttributeUpdaterSharedCastAndDiffDoNotWriteNullInEitherOrder() throws Exception {
+    for (boolean diffFirst : new boolean[] {false, true}) {
+      Graph filter = new Graph();
+      ColumnTransformer input = filter.input(0);
+      ColumnTransformer value =
+          new CastFunctionColumnTransformer(DOUBLE, reference(input), ZoneId.of("UTC"));
+      ColumnTransformer diff =
+          new DiffColumnTransformer(
+              DOUBLE, reference(value), reference(filter.equal(input, filter.constant("x"))));
+      ColumnTransformer zero =
+          filter.leaf(
+              new ConstantColumnTransformer(
+                  DOUBLE, new DoubleColumn(1, Optional.empty(), new double[] {0})));
+      ColumnTransformer predicate =
+          filter.caseWhen(
+              filter.equal(input, filter.constant("n/a")),
+              filter.constant(false),
+              new CompareGreaterThanColumnTransformer(BOOLEAN, reference(diff), reference(zero)));
+      List<ColumnTransformer> common =
+          diffFirst
+              ? Arrays.asList(reference(diff), reference(value))
+              : Arrays.asList(reference(value), reference(diff));
+      Graph projection = new Graph();
+      ColumnTransformer castInput =
+          projection.leaf(new IdentityColumnTransformer(DOUBLE, diffFirst ? 2 : 1));
+      ColumnTransformer diffInput =
+          projection.leaf(new IdentityColumnTransformer(DOUBLE, diffFirst ? 1 : 2));
+      ColumnTransformer a =
+          new CastFunctionColumnTransformer(STRING, reference(castInput), ZoneId.of("UTC"));
+      ColumnTransformer b =
+          new CastFunctionColumnTransformer(STRING, reference(diffInput), ZoneId.of("UTC"));
+      List<List<String>> updates = new ArrayList<>();
+      try (DeviceAttributeUpdater updater =
+          new DeviceAttributeUpdater(
+              Arrays.asList(TSDataType.STRING, TSDataType.DOUBLE, TSDataType.DOUBLE),
+              filter.leaves,
+              reference(predicate),
+              common,
+              COLUMNS,
+              projection.leaves,
+              Arrays.asList(reference(a), reference(b)),
+              (pointer, name) -> null,
+              (deviceId, pointer, values) -> {
+                List<String> row = new ArrayList<>();
+                row.add(deviceId[0]);
+                for (Object result : values) {
+                  row.add(
+                      result == null
+                          ? null
+                          : ((Binary) result).getStringValue(TSFileConfig.STRING_CHARSET));
+                }
+                updates.add(row);
+              },
+              Arrays.asList("a", "b"),
+              "test",
+              new TsTable("table"))) {
+        updateBatch(updater, "1", "9", "5");
+        assertEquals(Collections.singletonList(Arrays.asList("9", "9.0", "8.0")), updates);
+      }
+    }
+  }
+
+  @Test
   public void testAttributeUpdaterSkipsGuardedCommonDiffWhenNoDevicesMatch() throws Exception {
     Graph filter = new Graph();
     ColumnTransformer input = filter.input(0);

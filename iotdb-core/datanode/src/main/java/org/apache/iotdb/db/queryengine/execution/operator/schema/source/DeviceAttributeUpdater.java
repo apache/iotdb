@@ -173,7 +173,9 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
           // Stateful transformers must be re-evaluated over every row: a masked evaluation
           // would read the masked rows as nulls and corrupt their running state. The snapshot
           // taken at the input boundary makes the full re-evaluation idempotent.
-          transformer.tryEvaluate();
+          // A preceding common may have left a masked child cached. Rebuild the subtree as well,
+          // otherwise this supposedly full pass can still read masked nulls as actual input.
+          transformer.tryEvaluateWithFreshInputs();
         }
         filterResultColumns.add(transformer.getColumn());
       }
