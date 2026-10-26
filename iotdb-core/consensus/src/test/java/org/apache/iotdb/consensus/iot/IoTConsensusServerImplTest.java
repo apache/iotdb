@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.iot;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserDataTransferAuditHandler;
+import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
@@ -31,7 +32,11 @@ import org.apache.iotdb.consensus.common.request.DeserializedBatchIndexedConsens
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.config.UserDataTransferAuditClassifier;
+import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.i18n.ConsensusMessages;
+import org.apache.iotdb.consensus.iot.client.SyncIoTConsensusServiceClient;
+import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteReq;
+import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteRes;
 import org.apache.iotdb.consensus.iot.util.TestEntry;
 import org.apache.iotdb.consensus.iot.util.TestStateMachine;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -58,6 +63,13 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyZeroInteractions;
+import static org.mockito.Mockito.when;
 
 public class IoTConsensusServerImplTest {
 
@@ -66,6 +78,135 @@ public class IoTConsensusServerImplTest {
   private static final int PEERS_PER_WRITER = 1_000;
 
   @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+  @Test(timeout = 25_000)
+  public void testSnapshotWaitDoesNotFollowNewWrites() throws Exception {
+    final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> clientManager =
+        mock(IClientManager.class);
+    final SyncIoTConsensusServiceClient firstClient = mock(SyncIoTConsensusServiceClient.class);
+    final SyncIoTConsensusServiceClient secondClient = mock(SyncIoTConsensusServiceClient.class);
+    final Peer firstPeer = createPeer(0, 0);
+    final Peer secondPeer = createPeer(0, 1);
+    final TWaitSyncLogCompleteReq req =
+        new TWaitSyncLogCompleteReq(firstPeer.getGroupId().convertToTConsensusGroupId());
+    when(clientManager.borrowClient(firstPeer.getEndpoint())).thenReturn(firstClient);
+    when(clientManager.borrowClient(secondPeer.getEndpoint())).thenReturn(secondClient);
+    // Replication catches up with the first observed index, but the writer stays busy.
+    when(firstClient.waitSyncLogComplete(req))
+        .thenReturn(
+            new TWaitSyncLogCompleteRes(false, 10, 5), new TWaitSyncLogCompleteRes(false, 20, 10));
+    when(secondClient.waitSyncLogComplete(req))
+        .thenReturn(new TWaitSyncLogCompleteRes(true, 30, 30));
+
+    final ScheduledExecutorService backgroundTaskService =
+        Executors.newSingleThreadScheduledExecutor();
+    try {
+      final IoTConsensusServerImpl server = createServer(clientManager, backgroundTaskService);
+      getConfiguration(server).add(firstPeer);
+      getConfiguration(server).add(secondPeer);
+
+      server.waitUntilAllRemotePeersSyncLogCompleted();
+
+      verify(firstClient, times(2)).waitSyncLogComplete(req);
+      verify(secondClient).waitSyncLogComplete(req);
+      verify(clientManager, never()).borrowClient(server.getThisNode().getEndpoint());
+      verify(firstClient).close();
+      verify(secondClient).close();
+    } finally {
+      backgroundTaskService.shutdownNow();
+    }
+  }
+
+  @Test(timeout = 35_000)
+  public void testRemovalWaitStillDrainsAllWrites() throws Exception {
+    final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> clientManager =
+        mock(IClientManager.class);
+    final SyncIoTConsensusServiceClient client = mock(SyncIoTConsensusServiceClient.class);
+    final Peer peer = createPeer(0, 0);
+    final TWaitSyncLogCompleteReq req =
+        new TWaitSyncLogCompleteReq(peer.getGroupId().convertToTConsensusGroupId());
+    when(clientManager.borrowClient(peer.getEndpoint())).thenReturn(client);
+    when(client.waitSyncLogComplete(req))
+        .thenReturn(
+            new TWaitSyncLogCompleteRes(false, 10, 5),
+            new TWaitSyncLogCompleteRes(false, 20, 10),
+            new TWaitSyncLogCompleteRes(true, 20, 20));
+
+    final ScheduledExecutorService backgroundTaskService =
+        Executors.newSingleThreadScheduledExecutor();
+    try {
+      createServer(clientManager, backgroundTaskService).waitTargetPeerUntilSyncLogCompleted(peer);
+
+      verify(client, times(3)).waitSyncLogComplete(req);
+      verify(client).close();
+    } finally {
+      backgroundTaskService.shutdownNow();
+    }
+  }
+
+  @Test
+  public void testSnapshotWaitPreservesInterruption() throws Exception {
+    final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> clientManager =
+        mock(IClientManager.class);
+    final SyncIoTConsensusServiceClient client = mock(SyncIoTConsensusServiceClient.class);
+    final Peer peer = createPeer(0, 0);
+    when(clientManager.borrowClient(peer.getEndpoint())).thenReturn(client);
+    when(client.waitSyncLogComplete(
+            new TWaitSyncLogCompleteReq(peer.getGroupId().convertToTConsensusGroupId())))
+        .thenReturn(new TWaitSyncLogCompleteRes(false, 10, 5));
+
+    final ScheduledExecutorService backgroundTaskService =
+        Executors.newSingleThreadScheduledExecutor();
+    try {
+      final IoTConsensusServerImpl server = createServer(clientManager, backgroundTaskService);
+      getConfiguration(server).add(peer);
+      Thread.currentThread().interrupt();
+      try {
+        server.waitUntilAllRemotePeersSyncLogCompleted();
+        fail("Expected an interrupted wait to fail");
+      } catch (ConsensusGroupModifyPeerException e) {
+        assertTrue(e.getCause() instanceof InterruptedException);
+        assertTrue(Thread.currentThread().isInterrupted());
+      } finally {
+        Thread.interrupted();
+      }
+      verify(client).close();
+    } finally {
+      backgroundTaskService.shutdownNow();
+    }
+  }
+
+  @Test
+  public void testSnapshotWaitWithOnlyLocalPeer() throws Exception {
+    final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> clientManager =
+        mock(IClientManager.class);
+    final ScheduledExecutorService backgroundTaskService =
+        Executors.newSingleThreadScheduledExecutor();
+    try {
+      createServer(clientManager, backgroundTaskService).waitUntilAllRemotePeersSyncLogCompleted();
+      verifyZeroInteractions(clientManager);
+    } finally {
+      backgroundTaskService.shutdownNow();
+    }
+  }
+
+  private IoTConsensusServerImpl createServer(
+      IClientManager<TEndPoint, SyncIoTConsensusServiceClient> clientManager,
+      ScheduledExecutorService backgroundTaskService)
+      throws Exception {
+    final Peer thisNode = new Peer(new DataRegionId(1), 0, new TEndPoint("127.0.0.1", 6667));
+    return new IoTConsensusServerImpl(
+        temporaryFolder.getRoot().getAbsolutePath(),
+        null,
+        DirectoryStrategyType.SEQUENCE_STRATEGY,
+        thisNode,
+        Collections.singletonList(thisNode),
+        new TestStateMachine(),
+        backgroundTaskService,
+        null,
+        clientManager,
+        IoTConsensusConfig.newBuilder().build());
+  }
 
   @Test
   public void testSyncLogBecomesReadOnlyWhileWaiting() throws Exception {
