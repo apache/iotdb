@@ -776,27 +776,34 @@ public class IoTConsensusServerImpl {
 
   public void waitTargetPeerUntilSyncLogCompleted(Peer targetPeer)
       throws ConsensusGroupModifyPeerException {
+    waitTargetPeerUntilSyncLogCompleted(targetPeer, false);
+  }
+
+  private void waitTargetPeerUntilSyncLogCompleted(
+      Peer targetPeer, boolean waitForCurrentWritesOnly) throws ConsensusGroupModifyPeerException {
     long checkIntervalInMs = 10_000L;
     try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
+      final TWaitSyncLogCompleteReq req =
+          new TWaitSyncLogCompleteReq(targetPeer.getGroupId().convertToTConsensusGroupId());
+      TWaitSyncLogCompleteRes res = client.waitSyncLogComplete(req);
+      final long targetIndex = res.searchIndex;
       while (true) {
-        TWaitSyncLogCompleteRes res =
-            client.waitSyncLogComplete(
-                new TWaitSyncLogCompleteReq(targetPeer.getGroupId().convertToTConsensusGroupId()));
-        if (res.complete) {
+        if (res.complete || (waitForCurrentWritesOnly && res.safeIndex >= targetIndex)) {
           logger.info(
               IoTConsensusMessages.WAIT_SYNC_LOG_COMPLETED,
               targetPeer,
-              res.searchIndex,
+              waitForCurrentWritesOnly ? targetIndex : res.searchIndex,
               res.safeIndex);
           return;
         }
         logger.info(
             IoTConsensusMessages.WAIT_SYNC_LOG_IN_PROGRESS,
             targetPeer,
-            res.searchIndex,
+            waitForCurrentWritesOnly ? targetIndex : res.searchIndex,
             res.safeIndex);
         Thread.sleep(checkIntervalInMs);
+        res = client.waitSyncLogComplete(req);
       }
     } catch (ClientManagerException | TException e) {
       throw new ConsensusGroupModifyPeerException(
@@ -812,11 +819,13 @@ public class IoTConsensusServerImpl {
     }
   }
 
-  /** Wait until every remote peer has synchronized its writes to all peers. */
+  /** Wait until each remote peer has synchronized the writes present when it is first queried. */
   public void waitUntilAllRemotePeersSyncLogCompleted() throws ConsensusGroupModifyPeerException {
     for (Peer peer : getConfiguration()) {
       if (!peer.equals(thisNode)) {
-        waitTargetPeerUntilSyncLogCompleted(peer);
+        // Unlike peer removal, snapshot extraction does not stop writers. Freeze each target
+        // index so ongoing writes cannot keep moving the synchronization barrier forward.
+        waitTargetPeerUntilSyncLogCompleted(peer, true);
       }
     }
   }
