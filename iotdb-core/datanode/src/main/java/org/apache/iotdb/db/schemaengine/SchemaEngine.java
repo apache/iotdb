@@ -72,7 +72,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 // manage all the schemaRegion in this dataNode
 public class SchemaEngine {
@@ -369,26 +368,18 @@ public class SchemaEngine {
 
   public synchronized boolean deleteSchemaRegion(final SchemaRegionId schemaRegionId)
       throws MetadataException {
-    final ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
+    // Remove the region before teardown so concurrent writes observe it as unavailable.
+    final ISchemaRegion schemaRegion = schemaRegionMap.remove(schemaRegionId);
     if (schemaRegion == null) {
       logger.warn(DataNodeSchemaMessages.SCHEMA_REGION_ALREADY_DELETED, schemaRegionId);
       return false;
     }
-    final AtomicReference<MetadataException> lastException = new AtomicReference<>();
-    // Synchronize it for region deletion detection when error occurs
-    schemaRegionMap.compute(
-        schemaRegionId,
-        (regionId, iSchemaRegion) -> {
-          try {
-            schemaRegion.deleteSchemaRegion();
-          } catch (final MetadataException e) {
-            lastException.set(e);
-            return iSchemaRegion;
-          }
-          return null;
-        });
-    if (Objects.nonNull(lastException.get())) {
-      throw lastException.get();
+    try {
+      schemaRegion.deleteSchemaRegion();
+    } catch (final MetadataException | RuntimeException | Error e) {
+      // Keep failed deletions retryable and do not lose the in-memory region handle.
+      schemaRegionMap.put(schemaRegionId, schemaRegion);
+      throw e;
     }
     schemaMetricManager.removeSchemaRegionMetric(schemaRegionId.getId());
 
