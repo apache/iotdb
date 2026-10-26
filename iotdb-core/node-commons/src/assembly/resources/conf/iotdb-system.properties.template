@@ -391,6 +391,8 @@ prometheus_reporter_async_update=true
 # The reporters of metric module to report metrics
 # If there are more than one reporter, please separate them by commas ",".
 # Options: [JMX, PROMETHEUS]
+# The IOTDB session reporter is not supported: it writes to root.__system, which rejects writes
+# from external client sessions.
 # effectiveMode: restart
 # Datatype: String
 cn_metric_reporter_list=
@@ -414,6 +416,8 @@ cn_metric_prometheus_reporter_port=9091
 # The reporters of metric module to report metrics
 # If there are more than one reporter, please separate them by commas ",".
 # Options: [JMX, PROMETHEUS]
+# The IOTDB session reporter is not supported: it writes to root.__system, which rejects writes
+# from external client sessions.
 # effectiveMode: restart
 # Datatype: String
 dn_metric_reporter_list=

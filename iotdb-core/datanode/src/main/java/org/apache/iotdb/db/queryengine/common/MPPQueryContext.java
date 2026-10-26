@@ -1087,6 +1087,11 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   @Override
+  public boolean isInternal() {
+    return session != null && session.isInternal();
+  }
+
+  @Override
   public String getCliHostname() {
     if (session == null || session.getCliHostname() == null) {
       return "UNKNOWN";

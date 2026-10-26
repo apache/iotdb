@@ -226,6 +226,7 @@ public class AuthorityChecker {
                             auditEntity.getUserId(),
                             auditEntity.getUsername(),
                             auditEntity.getCliHostname())
+                        .setInternal(auditEntity.isInternal())
                         .setSqlString(auditEntity.getSqlString()));
       }
       return status;
