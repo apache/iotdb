@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.commons.utils.IOUtils;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,17 +30,28 @@ import java.nio.charset.StandardCharsets;
 public enum WALFileVersion {
   V1("WAL"),
   V2("V2-WAL"),
-  V3("V3-WAL");
+  V3("V3-WAL"),
+  /** A dispatch marker only; its on-disk magic and layout belong to the installed provider. */
+  EXTENDED(null);
 
   private final String versionString;
   private byte[] versionBytes;
 
   public String getVersionString() {
+    requireBuiltInVersion();
     return versionString;
   }
 
   public byte[] getVersionBytes() {
+    requireBuiltInVersion();
     return versionBytes;
+  }
+
+  private void requireBuiltInVersion() {
+    if (this == EXTENDED) {
+      throw new IllegalStateException(
+          StorageEngineMessages.EXCEPTION_UNSUPPORTED_OR_UNAVAILABLE_WAL_FORMAT_4629CFE4);
+    }
   }
 
   WALFileVersion(String versionString) {
@@ -72,6 +84,9 @@ public enum WALFileVersion {
         if (version.versionString.equals(versionString)) {
           return version;
         }
+      }
+      if (WALFormats.recognizes(channel)) {
+        return EXTENDED;
       }
       // v1 by default
       return V1;

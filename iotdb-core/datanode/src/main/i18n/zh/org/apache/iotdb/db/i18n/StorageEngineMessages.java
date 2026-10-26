@@ -20,6 +20,12 @@
 package org.apache.iotdb.db.i18n;
 
 public final class StorageEngineMessages {
+  public static final String EXCEPTION_UNSUPPORTED_OR_UNAVAILABLE_WAL_FORMAT_4629CFE4 =
+      "WAL 格式不支持或对应实现不可用";
+  public static final String EXCEPTION_MULTIPLE_WAL_FORMAT_PROVIDERS_ARE_CONFIGURED_DD78877D =
+      "配置了多个 WAL 格式 Provider";
+  public static final String EXCEPTION_INVALID_WAL_LOGICAL_POSITION_8CF34AFE =
+      "WAL 逻辑位置无效";
 
   public static final String LOG_REBUILT_UNREADABLE_WAL_FOOTER_FILE_ARG_VERSION_ARG_ORIGINALFILEBYTES_ARG_WRITERPROGRESS_ARG_1DBF836E =
       "已重建不可读的 WAL footer：file={}，version={}，originalFileBytes={}，writerProgress={}。";

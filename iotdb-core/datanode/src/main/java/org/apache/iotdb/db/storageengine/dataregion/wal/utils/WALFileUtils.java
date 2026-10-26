@@ -339,11 +339,11 @@ public class WALFileUtils {
 
     for (final File walFile : walFiles) {
       try (final FileChannel channel = FileChannel.open(walFile.toPath())) {
-        if (WALFileVersion.getVersion(channel) != WALFileVersion.V3) {
+        WALFileVersion version = WALFileVersion.getVersion(channel);
+        if (version != WALFileVersion.V3 && version != WALFileVersion.EXTENDED) {
           continue;
         }
-        // V3 WAL stores writer progress in the footer, so these lookups do not deserialize entry
-        // bodies.
+        // Formats with writer progress in the footer avoid deserializing entry bodies here.
         final WALMetaData metadata = WALMetaData.readFromWALFile(walFile, channel);
         final List<Long> physicalTimes = metadata.getPhysicalTimes();
         final List<Short> nodeIds = metadata.getNodeIds();
