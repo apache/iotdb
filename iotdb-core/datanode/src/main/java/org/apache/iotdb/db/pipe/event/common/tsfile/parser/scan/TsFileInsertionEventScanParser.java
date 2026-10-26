@@ -913,17 +913,20 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                 : pageEstimatedMemoryUsageInBytesList.get(0);
         resizePageDataMemoryIfNeeded(maxPageEstimatedMemoryUsageInBytes);
         final IChunkReader nextChunkReader =
-            nextIsMultiPage
-                ? new MemoryControlledChunkReader(
-                    new AlignedChunkReader(
-                        retainChunk(timeChunk), pendingAlignedChunkGroup.valueChunkList, filter),
-                    pageEstimatedMemoryUsageInBytesList)
-                : new AlignedSinglePageWholeChunkReader(
-                    retainChunk(timeChunk), pendingAlignedChunkGroup.valueChunkList, null);
+            createAlignedChunkReader(
+                timeChunk,
+                pendingAlignedChunkGroup.valueChunkList,
+                nextIsMultiPage,
+                pageEstimatedMemoryUsageInBytesList);
 
         // Publish the state transition only after all memory reservations and reader construction
         // succeed. Otherwise a retry would lose the already-read aligned chunk group.
         pendingAlignedChunkGroups.remove(0);
+        for (Chunk valueChunk : pendingAlignedChunkGroup.valueChunkList) {
+          if (valueChunk != null) {
+            valueChunk.close();
+          }
+        }
         pendingAlignedChunkSize =
             Math.max(0, pendingAlignedChunkSize - pendingAlignedChunkGroup.chunkSize);
         currentMeasurements.clear();
@@ -943,6 +946,39 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       throw e;
     }
     return false;
+  }
+
+  IChunkReader createAlignedChunkReader(
+      Chunk timeChunk,
+      List<Chunk> valueChunks,
+      boolean multiPage,
+      List<Long> pageEstimatedMemoryUsageInBytesList)
+      throws IOException {
+    // Pending chunks must survive a failed constructor so the same group can be retried.
+    Chunk retainedTimeChunk = null;
+    List<Chunk> retainedValueChunks = new ArrayList<>(valueChunks.size());
+    try {
+      retainedTimeChunk = retainChunk(timeChunk);
+      for (Chunk valueChunk : valueChunks) {
+        retainedValueChunks.add(valueChunk == null ? null : retainChunk(valueChunk));
+      }
+      return multiPage
+          ? new MemoryControlledChunkReader(
+              new AlignedChunkReader(retainedTimeChunk, retainedValueChunks, filter),
+              pageEstimatedMemoryUsageInBytesList)
+          : new AlignedSinglePageWholeChunkReader(retainedTimeChunk, retainedValueChunks, null);
+    } catch (IOException | RuntimeException | Error failure) {
+      // Chunk.close() is idempotent, including when constructor cleanup has already run.
+      if (retainedTimeChunk != null) {
+        retainedTimeChunk.close();
+      }
+      for (Chunk valueChunk : retainedValueChunks) {
+        if (valueChunk != null) {
+          valueChunk.close();
+        }
+      }
+      throw failure;
+    }
   }
 
   private boolean shouldReturnPendingAlignedChunkBeforeCaching(
