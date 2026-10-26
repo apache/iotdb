@@ -34,6 +34,7 @@ import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventB
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEvents;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.TerminationPayload;
@@ -48,12 +49,14 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.lang.reflect.Field;
+import java.nio.file.Files;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -105,7 +108,61 @@ public class SubscriptionRetainedInitialReplayTest {
   }
 
   @Test
+  public void testReleasedTsFileReplaysFromBeginningAfterLastUnsubscribe() throws Exception {
+    final byte[] fileBytes = {1, 2, 3, 4};
+    for (final boolean tableModel : new boolean[] {false, true}) {
+      for (final boolean closeConsumer : new boolean[] {false, true}) {
+        try (final RetainedSubscription subscription = new RetainedSubscription(tableModel)) {
+          final SubscriptionEvent event =
+              new SubscriptionEvent(
+                  mock(SubscriptionPipeEvents.class),
+                  Files.write(folder.newFile().toPath(), fileBytes).toFile(),
+                  null,
+                  subscription.queue.generateSubscriptionCommitContext());
+          subscription.queue.prefetchEvent(event);
+          assertSame(event, subscription.poll("first"));
+          event.fetchNextResponse(0L);
+          event.fetchNextResponse(fileBytes.length);
+          assertEquals(
+              SubscriptionPollResponseType.FILE_SEAL.getType(),
+              event.getCurrentResponse().getResponseType());
+
+          // A disconnected receiver releases its deliveries before the group unsubscribes.
+          assertEquals(1, subscription.broker.requeueInFlightEvents("first"));
+          assertEquals(0L, subscription.queue.getSubscriptionUncommittedEventCount());
+          subscription.detach(closeConsumer);
+          subscription.rejoin();
+
+          assertSame(event, subscription.poll("first"));
+          assertEquals(
+              SubscriptionPollResponseType.FILE_INIT.getType(),
+              event.getCurrentResponse().getResponseType());
+          assertEquals(0L, event.getNackCount());
+          assertFalse(event.isCommitted());
+          event.fetchNextResponse(0L);
+          assertArrayEquals(
+              fileBytes,
+              ((FilePiecePayload) event.getCurrentResponse().getPayload()).getFilePiece());
+          event.fetchNextResponse(fileBytes.length);
+          assertTrue(subscription.queue.ack("first", event.getCommitContext()));
+          assertNull(subscription.poll("first"));
+        }
+      }
+    }
+  }
+
+  @Test
   public void testDownloadedTabletPagesReplayTheirRows() throws Exception {
+    assertDownloadedTabletPagesReplayTheirRows(false);
+  }
+
+  @Test
+  public void testReleasedTabletPagesReplayTheirRows() throws Exception {
+    assertDownloadedTabletPagesReplayTheirRows(true);
+  }
+
+  private void assertDownloadedTabletPagesReplayTheirRows(final boolean releaseBeforeDetach)
+      throws Exception {
     try (final RetainedSubscription subscription = new RetainedSubscription(false)) {
       final Tablet tablet =
           new Tablet(
@@ -140,6 +197,9 @@ public class SubscriptionRetainedInitialReplayTest {
           tablet, ((TabletsPayload) event.getCurrentResponse().getPayload()).getTablets().get(0));
       event.fetchNextResponse(2L);
       assertEquals(-1, ((TabletsPayload) event.getCurrentResponse().getPayload()).getNextOffset());
+      if (releaseBeforeDetach) {
+        assertEquals(1, subscription.broker.requeueInFlightEvents("first"));
+      }
       subscription.detach(false);
       subscription.rejoin();
       assertSame(event, subscription.poll("first"));
