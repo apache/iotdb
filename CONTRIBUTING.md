@@ -61,27 +61,44 @@ You can choose issue types: bug, improvement, new feature, etc.  New issues will
 
 ## Contributing documents
 
-The content of all IoTDB official websites is in the docs of the project root directory:
+The content of all IoTDB official websites lives in a separate repository,
+[apache/iotdb-docs](https://github.com/apache/iotdb-docs), under its `src` directory:
 
-* docs/SystemDesign: System Design Document-English Version
-* docs/zh/SystemDesign: System Design Document-Chinese Version
-* docs/UserGuide: User Guide English Version
-* docs/zh/UserGuide: User Guide Chinese Version
-* docs/Community: community English Version
-* docs/zh/Community: community Chinese Version
-* docs/Development: Development Guide English Version
-* docs/zh/Development: Development Guide Chinese Version
+* src/UserGuide: User Guide English Version
+* src/zh/UserGuide: User Guide Chinese Version
+* src/Community: community English Version
+* src/zh/Community: community Chinese Version
+* src/Development: Development Guide English Version
 
-Correspondence between versions and branches on the official website:
-
-* In progress -> master
-* major_version.x -> rel/major_version （eg 0.9.x -> rel/0.9）
+Documentation versions are organised as directories rather than branches, for example
+`src/UserGuide/V1.3.x`, `src/UserGuide/latest` and `src/UserGuide/Master`.
 
 Precautions:
 
 * Images in Markdown can be uploaded to https://github.com/apache/iotdb-bin-resources for url
 * Do not use special Unicode chars, e.g., U+FF1A 
 * Do not use the character of dollar (as we will use Latex to generate pdf files)
+
+## Coding agents
+
+[AGENTS.md](AGENTS.md) is the shared entry point for repository-wide build, testing, and coding
+instructions. Follow any module-level `AGENTS.md` as well, including
+[integration-test/AGENTS.md](integration-test/AGENTS.md) when working on integration tests.
+Maintain shared guidance in these files.
+
+For Claude Code contributors:
+
+* Upgrade to a current release. Direct `AGENTS.md` support was introduced in v2.1.277;
+  v2.1.281 or later is needed for some sessions, including Amazon Bedrock or sessions with
+  telemetry disabled.
+* By default, a `CLAUDE.md`, `.claude/CLAUDE.md`, or `CLAUDE.local.md` in the working directory
+  or an ancestor directory takes precedence over `AGENTS.md`. To load both, open `/config`
+  and set **Project instructions** to `claude-md-and-agents-md`.
+* Start a new session after upgrading and check that the repository's `AGENTS.md` appears in
+  `/memory` (available for directly loaded `AGENTS.md` files since v2.1.280).
+
+See the [Claude Code loading and configuration rules](https://code.claude.com/docs/en/memory#agentsmd)
+for details.
 
 ## Code Formatting
 

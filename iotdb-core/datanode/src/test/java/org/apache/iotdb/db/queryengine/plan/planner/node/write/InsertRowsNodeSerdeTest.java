@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.node.write;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
@@ -44,6 +46,30 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
 public class InsertRowsNodeSerdeTest {
+
+  @Test
+  public void testClearUselessFieldAfterDispatch() throws IllegalPathException {
+    final InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId("insert rows"));
+    final InsertRowNode insertRowNode =
+        new InsertRowNode(
+            new PlanNodeId("insert row"),
+            new PartialPath("root.sg.d1"),
+            false,
+            new String[] {"s1"},
+            new TSDataType[] {TSDataType.INT32},
+            1L,
+            new Object[] {1},
+            false);
+    insertRowsNode.addOneInsertRowNode(insertRowNode, 0);
+
+    insertRowsNode.setDataRegionReplicaSet(new TRegionReplicaSet());
+    insertRowNode.setDataRegionReplicaSet(new TRegionReplicaSet());
+
+    new PipeEnrichedInsertNode(insertRowsNode).clearUselessFieldsAfterRouting();
+
+    Assert.assertNull(insertRowsNode.getDataRegionReplicaSet());
+    Assert.assertNull(insertRowNode.getDataRegionReplicaSet());
+  }
 
   @Test
   public void TestSerializeAndDeserialize() throws IllegalPathException {

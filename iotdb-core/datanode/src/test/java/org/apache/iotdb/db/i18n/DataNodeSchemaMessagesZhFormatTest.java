@@ -46,9 +46,13 @@ public class DataNodeSchemaMessagesZhFormatTest {
         "跳过 128 失败，schemaRegion 目录为 C:/schema",
         formatSlf4j(readZhMessage("FAILED_TO_SKIP_MLOG"), 128, "C:/schema"));
     Assert.assertEquals(
-        "恢复 root.sg.d.s 的 tagIndex 失败，schemaRegion 为 SchemaRegionId{1}。",
+        "恢复测点 [s] 的 tag 索引失败，数据库为 [root.sg]，SchemaRegion 为 [SchemaRegionId{1}]，tag 偏移量为 [128]。",
         formatSlf4j(
-            readZhMessage("FAILED_TO_RECOVER_TAG_INDEX"), "root.sg.d.s", "SchemaRegionId{1}"));
+            readZhMessage("FAILED_TO_RECOVER_TAG_INDEX"),
+            "s",
+            "root.sg",
+            "SchemaRegionId{1}",
+            128));
     Assert.assertEquals(
         "MTree 刷写耗时 321ms，SchemaRegion 为 SchemaRegionId{1}",
         formatSlf4j(readZhMessage("MTREE_FLUSH_COST"), 321, "SchemaRegionId{1}"));

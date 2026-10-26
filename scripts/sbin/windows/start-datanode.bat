@@ -217,10 +217,10 @@ goto finally
 
 :err
 echo JAVA_HOME environment variable must be set!
-pause
+if not defined IOTDB_NO_PAUSE pause
 
 
 @REM -----------------------------------------------------------------------------
 :finally
 @ENDLOCAL
-pause
+if not defined IOTDB_NO_PAUSE pause

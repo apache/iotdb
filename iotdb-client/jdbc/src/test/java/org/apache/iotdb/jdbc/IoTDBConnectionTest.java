@@ -59,8 +59,11 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -138,7 +141,7 @@ public class IoTDBConnectionTest {
   }
 
   @Test
-  public void testTableCatalogAndSchemaRejectNull() {
+  public void testTableSchemaRejectsNull() {
     IoTDBConnection tableConnection =
         new IoTDBConnection() {
           @Override
@@ -148,7 +151,6 @@ public class IoTDBConnectionTest {
         };
     openConnection(tableConnection);
 
-    assertThrows(SQLException.class, () -> tableConnection.setCatalog(null));
     assertThrows(SQLException.class, () -> tableConnection.setSchema(null));
   }
 
@@ -243,6 +245,8 @@ public class IoTDBConnectionTest {
   public void testStandardConnectionStateMethods() throws Exception {
     openConnection(connection);
 
+    assertTrue(connection.getAutoCommit());
+    connection.setAutoCommit(false);
     assertFalse(connection.getAutoCommit());
     connection.setAutoCommit(true);
     assertTrue(connection.getAutoCommit());
@@ -463,5 +467,44 @@ public class IoTDBConnectionTest {
     } catch (ReflectiveOperationException e) {
       throw new AssertionError(e);
     }
+  }
+
+  @Test
+  public void testReadOnlyIsAcceptedAsHint() throws SQLException {
+    openConnection(connection);
+    Assert.assertFalse(connection.isReadOnly());
+    connection.setReadOnly(true);
+    Assert.assertTrue(connection.isReadOnly());
+    connection.setReadOnly(false);
+    Assert.assertFalse(connection.isReadOnly());
+  }
+
+  @Test
+  public void testNewConnectionIsInAutoCommitMode() throws SQLException {
+    openConnection(connection);
+    Assert.assertTrue(connection.getAutoCommit());
+  }
+
+  @Test
+  public void testCatalogIsNullInTableDialect() throws SQLException {
+    openConnection(connection);
+    IoTDBConnection tableConnection = spy(new IoTDBConnection());
+    openConnection(tableConnection);
+    doReturn(Constant.TABLE_DIALECT).when(tableConnection).getSqlDialect();
+    Assert.assertNull(tableConnection.getCatalog());
+
+    // The tree model keeps its catalog, which its DatabaseMetaData compares against
+    Assert.assertEquals("Apache IoTDB", connection.getCatalog());
+  }
+
+  @Test
+  public void testSetCatalogToNullIsIgnoredInTableDialect() throws SQLException {
+    IoTDBConnection tableConnection = spy(new IoTDBConnection());
+    openConnection(tableConnection);
+    doReturn(Constant.TABLE_DIALECT).when(tableConnection).getSqlDialect();
+
+    tableConnection.setCatalog(null);
+
+    verify(tableConnection, never()).prepareStatement(anyString());
   }
 }

@@ -29,17 +29,19 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RestClientSession extends IClientSession {
 
   private final String clientID;
+  private final String clientAddress;
 
   // Map from statement name to PreparedStatementInfo
   private final Map<String, PreparedStatementInfo> preparedStatements = new ConcurrentHashMap<>();
 
-  public RestClientSession(String clientID) {
+  public RestClientSession(String clientID, String clientAddress) {
     this.clientID = clientID;
+    this.clientAddress = clientAddress;
   }
 
   @Override
   public String getClientAddress() {
-    return clientID;
+    return clientAddress;
   }
 
   @Override
@@ -75,6 +77,11 @@ public class RestClientSession extends IClientSession {
   @Override
   public void addQueryId(Long statementId, long queryId) {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public boolean containsQueryId(Long statementId, long queryId) {
+    return false;
   }
 
   @Override

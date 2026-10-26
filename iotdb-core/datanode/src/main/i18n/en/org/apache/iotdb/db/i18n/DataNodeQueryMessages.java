@@ -20,6 +20,93 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477 =
+      "Failed to convert TsFile %s to tablets. Status: %s";
+  public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD =
+      "Failed to convert TsFile %s to tablets: %s";
+  public static final String MESSAGE_TABLET_CONVERSION_RETURNED_NO_STATUS_88BAB5D3 =
+      "Tablet conversion returned no status";
+  public static final String EXCEPTION_FAILED_TO_READ_TSFILE_MODEL_INFORMATION_BEFORE_TABLET_CONVERSION_FOR_STATEMENT_ARG_ARG_F05C852A =
+      "Failed to read TsFile model information before tablet conversion for statement %s: %s";
+  public static final String EXCEPTION_FAILED_TO_LOAD_TSFILES_AFTER_TABLET_CONVERSION_DETAILS_ARG_53647EC5 =
+      "Failed to load TsFiles after tablet conversion. Details: %s";
+  public static final String LOG_LOAD_REJECTED_UUID_ARG_REGION_ARG_ENDPOINT_ARG_STATUS_ARG_8ED0679E =
+      "LOAD rejected: uuid={}, region={}, endpoint={}, status={}";
+  public static final String MESSAGE_TARGET_NODE_REJECTED_LOAD_WITHOUT_A_STATUS_OR_A_MESSAGE_F4E4C645 =
+      "Target node rejected LOAD without a status or a message";
+  public static final String MESSAGE_FAILED_TO_DISPATCH_LOAD_ARG_FOR_REGION_ARG_TO_NODE_ARG_ARG_57EFEC3A =
+      "Failed to dispatch LOAD %s for region %s to node %s: %s";
+
+  public static final String MESSAGE_SCHEMA_REGION_IS_UNAVAILABLE_PLEASE_RETRY_LATER_D642510A =
+      "Schema region is unavailable. Please retry later.";
+
+  public static final String EXCEPTION_FRAGMENT_INSTANCE_ARG_IS_ALREADY_ARG_B44984B4 =
+      "Fragment instance %s is already %s";
+
+  public static final String EXCEPTION_INVALID_THRIFT_MAXIMUM_FRAME_SIZE_ARG_FROM_ARG_A639588B =
+      "Invalid Thrift maximum frame size %d from %s";
+  public static final String EXCEPTION_CLIENTMANAGER_CANNOT_BE_NULL_FAF70317 =
+      "clientManager cannot be null";
+  public static final String EXCEPTION_FAILED_TO_QUERY_FRAME_SIZE_FROM_ARG_4A82B38D =
+      "Failed to query frame size from %s";
+  public static final String EXCEPTION_BODYSIZELIMIT_MUST_BE_POSITIVE_EECFA175 =
+      "bodySizeLimit must be positive";
+  public static final String EXCEPTION_INVALID_SLICE_COUNT_ARGUMENTS_5ADCE8CC =
+      "Invalid slice count arguments";
+  public static final String EXCEPTION_FETCHER_CANNOT_BE_NULL_6C143C90 = "fetcher cannot be null";
+  public static final String
+      EXCEPTION_FAILED_TO_RETRIEVE_PARTITION_FROM_FETCHER_PARTITION_RESULT_IS_NULL_9CD4434D =
+          "Failed to retrieve partition from fetcher: partition result is null";
+  public static final String
+      EXCEPTION_MISSING_DATA_REGION_REPLICA_SET_FOR_DEVICE_ARG_AT_PARTITION_ARG_18A9E160 =
+          "Missing data region replica set for device %s at partition %s";
+  public static final String EXCEPTION_PARTITIONFETCHER_CANNOT_BE_NULL_5B709CA8 =
+      "partitionFetcher cannot be null";
+  public static final String EXCEPTION_PARTITIONRESOLVER_CANNOT_BE_NULL_AD01EEB2 =
+      "partitionResolver cannot be null";
+  public static final String EXCEPTION_CHUNKDATA_AT_INDEX_ARG_CANNOT_BE_NULL_72FCDB2B =
+      "ChunkData at index %d cannot be null";
+  public static final String EXCEPTION_CHUNK_DEVICE_CANNOT_BE_NULL_2EC887AC =
+      "Chunk device cannot be null";
+  public static final String EXCEPTION_CHUNK_TIME_PARTITION_SLOT_CANNOT_BE_NULL_E5B04C6F =
+      "Chunk time partition slot cannot be null";
+  public static final String
+      EXCEPTION_PARTITION_FETCHER_RETURNED_MISMATCHED_REPLICA_SET_SIZE_EXPECTED_ARG_ACTUAL_ARG_B7A988CD =
+          "Partition fetcher returned mismatched replica set size: expected %d, actual %d";
+  public static final String
+      EXCEPTION_NULL_REPLICA_SET_RESOLVED_FOR_DEVICE_ARG_AT_PARTITION_ARG_19CA94B2 =
+          "Null replica set resolved for device %s at partition %s";
+  public static final String EXCEPTION_DISTRIBUTEDQUERYPLAN_CANNOT_BE_NULL_A54D99CB =
+      "distributedQueryPlan cannot be null";
+  public static final String EXCEPTION_QUERYCONTEXT_CANNOT_BE_NULL_C2B25B22 =
+      "queryContext cannot be null";
+  public static final String EXCEPTION_TSFILENODELIST_CANNOT_BE_NULL_7562FDB4 =
+      "tsFileNodeList cannot be null";
+  public static final String EXCEPTION_FAILEDTSFILENODEINDEXES_CANNOT_BE_NULL_D1C0E7C6 =
+      "failedTsFileNodeIndexes cannot be null";
+  public static final String EXCEPTION_STATEMACHINE_CANNOT_BE_NULL_4AF40790 =
+      "stateMachine cannot be null";
+  public static final String LOG_ILLEGAL_FAILED_NODE_INDEX_ARG_OUT_OF_BOUNDS_0_ARG_285B9862 =
+      "Illegal failed node index {} out of bounds [0, {})";
+  public static final String EXCEPTION_FRAGMENTID_CANNOT_BE_NULL_7726B33B =
+      "fragmentId cannot be null";
+  public static final String EXCEPTION_DISPATCHER_CANNOT_BE_NULL_6118319E =
+      "dispatcher cannot be null";
+  public static final String EXCEPTION_TSFILERESOURCE_CANNOT_BE_NULL_C63F7B08 =
+      "TsFileResource cannot be null";
+  public static final String EXCEPTION_SINGLETSFILENODE_CANNOT_BE_NULL_4EA6CF51 =
+      "singleTsFileNode cannot be null";
+  public static final String EXCEPTION_MEMORYBUFFER_CANNOT_BE_NULL_77101F0C =
+      "memoryBuffer cannot be null";
+  public static final String EXCEPTION_DISPATCHCALLBACK_CANNOT_BE_NULL_C7A1AC6A =
+      "dispatchCallback cannot be null";
+  public static final String EXCEPTION_BLOCK_CANNOT_BE_NULL_7E31451D = "block cannot be null";
+  public static final String EXCEPTION_TSFILEDATA_CANNOT_BE_NULL_EE1DDEC2 =
+      "tsFileData cannot be null";
+  public static final String EXCEPTION_FAILED_TO_OFFER_CHUNK_TO_DISPATCHER_0300D5DD =
+      "Failed to offer chunk to dispatcher";
+  public static final String MESSAGE_FAILED_TO_DISPATCH_LOAD_COMMAND_ARG_TO_NODE_ARG_BECAUSE_OF_EXCEPTION_ARG_2D8A483D =
+      "failed to dispatch load command %s to node %s because of exception: %s";
 
   // --- Common ---
 
@@ -29,6 +116,18 @@ public final class DataNodeQueryMessages {
       "This node isn't instance of SchemaEntityNode.";
   public static final String THIS_NODE_ISN_T_INSTANCE_OF_SCHEMAMEASUREMENTNODE =
       "This node isn't instance of SchemaMeasurementNode.";
+  public static final String EXCEPTION_TIME_DURATION_IS_OUT_OF_RANGE_A56B1A29 =
+      "Time duration is out of range.";
+  public static final String EXCEPTION_GENERATED_TIME_COLUMN_IS_OUT_OF_RANGE_43AB0C2A =
+      "Generated time column is out of range.";
+  public static final String
+      EXCEPTION_THE_TIME_PREDICATE_DOES_NOT_SELECT_ANY_TIME_RANGE_ARG_98DBCE32 =
+          "The time predicate does not select any time range: %s";
+  public static final String
+      EXCEPTION_RIGHT_CLOSED_GROUP_BY_TIME_WITH_LONG_MAX_VALUE_END_TIME_CANNOT_BE_REPRESENTED_AS_A_SINGLE_RIGHT_OPEN_TIME_FILTER_772F893F =
+          "Right-closed GROUP BY TIME with Long.MAX_VALUE end time cannot be represented as a single right-open time filter.";
+  public static final String EXCEPTION_DATE_EXPRESSION_IS_OUT_OF_RANGE_ARG_ED35A8A1 =
+      "Date expression is out of range: %s";
 
   // --- Execution / Aggregation ---
 
@@ -144,6 +243,9 @@ public final class DataNodeQueryMessages {
   public static final String RESULT_SET_COLUMNS_EXCEED_MEMORY_CAPACITY =
       "The matched source columns exceed the estimated current memory capacity by "
           + "at least %,d columns. ";
+  public static final String RESULT_SET_COLUMN_MEMORY_SHORTAGE_EQUIVALENT =
+      "The failed memory reservation exceeds available memory by the equivalent of at least "
+          + "%,d columns, estimated from the observed average column size. ";
   public static final String SCHEMA_FETCH_METADATA_MEMORY_NOT_ENOUGH =
       "Not enough memory while fetching metadata for query analysis. "
           + "The result set may have too many columns. "
@@ -190,8 +292,14 @@ public final class DataNodeQueryMessages {
       "Target file already exists: ";
   public static final String FAILED_TO_CREATE_FILE =
       "Failed to create file: ";
+  public static final String COPY_TO_TARGET_PATH_NOT_ALLOWED =
+      "COPY TO target path is outside the allowed export directories"
+          + " (configure copy_to_allowed_export_dirs to permit it): ";
   public static final String DATA_TYPE_OF_TARGET_TIME_COLUMN_IS_NOT =
       "Data type of target time column is not TIMESTAMP";
+  public static final String
+      EXCEPTION_SPECIFIED_TIME_COLUMN_ARG_DOES_NOT_EXIST_IN_THE_QUERY_RESULT_34791B26 =
+          "Specified TIME column %s does not exist in the query result";
   public static final String DUPLICATE_COLUMN_NAMES_IN_QUERY_DATASET =
       "Duplicate column names in query dataset.";
   public static final String SOME_SPECIFIED_TAG_COLUMNS_ARE_NOT_EXIST_IN =
@@ -218,6 +326,30 @@ public final class DataNodeQueryMessages {
       "Error happened while scanning the file";
   public static final String ALL_CACHED_CHUNKS_SHOULD_BE_CONSUMED_FIRST =
       "all cached chunks should be consumed first";
+  public static final String
+      EXCEPTION_FAILED_TO_READ_TIMESERIES_METADATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_0B9E652E =
+          "Failed to read timeseries metadata. The TsFile may be corrupted,"
+              + " please check the logs for the corrupted file path.";
+  public static final String EXCEPTION_FAILED_TO_READ_TIMESERIES_METADATA_FROM_TSFILE_ARG_B07568F8 =
+      "Failed to read timeseries metadata from TsFile: %s";
+  public static final String
+      EXCEPTION_FAILED_TO_READ_CHUNK_DATA_OR_LOAD_PAGE_READER_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_7F51AAB1 =
+          "Failed to read chunk data or load page reader. The TsFile may be corrupted,"
+              + " please check the logs for the corrupted file path.";
+  public static final String
+      EXCEPTION_FAILED_TO_READ_CHUNK_DATA_OR_LOAD_PAGE_READER_FROM_TSFILE_ARG_79127C70 =
+          "Failed to read chunk data or load page reader from TsFile: %s";
+  public static final String
+      EXCEPTION_FAILED_TO_DECODE_PAGE_DATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_54D7C6D9 =
+          "Failed to decode page data. The TsFile may be corrupted,"
+              + " please check the logs for the corrupted file path.";
+  public static final String EXCEPTION_FAILED_TO_DECODE_PAGE_DATA_FROM_TSFILE_ARG_645F5377 =
+      "Failed to decode page data from TsFile: %s";
+  public static final String EXCEPTION_FAILED_TO_READ_METADATA_INDEX_NODE_FROM_TSFILE_ARG_EC5B6633 =
+      "Failed to read metadata index node from TsFile: %s";
+  public static final String
+      LOG_TSFILE_MAY_BE_CORRUPTED_DURING_QUERY_EXECUTION_FILE_ARG_STAGE_ARG_9F77E8B3 =
+          "TsFile may be corrupted during query execution, file: {}, stage: {}";
   public static final String OVERLAPPED_DATA_SHOULD_BE_CONSUMED_FIRST =
       "overlapped data should be consumed first";
   public static final String NO_MORE_BATCH_DATA =
@@ -228,6 +360,10 @@ public final class DataNodeQueryMessages {
       "getPageReader() shouldn't be called here";
   public static final String UNSUPPORTED_COLUMN_TYPE =
       "Unsupported column type: ";
+  public static final String UNSUPPORTED_COLUMN_PROPERTY =
+      "Unsupported column property: ";
+  public static final String EXCEPTION_THE_COLUMN_PROPERTY_VALUE_MUST_BE_A_STRING_LITERAL_D6FA0250 =
+      "The column property value must be a string literal.";
   public static final String FAIL_TO_CLOSE_CTEDATAREADER =
       "Fail to close CteDataReader";
   public static final String UNKNOWN_TABLE =
@@ -492,10 +628,20 @@ public final class DataNodeQueryMessages {
       "TIMESTAMP does not support REGEXP/NOT REGEXP";
   public static final String GROUPBYTIME_FILTER_CANNOT_EXIST_IN_VALUE_FILTER =
       "GroupByTime filter cannot exist in value filter.";
+  public static final String EXCEPTION_ARG_CANNOT_BE_CAST_TO_ARG_28F0C5FC =
+      "\"%s\" cannot be cast to [%s]";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_751BF348 =
+      "Unsupported data type %s";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_MAXBY_MINBY_ARG_DD30FAB1 =
+      "Unsupported data type in MaxBy/MinBy: %s";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EQUAL_EVENT_AGGREGATION_ARG_77E085EB =
+      "Unsupported data type in equal event aggregation : %s";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_VARIATION_EVENT_AGGREGATION_ARG_3D0F0388 =
+      "Unsupported data type in variation event aggregation : %s";
+  public static final String EXCEPTION_TIMESTAMP_IN_LIST_LITERAL_CAN_ONLY_BE_LONGLITERAL_DOUBLELITERAL_OR_GENERICLITERAL_ACTUAL_TYPE_ARG_D751BE79 =
+      "TIMESTAMP IN-list literal can only be LongLiteral, DoubleLiteral, or GenericLiteral; actual type: %s";
   public static final String IS_NULL_CAN_BE_PUSHED_DOWN =
       "IS NULL can be pushed down";
-  public static final String GROUP_BY_TIME_CANNOT_BE_REVERSED =
-      "GROUP BY TIME cannot be reversed";
 
   // --- Plan / Optimization ---
 
@@ -737,6 +883,12 @@ public final class DataNodeQueryMessages {
       "Show Index statement is not supported yet.";
   public static final String UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS =
       "Update can only specify attribute columns.";
+  public static final String
+      EXCEPTION_CANNOT_UPDATE_ARG_COLUMN_ARG_UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS_F805D1A6 =
+          "Cannot update %s column '%s'. UPDATE can only specify ATTRIBUTE columns.";
+  public static final String
+      EXCEPTION_CANNOT_REFERENCE_ARG_COLUMN_ARG_IN_AN_UPDATE_VALUE_UPDATE_VALUES_CAN_ONLY_REFERENCE_ATTRIBUTE_OR_TAG_COLUMNS_C01BE71A =
+          "Cannot reference %s column '%s' in an UPDATE value. UPDATE values can only reference ATTRIBUTE or TAG columns.";
   public static final String DROP_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
       "Drop Function statement is not supported yet.";
   public static final String SHOW_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
@@ -797,6 +949,7 @@ public final class DataNodeQueryMessages {
       "Duplicate argument name: %s";
   public static final String SETTING_MONTHLY_INTERVALS_IS_NOT_SUPPORTED =
       "Setting monthly intervals is not supported.";
+  public static final String THE_ARGUMENT_CANNOT_BE_NULL =  "The parameter %s cannot be actively filled with null.";
   public static final String FILTER_PUSH_DOWN_DOES_NOT_SUPPORT_CASE_WHEN =
       "Filter push down does not support CASE WHEN";
   public static final String FILTER_PUSH_DOWN_DOES_NOT_SUPPORT_IF =
@@ -984,6 +1137,8 @@ public final class DataNodeQueryMessages {
       "Unexpected expression: ";
   public static final String FAILED_TO_FETCH_SUBQUERY_RESULT =
       "Failed to Fetch Subquery Result.";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_FOR_SCALAR_SUBQUERY_RESULT_ARG_D58CBB00 =
+      "Unsupported data type for scalar subquery result: %s";
 
   // --- Plan / Relational / Planner / Iterative ---
 
@@ -1106,6 +1261,7 @@ public final class DataNodeQueryMessages {
       "Interrupted when dispatching read async";
   public static final String INTERRUPTED_WHEN_DISPATCHING_WRITE_ASYNC =
       "Interrupted when dispatching write async";
+  public static final String MESSAGE_INTERRUPTED_ERRORS_ARG_876F1B4B = "Interrupted errors: %s";
   public static final String DESERIALIZE_CONSENSUSGROUPID_FAILED =
       "Deserialize ConsensusGroupId failed. ";
   public static final String CAN_T_CONNECT_TO_NODE =
@@ -1136,6 +1292,9 @@ public final class DataNodeQueryMessages {
       "Start load TsFile {} locally.";
   public static final String LOAD_ALL_FAILED_TSFILES_ARE_CONVERTED_TO_TABLETS =
       "Load: all failed TsFiles are converted to tablets and inserted.";
+  public static final String
+      LOG_LOAD_FAILED_TO_LOAD_SOME_TSFILES_BY_CONVERTING_THEM_INTO_TABLETS_FAILED_TSFILES_ARG_7D9DB9C3 =
+          "Load: failed to load some TsFiles by converting them into tablets. Failed TsFiles: %s";
 
   // --- Plan / Statement ---
 
@@ -1357,6 +1516,8 @@ public final class DataNodeQueryMessages {
       "Error occurred during getting UDF access strategy";
   public static final String TRANSFORMUTILS_SHOULD_NOT_BE_INSTANTIATED =
       "TransformUtils should not be instantiated.";
+  public static final String EXCEPTION_THE_DATA_TYPE_OF_THE_STATE_WINDOW_STRATEGY_IS_NOT_VALID_61F4E273 =
+      "The data type of the state window strategy is not valid.";
 
   // --- Execution / Exchange (additional) ---
 
@@ -1374,6 +1535,28 @@ public final class DataNodeQueryMessages {
       "{} failed to pull TsBlocks [{}] to [{}] from SinkHandle {}, channel index {},";
   public static final String FAILED_TO_GET_DATA_BLOCK =
       "failed to get data block [{}, {}), attempt times: {}";
+  public static final String EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33 =
+      "Unexpected data block response size.";
+  public static final String
+      EXCEPTION_INVALID_SERIALIZED_TSBLOCK_FRAGMENT_OFFSET_ARG_FOR_BLOCK_SIZE_ARG_53BC0284 =
+          "Invalid serialized TsBlock fragment offset %s for block size %s.";
+  public static final String
+      EXCEPTION_ACCUMULATED_TSBLOCK_FRAGMENT_LENGTH_ARG_DOES_NOT_MATCH_TOTALLENGTH_ARG_1B784303 =
+          "Accumulated TsBlock fragment length %s does not match totalLength %s.";
+  public static final String
+      EXCEPTION_THE_FIRST_FRAGMENTED_DATA_BLOCK_RESPONSE_MUST_INCLUDE_TOTALLENGTH_C5C79BC2 =
+          "The first fragmented data block response must include totalLength.";
+  public static final String
+      EXCEPTION_NEXT_SEQUENCE_ID_ARG_EXCEEDS_REQUESTED_END_SEQUENCE_ID_ARG_30B1726E =
+          "Next sequence ID %s exceeds requested end sequence ID %s.";
+  public static final String
+      EXCEPTION_A_COMPLETED_DATA_BLOCK_RESPONSE_RANGE_MUST_NOT_RETAIN_A_PARTIAL_TSBLOCK_85E5C287 =
+          "A completed data block response range must not retain a partial TsBlock.";
+  public static final String EXCEPTION_TSBLOCK_FRAGMENT_MUST_NOT_BE_EMPTY_C7D19863 =
+      "TsBlock fragment must not be empty.";
+  public static final String
+      EXCEPTION_NEXT_FRAGMENT_OFFSET_ARG_MUST_BE_GREATER_THAN_CURRENT_OFFSET_ARG_AND_MATCH_ACCUMULATED_FRAGMENT_LENGTH_ARG_ECC31047 =
+          "Next fragment offset %s must be greater than current offset %s and match accumulated fragment length %s.";
   public static final String FAILED_TO_SEND_ACK_DATA_BLOCK_EVENT =
       "failed to send ack data block event [{}, {}), attempt times: {}";
   public static final String SEND_CLOSE_SINK_CHANNEL_EVENT_FAILED =
@@ -2160,8 +2343,9 @@ public final class DataNodeQueryMessages {
       "Type %s is not orderable, and therefore cannot be used in ORDER BY: %s";
   public static final String OFFSET_ROW_COUNT_MUST_BE_GREATER_OR_EQUAL_TO_0_ACTUAL_VALUE_S =
       "OFFSET row count must be greater or equal to 0 (actual value: %s)";
-  public static final String LIMIT_ROW_COUNT_MUST_BE_GREATER_OR_EQUAL_TO_0_ACTUAL_VALUE_S =
-      "LIMIT row count must be greater or equal to 0 (actual value: %s)";
+  public static final String
+      EXCEPTION_LIMIT_ROW_COUNT_MUST_BE_GREATER_THAN_0_ACTUAL_VALUE_ARG_79F8F1A3 =
+          "LIMIT row count must be greater than 0 (actual value: %s)";
   public static final String NON_CONSTANT_PARAMETER_VALUE_FOR_S_S =
       "Non constant parameter value for %s: %s";
   public static final String PARAMETER_VALUE_PROVIDED_FOR_S_IS_NULL_S =
@@ -2396,10 +2580,20 @@ public final class DataNodeQueryMessages {
       "Inconsistent numbers of non-time column names and values: %d-%d";
   public static final String IS_NOT_SUPPORTED_FOR_PROPERTY_VALUE_OF_SET_CONFIGURATION =
       " is not supported for property value of 'set configuration'. ";
+  public static final String EXCEPTION_DEFAULT_IS_NOT_SUPPORTED_FOR_SET_CONFIGURATION_D76F13AD =
+      "DEFAULT is not supported for SET CONFIGURATION";
   public static final String NOTE_THAT_THE_SYNTAX_FOR_SET_CONFIGURATION_IN_THE_TREE_MODEL_IS_NOT_EXACTLY_THE_SAME_AS =
       "Note that the syntax for 'set configuration' in the tree model is not exactly the same as that in the table model.";
   public static final String UNSUPPORTED_COPY_TO_FORMAT_S_SUPPORTED_FORMATS_S =
       "Unsupported COPY TO format '%s'. Supported formats: %s";
+  public static final String EXCEPTION_DUPLICATE_TAG_COLUMN_IN_TAGS_CLAUSE_ARG_61FD5422 =
+      "Duplicate tag column in TAGS clause: %s";
+  public static final String EXCEPTION_DUPLICATE_OPTION_IN_COPY_TO_STATEMENT_ARG_99CFE09F =
+      "Duplicate option in COPY TO statement: %s";
+  public static final String EXCEPTION_FAILED_TO_WRITE_THE_TARGET_FILE_ARG_5AC3025D =
+      "Failed to write the target file: %s";
+  public static final String LOG_FAILED_TO_WRITE_THE_TARGET_FILE_DURING_COPY_TO_EE25EF37 =
+      "Failed to write the target file during COPY TO";
   public static final String SIMULTANEOUS_SETTING_OF_MONTHLY_AND_NON_MONTHLY_INTERVALS_IS_NOT_SUPPORTED =
       "Simultaneous setting of monthly and non-monthly intervals is not supported.";
   public static final String DON_T_NEED_TO_SPECIFY_TIME_COLUMN_WHILE_EITHER_TIME_BOUND_OR_FILL_GROUP_PARAMETER_IS_NOT =
@@ -2654,6 +2848,19 @@ public final class DataNodeQueryMessages {
       "LoadTsFileScheduler: Region migration was detected during loading TsFile {}, will convert to insertion to avoid data loss";
   public static final String LOAD_TSFILE_ARG_SUCCESSFULLY_LOAD_PROCESS_ARG_ARG =
       "Load TsFile {} Successfully, load process [{}/{}]";
+  public static final String
+      LOG_LOAD_BATCH_FINISHED_DELETING_ARG_SOURCE_TSFILES_AFTER_LOAD_3A9E4F5B =
+          "LOAD batch finished, deleting {} source TSFiles after load";
+  public static final String LOG_FAILED_TO_CLEAN_UP_SOURCE_TSFILE_AFTER_LOADING_ARG_78E1FEEE =
+      "Failed to clean up source TsFile after loading: {}";
+  public static final String
+      LOG_EXCEPTION_ENCOUNTERED_DURING_DEFERRED_SOURCE_FILE_DELETION_D4AE0D0B =
+          "Exception encountered during deferred source file deletion";
+  public static final String LOG_EXCEPTION_ENCOUNTERED_CLOSING_DISPATCHER_02FE15C1 =
+      "Exception encountered closing dispatcher";
+  public static final String
+      LOG_EXCEPTION_ENCOUNTERED_RELEASING_DATA_CACHE_MEMORY_BLOCK_3CD1873D =
+          "Exception encountered releasing data cache memory block";
   public static final String CAN_NOT_LOAD_TSFILE_ARG_LOAD_PROCESS_ARG_ARG =
       "Can not Load TsFile {}, load process [{}/{}]";
   public static final String LOAD_TSFILE_S_FAILED_WILL_TRY_TO_CONVERT_TO_TABLETS_AND_INSERT_FAILED_TSFILES_ARG =
@@ -2664,12 +2871,18 @@ public final class DataNodeQueryMessages {
       "Parse or send TsFile %s error.";
   public static final String DISPATCH_ONE_PIECE_TO_REPLICASET_ARG_ERROR_RESULT_STATUS_CODE_ARG =
       "Dispatch one piece to ReplicaSet {} error. Result status code {}. ";
+  public static final String LOG_LOAD_CONSENSUS_SUBMIT_TRANSIENT_FAILURE_RETRY_D7E1D9A6 =
+      "Transient failure while submitting LOAD consensus {} (load {}) to {}, will retry ({}/{}): {}";
   public static final String RESULT_STATUS_MESSAGE_ARG_DISPATCH_PIECE_NODE_ERROR_PERCENT_NARG =
       "Result status message {}. Dispatch piece node error:%n{}";
   public static final String SUB_STATUS_CODE_ARG_SUB_STATUS_MESSAGE_ARG =
       "Sub status code {}. Sub status message {}.";
   public static final String WAIT_FOR_LOADING_S_TIME_OUT =
       "Wait for loading %s time out.";
+  public static final String LOG_THE_ROUTE_OF_REGION_ARG_CHANGED_FROM_ARG_TO_ARG_WHILE_THE_TASK_IS_BEING_LOADED_THE_TASK_FOLLOWS_IT_6182715B =
+      "The route of region {} changed from {} to {} while the task is being loaded, the task follows it";
+  public static final String EXCEPTION_NO_ROUTE_IS_KNOWN_FOR_REGION_ARG_OF_THE_LOAD_TASK_BC8F698F =
+      "No route is known for region %s of the load task";
   public static final String DISPATCH_LOAD_COMMAND_ARG_OF_TSFILE_ARG_ERROR_TO_REPLICASETS_ARG_ERROR =
       "Dispatch load command {} of TsFile {} error to replicaSets {} error. ";
   public static final String RESULT_STATUS_CODE_ARG_RESULT_STATUS_MESSAGE_ARG =
@@ -3013,6 +3226,9 @@ public final class DataNodeQueryMessages {
       "Can not find %s on this machine, notice that load can only handle files on this machine.";
   public static final String QUERY_EXCEPTION_LOAD_TSFILE_SOURCE_PATH_S_IS_OUTSIDE_ALLOWED_DIRECTORIES_85A6019F =
       "Load TsFile source path %s is outside allowed directories %s.";
+  public static final String
+      QUERY_EXCEPTION_CANNOT_LOAD_FILES_BECAUSE_SPECIFIED_DIRECTORY_CONTAINS_IOTDB_DATA_B0A1B93D =
+          "Cannot load files because the specified directory contains IoTDB data.";
   public static final String QUERY_EXCEPTION_FAILED_TO_RESOLVE_CANONICAL_PATH_FOR_LOAD_TSFILE_SOURCE_09CC9AC6 =
       "Failed to resolve canonical path for Load TsFile source %s: %s";
   public static final String QUERY_EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_S_REGISTERED_S_AE9DBDC0 =
@@ -3050,8 +3266,9 @@ public final class DataNodeQueryMessages {
       "getOutputColumnNames of CreateMultiTimeSeriesNode is not implemented";
   public static final String QUERY_EXCEPTION_GETOUTPUTCOLUMNNAMES_OF_ALTERLOGICALVIEWNODE_IS_NOT_IMPLEMENTED_D2294789 =
       "getOutputColumnNames of AlterLogicalViewNode is not implemented";
-  public static final String QUERY_EXCEPTION_THE_DATABASE_S_IS_READ_ONLY_CB6732CE =
-      "The database '%s' is read-only.";
+  public static final String
+      EXCEPTION_APACHE_IOTDB_DOES_NOT_SUPPORT_THIS_OPERATION_ON_DATABASE_ARG_B09ADFD7 =
+          "Apache IoTDB does not support this operation on database '%s'.";
   public static final String QUERY_EXCEPTION_THE_DATABASE_S_CAN_ONLY_BE_QUERIED_BY_AUDIT_ADMIN_4A510F66 =
       "The database '%s' can only be queried by AUDIT admin.";
   public static final String QUERY_EXCEPTION_UNEXPECTED_WINDOW_FRAME_TYPE_S_F06F81B8 =
@@ -3258,6 +3475,7 @@ public final class DataNodeQueryMessages {
       "already being cancelled";
   public static final String DRIVER_TASK_ABORTED_BY_INTERNAL_ERROR_SCHEDULED =
       "internal error scheduled";
+  public static final String EXCEPTION_SCHEDULER_SHUTDOWN_323938F5 = "scheduler shutdown";
   public static final String DRIVER_TASK_ABORTED_BY_MEMORY_NOT_ENOUGH =
       "Memory is not enough to execute the query task.";
   public static final String ROOT_FRAGMENT_INSTANCE_PLACEMENT_ERROR_FMT =
@@ -3292,15 +3510,7 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_INVALID_ARG_ARG_2946DBE5 = "Invalid %s %s";
   public static final String EXCEPTION_ID_IS_EMPTY_28C94FC0 = "id is empty";
   public static final String EXCEPTION_EXECUTOR_IS_NULL_7FBE03A4 = "executor is null";
-  public static final String EXCEPTION_INITIALSTATE_IS_NULL_8992A39F = "initialState is null";
-  public static final String EXCEPTION_TERMINALSTATES_IS_NULL_E0FC2A93 = "terminalStates is null";
-  public static final String EXCEPTION_EXPECTEDSTATE_IS_NULL_5E8C2F32 = "expectedState is null";
   public static final String EXCEPTION_CURRENTSTATE_IS_NULL_AEDB20DB = "currentState is null";
-  public static final String EXCEPTION_STATECHANGELISTENER_IS_NULL_635AE7D2 = "stateChangeListener is null";
-  public static final String EXCEPTION_ARG_CANNOT_TRANSITION_FROM_ARG_TO_ARG_8C680D30 = "%s cannot transition from %s to %s";
-  public static final String EXCEPTION_CANNOT_FIRE_STATE_CHANGE_EVENT_WHILE_HOLDING_THE_LOCK_35243BC4 = "Cannot fire state change event while holding the lock";
-  public static final String EXCEPTION_CANNOT_NOTIFY_WHILE_HOLDING_THE_LOCK_15625D48 = "Cannot notify while holding the lock";
-  public static final String EXCEPTION_CANNOT_WAIT_FOR_STATE_CHANGE_WHILE_HOLDING_THE_LOCK_CBD9F784 = "Cannot wait for state change while holding the lock";
   public static final String EXCEPTION_DONESTATE_IS_NULL_D88F77E5 = "doneState is null";
   public static final String EXCEPTION_DONESTATE_ARG_IS_NOT_A_DONE_STATE_8724C618 = "doneState %s is not a done state";
   public static final String EXCEPTION_DATANODEID_SHOULD_BE_INIT_FIRST_13B19A85 = "DataNodeId should be init first!";
@@ -3653,6 +3863,8 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_UDFNAME_IS_NULL_83E9039B = "udfName is null";
   public static final String EXCEPTION_URISTRING_IS_NULL_E7458C6A = "uriString is null";
   public static final String EXCEPTION_FILEPATH_IS_NULL_84CE8A66 = "filePath is null";
+  public static final String EXCEPTION_LOAD_TSFILE_PATH_CANNOT_BE_EMPTY_2B106181 =
+      "The LOAD TSFILE path cannot be empty.";
   public static final String EXCEPTION_DETAILS_IS_NULL_8EDEEA03 = "details is null";
   public static final String EXCEPTION_COLUMNCATEGORY_IS_NULL_0075924B = "columnCategory is null";
   public static final String EXCEPTION_ARGUMENTNAME_IS_NULL_7F8F665F = "argumentName is null";
@@ -3749,6 +3961,10 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_ONLY_HAVE_TWO_ARGUMENTS_3D12DCFD = "Aggregation functions [%s] should only have two arguments";
   public static final String EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_HAVE_VALUE_COLUMN_AS_NUMERIC_TYPE_INT32_INT64_FLOAT_DOUBLE_TIMESTAMP_97A6CA87 = "Aggregation functions [%s] should have value column as numeric type [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]";
   public static final String EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_HAVE_PERCENTAGE_AS_DECIMAL_TYPE_57033ADF = "Aggregation functions [%s] should have percentage as decimal type";
+  public static final String EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_2_ARGUMENTS_VALUE_TIME_E2F55C08 = "Aggregate function [%s] requires 2 arguments: value, time";
+  public static final String EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_4_ARGUMENTS_VALUE_TIME_WINDOW_START_WINDOW_END_FBEC794B = "Aggregate function [%s] requires 4 arguments: value, time, window_start, window_end";
+  public static final String EXCEPTION_AGGREGATE_FUNCTION_ARG_ONLY_SUPPORTS_INT32_INT64_FLOAT_AND_DOUBLE_AS_THE_FIRST_ARGUMENT_8D201434 = "Aggregate function [%s] only supports INT32, INT64, FLOAT and DOUBLE as the first argument";
+  public static final String EXCEPTION_THE_TIME_ARGUMENTS_OF_AGGREGATE_FUNCTION_ARG_SHOULD_BE_TIMESTAMP_OR_INT64_TYPE_9C736DE3 = "The time arguments of aggregate function [%s] should be TIMESTAMP or INT64 type";
   public static final String EXCEPTION_CANNOT_NEST_AGGREGATIONS_INSIDE_AGGREGATION_ARG_ARG_6E5073A4 = "Cannot nest aggregations inside aggregation '%s': %s";
   public static final String EXCEPTION_CANNOT_NEST_WINDOW_FUNCTIONS_INSIDE_AGGREGATION_ARG_ARG_8F94A897 = "Cannot nest window functions inside aggregation '%s': %s";
   public static final String EXCEPTION_PARTITION_BY_EXPRESSION_ARG_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_E3C696D6 = "PARTITION BY expression '%s' must be an aggregate expression or appear in GROUP BY clause";
@@ -3765,6 +3981,16 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_THE_SECOND_ARGUMENT_OF_PERCENTILE_FUNCTION_PERCENTAGE_MUST_BE_A_DOUBLE_LITERAL_D9464B46 = "The second argument of 'percentile' function percentage must be a double literal";
   public static final String EXCEPTION_DATA_TYPE_MISMATCH_FOR_MEASUREMENT_ARGARGARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_C5BA7DBD = "Data type mismatch for measurement %s%s%s, type in TsFile: %s, type in IoTDB: %s";
   public static final String MESSAGE_FAILED_TO_RELEASE_EXTERNAL_TSFILE_QUERY_RESOURCE_712EE978 = "Failed to release external TsFile query resource";
+  public static final String EXCEPTION_UNKNOWN_LOADTSFILECONSENSUSOP_CODE_ARG_B62D2997 =
+      "Unknown LoadTsFileConsensusOp code: %s";
+  public static final String EXCEPTION_LOAD_CONSENSUS_ENTRY_DECLARES_A_NEGATIVE_ARG_COUNT_ARG_2DEADCCC =
+      "LOAD consensus entry declares a negative %s count: %d";
+  public static final String EXCEPTION_LOAD_CONSENSUS_ENTRY_ENDED_WHILE_READING_ARG_ARG_OF_ARG_BYTES_WERE_AVAILABLE_D927147B =
+      "LOAD consensus entry ended while reading %s: %d of %d bytes were available.";
+  public static final String LOG_THE_ROUTE_OF_REGION_ARG_CANNOT_BE_LOOKED_UP_AGAIN_THE_COMMAND_ARG_OF_THE_LOAD_TASK_ARG_IS_NOT_REPEATED_ON_THE_ROUTE_IT_FAILED_ON_02FFB468 =
+      "The route of region {} cannot be looked up again: {} of LOAD task {} is not repeated on the route it failed on.";
+  public static final String LOG_THE_COMMIT_OUTCOME_OF_LOAD_TASK_ARG_IN_REGION_ARG_COULD_NOT_BE_RESOLVED_ARG_89B6F261 =
+      "The commit outcome of LOAD task {} in region {} could not be resolved: {}";
   public static final String EXCEPTION_OUTER_QUERY_TIMEOUT_EXCEEDED_BEFORE_IOTDBLOCAL_QUERY_STARTS_800BFA63 = "Outer query timeout exceeded before IoTDBLocal query starts";
   public static final String MESSAGE_FAILED_TO_CLOSE_UDF_RESULT_SET_AT_INDEX_ARG_A293B7EC = "Failed to close UDF result set at index {}";
   public static final String EXCEPTION_INTERNAL_QUERY_EXECUTION_NOT_FOUND_62642542 = "Internal query execution not found";
@@ -3782,5 +4008,86 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_ALIAS_IS_NULL_862D23B1 = "alias is null";
   public static final String EXCEPTION_REFERENCES_IS_NULL_25A7E3AF = "references is null";
   public static final String EXCEPTION_VISIBLEALIASES_IS_NULL_630B27F1 = "visibleAliases is null";
+  public static final String EXCEPTION_HAS_NO_PERMISSION_TO_EXECUTE_ARG_BECAUSE_ONLY_THE_SUPERUSER_CAN_ALTER_HIM_HERSELF_C5902893 =
+      "Has no permission to execute %s, because only the superuser can alter him/herself.";
+  public static final String
+      LOG_FAILED_TO_CLEAN_DEVICEENTRY_DATA_SET_ASYNCHRONOUSLY_QUERYID_ARG_PLANNODEID_ARG_9106C4C5 =
+          "Failed to clean DeviceEntry data set asynchronously: queryId=%s, planNodeId=%s";
+  public static final String LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC =
+      "Failed to clean DeviceEntry spill directory for query %s";
+  public static final String
+      LOG_FAILED_TO_CLOSE_DEVICEENTRY_SPILL_WRITER_DURING_CLEANUP_ARG_EA7F7941 =
+          "Failed to close DeviceEntry spill writer during cleanup: %s";
+  public static final String
+      LOG_FAILED_TO_CLOSE_DEVICEENTRY_DATA_SET_AFTER_INDEX_SCAN_FAILURE_ARG_57F04319 =
+          "Failed to close DeviceEntry data set after index scan failure: %s";
+  public static final String
+      EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_UNAVAILABLE_MAY_BE_DUE_TO_TIMEOUT_OR_KILL_ARG_B932D10D =
+          "DeviceEntry spill segment is unavailable: %s. The query may have timed out or been killed.";
+  public static final String
+      EXCEPTION_DEVICEENTRY_SEGMENT_AND_ENTRY_COUNTS_MUST_BE_NON_NEGATIVE_7C6E569C =
+          "DeviceEntry segment count and entry count must be non-negative";
+  public static final String EXCEPTION_OPEN_CONSUMING_READER_IS_NOT_SUPPORTED_8B2A59A4 =
+      "Open consuming reader is not supported";
+  public static final String
+      EXCEPTION_DEVICEENTRY_MATERIALIZER_THRESHOLD_MUST_BE_POSITIVE_ARG_35CF53FD =
+          "DeviceEntry materializer threshold must be positive: %d";
+  public static final String
+      EXCEPTION_DEVICEENTRY_MATERIALIZATION_MEMORY_LIMIT_MUST_BE_POSITIVE_ARG_2EB63404 =
+          "DeviceEntry materialization memory limit must be positive: %d";
+  public static final String
+      EXCEPTION_DEVICEENTRY_DATA_SET_PATH_ESCAPES_THE_QUERY_DIRECTORY_ARG_394A9840 =
+          "DeviceEntry data set path escapes the query directory: %s";
+  public static final String EXCEPTION_DEVICEENTRY_SEGMENT_ID_MUST_BE_NON_NEGATIVE_ARG_F7653A57 =
+      "DeviceEntry segment ID must be non-negative: %d";
+  public static final String EXCEPTION_DEVICEENTRY_SEGMENT_HAS_INCOMPLETE_RECORD_LENGTH_0A282C19 =
+      "DeviceEntry segment has incomplete record length";
+  public static final String
+      EXCEPTION_INVALID_DEVICEENTRY_RECORD_LENGTH_ARG_REMAINING_BYTES_ARG_F1C43B72 =
+          "Invalid DeviceEntry record length %d, remaining bytes %d";
+  public static final String EXCEPTION_DEVICEENTRY_MATERIALIZER_HAS_ALREADY_FINISHED_5538544E =
+      "DeviceEntry materializer has already finished";
+  public static final String
+      EXCEPTION_NO_MATERIALIZER_IS_AVAILABLE_TO_ENFORCE_THE_DEVICEENTRY_MEMORY_LIMIT_FD0604AF =
+          "No materializer is available to enforce the DeviceEntry memory limit";
+  public static final String EXCEPTION_NO_MORE_DEVICEENTRY_RECORDS_ARE_AVAILABLE_8D51C199 =
+      "No more DeviceEntry records are available";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_DUPLICATE_ARG_ATTRIBUTES_ARE_NOT_ALLOWED_27315578 =
+          "Failed to create or alter topic, duplicate %s attributes are not allowed";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_IS_ONLY_SUPPORTED_FOR_TABLE_TOPICS_A5126607 =
+          "Failed to create or alter topic, %s is only supported for table topics";
+  public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
+      "Only InMemoryDeviceEntryDataSet supports get inline device entries";
+  public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_PIECE_REF_F3498507 =
+      "Invalid LOAD consensus piece ref: path %s, offset %d, size %d";
+  public static final String EXCEPTION_AUTO_SYNC_SCHEMA_IS_ONLY_SUPPORTED_BY_TREE_TO_TABLE_VIEWS_C6586215 =
+      "auto_sync_schema is only supported by tree to table views";
 
+  public static final String MESSAGE_COPYTO_ARG_38343199 = "CopyTo-%s";
+  public static final String MESSAGE_TARGETFILE_ARG_EC484B24 = "TargetFile: %s";
+  public static final String MESSAGE_FORMAT_ARG_CE5DC4EE = "Format: %s";
+  public static final String MESSAGE_TARGETTABLE_ARG_00BE4714 = "TargetTable: %s";
+  public static final String MESSAGE_TIMECOLUMN_ARG_54F6A2A6 = "TimeColumn: %s";
+  public static final String MESSAGE_TAGCOLUMNS_ARG_6520A0C2 = "TagColumns: %s";
+  public static final String MESSAGE_MEMORYTHRESHOLD_ARG_3676AB46 = "MemoryThreshold: %s";
+
+  public static final String EXCEPTION_CHUNKDATA_CONTAINS_NO_PHYSICAL_CHUNK_607BCFC8 =
+      "ChunkData contains no physical chunk";
+  public static final String EXCEPTION_DEVICE_CANNOT_BE_NULL_F1EB20B6 = "device cannot be null";
+  public static final String EXCEPTION_CHUNK_CANNOT_BE_NULL_280ECF98 = "chunk cannot be null";
+  public static final String EXCEPTION_CHUNKDATA_CANNOT_BE_NULL_7D931C4D =
+      "chunkData cannot be null";
+  public static final String EXCEPTION_FAILED_TO_COMPUTE_CHUNK_GROUP_HEADER_SIZE_E6B40B2C =
+      "Failed to compute chunk group header size";
+  public static final String EXCEPTION_FAILED_TO_COMPUTE_CHUNK_HEADER_SIZE_2E88289A =
+      "Failed to compute chunk header size";
+  public static final String LOG_DISPATCH_LOAD_PIECE_LOADID_ARG_REGIONID_ARG_PIECEINDEX_ARG_TSFILE_ARG_DATASIZE_ARG_REPLICASET_ARG_D9C87EB7 =
+      "Dispatch LOAD piece: loadId={}, regionId={}, pieceIndex={}, tsFile={}, dataSize={}, replicaSet={}";
+  public static final String LOG_DISPATCH_LOAD_PIECE_SUCCESS_LOADID_ARG_REGIONID_ARG_PIECEINDEX_ARG_DATASIZE_ARG_75F7AEFE =
+      "Dispatch LOAD piece success: loadId={}, regionId={}, pieceIndex={}, dataSize={}";
+  public static final String EXCEPTION_PLAN_NODE_ARG_IS_ALREADY_REGISTERED_ON_MEMORY_SIDE_ARG_NOT_ARG_4C1BB625 = "Plan node %s is already registered on memory side %s, not %s";
+  public static final String EXCEPTION_MEMORY_RESERVATION_IS_NOT_REGISTERED_FOR_QUERY_ARG_FRAGMENT_ARG_PLAN_NODE_ARG_67A4B81F = "Memory reservation is not registered for query %s, fragment %s, plan node %s";
+  public static final String LOG_SHARED_EXCHANGE_BUDGET_FOR_FI_ARG_INPUT_ARG_OUTPUT_ARG_98AE1109 = "Shared exchange budget for FI {}: INPUT={}, OUTPUT={}";
 }

@@ -51,6 +51,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
 
   private static final String DATE = "DATE";
   private static final String TIMESTAMP = "TIMESTAMP";
+  private static final String OBJECT = "OBJECT";
 
   /** Constructor of IoTDBResultMetadata. */
   public IoTDBResultMetadata(
@@ -169,6 +170,9 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
         return Date.class.getName();
       case BLOB:
         return "byte[]";
+      case OBJECT:
+        // getObject() describes an OBJECT value with a String such as "(Object) 1.2 MB"
+        return String.class.getName();
       default:
         break;
     }
@@ -236,6 +240,8 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
         return Types.TIMESTAMP;
       case BLOB:
         return Types.BLOB;
+      case OBJECT:
+        return Types.OTHER;
       default:
         break;
     }
@@ -259,7 +265,8 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
         || STRING.equals(typeString)
         || BLOB.equals(typeString)
         || DATE.equals(typeString)
-        || TIMESTAMP.equals(typeString)) {
+        || TIMESTAMP.equals(typeString)
+        || OBJECT.equals(typeString)) {
       return typeString;
     }
     return null;
@@ -286,6 +293,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         return Integer.MAX_VALUE;
       case TIMESTAMP:
         return 3;
@@ -313,6 +321,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
       case STRING:
       case TIMESTAMP:
       case DATE:
+      case OBJECT:
         return 0;
       case FLOAT:
         return 6;

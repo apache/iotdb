@@ -105,7 +105,10 @@ public class IoTDBConnection implements Connection {
   private ZoneId zoneId;
   private Charset charset;
 
-  private boolean autoCommit;
+  // IoTDB has no transactions, so every statement takes effect at once as JDBC auto-commit does
+  private boolean autoCommit = true;
+  // Recorded as the hint JDBC defines it to be; IoTDB has no read-only connection mode
+  private boolean readOnly;
   private String url;
 
   public String getUserName() {
@@ -147,7 +150,6 @@ public class IoTDBConnection implements Connection {
     openSession();
     // Wrap the client with a thread-safe proxy to serialize the RPC calls
     setClient(RpcUtils.newSynchronizedClient(getClient()));
-    autoCommit = false;
   }
 
   public String getUrl() {
@@ -306,17 +308,15 @@ public class IoTDBConnection implements Connection {
   @Override
   public String getCatalog() throws SQLException {
     checkOpen("getCatalog");
-    return APACHE_IOTDB;
+    // The table model has no catalogs, matching the NULL TABLE_CAT of its DatabaseMetaData
+    return getSqlDialect().equals(Constant.TABLE_DIALECT) ? null : APACHE_IOTDB;
   }
 
   @Override
   public void setCatalog(String arg0) throws SQLException {
     checkOpen("setCatalog");
     if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
-      if (arg0 == null) {
-        throw new SQLException("catalog cannot be null");
-      }
-      if (APACHE_IOTDB.equals(arg0)) {
+      if (arg0 == null || APACHE_IOTDB.equals(arg0)) {
         return;
       }
       for (String str : IoTDBRelationalDatabaseMetadata.allIotdbTableSQLKeywords) {
@@ -451,15 +451,13 @@ public class IoTDBConnection implements Connection {
   @Override
   public boolean isReadOnly() throws SQLException {
     checkOpen("isReadOnly");
-    return false;
+    return readOnly;
   }
 
   @Override
   public void setReadOnly(boolean readonly) throws SQLException {
     checkOpen("setReadOnly");
-    if (readonly) {
-      throw new SQLException(JdbcMessages.NOT_SUPPORT_READ_ONLY);
-    }
+    this.readOnly = readonly;
   }
 
   @Override
@@ -624,12 +622,13 @@ public class IoTDBConnection implements Connection {
   }
 
   private void openTransport() throws TTransportException {
-    DeepCopyRpcTransportFactory.setDefaultBufferCapacity(params.getThriftDefaultBufferSize());
-    DeepCopyRpcTransportFactory.setThriftMaxFrameSize(params.getThriftMaxFrameSize());
+    DeepCopyRpcTransportFactory transportFactory =
+        DeepCopyRpcTransportFactory.getInstance(
+            params.getThriftDefaultBufferSize(), params.getThriftMaxFrameSize());
 
     if (params.isUseSSL()) {
       transport =
-          DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+          transportFactory.getTransport(
               params.getHost(),
               params.getPort(),
               networkTimeout,
@@ -639,9 +638,7 @@ public class IoTDBConnection implements Connection {
               params.getKeyStorePwd(),
               params.getSslProtocol());
     } else {
-      transport =
-          DeepCopyRpcTransportFactory.INSTANCE.getTransport(
-              params.getHost(), params.getPort(), networkTimeout);
+      transport = transportFactory.getTransport(params.getHost(), params.getPort(), networkTimeout);
     }
     if (!transport.isOpen()) {
       transport.open();

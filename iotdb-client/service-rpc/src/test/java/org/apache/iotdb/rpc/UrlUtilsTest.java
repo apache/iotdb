@@ -101,6 +101,7 @@ public class UrlUtilsTest {
   @Test
   public void testConvertHostNameURL() {
     assertEquals("localhost:22227", UrlUtils.formatTEndPointIpv4AndIpv6Url("localhost", 22227));
+    assertEquals("localhost:22227", UrlUtils.formatTEndPointIpv4AndIpv6Url("localhost", "22227"));
   }
 
   @Test
@@ -122,6 +123,8 @@ public class UrlUtilsTest {
   public void testConvertBracketedIPV6URL() {
     assertEquals(
         "[D80::ABAA:0]:22227", UrlUtils.formatTEndPointIpv4AndIpv6Url("[D80::ABAA:0]", 22227));
+    assertEquals(
+        "[D80::ABAA:0]:invalid", UrlUtils.formatTEndPointIpv4AndIpv6Url("D80::ABAA:0", "invalid"));
   }
 
   @Test

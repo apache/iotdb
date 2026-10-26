@@ -45,6 +45,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
@@ -69,10 +70,12 @@ import java.util.Map;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.and;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.eq;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.groupByTime;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gt;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gte;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.longValue;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.or;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.time;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -279,6 +282,17 @@ public class AnalyzeTest {
   }
 
   @Test
+  public void testRightClosedGroupByTimePredicateWithLongMaxEndTime() {
+    String sql = "select count(s1) from root.sg.d1 " + "group by ((0, 9223372036854775807], 10ms);";
+
+    Analysis actualAnalysis = analyzeSQL(sql);
+
+    assertEquals(
+        or(groupByTime(1, Long.MAX_VALUE, 10, 10), eq(time(), longValue(Long.MAX_VALUE))),
+        actualAnalysis.getGlobalTimePredicate());
+  }
+
+  @Test
   public void testRawDataQueryAlignByDevice() {
     String sql =
         "select s1, status, s2 + 1 from root.sg.* where time > 100 and s2 > 10 align by device;";
@@ -372,6 +386,49 @@ public class AnalyzeTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void testAlignByDeviceWithAlwaysTruePredicate() throws IllegalPathException {
+    // root.sg.d2 has no s3, so its predicate is simplified to TRUE and needs no value filter
+    String[] sqls =
+        new String[] {
+          "select s1 from root.sg.d2 where s3 is null align by device",
+          "select s1 from root.sg.d2 where not(s3 > 1) align by device"
+        };
+    for (String sql : sqls) {
+      Analysis analysis = analyzeSQL(sql);
+
+      Assert.assertNull(sql, analysis.getDeviceToWhereExpression().get(DEVICE2));
+      Assert.assertFalse(sql, analysis.hasValueFilter());
+      assertEquals(
+          sql,
+          ImmutableMap.of(
+              DEVICE2, Sets.newHashSet(new TimeSeriesOperand(new PartialPath("root.sg.d2.s1")))),
+          analysis.getDeviceToSourceExpressions());
+    }
+  }
+
+  @Test
+  public void testAlignByDeviceWithAlwaysTruePredicateOnPartOfDevices()
+      throws IllegalPathException {
+    // root.sg.d1 is still filtered by its own s3, while the predicate of root.sg.d2 is TRUE
+    Analysis analysis = analyzeSQL("select s1 from root.sg.* where s3 is null align by device");
+
+    assertEquals(
+        new IsNullExpression(new TimeSeriesOperand(new PartialPath("root.sg.d1.s3")), false),
+        analysis.getDeviceToWhereExpression().get(DEVICE1));
+    Assert.assertNull(analysis.getDeviceToWhereExpression().get(DEVICE2));
+    Assert.assertTrue(analysis.hasValueFilter());
+    assertEquals(
+        ImmutableMap.of(
+            DEVICE1,
+            Sets.newHashSet(
+                new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                new TimeSeriesOperand(new PartialPath("root.sg.d1.s3"))),
+            DEVICE2,
+            Sets.newHashSet(new TimeSeriesOperand(new PartialPath("root.sg.d2.s1")))),
+        analysis.getDeviceToSourceExpressions());
   }
 
   @Test

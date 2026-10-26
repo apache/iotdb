@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.schemaengine.table;
 
 import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseTestUtils;
@@ -51,11 +52,12 @@ public class DataNodeTableCacheLeaseTest {
     tableCache.invalidateAll();
     Mockito.doAnswer(
             invocation -> {
-              MetadataLeaseTestUtils.failIfMetadataLeaseFenced(leaseManager);
+              MetadataLeaseTestUtils.failIfMetadataLeaseFenced(
+                  leaseManager, invocation.getArgument(0));
               return null;
             })
         .when(tableCache)
-        .failIfMetadataLeaseFenced();
+        .failIfMetadataLeaseFenced(Mockito.any());
   }
 
   @After
@@ -67,6 +69,7 @@ public class DataNodeTableCacheLeaseTest {
   public void fencedLeaseFailsClosedForReadApis() {
     nowNanos.addAndGet((T_FENCE_MS + 1) * 1_000_000L);
     assertLeaseFenced(() -> tableCache.getTableSnapshot());
+    assertLeaseFenced(() -> tableCache.getTableInCache("root.db", "t"));
     assertLeaseFenced(() -> tableCache.getTableInWrite("root.db", "t"));
     assertLeaseFenced(() -> tableCache.getTable("root.db", "t", false));
     assertLeaseFenced(() -> tableCache.isDatabaseExist("root.db"));
@@ -78,13 +81,29 @@ public class DataNodeTableCacheLeaseTest {
 
     nowNanos.addAndGet((T_FENCE_MS + 1) * 1_000_000L);
     assertLeaseFenced(() -> tableCache.preUpdateTable("root.db", table, null));
-    assertLeaseFenced(() -> tableCache.rollbackUpdateTable("root.db", "t", null));
-    assertLeaseFenced(() -> tableCache.commitUpdateTable("root.db", "t", null));
+    assertLeaseFenced(() -> tableCache.rollbackUpdateTable("root.db", "t", null, null));
+    assertLeaseFenced(() -> tableCache.commitUpdateTable("root.db", "t", null, null));
+  }
+
+  @Test
+  public void stateMachineReadCarriesRetryPolicy() {
+    nowNanos.addAndGet((T_FENCE_MS + 1) * 1_000_000L);
+
+    final MetadataLeaseFencedException e =
+        assertThrows(
+            MetadataLeaseFencedException.class,
+            () ->
+                tableCache.getTable(
+                    "root.db", "t", false, LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS));
+
+    assertEquals(
+        TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode(), e.getErrorCode());
   }
 
   private static void assertLeaseFenced(final Runnable runnable) {
     final MetadataLeaseFencedException e =
         assertThrows(MetadataLeaseFencedException.class, runnable::run);
-    assertEquals(TSStatusCode.METADATA_LEASE_FENCED.getStatusCode(), e.getErrorCode());
+    assertEquals(
+        TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode(), e.getErrorCode());
   }
 }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
@@ -203,6 +204,18 @@ public interface AccessControl {
    * @throws AccessDeniedException if not allowed
    */
   void checkUserGlobalSysPrivilege(IAuditEntity auditEntity);
+
+  /**
+   * Check if user has global SYSTEM privilege and record the authentication audit log with the
+   * specified operation and object.
+   *
+   * @param auditEntity records necessary info for audit log
+   * @param auditLogOperation operation type of the statement being authorized
+   * @param auditObject object affected by the statement
+   * @throws AccessDeniedException if not allowed
+   */
+  void checkUserGlobalSysPrivilege(
+      IAuditEntity auditEntity, AuditLogOperation auditLogOperation, Supplier<String> auditObject);
 
   /**
    * Check if user has sepecified global privilege

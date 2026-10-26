@@ -20,20 +20,29 @@
 package org.apache.iotdb.subscription.it.consensus.local.tablemodel;
 
 import org.apache.iotdb.isession.ITableSession;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePullConsumer;
+import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.subscription.it.consensus.local.AbstractSubscriptionConsensusLocalIT;
 
+import org.apache.tsfile.enums.ColumnCategory;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.query.dataset.ResultSet;
+import org.apache.tsfile.write.record.Tablet;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
@@ -50,6 +59,55 @@ public class IoTDBConsensusSubscriptionDataTableIT extends AbstractSubscriptionC
           + "s_double DOUBLE FIELD, "
           + "s_bool BOOLEAN FIELD, "
           + "s_text TEXT FIELD";
+
+  @Test
+  public void testDateFieldInsertedByTablet() throws Exception {
+    final ConsensusSubscriptionTableITSupport.TestIdentifiers ids =
+        ConsensusSubscriptionTableITSupport.newIdentifiers("table_data_date_tablet");
+    final String database = ids.getDatabase();
+    final String tableName = "table_0";
+    final LocalDate expectedDate = LocalDate.of(2026, 1, 31);
+    SubscriptionTablePullConsumer consumer = null;
+
+    try {
+      ConsensusSubscriptionTableITSupport.createDatabaseAndTable(
+          database, tableName, "device_id STRING TAG, value DATE FIELD");
+      ConsensusSubscriptionTableITSupport.createConsensusTopic(ids.getTopic(), database, tableName);
+      consumer =
+          ConsensusSubscriptionTableITSupport.createConsumer(
+              ids.getConsumerId(), ids.getConsumerGroupId());
+      consumer.subscribe(ids.getTopic());
+      ConsensusSubscriptionTableITSupport.pause(1_000L);
+
+      try (final ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+        session.executeNonQueryStatement("use " + database);
+        final Tablet tablet =
+            new Tablet(
+                tableName,
+                Arrays.asList("device_id", "value"),
+                Arrays.asList(TSDataType.STRING, TSDataType.DATE),
+                Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD),
+                1);
+        tablet.addTimestamp(0, 1L);
+        tablet.addValue("device_id", 0, "device_0");
+        tablet.addValue("value", 0, expectedDate);
+        session.insert(tablet);
+        session.executeNonQueryStatement("flush");
+
+        try (final SessionDataSet dataSet =
+            session.executeQueryStatement("select count(*) from " + tableName)) {
+          Assert.assertTrue(dataSet.hasNext());
+          Assert.assertEquals(1L, dataSet.next().getFields().get(0).getLongV());
+          Assert.assertFalse(dataSet.hasNext());
+        }
+      }
+
+      assertDateFieldConsumed(consumer, database, tableName, expectedDate);
+      ConsensusSubscriptionTableITSupport.assertNoMoreMessages(consumer, 3, Duration.ofMillis(500));
+    } finally {
+      ConsensusSubscriptionTableITSupport.cleanup(consumer, ids.getTopic(), database);
+    }
+  }
 
   @Test
   public void testTypedRowsAcrossTimePartitions() throws Exception {
@@ -133,5 +191,61 @@ public class IoTDBConsensusSubscriptionDataTableIT extends AbstractSubscriptionC
     } finally {
       ConsensusSubscriptionTableITSupport.cleanup(consumer, ids.getTopic(), database);
     }
+  }
+
+  private static void assertDateFieldConsumed(
+      final SubscriptionTablePullConsumer consumer,
+      final String database,
+      final String tableName,
+      final LocalDate expectedDate)
+      throws Exception {
+    for (int round = 0; round < 60; round++) {
+      final List<SubscriptionMessage> messages = consumer.poll(Duration.ofSeconds(1));
+      if (messages.isEmpty()) {
+        continue;
+      }
+
+      try {
+        int matchedRows = 0;
+        for (final SubscriptionMessage message : messages) {
+          for (final ResultSet resultSet : message.getResultSets()) {
+            final SubscriptionRecordHandler.SubscriptionResultSet subscriptionResultSet =
+                (SubscriptionRecordHandler.SubscriptionResultSet) resultSet;
+            if (!database.equals(subscriptionResultSet.getDatabaseName())
+                || !tableName.equals(subscriptionResultSet.getTableName())) {
+              continue;
+            }
+
+            final Tablet tablet = subscriptionResultSet.getTablet();
+            int dateColumnIndex = -1;
+            for (int columnIndex = 0; columnIndex < tablet.getSchemas().size(); columnIndex++) {
+              if ("value".equals(tablet.getSchemas().get(columnIndex).getMeasurementName())) {
+                dateColumnIndex = columnIndex;
+                break;
+              }
+            }
+            Assert.assertTrue(
+                "DATE field is absent from the consumed tablet", dateColumnIndex >= 0);
+            Assert.assertEquals(
+                TSDataType.DATE, tablet.getSchemas().get(dateColumnIndex).getType());
+
+            for (int rowIndex = 0; rowIndex < tablet.getRowSize(); rowIndex++) {
+              if (tablet.getTimestamp(rowIndex) == 1L) {
+                Assert.assertEquals(expectedDate, tablet.getValue(rowIndex, dateColumnIndex));
+                matchedRows++;
+              }
+            }
+          }
+        }
+        if (matchedRows > 0) {
+          Assert.assertEquals(1, matchedRows);
+          return;
+        }
+      } finally {
+        consumer.commitSync(messages);
+      }
+    }
+
+    Assert.fail("DATE tablet row was not consumed within 60 poll rounds");
   }
 }

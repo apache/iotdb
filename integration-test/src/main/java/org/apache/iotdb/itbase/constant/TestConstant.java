@@ -56,7 +56,7 @@ public class TestConstant {
   public static final String DATA_TYPE_STR = ColumnHeaderConstant.DATATYPE;
   public static final String FUNCTION_TYPE_NATIVE = "native";
   public static final double DELTA = 1e-6;
-  public static final double NULL = Double.MIN_VALUE;
+  public static final double NULL = Double.NaN;
 
   public static String[] createSql =
       new String[] {

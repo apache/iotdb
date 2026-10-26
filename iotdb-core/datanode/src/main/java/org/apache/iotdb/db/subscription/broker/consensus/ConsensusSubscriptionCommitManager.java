@@ -58,21 +58,26 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 
@@ -721,6 +726,46 @@ public class ConsensusSubscriptionCommitManager {
     }
   }
 
+  public void removeAllStatesForConsumerGroup(final String consumerGroupId) {
+    recoverAllTopicStatesIfNeeded();
+    final Set<String> topicNames = new HashSet<>();
+    for (final CommitStateKey stateKey : commitStateKeys.values()) {
+      if (Objects.equals(stateKey.consumerGroupId, consumerGroupId)) {
+        topicNames.add(stateKey.topicName);
+      }
+    }
+    for (final String topicName : topicNames) {
+      removeAllStatesForTopic(consumerGroupId, topicName);
+    }
+  }
+
+  public void removeAllStatesForRegion(final ConsensusGroupId regionId) {
+    final String regionIdStr = regionId.toString();
+    for (final PersistedStateKey stateKey : getPersistedStateKeys()) {
+      if (Objects.equals(stateKey.regionId, regionIdStr)) {
+        removeState(
+            stateKey.consumerGroupId,
+            stateKey.topicName,
+            ConsensusGroupId.Factory.createFromString(stateKey.regionId));
+      }
+    }
+  }
+
+  public List<PersistedStateKey> getPersistedStateKeys() {
+    recoverAllTopicStatesIfNeeded();
+    final List<PersistedStateKey> result = new java.util.ArrayList<>();
+    for (final CommitStateKey stateKey : commitStateKeys.values()) {
+      if (topicProgressIndexes
+          .getOrDefault(stateKey.topicFileKey, Collections.emptyMap())
+          .containsKey(stateKey.regionIdStr)) {
+        result.add(
+            new PersistedStateKey(
+                stateKey.consumerGroupId, stateKey.topicName, stateKey.regionIdStr));
+      }
+    }
+    return Collections.unmodifiableList(result);
+  }
+
   public void resetState(
       final String consumerGroupId,
       final String topicName,
@@ -1154,7 +1199,7 @@ public class ConsensusSubscriptionCommitManager {
   }
 
   private static void deleteFileIfExists(final File file) {
-    if (file.exists() && !file.delete()) {
+    if (file.exists() && !org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(file)) {
       LOGGER.warn(
           DataNodePipeMessages
               .PIPE_LOG_FAILED_TO_DELETE_CONSENSUS_SUBSCRIPTION_PROGRESS_FILE_51C57096,
@@ -1220,11 +1265,15 @@ public class ConsensusSubscriptionCommitManager {
 
   private void overwriteRegionPayload(
       final File metaFile, final long payloadOffset, final byte[] payload) throws IOException {
-    try (final RandomAccessFile randomAccessFile = new RandomAccessFile(metaFile, "rw")) {
-      randomAccessFile.seek(payloadOffset);
-      randomAccessFile.write(payload);
+    try (final FileChannel channel =
+        FileChannel.open(metaFile.toPath(), StandardOpenOption.WRITE)) {
+      channel.position(payloadOffset);
+      final ByteBuffer payloadBuffer = ByteBuffer.wrap(payload);
+      while (payloadBuffer.hasRemaining()) {
+        channel.write(payloadBuffer);
+      }
       if (SubscriptionConfig.getInstance().isSubscriptionConsensusCommitFsyncEnabled()) {
-        randomAccessFile.getFD().sync();
+        channel.force(true);
       }
     }
   }
@@ -1479,6 +1528,13 @@ public class ConsensusSubscriptionCommitManager {
       this.consumerGroupId = consumerGroupId;
       this.topicSnapshots = topicSnapshots;
     }
+
+    Set<String> getRegionIds(final String topicName) {
+      final TopicSetupSnapshot topicSnapshot = topicSnapshots.get(topicName);
+      return Objects.isNull(topicSnapshot)
+          ? Collections.emptySet()
+          : Collections.unmodifiableSet(topicSnapshot.stateSnapshots.keySet());
+    }
   }
 
   private static final class TopicSetupSnapshot {
@@ -1551,6 +1607,34 @@ public class ConsensusSubscriptionCommitManager {
     }
   }
 
+  public static final class PersistedStateKey {
+
+    private final String consumerGroupId;
+
+    private final String topicName;
+
+    private final String regionId;
+
+    private PersistedStateKey(
+        final String consumerGroupId, final String topicName, final String regionId) {
+      this.consumerGroupId = consumerGroupId;
+      this.topicName = topicName;
+      this.regionId = regionId;
+    }
+
+    public String getConsumerGroupId() {
+      return consumerGroupId;
+    }
+
+    public String getTopicName() {
+      return topicName;
+    }
+
+    public String getRegionId() {
+      return regionId;
+    }
+  }
+
   private static final class TopicProgressSnapshot {
 
     private final Map<String, ConsensusSubscriptionCommitState> states;
@@ -1612,8 +1696,14 @@ public class ConsensusSubscriptionCommitManager {
     /** Tracks dispatched but not-yet-committed events by writer-local slot. */
     private final Map<ProgressSlot, ProgressKey> outstandingKeys = new ConcurrentHashMap<>();
 
-    /** Tracks committed dispatched entries that cannot yet advance the frontier because of gaps. */
-    private final Map<ProgressSlot, ProgressKey> committedPendingKeys = new LinkedHashMap<>();
+    // Exact ACK lookup uses the slot map above. Successor lookup must not scan the entire backlog
+    // on every ACK or every step of a contiguous advance. Both indexes use ProgressKey's existing
+    // physical-time/node/sequence ordering and are guarded by the same state monitor as the maps.
+    private final Map<Integer, NavigableSet<ProgressKey>> outstandingKeysByWriter = new HashMap<>();
+
+    /** Tracks ACKed entries blocked by earlier outstanding progress from the same writer. */
+    private final Map<Integer, NavigableSet<ProgressKey>> committedPendingKeysByWriter =
+        new HashMap<>();
 
     public ConsensusSubscriptionCommitState(
         final String regionId, final SubscriptionConsensusProgress progress) {
@@ -1670,6 +1760,10 @@ public class ConsensusSubscriptionCommitManager {
       final ProgressSlot slot = ProgressSlot.from(key);
       synchronized (this) {
         final ProgressKey previous = outstandingKeys.put(slot, key);
+        if (Objects.nonNull(previous)) {
+          removeFromWriterIndex(outstandingKeysByWriter, previous);
+        }
+        addToWriterIndex(outstandingKeysByWriter, key);
         if (Objects.nonNull(previous) && !previous.equals(key)) {
           LOGGER.warn(
               DataNodePipeMessages
@@ -1715,7 +1809,7 @@ public class ConsensusSubscriptionCommitManager {
       final ProgressKey key = new ProgressKey(writerId, writerProgress);
 
       synchronized (this) {
-        final ProgressKey recordedKey = outstandingKeys.remove(ProgressSlot.from(key));
+        final ProgressKey recordedKey = removeOutstandingKey(key);
         if (recordedKey == null) {
           if (recentlyCommittedKeys.contains(key)) {
             LOGGER.debug(
@@ -1776,9 +1870,11 @@ public class ConsensusSubscriptionCommitManager {
           return CommitOperationResult.handledWithoutAdvance();
         }
 
-        final ProgressKey outstandingKey = outstandingKeys.remove(ProgressSlot.from(incomingKey));
+        final ProgressKey outstandingKey = removeOutstandingKey(incomingKey);
         if (Objects.isNull(outstandingKey)) {
-          LOGGER.warn(
+          // Late or duplicate ACKs are reported by the queue or summarized by the receiver. Logging
+          // every missing mapping at WARN would amplify one commit request by its context count.
+          LOGGER.debug(
               DataNodePipeMessages
                   .PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITSTATE_REJECT_DIRECT_COMMIT_WITHOUT_5B975E49,
               incomingKey.physicalTime,
@@ -1802,7 +1898,8 @@ public class ConsensusSubscriptionCommitManager {
     public void resetForSeek(final RegionProgress regionProgress) {
       synchronized (this) {
         outstandingKeys.clear();
-        committedPendingKeys.clear();
+        outstandingKeysByWriter.clear();
+        committedPendingKeysByWriter.clear();
         recentlyCommittedKeys.clear();
         committedWriterPositions.clear();
         if (Objects.nonNull(regionProgress)) {
@@ -1854,10 +1951,10 @@ public class ConsensusSubscriptionCommitManager {
     }
 
     private void stageCommittedAndAdvance(final ProgressKey key) {
-      committedPendingKeys.put(ProgressSlot.from(key), key);
+      addToWriterIndex(committedPendingKeysByWriter, key);
       final WriterId writerId = key.toWriterId(regionId);
       if (Objects.isNull(writerId)) {
-        committedPendingKeys.remove(ProgressSlot.from(key));
+        removeCommittedPendingKey(key);
         return;
       }
       ProgressKey current =
@@ -1871,7 +1968,7 @@ public class ConsensusSubscriptionCommitManager {
         if (Objects.nonNull(nextOutstanding) && nextOutstanding.compareTo(nextCommitted) < 0) {
           return;
         }
-        committedPendingKeys.remove(ProgressSlot.from(nextCommitted));
+        removeCommittedPendingKey(nextCommitted);
         advanceCommitted(nextCommitted);
         current = nextCommitted;
       }
@@ -1890,39 +1987,50 @@ public class ConsensusSubscriptionCommitManager {
     }
 
     private ProgressKey findNextCommittedKey(final WriterId writerId, final ProgressKey current) {
-      ProgressKey next = null;
-      for (final ProgressKey candidate : committedPendingKeys.values()) {
-        if (!sameWriter(writerId, candidate)) {
-          continue;
-        }
-        if (candidate.compareTo(current) <= 0) {
-          continue;
-        }
-        if (Objects.isNull(next) || candidate.compareTo(next) < 0) {
-          next = candidate;
-        }
-      }
-      return next;
+      return findNextKey(committedPendingKeysByWriter, writerId, current);
     }
 
     private ProgressKey findNextOutstandingKey(final WriterId writerId, final ProgressKey current) {
-      ProgressKey next = null;
-      for (final ProgressKey candidate : outstandingKeys.values()) {
-        if (!sameWriter(writerId, candidate)) {
-          continue;
-        }
-        if (candidate.compareTo(current) <= 0) {
-          continue;
-        }
-        if (Objects.isNull(next) || candidate.compareTo(next) < 0) {
-          next = candidate;
-        }
-      }
-      return next;
+      return findNextKey(outstandingKeysByWriter, writerId, current);
     }
 
-    private boolean sameWriter(final WriterId writerId, final ProgressKey key) {
-      return Objects.nonNull(writerId) && writerId.getNodeId() == key.writerNodeId;
+    private ProgressKey removeOutstandingKey(final ProgressKey key) {
+      final ProgressKey removed = outstandingKeys.remove(ProgressSlot.from(key));
+      if (Objects.nonNull(removed)) {
+        removeFromWriterIndex(outstandingKeysByWriter, removed);
+      }
+      return removed;
+    }
+
+    private void removeCommittedPendingKey(final ProgressKey key) {
+      removeFromWriterIndex(committedPendingKeysByWriter, key);
+    }
+
+    private static void addToWriterIndex(
+        final Map<Integer, NavigableSet<ProgressKey>> index, final ProgressKey key) {
+      index.computeIfAbsent(key.writerNodeId, ignored -> new TreeSet<>()).add(key);
+    }
+
+    private static void removeFromWriterIndex(
+        final Map<Integer, NavigableSet<ProgressKey>> index, final ProgressKey key) {
+      final NavigableSet<ProgressKey> writerKeys = index.get(key.writerNodeId);
+      if (Objects.nonNull(writerKeys)) {
+        writerKeys.remove(key);
+        if (writerKeys.isEmpty()) {
+          index.remove(key.writerNodeId);
+        }
+      }
+    }
+
+    private static ProgressKey findNextKey(
+        final Map<Integer, NavigableSet<ProgressKey>> index,
+        final WriterId writerId,
+        final ProgressKey current) {
+      if (Objects.isNull(writerId)) {
+        return null;
+      }
+      final NavigableSet<ProgressKey> writerKeys = index.get(writerId.getNodeId());
+      return Objects.nonNull(writerKeys) ? writerKeys.higher(current) : null;
     }
 
     private CommitOperationResult buildCommitOperationResult(

@@ -40,6 +40,7 @@ import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -66,6 +67,17 @@ public class ClusterTestResultSet implements ResultSet {
     }
     resultSets = delegate.requestAll();
     this.env = env;
+  }
+
+  /**
+   * Returns each node's result for assertions that do not require identical row order or plan text.
+   * Every returned result must be checked. The caller must close the original result set and must
+   * not mix per-node iteration with iteration through the cluster wrapper.
+   */
+  public static List<ResultSet> getNodeResultSets(ResultSet resultSet) {
+    return resultSet instanceof ClusterTestResultSet
+        ? Collections.unmodifiableList(((ClusterTestResultSet) resultSet).resultSets)
+        : Collections.singletonList(resultSet);
   }
 
   @Override

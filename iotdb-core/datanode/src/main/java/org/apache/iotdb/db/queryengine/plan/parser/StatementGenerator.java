@@ -339,10 +339,7 @@ public class StatementGenerator {
             ? new PartialPath(insertTabletReq.getPrefixPath(), false)
             : DEVICE_PATH_CACHE.getPartialPath(insertTabletReq.getPrefixPath()));
     insertStatement.setMeasurements(insertTabletReq.getMeasurements().toArray(new String[0]));
-    TSDataType[] dataTypes = new TSDataType[insertTabletReq.types.size()];
-    for (int i = 0; i < insertTabletReq.types.size(); i++) {
-      dataTypes[i] = TSDataType.deserialize((byte) insertTabletReq.types.get(i).intValue());
-    }
+    TSDataType[] dataTypes = deserializeDataTypes(insertTabletReq.types);
     insertStatement.setDataTypes(dataTypes);
 
     TabletDecoder tabletDecoder =
@@ -397,32 +394,29 @@ public class StatementGenerator {
     final long startTime = System.nanoTime();
     // construct insert statement
     InsertMultiTabletsStatement insertStatement = new InsertMultiTabletsStatement();
-    List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
-    for (int i = 0; i < req.prefixPaths.size(); i++) {
+    int tabletCount = req.prefixPaths.size();
+    List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>(tabletCount);
+    for (int i = 0; i < tabletCount; i++) {
+      List<String> measurements = req.measurementsList.get(i);
+      TSDataType[] dataTypes = deserializeDataTypes(req.typesList.get(i));
+      int rowCount = req.sizeList.get(i);
       InsertTabletStatement insertTabletStatement = new InsertTabletStatement();
       insertTabletStatement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.prefixPaths.get(i)));
-      insertTabletStatement.setMeasurements(req.measurementsList.get(i).toArray(new String[0]));
+      insertTabletStatement.setMeasurements(measurements.toArray(new String[0]));
       long[] timestamps =
-          QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i));
+          QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), rowCount);
       if (timestamps.length != 0) {
         TimestampPrecisionUtils.checkTimestampPrecision(timestamps[timestamps.length - 1]);
       }
       insertTabletStatement.setTimes(timestamps);
       insertTabletStatement.setColumns(
           QueryDataSetUtils.readTabletValuesFromBuffer(
-              req.valuesList.get(i),
-              req.typesList.get(i),
-              req.measurementsList.get(i).size(),
-              req.sizeList.get(i)));
+              req.valuesList.get(i), dataTypes, measurements.size(), rowCount));
       insertTabletStatement.setBitMaps(
           QueryDataSetUtils.readBitMapsFromBuffer(
-                  req.valuesList.get(i), req.measurementsList.get(i).size(), req.sizeList.get(i))
+                  req.valuesList.get(i), measurements.size(), rowCount)
               .orElse(null));
-      insertTabletStatement.setRowCount(req.sizeList.get(i));
-      TSDataType[] dataTypes = new TSDataType[req.typesList.get(i).size()];
-      for (int j = 0; j < dataTypes.length; j++) {
-        dataTypes[j] = TSDataType.deserialize((byte) req.typesList.get(i).get(j).intValue());
-      }
+      insertTabletStatement.setRowCount(rowCount);
       insertTabletStatement.setDataTypes(dataTypes);
       insertTabletStatement.setAligned(req.isAligned);
       // skip empty tablet
@@ -434,6 +428,14 @@ public class StatementGenerator {
     insertStatement.setInsertTabletStatementList(insertTabletStatementList);
     PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
     return insertStatement;
+  }
+
+  private static TSDataType[] deserializeDataTypes(List<Integer> serializedDataTypes) {
+    TSDataType[] dataTypes = new TSDataType[serializedDataTypes.size()];
+    for (int i = 0; i < dataTypes.length; i++) {
+      dataTypes[i] = TSDataType.deserialize((byte) serializedDataTypes.get(i).intValue());
+    }
+    return dataTypes;
   }
 
   public static InsertRowsStatement createStatement(TSInsertRecordsReq req)

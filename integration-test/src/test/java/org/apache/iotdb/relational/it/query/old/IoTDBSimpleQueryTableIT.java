@@ -95,6 +95,30 @@ public class IoTDBSimpleQueryTableIT {
     }
   }
 
+  @Test
+  public void testLimitZeroRejected() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE " + DATABASE_NAME);
+      statement.execute("USE " + DATABASE_NAME);
+      statement.execute("CREATE TABLE table1(device STRING TAG, s1 INT32 FIELD)");
+
+      assertLimitZeroRejected(statement, "SELECT * FROM table1 LIMIT 0");
+      assertLimitZeroRejected(statement, "SELECT * FROM table1 ORDER BY time LIMIT 0");
+    }
+  }
+
+  private static void assertLimitZeroRejected(Statement statement, String sql) {
+    try {
+      statement.executeQuery(sql);
+      fail("Expected LIMIT 0 to be rejected");
+    } catch (SQLException e) {
+      assertTrue(
+          e.getMessage(),
+          e.getMessage().contains("LIMIT row count must be greater than 0 (actual value: 0)"));
+    }
+  }
+
   @Ignore // TODO After last query supported
   @Test
   public void testLastQueryNonCached() {

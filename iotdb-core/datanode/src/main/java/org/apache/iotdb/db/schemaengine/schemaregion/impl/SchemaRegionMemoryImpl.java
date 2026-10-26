@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
@@ -52,6 +53,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceAttributeUpdater;
@@ -64,6 +66,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.Cre
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
@@ -74,6 +77,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Table
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.DataNodeSchemaQuotaManager;
@@ -127,8 +131,10 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IDeleteLogic
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IRollbackPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -160,7 +166,6 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.calc.plan.planner.TableOperatorGenerator.makeLayout;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher.convertTagValuesToDeviceID;
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info of one certain
@@ -176,7 +181,7 @@ import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
  * <p>The codes are divided into the following code regions:
  *
  * <ol>
- *   <li>Interfaces and Implementation for initialization、recover and clear
+ *   <li>Interfaces and Implementation for initialization, recover and clear
  *   <li>Interfaces and Implementation for schema region Info query and operation
  *   <li>Interfaces and Implementation for Timeseries operation
  *   <li>Interfaces for auto create device
@@ -199,6 +204,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private boolean isRecovering = true;
   private volatile boolean initialized = false;
+  private boolean ratisLogAppenderBufferReserved = false;
 
   private final String databaseDirPath;
   private final String schemaRegionDirPath;
@@ -222,7 +228,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private IDeviceAttributeStore deviceAttributeStore;
   private DeviceAttributeCacheUpdater deviceAttributeCacheUpdater;
 
-  // region Interfaces and Implementation of initialization、snapshot、recover and clear
+  // region Interfaces and Implementation of initialization, snapshot, recover and clear
   public SchemaRegionMemoryImpl(final ISchemaRegionParams schemaRegionParams)
       throws MetadataException {
 
@@ -254,7 +260,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       return;
     }
 
-    if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (!ratisLogAppenderBufferReserved
+        && config
+            .getSchemaRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       final long memCost = config.getSchemaRatisConsensusLogAppenderBufferSizeMax();
       if (!SystemInfo.getInstance().addDirectBufferMemoryCost(memCost)) {
         throw new MetadataException(
@@ -263,6 +272,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                 + DataNodeSchemaMessages.DIRECT_BUFFER_MEMORY_LIMIT
                 + SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
       }
+      ratisLogAppenderBufferReserved = true;
     }
 
     initDir();
@@ -491,9 +501,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     // delete all the schema region files
     SchemaRegionUtils.deleteSchemaRegionFolder(
         schemaRegionDirPath, logger, RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);
-    if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (ratisLogAppenderBufferReserved) {
       SystemInfo.getInstance()
           .decreaseDirectBufferMemoryCost(config.getSchemaRatisConsensusLogAppenderBufferSizeMax());
+      ratisLogAppenderBufferReserved = false;
     }
   }
 
@@ -613,10 +624,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                 try {
                   tagManager.recoverIndex(measurementMNode.getOffset(), measurementMNode);
                 } catch (final IOException e) {
+                  // Snapshot callbacks run before the measurement is attached to its parent.
                   logger.error(
                       DataNodeSchemaMessages.FAILED_TO_RECOVER_TAG_INDEX,
-                      databaseFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
-                      schemaRegionId);
+                      measurementMNode.getName(),
+                      databaseFullPath,
+                      schemaRegionId,
+                      measurementMNode.getOffset(),
+                      e);
                 }
               },
               deviceMNode -> {
@@ -749,6 +764,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       }
 
     } catch (IOException e) {
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       throw new MetadataException(e);
     }
   }
@@ -886,11 +902,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
-    try {
-      return mTree.checkMeasurementExistence(devicePath, measurementList, aliasList);
-    } catch (final Exception e) {
-      return Collections.emptyMap();
-    }
+    return mTree.checkMeasurementExistence(devicePath, measurementList, aliasList);
   }
 
   @Override
@@ -1523,13 +1535,15 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void updateTableDeviceAttribute(final TableDeviceAttributeUpdateNode updateNode)
       throws MetadataException {
-    try (final DeviceAttributeUpdater batchUpdater = constructDevicePredicateUpdater(updateNode)) {
+    final TsTable table =
+        DataNodeTableCache.getInstance()
+            .getTable(updateNode.getDatabase(), updateNode.getTableName());
+    final List<String> attributeNames = validateUpdateAttributeAssignments(updateNode, table);
+    try (final DeviceAttributeUpdater batchUpdater =
+        constructDevicePredicateUpdater(updateNode, table, attributeNames)) {
       for (final PartialPath pattern :
           TableDeviceQuerySource.getDevicePatternList(
-              updateNode.getDatabase(),
-              DataNodeTableCache.getInstance()
-                  .getTable(updateNode.getDatabase(), updateNode.getTableName()),
-              updateNode.getTagDeterminedFilterList())) {
+              updateNode.getDatabase(), table, updateNode.getTagDeterminedFilterList())) {
         mTree.updateTableDevice(pattern, batchUpdater);
       }
     }
@@ -1537,11 +1551,66 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     writeToMLog(updateNode);
   }
 
+  private List<String> validateUpdateAttributeAssignments(
+      final TableDeviceAttributeUpdateNode updateNode, final TsTable table)
+      throws MetadataException {
+    final List<String> attributeNames = new ArrayList<>();
+    final Set<String> uniqueAttributeNames = new HashSet<>();
+    for (final UpdateAssignment assignment : updateNode.getAssignments()) {
+      if (!(assignment.getName() instanceof SymbolReference)) {
+        throw new MetadataException(
+            DataNodeQueryMessages.UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS,
+            TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+      }
+
+      final String attributeName = ((SymbolReference) assignment.getName()).getName();
+      final TsTableColumnSchema columnSchema = table.getColumnSchema(attributeName);
+      if (Objects.nonNull(columnSchema)
+          && columnSchema.getColumnCategory() != TsTableColumnCategory.ATTRIBUTE) {
+        throw new MetadataException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_CANNOT_UPDATE_ARG_COLUMN_ARG_UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS_F805D1A6,
+                columnSchema.getColumnCategory(),
+                attributeName),
+            TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+      }
+      if (Objects.isNull(columnSchema)
+          || columnSchema.getColumnCategory() != TsTableColumnCategory.ATTRIBUTE) {
+        throw new MetadataException(
+            DataNodeQueryMessages.UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS,
+            TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+      }
+      if (!uniqueAttributeNames.add(attributeName)) {
+        throw new MetadataException(
+            DataNodeQueryMessages.UPDATE_ATTRIBUTE_SHALL_SPECIFY_A_ATTRIBUTE_ONLY_ONCE,
+            TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+      }
+      for (final Symbol symbol : SymbolsExtractor.extractUnique(assignment.getValue())) {
+        final TsTableColumnSchema referencedColumnSchema = table.getColumnSchema(symbol.getName());
+        if (Objects.nonNull(referencedColumnSchema)
+            && (referencedColumnSchema.getColumnCategory() == TsTableColumnCategory.FIELD
+                || referencedColumnSchema.getColumnCategory() == TsTableColumnCategory.TIME)) {
+          throw new MetadataException(
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_CANNOT_REFERENCE_ARG_COLUMN_ARG_IN_AN_UPDATE_VALUE_UPDATE_VALUES_CAN_ONLY_REFERENCE_ATTRIBUTE_OR_TAG_COLUMNS_C01BE71A,
+                  referencedColumnSchema.getColumnCategory(),
+                  symbol.getName()),
+              TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+        }
+      }
+      attributeNames.add(attributeName);
+    }
+    return attributeNames;
+  }
+
   private DeviceAttributeUpdater constructDevicePredicateUpdater(
-      final TableDeviceAttributeUpdateNode updateNode) {
+      final TableDeviceAttributeUpdateNode updateNode,
+      final TsTable table,
+      final List<String> attributeNames) {
     final String database = updateNode.getDatabase();
     final String tableName = updateNode.getTableName();
-    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
     final Expression predicate = updateNode.getTagFuzzyPredicate();
     final List<TsTableColumnSchema> columnSchemaList =
         updateNode.getColumnHeaderList().stream()
@@ -1611,11 +1680,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             mockTypeProvider,
             metadata,
             null);
-
-    final List<String> attributeNames =
-        updateNode.getAssignments().stream()
-            .map(assignment -> ((SymbolReference) assignment.getName()).getName())
-            .collect(Collectors.toList());
 
     // Project expressions don't contain Non-Mappable UDF, TransformOperator is not needed
     return new DeviceAttributeUpdater(

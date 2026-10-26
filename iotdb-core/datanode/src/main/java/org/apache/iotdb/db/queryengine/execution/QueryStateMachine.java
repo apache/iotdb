@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution;
 
+import org.apache.iotdb.calc.execution.StateMachine;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
@@ -53,7 +54,7 @@ public class QueryStateMachine {
   private final StateMachine<QueryState> queryState;
 
   private final AtomicReference<Throwable> failureException = new AtomicReference<>();
-  private final AtomicReference<TSStatus> failureStatus = new AtomicReference<>();
+  private final AtomicReference<FailureStatus> failureStatus = new AtomicReference<>();
 
   public QueryStateMachine(QueryId queryId, ExecutorService executor) {
     this.queryState =
@@ -89,7 +90,7 @@ public class QueryStateMachine {
   }
 
   public void transitionToPendingRetry(TSStatus failureStatus) {
-    this.failureStatus.compareAndSet(null, failureStatus);
+    recordFailureStatus(failureStatus, false);
     queryState.setIf(PENDING_RETRY, currentState -> currentState == DISPATCHING);
   }
 
@@ -109,7 +110,7 @@ public class QueryStateMachine {
   }
 
   public boolean transitionToCanceled(Throwable throwable, TSStatus failureStatus) {
-    this.failureStatus.compareAndSet(null, failureStatus);
+    recordFailureStatus(failureStatus, false);
     this.failureException.compareAndSet(null, throwable);
     return transitionToDoneState(CANCELED);
   }
@@ -128,8 +129,32 @@ public class QueryStateMachine {
   }
 
   public void transitionToFailed(TSStatus failureStatus) {
-    this.failureStatus.compareAndSet(null, failureStatus);
+    transitionToFailed(failureStatus, false);
+  }
+
+  public void transitionToFailed(TSStatus failureStatus, boolean failureCausedByInterruption) {
+    recordFailureStatus(failureStatus, failureCausedByInterruption);
     transitionToDoneState(FAILED);
+  }
+
+  private void recordFailureStatus(TSStatus status, boolean failureCausedByInterruption) {
+    if (status != null) {
+      // Publish the status and its origin together. A later interruption must not reclassify
+      // the first recorded failure.
+      failureStatus.compareAndSet(null, new FailureStatus(status, failureCausedByInterruption));
+    }
+  }
+
+  /** Only the exact recorded status carries the interruption provenance stored with it. */
+  public boolean isFailureCausedByInterruption(TSStatus status) {
+    FailureStatus failure = failureStatus.get();
+    if (failure == null || failure.status != status || !failure.failureCausedByInterruption) {
+      return false;
+    }
+    // Statuses and exceptions can be recorded independently. Keep an unrelated exception
+    // visible even if a subsequent dispatch interruption supplied the status.
+    Throwable throwable = failureException.get();
+    return throwable == null || getRootCause(throwable) instanceof InterruptedException;
   }
 
   private boolean transitionToDoneState(QueryState doneState) {
@@ -160,9 +185,9 @@ public class QueryStateMachine {
   }
 
   public TSStatus getFailureStatus() {
-    TSStatus status = failureStatus.get();
+    FailureStatus status = failureStatus.get();
     if (status != null) {
-      return status;
+      return status.status;
     } else {
       Throwable throwable = failureException.get();
       if (throwable != null) {
@@ -173,7 +198,18 @@ public class QueryStateMachine {
           return RpcUtils.getStatus(((IoTDBException) t).getErrorCode(), t.getMessage());
         }
       }
-      return failureStatus.get();
+      status = failureStatus.get();
+      return status == null ? null : status.status;
+    }
+  }
+
+  private static class FailureStatus {
+    private final TSStatus status;
+    private final boolean failureCausedByInterruption;
+
+    private FailureStatus(TSStatus status, boolean failureCausedByInterruption) {
+      this.status = status;
+      this.failureCausedByInterruption = failureCausedByInterruption;
     }
   }
 }

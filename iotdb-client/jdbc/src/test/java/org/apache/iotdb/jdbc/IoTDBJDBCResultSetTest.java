@@ -32,6 +32,7 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
@@ -51,11 +52,14 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
@@ -110,6 +114,18 @@ import static org.mockito.Mockito.when;
 */
 
 public class IoTDBJDBCResultSetTest {
+
+  private static final List<TSDataType> ALL_TYPES =
+      Arrays.asList(
+          TSDataType.BOOLEAN,
+          TSDataType.INT32,
+          TSDataType.INT64,
+          TSDataType.FLOAT,
+          TSDataType.DOUBLE,
+          TSDataType.STRING,
+          TSDataType.BLOB,
+          TSDataType.TIMESTAMP,
+          TSDataType.DATE);
 
   @Mock TSExecuteStatementResp execResp;
   private long queryId;
@@ -315,6 +331,8 @@ public class IoTDBJDBCResultSetTest {
     Assert.assertThrows(SQLException.class, () -> resultSet.getHoldability());
     Assert.assertThrows(SQLException.class, () -> resultSet.getStatement());
     Assert.assertThrows(SQLException.class, () -> resultSet.getString(1));
+    Assert.assertThrows(SQLException.class, () -> resultSet.getObject(1, Long.class));
+    Assert.assertThrows(SQLException.class, () -> resultSet.getObject("Time", Long.class));
     Assert.assertThrows(SQLException.class, () -> resultSet.findColumn("Time"));
     Assert.assertThrows(SQLException.class, () -> resultSet.getMetaData());
     Assert.assertThrows(SQLException.class, () -> resultSet.getType());
@@ -559,6 +577,286 @@ public class IoTDBJDBCResultSetTest {
     when(execResp.getColumnIndex2TsBlockColumnIndexList())
         .thenReturn(new ArrayList<>(Collections.singletonList(0)));
     execResp.queryResult = fakedTextFetchTsBlockResult();
+  }
+
+  /**
+   * The tree-model time pseudo-column is addressed by a negative TsBlock column index. getLong,
+   * getString and getObject handle it; the strictly-typed getters used to fall through to
+   * TsBlock.getColumn(-1) and escape as an unchecked ArrayIndexOutOfBoundsException instead of the
+   * SQLException a JDBC caller can handle. getDate delegates to getInt, so it is affected too.
+   */
+  @SuppressWarnings("resource")
+  @Test
+  public void testTimeColumnRejectedByStrictlyTypedGetters() throws Exception {
+    try (ResultSet resultSet = executeAndFetchTreeModelResultSet()) {
+      Assert.assertEquals(1, resultSet.findColumn("Time"));
+      Assert.assertTrue(resultSet.next());
+
+      // The getters that support the time column keep working.
+      Assert.assertEquals(2L, resultSet.getLong(1));
+      Assert.assertEquals("2", resultSet.getString(1));
+      Assert.assertEquals(new Timestamp(2), resultSet.getObject(1));
+      Assert.assertEquals(new Timestamp(2), resultSet.getTimestamp(1));
+      Assert.assertEquals(new Timestamp(2), resultSet.getTimestamp("Time"));
+
+      // The strictly-typed ones must report a SQLException, not an unchecked exception.
+      assertTimeColumnRejected(() -> resultSet.getBoolean(1));
+      assertTimeColumnRejected(() -> resultSet.getInt(1));
+      assertTimeColumnRejected(() -> resultSet.getFloat(1));
+      assertTimeColumnRejected(() -> resultSet.getDouble(1));
+      assertTimeColumnRejected(() -> resultSet.getDate(1));
+
+      // Reading by name goes through the same path.
+      assertTimeColumnRejected(() -> resultSet.getInt("Time"));
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testGetObjectConvertsToRequestedClass() throws Exception {
+    try (ResultSet resultSet = executeTableModelQueryWithAllTypes(1_000_000, allTypesRow())) {
+      Assert.assertTrue(resultSet.next());
+      Assert.assertEquals(Boolean.TRUE, resultSet.getObject(1, Boolean.class));
+      Assert.assertEquals(Integer.valueOf(42), resultSet.getObject(2, Integer.class));
+      Assert.assertEquals(Long.valueOf(42L), resultSet.getObject(2, Long.class));
+      Assert.assertEquals(Long.valueOf(7L), resultSet.getObject(3, Long.class));
+      Assert.assertEquals(Float.valueOf(1.5F), resultSet.getObject(4, Float.class));
+      Assert.assertEquals(Double.valueOf(1.5D), resultSet.getObject(4, Double.class));
+      Assert.assertEquals(Double.valueOf(2.25D), resultSet.getObject(5, Double.class));
+      Assert.assertEquals("hello", resultSet.getObject(6, String.class));
+      Assert.assertArrayEquals(new byte[] {1, 2, 3}, resultSet.getObject(7, byte[].class));
+      Timestamp expectedTimestamp = new Timestamp(1_700_000_000_123L);
+      expectedTimestamp.setNanos(123_456_000);
+      Assert.assertEquals(expectedTimestamp, resultSet.getObject(8, Timestamp.class));
+      Assert.assertEquals(Long.valueOf(1_700_000_000_123_456L), resultSet.getObject(8, Long.class));
+      Assert.assertEquals(LocalDate.of(2024, 1, 15), resultSet.getObject(9, LocalDate.class));
+      Assert.assertEquals("42", resultSet.getObject(2, String.class));
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testGetObjectReturnsNullForSqlNull() throws Exception {
+    try (ResultSet resultSet =
+        executeTableModelQueryWithAllTypes(1_000, new Object[ALL_TYPES.size()])) {
+      Assert.assertTrue(resultSet.next());
+      Assert.assertNull(resultSet.getObject(1, Boolean.class));
+      Assert.assertNull(resultSet.getObject(2, Integer.class));
+      Assert.assertNull(resultSet.getObject(3, Long.class));
+      Assert.assertNull(resultSet.getObject(4, Float.class));
+      Assert.assertNull(resultSet.getObject(5, Double.class));
+      Assert.assertNull(resultSet.getObject(6, String.class));
+      Assert.assertNull(resultSet.getObject(7, byte[].class));
+      Assert.assertNull(resultSet.getObject(8, Timestamp.class));
+      Assert.assertNull(resultSet.getObject(9, LocalDate.class));
+      Assert.assertTrue(resultSet.wasNull());
+      Assert.assertNull(resultSet.getObject("i", Integer.class));
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testGetObjectRejectsUnsupportedConversion() throws Exception {
+    try (ResultSet resultSet = executeTableModelQueryWithAllTypes(1_000, allTypesRow())) {
+      Assert.assertTrue(resultSet.next());
+      assertRejectedWithSqlException(() -> resultSet.getObject(6, Integer.class));
+      assertRejectedWithSqlException(() -> resultSet.getObject(1, Long.class));
+      assertRejectedWithSqlException(() -> resultSet.getObject(9, Timestamp.class));
+      assertRejectedWithSqlException(() -> resultSet.getObject(2, StringBuilder.class));
+      assertRejectedWithSqlException(() -> resultSet.getObject(2, (Class<?>) null));
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testGetObjectByLabelConvertsToRequestedClass() throws Exception {
+    try (ResultSet resultSet = executeTableModelQueryWithAllTypes(1_000_000, allTypesRow())) {
+      Assert.assertTrue(resultSet.next());
+      Assert.assertEquals(Integer.valueOf(42), resultSet.getObject("i", Integer.class));
+      Assert.assertEquals(Long.valueOf(7L), resultSet.getObject("l", Long.class));
+      Assert.assertEquals("hello", resultSet.getObject("s", String.class));
+      Timestamp expectedTimestamp = new Timestamp(1_700_000_000_123L);
+      expectedTimestamp.setNanos(123_456_000);
+      Assert.assertEquals(expectedTimestamp, resultSet.getObject("ts", Timestamp.class));
+      Assert.assertEquals(LocalDate.of(2024, 1, 15), resultSet.getObject("dt", LocalDate.class));
+      assertRejectedWithSqlException(() -> resultSet.getObject("s", Integer.class));
+      assertRejectedWithSqlException(() -> resultSet.getObject("no_such_column", Integer.class));
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testGetTimestampHonorsTimePrecisionByIndexAndLabel() throws Exception {
+    try (ResultSet resultSet = executeTableModelQueryWithAllTypes(1_000_000, allTypesRow())) {
+      Assert.assertTrue(resultSet.next());
+      Timestamp expectedTimestamp = new Timestamp(1_700_000_000_123L);
+      expectedTimestamp.setNanos(123_456_000);
+      Assert.assertEquals(expectedTimestamp, resultSet.getTimestamp(8));
+      Assert.assertEquals(expectedTimestamp, resultSet.getTimestamp("ts"));
+      assertRejectedWithSqlException(() -> resultSet.getTimestamp("no_such_column"));
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testGetTimestampKeepsPreEpochValues() throws Exception {
+    Object[] row = allTypesRow();
+    // 1.5 seconds before the epoch, in milliseconds
+    row[7] = -1_500L;
+    try (ResultSet resultSet = executeTableModelQueryWithAllTypes(1_000, row)) {
+      Assert.assertTrue(resultSet.next());
+      Assert.assertEquals(new Timestamp(-1_500L), resultSet.getTimestamp("ts"));
+      Assert.assertEquals(new Timestamp(-1_500L), resultSet.getTimestamp(8));
+      Assert.assertEquals(new Timestamp(-1_500L), resultSet.getObject(8, Timestamp.class));
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testGetTimestampReturnsNullForSqlNull() throws Exception {
+    try (ResultSet resultSet =
+        executeTableModelQueryWithAllTypes(1_000, new Object[ALL_TYPES.size()])) {
+      Assert.assertTrue(resultSet.next());
+      Assert.assertNull(resultSet.getTimestamp(8));
+      Assert.assertTrue(resultSet.wasNull());
+      Assert.assertNull(resultSet.getTimestamp("ts"));
+      Assert.assertTrue(resultSet.wasNull());
+    }
+  }
+
+  private void assertRejectedWithSqlException(ResultSetRead read) {
+    try {
+      read.run();
+      Assert.fail("the read should have been rejected");
+    } catch (SQLException e) {
+      // expected
+    } catch (RuntimeException e) {
+      Assert.fail(
+          "expected a SQLException but got " + e.getClass().getName() + ": " + e.getMessage());
+    }
+  }
+
+  /** One value of each type in ALL_TYPES; the TIMESTAMP is in microseconds. */
+  private static Object[] allTypesRow() {
+    return new Object[] {
+      true, 42, 7L, 1.5F, 2.25D, "hello", new byte[] {1, 2, 3}, 1_700_000_000_123_456L, 20240115
+    };
+  }
+
+  /** Runs a table-model query whose single row holds one column of each type in ALL_TYPES. */
+  private ResultSet executeTableModelQueryWithAllTypes(int timeFactor, Object[] row)
+      throws Exception {
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(ALL_TYPES);
+    tsBlockBuilder.getTimeColumnBuilder().writeLong(0);
+    for (int i = 0; i < ALL_TYPES.size(); i++) {
+      ColumnBuilder columnBuilder = tsBlockBuilder.getColumnBuilder(i);
+      Object value = row[i];
+      if (value == null) {
+        columnBuilder.appendNull();
+        continue;
+      }
+      switch (ALL_TYPES.get(i)) {
+        case BOOLEAN:
+          columnBuilder.writeBoolean((Boolean) value);
+          break;
+        case INT32:
+        case DATE:
+          columnBuilder.writeInt((Integer) value);
+          break;
+        case INT64:
+        case TIMESTAMP:
+          columnBuilder.writeLong((Long) value);
+          break;
+        case FLOAT:
+          columnBuilder.writeFloat((Float) value);
+          break;
+        case DOUBLE:
+          columnBuilder.writeDouble((Double) value);
+          break;
+        case STRING:
+          columnBuilder.writeBinary(new Binary((String) value, TSFileConfig.STRING_CHARSET));
+          break;
+        default:
+          columnBuilder.writeBinary(new Binary((byte[]) value));
+          break;
+      }
+    }
+    tsBlockBuilder.declarePosition();
+
+    List<String> columns = Arrays.asList("b", "i", "l", "f", "d", "s", "blob", "ts", "dt");
+    TSExecuteStatementResp resp = new TSExecuteStatementResp(successStatus);
+    resp.setQueryId(queryId);
+    resp.setColumns(columns);
+    resp.setDataTypeList(ALL_TYPES.stream().map(TSDataType::name).collect(Collectors.toList()));
+    resp.setIgnoreTimeStamp(true);
+    resp.setTableModel(true);
+    resp.setMoreData(false);
+    resp.setColumnIndex2TsBlockColumnIndexList(
+        IntStream.range(0, columns.size()).boxed().collect(Collectors.toList()));
+    resp.setQueryResult(
+        Collections.singletonList(new TsBlockSerde().serialize(tsBlockBuilder.build())));
+
+    when(connection.getTimeFactor()).thenReturn(timeFactor);
+    when(client.executeQueryStatementV2(any(TSExecuteStatementReq.class))).thenReturn(resp);
+    return statement.executeQuery("select * from all_types");
+  }
+
+  @FunctionalInterface
+  private interface ResultSetRead {
+    void run() throws SQLException;
+  }
+
+  private void assertTimeColumnRejected(ResultSetRead read) {
+    try {
+      read.run();
+      Assert.fail("reading the time column with a strictly-typed getter should have thrown");
+    } catch (SQLException e) {
+      // expected
+    } catch (RuntimeException e) {
+      Assert.fail(
+          "expected a SQLException but the time column leaked an unchecked "
+              + e.getClass().getName()
+              + ": "
+              + e.getMessage());
+    }
+  }
+
+  /** Same tree-model fixture as testQuery: column 1 is Time, columns 2..5 are measurements. */
+  private ResultSet executeAndFetchTreeModelResultSet() throws Exception {
+    List<String> columns = new ArrayList<>();
+    columns.add("root.vehicle.d0.s2");
+    columns.add("root.vehicle.d0.s1");
+    columns.add("root.vehicle.d0.s0");
+    columns.add("root.vehicle.d0.s2");
+
+    List<String> dataTypeList = new ArrayList<>();
+    dataTypeList.add("FLOAT");
+    dataTypeList.add("INT64");
+    dataTypeList.add("INT32");
+    dataTypeList.add("FLOAT");
+
+    when(execResp.isSetColumns()).thenReturn(true);
+    when(execResp.getColumns()).thenReturn(columns);
+    when(execResp.isSetDataTypeList()).thenReturn(true);
+    when(execResp.getDataTypeList()).thenReturn(dataTypeList);
+    when(execResp.isSetOperationType()).thenReturn(true);
+    when(execResp.getOperationType()).thenReturn("QUERY");
+    when(execResp.isSetQueryId()).thenReturn(true);
+    when(execResp.getQueryId()).thenReturn(queryId);
+    when(execResp.isSetTableModel()).thenReturn(false);
+    when(execResp.isIgnoreTimeStamp()).thenReturn(false);
+
+    List<Integer> columnIndex2TsBlockColumnIndexList = new ArrayList<>(columns.size());
+    columnIndex2TsBlockColumnIndexList.add(0);
+    columnIndex2TsBlockColumnIndexList.add(1);
+    columnIndex2TsBlockColumnIndexList.add(2);
+    columnIndex2TsBlockColumnIndexList.add(0);
+    when(execResp.getColumnIndex2TsBlockColumnIndexList())
+        .thenReturn(columnIndex2TsBlockColumnIndexList);
+
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+    fetchResultsResp.hasResultSet = true;
+    return statement.getResultSet();
   }
 
   private void constructObjectList(List<Object> standardObject) {

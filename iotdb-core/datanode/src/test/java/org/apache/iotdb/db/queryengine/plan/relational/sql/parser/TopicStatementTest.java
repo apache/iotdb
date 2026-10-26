@@ -20,16 +20,74 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowCreateTopicTask;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterTopic;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.util.DataNodeSqlFormatter;
+import org.apache.iotdb.db.subscription.tagfilter.TagFilterEvaluator;
+import org.apache.iotdb.db.subscription.tagfilter.TagFilterParser;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.time.ZoneId;
+import java.util.Map;
 
 public class TopicStatementTest {
 
   private final SqlParser sqlParser = new SqlParser();
+
+  @Test
+  public void testTagFilterQuotesInCreateAndAlterTopic() throws Exception {
+    final String attributes =
+        "('tag-filter'='region IN (\"O''Reilly\", \"a''''b\", \"a\"\"\"\"b\", \"O''Reilly \"\"A\"\"\"\"B\"\"\")')";
+    final String expectedFilter =
+        "region IN (\"O'Reilly\", \"a''b\", \"a\"\"\"\"b\", \"O'Reilly \"\"A\"\"\"\"B\"\"\")";
+    for (final String command :
+        new String[] {
+          "CREATE TOPIC topic1",
+          "ALTER TOPIC topic1",
+          "CREATE TOPIC IF NOT EXISTS \"topic-1\"",
+          "ALTER TOPIC \"topic-1\""
+        }) {
+      final Statement statement =
+          sqlParser.createStatement(command + " WITH " + attributes, ZoneId.systemDefault(), null);
+      final Statement formattedStatement =
+          sqlParser.createStatement(
+              DataNodeSqlFormatter.formatDataNodeSql(statement), ZoneId.systemDefault(), null);
+      Assert.assertEquals(statement, formattedStatement);
+      final String filter =
+          statement instanceof CreateTopic
+              ? ((CreateTopic) statement).getTopicAttributes().get("tag-filter")
+              : ((AlterTopic) statement).getTopicAttributes().get("tag-filter");
+      Assert.assertEquals(expectedFilter, filter);
+
+      final TagFilterParser parser = new TagFilterParser();
+      for (final String value :
+          new String[] {"O'Reilly", "a''b", "a\"\"b", "O'Reilly \"A\"\"B\""}) {
+        Assert.assertTrue(
+            command + ": " + value,
+            TagFilterEvaluator.evaluate(parser.parseAndValidate(filter), identifier -> value));
+      }
+      Assert.assertFalse(
+          TagFilterEvaluator.evaluate(parser.parseAndValidate(filter), identifier -> "a\"b"));
+      Assert.assertFalse(
+          TagFilterEvaluator.evaluate(parser.parseAndValidate(filter), identifier -> "O''Reilly"));
+    }
+  }
+
+  @Test
+  public void testShowCreateTopicPreservesTagFilterQuotes() {
+    final String filter = "region = \"O'Reilly \"\"A\"\"\"\"B\"\"\"";
+    final TopicMeta topicMeta = new TopicMeta("topic-1", 0L, Map.of("tag-filter", filter));
+    final CreateTopic recreated =
+        (CreateTopic)
+            sqlParser.createStatement(
+                ShowCreateTopicTask.getShowCreateTopicSQL(topicMeta), ZoneId.systemDefault(), null);
+    Assert.assertEquals("topic-1", recreated.getTopicName());
+    Assert.assertEquals(filter, recreated.getTopicAttributes().get("tag-filter"));
+  }
 
   @Test
   public void testAlterTopicStatement() {

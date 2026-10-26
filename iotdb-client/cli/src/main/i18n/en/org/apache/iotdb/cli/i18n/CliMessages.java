@@ -24,6 +24,9 @@ public final class CliMessages {
   // CliContext
   public static final String EXITING_WITH_CODE = "Exiting with code %d";
 
+  // Cli
+  public static final String SUCCESSFULLY_LOGIN_AT = "Successfully login at %s";
+
   // IoTDBDataBackTool
   public static final String TARGET_DIR_EMPTY =
       " -targetdir cannot be empty， The backup folder must be specified";
@@ -47,6 +50,10 @@ public final class CliMessages {
   public static final String FAILED_TO_WRITE_DATA = "Failed to write data to file: {}";
   public static final String FAILED_TO_CREATE_FILE = "Failed to create file: {}";
 
+  // AbstractCli
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_B411C29E =
+      "Unsupported data type: %s";
+
   // AbstractDataTool
   public static final String USE_HELP_FOR_MORE = "Use -help for more information";
 
@@ -65,8 +72,27 @@ public final class CliMessages {
   public static final String TIMESTAMP_CANNOT_CONVERT = "Timestamp can not convert to %s";
   public static final String BLOB_CANNOT_CONVERT = "Blob can not convert to %s";
   public static final String CANNOT_CONVERT = "%s can not convert to %s";
+  public static final String
+      MESSAGE_INVALID_ARGS_REQUIRED_VALUES_FOR_OPTION_TABLE_NOT_PROVIDED_4BC3FCFA =
+          "Invalid args: Required values for option table not provided.";
+
+  // Data import/export
+  public static final String EXCEPTION_FAILED_TO_INSERT_CSV_BATCH_ARG_159E0269 =
+      "Failed to insert CSV batch: %s";
+  public static final String MESSAGE_ARG_UNEXPECTED_ERROR_OCCURRED_ARG_E7255EE6 =
+      "[%s] - Unexpected error occurred: %s";
+  public static final String
+      EXCEPTION_SQL_TSFILE_EXPORT_REQUIRES_A_QUERY_FROM_A_SINGLE_TABLE_IN_DATABASE_ARG_C9EB3768 =
+          "SQL/TsFile export requires a query from a single table in database %s.";
+  public static final String
+      MESSAGE_QUERY_TO_EXPORT_TABLE_SQL_TSFILE_QUERIES_REQUIRE_A_SINGLE_TABLE_WITHOUT_JOINS_SUBQUERIES_OR_CTES_OVERRIDES_TABLE_START_TIME_AND_END_TIME_OPTIONAL_CC12D400 =
+          "Query to export. Table SQL/TsFile queries require a single table without joins, subqueries or CTEs. Overrides -table, -start_time and -end_time. (optional)";
+  public static final String
+      MESSAGE_MULTIPLE_CSV_HEADERS_RESOLVE_TO_THE_SAME_TARGET_COLUMN_99189563 =
+          "Multiple CSV headers resolve to the same target column.";
 
   private CliMessages() {}
+
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------

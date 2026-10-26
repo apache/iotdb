@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.queryengine.execution;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.LimitOperator;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -42,15 +43,18 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuter
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.LeftOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.SingleColumnMerger;
+import org.apache.iotdb.db.queryengine.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import io.airlift.units.Duration;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -62,6 +66,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import java.io.IOException;
@@ -74,6 +79,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.EMPTY_QUERY_DATA_SOURCE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -104,6 +110,36 @@ public class DataDriverTest {
   @After
   public void tearDown() throws IOException {
     SeriesReaderTestUtil.tearDown(seqResources, unSeqResources);
+  }
+
+  @Test
+  public void testMixedBatchAndSharedSourceOperators() throws Exception {
+    FragmentInstanceContext fragmentInstanceContext = Mockito.mock(FragmentInstanceContext.class);
+    IQueryDataSource sharedQueryDataSource = Mockito.mock(IQueryDataSource.class);
+    Mockito.doReturn(sharedQueryDataSource).when(sharedQueryDataSource).clone();
+    Mockito.when(fragmentInstanceContext.getSharedQueryDataSource())
+        .thenReturn(sharedQueryDataSource);
+
+    DataDriverContext driverContext = new DataDriverContext(fragmentInstanceContext, 0);
+    driverContext.setSink(
+        Mockito.mock(org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink.class));
+
+    DataSourceOperator batchSourceOperator = Mockito.mock(DataSourceOperator.class);
+    Mockito.when(batchSourceOperator.isBatchQueryDataSource()).thenReturn(true);
+    DataSourceOperator sharedSourceOperator = Mockito.mock(DataSourceOperator.class);
+    Mockito.when(sharedSourceOperator.isBatchQueryDataSource()).thenReturn(false);
+    driverContext.addSourceOperator(batchSourceOperator);
+    driverContext.addSourceOperator(sharedSourceOperator);
+
+    TestDataDriver dataDriver = new TestDataDriver(sharedSourceOperator, driverContext);
+    assertTrue(dataDriver.initializeForTest());
+
+    ArgumentCaptor<IQueryDataSource> batchDataSourceCaptor =
+        ArgumentCaptor.forClass(IQueryDataSource.class);
+    Mockito.verify(batchSourceOperator).initQueryDataSource(batchDataSourceCaptor.capture());
+    Mockito.verify(sharedSourceOperator).initQueryDataSource(sharedQueryDataSource);
+    assertTrue(batchDataSourceCaptor.getValue() != sharedQueryDataSource);
+    assertTrue(batchDataSourceCaptor.getValue() != EMPTY_QUERY_DATA_SOURCE);
   }
 
   @Test
@@ -254,6 +290,16 @@ public class DataDriverTest {
       fail();
     } finally {
       instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  private static class TestDataDriver extends DataDriver {
+    private TestDataDriver(Operator root, DataDriverContext driverContext) {
+      super(root, driverContext, 0);
+    }
+
+    private boolean initializeForTest() {
+      return init(SettableFuture.create());
     }
   }
 

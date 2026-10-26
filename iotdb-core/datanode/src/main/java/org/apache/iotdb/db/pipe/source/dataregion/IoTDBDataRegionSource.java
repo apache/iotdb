@@ -63,6 +63,7 @@ import javax.annotation.Nonnull;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_DATABASE_KEY;
@@ -97,6 +98,9 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TABLE_NAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_QUERY_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_SCAN_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_WATERMARK_INTERVAL_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_WATERMARK_INTERVAL_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_DATABASE_KEY;
@@ -120,6 +124,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.S
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_TABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_TABLE_NAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_TSFILE_PARSER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_WATERMARK_INTERVAL_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant._EXTRACTOR_WATERMARK_INTERVAL_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant._SOURCE_WATERMARK_INTERVAL_KEY;
@@ -137,6 +142,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
 
   private boolean hasNoExtractionNeed = true;
   private boolean shouldExtractDeletion = false;
+  private final AtomicBoolean completionSourceStarted = new AtomicBoolean(false);
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -164,6 +170,19 @@ public class IoTDBDataRegionSource extends IoTDBSource {
             true,
             EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE,
             EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE);
+
+    // If unset, the parser is selected automatically.
+    validator
+        .validateAttributeValueRange(
+            EXTRACTOR_TSFILE_PARSER_KEY,
+            true,
+            EXTRACTOR_TSFILE_PARSER_QUERY_VALUE,
+            EXTRACTOR_TSFILE_PARSER_SCAN_VALUE)
+        .validateAttributeValueRange(
+            SOURCE_TSFILE_PARSER_KEY,
+            true,
+            EXTRACTOR_TSFILE_PARSER_QUERY_VALUE,
+            EXTRACTOR_TSFILE_PARSER_SCAN_VALUE);
 
     // Validate tree pattern and table pattern
     validatePattern(TreePattern.parsePipePatternFromSourceParameters(validator.getParameters()));
@@ -257,27 +276,23 @@ public class IoTDBDataRegionSource extends IoTDBSource {
   private void checkInvalidParameters(final PipeParameterValidator validator) {
     final PipeParameters parameters = validator.getParameters();
 
-    // Enable history and realtime if specifying start-time or end-time
+    // A global time range takes precedence over a history-specific time range.
     if (parameters.hasAnyAttributes(
             SOURCE_START_TIME_KEY,
             EXTRACTOR_START_TIME_KEY,
             SOURCE_END_TIME_KEY,
             EXTRACTOR_END_TIME_KEY)
         && parameters.hasAnyAttributes(
-            EXTRACTOR_HISTORY_ENABLE_KEY,
-            SOURCE_HISTORY_ENABLE_KEY,
             SOURCE_HISTORY_START_TIME_KEY,
             EXTRACTOR_HISTORY_START_TIME_KEY,
             SOURCE_HISTORY_END_TIME_KEY,
             EXTRACTOR_HISTORY_END_TIME_KEY)) {
       LOGGER.warn(
-          DataNodePipeMessages.WHEN_OR_IS_SPECIFIED_SPECIFYING_AND_IS,
+          DataNodePipeMessages.WHEN_OR_IS_SPECIFIED_SPECIFYING_OR_IS_INVALID,
           SOURCE_START_TIME_KEY,
           EXTRACTOR_START_TIME_KEY,
           SOURCE_END_TIME_KEY,
           EXTRACTOR_END_TIME_KEY,
-          SOURCE_HISTORY_ENABLE_KEY,
-          EXTRACTOR_HISTORY_ENABLE_KEY,
           SOURCE_HISTORY_START_TIME_KEY,
           EXTRACTOR_HISTORY_START_TIME_KEY,
           SOURCE_HISTORY_END_TIME_KEY,
@@ -549,6 +564,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
                   dataRegionIdObject,
                   () -> startHistoricalExtractorAndRealtimeExtractor(exceptionHolder))) {
         rethrowExceptionIfAny(exceptionHolder);
+        completionSourceStarted.set(true);
 
         LOGGER.info(
             DataNodePipeMessages.PIPE_STARTED_HISTORICAL_SOURCE_AND_REALTIME_SOURCE,
@@ -624,6 +640,8 @@ public class IoTDBDataRegionSource extends IoTDBSource {
 
   @Override
   public void close() throws Exception {
+    completionSourceStarted.set(false);
+    PipeDataNodeSinglePipeMetrics.getInstance().deregister(this);
     if (hasNoExtractionNeed || !hasBeenStarted.get()) {
       return;
     }
@@ -633,6 +651,16 @@ public class IoTDBDataRegionSource extends IoTDBSource {
     if (Objects.nonNull(taskID)) {
       PipeDataRegionSourceMetrics.getInstance().deregister(taskID);
     }
+  }
+
+  public PipeRealtimeDataRegionSource getRealtimeSourceForCompletion() {
+    return realtimeSource;
+  }
+
+  public boolean isReadyForCompletion() {
+    return completionSourceStarted.get()
+        && Objects.nonNull(historicalSource)
+        && historicalSource.hasConsumedAll();
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////

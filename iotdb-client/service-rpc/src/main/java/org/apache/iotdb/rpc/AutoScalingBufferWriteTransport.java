@@ -47,7 +47,9 @@ public class AutoScalingBufferWriteTransport extends NonOpenTransport {
   @Override
   public void write(byte[] toWrite, int off, int len) throws TTransportException {
     try {
-      buf.resizeIfNecessary(pos + len);
+      // A small prefix during serialization does not indicate a small frame. Only the complete
+      // frame size, supplied after flushing, may trigger shrinking.
+      buf.ensureCapacity(pos + len);
     } catch (IOException e) {
       throw new TTransportException(e);
     }

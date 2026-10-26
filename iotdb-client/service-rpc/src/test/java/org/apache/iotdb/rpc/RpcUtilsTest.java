@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.sql.Timestamp;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
@@ -119,5 +120,32 @@ public class RpcUtilsTest {
     } finally {
       RpcSslUtils.configure(originProtocol);
     }
+  }
+
+  @Test
+  public void convertToTimestampKeepsPreEpochFractions() {
+    // 1.5 seconds before the epoch in each precision
+    Assert.assertEquals(new Timestamp(-1_500L), RpcUtils.convertToTimestamp(-1_500L, 1_000));
+    Assert.assertEquals(
+        new Timestamp(-1_500L), RpcUtils.convertToTimestamp(-1_500_000L, 1_000_000));
+    Assert.assertEquals(
+        new Timestamp(-1_500L), RpcUtils.convertToTimestamp(-1_500_000_000L, 1_000_000_000));
+
+    // 1 ns before the epoch: the second before it, plus 999,999,999 ns
+    Timestamp oneNanoBeforeEpoch = new Timestamp(-1_000L);
+    oneNanoBeforeEpoch.setNanos(999_999_999);
+    Assert.assertEquals(oneNanoBeforeEpoch, RpcUtils.convertToTimestamp(-1L, 1_000_000_000));
+
+    // Whole seconds and post-epoch values are unaffected
+    Assert.assertEquals(new Timestamp(-2_000L), RpcUtils.convertToTimestamp(-2_000L, 1_000));
+    Assert.assertEquals(new Timestamp(1_500L), RpcUtils.convertToTimestamp(1_500L, 1_000));
+  }
+
+  @Test
+  public void splitTimeIntoFlooredSecondsAndNonNegativeNanos() {
+    Assert.assertEquals(-2_000L, RpcUtils.getMilliSecond(-1_500L, 1_000));
+    Assert.assertEquals(500_000_000, RpcUtils.getNanoSecond(-1_500L, 1_000));
+    Assert.assertEquals(1_000L, RpcUtils.getMilliSecond(1_500L, 1_000));
+    Assert.assertEquals(500_000_000, RpcUtils.getNanoSecond(1_500L, 1_000));
   }
 }

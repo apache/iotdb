@@ -279,4 +279,18 @@ public class IoTDBResultMetadataTest {
     metadata = new IoTDBResultMetadata(false, null, "QUERY", null, null, false);
     metadata.unwrap(String.class);
   }
+
+  @Test
+  public void testObjectColumnIsDescribed() throws SQLException {
+    metadata =
+        new IoTDBResultMetadata(
+            false, null, "QUERY", Arrays.asList("file"), Arrays.asList("OBJECT"), true);
+
+    assertEquals("OBJECT", metadata.getColumnTypeName(1));
+    assertEquals(Types.OTHER, metadata.getColumnType(1));
+    // getObject() renders an OBJECT value as a String such as "(Object) 1.2 MB"
+    assertEquals(String.class.getName(), metadata.getColumnClassName(1));
+    assertEquals(Integer.MAX_VALUE, metadata.getPrecision(1));
+    assertEquals(0, metadata.getScale(1));
+  }
 }
