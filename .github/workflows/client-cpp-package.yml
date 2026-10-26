@@ -64,7 +64,7 @@ jobs:
           cpp=false
           while IFS= read -r file; do
             case "$file" in
-              iotdb-client/client-cpp/*|iotdb-client/pom.xml|iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift|iotdb-protocol/thrift-commons/src/main/thrift/common.thrift|.github/workflows/client-cpp-package.yml|.github/scripts/package-client-cpp-*.sh)
+              iotdb-client/client-cpp/*|iotdb-client/pom.xml|iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift|iotdb-protocol/thrift-commons/src/main/thrift/common.thrift|.github/workflows/client-cpp-package.yml|.github/scripts/package-client-cpp-*.sh|.github/scripts/native-linux-env.sh)
                 cpp=true
                 break
                 ;;
@@ -140,7 +140,7 @@ jobs:
           echo "run_windows=${run_windows}" >> "$GITHUB_OUTPUT"
 
           # Compact JSON (no leading whitespace); required for GITHUB_OUTPUT + fromJSON().
-          WINDOWS_MATRIX='[{"name":"windows-vs2026","runs-on":"windows-2025-vs2026","boost_choco":"boost-msvc-14.3","boost_choco_version":"","cmake_generator":"Visual Studio 18 2026","package_classifier":"windows-x86_64-msvc14.4","vs_choco":"","vs_choco_params":""},{"name":"windows-vs2022","runs-on":"windows-2022","boost_choco":"boost-msvc-14.3","boost_choco_version":"","cmake_generator":"","package_classifier":"windows-x86_64-msvc14.3","vs_choco":"","vs_choco_params":""},{"name":"windows-vs2019","runs-on":"windows-2022","boost_choco":"boost-msvc-14.2","boost_choco_version":"","cmake_generator":"Visual Studio 16 2019","package_classifier":"windows-x86_64-msvc14.2","vs_choco":"visualstudio2019buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"},{"name":"windows-vs2017","runs-on":"windows-2022","boost_choco":"boost-msvc-14.1","boost_choco_version":"1.74.0","cmake_generator":"Visual Studio 15 2017","package_classifier":"windows-x86_64-msvc14.1","vs_choco":"visualstudio2017buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"}]'
+          WINDOWS_MATRIX='[{"name":"windows-vs2026","runs-on":"windows-2025-vs2026","cmake_generator":"Visual Studio 18 2026","package_classifier":"windows-x86_64-msvc14.4","vs_choco":"","vs_choco_params":""},{"name":"windows-vs2022","runs-on":"windows-2022","cmake_generator":"","package_classifier":"windows-x86_64-msvc14.3","vs_choco":"","vs_choco_params":""},{"name":"windows-vs2019","runs-on":"windows-2022","cmake_generator":"Visual Studio 16 2019","package_classifier":"windows-x86_64-msvc14.2","vs_choco":"visualstudio2019buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"},{"name":"windows-vs2017","runs-on":"windows-2022","cmake_generator":"Visual Studio 15 2017","package_classifier":"windows-x86_64-msvc14.1","vs_choco":"visualstudio2017buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"}]'
 
           write_windows_matrix_output() {
             local matrix_json="$1"
@@ -189,12 +189,13 @@ jobs:
         run: |
           set -euxo pipefail
           chmod +x .github/scripts/package-client-cpp-manylinux228.sh
+          source .github/scripts/native-linux-env.sh
           docker run --rm \
             -v "${{ github.workspace }}:/workspace" \
             -v "${HOME}/.m2:/root/.m2" \
             -w /workspace \
             -e GITHUB_WORKSPACE=/workspace \
-            quay.io/pypa/manylinux_2_28_x86_64 \
+            "${NATIVE_LINUX_IMAGE}" \
             bash .github/scripts/package-client-cpp-manylinux228.sh
       - name: Restore workspace ownership after container build
         if: always()
@@ -247,12 +248,13 @@ jobs:
         run: |
           set -euxo pipefail
           chmod +x .github/scripts/package-client-cpp-manylinux228.sh
+          source .github/scripts/native-linux-env.sh
           docker run --rm \
             -v "${{ github.workspace }}:/workspace" \
             -v "${HOME}/.m2:/root/.m2" \
             -w /workspace \
             -e GITHUB_WORKSPACE=/workspace \
-            quay.io/pypa/manylinux_2_28_aarch64 \
+            "${NATIVE_LINUX_IMAGE}" \
             bash .github/scripts/package-client-cpp-manylinux228.sh
       - name: Restore workspace ownership after container build
         if: always()
@@ -432,20 +434,11 @@ jobs:
         shell: pwsh
         run: |
           choco install winflexbison3 strawberryperl -y --no-progress
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
           echo 'C:\Strawberry\perl\bin' >> $env:GITHUB_PATH
-          $boostArgs = @('install', '${{ matrix.boost_choco }}', '-y', '--no-progress')
-          if ('${{ matrix.boost_choco_version }}' -ne '') {
-            $boostArgs += @("--version=${{ matrix.boost_choco_version }}")
-          }
-          & choco @boostArgs
-          if (-not (Test-Path 'C:\local')) {
-            New-Item -ItemType Directory -Path 'C:\local' -Force | Out-Null
-          }
-          $boostDir = Get-ChildItem -Path 'C:\local\' -Filter 'boost_*' -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $boostDir) {
-            throw "Boost not found under C:\local after installing ${{ matrix.boost_choco }}"
-          }
-          echo $boostDir.FullName >> $env:GITHUB_PATH
+          # Thrift only needs Boost headers. FetchBoost.cmake provides the same
+          # source headers for every toolchain; precompiled Chocolatey Boost
+          # installers add an unnecessary download and can fail checksum checks.
       - name: Cache Maven packages
         uses: actions/cache@v5
         with:

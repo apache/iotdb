@@ -15,6 +15,7 @@ on:
       - '.github/workflows/multi-language-client.yml'
       - '.github/workflows/client-cpp-package.yml'
       - '.github/scripts/package-client-cpp-*.sh'
+      - '.github/scripts/native-linux-env.sh'
   pull_request:
     branches:
       - master
@@ -30,6 +31,7 @@ on:
       - '.github/workflows/multi-language-client.yml'
       - '.github/workflows/client-cpp-package.yml'
       - '.github/scripts/package-client-cpp-*.sh'
+      - '.github/scripts/native-linux-env.sh'
   # allow manually run the action:
   workflow_dispatch:
 
@@ -82,7 +84,7 @@ jobs:
           go=false
           while IFS= read -r file; do
             case "$file" in
-              pom.xml|iotdb-client/pom.xml|iotdb-client/client-cpp/*|iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift|iotdb-protocol/thrift-commons/src/main/thrift/common.thrift|.github/workflows/multi-language-client.yml|.github/workflows/client-cpp-package.yml|.github/scripts/package-client-cpp-*.sh)
+              pom.xml|iotdb-client/pom.xml|iotdb-client/client-cpp/*|iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift|iotdb-protocol/thrift-commons/src/main/thrift/common.thrift|.github/workflows/multi-language-client.yml|.github/workflows/client-cpp-package.yml|.github/scripts/package-client-cpp-*.sh|.github/scripts/native-linux-env.sh)
                 cpp=true
                 ;;
             esac

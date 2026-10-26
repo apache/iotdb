@@ -23,7 +23,7 @@
 # Otherwise we provision them locally:
 #
 #   * Linux / macOS - configure-make-install each tool from a tarball into
-#     ${CMAKE_BINARY_DIR}/tools (no sudo required).
+#     ${CMAKE_CURRENT_BINARY_DIR}/tools (no sudo required).
 #   * Windows       - extract the winflexbison zip and copy
 #     win_flex.exe -> flex.exe, win_bison.exe -> bison.exe.
 #
@@ -33,7 +33,7 @@
 #   3. FATAL_ERROR otherwise
 # =============================================================================
 
-set(_tools_prefix "${CMAKE_BINARY_DIR}/tools")
+set(_tools_prefix "${CMAKE_CURRENT_BINARY_DIR}/tools")
 set(_tools_bin "${_tools_prefix}/bin")
 file(MAKE_DIRECTORY "${_tools_bin}")
 
@@ -109,7 +109,7 @@ endfunction()
 
 # Configure-make-install <name> from <tarball> into ${_tools_prefix}.
 function(_iotdb_build_autotools NAME TARBALL EXTRACTED_DIRNAME)
-    set(_src_root "${CMAKE_BINARY_DIR}/_deps/${NAME}")
+    set(_src_root "${CMAKE_CURRENT_BINARY_DIR}/_deps/${NAME}")
     set(_marker "${_tools_prefix}/.${NAME}-installed")
     if(EXISTS "${_marker}")
         return()
