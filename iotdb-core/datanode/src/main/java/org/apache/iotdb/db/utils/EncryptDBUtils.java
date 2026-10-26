@@ -20,15 +20,22 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.encrypt.EncryptUtils;
+import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
+import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.ServiceLoader;
 
 public class EncryptDBUtils {
 
@@ -38,6 +45,77 @@ public class EncryptDBUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(EncryptDBUtils.class);
 
   private static volatile EncryptParameter defaultFirstEncryptParam;
+  private static final FileEncryptionParameterProvider LEGACY_PROVIDER =
+      (file, database, legacy) -> legacy;
+
+  private static class ProviderHolder {
+    private static final FileEncryptionParameterProvider PROVIDER = loadProvider();
+  }
+
+  private static FileEncryptionParameterProvider loadProvider() {
+    Iterator<FileEncryptionParameterProvider> providers =
+        ServiceLoader.load(FileEncryptionParameterProvider.class).iterator();
+    if (!providers.hasNext()) {
+      return LEGACY_PROVIDER;
+    }
+    FileEncryptionParameterProvider provider = providers.next();
+    if (providers.hasNext()) {
+      throw new IllegalStateException(
+          StorageEngineMessages
+              .EXCEPTION_MULTIPLE_FILE_ENCRYPTION_PARAMETER_PROVIDERS_ARE_CONFIGURED_5E7DDA5B);
+    }
+    return provider;
+  }
+
+  public static EncryptParameter createEncryptParameterForNewFile(
+      File file, String database, EncryptParameter legacyParameter) {
+    EncryptParameter parameter =
+        ProviderHolder.PROVIDER.createForNewFile(file, database, legacyParameter);
+    if (parameter == null && ProviderHolder.PROVIDER != LEGACY_PROVIDER) {
+      throw new IllegalStateException(
+          StorageEngineMessages
+              .EXCEPTION_FILE_ENCRYPTION_PARAMETER_PROVIDER_RETURNED_NULL_15C41723);
+    }
+    return parameter;
+  }
+
+  public static boolean requiresFileRewrite() {
+    return ProviderHolder.PROVIDER.requiresFileRewrite();
+  }
+
+  public static RestorableTsFileIOWriter createRestorableWriterForNewFile(
+      File file, String database) throws IOException {
+    return createRestorableWriterForNewFile(
+        file, database, getFirstEncryptParamFromDatabase(database));
+  }
+
+  public static RestorableTsFileIOWriter createRestorableWriterForNewFile(
+      File file, String database, EncryptParameter legacyParameter) throws IOException {
+    EncryptParameter parameter = createEncryptParameterForNewFile(file, database, legacyParameter);
+    try {
+      return new RestorableTsFileIOWriter(file, parameter);
+    } finally {
+      closeFileEncryptionParameter(parameter);
+    }
+  }
+
+  public static TsFileIOWriter createWriterForNewFile(File file, String database)
+      throws IOException {
+    EncryptParameter parameter =
+        createEncryptParameterForNewFile(
+            file, database, getFirstEncryptParamFromDatabase(database));
+    try {
+      return new TsFileIOWriter(file, parameter);
+    } finally {
+      closeFileEncryptionParameter(parameter);
+    }
+  }
+
+  public static void closeFileEncryptionParameter(EncryptParameter parameter) {
+    if (parameter != null && parameter.isTdePageAead()) {
+      parameter.close();
+    }
+  }
 
   public static EncryptParameter getFirstEncryptParamFromDatabase(String database) {
     if (database == null || database.isEmpty()) {

@@ -20,6 +20,16 @@
 package org.apache.iotdb.db.i18n;
 
 public final class StorageEngineMessages {
+  public static final String EXCEPTION_CANNOT_ENABLE_WAL_NODE_ARG_BECAUSE_ITS_PREVIOUS_RECOVERY_FAILED_RESTART_AFTER_RESOLVING_THE_RECOVERY_FAILURE_56DF9750 =
+      "WAL 节点 %s 上次恢复失败，无法启用；请解决恢复失败原因后重启。";
+  public static final String LOG_WAL_NODE_RECOVERY_IN_ARG_WAS_INCOMPLETE_RETAINING_WAL_AND_CHECKPOINT_FILES_FOR_RETRY_48C1F7BF =
+      "目录 {} 中的 WAL 节点恢复未完成；保留 WAL 和 checkpoint 文件以便重试。";
+  public static final String EXCEPTION_FILE_ENCRYPTION_PARAMETER_PROVIDER_RETURNED_NULL_15C41723 =
+      "文件加密参数 Provider 返回 null";
+  public static final String EXCEPTION_PRECALCULATED_CHUNK_STAGING_IS_NOT_SUPPORTED_BY_THE_FILE_ENCRYPTION_POLICY_13DA8C32 =
+      "文件加密策略不支持预计算 Chunk 暂存";
+  public static final String EXCEPTION_MULTIPLE_FILE_ENCRYPTION_PARAMETER_PROVIDERS_ARE_CONFIGURED_5E7DDA5B =
+      "配置了多个文件加密参数 Provider";
   public static final String EXCEPTION_UNSUPPORTED_OR_UNAVAILABLE_WAL_FORMAT_4629CFE4 =
       "WAL 格式不支持或对应实现不可用";
   public static final String EXCEPTION_MULTIPLE_WAL_FORMAT_PROVIDERS_ARE_CONFIGURED_DD78877D =

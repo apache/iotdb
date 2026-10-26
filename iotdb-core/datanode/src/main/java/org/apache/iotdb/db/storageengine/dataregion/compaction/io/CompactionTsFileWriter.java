@@ -68,7 +68,7 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
       File file, long maxMetadataSize, CompactionType type, EncryptParameter encryptParameter)
       throws IOException {
     super(file, maxMetadataSize, encryptParameter);
-    this.firstEncryptParameter = encryptParameter;
+    this.firstEncryptParameter = super.getEncryptParameter();
     this.type = type;
     super.out =
         new CompactionTsFileOutput(
@@ -77,6 +77,18 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
 
   public EncryptParameter getEncryptParameter() {
     return firstEncryptParameter;
+  }
+
+  public static CompactionTsFileWriter create(
+      File file, long maxMetadataSize, CompactionType type, EncryptParameter legacyParameter)
+      throws IOException {
+    EncryptParameter parameter =
+        EncryptDBUtils.createEncryptParameterForNewFile(file, null, legacyParameter);
+    try {
+      return new CompactionTsFileWriter(file, maxMetadataSize, type, parameter);
+    } finally {
+      EncryptDBUtils.closeFileEncryptionParameter(parameter);
+    }
   }
 
   public void markStartingWritingAligned() {

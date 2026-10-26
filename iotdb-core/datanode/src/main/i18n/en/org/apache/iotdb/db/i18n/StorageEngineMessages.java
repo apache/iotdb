@@ -20,6 +20,16 @@
 package org.apache.iotdb.db.i18n;
 
 public final class StorageEngineMessages {
+  public static final String EXCEPTION_CANNOT_ENABLE_WAL_NODE_ARG_BECAUSE_ITS_PREVIOUS_RECOVERY_FAILED_RESTART_AFTER_RESOLVING_THE_RECOVERY_FAILURE_56DF9750 =
+      "Cannot enable WAL node %s because its previous recovery failed; restart after resolving the recovery failure.";
+  public static final String LOG_WAL_NODE_RECOVERY_IN_ARG_WAS_INCOMPLETE_RETAINING_WAL_AND_CHECKPOINT_FILES_FOR_RETRY_48C1F7BF =
+      "WAL node recovery in {} was incomplete; retaining WAL and checkpoint files for retry.";
+  public static final String EXCEPTION_FILE_ENCRYPTION_PARAMETER_PROVIDER_RETURNED_NULL_15C41723 =
+      "File encryption parameter provider returned null";
+  public static final String EXCEPTION_PRECALCULATED_CHUNK_STAGING_IS_NOT_SUPPORTED_BY_THE_FILE_ENCRYPTION_POLICY_13DA8C32 =
+      "Precalculated chunk staging is not supported by the file encryption policy";
+  public static final String EXCEPTION_MULTIPLE_FILE_ENCRYPTION_PARAMETER_PROVIDERS_ARE_CONFIGURED_5E7DDA5B =
+      "Multiple file encryption parameter providers are configured";
   public static final String EXCEPTION_UNSUPPORTED_OR_UNAVAILABLE_WAL_FORMAT_4629CFE4 =
       "Unsupported or unavailable WAL format";
   public static final String EXCEPTION_MULTIPLE_WAL_FORMAT_PROVIDERS_ARE_CONFIGURED_DD78877D =

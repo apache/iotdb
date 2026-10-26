@@ -50,6 +50,12 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     memChunk = new AlignedWritableMemChunk(schemaList);
   }
 
+  public AlignedWritableMemChunkGroup(
+      List<IMeasurementSchema> schemaList, EncryptParameter encryptParameter) {
+    this.encryptParameter = encryptParameter;
+    memChunk = new AlignedWritableMemChunk(schemaList, encryptParameter);
+  }
+
   @TestOnly
   public AlignedWritableMemChunkGroup(
       AlignedWritableMemChunk memChunk, List<IMeasurementSchema> schemaList) {

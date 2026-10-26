@@ -115,7 +115,7 @@ public class NonAlignedChunkData implements ChunkData {
       final EncryptParameter encryptParameter) {
     this.dataSize = 0;
     this.device = device;
-    this.chunkHeader = chunkHeader;
+    this.chunkHeader = ChunkData.transportHeader(chunkHeader);
     this.timePartitionSlot = timePartitionSlot;
     this.encryptParameter = encryptParameter;
     this.needDecodeChunk = true;
