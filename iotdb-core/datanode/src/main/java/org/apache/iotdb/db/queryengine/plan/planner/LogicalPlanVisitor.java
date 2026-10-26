@@ -20,15 +20,16 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.ExplainAnalyzeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ActivateTemplateNode;
@@ -90,7 +91,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogica
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
 import org.apache.iotdb.db.schemaengine.SchemaEngineMode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -123,7 +126,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   @Override
   public PlanNode visitNode(StatementNode node, MPPQueryContext context) {
     throw new UnsupportedOperationException(
-        "Unsupported statement type: " + node.getClass().getName());
+        String.format(
+            DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_STATEMENT_TYPE_S_FBCA7305,
+            node.getClass().getName()));
   }
 
   @Override
@@ -657,8 +662,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       planBuilder =
           planBuilder
               .planDeviceRegionScan(analysis.getDevicePathToContextMap(), false)
-              .planLimit(showDevicesStatement.getLimit())
-              .planOffset(showDevicesStatement.getOffset());
+              .planOffset(showDevicesStatement.getOffset())
+              .planLimit(showDevicesStatement.getLimit());
       return planBuilder.getRoot();
     }
 
@@ -732,7 +737,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             countTimeSeriesStatement.isPrefixPath(),
             countTimeSeriesStatement.getSchemaFilter(),
             analysis.getRelatedTemplateInfo(),
-            countTimeSeriesStatement.getAuthorityScope())
+            countTimeSeriesStatement.getAuthorityScope(),
+            countTimeSeriesStatement.isCanSeeSystemDB(),
+            countTimeSeriesStatement.isCanSeeAuditDB())
         .planCountMerge()
         .getRoot();
   }
@@ -748,7 +755,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             countLevelTimeSeriesStatement.getLevel(),
             countLevelTimeSeriesStatement.getSchemaFilter(),
             analysis.getRelatedTemplateInfo(),
-            countLevelTimeSeriesStatement.getAuthorityScope())
+            countLevelTimeSeriesStatement.getAuthorityScope(),
+            countLevelTimeSeriesStatement.isCanSeeSystemDB(),
+            countLevelTimeSeriesStatement.isCanSeeAuditDB())
         .planCountMerge()
         .getRoot();
   }
@@ -791,6 +800,11 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
               insertRowStatement.getTime(),
               insertRowStatement.getValues(),
               insertRowStatement.isNeedInferType());
+      if (insertRowStatement.getFailedMeasurementInfoMap() != null) {
+        for (Integer index : insertRowStatement.getFailedMeasurementInfoMap().keySet()) {
+          insertRowNode.markFailedMeasurement(index);
+        }
+      }
       insertRowNode.setFailedMeasurementNumber(insertRowStatement.getFailedMeasurementNumber());
       insertRowsNode.addOneInsertRowNode(insertRowNode, i);
     }
@@ -1004,6 +1018,24 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 analysis, showQueriesStatement.getAllowedUsername()) // push Filter down
             .planOffset(showQueriesStatement.getRowOffset())
             .planLimit(showQueriesStatement.getRowLimit());
+    return planBuilder.getRoot();
+  }
+
+  @Override
+  public PlanNode visitShowReceivers(
+      ShowReceiversStatement showReceiversStatement, MPPQueryContext context) {
+    return new LogicalPlanBuilder(analysis, context).planShowReceivers(analysis).getRoot();
+  }
+
+  @Override
+  public PlanNode visitShowDiskUsage(
+      ShowDiskUsageStatement showDiskUsageStatement, MPPQueryContext context) {
+    LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
+    planBuilder =
+        planBuilder
+            .planShowDiskUsage(analysis, showDiskUsageStatement.getPathPattern())
+            .planOffset(showDiskUsageStatement.getOffset())
+            .planLimit(showDiskUsageStatement.getLimit());
     return planBuilder.getRoot();
   }
 

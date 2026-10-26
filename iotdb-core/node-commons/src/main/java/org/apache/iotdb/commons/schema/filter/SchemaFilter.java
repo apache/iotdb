@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.schema.filter;
 
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TemplateFilter;
@@ -98,7 +99,7 @@ public abstract class SchemaFilter implements Accountable {
       case COMPARISON:
         return new ComparisonFilter(byteBuffer);
       default:
-        throw new IllegalArgumentException("Unsupported schema filter type: " + type);
+        throw new IllegalArgumentException(SchemaMessages.UNSUPPORTED_SCHEMA_FILTER_TYPE + type);
     }
   }
 
@@ -119,6 +120,9 @@ public abstract class SchemaFilter implements Accountable {
       final List<SchemaFilter> result,
       final SchemaFilter schemaFilter,
       final SchemaFilterType filterType) {
+    if (schemaFilter == null) {
+      return;
+    }
     if (schemaFilter.getSchemaFilterType().equals(filterType)) {
       result.add(schemaFilter);
     }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.rpc.i18n.RpcMessages;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
@@ -28,14 +29,12 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BytesUtils;
-import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -113,8 +112,8 @@ public class IoTDBJDBCDataSet {
     this.zoneId = zoneId;
     columnSize = columnNameList.size();
 
-    this.columnNameList = new ArrayList<>();
-    this.columnTypeList = new ArrayList<>();
+    this.columnNameList = new ArrayList<>(columnSize + (ignoreTimeStamp ? 0 : 1));
+    this.columnTypeList = new ArrayList<>(columnSize + (ignoreTimeStamp ? 0 : 1));
     if (!ignoreTimeStamp) {
       this.columnNameList.add(TIMESTAMP_STR);
       this.columnTypeList.add(String.valueOf(TSDataType.INT64));
@@ -127,20 +126,15 @@ public class IoTDBJDBCDataSet {
 
     // deduplicate and map
     if (columnNameIndex != null) {
-      int deduplicatedColumnSize = (int) columnNameIndex.values().stream().distinct().count();
-      this.columnTypeDeduplicatedList = new ArrayList<>(deduplicatedColumnSize);
-      for (int i = 0; i < deduplicatedColumnSize; i++) {
-        columnTypeDeduplicatedList.add(null);
-      }
+      this.columnTypeDeduplicatedList =
+          initDeduplicatedColumnTypes(getDeduplicatedColumnSize(columnNameIndex));
       for (int i = 0; i < columnNameList.size(); i++) {
         String name = columnNameList.get(i);
         this.columnNameList.add(name);
         this.columnTypeList.add(columnTypeList.get(i));
         if (!columnOrdinalMap.containsKey(name)) {
           int index = columnNameIndex.get(name);
-          if (!columnOrdinalMap.containsValue(index + START_INDEX)) {
-            columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnTypeList.get(i)));
-          }
+          setColumnTypeIfAbsent(columnTypeDeduplicatedList, index, columnTypeList.get(i));
           columnOrdinalMap.put(name, index + START_INDEX);
         }
       }
@@ -160,38 +154,7 @@ public class IoTDBJDBCDataSet {
 
     time = new byte[Long.BYTES];
     currentBitmap = new byte[columnTypeDeduplicatedList.size()];
-    values = new byte[columnTypeDeduplicatedList.size()][];
-    for (int i = 0; i < values.length; i++) {
-      TSDataType dataType = columnTypeDeduplicatedList.get(i);
-      switch (dataType) {
-        case BOOLEAN:
-          values[i] = new byte[1];
-          break;
-        case INT32:
-        case DATE:
-          values[i] = new byte[Integer.BYTES];
-          break;
-        case INT64:
-        case TIMESTAMP:
-          values[i] = new byte[Long.BYTES];
-          break;
-        case FLOAT:
-          values[i] = new byte[Float.BYTES];
-          break;
-        case DOUBLE:
-          values[i] = new byte[Double.BYTES];
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          values[i] = null;
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(DATA_TYPE_NOT_SUPPORTED, columnTypeDeduplicatedList.get(i)));
-      }
-    }
+    values = initializeValueBuffers(columnTypeDeduplicatedList);
     this.tsQueryDataSet = queryDataSet;
     this.emptyResultSet = (queryDataSet == null || !queryDataSet.time.hasRemaining());
   }
@@ -228,8 +191,8 @@ public class IoTDBJDBCDataSet {
     this.zoneId = zoneId;
     columnSize = columnNameList.size();
 
-    this.columnNameList = new ArrayList<>();
-    this.columnTypeList = new ArrayList<>();
+    this.columnNameList = new ArrayList<>(columnSize + (ignoreTimeStamp ? 0 : 1));
+    this.columnTypeList = new ArrayList<>(columnSize + (ignoreTimeStamp ? 0 : 1));
     if (!ignoreTimeStamp) {
       this.columnNameList.add(TIMESTAMP_STR);
       this.columnTypeList.add(String.valueOf(TSDataType.INT64));
@@ -242,11 +205,8 @@ public class IoTDBJDBCDataSet {
 
     // deduplicate and map
     if (columnNameIndex != null) {
-      int deduplicatedColumnSize = (int) columnNameIndex.values().stream().distinct().count();
-      this.columnTypeDeduplicatedList = new ArrayList<>(deduplicatedColumnSize);
-      for (int i = 0; i < deduplicatedColumnSize; i++) {
-        columnTypeDeduplicatedList.add(null);
-      }
+      this.columnTypeDeduplicatedList =
+          initDeduplicatedColumnTypes(getDeduplicatedColumnSize(columnNameIndex));
       for (int i = 0; i < columnNameList.size(); i++) {
         String name = "";
         if (sgList != null
@@ -262,9 +222,7 @@ public class IoTDBJDBCDataSet {
         // "Time".equals(name) -> to allow the Time column appear in value columns
         if (!columnOrdinalMap.containsKey(name) || "Time".equals(name)) {
           int index = columnNameIndex.get(name);
-          if (!columnOrdinalMap.containsValue(index + START_INDEX)) {
-            columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnTypeList.get(i)));
-          }
+          setColumnTypeIfAbsent(columnTypeDeduplicatedList, index, columnTypeList.get(i));
           columnOrdinalMap.put(name, index + START_INDEX);
         }
       }
@@ -284,40 +242,34 @@ public class IoTDBJDBCDataSet {
 
     time = new byte[Long.BYTES];
     currentBitmap = new byte[columnTypeDeduplicatedList.size()];
-    values = new byte[columnTypeDeduplicatedList.size()][];
-    for (int i = 0; i < values.length; i++) {
-      TSDataType dataType = columnTypeDeduplicatedList.get(i);
-      switch (dataType) {
-        case BOOLEAN:
-          values[i] = new byte[1];
-          break;
-        case INT32:
-        case DATE:
-          values[i] = new byte[Integer.BYTES];
-          break;
-        case INT64:
-        case TIMESTAMP:
-          values[i] = new byte[Long.BYTES];
-          break;
-        case FLOAT:
-          values[i] = new byte[Float.BYTES];
-          break;
-        case DOUBLE:
-          values[i] = new byte[Double.BYTES];
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          values[i] = null;
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(DATA_TYPE_NOT_SUPPORTED, columnTypeDeduplicatedList.get(i)));
-      }
-    }
+    values = initializeValueBuffers(columnTypeDeduplicatedList);
     this.tsQueryDataSet = queryDataSet;
     this.emptyResultSet = (queryDataSet == null || !queryDataSet.time.hasRemaining());
+  }
+
+  private static int getDeduplicatedColumnSize(Map<String, Integer> columnNameIndex) {
+    int deduplicatedColumnSize = 0;
+    for (Integer index : columnNameIndex.values()) {
+      if (index != null && index + 1 > deduplicatedColumnSize) {
+        deduplicatedColumnSize = index + 1;
+      }
+    }
+    return deduplicatedColumnSize;
+  }
+
+  private static List<TSDataType> initDeduplicatedColumnTypes(int deduplicatedColumnSize) {
+    List<TSDataType> columnTypes = new ArrayList<>(deduplicatedColumnSize);
+    for (int i = 0; i < deduplicatedColumnSize; i++) {
+      columnTypes.add(null);
+    }
+    return columnTypes;
+  }
+
+  private static void setColumnTypeIfAbsent(
+      List<TSDataType> columnTypeDeduplicatedList, int index, String columnType) {
+    if (columnTypeDeduplicatedList.get(index) == null) {
+      columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnType));
+    }
   }
 
   public void close() throws StatementExecutionException, TException {
@@ -332,10 +284,9 @@ public class IoTDBJDBCDataSet {
         TSStatus closeResp = client.closeOperation(closeReq);
         RpcUtils.verifySuccess(closeResp);
       } catch (StatementExecutionException e) {
-        throw new StatementExecutionException(
-            "Error occurs for close operation in server side because ", e);
+        throw new StatementExecutionException(RpcMessages.CLOSE_OPERATION_SERVER_ERROR, e);
       } catch (TException e) {
-        throw new TException("Error occurs when connecting to server for close operation ", e);
+        throw new TException(RpcMessages.CLOSE_OPERATION_CONNECTION_ERROR, e);
       }
     }
     client = null;
@@ -352,8 +303,7 @@ public class IoTDBJDBCDataSet {
         close();
         return false;
       } catch (TException e) {
-        throw new IoTDBConnectionException(
-            "Cannot close dataset, because of network connection: {} ", e);
+        throw new IoTDBConnectionException(RpcMessages.CANNOT_CLOSE_DATASET, e);
       }
     }
     if (fetchResults() && hasCachedResults()) {
@@ -364,8 +314,7 @@ public class IoTDBJDBCDataSet {
         close();
         return false;
       } catch (TException e) {
-        throw new IoTDBConnectionException(
-            "Cannot close dataset, because of network connection: {} ", e);
+        throw new IoTDBConnectionException(RpcMessages.CANNOT_CLOSE_DATASET, e);
       }
     }
   }
@@ -387,7 +336,8 @@ public class IoTDBJDBCDataSet {
       return resp.hasResultSet;
     } catch (TException e) {
       throw new IoTDBConnectionException(
-          "Cannot fetch result from server, because of network connection: {} ", e);
+          RpcMessages.EXCEPTION_CANNOT_FETCH_RESULT_SERVER_BECAUSE_NETWORK_CONNECTION_ARG_24BE1326,
+          e);
     }
   }
 
@@ -407,31 +357,44 @@ public class IoTDBJDBCDataSet {
       if (!isNull(i, rowsIndex)) {
         ByteBuffer valueBuffer = tsQueryDataSet.valueList.get(i);
         TSDataType dataType = columnTypeDeduplicatedList.get(i);
-        switch (dataType) {
-          case BOOLEAN:
-          case INT32:
-          case INT64:
-          case FLOAT:
-          case DOUBLE:
-          case DATE:
-          case TIMESTAMP:
-            valueBuffer.get(values[i]);
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-          case OBJECT:
-            int length = valueBuffer.getInt();
-            values[i] = ReadWriteIOUtils.readBytes(valueBuffer, length);
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format(DATA_TYPE_NOT_SUPPORTED, columnTypeDeduplicatedList.get(i)));
+        if (dataType.isBinary()) {
+          int length = valueBuffer.getInt();
+          values[i] = ReadWriteIOUtils.readBytes(valueBuffer, length);
+        } else {
+          valueBuffer.get(values[i]);
         }
       }
     }
     rowsIndex++;
     hasCachedRecord = true;
+  }
+
+  static byte[][] initializeValueBuffers(List<TSDataType> dataTypes) {
+    byte[][] valueBuffers = new byte[dataTypes.size()][];
+    for (int i = 0; i < dataTypes.size(); i++) {
+      TSDataType dataType = dataTypes.get(i);
+      if (dataType == TSDataType.VECTOR || dataType == TSDataType.UNKNOWN) {
+        throw unsupportedDataType(dataType);
+      }
+      if (dataType.isBinary()) {
+        continue;
+      }
+      final int dataTypeSize;
+      try {
+        dataTypeSize = dataType.getDataTypeSize();
+      } catch (UnSupportedDataTypeException e) {
+        throw unsupportedDataType(dataType);
+      }
+      if (dataTypeSize == 0) {
+        throw unsupportedDataType(dataType);
+      }
+      valueBuffers[i] = new byte[dataTypeSize];
+    }
+    return valueBuffers;
+  }
+
+  private static UnSupportedDataTypeException unsupportedDataType(TSDataType dataType) {
+    return new UnSupportedDataTypeException(String.format(DATA_TYPE_NOT_SUPPORTED, dataType));
   }
 
   public boolean isNull(int columnIndex) throws StatementExecutionException {
@@ -584,30 +547,9 @@ public class IoTDBJDBCDataSet {
   }
 
   public String getString(int index, TSDataType tsDataType, byte[][] values) {
-    switch (tsDataType) {
-      case BOOLEAN:
-        return String.valueOf(BytesUtils.bytesToBool(values[index]));
-      case INT32:
-        return String.valueOf(BytesUtils.bytesToInt(values[index]));
-      case INT64:
-      case TIMESTAMP:
-        return String.valueOf(BytesUtils.bytesToLong(values[index]));
-      case FLOAT:
-        return String.valueOf(BytesUtils.bytesToFloat(values[index]));
-      case DOUBLE:
-        return String.valueOf(BytesUtils.bytesToDouble(values[index]));
-      case TEXT:
-      case STRING:
-        return new String(values[index], StandardCharsets.UTF_8);
-      case OBJECT:
-        return BytesUtils.parseObjectByteArrayToString(values[index]);
-      case BLOB:
-        return BytesUtils.parseBlobByteArrayToString(values[index]);
-      case DATE:
-        return DateUtils.formatDate(BytesUtils.bytesToInt(values[index]));
-      default:
-        return null;
-    }
+    return TypeServices.JDBC_STRING_READER_SERVICE
+        .call(Type.fromTsDataType(tsDataType))
+        .apply(values[index]);
   }
 
   public Object getObjectByName(String columnName) throws StatementExecutionException {
@@ -625,46 +567,25 @@ public class IoTDBJDBCDataSet {
   }
 
   public Object getObject(int index, TSDataType tsDataType, byte[][] values) {
-    switch (tsDataType) {
-      case BOOLEAN:
-        return BytesUtils.bytesToBool(values[index]);
-      case INT32:
-        return BytesUtils.bytesToInt(values[index]);
-      case INT64:
-        return BytesUtils.bytesToLong(values[index]);
-      case FLOAT:
-        return BytesUtils.bytesToFloat(values[index]);
-      case DOUBLE:
-        return BytesUtils.bytesToDouble(values[index]);
-      case TEXT:
-      case STRING:
-        return new String(values[index], StandardCharsets.UTF_8);
-      case OBJECT:
-      case BLOB:
-        return new Binary(values[index]);
-      case TIMESTAMP:
-        return new Timestamp(BytesUtils.bytesToLong(values[index]));
-      case DATE:
-        return DateUtils.parseIntToDate(BytesUtils.bytesToInt(values[index]));
-      default:
-        return null;
-    }
+    return TypeServices.JDBC_OBJECT_READER_SERVICE
+        .call(Type.fromTsDataType(tsDataType))
+        .apply(values[index]);
   }
 
   public String findColumnNameByIndex(int columnIndex) throws StatementExecutionException {
     if (columnIndex <= 0) {
-      throw new StatementExecutionException("column index should start from 1");
+      throw new StatementExecutionException(RpcMessages.COLUMN_INDEX_SHOULD_START_FROM_1);
     }
     if (columnIndex > columnNameList.size()) {
       throw new StatementExecutionException(
-          String.format("column index %d out of range %d", columnIndex, columnNameList.size()));
+          String.format(RpcMessages.COLUMN_INDEX_OUT_OF_RANGE, columnIndex, columnNameList.size()));
     }
     return columnNameList.get(columnIndex - 1);
   }
 
   public void checkRecord() throws StatementExecutionException {
     if (Objects.isNull(tsQueryDataSet)) {
-      throw new StatementExecutionException("No record remains");
+      throw new StatementExecutionException(RpcMessages.NO_RECORD_REMAINS);
     }
   }
 

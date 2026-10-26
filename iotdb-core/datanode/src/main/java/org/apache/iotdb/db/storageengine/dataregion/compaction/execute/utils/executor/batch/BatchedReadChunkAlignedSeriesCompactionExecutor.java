@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.BatchCompactionCannotAlignedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
@@ -72,6 +73,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       originReaderAndChunkMetadataList;
 
   public BatchedReadChunkAlignedSeriesCompactionExecutor(
+      String database,
       IDeviceID device,
       TsFileResource targetResource,
       LinkedList<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>>
@@ -80,7 +82,14 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       CompactionTaskSummary summary,
       boolean ignoreAllNullRows)
       throws IOException {
-    super(device, targetResource, readerAndChunkMetadataList, writer, summary, ignoreAllNullRows);
+    super(
+        database,
+        device,
+        targetResource,
+        readerAndChunkMetadataList,
+        writer,
+        summary,
+        ignoreAllNullRows);
     this.originReaderAndChunkMetadataList = readerAndChunkMetadataList;
     this.batchColumnSelection =
         new AlignedSeriesBatchCompactionUtils.BatchColumnSelection(schemaList, batchSize);
@@ -131,7 +140,8 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
             ignoreAllNullRows);
     executor.execute();
     LOGGER.debug(
-        "[Batch Compaction] current device is {}, first batch compacted time chunk is {}",
+        StorageEngineMessages
+            .STORAGE_LOG_BATCH_COMPACTION_CURRENT_DEVICE_IS_FIRST_BATCH_COMPACTED_34910754,
         device,
         batchCompactionPlan);
   }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.adapter;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowIterator;
 
@@ -32,7 +33,8 @@ public class EmptyRowIterator implements RowIterator {
 
   @Override
   public Row next() throws IOException {
-    throw new UnsupportedOperationException("Can not call next on EmptyRowIterator");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.CAN_NOT_CALL_NEXT_ON_EMPTYROWITERATOR);
   }
 
   @Override

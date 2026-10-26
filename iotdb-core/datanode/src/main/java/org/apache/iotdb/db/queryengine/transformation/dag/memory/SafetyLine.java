@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.memory;
 
-import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
+import org.apache.iotdb.calc.transformation.datastructure.tv.ElasticSerializableTVList;
 
 /** Tells the {@link ElasticSerializableTVList} if it is safe to remove a cache block. */
 public class SafetyLine {

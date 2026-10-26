@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.udf.api.type;
 
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
+
 import org.apache.tsfile.utils.Binary;
 
 import java.time.LocalDate;
@@ -77,7 +79,7 @@ public enum Type {
         return t;
       }
     }
-    throw new IllegalArgumentException("Unsupported type: " + type);
+    throw new IllegalArgumentException(UdfApiMessages.UNSUPPORTED_TYPE + type);
   }
 
   public boolean checkObjectType(Object o) {

@@ -19,19 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.util;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.calc.transformation.dag.util.BitwiseUtils;
+import org.apache.iotdb.commons.exception.SemanticException;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import static org.apache.iotdb.db.queryengine.transformation.dag.util.BitwiseUtils.bitCountCheck;
-import static org.apache.iotdb.db.queryengine.transformation.dag.util.BitwiseUtils.bitwiseAndTransform;
-import static org.apache.iotdb.db.queryengine.transformation.dag.util.BitwiseUtils.bitwiseLeftShiftTransform;
-import static org.apache.iotdb.db.queryengine.transformation.dag.util.BitwiseUtils.bitwiseNotTransform;
-import static org.apache.iotdb.db.queryengine.transformation.dag.util.BitwiseUtils.bitwiseOrTransform;
-import static org.apache.iotdb.db.queryengine.transformation.dag.util.BitwiseUtils.bitwiseRightShiftArithmeticTransform;
-import static org.apache.iotdb.db.queryengine.transformation.dag.util.BitwiseUtils.bitwiseRightShiftTransform;
-import static org.apache.iotdb.db.queryengine.transformation.dag.util.BitwiseUtils.bitwiseXorTransform;
+import static org.apache.iotdb.calc.transformation.dag.util.BitwiseUtils.bitCountCheck;
+import static org.apache.iotdb.calc.transformation.dag.util.BitwiseUtils.bitwiseAndTransform;
+import static org.apache.iotdb.calc.transformation.dag.util.BitwiseUtils.bitwiseLeftShiftTransform;
+import static org.apache.iotdb.calc.transformation.dag.util.BitwiseUtils.bitwiseNotTransform;
+import static org.apache.iotdb.calc.transformation.dag.util.BitwiseUtils.bitwiseOrTransform;
+import static org.apache.iotdb.calc.transformation.dag.util.BitwiseUtils.bitwiseRightShiftArithmeticTransform;
+import static org.apache.iotdb.calc.transformation.dag.util.BitwiseUtils.bitwiseRightShiftTransform;
+import static org.apache.iotdb.calc.transformation.dag.util.BitwiseUtils.bitwiseXorTransform;
 
 public class BitwiseUtilsTest {
   @Test

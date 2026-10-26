@@ -15,6 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import math
 
 import torch
@@ -36,7 +39,7 @@ class Chronos2Pipeline(ForecastPipeline):
     def __init__(self, model_info, **model_kwargs):
         super().__init__(model_info, **model_kwargs)
 
-    def preprocess(self, inputs, **infer_kwargs):
+    def _preprocess(self, inputs, **infer_kwargs):
         """
         Preprocess input data of chronos2.
 
@@ -62,7 +65,6 @@ class Chronos2Pipeline(ForecastPipeline):
             - 'future_covariates' (optional): dict of str to torch.Tensor
                 Unchanged future covariates.
         """
-        super().preprocess(inputs, **infer_kwargs)
         for item in inputs:
             item["target"] = item.pop("targets")
         return inputs
@@ -310,7 +312,6 @@ class Chronos2Pipeline(ForecastPipeline):
         test_loader = DataLoader(
             test_dataset,
             batch_size=None,
-            pin_memory=True,
             shuffle=False,
             drop_last=False,
         )
@@ -449,7 +450,7 @@ class Chronos2Pipeline(ForecastPipeline):
 
         return prediction
 
-    def postprocess(
+    def _postprocess(
         self, outputs: list[torch.Tensor], **infer_kwargs
     ) -> list[torch.Tensor]:
         """
@@ -472,5 +473,4 @@ class Chronos2Pipeline(ForecastPipeline):
                 # If 0.5 quantile is not provided,
                 # get the mean of all quantiles
                 outputs_list.append(output.mean(dim=1))
-        super().postprocess(outputs_list, **infer_kwargs)
         return outputs_list

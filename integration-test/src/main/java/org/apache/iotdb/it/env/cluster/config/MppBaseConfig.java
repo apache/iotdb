@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.it.env.cluster.config;
 
+import jakarta.validation.constraints.NotNull;
+
 import javax.annotation.Nullable;
-import javax.validation.constraints.NotNull;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -40,6 +41,8 @@ public abstract class MppBaseConfig {
   /** Create an empty MppPersistentConfig. */
   protected MppBaseConfig() {
     this.properties = new Properties();
+    this.properties.setProperty("cn_selector_thread_nums_of_client_manager", "1");
+    this.properties.setProperty("dn_selector_thread_nums_of_client_manager", "1");
   }
 
   /**
@@ -115,6 +118,10 @@ public abstract class MppBaseConfig {
     } else {
       properties.remove(key);
     }
+  }
+
+  public final String getProperty(@NotNull String key, String defaultValue) {
+    return properties.getProperty(key, defaultValue);
   }
 
   /** Create an instance but with empty properties. */

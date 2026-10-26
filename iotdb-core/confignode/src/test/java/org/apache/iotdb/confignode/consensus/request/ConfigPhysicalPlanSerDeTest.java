@@ -35,6 +35,7 @@ import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
 import org.apache.iotdb.common.rpc.thrift.ThrottleType;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -66,12 +67,14 @@ import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFType;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionGroupsByTimePlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateNodeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
@@ -112,6 +115,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipeP
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusWithStoppedByRuntimeExceptionPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
@@ -138,6 +142,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnData
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreAlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
@@ -188,10 +193,12 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -210,6 +217,69 @@ import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.SchemaRegio
 import static org.junit.Assert.assertEquals;
 
 public class ConfigPhysicalPlanSerDeTest {
+
+  @Test
+  public void testUpdateNodeStatusPlan() throws IOException {
+    for (NodeStatus status :
+        new NodeStatus[] {
+          NodeStatus.Stopped,
+          NodeStatus.Removing,
+          NodeStatus.ReadOnly,
+          NodeStatus.Running,
+          NodeStatus.Unknown,
+          null
+        }) {
+      for (String reason :
+          new String[] {
+            null,
+            NodeStatus.MANUAL,
+            NodeStatus.DISK_FULL,
+            NodeStatus.STOPPING,
+            NodeStatus.UNRECOVERABLE_ERROR + ": failed to recover root.test-0"
+          }) {
+        UpdateNodeStatusPlan original = new UpdateNodeStatusPlan(37, status, reason);
+        UpdateNodeStatusPlan restored =
+            (UpdateNodeStatusPlan)
+                ConfigPhysicalPlan.Factory.create(original.serializeToByteBuffer());
+        Assert.assertEquals(original, restored);
+        Assert.assertEquals(original.hashCode(), restored.hashCode());
+        Assert.assertEquals(37, restored.getNodeId());
+        NodeStatus persistedStatus = status != null && status.isPersistentStatus() ? status : null;
+        Assert.assertEquals(persistedStatus, restored.getStatus());
+        Assert.assertEquals(persistedStatus == null ? null : reason, restored.getStatusReason());
+        ByteBuffer serialized = original.serializeToByteBuffer();
+        Assert.assertEquals(
+            ConfigPhysicalPlanType.UpdateNodeStatus.getPlanType(), serialized.getShort());
+        Assert.assertEquals(37, ReadWriteIOUtils.readInt(serialized));
+        Assert.assertEquals(
+            persistedStatus == null ? null : persistedStatus.getStatus(),
+            ReadWriteIOUtils.readString(serialized));
+        Assert.assertEquals(restored.getStatusReason(), ReadWriteIOUtils.readString(serialized));
+        Assert.assertFalse(serialized.hasRemaining());
+      }
+    }
+    Assert.assertNotEquals(
+        new UpdateNodeStatusPlan(37, NodeStatus.ReadOnly, NodeStatus.MANUAL),
+        new UpdateNodeStatusPlan(37, NodeStatus.ReadOnly, NodeStatus.DISK_FULL));
+  }
+
+  @Test
+  public void testNodeStatusPlanNormalizesNonPersistentStatuses() {
+    for (String reason : new String[] {null, "test reason"}) {
+      for (NodeStatus status :
+          new NodeStatus[] {NodeStatus.Stopped, NodeStatus.Removing, NodeStatus.ReadOnly}) {
+        UpdateNodeStatusPlan plan = new UpdateNodeStatusPlan(37, status, reason);
+        Assert.assertEquals(status, plan.getStatus());
+        Assert.assertEquals(reason, plan.getStatusReason());
+      }
+      for (NodeStatus status : new NodeStatus[] {NodeStatus.Running, NodeStatus.Unknown, null}) {
+        UpdateNodeStatusPlan plan = new UpdateNodeStatusPlan(37, status, reason);
+        Assert.assertNull(plan.getStatus());
+        Assert.assertNull(plan.getStatusReason());
+        Assert.assertEquals(new UpdateNodeStatusPlan(37, null), plan);
+      }
+    }
+  }
 
   @Test
   public void RegisterDataNodePlanTest() throws IOException {
@@ -968,13 +1038,61 @@ public class ConfigPhysicalPlanSerDeTest {
     final AlterPipePlanV2 alterPipePlanV21 =
         (AlterPipePlanV2)
             ConfigPhysicalPlan.Factory.create(alterPipePlanV2.serializeToByteBuffer());
+    Assert.assertEquals(
+        alterPipePlanV2.getCurrentPipeStaticMeta(), alterPipePlanV21.getCurrentPipeStaticMeta());
     Assert.assertEquals(alterPipePlanV2.getPipeStaticMeta(), alterPipePlanV21.getPipeStaticMeta());
     Assert.assertEquals(
         alterPipePlanV2.getPipeRuntimeMeta(), alterPipePlanV21.getPipeRuntimeMeta());
+    Assert.assertFalse(alterPipePlanV21.isCurrentPipeStaticMetaSet());
+  }
+
+  @Test
+  public void AlterPipePlanV2CurrentStaticMetaTest() throws IOException {
+    final PipeStaticMeta currentPipeStaticMeta =
+        new PipeStaticMeta(
+            "testPipe",
+            120,
+            Collections.singletonMap("pattern", "root.current"),
+            Collections.singletonMap("processor", "do-nothing-processor"),
+            Collections.singletonMap("batch.enable", "false"));
+    final PipeStaticMeta pipeStaticMeta =
+        new PipeStaticMeta(
+            "testPipe",
+            121,
+            Collections.singletonMap("pattern", "root.updated"),
+            Collections.singletonMap("processor", "do-nothing-processor"),
+            Collections.singletonMap("batch.enable", "false"));
+    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    final ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
+    pipeTasks.put(1, pipeTaskMeta);
+    final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
+    final AlterPipePlanV2 alterPipePlanV2 =
+        new AlterPipePlanV2(currentPipeStaticMeta, pipeStaticMeta, pipeRuntimeMeta);
+    final AlterPipePlanV2 alterPipePlanV21 =
+        (AlterPipePlanV2)
+            ConfigPhysicalPlan.Factory.create(alterPipePlanV2.serializeToByteBuffer());
+    Assert.assertEquals(currentPipeStaticMeta, alterPipePlanV21.getCurrentPipeStaticMeta());
+    Assert.assertEquals(pipeStaticMeta, alterPipePlanV21.getPipeStaticMeta());
+    Assert.assertEquals(pipeRuntimeMeta, alterPipePlanV21.getPipeRuntimeMeta());
+    Assert.assertTrue(alterPipePlanV21.isCurrentPipeStaticMetaSet());
   }
 
   @Test
   public void SetPipeStatusPlanV2Test() throws IOException {
+    final SetPipeStatusPlanV2 setPipeStatusPlanV2 =
+        new SetPipeStatusPlanV2(
+            "pipe", org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.PRE_DELETE, true);
+    final SetPipeStatusPlanV2 setPipeStatusPlanV21 =
+        (SetPipeStatusPlanV2)
+            ConfigPhysicalPlan.Factory.create(setPipeStatusPlanV2.serializeToByteBuffer());
+    Assert.assertEquals(setPipeStatusPlanV2.getPipeName(), setPipeStatusPlanV21.getPipeName());
+    Assert.assertEquals(setPipeStatusPlanV2.getPipeStatus(), setPipeStatusPlanV21.getPipeStatus());
+    Assert.assertEquals(setPipeStatusPlanV2.isTableModel(), setPipeStatusPlanV21.isTableModel());
+    Assert.assertTrue(setPipeStatusPlanV21.isTableModelSet());
+  }
+
+  @Test
+  public void SetPipeStatusPlanV2LegacyFormatTest() throws IOException {
     final SetPipeStatusPlanV2 setPipeStatusPlanV2 =
         new SetPipeStatusPlanV2(
             "pipe", org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.RUNNING);
@@ -983,14 +1101,79 @@ public class ConfigPhysicalPlanSerDeTest {
             ConfigPhysicalPlan.Factory.create(setPipeStatusPlanV2.serializeToByteBuffer());
     Assert.assertEquals(setPipeStatusPlanV2.getPipeName(), setPipeStatusPlanV21.getPipeName());
     Assert.assertEquals(setPipeStatusPlanV2.getPipeStatus(), setPipeStatusPlanV21.getPipeStatus());
+    Assert.assertFalse(setPipeStatusPlanV21.isTableModelSet());
+  }
+
+  @Test
+  public void SetPipeStatusWithStoppedByRuntimeExceptionPlanV2Test() throws IOException {
+    final SetPipeStatusWithStoppedByRuntimeExceptionPlanV2
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV2 =
+            new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2(
+                "pipe",
+                org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.STOPPED,
+                true,
+                true);
+    final SetPipeStatusWithStoppedByRuntimeExceptionPlanV2
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV21 =
+            (SetPipeStatusWithStoppedByRuntimeExceptionPlanV2)
+                ConfigPhysicalPlan.Factory.create(
+                    setPipeStatusWithStoppedByRuntimeExceptionPlanV2.serializeToByteBuffer());
+    Assert.assertEquals(
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV2.getPipeName(),
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV21.getPipeName());
+    Assert.assertEquals(
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV2.getPipeStatus(),
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV21.getPipeStatus());
+    Assert.assertEquals(
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV2.isStoppedByRuntimeException(),
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV21.isStoppedByRuntimeException());
+    Assert.assertEquals(
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV2.isTableModel(),
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV21.isTableModel());
+    Assert.assertTrue(setPipeStatusWithStoppedByRuntimeExceptionPlanV21.isTableModelSet());
+  }
+
+  @Test
+  public void SetPipeStatusWithStoppedByRuntimeExceptionPlanV2LegacyFormatTest()
+      throws IOException {
+    final SetPipeStatusWithStoppedByRuntimeExceptionPlanV2
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV2 =
+            new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2(
+                "pipe", org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.STOPPED, true);
+    final SetPipeStatusWithStoppedByRuntimeExceptionPlanV2
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV21 =
+            (SetPipeStatusWithStoppedByRuntimeExceptionPlanV2)
+                ConfigPhysicalPlan.Factory.create(
+                    setPipeStatusWithStoppedByRuntimeExceptionPlanV2.serializeToByteBuffer());
+    Assert.assertEquals(
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV2.getPipeName(),
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV21.getPipeName());
+    Assert.assertEquals(
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV2.getPipeStatus(),
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV21.getPipeStatus());
+    Assert.assertEquals(
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV2.isStoppedByRuntimeException(),
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV21.isStoppedByRuntimeException());
+    Assert.assertFalse(setPipeStatusWithStoppedByRuntimeExceptionPlanV21.isTableModelSet());
   }
 
   @Test
   public void DropPipePlanV2Test() throws IOException {
+    final DropPipePlanV2 dropPipePlanV2 = new DropPipePlanV2("demo", true);
+    final DropPipePlanV2 dropPipePlanV21 =
+        (DropPipePlanV2) ConfigPhysicalPlan.Factory.create(dropPipePlanV2.serializeToByteBuffer());
+    Assert.assertEquals(dropPipePlanV2.getPipeName(), dropPipePlanV21.getPipeName());
+    Assert.assertEquals(dropPipePlanV2.isTableModel(), dropPipePlanV21.isTableModel());
+    Assert.assertTrue(dropPipePlanV21.isTableModelSet());
+  }
+
+  @Test
+  public void DropPipePlanV2LegacyFormatTest() throws IOException {
     final DropPipePlanV2 dropPipePlanV2 = new DropPipePlanV2("demo");
     final DropPipePlanV2 dropPipePlanV21 =
         (DropPipePlanV2) ConfigPhysicalPlan.Factory.create(dropPipePlanV2.serializeToByteBuffer());
     Assert.assertEquals(dropPipePlanV2.getPipeName(), dropPipePlanV21.getPipeName());
+    Assert.assertFalse(dropPipePlanV21.isTableModelSet());
   }
 
   @Test
@@ -1026,12 +1209,51 @@ public class ConfigPhysicalPlanSerDeTest {
     final SetPipeStatusPlanV2 setPipeStatusPlanV2 =
         new SetPipeStatusPlanV2(
             "testSet", org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.RUNNING);
-
     final List<ConfigPhysicalPlan> subPlans = new ArrayList<>();
     subPlans.add(createPipePlanV2);
     subPlans.add(alterPipePlanV2);
     subPlans.add(dropPipePlanV2);
     subPlans.add(setPipeStatusPlanV2);
+
+    final OperateMultiplePipesPlanV2 operateMultiplePipesPlanV2 =
+        new OperateMultiplePipesPlanV2(subPlans);
+    final OperateMultiplePipesPlanV2 operateMultiplePipesPlanV21 =
+        (OperateMultiplePipesPlanV2)
+            ConfigPhysicalPlan.Factory.create(operateMultiplePipesPlanV2.serializeToByteBuffer());
+    Assert.assertEquals(
+        operateMultiplePipesPlanV2.getSubPlans(), operateMultiplePipesPlanV21.getSubPlans());
+  }
+
+  @Test
+  public void OperateMultiplePipesPlanV2ExplicitTailFieldsTest() throws IOException {
+    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    final ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
+    pipeTasks.put(1, pipeTaskMeta);
+    final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
+    final PipeStaticMeta currentPipeStaticMeta =
+        new PipeStaticMeta(
+            "testAlterWithCurrent",
+            5,
+            Collections.singletonMap("k1", "v1"),
+            Collections.singletonMap("k2", "v2"),
+            Collections.singletonMap("k3", "v3"));
+    final PipeStaticMeta pipeStaticMeta =
+        new PipeStaticMeta(
+            "testAlterWithCurrent",
+            6,
+            Collections.singletonMap("k4", "v4"),
+            Collections.singletonMap("k5", "v5"),
+            Collections.singletonMap("k6", "v6"));
+
+    final List<ConfigPhysicalPlan> subPlans = new ArrayList<>();
+    subPlans.add(new DropPipePlanV2("testDropTable", true));
+    subPlans.add(
+        new SetPipeStatusPlanV2(
+            "testSetTree",
+            org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.RUNNING,
+            false));
+    subPlans.add(new AlterPipePlanV2(currentPipeStaticMeta, pipeStaticMeta, pipeRuntimeMeta));
+    subPlans.add(new DropPipePlanV2("testDropTree", false));
 
     final OperateMultiplePipesPlanV2 operateMultiplePipesPlanV2 =
         new OperateMultiplePipesPlanV2(subPlans);
@@ -1139,7 +1361,13 @@ public class ConfigPhysicalPlanSerDeTest {
     final DropTopicPlan dropTopicPlan = new DropTopicPlan("test_topic");
     final DropTopicPlan dropTopicPlan1 =
         (DropTopicPlan) ConfigPhysicalPlan.Factory.create(dropTopicPlan.serializeToByteBuffer());
-    Assert.assertEquals(dropTopicPlan.getTopicName(), dropTopicPlan1.getTopicName());
+    Assert.assertEquals(dropTopicPlan, dropTopicPlan1);
+
+    final DropTopicPlan tableDropTopicPlan = new DropTopicPlan("test_topic", true);
+    final DropTopicPlan tableDropTopicPlan1 =
+        (DropTopicPlan)
+            ConfigPhysicalPlan.Factory.create(tableDropTopicPlan.serializeToByteBuffer());
+    Assert.assertEquals(tableDropTopicPlan, tableDropTopicPlan1);
   }
 
   @Test
@@ -1539,6 +1767,24 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void PreAlterTableColumnDataTypePlanTest() throws IOException {
+    final PreAlterColumnDataTypePlan alterColumnDataTypePlan =
+        new PreAlterColumnDataTypePlan("database1", "table1", "field", TSDataType.FLOAT);
+    final PreAlterColumnDataTypePlan alterColumnDataTypePlan1 =
+        (PreAlterColumnDataTypePlan)
+            ConfigPhysicalPlan.Factory.create(alterColumnDataTypePlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        alterColumnDataTypePlan.getDatabase(), alterColumnDataTypePlan1.getDatabase());
+    Assert.assertEquals(
+        alterColumnDataTypePlan.getTableName(), alterColumnDataTypePlan1.getTableName());
+    Assert.assertEquals(
+        alterColumnDataTypePlan.getColumnName(), alterColumnDataTypePlan1.getColumnName());
+    Assert.assertEquals(alterColumnDataTypePlan.getType(), alterColumnDataTypePlan1.getType());
+    Assert.assertEquals(
+        alterColumnDataTypePlan.getNewType(), alterColumnDataTypePlan1.getNewType());
+  }
+
+  @Test
+  public void AlterTableColumnDataTypePlanTest() throws IOException {
     final AlterColumnDataTypePlan alterColumnDataTypePlan =
         new AlterColumnDataTypePlan("database1", "table1", "field", TSDataType.FLOAT);
     final AlterColumnDataTypePlan alterColumnDataTypePlan1 =
@@ -1632,7 +1878,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void ActiveCQPlanTest() throws IOException {
-    ActiveCQPlan activeCQPlan0 = new ActiveCQPlan("testCq", "testCq_md5");
+    ActiveCQPlan activeCQPlan0 = new ActiveCQPlan("testCq", "testCqToken");
     ActiveCQPlan activeCQPlan1 =
         (ActiveCQPlan) ConfigPhysicalPlan.Factory.create(activeCQPlan0.serializeToByteBuffer());
 
@@ -1655,7 +1901,7 @@ public class ConfigPhysicalPlanSerDeTest {
                 "create cq testCq1 BEGIN select s1 into root.backup.d1.s1 from root.sg.d1 END",
                 "Asia",
                 "root"),
-            "testCq1_md5",
+            "testCq1Token",
             executionTime);
     AddCQPlan addCQPlan1 =
         (AddCQPlan) ConfigPhysicalPlan.Factory.create(addCQPlan0.serializeToByteBuffer());
@@ -1670,7 +1916,7 @@ public class ConfigPhysicalPlanSerDeTest {
         (DropCQPlan) ConfigPhysicalPlan.Factory.create(dropCQPlan0.serializeToByteBuffer());
     Assert.assertEquals(dropCQPlan0, dropCQPlan1);
 
-    dropCQPlan0 = new DropCQPlan("testCq1", "testCq1_md5");
+    dropCQPlan0 = new DropCQPlan("testCq1", "testCq1Token");
     dropCQPlan1 =
         (DropCQPlan) ConfigPhysicalPlan.Factory.create(dropCQPlan0.serializeToByteBuffer());
     Assert.assertEquals(dropCQPlan0, dropCQPlan1);
@@ -1679,7 +1925,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void UpdateCQLastExecTimePlanTest() throws IOException {
     UpdateCQLastExecTimePlan updateCQLastExecTimePlan0 =
-        new UpdateCQLastExecTimePlan("testCq", System.currentTimeMillis(), "testCq_md5");
+        new UpdateCQLastExecTimePlan("testCq", System.currentTimeMillis(), "testCqToken");
     UpdateCQLastExecTimePlan updateCQLastExecTimePlan1 =
         (UpdateCQLastExecTimePlan)
             ConfigPhysicalPlan.Factory.create(updateCQLastExecTimePlan0.serializeToByteBuffer());
@@ -2042,5 +2288,14 @@ public class ConfigPhysicalPlanSerDeTest {
     RemoveRegionLocationPlan dePlan =
         (RemoveRegionLocationPlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
     Assert.assertEquals(plan, dePlan);
+  }
+
+  @Test
+  public void GetRegionGroupsByTimePlanTest() throws IOException {
+    GetRegionGroupsByTimePlan plan0 = new GetRegionGroupsByTimePlan("root.sg0", 0L, 604800000L);
+    GetRegionGroupsByTimePlan plan1 =
+        (GetRegionGroupsByTimePlan)
+            ConfigPhysicalPlan.Factory.create(plan0.serializeToByteBuffer());
+    Assert.assertEquals(plan0, plan1);
   }
 }

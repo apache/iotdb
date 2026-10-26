@@ -19,6 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -39,15 +46,15 @@ public class UpdateAssignment extends Node {
 
   public UpdateAssignment(final Expression name, final Expression value) {
     super(null);
-    this.name = requireNonNull(name, "name is null");
-    this.value = requireNonNull(value, "value is null");
+    this.name = requireNonNull(name, DataNodeQueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    this.value = requireNonNull(value, DataNodeQueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
   }
 
   public UpdateAssignment(
       final NodeLocation location, final Expression name, final Expression value) {
-    super(requireNonNull(location, "location is null"));
-    this.name = requireNonNull(name, "name is null");
-    this.value = requireNonNull(value, "value is null");
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.name = requireNonNull(name, DataNodeQueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    this.value = requireNonNull(value, DataNodeQueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
   }
 
   public Expression getName() {
@@ -59,8 +66,8 @@ public class UpdateAssignment extends Node {
   }
 
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitUpdateAssignment(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitUpdateAssignment(this, context);
   }
 
   public void serialize(final ByteBuffer byteBuffer) {

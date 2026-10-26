@@ -54,7 +54,8 @@ public class IoTDBFromBase64ColumnFunctionIT {
         "INSERT INTO table1(time, c_text, c_string) VALUES (3, '', '')",
         "INSERT INTO table1(time, c_int) VALUES (4, 404)",
         // invalid base64
-        "INSERT INTO table1(time, c_text, c_string) VALUES (5, 'not_base64', 'not_base64')"
+        "INSERT INTO table1(time, c_text, c_string) VALUES (5, 'not_base64', 'not_base64')",
+        "INSERT INTO table1(time, c_text, c_string) VALUES (6, 'abc', 'abc')"
       };
 
   @BeforeClass
@@ -95,10 +96,15 @@ public class IoTDBFromBase64ColumnFunctionIT {
   public void testFromBase64OnInvalidBase64() {
     String expectedErrorMessage =
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Failed to execute function 'from_base64' due to an invalid input format. Problematic value: not_base64";
+            + ": Failed to execute function 'from_base64' due to an invalid input format. Problematic value: ";
     tableAssertTestFail(
         "SELECT from_base64(c_text) FROM table1 WHERE time = 5",
-        expectedErrorMessage,
+        expectedErrorMessage + "not_base64",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "SELECT from_base64(c_text) FROM table1 WHERE time = 6",
+        expectedErrorMessage + "abc",
         DATABASE_NAME);
   }
 

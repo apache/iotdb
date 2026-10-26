@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.driver;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.commons.path.IFullPath;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.DataSourceOperator;
@@ -38,6 +38,8 @@ import java.util.Optional;
 public class DataDriverContext extends DriverContext {
 
   // it will be set to null, after being merged into Parent FIContext
+  // Paths are registered only for source operators that use the shared query data source. Batch
+  // source operators build their paths when acquiring each batch lease.
   private List<IFullPath> paths;
   private QueryDataSourceType queryDataSourceType = null;
   private Map<IDeviceID, DeviceContext> deviceIDToContext;

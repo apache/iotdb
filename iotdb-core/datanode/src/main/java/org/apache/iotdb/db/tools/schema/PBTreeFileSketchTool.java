@@ -20,6 +20,7 @@ package org.apache.iotdb.db.tools.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaFile;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFile;
 
@@ -99,14 +100,14 @@ public class PBTreeFileSketchTool {
     CommandLineParser parser = new DefaultParser();
 
     if (args == null || args.length == 0) {
-      logger.warn("Too few params input, please check the following hint.");
+      logger.warn(DataNodeMiscMessages.TOO_FEW_PARAMS);
       hf.printHelp(SFST_CLI_PREFIX, options, true);
       return;
     }
     try {
       commandLine = parser.parse(options, args);
     } catch (ParseException e) {
-      logger.error("Parse error: {}", e.getMessage());
+      logger.error(DataNodeMiscMessages.PARSE_ERROR, e.getMessage());
       hf.printHelp(SFST_CLI_PREFIX, options, true);
       return;
     }
@@ -119,7 +120,7 @@ public class PBTreeFileSketchTool {
       parseBasicParams(commandLine);
       sketchFile(inputFile, outputFile);
     } catch (Exception e) {
-      logger.error("Encounter an error, because: {} ", e.getMessage(), e);
+      logger.error(DataNodeMiscMessages.ENCOUNTER_ERROR, e.getMessage(), e);
     }
   }
 
@@ -138,7 +139,7 @@ public class PBTreeFileSketchTool {
     if (str == null) {
       String msg = String.format("Required values for option '%s' not provided", name);
       logger.info(msg);
-      logger.info("Use -help for more information");
+      logger.info(DataNodeMiscMessages.USE_HELP);
       throw new ParseException(msg);
     }
     return str;

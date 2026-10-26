@@ -22,13 +22,14 @@ package org.apache.iotdb.confignode.procedure.impl.region;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.ReconstructRegionState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +61,8 @@ public class ReconstructRegionProcedure extends RegionOperationProcedure<Reconst
       switch (state) {
         case RECONSTRUCT_REGION_PREPARE:
           LOGGER.info(
-              "[pid{}][ReconstructRegion] started, region {} on DataNode {}({}) will be reconstructed.",
+              ProcedureMessages
+                  .PID_RECONSTRUCTREGION_STARTED_REGION_ON_DATANODE_WILL_BE_RECONSTRUCTED,
               getProcId(),
               regionId.getId(),
               targetDataNode.getDataNodeId(),
@@ -76,7 +78,7 @@ public class ReconstructRegionProcedure extends RegionOperationProcedure<Reconst
               .getPartitionManager()
               .isDataNodeContainsRegion(targetDataNode.getDataNodeId(), regionId)) {
             LOGGER.warn(
-                "[pid{}][ReconstructRegion] sub-procedure RemoveRegionPeerProcedure failed, ReconstructRegionProcedure will not continue",
+                ProcedureMessages.PID_RECONSTRUCTREGION_SUB_PROCEDURE_REMOVEREGIONPEERPROCEDURE,
                 getProcId());
             return Flow.NO_MORE_STATE;
           }
@@ -91,13 +93,13 @@ public class ReconstructRegionProcedure extends RegionOperationProcedure<Reconst
               .getPartitionManager()
               .isDataNodeContainsRegion(targetDataNode.getDataNodeId(), regionId)) {
             LOGGER.warn(
-                "[pid{}][ReconstructRegion] failed, but the region {} has been removed from DataNode {}. Use 'extend region' to fix this.",
+                ProcedureMessages.PID_RECONSTRUCTREGION_FAILED_BUT_THE_REGION_HAS_BEEN_REMOVED_FROM,
                 getProcId(),
                 regionId.getId(),
                 targetDataNode.getDataNodeId());
           } else {
             LOGGER.info(
-                "[pid{}][ReconstructRegion] success, region {} has been reconstructed on DataNode {}. Procedure took {} (started at {})",
+                ProcedureMessages.PID_RECONSTRUCTREGION_SUCCESS_REGION_HAS_BEEN_RECONSTRUCTED,
                 getProcId(),
                 regionId.getId(),
                 targetDataNode.getDataNodeId(),
@@ -107,13 +109,13 @@ public class ReconstructRegionProcedure extends RegionOperationProcedure<Reconst
           }
           return Flow.NO_MORE_STATE;
         default:
-          throw new ProcedureException("Unsupported state: " + state.name());
+          throw new ProcedureException(ProcedureMessages.UNSUPPORTED_STATE + state.name());
       }
     } catch (Exception e) {
-      LOGGER.error("[pid{}][ReconstructRegion] state {} fail", getProcId(), state, e);
+      LOGGER.error(ProcedureMessages.PID_RECONSTRUCTREGION_STATE_FAIL, getProcId(), state, e);
       return Flow.NO_MORE_STATE;
     }
-    LOGGER.info("[pid{}][ReconstructRegion] state {} complete", getProcId(), state);
+    LOGGER.info(ProcedureMessages.PID_RECONSTRUCTREGION_STATE_COMPLETE, getProcId(), state);
     return Flow.HAS_MORE_STATE;
   }
 
@@ -140,7 +142,7 @@ public class ReconstructRegionProcedure extends RegionOperationProcedure<Reconst
       coordinator = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
     } catch (ThriftSerDeException e) {
       LOGGER.warn(
-          "Error in deserialize {} (procID {}). This procedure will be ignored. It may belong to old version and cannot be used now.",
+          ProcedureMessages.ERROR_IN_DESERIALIZE_PROCID_THIS_PROCEDURE_WILL_BE_IGNORED_IT,
           this.getClass(),
           this.getProcId(),
           e);

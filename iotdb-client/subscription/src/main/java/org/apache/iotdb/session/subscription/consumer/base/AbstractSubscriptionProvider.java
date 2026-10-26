@@ -1,0 +1,956 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.session.subscription.consumer.base;
+
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionConsumerFencedException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionOwnerFencedException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionPipeTimeoutException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
+import org.apache.iotdb.rpc.subscription.payload.poll.PollFilePayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.PollPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.PollTabletsPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequest;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequestType;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
+import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSliceReqBuilder;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
+import org.apache.iotdb.rpc.subscription.payload.request.SubscriptionHeartbeatReq;
+import org.apache.iotdb.rpc.subscription.payload.request.SubscriptionSeekReq;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCommitResp;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHandshakeResp;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHeartbeatResp;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribeResp;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
+import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
+import org.apache.iotdb.session.AbstractSessionBuilder;
+import org.apache.iotdb.session.subscription.SubscriptionSessionConnection;
+import org.apache.iotdb.session.subscription.SubscriptionSessionWrapper;
+
+import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
+
+public abstract class AbstractSubscriptionProvider {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSubscriptionProvider.class);
+
+  private static final int CLOSE_TIMEOUT_IN_MS = 5_000;
+  private static final int REQUEST_FRAME_RESERVED_BYTES = 1024;
+  // A commit response echoes accepted contexts and may also carry committed progress.
+  private static final int COMMIT_RESPONSE_HEADROOM_FACTOR = 3;
+
+  private static final String STATUS_FORMATTER = "Status code is [%s], status message is [%s].";
+  private static final String INTERNAL_ERROR_FORMATTER =
+      "Internal error occurred. " + STATUS_FORMATTER;
+  private static final String SUBSCRIPTION_PIPE_TIMEOUT_FORMATTER =
+      "A timeout has occurred in procedures related to the pipe within the subscription procedure. "
+          + "Please manually check the subscription correctness later. "
+          + STATUS_FORMATTER;
+
+  private final SubscriptionSessionWrapper session;
+
+  private String consumerId;
+  private String consumerGroupId;
+  private String consumerInstanceId;
+  private final String ownerId;
+  private final Long ownerEpoch;
+
+  private final AtomicBoolean isClosed = new AtomicBoolean(true);
+  private final AtomicBoolean isClosing = new AtomicBoolean(false);
+  private final AtomicBoolean isAvailable = new AtomicBoolean(false);
+  private final ReentrantLock rpcLock = new ReentrantLock();
+
+  private final int localThriftMaxFrameSize;
+  private volatile int requestBodySizeLimit;
+
+  private final TEndPoint endPoint;
+  private int dataNodeId;
+
+  private final String username;
+  private final String password;
+  private final String encryptedPassword;
+  private final long heartbeatIntervalMs;
+  private final int connectionTimeoutInMs;
+
+  protected abstract AbstractSessionBuilder constructSubscriptionSessionBuilder(
+      final String host,
+      final int port,
+      final String username,
+      final String password,
+      final String encryptedPassword,
+      final int thriftMaxFrameSize,
+      final int connectionTimeoutInMs);
+
+  protected AbstractSubscriptionProvider(
+      final TEndPoint endPoint,
+      final String username,
+      final String password,
+      final String encryptedPassword,
+      final String consumerId,
+      final String consumerGroupId,
+      final String ownerId,
+      final Long ownerEpoch,
+      final int thriftMaxFrameSize,
+      final long heartbeatIntervalMs,
+      final int connectionTimeoutInMs) {
+    this.session =
+        new SubscriptionSessionWrapper(
+            constructSubscriptionSessionBuilder(
+                endPoint.ip,
+                endPoint.port,
+                username,
+                password,
+                encryptedPassword,
+                thriftMaxFrameSize,
+                connectionTimeoutInMs));
+    this.endPoint = endPoint;
+    this.consumerId = consumerId;
+    this.consumerGroupId = consumerGroupId;
+    this.ownerId = ownerId;
+    this.ownerEpoch = ownerEpoch;
+    this.username = username;
+    this.password = password;
+    this.encryptedPassword = encryptedPassword;
+    this.localThriftMaxFrameSize = thriftMaxFrameSize;
+    this.requestBodySizeLimit = getRequestBodySizeLimit(thriftMaxFrameSize);
+    this.heartbeatIntervalMs = heartbeatIntervalMs;
+    this.connectionTimeoutInMs = connectionTimeoutInMs;
+  }
+
+  SubscriptionSessionConnection getSessionConnection() throws IoTDBConnectionException {
+    return session.getSessionConnection();
+  }
+
+  private TPipeSubscribeResp pipeSubscribe(final TPipeSubscribeReq req)
+      throws TException, IoTDBConnectionException {
+    rpcLock.lock();
+    SubscriptionSessionConnection connection = null;
+    try {
+      connection = getSessionConnection();
+      return pipeSubscribeWithOptionalSlicing(req, requestBodySizeLimit, connection::pipeSubscribe);
+    } catch (final TException | IoTDBConnectionException e) {
+      setUnavailable();
+      if (connection != null) {
+        connection.forceClose();
+      }
+      throw e;
+    } finally {
+      rpcLock.unlock();
+    }
+  }
+
+  static TPipeSubscribeResp pipeSubscribeWithOptionalSlicing(
+      final TPipeSubscribeReq req,
+      final int bodySizeLimit,
+      final PipeSubscribeRequestSender requestSender)
+      throws TException {
+    if (!PipeSubscribeSliceReqBuilder.shouldSlice(req, bodySizeLimit)) {
+      if (bodySizeLimit <= 0 || (req.isSetBody() && req.body.remaining() > bodySizeLimit)) {
+        throw new TException(
+            SubscriptionMessages
+                .EXCEPTION_SUBSCRIPTION_REQUEST_EXCEEDS_THE_NEGOTIATED_FRAME_LIMIT_CA8DEB50);
+      }
+      return requestSender.send(req);
+    }
+
+    final int orderId = PipeSubscribeSliceReqBuilder.nextOrderId();
+    final int sliceCount = PipeSubscribeSliceReqBuilder.getSliceCount(req, bodySizeLimit);
+    TPipeSubscribeResp resp = null;
+    for (int sliceIndex = 0; sliceIndex < sliceCount; sliceIndex++) {
+      try {
+        resp =
+            requestSender.send(
+                PipeSubscribeSliceReqBuilder.buildSliceReq(
+                    req, orderId, sliceIndex, sliceCount, bodySizeLimit));
+      } catch (final IOException e) {
+        throw new TException(e);
+      }
+      if (sliceIndex < sliceCount - 1
+          && (resp == null
+              || resp.getStatus() == null
+              || resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())) {
+        return resp;
+      }
+    }
+    return resp;
+  }
+
+  private static int getRequestBodySizeLimit(final int maxFrameSize) {
+    return Math.max(0, maxFrameSize - REQUEST_FRAME_RESERVED_BYTES);
+  }
+
+  private void updateRequestBodySizeLimit() {
+    try {
+      final int serverMaxFrameSize =
+          getSessionConnection().getServerThriftMaxFrameSize(localThriftMaxFrameSize);
+      if (serverMaxFrameSize > 0) {
+        requestBodySizeLimit =
+            getRequestBodySizeLimit(Math.min(localThriftMaxFrameSize, serverMaxFrameSize));
+      }
+    } catch (final TException | IoTDBConnectionException ignored) {
+      // Keep the local limit for servers that do not expose their frame size.
+    }
+  }
+
+  boolean isAvailable() {
+    return isAvailable.get();
+  }
+
+  void setAvailable() {
+    isAvailable.set(true);
+  }
+
+  void setUnavailable() {
+    isAvailable.set(false);
+  }
+
+  int getDataNodeId() {
+    return dataNodeId;
+  }
+
+  String getConsumerId() {
+    return consumerId;
+  }
+
+  String getConsumerGroupId() {
+    return consumerGroupId;
+  }
+
+  void setConsumerInstanceId(final String consumerInstanceId) {
+    this.consumerInstanceId = consumerInstanceId;
+  }
+
+  TEndPoint getEndPoint() {
+    return endPoint;
+  }
+
+  /////////////////////////////// open & close ///////////////////////////////
+
+  synchronized void handshake() throws SubscriptionException, IoTDBConnectionException {
+    if (!isClosed.get()) {
+      return;
+    }
+
+    session.open(); // throw IoTDBConnectionException
+    updateRequestBodySizeLimit();
+
+    // TODO: pass the complete consumer parameter configuration to the server
+    final Map<String, String> consumerAttributes = new HashMap<>();
+    consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, consumerGroupId);
+    consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
+    if (consumerInstanceId != null) {
+      consumerAttributes.put(ConsumerConstant.CONSUMER_INSTANCE_ID_KEY, consumerInstanceId);
+    }
+    if (ownerId != null) {
+      consumerAttributes.put(ConsumerConstant.OWNER_ID_KEY, ownerId);
+    }
+    if (ownerEpoch != null) {
+      consumerAttributes.put(ConsumerConstant.OWNER_EPOCH_KEY, String.valueOf(ownerEpoch));
+    }
+    consumerAttributes.put(ConsumerConstant.USERNAME_KEY, username);
+    consumerAttributes.put(ConsumerConstant.PASSWORD_KEY, password);
+    if (encryptedPassword != null) {
+      consumerAttributes.put(ConsumerConstant.ENCRYPTED_PASSWORD_KEY, encryptedPassword);
+    }
+    consumerAttributes.put(ConsumerConstant.SQL_DIALECT_KEY, session.getSqlDialect());
+    consumerAttributes.put(
+        ConsumerConstant.HEARTBEAT_INTERVAL_MS_KEY, String.valueOf(heartbeatIntervalMs));
+    consumerAttributes.put(
+        ConsumerConstant.CONNECTION_TIMEOUT_MS_KEY, String.valueOf(connectionTimeoutInMs));
+
+    final PipeSubscribeHandshakeResp resp =
+        handshake(new ConsumerConfig(consumerAttributes)); // throw SubscriptionException
+    dataNodeId = resp.getDataNodeId();
+    consumerId = resp.getConsumerId();
+    consumerGroupId = resp.getConsumerGroupId();
+
+    isClosed.set(false);
+    setAvailable();
+  }
+
+  PipeSubscribeHandshakeResp handshake(final ConsumerConfig consumerConfig)
+      throws SubscriptionException {
+    final PipeSubscribeHandshakeReq req;
+    try {
+      req = PipeSubscribeHandshakeReq.toTPipeSubscribeReq(consumerConfig);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_IOEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SERIALIZE_HANDSHAKE_REQUEST_ARG_C1414290,
+          this,
+          consumerConfig,
+          e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+    final TPipeSubscribeResp resp;
+    try {
+      resp = pipeSubscribe(req);
+    } catch (final TException | IoTDBConnectionException e) {
+      // Assume provider unavailable
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_TEXCEPTION_IOTDBCONNECTIONEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_HANDSHAKE_REQUEST_ARG_SET_SUBSCRIPTI,
+          this,
+          consumerConfig,
+          e);
+      setUnavailable();
+      throw new SubscriptionConnectionException(e.getMessage(), e);
+    }
+    verifyPipeSubscribeSuccess(resp.status);
+    return PipeSubscribeHandshakeResp.fromTPipeSubscribeResp(resp);
+  }
+
+  void prepareClose() {
+    final SubscriptionSessionConnection connection;
+    try {
+      connection = getSessionConnection();
+    } catch (final IoTDBConnectionException | RuntimeException ignored) {
+      return;
+    }
+    if (connection == null) {
+      return;
+    }
+
+    if (!connection.setTimeout(CLOSE_TIMEOUT_IN_MS)) {
+      setUnavailable();
+      connection.forceClose();
+      return;
+    }
+
+    if (rpcLock.tryLock()) {
+      rpcLock.unlock();
+    } else {
+      // Changing SO_TIMEOUT does not affect a read that is already blocked. Closing the transport
+      // is the only reliable way to make an in-flight RPC release the provider immediately.
+      setUnavailable();
+      connection.forceClose();
+    }
+  }
+
+  void close() throws SubscriptionException, IoTDBConnectionException {
+    if (isClosed.get() || !isClosing.compareAndSet(false, true)) {
+      return;
+    }
+
+    SubscriptionSessionConnection connection = null;
+    try {
+      connection = getSessionConnection();
+      if (!connection.setTimeout(CLOSE_TIMEOUT_IN_MS) || !rpcLock.tryLock()) {
+        connection.forceClose();
+        return;
+      }
+      try {
+        closeInternal(); // throw SubscriptionException
+      } finally {
+        rpcLock.unlock();
+      }
+    } finally {
+      try {
+        if (connection != null) {
+          connection.forceClose();
+        }
+      } finally {
+        try {
+          // The transport is already closed, so Session.close() only updates local resources and
+          // cannot block on a second closeSession RPC.
+          session.close(); // throw IoTDBConnectionException
+        } finally {
+          setUnavailable();
+          isClosed.set(true);
+        }
+      }
+    }
+  }
+
+  synchronized void closeSession() throws IoTDBConnectionException {
+    try {
+      session.close();
+    } finally {
+      setUnavailable();
+      isClosed.set(true);
+    }
+  }
+
+  void closeInternal() throws SubscriptionException {
+    final TPipeSubscribeResp resp;
+    try {
+      resp = pipeSubscribe(PipeSubscribeCloseReq.toTPipeSubscribeReq());
+    } catch (final TException | IoTDBConnectionException e) {
+      // Assume provider unavailable
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_TEXCEPTION_IOTDBCONNECTIONEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_CLOSE_SET_SUBSCRIPTIONPROVIDER_UNAVA,
+          this,
+          e);
+      setUnavailable();
+      throw new SubscriptionConnectionException(e.getMessage(), e);
+    }
+    verifyPipeSubscribeSuccess(resp.status);
+  }
+
+  /////////////////////////////// subscription APIs ///////////////////////////////
+
+  PipeSubscribeHeartbeatResp heartbeat() throws SubscriptionException {
+    return heartbeat(Collections.emptyList());
+  }
+
+  PipeSubscribeHeartbeatResp heartbeat(
+      final List<SubscriptionCommitContext> processorBufferedCommitContexts)
+      throws SubscriptionException {
+    final List<List<SubscriptionCommitContext>> batches;
+    try {
+      batches =
+          partitionCommitContexts(
+              processorBufferedCommitContexts, requestBodySizeLimit, Integer.BYTES);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_IOEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SERIALIZE_HEARTBEAT_REQUEST_ARG_634C8333,
+          this,
+          processorBufferedCommitContexts,
+          e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+
+    PipeSubscribeHeartbeatResp latestResp = null;
+    final Set<String> topicNamesToUnsubscribe = new LinkedHashSet<>();
+    rpcLock.lock();
+    try {
+      for (final List<SubscriptionCommitContext> batch : batches) {
+        latestResp = heartbeatOnce(batch);
+        topicNamesToUnsubscribe.addAll(latestResp.getTopicNamesToUnsubscribe());
+      }
+    } finally {
+      rpcLock.unlock();
+    }
+    latestResp.getTopicNamesToUnsubscribe().clear();
+    latestResp.getTopicNamesToUnsubscribe().addAll(topicNamesToUnsubscribe);
+    return latestResp;
+  }
+
+  private PipeSubscribeHeartbeatResp heartbeatOnce(
+      final List<SubscriptionCommitContext> processorBufferedCommitContexts)
+      throws SubscriptionException {
+    final SubscriptionHeartbeatReq req;
+    try {
+      req = SubscriptionHeartbeatReq.toThriftReq(processorBufferedCommitContexts);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_IOEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SERIALIZE_HEARTBEAT_REQUEST_ARG_634C8333,
+          this,
+          processorBufferedCommitContexts,
+          e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+
+    final TPipeSubscribeResp resp;
+    try {
+      resp = pipeSubscribe(req);
+    } catch (final TException | IoTDBConnectionException e) {
+      // Assume provider unavailable
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_TEXCEPTION_IOTDBCONNECTIONEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_HEARTBEAT_SET_SUBSCRIPTIONPROVIDER_U,
+          this,
+          e);
+      setUnavailable();
+      throw new SubscriptionConnectionException(e.getMessage(), e);
+    }
+    verifyPipeSubscribeSuccess(resp.status);
+    return PipeSubscribeHeartbeatResp.fromTPipeSubscribeResp(resp);
+  }
+
+  Map<String, TopicConfig> subscribe(final Set<String> topicNames) throws SubscriptionException {
+    final PipeSubscribeSubscribeReq req;
+    try {
+      req = PipeSubscribeSubscribeReq.toTPipeSubscribeReq(topicNames);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_IOEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SERIALIZE_SUBSCRIBE_REQUEST_ARG_5E703B32,
+          this,
+          topicNames,
+          e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+    final TPipeSubscribeResp resp;
+    try {
+      resp = pipeSubscribe(req);
+    } catch (final TException | IoTDBConnectionException e) {
+      // Assume provider unavailable
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_TEXCEPTION_IOTDBCONNECTIONEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SUBSCRIBE_REQUEST_ARG_SET_SUBSCRIPTI,
+          this,
+          topicNames,
+          e);
+      setUnavailable();
+      throw new SubscriptionConnectionException(e.getMessage(), e);
+    }
+    verifyPipeSubscribeSuccess(resp.status);
+    final PipeSubscribeSubscribeResp subscribeResp =
+        PipeSubscribeSubscribeResp.fromTPipeSubscribeResp(resp);
+    return subscribeResp.getTopics();
+  }
+
+  Map<String, TopicConfig> unsubscribe(final Set<String> topicNames) throws SubscriptionException {
+    final PipeSubscribeUnsubscribeReq req;
+    try {
+      req = PipeSubscribeUnsubscribeReq.toTPipeSubscribeReq(topicNames);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_IOEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SERIALIZE_UNSUBSCRIBE_REQUEST_ARG_85D423CE,
+          this,
+          topicNames,
+          e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+    final TPipeSubscribeResp resp;
+    try {
+      resp = pipeSubscribe(req);
+    } catch (final TException | IoTDBConnectionException e) {
+      // Assume provider unavailable
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_TEXCEPTION_IOTDBCONNECTIONEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_UNSUBSCRIBE_REQUEST_ARG_SET_SUBSCRIP,
+          this,
+          topicNames,
+          e);
+      setUnavailable();
+      throw new SubscriptionConnectionException(e.getMessage(), e);
+    }
+    verifyPipeSubscribeSuccess(resp.status);
+    final PipeSubscribeUnsubscribeResp unsubscribeResp =
+        PipeSubscribeUnsubscribeResp.fromTPipeSubscribeResp(resp);
+    return unsubscribeResp.getTopics();
+  }
+
+  void seek(final String topicName, final short seekType, final long timestamp)
+      throws SubscriptionException {
+    final SubscriptionSeekReq req;
+    try {
+      req = SubscriptionSeekReq.toThriftReq(topicName, seekType, timestamp);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_IOEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SERIALIZE_SEEK_REQUEST_TOPIC_ARG_7620B991,
+          this,
+          topicName,
+          e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+    final TPipeSubscribeResp resp;
+    try {
+      resp = pipeSubscribe(req);
+    } catch (final TException | IoTDBConnectionException e) {
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_TEXCEPTION_IOTDBCONNECTIONEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SEEK_REQUEST_TOPIC_ARG_SET_AEAFC363,
+          this,
+          topicName,
+          e);
+      setUnavailable();
+      throw new SubscriptionConnectionException(e.getMessage(), e);
+    }
+    verifyPipeSubscribeSuccess(resp.status);
+  }
+
+  void seekToTopicProgress(final String topicName, final TopicProgress topicProgress)
+      throws SubscriptionException {
+    final SubscriptionSeekReq req;
+    try {
+      req = SubscriptionSeekReq.toTopicProgressReq(topicName, topicProgress);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_IOEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SERIALIZE_SEEK_TOPICPROGRESS_TOPIC_ARG_E64C0FAF,
+          this,
+          topicName,
+          e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+    final TPipeSubscribeResp resp;
+    try {
+      resp = pipeSubscribe(req);
+    } catch (final TException | IoTDBConnectionException e) {
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_TEXCEPTION_IOTDBCONNECTIONEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SEEK_TOPICPROGRESS_TOPIC_ARG_SET_193,
+          this,
+          topicName,
+          e);
+      setUnavailable();
+      throw new SubscriptionConnectionException(e.getMessage(), e);
+    }
+    verifyPipeSubscribeSuccess(resp.status);
+  }
+
+  void seekAfterTopicProgress(final String topicName, final TopicProgress topicProgress)
+      throws SubscriptionException {
+    final SubscriptionSeekReq req;
+    try {
+      req = SubscriptionSeekReq.toSeekAfterTopicProgressReq(topicName, topicProgress);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_IOEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SERIALIZE_SEEKAFTER_TOPICPROGRESS_TOPIC_ARG_9F79F3CF,
+          this,
+          topicName,
+          e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+    final TPipeSubscribeResp resp;
+    try {
+      resp = pipeSubscribe(req);
+    } catch (final TException | IoTDBConnectionException e) {
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_TEXCEPTION_IOTDBCONNECTIONEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SEEKAFTER_TOPICPROGRESS_TOPIC_ARG_SE,
+          this,
+          topicName,
+          e);
+      setUnavailable();
+      throw new SubscriptionConnectionException(e.getMessage(), e);
+    }
+    verifyPipeSubscribeSuccess(resp.status);
+  }
+
+  List<SubscriptionPollResponse> poll(final Set<String> topicNames, final long timeoutMs)
+      throws SubscriptionException {
+    return poll(topicNames, timeoutMs, Collections.emptyMap());
+  }
+
+  List<SubscriptionPollResponse> poll(
+      final Set<String> topicNames,
+      final long timeoutMs,
+      final Map<String, TopicProgress> progressByTopic)
+      throws SubscriptionException {
+    return poll(
+        new SubscriptionPollRequest(
+            SubscriptionPollRequestType.POLL.getType(),
+            new PollPayload(topicNames),
+            timeoutMs,
+            session.getThriftMaxFrameSize(),
+            progressByTopic));
+  }
+
+  List<SubscriptionPollResponse> pollFile(
+      final SubscriptionCommitContext commitContext, final long writingOffset, final long timeoutMs)
+      throws SubscriptionException {
+    return poll(
+        new SubscriptionPollRequest(
+            SubscriptionPollRequestType.POLL_FILE.getType(),
+            new PollFilePayload(commitContext, writingOffset),
+            timeoutMs,
+            session.getThriftMaxFrameSize()));
+  }
+
+  List<SubscriptionPollResponse> pollTablets(
+      final SubscriptionCommitContext commitContext, final int offset, final long timeoutMs)
+      throws SubscriptionException {
+    return poll(
+        new SubscriptionPollRequest(
+            SubscriptionPollRequestType.POLL_TABLETS.getType(),
+            new PollTabletsPayload(commitContext, offset),
+            timeoutMs,
+            session.getThriftMaxFrameSize()));
+  }
+
+  List<SubscriptionPollResponse> poll(final SubscriptionPollRequest pollMessage)
+      throws SubscriptionException {
+    final PipeSubscribePollReq req;
+    try {
+      req = PipeSubscribePollReq.toTPipeSubscribeReq(pollMessage);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_IOEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SERIALIZE_POLL_REQUEST_ARG_969C4A7A,
+          this,
+          pollMessage,
+          e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+    final TPipeSubscribeResp resp;
+    try {
+      resp = pipeSubscribe(req);
+    } catch (final TException | IoTDBConnectionException e) {
+      // Assume provider unavailable
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_TEXCEPTION_IOTDBCONNECTIONEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_POLL_REQUEST_ARG_SET_SUBSCRIPTIONPRO,
+          this,
+          pollMessage,
+          e);
+      setUnavailable();
+      throw new SubscriptionConnectionException(e.getMessage(), e);
+    }
+    verifyPipeSubscribeSuccess(resp.status);
+    final PipeSubscribePollResp pollResp = PipeSubscribePollResp.fromTPipeSubscribeResp(resp);
+    return pollResp.getResponses();
+  }
+
+  CommitResult commit(
+      final List<SubscriptionCommitContext> subscriptionCommitContexts, final boolean nack)
+      throws SubscriptionException {
+    final List<List<SubscriptionCommitContext>> batches;
+    try {
+      batches =
+          partitionCommitContexts(
+              subscriptionCommitContexts,
+              Math.max(1, requestBodySizeLimit / COMMIT_RESPONSE_HEADROOM_FACTOR),
+              Integer.BYTES + Byte.BYTES);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_IOEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SERIALIZE_COMMIT_REQUEST_ARG_D5335538,
+          this,
+          subscriptionCommitContexts,
+          e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+
+    final List<SubscriptionCommitContext> acceptedCommitContexts = new ArrayList<>();
+    final Map<String, TopicProgress> committedProgressByTopic = new LinkedHashMap<>();
+    rpcLock.lock();
+    try {
+      for (final List<SubscriptionCommitContext> batch : batches) {
+        final CommitResult result = commitOnce(batch, nack);
+        acceptedCommitContexts.addAll(result.getAcceptedCommitContexts());
+        mergeTopicProgress(committedProgressByTopic, result.getCommittedProgressByTopic());
+      }
+    } finally {
+      rpcLock.unlock();
+    }
+    return new CommitResult(acceptedCommitContexts, committedProgressByTopic);
+  }
+
+  private CommitResult commitOnce(
+      final List<SubscriptionCommitContext> subscriptionCommitContexts, final boolean nack)
+      throws SubscriptionException {
+    final PipeSubscribeCommitReq req;
+    try {
+      req = PipeSubscribeCommitReq.toTPipeSubscribeReq(subscriptionCommitContexts, nack);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_IOEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_SERIALIZE_COMMIT_REQUEST_ARG_D5335538,
+          this,
+          subscriptionCommitContexts,
+          e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+    final TPipeSubscribeResp resp;
+    try {
+      resp = pipeSubscribe(req);
+    } catch (final TException | IoTDBConnectionException e) {
+      // Assume provider unavailable
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_TEXCEPTION_IOTDBCONNECTIONEXCEPTION_OCCURRED_SUBSCRIPTIONPROVIDER_ARG_COMMIT_REQUEST_ARG_SET_SUBSCRIPTIONP,
+          this,
+          subscriptionCommitContexts,
+          e);
+      setUnavailable();
+      throw new SubscriptionConnectionException(e.getMessage(), e);
+    }
+    verifyPipeSubscribeSuccess(resp.status);
+    final PipeSubscribeCommitResp commitResp = PipeSubscribeCommitResp.fromTPipeSubscribeResp(resp);
+    return new CommitResult(
+        commitResp.getAcceptedCommitContexts(), commitResp.getCommittedProgressByTopic());
+  }
+
+  static List<List<SubscriptionCommitContext>> partitionCommitContexts(
+      final List<SubscriptionCommitContext> commitContexts,
+      final int maxBodySize,
+      final int fixedBodySize)
+      throws IOException {
+    if (commitContexts == null || commitContexts.isEmpty()) {
+      return Collections.singletonList(Collections.emptyList());
+    }
+
+    final List<List<SubscriptionCommitContext>> batches = new ArrayList<>();
+    List<SubscriptionCommitContext> currentBatch = new ArrayList<>();
+    long currentBodySize = fixedBodySize;
+    for (final SubscriptionCommitContext commitContext : commitContexts) {
+      final int contextSize = SubscriptionCommitContext.serialize(commitContext).remaining();
+      if (!currentBatch.isEmpty() && currentBodySize + contextSize > maxBodySize) {
+        batches.add(currentBatch);
+        currentBatch = new ArrayList<>();
+        currentBodySize = fixedBodySize;
+      }
+      currentBatch.add(commitContext);
+      currentBodySize += contextSize;
+    }
+    batches.add(currentBatch);
+    return batches;
+  }
+
+  static void mergeTopicProgress(
+      final Map<String, TopicProgress> target, final Map<String, TopicProgress> source) {
+    source.forEach(
+        (topicName, newProgress) ->
+            target.merge(
+                topicName,
+                newProgress,
+                (oldProgress, ignored) -> {
+                  final Map<String, RegionProgress> mergedRegionProgress =
+                      new LinkedHashMap<>(oldProgress.getRegionProgress());
+                  mergedRegionProgress.putAll(newProgress.getRegionProgress());
+                  return new TopicProgress(mergedRegionProgress);
+                }));
+  }
+
+  @FunctionalInterface
+  interface PipeSubscribeRequestSender {
+    TPipeSubscribeResp send(TPipeSubscribeReq req) throws TException;
+  }
+
+  static final class CommitResult {
+    private static final CommitResult EMPTY =
+        new CommitResult(Collections.emptyList(), Collections.emptyMap());
+
+    private final List<SubscriptionCommitContext> acceptedCommitContexts;
+
+    private final Map<String, TopicProgress> committedProgressByTopic;
+
+    CommitResult(
+        final List<SubscriptionCommitContext> acceptedCommitContexts,
+        final Map<String, TopicProgress> committedProgressByTopic) {
+      this.acceptedCommitContexts =
+          acceptedCommitContexts == null ? Collections.emptyList() : acceptedCommitContexts;
+      this.committedProgressByTopic =
+          committedProgressByTopic == null ? Collections.emptyMap() : committedProgressByTopic;
+    }
+
+    static CommitResult empty() {
+      return EMPTY;
+    }
+
+    List<SubscriptionCommitContext> getAcceptedCommitContexts() {
+      return acceptedCommitContexts;
+    }
+
+    Map<String, TopicProgress> getCommittedProgressByTopic() {
+      return committedProgressByTopic;
+    }
+  }
+
+  private static void verifyPipeSubscribeSuccess(final TSStatus status)
+      throws SubscriptionException {
+    switch (status.code) {
+      case 200: // SUCCESS_STATUS
+        return;
+      case 1902: // SUBSCRIPTION_HANDSHAKE_ERROR
+      case 1903: // SUBSCRIPTION_HEARTBEAT_ERROR
+      case 1904: // SUBSCRIPTION_POLL_ERROR
+      case 1905: // SUBSCRIPTION_COMMIT_ERROR
+      case 1906: // SUBSCRIPTION_CLOSE_ERROR
+      case 1907: // SUBSCRIPTION_SUBSCRIBE_ERROR
+      case 1908: // SUBSCRIPTION_UNSUBSCRIBE_ERROR
+      case 1913: // SUBSCRIPTION_SEEK_ERROR
+        {
+          final String errorMessage =
+              String.format(INTERNAL_ERROR_FORMATTER, status.code, status.message);
+          LOGGER.warn(errorMessage);
+          throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+        }
+      case 1911: // SUBSCRIPTION_PIPE_TIMEOUT_ERROR
+        throw new SubscriptionPipeTimeoutException(
+            String.format(SUBSCRIPTION_PIPE_TIMEOUT_FORMATTER, status.code, status.message));
+      case 1914: // SUBSCRIPTION_OWNER_FENCED
+      case 1915: // SUBSCRIPTION_OWNER_REQUIRED
+      case 1916: // SUBSCRIPTION_OWNER_EPOCH_REQUIRED
+      case 1917: // SUBSCRIPTION_OWNER_LEASE_EXPIRED
+      case 1918: // SUBSCRIPTION_OWNER_EPOCH_CONFLICT
+        {
+          final String errorMessage =
+              String.format(INTERNAL_ERROR_FORMATTER, status.code, status.message);
+          LOGGER.warn(errorMessage);
+          throw new SubscriptionOwnerFencedException(errorMessage);
+        }
+      case 1919: // SUBSCRIPTION_CONSUMER_FENCED
+        LOGGER.warn(status.message);
+        throw new SubscriptionConsumerFencedException(status.message);
+      case 1900: // SUBSCRIPTION_VERSION_ERROR
+      case 1901: // SUBSCRIPTION_TYPE_ERROR
+      case 1909: // SUBSCRIPTION_MISSING_CONSUMER
+      case 1912: // SUBSCRIPTION_NOT_ENABLED_ERROR
+      default:
+        {
+          final String errorMessage =
+              String.format(INTERNAL_ERROR_FORMATTER, status.code, status.message);
+          LOGGER.warn(errorMessage);
+          throw new SubscriptionRuntimeCriticalException(status.message);
+        }
+    }
+  }
+
+  @Override
+  public String toString() {
+    return "SubscriptionProvider{endPoint="
+        + endPoint
+        + ", dataNodeId="
+        + dataNodeId
+        + ", consumerId="
+        + consumerId
+        + ", consumerGroupId="
+        + consumerGroupId
+        + ", isAvailable="
+        + isAvailable
+        + ", isClosed="
+        + isClosed
+        + "}";
+  }
+}

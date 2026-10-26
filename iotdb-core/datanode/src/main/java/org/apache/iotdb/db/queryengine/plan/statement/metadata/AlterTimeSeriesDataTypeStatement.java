@@ -39,6 +39,6 @@ public class AlterTimeSeriesDataTypeStatement extends AlterTimeSeriesStatement
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return QueryType.OTHER;
   }
 }

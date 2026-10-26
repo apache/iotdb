@@ -20,6 +20,7 @@
 package org.apache.iotdb.metrics.metricsets.jvm;
 
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.i18n.MetricsMessages;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Timer;
@@ -42,9 +43,11 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryType;
 import java.lang.management.MemoryUsage;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
@@ -58,6 +61,10 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
   private String oldGenPoolName;
   private String nonGenerationalMemoryPool;
   private final Map<String, AtomicLong> lastGcTotalDurationMap = new ConcurrentHashMap<>();
+  // The action and cause tags of the GC pause timers created by the GC notification listeners
+  private final Set<List<String>> gcPauseTimerTags = ConcurrentHashMap.newKeySet();
+  // The ZGC counters created by the GC notification listeners
+  private final Set<String> zgcCounterNames = ConcurrentHashMap.newKeySet();
 
   public JvmGcMetrics() {
     for (MemoryPoolMXBean mbean : ManagementFactory.getMemoryPoolMXBeans()) {
@@ -166,6 +173,21 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
     // long live heap pool includes old gen heap pool and non-generation heap pool.
     final AtomicLong longLivedHeapPoolSizeAfterGc = new AtomicLong();
 
+    // The listeners create the GC pause timers and the ZGC counters on the first GC, so create the
+    // known ones again when binding again, e.g. when the metric service restarts
+    for (List<String> tags : gcPauseTimerTags) {
+      metricService.getOrCreateTimer(
+          SystemMetric.JVM_GC_PAUSE.toString(),
+          MetricLevel.CORE,
+          "action",
+          tags.get(0),
+          "cause",
+          tags.get(1));
+    }
+    for (String name : zgcCounterNames) {
+      metricService.getOrCreateCounter(name, MetricLevel.CORE);
+    }
+
     // start watching for GC notifications
     for (GarbageCollectorMXBean mbean : ManagementFactory.getGarbageCollectorMXBeans()) {
       if (!(mbean instanceof NotificationEmitter)) {
@@ -209,6 +231,7 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
                     "cause",
                     gcCause);
             timer.update(duration, TimeUnit.MILLISECONDS);
+            gcPauseTimerTags.add(Arrays.asList(gcAction, gcCause));
 
             // add support for ZGC
             if (mbean.getName().equals("ZGC Cycles")) {
@@ -216,11 +239,13 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
                   metricService.getOrCreateCounter(
                       SystemMetric.JVM_ZGC_CYCLES_COUNT.toString(), MetricLevel.CORE);
               cyclesCount.inc();
+              zgcCounterNames.add(SystemMetric.JVM_ZGC_CYCLES_COUNT.toString());
             } else if (mbean.getName().equals("ZGC Pauses")) {
               Counter pausesCount =
                   metricService.getOrCreateCounter(
                       SystemMetric.JVM_ZGC_PAUSES_COUNT.toString(), MetricLevel.CORE);
               pausesCount.inc();
+              zgcCounterNames.add(SystemMetric.JVM_ZGC_PAUSES_COUNT.toString());
             }
 
             // Update promotion and allocation counters
@@ -308,6 +333,10 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
       return;
     }
 
+    // Stop the listeners added by bindTo, otherwise they keep running after the metric service
+    // restarts, next to the listeners added by the next bindTo
+    close();
+
     metricService.remove(MetricType.AUTO_GAUGE, SystemMetric.JVM_GC_MAX_DATA_SIZE_BYTES.toString());
     metricService.remove(
         MetricType.AUTO_GAUGE, SystemMetric.JVM_GC_LIVE_DATA_SIZE_BYTES.toString());
@@ -329,59 +358,26 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
       }
     }
 
-    // start watching for GC notifications
-    for (GarbageCollectorMXBean mbean : ManagementFactory.getGarbageCollectorMXBeans()) {
-      if (!(mbean instanceof NotificationEmitter)) {
-        continue;
-      }
-      NotificationListener notificationListener =
-          (notification, ref) -> {
-            CompositeData cd = (CompositeData) notification.getUserData();
-            GarbageCollectionNotificationInfo notificationInfo =
-                GarbageCollectionNotificationInfo.from(cd);
-
-            String gcCause = notificationInfo.getGcCause();
-            String gcAction = notificationInfo.getGcAction();
-            metricService.remove(
-                MetricType.TIMER,
-                SystemMetric.JVM_GC_PAUSE.toString(),
-                "action",
-                gcAction,
-                "cause",
-                gcCause);
-
-            if (mbean.getName().equals("ZGC Cycles")) {
-              metricService.remove(
-                  MetricType.COUNTER, SystemMetric.JVM_ZGC_CYCLES_COUNT.toString());
-            } else if (mbean.getName().equals("ZGC Pauses")) {
-              metricService.remove(
-                  MetricType.COUNTER, SystemMetric.JVM_ZGC_PAUSES_COUNT.toString());
-            }
-          };
-      NotificationEmitter notificationEmitter = (NotificationEmitter) mbean;
-      notificationEmitter.addNotificationListener(
-          notificationListener,
-          notification ->
-              notification
-                  .getType()
-                  .equals(GarbageCollectionNotificationInfo.GARBAGE_COLLECTION_NOTIFICATION),
-          null);
-      notificationListenerCleanUpRunnables.add(
-          () -> {
-            try {
-              notificationEmitter.removeNotificationListener(notificationListener);
-            } catch (ListenerNotFoundException ignore) {
-              // do nothing
-            }
-          });
+    // Keep the tags and names, the next bindTo creates the metrics again
+    for (List<String> tags : gcPauseTimerTags) {
+      metricService.remove(
+          MetricType.TIMER,
+          SystemMetric.JVM_GC_PAUSE.toString(),
+          "action",
+          tags.get(0),
+          "cause",
+          tags.get(1));
+    }
+    for (String name : zgcCounterNames) {
+      metricService.remove(MetricType.COUNTER, name);
     }
   }
 
   private boolean preCheck() {
     if (ManagementFactory.getMemoryPoolMXBeans().isEmpty()) {
       logger.warn(
-          "GC notifications will not be available because MemoryPoolMXBeans "
-              + "are not provided by the JVM");
+          MetricsMessages.LOG_GC_NOTIFICATIONS_WILL_NOT_AVAILABLE_BECAUSE_MEMORYPOOLMXBEANS_86C3EB6B
+              + MetricsMessages.LOG_NOT_PROVIDED_JVM_948976D1);
       return false;
     }
 
@@ -393,8 +389,9 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
     } catch (Exception e) {
       // We are operating in a JVM without access to this level of detail
       logger.warn(
-          "GC notifications will not be available because "
-              + "com.sun.management.GarbageCollectionNotificationInfo is not present");
+          MetricsMessages.LOG_GC_NOTIFICATIONS_WILL_NOT_AVAILABLE_BECAUSE_22FD13E0
+              + MetricsMessages
+                  .LOG_COM_SUN_MANAGEMENT_GARBAGECOLLECTIONNOTIFICATIONINFO_NOT_PRESENT_FA43486E);
       return false;
     }
     return true;
@@ -418,6 +415,7 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
   @Override
   public void close() {
     notificationListenerCleanUpRunnables.forEach(Runnable::run);
+    notificationListenerCleanUpRunnables.clear();
   }
 
   enum GcGenerationAge {

@@ -56,7 +56,7 @@ public abstract class AbstractLoadCache {
             new PhiAccrualDetector(
                 CONF.getFailureDetectorPhiThreshold(),
                 CONF.getFailureDetectorPhiAcceptablePauseInMs() * 1000_000L,
-                CONF.getHeartbeatIntervalInMs() * 200_000L,
+                CONF.getFailureDetectorHeartbeatIntervalInMs() * 200_000L,
                 IFailureDetector.PHI_COLD_START_THRESHOLD,
                 new FixedDetector(CONF.getFailureDetectorFixedThresholdInMs() * 1000_000L));
         break;
@@ -94,13 +94,14 @@ public abstract class AbstractLoadCache {
    * @return The latest heartbeat sample.
    */
   public AbstractHeartbeatSample getLastSample() {
-    return slidingWindow.isEmpty() ? null : slidingWindow.get(slidingWindow.size() - 1);
+    synchronized (slidingWindow) {
+      return slidingWindow.isEmpty() ? null : slidingWindow.get(slidingWindow.size() - 1);
+    }
   }
 
-  /**
-   * Update currentStatistics based on the latest heartbeat sample that cached in the slidingWindow.
-   */
-  public abstract void updateCurrentStatistics(boolean forceUpdate);
+  public boolean hasHeartbeatSample() {
+    return getLastSample() != null;
+  }
 
   public AbstractStatistics getCurrentStatistics() {
     return currentStatistics.get();

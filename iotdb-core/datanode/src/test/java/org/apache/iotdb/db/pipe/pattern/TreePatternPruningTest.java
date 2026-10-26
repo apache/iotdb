@@ -122,7 +122,7 @@ public class TreePatternPruningTest {
   }
 
   @Test
-  public void testLegacyPatternMultipleRulesRejected() {
+  public void testLegacyPatternMultipleRulesPreserved() {
     final PipeParameters params =
         new PipeParameters(
             new HashMap<String, String>() {
@@ -131,12 +131,9 @@ public class TreePatternPruningTest {
               }
             });
 
-    try {
-      TreePattern.parsePipePatternFromSourceParameters(params);
-      Assert.fail("Should throw PipeException for legacy multi-pattern parameters");
-    } catch (final PipeException ignored) {
-      // Expected exception
-    }
+    final TreePattern result = TreePattern.parsePipePatternFromSourceParameters(params);
+
+    Assert.assertEquals("root.sg.A,root.sg.B", result.getPattern());
   }
 
   @Test
@@ -157,7 +154,7 @@ public class TreePatternPruningTest {
   }
 
   @Test
-  public void testLegacyPathMultipleRulesRejected() {
+  public void testLegacyPathMultipleRulesPreserved() {
     final PipeParameters params =
         new PipeParameters(
             new HashMap<String, String>() {
@@ -166,12 +163,28 @@ public class TreePatternPruningTest {
               }
             });
 
-    try {
-      TreePattern.parsePipePatternFromSourceParameters(params);
-      Assert.fail("Should throw PipeException for legacy multi-path parameters");
-    } catch (final PipeException ignored) {
-      // Expected exception
-    }
+    final TreePattern result = TreePattern.parsePipePatternFromSourceParameters(params);
+
+    Assert.assertTrue(result instanceof UnionIoTDBTreePattern);
+    Assert.assertEquals("root.sg.d1,root.sg.d2", result.getPattern());
+  }
+
+  @Test
+  public void testLegacyPathMultipleExclusionsPreserved() {
+    final PipeParameters params =
+        new PipeParameters(
+            new HashMap<String, String>() {
+              {
+                put(PipeSourceConstant.SOURCE_PATH_KEY, "root.sg.**");
+                put(PipeSourceConstant.SOURCE_PATH_EXCLUSION_KEY, "root.sg.d1,root.sg.d2");
+              }
+            });
+
+    final TreePattern result = TreePattern.parsePipePatternFromSourceParameters(params);
+
+    Assert.assertTrue(result instanceof WithExclusionIoTDBTreePattern);
+    Assert.assertEquals(
+        "INCLUSION(root.sg.**), EXCLUSION(root.sg.d1,root.sg.d2)", result.getPattern());
   }
 
   @Test

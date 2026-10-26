@@ -36,12 +36,14 @@ import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePl
 import org.apache.iotdb.confignode.consensus.request.write.ainode.UpdateAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateNodeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateVersionInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.response.ainode.AINodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeConfigurationResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -49,6 +51,7 @@ import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,6 +111,10 @@ public class NodeInfo implements SnapshotProcessor {
   private final Map<Integer, TNodeVersionInfo> nodeVersionInfo;
   private final ReentrantReadWriteLock versionInfoReadWriteLock;
 
+  // Map<NodeId, Pair<status, reason>>. A null reason still belongs to a stored status.
+  private final Map<Integer, Pair<NodeStatus, String>> persistedNodeStatuses;
+  private final ReentrantReadWriteLock persistedNodeStatusReadWriteLock;
+
   private static final String SNAPSHOT_FILENAME = "node_info.bin";
 
   public NodeInfo() {
@@ -122,6 +129,9 @@ public class NodeInfo implements SnapshotProcessor {
 
     this.nodeVersionInfo = new ConcurrentHashMap<>();
     this.versionInfoReadWriteLock = new ReentrantReadWriteLock();
+
+    this.persistedNodeStatuses = new HashMap<>();
+    this.persistedNodeStatusReadWriteLock = new ReentrantReadWriteLock();
   }
 
   /**
@@ -149,10 +159,12 @@ public class NodeInfo implements SnapshotProcessor {
       if (nextNodeId.get() < MINIMUM_DATANODE) {
         result.setMessage(
             String.format(
-                "To enable IoTDB-Cluster's data service, please register %d more IoTDB-DataNode",
+                ConfigNodeMessages
+                    .MESSAGE_ENABLE_IOTDB_CLUSTER_S_DATA_SERVICE_PLEASE_REGISTER_ARG_MORE_F48F3890,
                 MINIMUM_DATANODE - nextNodeId.get()));
       } else if (nextNodeId.get() == MINIMUM_DATANODE) {
-        result.setMessage("IoTDB-Cluster could provide data service, now enjoy yourself!");
+        result.setMessage(
+            ConfigNodeMessages.IOTDB_CLUSTER_COULD_PROVIDE_DATA_SERVICE_NOW_ENJOY_YOURSELF);
       }
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();
@@ -168,26 +180,29 @@ public class NodeInfo implements SnapshotProcessor {
    */
   public TSStatus removeDataNode(RemoveDataNodePlan req) {
     LOGGER.info(
-        "{}, There are {} data node in cluster before executed RemoveDataNodePlan",
+        ConfigNodeMessages.THERE_ARE_DATA_NODE_IN_CLUSTER_BEFORE_EXECUTED_REMOVEDATANODEPLAN,
         REMOVE_DATANODE_PROCESS,
         registeredDataNodes.size());
 
     dataNodeInfoReadWriteLock.writeLock().lock();
     versionInfoReadWriteLock.writeLock().lock();
+    persistedNodeStatusReadWriteLock.writeLock().lock();
     try {
       req.getDataNodeLocations()
           .forEach(
               removeDataNodes -> {
                 registeredDataNodes.remove(removeDataNodes.getDataNodeId());
                 nodeVersionInfo.remove(removeDataNodes.getDataNodeId());
-                LOGGER.info("Removed the datanode {} from cluster", removeDataNodes);
+                persistedNodeStatuses.remove(removeDataNodes.getDataNodeId());
+                LOGGER.info(ConfigNodeMessages.REMOVED_THE_DATANODE_FROM_CLUSTER, removeDataNodes);
               });
     } finally {
+      persistedNodeStatusReadWriteLock.writeLock().unlock();
       versionInfoReadWriteLock.writeLock().unlock();
       dataNodeInfoReadWriteLock.writeLock().unlock();
     }
     LOGGER.info(
-        "{}, There are {} data node in cluster after executed RemoveDataNodePlan",
+        ConfigNodeMessages.THERE_ARE_DATA_NODE_IN_CLUSTER_AFTER_EXECUTED_REMOVEDATANODEPLAN,
         REMOVE_DATANODE_PROCESS,
         registeredDataNodes.size());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -297,7 +312,8 @@ public class NodeInfo implements SnapshotProcessor {
     try {
       return registeredDataNodes.get(dataNodeId).getResource().getCpuCoreNum();
     } catch (Exception e) {
-      LOGGER.warn("Get DataNode {} cpu core fail, will be treated as zero.", dataNodeId, e);
+      LOGGER.warn(
+          ConfigNodeMessages.GET_DATANODE_CPU_CORE_FAIL_WILL_BE_TREATED_AS_ZERO, dataNodeId, e);
       return 0;
     }
   }
@@ -426,15 +442,16 @@ public class NodeInfo implements SnapshotProcessor {
           applyConfigNodePlan.getConfigNodeLocation());
       SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(registeredConfigNodes.values()));
       LOGGER.info(
-          "Successfully apply ConfigNode: {}. Current ConfigNodeGroup: {}",
+          ConfigNodeMessages.SUCCESSFULLY_APPLY_CONFIGNODE_CURRENT_CONFIGNODEGROUP,
           applyConfigNodePlan.getConfigNodeLocation(),
           registeredConfigNodes);
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (IOException e) {
-      LOGGER.error("Update online ConfigNode failed.", e);
+      LOGGER.error(ConfigNodeMessages.UPDATE_ONLINE_CONFIGNODE_FAILED, e);
       status.setCode(TSStatusCode.ADD_CONFIGNODE_ERROR.getStatusCode());
       status.setMessage(
-          "Apply new ConfigNode failed because current ConfigNode can't store ConfigNode information.");
+          ConfigNodeMessages
+              .MESSAGE_APPLY_NEW_CONFIGNODE_FAILED_BECAUSE_CURRENT_CONFIGNODE_CAN_T_STORE_1BB6A6BF);
     } finally {
       configNodeInfoReadWriteLock.writeLock().unlock();
     }
@@ -456,21 +473,25 @@ public class NodeInfo implements SnapshotProcessor {
     TSStatus status = new TSStatus();
     configNodeInfoReadWriteLock.writeLock().lock();
     versionInfoReadWriteLock.writeLock().lock();
+    persistedNodeStatusReadWriteLock.writeLock().lock();
     try {
       registeredConfigNodes.remove(removeConfigNodePlan.getConfigNodeLocation().getConfigNodeId());
       nodeVersionInfo.remove(removeConfigNodePlan.getConfigNodeLocation().getConfigNodeId());
+      persistedNodeStatuses.remove(removeConfigNodePlan.getConfigNodeLocation().getConfigNodeId());
       SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(registeredConfigNodes.values()));
       LOGGER.info(
-          "Successfully remove ConfigNode: {}. Current ConfigNodeGroup: {}",
+          ConfigNodeMessages.SUCCESSFULLY_REMOVE_CONFIGNODE_CURRENT_CONFIGNODEGROUP,
           removeConfigNodePlan.getConfigNodeLocation(),
           registeredConfigNodes);
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (IOException e) {
-      LOGGER.error("Remove online ConfigNode failed.", e);
+      LOGGER.error(ConfigNodeMessages.REMOVE_ONLINE_CONFIGNODE_FAILED, e);
       status.setCode(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode());
       status.setMessage(
-          "Remove ConfigNode failed because current ConfigNode can't store ConfigNode information.");
+          ConfigNodeMessages
+              .MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_CURRENT_CONFIGNODE_CAN_T_STORE_CONFIGNODE_8AB3BCB4);
     } finally {
+      persistedNodeStatusReadWriteLock.writeLock().unlock();
       versionInfoReadWriteLock.writeLock().unlock();
       configNodeInfoReadWriteLock.writeLock().unlock();
     }
@@ -519,30 +540,33 @@ public class NodeInfo implements SnapshotProcessor {
   }
 
   /**
-   * Persist Information about remove dataNode.
+   * Persist information about removing an AINode.
    *
-   * @param req RemoveDataNodePlan
+   * @param req RemoveAINodePlan
    * @return {@link TSStatus}
    */
   public TSStatus removeAINode(RemoveAINodePlan req) {
     LOGGER.info(
-        "{}, There are {} AI nodes in cluster before executed RemoveAINodePlan",
+        ConfigNodeMessages.THERE_ARE_AI_NODES_IN_CLUSTER_BEFORE_EXECUTED_REMOVEAINODEPLAN,
         REMOVE_AINODE_PROCESS,
         registeredAINodes.size());
 
     aiNodeInfoReadWriteLock.writeLock().lock();
     versionInfoReadWriteLock.writeLock().lock();
+    persistedNodeStatusReadWriteLock.writeLock().lock();
     TAINodeLocation removedAINode = req.getAINodeLocation();
     try {
       registeredAINodes.remove(removedAINode.getAiNodeId());
       nodeVersionInfo.remove(removedAINode.getAiNodeId());
-      LOGGER.info("Removed the AINode {} from cluster", removedAINode);
+      persistedNodeStatuses.remove(removedAINode.getAiNodeId());
+      LOGGER.info(ConfigNodeMessages.REMOVED_THE_AINODE_FROM_CLUSTER, removedAINode);
     } finally {
+      persistedNodeStatusReadWriteLock.writeLock().unlock();
       versionInfoReadWriteLock.writeLock().unlock();
       aiNodeInfoReadWriteLock.writeLock().unlock();
     }
     LOGGER.info(
-        "{}, There are {} AI nodes in cluster after executed RemoveAINodePlan",
+        ConfigNodeMessages.THERE_ARE_AI_NODES_IN_CLUSTER_AFTER_EXECUTED_REMOVEAINODEPLAN,
         REMOVE_AINODE_PROCESS,
         registeredAINodes.size());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -562,7 +586,8 @@ public class NodeInfo implements SnapshotProcessor {
     } finally {
       versionInfoReadWriteLock.writeLock().unlock();
     }
-    LOGGER.info("Successfully update Node {} 's version.", updateVersionInfoPlan.getNodeId());
+    LOGGER.info(
+        ConfigNodeMessages.SUCCESSFULLY_UPDATE_NODE_S_VERSION, updateVersionInfoPlan.getNodeId());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -626,12 +651,58 @@ public class NodeInfo implements SnapshotProcessor {
     return nextNodeId.incrementAndGet();
   }
 
+  public TSStatus applyNodeStatusPlan(UpdateNodeStatusPlan plan) {
+    // Registration maps support concurrent reads. Node removal also holds this lock, so it cannot
+    // interleave with the existence check and status update.
+    persistedNodeStatusReadWriteLock.writeLock().lock();
+    try {
+      int nodeId = plan.getNodeId();
+
+      if (registeredConfigNodes.containsKey(nodeId)
+          || registeredDataNodes.containsKey(nodeId)
+          || registeredAINodes.containsKey(nodeId)) {
+        if (plan.getStatus() == null) {
+          persistedNodeStatuses.remove(nodeId);
+        } else {
+          persistedNodeStatuses.put(nodeId, new Pair<>(plan.getStatus(), plan.getStatusReason()));
+        }
+      }
+
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } finally {
+      persistedNodeStatusReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public Pair<NodeStatus, String> getPersistedNodeStatus(int nodeId) {
+    persistedNodeStatusReadWriteLock.readLock().lock();
+    try {
+      Pair<NodeStatus, String> status = persistedNodeStatuses.get(nodeId);
+      // Pair is mutable, so callers must not receive the value stored in NodeInfo.
+      return status == null ? null : new Pair<>(status.left, status.right);
+    } finally {
+      persistedNodeStatusReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public Map<Integer, Pair<NodeStatus, String>> getPersistedNodeStatuses() {
+    persistedNodeStatusReadWriteLock.readLock().lock();
+    try {
+      Map<Integer, Pair<NodeStatus, String>> result = new HashMap<>();
+      persistedNodeStatuses.forEach(
+          (nodeId, status) -> result.put(nodeId, new Pair<>(status.left, status.right)));
+      return result;
+    } finally {
+      persistedNodeStatusReadWriteLock.readLock().unlock();
+    }
+  }
+
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws IOException, TException {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to take snapshot, because snapshot file [{}] is already exist.",
+          ConfigNodeMessages.FAILED_TO_TAKE_SNAPSHOT_BECAUSE_SNAPSHOT_FILE_IS_ALREADY_EXIST,
           snapshotFile.getAbsolutePath());
       return false;
     }
@@ -641,6 +712,7 @@ public class NodeInfo implements SnapshotProcessor {
     dataNodeInfoReadWriteLock.readLock().lock();
     aiNodeInfoReadWriteLock.readLock().lock();
     versionInfoReadWriteLock.readLock().lock();
+    persistedNodeStatusReadWriteLock.readLock().lock();
     try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
         TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileOutputStream)) {
 
@@ -656,6 +728,8 @@ public class NodeInfo implements SnapshotProcessor {
 
       serializeVersionInfo(fileOutputStream);
 
+      serializePersistedNodeStatuses(fileOutputStream);
+
       tioStreamTransport.flush();
       fileOutputStream.getFD().sync();
 
@@ -664,16 +738,19 @@ public class NodeInfo implements SnapshotProcessor {
 
       return tmpFile.renameTo(snapshotFile);
     } finally {
+      persistedNodeStatusReadWriteLock.readLock().unlock();
       versionInfoReadWriteLock.readLock().unlock();
       aiNodeInfoReadWriteLock.readLock().unlock();
       dataNodeInfoReadWriteLock.readLock().unlock();
       configNodeInfoReadWriteLock.readLock().unlock();
       for (int retry = 0; retry < 5; retry++) {
-        if (!tmpFile.exists() || tmpFile.delete()) {
+        if (!tmpFile.exists()
+            || org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tmpFile)) {
           break;
         } else {
           LOGGER.warn(
-              "Can't delete temporary snapshot file: {}, retrying...", tmpFile.getAbsolutePath());
+              ConfigNodeMessages.CAN_T_DELETE_TEMPORARY_SNAPSHOT_FILE_RETRYING,
+              tmpFile.getAbsolutePath());
         }
       }
     }
@@ -715,13 +792,22 @@ public class NodeInfo implements SnapshotProcessor {
     }
   }
 
+  private void serializePersistedNodeStatuses(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(persistedNodeStatuses.size(), outputStream);
+    for (Entry<Integer, Pair<NodeStatus, String>> entry : persistedNodeStatuses.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), outputStream);
+      ReadWriteIOUtils.write(entry.getValue().left.getStatus(), outputStream);
+      ReadWriteIOUtils.write(entry.getValue().right, outputStream);
+    }
+  }
+
   @Override
   public void processLoadSnapshot(File snapshotDir) throws IOException, TException {
 
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to load snapshot,snapshot file [{}] is not exist.",
+          ConfigNodeMessages.FAILED_TO_LOAD_SNAPSHOT_SNAPSHOT_FILE_IS_NOT_EXIST_2,
           snapshotFile.getAbsolutePath());
       return;
     }
@@ -730,6 +816,7 @@ public class NodeInfo implements SnapshotProcessor {
     dataNodeInfoReadWriteLock.writeLock().lock();
     aiNodeInfoReadWriteLock.writeLock().lock();
     versionInfoReadWriteLock.writeLock().lock();
+    persistedNodeStatusReadWriteLock.writeLock().lock();
 
     try (ByteArrayInputStream inputStream =
             new ByteArrayInputStream(Files.readAllBytes(snapshotFile.toPath()));
@@ -750,7 +837,9 @@ public class NodeInfo implements SnapshotProcessor {
 
       deserializeBuildInfo(inputStream);
 
+      deserializePersistedNodeStatuses(inputStream);
     } finally {
+      persistedNodeStatusReadWriteLock.writeLock().unlock();
       versionInfoReadWriteLock.writeLock().unlock();
       aiNodeInfoReadWriteLock.writeLock().unlock();
       dataNodeInfoReadWriteLock.writeLock().unlock();
@@ -821,6 +910,20 @@ public class NodeInfo implements SnapshotProcessor {
     }
   }
 
+  private void deserializePersistedNodeStatuses(InputStream inputStream) throws IOException {
+    if (inputStream.available() == 0) {
+      return;
+    }
+
+    int size = ReadWriteIOUtils.readInt(inputStream);
+    for (int i = 0; i < size; i++) {
+      int nodeId = ReadWriteIOUtils.readInt(inputStream);
+      NodeStatus status = NodeStatus.parse(ReadWriteIOUtils.readString(inputStream));
+      String statusReason = ReadWriteIOUtils.readString(inputStream);
+      persistedNodeStatuses.put(nodeId, new Pair<>(status, statusReason));
+    }
+  }
+
   public static int getMinimumDataNode() {
     return MINIMUM_DATANODE;
   }
@@ -831,6 +934,13 @@ public class NodeInfo implements SnapshotProcessor {
     registeredConfigNodes.clear();
     registeredAINodes.clear();
     nodeVersionInfo.clear();
+
+    persistedNodeStatusReadWriteLock.writeLock().lock();
+    try {
+      persistedNodeStatuses.clear();
+    } finally {
+      persistedNodeStatusReadWriteLock.writeLock().unlock();
+    }
   }
 
   @Override
@@ -846,11 +956,17 @@ public class NodeInfo implements SnapshotProcessor {
         && nextNodeId.get() == nodeInfo.nextNodeId.get()
         && registeredDataNodes.equals(nodeInfo.registeredDataNodes)
         && registeredAINodes.equals(nodeInfo.registeredAINodes)
-        && nodeVersionInfo.equals(nodeInfo.nodeVersionInfo);
+        && nodeVersionInfo.equals(nodeInfo.nodeVersionInfo)
+        && getPersistedNodeStatuses().equals(nodeInfo.getPersistedNodeStatuses());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(registeredConfigNodes, nextNodeId, registeredDataNodes, nodeVersionInfo);
+    return Objects.hash(
+        registeredConfigNodes,
+        nextNodeId,
+        registeredDataNodes,
+        nodeVersionInfo,
+        getPersistedNodeStatuses());
   }
 }

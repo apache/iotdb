@@ -1,0 +1,684 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.confignode.persistence.subscription;
+
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+
+import org.junit.Assert;
+import org.junit.Test;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class SubscriptionInfoTopicValidationTest {
+
+  @Test
+  public void testValidateColumnFilterOnCreate() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
+    attributes.put(TopicConstant.COLUMN_FILTER_KEY, "column_name IN (\"id1\", \"m1\")");
+
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("table_topic").setTopicAttributes(attributes)));
+  }
+
+  @Test
+  public void testRejectColumnFilterOnTreeTopic() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(TopicConstant.COLUMN_FILTER_KEY, "column_name = \"id1\"");
+
+    assertCreateRejected(subscriptionInfo, attributes, "only supported for table topics");
+  }
+
+  @Test
+  public void testColumnFilterKeyIsCaseInsensitiveOnCreate() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    attributes.put("Column-Filter", "column_name = \"id1\"");
+
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("table_topic").setTopicAttributes(attributes)));
+  }
+
+  @Test
+  public void testRejectDuplicateColumnFilterKeys() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    attributes.put(TopicConstant.COLUMN_FILTER_KEY, "column_name = \"id1\"");
+    attributes.put("Column-Filter", "column_name = \"m1\"");
+
+    assertCreateRejected(subscriptionInfo, attributes, "duplicate column-filter");
+  }
+
+  @Test
+  public void testRejectMixedCaseColumnFilterOnTreeTopic() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put("Column-Filter", "column_name = \"id1\"");
+
+    assertCreateRejected(subscriptionInfo, attributes, "only supported for table topics");
+  }
+
+  @Test
+  public void testValidateTagFilterOnCreate() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
+    attributes.put(TopicConstant.TAG_FILTER_KEY, "region IN (\"north\", \"south\")");
+
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("table_topic").setTopicAttributes(attributes)));
+  }
+
+  @Test
+  public void testRejectInvalidTagFilterFromSessionApiOnCreate() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
+    attributes.put(TopicConstant.TAG_FILTER_KEY, "region = north");
+
+    assertCreateRejected(subscriptionInfo, attributes, "Invalid tag-filter");
+  }
+
+  @Test
+  public void testRejectInvalidTagFilterFromSessionApiOnAlter() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> originalAttributes = newIncrementalTableTopicAttributes();
+    originalAttributes.put(TopicConstant.TAG_FILTER_KEY, "region = \"north\"");
+    subscriptionInfo.createTopic(
+        new CreateTopicPlan(new TopicMeta("table_topic", 1L, originalAttributes)));
+
+    final Map<String, String> updatedAttributes = newIncrementalTableTopicAttributes();
+    updatedAttributes.put(TopicConstant.TAG_FILTER_KEY, "region IN ()");
+    try {
+      subscriptionInfo.validateBeforeAlteringTopic(
+          new TopicMeta("table_topic", 2L, updatedAttributes));
+      Assert.fail("Expected invalid tag-filter alteration to fail");
+    } catch (final SubscriptionException e) {
+      Assert.assertTrue(e.getMessage().contains("Invalid tag-filter"));
+    }
+  }
+
+  @Test
+  public void testRejectTagFilterOnTreeTopic() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(TopicConstant.TAG_FILTER_KEY, "region = \"north\"");
+
+    assertCreateRejected(subscriptionInfo, attributes, "only supported for table topics");
+  }
+
+  @Test
+  public void testTagFilterKeyIsCaseInsensitiveOnCreate() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    attributes.put("Tag-Filter", "region = \"north\"");
+
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("table_topic").setTopicAttributes(attributes)));
+  }
+
+  @Test
+  public void testRejectDuplicateTagFilterKeys() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    attributes.put(TopicConstant.TAG_FILTER_KEY, "region = \"north\"");
+    attributes.put("Tag-Filter", "region = \"south\"");
+
+    assertCreateRejected(subscriptionInfo, attributes, "duplicate tag-filter");
+  }
+
+  @Test
+  public void testRejectTopicThatOnlySelectsAuditDatabase() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+
+    final Map<String, String> tableAttributes = newInitialTableTopicAttributes();
+    tableAttributes.put(TopicConstant.DATABASE_KEY, "__audit");
+    assertCreateRejected(subscriptionInfo, tableAttributes, "only to the __audit database");
+
+    tableAttributes.put(TopicConstant.DATABASE_KEY, "__AUDIT");
+    assertCreateRejected(subscriptionInfo, tableAttributes, "only to the __audit database");
+
+    tableAttributes.put(TopicConstant.DATABASE_KEY, "__audit_data");
+    assertCreateAccepted(subscriptionInfo, "table_topic", tableAttributes);
+
+    tableAttributes.put(TopicConstant.DATABASE_KEY, "__audit|user_db");
+    assertCreateAccepted(subscriptionInfo, "table_regex_topic", tableAttributes);
+
+    tableAttributes.put(TopicConstant.DATABASE_KEY, "__audit");
+    tableAttributes.put(PipeSourceConstant.SOURCE_DATABASE_NAME_KEY, "user_db");
+    assertCreateAccepted(subscriptionInfo, "table_source_override_topic", tableAttributes);
+
+    tableAttributes.put(TopicConstant.DATABASE_KEY, "user_db");
+    tableAttributes.put(PipeSourceConstant.SOURCE_DATABASE_NAME_KEY, "__audit");
+    assertCreateRejected(subscriptionInfo, tableAttributes, "only to the __audit database");
+
+    final Map<String, String> treeAttributes = new HashMap<>();
+    treeAttributes.put(TopicConstant.PATH_KEY, "root.__audit.**");
+    assertCreateRejected(subscriptionInfo, treeAttributes, "only to the __audit database");
+
+    treeAttributes.put(TopicConstant.PATH_KEY, "root.__audit.log.device");
+    assertCreateRejected(subscriptionInfo, treeAttributes, "only to the __audit database");
+
+    treeAttributes.put(TopicConstant.PATH_KEY, "root.__audit.log.**,root.__audit.user.**");
+    assertCreateRejected(subscriptionInfo, treeAttributes, "only to the __audit database");
+
+    treeAttributes.put(TopicConstant.PATH_KEY, "root.__audit.**,root.user.**");
+    assertCreateAccepted(subscriptionInfo, "tree_topic", treeAttributes);
+
+    treeAttributes.put(TopicConstant.PATH_KEY, "root.__audit_data.**");
+    assertCreateAccepted(subscriptionInfo, "tree_similar_name_topic", treeAttributes);
+
+    treeAttributes.remove(TopicConstant.PATH_KEY);
+    treeAttributes.put(TopicConstant.PATTERN_KEY, "root.__audit.log");
+    assertCreateRejected(subscriptionInfo, treeAttributes, "only to the __audit database");
+
+    treeAttributes.put(TopicConstant.PATTERN_KEY, "root.__audit");
+    assertCreateAccepted(subscriptionInfo, "tree_prefix_topic", treeAttributes);
+  }
+
+  @Test
+  public void testAuditOnlyValidationHandlesSourceInclusionAndExclusion() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(TopicConstant.PATH_KEY, "root.__audit.**");
+    attributes.put("source.path.exclusion", "root.__audit.internal.**");
+    assertCreateRejected(subscriptionInfo, attributes, "only to the __audit database");
+
+    attributes.put("source.path.inclusion", "root.user.**");
+    assertCreateAccepted(subscriptionInfo, "tree_source_inclusion_topic", attributes);
+
+    final Map<String, String> attributesWithFullyExcludedUserPath = new HashMap<>();
+    attributesWithFullyExcludedUserPath.put(TopicConstant.PATH_KEY, "root.__audit.**,root.user.**");
+    attributesWithFullyExcludedUserPath.put("source.path.exclusion", "root.user.**");
+    assertCreateRejected(
+        subscriptionInfo, attributesWithFullyExcludedUserPath, "only to the __audit database");
+  }
+
+  @Test
+  public void testRejectAlteringTopicToOnlySelectAuditDatabase() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> originalAttributes = new HashMap<>();
+    originalAttributes.put(TopicConstant.PATH_KEY, "root.user.**");
+    subscriptionInfo.createTopic(
+        new CreateTopicPlan(new TopicMeta("tree_topic", 1L, originalAttributes)));
+
+    final Map<String, String> updatedAttributes = new HashMap<>();
+    updatedAttributes.put(TopicConstant.PATH_KEY, "root.__audit.log.**");
+    try {
+      subscriptionInfo.validateBeforeAlteringTopic(
+          new TopicMeta("tree_topic", 2L, updatedAttributes));
+      Assert.fail("Expected audit-only topic validation to fail");
+    } catch (final SubscriptionException e) {
+      Assert.assertTrue(e.getMessage().contains("only to the __audit database"));
+    }
+  }
+
+  @Test
+  public void testRejectDuplicateTopicConfigKeys() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    attributes.put("Mode", TopicConstant.MODE_SNAPSHOT_VALUE);
+
+    assertCreateRejected(subscriptionInfo, attributes, "duplicate mode");
+  }
+
+  @Test
+  public void testAcceptColumnFilterOnInitialTsFileTableTopic() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    attributes.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_VALUE);
+    attributes.put(TopicConstant.COLUMN_FILTER_KEY, "column_name = \"id1\"");
+
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("table_topic").setTopicAttributes(attributes)));
+  }
+
+  @Test
+  public void testRejectLegacyTsFileAliasOnIncrementalTopic() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
+    attributes.put(TopicConstant.FORMAT_KEY, "TsFileHandler");
+
+    assertCreateRejected(subscriptionInfo, attributes, "mode=incremental only supports format");
+  }
+
+  @Test
+  public void testRejectUnsupportedAttributesOnIncrementalTopic() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
+    attributes.put(TopicConstant.START_TIME_KEY, "0");
+    attributes.put(TopicConstant.STRICT_KEY, "false");
+    attributes.put("processor", "custom-processor");
+
+    assertCreateRejected(
+        subscriptionInfo,
+        attributes,
+        "mode=incremental does not support topic attributes [processor, start-time, strict]");
+  }
+
+  @Test
+  public void testRejectUnknownAttributeOnIncrementalTopic() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
+    attributes.put("unknown-attribute", "value");
+
+    assertCreateRejected(
+        subscriptionInfo,
+        attributes,
+        "mode=incremental does not support topic attributes [unknown-attribute]");
+  }
+
+  @Test
+  public void testAllowPipeAttributesOnInitialTopic() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    attributes.put(TopicConstant.START_TIME_KEY, "0");
+    attributes.put(TopicConstant.STRICT_KEY, "false");
+    attributes.put("processor", "custom-processor");
+
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("table_topic").setTopicAttributes(attributes)));
+  }
+
+  @Test
+  public void testRejectEmptyColumnFilter() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
+    attributes.put(TopicConstant.COLUMN_FILTER_KEY, " ");
+
+    assertCreateRejected(subscriptionInfo, attributes, "column-filter should not be empty");
+  }
+
+  @Test
+  public void testRejectEmptyTagFilter() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
+    attributes.put(TopicConstant.TAG_FILTER_KEY, " ");
+
+    assertCreateRejected(subscriptionInfo, attributes, "tag-filter should not be empty");
+  }
+
+  @Test
+  public void testAcceptAlteringColumnFilter() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> originalAttributes = newIncrementalTableTopicAttributes();
+    originalAttributes.put(TopicConstant.COLUMN_FILTER_KEY, "column_name = \"id1\"");
+    subscriptionInfo.createTopic(
+        new CreateTopicPlan(new TopicMeta("table_topic", 1L, originalAttributes)));
+
+    final Map<String, String> updatedAttributes = newIncrementalTableTopicAttributes();
+    updatedAttributes.put(TopicConstant.COLUMN_FILTER_KEY, "column_name = \"m1\"");
+
+    subscriptionInfo.validateBeforeAlteringTopic(
+        new TopicMeta("table_topic", 2L, updatedAttributes));
+  }
+
+  @Test
+  public void testValidateRetentionConfigOnCreate() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
+    attributes.put(TopicConstant.RETENTION_BYTES_KEY, "1048576");
+    attributes.put(TopicConstant.RETENTION_MS_KEY, "-1");
+
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("table_topic").setTopicAttributes(attributes)));
+  }
+
+  @Test
+  public void testRejectRetentionOnTsFileTopic() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
+    attributes.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_VALUE);
+    attributes.put(TopicConstant.RETENTION_BYTES_KEY, "1024");
+
+    assertCreateRejected(subscriptionInfo, attributes, "mode=incremental only supports format");
+  }
+
+  @Test
+  public void testRejectIllegalRetentionValue() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
+    attributes.put(TopicConstant.RETENTION_BYTES_KEY, "0");
+
+    assertCreateRejected(subscriptionInfo, attributes, "expected -1 or a positive long value");
+  }
+
+  @Test
+  public void testRejectIllegalRetentionFormat() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
+    attributes.put(TopicConstant.RETENTION_MS_KEY, "1h");
+
+    assertCreateRejected(subscriptionInfo, attributes, "expected a long value");
+  }
+
+  @Test
+  public void testAcceptRecycleUncommittedEventInterval() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+
+    final Map<String, String> initialAttributes = newInitialTableTopicAttributes();
+    initialAttributes.put(
+        TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, " 9223372036854775807 ");
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("initial_topic").setTopicAttributes(initialAttributes)));
+
+    final Map<String, String> incrementalAttributes = newIncrementalTableTopicAttributes();
+    incrementalAttributes.put("Recycle-Uncommitted-Event-Interval-Ms", "300000");
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("incremental_topic").setTopicAttributes(incrementalAttributes)));
+
+    for (final String format :
+        new String[] {
+          TopicConstant.FORMAT_TS_FILE_VALUE, TopicConstant.FORMAT_RECORD_HANDLER_VALUE
+        }) {
+      final Map<String, String> snapshotAttributes = new HashMap<>();
+      snapshotAttributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_SNAPSHOT_VALUE);
+      snapshotAttributes.put(TopicConstant.FORMAT_KEY, format);
+      snapshotAttributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, "1200000");
+      Assert.assertTrue(
+          subscriptionInfo.validateBeforeCreatingTopic(
+              new TCreateTopicReq("snapshot_topic").setTopicAttributes(snapshotAttributes)));
+    }
+  }
+
+  @Test
+  public void testAcceptDisablingRecycleUncommittedEvents() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    for (final String mode :
+        new String[] {
+          TopicConstant.MODE_INITIAL_VALUE,
+          TopicConstant.MODE_INCREMENTAL_VALUE,
+          TopicConstant.MODE_SNAPSHOT_VALUE
+        }) {
+      for (final String value : new String[] {"0", "-1", "-9223372036854775808"}) {
+        final Map<String, String> attributes = newInitialTableTopicAttributes();
+        attributes.put(TopicConstant.MODE_KEY, mode);
+        attributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, value);
+        Assert.assertTrue(
+            subscriptionInfo.validateBeforeCreatingTopic(
+                new TCreateTopicReq("disabled_recycle_topic").setTopicAttributes(attributes)));
+      }
+    }
+  }
+
+  @Test
+  public void testRejectInvalidRecycleUncommittedEventInterval() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    for (final String value :
+        new String[] {
+          "not-a-number", "", " ", "1.5", "9223372036854775808", "-9223372036854775809", null
+        }) {
+      final Map<String, String> attributes = newInitialTableTopicAttributes();
+      attributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, value);
+      assertCreateRejected(subscriptionInfo, attributes, "expected a long value in milliseconds");
+    }
+  }
+
+  @Test
+  public void testAcceptAlteringRecycleUncommittedEventInterval() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    for (final String mode :
+        new String[] {TopicConstant.MODE_INITIAL_VALUE, TopicConstant.MODE_INCREMENTAL_VALUE}) {
+      final Map<String, String> attributes = newInitialTableTopicAttributes();
+      attributes.put(TopicConstant.MODE_KEY, mode);
+      attributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, "1200000");
+      subscriptionInfo.createTopic(new CreateTopicPlan(new TopicMeta(mode, 1L, attributes)));
+
+      for (final String value : new String[] {"300000", "0", "-1", "-9223372036854775808"}) {
+        final Map<String, String> updatedAttributes = new HashMap<>(attributes);
+        updatedAttributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, value);
+        subscriptionInfo.validateBeforeAlteringTopic(new TopicMeta(mode, 1L, updatedAttributes));
+      }
+    }
+  }
+
+  @Test
+  public void testRejectAlteringInvalidRecycleUncommittedEventInterval() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    subscriptionInfo.createTopic(new CreateTopicPlan(new TopicMeta("table_topic", 1L, attributes)));
+    attributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, "not-a-number");
+    try {
+      subscriptionInfo.validateBeforeAlteringTopic(new TopicMeta("table_topic", 1L, attributes));
+      Assert.fail("Expected an invalid recycle interval to be rejected");
+    } catch (final SubscriptionException e) {
+      Assert.assertTrue(e.getMessage().contains("expected a long value in milliseconds"));
+    }
+  }
+
+  @Test
+  public void testRejectDuplicateRecycleUncommittedEventIntervals() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    attributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, "1200000");
+    attributes.put("RECYCLE-UNCOMMITTED-EVENT-INTERVAL-MS", "300000");
+    assertCreateRejected(
+        subscriptionInfo, attributes, "duplicate recycle-uncommitted-event-interval-ms attributes");
+  }
+
+  @Test
+  public void testRejectAlteringRetentionConfig() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> originalAttributes = newIncrementalTableTopicAttributes();
+    originalAttributes.put(TopicConstant.RETENTION_BYTES_KEY, "1024");
+    subscriptionInfo.createTopic(
+        new CreateTopicPlan(new TopicMeta("table_topic", 1L, originalAttributes)));
+
+    final Map<String, String> updatedAttributes = newIncrementalTableTopicAttributes();
+    updatedAttributes.put(TopicConstant.RETENTION_BYTES_KEY, "2048");
+
+    try {
+      subscriptionInfo.validateBeforeAlteringTopic(
+          new TopicMeta("table_topic", 2L, updatedAttributes));
+      Assert.fail("Expected altering retention.bytes to be rejected");
+    } catch (final SubscriptionException e) {
+      Assert.assertTrue(e.getMessage().contains("changing retention.bytes is not supported"));
+    }
+  }
+
+  @Test
+  public void testAcceptAlteringRetainProgressAfterUnsubscribe() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> originalAttributes = newIncrementalTableTopicAttributes();
+    originalAttributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "false");
+    subscriptionInfo.createTopic(
+        new CreateTopicPlan(new TopicMeta("table_topic", 1L, originalAttributes)));
+
+    final Map<String, String> updatedAttributes = newIncrementalTableTopicAttributes();
+    updatedAttributes.put("Retain.Progress.After.Unsubscribe", "true");
+
+    subscriptionInfo.validateBeforeAlteringTopic(
+        new TopicMeta("table_topic", 2L, updatedAttributes));
+  }
+
+  @Test
+  public void testRejectIllegalMode() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(TopicConstant.MODE_KEY, "wal");
+
+    assertCreateRejected(subscriptionInfo, attributes, "unsupported mode");
+  }
+
+  @SuppressWarnings("deprecation")
+  @Test
+  public void testAcceptLegacyModeValues() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+
+    final Map<String, String> liveAttributes = newInitialTableTopicAttributes();
+    liveAttributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_LIVE_VALUE);
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("live_topic").setTopicAttributes(liveAttributes)));
+
+    final Map<String, String> consensusAttributes = newIncrementalTableTopicAttributes();
+    consensusAttributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_CONSENSUS_VALUE);
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("consensus_topic").setTopicAttributes(consensusAttributes)));
+  }
+
+  @SuppressWarnings("deprecation")
+  @Test
+  public void testAllowAlteringModeFromLegacyAliasToCanonicalValue() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> originalAttributes = newInitialTableTopicAttributes();
+    originalAttributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_LIVE_VALUE);
+    subscriptionInfo.createTopic(
+        new CreateTopicPlan(new TopicMeta("table_topic", 1L, originalAttributes)));
+
+    subscriptionInfo.validateBeforeAlteringTopic(
+        new TopicMeta("table_topic", 2L, newInitialTableTopicAttributes()));
+  }
+
+  @Test
+  public void testAcceptColumnFilterOnInitialTableTopic() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    attributes.put(TopicConstant.COLUMN_FILTER_KEY, "column_name = \"id1\"");
+
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("table_topic").setTopicAttributes(attributes)));
+  }
+
+  @Test
+  public void testRejectIncrementalOnlyRetentionOnInitialTopic() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    attributes.put(TopicConstant.RETENTION_BYTES_KEY, "1024");
+
+    assertCreateRejected(subscriptionInfo, attributes, "only supported for incremental topics");
+  }
+
+  @Test
+  public void testAcceptRetainingProgressOnIncrementalTopic() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
+    attributes.put("Retain.Progress.After.Unsubscribe", " TRUE ");
+
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("table_topic").setTopicAttributes(attributes)));
+  }
+
+  @Test
+  public void testRejectRetainingProgressOnInitialTopic() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    attributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "true");
+
+    assertCreateRejected(subscriptionInfo, attributes, "only supported for incremental topics");
+  }
+
+  @Test
+  public void testRejectIllegalRetainProgressValue() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
+    attributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "yes");
+
+    assertCreateRejected(subscriptionInfo, attributes, "expected true or false");
+  }
+
+  @Test
+  public void testRejectOwnerLeaseDurationBelowMin() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(TopicConstant.OWNER_ID_KEY, "owner1");
+    attributes.put(TopicConstant.OWNER_EPOCH_KEY, "1");
+    // Well below the default 1-minute floor.
+    attributes.put(TopicConstant.OWNER_LEASE_DURATION_MS_KEY, "5000");
+
+    assertCreateRejected(subscriptionInfo, attributes, "below the minimum allowed");
+  }
+
+  @Test
+  public void testAcceptOwnerLeaseDurationAtMin() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(TopicConstant.OWNER_ID_KEY, "owner1");
+    attributes.put(TopicConstant.OWNER_EPOCH_KEY, "1");
+    attributes.put(
+        TopicConstant.OWNER_LEASE_DURATION_MS_KEY,
+        String.valueOf(SubscriptionConfig.getInstance().getSubscriptionOwnerLeaseDurationMsMin()));
+
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("owner_topic").setTopicAttributes(attributes)));
+  }
+
+  private static Map<String, String> newIncrementalTableTopicAttributes() {
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    attributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_INCREMENTAL_VALUE);
+    attributes.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_RECORD_HANDLER_VALUE);
+    return attributes;
+  }
+
+  private static Map<String, String> newInitialTableTopicAttributes() {
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    attributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_INITIAL_VALUE);
+    attributes.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_RECORD_HANDLER_VALUE);
+    return attributes;
+  }
+
+  private static void assertCreateRejected(
+      final SubscriptionInfo subscriptionInfo,
+      final Map<String, String> attributes,
+      final String expectedMessagePart) {
+    try {
+      subscriptionInfo.validateBeforeCreatingTopic(
+          new TCreateTopicReq("table_topic").setTopicAttributes(attributes));
+      Assert.fail("Expected topic validation to fail");
+    } catch (final SubscriptionException e) {
+      Assert.assertTrue(e.getMessage().contains(expectedMessagePart));
+    }
+  }
+
+  private static void assertCreateAccepted(
+      final SubscriptionInfo subscriptionInfo,
+      final String topicName,
+      final Map<String, String> attributes) {
+    try {
+      Assert.assertTrue(
+          subscriptionInfo.validateBeforeCreatingTopic(
+              new TCreateTopicReq(topicName).setTopicAttributes(attributes)));
+    } catch (final SubscriptionException e) {
+      Assert.fail(e.getMessage());
+    }
+  }
+}

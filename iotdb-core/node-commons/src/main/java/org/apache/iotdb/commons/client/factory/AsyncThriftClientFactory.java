@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.client.factory;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.exception.CreateTAsyncClientManagerException;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.i18n.ClientMessages;
 
 import org.apache.thrift.async.TAsyncClientManager;
 
@@ -47,7 +48,7 @@ public abstract class AsyncThriftClientFactory<K, V> extends ThriftClientFactory
       }
     } catch (IOException e) {
       throw new CreateTAsyncClientManagerException(
-          String.format("Cannot create Async thrift client factory %s", threadName), e);
+          String.format(ClientMessages.CANNOT_CREATE_ASYNC_FACTORY, threadName), e);
     }
     Thread.getAllStackTraces().keySet().stream()
         .filter(thread -> thread.getName().contains(THRIFT_THREAD_NAME))

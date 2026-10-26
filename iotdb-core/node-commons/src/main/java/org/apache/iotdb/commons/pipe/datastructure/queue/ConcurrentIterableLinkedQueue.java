@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.queue;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
+
 import com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,7 +70,7 @@ public class ConcurrentIterableLinkedQueue<E> {
    */
   public void add(final E e) {
     if (e == null) {
-      throw new IllegalArgumentException("Null element is not allowed.");
+      throw new IllegalArgumentException(PipeMessages.NULL_ELEMENT_NOT_ALLOWED);
     }
 
     final LinkedListNode<E> newNode = new LinkedListNode<>(e);
@@ -136,6 +138,7 @@ public class ConcurrentIterableLinkedQueue<E> {
       if (firstNode == null) {
         firstNode = pilotNode;
         lastNode = pilotNode;
+        pilotNode.next = null;
       }
 
       // Update iterators if necessary
@@ -207,9 +210,7 @@ public class ConcurrentIterableLinkedQueue<E> {
     lock.writeLock().lock();
     try {
       this.firstIndex = firstIndex;
-      if (tailIndex < firstIndex) {
-        tailIndex = firstIndex;
-      }
+      tailIndex = firstIndex;
     } finally {
       lock.writeLock().unlock();
     }
@@ -297,7 +298,7 @@ public class ConcurrentIterableLinkedQueue<E> {
       try {
         while (!hasNext()) {
           if (isClosed) {
-            LOGGER.warn("Calling next() to a closed iterator, will return null.");
+            LOGGER.warn(PipeMessages.CALLING_NEXT_ON_CLOSED_ITERATOR);
             return null;
           }
           if (!hasNextCondition.await(waitTimeMillis, TimeUnit.MILLISECONDS)) {
@@ -307,7 +308,7 @@ public class ConcurrentIterableLinkedQueue<E> {
         return currentNode.next.data;
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("Interrupted while waiting for next element.", e);
+        LOGGER.warn(PipeMessages.INTERRUPTED_WAITING_FOR_NEXT, e);
         return null;
       } finally {
         lock.writeLock().unlock();
@@ -327,7 +328,7 @@ public class ConcurrentIterableLinkedQueue<E> {
       try {
         while (!hasNext()) {
           if (isClosed) {
-            LOGGER.warn("Calling next() to a closed iterator, will return null.");
+            LOGGER.warn(PipeMessages.CALLING_NEXT_ON_CLOSED_ITERATOR);
             return null;
           }
           if (!hasNextCondition.await(waitTimeMillis, TimeUnit.MILLISECONDS)) {
@@ -341,7 +342,7 @@ public class ConcurrentIterableLinkedQueue<E> {
         return currentNode.data;
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("Interrupted while waiting for next element.", e);
+        LOGGER.warn(PipeMessages.INTERRUPTED_WAITING_FOR_NEXT, e);
         return null;
       } finally {
         lock.writeLock().unlock();

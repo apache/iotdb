@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.udf.api.relational.table.processor;
 
+import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
 
@@ -31,6 +32,11 @@ public interface TableFunctionDataProcessor {
 
   default void beforeStart() {
     // do nothing
+  }
+
+  /** Same as {@link #beforeStart()} with access to {@link IoTDBLocal} for embedded queries. */
+  default void beforeStart(IoTDBLocal local) {
+    beforeStart();
   }
 
   /**
@@ -52,6 +58,18 @@ public interface TableFunctionDataProcessor {
       ColumnBuilder passThroughIndexBuilder);
 
   /**
+   * Same as {@link #process(Record, List, ColumnBuilder)} with access to {@link IoTDBLocal} for
+   * embedded queries.
+   */
+  default void process(
+      Record input,
+      List<ColumnBuilder> properColumnBuilders,
+      ColumnBuilder passThroughIndexBuilder,
+      IoTDBLocal local) {
+    process(input, properColumnBuilders, passThroughIndexBuilder);
+  }
+
+  /**
    * This method is called after all data is processed. It is used to finalize the output table and
    * close resource. All remaining data should be written to the columnBuilders.
    *
@@ -66,8 +84,24 @@ public interface TableFunctionDataProcessor {
     // do nothing
   }
 
+  /**
+   * Same as {@link #finish(List, ColumnBuilder)} with access to {@link IoTDBLocal} for embedded
+   * queries.
+   */
+  default void finish(
+      List<ColumnBuilder> properColumnBuilders,
+      ColumnBuilder passThroughIndexBuilder,
+      IoTDBLocal local) {
+    finish(properColumnBuilders, passThroughIndexBuilder);
+  }
+
   /** This method is mainly used to release the resources used in the UDF. */
   default void beforeDestroy() {
     // do nothing
+  }
+
+  /** Same as {@link #beforeDestroy()} with access to {@link IoTDBLocal}. */
+  default void beforeDestroy(IoTDBLocal local) {
+    beforeDestroy();
   }
 }

@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.session;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -52,7 +53,9 @@ public class PrepareTask implements IConfigTask {
     IClientSession session = SessionManager.getInstance().getCurrSession();
     if (session == null) {
       future.setException(
-          new IllegalStateException("No current session available for PREPARE statement"));
+          new IllegalStateException(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_NO_CURRENT_SESSION_AVAILABLE_FOR_PREPARE_STATEMENT_36717E9B));
       return future;
     }
 

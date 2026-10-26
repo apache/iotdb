@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.service;
 
+import org.apache.iotdb.commons.i18n.ServiceMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,7 +68,7 @@ public abstract class AbstractPeriodicalServiceWithAdvance {
       skipNextSleep = false;
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.warn("Interrupted when waiting for the next device view update: {}", e.getMessage());
+      LOGGER.warn(ServiceMessages.INTERRUPTED_WAITING_DEVICE_VIEW_UPDATE, e.getMessage());
     } finally {
       lock.unlock();
 
@@ -82,12 +84,12 @@ public abstract class AbstractPeriodicalServiceWithAdvance {
     allowSubmitListen = true;
     securityServiceExecutor.submit(this::execute);
 
-    LOGGER.info("{} is started successfully.", getClass().getSimpleName());
+    LOGGER.info(ServiceMessages.SERVICE_STARTED_SUCCESSFULLY, getClass().getSimpleName());
   }
 
   public void stopService() {
     allowSubmitListen = false;
 
-    LOGGER.info("{} is stopped successfully.", getClass().getSimpleName());
+    LOGGER.info(ServiceMessages.SERVICE_STOPPED_SUCCESSFULLY, getClass().getSimpleName());
   }
 }

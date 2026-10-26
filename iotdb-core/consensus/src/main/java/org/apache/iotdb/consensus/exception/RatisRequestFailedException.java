@@ -19,23 +19,29 @@
 
 package org.apache.iotdb.consensus.exception;
 
+import org.apache.iotdb.consensus.i18n.ConsensusMessages;
+
 import java.util.Optional;
 
 public class RatisRequestFailedException extends ConsensusException {
 
   public RatisRequestFailedException(Exception cause) {
     super(
-        "Ratis request failed "
-            + Optional.ofNullable(cause).map(Exception::getMessage).orElse("Unknown"),
+        ConsensusMessages.EXCEPTION_RATIS_REQUEST_FAILED_52AF217F
+            + Optional.ofNullable(cause)
+                .map(Exception::getMessage)
+                .orElse(ConsensusMessages.EXCEPTION_UNKNOWN_88183B94),
         cause);
   }
 
   public RatisRequestFailedException(String message, Exception cause) {
     super(
-        "Ratis request failed: "
+        ConsensusMessages.EXCEPTION_RATIS_REQUEST_FAILED_58107CDE
             + message
-            + ". "
-            + Optional.ofNullable(cause).map(Exception::getMessage).orElse("Unknown"),
+            + ConsensusMessages.EXCEPTION_DOT_F779BA66
+            + Optional.ofNullable(cause)
+                .map(Exception::getMessage)
+                .orElse(ConsensusMessages.EXCEPTION_UNKNOWN_88183B94),
         cause);
   }
 }

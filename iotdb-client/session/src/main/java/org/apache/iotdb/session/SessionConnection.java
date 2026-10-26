@@ -22,6 +22,7 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
@@ -30,6 +31,8 @@ import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.TimeoutChangeableTransport;
+import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
@@ -65,6 +68,7 @@ import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.session.i18n.SessionMessages;
 import org.apache.iotdb.session.util.SessionUtils;
 
 import org.apache.thrift.TException;
@@ -81,8 +85,8 @@ import java.security.SecureRandom;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -96,6 +100,8 @@ import static org.apache.iotdb.session.Session.TREE;
 public class SessionConnection {
 
   private static final Logger logger = LoggerFactory.getLogger(SessionConnection.class);
+  private static final String USE_ENCRYPTED_PASSWORD_KEY = "use_encrypted_password";
+  private static final String ENABLE_AUTO_CREATE_SCHEMA_KEY = "enable_auto_create_schema";
   public static final String MSG_RECONNECTION_FAIL =
       "Fail to reconnect to server. Please check server status.";
   protected Session session;
@@ -150,7 +156,14 @@ public class SessionConnection {
     this.sqlDialect = sqlDialect;
     this.database = database;
     try {
-      init(endPoint, session.useSSL, session.trustStore, session.trustStorePwd);
+      init(
+          endPoint,
+          session.useSSL,
+          session.trustStore,
+          session.trustStorePwd,
+          session.keyStore,
+          session.keyStorePwd,
+          session.sslProtocol);
     } catch (StatementExecutionException e) {
       throw new IoTDBConnectionException(e.getMessage());
     } catch (IoTDBConnectionException e) {
@@ -178,25 +191,36 @@ public class SessionConnection {
     initClusterConn();
   }
 
-  private void init(TEndPoint endPoint, boolean useSSL, String trustStore, String trustStorePwd)
+  private void init(
+      TEndPoint endPoint,
+      boolean useSSL,
+      String trustStore,
+      String trustStorePwd,
+      String keyStore,
+      String keyStorePwd,
+      String sslProtocol)
       throws IoTDBConnectionException, StatementExecutionException {
-    DeepCopyRpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
-    DeepCopyRpcTransportFactory.setThriftMaxFrameSize(session.thriftMaxFrameSize);
+    DeepCopyRpcTransportFactory transportFactory =
+        DeepCopyRpcTransportFactory.getInstance(
+            session.thriftDefaultBufferSize, session.thriftMaxFrameSize);
     try {
       if (transport != null && transport.isOpen()) {
         close();
       }
       if (useSSL) {
         transport =
-            DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+            transportFactory.getTransport(
                 endPoint.getIp(),
                 endPoint.getPort(),
                 session.connectionTimeoutInMs,
                 trustStore,
-                trustStorePwd);
+                trustStorePwd,
+                keyStore,
+                keyStorePwd,
+                sslProtocol);
       } else {
         transport =
-            DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+            transportFactory.getTransport(
                 // as there is a try-catch already, we do not need to use TSocket.wrap
                 endPoint.getIp(), endPoint.getPort(), session.connectionTimeoutInMs);
       }
@@ -220,6 +244,12 @@ public class SessionConnection {
     openReq.setZoneId(zoneId.toString());
     openReq.putToConfiguration("version", session.version.toString());
     openReq.putToConfiguration("sql_dialect", sqlDialect);
+    if (session.useEncryptedPassword) {
+      openReq.putToConfiguration(USE_ENCRYPTED_PASSWORD_KEY, Boolean.TRUE.toString());
+    }
+    if (!session.enableAutoCreateSchema) {
+      openReq.putToConfiguration(ENABLE_AUTO_CREATE_SCHEMA_KEY, Boolean.FALSE.toString());
+    }
     if (database != null) {
       openReq.putToConfiguration("db", database);
     }
@@ -231,14 +261,15 @@ public class SessionConnection {
       this.timeFactor = RpcUtils.getTimeFactor(openResp);
       if (Session.protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         logger.warn(
-            "Protocol differ, Client version is {}}, but Server version is {}",
+            SessionMessages.LOG_PROTOCOL_DIFFER_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_9C8EC583,
             Session.protocolVersion.getValue(),
             openResp.getServerProtocolVersion().getValue());
         // less than 0.10
         if (openResp.getServerProtocolVersion().getValue() == 0) {
           throw new TException(
               String.format(
-                  "Protocol not supported, Client version is %s, but Server version is %s",
+                  SessionMessages
+                      .EXCEPTION_PROTOCOL_NOT_SUPPORTED_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_53F892DC,
                   Session.protocolVersion.getValue(),
                   openResp.getServerProtocolVersion().getValue()));
         }
@@ -261,10 +292,17 @@ public class SessionConnection {
     for (TEndPoint tEndPoint : endPointList) {
       try {
         session.defaultEndPoint = tEndPoint;
-        init(tEndPoint, session.useSSL, session.trustStore, session.trustStorePwd);
+        init(
+            tEndPoint,
+            session.useSSL,
+            session.trustStore,
+            session.trustStorePwd,
+            session.keyStore,
+            session.keyStorePwd,
+            session.sslProtocol);
       } catch (IoTDBConnectionException e) {
         if (!reconnect()) {
-          logger.error("Cluster has no nodes to connect");
+          logger.error(SessionMessages.CLUSTER_NO_NODES);
           throw new IoTDBConnectionException(logForReconnectionFailure());
         }
       } catch (StatementExecutionException e) {
@@ -283,8 +321,7 @@ public class SessionConnection {
     try {
       client.closeSession(req);
     } catch (TException e) {
-      throw new IoTDBConnectionException(
-          "Error occurs when closing session at server. Maybe server is down.", e);
+      throw new IoTDBConnectionException(SessionMessages.CLOSE_SESSION_ERROR, e);
     } finally {
       if (transport != null) {
         transport.close();
@@ -294,6 +331,31 @@ public class SessionConnection {
 
   protected IClientRPCService.Iface getClient() {
     return client;
+  }
+
+  protected boolean setTransportTimeout(final int timeoutInMs) {
+    if (!(transport instanceof TimeoutChangeableTransport)) {
+      return false;
+    }
+
+    try {
+      ((TimeoutChangeableTransport) transport).setTimeout(timeoutInMs);
+      return true;
+    } catch (final RuntimeException ignored) {
+      return false;
+    }
+  }
+
+  protected void forceCloseTransport() {
+    if (transport == null) {
+      return;
+    }
+
+    try {
+      transport.close();
+    } catch (final RuntimeException ignored) {
+      // Best effort. The caller must still finish updating its lifecycle state.
+    }
   }
 
   protected void setTimeZone(String zoneId)
@@ -379,7 +441,7 @@ public class SessionConnection {
       try {
         dataSet = executeQueryStatement(String.format("SHOW TIMESERIES %s", path), timeout);
       } catch (RedirectException e) {
-        throw new StatementExecutionException("need to redirect query, should not see this.", e);
+        throw new StatementExecutionException(SessionMessages.REDIRECT_QUERY_ERROR, e);
       }
       return dataSet.hasNext();
     } finally {
@@ -848,6 +910,9 @@ public class SessionConnection {
 
   protected void deleteTimeseries(List<String> paths)
       throws IoTDBConnectionException, StatementExecutionException {
+    if (paths.isEmpty()) {
+      return;
+    }
     callWithRetryAndVerify(() -> client.deleteTimeseries(sessionId, paths));
   }
 
@@ -883,7 +948,7 @@ public class SessionConnection {
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           logger.warn(
-              "Thread {} was interrupted during retry {} with wait time {} ms. Exiting retry loop.",
+              SessionMessages.THREAD_INTERRUPTED_DURING_RETRY,
               Thread.currentThread().getName(),
               i,
               retryIntervalInMs);
@@ -910,7 +975,8 @@ public class SessionConnection {
     return new RetryResult<>(status, lastTException, i);
   }
 
-  private RetryResult<TSStatus> callWithRetryAndReconnect(TFunction<TSStatus> rpc) {
+  private RetryResult<TSStatus> callWithRetryAndReconnect(TFunction<TSStatus> rpc)
+      throws IoTDBConnectionException {
     return callWithRetryAndReconnect(
         rpc,
         status -> status.isSetNeedRetry() && status.isNeedRetry(),
@@ -918,7 +984,7 @@ public class SessionConnection {
   }
 
   private <T> RetryResult<T> callWithRetryAndReconnect(
-      TFunction<T> rpc, Function<T, TSStatus> statusGetter) {
+      TFunction<T> rpc, Function<T, TSStatus> statusGetter) throws IoTDBConnectionException {
     return callWithRetryAndReconnect(
         rpc,
         t -> {
@@ -930,9 +996,15 @@ public class SessionConnection {
                 == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode());
   }
 
-  /** reconnect if the remote datanode is unreachable retry if the status is set to needRetry */
+  /**
+   * reconnect if the remote datanode is unreachable retry if the status is set to needRetry
+   *
+   * @throws IoTDBConnectionException if no attempt produced a result, i.e. the last attempt failed
+   *     with a TException. The TException is the cause.
+   */
   private <T> RetryResult<T> callWithRetryAndReconnect(
-      TFunction<T> rpc, Predicate<T> shouldRetry, Predicate<T> forceReconnect) {
+      TFunction<T> rpc, Predicate<T> shouldRetry, Predicate<T> forceReconnect)
+      throws IoTDBConnectionException {
     TException lastTException = null;
     T result = null;
     int retryAttempt;
@@ -953,7 +1025,10 @@ public class SessionConnection {
       }
 
       logger.debug(
-          "Retry attempt #{}, result {}, exception {}", retryAttempt, result, lastTException);
+          SessionMessages.LOG_RETRY_ATTEMPT_ARG_RESULT_ARG_EXCEPTION_ARG_20E5D9DA,
+          retryAttempt,
+          result,
+          lastTException);
       // prepare for the next retry
       if (lastTException != null
           || !availableNodes.get().contains(this.endPoint)
@@ -961,7 +1036,7 @@ public class SessionConnection {
         // 1. the current datanode is unreachable (TException)
         // 2. the current datanode is partitioned with other nodes (not in availableNodes)
         // 3. asymmetric network partition
-        logger.debug("Retry attempt #{}, Reconnecting to other datanode", retryAttempt);
+        logger.debug(SessionMessages.RETRY_RECONNECTING, retryAttempt);
         reconnect();
       }
       try {
@@ -969,7 +1044,7 @@ public class SessionConnection {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.warn(
-            "Thread {} was interrupted during retry {} with wait time {} ms. Exiting retry loop.",
+            SessionMessages.THREAD_INTERRUPTED_DURING_RETRY,
             Thread.currentThread().getName(),
             retryAttempt,
             retryIntervalInMs);
@@ -977,6 +1052,10 @@ public class SessionConnection {
       }
     }
 
+    if (result == null) {
+      // all attempts failed with a TException, callers must not see a null result
+      throw new IoTDBConnectionException(lastTException);
+    }
     return new RetryResult<>(result, lastTException, retryAttempt);
   }
 
@@ -1066,26 +1145,40 @@ public class SessionConnection {
     for (int i = 1; i <= SessionConfig.RETRY_NUM; i++) {
       if (transport != null) {
         transport.close();
-        endPointList = availableNodes.get();
-        int currHostIndex = random.nextInt(endPointList.size());
-        int tryHostNum = 0;
-        for (int j = currHostIndex; j < endPointList.size(); j++) {
-          if (tryHostNum == endPointList.size()) {
-            break;
+        List<TEndPoint> discoveredNodes = availableNodes.get();
+        endPointList = new ArrayList<>(discoveredNodes);
+        if (!endPointList.isEmpty()) {
+          Collections.rotate(endPointList, -random.nextInt(endPointList.size()));
+        }
+        if (availableNodes instanceof INodeSupplier) {
+          List<TEndPoint> seeds = new ArrayList<>(((INodeSupplier) availableNodes).getSeedNodes());
+          if (!seeds.isEmpty()) {
+            Collections.rotate(seeds, -random.nextInt(seeds.size()));
           }
-          this.endPoint = endPointList.get(j);
-          if (j == endPointList.size() - 1) {
-            j = -1;
-          }
-          tryHostNum++;
+          endPointList.addAll(seeds);
+        }
+        // Try every discovered endpoint before falling back to seeds, once per endpoint per round.
+        endPointList = new ArrayList<>(new LinkedHashSet<>(endPointList));
+        for (TEndPoint candidate : endPointList) {
+          this.endPoint = candidate;
           try {
-            init(endPoint, session.useSSL, session.trustStore, session.trustStorePwd);
+            init(
+                endPoint,
+                session.useSSL,
+                session.trustStore,
+                session.trustStorePwd,
+                session.keyStore,
+                session.keyStorePwd,
+                session.sslProtocol);
             connectedSuccess = true;
+            if (!discoveredNodes.contains(endPoint) && availableNodes instanceof INodeSupplier) {
+              ((INodeSupplier) availableNodes).requestRefresh();
+            }
           } catch (IoTDBConnectionException e) {
-            logger.warn("The current node may have been down {}, try next node", endPoint);
+            logger.warn(SessionMessages.NODE_DOWN_TRY_NEXT, endPoint);
             continue;
           } catch (StatementExecutionException e) {
-            logger.warn("login in failed, because {}", e.getMessage());
+            logger.warn(SessionMessages.LOGIN_FAILED, e.getMessage());
           }
           break;
         }
@@ -1105,7 +1198,7 @@ public class SessionConnection {
                 try {
                   v.close();
                 } catch (IoTDBConnectionException e) {
-                  logger.warn("close connection failed, {}", e.getMessage());
+                  logger.warn(SessionMessages.CLOSE_CONNECTION_FAILED, e.getMessage());
                 }
               }
               return this;
@@ -1272,14 +1365,11 @@ public class SessionConnection {
     if (endPointList == null) {
       return MSG_RECONNECTION_FAIL;
     }
-    StringJoiner urls = new StringJoiner(",");
+    List<String> urls = new ArrayList<>(endPointList.size());
     for (TEndPoint end : endPointList) {
-      StringJoiner url = new StringJoiner(":");
-      url.add(end.getIp());
-      url.add(String.valueOf(end.getPort()));
-      urls.add(url.toString());
+      urls.add(UrlUtils.convertTEndPointIpv4AndIpv6Url(end));
     }
-    return MSG_RECONNECTION_FAIL.concat(urls.toString());
+    return MSG_RECONNECTION_FAIL.concat(String.join(",", urls));
   }
 
   @Override

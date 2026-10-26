@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.ColossalRecordException;
 import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -105,17 +106,16 @@ public class WrappedSegment implements ISegment<ByteBuffer, ICachedMNode> {
     }
   }
 
-  public WrappedSegment(ByteBuffer buffer) throws RecordDuplicatedException {
+  public WrappedSegment(ByteBuffer buffer) {
     this(buffer, true);
   }
 
   @TestOnly
-  public WrappedSegment(int size) throws RecordDuplicatedException {
+  public WrappedSegment(int size) {
     this(ByteBuffer.allocate(size));
   }
 
-  public static ISegment<ByteBuffer, ICachedMNode> initAsSegment(ByteBuffer buffer)
-      throws RecordDuplicatedException {
+  public static ISegment<ByteBuffer, ICachedMNode> initAsSegment(ByteBuffer buffer) {
     if (buffer == null) {
       return null;
     }
@@ -213,7 +213,7 @@ public class WrappedSegment implements ISegment<ByteBuffer, ICachedMNode> {
     // fixme EXPENSIVE cross check of duplication between name and alias
     if (aliasFlag && getIndexByAlias(key) != -1) {
       throw new RecordDuplicatedException(
-          String.format("Record [%s] has conflict name with alias of its siblings.", key));
+          String.format(DataNodeSchemaMessages.RECORD_CONFLICT_NAME_WITH_ALIAS, key));
     }
 
     // check alias-key duplication, set flag if necessary
@@ -221,7 +221,7 @@ public class WrappedSegment implements ISegment<ByteBuffer, ICachedMNode> {
     if (alias != null && !alias.equals("")) {
       if (binarySearchOnKeys(alias) >= 0 || getIndexByAlias(alias) != -1) {
         throw new RecordDuplicatedException(
-            String.format("Record [%s] has conflict alias [%s] with its siblings.", key, alias));
+            String.format(DataNodeSchemaMessages.RECORD_CONFLICT_ALIAS, key, alias));
       }
       aliasFlag = true;
     }
@@ -279,7 +279,7 @@ public class WrappedSegment implements ISegment<ByteBuffer, ICachedMNode> {
     short sizeGap = (short) (newBuffer.capacity() - length);
 
     if (sizeGap < 0) {
-      throw new MetadataException("Leaf Segment cannot extend to a smaller buffer.");
+      throw new MetadataException(DataNodeSchemaMessages.LEAF_SEGMENT_EXTEND_SMALLER);
     }
 
     this.buffer.clear();
@@ -337,15 +337,15 @@ public class WrappedSegment implements ISegment<ByteBuffer, ICachedMNode> {
       throws MetadataException {
 
     if (this.buffer.capacity() != dstBuffer.capacity()) {
-      throw new MetadataException("Segments only splits with same capacity.");
+      throw new MetadataException(DataNodeSchemaMessages.SEGMENTS_SPLIT_SAME_CAPACITY);
     }
 
     if (recordNum == 0) {
-      throw new MetadataException("Segment can not be split with no records.");
+      throw new MetadataException(DataNodeSchemaMessages.SEGMENT_SPLIT_NO_RECORDS);
     }
 
     if (key == null && recordNum == 1) {
-      throw new MetadataException("Segment can not be split with only one record.");
+      throw new MetadataException(DataNodeSchemaMessages.SEGMENT_SPLIT_ONLY_ONE_RECORD);
     }
 
     // notice that key can be null here, and a null key means even split
@@ -559,10 +559,9 @@ public class WrappedSegment implements ISegment<ByteBuffer, ICachedMNode> {
 
   @Override
   public int updateRecord(String key, ByteBuffer uBuffer) throws MetadataException {
-
     int idx = binarySearchOnKeys(key);
     if (idx < 0) {
-      throw new MetadataException(String.format("Record[key:%s] Not Existed.", key));
+      throw new MetadataException(String.format(DataNodeSchemaMessages.RECORD_NOT_EXISTED, key));
     }
 
     this.buffer.clear();
@@ -614,8 +613,8 @@ public class WrappedSegment implements ISegment<ByteBuffer, ICachedMNode> {
     }
 
     // shift offsets forward
-    if (idx != recordNum) {
-      int shift = recordNum - idx;
+    if (idx != recordNum - 1) {
+      int shift = recordNum - idx - 1;
       this.buffer.position(SchemaFileConfig.SEG_HEADER_SIZE + idx * 2);
       ShortBuffer lb = this.buffer.asReadOnlyBuffer().asShortBuffer();
       lb.get();

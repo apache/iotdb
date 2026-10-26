@@ -25,11 +25,13 @@ import org.apache.iotdb.it.env.cluster.env.SimpleEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.DailyIT;
+import org.apache.iotdb.itbase.exception.InconsistentDataException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 
+import org.awaitility.Awaitility;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -64,22 +66,42 @@ public class IoTDBCustomizedClusterIT {
     testRepeatedlyRestartWholeCluster(
         (s, i, env) -> {
           if (i != 0) {
-            ResultSet resultSet = s.executeQuery("SELECT last s1 FROM root.**");
-            ResultSetMetaData metaData = resultSet.getMetaData();
-            assertEquals(4, metaData.getColumnCount());
-            int cnt = 0;
-            while (resultSet.next()) {
-              cnt++;
-              StringBuilder result = new StringBuilder();
-              for (int j = 0; j < metaData.getColumnCount(); j++) {
-                result
-                    .append(metaData.getColumnName(j + 1))
-                    .append(":")
-                    .append(resultSet.getString(j + 1))
-                    .append(",");
-              }
-              System.out.println(result);
-            }
+            // This query is fanned out to every DataNode and the results are compared across
+            // replicas. Right after a restart the last cache on each coordinator is reloaded
+            // lazily, so the cross-replica comparison may transiently observe an inconsistent
+            // result until the cluster converges. ORDER BY TIMESERIES makes the row order
+            // deterministic across coordinators (the root cause of the observed flakiness), and the
+            // retry tolerates the brief convergence window (e.g. a replica that has not finished
+            // recovering yet) without masking a genuine, persistent inconsistency.
+            //
+            // ignoreExceptionsMatching(InconsistentDataException) is required: a mismatch surfaces
+            // as InconsistentDataException (a RuntimeException) thrown from getString(), and
+            // untilAsserted() only retries on AssertionError by default, so without it the retry
+            // would not actually cover this failure. We match only InconsistentDataException so a
+            // genuine error (e.g. a real SQLException) still fails fast instead of being retried.
+            Awaitility.await()
+                .atMost(60, TimeUnit.SECONDS)
+                .pollInterval(2, TimeUnit.SECONDS)
+                .ignoreExceptionsMatching(e -> e instanceof InconsistentDataException)
+                .untilAsserted(
+                    () -> {
+                      try (ResultSet resultSet =
+                          s.executeQuery("SELECT last s1 FROM root.** ORDER BY TIMESERIES ASC")) {
+                        ResultSetMetaData metaData = resultSet.getMetaData();
+                        assertEquals(4, metaData.getColumnCount());
+                        while (resultSet.next()) {
+                          StringBuilder result = new StringBuilder();
+                          for (int j = 0; j < metaData.getColumnCount(); j++) {
+                            result
+                                .append(metaData.getColumnName(j + 1))
+                                .append(":")
+                                .append(resultSet.getString(j + 1))
+                                .append(",");
+                          }
+                          System.out.println(result);
+                        }
+                      }
+                    });
           }
           s.execute("INSERT INTO root.db1.d1 (time, s1) VALUES (1, 1)");
           s.execute("INSERT INTO root.db2.d1 (time, s1) VALUES (1, 1)");

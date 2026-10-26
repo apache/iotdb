@@ -20,10 +20,11 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.Constants;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -215,7 +217,7 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
         ReadWriteIOUtils.writeObject(value, stream);
       }
       for (int i = 0; i < attributeNameList.size() - deviceAttributeValueList.length; ++i) {
-        ReadWriteIOUtils.writeObject(null, stream);
+        ReadWriteIOUtils.writeObject(Constants.NONE, stream);
       }
     }
   }
@@ -288,8 +290,8 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
   }
 
   @Override
-  public <R, C> R accept(final PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitCreateOrUpdateTableDevice(this, context);
+  public <R, C> R accept(final IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitCreateOrUpdateTableDevice(this, context);
   }
 
   @Override

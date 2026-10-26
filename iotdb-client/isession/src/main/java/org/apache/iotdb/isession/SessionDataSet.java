@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.isession;
 
+import org.apache.iotdb.isession.i18n.ISessionMessages;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.IoTDBRpcDataSet;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -29,8 +30,8 @@ import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
@@ -152,50 +153,17 @@ public class SessionDataSet implements ISessionDataSet {
   }
 
   private RowRecord constructRowRecordFromValueArray() throws StatementExecutionException {
-    List<Field> outFields = new ArrayList<>();
-    for (int i = ioTDBRpcDataSet.getValueColumnStartIndex();
-        i < ioTDBRpcDataSet.getColumnSize();
-        i++) {
+    int valueColumnStartIndex = ioTDBRpcDataSet.getValueColumnStartIndex();
+    int columnSize = ioTDBRpcDataSet.getColumnSize();
+    List<Field> outFields = new ArrayList<>(columnSize - valueColumnStartIndex);
+    for (int columnIndex = valueColumnStartIndex + 1; columnIndex <= columnSize; columnIndex++) {
       Field field;
-
-      String columnName = ioTDBRpcDataSet.getColumnNameList().get(i);
-
-      if (!ioTDBRpcDataSet.isNull(columnName)) {
-        TSDataType dataType = ioTDBRpcDataSet.getDataType(columnName);
+      if (!ioTDBRpcDataSet.isNull(columnIndex)) {
+        TSDataType dataType = ioTDBRpcDataSet.getDataType(columnIndex);
         field = new Field(dataType);
-        switch (dataType) {
-          case BOOLEAN:
-            boolean booleanValue = ioTDBRpcDataSet.getBoolean(columnName);
-            field.setBoolV(booleanValue);
-            break;
-          case INT32:
-          case DATE:
-            int intValue = ioTDBRpcDataSet.getInt(columnName);
-            field.setIntV(intValue);
-            break;
-          case INT64:
-          case TIMESTAMP:
-            long longValue = ioTDBRpcDataSet.getLong(columnName);
-            field.setLongV(longValue);
-            break;
-          case FLOAT:
-            float floatValue = ioTDBRpcDataSet.getFloat(columnName);
-            field.setFloatV(floatValue);
-            break;
-          case DOUBLE:
-            double doubleValue = ioTDBRpcDataSet.getDouble(columnName);
-            field.setDoubleV(doubleValue);
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-          case OBJECT:
-            field.setBinaryV(ioTDBRpcDataSet.getBinary(columnName));
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", dataType));
-        }
+        TypeServices.FIELD_VALUE_READER_SERVICE
+            .call(Type.fromTsDataType(dataType))
+            .read(ioTDBRpcDataSet, columnIndex, field);
       } else {
         field = new Field(null);
       }
@@ -333,7 +301,7 @@ public class SessionDataSet implements ISessionDataSet {
       }
 
       if (dataType.equals(TSDataType.OBJECT)) {
-        throw new StatementExecutionException("OBJECT Type only support getString");
+        throw new StatementExecutionException(ISessionMessages.OBJECT_TYPE_ONLY_SUPPORT_GET_STRING);
       }
       return ioTDBRpcDataSet.getBinary(columnIndex);
     }
@@ -345,7 +313,7 @@ public class SessionDataSet implements ISessionDataSet {
       }
 
       if (dataType.equals(TSDataType.OBJECT)) {
-        throw new StatementExecutionException("OBJECT Type only support getString");
+        throw new StatementExecutionException(ISessionMessages.OBJECT_TYPE_ONLY_SUPPORT_GET_STRING);
       }
       return ioTDBRpcDataSet.getBinary(columnName);
     }

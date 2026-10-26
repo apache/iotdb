@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
+import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import com.google.common.collect.ImmutableList;
@@ -35,6 +36,9 @@ import org.junit.Test;
 
 import java.util.Optional;
 
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.Step.FINAL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.Step.INTERMEDIATE;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.Step.PARTIAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetadata.DEVICE_VIEW_TEST_TABLE;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetadata.TREE_VIEW_DB;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
@@ -50,9 +54,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.treeAlignedDeviceViewTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.treeDeviceViewTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.treeNonAlignedDeviceViewTableScan;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.FINAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.INTERMEDIATE;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.PARTIAL;
 
 public class TreeViewTest {
 
@@ -65,16 +66,26 @@ public class TreeViewTest {
 
   @Before
   public void setup() {
+    // This planner test has no ConfigNode heartbeats and may exceed the default lease timeout.
+    MetadataLeaseManager.getInstance().updateFenceThresholdMs(Long.MAX_VALUE);
+    MetadataLeaseManager.getInstance().recoveryLeaseForTest(true);
     TsTable tsTable = new TsTable(DEVICE_VIEW_TEST_TABLE);
     tsTable.addProp(TsTable.TTL_PROPERTY, Long.MAX_VALUE + "");
     tsTable.addProp(TreeViewSchema.TREE_PATH_PATTERN, "root.test" + ".**");
     DataNodeTableCache.getInstance().preUpdateTable(TREE_VIEW_DB, tsTable, null);
-    DataNodeTableCache.getInstance().commitUpdateTable(TREE_VIEW_DB, DEVICE_VIEW_TEST_TABLE, null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(TREE_VIEW_DB, DEVICE_VIEW_TEST_TABLE, null, null);
   }
 
   @After
   public void tearDown() {
-    DataNodeTableCache.getInstance().invalid(TREE_VIEW_DB);
+    try {
+      DataNodeTableCache.getInstance().invalid(TREE_VIEW_DB);
+    } finally {
+      // Renew before restoring the timeout to avoid racing the background lease check.
+      MetadataLeaseManager.getInstance().recoveryLeaseForTest(true);
+      MetadataLeaseManager.getInstance().updateFenceThresholdMs(20_000);
+    }
   }
 
   @Test
@@ -140,7 +151,7 @@ public class TreeViewTest {
   public void aggregationQueryTest() {
     PlanTester planTester = new PlanTester();
 
-    // has non-aligned DeviceEntry, no push-down
+    // has non-aligned DeviceEntry
     LogicalQueryPlan logicalQueryPlan =
         planTester.createPlan(
             "select tag1, count(s1) from "
@@ -149,14 +160,83 @@ public class TreeViewTest {
     PlanMatchPattern expectedPlanPattern =
         output(
             aggregation(
-                ImmutableMap.of("count", aggregationFunction("count", ImmutableList.of("s1"))),
-                treeDeviceViewTableScan(
+                ImmutableMap.of("count", aggregationFunction("count", ImmutableList.of("count_0"))),
+                aggregationTreeDeviceViewTableScan(
+                    singleGroupingSet("tag1"),
+                    ImmutableList.of("tag1"),
+                    Optional.empty(),
+                    PARTIAL,
                     DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
-                    ImmutableList.of("tag1", "s1"),
+                    ImmutableList.of("tag1", "count_0"),
                     ImmutableSet.of("tag1", "s1"))));
     assertPlan(logicalQueryPlan, expectedPlanPattern);
 
-    // only aligned DeviceEntry, do push-down
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(
+            aggregation(
+                ImmutableMap.of("count", aggregationFunction("count", ImmutableList.of("count_1"))),
+                FINAL,
+                mergeSort(exchange(), exchange(), exchange(), exchange()))));
+
+    assertPlan(
+        planTester.getFragmentPlan(1),
+        aggregation(
+            ImmutableMap.of("count", aggregationFunction("count", ImmutableList.of("count_0"))),
+            INTERMEDIATE,
+            aggregationTreeDeviceViewTableScan(
+                singleGroupingSet("tag1"),
+                ImmutableList.of("tag1"),
+                Optional.empty(),
+                PARTIAL,
+                DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
+                ImmutableList.of("tag1", "count_0"),
+                ImmutableSet.of("tag1", "s1"),
+                true)));
+    assertPlan(
+        planTester.getFragmentPlan(2),
+        aggregation(
+            ImmutableMap.of("count", aggregationFunction("count", ImmutableList.of("count_0"))),
+            INTERMEDIATE,
+            aggregationTreeDeviceViewTableScan(
+                singleGroupingSet("tag1"),
+                ImmutableList.of("tag1"),
+                Optional.empty(),
+                PARTIAL,
+                DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
+                ImmutableList.of("tag1", "count_0"),
+                ImmutableSet.of("tag1", "s1"),
+                false)));
+    assertPlan(
+        planTester.getFragmentPlan(3),
+        aggregation(
+            ImmutableMap.of("count", aggregationFunction("count", ImmutableList.of("count_0"))),
+            INTERMEDIATE,
+            aggregationTreeDeviceViewTableScan(
+                singleGroupingSet("tag1"),
+                ImmutableList.of("tag1"),
+                Optional.empty(),
+                PARTIAL,
+                DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
+                ImmutableList.of("tag1", "count_0"),
+                ImmutableSet.of("tag1", "s1"),
+                true)));
+    assertPlan(
+        planTester.getFragmentPlan(4),
+        aggregation(
+            ImmutableMap.of("count", aggregationFunction("count", ImmutableList.of("count_0"))),
+            INTERMEDIATE,
+            aggregationTreeDeviceViewTableScan(
+                singleGroupingSet("tag1"),
+                ImmutableList.of("tag1"),
+                Optional.empty(),
+                PARTIAL,
+                DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
+                ImmutableList.of("tag1", "count_0"),
+                ImmutableSet.of("tag1", "s1"),
+                false)));
+
+    // only aligned DeviceEntry
     logicalQueryPlan =
         planTester.createPlan(
             "select tag1, count(s1) from "
@@ -199,7 +279,8 @@ public class TreeViewTest {
                   PARTIAL,
                   DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
                   ImmutableList.of("tag1", "count_0"),
-                  ImmutableSet.of("tag1", "s1"))));
+                  ImmutableSet.of("tag1", "s1"),
+                  true)));
     }
   }
 }

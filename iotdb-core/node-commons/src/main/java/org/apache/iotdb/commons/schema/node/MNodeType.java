@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.schema.node;
 
+import org.apache.iotdb.commons.i18n.SchemaMessages;
+
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -60,7 +62,7 @@ public enum MNodeType {
       case 6:
         return MNodeType.UNIMPLEMENT;
       default:
-        throw new IllegalArgumentException("Invalid input: " + type);
+        throw new IllegalArgumentException(SchemaMessages.SCHEMA_INVALID_INPUT + type);
     }
   }
 

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.tools;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.file.IMetadataIndexEntry;
@@ -102,10 +104,13 @@ public class TsFileSketchTool {
       if (reader.selfCheck(new Schema(), allChunkGroupMetadata, false)
           != TsFileCheckStatus.COMPLETE_FILE) {
         throw new IOException(
-            String.format("Cannot load file %s because the file has crashed.", filename));
+            String.format(
+                DataNodeMiscMessages
+                    .MISC_EXCEPTION_CANNOT_LOAD_FILE_S_BECAUSE_THE_FILE_HAS_CRASHED_6C180DF9,
+                filename));
       }
     } catch (IOException e) {
-      LOGGER.warn("Fail to init TsFileSketchTool, {}", filename, e);
+      LOGGER.warn(DataNodeMiscMessages.FAIL_INIT_SKETCH_TOOL, filename, e);
     }
   }
 
@@ -225,7 +230,7 @@ public class TsFileSketchTool {
               + "|\t[magic tail] "
               + reader.readTailMagic());
     } catch (IOException e) {
-      LOGGER.warn("Fail to parse TsFileMetadata, {}", filename, e);
+      LOGGER.warn(DataNodeMiscMessages.FAIL_PARSE_TSFILE_METADATA, filename, e);
     }
   }
 
@@ -308,7 +313,7 @@ public class TsFileSketchTool {
               + "|\t[version number] "
               + reader.readVersionNumber());
     } catch (IOException e) {
-      LOGGER.warn("Fail to printFileInfo, {}", filename, e);
+      LOGGER.warn(DataNodeMiscMessages.FAIL_PRINT_FILE_INFO, filename, e);
     }
   }
 
@@ -418,7 +423,7 @@ public class TsFileSketchTool {
         printlnBoth(pw, splitStr + " [Chunk Group] of " + chunkGroupMetadata.getDevice() + " ends");
       }
     } catch (IOException e) {
-      LOGGER.warn("Fail to parse chunk, {}", filename, e);
+      LOGGER.warn(DataNodeMiscMessages.FAIL_PARSE_CHUNK, filename, e);
     }
   }
 
@@ -448,7 +453,7 @@ public class TsFileSketchTool {
       }
       printlnBoth(pw, splitStr);
     } catch (IOException e) {
-      LOGGER.warn("Fail to printTimeseriesIndex, {}", filename, e);
+      LOGGER.warn(DataNodeMiscMessages.FAIL_PRINT_TIMESERIES_INDEX, filename, e);
     }
   }
 
@@ -472,7 +477,7 @@ public class TsFileSketchTool {
                 + chunkMetadata.getOffsetOfChunkHeader());
       }
     } catch (IOException e) {
-      LOGGER.warn("Fail to printTimeseriesIndex, {}", filename, e);
+      LOGGER.warn(DataNodeMiscMessages.FAIL_PRINT_TIMESERIES_INDEX, filename, e);
     }
   }
 

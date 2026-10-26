@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.pipe.sink.protocol.opcda;
 
-import org.apache.iotdb.db.pipe.sink.protocol.opcua.OpcUaSink;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.sink.util.PipeTabletEventTransferUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -72,7 +73,8 @@ public class OpcDaSink implements PipeConnector {
         validator.getParameters().hasAttribute(CONNECTOR_OPC_DA_PROGID_KEY));
 
     if (!System.getProperty("os.name").toLowerCase().startsWith("windows")) {
-      throw new PipeParameterNotValidException("opc-da-sink must run on windows system.");
+      throw new PipeParameterNotValidException(
+          DataNodePipeMessages.OPC_DA_SINK_MUST_RUN_ON_WINDOWS);
     }
   }
 
@@ -108,8 +110,11 @@ public class OpcDaSink implements PipeConnector {
 
   @Override
   public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
-    OpcUaSink.transferByTablet(
-        tabletInsertionEvent, LOGGER, (tablet, isTableModel) -> handle.transfer(tablet));
+    PipeTabletEventTransferUtils.transferByTablet(
+        tabletInsertionEvent,
+        OpcDaSink.class.getName(),
+        LOGGER,
+        (tablet, isTableModel) -> handle.transfer(tablet));
   }
 
   @Override

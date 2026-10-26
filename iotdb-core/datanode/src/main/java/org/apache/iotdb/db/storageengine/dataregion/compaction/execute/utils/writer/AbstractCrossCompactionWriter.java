@@ -150,8 +150,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
 
     checkTimeAndMayFlushChunkToCurrentFile(timestamp, subTaskId);
     int fileIndex = seqFileIndexArray[subTaskId];
-    writeDataPoint(timestamp, value, chunkWriters[subTaskId]);
-    chunkPointNumArray[subTaskId]++;
+    writeDataPoint(timestamp, value, chunkWriters[subTaskId], subTaskId);
     checkChunkSizeAndMayOpenANewChunk(
         targetFileWriters.get(fileIndex), chunkWriters[subTaskId], subTaskId);
     isDeviceExistedInTargetFiles[fileIndex] = true;
@@ -171,6 +170,9 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
       // set empty target file to DELETED
       if (isEmptyFile[i]) {
         targetResources.get(i).forceMarkDeleted();
+      } else if (compactionTaskSummary != null) {
+        compactionTaskSummary.recordTargetTsFileTableSizeMap(
+            targetResources.get(i), targetFileWriters.get(i).getTableSizeMap());
       }
     }
   }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.exception.UDFTypeMismatchException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
@@ -93,7 +94,9 @@ public class VariationTableFunction implements TableFunction {
     } catch (UDFTypeMismatchException e) {
       // print more information for the exception
       throw new UDFTypeMismatchException(
-          e.getMessage() + " The column type must be numeric if DELTA is not 0.", e);
+          e.getMessage()
+              + CommonMessages.EXCEPTION_COLUMN_TYPE_MUST_NUMERIC_IF_DELTA_NOT_0_F7864D4E,
+          e);
     }
 
     DescribedSchema properColumnSchema =
@@ -161,7 +164,7 @@ public class VariationTableFunction implements TableFunction {
     @Override
     boolean outOfBound(Record input) {
       if (isCurrentBaseValueIsNull()) {
-        throw new IllegalStateException("When comparing, base value should never be null");
+        throw new IllegalStateException(CommonMessages.BASE_VALUE_SHOULD_NOT_BE_NULL);
       }
       return !input.getObject(0).equals(baseValue);
     }
@@ -195,7 +198,7 @@ public class VariationTableFunction implements TableFunction {
     @Override
     boolean outOfBound(Record input) {
       if (isCurrentBaseValueIsNull()) {
-        throw new IllegalStateException("When comparing, base value should never be null");
+        throw new IllegalStateException(CommonMessages.BASE_VALUE_SHOULD_NOT_BE_NULL);
       }
       return Math.abs(input.getDouble(0) - baseValue) > gap;
     }

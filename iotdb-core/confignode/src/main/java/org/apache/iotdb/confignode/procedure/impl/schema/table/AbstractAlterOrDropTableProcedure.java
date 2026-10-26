@@ -22,15 +22,17 @@ package org.apache.iotdb.confignode.procedure.impl.schema.table;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeTSStatusTaskExecutor;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -90,38 +92,56 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
   }
 
   protected void preRelease(final ConfigNodeProcedureEnv env, final @Nullable String oldName) {
-    final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.preReleaseTable(database, table, env.getConfigManager(), oldName);
+    // Proceed once every unreachable DataNode is provably self-fenced instead of hard-failing the
+    // DDL: a fenced DataNode fails closed on its now-stale table cache and resyncs on lease
+    // recovery, so it cannot serve dirty schema. Only fail if an unacked DataNode is not provably
+    // fenced (it may still be serving clients).
+    final TUpdateTableReq req = SchemaUtils.buildPreUpdateTableReq(database, table, oldName);
+    final boolean proceeded =
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
+            .propagate(targets -> SchemaUtils.broadcastTableUpdate(req, targets));
 
-    if (!failedResults.isEmpty()) {
-      // All dataNodes must clear the related schema cache
+    if (!proceeded) {
       LOGGER.warn(
-          "Failed to pre-release {} for table {}.{} to DataNode, failure results: {}",
+          ProcedureMessages.FAILED_TO_PRE_RELEASE_FOR_TABLE_TO_DATANODE_FAILURE_RESULTS,
           getActionMessage(),
           database,
           table.getTableName(),
-          failedResults);
+          ProcedureMessages.FAILED_TO_PROVE_DN_IS_FENCED);
       setFailure(
           new ProcedureException(
-              new MetadataException("Pre-release " + getActionMessage() + " failed")));
+              new MetadataException(
+                  ProcedureMessages.PRE_RELEASE
+                      + getActionMessage()
+                      + ProcedureMessages.EXCEPTION_FAILED_C6FF154E)));
     }
   }
 
-  protected void commitRelease(final ConfigNodeProcedureEnv env) {
-    commitRelease(env, null);
+  /**
+   * The request broadcast at commit-release. A subclass whose change also affects the tree-to-table
+   * view index of the DataNodes overrides this to declare the effect.
+   */
+  protected TUpdateTableReq buildCommitReleaseTableReq(final @Nullable String oldName) {
+    return SchemaUtils.buildCommitUpdateTableReq(database, table.getTableName(), oldName);
   }
 
-  protected void commitRelease(final ConfigNodeProcedureEnv env, final @Nullable String oldName) {
-    final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.commitReleaseTable(
-            database, table.getTableName(), env.getConfigManager(), oldName);
-    if (!failedResults.isEmpty()) {
+  protected void commitReleaseWithHA(final ConfigNodeProcedureEnv env) {
+    commitReleaseWithHA(env, null);
+  }
+
+  protected void commitReleaseWithHA(
+      final ConfigNodeProcedureEnv env, final @Nullable String oldName) {
+    final TUpdateTableReq req = buildCommitReleaseTableReq(oldName);
+    final boolean proceeded = SchemaUtils.commitReleaseTableWithHA(req, env.getConfigManager());
+
+    if (!proceeded) {
       LOGGER.warn(
-          "Failed to {} for table {}.{} to DataNode, failure results: {}",
+          ProcedureMessages
+              .LOG_FAILED_TO_COMMIT_RELEASE_ARG_FOR_TABLE_ARG_ARG_TO_DATANODE_FAILURE_RESULTS_ARG_55386572,
           getActionMessage(),
           database,
           table.getTableName(),
-          failedResults);
+          ProcedureMessages.FAILED_TO_PROVE_DN_IS_FENCED);
     }
   }
 
@@ -135,22 +155,28 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
   }
 
   protected void rollbackPreRelease(
-      final ConfigNodeProcedureEnv env, final @Nullable String tableName) {
-    final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.rollbackPreRelease(
-            database, table.getTableName(), env.getConfigManager(), tableName);
+      final ConfigNodeProcedureEnv env, final @Nullable String oldName) {
+    // A down DataNode must not block rollback either: proceed past provably-fenced DataNodes (which
+    // resync on recovery) and only fail on an unacked DataNode that is not provably fenced.
+    final TUpdateTableReq req =
+        SchemaUtils.rollbackUpdateTableReq(database, table.getTableName(), oldName);
+    final boolean proceeded =
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
+            .propagate(targets -> SchemaUtils.broadcastTableUpdate(req, targets));
 
-    if (!failedResults.isEmpty()) {
-      // All dataNodes must clear the related schema cache
+    if (!proceeded) {
       LOGGER.warn(
-          "Failed to rollback pre-release {} for table {}.{} info to DataNode, failure results: {}",
+          ProcedureMessages.FAILED_TO_ROLLBACK_PRE_RELEASE_FOR_TABLE_INFO_TO_DATANODE,
           getActionMessage(),
           database,
           table.getTableName(),
-          failedResults);
+          ProcedureMessages.FAILED_TO_PROVE_AN_UNREACHABLE_DN_IS_FENCED);
       setFailure(
           new ProcedureException(
-              new MetadataException("Rollback pre-release " + getActionMessage() + " failed")));
+              new MetadataException(
+                  ProcedureMessages.ROLLBACK_PRE_RELEASE
+                      + getActionMessage()
+                      + ProcedureMessages.EXCEPTION_FAILED_C6FF154E)));
     }
   }
 
@@ -206,7 +232,7 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "[%s] for %s.%s failed when [%s] because failed to execute in all replicaset of %s %s. Failure nodes: %s",
+                      ProcedureMessages.FOR_FAILED_WHEN_BECAUSE_FAILED_TO_EXECUTE_IN_ALL_REPLICASET,
                       this.getClass().getSimpleName(),
                       database,
                       tableName,

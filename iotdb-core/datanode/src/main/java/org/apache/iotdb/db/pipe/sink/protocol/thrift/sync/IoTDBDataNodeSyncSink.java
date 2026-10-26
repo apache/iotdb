@@ -45,6 +45,8 @@ public abstract class IoTDBDataNodeSyncSink extends IoTDBSslSyncSink {
       final boolean useSSL,
       final String trustStorePath,
       final String trustStorePwd,
+      final String keyStorePath,
+      final String keyStorePwd,
       /* The following parameters are used locally. */
       final boolean useLeaderCache,
       final String loadBalanceStrategy,
@@ -63,6 +65,8 @@ public abstract class IoTDBDataNodeSyncSink extends IoTDBSslSyncSink {
             useSSL,
             Objects.nonNull(trustStorePath) ? IoTDBConfig.addDataHomeDir(trustStorePath) : null,
             trustStorePwd,
+            Objects.nonNull(keyStorePath) ? IoTDBConfig.addDataHomeDir(keyStorePath) : null,
+            keyStorePwd,
             useLeaderCache,
             loadBalanceStrategy,
             userEntity,

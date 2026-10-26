@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure;
 
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
@@ -36,6 +37,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -61,6 +63,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   private volatile long lastUpdate;
 
   private final AtomicReference<byte[]> result = new AtomicReference<>();
+  private final AtomicBoolean executing = new AtomicBoolean(false);
   private volatile boolean locked = false;
   private boolean lockedWhenLoading = false;
 
@@ -95,6 +98,24 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    */
   protected abstract void rollback(Env env)
       throws IOException, InterruptedException, ProcedureException;
+
+  /**
+   * Whether the states this procedure has already executed may still be undone. The executor asks
+   * this once, before it starts to roll back the root procedure stack. A procedure which returns
+   * false is finished without undoing any of its states, see {@link #abandonRollback()}.
+   */
+  protected boolean isRollbackSupported() {
+    return true;
+  }
+
+  /**
+   * Drops the bookkeeping of the states this procedure has executed. The persisted stack indexes
+   * are what a recovered rollback rebuilds its stack from, so dropping them is what makes the
+   * decision survive a leader switch.
+   */
+  protected synchronized void abandonRollback() {
+    stackIndexes = null;
+  }
 
   public void serialize(DataOutputStream stream) throws IOException {
     // procid
@@ -235,6 +256,16 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   }
 
   /**
+   * Called after an execution attempt returns {@link ProcedureLockState#LOCK_EVENT_WAIT}. Override
+   * it to put the procedure into the corresponding lock wait queue.
+   *
+   * @param env env
+   */
+  protected void waitForLock(Env env) {
+    // no op
+  }
+
+  /**
    * Used to keep procedure lock even when the procedure is yielded or suspended.
    *
    * @param env env
@@ -254,7 +285,24 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     return false;
   }
 
+  /**
+   * Delay in milliseconds before retrying a failed rollback. A negative value keeps the default
+   * behavior of completing rollback after an exception. Procedures opting in must make rollback
+   * idempotent and retain the state needed by the next attempt.
+   */
+  protected long getRollbackRetryTimeout() {
+    return -1;
+  }
+
   // -------------------------Internal methods - called by the procedureExecutor------------------
+  final boolean tryAcquireExecution() {
+    return executing.compareAndSet(false, true);
+  }
+
+  final void releaseExecution() {
+    executing.set(false);
+  }
+
   /**
    * Internal method called by the ProcedureExecutor that starts the user-level code execute().
    *
@@ -308,7 +356,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
         // Do not need to do anything else. New leader which restore this procedure from a wrong
         // state will reexecute it and converge to the correct state since procedures are
         // idempotent.
-        LOG.warn("pid={} Failed to persist lock state to store.", this.procId, e);
+        LOG.warn(ProcedureMessages.PID_FAILED_TO_PERSIST_LOCK_STATE_TO_STORE, this.procId, e);
       }
     }
     return state;
@@ -323,32 +371,33 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   public final void doReleaseLock(Env env, IProcedureStore store) throws Exception {
     locked = false;
     if (getState() == ProcedureState.ROLLEDBACK) {
-      LOG.info("Force write unlock state to raft for pid={}", this.procId);
+      LOG.info(ProcedureMessages.FORCE_WRITE_UNLOCK_STATE_TO_RAFT_FOR_PID, this.procId);
     }
     try {
       store.update(this);
       // do not release lock when consensus layer is not working
       releaseLock(env);
     } catch (ConsensusException e) {
-      LOG.error("pid={} Failed to persist unlock state to store.", this.procId, e);
+      LOG.error(ProcedureMessages.PID_FAILED_TO_PERSIST_UNLOCK_STATE_TO_STORE, this.procId, e);
       throw e;
     }
   }
 
   public final void restoreLock(Env env) {
     if (!lockedWhenLoading) {
-      LOG.debug("{} didn't hold the lock before restarting, skip acquiring lock", this);
+      LOG.debug(ProcedureMessages.DIDN_T_HOLD_THE_LOCK_BEFORE_RESTARTING_SKIP_ACQUIRING_LOCK, this);
       return;
     }
     if (isFinished()) {
-      LOG.debug("{} is already bypassed, skip acquiring lock.", this);
+      LOG.debug(ProcedureMessages.IS_ALREADY_BYPASSED_SKIP_ACQUIRING_LOCK, this);
       return;
     }
     if (getState() == ProcedureState.WAITING && !holdLock(env)) {
-      LOG.debug("{} is in WAITING STATE, and holdLock= false , skip acquiring lock.", this);
+      LOG.debug(ProcedureMessages.IS_IN_WAITING_STATE_AND_HOLDLOCK_FALSE_SKIP_ACQUIRING_LOCK, this);
       return;
     }
-    LOG.debug("{} held the lock before restarting, call acquireLock to restore it.", this);
+    LOG.debug(
+        ProcedureMessages.HELD_THE_LOCK_BEFORE_RESTARTING_CALL_ACQUIRELOCK_TO_RESTORE_IT, this);
     acquireLock(env);
   }
 
@@ -674,10 +723,18 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    */
   protected synchronized boolean setTimeoutFailure(Env env) {
     if (state == ProcedureState.WAITING_TIMEOUT) {
+      if (exception != null && getRollbackRetryTimeout() >= 0) {
+        // Resume compensation without replacing the original execution failure.
+        setState(ProcedureState.FAILED);
+        return true;
+      }
       long timeDiff = System.currentTimeMillis() - lastUpdate;
       setFailure(
           "ProcedureExecutor",
-          new ProcedureException("Operation timed out after " + timeDiff + " ms."));
+          new ProcedureException(
+              ProcedureMessages.OPERATION_TIMED_OUT_AFTER
+                  + timeDiff
+                  + ProcedureMessages.EXCEPTION_MS_95BA098D));
       return true;
     }
     return false;
@@ -695,7 +752,9 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   protected synchronized void setChildrenLatch(int numChildren) {
     this.childrenLatch = numChildren;
     if (LOG.isTraceEnabled()) {
-      LOG.trace("CHILD LATCH INCREMENT SET " + this.childrenLatch, new Throwable(this.toString()));
+      LOG.trace(
+          ProcedureMessages.CHILD_LATCH_INCREMENT_SET + this.childrenLatch,
+          new Throwable(this.toString()));
     }
   }
 
@@ -704,7 +763,9 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     // TODO: can this be inferred from the stack? I think so...
     this.childrenLatch++;
     if (LOG.isTraceEnabled()) {
-      LOG.trace("CHILD LATCH INCREMENT " + this.childrenLatch, new Throwable(this.toString()));
+      LOG.trace(
+          ProcedureMessages.CHILD_LATCH_INCREMENT + this.childrenLatch,
+          new Throwable(this.toString()));
     }
   }
 
@@ -713,7 +774,8 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     assert childrenLatch > 0 : this;
     boolean b = --childrenLatch == 0;
     if (LOG.isTraceEnabled()) {
-      LOG.trace("CHILD LATCH DECREMENT " + childrenLatch, new Throwable(this.toString()));
+      LOG.trace(
+          ProcedureMessages.CHILD_LATCH_DECREMENT + childrenLatch, new Throwable(this.toString()));
     }
     return b;
   }

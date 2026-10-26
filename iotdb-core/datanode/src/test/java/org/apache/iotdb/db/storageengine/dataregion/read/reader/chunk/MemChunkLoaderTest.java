@@ -68,14 +68,16 @@ public class MemChunkLoaderTest {
     Map<TVList, Integer> booleanTvListMap = buildBooleanTvListMap();
     Mockito.when(chunk.getTvListQueryMap()).thenReturn(booleanTvListMap);
     List<TVList> booleanTvLists = new ArrayList<>(booleanTvListMap.keySet());
+    QueryContext queryContext = new QueryContext(false, false);
     MemPointIterator timeValuePairIterator =
-        MemPointIteratorFactory.create(TSDataType.BOOLEAN, booleanTvLists, maxNumberOfPointsInPage);
+        MemPointIteratorFactory.create(
+            TSDataType.BOOLEAN, booleanTvLists, maxNumberOfPointsInPage, queryContext);
     timeValuePairIterator.setStreamingQueryMemChunk(false);
     timeValuePairIterator.nextBatch();
     Mockito.when(chunk.getMemPointIterator()).thenReturn(timeValuePairIterator);
 
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
-    MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(false), chunk);
+    MemChunkLoader memChunkLoader = new MemChunkLoader(queryContext, chunk);
     try {
       memChunkLoader.loadChunk(chunkMetadata);
       fail();
@@ -148,14 +150,16 @@ public class MemChunkLoaderTest {
     Map<TVList, Integer> int32TvListMap = buildInt32TvListMap();
     Mockito.when(chunk.getTvListQueryMap()).thenReturn(int32TvListMap);
     List<TVList> int32TvLists = new ArrayList<>(int32TvListMap.keySet());
+    QueryContext queryContext = new QueryContext(false, false);
     MemPointIterator timeValuePairIterator =
-        MemPointIteratorFactory.create(TSDataType.INT32, int32TvLists, maxNumberOfPointsInPage);
+        MemPointIteratorFactory.create(
+            TSDataType.INT32, int32TvLists, maxNumberOfPointsInPage, queryContext);
     timeValuePairIterator.setStreamingQueryMemChunk(false);
     timeValuePairIterator.nextBatch();
     Mockito.when(chunk.getMemPointIterator()).thenReturn(timeValuePairIterator);
 
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
-    MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(false), chunk);
+    MemChunkLoader memChunkLoader = new MemChunkLoader(queryContext, chunk);
     try {
       memChunkLoader.loadChunk(chunkMetadata);
       fail();
@@ -228,14 +232,16 @@ public class MemChunkLoaderTest {
     Map<TVList, Integer> int64TvListMap = buildInt64TvListMap();
     Mockito.when(chunk.getTvListQueryMap()).thenReturn(int64TvListMap);
     List<TVList> int64TvLists = new ArrayList<>(int64TvListMap.keySet());
+    QueryContext queryContext = new QueryContext(false, false);
     MemPointIterator timeValuePairIterator =
-        MemPointIteratorFactory.create(TSDataType.INT64, int64TvLists, maxNumberOfPointsInPage);
+        MemPointIteratorFactory.create(
+            TSDataType.INT64, int64TvLists, maxNumberOfPointsInPage, queryContext);
     timeValuePairIterator.setStreamingQueryMemChunk(false);
     timeValuePairIterator.nextBatch();
     Mockito.when(chunk.getMemPointIterator()).thenReturn(timeValuePairIterator);
 
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
-    MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(false), chunk);
+    MemChunkLoader memChunkLoader = new MemChunkLoader(queryContext, chunk);
     try {
       memChunkLoader.loadChunk(chunkMetadata);
       fail();
@@ -308,14 +314,16 @@ public class MemChunkLoaderTest {
     Map<TVList, Integer> floatTvListMap = buildFloatTvListMap();
     Mockito.when(chunk.getTvListQueryMap()).thenReturn(floatTvListMap);
     List<TVList> floatTvLists = new ArrayList<>(floatTvListMap.keySet());
+    QueryContext queryContext = new QueryContext(false, false);
     MemPointIterator timeValuePairIterator =
-        MemPointIteratorFactory.create(TSDataType.FLOAT, floatTvLists, maxNumberOfPointsInPage);
+        MemPointIteratorFactory.create(
+            TSDataType.FLOAT, floatTvLists, maxNumberOfPointsInPage, queryContext);
     timeValuePairIterator.setStreamingQueryMemChunk(false);
     timeValuePairIterator.nextBatch();
     Mockito.when(chunk.getMemPointIterator()).thenReturn(timeValuePairIterator);
 
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
-    MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(false), chunk);
+    MemChunkLoader memChunkLoader = new MemChunkLoader(queryContext, chunk);
     try {
       memChunkLoader.loadChunk(chunkMetadata);
       fail();
@@ -388,14 +396,16 @@ public class MemChunkLoaderTest {
     Map<TVList, Integer> doubleTvListMap = buildDoubleTvListMap();
     Mockito.when(chunk.getTvListQueryMap()).thenReturn(doubleTvListMap);
     List<TVList> doubleTvLists = new ArrayList<>(doubleTvListMap.keySet());
+    QueryContext queryContext = new QueryContext(false, false);
     MemPointIterator timeValuePairIterator =
-        MemPointIteratorFactory.create(TSDataType.DOUBLE, doubleTvLists, maxNumberOfPointsInPage);
+        MemPointIteratorFactory.create(
+            TSDataType.DOUBLE, doubleTvLists, maxNumberOfPointsInPage, queryContext);
     timeValuePairIterator.setStreamingQueryMemChunk(false);
     timeValuePairIterator.nextBatch();
     Mockito.when(chunk.getMemPointIterator()).thenReturn(timeValuePairIterator);
 
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
-    MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(false), chunk);
+    MemChunkLoader memChunkLoader = new MemChunkLoader(queryContext, chunk);
     try {
       memChunkLoader.loadChunk(chunkMetadata);
       fail();
@@ -468,14 +478,16 @@ public class MemChunkLoaderTest {
     Map<TVList, Integer> textTvListMap = buildTextTvListMap();
     Mockito.when(chunk.getTvListQueryMap()).thenReturn(textTvListMap);
     List<TVList> textTvLists = new ArrayList<>(textTvListMap.keySet());
+    QueryContext queryContext = new QueryContext(false, false);
     MemPointIterator timeValuePairIterator =
-        MemPointIteratorFactory.create(TSDataType.TEXT, textTvLists, maxNumberOfPointsInPage);
+        MemPointIteratorFactory.create(
+            TSDataType.TEXT, textTvLists, maxNumberOfPointsInPage, queryContext);
     timeValuePairIterator.setStreamingQueryMemChunk(false);
     timeValuePairIterator.nextBatch();
     Mockito.when(chunk.getMemPointIterator()).thenReturn(timeValuePairIterator);
 
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
-    MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(false), chunk);
+    MemChunkLoader memChunkLoader = new MemChunkLoader(queryContext, chunk);
     try {
       memChunkLoader.loadChunk(chunkMetadata);
       fail();

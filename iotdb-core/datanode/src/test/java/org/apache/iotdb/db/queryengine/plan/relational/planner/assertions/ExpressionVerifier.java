@@ -19,37 +19,37 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.assertions;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CoalesceExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DecimalLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DereferenceExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DoubleLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FloatLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InListExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Row;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DecimalLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FloatLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 
 import java.util.List;
 import java.util.Optional;
@@ -89,7 +89,7 @@ import static java.util.Objects.requireNonNull;
  * NOT (X = 3 AND X = 3 AND X < 10)
  * </pre>
  */
-public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
+public final class ExpressionVerifier implements AstVisitor<Boolean, Expression> {
   private final SymbolAliases symbolAliases;
 
   public ExpressionVerifier(SymbolAliases symbolAliases) {
@@ -97,13 +97,13 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitNode(Node node, Expression expectedExpression) {
+  public Boolean visitNode(Node node, Expression expectedExpression) {
     throw new IllegalStateException(
         format("Node %s is not supported", node.getClass().getSimpleName()));
   }
 
   @Override
-  protected Boolean visitGenericLiteral(GenericLiteral actual, Expression expectedExpression) {
+  public Boolean visitGenericLiteral(GenericLiteral actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof GenericLiteral)) {
       return false;
     }
@@ -113,7 +113,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitStringLiteral(StringLiteral actual, Expression expectedExpression) {
+  public Boolean visitStringLiteral(StringLiteral actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof StringLiteral)) {
       return false;
     }
@@ -122,7 +122,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitLongLiteral(LongLiteral actual, Expression expectedExpression) {
+  public Boolean visitLongLiteral(LongLiteral actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof LongLiteral)) {
       return false;
     }
@@ -131,7 +131,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitDoubleLiteral(DoubleLiteral actual, Expression expectedExpression) {
+  public Boolean visitDoubleLiteral(DoubleLiteral actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof DoubleLiteral)) {
       return false;
     }
@@ -140,7 +140,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitFloatLiteral(FloatLiteral actual, Expression expectedExpression) {
+  public Boolean visitFloatLiteral(FloatLiteral actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof FloatLiteral)) {
       return false;
     }
@@ -149,7 +149,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitDecimalLiteral(DecimalLiteral actual, Expression expectedExpression) {
+  public Boolean visitDecimalLiteral(DecimalLiteral actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof DecimalLiteral)) {
       return false;
     }
@@ -158,7 +158,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitBooleanLiteral(BooleanLiteral actual, Expression expectedExpression) {
+  public Boolean visitBooleanLiteral(BooleanLiteral actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof BooleanLiteral)) {
       return false;
     }
@@ -167,7 +167,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitNullLiteral(NullLiteral node, Expression expectedExpression) {
+  public Boolean visitNullLiteral(NullLiteral node, Expression expectedExpression) {
     return expectedExpression instanceof NullLiteral;
   }
 
@@ -205,7 +205,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitSymbolReference(SymbolReference actual, Expression expectedExpression) {
+  public Boolean visitSymbolReference(SymbolReference actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof SymbolReference)) {
       return false;
     }
@@ -215,7 +215,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitDereferenceExpression(
+  public Boolean visitDereferenceExpression(
       DereferenceExpression actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof DereferenceExpression)) {
       return false;
@@ -227,7 +227,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitIfExpression(IfExpression actual, Expression expectedExpression) {
+  public Boolean visitIfExpression(IfExpression actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof IfExpression)) {
       return false;
     }
@@ -239,7 +239,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitCast(Cast actual, Expression expectedExpression) {
+  public Boolean visitCast(Cast actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof Cast)) {
       return false;
     }
@@ -259,7 +259,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitIsNullPredicate(IsNullPredicate actual, Expression expectedExpression) {
+  public Boolean visitIsNullPredicate(IsNullPredicate actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof IsNullPredicate)) {
       return false;
     }
@@ -269,8 +269,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitIsNotNullPredicate(
-      IsNotNullPredicate actual, Expression expectedExpression) {
+  public Boolean visitIsNotNullPredicate(IsNotNullPredicate actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof IsNotNullPredicate)) {
       return false;
     }
@@ -280,7 +279,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitInPredicate(InPredicate actual, Expression expectedExpression) {
+  public Boolean visitInPredicate(InPredicate actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof InPredicate)) {
       return false;
     }
@@ -320,7 +319,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitInListExpression(InListExpression actual, Expression expectedExpression) {
+  public Boolean visitInListExpression(InListExpression actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof InListExpression)) {
       return false;
     }
@@ -330,7 +329,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitComparisonExpression(
+  public Boolean visitComparisonExpression(
       ComparisonExpression actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof ComparisonExpression)) {
       return false;
@@ -349,7 +348,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitBetweenPredicate(BetweenPredicate actual, Expression expectedExpression) {
+  public Boolean visitBetweenPredicate(BetweenPredicate actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof BetweenPredicate)) {
       return false;
     }
@@ -361,7 +360,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitArithmeticUnary(
+  public Boolean visitArithmeticUnary(
       ArithmeticUnaryExpression actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof ArithmeticUnaryExpression)) {
       return false;
@@ -373,7 +372,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitArithmeticBinary(
+  public Boolean visitArithmeticBinary(
       ArithmeticBinaryExpression actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof ArithmeticBinaryExpression)) {
       return false;
@@ -386,7 +385,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitNotExpression(NotExpression actual, Expression expectedExpression) {
+  public Boolean visitNotExpression(NotExpression actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof NotExpression)) {
       return false;
     }
@@ -396,8 +395,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitLogicalExpression(
-      LogicalExpression actual, Expression expectedExpression) {
+  public Boolean visitLogicalExpression(LogicalExpression actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof LogicalExpression)) {
       return false;
     }
@@ -418,8 +416,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitCoalesceExpression(
-      CoalesceExpression actual, Expression expectedExpression) {
+  public Boolean visitCoalesceExpression(CoalesceExpression actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof CoalesceExpression)) {
       return false;
     }
@@ -438,7 +435,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitSimpleCaseExpression(
+  public Boolean visitSimpleCaseExpression(
       SimpleCaseExpression actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof SimpleCaseExpression)) {
       return false;
@@ -451,8 +448,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitSearchedCaseExpression(
-      SearchedCaseExpression actual, Expression expected) {
+  public Boolean visitSearchedCaseExpression(SearchedCaseExpression actual, Expression expected) {
     if (!(expected instanceof SearchedCaseExpression)) {
       return false;
     }
@@ -470,7 +466,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitWhenClause(WhenClause actual, Expression expectedExpression) {
+  public Boolean visitWhenClause(WhenClause actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof WhenClause)) {
       return false;
     }
@@ -481,7 +477,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitFunctionCall(FunctionCall actual, Expression expectedExpression) {
+  public Boolean visitFunctionCall(FunctionCall actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof FunctionCall)) {
       return false;
     }
@@ -492,7 +488,7 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
-  protected Boolean visitRow(Row actual, Expression expectedExpression) {
+  public Boolean visitRow(Row actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof Row)) {
       return false;
     }

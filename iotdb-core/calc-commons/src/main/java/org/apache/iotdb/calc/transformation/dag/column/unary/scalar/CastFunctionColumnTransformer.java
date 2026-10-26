@@ -1,0 +1,55 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.calc.transformation.dag.column.unary.scalar;
+
+import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
+
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.read.common.type.Type;
+
+import java.time.ZoneId;
+
+public class CastFunctionColumnTransformer extends AbstractCastFunctionColumnTransformer {
+
+  public CastFunctionColumnTransformer(
+      Type returnType, ColumnTransformer childColumnTransformer, ZoneId zoneId) {
+    super(returnType, childColumnTransformer, zoneId);
+  }
+
+  @Override
+  protected void doTransform(Column column, ColumnBuilder builder) {
+    if (!tryNumericBatchCast(column, builder, null, false)) {
+      super.doTransform(column, builder);
+    }
+  }
+
+  @Override
+  protected void doTransform(Column column, ColumnBuilder builder, boolean[] selection) {
+    if (!tryNumericBatchCast(column, builder, selection, false)) {
+      super.doTransform(column, builder, selection);
+    }
+  }
+
+  @Override
+  protected void transform(Column column, ColumnBuilder columnBuilder, int i) {
+    castSourceValue(column, columnBuilder, i);
+  }
+}

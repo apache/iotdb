@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.udf.api.customizer.analysis;
 
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
 import org.apache.iotdb.udf.api.type.Type;
 
 public class ScalarFunctionAnalysis implements FunctionAnalysis {
@@ -43,7 +44,8 @@ public class ScalarFunctionAnalysis implements FunctionAnalysis {
 
     public ScalarFunctionAnalysis build() throws IllegalArgumentException {
       if (outputDataType == null) {
-        throw new IllegalArgumentException("ScalarFunctionAnalysis outputDataType is not set.");
+        throw new IllegalArgumentException(
+            UdfApiMessages.SCALAR_FUNCTION_ANALYSIS_OUTPUT_DATA_TYPE_NOT_SET);
       }
       return new ScalarFunctionAnalysis(outputDataType);
     }

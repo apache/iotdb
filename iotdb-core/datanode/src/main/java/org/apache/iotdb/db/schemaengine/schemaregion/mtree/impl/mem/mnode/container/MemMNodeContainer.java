@@ -22,7 +22,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.conta
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 import java.util.AbstractMap;
 import java.util.Collection;

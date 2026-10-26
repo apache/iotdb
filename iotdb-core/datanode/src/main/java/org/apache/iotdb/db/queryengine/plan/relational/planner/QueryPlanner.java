@@ -19,52 +19,67 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.DataOrganizationSpecification;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.Aggregation;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GroupNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LinearFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.NextFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OffsetNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PreviousFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FieldReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Fill;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FrameBound;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.MeasureDefinition;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Offset;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QueryBody;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuerySpecification;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortItem;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.VariableDefinition;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis.GroupingSetAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.FieldId;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GapFillStartAndEndTimeExtractVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Aggregation;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MeasureDefinition;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QueryBody;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.VariableDefinition;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -80,6 +95,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -96,26 +112,29 @@ import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isNumericType;
+import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isNumericType;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.groupingSets;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.singleAggregation;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.singleGroupingSet;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame.Type.GROUPS;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame.Type.RANGE;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame.Type.ROWS;
+import static org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignatureTranslator.toSqlType;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingTranslator.sortItemToSortOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware.scopeAwareKey;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.GROUP_KEY_SUFFIX;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GapFillStartAndEndTimeExtractVisitor.CAN_NOT_INFER_TIME_RANGE;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.groupingSets;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.singleAggregation;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.singleGroupingSet;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame.Type.GROUPS;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame.Type.RANGE;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame.Type.ROWS;
-import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toSqlType;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.preOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 
 public class QueryPlanner {
+  private static final int LATERAL_COLUMN_ALIAS_PROJECTION_BATCH_SIZE = 32;
+
   private final Analysis analysis;
   private final SymbolAllocator symbolAllocator;
   private final MPPQueryContext queryContext;
@@ -140,15 +159,18 @@ public class QueryPlanner {
       Map<NodeRef<Node>, RelationPlan> recursiveSubqueries,
       PredicateWithUncorrelatedScalarSubqueryReconstructor
           predicateWithUncorrelatedScalarSubqueryReconstructor) {
-    requireNonNull(analysis, "analysis is null");
-    requireNonNull(symbolAllocator, "symbolAllocator is null");
-    requireNonNull(queryContext, "queryContext is null");
-    requireNonNull(outerContext, "outerContext is null");
-    requireNonNull(session, "session is null");
-    requireNonNull(recursiveSubqueries, "recursiveSubqueries is null");
+    requireNonNull(analysis, DataNodeQueryMessages.EXCEPTION_ANALYSIS_IS_NULL_66666A58);
+    requireNonNull(
+        symbolAllocator, DataNodeQueryMessages.EXCEPTION_SYMBOLALLOCATOR_IS_NULL_E2BE1908);
+    requireNonNull(queryContext, DataNodeQueryMessages.EXCEPTION_QUERYCONTEXT_IS_NULL_761DB539);
+    requireNonNull(outerContext, DataNodeQueryMessages.EXCEPTION_OUTERCONTEXT_IS_NULL_031CD366);
+    requireNonNull(session, DataNodeQueryMessages.EXCEPTION_SESSION_IS_NULL_6CF0F47D);
+    requireNonNull(
+        recursiveSubqueries, DataNodeQueryMessages.EXCEPTION_RECURSIVESUBQUERIES_IS_NULL_6AD8A180);
     requireNonNull(
         predicateWithUncorrelatedScalarSubqueryReconstructor,
-        "predicateWithUncorrelatedScalarSubqueryReconstructor is null");
+        DataNodeQueryMessages
+            .EXCEPTION_PREDICATEWITHUNCORRELATEDSCALARSUBQUERYRECONSTRUCTOR_IS_NULL_B264FEBC);
 
     this.analysis = analysis;
     this.symbolAllocator = symbolAllocator;
@@ -184,16 +206,21 @@ public class QueryPlanner {
 
     List<Expression> orderBy = analysis.getOrderByExpressions(query);
     if (!orderBy.isEmpty()) {
-      builder =
-          builder.appendProjections(
-              Iterables.concat(orderBy, outputs), symbolAllocator, queryContext);
+      if (hasLateralColumnAliasReferences(selectExpressions)) {
+        builder = builder.appendProjections(orderBy, symbolAllocator, queryContext);
+        builder = appendSelectProjections(builder, selectExpressions);
+      } else {
+        builder =
+            builder.appendProjections(
+                Iterables.concat(orderBy, outputs), symbolAllocator, queryContext);
+      }
     }
     Optional<OrderingScheme> orderingScheme =
         orderingScheme(builder, query.getOrderBy(), analysis.getOrderByExpressions(query));
     builder = sort(builder, orderingScheme);
     builder = offset(builder, query.getOffset());
     builder = limit(builder, query.getLimit(), orderingScheme);
-    builder = builder.appendProjections(outputs, symbolAllocator, queryContext);
+    builder = appendSelectProjections(builder, selectExpressions);
 
     return new RelationPlan(
         builder.getRoot(),
@@ -253,7 +280,7 @@ public class QueryPlanner {
       // Add projections for the outputs of SELECT, but stack them on top of the ones from the FROM
       // clause so both are visible
       // when resolving the ORDER BY clause.
-      builder = builder.appendProjections(outputs, symbolAllocator, queryContext);
+      builder = appendSelectProjections(builder, selectExpressions);
       // The new scope is the composite of the fields from the FROM and SELECT clause (local nested
       // scopes). Fields from the bottom of
       // the scope stack need to be placed first to match the expected layout for nested scopes.
@@ -280,7 +307,7 @@ public class QueryPlanner {
       // Add projections for the outputs of SELECT, but stack them on top of the ones from the FROM
       // clause so both are visible
       // when resolving the ORDER BY clause.
-      builder = builder.appendProjections(outputs, symbolAllocator, queryContext);
+      builder = appendSelectProjections(builder, selectExpressions);
 
       // The new scope is the composite of the fields from the FROM and SELECT clause (local nested
       // scopes). Fields from the bottom of
@@ -300,9 +327,14 @@ public class QueryPlanner {
 
     List<Expression> orderBy = analysis.getOrderByExpressions(node);
     if (!orderBy.isEmpty() || node.getSelect().isDistinct()) {
-      builder =
-          builder.appendProjections(
-              Iterables.concat(orderBy, outputs), symbolAllocator, queryContext);
+      if (hasLateralColumnAliasReferences(selectExpressions)) {
+        builder = builder.appendProjections(orderBy, symbolAllocator, queryContext);
+        builder = appendSelectProjections(builder, selectExpressions);
+      } else {
+        builder =
+            builder.appendProjections(
+                Iterables.concat(orderBy, outputs), symbolAllocator, queryContext);
+      }
     }
 
     builder = distinct(builder, node, outputs);
@@ -312,7 +344,7 @@ public class QueryPlanner {
     builder = offset(builder, node.getOffset());
     builder = limit(builder, node.getLimit(), orderingScheme);
 
-    builder = builder.appendProjections(outputs, symbolAllocator, queryContext);
+    builder = appendSelectProjections(builder, selectExpressions);
     for (Expression expr : expressions) {
       predicateWithUncorrelatedScalarSubqueryReconstructor.clearShadowExpression(expr);
     }
@@ -329,7 +361,9 @@ public class QueryPlanner {
 
     Map<Analysis.ResolvedWindow, List<FunctionCall>> functions =
         scopeAwareDistinct(subPlan, windowFunctions).stream()
-            .collect(Collectors.groupingBy(analysis::getWindow));
+            .collect(
+                Collectors.groupingBy(
+                    analysis::getWindow, LinkedHashMap::new, Collectors.toList()));
 
     for (Map.Entry<Analysis.ResolvedWindow, List<FunctionCall>> entry : functions.entrySet()) {
       Analysis.ResolvedWindow window = entry.getKey();
@@ -428,7 +462,9 @@ public class QueryPlanner {
         frameEnd = plan.getFrameOffsetSymbol();
       } else if (window.getFrame().isPresent()) {
         throw new IllegalArgumentException(
-            "unexpected window frame type: " + window.getFrame().get().getType());
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNEXPECTED_WINDOW_FRAME_TYPE_S_F06F81B8,
+                window.getFrame().get().getType()));
       }
 
       subPlan =
@@ -692,7 +728,8 @@ public class QueryPlanner {
     if (frameOffset.get() instanceof LongLiteral) {
       long frameOffsetValue = ((LongLiteral) frameOffset.get()).getParsedValue();
       if (frameOffsetValue < 0) {
-        throw new SemanticException("Window frame offset value must not be negative or null");
+        throw new SemanticException(
+            DataNodeQueryMessages.WINDOW_FRAME_OFFSET_VALUE_MUST_NOT_BE_NEGATIVE);
       }
     }
 
@@ -718,7 +755,7 @@ public class QueryPlanner {
     if (isNumericType(type)) {
       return new Cast(new LongLiteral("0"), toSqlType(type));
     }
-    throw new IllegalArgumentException("unexpected type: " + type);
+    throw new IllegalArgumentException(DataNodeQueryMessages.UNEXPECTED_TYPE + type);
   }
 
   private static boolean hasExpressionsToUnfold(List<Analysis.SelectExpression> selectExpressions) {
@@ -738,6 +775,100 @@ public class QueryPlanner {
       }
     }
     return result.build();
+  }
+
+  private PlanBuilder appendSelectProjections(
+      PlanBuilder builder, List<Analysis.SelectExpression> selectExpressions) {
+    if (!hasLateralColumnAliasReferences(selectExpressions)) {
+      return builder.appendProjections(
+          outputExpressions(selectExpressions), symbolAllocator, queryContext);
+    }
+
+    List<Expression> projectionBatch = new ArrayList<>();
+    Set<NodeRef<Expression>> currentBatchAliases = new HashSet<>();
+    Set<NodeRef<Expression>> inlineableCurrentBatchAliases = new HashSet<>();
+
+    for (Analysis.SelectExpression selectExpression : selectExpressions) {
+      List<Expression> expressions =
+          selectExpression
+              .getUnfoldedExpressions()
+              .orElseGet(() -> ImmutableList.of(selectExpression.getExpression()));
+      Map<NodeRef<Expression>, Expression> references =
+          selectExpression.getLateralColumnAliasReferences();
+
+      if (!projectionBatch.isEmpty()
+          && (projectionBatch.size() + expressions.size()
+                  > LATERAL_COLUMN_ALIAS_PROJECTION_BATCH_SIZE
+              || referencesCurrentNonInlineableAlias(
+                  references, currentBatchAliases, inlineableCurrentBatchAliases))) {
+        builder = appendProjectionBatch(builder, projectionBatch);
+        projectionBatch.clear();
+        currentBatchAliases.clear();
+        inlineableCurrentBatchAliases.clear();
+      }
+
+      if (!references.isEmpty()) {
+        ImmutableMap.Builder<NodeRef<Expression>, Symbol> mappingsBuilder = ImmutableMap.builder();
+        for (Map.Entry<NodeRef<Expression>, Expression> entry : references.entrySet()) {
+          if (!currentBatchAliases.contains(entry.getKey())) {
+            mappingsBuilder.put(entry.getKey(), builder.translate(entry.getValue()));
+          }
+        }
+        ImmutableMap<NodeRef<Expression>, Symbol> mappings = mappingsBuilder.buildOrThrow();
+        if (!mappings.isEmpty()) {
+          builder = builder.withAdditionalIdentityMappings(mappings);
+        }
+      }
+
+      projectionBatch.addAll(expressions);
+      NodeRef<Expression> selectExpressionRef = NodeRef.of(selectExpression.getExpression());
+      currentBatchAliases.add(selectExpressionRef);
+      if (!selectExpression.getUnfoldedExpressions().isPresent()
+          && isInlineableLateralColumnAlias(selectExpression.getExpression())) {
+        inlineableCurrentBatchAliases.add(selectExpressionRef);
+      }
+    }
+    return appendProjectionBatch(builder, projectionBatch);
+  }
+
+  private PlanBuilder appendProjectionBatch(PlanBuilder builder, List<Expression> expressions) {
+    if (expressions.isEmpty()) {
+      return builder;
+    }
+    return builder.appendProjections(expressions, symbolAllocator, queryContext);
+  }
+
+  private static boolean referencesCurrentNonInlineableAlias(
+      Map<NodeRef<Expression>, Expression> references,
+      Set<NodeRef<Expression>> currentBatchAliases,
+      Set<NodeRef<Expression>> inlineableCurrentBatchAliases) {
+    for (NodeRef<Expression> reference : references.keySet()) {
+      if (currentBatchAliases.contains(reference)
+          && !inlineableCurrentBatchAliases.contains(reference)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean isInlineableLateralColumnAlias(Expression expression) {
+    return preOrder(expression).allMatch(QueryPlanner::isInlineableLateralColumnAliasNode);
+  }
+
+  private static boolean isInlineableLateralColumnAliasNode(Node node) {
+    return node instanceof ArithmeticBinaryExpression
+        || node instanceof ArithmeticUnaryExpression
+        || node instanceof FieldReference
+        || node instanceof Identifier
+        || node instanceof Literal
+        || node instanceof SymbolReference;
+  }
+
+  private static boolean hasLateralColumnAliasReferences(
+      List<Analysis.SelectExpression> selectExpressions) {
+    return selectExpressions.stream()
+        .map(Analysis.SelectExpression::getLateralColumnAliasReferences)
+        .anyMatch(references -> !references.isEmpty());
   }
 
   public PlanNode plan(Delete node) {
@@ -783,7 +914,14 @@ public class QueryPlanner {
               .process(node.getFrom().orElse(null), null);
       return newPlanBuilder(relationPlan, analysis);
     } else {
-      throw new SemanticException("From clause must not be empty");
+      return new PlanBuilder(
+          new TranslationMap(
+              outerContext,
+              analysis.getImplicitFromScope(node),
+              analysis,
+              ImmutableList.of(),
+              new PlannerContext(new TableMetadataImpl(), new InternalTypeManager())),
+          new ValuesNode(queryIdAllocator.genPlanNodeId(), 1));
     }
   }
 
@@ -923,7 +1061,9 @@ public class QueryPlanner {
     // Generate GroupIdNode (multiple grouping sets) or ProjectNode (single grouping set)
     PlanNode groupId;
     Optional<Symbol> groupIdSymbol = Optional.empty();
-    checkArgument(groupingSets.size() == 1, "Only support one groupingSet now");
+    checkArgument(
+        groupingSets.size() == 1,
+        DataNodeQueryMessages.EXCEPTION_ONLY_SUPPORT_ONE_GROUPINGSET_NOW_A1277FA4);
 
     Assignments.Builder assignments = Assignments.builder();
     assignments.putIdentities(subPlan.getRoot().getOutputSymbols());
@@ -1086,7 +1226,8 @@ public class QueryPlanner {
     if (coercion == null) {
       return rewritten;
     } else {
-      throw new RuntimeException("Coercion result in analysis only can be empty");
+      throw new RuntimeException(
+          DataNodeQueryMessages.COERCION_RESULT_IN_ANALYSIS_ONLY_CAN_BE_EMPTY);
     }
   }
 
@@ -1276,6 +1417,27 @@ public class QueryPlanner {
                 previousFillAnalysis.getTimeBound().orElse(null),
                 previousFillHelperColumn,
                 groupingKeys));
+      case NEXT:
+        Analysis.NextFillAnalysis nextFillAnalysis =
+            (Analysis.NextFillAnalysis) analysis.getFill(fill.get());
+        Symbol nextFillHelperColumn = null;
+        if (nextFillAnalysis.getFieldReference().isPresent()) {
+          nextFillHelperColumn = subPlan.translate(nextFillAnalysis.getFieldReference().get());
+        }
+
+        if (nextFillAnalysis.getGroupingKeys().isPresent()) {
+          List<FieldReference> fieldReferenceList = nextFillAnalysis.getGroupingKeys().get();
+          groupingKeys = new ArrayList<>(fieldReferenceList.size());
+          subPlan = fillGroup(subPlan, fieldReferenceList, groupingKeys, nextFillHelperColumn);
+        }
+
+        return subPlan.withNewRoot(
+            new NextFillNode(
+                queryIdAllocator.genPlanNodeId(),
+                subPlan.getRoot(),
+                nextFillAnalysis.getTimeBound().orElse(null),
+                nextFillHelperColumn,
+                groupingKeys));
       case LINEAR:
         Analysis.LinearFillAnalysis linearFillAnalysis =
             (Analysis.LinearFillAnalysis) analysis.getFill(fill.get());
@@ -1297,7 +1459,8 @@ public class QueryPlanner {
                 subPlan.getRoot(),
                 valueFillAnalysis.getFilledValue()));
       default:
-        throw new IllegalArgumentException("Unknown fill method: " + fill.get().getFillMethod());
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.UNKNOWN_FILL_METHOD + fill.get().getFillMethod());
     }
   }
 
@@ -1468,8 +1631,9 @@ public class QueryPlanner {
               () ->
                   new IllegalArgumentException(
                       format(
-                          "No mapping for expression: %s (%s)",
-                          expression, System.identityHashCode(expression))));
+                          DataNodeQueryMessages.NO_MAPPING_FOR_EXPRESSION_WITH_IDENTITY_FMT,
+                          expression,
+                          System.identityHashCode(expression))));
     }
 
     public Optional<Symbol> tryGet(Expression expression) {

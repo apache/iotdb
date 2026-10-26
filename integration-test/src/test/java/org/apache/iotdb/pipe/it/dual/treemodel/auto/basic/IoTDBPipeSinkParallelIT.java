@@ -71,6 +71,7 @@ public class IoTDBPipeSinkParallelIT extends AbstractPipeDualTreeModelAutoIT {
       sinkAttributes.put("sink.batch.enable", "false");
       sinkAttributes.put("sink.ip", receiverIp);
       sinkAttributes.put("sink.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink.serialize-by-region", "false");
       sinkAttributes.put("sink.parallel.tasks", "3");
 
       final TSStatus status =

@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.expression.predicate;
 
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
@@ -105,6 +105,11 @@ public class ConvertPredicateToTimeFilterTest {
             parameter.getSlidingStep(),
             TimeZone.getTimeZone("+00:00"),
             TimestampPrecisionUtils.currPrecision));
+
+    GroupByTimeParameter rightClosedParameter =
+        new GroupByTimeParameter(
+            1, Long.MAX_VALUE, new TimeDuration(0, 10), new TimeDuration(0, 10), false);
+    Assert.assertThrows(IllegalArgumentException.class, () -> groupByTime(rightClosedParameter));
   }
 
   @Test

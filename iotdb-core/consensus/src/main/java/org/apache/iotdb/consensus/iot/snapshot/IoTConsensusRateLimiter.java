@@ -19,22 +19,16 @@
 
 package org.apache.iotdb.consensus.iot.snapshot;
 
-import com.google.common.util.concurrent.RateLimiter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.iotdb.commons.utils.RegionMigrationRateLimiter;
 
 public class IoTConsensusRateLimiter {
-  private static final Logger logger = LoggerFactory.getLogger(IoTConsensusRateLimiter.class);
 
-  private final RateLimiter rateLimiter = RateLimiter.create(Double.MAX_VALUE);
+  private final RegionMigrationRateLimiter rateLimiter = RegionMigrationRateLimiter.getInstance();
 
   private IoTConsensusRateLimiter() {}
 
   public void init(long regionMigrationSpeedLimitBytesPerSecond) {
-    rateLimiter.setRate(
-        regionMigrationSpeedLimitBytesPerSecond <= 0
-            ? Double.MAX_VALUE
-            : regionMigrationSpeedLimitBytesPerSecond);
+    rateLimiter.init(regionMigrationSpeedLimitBytesPerSecond);
   }
 
   /**
@@ -43,15 +37,7 @@ public class IoTConsensusRateLimiter {
    * @param transitDataSize the size of the data to be sent
    */
   public void acquireTransitDataSizeWithRateLimiter(long transitDataSize) {
-    while (transitDataSize > 0) {
-      if (transitDataSize > Integer.MAX_VALUE) {
-        rateLimiter.acquire(Integer.MAX_VALUE);
-        transitDataSize -= Integer.MAX_VALUE;
-      } else {
-        rateLimiter.acquire((int) transitDataSize);
-        return;
-      }
-    }
+    rateLimiter.acquire(transitDataSize);
   }
 
   private static final IoTConsensusRateLimiter INSTANCE = new IoTConsensusRateLimiter();

@@ -21,13 +21,13 @@ package org.apache.iotdb.db.pipe.metric.source;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeDataRegionAssigner;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-import com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,12 +85,12 @@ public class PipeAssignerMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    ImmutableSet<Integer> dataRegionIds = ImmutableSet.copyOf(assignerMap.keySet());
-    for (int dataRegionId : dataRegionIds) {
-      deregister(dataRegionId);
-    }
-    if (!assignerMap.isEmpty()) {
-      LOGGER.warn("Failed to unbind from pipe assigner metrics, assigner map not empty");
+    // Keep the assigners registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    synchronized (this) {
+      for (int dataRegionId : assignerMap.keySet()) {
+        removeMetrics(dataRegionId);
+      }
     }
   }
 
@@ -132,7 +132,7 @@ public class PipeAssignerMetrics implements IMetricSet {
     synchronized (this) {
       if (!assignerMap.containsKey(dataRegionId)) {
         LOGGER.warn(
-            "Failed to deregister pipe assigner metrics, PipeDataRegionAssigner({}) does not exist",
+            DataNodePipeMessages.FAILED_TO_DEREGISTER_PIPE_ASSIGNER_METRICS_PIPEDATAREGIONASSIGNER,
             dataRegionId);
         return;
       }

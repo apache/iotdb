@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
@@ -71,29 +72,35 @@ public class AddTableColumnProcedure
     try {
       switch (state) {
         case COLUMN_CHECK:
-          LOGGER.info("Column check for table {}.{} when adding column", database, tableName);
+          LOGGER.info(
+              ProcedureMessages.COLUMN_CHECK_FOR_TABLE_WHEN_ADDING_COLUMN, database, tableName);
           columnCheck(env);
           break;
         case PRE_RELEASE:
-          LOGGER.info("Pre release info of table {}.{} when adding column", database, tableName);
+          LOGGER.info(
+              ProcedureMessages.PRE_RELEASE_INFO_OF_TABLE_WHEN_ADDING_COLUMN, database, tableName);
           preRelease(env);
           break;
         case ADD_COLUMN:
-          LOGGER.info("Add column to table {}.{}", database, tableName);
+          LOGGER.info(ProcedureMessages.ADD_COLUMN_TO_TABLE, database, tableName);
           addColumn(env);
           break;
         case COMMIT_RELEASE:
-          LOGGER.info("Commit release info of table {}.{} when adding column", database, tableName);
-          commitRelease(env);
+          LOGGER.info(
+              ProcedureMessages.COMMIT_RELEASE_INFO_OF_TABLE_WHEN_ADDING_COLUMN,
+              database,
+              tableName);
+          commitReleaseWithHA(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized AddTableColumnState " + state));
+          setFailure(
+              new ProcedureException(ProcedureMessages.UNRECOGNIZED_ADDTABLECOLUMNSTATE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "AddTableColumn-{}.{}-{} costs {}ms",
+          ProcedureMessages.ADDTABLECOLUMN_COSTS_MS,
           database,
           tableName,
           state,
@@ -147,6 +154,23 @@ public class AddTableColumnProcedure
     return "add table column";
   }
 
+  /**
+   * The column is part of the table on the ConfigNode once ADD_COLUMN has completed, and the
+   * ConfigNode schema is the source of truth the DataNodes resync from. The procedure therefore
+   * stays rollbackable up to ADD_COLUMN and not after it.
+   */
+  @Override
+  protected boolean isRollbackSupported(final AddTableColumnState state) {
+    switch (state) {
+      case COLUMN_CHECK:
+      case PRE_RELEASE:
+      case ADD_COLUMN:
+        return true;
+      default:
+        return false;
+    }
+  }
+
   @Override
   protected void rollbackState(final ConfigNodeProcedureEnv env, final AddTableColumnState state)
       throws IOException, InterruptedException, ProcedureException {
@@ -155,20 +179,24 @@ public class AddTableColumnProcedure
       switch (state) {
         case ADD_COLUMN:
           LOGGER.info(
-              "Start rollback Add column to table {}.{} when adding column",
+              ProcedureMessages.START_ROLLBACK_ADD_COLUMN_TO_TABLE_WHEN_ADDING_COLUMN,
               database,
               table.getTableName());
           rollbackAddColumn(env);
           break;
         case PRE_RELEASE:
           LOGGER.info(
-              "Start rollback pre release info of table {}.{}", database, table.getTableName());
+              ProcedureMessages.START_ROLLBACK_PRE_RELEASE_INFO_OF_TABLE,
+              database,
+              table.getTableName());
           rollbackPreRelease(env);
           break;
       }
     } finally {
       LOGGER.info(
-          "Rollback DropTable-{} costs {}ms.", state, (System.currentTimeMillis() - startTime));
+          ProcedureMessages.ROLLBACK_DROPTABLE_COSTS_MS,
+          state,
+          (System.currentTimeMillis() - startTime));
     }
   }
 
@@ -229,6 +257,10 @@ public class AddTableColumnProcedure
   public boolean equals(final Object o) {
     return super.equals(o)
         && Objects.equals(this.addedColumnList, ((AddTableColumnProcedure) o).addedColumnList);
+  }
+
+  public void setAddedColumnList(List<TsTableColumnSchema> addedColumnList) {
+    this.addedColumnList = addedColumnList;
   }
 
   @Override

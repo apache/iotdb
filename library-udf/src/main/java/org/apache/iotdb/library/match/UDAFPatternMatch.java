@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.library.match;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.match.model.DTWMatchResult;
 import org.apache.iotdb.library.match.model.PatternContext;
 import org.apache.iotdb.library.match.model.PatternResult;
 import org.apache.iotdb.library.match.model.PatternState;
 import org.apache.iotdb.library.match.model.Point;
+import org.apache.iotdb.library.util.TypeServices;
 import org.apache.iotdb.udf.api.State;
 import org.apache.iotdb.udf.api.UDAF;
 import org.apache.iotdb.udf.api.customizer.config.UDAFConfigurations;
@@ -53,12 +55,16 @@ public class UDAFPatternMatch implements UDAF {
   private Double[] valuePattern;
   private float threshold;
   private PatternState state;
+  private TypeServices.ColumnNumericReader valueReader;
 
   @Override
   public void beforeStart(UDFParameters udfParameters, UDAFConfigurations udafConfigurations) {
     udafConfigurations.setOutputDataType(Type.TEXT);
     Map<String, String> attributes = udfParameters.getAttributes();
     threshold = Float.parseFloat(attributes.get(THRESHOLD_PARAM));
+    valueReader =
+        TypeServices.COLUMN_NUMERIC_READER_SERVICE.call(
+            TypeServices.toReadType(udfParameters.getDataType(0)));
   }
 
   @Override
@@ -78,7 +84,7 @@ public class UDAFPatternMatch implements UDAF {
       }
       if (!columns[1].isNull(i)) {
         long timestamp = columns[1].getLong(i);
-        double value = getValue(columns[0], i);
+        double value = valueReader.read(columns[0], i);
         matchState.updateBuffer(timestamp, value);
       }
     }
@@ -138,7 +144,7 @@ public class UDAFPatternMatch implements UDAF {
 
     } catch (Exception e) {
       throw new UDFParameterNotValidException(
-          "Illegal parameter, timePattern must be long,long...");
+          LibraryUdfMessages.EXCEPTION_ILLEGAL_PARAMETER_TIMEPATTERN_MUST_BE_LONG_LONG_B2DEE922);
     }
     try {
       String valuePatternStr =
@@ -147,7 +153,8 @@ public class UDAFPatternMatch implements UDAF {
           Arrays.stream(valuePatternStr.split(",")).map(Double::valueOf).toArray(Double[]::new);
     } catch (Exception e) {
       throw new UDFParameterNotValidException(
-          "Illegal parameter, valuePattern must be double,double...");
+          LibraryUdfMessages
+              .EXCEPTION_ILLEGAL_PARAMETER_VALUEPATTERN_MUST_BE_DOUBLE_DOUBLE_BAD1419C);
     }
     validator
         .validateInputSeriesNumber(1)
@@ -173,22 +180,5 @@ public class UDAFPatternMatch implements UDAF {
             "Illegal parameter, timePattern size must equals valuePattern size.",
             timePattern,
             valuePattern);
-  }
-
-  private double getValue(Column column, int i) {
-    switch (column.getDataType()) {
-      case INT32:
-        return column.getInt(i);
-      case INT64:
-        return column.getLong(i);
-      case FLOAT:
-        return column.getFloat(i);
-      case DOUBLE:
-        return column.getDouble(i);
-      case BOOLEAN:
-        return column.getBoolean(i) ? 1.0D : 0.0D;
-      default:
-        throw new RuntimeException(String.format("Unsupported datatype %s", column.getDataType()));
-    }
   }
 }

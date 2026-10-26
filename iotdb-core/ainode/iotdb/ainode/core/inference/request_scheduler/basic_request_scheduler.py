@@ -16,8 +16,6 @@
 # under the License.
 #
 
-import os
-
 import psutil
 import torch
 
@@ -53,23 +51,22 @@ class BasicRequestScheduler(AbstractRequestScheduler):
 
     def memory_is_available(self):
         if "cuda" in self.device.type:
-            used = torch.cuda.memory_allocated(self.device)
-            reserved = torch.cuda.memory_reserved(self.device)
+            available, total = torch.cuda.mem_get_info(self.device)
         elif "cpu" in self.device.type:
-            process = psutil.Process(os.getpid())
-            used = process.memory_info().rss
-            reserved = used
+            memory = psutil.virtual_memory()
+            available = memory.available
+            total = memory.total
         else:
-            used = 0
-            reserved = 0
             logger.warning(
                 f"[Inference] Unsupported device type: {self.device.type}. Memory checks will not be performed."
             )
+            return True
         logger.debug(
             f"[Inference][Device-{self.device}][Pool-{self.pool_id}] "
-            f"Memory used: {used/1024**2:.2f} MB, Max memory: {self.max_memory_bytes/1024**2:.2f} MB"
+            f"Memory available: {available/1024**2:.2f} MB, Total memory: {total/1024**2:.2f} MB, "
+            f"Required free memory: {self.max_memory_bytes/1024**2:.2f} MB"
         )
-        return used < self.max_memory_bytes
+        return available > self.max_memory_bytes
 
     def schedule_activate(self) -> list:
         requests = []

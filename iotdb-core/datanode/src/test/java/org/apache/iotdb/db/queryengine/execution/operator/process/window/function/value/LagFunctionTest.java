@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.function.value;
 
+import org.apache.iotdb.calc.execution.operator.process.window.function.value.LagFunction;
+import org.apache.iotdb.calc.execution.operator.process.window.partition.PartitionExecutor;
+import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.FunctionTestUtils;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.PartitionExecutor;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -34,8 +36,6 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 
 public class LagFunctionTest {
   private final List<TSDataType> inputDataTypes = Collections.singletonList(TSDataType.INT32);
@@ -61,7 +61,8 @@ public class LagFunctionTest {
 
     TsBlock result =
         tsBlockBuilder.build(
-            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+            new RunLengthEncodedColumn(
+                CommonOperatorUtils.TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
     Column column = result.getColumn(1);
 
     Assert.assertEquals(column.getPositionCount(), expected.length);
@@ -90,7 +91,8 @@ public class LagFunctionTest {
 
     TsBlock result =
         tsBlockBuilder.build(
-            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+            new RunLengthEncodedColumn(
+                CommonOperatorUtils.TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
     Column column = result.getColumn(1);
 
     Assert.assertEquals(column.getPositionCount(), expected.length);
@@ -115,7 +117,8 @@ public class LagFunctionTest {
 
     TsBlock result =
         tsBlockBuilder.build(
-            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+            new RunLengthEncodedColumn(
+                CommonOperatorUtils.TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
     Column column = result.getColumn(1);
 
     Assert.assertEquals(column.getPositionCount(), expected.length);
@@ -144,7 +147,8 @@ public class LagFunctionTest {
 
     TsBlock result =
         tsBlockBuilder.build(
-            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+            new RunLengthEncodedColumn(
+                CommonOperatorUtils.TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
     Column column = result.getColumn(1);
 
     Assert.assertEquals(column.getPositionCount(), expected.length);
@@ -174,7 +178,8 @@ public class LagFunctionTest {
     }
 
     return tsBlockBuilder.build(
-        new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+        new RunLengthEncodedColumn(
+            CommonOperatorUtils.TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
   }
 
   private static TsBlock createTsBlockWithoutDefault(int[] inputs, int offset) {
@@ -193,6 +198,7 @@ public class LagFunctionTest {
     }
 
     return tsBlockBuilder.build(
-        new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+        new RunLengthEncodedColumn(
+            CommonOperatorUtils.TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
   }
 }

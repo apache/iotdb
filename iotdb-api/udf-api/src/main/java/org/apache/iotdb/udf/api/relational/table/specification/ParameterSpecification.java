@@ -37,6 +37,8 @@
 
 package org.apache.iotdb.udf.api.relational.table.specification;
 
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
+
 import java.util.Optional;
 
 /**
@@ -59,7 +61,7 @@ public abstract class ParameterSpecification {
     this.required = required;
     this.defaultValue = defaultValue;
     if (required && defaultValue.isPresent()) {
-      throw new IllegalArgumentException("non-null default value for a required argument");
+      throw new IllegalArgumentException(UdfApiMessages.NON_NULL_DEFAULT_VALUE_FOR_REQUIRED_ARG);
     }
   }
 

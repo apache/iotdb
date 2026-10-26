@@ -23,22 +23,16 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 
+import com.google.common.collect.Sets;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.HashSet;
 import java.util.Set;
 
 public class PlainDeviceTimeIndex extends ArrayDeviceTimeIndex implements ITimeIndex {
-
-  @Override
-  public void serialize(OutputStream outputStream) throws IOException {
-    throw new UnsupportedOperationException();
-  }
 
   @Override
   public PlainDeviceTimeIndex deserialize(
@@ -103,7 +97,7 @@ public class PlainDeviceTimeIndex extends ArrayDeviceTimeIndex implements ITimeI
   public static Set<IDeviceID> getDevices(InputStream inputStream) throws IOException {
     int deviceNum = ReadWriteIOUtils.readInt(inputStream);
     ReadWriteIOUtils.skip(inputStream, 2L * deviceNum * ReadWriteIOUtils.LONG_LEN);
-    Set<IDeviceID> devices = new HashSet<>();
+    Set<IDeviceID> devices = Sets.newHashSetWithExpectedSize(deviceNum);
     for (int i = 0; i < deviceNum; i++) {
       String path =
           DataNodeDevicePathCache.getInstance()

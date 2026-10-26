@@ -19,6 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -41,18 +48,23 @@ public class CreateFunction extends Statement {
   @Nullable private final String uriString;
 
   public CreateFunction(NodeLocation location, String udfName, String className) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
 
-    this.udfName = requireNonNull(udfName, "udfName is null");
-    this.className = requireNonNull(className, "className is null");
+    this.udfName =
+        requireNonNull(udfName, DataNodeQueryMessages.EXCEPTION_UDFNAME_IS_NULL_83E9039B);
+    this.className =
+        requireNonNull(className, DataNodeQueryMessages.EXCEPTION_CLASSNAME_IS_NULL_3902B37C);
     this.uriString = null;
   }
 
   public CreateFunction(NodeLocation location, String udfName, String className, String uriString) {
-    super(requireNonNull(location, "location is null"));
-    this.udfName = requireNonNull(udfName, "udfName is null");
-    this.className = requireNonNull(className, "className is null");
-    this.uriString = requireNonNull(uriString, "uriString is null");
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.udfName =
+        requireNonNull(udfName, DataNodeQueryMessages.EXCEPTION_UDFNAME_IS_NULL_83E9039B);
+    this.className =
+        requireNonNull(className, DataNodeQueryMessages.EXCEPTION_CLASSNAME_IS_NULL_3902B37C);
+    this.uriString =
+        requireNonNull(uriString, DataNodeQueryMessages.EXCEPTION_URISTRING_IS_NULL_E7458C6A);
   }
 
   public String getUdfName() {
@@ -68,8 +80,8 @@ public class CreateFunction extends Statement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitCreateFunction(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitCreateFunction(this, context);
   }
 
   @Override

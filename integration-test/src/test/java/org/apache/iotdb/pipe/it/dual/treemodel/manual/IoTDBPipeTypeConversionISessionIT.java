@@ -324,7 +324,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         generateMeasurementSchemas();
 
     // Generate createTimeSeries in sender and receiver
-    String uuid = "bcdedit";
+    String uuid = "bcdedit" + Long.toHexString(System.nanoTime());
     for (Pair<MeasurementSchema, MeasurementSchema> pair : measurementSchemas) {
       createTimeSeries(uuid, pair.left.getMeasurementName(), pair.left.getType().name(), senderEnv);
       createTimeSeries(
@@ -547,6 +547,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
       "enable =  true",
       "true",
       "false",
+      "2024-06-28 08:00:00",
       "12345678910",
       "123231232132131233213123123123123123131312",
       "123231232132131233213123123123123123131312.212312321312312",

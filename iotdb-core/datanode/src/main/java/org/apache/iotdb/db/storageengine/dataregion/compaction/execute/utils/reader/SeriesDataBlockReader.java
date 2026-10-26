@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanUtil;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanUtil;
@@ -72,7 +73,7 @@ public class SeriesDataBlockReader implements IDataBlockReader {
               scanOptionsBuilder.build(),
               context);
     } else {
-      throw new IllegalArgumentException("Should call exact sub class!");
+      throw new IllegalArgumentException(StorageEngineMessages.SHOULD_CALL_EXACT_SUB_CLASS);
     }
     this.seriesScanUtil.initQueryDataSource(dataSource);
   }
@@ -157,7 +158,7 @@ public class SeriesDataBlockReader implements IDataBlockReader {
       hasCachedBatchData = false;
       return tsBlock;
     }
-    throw new IOException("no next block");
+    throw new IOException(StorageEngineMessages.NO_NEXT_BLOCK);
   }
 
   @Override

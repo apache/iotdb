@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
+
 import org.apache.thrift.transport.TTransportException;
-import org.osgi.service.component.annotations.Component;
 
 import java.sql.Connection;
 import java.sql.Driver;
@@ -32,7 +33,6 @@ import java.util.Properties;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
-@Component(service = java.sql.Driver.class, immediate = true)
 public class IoTDBDriver implements Driver {
   private static final org.slf4j.Logger logger =
       org.slf4j.LoggerFactory.getLogger(IoTDBDriver.class);
@@ -44,7 +44,7 @@ public class IoTDBDriver implements Driver {
     try {
       DriverManager.registerDriver(new IoTDBDriver());
     } catch (SQLException e) {
-      logger.error("Error occurs when registering TsFile driver", e);
+      logger.error(JdbcMessages.REGISTER_DRIVER_ERROR, e);
     }
   }
 
@@ -65,8 +65,9 @@ public class IoTDBDriver implements Driver {
       return acceptsURL(url) ? new IoTDBConnection(url, info) : null;
     } catch (TTransportException e) {
       throw new SQLException(
-          "Connection Error, please check whether the network is available or the server"
-              + " has started.",
+          JdbcMessages
+                  .EXCEPTION_CONNECTION_ERROR_PLEASE_CHECK_WHETHER_NETWORK_AVAILABLE_SERVER_CA72E0D6
+              + JdbcMessages.EXCEPTION_HAS_STARTED_BD7BC366,
           e);
     }
   }
@@ -85,7 +86,7 @@ public class IoTDBDriver implements Driver {
 
   @Override
   public Logger getParentLogger() throws SQLFeatureNotSupportedException {
-    throw new SQLFeatureNotSupportedException("Method not supported");
+    throw new SQLFeatureNotSupportedException(JdbcMessages.METHOD_NOT_SUPPORTED);
   }
 
   @Override

@@ -22,23 +22,24 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.template.Template;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
+import com.google.common.collect.Maps;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -139,7 +140,8 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
     try {
       path = new MeasurementPath(fullPath);
     } catch (IllegalPathException e) {
-      throw new IllegalArgumentException("Cannot deserialize TimeSeriesSchemaScanNode", e);
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.CANNOT_DESERIALIZE_TIMESERIESSCHEMASCANNODE, e);
     }
     PathPatternTree scope = PathPatternTree.deserialize(byteBuffer);
     SchemaFilter schemaFilter = SchemaFilter.deserialize(byteBuffer);
@@ -155,7 +157,7 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
     }
 
     int templateNum = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<Integer, Template> templateMap = new HashMap<>();
+    Map<Integer, Template> templateMap = Maps.newHashMapWithExpectedSize(templateNum);
     Template template;
     for (int i = 0; i < templateNum; i++) {
       template = new Template();

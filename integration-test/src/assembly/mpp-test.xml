@@ -37,6 +37,9 @@
         <fileSet>
             <outputDirectory>conf</outputDirectory>
             <directory>${project.basedir}/../iotdb-core/node-commons/src/assembly/resources/conf</directory>
+            <excludes>
+                <exclude>edge/**</exclude>
+            </excludes>
         </fileSet>
         <fileSet>
             <outputDirectory>conf</outputDirectory>
@@ -49,6 +52,20 @@
         <fileSet>
             <outputDirectory>conf</outputDirectory>
             <directory>${project.basedir}/../scripts/conf</directory>
+            <excludes>
+                <exclude>iotdb-common.sh</exclude>
+                <exclude>**/iotdb-common.bat</exclude>
+            </excludes>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>conf</outputDirectory>
+            <directory>${project.basedir}/../scripts/conf</directory>
+            <includes>
+                <include>iotdb-common.sh</include>
+                <include>windows/iotdb-common.bat</include>
+            </includes>
+            <filtered>true</filtered>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>

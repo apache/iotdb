@@ -41,7 +41,7 @@ public class MigrateRegionTask implements IConfigTask {
   public MigrateRegionTask(MigrateRegion migrateRegion) {
     this.statement =
         new MigrateRegionStatement(
-            migrateRegion.getRegionId(), migrateRegion.getFromId(), migrateRegion.getToId());
+            migrateRegion.getRegionIds(), migrateRegion.getFromId(), migrateRegion.getToId());
     this.model = Model.TABLE;
   }
 

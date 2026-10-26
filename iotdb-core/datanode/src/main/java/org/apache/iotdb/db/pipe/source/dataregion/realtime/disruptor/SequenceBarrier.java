@@ -75,4 +75,8 @@ public class SequenceBarrier {
   public long getCursor() {
     return sequencer.getCursor().get();
   }
+
+  public long getHighestPublishedSequence(long lowerBound, long availableSequence) {
+    return sequencer.getHighestPublishedSequence(lowerBound, availableSequence);
+  }
 }

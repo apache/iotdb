@@ -24,9 +24,11 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 /**
  * The data model used to record the Event and the data model of the DataRegion corresponding to the
@@ -48,6 +50,14 @@ import javax.validation.constraints.NotNull;
  * and TSFile does not support this.
  */
 public abstract class PipeInsertionEvent extends EnrichedEvent {
+
+  /**
+   * Returns the event-level memory block used as the parent of parser/converted-data blocks. Events
+   * that do not retain a dedicated block return {@code null}.
+   */
+  public PipeMemoryBlock getEventMemoryBlock() {
+    return null;
+  }
 
   // Record the database name of the DataRegion corresponding to the SourceEvent
   private final String sourceDatabaseNameFromDataRegion;
@@ -129,7 +139,7 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
   public boolean isTableModelEvent() {
     if (isTableModelEvent == null) {
       if (sourceDatabaseNameFromDataRegion == null) {
-        throw new IllegalStateException("databaseNameFromDataRegion is null");
+        throw new IllegalStateException(DataNodePipeMessages.DATABASENAMEFROMDATAREGION_IS_NULL);
       }
       return isTableModelEvent = PathUtils.isTableModelDatabase(sourceDatabaseNameFromDataRegion);
     }
@@ -159,6 +169,9 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
   }
 
   public String getTableModelDatabaseName() {
+    if (!isTableModelEvent()) {
+      return null;
+    }
     return tableModelDatabaseName == null
         ? tableModelDatabaseName = PathUtils.unQualifyDatabaseName(sourceDatabaseNameFromDataRegion)
         : tableModelDatabaseName;

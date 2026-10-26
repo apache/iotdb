@@ -21,11 +21,14 @@ package org.apache.iotdb.db.subscription.event.response;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
+import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
 import org.apache.iotdb.db.subscription.event.cache.CachedSubscriptionPollResponse;
@@ -68,6 +71,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
   private final SubscriptionPipeTabletEventBatch batch;
   private final SubscriptionPrefetchingQueue queue;
   private final SubscriptionPipeTabletBatchEvents events;
+  private final ColumnFilterMatcher columnFilterMatcher;
 
   private final SubscriptionCommitContext commitContext;
   private final SubscriptionCommitContext rootCommitContext;
@@ -91,6 +95,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
 
     this.commitContext = commitContext;
     this.rootCommitContext = rootCommitContext;
+    this.columnFilterMatcher = batch.getColumnFilterMatcher();
 
     init();
   }
@@ -109,7 +114,8 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
     final CachedSubscriptionPollResponse previousResponse;
     if (Objects.isNull(previousResponse = poll())) {
       LOGGER.warn(
-          "SubscriptionEventTabletResponse {} is empty when fetching next response (broken invariant)",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTIONEVENTTABLETRESPONSE_IS_EMPTY_WHEN_FETCHING_NEXT_4464E3F2,
           this);
     } else {
       previousResponse.closeMemoryBlock();
@@ -147,7 +153,8 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
   private void init() {
     if (!isEmpty()) {
       LOGGER.warn(
-          "SubscriptionEventTabletResponse {} is not empty when initializing (broken invariant)",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTIONEVENTTABLETRESPONSE_IS_NOT_EMPTY_WHEN_INITIALIZING_88F075C9,
           this);
       return;
     }
@@ -159,7 +166,8 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
     return new CachedSubscriptionPollResponse(
         SubscriptionPollResponseType.TABLETS.getType(),
         new TabletsPayload(Collections.emptyList(), nextOffset.incrementAndGet()),
-        commitContext);
+        commitContext,
+        isTimeSelected());
   }
 
   private synchronized CachedSubscriptionPollResponse generateNextTabletResponse()
@@ -173,7 +181,8 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       return new CachedSubscriptionPollResponse(
           SubscriptionPollResponseType.TABLETS.getType(),
           new TabletsPayload(Collections.emptyList(), -totalTablets),
-          commitContext);
+          commitContext,
+          isTimeSelected());
     }
 
     CachedSubscriptionPollResponse response = null;
@@ -204,14 +213,17 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       if (bufferSize > READ_TABLET_BUFFER_SIZE) {
         // TODO: split tablets
         LOGGER.warn(
-            "Detect large tablets with {} byte(s), current tablets size {} byte(s)",
+            DataNodePipeMessages
+                .PIPE_LOG_DETECT_LARGE_TABLETS_WITH_BYTE_S_CURRENT_TABLETS_SIZE_BYTE_4D472E38,
             bufferSize,
             currentTablets);
         response =
             new CachedSubscriptionPollResponse(
                 SubscriptionPollResponseType.TABLETS.getType(),
                 new TabletsPayload(new HashMap<>(currentTablets), nextOffset.incrementAndGet()),
-                commitContext);
+                commitContext,
+                isTimeSelected(),
+                getTimeSelectedByTable(currentTablets));
         break;
       }
 
@@ -221,7 +233,9 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
             new CachedSubscriptionPollResponse(
                 SubscriptionPollResponseType.TABLETS.getType(),
                 new TabletsPayload(new HashMap<>(currentTablets), nextOffset.incrementAndGet()),
-                commitContext);
+                commitContext,
+                isTimeSelected(),
+                getTimeSelectedByTable(currentTablets));
         break;
       }
 
@@ -242,14 +256,17 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
             new CachedSubscriptionPollResponse(
                 SubscriptionPollResponseType.TABLETS.getType(),
                 new TabletsPayload(Collections.emptyList(), -totalTablets),
-                commitContext);
+                commitContext,
+                isTimeSelected());
         hasNoMore = true;
       } else {
         response =
             new CachedSubscriptionPollResponse(
                 SubscriptionPollResponseType.TABLETS.getType(),
                 new TabletsPayload(new HashMap<>(currentTablets), nextOffset.incrementAndGet()),
-                commitContext);
+                commitContext,
+                isTimeSelected(),
+                getTimeSelectedByTable(currentTablets));
       }
     }
 
@@ -257,7 +274,12 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
     final List<Tablet> tablets = ((TabletsPayload) response.getPayload()).getTablets();
     if (Objects.nonNull(tablets) && !tablets.isEmpty()) {
       final PipeTabletMemoryBlock memoryBlock =
-          PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(currentBufferSize);
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForTabletWithRetry(
+                  SubscriptionEventTabletResponse.class.getSimpleName(),
+                  currentBufferSize,
+                  PipeMemoryBlockCategory.SUBSCRIPTION,
+                  SubscriptionEventTabletResponse.class.getSimpleName());
       response.setMemoryBlock(memoryBlock);
     }
 
@@ -283,13 +305,15 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
       if (elapsedRecordTimeSeconds > 10.0) {
         LOGGER.info(
-            "SubscriptionEventTabletResponse {} wait for resource enough for parsing tablets {} seconds.",
+            DataNodePipeMessages
+                .PIPE_LOG_SUBSCRIPTIONEVENTTABLETRESPONSE_WAIT_FOR_RESOURCE_ENOUGH_9926289F,
             commitContext,
             waitTimeSeconds);
         lastRecordTime = currentTime;
       } else if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "SubscriptionEventTabletResponse {} wait for resource enough for parsing tablets {} seconds.",
+            DataNodePipeMessages
+                .PIPE_LOG_SUBSCRIPTIONEVENTTABLETRESPONSE_WAIT_FOR_RESOURCE_ENOUGH_9926289F,
             commitContext,
             waitTimeSeconds);
       }
@@ -297,20 +321,51 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       if (waitTimeSeconds * 1000 > timeoutMs) {
         // should contain 'TimeoutException' in exception message
         throw new PipeException(
-            String.format("TimeoutException: Waited %s seconds", waitTimeSeconds));
+            String.format(
+                DataNodePipeMessages.PIPE_EXCEPTION_TIMEOUTEXCEPTION_WAITED_S_SECONDS_8B31A3A5,
+                waitTimeSeconds));
       }
     }
 
     final long currentTime = System.currentTimeMillis();
     final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
     LOGGER.info(
-        "SubscriptionEventTabletResponse {} wait for resource enough for parsing tablets {} seconds.",
+        DataNodePipeMessages
+            .PIPE_LOG_SUBSCRIPTIONEVENTTABLETRESPONSE_WAIT_FOR_RESOURCE_ENOUGH_9926289F,
         commitContext,
         waitTimeSeconds);
   }
 
   private void transportIterationSnapshot() {
     events.receiveIterationSnapshot(batch.sendIterationSnapshot());
+  }
+
+  private boolean isTimeSelected() {
+    return columnFilterMatcher.isTimeSelected();
+  }
+
+  private Map<String, Map<String, Boolean>> getTimeSelectedByTable(
+      final Map<String, List<Tablet>> tablets) {
+    if (Objects.isNull(tablets) || tablets.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    final Map<String, Map<String, Boolean>> result = new HashMap<>();
+    tablets.forEach(
+        (databaseName, tabletList) -> {
+          if (Objects.isNull(databaseName) || Objects.isNull(tabletList)) {
+            return;
+          }
+          final Map<String, Boolean> tableMap =
+              result.computeIfAbsent(databaseName, ignored -> new HashMap<>());
+          for (final Tablet tablet : tabletList) {
+            if (Objects.nonNull(tablet) && Objects.nonNull(tablet.getTableName())) {
+              tableMap.put(
+                  tablet.getTableName(),
+                  columnFilterMatcher.isTimeSelected(databaseName, tablet.getTableName()));
+            }
+          }
+        });
+    return result;
   }
 
   /////////////////////////////// stringify ///////////////////////////////

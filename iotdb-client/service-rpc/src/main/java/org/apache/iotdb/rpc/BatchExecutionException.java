@@ -20,6 +20,7 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.rpc.i18n.RpcMessages;
 
 import java.util.List;
 
@@ -32,7 +33,7 @@ public class BatchExecutionException extends StatementExecutionException {
   }
 
   public BatchExecutionException(List<TSStatus> statusList) {
-    super("");
+    super(RpcMessages.EMPTY_MESSAGE);
     this.statusList = statusList;
   }
 

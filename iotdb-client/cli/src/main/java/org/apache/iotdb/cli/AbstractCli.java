@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cli;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.CliContext;
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.exception.ArgsErrorException;
@@ -34,8 +35,11 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.ArrayUtils;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.service.TypeService;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -55,6 +59,38 @@ import static org.apache.iotdb.jdbc.Config.SQL_DIALECT;
 
 public abstract class AbstractCli {
 
+  static String timestampPrecision = "ms";
+  static String timeFormat = RpcUtils.DEFAULT_TIME_FORMAT;
+
+  private static final TypeService<SqlValueGetter> SQL_VALUE_GETTER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, STRING, OBJECT ->
+                (resultSet, columnIndex, zoneId) -> resultSet.getString(columnIndex);
+            case BLOB ->
+                (resultSet, columnIndex, zoneId) -> {
+                  byte[] value = resultSet.getBytes(columnIndex);
+                  return value == null ? null : BytesUtils.parseBlobByteArrayToString(value);
+                };
+            case DATE ->
+                (resultSet, columnIndex, zoneId) -> {
+                  int value = resultSet.getInt(columnIndex);
+                  return resultSet.wasNull() ? null : DateUtils.formatDate(value);
+                };
+            case TIMESTAMP ->
+                (resultSet, columnIndex, zoneId) -> {
+                  long value = resultSet.getLong(columnIndex);
+                  return resultSet.wasNull()
+                      ? null
+                      : RpcUtils.formatDatetime(timeFormat, timestampPrecision, value, zoneId);
+                };
+            case ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(
+                    String.format(
+                        CliMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_B411C29E,
+                        type.getTypeEnum()));
+          };
+
   static final String HOST_ARGS = "h";
   static final String HOST_NAME = "host";
 
@@ -73,15 +109,22 @@ public abstract class AbstractCli {
 
   static final String USE_SSL_ARGS = "usessl";
   static final String TRUST_STORE_ARGS = "ts";
+  static final String KEY_STORE_ARGS = "ks";
 
   static final String TRUST_STORE_PWD_ARGS = "tpw";
+  static final String KEY_STORE_PWD_ARGS = "kpw";
+
+  static final String SSL_PROTOCOL_ARGS = "ssl_protocol";
 
   private static final String EXECUTE_NAME = "execute";
 
   private static final String USE_SSL = "use_ssl";
   private static final String TRUST_STORE = "trust_store";
+  private static final String KEY_STORE = "key_store";
 
   private static final String TRUST_STORE_PWD = "trust_store_pwd";
+  private static final String KEY_STORE_PWD = "key_store_pwd";
+  private static final String SSL_PROTOCOL = "ssl_protocol";
   private static final String NULL = "null";
 
   static final int CODE_OK = 0;
@@ -111,8 +154,6 @@ public abstract class AbstractCli {
   static int maxPrintRowCount = 1000;
   private static int fetchSize = 1000;
   static int queryTimeout = 0;
-  static String timestampPrecision = "ms";
-  static String timeFormat = RpcUtils.DEFAULT_TIME_FORMAT;
   private static boolean continuePrint = false;
 
   private static int lineCount = 0;
@@ -131,6 +172,9 @@ public abstract class AbstractCli {
   static String trustStore;
   // TODO: Make non-static
   static String trustStorePwd;
+  static String keyStore;
+  static String keyStorePwd;
+  static String sslProtocol;
 
   static String execute;
   static boolean hasExecuteSQL = false;
@@ -155,6 +199,9 @@ public abstract class AbstractCli {
     keywordSet.add("-" + USE_SSL_ARGS);
     keywordSet.add("-" + TRUST_STORE_ARGS);
     keywordSet.add("-" + TRUST_STORE_PWD_ARGS);
+    keywordSet.add("-" + KEY_STORE_ARGS);
+    keywordSet.add("-" + KEY_STORE_PWD_ARGS);
+    keywordSet.add("-" + SSL_PROTOCOL_ARGS);
     keywordSet.add("-" + EXECUTE_ARGS);
     keywordSet.add("-" + ISO8601_ARGS);
     keywordSet.add("-" + RPC_COMPRESS_ARGS);
@@ -213,6 +260,51 @@ public abstract class AbstractCli {
             .build();
     options.addOption(useSSL);
 
+    Option trustStore =
+        Option.builder(TRUST_STORE_ARGS)
+            .longOpt(TRUST_STORE)
+            .argName(TRUST_STORE)
+            .hasArg()
+            .desc("Trust store. (optional)")
+            .build();
+    options.addOption(trustStore);
+
+    Option trustStorePwd =
+        Option.builder(TRUST_STORE_PWD_ARGS)
+            .longOpt(TRUST_STORE_PWD)
+            .argName(TRUST_STORE_PWD)
+            .hasArg()
+            .desc("Trust store password. (optional)")
+            .build();
+    options.addOption(trustStorePwd);
+
+    Option keyStore =
+        Option.builder(KEY_STORE_ARGS)
+            .longOpt(KEY_STORE)
+            .argName(KEY_STORE)
+            .hasArg()
+            .desc("Key store for mutual SSL. (optional)")
+            .build();
+    options.addOption(keyStore);
+
+    Option keyStorePwd =
+        Option.builder(KEY_STORE_PWD_ARGS)
+            .longOpt(KEY_STORE_PWD)
+            .argName(KEY_STORE_PWD)
+            .hasArg()
+            .desc("Key store password for mutual SSL. (optional)")
+            .build();
+    options.addOption(keyStorePwd);
+
+    Option sslProtocol =
+        Option.builder(SSL_PROTOCOL_ARGS)
+            .longOpt(SSL_PROTOCOL)
+            .argName(SSL_PROTOCOL)
+            .hasArg()
+            .desc("SSL protocol. (optional)")
+            .build();
+    options.addOption(sslProtocol);
+
     Option execute =
         Option.builder(EXECUTE_ARGS)
             .argName(EXECUTE_NAME)
@@ -259,7 +351,7 @@ public abstract class AbstractCli {
       if (isRequired) {
         String msg = String.format("%s: Required values for option '%s' not provided", IOTDB, name);
         ctx.getPrinter().println(msg);
-        ctx.getPrinter().println("Use -help for more information");
+        ctx.getPrinter().println(CliMessages.USE_HELP_FOR_MORE);
         throw new ArgsErrorException(msg);
       } else if (defaultValue == null) {
         String msg = String.format("%s: Required values for option '%s' is null.", IOTDB, name);
@@ -565,7 +657,11 @@ public abstract class AbstractCli {
           List<Integer> maxSizeList = new ArrayList<>(columnLength);
           List<List<String>> lists =
               cacheResult(ctx, resultSet, maxSizeList, columnLength, resultSetMetaData, zoneId);
-          output(ctx, lists, maxSizeList);
+          if (isJsonExplainResult(lists)) {
+            outputRawJson(ctx, lists, maxSizeList);
+          } else {
+            output(ctx, lists, maxSizeList);
+          }
           ctx.getPrinter().println(String.format("It costs %.3fs", costTime / 1000.0));
           while (!isReachEnd) {
             if (continuePrint) {
@@ -731,40 +827,14 @@ public abstract class AbstractCli {
   private static String getStringByColumnIndex(
       IoTDBJDBCResultSet resultSet, int columnIndex, ZoneId zoneId) throws SQLException {
     TSDataType type = resultSet.getColumnTypeByIndex(columnIndex);
-    switch (type) {
-      case BOOLEAN:
-      case INT32:
-      case INT64:
-      case FLOAT:
-      case DOUBLE:
-      case TEXT:
-      case STRING:
-      case OBJECT:
-        return resultSet.getString(columnIndex);
-      case BLOB:
-        byte[] v = resultSet.getBytes(columnIndex);
-        if (v == null) {
-          return null;
-        } else {
-          return BytesUtils.parseBlobByteArrayToString(v);
-        }
-      case DATE:
-        int intValue = resultSet.getInt(columnIndex);
-        if (resultSet.wasNull()) {
-          return null;
-        } else {
-          return DateUtils.formatDate(intValue);
-        }
-      case TIMESTAMP:
-        long longValue = resultSet.getLong(columnIndex);
-        if (resultSet.wasNull()) {
-          return null;
-        } else {
-          return RpcUtils.formatDatetime(timeFormat, timestampPrecision, longValue, zoneId);
-        }
-      default:
-        return null;
-    }
+    return SQL_VALUE_GETTER_SERVICE
+        .call(Type.fromTsDataType(type))
+        .get(resultSet, columnIndex, zoneId);
+  }
+
+  @FunctionalInterface
+  private interface SqlValueGetter {
+    String get(ResultSet resultSet, int columnIndex, ZoneId zoneId) throws SQLException;
   }
 
   private static List<List<String>> cacheTracingInfo(ResultSet resultSet, List<Integer> maxSizeList)
@@ -813,6 +883,46 @@ public abstract class AbstractCli {
     }
 
     return lists;
+  }
+
+  private static final String COLUMN_DISTRIBUTION_PLAN = "distribution plan";
+  private static final String COLUMN_EXPLAIN_ANALYZE = "Explain Analyze";
+
+  private static boolean isJsonExplainResult(List<List<String>> lists) {
+    if (lists.size() != 1 || lists.get(0).size() < 2) {
+      return false;
+    }
+    String columnName = lists.get(0).get(0);
+    if (!COLUMN_DISTRIBUTION_PLAN.equalsIgnoreCase(columnName)
+        && !COLUMN_EXPLAIN_ANALYZE.equalsIgnoreCase(columnName)) {
+      return false;
+    }
+    String value = lists.get(0).get(1).trim();
+    return value.startsWith("{") || value.startsWith("[");
+  }
+
+  private static void outputRawJson(
+      CliContext ctx, List<List<String>> lists, List<Integer> maxSizeList) {
+    // Use header text length for border width instead of the full content length
+    String header = lists.get(0).get(0);
+    int headerLen = header.length() + ctx.getPrinter().computeHANCount(header);
+    List<Integer> headerSizeList = new ArrayList<>(1);
+    headerSizeList.add(headerLen);
+    // Print header with table border
+    ctx.getPrinter().printBlockLine(headerSizeList);
+    ctx.getPrinter().printRow(lists, 0, headerSizeList);
+    ctx.getPrinter().printBlockLine(headerSizeList);
+    // Print JSON content without '|' borders
+    for (int i = 1; i < lists.get(0).size(); i++) {
+      ctx.getPrinter().println(lists.get(0).get(i));
+    }
+    ctx.getPrinter().printBlockLine(headerSizeList);
+    if (isReachEnd) {
+      lineCount += lists.get(0).size() - 1;
+      ctx.getPrinter().printCount(lineCount);
+    } else {
+      lineCount += maxPrintRowCount;
+    }
   }
 
   private static void output(CliContext ctx, List<List<String>> lists, List<Integer> maxSizeList) {

@@ -26,6 +26,7 @@ import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeDataRegionAssigner;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeDataRegionAssigner.CompletionToken;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
@@ -34,7 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * PipeInsertionEventListener is a singleton in each data node.
@@ -45,52 +46,51 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * <p>All events extracted by this listener will be first published to different
  * PipeEventDataRegionAssigners (identified by data region id), and then PipeEventDataRegionAssigner
- * will filter events and assign them to different PipeRealtimeEventDataRegionExtractors.
+ * will filter events and assign them to different PipeRealtimeEventDataRegionSources.
  */
 public class PipeInsertionDataNodeListener {
   private final ConcurrentMap<Integer, PipeDataRegionAssigner> dataRegionId2Assigner =
       new ConcurrentHashMap<>();
 
-  private final AtomicInteger listenToTsFileExtractorCount = new AtomicInteger(0);
-  private final AtomicInteger listenToInsertNodeExtractorCount = new AtomicInteger(0);
-
   //////////////////////////// start & stop ////////////////////////////
 
   public synchronized void startListenAndAssign(
-      final int dataRegionId, final PipeRealtimeDataRegionSource extractor) {
-    dataRegionId2Assigner
-        .computeIfAbsent(dataRegionId, o -> new PipeDataRegionAssigner(dataRegionId))
-        .startAssignTo(extractor);
-
-    if (extractor.isNeedListenToTsFile()) {
-      listenToTsFileExtractorCount.incrementAndGet();
-    }
-    if (extractor.isNeedListenToInsertNode()) {
-      listenToInsertNodeExtractorCount.incrementAndGet();
-    }
+      final int dataRegionId, final PipeRealtimeDataRegionSource source) {
+    // Keep registration inside compute so the assigner is fully started before it becomes visible
+    // to concurrent listeners.
+    dataRegionId2Assigner.compute(
+        dataRegionId,
+        (id, assigner) -> {
+          final PipeDataRegionAssigner actualAssigner =
+              assigner == null ? new PipeDataRegionAssigner(dataRegionId) : assigner;
+          actualAssigner.startAssignTo(source);
+          return actualAssigner;
+        });
   }
 
-  public synchronized void stopListenAndAssign(
-      final int dataRegionId, final PipeRealtimeDataRegionSource extractor) {
-    final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
-    if (assigner == null) {
-      return;
+  public void stopListenAndAssign(
+      final int dataRegionId, final PipeRealtimeDataRegionSource source) {
+    PipeDataRegionAssigner assignerToClose = null;
+
+    synchronized (this) {
+      final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
+      if (assigner == null) {
+        return;
+      }
+
+      assigner.stopAssignTo(source);
+
+      if (assigner.notMoreSourceNeededToBeAssigned()) {
+        // The removed assigner will is the same as the one referenced by the variable `assigner`
+        dataRegionId2Assigner.remove(dataRegionId);
+        // This will help to release the memory occupied by the assigner
+        assignerToClose = assigner;
+      }
     }
 
-    assigner.stopAssignTo(extractor);
-
-    if (extractor.isNeedListenToTsFile()) {
-      listenToTsFileExtractorCount.decrementAndGet();
-    }
-    if (extractor.isNeedListenToInsertNode()) {
-      listenToInsertNodeExtractorCount.decrementAndGet();
-    }
-
-    if (assigner.notMoreExtractorNeededToBeAssigned()) {
-      // The removed assigner will is the same as the one referenced by the variable `assigner`
-      dataRegionId2Assigner.remove(dataRegionId);
-      // This will help to release the memory occupied by the assigner
-      assigner.close();
+    if (assignerToClose != null) {
+      // Closing the disruptor may block for a while, so keep it out of the global listener lock.
+      assignerToClose.close();
     }
   }
 
@@ -101,20 +101,21 @@ public class PipeInsertionDataNodeListener {
       final String databaseName,
       final TsFileResource tsFileResource,
       final boolean isLoaded) {
-    // We don't judge whether listenToTsFileExtractorCount.get() == 0 here on purpose
-    // because extractors may use tsfile events when some exceptions occur in the
-    // insert nodes listening process.
-
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
 
-    // only events from registered data region will be extracted
     if (assigner == null) {
       return;
     }
+    // only events from registered data region with tsfile listeners will be extracted
+    if (!assigner.shouldListenToTsFile()) {
+      assigner.invalidateCompletion();
+      return;
+    }
 
-    assigner.publishToAssign(
-        PipeRealtimeEventFactory.createRealtimeEvent(
-            assigner.isTableModel(), databaseName, tsFileResource, isLoaded));
+    assigner.publishDataEventToAssign(
+        () ->
+            PipeRealtimeEventFactory.createRealtimeEvent(
+                assigner.isTableModel(), databaseName, tsFileResource, isLoaded));
   }
 
   public void listenToInsertNode(
@@ -122,20 +123,21 @@ public class PipeInsertionDataNodeListener {
       final String databaseName,
       final InsertNode insertNode,
       final TsFileResource tsFileResource) {
-    if (listenToInsertNodeExtractorCount.get() == 0) {
-      return;
-    }
-
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
 
-    // only events from registered data region will be extracted
     if (assigner == null) {
       return;
     }
+    // only events from registered data region with insert listeners will be extracted
+    if (!assigner.shouldListenToInsertNode()) {
+      assigner.invalidateCompletionBarrier();
+      return;
+    }
 
-    assigner.publishToAssign(
-        PipeRealtimeEventFactory.createRealtimeEvent(
-            assigner.isTableModel(), databaseName, insertNode, tsFileResource));
+    assigner.publishInsertDataEventToAssign(
+        () ->
+            PipeRealtimeEventFactory.createRealtimeEvent(
+                assigner.isTableModel(), databaseName, insertNode, tsFileResource));
   }
 
   public DeletionResource listenToDeleteData(
@@ -147,25 +149,25 @@ public class PipeInsertionDataNodeListener {
             && ((RelationalDeleteDataNode) node).getModEntries().isEmpty()) {
       return null;
     }
+    final AtomicReference<DeletionResource> deletionResourceHolder = new AtomicReference<>();
+    assigner.publishDataEventToAssign(
+        () -> {
+          // Register a deletionResource and return it to DataRegion. A deleteNode generated by a
+          // remote consensus leader should not be persisted to DAL.
+          final DeletionResourceManager manager = DeletionResourceManager.getInstance(regionId);
+          if (Objects.nonNull(manager)
+              && DeletionResource.isDeleteNodeGeneratedInLocalByIoTV2(node)) {
+            final DeletionResource deletionResource = manager.registerDeletionResource(node);
+            deletionResourceHolder.set(deletionResource);
+            // If persistence failed, skip this event to stay consistent with storage engine.
+            if (deletionResource.waitForResult() == DeletionResource.Status.FAILURE) {
+              return null;
+            }
+          }
+          return PipeRealtimeEventFactory.createRealtimeEvent(node);
+        });
 
-    final DeletionResource deletionResource;
-    // register a deletionResource and return it to DataRegion
-    final DeletionResourceManager manager = DeletionResourceManager.getInstance(regionId);
-    // deleteNode generated by remote consensus leader shouldn't be persisted to DAL.
-    if (Objects.nonNull(manager) && DeletionResource.isDeleteNodeGeneratedInLocalByIoTV2(node)) {
-      deletionResource = manager.registerDeletionResource(node);
-      // if persist failed, skip sending/publishing this event to keep consistency with the
-      // behavior of storage engine.
-      if (deletionResource.waitForResult() == DeletionResource.Status.FAILURE) {
-        return deletionResource;
-      }
-    } else {
-      deletionResource = null;
-    }
-
-    assigner.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(node));
-
-    return deletionResource;
+    return deletionResourceHolder.get();
   }
 
   public void listenToHeartbeat(final boolean shouldPrintMessage) {
@@ -173,6 +175,19 @@ public class PipeInsertionDataNodeListener {
         (key, value) ->
             value.publishToAssign(
                 PipeRealtimeEventFactory.createRealtimeEvent(key, shouldPrintMessage)));
+  }
+
+  public CompletionToken invalidateDataRegionCompletion(final int dataRegionId) {
+    final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
+    return assigner == null ? null : assigner.invalidateCompletionAndGetToken();
+  }
+
+  public void listenToCompletionBarrier(
+      final int dataRegionId, final CompletionToken completionToken) {
+    final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
+    if (assigner != null) {
+      assigner.publishCompletionBarrier(completionToken);
+    }
   }
 
   public boolean isEmpty() {

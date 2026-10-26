@@ -127,4 +127,73 @@ public class InsertTabletTest {
     assertArrayEquals(new Object[] {"id3_1"}, deviceIdList.get(2));
     assertArrayEquals(new Object[] {}, deviceIdList.get(3));
   }
+
+  @Test
+  public void testDuplicateDeviceUsesLastNonNullAttributeValue() {
+    InsertTabletStatement innerStmt = new InsertTabletStatement();
+    innerStmt.setDevicePath(new PartialPath("table1", false));
+    innerStmt.setTimes(new long[] {1, 2, 3, 4});
+    innerStmt.setRowCount(4);
+    innerStmt.setMeasurements(new String[] {"deviceId", "attr1", "attr2", "measurement"});
+    innerStmt.setColumnCategories(
+        new TsTableColumnCategory[] {
+          TsTableColumnCategory.TAG,
+          TsTableColumnCategory.ATTRIBUTE,
+          TsTableColumnCategory.ATTRIBUTE,
+          TsTableColumnCategory.FIELD
+        });
+    innerStmt.setDataTypes(
+        new TSDataType[] {
+          TSDataType.STRING, TSDataType.STRING, TSDataType.STRING, TSDataType.STRING
+        });
+    innerStmt.setColumns(
+        new Object[] {
+          new Binary[] {
+            new Binary("d1", StandardCharsets.UTF_8),
+            new Binary("d1", StandardCharsets.UTF_8),
+            new Binary("d1", StandardCharsets.UTF_8),
+            new Binary("d1", StandardCharsets.UTF_8)
+          },
+          new Binary[] {
+            new Binary("attr1_1", StandardCharsets.UTF_8),
+            Binary.EMPTY_VALUE,
+            new Binary("attr1_3", StandardCharsets.UTF_8),
+            Binary.EMPTY_VALUE
+          },
+          new Binary[] {
+            new Binary("attr2_1", StandardCharsets.UTF_8),
+            new Binary("attr2_2", StandardCharsets.UTF_8),
+            Binary.EMPTY_VALUE,
+            Binary.EMPTY_VALUE
+          },
+          new Binary[] {
+            new Binary("m1", StandardCharsets.UTF_8),
+            new Binary("m2", StandardCharsets.UTF_8),
+            new Binary("m3", StandardCharsets.UTF_8),
+            new Binary("m4", StandardCharsets.UTF_8)
+          },
+        });
+    innerStmt.setBitMaps(
+        new BitMap[] {
+          new BitMap(4, new byte[] {0x00}),
+          new BitMap(4, new byte[] {1 << 1 | 1 << 3}),
+          new BitMap(4, new byte[] {1 << 2 | 1 << 3}),
+          new BitMap(4, new byte[] {0x00}),
+        });
+
+    InsertTablet insertTablet = new InsertTablet(innerStmt, null);
+    assertEquals(Arrays.asList("attr1", "attr2"), insertTablet.getAttributeColumnNameList());
+    List<Object[]> attributeValueList = insertTablet.getAttributeValueList();
+    assertEquals(1, attributeValueList.size());
+    assertArrayEquals(
+        new Object[] {
+          new Binary("attr1_3", StandardCharsets.UTF_8),
+          new Binary("attr2_2", StandardCharsets.UTF_8)
+        },
+        attributeValueList.get(0));
+
+    List<Object[]> deviceIdList = insertTablet.getDeviceIdList();
+    assertEquals(1, deviceIdList.size());
+    assertArrayEquals(new Object[] {"d1"}, deviceIdList.get(0));
+  }
 }

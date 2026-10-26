@@ -19,17 +19,26 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import org.apache.iotdb.calc.execution.filter.TopKRuntimeFilter;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 
+import org.apache.thrift.TException;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 
 import javax.annotation.concurrent.GuardedBy;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -59,9 +68,33 @@ public class DataNodeQueryContext {
 
   private final AtomicInteger dataNodeFINum;
 
+  // Used for TableModel information table_disk_usage scan
+  @GuardedBy("lock")
+  private Map<String, List<TTableInfo>> databaseTableInfoMap;
+
   // TODO consider more fine-grained locks, now the AtomicInteger in uncachedPathToSeriesScanInfo is
   // unnecessary
   private final ReentrantLock lock = new ReentrantLock();
+
+  /**
+   * TopK runtime filters shared across fragment instances on this DataNode for the same query.
+   *
+   * <p>Key: root TopK plan node id. Value: filter instance produced by the TopK operator and
+   * consumed by Scan operators referencing the same id via {@code topKRuntimeFilterSourceId}.
+   */
+  private final Map<String, TopKRuntimeFilter> runtimeFilters = new ConcurrentHashMap<>();
+
+  /**
+   * Registers a TopK runtime filter for the given root TopK id. If multiple fragment instances bind
+   * the same id, they share one filter instance.
+   */
+  public TopKRuntimeFilter registerTopKRuntimeFilter(String filterId, TopKRuntimeFilter filter) {
+    return runtimeFilters.computeIfAbsent(filterId, id -> filter);
+  }
+
+  public TopKRuntimeFilter getTopKRuntimeFilter(String filterId) {
+    return runtimeFilters.get(filterId);
+  }
 
   public DataNodeQueryContext(int dataNodeFINum) {
     this.uncachedPathToSeriesScanInfo = new ConcurrentHashMap<>();
@@ -77,9 +110,30 @@ public class DataNodeQueryContext {
     uncachedPathToSeriesScanInfo.put(path, new Pair<>(dataNodeSeriesScanNum, null));
   }
 
+  public Map<String, List<TTableInfo>> getDatabaseTableInfoMap()
+      throws ClientManagerException, TException {
+    if (databaseTableInfoMap != null) {
+      return databaseTableInfoMap;
+    }
+    lock.lock();
+    if (databaseTableInfoMap != null) {
+      lock.unlock();
+      return databaseTableInfoMap;
+    }
+    try (final ConfigNodeClient client =
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      this.databaseTableInfoMap = client.showTables4InformationSchema().getDatabaseTableInfoMap();
+    } finally {
+      lock.unlock();
+    }
+    return databaseTableInfoMap;
+  }
+
   public void decreaseDeviceAndMayUpdateLastCache(
       QualifiedObjectName tableName, DeviceEntry deviceEntry, Integer initialCount) {
-    checkArgument(initialCount != null, "initialCount shouldn't be null here");
+    checkArgument(
+        initialCount != null,
+        DataNodeQueryMessages.EXCEPTION_INITIALCOUNT_SHOULDN_QUOTE_T_BE_NULL_HERE_8B333953);
 
     Map<DeviceEntry, Pair<Integer, Map<String, TimeValuePair>>> deviceInfo =
         deviceCountAndMeasurementValues.computeIfAbsent(tableName, t -> new HashMap<>());
@@ -94,7 +148,8 @@ public class DataNodeQueryContext {
 
   public void addUnCachedDeviceIfAbsent(
       QualifiedObjectName tableName, DeviceEntry deviceEntry, Integer count) {
-    checkArgument(count != null, "count shouldn't be null here");
+    checkArgument(
+        count != null, DataNodeQueryMessages.EXCEPTION_COUNT_SHOULDN_QUOTE_T_BE_NULL_HERE_1EBA9339);
 
     Map<DeviceEntry, Pair<Integer, Map<String, TimeValuePair>>> deviceInfo =
         deviceCountAndMeasurementValues.computeIfAbsent(tableName, t -> new HashMap<>());

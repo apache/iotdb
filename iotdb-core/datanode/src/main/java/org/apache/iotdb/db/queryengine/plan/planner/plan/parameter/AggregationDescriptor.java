@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter;
 
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -37,13 +37,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.LAST_VALUE;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.FIRST_VALUE;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.STDDEV;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.addPartialSuffix;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.isBuiltinAggregationName;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.AVG;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_VALUE;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.STDDEV;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.TIME_DURATION;
 
 public class AggregationDescriptor {
 
@@ -186,6 +183,27 @@ public class AggregationDescriptor {
           break;
         case VAR_SAMP:
           outputAggregationNames.add(addPartialSuffix(SqlConstant.VAR_SAMP));
+          break;
+        case CORR:
+          outputAggregationNames.add(addPartialSuffix(SqlConstant.CORR));
+          break;
+        case COVAR_POP:
+          outputAggregationNames.add(addPartialSuffix(SqlConstant.COVAR_POP));
+          break;
+        case COVAR_SAMP:
+          outputAggregationNames.add(addPartialSuffix(SqlConstant.COVAR_SAMP));
+          break;
+        case REGR_SLOPE:
+          outputAggregationNames.add(addPartialSuffix(SqlConstant.REGR_SLOPE));
+          break;
+        case REGR_INTERCEPT:
+          outputAggregationNames.add(addPartialSuffix(SqlConstant.REGR_INTERCEPT));
+          break;
+        case SKEWNESS:
+          outputAggregationNames.add(addPartialSuffix(SqlConstant.SKEWNESS));
+          break;
+        case KURTOSIS:
+          outputAggregationNames.add(addPartialSuffix(SqlConstant.KURTOSIS));
           break;
         case MAX_BY:
           outputAggregationNames.add(addPartialSuffix(SqlConstant.MAX_BY));

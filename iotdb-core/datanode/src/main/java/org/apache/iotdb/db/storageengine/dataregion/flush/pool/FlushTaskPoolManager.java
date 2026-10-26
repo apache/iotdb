@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.flush.pool;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.rescon.memory.AbstractPoolManager;
 
 import org.slf4j.Logger;
@@ -57,13 +58,13 @@ public class FlushTaskPoolManager extends AbstractPoolManager {
       pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.FLUSH.getName());
     }
 
-    LOGGER.info("Flush task manager started.");
+    LOGGER.info(StorageEngineMessages.FLUSH_TASK_MANAGER_STARTED);
   }
 
   @Override
   public void stop() {
     super.stop();
-    LOGGER.info("Flush task manager stopped");
+    LOGGER.info(StorageEngineMessages.FLUSH_TASK_MANAGER_STOPPED);
   }
 
   private static class InstanceHolder {

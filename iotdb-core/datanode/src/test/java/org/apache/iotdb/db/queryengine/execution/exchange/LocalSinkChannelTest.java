@@ -94,13 +94,14 @@ public class LocalSinkChannelTest {
     Assert.assertFalse(localSinkChannel.isFinished());
     Assert.assertEquals(11 * mockTsBlockSize, localSinkChannel.getBufferRetainedSizeInBytes());
     Mockito.verify(spyMemoryPool, Mockito.times(11))
-        .reserve(
+        .reserveWithPriority(
             queryId,
             FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
                 remoteFragmentInstanceId),
             remotePlanNodeId,
             mockTsBlockSize,
-            Long.MAX_VALUE);
+            Long.MAX_VALUE,
+            false);
 
     // Receive TsBlocks.
     int numOfReceivedTsblocks = 0;
@@ -187,13 +188,14 @@ public class LocalSinkChannelTest {
     Assert.assertFalse(localSinkChannel.isFinished());
     Assert.assertEquals(11 * mockTsBlockSize, localSinkChannel.getBufferRetainedSizeInBytes());
     Mockito.verify(spyMemoryPool, Mockito.times(11))
-        .reserve(
+        .reserveWithPriority(
             queryId,
             FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
                 remoteFragmentInstanceId),
             remotePlanNodeId,
             mockTsBlockSize,
-            Long.MAX_VALUE);
+            Long.MAX_VALUE,
+            false);
 
     // Abort.
     localSinkChannel.abort();

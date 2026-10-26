@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
@@ -26,13 +27,18 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.Set;
 
 public class ConfigurationFileUtilsTest {
 
@@ -41,13 +47,7 @@ public class ConfigurationFileUtilsTest {
 
   @After
   public void tearDown() throws IOException {
-    if (!dir.exists()) {
-      return;
-    }
-    for (File file : Objects.requireNonNull(dir.listFiles())) {
-      Files.delete(file.toPath());
-    }
-    Files.delete(dir.toPath());
+    EnvironmentUtils.cleanDir(dir.getPath());
   }
 
   @Test
@@ -87,6 +87,82 @@ public class ConfigurationFileUtilsTest {
           "The format of configuration item [" + key + "] is incorrect",
           value.effectiveMode == ConfigurationFileUtils.EffectiveModeType.UNKNOWN);
     }
+  }
+
+  /**
+   * Regression guard for V2-995: a configuration item whose {@code effectiveMode} allows {@code set
+   * configuration} (i.e. anything except {@code FIRST_START}) must have its {@code key=value} line
+   * left uncommented in the template. {@code getConfigurationItemsFromTemplate} only parses
+   * uncommented lines, so a commented item never enters {@code configuration2DefaultValue}; {@code
+   * filterInvalidConfigItems} then treats it as undefined and {@code set configuration} rejects it
+   * with "immutable or undefined" — silently disabling the advertised dynamic-config entry point.
+   * This was the root cause for {@code enable_topology_probing} (hot_reload) and the two {@code
+   * topology_probing_*} items (restart).
+   */
+  @Test
+  public void checkSettableItemsAreUncommentedInTemplate() throws IOException {
+    // Keys whose value line appears uncommented at least once. Some keys (e.g. dn_data_dirs) list a
+    // commented Windows-path variant next to an uncommented Unix-path variant; only the uncommented
+    // one is parsed, so such keys are fine and must not be flagged.
+    Set<String> uncommentedKeys = new HashSet<>();
+    // Keys with a commented value line whose enclosing block declares a settable effectiveMode.
+    Set<String> commentedSettableKeys = new HashSet<>();
+    try (InputStream inputStream =
+            ConfigurationFileUtilsTest.class
+                .getClassLoader()
+                .getResourceAsStream(CommonConfig.SYSTEM_CONFIG_TEMPLATE_NAME);
+        BufferedReader reader =
+            new BufferedReader(new InputStreamReader(Objects.requireNonNull(inputStream)))) {
+      String line;
+      ConfigurationFileUtils.EffectiveModeType currentMode = null;
+      while ((line = reader.readLine()) != null) {
+        line = line.trim();
+        if (line.isEmpty()) {
+          // Blank line separates configuration blocks; reset the accumulated effectiveMode.
+          currentMode = null;
+          continue;
+        }
+        if (line.startsWith("# effectiveMode:")) {
+          currentMode =
+              ConfigurationFileUtils.EffectiveModeType.getEffectiveMode(
+                  line.substring("# effectiveMode:".length()).trim());
+          continue;
+        }
+        // Detect the (possibly commented) "key=value" line that closes a block.
+        String stripped = line.startsWith("#") ? line.substring(1).trim() : line;
+        int equalsIndex = stripped.indexOf('=');
+        boolean isValueLine =
+            equalsIndex > 0 && stripped.substring(0, equalsIndex).trim().matches("[a-zA-Z0-9_.]+");
+        if (!isValueLine) {
+          continue;
+        }
+        String key = stripped.substring(0, equalsIndex).trim();
+        if (line.startsWith("#")) {
+          // FIRST_START items are intentionally rejected by 'set configuration'; UNKNOWN items have
+          // no declared mode. Only flag items that 'set configuration' is supposed to accept.
+          if (isSettableByConfiguration(currentMode)) {
+            commentedSettableKeys.add(key);
+          }
+        } else {
+          uncommentedKeys.add(key);
+        }
+        // A value line ends the current block's effectiveMode scope.
+        currentMode = null;
+      }
+    }
+    commentedSettableKeys.removeAll(uncommentedKeys);
+    Assert.assertTrue(
+        "configuration items settable via 'set configuration' must be uncommented in the template "
+            + "so the command can reach them instead of rejecting them as undefined; "
+            + "commented settable items found: "
+            + commentedSettableKeys,
+        commentedSettableKeys.isEmpty());
+  }
+
+  private static boolean isSettableByConfiguration(ConfigurationFileUtils.EffectiveModeType mode) {
+    return mode == ConfigurationFileUtils.EffectiveModeType.HOT_RELOAD
+        || mode == ConfigurationFileUtils.EffectiveModeType.RESTART
+        || mode == ConfigurationFileUtils.EffectiveModeType.FIRST_START_OR_SET_CONFIGURATION;
   }
 
   private void generateFile(File file, String content) throws IOException {

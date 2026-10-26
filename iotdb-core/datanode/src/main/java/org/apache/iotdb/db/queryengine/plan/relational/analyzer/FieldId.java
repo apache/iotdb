@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
@@ -27,7 +29,7 @@ import static java.util.Objects.requireNonNull;
 
 public final class FieldId {
   public static FieldId from(ResolvedField field) {
-    requireNonNull(field, "field is null");
+    requireNonNull(field, DataNodeQueryMessages.EXCEPTION_FIELD_IS_NULL_80E8CE23);
 
     Scope sourceScope = field.getScope();
     RelationType relationType = sourceScope.getRelationType();
@@ -38,9 +40,14 @@ public final class FieldId {
   private final int fieldIndex;
 
   public FieldId(RelationId relationId, int fieldIndex) {
-    this.relationId = requireNonNull(relationId, "relationId is null");
+    this.relationId =
+        requireNonNull(relationId, DataNodeQueryMessages.EXCEPTION_RELATIONID_IS_NULL_C4683108);
 
-    checkArgument(fieldIndex >= 0, "fieldIndex must be non-negative, got: %s", fieldIndex);
+    checkArgument(
+        fieldIndex >= 0,
+        DataNodeQueryMessages
+            .EXCEPTION_FIELDINDEX_MUST_BE_NON_MINUS_NEGATIVE_COMMA_GOT_COLON_ARG_09C2C06D,
+        fieldIndex);
     this.fieldIndex = fieldIndex;
   }
 

@@ -34,18 +34,39 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
       TTransport underlying,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
-      boolean copyBinary) {
+      boolean copyBinary)
+      throws TTransportException {
     super(underlying, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
-    writeCompressBuffer = new AutoScalingBufferWriteTransport(thriftDefaultBufferSize);
-    readCompressBuffer = new AutoScalingBufferReadTransport(thriftDefaultBufferSize);
+    try {
+      writeCompressBuffer = new AutoScalingBufferWriteTransport(thriftDefaultBufferSize);
+      readCompressBuffer = new AutoScalingBufferReadTransport(thriftDefaultBufferSize);
+    } catch (IOException e) {
+      closeAllocatedBuffers();
+      throw new TTransportException(e);
+    }
+  }
+
+  @Override
+  protected void closeAllocatedBuffers() {
+    super.closeAllocatedBuffers();
+    if (writeCompressBuffer != null) {
+      writeCompressBuffer.close();
+    }
+    if (readCompressBuffer != null) {
+      readCompressBuffer.close();
+    }
   }
 
   @Override
   protected void readFrame() throws TTransportException {
+    // Discard the previous frame's budget before reading the next frame header and payload.
+    resetMessageSizeAndConsumedBytes();
     underlying.readAll(i32buf, 0, 4);
     int size = TFramedTransport.decodeFrameSize(i32buf);
-    checkFrameSize(size);
+    validateFrame(size);
     readBuffer.fill(underlying, size);
+    // Bind subsequent protocol reads to the current compressed frame size.
+    resetMessageSizeAndConsumedBytes(size);
     RpcStat.readCompressedBytes.addAndGet(size);
     try {
       int uncompressedLength = uncompressedLength(readBuffer.getBuffer(), 0, size);
@@ -69,6 +90,7 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
       writeCompressBuffer.resizeIfNecessary(maxCompressedLength);
       int compressedLength =
           compress(writeBuffer.getBuffer(), 0, length, writeCompressBuffer.getBuffer(), 0);
+      checkWriteFrameSize(compressedLength);
       RpcStat.writeCompressedBytes.addAndGet(compressedLength);
       TFramedTransport.encodeFrameSize(compressedLength, i32buf);
       underlying.write(i32buf, 0, 4);
@@ -78,8 +100,10 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
     }
 
     writeBuffer.reset();
-    if (thriftDefaultBufferSize < length) {
-      writeBuffer.resizeIfNecessary(thriftDefaultBufferSize);
+    try {
+      writeBuffer.resizeIfNecessary(length);
+    } catch (IOException e) {
+      throw new TTransportException(e);
     }
     underlying.flush();
   }

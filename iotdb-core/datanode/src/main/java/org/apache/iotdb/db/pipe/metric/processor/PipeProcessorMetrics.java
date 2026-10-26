@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.metric.processor;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.task.subtask.processor.PipeProcessorSubtask;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -32,7 +33,6 @@ import com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -44,7 +44,7 @@ public class PipeProcessorMetrics implements IMetricSet {
   @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
-  private final Map<String, PipeProcessorSubtask> processorMap = new HashMap<>();
+  private final Map<String, PipeProcessorSubtask> processorMap = new ConcurrentHashMap<>();
 
   private final Map<String, Rate> tabletRateMap = new ConcurrentHashMap<>();
 
@@ -55,7 +55,7 @@ public class PipeProcessorMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
+  public synchronized void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
     final ImmutableSet<String> taskIDs = ImmutableSet.copyOf(processorMap.keySet());
     for (final String taskID : taskIDs) {
@@ -106,14 +106,11 @@ public class PipeProcessorMetrics implements IMetricSet {
   }
 
   @Override
-  public void unbindFrom(final AbstractMetricService metricService) {
-    final ImmutableSet<String> taskIDs = ImmutableSet.copyOf(processorMap.keySet());
-    for (final String taskID : taskIDs) {
-      deregister(taskID);
-    }
-    if (!processorMap.isEmpty()) {
-      LOGGER.warn("Failed to unbind from pipe processor metrics, processor map not empty");
-    }
+  public synchronized void unbindFrom(final AbstractMetricService metricService) {
+    // Keep the subtasks registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    // Synchronized with the (de)registrations, which may remove a registration being unbound.
+    ImmutableSet.copyOf(processorMap.keySet()).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final String taskID) {
@@ -157,7 +154,7 @@ public class PipeProcessorMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(final PipeProcessorSubtask pipeProcessorSubtask) {
+  public synchronized void register(final PipeProcessorSubtask pipeProcessorSubtask) {
     final String taskID = pipeProcessorSubtask.getTaskID();
     processorMap.putIfAbsent(taskID, pipeProcessorSubtask);
     if (Objects.nonNull(metricService)) {
@@ -165,7 +162,7 @@ public class PipeProcessorMetrics implements IMetricSet {
     }
   }
 
-  public void deregister(final String taskID) {
+  public synchronized void deregister(final String taskID) {
     if (!processorMap.containsKey(taskID)) {
       // Allow calls from schema region tasks
       return;
@@ -182,9 +179,7 @@ public class PipeProcessorMetrics implements IMetricSet {
     }
     final Rate rate = tabletRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.info(
-          "Failed to mark pipe processor tablet event, PipeProcessorSubtask({}) does not exist",
-          taskID);
+      LOGGER.info(DataNodePipeMessages.FAILED_TO_MARK_PIPE_PROCESSOR_TABLET_EVENT, taskID);
       return;
     }
     rate.mark();
@@ -196,9 +191,7 @@ public class PipeProcessorMetrics implements IMetricSet {
     }
     final Rate rate = tsFileRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.info(
-          "Failed to mark pipe processor tsfile event, PipeProcessorSubtask({}) does not exist",
-          taskID);
+      LOGGER.info(DataNodePipeMessages.FAILED_TO_MARK_PIPE_PROCESSOR_TSFILE_EVENT, taskID);
       return;
     }
     rate.mark();
@@ -210,9 +203,7 @@ public class PipeProcessorMetrics implements IMetricSet {
     }
     final Rate rate = pipeHeartbeatRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.info(
-          "Failed to mark pipe processor heartbeat event, PipeProcessorSubtask({}) does not exist",
-          taskID);
+      LOGGER.info(DataNodePipeMessages.FAILED_TO_MARK_PIPE_PROCESSOR_HEARTBEAT_EVENT, taskID);
       return;
     }
     rate.mark();

@@ -54,9 +54,9 @@ public class SessionWindow implements IWindow {
       return true;
     }
     if (index == 0) {
-      return Math.abs(column.getLong(index) - lastTsBlockTime) <= timeInterval;
+      return isTimeDistanceLessThanOrEqual(column.getLong(index), lastTsBlockTime);
     }
-    return Math.abs(column.getLong(index) - column.getLong(index - 1)) <= timeInterval;
+    return isTimeDistanceLessThanOrEqual(column.getLong(index), column.getLong(index - 1));
   }
 
   @Override
@@ -92,8 +92,8 @@ public class SessionWindow implements IWindow {
     long maxTime = Math.max(columnStartTime, columnEndTime);
 
     boolean contains =
-        Math.abs(columnStartTime - lastTsBlockTime) < timeInterval
-            && maxTime - minTime <= timeInterval;
+        isTimeDistanceLessThan(columnStartTime, lastTsBlockTime)
+            && isTimeDistanceLessThanOrEqual(maxTime, minTime);
     if (contains) {
       if (!initializedTimeValue) {
         startTime = Long.MAX_VALUE;
@@ -111,6 +111,22 @@ public class SessionWindow implements IWindow {
 
   public long getTimeInterval() {
     return timeInterval;
+  }
+
+  boolean isTimeDistanceLessThanOrEqual(long left, long right) {
+    return compareTimeDistance(left, right) <= 0;
+  }
+
+  private boolean isTimeDistanceLessThan(long left, long right) {
+    return compareTimeDistance(left, right) < 0;
+  }
+
+  private int compareTimeDistance(long left, long right) {
+    if (timeInterval < 0) {
+      return 1;
+    }
+    long distance = left >= right ? left - right : right - left;
+    return Long.compareUnsigned(distance, timeInterval);
   }
 
   public long getTimeValue() {

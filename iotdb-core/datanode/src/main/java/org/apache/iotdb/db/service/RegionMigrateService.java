@@ -39,6 +39,7 @@ import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
@@ -132,9 +133,9 @@ public class RegionMigrateService implements IService {
     if (req.isSetIsStart() && req.isSetRegionId()) {
       regionMigrationStatusCache.notifyMigrating();
       if (req.isIsStart()) {
-        LOGGER.info("Region {} is notified to begin migrating", req.getRegionId());
+        LOGGER.info(DataNodeMiscMessages.REGION_BEGIN_MIGRATING, req.getRegionId());
       } else {
-        LOGGER.info("Region {} is notified to finish migrating", req.getRegionId());
+        LOGGER.info(DataNodeMiscMessages.REGION_FINISH_MIGRATING, req.getRegionId());
       }
     }
   }
@@ -158,7 +159,8 @@ public class RegionMigrateService implements IService {
     try {
       if (!addToTaskResultMap(req.getTaskId())) {
         LOGGER.warn(
-            "{} The AddRegionPeerTask {} has already been submitted and will not be submitted again.",
+            DataNodeMiscMessages
+                .MISC_LOG_THE_ADDREGIONPEERTASK_HAS_ALREADY_BEEN_SUBMITTED_AND_WILL_4D398F73,
             REGION_MIGRATE_PROCESS,
             req.getTaskId());
         return true;
@@ -167,7 +169,7 @@ public class RegionMigrateService implements IService {
           new AddRegionPeerTask(req.getTaskId(), req.getRegionId(), req.getDestNode()));
     } catch (Exception e) {
       LOGGER.error(
-          "{}, Submit AddRegionPeerTask error for Region: {}",
+          DataNodeMiscMessages.MISC_LOG_SUBMIT_ADDREGIONPEERTASK_ERROR_FOR_REGION_4E999BA9,
           REGION_MIGRATE_PROCESS,
           req.getRegionId(),
           e);
@@ -188,7 +190,8 @@ public class RegionMigrateService implements IService {
     try {
       if (!addToTaskResultMap(req.getTaskId())) {
         LOGGER.warn(
-            "{} The RemoveRegionPeer {} has already been submitted and will not be submitted again.",
+            DataNodeMiscMessages
+                .MISC_LOG_THE_REMOVEREGIONPEER_HAS_ALREADY_BEEN_SUBMITTED_AND_WILL_6754D9FB,
             REGION_MIGRATE_PROCESS,
             req.getTaskId());
         return true;
@@ -197,7 +200,7 @@ public class RegionMigrateService implements IService {
           new RemoveRegionPeerTask(req.getTaskId(), req.getRegionId(), req.getDestNode()));
     } catch (Exception e) {
       LOGGER.error(
-          "{}, Submit RemoveRegionPeer task error for Region: {}",
+          DataNodeMiscMessages.MISC_LOG_SUBMIT_REMOVEREGIONPEER_TASK_ERROR_FOR_REGION_200E7F68,
           REGION_MIGRATE_PROCESS,
           req.getRegionId(),
           e);
@@ -217,7 +220,8 @@ public class RegionMigrateService implements IService {
     try {
       if (!addToTaskResultMap(req.getTaskId())) {
         LOGGER.warn(
-            "{} The DeleteOldRegionPeerTask {} has already been submitted and will not be submitted again.",
+            DataNodeMiscMessages
+                .MISC_LOG_THE_DELETEOLDREGIONPEERTASK_HAS_ALREADY_BEEN_SUBMITTED_AND_75815D37,
             REGION_MIGRATE_PROCESS,
             req.getTaskId());
         return true;
@@ -226,7 +230,7 @@ public class RegionMigrateService implements IService {
           new DeleteOldRegionPeerTask(req.getTaskId(), req.getRegionId(), req.getDestNode()));
     } catch (Exception e) {
       LOGGER.error(
-          "{}, Submit DeleteOldRegionPeerTask error for Region: {}",
+          DataNodeMiscMessages.MISC_LOG_SUBMIT_DELETEOLDREGIONPEERTASK_ERROR_FOR_REGION_460C308A,
           REGION_MIGRATE_PROCESS,
           req.getRegionId(),
           e);
@@ -250,11 +254,12 @@ public class RegionMigrateService implements IService {
       }
     } catch (ConsensusGroupNotExistException e) {
       LOGGER.warn(
-          "Reset peer list fail, this DataNode not contains peer of consensus group {}. Maybe caused by create local peer failure.",
+          DataNodeMiscMessages
+              .MISC_LOG_RESET_PEER_LIST_FAIL_THIS_DATANODE_NOT_CONTAINS_PEER_OF_6539945C,
           regionId,
           e);
     } catch (ConsensusException e) {
-      LOGGER.error("reset peer list fail", e);
+      LOGGER.error(DataNodeMiscMessages.RESET_PEER_LIST_FAIL, e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -268,7 +273,7 @@ public class RegionMigrateService implements IService {
   public void start() throws StartupException {
     regionMigratePool =
         IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.REGION_MIGRATE.getName());
-    LOGGER.info("Region migrate service start");
+    LOGGER.info(DataNodeMiscMessages.REGION_MIGRATE_SERVICE_START);
   }
 
   @Override
@@ -276,7 +281,7 @@ public class RegionMigrateService implements IService {
     if (regionMigratePool != null) {
       regionMigratePool.shutdown();
     }
-    LOGGER.info("Region migrate service stop");
+    LOGGER.info(DataNodeMiscMessages.REGION_MIGRATE_SERVICE_STOP);
   }
 
   @Override
@@ -317,7 +322,10 @@ public class RegionMigrateService implements IService {
 
     private TSStatus addPeer() {
       taskLogger.info(
-          "{}, Start to addPeer {} for region {}", REGION_MIGRATE_PROCESS, destDataNode, tRegionId);
+          DataNodeMiscMessages.START_TO_ADD_PEER_FOR_REGION,
+          REGION_MIGRATE_PROCESS,
+          destDataNode,
+          tRegionId);
       ConsensusGroupId regionId = ConsensusGroupId.Factory.createFromTConsensusGroupId(tRegionId);
       TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       TEndPoint destEndpoint = getConsensusEndPoint(destDataNode, regionId);
@@ -331,7 +339,7 @@ public class RegionMigrateService implements IService {
         addPeerSucceed = false;
         throwable = e;
         taskLogger.error(
-            "{}, executed addPeer {} for region {} error",
+            DataNodeMiscMessages.EXECUTED_ADD_PEER_FOR_REGION_ERROR,
             REGION_MIGRATE_PROCESS,
             destEndpoint,
             regionId,
@@ -339,14 +347,16 @@ public class RegionMigrateService implements IService {
       } catch (Exception e) {
         addPeerSucceed = false;
         throwable = e;
-        taskLogger.warn("Unexpected exception", e);
+        taskLogger.warn(DataNodeMiscMessages.REGION_MIGRATE_UNEXPECTED_EXCEPTION, e);
       }
 
       if (!addPeerSucceed) {
         String errorMsg =
             String.format(
-                "%s, AddPeer for region error, peerId: %s, regionId: %s",
-                REGION_MIGRATE_PROCESS, destEndpoint, regionId);
+                DataNodeMiscMessages.ADD_PEER_FOR_REGION_ERROR_FMT,
+                REGION_MIGRATE_PROCESS,
+                destEndpoint,
+                regionId);
         taskLogger.error(errorMsg, throwable);
         status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
         status.setMessage(errorMsg);
@@ -354,12 +364,13 @@ public class RegionMigrateService implements IService {
       }
 
       taskLogger.info(
-          "{}, Succeed to addPeer {} for region {}",
+          DataNodeMiscMessages.SUCCEED_TO_ADD_PEER_FOR_REGION,
           REGION_MIGRATE_PROCESS,
           destEndpoint,
           regionId);
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      status.setMessage("addPeer " + destEndpoint + " for region " + regionId + " succeed");
+      status.setMessage(
+          String.format(DataNodeMiscMessages.ADD_PEER_FOR_REGION_SUCCEED, destEndpoint, regionId));
       return status;
     }
 
@@ -405,7 +416,7 @@ public class RegionMigrateService implements IService {
       TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       TEndPoint destEndPoint = getConsensusEndPoint(destDataNode, regionId);
       taskLogger.info(
-          "{}, Start to removePeer {} for region {}",
+          DataNodeMiscMessages.START_TO_REMOVE_PEER_FOR_REGION,
           REGION_MIGRATE_PROCESS,
           destEndPoint,
           regionId);
@@ -428,7 +439,7 @@ public class RegionMigrateService implements IService {
           removePeerSucceed = false;
           throwable = e;
           taskLogger.error(
-              "{}, executed removePeer {} for region {} error, retry times: {}",
+              DataNodeMiscMessages.EXECUTED_REMOVE_PEER_FOR_REGION_ERROR_RETRY_TIMES,
               REGION_MIGRATE_PROCESS,
               destEndPoint,
               regionId,
@@ -437,7 +448,7 @@ public class RegionMigrateService implements IService {
         } catch (Exception e) {
           removePeerSucceed = false;
           throwable = e;
-          taskLogger.warn("Unexpected exception", e);
+          taskLogger.warn(DataNodeMiscMessages.REGION_MIGRATE_UNEXPECTED_EXCEPTION, e);
         }
         if (removePeerSucceed || throwable instanceof InterruptedException) {
           break;
@@ -447,8 +458,10 @@ public class RegionMigrateService implements IService {
       if (!removePeerSucceed) {
         String errorMsg =
             String.format(
-                "%s, RemovePeer for region error after max retry times, peerId: %s, regionId: %s",
-                REGION_MIGRATE_PROCESS, destEndPoint, regionId);
+                DataNodeMiscMessages.REMOVE_PEER_FOR_REGION_ERROR_AFTER_MAX_RETRY_TIMES_FMT,
+                REGION_MIGRATE_PROCESS,
+                destEndPoint,
+                regionId);
         taskLogger.error(errorMsg, throwable);
         status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
         status.setMessage(errorMsg);
@@ -456,12 +469,14 @@ public class RegionMigrateService implements IService {
       }
 
       taskLogger.info(
-          "{}, Succeed to removePeer {} for region {}",
+          DataNodeMiscMessages.SUCCEED_TO_REMOVE_PEER_FOR_REGION,
           REGION_MIGRATE_PROCESS,
           destEndPoint,
           regionId);
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      status.setMessage("removePeer " + destEndPoint + " for region " + regionId + " succeed");
+      status.setMessage(
+          String.format(
+              DataNodeMiscMessages.REMOVE_PEER_FOR_REGION_SUCCEED, destEndPoint, regionId));
       return status;
     }
 
@@ -521,7 +536,7 @@ public class RegionMigrateService implements IService {
 
     private TSStatus deletePeer() {
       taskLogger.info(
-          "{}, Start to deletePeer {} for region {}",
+          DataNodeMiscMessages.START_TO_DELETE_PEER_FOR_REGION,
           REGION_MIGRATE_PROCESS,
           originalDataNode,
           tRegionId);
@@ -536,27 +551,39 @@ public class RegionMigrateService implements IService {
       } catch (ConsensusException e) {
         String errorMsg =
             String.format(
-                "deletePeer error, regionId: %s, errorMessage: %s", regionId, e.getMessage());
+                DataNodeMiscMessages.DELETE_PEER_ERROR_WITH_ERROR_MESSAGE_FMT,
+                regionId,
+                e.getMessage());
         taskLogger.error(errorMsg);
         status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
         status.setMessage(errorMsg);
         return status;
       } catch (Exception e) {
-        taskLogger.error("{}, deletePeer error, regionId: {}", REGION_MIGRATE_PROCESS, regionId, e);
+        taskLogger.error(
+            DataNodeMiscMessages.DELETE_PEER_ERROR_WITH_REGION_ID,
+            REGION_MIGRATE_PROCESS,
+            regionId,
+            e);
         status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
         status.setMessage(
-            "deletePeer for region: " + regionId + " error. exception: " + e.getMessage());
+            String.format(
+                DataNodeMiscMessages.DELETE_PEER_FOR_REGION_ERROR_EXCEPTION_FMT,
+                regionId,
+                e.getMessage()));
         return status;
       }
       taskLogger.info(
-          "{}, Succeed to deletePeer {} from consensus group", REGION_MIGRATE_PROCESS, regionId);
-      status.setMessage("deletePeer from consensus group " + regionId + "succeed");
+          DataNodeMiscMessages.SUCCEED_TO_DELETE_PEER_FROM_CONSENSUS_GROUP,
+          REGION_MIGRATE_PROCESS,
+          regionId);
+      status.setMessage(
+          String.format(DataNodeMiscMessages.DELETE_PEER_FROM_CONSENSUS_GROUP_SUCCEED, regionId));
       return status;
     }
 
     private TSStatus deleteRegion() {
       taskLogger.info(
-          "{}, Start to deleteRegion {} for datanode {}",
+          DataNodeMiscMessages.START_TO_DELETE_REGION_FOR_DATANODE,
           REGION_MIGRATE_PROCESS,
           tRegionId,
           originalDataNode);
@@ -569,13 +596,16 @@ public class RegionMigrateService implements IService {
           DataNodeRegionManager.getInstance().deleteSchemaRegion((SchemaRegionId) regionId);
         }
       } catch (Exception e) {
-        taskLogger.error("{}, deleteRegion {} error", REGION_MIGRATE_PROCESS, regionId, e);
+        taskLogger.error(
+            DataNodeMiscMessages.DELETE_REGION_ERROR_LOG, REGION_MIGRATE_PROCESS, regionId, e);
         status.setCode(TSStatusCode.DELETE_REGION_ERROR.getStatusCode());
-        status.setMessage("deleteRegion " + regionId + " error, " + e.getMessage());
+        status.setMessage(
+            String.format(DataNodeMiscMessages.DELETE_REGION_ERROR, regionId, e.getMessage()));
         return status;
       }
-      status.setMessage("deleteRegion " + regionId + " succeed");
-      taskLogger.info("{}, Succeed to deleteRegion {}", REGION_MIGRATE_PROCESS, regionId);
+      status.setMessage(String.format(DataNodeMiscMessages.DELETE_REGION_SUCCEED, regionId));
+      taskLogger.info(
+          DataNodeMiscMessages.SUCCEED_TO_DELETE_REGION, REGION_MIGRATE_PROCESS, regionId);
       return status;
     }
   }
@@ -590,7 +620,10 @@ public class RegionMigrateService implements IService {
   private static void taskSucceed(long taskId, TConsensusGroupId tRegionId, String migrateState) {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     status.setMessage(
-        String.format("Region: %s, state: %s, executed succeed", tRegionId, migrateState));
+        String.format(
+            DataNodeMiscMessages.MESSAGE_REGION_ARG_STATE_ARG_EXECUTED_SUCCEED_F78C5849,
+            tRegionId,
+            migrateState));
     TRegionMigrateResult req = new TRegionMigrateResult(TRegionMaintainTaskStatus.SUCCESS);
     req.setRegionId(tRegionId).setMigrateResult(status);
     taskResultMap.put(taskId, req);

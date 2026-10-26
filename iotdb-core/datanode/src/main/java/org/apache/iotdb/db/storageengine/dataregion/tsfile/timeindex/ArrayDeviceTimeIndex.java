@@ -21,11 +21,14 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.load.PartitionViolationException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.CommonUtils;
 
+import com.google.common.collect.Sets;
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
 import org.apache.tsfile.utils.FilePathUtils;
@@ -40,7 +43,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
@@ -95,7 +97,7 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
 
   @Override
   public void serialize(OutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(getTimeIndexType(), outputStream);
+    ReadWriteIOUtils.write(ARRAY_DEVICE_TIME_INDEX_TYPE, outputStream);
     int deviceNum = deviceToIndex.size();
 
     ReadWriteIOUtils.write(deviceNum, outputStream);
@@ -171,6 +173,12 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
     return deviceToIndex.keySet();
   }
 
+  @Override
+  public Set<IDeviceID> getDevices(
+      String tsFilePath, TsFileResource tsFileResource, RateLimiter limiter) {
+    return deviceToIndex.keySet();
+  }
+
   public Map<IDeviceID, Integer> getDeviceToIndex() {
     return deviceToIndex;
   }
@@ -192,7 +200,7 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
   public static Set<IDeviceID> getDevices(InputStream inputStream) throws IOException {
     int deviceNum = ReadWriteIOUtils.readInt(inputStream);
     ReadWriteIOUtils.skip(inputStream, 2L * deviceNum * ReadWriteIOUtils.LONG_LEN);
-    Set<IDeviceID> devices = new HashSet<>();
+    Set<IDeviceID> devices = Sets.newHashSetWithExpectedSize(deviceNum);
     for (int i = 0; i < deviceNum; i++) {
       IDeviceID deviceID = Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(inputStream);
       ReadWriteIOUtils.skip(inputStream, ReadWriteIOUtils.INT_LEN);
@@ -416,8 +424,9 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
     } else if (timeIndex instanceof FileTimeIndex) {
       return -1;
     } else {
-      logger.error("Wrong timeIndex type {}", timeIndex.getClass().getName());
-      throw new RuntimeException("Wrong timeIndex type " + timeIndex.getClass().getName());
+      logger.error(StorageEngineMessages.WRONG_TIME_INDEX_TYPE_LOG, timeIndex.getClass().getName());
+      throw new RuntimeException(
+          StorageEngineMessages.WRONG_TIME_INDEX_TYPE + timeIndex.getClass().getName());
     }
   }
 
@@ -429,7 +438,7 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
   @Override
   public boolean isDeviceAlive(IDeviceID device, long ttl) {
     return ttl == Long.MAX_VALUE
-        || endTimes[deviceToIndex.get(device)] >= CommonDateTimeUtils.currentTime() - ttl;
+        || endTimes[deviceToIndex.get(device)] >= CommonUtils.getTTLLowerBound(ttl);
   }
 
   @Override
@@ -460,7 +469,7 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
             endTime = endTimes[entry.getValue()];
           }
         } else {
-          if (devicePattern.matchFullPath(new PartialPath(entry.getKey()))) {
+          if (devicePattern.matchFullPath(entry.getKey())) {
             deviceMatchInfo.add(entry.getKey());
             hasMatchedDevice = true;
             if (startTimes[entry.getValue()] < startTime) {

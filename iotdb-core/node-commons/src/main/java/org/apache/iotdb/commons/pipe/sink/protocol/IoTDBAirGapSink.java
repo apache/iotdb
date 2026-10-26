@@ -21,10 +21,13 @@ package org.apache.iotdb.commons.pipe.sink.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.client.port.IoTDBSinkPortBinder;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapOneByteResponse;
+import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -38,6 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedOutputStream;
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -110,13 +114,6 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
       throws Exception {
     super.customize(parameters, configuration);
 
-    if (isTabletBatchModeEnabled) {
-      LOGGER.warn(
-          "Batch mode is enabled by the given parameters. "
-              + "IoTDBAirGapConnector does not support batch mode. "
-              + "Disable batch mode.");
-    }
-
     for (int i = 0; i < nodeUrls.size(); i++) {
       isSocketAlive.add(false);
       sockets.add(null);
@@ -133,9 +130,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
         loadBalancer = new PriorityLoadBalancer();
         break;
       default:
-        LOGGER.warn(
-            "Unknown load balance strategy: {}, use round-robin strategy instead.",
-            loadBalanceStrategy);
+        LOGGER.warn(PipeMessages.UNKNOWN_LOAD_BALANCE_STRATEGY, loadBalanceStrategy);
         loadBalancer = new RoundRobinLoadBalancer();
     }
 
@@ -144,15 +139,14 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
             Arrays.asList(
                 CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY, SINK_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY),
             CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_DEFAULT_VALUE);
-    LOGGER.info(
-        "IoTDBAirGapConnector is customized with handshakeTimeoutMs: {}.", handshakeTimeoutMs);
+    LOGGER.info(PipeMessages.AIR_GAP_CUSTOMIZED_HANDSHAKE_TIMEOUT, handshakeTimeoutMs);
 
     eLanguageEnable =
         parameters.getBooleanOrDefault(
             Arrays.asList(
                 CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_KEY, SINK_AIR_GAP_E_LANGUAGE_ENABLE_KEY),
             CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_DEFAULT_VALUE);
-    LOGGER.info("IoTDBAirGapConnector is customized with eLanguageEnable: {}.", eLanguageEnable);
+    LOGGER.info(PipeMessages.AIR_GAP_CUSTOMIZED_E_LANGUAGE, eLanguageEnable);
   }
 
   @Override
@@ -180,11 +174,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
         try {
           sockets.set(i, null).close();
         } catch (final Exception e) {
-          LOGGER.warn(
-              "Failed to close socket with target server ip: {}, port: {}, because: {}. Ignore it.",
-              ip,
-              port,
-              e.getMessage());
+          LOGGER.warn(PipeMessages.FAILED_TO_CLOSE_SOCKET, ip, port, e.getMessage());
         }
       }
 
@@ -205,7 +195,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
               }
             });
 
-        LOGGER.info("Successfully connected to target server ip: {}, port: {}.", ip, port);
+        LOGGER.debug(PipeMessages.CONNECTED_TO_TARGET_SERVER, ip, port);
         failLogTimes.remove(nodeUrls.get(i));
       } catch (final Exception e) {
         final TEndPoint endPoint = nodeUrls.get(i);
@@ -213,11 +203,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
         final Long lastFailLogTime = failLogTimes.get(endPoint);
         if (lastFailLogTime == null || currentTimeMillis - lastFailLogTime > 60000) {
           failLogTimes.put(endPoint, currentTimeMillis);
-          LOGGER.warn(
-              "Failed to connect to target server ip: {}, port: {}, because: {}. Ignore it.",
-              ip,
-              port,
-              e.getMessage());
+          LOGGER.warn(PipeMessages.FAILED_TO_CONNECT_TO_TARGET, ip, port, e.getMessage());
         }
         continue;
       }
@@ -226,9 +212,10 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
         sendHandshakeReq(sockets.get(i));
         isSocketAlive.set(i, true);
       } catch (Exception e) {
-        LOGGER.warn(
-            "Handshake error occurs. It may be caused by an error on the receiving end. Ignore it.",
-            e);
+        PipeLogger.log(
+            LOGGER::warn,
+            PipeMessages.HANDSHAKE_ERROR_RECEIVING_END,
+            ErrorHandlingCommonUtils.getRootCause(e).toString());
       }
     }
 
@@ -239,7 +226,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
       }
     }
     throw new PipeConnectionException(
-        String.format("All target servers %s are not available.", nodeUrls));
+        String.format(PipeMessages.ALL_TARGET_SERVERS_NOT_AVAILABLE, nodeUrls));
   }
 
   protected void sendHandshakeReq(final AirGapSocket socket) throws IOException {
@@ -249,13 +236,14 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
     if (!send(socket, generateHandShakeV2Payload())) {
       supportModsIfIsDataNodeReceiver = false;
       if (!send(socket, generateHandShakeV1Payload())) {
-        throw new PipeConnectionException("Handshake error with target server, socket: " + socket);
+        throw new PipeConnectionException(
+            String.format(PipeMessages.HANDSHAKE_ERROR_WITH_TARGET, socket.getEndPoint()));
       }
     } else {
       supportModsIfIsDataNodeReceiver = true;
     }
     socket.setSoTimeout(PIPE_CONFIG.getPipeSinkTransferTimeoutMs());
-    LOGGER.info("Handshake success. Socket: {}", socket);
+    LOGGER.info(PipeMessages.HANDSHAKE_SUCCESS_SOCKET, socket);
   }
 
   protected abstract byte[] generateHandShakeV1Payload() throws IOException;
@@ -267,10 +255,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
     try {
       handshake();
     } catch (final Exception e) {
-      LOGGER.warn(
-          "Failed to reconnect to target server, because: {}. Try to reconnect later.",
-          e.getMessage(),
-          e);
+      LOGGER.warn(PipeMessages.FAILED_TO_RECONNECT, e.getMessage(), e);
     }
   }
 
@@ -286,11 +271,11 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
     long position = 0;
     try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
       while (true) {
-        mayLimitRateAndRecordIO(readFileBufferSize);
         final int readLength = reader.read(readBuffer);
         if (readLength == -1) {
           break;
         }
+        mayLimitRateAndRecordIO(readLength);
 
         final byte[] payload =
             readLength == readFileBufferSize
@@ -339,14 +324,17 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
   protected boolean send(
       final String pipeName, final long creationTime, final AirGapSocket socket, byte[] bytes)
       throws IOException {
+    bytes = compressIfNeeded(bytes);
+    rateLimitIfNeeded(pipeName, creationTime, socket.getEndPoint(), bytes.length);
+    return sendBytes(socket, bytes);
+  }
+
+  protected boolean sendBytes(final AirGapSocket socket, byte[] bytes) throws IOException {
     if (!socket.isConnected()) {
       throw new SocketException(
-          String.format("Socket %s is closed, will try to handshake", socket));
+          String.format(
+              PipeMessages.EXCEPTION_SOCKET_ARG_CLOSED_WILL_TRY_HANDSHAKE_02562BF1, socket));
     }
-
-    bytes = compressIfNeeded(bytes);
-
-    rateLimitIfNeeded(pipeName, creationTime, socket.getEndPoint(), bytes.length);
 
     final BufferedOutputStream outputStream = new BufferedOutputStream(socket.getOutputStream());
     bytes = enrichWithLengthAndChecksum(bytes);
@@ -354,8 +342,8 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
     outputStream.flush();
 
     final byte[] response = new byte[1];
-    final int size = socket.getInputStream().read(response);
-    return size > 0 && Arrays.equals(AirGapOneByteResponse.OK, response);
+    new DataInputStream(socket.getInputStream()).readFully(response);
+    return Arrays.equals(AirGapOneByteResponse.OK, response);
   }
 
   protected boolean send(final AirGapSocket socket, final byte[] bytes) throws IOException {
@@ -390,7 +378,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
           sockets.set(i, null).close();
         }
       } catch (final Exception e) {
-        LOGGER.warn("Failed to close client {}.", i, e);
+        LOGGER.warn(PipeMessages.FAILED_TO_CLOSE_CLIENT, i, e);
       } finally {
         isSocketAlive.set(i, false);
       }
@@ -417,8 +405,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
         }
       }
 
-      throw new PipeConnectionException(
-          "All sockets are dead, please check the connection to the receiver.");
+      throw new PipeConnectionException(PipeMessages.ALL_SOCKETS_DEAD);
     }
   }
 
@@ -439,8 +426,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
         }
       }
 
-      throw new PipeConnectionException(
-          "All sockets are dead, please check the connection to the receiver.");
+      throw new PipeConnectionException(PipeMessages.ALL_SOCKETS_DEAD);
     }
   }
 
@@ -455,8 +441,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
         }
       }
 
-      throw new PipeConnectionException(
-          "All sockets are dead, please check the connection to the receiver.");
+      throw new PipeConnectionException(PipeMessages.ALL_SOCKETS_DEAD);
     }
   }
 }

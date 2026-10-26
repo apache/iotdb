@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.last;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 
@@ -127,7 +127,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
             new TimeValuePair[] {
               Objects.nonNull(value)
                   ? new TimeValuePair(time, value)
-                  : needUpdateNullEntry ? TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR : null
+                  : needUpdateNullEntry ? TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN : null
             },
             fullPath.isUnderAlignedEntity(),
             new IMeasurementSchema[] {fullPath.getMeasurementSchema()});
@@ -139,7 +139,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
           seriesScanInfo.right = new TimeValuePair(time, value);
         } else {
           seriesScanInfo.right =
-              needUpdateNullEntry ? TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR : null;
+              needUpdateNullEntry ? TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN : null;
         }
       }
 

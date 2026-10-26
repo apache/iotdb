@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
+import org.apache.iotdb.commons.utils.IOUtils;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -26,7 +28,8 @@ import java.nio.charset.StandardCharsets;
 
 public enum WALFileVersion {
   V1("WAL"),
-  V2("V2-WAL");
+  V2("V2-WAL"),
+  V3("V3-WAL");
 
   private final String versionString;
   private byte[] versionBytes;
@@ -56,14 +59,14 @@ public enum WALFileVersion {
     long originalPosition = channel.position();
     try {
       // head magic string starts to exist since V2
-      WALFileVersion[] versions = {V2};
+      WALFileVersion[] versions = {V3, V2};
       for (WALFileVersion version : versions) {
         channel.position(0);
         if (channel.size() < version.versionBytes.length) {
           continue;
         }
         ByteBuffer buffer = ByteBuffer.allocate(version.versionBytes.length);
-        channel.read(buffer);
+        IOUtils.readFully(channel, buffer);
         buffer.flip();
         String versionString = new String(buffer.array(), StandardCharsets.UTF_8);
         if (version.versionString.equals(versionString)) {
@@ -75,5 +78,24 @@ public enum WALFileVersion {
     } finally {
       channel.position(originalPosition);
     }
+  }
+
+  /**
+   * Returns whether the channel contains no bytes or only the V2/V3 header magic.
+   *
+   * <p>A WAL writer creates the header before the first entry is available and deliberately leaves
+   * that header-only file in place when it is closed. Such a file has no metadata trailer to read,
+   * but it is still a valid empty WAL file.
+   */
+  public static boolean isEmptyOrHeaderOnly(FileChannel channel) throws IOException {
+    long size = channel.size();
+    if (size == 0) {
+      return true;
+    }
+    if (size != V2.versionBytes.length && size != V3.versionBytes.length) {
+      return false;
+    }
+    WALFileVersion version = getVersion(channel);
+    return version == V2 || version == V3;
   }
 }

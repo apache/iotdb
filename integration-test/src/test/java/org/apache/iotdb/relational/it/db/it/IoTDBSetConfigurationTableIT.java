@@ -61,6 +61,7 @@ public class IoTDBSetConfigurationTableIT {
   public void testSetConfigurationWithUndefinedConfigKey() {
     String expectedExceptionMsg =
         "301: ignored config items: [a] because they are immutable or undefined.";
+    String expectedUnSupportedMsg = "701: DEFAULT is not supported for SET CONFIGURATION";
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       executeAndExpectException(statement, "set configuration \"a\"='false'", expectedExceptionMsg);
@@ -70,11 +71,21 @@ public class IoTDBSetConfigurationTableIT {
       for (int i = 0; i < configNodeNum; i++) {
         executeAndExpectException(
             statement, "set configuration a=\'false\' on " + i, expectedExceptionMsg);
+
+        executeAndExpectException(
+            statement,
+            "set configuration enable_seq_space_compaction=default on " + i,
+            expectedUnSupportedMsg);
       }
       for (int i = 0; i < dataNodeNum; i++) {
         int dnId = configNodeNum + i;
         executeAndExpectException(
             statement, "set configuration \"a\"='false' on " + dnId, expectedExceptionMsg);
+
+        executeAndExpectException(
+            statement,
+            "set configuration enable_seq_space_compaction=default on " + dnId,
+            expectedUnSupportedMsg);
       }
     } catch (Exception e) {
       Assert.fail(e.getMessage());
@@ -109,6 +120,9 @@ public class IoTDBSetConfigurationTableIT {
         statement.execute(
             "set configuration inner_compaction_candidate_file_num='1',max_cross_compaction_candidate_file_num='1' on "
                 + dnId);
+        if (dnId == 5) {
+          statement.execute("set configuration compaction_schedule_thread_num='2' on 5");
+        }
       }
     } catch (Exception e) {
       Assert.fail(e.getMessage());
@@ -131,6 +145,17 @@ public class IoTDBSetConfigurationTableIT {
               "enable_cross_space_compaction=false",
               "inner_compaction_candidate_file_num=1",
               "max_cross_compaction_candidate_file_num=1"));
+      boolean scheduleThreadNumChanged =
+          checkConfigFileContains(
+              dnId,
+              EnvFactory.getEnv().getDataNodeWrapperList().get(i),
+              "compaction_schedule_thread_num=2");
+      if (scheduleThreadNumChanged && dnId != 5) {
+        Assert.fail();
+      }
+      if (!scheduleThreadNumChanged && dnId == 5) {
+        Assert.fail();
+      }
     }
   }
 

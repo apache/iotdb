@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.sink.client.port;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.datastructure.interval.IntervalManager;
 import org.apache.iotdb.commons.pipe.datastructure.interval.PlainInterval;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
@@ -67,7 +68,9 @@ public class IoTDBSinkPortBinder {
     }
     if (!portFound) {
       final String exceptionMessage =
-          String.format("Failed to find an available sending ports in %s.", candidatePorts);
+          String.format(
+              PipeMessages.EXCEPTION_FAILED_TO_FIND_AN_AVAILABLE_SENDING_PORTS_IN_ARG_25FA5CA4,
+              candidatePorts);
       PipeLogger.log(LOGGER::warn, exceptionMessage);
       throw new PipeConnectionException(exceptionMessage);
     }

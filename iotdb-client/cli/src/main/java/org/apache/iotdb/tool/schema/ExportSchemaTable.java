@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.tool.schema;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 import org.apache.iotdb.tool.common.Constants;
 
@@ -54,7 +56,7 @@ public class ExportSchemaTable extends AbstractExportSchema {
   public void init() throws InterruptedException {
     TableSessionPoolBuilder tableSessionPoolBuilder =
         new TableSessionPoolBuilder()
-            .nodeUrls(Collections.singletonList(host + ":" + port))
+            .nodeUrls(Collections.singletonList(UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port)))
             .user(username)
             .password(password)
             .maxSize(threadNum + 1)
@@ -63,8 +65,7 @@ public class ExportSchemaTable extends AbstractExportSchema {
             .enableAutoFetch(false)
             .database(database);
     if (useSsl) {
-      tableSessionPoolBuilder =
-          tableSessionPoolBuilder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+      tableSessionPoolBuilder = configureSsl(tableSessionPoolBuilder);
     }
     sessionPool = tableSessionPoolBuilder.build();
     checkDatabase();
@@ -316,6 +317,6 @@ public class ExportSchemaTable extends AbstractExportSchema {
 
   @Override
   protected void exportSchemaToCsvFile(String pathPattern, int index) {
-    throw new UnsupportedOperationException("Not supported yet.");
+    throw new UnsupportedOperationException(CliMessages.NOT_SUPPORTED_YET);
   }
 }

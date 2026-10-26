@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.settle.SettleLog;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.settle.SettleTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -92,7 +93,7 @@ public class SettleService implements IService {
       startSettling(seqResourcesToBeSettled, unseqResourcesToBeSettled);
       setRecoverFinish(true);
     } catch (WriteProcessException e) {
-      logger.error("Start error", e);
+      logger.error(DataNodeMiscMessages.START_ERROR, e);
     }
   }
 
@@ -106,7 +107,7 @@ public class SettleService implements IService {
       return;
     }
     logger.info(
-        "Totally find {} tsFiles to be settled.",
+        DataNodeMiscMessages.MISC_LOG_TOTALLY_FIND_TSFILES_TO_BE_SETTLED_DB47A63C,
         seqResourcesToBeSettled.size() + unseqResourcesToBeSettled.size());
     // settle seqTsFile
     for (TsFileResource resource : seqResourcesToBeSettled) {
@@ -129,9 +130,9 @@ public class SettleService implements IService {
     filesToBeSettledCount.set(0);
     if (settleThreadPool != null) {
       settleThreadPool.shutdownNow();
-      logger.info("Waiting for settle task pool to shut down");
+      logger.info(DataNodeMiscMessages.WAITING_SETTLE_POOL_SHUTDOWN);
       settleThreadPool = null;
-      logger.info("Settle service stopped");
+      logger.info(DataNodeMiscMessages.SETTLE_SERVICE_STOPPED);
     }
   }
 
@@ -152,7 +153,9 @@ public class SettleService implements IService {
               new File(tsFilePath).getParentFile().getParentFile().getParentFile().getName());
     } catch (IllegalPathException e) {
       throw new WriteProcessException(
-          "Fail to get sg of this tsFile while parsing the file path.", e);
+          DataNodeMiscMessages
+              .MISC_EXCEPTION_FAIL_TO_GET_SG_OF_THIS_TSFILE_WHILE_PARSING_THE_FILE_PATH_9EADADE1,
+          e);
     }
     return sgPath;
   }

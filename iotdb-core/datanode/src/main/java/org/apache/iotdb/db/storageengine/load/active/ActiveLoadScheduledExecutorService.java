@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -45,14 +46,19 @@ public abstract class ActiveLoadScheduledExecutorService {
 
   private static final long MIN_EXECUTION_INTERVAL_SECONDS =
       IOTDB_CONFIG.getLoadActiveListeningCheckIntervalSeconds();
-  private final ScheduledExecutorService scheduledExecutorService;
+  private final ThreadName threadName;
+  private ScheduledExecutorService scheduledExecutorService;
   private Future<?> future;
 
   private final List<Pair<WrappedRunnable, Long>> jobs = new CopyOnWriteArrayList<>();
 
   protected ActiveLoadScheduledExecutorService(final ThreadName threadName) {
-    scheduledExecutorService =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(threadName.name());
+    this.threadName = threadName;
+    scheduledExecutorService = newScheduledExecutorService();
+  }
+
+  private ScheduledExecutorService newScheduledExecutorService() {
+    return IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(threadName.name());
   }
 
   public void register(Runnable runnable) {
@@ -64,7 +70,7 @@ public abstract class ActiveLoadScheduledExecutorService {
                 try {
                   runnable.run();
                 } catch (Exception e) {
-                  LOGGER.warn("Error occurred when executing active load periodical job.", e);
+                  LOGGER.warn(StorageEngineMessages.ERROR_EXECUTING_ACTIVE_LOAD_JOB, e);
                 }
               }
             },
@@ -73,6 +79,9 @@ public abstract class ActiveLoadScheduledExecutorService {
 
   public synchronized void start() {
     if (future == null) {
+      if (scheduledExecutorService.isShutdown()) {
+        scheduledExecutorService = newScheduledExecutorService();
+      }
       future =
           ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
               scheduledExecutorService,
@@ -80,7 +89,7 @@ public abstract class ActiveLoadScheduledExecutorService {
               MIN_EXECUTION_INTERVAL_SECONDS,
               MIN_EXECUTION_INTERVAL_SECONDS,
               TimeUnit.SECONDS);
-      LOGGER.info("Active load periodical jobs executor is started successfully.");
+      LOGGER.info(StorageEngineMessages.ACTIVE_LOAD_EXECUTOR_STARTED);
     }
   }
 
@@ -94,7 +103,14 @@ public abstract class ActiveLoadScheduledExecutorService {
     if (future != null) {
       future.cancel(false);
       future = null;
-      LOGGER.info("Active load periodical jobs executor is stopped successfully.");
+      LOGGER.info(StorageEngineMessages.ACTIVE_LOAD_EXECUTOR_STOPPED);
+    }
+    scheduledExecutorService.shutdownNow();
+    try {
+      scheduledExecutorService.awaitTermination(30, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      LOGGER.warn(StorageEngineMessages.STILL_NOT_EXIT_AFTER_30S, threadName.getName());
+      Thread.currentThread().interrupt();
     }
   }
 }

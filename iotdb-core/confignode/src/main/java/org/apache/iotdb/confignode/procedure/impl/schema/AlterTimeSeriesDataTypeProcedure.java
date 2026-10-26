@@ -28,10 +28,9 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
-import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
-import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ClusterManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -41,7 +40,6 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterTimeSeriesReq;
-import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -101,20 +99,24 @@ public class AlterTimeSeriesDataTypeProcedure
       switch (state) {
         case CHECK_AND_INVALIDATE_SERIES:
           LOGGER.info(
-              "Check and invalidate series {} when altering time series data type",
+              ProcedureMessages.CHECK_AND_INVALIDATE_SERIES_WHEN_ALTERING_TIME_SERIES_DATA_TYPE,
               measurementPath.getFullPath());
           checkAndPreAlterTimeSeries();
           break;
         case ALTER_TIME_SERIES_DATA_TYPE:
-          LOGGER.info("altering time series {} data type", measurementPath.getFullPath());
+          LOGGER.info(
+              ProcedureMessages.ALTERING_TIME_SERIES_DATA_TYPE, measurementPath.getFullPath());
           if (!alterTimeSeriesDataType(env)) {
-            LOGGER.error("alter time series {} data type failed", measurementPath.getFullPath());
+            LOGGER.error(
+                ProcedureMessages.ALTER_TIME_SERIES_DATA_TYPE_FAILED,
+                measurementPath.getFullPath());
             return Flow.NO_MORE_STATE;
           }
           break;
         case CLEAR_CACHE:
           LOGGER.info(
-              "clearing cache after alter time series {} data type", measurementPath.getFullPath());
+              ProcedureMessages.CLEARING_CACHE_AFTER_ALTER_TIME_SERIES_DATA_TYPE,
+              measurementPath.getFullPath());
           PathPatternTree patternTree = new PathPatternTree();
           patternTree.appendPathPattern(measurementPath);
           patternTree.constructTree();
@@ -129,13 +131,13 @@ public class AlterTimeSeriesDataTypeProcedure
         default:
           setFailure(
               new ProcedureException(
-                  "Unrecognized AlterTimeSeriesDataTypeProcedure state " + state));
+                  ProcedureMessages.UNRECOGNIZED_ALTERTIMESERIESDATATYPEPROCEDURE_STATE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "AlterTimeSeriesDataType-{}-[{}] costs {}ms",
+          ProcedureMessages.ALTERTIMESERIESDATATYPE_COSTS_MS,
           measurementPath.getFullPath(),
           state,
           (System.currentTimeMillis() - startTime));
@@ -148,7 +150,8 @@ public class AlterTimeSeriesDataTypeProcedure
     } else {
       setFailure(
           new ProcedureException(
-              new MetadataException("Invalid data type cannot be used as a new type")));
+              new MetadataException(
+                  ProcedureMessages.INVALID_DATA_TYPE_CANNOT_BE_USED_AS_A_NEW_TYPE)));
     }
   }
 
@@ -224,8 +227,11 @@ public class AlterTimeSeriesDataTypeProcedure
                 new ProcedureException(
                     new MetadataException(
                         String.format(
-                            "Alter timeseries %s data type to %s in schema regions failed. Failures: %s",
-                            measurementPath.getFullPath(), dataType, printFailureMap()))));
+                            ProcedureMessages
+                                .ALTER_TIMESERIES_DATA_TYPE_TO_IN_SCHEMA_REGIONS_FAILED_FAILURES,
+                            measurementPath.getFullPath(),
+                            dataType,
+                            printFailureMap()))));
             interruptTask();
           }
         };
@@ -240,23 +246,17 @@ public class AlterTimeSeriesDataTypeProcedure
       final String requestMessage,
       final Consumer<ProcedureException> setFailure,
       final boolean needLock) {
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
-            new TInvalidateMatchedSchemaCacheReq(measurementPathBytes).setNeedLock(needLock),
-            dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (final TSStatus status : statusMap.values()) {
+    // Proceed past provably-fenced DataNodes instead of hard-failing on the first unreachable one
+    // (see SchemaUtils.invalidateMatchedSchemaCache). Runs before the physical datatype change, so
+    // the "alter only after PROCEED" ordering holds.
+    if (!SchemaUtils.invalidateMatchedSchemaCache(
+        env.getConfigManager(), measurementPathBytes, needLock)) {
       // All dataNodes must clear the related schemaEngine cache
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error("Failed to invalidate schemaEngine cache of timeSeries {}", requestMessage);
-        setFailure.accept(
-            new ProcedureException(new MetadataException("Invalidate schemaEngine cache failed")));
-        return;
-      }
+      LOGGER.warn(
+          ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TIMESERIES, requestMessage);
+      setFailure.accept(
+          new ProcedureException(
+              new MetadataException(ProcedureMessages.INVALIDATE_SCHEMAENGINE_CACHE_FAILED)));
     }
   }
 
@@ -374,7 +374,8 @@ public class AlterTimeSeriesDataTypeProcedure
     queryId = ReadWriteIOUtils.readString(byteBuffer);
     setMeasurementPath((MeasurementPath) PathDeserializeUtil.deserialize(byteBuffer));
     if (getCurrentState() == AlterTimeSeriesDataTypeState.CLEAR_CACHE) {
-      LOGGER.info("Successfully operate, will clear cache to the data regions anyway");
+      LOGGER.info(
+          ProcedureMessages.SUCCESSFULLY_OPERATE_WILL_CLEAR_CACHE_TO_THE_DATA_REGIONS_ANYWAY);
     }
     if (byteBuffer.hasRemaining()) {
       operationType = ReadWriteIOUtils.readByte(byteBuffer);
@@ -394,7 +395,7 @@ public class AlterTimeSeriesDataTypeProcedure
     }
     final AlterTimeSeriesDataTypeProcedure that = (AlterTimeSeriesDataTypeProcedure) o;
     return this.getProcId() == that.getProcId()
-        && this.getCurrentState().equals(that.getCurrentState())
+        && Objects.equals(this.getCurrentState(), that.getCurrentState())
         && this.getCycles() == getCycles()
         && this.isGeneratedByPipe == that.isGeneratedByPipe
         && this.measurementPath.equals(that.measurementPath)

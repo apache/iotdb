@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.join;
 
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.TimeComparator;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
@@ -89,7 +90,9 @@ public class InnerTimeJoinOperator implements ProcessOperator {
     this.inputTsBlocks = new TsBlock[inputOperatorsCount];
     this.canCallNext = new boolean[inputOperatorsCount];
     checkArgument(
-        children.size() > 1, "child size of InnerTimeJoinOperator should be larger than 1");
+        children.size() > 1,
+        DataNodeQueryMessages
+            .EXCEPTION_CHILD_SIZE_OF_INNERTIMEJOINOPERATOR_SHOULD_BE_LARGER_THAN_1_37EB7D74);
     this.inputIndex = new int[this.inputOperatorsCount];
     this.resultBuilder = new TsBlockBuilder(dataTypes);
     this.comparator = comparator;
@@ -246,14 +249,16 @@ public class InnerTimeJoinOperator implements ProcessOperator {
   private int[][] transformListToIntArray(List<List<Integer>> lists) {
     if (lists.size() <= 1) {
       throw new IllegalStateException(
-          "Child size of InnerTimeJoinOperator should be larger than 1.");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_CHILD_SIZE_OF_INNERTIMEJOINOPERATOR_SHOULD_BE_LARGER_THAN_4E7CF105);
     }
     int[][] res = new int[lists.size()][lists.get(0).size()];
     for (int i = 0; i < res.length; i++) {
       List<Integer> list = lists.get(i);
       int[] array = res[i];
       if (list.size() != array.length) {
-        throw new IllegalStateException("All child should have same time column result!");
+        throw new IllegalStateException(
+            DataNodeQueryMessages.ALL_CHILD_SHOULD_HAVE_SAME_TIME_COLUMN_RESULT);
       }
       for (int j = 0; j < array.length; j++) {
         array[j] = list.get(j);

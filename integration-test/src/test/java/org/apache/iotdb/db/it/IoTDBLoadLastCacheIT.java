@@ -86,7 +86,6 @@ public class IoTDBLoadLastCacheIT {
         new Object[][] {
           {LastCacheLoadStrategy.CLEAN_ALL},
           {LastCacheLoadStrategy.UPDATE},
-          {LastCacheLoadStrategy.UPDATE_NO_BLOB},
           {LastCacheLoadStrategy.CLEAN_DEVICE}
         });
   }

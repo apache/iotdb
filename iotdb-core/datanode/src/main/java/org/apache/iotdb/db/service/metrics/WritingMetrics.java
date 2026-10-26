@@ -26,12 +26,14 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TableDiskUsageIndex;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointType;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
@@ -41,8 +43,14 @@ import org.apache.iotdb.metrics.utils.MetricType;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.atomic.DoubleAdder;
+import java.util.concurrent.atomic.LongAdder;
+import java.util.stream.Collectors;
 
 public class WritingMetrics implements IMetricSet {
   private static final WritingMetrics INSTANCE = new WritingMetrics();
@@ -200,6 +208,8 @@ public class WritingMetrics implements IMetricSet {
   private Histogram readWALBufferCostHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram writeWALBufferCostHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Gauge walQueueMaxMemSizeGauge = DoNothingMetricManager.DO_NOTHING_GAUGE;
+  // Recorded rarely, so keep the value to restore it when the metric service recreates the gauge
+  private volatile long walQueueMaxMemSize;
 
   private void bindWALMetrics(AbstractMetricService metricService) {
     metricService.createAutoGauge(
@@ -273,6 +283,7 @@ public class WritingMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             WAL_QUEUE_MAX_MEM_COST);
+    walQueueMaxMemSizeGauge.set(walQueueMaxMemSize);
     SystemInfo systemInfo = SystemInfo.getInstance();
     metricService.createAutoGauge(
         Metric.WAL_QUEUE_MEM_COST.toString(),
@@ -432,6 +443,7 @@ public class WritingMetrics implements IMetricSet {
   public static final String SERIES_NUM = "series_num";
   public static final String AVG_SERIES_POINT_NUM = "avg_series_points_num";
   public static final String COMPRESSION_RATIO = "compression_ratio";
+  public static final String NULL_VALUE_RATIO = "null_value_ratio";
   public static final String EFFECTIVE_RATIO_INFO = "effective_ratio_info";
   public static final String OLDEST_MEM_TABLE_RAM_WHEN_CAUSE_SNAPSHOT =
       "oldest_mem_table_ram_when_cause_snapshot";
@@ -446,9 +458,20 @@ public class WritingMetrics implements IMetricSet {
   public static final String WAL_FLUSH_MEMTABLE_COUNT = "wal_flush_memtable_count";
   public static final String MANUAL_FLUSH_MEMTABLE_COUNT = "manual_flush_memtable_count";
   public static final String MEM_CONTROL_FLUSH_MEMTABLE_COUNT = "mem_control_flush_memtable_count";
+  public static final String BLOCKED_OPERATION_NUM = "blocked_operation_num";
 
   private Gauge flushThreholdGauge = DoNothingMetricManager.DO_NOTHING_GAUGE;
   private Gauge rejectThreholdGauge = DoNothingMetricManager.DO_NOTHING_GAUGE;
+  // Recorded rarely, so keep the values to restore them when the metric service recreates the
+  // gauges
+  private volatile long flushThreshold;
+  private volatile long rejectThreshold;
+
+  // The active memtable and time partition counters are levels maintained by deltas, so keep the
+  // levels to restore them when the metric service recreates the counters
+  private final Map<String, Long> activeMemTableCounts = new HashMap<>();
+  private long activeTimePartitionCount;
+  private final Object activeCountLock = new Object();
 
   private Timer memtableLiveTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
@@ -457,7 +480,12 @@ public class WritingMetrics implements IMetricSet {
   private Counter manualFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter memControlFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
-  private Histogram avgPointHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  // TVList preallocation needs a process-lifetime, node-wide mean independent of metric lifecycle.
+  private final DoubleAdder avgSeriesPointNumSum = new DoubleAdder();
+  private final LongAdder flushedMemTableCount = new LongAdder();
+
+  private AutoGauge tableDiskUsageCacheBlockedRequestNumGauge =
+      DoNothingMetricManager.DO_NOTHING_AUTO_GAUGE;
 
   public void bindDataRegionMetrics() {
     List<DataRegion> allDataRegions = StorageEngine.getInstance().getAllDataRegions();
@@ -471,6 +499,8 @@ public class WritingMetrics implements IMetricSet {
     manualFlushMemtableCounter = createManualFlushMemTableCounterMetrics();
     memControlFlushMemtableCounter = createMemControlFlushMemTableCounterMetrics();
 
+    restoreActiveCounts(allDataRegionIds);
+
     flushThreholdGauge =
         MetricService.getInstance()
             .getOrCreateGauge(
@@ -478,6 +508,7 @@ public class WritingMetrics implements IMetricSet {
                 MetricLevel.IMPORTANT,
                 Tag.TYPE.toString(),
                 FLUSH_THRESHOLD);
+    flushThreholdGauge.set(flushThreshold);
     rejectThreholdGauge =
         MetricService.getInstance()
             .getOrCreateGauge(
@@ -485,10 +516,21 @@ public class WritingMetrics implements IMetricSet {
                 MetricLevel.IMPORTANT,
                 Tag.TYPE.toString(),
                 REJECT_THRESHOLD);
+    rejectThreholdGauge.set(rejectThreshold);
 
     memtableLiveTimer =
         MetricService.getInstance()
             .getOrCreateTimer(Metric.MEMTABLE_LIVE_DURATION.toString(), MetricLevel.IMPORTANT);
+
+    tableDiskUsageCacheBlockedRequestNumGauge =
+        MetricService.getInstance()
+            .createAutoGauge(
+                Metric.TABLE_DISK_USAGE_CACHE.toString(),
+                MetricLevel.IMPORTANT,
+                TableDiskUsageIndex.getInstance(),
+                TableDiskUsageIndex::getQueueSize,
+                Tag.NAME.toString(),
+                BLOCKED_OPERATION_NUM);
   }
 
   public void unbindDataRegionMetrics() {
@@ -517,6 +559,12 @@ public class WritingMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             REJECT_THRESHOLD);
     MetricService.getInstance().remove(MetricType.TIMER, Metric.MEMTABLE_LIVE_DURATION.toString());
+    MetricService.getInstance()
+        .remove(
+            MetricType.AUTO_GAUGE,
+            Metric.TABLE_DISK_USAGE_CACHE.toString(),
+            Tag.NAME.toString(),
+            BLOCKED_OPERATION_NUM);
   }
 
   public void createDataRegionMemoryCostMetrics(DataRegion dataRegion) {
@@ -576,7 +624,14 @@ public class WritingMetrics implements IMetricSet {
   }
 
   public void createFlushingMemTableStatusMetrics(DataRegionId dataRegionId) {
-    Arrays.asList(MEM_TABLE_SIZE, SERIES_NUM, POINTS_NUM, COMPRESSION_RATIO, FLUSH_TSFILE_SIZE)
+    Arrays.asList(
+            MEM_TABLE_SIZE,
+            SERIES_NUM,
+            POINTS_NUM,
+            AVG_SERIES_POINT_NUM,
+            COMPRESSION_RATIO,
+            NULL_VALUE_RATIO,
+            FLUSH_TSFILE_SIZE)
         .forEach(
             name ->
                 MetricService.getInstance()
@@ -587,15 +642,6 @@ public class WritingMetrics implements IMetricSet {
                         name,
                         Tag.REGION.toString(),
                         dataRegionId.toString()));
-    avgPointHistogram =
-        MetricService.getInstance()
-            .getOrCreateHistogram(
-                Metric.FLUSHING_MEM_TABLE_STATUS.toString(),
-                MetricLevel.IMPORTANT,
-                Tag.NAME.toString(),
-                AVG_SERIES_POINT_NUM,
-                Tag.REGION.toString(),
-                dataRegionId.toString());
   }
 
   public Counter createWalFlushMemTableCounterMetrics() {
@@ -705,6 +751,7 @@ public class WritingMetrics implements IMetricSet {
             POINTS_NUM,
             AVG_SERIES_POINT_NUM,
             COMPRESSION_RATIO,
+            NULL_VALUE_RATIO,
             FLUSH_TSFILE_SIZE)
         .forEach(
             name ->
@@ -716,7 +763,6 @@ public class WritingMetrics implements IMetricSet {
                         name,
                         Tag.REGION.toString(),
                         dataRegionId.toString()));
-    avgPointHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   }
 
   public void recordWALNodeEffectiveInfoRatio(String walNodeId, double ratio) {
@@ -768,6 +814,19 @@ public class WritingMetrics implements IMetricSet {
             new DataRegionId(Integer.parseInt(dataRegionId)).toString());
   }
 
+  public void recordTsFileNullValueRatioOfFlushingMemTable(
+      String dataRegionId, double nullValueRatio) {
+    MetricService.getInstance()
+        .histogram(
+            (long) (nullValueRatio * 100),
+            Metric.FLUSHING_MEM_TABLE_STATUS.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            NULL_VALUE_RATIO,
+            Tag.REGION.toString(),
+            new DataRegionId(Integer.parseInt(dataRegionId)).toString());
+  }
+
   public void recordFlushingMemTableStatus(
       String storageGroup, long memSize, long seriesNum, long totalPointsNum, long avgSeriesNum) {
     DataRegionId dataRegionId = getDataRegionIdFromStorageGroupStr(storageGroup);
@@ -802,7 +861,17 @@ public class WritingMetrics implements IMetricSet {
             POINTS_NUM,
             Tag.REGION.toString(),
             dataRegionId.toString());
-    avgPointHistogram.update(avgSeriesNum);
+    MetricService.getInstance()
+        .histogram(
+            avgSeriesNum,
+            Metric.FLUSHING_MEM_TABLE_STATUS.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            AVG_SERIES_POINT_NUM,
+            Tag.REGION.toString(),
+            dataRegionId.toString());
+    avgSeriesPointNumSum.add(avgSeriesNum);
+    flushedMemTableCount.increment();
   }
 
   public void recordFlushTsFileSize(String storageGroup, long size) {
@@ -933,15 +1002,18 @@ public class WritingMetrics implements IMetricSet {
   }
 
   public void recordWALQueueMaxMemorySize(long size) {
+    walQueueMaxMemSize = size;
     walQueueMaxMemSizeGauge.set(size);
   }
 
   public void recordFlushThreshold(double flushThreshold) {
-    flushThreholdGauge.set((long) flushThreshold);
+    this.flushThreshold = (long) flushThreshold;
+    flushThreholdGauge.set(this.flushThreshold);
   }
 
   public void recordRejectThreshold(double rejectThreshold) {
-    rejectThreholdGauge.set((long) rejectThreshold);
+    this.rejectThreshold = (long) rejectThreshold;
+    rejectThreholdGauge.set(this.rejectThreshold);
   }
 
   public void recordMemTableLiveDuration(long durationMillis) {
@@ -965,18 +1037,52 @@ public class WritingMetrics implements IMetricSet {
   }
 
   public void recordActiveMemTableCount(String dataRegionId, int number) {
-    MetricService.getInstance()
-        .count(
-            number,
-            Metric.ACTIVE_MEMTABLE_COUNT.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.REGION.toString(),
-            dataRegionId);
+    // Use the region tag of the counter created and removed with the region
+    String region = new DataRegionId(Integer.parseInt(dataRegionId)).toString();
+    synchronized (activeCountLock) {
+      activeMemTableCounts.merge(region, (long) number, Long::sum);
+      MetricService.getInstance()
+          .count(
+              number,
+              Metric.ACTIVE_MEMTABLE_COUNT.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.REGION.toString(),
+              region);
+    }
   }
 
   public void recordActiveTimePartitionCount(int number) {
-    MetricService.getInstance()
-        .count(number, Metric.ACTIVE_TIME_PARTITION_COUNT.toString(), MetricLevel.IMPORTANT);
+    synchronized (activeCountLock) {
+      activeTimePartitionCount += number;
+      MetricService.getInstance()
+          .count(number, Metric.ACTIVE_TIME_PARTITION_COUNT.toString(), MetricLevel.IMPORTANT);
+    }
+  }
+
+  private void restoreActiveCounts(List<DataRegionId> dataRegionIds) {
+    Set<String> existingDataRegionIds =
+        dataRegionIds.stream().map(DataRegionId::toString).collect(Collectors.toSet());
+    synchronized (activeCountLock) {
+      // Do not bring back the counters of the removed regions
+      activeMemTableCounts
+          .entrySet()
+          .removeIf(
+              entry -> entry.getValue() == 0 && !existingDataRegionIds.contains(entry.getKey()));
+      activeMemTableCounts.forEach(
+          (dataRegionId, count) ->
+              restoreCounter(
+                  count,
+                  Metric.ACTIVE_MEMTABLE_COUNT.toString(),
+                  Tag.REGION.toString(),
+                  dataRegionId));
+      restoreCounter(activeTimePartitionCount, Metric.ACTIVE_TIME_PARTITION_COUNT.toString());
+    }
+  }
+
+  private static void restoreCounter(long count, String metric, String... tags) {
+    Counter counter =
+        MetricService.getInstance().getOrCreateCounter(metric, MetricLevel.IMPORTANT, tags);
+    counter.inc(count - counter.getCount());
   }
 
   // endregion
@@ -1003,7 +1109,8 @@ public class WritingMetrics implements IMetricSet {
     return INSTANCE;
   }
 
-  public Histogram getAvgPointHistogram() {
-    return avgPointHistogram;
+  public double getGlobalAvgSeriesPointNum() {
+    long count = flushedMemTableCount.sum();
+    return count == 0 ? 0 : avgSeriesPointNumSum.sum() / count;
   }
 }

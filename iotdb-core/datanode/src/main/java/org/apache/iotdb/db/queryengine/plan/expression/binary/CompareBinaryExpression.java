@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.binary;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
@@ -54,7 +55,8 @@ public abstract class CompareBinaryExpression extends BinaryExpression {
       case LESS_EQUAL:
         return GREATER_EQUAL;
       default:
-        throw new IllegalArgumentException("Unsupported expression type: " + origin);
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.UNSUPPORTED_EXPRESSION_TYPE + origin);
     }
   }
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.sink.payload.thrift.request;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressor;
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressorFactory;
@@ -112,6 +113,27 @@ public class PipeTransferCompressedReq extends TPipeTransferReq {
     return decompressedReq;
   }
 
+  /** Get the largest intermediate decompressed body size without consuming the request body. */
+  public static int getMaxDecompressedLengthInBytes(final TPipeTransferReq transferReq) {
+    final ByteBuffer compressedBuffer = transferReq.body.duplicate();
+
+    int maxDecompressedLength = compressedBuffer.remaining();
+    final int compressorsSize = ReadWriteIOUtils.readByte(compressedBuffer);
+    for (int i = 0; i < compressorsSize; ++i) {
+      ReadWriteIOUtils.readByte(compressedBuffer);
+      final int decompressedLength = ReadWriteIOUtils.readInt(compressedBuffer);
+      checkDecompressedLength(decompressedLength);
+      maxDecompressedLength = Math.max(maxDecompressedLength, decompressedLength);
+    }
+    return maxDecompressedLength;
+  }
+
+  /** Get the largest additional decompressed body size beyond the current transfer frame. */
+  public static int getMaxAdditionalDecompressedLengthInBytes(final TPipeTransferReq transferReq) {
+    final int transferFrameBodySize = transferReq.body.duplicate().remaining();
+    return Math.max(0, getMaxDecompressedLengthInBytes(transferReq) - transferFrameBodySize);
+  }
+
   /** This method is used to prevent decompression bomb attacks. */
   private static void checkDecompressedLength(final int decompressedLength)
       throws IllegalArgumentException {
@@ -120,8 +142,9 @@ public class PipeTransferCompressedReq extends TPipeTransferReq {
     if (decompressedLength < 0 || decompressedLength > maxDecompressedLength) {
       throw new IllegalArgumentException(
           String.format(
-              "Decompressed length should be between 0 and %d, but got %d.",
-              maxDecompressedLength, decompressedLength));
+              PipeMessages.EXCEPTION_DECOMPRESSED_LENGTH_SHOULD_BETWEEN_0_ARG_BUT_GOT_ARG_488B3073,
+              maxDecompressedLength,
+              decompressedLength));
     }
   }
 

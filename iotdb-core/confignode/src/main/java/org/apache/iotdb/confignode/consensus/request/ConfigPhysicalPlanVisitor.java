@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTab
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnPropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
@@ -104,6 +105,8 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
         return visitGrantRoleToUser((AuthorTreePlan) plan, context);
       case RevokeRoleFromUser:
         return visitRevokeRoleFromUser((AuthorTreePlan) plan, context);
+      case AccountUnlock:
+        return visitAccountUnlock((AuthorTreePlan) plan, context);
       case RCreateUser:
         return visitRCreateUser((AuthorRelationalPlan) plan, context);
       case RCreateRole:
@@ -160,6 +163,8 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
         return visitRRevokeUserSysPrivilege((AuthorRelationalPlan) plan, context);
       case RRevokeRoleSysPri:
         return visitRRevokeRoleSysPrivilege((AuthorRelationalPlan) plan, context);
+      case RAccountUnlock:
+        return visitRAccountUnlock((AuthorRelationalPlan) plan, context);
       case SetTTL:
         return visitTTL((SetTTLPlan) plan, context);
       case PipeCreateTableOrView:
@@ -170,6 +175,8 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
         return visitAddTableViewColumn((AddTableViewColumnPlan) plan, context);
       case SetTableProperties:
         return visitSetTableProperties((SetTablePropertiesPlan) plan, context);
+      case SetTableColumnProperties:
+        return visitSetTableColumnProperties((SetTableColumnPropertiesPlan) plan, context);
       case SetViewProperties:
         return visitSetViewProperties((SetViewPropertiesPlan) plan, context);
       case RenameTableColumn:
@@ -310,6 +317,10 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
     return visitPlan(revokeRoleFromUserPlan, context);
   }
 
+  public R visitAccountUnlock(final AuthorTreePlan accountUnlockPlan, final C context) {
+    return visitPlan(accountUnlockPlan, context);
+  }
+
   public R visitRCreateUser(final AuthorRelationalPlan rCreateUserPlan, final C context) {
     return visitPlan(rCreateUserPlan, context);
   }
@@ -426,6 +437,10 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
     return visitPlan(rRevokeRoleSysPrivilegePlan, context);
   }
 
+  public R visitRAccountUnlock(final AuthorRelationalPlan rAccountUnlockPlan, final C context) {
+    return visitPlan(rAccountUnlockPlan, context);
+  }
+
   public R visitTTL(final SetTTLPlan setTTLPlan, final C context) {
     return visitPlan(setTTLPlan, context);
   }
@@ -448,6 +463,11 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
   public R visitSetTableProperties(
       final SetTablePropertiesPlan setTablePropertiesPlan, final C context) {
     return visitPlan(setTablePropertiesPlan, context);
+  }
+
+  public R visitSetTableColumnProperties(
+      final SetTableColumnPropertiesPlan setTableColumnPropertiesPlan, final C context) {
+    return visitPlan(setTableColumnPropertiesPlan, context);
   }
 
   // Use set table properties by default

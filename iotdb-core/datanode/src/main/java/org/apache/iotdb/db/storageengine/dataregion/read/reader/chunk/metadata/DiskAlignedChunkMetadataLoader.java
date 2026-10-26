@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
@@ -86,18 +87,15 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
       List<AbstractAlignedChunkMetadata> alignedChunkMetadataList =
           ((AbstractAlignedTimeSeriesMetadata) timeSeriesMetadata).getCopiedChunkMetadataList();
 
-      // when alignedChunkMetadataList.size() == 1, it means that the chunk statistics is same as
-      // the time series metadata, so we don't need to filter it again.
-      if (alignedChunkMetadataList.size() > 1) {
+      if (!alignedChunkMetadataList.isEmpty()) {
         // remove not satisfied ChunkMetaData
         final long t2 = System.nanoTime();
         alignedChunkMetadataList.removeIf(
             alignedChunkMetaData ->
-                (globalTimeFilter != null && globalTimeFilter.canSkip(alignedChunkMetaData))
-                    || alignedChunkMetaData.getStartTime() > alignedChunkMetaData.getEndTime());
-
+                ChunkMetadataLoaderUtils.shouldSkipAndRecord(
+                    alignedChunkMetaData, globalTimeFilter, context));
         if (context.isDebug()) {
-          DEBUG_LOGGER.info("After removed by filter Chunk meta data list is: ");
+          DEBUG_LOGGER.info(StorageEngineMessages.AFTER_FILTER_CHUNK_METADATA_LIST);
           alignedChunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
         }
 
@@ -109,7 +107,7 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
 
       if (context.isDebug()) {
         DEBUG_LOGGER.info(
-            "Modifications size is {} for file Path: {} ",
+            StorageEngineMessages.STORAGE_LOG_MODIFICATIONS_SIZE_IS_FOR_FILE_PATH_EED7FD92,
             valueColumnsModifications.size(),
             resource.getTsFilePath());
         valueColumnsModifications.forEach(c -> DEBUG_LOGGER.info(c.toString()));
@@ -123,7 +121,7 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
           ignoreAllNullRows);
 
       if (context.isDebug()) {
-        DEBUG_LOGGER.info("After modification Chunk meta data list is: ");
+        DEBUG_LOGGER.info(StorageEngineMessages.AFTER_MODIFICATION_CHUNK_METADATA_LIST);
         alignedChunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
       }
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(

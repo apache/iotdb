@@ -42,6 +42,11 @@ public class DeletionData implements TsFileData {
     return deletion.serializedSize();
   }
 
+  @Override
+  public int serializedSize(final boolean includeContent) {
+    return Integer.BYTES + deletion.serializedSize();
+  }
+
   public void writeToModificationFile(ModificationFile modificationFile) throws IOException {
     modificationFile.write(deletion);
   }
@@ -53,8 +58,18 @@ public class DeletionData implements TsFileData {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
+    serialize(stream, true);
+  }
+
+  @Override
+  public void serialize(final DataOutputStream stream, final boolean includeContent)
+      throws IOException {
     ReadWriteIOUtils.write(getType().ordinal(), stream);
     deletion.serialize(stream);
+  }
+
+  public ModEntry getModEntry() {
+    return this.deletion;
   }
 
   public static DeletionData deserialize(InputStream stream)

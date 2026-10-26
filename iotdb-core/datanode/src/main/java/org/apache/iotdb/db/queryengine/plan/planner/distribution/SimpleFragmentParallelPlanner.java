@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.plan.ClusterTopology;
@@ -29,15 +31,15 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TreeModelTimePredicate;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.MultiChildrenSinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
 
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.Pair;
@@ -145,7 +147,8 @@ public class SimpleFragmentParallelPlanner extends AbstractFragmentParallelPlann
             queryContext.getSession(),
             queryContext.isExplainAnalyze(),
             queryContext.isDebug(),
-            fragment.isRoot());
+            fragment.isRoot(),
+            queryContext.isVerbose());
 
     selectExecutorAndHost(
         fragment,
@@ -157,6 +160,8 @@ public class SimpleFragmentParallelPlanner extends AbstractFragmentParallelPlann
     if (analysis.getTreeStatement() instanceof QueryStatement
         || analysis.getTreeStatement() instanceof ExplainAnalyzeStatement
         || analysis.getTreeStatement() instanceof ShowQueriesStatement
+        || analysis.getTreeStatement() instanceof ShowReceiversStatement
+        || analysis.getTreeStatement() instanceof ShowDiskUsageStatement
         || (analysis.getTreeStatement() instanceof ShowTimeSeriesStatement
             && (((ShowTimeSeriesStatement) analysis.getTreeStatement()).isOrderByHeat()
                 || ((ShowTimeSeriesStatement) analysis.getTreeStatement())

@@ -121,6 +121,10 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
                 ? CompactionType.INNER_SEQ_COMPACTION
                 : CompactionType.INNER_UNSEQ_COMPACTION,
             encryptParameter);
+    if (compactionTaskSummary != null) {
+      compactionTaskSummary.recordTargetTsFileTableSizeMap(
+          targetResources.get(currentFileIndex), fileWriter.getTableSizeMap());
+    }
     fileWriter.setSchema(CompactionTableSchemaCollector.copySchema(schemas.get(0)));
   }
 
@@ -138,8 +142,8 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   @Override
   public void write(TimeValuePair timeValuePair, int subTaskId) throws IOException {
     checkPreviousTimestamp(timeValuePair.getTimestamp(), subTaskId);
-    writeDataPoint(timeValuePair.getTimestamp(), timeValuePair.getValue(), chunkWriters[subTaskId]);
-    chunkPointNumArray[subTaskId]++;
+    writeDataPoint(
+        timeValuePair.getTimestamp(), timeValuePair.getValue(), chunkWriters[subTaskId], subTaskId);
     checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
     lastTime[subTaskId] = timeValuePair.getTimestamp();
     lastTimeSet[subTaskId] = true;

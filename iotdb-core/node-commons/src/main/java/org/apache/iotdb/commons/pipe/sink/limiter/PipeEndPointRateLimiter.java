@@ -84,7 +84,7 @@ public class PipeEndPointRateLimiter {
         TimeUnit.MILLISECONDS)) {
       final PipeTaskAgent finalTaskAgent = taskAgent;
       if (Objects.nonNull(finalTaskAgent)
-          && finalTaskAgent.getPipeCreationTime(pipeName) != creationTime) {
+          && !finalTaskAgent.isPipeExisted(pipeName, creationTime)) {
         return false;
       }
     }

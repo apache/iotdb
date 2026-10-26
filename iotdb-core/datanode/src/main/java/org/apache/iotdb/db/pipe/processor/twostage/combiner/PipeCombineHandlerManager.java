@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.processor.twostage.combiner;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.CombineRequest;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.FetchCombineResultRequest;
@@ -75,7 +76,7 @@ public class PipeCombineHandlerManager {
       try {
         pipeId2CombineHandler.remove(pipeId).close();
       } catch (Exception e) {
-        LOGGER.warn("Error occurred when closing CombineHandler(id = {})", pipeId, e);
+        LOGGER.warn(DataNodePipeMessages.ERROR_OCCURRED_WHEN_CLOSING_COMBINEHANDLER_ID, pipeId, e);
       }
     }
   }
@@ -101,7 +102,7 @@ public class PipeCombineHandlerManager {
 
     final PipeCombineHandler handler = pipeId2CombineHandler.get(pipeId);
     if (Objects.isNull(handler)) {
-      throw new PipeException("CombineHandler not found for pipeId = " + pipeId);
+      throw new PipeException(DataNodePipeMessages.COMBINEHANDLER_NOT_FOUND_FOR_PIPEID + pipeId);
     }
 
     return new TPipeTransferResp()
@@ -120,7 +121,7 @@ public class PipeCombineHandlerManager {
 
     final PipeCombineHandler handler = pipeId2CombineHandler.get(pipeId);
     if (Objects.isNull(handler)) {
-      throw new PipeException("CombineHandler not found for pipeId = " + pipeId);
+      throw new PipeException(DataNodePipeMessages.COMBINEHANDLER_NOT_FOUND_FOR_PIPEID + pipeId);
     }
 
     return handler.fetchCombineResult(fetchCombineResultRequest.getCombineIdList());

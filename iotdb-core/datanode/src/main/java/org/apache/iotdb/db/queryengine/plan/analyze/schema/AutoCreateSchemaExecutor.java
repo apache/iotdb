@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.template.Template;
@@ -31,7 +32,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
@@ -537,9 +538,14 @@ class AutoCreateSchemaExecutor {
           throw new SemanticException(
               new LoadAnalyzeTypeMismatchException(
                   String.format(
-                      "TimeSeries under this device is%s aligned, please use create%sTimeSeries or change device. (Path: %s)",
-                      !pair.getLeft() ? "" : " not",
-                      !pair.getLeft() ? "Aligned" : "",
+                      DataNodeQueryMessages
+                          .TIMESERIES_UNDER_THIS_DEVICE_ISS_ALIGNED_PLEASE_USE_CREATESTIMESERIES_OR_CHANGE_DEVICE,
+                      !pair.getLeft()
+                          ? DataNodeQueryMessages.EMPTY_MESSAGE
+                          : DataNodeQueryMessages.NOT,
+                      !pair.getLeft()
+                          ? DataNodeQueryMessages.ALIGNED
+                          : DataNodeQueryMessages.EMPTY_MESSAGE,
                       devicePath.getFullPath())));
         }
       } else {
@@ -552,7 +558,8 @@ class AutoCreateSchemaExecutor {
           new MetadataException(
               failedCreationSet.stream()
                   .map(TSStatus::toString)
-                  .collect(Collectors.joining("; "))));
+                  .collect(
+                      Collectors.joining(DataNodeQueryMessages.EXCEPTION_SEMICOLON_0FAEF84A))));
     }
 
     return alreadyExistingMeasurements;
@@ -598,7 +605,10 @@ class AutoCreateSchemaExecutor {
         }
       }
       if (!failedActivationSet.isEmpty()) {
-        throw new SemanticException(new MetadataException(String.join("; ", failedActivationSet)));
+        throw new SemanticException(
+            new MetadataException(
+                String.join(
+                    DataNodeQueryMessages.EXCEPTION_SEMICOLON_0FAEF84A, failedActivationSet)));
       }
     } else {
       throw new SemanticException(new IoTDBException(status));

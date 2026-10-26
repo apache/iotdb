@@ -41,7 +41,7 @@ public class SubscriptionTaskSinkStage extends PipeTaskSinkStage {
 
   @Override
   protected void registerSubtask() {
-    this.connectorSubtaskId =
+    this.sinkSubtaskId =
         SubscriptionSinkSubtaskManager.instance()
             .register(
                 executor.get(),
@@ -56,22 +56,31 @@ public class SubscriptionTaskSinkStage extends PipeTaskSinkStage {
 
   @Override
   public void startSubtask() throws PipeException {
-    SubscriptionSinkSubtaskManager.instance().start(connectorSubtaskId);
+    SubscriptionSinkSubtaskManager.instance().start(sinkSubtaskId);
   }
 
   @Override
   public void stopSubtask() throws PipeException {
-    SubscriptionSinkSubtaskManager.instance().stop(connectorSubtaskId);
+    SubscriptionSinkSubtaskManager.instance().stop(sinkSubtaskId);
+  }
+
+  @Override
+  public void registerReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    // Subscription tasks do not have pipe receiver runtime sessions.
+  }
+
+  @Override
+  public void discardReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    // Subscription tasks do not have pipe receiver runtime sessions.
   }
 
   @Override
   public void dropSubtask() throws PipeException {
     SubscriptionSinkSubtaskManager.instance()
-        .deregister(pipeName, creationTime, regionId, connectorSubtaskId);
+        .deregister(pipeName, creationTime, regionId, sinkSubtaskId);
   }
 
   public UnboundedBlockingPendingQueue<Event> getPipeSinkPendingQueue() {
-    return SubscriptionSinkSubtaskManager.instance()
-        .getPipeConnectorPendingQueue(connectorSubtaskId);
+    return SubscriptionSinkSubtaskManager.instance().getPipeConnectorPendingQueue(sinkSubtaskId);
   }
 }

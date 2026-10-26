@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.inner;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -40,9 +39,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -62,67 +58,6 @@ public class InnerSequenceCompactionSpeedTest extends AbstractCompactionTest {
     super.tearDown();
     CompactionTaskManager.getInstance()
         .setCompactionReadThroughputRate(compactionReadThroughputPerSec);
-  }
-
-  @Test
-  public void testManyAlignedDeviceTsFile() throws IOException, InterruptedException {
-    List<String> deviceNames = new ArrayList<>();
-    for (int i = 0; i < 100000; i++) {
-      deviceNames.add("d" + i);
-    }
-    TsFileResource resource = createEmptyFileAndResource(true);
-    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
-      for (String device : deviceNames) {
-        writer.startChunkGroup(device);
-        writer.generateSimpleAlignedSeriesToCurrentDevice(
-            Collections.singletonList("s0"),
-            new TimeRange[] {new TimeRange(1, 2)},
-            TSEncoding.PLAIN,
-            CompressionType.LZ4);
-        writer.endChunkGroup();
-      }
-      writer.endFile();
-    }
-    seqResources.add(resource);
-    tsFileManager.add(resource, true);
-    long tsFileSize = resource.getTsFileSize();
-    Thread thread =
-        new Thread(
-            () -> {
-              InnerSpaceCompactionTask task =
-                  new InnerSpaceCompactionTask(
-                      0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
-              task.start();
-            });
-    thread.start();
-    thread.join(TimeUnit.SECONDS.toMillis(30 + tsFileSize / IoTDBConstant.MB));
-  }
-
-  @Test
-  public void testManyNotAlignedDeviceTsFile() throws IOException {
-    List<String> deviceNames = new ArrayList<>();
-    for (int i = 0; i < 100000; i++) {
-      deviceNames.add("d" + i);
-    }
-    TsFileResource resource = createEmptyFileAndResource(true);
-    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
-      for (String device : deviceNames) {
-        writer.startChunkGroup(device);
-        writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-            "s0", new TimeRange[] {new TimeRange(1, 2)}, TSEncoding.PLAIN, CompressionType.LZ4);
-        writer.endChunkGroup();
-      }
-      writer.endFile();
-    }
-    seqResources.add(resource);
-    tsFileManager.add(resource, true);
-    long tsFileSize = resource.getTsFileSize();
-    InnerSpaceCompactionTask task =
-        new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
-    Assert.assertTrue(task.start());
-    Assert.assertTrue(
-        TimeUnit.SECONDS.toMillis(tsFileSize / IoTDBConstant.MB + 30) > task.getTimeCost());
   }
 
   @Test

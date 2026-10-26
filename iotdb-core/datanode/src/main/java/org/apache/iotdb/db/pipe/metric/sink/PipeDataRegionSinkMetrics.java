@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.metric.sink;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeSinkSubtask;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -34,7 +35,6 @@ import com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -46,7 +46,7 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
   @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
-  private final Map<String, PipeSinkSubtask> connectorMap = new HashMap<>();
+  private final Map<String, PipeSinkSubtask> sinkMap = new ConcurrentHashMap<>();
 
   private final Map<String, Rate> tabletRateMap = new ConcurrentHashMap<>();
 
@@ -59,9 +59,9 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
+  public synchronized void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
-    final ImmutableSet<String> taskIDs = ImmutableSet.copyOf(connectorMap.keySet());
+    final ImmutableSet<String> taskIDs = ImmutableSet.copyOf(sinkMap.keySet());
     for (String taskID : taskIDs) {
       createMetrics(taskID);
     }
@@ -74,203 +74,184 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
     createHistogram(taskID);
   }
 
+  private static String[] getIndexedTags(final PipeSinkSubtask sink) {
+    return sink.getPipeName() == null
+        ? new String[] {
+          Tag.NAME.toString(),
+          sink.getAttributeSortedString(),
+          Tag.INDEX.toString(),
+          String.valueOf(sink.getSinkIndex()),
+          Tag.CREATION_TIME.toString(),
+          String.valueOf(sink.getCreationTime())
+        }
+        : new String[] {
+          Tag.NAME.toString(),
+          sink.getAttributeSortedString(),
+          Tag.PIPE.toString(),
+          sink.getPipeName(),
+          Tag.INDEX.toString(),
+          String.valueOf(sink.getSinkIndex()),
+          Tag.CREATION_TIME.toString(),
+          String.valueOf(sink.getCreationTime())
+        };
+  }
+
+  private static String[] getCreationTimeTags(final PipeSinkSubtask sink) {
+    return sink.getPipeName() == null
+        ? new String[] {
+          Tag.NAME.toString(),
+          sink.getAttributeSortedString(),
+          Tag.CREATION_TIME.toString(),
+          String.valueOf(sink.getCreationTime())
+        }
+        : new String[] {
+          Tag.NAME.toString(),
+          sink.getAttributeSortedString(),
+          Tag.PIPE.toString(),
+          sink.getPipeName(),
+          Tag.CREATION_TIME.toString(),
+          String.valueOf(sink.getCreationTime())
+        };
+  }
+
+  private static String[] getNameTags(final PipeSinkSubtask sink) {
+    return sink.getPipeName() == null
+        ? new String[] {Tag.NAME.toString(), sink.getAttributeSortedString()}
+        : new String[] {
+          Tag.NAME.toString(),
+          sink.getAttributeSortedString(),
+          Tag.PIPE.toString(),
+          sink.getPipeName(),
+          Tag.CREATION_TIME.toString(),
+          String.valueOf(sink.getCreationTime())
+        };
+  }
+
   private void createAutoGauge(final String taskID) {
-    final PipeSinkSubtask connector = connectorMap.get(taskID);
+    final PipeSinkSubtask sink = sinkMap.get(taskID);
     // Pending event count
     metricService.createAutoGauge(
         Metric.UNTRANSFERRED_TABLET_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        connector,
+        sink,
         PipeSinkSubtask::getTabletInsertionEventCount,
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.INDEX.toString(),
-        String.valueOf(connector.getConnectorIndex()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
+        getIndexedTags(sink));
     metricService.createAutoGauge(
         Metric.UNTRANSFERRED_TSFILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        connector,
+        sink,
         PipeSinkSubtask::getTsFileInsertionEventCount,
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.INDEX.toString(),
-        String.valueOf(connector.getConnectorIndex()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
+        getIndexedTags(sink));
     metricService.createAutoGauge(
         Metric.UNTRANSFERRED_HEARTBEAT_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        connector,
+        sink,
         PipeSinkSubtask::getPipeHeartbeatEventCount,
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.INDEX.toString(),
-        String.valueOf(connector.getConnectorIndex()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
-    // Metrics related to IoTDBThriftAsyncConnector
+        getIndexedTags(sink));
+    // Metrics related to IoTDBThriftAsyncSink
     metricService.createAutoGauge(
         Metric.PIPE_ASYNC_CONNECTOR_RETRY_EVENT_QUEUE_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        connector,
-        PipeSinkSubtask::getAsyncConnectorRetryEventQueueSize,
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.INDEX.toString(),
-        String.valueOf(connector.getConnectorIndex()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
+        sink,
+        PipeSinkSubtask::getAsyncSinkRetryEventQueueSize,
+        getIndexedTags(sink));
     metricService.createAutoGauge(
         Metric.PIPE_PENDING_HANDLERS_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        connector,
+        sink,
         PipeSinkSubtask::getPendingHandlersSize,
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.INDEX.toString(),
-        String.valueOf(connector.getConnectorIndex()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
-    // Metrics related to IoTDB connector
+        getIndexedTags(sink));
+    // Metrics related to IoTDB sink
     metricService.createAutoGauge(
         Metric.PIPE_TOTAL_UNCOMPRESSED_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        connector,
+        sink,
         PipeSinkSubtask::getTotalUncompressedSize,
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.INDEX.toString(),
-        String.valueOf(connector.getConnectorIndex()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
+        getIndexedTags(sink));
     metricService.createAutoGauge(
         Metric.PIPE_TOTAL_COMPRESSED_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        connector,
+        sink,
         PipeSinkSubtask::getTotalCompressedSize,
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.INDEX.toString(),
-        String.valueOf(connector.getConnectorIndex()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
+        getIndexedTags(sink));
   }
 
   private void createRate(final String taskID) {
-    final PipeSinkSubtask connector = connectorMap.get(taskID);
+    final PipeSinkSubtask sink = sinkMap.get(taskID);
     // Transfer event rate
     tabletRateMap.put(
         taskID,
         metricService.getOrCreateRate(
             Metric.PIPE_CONNECTOR_TABLET_TRANSFER.toString(),
             MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            connector.getAttributeSortedString(),
-            Tag.INDEX.toString(),
-            String.valueOf(connector.getConnectorIndex()),
-            Tag.CREATION_TIME.toString(),
-            String.valueOf(connector.getCreationTime())));
+            getIndexedTags(sink)));
     tsFileRateMap.put(
         taskID,
         metricService.getOrCreateRate(
             Metric.PIPE_CONNECTOR_TSFILE_TRANSFER.toString(),
             MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            connector.getAttributeSortedString(),
-            Tag.INDEX.toString(),
-            String.valueOf(connector.getConnectorIndex()),
-            Tag.CREATION_TIME.toString(),
-            String.valueOf(connector.getCreationTime())));
+            getIndexedTags(sink)));
     pipeHeartbeatRateMap.put(
         taskID,
         metricService.getOrCreateRate(
             Metric.PIPE_CONNECTOR_HEARTBEAT_TRANSFER.toString(),
             MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            connector.getAttributeSortedString(),
-            Tag.INDEX.toString(),
-            String.valueOf(connector.getConnectorIndex()),
-            Tag.CREATION_TIME.toString(),
-            String.valueOf(connector.getCreationTime())));
+            getIndexedTags(sink)));
   }
 
   private void createTimer(final String taskID) {
-    final PipeSinkSubtask connector = connectorMap.get(taskID);
-    compressionTimerMap.putIfAbsent(
-        connector.getAttributeSortedString(),
+    final PipeSinkSubtask sink = sinkMap.get(taskID);
+    compressionTimerMap.put(
+        taskID,
         metricService.getOrCreateTimer(
             Metric.PIPE_COMPRESSION_TIME.toString(),
             MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            connector.getAttributeSortedString(),
-            Tag.CREATION_TIME.toString(),
-            String.valueOf(connector.getCreationTime())));
+            getCreationTimeTags(sink)));
   }
 
   private void createHistogram(final String taskID) {
-    final PipeSinkSubtask connector = connectorMap.get(taskID);
+    final PipeSinkSubtask sink = sinkMap.get(taskID);
 
     final Histogram tabletBatchSizeHistogram =
         metricService.getOrCreateHistogram(
             Metric.PIPE_INSERT_NODE_BATCH_SIZE.toString(),
             MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            connector.getAttributeSortedString(),
-            Tag.CREATION_TIME.toString(),
-            String.valueOf(connector.getCreationTime()));
-    connector.setTabletBatchSizeHistogram(tabletBatchSizeHistogram);
+            getCreationTimeTags(sink));
+    sink.setTabletBatchSizeHistogram(tabletBatchSizeHistogram);
 
     final Histogram tsFileBatchSizeHistogram =
         metricService.getOrCreateHistogram(
             Metric.PIPE_TSFILE_BATCH_SIZE.toString(),
             MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            connector.getAttributeSortedString(),
-            Tag.CREATION_TIME.toString(),
-            String.valueOf(connector.getCreationTime()));
-    connector.setTsFileBatchSizeHistogram(tsFileBatchSizeHistogram);
+            getCreationTimeTags(sink));
+    sink.setTsFileBatchSizeHistogram(tsFileBatchSizeHistogram);
 
     final Histogram tabletBatchTimeIntervalHistogram =
         metricService.getOrCreateHistogram(
             Metric.PIPE_INSERT_NODE_BATCH_TIME_COST.toString(),
             MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            connector.getAttributeSortedString(),
-            Tag.CREATION_TIME.toString(),
-            String.valueOf(connector.getCreationTime()));
-    connector.setTabletBatchTimeIntervalHistogram(tabletBatchTimeIntervalHistogram);
+            getCreationTimeTags(sink));
+    sink.setTabletBatchTimeIntervalHistogram(tabletBatchTimeIntervalHistogram);
 
     final Histogram tsFileBatchTimeIntervalHistogram =
         metricService.getOrCreateHistogram(
             Metric.PIPE_TSFILE_BATCH_TIME_COST.toString(),
             MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            connector.getAttributeSortedString(),
-            Tag.CREATION_TIME.toString(),
-            String.valueOf(connector.getCreationTime()));
-    connector.setTsFileBatchTimeIntervalHistogram(tsFileBatchTimeIntervalHistogram);
+            getCreationTimeTags(sink));
+    sink.setTsFileBatchTimeIntervalHistogram(tsFileBatchTimeIntervalHistogram);
 
     Histogram eventSizeHistogram =
         metricService.getOrCreateHistogram(
-            Metric.PIPE_CONNECTOR_BATCH_SIZE.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            connector.getAttributeSortedString());
-    connector.setEventSizeHistogram(eventSizeHistogram);
+            Metric.PIPE_CONNECTOR_BATCH_SIZE.toString(), MetricLevel.IMPORTANT, getNameTags(sink));
+    sink.setEventSizeHistogram(eventSizeHistogram);
   }
 
   @Override
-  public void unbindFrom(final AbstractMetricService metricService) {
-    final ImmutableSet<String> taskIDs = ImmutableSet.copyOf(connectorMap.keySet());
-    for (final String taskID : taskIDs) {
-      deregister(taskID);
-    }
-    if (!connectorMap.isEmpty()) {
-      LOGGER.warn(
-          "Failed to unbind from pipe data region connector metrics, connector map not empty");
-    }
+  public synchronized void unbindFrom(final AbstractMetricService metricService) {
+    // Keep the subtasks registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    // Synchronized with the (de)registrations, which may remove a registration being unbound.
+    ImmutableSet.copyOf(sinkMap.keySet()).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final String taskID) {
@@ -281,181 +262,95 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
   }
 
   private void removeAutoGauge(final String taskID) {
-    final PipeSinkSubtask connector = connectorMap.get(taskID);
+    final PipeSinkSubtask sink = sinkMap.get(taskID);
     // Pending event count
     metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.UNTRANSFERRED_TABLET_COUNT.toString(),
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.INDEX.toString(),
-        String.valueOf(connector.getConnectorIndex()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
+        MetricType.AUTO_GAUGE, Metric.UNTRANSFERRED_TABLET_COUNT.toString(), getIndexedTags(sink));
     metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.UNTRANSFERRED_TSFILE_COUNT.toString(),
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.INDEX.toString(),
-        String.valueOf(connector.getConnectorIndex()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
+        MetricType.AUTO_GAUGE, Metric.UNTRANSFERRED_TSFILE_COUNT.toString(), getIndexedTags(sink));
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.UNTRANSFERRED_HEARTBEAT_COUNT.toString(),
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.INDEX.toString(),
-        String.valueOf(connector.getConnectorIndex()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
-    // Metrics related to IoTDBThriftAsyncConnector
+        getIndexedTags(sink));
+    // Metrics related to IoTDBThriftAsyncSink
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_ASYNC_CONNECTOR_RETRY_EVENT_QUEUE_SIZE.toString(),
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.INDEX.toString(),
-        String.valueOf(connector.getConnectorIndex()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
+        getIndexedTags(sink));
     metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.PIPE_PENDING_HANDLERS_SIZE.toString(),
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.INDEX.toString(),
-        String.valueOf(connector.getConnectorIndex()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
-    // Metrics related to IoTDB connector
+        MetricType.AUTO_GAUGE, Metric.PIPE_PENDING_HANDLERS_SIZE.toString(), getIndexedTags(sink));
+    // Metrics related to IoTDB sink
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_TOTAL_UNCOMPRESSED_SIZE.toString(),
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.INDEX.toString(),
-        String.valueOf(connector.getConnectorIndex()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
+        getIndexedTags(sink));
     metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.PIPE_TOTAL_COMPRESSED_SIZE.toString(),
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.INDEX.toString(),
-        String.valueOf(connector.getConnectorIndex()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
+        MetricType.AUTO_GAUGE, Metric.PIPE_TOTAL_COMPRESSED_SIZE.toString(), getIndexedTags(sink));
   }
 
   private void removeRate(final String taskID) {
-    final PipeSinkSubtask connector = connectorMap.get(taskID);
+    final PipeSinkSubtask sink = sinkMap.get(taskID);
     // Transfer event rate
     metricService.remove(
-        MetricType.RATE,
-        Metric.PIPE_CONNECTOR_TABLET_TRANSFER.toString(),
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.INDEX.toString(),
-        String.valueOf(connector.getConnectorIndex()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
+        MetricType.RATE, Metric.PIPE_CONNECTOR_TABLET_TRANSFER.toString(), getIndexedTags(sink));
     metricService.remove(
-        MetricType.RATE,
-        Metric.PIPE_CONNECTOR_TSFILE_TRANSFER.toString(),
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.INDEX.toString(),
-        String.valueOf(connector.getConnectorIndex()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
+        MetricType.RATE, Metric.PIPE_CONNECTOR_TSFILE_TRANSFER.toString(), getIndexedTags(sink));
     metricService.remove(
-        MetricType.RATE,
-        Metric.PIPE_CONNECTOR_HEARTBEAT_TRANSFER.toString(),
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.INDEX.toString(),
-        String.valueOf(connector.getConnectorIndex()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
+        MetricType.RATE, Metric.PIPE_CONNECTOR_HEARTBEAT_TRANSFER.toString(), getIndexedTags(sink));
     tabletRateMap.remove(taskID);
     tsFileRateMap.remove(taskID);
     pipeHeartbeatRateMap.remove(taskID);
   }
 
   private void removeTimer(final String taskID) {
-    final PipeSinkSubtask connector = connectorMap.get(taskID);
+    final PipeSinkSubtask sink = sinkMap.get(taskID);
     metricService.remove(
-        MetricType.TIMER,
-        Metric.PIPE_COMPRESSION_TIME.toString(),
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
-    compressionTimerMap.remove(connector.getAttributeSortedString());
+        MetricType.TIMER, Metric.PIPE_COMPRESSION_TIME.toString(), getCreationTimeTags(sink));
+    compressionTimerMap.remove(taskID);
   }
 
   private void removeHistogram(final String taskID) {
-    final PipeSinkSubtask connector = connectorMap.get(taskID);
+    final PipeSinkSubtask sink = sinkMap.get(taskID);
     metricService.remove(
         MetricType.HISTOGRAM,
         Metric.PIPE_INSERT_NODE_BATCH_SIZE.toString(),
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
+        getCreationTimeTags(sink));
     metricService.remove(
-        MetricType.HISTOGRAM,
-        Metric.PIPE_TSFILE_BATCH_SIZE.toString(),
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
+        MetricType.HISTOGRAM, Metric.PIPE_TSFILE_BATCH_SIZE.toString(), getCreationTimeTags(sink));
     metricService.remove(
         MetricType.HISTOGRAM,
         Metric.PIPE_INSERT_NODE_BATCH_TIME_COST.toString(),
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
+        getCreationTimeTags(sink));
     metricService.remove(
         MetricType.HISTOGRAM,
         Metric.PIPE_TSFILE_BATCH_TIME_COST.toString(),
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
+        getCreationTimeTags(sink));
 
     metricService.remove(
-        MetricType.HISTOGRAM,
-        Metric.PIPE_CONNECTOR_BATCH_SIZE.toString(),
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString());
+        MetricType.HISTOGRAM, Metric.PIPE_CONNECTOR_BATCH_SIZE.toString(), getNameTags(sink));
   }
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(final PipeSinkSubtask pipeSinkSubtask) {
+  public synchronized void register(final PipeSinkSubtask pipeSinkSubtask) {
     final String taskID = pipeSinkSubtask.getTaskID();
-    connectorMap.putIfAbsent(taskID, pipeSinkSubtask);
+    sinkMap.putIfAbsent(taskID, pipeSinkSubtask);
     if (Objects.nonNull(metricService)) {
       createMetrics(taskID);
     }
   }
 
-  public void deregister(final String taskID) {
-    if (!connectorMap.containsKey(taskID)) {
+  public synchronized void deregister(final String taskID) {
+    if (!sinkMap.containsKey(taskID)) {
       LOGGER.warn(
-          "Failed to deregister pipe data region connector metrics, PipeConnectorSubtask({}) does not exist",
-          taskID);
+          DataNodePipeMessages.FAILED_TO_DEREGISTER_PIPE_DATA_REGION_SINK,
+          getDisplayTaskID(taskID));
       return;
     }
     if (Objects.nonNull(metricService)) {
       removeMetrics(taskID);
     }
-    connectorMap.remove(taskID);
+    sinkMap.remove(taskID);
   }
 
   public void markTabletEvent(final String taskID) {
@@ -465,8 +360,7 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
     final Rate rate = tabletRateMap.get(taskID);
     if (rate == null) {
       LOGGER.info(
-          "Failed to mark pipe data region connector tablet event, PipeConnectorSubtask({}) does not exist",
-          taskID);
+          DataNodePipeMessages.FAILED_TO_MARK_PIPE_DATA_REGION_SINK, getDisplayTaskID(taskID));
       return;
     }
     rate.mark();
@@ -479,11 +373,15 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
     final Rate rate = tsFileRateMap.get(taskID);
     if (rate == null) {
       LOGGER.info(
-          "Failed to mark pipe data region connector tsfile event, PipeConnectorSubtask({}) does not exist",
-          taskID);
+          DataNodePipeMessages.FAILED_TO_MARK_PIPE_DATA_REGION_SINK_1, getDisplayTaskID(taskID));
       return;
     }
     rate.mark();
+  }
+
+  private String getDisplayTaskID(final String taskID) {
+    final PipeSinkSubtask sink = sinkMap.get(taskID);
+    return Objects.nonNull(sink) ? sink.getDisplayTaskID() : "unknown";
   }
 
   public void markPipeHeartbeatEvent(final String taskID) {
@@ -498,8 +396,8 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
     rate.mark();
   }
 
-  public Timer getCompressionTimer(final String attributeSortedString) {
-    return Objects.isNull(metricService) ? null : compressionTimerMap.get(attributeSortedString);
+  public Timer getCompressionTimer(final String taskID) {
+    return Objects.isNull(metricService) ? null : compressionTimerMap.get(taskID);
   }
 
   //////////////////////////// singleton ////////////////////////////

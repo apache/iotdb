@@ -20,13 +20,18 @@
 package org.apache.iotdb.db.queryengine.execution.exchange.source;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.UserDataTransferErrorCode;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.audit.DataNodeUserDataTransferAuditor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
+import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool.MemoryReservationResult;
+import org.apache.iotdb.db.queryengine.execution.memory.MemorySide;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -36,12 +41,15 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockResponse;
 
+import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import org.apache.thrift.TException;
 import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +62,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.createFullIdFrom;
 import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.GET_DATA_BLOCK_TASK_CALLER;
@@ -71,6 +80,7 @@ public class SourceHandle implements ISourceHandle {
   private static final long DEFAULT_RETRY_INTERVAL_IN_MS = 1000;
 
   private final TEndPoint remoteEndpoint;
+  private final TEndPoint localEndpoint;
   private final TFragmentInstanceId remoteFragmentInstanceId;
   private final TFragmentInstanceId localFragmentInstanceId;
 
@@ -116,6 +126,8 @@ public class SourceHandle implements ISourceHandle {
    */
   private boolean canGetTsBlockFromRemote = false;
 
+  private final boolean isHighestPriority;
+
   private static final DataExchangeCostMetricSet DATA_EXCHANGE_COST_METRIC_SET =
       DataExchangeCostMetricSet.getInstance();
   private static final DataExchangeCountMetricSet DATA_EXCHANGE_COUNT_METRIC_SET =
@@ -125,6 +137,7 @@ public class SourceHandle implements ISourceHandle {
       RamUsageEstimator.shallowSizeOfInstance(SourceHandle.class)
           + RamUsageEstimator.shallowSizeOfInstance(TFragmentInstanceId.class) * 2;
 
+  @TestOnly
   @SuppressWarnings("squid:S107")
   public SourceHandle(
       TEndPoint remoteEndpoint,
@@ -138,21 +151,72 @@ public class SourceHandle implements ISourceHandle {
       SourceHandleListener sourceHandleListener,
       IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
           mppDataExchangeServiceClientManager) {
-    this.remoteEndpoint = Validate.notNull(remoteEndpoint, "remoteEndpoint can not be null.");
+    this(
+        remoteEndpoint,
+        remoteFragmentInstanceId,
+        localFragmentInstanceId,
+        localPlanNodeId,
+        indexOfUpstreamSinkHandle,
+        localMemoryManager,
+        executorService,
+        serde,
+        sourceHandleListener,
+        false,
+        mppDataExchangeServiceClientManager);
+  }
+
+  @SuppressWarnings("squid:S107")
+  public SourceHandle(
+      TEndPoint remoteEndpoint,
+      TFragmentInstanceId remoteFragmentInstanceId,
+      TFragmentInstanceId localFragmentInstanceId,
+      String localPlanNodeId,
+      int indexOfUpstreamSinkHandle,
+      LocalMemoryManager localMemoryManager,
+      ExecutorService executorService,
+      TsBlockSerde serde,
+      SourceHandleListener sourceHandleListener,
+      boolean isHighestPriority,
+      IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
+          mppDataExchangeServiceClientManager) {
+    this.remoteEndpoint =
+        Validate.notNull(
+            remoteEndpoint,
+            DataNodeQueryMessages.EXCEPTION_REMOTEENDPOINT_CAN_NOT_BE_NULL_DOT_DE2B5885);
+    this.localEndpoint =
+        new TEndPoint(
+            IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
+            IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
     this.remoteFragmentInstanceId =
-        Validate.notNull(remoteFragmentInstanceId, "remoteFragmentInstanceId can not be null.");
+        Validate.notNull(
+            remoteFragmentInstanceId,
+            DataNodeQueryMessages.EXCEPTION_REMOTEFRAGMENTINSTANCEID_CAN_NOT_BE_NULL_DOT_C2449A29);
     this.localFragmentInstanceId =
-        Validate.notNull(localFragmentInstanceId, "localFragmentInstanceId can not be null.");
+        Validate.notNull(
+            localFragmentInstanceId,
+            DataNodeQueryMessages.EXCEPTION_LOCALFRAGMENTINSTANCEID_CAN_NOT_BE_NULL_DOT_37F5917D);
     this.fullFragmentInstanceId =
         FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(localFragmentInstanceId);
-    this.localPlanNodeId = Validate.notNull(localPlanNodeId, "localPlanNodeId can not be null.");
+    this.localPlanNodeId =
+        Validate.notNull(
+            localPlanNodeId,
+            DataNodeQueryMessages.EXCEPTION_LOCALPLANNODEID_CAN_NOT_BE_NULL_DOT_44A34A33);
     this.indexOfUpstreamSinkHandle = indexOfUpstreamSinkHandle;
     this.localMemoryManager =
-        Validate.notNull(localMemoryManager, "localMemoryManager can not be null.");
-    this.executorService = Validate.notNull(executorService, "executorService can not be null.");
-    this.serde = Validate.notNull(serde, "serde can not be null.");
+        Validate.notNull(
+            localMemoryManager,
+            DataNodeQueryMessages.EXCEPTION_LOCALMEMORYMANAGER_CAN_NOT_BE_NULL_DOT_7A46C6CE);
+    this.executorService =
+        Validate.notNull(
+            executorService,
+            DataNodeQueryMessages.EXCEPTION_EXECUTORSERVICE_CAN_NOT_BE_NULL_DOT_BC459BD4);
+    this.serde =
+        Validate.notNull(serde, DataNodeQueryMessages.EXCEPTION_SERDE_CAN_NOT_BE_NULL_DOT_D46F66E7);
     this.sourceHandleListener =
-        Validate.notNull(sourceHandleListener, "sourceHandleListener can not be null.");
+        Validate.notNull(
+            sourceHandleListener,
+            DataNodeQueryMessages.EXCEPTION_SOURCEHANDLELISTENER_CAN_NOT_BE_NULL_DOT_01817F52);
+    this.isHighestPriority = isHighestPriority;
     this.bufferRetainedSizeInBytes = 0L;
     this.mppDataExchangeServiceClientManager = mppDataExchangeServiceClientManager;
     this.retryIntervalInMs = DEFAULT_RETRY_INTERVAL_IN_MS;
@@ -160,7 +224,10 @@ public class SourceHandle implements ISourceHandle {
     localMemoryManager
         .getQueryPool()
         .registerPlanNodeIdToQueryMemoryMap(
-            localFragmentInstanceId.queryId, fullFragmentInstanceId, localPlanNodeId);
+            localFragmentInstanceId.queryId,
+            fullFragmentInstanceId,
+            localPlanNodeId,
+            MemorySide.INPUT);
   }
 
   @Override
@@ -186,30 +253,35 @@ public class SourceHandle implements ISourceHandle {
       checkState();
 
       if (!blocked.isDone()) {
-        throw new IllegalStateException("Source handle is blocked.");
+        throw new IllegalStateException(DataNodeQueryMessages.SOURCE_HANDLE_IS_BLOCKED);
       }
 
       ByteBuffer tsBlock = sequenceIdToTsBlock.remove(currSequenceId);
       if (tsBlock == null) {
         return null;
       }
-      long retainedSize = sequenceIdToDataBlockSize.remove(currSequenceId);
+      Long retainedSize = sequenceIdToDataBlockSize.remove(currSequenceId);
+      if (retainedSize == null) {
+        throw new IllegalStateException(DataNodeQueryMessages.RESERVED_DATA_BLOCK_SIZE_IS_NULL);
+      }
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[GetTsBlockFromBuffer] sequenceId:{}, size:{}", currSequenceId, retainedSize);
+        LOGGER.debug(DataNodeQueryMessages.GET_TSBLOCK_FROM_BUFFER, currSequenceId, retainedSize);
       }
       currSequenceId += 1;
-      bufferRetainedSizeInBytes -= retainedSize;
-      localMemoryManager
-          .getQueryPool()
-          .free(
-              localFragmentInstanceId.getQueryId(),
-              fullFragmentInstanceId,
-              localPlanNodeId,
-              retainedSize);
+      if (retainedSize > 0) {
+        bufferRetainedSizeInBytes -= retainedSize;
+        localMemoryManager
+            .getQueryPool()
+            .free(
+                localFragmentInstanceId.getQueryId(),
+                fullFragmentInstanceId,
+                localPlanNodeId,
+                retainedSize);
+      }
 
       if (sequenceIdToTsBlock.isEmpty() && !isFinished()) {
         if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("[WaitForMoreTsBlock]");
+          LOGGER.debug(DataNodeQueryMessages.WAIT_FOR_MORE_TSBLOCK);
         }
         blocked = SettableFuture.create();
       }
@@ -240,20 +312,26 @@ public class SourceHandle implements ISourceHandle {
     while (sequenceIdToDataBlockSize.containsKey(endSequenceId)) {
       Long bytesToReserve = sequenceIdToDataBlockSize.get(endSequenceId);
       if (bytesToReserve == null) {
-        throw new IllegalStateException("Data block size is null.");
+        throw new IllegalStateException(DataNodeQueryMessages.DATA_BLOCK_SIZE_IS_NULL);
       }
-      pair =
+      MemoryReservationResult reserveResult =
           localMemoryManager
               .getQueryPool()
-              .reserve(
+              .reserveWithPriority(
                   localFragmentInstanceId.getQueryId(),
                   fullFragmentInstanceId,
                   localPlanNodeId,
                   bytesToReserve,
-                  maxBytesCanReserve);
-      bufferRetainedSizeInBytes += bytesToReserve;
+                  maxBytesCanReserve,
+                  isHighestPriority);
+      pair = new Pair<>(reserveResult.getFuture(), reserveResult.isReserveSuccess());
+      // actually reserve size is not equals raw size, update the actually reserve size to the map
+      if (reserveResult.getReservedBytes() != bytesToReserve) {
+        sequenceIdToDataBlockSize.put(endSequenceId, reserveResult.getReservedBytes());
+      }
+      bufferRetainedSizeInBytes += reserveResult.getReservedBytes();
       endSequenceId += 1;
-      reservedBytes += bytesToReserve;
+      reservedBytes += reserveResult.getReservedBytes();
       if (!Boolean.TRUE.equals(pair.right)) {
         blockedSize = bytesToReserve;
         break;
@@ -308,7 +386,7 @@ public class SourceHandle implements ISourceHandle {
 
   public synchronized void setNoMoreTsBlocks(int lastSequenceId) {
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[ReceiveNoMoreTsBlockEvent]");
+      LOGGER.debug(DataNodeQueryMessages.RECEIVE_NO_MORE_TSBLOCK_EVENT);
     }
     this.lastSequenceId = lastSequenceId;
     if (!blocked.isDone() && remoteTsBlockedConsumedUp()) {
@@ -321,18 +399,35 @@ public class SourceHandle implements ISourceHandle {
 
   public synchronized void updatePendingDataBlockInfo(
       int startSequenceId, List<Long> dataBlockSizes) {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug(
-          "[ReceiveNewTsBlockNotification] [{}, {}), each size is: {}",
-          startSequenceId,
-          startSequenceId + dataBlockSizes.size(),
-          dataBlockSizes);
+    try {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            DataNodeQueryMessages.RECEIVENEWTSBLOCKNOTIFICATION_ARG_ARG_EACH_SIZE_IS_ARG,
+            startSequenceId,
+            startSequenceId + dataBlockSizes.size(),
+            dataBlockSizes);
+      }
+      for (int i = 0; i < dataBlockSizes.size(); i++) {
+        sequenceIdToDataBlockSize.put(i + startSequenceId, dataBlockSizes.get(i));
+      }
+      if (canGetTsBlockFromRemote) {
+        trySubmitGetDataBlocksTask();
+      }
+    } catch (RuntimeException | Error t) {
+      // This method runs in the inbound RPC thread. Mark the local FI failed before the same
+      // exception is returned to the upstream FI through the existing Thrift error channel.
+      notifyFailure(t);
+      throw t;
     }
-    for (int i = 0; i < dataBlockSizes.size(); i++) {
-      sequenceIdToDataBlockSize.put(i + startSequenceId, dataBlockSizes.get(i));
-    }
-    if (canGetTsBlockFromRemote) {
-      trySubmitGetDataBlocksTask();
+  }
+
+  private void notifyFailure(Throwable t) {
+    try {
+      sourceHandleListener.onFailure(this, t);
+    } catch (Throwable callbackFailure) {
+      if (callbackFailure != t) {
+        t.addSuppressed(callbackFailure);
+      }
     }
   }
 
@@ -478,9 +573,9 @@ public class SourceHandle implements ISourceHandle {
           throw new IllegalStateException(e.getCause() == null ? e : e.getCause());
         }
       }
-      throw new IllegalStateException("Source handle is aborted.");
+      throw new IllegalStateException(DataNodeQueryMessages.SOURCE_HANDLE_IS_ABORTED);
     } else if (closed) {
-      throw new IllegalStateException("SourceHandle is closed.");
+      throw new IllegalStateException(DataNodeQueryMessages.SOURCEHANDLE_IS_CLOSED);
     }
   }
 
@@ -516,17 +611,21 @@ public class SourceHandle implements ISourceHandle {
     GetDataBlocksTask(int startSequenceId, int endSequenceId, long reservedBytes) {
       Validate.isTrue(
           startSequenceId >= 0,
-          "Start sequence ID should be greater than or equal to zero. Start sequence ID: "
+          DataNodeQueryMessages
+                  .EXCEPTION_START_SEQUENCE_ID_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_ZERO_DOT_START_SEQUENCE_ID__D3C0AAB7
               + startSequenceId);
       this.startSequenceId = startSequenceId;
       Validate.isTrue(
           endSequenceId > startSequenceId,
-          "End sequence ID should be greater than the start sequence ID. Start sequence ID: "
+          DataNodeQueryMessages
+                  .EXCEPTION_END_SEQUENCE_ID_SHOULD_BE_GREATER_THAN_THE_START_SEQUENCE_ID_DOT_START_SEQUENCE__DF1AA2A1
               + startSequenceId
-              + ", end sequence ID: "
+              + DataNodeQueryMessages.EXCEPTION_COMMA_END_SEQUENCE_ID_COLON_DB1AF173
               + endSequenceId);
       this.endSequenceId = endSequenceId;
-      Validate.isTrue(reservedBytes > 0L, "Reserved bytes should be greater than zero.");
+      Validate.isTrue(
+          reservedBytes > 0L,
+          DataNodeQueryMessages.EXCEPTION_RESERVED_BYTES_SHOULD_BE_GREATER_THAN_ZERO_DOT_64086BE5);
       this.reservedBytes = reservedBytes;
     }
 
@@ -536,7 +635,7 @@ public class SourceHandle implements ISourceHandle {
       try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
-              "[StartPullTsBlocksFromRemote] {}-{} [{}, {}) ",
+              DataNodeQueryMessages.STARTPULLTSBLOCKSFROMREMOTE_ARG_ARG_ARG_ARG,
               remoteFragmentInstanceId,
               indexOfUpstreamSinkHandle,
               startSequenceId,
@@ -548,57 +647,106 @@ public class SourceHandle implements ISourceHandle {
                 startSequenceId,
                 endSequenceId,
                 indexOfUpstreamSinkHandle);
+        DataBlockFetchProgress fetchProgress =
+            new DataBlockFetchProgress(startSequenceId, endSequenceId);
         int attempt = 0;
         while (attempt < MAX_ATTEMPT_TIMES) {
           attempt += 1;
 
           long startTime = System.nanoTime();
+          boolean transferAttemptRecorded = false;
           try (SyncDataNodeMPPDataExchangeServiceClient client =
               mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
-            TGetDataBlockResponse resp = client.getDataBlock(req);
+            TGetDataBlockResponse resp = getDataBlockWithFragments(client, req, fetchProgress);
+            if (resp == null) {
+              return;
+            }
             int tsBlockNum = resp.getTsBlocks().size();
-            if (tsBlockNum == 0) {
+            if (tsBlockNum != endSequenceId - startSequenceId) {
+              recordTransferAttempt(
+                  false,
+                  tsBlockNum == 0
+                      ? UserDataTransferErrorCode.EMPTY_RESPONSE.name()
+                      : UserDataTransferErrorCode.UNEXPECTED_RESPONSE_SIZE.name(),
+                  null);
+              transferAttemptRecorded = true;
               if (!closed) {
                 // failed to pull TsBlocks
                 LOGGER.warn(
-                    "{} failed to pull TsBlocks [{}] to [{}] from SinkHandle {}, channel index {},",
+                    DataNodeQueryMessages.FAILED_TO_PULL_TSBLOCKS,
                     localFragmentInstanceId,
                     startSequenceId,
                     endSequenceId,
                     remoteFragmentInstanceId,
                     indexOfUpstreamSinkHandle);
               }
-              return;
+              if (tsBlockNum == 0) {
+                return;
+              }
+              throw new TException(
+                  DataNodeQueryMessages.EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33);
             }
             List<ByteBuffer> tsBlocks = new ArrayList<>(tsBlockNum);
             tsBlocks.addAll(resp.getTsBlocks());
 
             if (LOGGER.isDebugEnabled()) {
-              LOGGER.debug("[EndPullTsBlocksFromRemote] Count:{}", tsBlockNum);
+              LOGGER.debug(DataNodeQueryMessages.END_PULL_TSBLOCKS_FROM_REMOTE, tsBlockNum);
             }
             DATA_EXCHANGE_COUNT_METRIC_SET.recordDataBlockNum(
                 GET_DATA_BLOCK_NUM_CALLER, tsBlockNum);
             executorService.submit(
                 new SendAcknowledgeDataBlockEventTask(startSequenceId, endSequenceId));
+            boolean receiverClosed = false;
             synchronized (SourceHandle.this) {
               if (aborted || closed) {
-                return;
-              }
-              for (int i = startSequenceId; i < endSequenceId; i++) {
-                sequenceIdToTsBlock.put(i, tsBlocks.get(i - startSequenceId));
-              }
-              if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("[PutTsBlocksIntoBuffer]");
-              }
-              if (!blocked.isDone()) {
-                blocked.set(null);
+                receiverClosed = true;
+              } else {
+                for (int i = startSequenceId; i < endSequenceId; i++) {
+                  sequenceIdToTsBlock.put(i, tsBlocks.get(i - startSequenceId));
+                }
+                if (LOGGER.isDebugEnabled()) {
+                  LOGGER.debug(DataNodeQueryMessages.PUT_TSBLOCKS_INTO_BUFFER);
+                }
+                if (!blocked.isDone()) {
+                  blocked.set(null);
+                }
               }
             }
+            recordTransferAttempt(
+                !receiverClosed,
+                receiverClosed ? UserDataTransferErrorCode.RECEIVER_CLOSED.name() : null,
+                null);
+            transferAttemptRecorded = true;
+            if (receiverClosed) {
+              return;
+            }
             break;
-          } catch (Throwable e) {
+          } catch (IllegalArgumentException | IllegalStateException e) {
+            if (!transferAttemptRecorded) {
+              recordTransferAttempt(
+                  false, UserDataTransferErrorCode.UNEXPECTED_RESPONSE_SIZE.name(), e);
+            }
+            fail(e);
+            return;
+          } catch (Error e) {
+            if (!transferAttemptRecorded) {
+              recordTransferAttempt(
+                  false,
+                  e instanceof OutOfMemoryError
+                      ? UserDataTransferErrorCode.OUT_OF_MEMORY.name()
+                      : null,
+                  e);
+            }
+            fail(e);
+            throw e;
+          } catch (Exception e) {
+
+            if (!transferAttemptRecorded) {
+              recordTransferAttempt(false, null, e);
+            }
 
             LOGGER.warn(
-                "failed to get data block [{}, {}), attempt times: {}",
+                DataNodeQueryMessages.FAILED_TO_GET_DATA_BLOCK,
                 startSequenceId,
                 endSequenceId,
                 attempt,
@@ -626,20 +774,155 @@ public class SourceHandle implements ISourceHandle {
       }
     }
 
+    private void recordTransferAttempt(boolean success, String errorCode, Throwable error) {
+      DataNodeUserDataTransferAuditor.record(
+          localEndpoint, remoteEndpoint, localEndpoint, success, errorCode, error);
+    }
+
     private void fail(Throwable t) {
       synchronized (SourceHandle.this) {
         if (aborted || closed) {
           return;
         }
-        bufferRetainedSizeInBytes -= reservedBytes;
-        localMemoryManager
-            .getQueryPool()
-            .free(
-                localFragmentInstanceId.getQueryId(),
-                fullFragmentInstanceId,
-                localPlanNodeId,
-                reservedBytes);
+        if (reservedBytes > 0) {
+          bufferRetainedSizeInBytes -= reservedBytes;
+          localMemoryManager
+              .getQueryPool()
+              .free(
+                  localFragmentInstanceId.getQueryId(),
+                  fullFragmentInstanceId,
+                  localPlanNodeId,
+                  reservedBytes);
+        }
         sourceHandleListener.onFailure(SourceHandle.this, t);
+      }
+    }
+
+    private TGetDataBlockResponse getDataBlockWithFragments(
+        SyncDataNodeMPPDataExchangeServiceClient client,
+        TGetDataBlockRequest request,
+        DataBlockFetchProgress fetchProgress)
+        throws TException {
+      while (!fetchProgress.isFinished()) {
+        synchronized (SourceHandle.this) {
+          if (aborted || closed) {
+            fetchProgress.discard();
+            return null;
+          }
+        }
+        TGetDataBlockRequest fragmentRequest = request.deepCopy();
+        fragmentRequest.setStartSequenceId(fetchProgress.nextSequenceId);
+        fragmentRequest.setOffset(fetchProgress.offset);
+        TGetDataBlockResponse response = client.getDataBlock(fragmentRequest);
+        synchronized (SourceHandle.this) {
+          if (aborted || closed) {
+            fetchProgress.discard();
+            return null;
+          }
+          if (response.getTsBlocks().isEmpty()) {
+            return response;
+          }
+          fetchProgress.addResponse(response);
+        }
+      }
+      return new TGetDataBlockResponse(fetchProgress.tsBlocks);
+    }
+
+    private class DataBlockFetchProgress {
+      private final int endSequenceId;
+      private final List<ByteBuffer> tsBlocks;
+      private int nextSequenceId;
+      private int offset;
+      private PublicBAOS partialTsBlock;
+      private int partialTsBlockTotalLength;
+
+      private DataBlockFetchProgress(int startSequenceId, int endSequenceId) {
+        this.nextSequenceId = startSequenceId;
+        this.endSequenceId = endSequenceId;
+        this.tsBlocks = new ArrayList<>(endSequenceId - startSequenceId);
+      }
+
+      private boolean isFinished() {
+        return nextSequenceId == endSequenceId && partialTsBlock == null;
+      }
+
+      private void discard() {
+        tsBlocks.clear();
+        partialTsBlock = null;
+        partialTsBlockTotalLength = 0;
+        offset = 0;
+      }
+
+      private void addResponse(TGetDataBlockResponse response) {
+        List<ByteBuffer> responseBlocks = response.getTsBlocks();
+        boolean lastBlockIsFragment = response.isSetOffset();
+        int blockIndex = 0;
+
+        if (partialTsBlock != null) {
+          appendFragment(responseBlocks.get(blockIndex++));
+          if (lastBlockIsFragment && blockIndex == responseBlocks.size()) {
+            updateOffset(response.getOffset());
+            return;
+          }
+          Preconditions.checkState(
+              partialTsBlock.size() == partialTsBlockTotalLength,
+              DataNodeQueryMessages
+                  .EXCEPTION_ACCUMULATED_TSBLOCK_FRAGMENT_LENGTH_ARG_DOES_NOT_MATCH_TOTALLENGTH_ARG_1B784303,
+              partialTsBlock.size(),
+              partialTsBlockTotalLength);
+          tsBlocks.add(ByteBuffer.wrap(partialTsBlock.getBuf(), 0, partialTsBlock.size()));
+          partialTsBlock = null;
+          partialTsBlockTotalLength = 0;
+          offset = 0;
+          nextSequenceId++;
+        }
+
+        int lastCompleteBlockIndex =
+            lastBlockIsFragment ? responseBlocks.size() - 1 : responseBlocks.size();
+        while (blockIndex < lastCompleteBlockIndex) {
+          tsBlocks.add(responseBlocks.get(blockIndex++));
+          nextSequenceId++;
+        }
+
+        if (lastBlockIsFragment) {
+          checkArgument(
+              response.isSetTotalLength(),
+              DataNodeQueryMessages
+                  .EXCEPTION_THE_FIRST_FRAGMENTED_DATA_BLOCK_RESPONSE_MUST_INCLUDE_TOTALLENGTH_C5C79BC2);
+          partialTsBlockTotalLength = response.getTotalLength();
+          partialTsBlock = new PublicBAOS(partialTsBlockTotalLength);
+          appendFragment(responseBlocks.get(blockIndex));
+          updateOffset(response.getOffset());
+        }
+
+        Preconditions.checkState(
+            nextSequenceId <= endSequenceId,
+            DataNodeQueryMessages
+                .EXCEPTION_NEXT_SEQUENCE_ID_ARG_EXCEEDS_REQUESTED_END_SEQUENCE_ID_ARG_30B1726E,
+            nextSequenceId,
+            endSequenceId);
+        Preconditions.checkState(
+            lastBlockIsFragment || nextSequenceId != endSequenceId || partialTsBlock == null,
+            DataNodeQueryMessages
+                .EXCEPTION_A_COMPLETED_DATA_BLOCK_RESPONSE_RANGE_MUST_NOT_RETAIN_A_PARTIAL_TSBLOCK_85E5C287);
+      }
+
+      private void appendFragment(ByteBuffer fragment) {
+        checkArgument(
+            fragment.hasRemaining(),
+            DataNodeQueryMessages.EXCEPTION_TSBLOCK_FRAGMENT_MUST_NOT_BE_EMPTY_C7D19863);
+        partialTsBlock.writeBytes(fragment.array());
+      }
+
+      private void updateOffset(int nextOffset) {
+        checkArgument(
+            nextOffset > offset && nextOffset == partialTsBlock.size(),
+            DataNodeQueryMessages
+                .EXCEPTION_NEXT_FRAGMENT_OFFSET_ARG_MUST_BE_GREATER_THAN_CURRENT_OFFSET_ARG_AND_MATCH_ACCUMULATED_FRAGMENT_LENGTH_ARG_ECC31047,
+            nextOffset,
+            offset,
+            partialTsBlock.size());
+        offset = nextOffset;
       }
     }
   }
@@ -658,7 +941,7 @@ public class SourceHandle implements ISourceHandle {
     public void run() {
       try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
         if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("[SendACKTsBlock] [{}, {}).", startSequenceId, endSequenceId);
+          LOGGER.debug(DataNodeQueryMessages.SEND_ACK_TSBLOCK, startSequenceId, endSequenceId);
         }
         int attempt = 0;
         TAcknowledgeDataBlockEvent acknowledgeDataBlockEvent =
@@ -676,7 +959,7 @@ public class SourceHandle implements ISourceHandle {
             break;
           } catch (Throwable e) {
             LOGGER.warn(
-                "failed to send ack data block event [{}, {}), attempt times: {}",
+                DataNodeQueryMessages.FAILED_TO_SEND_ACK_DATA_BLOCK_EVENT,
                 startSequenceId,
                 endSequenceId,
                 attempt,
@@ -712,7 +995,7 @@ public class SourceHandle implements ISourceHandle {
       try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
-              "[SendCloseSinkChannelEvent] to [ShuffleSinkHandle: {}, index: {}]).",
+              DataNodeQueryMessages.SENDCLOSESINKCHANNELEVENT_TO_SHUFFLESINKHANDLE_ARG_INDEX_ARG,
               remoteFragmentInstanceId,
               indexOfUpstreamSinkHandle);
         }
@@ -727,7 +1010,7 @@ public class SourceHandle implements ISourceHandle {
             break;
           } catch (Throwable e) {
             LOGGER.warn(
-                "[SendCloseSinkChannelEvent] to [ShuffleSinkHandle: {}, index: {}] failed.).",
+                DataNodeQueryMessages.SEND_CLOSE_SINK_CHANNEL_EVENT_FAILED,
                 remoteFragmentInstanceId,
                 indexOfUpstreamSinkHandle);
             if (attempt == MAX_ATTEMPT_TIMES) {

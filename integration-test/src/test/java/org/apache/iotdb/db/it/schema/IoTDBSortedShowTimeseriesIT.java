@@ -24,8 +24,6 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.util.AbstractSchemaIT;
 
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runners.Parameterized;
@@ -106,22 +104,14 @@ public class IoTDBSortedShowTimeseriesIT extends AbstractSchemaIT {
       allocateMemoryForSchemaRegion(10000);
     }
     EnvFactory.getEnv().initClusterEnvironment();
+    createSchema();
   }
 
   @Parameterized.AfterParam
   public static void after() throws Exception {
+    clearSchema();
     EnvFactory.getEnv().cleanClusterEnvironment();
     tearDownEnvironment();
-  }
-
-  @Before
-  public void setUp() throws Exception {
-    createSchema();
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    clearSchema();
   }
 
   @Test

@@ -22,14 +22,15 @@ package org.apache.iotdb.confignode.procedure.impl.region;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,7 +79,7 @@ public class RegionMigrateProcedure extends RegionOperationProcedure<RegionTrans
       switch (state) {
         case REGION_MIGRATE_PREPARE:
           LOGGER.info(
-              "[pid{}][MigrateRegion] started, {} will be migrated from DataNode {} to {}.",
+              ProcedureMessages.PID_MIGRATEREGION_STARTED_WILL_BE_MIGRATED_FROM_DATANODE_TO,
               getProcId(),
               regionId,
               RegionMaintainHandler.simplifiedLocation(originalDataNode),
@@ -96,7 +97,7 @@ public class RegionMigrateProcedure extends RegionOperationProcedure<RegionTrans
               .getPartitionManager()
               .isDataNodeContainsRegion(destDataNode.getDataNodeId(), regionId)) {
             LOGGER.warn(
-                "[pid{}][MigrateRegion] sub-procedure AddRegionPeerProcedure failed, RegionMigrateProcedure will not continue",
+                ProcedureMessages.PID_MIGRATEREGION_SUB_PROCEDURE_ADDREGIONPEERPROCEDURE,
                 getProcId());
             return Flow.NO_MORE_STATE;
           }
@@ -116,7 +117,8 @@ public class RegionMigrateProcedure extends RegionOperationProcedure<RegionTrans
                 "but you may need to restart the related DataNode to make sure everything is cleaned up. ";
           }
           LOGGER.info(
-              "[pid{}][MigrateRegion] success,{} {} has been migrated from DataNode {} to {}. Procedure took {} (started at {}).",
+              ProcedureMessages
+                  .PID_MIGRATEREGION_SUCCESS_HAS_BEEN_MIGRATED_FROM_DATANODE_TO_PROCEDURE,
               getProcId(),
               cleanHint,
               regionId,
@@ -128,14 +130,14 @@ public class RegionMigrateProcedure extends RegionOperationProcedure<RegionTrans
           addChildProcedure(new NotifyRegionMigrationProcedure(regionId, false));
           return Flow.NO_MORE_STATE;
         default:
-          throw new ProcedureException("Unsupported state: " + state.name());
+          throw new ProcedureException(ProcedureMessages.UNSUPPORTED_STATE + state.name());
       }
     } catch (Exception e) {
-      LOGGER.error("[pid{}][MigrateRegion] state {} fail", getProcId(), state, e);
+      LOGGER.error(ProcedureMessages.PID_MIGRATEREGION_STATE_FAIL, getProcId(), state, e);
       // meets exception in region migrate process terminate the process
       return Flow.NO_MORE_STATE;
     }
-    LOGGER.info("[pid{}][MigrateRegion] state {} complete", getProcId(), state);
+    LOGGER.info(ProcedureMessages.PID_MIGRATEREGION_STATE_COMPLETE, getProcId(), state);
     return Flow.HAS_MORE_STATE;
   }
 
@@ -180,7 +182,7 @@ public class RegionMigrateProcedure extends RegionOperationProcedure<RegionTrans
       coordinatorForRemovePeer = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
     } catch (ThriftSerDeException e) {
       LOGGER.warn(
-          "Error in deserialize {} (procID {}). This procedure will be ignored. It may belong to old version and cannot be used now.",
+          ProcedureMessages.ERROR_IN_DESERIALIZE_PROCID_THIS_PROCEDURE_WILL_BE_IGNORED_IT,
           this.getClass(),
           this.getProcId(),
           e);

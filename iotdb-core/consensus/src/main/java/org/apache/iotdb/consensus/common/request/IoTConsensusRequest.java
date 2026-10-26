@@ -27,7 +27,7 @@ import java.nio.ByteBuffer;
  * these two classes. And we need to separate them in DataRegionStateMachine when deserialize the
  * PlanNode from ByteBuffer
  */
-public class IoTConsensusRequest implements IConsensusRequest {
+public class IoTConsensusRequest implements org.apache.iotdb.commons.request.IConsensusRequest {
 
   private final ByteBuffer byteBuffer;
 

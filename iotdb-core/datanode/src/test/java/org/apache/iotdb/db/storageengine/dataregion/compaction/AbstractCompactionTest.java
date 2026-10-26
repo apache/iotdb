@@ -30,14 +30,24 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
+import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.IDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.SeriesDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFakeSchemaFetcherImpl;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -81,6 +91,7 @@ import org.junit.Assert;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -152,30 +163,16 @@ public class AbstractCompactionTest {
               + "sequence"
               + File.separator
               + COMPACTION_TEST_SG);
-  protected static File SEQ_DIRS =
-      new File(
-          TestConstant.BASE_OUTPUT_PATH
-              + "data"
-              + File.separator
-              + "sequence"
-              + File.separator
-              + COMPACTION_TEST_SG
-              + File.separator
-              + "0"
-              + File.separator
-              + "0");
-  protected static File UNSEQ_DIRS =
+  protected static File UNSEQ_STORAGE_GROUP_DIR =
       new File(
           TestConstant.BASE_OUTPUT_PATH
               + "data"
               + File.separator
               + "unsequence"
               + File.separator
-              + COMPACTION_TEST_SG
-              + File.separator
-              + "0"
-              + File.separator
-              + "0");
+              + COMPACTION_TEST_SG);
+  protected static File SEQ_DIRS = new File(STORAGE_GROUP_DIR, "0" + File.separator + "0");
+  protected static File UNSEQ_DIRS = new File(UNSEQ_STORAGE_GROUP_DIR, "0" + File.separator + "0");
 
   protected Map<Long, Pair<File, File>> registeredTimePartitionDirs = new HashMap<>();
 
@@ -183,17 +180,55 @@ public class AbstractCompactionTest {
 
   private int fileCount = 0;
 
-  protected TsFileManager tsFileManager =
-      new TsFileManager(COMPACTION_TEST_SG, "0", STORAGE_GROUP_DIR.getPath());
+  protected TsFileManager tsFileManager;
+
+  protected CompactionFakeSchemaFetcherImpl schemaFetcher;
+
+  /**
+   * The database of the files created by this fixture and the directories that hold them. The
+   * defaults are the tree model database used by most of the compaction tests. A fixture that
+   * writes files of another data model overrides them, because the data model of the compaction
+   * input is resolved from the database directory of its source files: a table model database name
+   * must not start with {@code root.}
+   */
+  protected String getTestStorageGroup() {
+    return COMPACTION_TEST_SG;
+  }
+
+  /** The directory of the sequence files of the database of this fixture. */
+  protected File getSeqStorageGroupDir() {
+    return STORAGE_GROUP_DIR;
+  }
+
+  /** The directory of the unsequence files of the database of this fixture. */
+  protected File getUnseqStorageGroupDir() {
+    return UNSEQ_STORAGE_GROUP_DIR;
+  }
+
+  /** The directory of the data region 0, time partition 0 of the sequence files. */
+  protected File getSeqDirs() {
+    return SEQ_DIRS;
+  }
+
+  /** The directory of the data region 0, time partition 0 of the unsequence files. */
+  protected File getUnseqDirs() {
+    return UNSEQ_DIRS;
+  }
+
+  protected TsFileManager createTsFileManager() {
+    return new TsFileManager(getTestStorageGroup(), "0", getSeqStorageGroupDir().getPath());
+  }
 
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
+    MetadataLeaseManager.getInstance().updateFenceThresholdMs(Long.MAX_VALUE);
+    MetadataLeaseManager.getInstance().recoveryLeaseForTest(true);
     fileCount = 0;
-    if (!SEQ_DIRS.exists()) {
-      Assert.assertTrue(SEQ_DIRS.mkdirs());
+    if (!getSeqDirs().exists()) {
+      Assert.assertTrue(getSeqDirs().mkdirs());
     }
-    if (!UNSEQ_DIRS.exists()) {
-      Assert.assertTrue(UNSEQ_DIRS.mkdirs());
+    if (!getUnseqDirs().exists()) {
+      Assert.assertTrue(getUnseqDirs().mkdirs());
     }
     dataType = TSDataType.INT64;
     CompactionTaskManager.getInstance().restart();
@@ -202,9 +237,13 @@ public class AbstractCompactionTest {
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     BloomFilterCache.getInstance().clear();
+    tsFileManager = createTsFileManager();
     tsFileManager.getOrCreateSequenceListByTimePartition(0);
     tsFileManager.getOrCreateUnsequenceListByTimePartition(0);
-    registeredTimePartitionDirs.put(0L, new Pair<>(SEQ_DIRS, UNSEQ_DIRS));
+    registeredTimePartitionDirs.put(0L, new Pair<>(getSeqDirs(), getUnseqDirs()));
+    schemaFetcher = new CompactionFakeSchemaFetcherImpl();
+    schemaFetcher.getSchemaTree().setDatabases(Collections.singleton(getTestStorageGroup()));
+    CompactionUtils.setSchemaFetcher(schemaFetcher);
   }
 
   protected void createTimePartitionDirIfNotExist(long timePartition) {
@@ -212,30 +251,10 @@ public class AbstractCompactionTest {
       return;
     }
     File seqTimePartitionDir =
-        new File(
-            TestConstant.BASE_OUTPUT_PATH
-                + "data"
-                + File.separator
-                + "sequence"
-                + File.separator
-                + COMPACTION_TEST_SG
-                + File.separator
-                + "0"
-                + File.separator
-                + timePartition);
+        new File(getSeqStorageGroupDir(), "0" + File.separator + timePartition);
     seqTimePartitionDir.mkdirs();
     File unseqTimePartitionDir =
-        new File(
-            TestConstant.BASE_OUTPUT_PATH
-                + "data"
-                + File.separator
-                + "unsequence"
-                + File.separator
-                + COMPACTION_TEST_SG
-                + File.separator
-                + "0"
-                + File.separator
-                + timePartition);
+        new File(getUnseqStorageGroupDir(), "0" + File.separator + timePartition);
     unseqTimePartitionDir.mkdirs();
     registeredTimePartitionDirs.put(
         timePartition, new Pair<File, File>(seqTimePartitionDir, unseqTimePartitionDir));
@@ -275,9 +294,9 @@ public class AbstractCompactionTest {
           timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + fileVersion + "-0-0.tsfile";
       String filePath;
       if (isSeq) {
-        filePath = SEQ_DIRS.getPath() + File.separator + fileName;
+        filePath = getSeqDirs().getPath() + File.separator + fileName;
       } else {
-        filePath = UNSEQ_DIRS.getPath() + File.separator + fileName;
+        filePath = getUnseqDirs().getPath() + File.separator + fileName;
       }
       File file;
       if (isAlign) {
@@ -347,9 +366,9 @@ public class AbstractCompactionTest {
           timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + fileVersion + "-0-0.tsfile";
       String filePath;
       if (isSeq) {
-        filePath = SEQ_DIRS.getPath() + File.separator + fileName;
+        filePath = getSeqDirs().getPath() + File.separator + fileName;
       } else {
-        filePath = UNSEQ_DIRS.getPath() + File.separator + fileName;
+        filePath = getUnseqDirs().getPath() + File.separator + fileName;
       }
       File file;
       if (isAlign) {
@@ -480,6 +499,8 @@ public class AbstractCompactionTest {
         .getConfig()
         .setInnerCompactionTaskSelectionModsFileThreshold(oldModsFileSize);
     IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(oldLongestExpiredTime);
+    MetadataLeaseManager.getInstance().updateFenceThresholdMs(20_000);
+    MetadataLeaseManager.getInstance().recoveryLeaseForTest(true);
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldChunkGroupSize);
 
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldPagePointMaxNumber);
@@ -491,11 +512,11 @@ public class AbstractCompactionTest {
 
     EnvironmentUtils.cleanAllDir();
 
-    if (SEQ_DIRS.exists()) {
-      FileUtils.deleteDirectory(SEQ_DIRS);
+    if (getSeqDirs().exists()) {
+      FileUtils.deleteDirectory(getSeqDirs());
     }
-    if (UNSEQ_DIRS.exists()) {
-      FileUtils.deleteDirectory(UNSEQ_DIRS);
+    if (getUnseqDirs().exists()) {
+      FileUtils.deleteDirectory(getUnseqDirs());
     }
     for (Map.Entry<Long, Pair<File, File>> entry : registeredTimePartitionDirs.entrySet()) {
       File seqDir = entry.getValue().left;
@@ -510,6 +531,9 @@ public class AbstractCompactionTest {
     registeredTimePartitionDirs.clear();
     tsFileManager.clear();
     TsFileResourceManager.getInstance().clear();
+
+    CompactionUtils.setSchemaFetcher(null);
+    TreeDeviceSchemaCacheManager.getInstance().cleanUp();
   }
 
   private void removeFiles() throws IOException {
@@ -715,9 +739,9 @@ public class AbstractCompactionTest {
             + String.format("-%d-0.tsfile", innerCompactionCnt);
     String filePath;
     if (isSeq) {
-      filePath = SEQ_DIRS.getPath() + File.separator + fileName;
+      filePath = getSeqDirs().getPath() + File.separator + fileName;
     } else {
-      filePath = UNSEQ_DIRS.getPath() + File.separator + fileName;
+      filePath = getUnseqDirs().getPath() + File.separator + fileName;
     }
     TsFileResource resource = new TsFileResource(new File(filePath));
     resource.updatePlanIndexes(fileVersion);
@@ -729,9 +753,9 @@ public class AbstractCompactionTest {
       String fileName, boolean isSeq, int innerCompactionCnt) {
     String filePath;
     if (isSeq) {
-      filePath = SEQ_DIRS.getPath() + File.separator + fileName;
+      filePath = getSeqDirs().getPath() + File.separator + fileName;
     } else {
-      filePath = UNSEQ_DIRS.getPath() + File.separator + fileName;
+      filePath = getUnseqDirs().getPath() + File.separator + fileName;
     }
     TsFileResource resource = new TsFileResource(new File(filePath));
     resource.setStatusForTest(TsFileResourceStatus.NORMAL);
@@ -870,5 +894,15 @@ public class AbstractCompactionTest {
       }
     }
     return new ArrayList<>(paths);
+  }
+
+  protected ICompactionPerformer getPerformer(String performerType) {
+    if (performerType.equalsIgnoreCase(InnerSeqCompactionPerformer.READ_CHUNK.toString())) {
+      return new ReadChunkCompactionPerformer();
+    } else if (performerType.equalsIgnoreCase(InnerUnseqCompactionPerformer.FAST.toString())) {
+      return new FastCompactionPerformer(false);
+    } else {
+      return new ReadPointCompactionPerformer();
+    }
   }
 }

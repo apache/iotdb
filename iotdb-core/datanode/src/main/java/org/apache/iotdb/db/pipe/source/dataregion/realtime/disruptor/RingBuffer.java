@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+
+import java.util.function.BooleanSupplier;
+
 /**
  * Left-hand side padding for cache line alignment
  *
@@ -58,10 +62,10 @@ abstract class RingBufferFields<E> extends RingBufferPad {
     this.bufferSize = sequencer.getBufferSize();
 
     if (bufferSize < 1) {
-      throw new IllegalArgumentException("bufferSize must not be less than 1");
+      throw new IllegalArgumentException(DataNodePipeMessages.BUFFERSIZE_MUST_NOT_BE_LESS_THAN_1);
     }
     if (Integer.bitCount(bufferSize) != 1) {
-      throw new IllegalArgumentException("bufferSize must be a power of 2");
+      throw new IllegalArgumentException(DataNodePipeMessages.BUFFERSIZE_MUST_BE_A_POWER_OF_2);
     }
 
     this.indexMask = bufferSize - 1;
@@ -205,8 +209,26 @@ public final class RingBuffer<E> extends RingBufferFields<E> {
    * @param <A> argument type
    */
   public <A> void publishEvent(EventTranslator<E, A> translator, A arg0) {
-    final long sequence = sequencer.next(1);
+    publishEvent(translator, arg0, () -> false);
+  }
+
+  /**
+   * Publish event using a translator function, or abort if the caller is closing.
+   *
+   * @param translator function to populate the event
+   * @param arg0 argument passed to translator
+   * @param abortCondition returns {@code true} if the publish should be abandoned
+   * @param <A> argument type
+   * @return {@code true} if the event is published, {@code false} if the publish is aborted
+   */
+  public <A> boolean publishEvent(
+      final EventTranslator<E, A> translator, final A arg0, final BooleanSupplier abortCondition) {
+    final long sequence = sequencer.next(1, abortCondition);
+    if (sequence == Sequence.INITIAL_VALUE) {
+      return false;
+    }
     translateAndPublish(translator, sequence, arg0);
+    return true;
   }
 
   /**

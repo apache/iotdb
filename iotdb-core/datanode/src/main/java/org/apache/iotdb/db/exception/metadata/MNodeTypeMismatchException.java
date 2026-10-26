@@ -21,12 +21,15 @@ package org.apache.iotdb.db.exception.metadata;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
 public class MNodeTypeMismatchException extends MetadataException {
 
   public MNodeTypeMismatchException(String path, byte expectedType) {
     super(
         String.format(
-            "MNode [%s] is not a %s.", path, SchemaConstant.getMNodeTypeName(expectedType)));
+            DataNodeSchemaMessages.MNODE_TYPE_MISMATCH_FMT,
+            path,
+            SchemaConstant.getMNodeTypeName(expectedType)));
   }
 }

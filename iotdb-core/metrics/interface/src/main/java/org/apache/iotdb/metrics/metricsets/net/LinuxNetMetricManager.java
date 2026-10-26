@@ -22,6 +22,7 @@ package org.apache.iotdb.metrics.metricsets.net;
 import org.apache.iotdb.metrics.MetricConstant;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.i18n.MetricsMessages;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.slf4j.Logger;
@@ -136,7 +137,7 @@ public class LinuxNetMetricManager implements INetMetricManager {
     File ifaceIdFolder = new File(IFACE_ID_PATH);
     if (!ifaceIdFolder.exists()) {
       ifaceSet = Collections.emptySet();
-      LOGGER.warn("Cannot find {}", IFACE_ID_PATH);
+      LOGGER.warn(MetricsMessages.CANNOT_FIND_PATH, IFACE_ID_PATH);
       return;
     }
     ifaceSet =
@@ -147,7 +148,7 @@ public class LinuxNetMetricManager implements INetMetricManager {
   private void collectNetStatusIndex() {
     File netStatusFile = new File(NET_STATUS_PATH);
     if (!netStatusFile.exists()) {
-      LOGGER.warn("Cannot find {}", NET_STATUS_PATH);
+      LOGGER.warn(MetricsMessages.CANNOT_FIND_PATH, NET_STATUS_PATH);
       return;
     }
     try (FileInputStream inputStream = new FileInputStream(netStatusFile)) {
@@ -173,7 +174,7 @@ public class LinuxNetMetricManager implements INetMetricManager {
         }
       }
     } catch (IOException e) {
-      LOGGER.error("Meets exception when reading {}", NET_STATUS_PATH, e);
+      LOGGER.error(MetricsMessages.READ_NET_STATUS_ERROR, NET_STATUS_PATH, e);
     }
   }
 
@@ -213,13 +214,14 @@ public class LinuxNetMetricManager implements INetMetricManager {
         transmittedPacketsMapForIface.put(iface, transmittedPackets);
       }
     } catch (IOException e) {
-      LOGGER.error("Meets error when reading {} for net status", NET_STATUS_PATH, e);
+      LOGGER.error(MetricsMessages.READ_NET_STATUS_FOR_NET_ERROR, NET_STATUS_PATH, e);
     }
 
     if (MetricLevel.higherOrEqual(MetricLevel.NORMAL, METRIC_CONFIG.getMetricLevel())) {
       // update socket num
+      Process process = null;
       try {
-        Process process = Runtime.getRuntime().exec(this.getConnectNumCmd);
+        process = Runtime.getRuntime().exec(this.getConnectNumCmd);
         StringBuilder result = new StringBuilder();
         try (BufferedReader input =
             new BufferedReader(new InputStreamReader(process.getInputStream()))) {
@@ -228,9 +230,19 @@ public class LinuxNetMetricManager implements INetMetricManager {
             result.append(line);
           }
         }
+        process.waitFor();
         this.connectionNum = Integer.parseInt(result.toString().trim());
       } catch (IOException e) {
-        LOGGER.error("Failed to get socket num", e);
+        LOGGER.error(MetricsMessages.FAILED_TO_GET_SOCKET_NUM, e);
+      } catch (InterruptedException e) {
+        LOGGER.error(MetricsMessages.INTERRUPTED_WHILE_WAITING_SOCKET_NUM, e);
+        Thread.currentThread().interrupt();
+      } catch (NumberFormatException e) {
+        LOGGER.error(MetricsMessages.FAILED_TO_PARSE_SOCKET_NUM, e.getMessage());
+      } finally {
+        if (process != null && process.isAlive()) {
+          process.destroyForcibly();
+        }
       }
     }
   }

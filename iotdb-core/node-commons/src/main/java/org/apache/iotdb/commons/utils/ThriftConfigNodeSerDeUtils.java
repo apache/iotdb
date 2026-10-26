@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
+import org.apache.iotdb.commons.i18n.UtilMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 
@@ -72,7 +73,7 @@ public class ThriftConfigNodeSerDeUtils {
     try {
       storageGroupSchema.write(generateWriteProtocol(buffer));
     } catch (TException e) {
-      throw new ThriftSerDeException("Write TStorageGroupSchema failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.WRITE_T_STORAGE_GROUP_SCHEMA_FAILED, e);
     }
   }
 
@@ -81,7 +82,7 @@ public class ThriftConfigNodeSerDeUtils {
     try {
       storageGroupSchema.read(generateReadProtocol(buffer));
     } catch (TException e) {
-      throw new ThriftSerDeException("Read TStorageGroupSchema failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.READ_T_STORAGE_GROUP_SCHEMA_FAILED, e);
     }
     return storageGroupSchema;
   }
@@ -91,7 +92,7 @@ public class ThriftConfigNodeSerDeUtils {
     try {
       storageGroupSchema.write(generateWriteProtocol(outputStream));
     } catch (TException e) {
-      throw new ThriftSerDeException("Write TStorageGroupSchema failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.WRITE_T_STORAGE_GROUP_SCHEMA_FAILED, e);
     }
   }
 
@@ -100,7 +101,7 @@ public class ThriftConfigNodeSerDeUtils {
     try {
       storageGroupSchema.read(generateReadProtocol(inputStream));
     } catch (TException e) {
-      throw new ThriftSerDeException("Read TStorageGroupSchema failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.READ_T_STORAGE_GROUP_SCHEMA_FAILED, e);
     }
     return storageGroupSchema;
   }
@@ -110,7 +111,7 @@ public class ThriftConfigNodeSerDeUtils {
     try {
       configNodeLocation.write(generateWriteProtocol(buffer));
     } catch (TException e) {
-      throw new ThriftSerDeException("Write TConfigNodeLocation failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.WRITE_T_CONFIG_NODE_LOCATION_FAILED, e);
     }
   }
 
@@ -119,7 +120,7 @@ public class ThriftConfigNodeSerDeUtils {
     try {
       configNodeLocation.write(generateWriteProtocol(stream));
     } catch (TException e) {
-      throw new ThriftSerDeException("Write TConfigNodeLocation failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.WRITE_T_CONFIG_NODE_LOCATION_FAILED, e);
     }
   }
 
@@ -128,7 +129,7 @@ public class ThriftConfigNodeSerDeUtils {
     try {
       configNodeLocation.read(generateReadProtocol(buffer));
     } catch (TException e) {
-      throw new ThriftSerDeException("Read TConfigNodeLocation failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.READ_T_CONFIG_NODE_LOCATION_FAILED, e);
     }
     return configNodeLocation;
   }
@@ -138,7 +139,7 @@ public class ThriftConfigNodeSerDeUtils {
     try {
       pipeSinkInfo.write(generateWriteProtocol(stream));
     } catch (TException e) {
-      throw new ThriftSerDeException("Write TPipeSinkInfo failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.WRITE_T_PIPE_SINK_INFO_FAILED, e);
     }
   }
 
@@ -148,7 +149,7 @@ public class ThriftConfigNodeSerDeUtils {
     try {
       pipeSinkInfo.read(generateReadProtocol(buffer));
     } catch (TException e) {
-      throw new ThriftSerDeException("Read TPipeSinkInfo failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.READ_T_PIPE_SINK_INFO_FAILED, e);
     }
     return pipeSinkInfo;
   }

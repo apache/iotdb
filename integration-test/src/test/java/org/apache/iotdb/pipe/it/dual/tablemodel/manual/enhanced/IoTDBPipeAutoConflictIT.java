@@ -59,6 +59,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelDualManualIT 
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
@@ -69,6 +70,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelDualManualIT 
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
@@ -111,6 +113,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelDualManualIT 
       extractorAttributes.put("source.inclusion", "data.insert");
       extractorAttributes.put("source.inclusion.exclusion", "");
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       // Add this property to avoid making self cycle.
       extractorAttributes.put("source.forwarding-pipe-requests", "false");
       extractorAttributes.put("user", "root");
@@ -143,6 +146,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelDualManualIT 
       extractorAttributes.put("source.inclusion", "data.insert");
       extractorAttributes.put("source.inclusion.exclusion", "");
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       // Add this property to avoid to make self cycle.
       extractorAttributes.put("source.forwarding-pipe-requests", "false");
       extractorAttributes.put("user", "root");
@@ -209,6 +213,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelDualManualIT 
       extractorAttributes.put("source.inclusion.exclusion", "");
       extractorAttributes.put("table-name", "test.*");
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("source.forwarding-pipe-requests", "false");
       extractorAttributes.put("user", "root");
 
@@ -241,6 +246,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelDualManualIT 
       extractorAttributes.put("source.inclusion.exclusion", "");
       extractorAttributes.put("table-name", "test.*");
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("source.forwarding-pipe-requests", "false");
       extractorAttributes.put("user", "root");
 

@@ -19,11 +19,18 @@
 
 package org.apache.iotdb.db.pipe.resource.memory;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
+import java.util.Objects;
+import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -35,11 +42,31 @@ public class PipeMemoryBlock implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeMemoryBlock.class);
 
-  private final PipeMemoryManager pipeMemoryManager = PipeDataNodeResourceManager.memory();
+  /** Maximum number of characters retained in an assigner diagnostic snapshot. */
+  private static final int MAX_ASSIGNER_LENGTH = 2048;
+
+  private static final AtomicLong NEXT_BLOCK_ID = new AtomicLong(1);
+
+  private final PipeMemoryManager pipeMemoryManager;
 
   private final ReentrantLock lock = new ReentrantLock();
 
+  private final long blockId;
+  private final String name;
+  private final PipeMemoryBlockCategory category;
+  // The child keeps its parent alive while it is in use so the accounting chain cannot be
+  // truncated by GC. The parent only keeps weak references to children, avoiding a parent-child
+  // retention cycle and allowing forgotten zero-sized children to be collected.
+  private final PipeMemoryBlock parent;
+  private final Set<PipeMemoryBlock> children = Collections.newSetFromMap(new WeakHashMap<>());
+  private final int hierarchyLevel;
+  private final long allocationTime;
+  private final AtomicReference<String> assigner = new AtomicReference<>();
+  private volatile PipeOwner pipeOwner;
+
   private final AtomicLong memoryUsageInBytes = new AtomicLong(0);
+  private final long maxMemorySizeInBytes;
+  private final AtomicLong peakMemorySizeInBytes = new AtomicLong(0);
 
   private final AtomicReference<LongUnaryOperator> shrinkMethod = new AtomicReference<>();
   private final AtomicReference<BiConsumer<Long, Long>> shrinkCallback = new AtomicReference<>();
@@ -48,8 +75,221 @@ public class PipeMemoryBlock implements AutoCloseable {
 
   private volatile boolean isReleased = false;
 
-  public PipeMemoryBlock(final long memoryUsageInBytes) {
-    this.memoryUsageInBytes.set(memoryUsageInBytes);
+  public PipeMemoryBlock(final String name, final long memoryUsageInBytes) {
+    this(
+        PipeDataNodeResourceManager.memory(),
+        name,
+        memoryUsageInBytes,
+        PipeMemoryBlockCategory.OTHER,
+        null,
+        null,
+        -1);
+  }
+
+  PipeMemoryBlock(
+      final String name, final long memoryUsageInBytes, final long maxMemorySizeInBytes) {
+    this(
+        PipeDataNodeResourceManager.memory(),
+        name,
+        memoryUsageInBytes,
+        PipeMemoryBlockCategory.OTHER,
+        null,
+        null,
+        maxMemorySizeInBytes);
+  }
+
+  PipeMemoryBlock(
+      final PipeMemoryManager pipeMemoryManager,
+      final String name,
+      final long memoryUsageInBytes,
+      final PipeMemoryBlockCategory category,
+      final String assigner,
+      final PipeMemoryBlock parent) {
+    this(pipeMemoryManager, name, memoryUsageInBytes, category, assigner, parent, -1);
+  }
+
+  PipeMemoryBlock(
+      final PipeMemoryManager pipeMemoryManager,
+      final String name,
+      final long memoryUsageInBytes,
+      final PipeMemoryBlockCategory category,
+      final String assigner,
+      final PipeMemoryBlock parent,
+      final long maxMemorySizeInBytes) {
+    this.pipeMemoryManager = Objects.requireNonNull(pipeMemoryManager);
+    this.blockId = NEXT_BLOCK_ID.getAndIncrement();
+    this.name = Objects.requireNonNull(name);
+    this.category = category == null ? PipeMemoryBlockCategory.OTHER : category;
+    this.parent = parent;
+    if (parent != null) {
+      synchronized (parent.children) {
+        parent.children.add(this);
+      }
+    }
+    this.hierarchyLevel = parent == null ? 0 : parent.getHierarchyLevel() + 1;
+    this.allocationTime = System.currentTimeMillis();
+    this.assigner.set(truncateAssigner(assigner));
+    this.memoryUsageInBytes.set(Math.max(0, memoryUsageInBytes));
+    this.maxMemorySizeInBytes = Math.max(-1, maxMemorySizeInBytes);
+    this.peakMemorySizeInBytes.set(Math.max(0, memoryUsageInBytes));
+  }
+
+  /** Returns the globally unique identifier of this block instance. */
+  public long getBlockId() {
+    return blockId;
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public PipeMemoryBlockCategory getCategory() {
+    return category;
+  }
+
+  public PipeMemoryBlock getParentBlock() {
+    return parent;
+  }
+
+  public Long getParentBlockId() {
+    final PipeMemoryBlock parentBlock = getParentBlock();
+    return parentBlock == null ? null : parentBlock.getBlockId();
+  }
+
+  public int getHierarchyLevel() {
+    return hierarchyLevel;
+  }
+
+  public long getAllocationTime() {
+    return allocationTime;
+  }
+
+  public long getAllocationTimeInMillis() {
+    return allocationTime;
+  }
+
+  public String getAssigner() {
+    return assigner.get();
+  }
+
+  /**
+   * Replace the assigner diagnostic snapshot. The supplied object is converted immediately; no
+   * event object is retained by the memory block.
+   */
+  public PipeMemoryBlock setAssigner(final Object assignerObject) {
+    assigner.set(snapshotAssigner(assignerObject));
+    if (assignerObject instanceof EnrichedEvent) {
+      final EnrichedEvent event = (EnrichedEvent) assignerObject;
+      setPipeOwner(event.getPipeName(), event.getCreationTime());
+    }
+    return this;
+  }
+
+  /** Retains only the pipe identity, without keeping its event or task alive. */
+  public PipeMemoryBlock setPipeOwner(final String pipeName, final long creationTime) {
+    pipeOwner = pipeName == null ? null : new PipeOwner(pipeName, creationTime);
+    return this;
+  }
+
+  PipeOwner getPipeOwner() {
+    final PipeOwner owner = pipeOwner;
+    return owner != null || parent == null ? owner : parent.getPipeOwner();
+  }
+
+  static final class PipeOwner {
+    private final String pipeName;
+    private final long creationTime;
+    private volatile String pipeModel;
+
+    private PipeOwner(final String pipeName, final long creationTime) {
+      this.pipeName = pipeName;
+      this.creationTime = creationTime;
+      getPipeModel();
+    }
+
+    String getPipeName() {
+      return pipeName;
+    }
+
+    String getPipeModel() {
+      // Task resources can be allocated before their metadata is registered. Resolve again on
+      // the first diagnostic query and keep the model even if the pipe is subsequently dropped.
+      if (pipeModel == null) {
+        final String model = PipeDataNodeAgent.task().getPipeModel(pipeName, creationTime);
+        if (model != null) {
+          pipeModel = model;
+        }
+      }
+      return pipeModel;
+    }
+  }
+
+  public boolean isRootBlock() {
+    return parent == null;
+  }
+
+  Set<PipeMemoryBlock> getChildrenSnapshot() {
+    synchronized (children) {
+      return Set.copyOf(children);
+    }
+  }
+
+  void removeFromParent() {
+    final PipeMemoryBlock parentBlock = getParentBlock();
+    if (parentBlock != null) {
+      synchronized (parentBlock.children) {
+        parentBlock.children.remove(this);
+      }
+    }
+  }
+
+  /** Returns bytes charged to the global pool by this row (children report zero). */
+  public long getAccountedMemoryUsageInBytes() {
+    return isRootBlock() ? getMemoryUsageInBytes() : 0;
+  }
+
+  PipeMemoryManager getPipeMemoryManager() {
+    return pipeMemoryManager;
+  }
+
+  static String snapshotAssigner(final Object assignerObject) {
+    if (assignerObject == null) {
+      return null;
+    }
+
+    try {
+      if (assignerObject instanceof String) {
+        return truncateAssigner((String) assignerObject);
+      }
+      if (assignerObject instanceof EnrichedEvent) {
+        final EnrichedEvent event = (EnrichedEvent) assignerObject;
+        // coreReportMessage() implementations may serialize a complete Tablet and recursively
+        // expand their source events. Building that unbounded string merely to truncate it below
+        // can exhaust the heap on the parser hot path, so retain only stable identity fields.
+        return truncateAssigner(
+            event.getClass().getSimpleName()
+                + '['
+                + truncateAssigner(event.getPipeName())
+                + ','
+                + event.getCreationTime()
+                + ','
+                + event.getRegionId()
+                + ']');
+      }
+
+      // Avoid invoking an arbitrary toString() from an allocation hot path. Call sites that need
+      // a richer value can provide an already bounded String explicitly.
+      return truncateAssigner(assignerObject.getClass().getSimpleName());
+    } catch (final Exception ignored) {
+      return assignerObject.getClass().getSimpleName();
+    }
+  }
+
+  private static String truncateAssigner(final String value) {
+    if (value == null || value.length() <= MAX_ASSIGNER_LENGTH) {
+      return value;
+    }
+    return value.substring(0, MAX_ASSIGNER_LENGTH);
   }
 
   public long getMemoryUsageInBytes() {
@@ -57,11 +297,24 @@ public class PipeMemoryBlock implements AutoCloseable {
   }
 
   public void setMemoryUsageInBytes(final long memoryUsageInBytes) {
-    this.memoryUsageInBytes.set(memoryUsageInBytes);
+    final long normalizedMemoryUsageInBytes = Math.max(0, memoryUsageInBytes);
+    this.memoryUsageInBytes.set(normalizedMemoryUsageInBytes);
+    peakMemorySizeInBytes.accumulateAndGet(normalizedMemoryUsageInBytes, Math::max);
+  }
+
+  /** Returns the lifetime high-water memory usage of this block. */
+  public long getPeakMemorySizeInBytes() {
+    return peakMemorySizeInBytes.get();
+  }
+
+  /** Returns the fixed allocation capacity, or {@code -1} when this block is not fixed-size. */
+  public long getMaxMemorySizeInBytes() {
+    return maxMemorySizeInBytes;
   }
 
   public PipeMemoryBlock setShrinkMethod(final LongUnaryOperator shrinkMethod) {
     this.shrinkMethod.set(shrinkMethod);
+    pipeMemoryManager.addShrinkableBlock(this);
     return this;
   }
 
@@ -72,6 +325,7 @@ public class PipeMemoryBlock implements AutoCloseable {
 
   public PipeMemoryBlock setExpandMethod(final LongUnaryOperator extendMethod) {
     this.expandMethod.set(extendMethod);
+    pipeMemoryManager.addExpandableBlock(this);
     return this;
   }
 
@@ -81,6 +335,9 @@ public class PipeMemoryBlock implements AutoCloseable {
   }
 
   boolean shrink() {
+    if (isReleased) {
+      return false;
+    }
     if (lock.tryLock()) {
       try {
         return doShrink();
@@ -109,13 +366,16 @@ public class PipeMemoryBlock implements AutoCloseable {
       try {
         shrinkCallback.get().accept(oldMemorySizeInBytes, newMemorySizeInBytes);
       } catch (Exception e) {
-        LOGGER.warn("Failed to execute the shrink callback.", e);
+        LOGGER.warn(DataNodePipeMessages.FAILED_TO_EXECUTE_THE_SHRINK_CALLBACK, e);
       }
     }
     return true;
   }
 
   boolean expand() {
+    if (isReleased) {
+      return false;
+    }
     if (lock.tryLock()) {
       try {
         return doExpand();
@@ -144,7 +404,7 @@ public class PipeMemoryBlock implements AutoCloseable {
       try {
         expandCallback.get().accept(oldMemorySizeInBytes, newMemorySizeInBytes);
       } catch (Exception e) {
-        LOGGER.warn("Failed to execute the expand callback.", e);
+        LOGGER.warn(DataNodePipeMessages.FAILED_TO_EXECUTE_THE_EXPAND_CALLBACK, e);
       }
     }
     return true;
@@ -161,8 +421,24 @@ public class PipeMemoryBlock implements AutoCloseable {
   @Override
   public String toString() {
     return "PipeMemoryBlock{"
-        + "usedMemoryInBytes="
+        + "blockId="
+        + blockId
+        + ", category="
+        + category
+        + ", name='"
+        + name
+        + '\''
+        + ", usedMemoryInBytes="
         + memoryUsageInBytes.get()
+        + ", peakMemorySizeInBytes="
+        + peakMemorySizeInBytes.get()
+        + ", maxMemorySizeInBytes="
+        + maxMemorySizeInBytes
+        + ", parentBlockId="
+        + getParentBlockId()
+        + ", assigner='"
+        + assigner.get()
+        + '\''
         + ", isReleased="
         + isReleased
         + '}';
@@ -177,8 +453,14 @@ public class PipeMemoryBlock implements AutoCloseable {
         if (lock.tryLock(50, TimeUnit.MICROSECONDS)) {
           try {
             pipeMemoryManager.release(this);
+            if (Objects.nonNull(shrinkMethod.get())) {
+              pipeMemoryManager.removeShrinkableBlock(this);
+            }
+            if (Objects.nonNull(expandMethod.get())) {
+              pipeMemoryManager.removeExpandableBlock(this);
+            }
             if (isInterrupted) {
-              LOGGER.warn("{} is released after thread interruption.", this);
+              LOGGER.warn(DataNodePipeMessages.IS_RELEASED_AFTER_THREAD_INTERRUPTION, this);
             }
             break;
           } finally {
@@ -189,7 +471,7 @@ public class PipeMemoryBlock implements AutoCloseable {
         // Each time the close task is run, it means that the interrupt status left by the previous
         // tryLock does not need to be retained. Otherwise, it will lead to an infinite loop.
         isInterrupted = true;
-        LOGGER.warn("Interrupted while waiting for the lock.", e);
+        LOGGER.warn(DataNodePipeMessages.INTERRUPTED_WHILE_WAITING_FOR_THE_LOCK, e);
       }
     }
 

@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.unary;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
@@ -148,13 +147,5 @@ public class LikeExpression extends UnaryExpression {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(expression)
         + RamUsageEstimator.sizeOf(pattern);
-  }
-
-  public static Optional<Character> getEscapeCharacter(String escape) {
-    if (escape.length() == 1) {
-      return Optional.of(escape.charAt(0));
-    } else {
-      throw new SemanticException("Escape string must be a single character");
-    }
   }
 }

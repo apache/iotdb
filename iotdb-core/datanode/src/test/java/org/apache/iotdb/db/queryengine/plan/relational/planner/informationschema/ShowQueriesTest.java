@@ -27,14 +27,17 @@ import org.junit.Test;
 import java.util.Locale;
 import java.util.Optional;
 
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.CLIENT_IP;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.ELAPSED_TIME_TABLE_MODEL;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.QUERY_ID_TABLE_MODEL;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.START_TIME_TABLE_MODEL;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.STATEMENT;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.STATEMENT_TABLE_MODEL;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.TIMEOUT_TABLE_MODEL;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.USER;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.USER_TABLE_MODEL;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.WAIT_TIME_IN_SERVER_TABLE_MODEL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.collect;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
@@ -64,7 +67,10 @@ public class ShowQueriesTest {
                     DATA_NODE_ID_TABLE_MODEL,
                     ELAPSED_TIME_TABLE_MODEL,
                     STATEMENT_TABLE_MODEL,
-                    USER_TABLE_MODEL))));
+                    USER_TABLE_MODEL,
+                    WAIT_TIME_IN_SERVER_TABLE_MODEL,
+                    CLIENT_IP,
+                    TIMEOUT_TABLE_MODEL))));
 
     //                  - Exchange
     // Output - Collect - Exchange
@@ -142,6 +148,9 @@ public class ShowQueriesTest {
                         DATA_NODE_ID_TABLE_MODEL,
                         ELAPSED_TIME_TABLE_MODEL,
                         STATEMENT.toLowerCase(Locale.ENGLISH),
-                        USER.toLowerCase(Locale.ENGLISH))))));
+                        USER.toLowerCase(Locale.ENGLISH),
+                        WAIT_TIME_IN_SERVER_TABLE_MODEL,
+                        CLIENT_IP,
+                        TIMEOUT_TABLE_MODEL)))));
   }
 }

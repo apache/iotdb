@@ -26,6 +26,8 @@ import org.apache.iotdb.library.drepair.util.MeanFill;
 import org.apache.iotdb.library.drepair.util.PreviousFill;
 import org.apache.iotdb.library.drepair.util.ScreenFill;
 import org.apache.iotdb.library.drepair.util.ValueFill;
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
+import org.apache.iotdb.library.util.TypeServices;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -39,6 +41,7 @@ import org.apache.iotdb.udf.api.type.Type;
 /** This function is used to interpolate time series. */
 public class UDTFValueFill implements UDTF {
   private String method;
+  private TypeServices.NumericWindowWriter windowWriter;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -54,6 +57,9 @@ public class UDTFValueFill implements UDTF {
         .setAccessStrategy(new SlidingSizeWindowAccessStrategy(Integer.MAX_VALUE))
         .setOutputDataType(parameters.getDataType(0));
     method = parameters.getStringOrDefault("method", "linear");
+    windowWriter =
+        TypeServices.NUMERIC_WINDOW_WRITER_SERVICE.call(
+            TypeServices.toReadType(parameters.getDataType(0)));
   }
 
   @Override
@@ -72,40 +78,11 @@ public class UDTFValueFill implements UDTF {
     } else if ("likelihood".equalsIgnoreCase(method)) {
       vf = new LikelihoodFill(rowWindow.getRowIterator());
     } else {
-      throw new UDFException("Illegal method");
+      throw new UDFException(LibraryUdfMessages.ILLEGAL_METHOD);
     }
     vf.fill();
     double[] repaired = vf.getFilled();
     long[] time = vf.getTime();
-    switch (rowWindow.getDataType(0)) {
-      case DOUBLE:
-        for (int i = 0; i < time.length; i++) {
-          collector.putDouble(time[i], repaired[i]);
-        }
-        break;
-      case FLOAT:
-        for (int i = 0; i < time.length; i++) {
-          collector.putFloat(time[i], (float) repaired[i]);
-        }
-        break;
-      case INT32:
-        for (int i = 0; i < time.length; i++) {
-          collector.putInt(time[i], (int) Math.round(repaired[i]));
-        }
-        break;
-      case INT64:
-        for (int i = 0; i < time.length; i++) {
-          collector.putLong(time[i], Math.round(repaired[i]));
-        }
-        break;
-      case TEXT:
-      case STRING:
-      case BOOLEAN:
-      case BLOB:
-      case TIMESTAMP:
-      case DATE:
-      default:
-        throw new UDFException("");
-    }
+    windowWriter.write(time, repaired, collector);
   }
 }

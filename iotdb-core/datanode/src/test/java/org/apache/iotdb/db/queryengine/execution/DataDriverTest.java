@@ -18,12 +18,16 @@
  */
 package org.apache.iotdb.db.queryengine.execution;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.LimitOperator;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -34,21 +38,23 @@ import org.apache.iotdb.db.queryengine.execution.exchange.StubSink;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
-import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.SingleDeviceViewOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.LeftOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.SingleColumnMerger;
+import org.apache.iotdb.db.queryengine.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import io.airlift.units.Duration;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -60,6 +66,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import java.io.IOException;
@@ -72,6 +79,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.EMPTY_QUERY_DATA_SOURCE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -89,12 +97,12 @@ public class DataDriverTest {
 
   private static final Duration EXECUTION_TIME_SLICE =
       new Duration(
-          IoTDBDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs(),
+          CommonDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs(),
           TimeUnit.MILLISECONDS);
 
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setDriverTaskExecutionTimeSliceInMs(10000);
+    CommonDescriptor.getInstance().getConfig().setDriverTaskExecutionTimeSliceInMs(10000);
     SeriesReaderTestUtil.setUp(
         measurementSchemas, deviceIds, seqResources, unSeqResources, DATA_DRIVER_TEST_SG);
   }
@@ -102,6 +110,36 @@ public class DataDriverTest {
   @After
   public void tearDown() throws IOException {
     SeriesReaderTestUtil.tearDown(seqResources, unSeqResources);
+  }
+
+  @Test
+  public void testMixedBatchAndSharedSourceOperators() throws Exception {
+    FragmentInstanceContext fragmentInstanceContext = Mockito.mock(FragmentInstanceContext.class);
+    IQueryDataSource sharedQueryDataSource = Mockito.mock(IQueryDataSource.class);
+    Mockito.doReturn(sharedQueryDataSource).when(sharedQueryDataSource).clone();
+    Mockito.when(fragmentInstanceContext.getSharedQueryDataSource())
+        .thenReturn(sharedQueryDataSource);
+
+    DataDriverContext driverContext = new DataDriverContext(fragmentInstanceContext, 0);
+    driverContext.setSink(
+        Mockito.mock(org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink.class));
+
+    DataSourceOperator batchSourceOperator = Mockito.mock(DataSourceOperator.class);
+    Mockito.when(batchSourceOperator.isBatchQueryDataSource()).thenReturn(true);
+    DataSourceOperator sharedSourceOperator = Mockito.mock(DataSourceOperator.class);
+    Mockito.when(sharedSourceOperator.isBatchQueryDataSource()).thenReturn(false);
+    driverContext.addSourceOperator(batchSourceOperator);
+    driverContext.addSourceOperator(sharedSourceOperator);
+
+    TestDataDriver dataDriver = new TestDataDriver(sharedSourceOperator, driverContext);
+    assertTrue(dataDriver.initializeForTest());
+
+    ArgumentCaptor<IQueryDataSource> batchDataSourceCaptor =
+        ArgumentCaptor.forClass(IQueryDataSource.class);
+    Mockito.verify(batchSourceOperator).initQueryDataSource(batchDataSourceCaptor.capture());
+    Mockito.verify(sharedSourceOperator).initQueryDataSource(sharedQueryDataSource);
+    assertTrue(batchDataSourceCaptor.getValue() != sharedQueryDataSource);
+    assertTrue(batchDataSourceCaptor.getValue() != EMPTY_QUERY_DATA_SOURCE);
   }
 
   @Test
@@ -242,6 +280,132 @@ public class DataDriverTest {
 
         assertEquals(250, row);
 
+      } finally {
+        if (dataDriver != null) {
+          dataDriver.close();
+        }
+      }
+    } catch (QueryProcessException e) {
+      e.printStackTrace();
+      fail();
+    } finally {
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  private static class TestDataDriver extends DataDriver {
+    private TestDataDriver(Operator root, DataDriverContext driverContext) {
+      super(root, driverContext, 0);
+    }
+
+    private boolean initializeForTest() {
+      return init(SettableFuture.create());
+    }
+  }
+
+  @Test
+  public void testCallIsFinishedBeforeDataSourcePrepared() {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    try {
+      IFullPath measurementPath1 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(DATA_DRIVER_TEST_SG + ".device0"),
+              new MeasurementSchema("sensor0", TSDataType.INT32));
+      Set<String> allSensors = new HashSet<>();
+      allSensors.add("sensor0");
+      allSensors.add("sensor1");
+      QueryId queryId = new QueryId("stub_query");
+      FragmentInstanceId instanceId =
+          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      DataRegion dataRegion = Mockito.mock(DataRegion.class);
+      Mockito.when(dataRegion.tryReadLock(Mockito.anyLong())).thenReturn(true);
+      FragmentInstanceContext fragmentInstanceContext =
+          createFragmentInstanceContext(instanceId, stateMachine);
+      fragmentInstanceContext.setDataRegion(dataRegion);
+      DataDriverContext driverContext = new DataDriverContext(fragmentInstanceContext, 0);
+      PlanNodeId planNodeId1 = new PlanNodeId("1");
+      driverContext.addOperatorContext(1, planNodeId1, SeriesScanOperator.class.getSimpleName());
+      PlanNodeId planNodeId2 = new PlanNodeId("2");
+      driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(
+          3, new PlanNodeId("3"), FullOuterTimeJoinOperator.class.getSimpleName());
+      driverContext.addOperatorContext(4, new PlanNodeId("4"), LimitOperator.class.getSimpleName());
+
+      SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+      scanOptionsBuilder.withAllSensors(allSensors);
+      SeriesScanOperator seriesScanOperator1 =
+          new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(0),
+              planNodeId1,
+              measurementPath1,
+              Ordering.ASC,
+              scanOptionsBuilder.build());
+      driverContext.addSourceOperator(seriesScanOperator1);
+      driverContext.addPath(measurementPath1);
+      seriesScanOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
+      IFullPath measurementPath2 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(DATA_DRIVER_TEST_SG + ".device0"),
+              new MeasurementSchema("sensor1", TSDataType.INT32));
+      SeriesScanOperator seriesScanOperator2 =
+          new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(1),
+              planNodeId2,
+              measurementPath2,
+              Ordering.ASC,
+              scanOptionsBuilder.build());
+      driverContext.addSourceOperator(seriesScanOperator2);
+      driverContext.addPath(measurementPath2);
+
+      seriesScanOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
+      LeftOuterTimeJoinOperator timeJoinOperator =
+          new LeftOuterTimeJoinOperator(
+              driverContext.getOperatorContexts().get(2),
+              seriesScanOperator1,
+              1,
+              seriesScanOperator2,
+              Arrays.asList(TSDataType.INT32, TSDataType.INT32),
+              new AscTimeComparator());
+      SingleDeviceViewOperator fakeOperator =
+          new SingleDeviceViewOperator(
+              driverContext.getOperatorContexts().get(3),
+              "d1",
+              timeJoinOperator,
+              Arrays.asList(0),
+              Arrays.asList(TSDataType.INT32, TSDataType.INT32));
+      fakeOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
+      fragmentInstanceContext.setSourcePaths(driverContext.getPaths());
+      String deviceId = DATA_DRIVER_TEST_SG + ".device0";
+      Mockito.when(
+              dataRegion.query(
+                  eq(driverContext.getPaths()),
+                  eq(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId)),
+                  eq(fragmentInstanceContext),
+                  Mockito.isNull(),
+                  Mockito.isNull(),
+                  Mockito.anyLong()))
+          .thenReturn(null);
+      fragmentInstanceContext.initQueryDataSource(driverContext.getPaths());
+      fragmentInstanceContext.initializeNumOfDrivers(1);
+
+      StubSink stubSink = new StubSink(fragmentInstanceContext);
+      driverContext.setSink(stubSink);
+      IDriver dataDriver = null;
+      try {
+        dataDriver = new DataDriver(fakeOperator, driverContext, 0);
+        assertEquals(
+            fragmentInstanceContext.getId(), dataDriver.getDriverTaskId().getFragmentInstanceId());
+        assertFalse(dataDriver.isFinished());
       } finally {
         if (dataDriver != null) {
           dataDriver.close();

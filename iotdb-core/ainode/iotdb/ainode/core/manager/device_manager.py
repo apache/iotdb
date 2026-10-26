@@ -23,7 +23,10 @@ from iotdb.ainode.core.device.backend.cpu_backend import CPUBackend
 from iotdb.ainode.core.device.backend.cuda_backend import CUDABackend
 from iotdb.ainode.core.device.device_utils import DeviceLike, parse_device_like
 from iotdb.ainode.core.device.env import DistEnv, read_dist_env
+from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.util.decorator import singleton
+
+LOGGER = Logger()
 
 
 @singleton
@@ -32,7 +35,7 @@ class DeviceManager:
 
     """
     Unified device entry point:
-    - Select backend (cuda/npu/cpu)
+    - Select backend (cuda/cpu)
     - Parse device expression (None/int/str/torch.device/DeviceSpec)
     - Provide device, autocast, grad scaler, synchronize, dist backend recommendation, etc.
     """
@@ -51,11 +54,18 @@ class DeviceManager:
     # ==================== selection ====================
     def _auto_select_backend(self) -> BackendAdapter:
         for name in BackendType:
+            if name == BackendType.CPU:
+                # Defer CPU selection to the fallback below.
+                continue
             backend = self.backends.get(name)
             if backend is not None and backend.is_available():
                 self.type = backend.type
+                LOGGER.info(f"AINode selects backend: {backend.type.value}")
                 return backend
-        return self.backends[BackendType.CPU]
+        LOGGER.info("No GPU backend available, AINode falling back to CPU backend.")
+        backend = self.backends[BackendType.CPU]
+        self.type = backend.type
+        return backend
 
     # ==================== public API ====================
     def device_ids(self) -> list[int]:

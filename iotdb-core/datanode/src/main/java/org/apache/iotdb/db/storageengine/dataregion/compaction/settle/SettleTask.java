@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.settle;
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
@@ -47,7 +48,9 @@ public class SettleTask extends WrappedRunnable {
       settleTsFile();
     } catch (Exception e) {
       logger.error(
-          "meet error when settling file:{}", resourceToBeSettled.getTsFile().getAbsolutePath(), e);
+          StorageEngineMessages.STORAGE_LOG_MEET_ERROR_WHEN_SETTLING_FILE_CBA0F9D7,
+          resourceToBeSettled.getTsFile().getAbsolutePath(),
+          e);
     }
   }
 
@@ -55,17 +58,17 @@ public class SettleTask extends WrappedRunnable {
     List<TsFileResource> settledResources = new ArrayList<>();
     if (!resourceToBeSettled.isClosed()) {
       logger.warn(
-          "The tsFile {} should be sealed when settling.",
+          StorageEngineMessages.STORAGE_LOG_THE_TSFILE_SHOULD_BE_SEALED_WHEN_SETTLING_8DBD716A,
           resourceToBeSettled.getTsFile().getAbsolutePath());
       return;
     }
     TsFileAndModSettleTool tsFileAndModSettleTool = TsFileAndModSettleTool.getInstance();
     try {
       if (tsFileAndModSettleTool.isSettledFileGenerated(resourceToBeSettled)) {
-        logger.info("find settled file for {}", resourceToBeSettled.getTsFile());
+        logger.info(StorageEngineMessages.FIND_SETTLED_FILE, resourceToBeSettled.getTsFile());
         settledResources = tsFileAndModSettleTool.findSettledFile(resourceToBeSettled);
       } else {
-        logger.info("generate settled file for {}", resourceToBeSettled.getTsFile());
+        logger.info(StorageEngineMessages.GENERATE_SETTLED_FILE, resourceToBeSettled.getTsFile());
         // Write Settle Log, Status 1
         SettleLog.writeSettleLog(
             resourceToBeSettled.getTsFile().getAbsolutePath()
@@ -84,7 +87,8 @@ public class SettleTask extends WrappedRunnable {
       resourceToBeSettled.readUnlock();
       throw new WriteProcessException(
           String.format(
-              "Exception to parse the tsfile: %s in settling",
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_EXCEPTION_TO_PARSE_THE_TSFILE_S_IN_SETTLING_D40564AD,
               resourceToBeSettled.getTsFile().getAbsolutePath()),
           e);
     }
@@ -96,14 +100,15 @@ public class SettleTask extends WrappedRunnable {
             + SettleLog.COMMA_SEPERATOR
             + SettleLog.SettleCheckStatus.SETTLE_SUCCESS);
     logger.info(
-        "Settle completes, file path:{} , the remaining file to be settled num: {}",
+        StorageEngineMessages
+            .STORAGE_LOG_SETTLE_COMPLETES_FILE_PATH_THE_REMAINING_FILE_TO_BE_SETTLED_32DF95A7,
         resourceToBeSettled.getTsFile().getAbsolutePath(),
         SettleService.getINSTANCE().getFilesToBeSettledCount().get());
 
     if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() == 0) {
       SettleLog.closeLogWriter();
       SettleService.getINSTANCE().stop();
-      logger.info("All files settled successfully! ");
+      logger.info(StorageEngineMessages.ALL_FILES_SETTLED_SUCCESSFULLY);
     }
   }
 }

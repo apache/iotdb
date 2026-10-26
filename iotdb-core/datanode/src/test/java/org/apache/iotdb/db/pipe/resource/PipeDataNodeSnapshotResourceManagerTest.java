@@ -34,7 +34,7 @@ public class PipeDataNodeSnapshotResourceManagerTest {
       "target" + File.separator + "PipeSnapshotResourceManagerTest";
   private static final String CONSENSUS_SNAPSHOT_DIR =
       ROOT_DIR + File.separator + "consensus" + File.separator + "snapshot0";
-  private static final String PIPE_CONSENSUS_SNAPSHOT_DIR =
+  private static final String IOT_CONSENSUS_V2_SNAPSHOT_DIR =
       ROOT_DIR
           + File.separator
           + "consensus"
@@ -88,17 +88,17 @@ public class PipeDataNodeSnapshotResourceManagerTest {
     Assert.assertEquals(
         1,
         PipeDataNodeResourceManager.snapshot()
-            .getSnapshotReferenceCount(PIPE_CONSENSUS_SNAPSHOT_DIR + File.separator + FILE));
-    Assert.assertTrue(new File(PIPE_CONSENSUS_SNAPSHOT_DIR, FILE).exists());
+            .getSnapshotReferenceCount(IOT_CONSENSUS_V2_SNAPSHOT_DIR + File.separator + FILE));
+    Assert.assertTrue(new File(IOT_CONSENSUS_V2_SNAPSHOT_DIR, FILE).exists());
 
     PipeDataNodeResourceManager.snapshot()
-        .decreaseSnapshotReference(PIPE_CONSENSUS_SNAPSHOT_DIR + File.separator + FILE);
+        .decreaseSnapshotReference(IOT_CONSENSUS_V2_SNAPSHOT_DIR + File.separator + FILE);
 
     Assert.assertEquals(
         0,
         PipeDataNodeResourceManager.snapshot()
-            .getSnapshotReferenceCount(PIPE_CONSENSUS_SNAPSHOT_DIR + File.separator + FILE));
-    Assert.assertFalse(new File(PIPE_CONSENSUS_SNAPSHOT_DIR, FILE).exists());
+            .getSnapshotReferenceCount(IOT_CONSENSUS_V2_SNAPSHOT_DIR + File.separator + FILE));
+    Assert.assertFalse(new File(IOT_CONSENSUS_V2_SNAPSHOT_DIR, FILE).exists());
 
     try {
       PipeDataNodeResourceManager.snapshot()

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator;
 
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer;
 
 import org.apache.tsfile.read.common.TimeRange;
 
@@ -47,15 +47,15 @@ public class TableDateBinTimeRangeIterator implements ITableTimeRangeIterator {
 
   @Override
   public void updateCurTimeRange(long startTime) {
-    long[] timeArray = dateBinTransformer.dateBinStartEnd(startTime);
+    long[] timeArray = dateBinTransformer.dateBinStartEndClosed(startTime);
 
     if (curTimeRange != null) {
       // meet new time range, remove old time range
       if (timeArray[0] != curTimeRange.getMin()) {
-        this.curTimeRange = new TimeRange(timeArray[0], timeArray[1] - 1);
+        this.curTimeRange = new TimeRange(timeArray[0], timeArray[1]);
       }
     } else {
-      this.curTimeRange = new TimeRange(timeArray[0], timeArray[1] - 1);
+      this.curTimeRange = new TimeRange(timeArray[0], timeArray[1]);
     }
   }
 

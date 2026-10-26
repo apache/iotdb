@@ -19,17 +19,39 @@
 
 package org.apache.iotdb.db.schemaengine.table;
 
+import org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.consensus.ConfigRegionId;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
+import org.apache.iotdb.commons.schema.table.PreDeleteTsTable;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
+import org.apache.iotdb.commons.schema.table.TreeToTableViewTrieOperationType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLeaseRecoveryResp;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
+import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.view.TreeToTableViewReference;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTree2TableView;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,23 +60,32 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.GuardedBy;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.schema.table.TreeViewSchema.TREE_PATH_PATTERN;
+import static org.apache.iotdb.db.i18n.DataNodeSchemaMessages.FAILED_TO_REFRESH_CACHE_FROM_CN;
 
 /** It contains all tables' latest column schema */
 public class DataNodeTableCache implements ITableCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeTableCache.class);
+  private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
+      ConfigNodeClientManager.getInstance();
+  private final ITreeToTableViewCache treeToTableViewCache = TreeToTableViewCache.getInstance();
 
   /** Instance-specific version counter for optimistic locking mechanisms. */
   private final AtomicLong instanceVersion = new AtomicLong(0);
@@ -63,7 +94,7 @@ public class DataNodeTableCache implements ITableCache {
   private final Map<String, Map<String, TsTable>> databaseTableMap = new ConcurrentHashMap<>();
 
   // The database is without "root"
-  private final Map<String, Map<String, Pair<TsTable, Long>>> preUpdateTableMap =
+  private final Map<String, Map<String, Pair<TsTable, Long>>> specialStatusMap =
       new ConcurrentHashMap<>();
 
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
@@ -71,9 +102,7 @@ public class DataNodeTableCache implements ITableCache {
       new Semaphore(
           IoTDBDescriptor.getInstance().getConfig().getDataNodeTableCacheSemaphorePermitNum());
 
-  private DataNodeTableCache() {
-    // Do nothing
-  }
+  private DataNodeTableCache() {}
 
   private static final class DataNodeTableCacheHolder {
     private static final DataNodeTableCache INSTANCE = new DataNodeTableCache();
@@ -81,8 +110,12 @@ public class DataNodeTableCache implements ITableCache {
     private DataNodeTableCacheHolder() {}
   }
 
-  public static DataNodeTableCache getInstance() {
+  public static ITableCache getInstance() {
     return DataNodeTableCacheHolder.INSTANCE;
+  }
+
+  void failIfMetadataLeaseFenced(final LeaseFencedRetryPolicy leaseFencedRetryPolicy) {
+    MetadataLeaseManager.getInstance().failIfMetadataLeaseFenced(leaseFencedRetryPolicy);
   }
 
   @Override
@@ -95,7 +128,7 @@ public class DataNodeTableCache implements ITableCache {
       final Pair<Map<String, List<TsTable>>, Map<String, List<TsTable>>> tableInfo =
           TsTableInternalRPCUtil.deserializeTableInitializationInfo(tableInitializationBytes);
       final Map<String, List<TsTable>> usingMap = tableInfo.left;
-      final Map<String, List<TsTable>> preCreateMap = tableInfo.right;
+      final Map<String, List<TsTable>> specialStatusMap = tableInfo.right;
       usingMap.forEach(
           (key, value) ->
               databaseTableMap.put(
@@ -107,9 +140,9 @@ public class DataNodeTableCache implements ITableCache {
                               Function.identity(),
                               (v1, v2) -> v2,
                               ConcurrentHashMap::new))));
-      preCreateMap.forEach(
+      specialStatusMap.forEach(
           (key, value) ->
-              preUpdateTableMap.put(
+              this.specialStatusMap.put(
                   PathUtils.unQualifyDatabaseName(key),
                   value.stream()
                       .collect(
@@ -118,9 +151,54 @@ public class DataNodeTableCache implements ITableCache {
                               table -> new Pair<>(table, 0L),
                               (v1, v2) -> v2,
                               ConcurrentHashMap::new))));
-      LOGGER.info("Init DataNodeTableCache successfully");
+      treeToTableViewCache.init(collectInitialViews(usingMap));
+      LOGGER.info(DataNodeSchemaMessages.INIT_TABLE_CACHE_SUCCESS);
     } finally {
       readWriteLock.writeLock().unlock();
+    }
+  }
+
+  private Map<String, List<TsTable>> collectInitialViews(
+      final Map<String, List<TsTable>> usingMap) {
+    final Map<String, List<TsTable>> initialViews = new HashMap<>();
+    usingMap.forEach(
+        (key, value) -> {
+          final List<TsTable> views =
+              value.stream().filter(DataNodeTableCache::isAutoSyncView).toList();
+          if (!views.isEmpty()) {
+            initialViews.put(PathUtils.unQualifyDatabaseName(key), new ArrayList<>(views));
+          }
+        });
+    return initialViews;
+  }
+
+  /**
+   * Whether the table belongs in the tree-to-table view index: it is a tree-to-table view which
+   * auto-syncs its schema. A NonCommittableTsTable and a PreDeleteTsTable are placeholders which
+   * carry no definition at all, so they are never one.
+   */
+  private static boolean isAutoSyncView(final TsTable table) {
+    final Optional<String> autoSyncSchemaValue = table.getPropValue(TsTable.AUTO_SYNC_SCHEMA);
+    return autoSyncSchemaValue.isPresent()
+        && Boolean.parseBoolean(autoSyncSchemaValue.get())
+        && table.getPropValue(TREE_PATH_PATTERN).isPresent();
+  }
+
+  // No need to acquire a lock here; reloadTableCacheAfterLeaseRecovery is within a critical section
+  // protected by metadataLeaseManager
+  @Override
+  public void reloadTableCacheAfterLeaseRecovery() {
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TDataNodeLeaseRecoveryResp resp = configNodeClient.reloadCacheAfterLeaseRecovery();
+      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new IoTDBRuntimeException(resp.getStatus().getMessage(), resp.getStatus().getCode());
+      }
+      if (resp.isSetTableInfo()) {
+        init(resp.getTableInfo());
+      }
+    } catch (final ClientManagerException | TException e) {
+      throw new RuntimeException(FAILED_TO_REFRESH_CACHE_FROM_CN, e);
     }
   }
 
@@ -129,7 +207,8 @@ public class DataNodeTableCache implements ITableCache {
     database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
-      preUpdateTableMap
+      failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
+      specialStatusMap
           .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
           .compute(
               table.getTableName(),
@@ -142,12 +221,22 @@ public class DataNodeTableCache implements ITableCache {
                   return v;
                 }
               });
-      LOGGER.info("Pre-update table {}.{} successfully", database, table.getTableName());
+      LOGGER.info(DataNodeSchemaMessages.PRE_UPDATE_TABLE_SUCCESS, database, table.getTableName());
+      // Since a pre-updated table can be used for query planning before commit-release, stale
+      // last cache should stop serving as soon as need_last_cache turns off.
+      if (!table.getCachedNeedLastCache()) {
+        TableDeviceSchemaCache.getInstance().invalidateLastCache(database, table.getTableName());
+      }
+      if (table instanceof PreDeleteTsTable) {
+        if (databaseTableMap.containsKey(database)) {
+          databaseTableMap.get(database).remove(table.getTableName());
+        }
+      }
 
       // If rename table
       if (Objects.nonNull(oldName)) {
         final TsTable oldTable = databaseTableMap.get(database).remove(oldName);
-        preUpdateTableMap
+        specialStatusMap
             .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
             .compute(
                 oldName,
@@ -160,7 +249,7 @@ public class DataNodeTableCache implements ITableCache {
                     return v;
                   }
                 });
-        LOGGER.info("Pre-rename old table {}.{} successfully", database, oldName);
+        LOGGER.info(DataNodeSchemaMessages.PRE_RENAME_OLD_TABLE_SUCCESS, database, oldName);
       }
     } finally {
       readWriteLock.writeLock().unlock();
@@ -168,17 +257,38 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   @Override
-  public void rollbackUpdateTable(String database, final String tableName, final String oldName) {
+  public void rollbackUpdateTable(
+      String database,
+      final String tableName,
+      final String oldName,
+      TUpdateTree2TableView updateTree2TableViewInfo) {
     database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
-      removeTableFromPreUpdateMap(database, tableName);
-      LOGGER.info("Rollback-update table {}.{} successfully", database, tableName);
+      failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
+      // for create or replace the view, only triggered when rollback
+      operateOnTree2TableViewCache(database, tableName, oldName, updateTree2TableViewInfo);
+      // if rollback the drop table procedure, do nothing,
+      // wait for triggering the action of pull table from CN
+      final TsTable table = getTableFromSpecialStatusMap(database, tableName);
+      if (table instanceof PreDeleteTsTable) {
+        return;
+      }
+      removeTableFromSpecialStatusMap(database, tableName);
+      LOGGER.info(DataNodeSchemaMessages.ROLLBACK_UPDATE_TABLE_SUCCESS, database, tableName);
 
       // If rename table
       if (Objects.nonNull(oldName)) {
         // Equals to commit update
-        final TsTable oldTable = preUpdateTableMap.get(database).get(oldName).getLeft();
+        final TsTable oldTable = getTableFromSpecialStatusMap(database, oldName);
+        if (Objects.isNull(oldTable)) {
+          LOGGER.info(
+              DataNodeSchemaMessages
+                  .MESSAGE_SKIP_ROLLBACK_RENAMING_OLD_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_664F2456,
+              database,
+              oldName);
+          return;
+        }
         // Cannot be rolled back, consider:
         // 1. Fetched a written CN table
         // 2. CN rollback because of timeout
@@ -189,34 +299,75 @@ public class DataNodeTableCache implements ITableCache {
         }
         databaseTableMap
             .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
-            .put(tableName, oldTable);
-        LOGGER.info("Rollback renaming old table {}.{} successfully.", database, oldName);
-        removeTableFromPreUpdateMap(database, oldName);
+            .put(oldName, oldTable);
+        LOGGER.info(DataNodeSchemaMessages.ROLLBACK_RENAME_OLD_TABLE_SUCCESS, database, oldName);
+        removeTableFromSpecialStatusMap(database, oldName);
       }
     } finally {
       readWriteLock.writeLock().unlock();
     }
   }
 
-  private void removeTableFromPreUpdateMap(final String database, final String tableName) {
-    preUpdateTableMap.compute(
+  private @Nullable TsTable getTableFromSpecialStatusMap(
+      final String database, final String tableName) {
+    final Map<String, Pair<TsTable, Long>> tableMap = specialStatusMap.get(database);
+    if (Objects.isNull(tableMap)) {
+      return null;
+    }
+    final Pair<TsTable, Long> tableVersionPair = tableMap.get(tableName);
+    return Objects.nonNull(tableVersionPair) ? tableVersionPair.getLeft() : null;
+  }
+
+  private @Nullable TsTable getTableFromCache(final String database, final String tableName) {
+    final Map<String, TsTable> tableMap = databaseTableMap.get(database);
+    return Objects.nonNull(tableMap) ? tableMap.get(tableName) : null;
+  }
+
+  private void invalidateLastCacheIfDisabled(
+      final String database, final String tableName, final TsTable currentTable) {
+    if (Objects.nonNull(currentTable) && !currentTable.getCachedNeedLastCache()) {
+      TableDeviceSchemaCache.getInstance().invalidateLastCache(database, tableName);
+    }
+  }
+
+  private void removeTableFromSpecialStatusMap(final String database, final String tableName) {
+    specialStatusMap.computeIfPresent(
         database,
         (k, v) -> {
-          if (v == null) {
-            throw new IllegalStateException();
-          }
-          v.get(tableName).setLeft(null);
+          v.computeIfPresent(
+              tableName,
+              (innerKey, tableVersionPair) -> {
+                tableVersionPair.setLeft(null);
+                return tableVersionPair;
+              });
           return v;
         });
   }
 
   @Override
   public void commitUpdateTable(
-      String database, final String tableName, final @Nullable String oldName) {
+      String database,
+      final String tableName,
+      final @Nullable String oldName,
+      TUpdateTree2TableView updateTree2TableViewInfo) {
     database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
-      final TsTable newTable = preUpdateTableMap.get(database).get(tableName).getLeft();
+      failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
+      operateOnTree2TableViewCache(database, tableName, oldName, updateTree2TableViewInfo);
+      // for update tree-to-table view
+      final TsTable newTable = getTableFromSpecialStatusMap(database, tableName);
+      if (Objects.isNull(newTable)) {
+        LOGGER.info(
+            DataNodeSchemaMessages
+                .MESSAGE_SKIP_COMMIT_UPDATE_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_31362A1C,
+            database,
+            tableName);
+        if (Objects.nonNull(oldName)) {
+          repairMissedRenamePreUpdate(database, tableName, oldName);
+        }
+        return;
+      }
       // Cannot be committed, consider:
       // 1. Fetched a non-changed CN table
       // 2. CN is changed
@@ -225,28 +376,176 @@ public class DataNodeTableCache implements ITableCache {
       if (newTable instanceof NonCommittableTsTable) {
         return;
       }
+      if (newTable instanceof PreDeleteTsTable) {
+        commitDeleteTable(database, tableName);
+        return;
+      }
       final TsTable oldTable =
           databaseTableMap
               .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
               .put(tableName, newTable);
+      invalidateLastCacheIfDisabled(database, tableName, newTable);
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "Commit-update table {}.{} successfully, {}",
+            DataNodeSchemaMessages.COMMIT_UPDATE_TABLE_SUCCESS_WITH_DETAIL,
             database,
             tableName,
             compareTable(oldTable, newTable));
       } else if (LOGGER.isInfoEnabled()) {
-        LOGGER.info("Commit-update table {}.{} successfully.", database, tableName);
+        LOGGER.info(DataNodeSchemaMessages.COMMIT_UPDATE_TABLE_SUCCESS, database, tableName);
       }
-      removeTableFromPreUpdateMap(database, tableName);
+      removeTableFromSpecialStatusMap(database, tableName);
       if (Objects.nonNull(oldName)) {
-        removeTableFromPreUpdateMap(database, oldName);
-        LOGGER.info("Rename old table {}.{} successfully.", database, oldName);
+        removeTableFromSpecialStatusMap(database, oldName);
+        LOGGER.info(DataNodeSchemaMessages.RENAME_OLD_TABLE_SUCCESS, database, oldName);
       }
       instanceVersion.incrementAndGet();
     } finally {
       readWriteLock.writeLock().unlock();
     }
+  }
+
+  /**
+   * Applies the effect of a committed change on the tree-to-table view index. Every attribute the
+   * operation needs comes with the request: the table this DataNode caches may be a placeholder, so
+   * the entry cannot be computed from it.
+   */
+  private void operateOnTree2TableViewCache(
+      String database,
+      String tableName,
+      @Nullable String oldTableName,
+      TUpdateTree2TableView updateTree2TableViewInfo) {
+    if (Objects.isNull(updateTree2TableViewInfo)) {
+      return;
+    }
+    final TreeToTableViewTrieOperationType type =
+        TreeToTableViewTrieOperationType.getType(
+            updateTree2TableViewInfo.getTree2TableOperationType());
+    final boolean changed;
+    try {
+      switch (type) {
+        case REMOVE:
+          // Unregistering a view needs nothing but its name.
+          changed = treeToTableViewCache.removeView(database, tableName);
+          break;
+        case ALTER_RENAME:
+          // A rename keeps the place of the view.
+          changed = treeToTableViewCache.alterViewName(database, tableName, oldTableName);
+          break;
+        case ALTER_TAG:
+          changed =
+              treeToTableViewCache.alterViewProperties(
+                  database,
+                  tableName,
+                  Collections.singletonMap(
+                      TreeToTableViewReference.NUM_OF_TAGS,
+                      String.valueOf(updateTree2TableViewInfo.getTagNum())));
+          break;
+        case ADD:
+        case ALTER_AUTO_SYNC:
+          changed =
+              treeToTableViewCache.addView(
+                  database,
+                  tableName,
+                  updateTree2TableViewInfo.isRestrict,
+                  updateTree2TableViewInfo.getTagNum(),
+                  new PartialPath(updateTree2TableViewInfo.getTreePath()));
+          break;
+        default:
+          return;
+      }
+    } catch (final IllegalPathException e) {
+      LOGGER.warn(
+          DataNodeSchemaMessages
+              .LOG_FAILED_TO_UPDATE_THE_TREE_TO_TABLE_VIEW_INDEX_OF_VIEW_ARG_ARG_E86EAEDE,
+          database,
+          tableName,
+          e);
+      return;
+    }
+    if (changed) {
+      logTreeToTableViewChange(type, database, tableName, oldTableName, updateTree2TableViewInfo);
+    }
+  }
+
+  /** Logs the change an operation really applied to the tree-to-table view index. */
+  private static void logTreeToTableViewChange(
+      final TreeToTableViewTrieOperationType type,
+      final String database,
+      final String tableName,
+      final @Nullable String oldTableName,
+      final TUpdateTree2TableView updateTree2TableViewInfo) {
+    switch (type) {
+      case REMOVE:
+        TreeToTableViewCache.LOGGER.info(
+            DataNodeSchemaMessages.LOG_UNREGISTERED_THE_TREE_TO_TABLE_VIEW_ARG_ARG_C90B661A,
+            database,
+            tableName);
+        break;
+      case ALTER_RENAME:
+        TreeToTableViewCache.LOGGER.info(
+            DataNodeSchemaMessages.LOG_RENAMED_THE_TREE_TO_TABLE_VIEW_ARG_ARG_FROM_ARG_B5D52D41,
+            database,
+            tableName,
+            oldTableName);
+        break;
+      case ALTER_TAG:
+        TreeToTableViewCache.LOGGER.info(
+            DataNodeSchemaMessages
+                .LOG_UPDATED_THE_PROPERTIES_OF_THE_TREE_TO_TABLE_VIEW_ARG_ARG_TO_ARG_1C3DE984,
+            database,
+            tableName,
+            Collections.singletonMap(
+                TreeToTableViewReference.NUM_OF_TAGS,
+                String.valueOf(updateTree2TableViewInfo.getTagNum())));
+        break;
+      case ADD:
+      case ALTER_AUTO_SYNC:
+        TreeToTableViewCache.LOGGER.info(
+            DataNodeSchemaMessages
+                .LOG_REGISTERED_THE_TREE_TO_TABLE_VIEW_ARG_ARG_AT_ARG_WITH_RESTRICT_ARG_AND_NUM_OF_TAGS_ARG_7538BCB2,
+            database,
+            tableName,
+            updateTree2TableViewInfo.getTreePath(),
+            updateTree2TableViewInfo.isRestrict,
+            updateTree2TableViewInfo.getTagNum());
+        break;
+      default:
+        break;
+    }
+  }
+
+  /**
+   * Repairs the cache after this DataNode missed the pre-update of a rename procedure. The
+   * ConfigNode has already renamed the table, so the new name can only be re-fetched, and the old
+   * name must not stay in the cache as a usable table.
+   */
+  private void repairMissedRenamePreUpdate(
+      final String database, final String newName, final String oldName) {
+    removeTableFromSpecialStatusMap(database, oldName);
+    // drop the old table
+    databaseTableMap.computeIfPresent(
+        database,
+        (databaseName, tables) -> {
+          tables.remove(oldName);
+          return tables;
+        });
+    // A placeholder makes the next lookup of the new name fetch its definition from the ConfigNode,
+    // which holds the committed rename.
+    if (Objects.isNull(getTableFromCache(database, newName))) {
+      specialStatusMap
+          .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
+          .put(newName, new Pair<>(new NonCommittableTsTable(newName), 0L));
+    }
+    instanceVersion.incrementAndGet();
+  }
+
+  private void commitDeleteTable(String database, final String tableName) {
+    if (databaseTableMap.containsKey(database)) {
+      databaseTableMap.get(database).remove(tableName);
+    }
+    removeTableFromSpecialStatusMap(database, tableName);
+    LOGGER.info(DataNodeSchemaMessages.COMMIT_DELETE_TABLE_SUCCESS, database, tableName);
   }
 
   @Override
@@ -255,25 +554,25 @@ public class DataNodeTableCache implements ITableCache {
     readWriteLock.writeLock().lock();
     try {
       databaseTableMap.remove(database);
-      preUpdateTableMap.remove(database);
+      specialStatusMap.remove(database);
+      treeToTableViewCache.removeViews(database);
       instanceVersion.incrementAndGet();
     } finally {
       readWriteLock.writeLock().unlock();
     }
   }
 
-  @GuardedBy("TableDeviceSchemaCache#writeLock")
+  /**
+   * Drop the entire cache. Used on metadata-lease recovery: after the DataNode was fenced it may
+   * have missed ConfigNode pushes, so the cached schema is no longer trustworthy and must be
+   * re-fetched lazily on the next lookup.
+   */
   @Override
-  public void invalid(String database, final String tableName) {
-    database = PathUtils.unQualifyDatabaseName(database);
+  public void invalidateAll() {
     readWriteLock.writeLock().lock();
     try {
-      if (databaseTableMap.containsKey(database)) {
-        databaseTableMap.get(database).remove(tableName);
-      }
-      if (preUpdateTableMap.containsKey(database)) {
-        preUpdateTableMap.get(database).remove(tableName);
-      }
+      databaseTableMap.clear();
+      specialStatusMap.clear();
       instanceVersion.incrementAndGet();
     } finally {
       readWriteLock.writeLock().unlock();
@@ -292,9 +591,9 @@ public class DataNodeTableCache implements ITableCache {
         copyTable.removeColumnSchema(columnName);
         databaseTableMap.get(database).put(tableName, copyTable);
       }
-      if (preUpdateTableMap.containsKey(database)
-          && preUpdateTableMap.get(database).containsKey(tableName)) {
-        final Pair<TsTable, Long> tableVersionPair = preUpdateTableMap.get(database).get(tableName);
+      if (specialStatusMap.containsKey(database)
+          && specialStatusMap.get(database).containsKey(tableName)) {
+        final Pair<TsTable, Long> tableVersionPair = specialStatusMap.get(database).get(tableName);
         if (Objects.nonNull(tableVersionPair.getLeft())) {
           final TsTable copyTable = new TsTable(tableVersionPair.getLeft());
           copyTable.removeColumnSchema(columnName);
@@ -308,108 +607,178 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
+  @Override
   public long getInstanceVersion() {
     return instanceVersion.get();
   }
 
+  @Override
+  public Map<String, Map<String, TsTable>> getTableSnapshot() {
+    readWriteLock.readLock().lock();
+    try {
+      failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
+      return databaseTableMap.entrySet().stream()
+          .collect(
+              Collectors.toMap(
+                  Map.Entry::getKey,
+                  entry ->
+                      entry.getValue().entrySet().stream()
+                          .collect(
+                              Collectors.toMap(
+                                  Map.Entry::getKey,
+                                  tableEntry -> new TsTable(tableEntry.getValue()),
+                                  (left, right) -> right,
+                                  HashMap::new)),
+                  (left, right) -> right,
+                  HashMap::new));
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
+  @Override
   public TsTable getTableInWrite(final String database, final String tableName) {
-    final TsTable result = getTableInCache(database, tableName);
+    final TsTable result =
+        getTableInCache(database, tableName, LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
     return Objects.nonNull(result) ? result : getTable(database, tableName, false);
   }
 
+  @Override
   public TsTable getTable(final String database, final String tableName) {
     return getTable(database, tableName, true);
   }
 
   /**
    * The following logic can handle the cases when configNode failed to clear some table in {@link
-   * #preUpdateTableMap}, due to the failure of "commit" or rollback of "pre-update".
+   * #specialStatusMap}, due to the failure of "commit" or rollback of "pre-update".
    */
+  @Override
   public TsTable getTable(String database, final String tableName, final boolean force) {
+    return getTable(database, tableName, force, LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
+  }
+
+  @Override
+  public TsTable getTable(
+      String database,
+      final String tableName,
+      final boolean force,
+      final LeaseFencedRetryPolicy leaseFencedRetryPolicy) {
     database = PathUtils.unQualifyDatabaseName(database);
-    final Map<String, Map<String, Long>> preUpdateTables =
-        mayGetTableInPreUpdateMap(database, tableName);
-    if (Objects.nonNull(preUpdateTables) && !preUpdateTables.isEmpty()) {
-      updateTable(getTablesInConfigNode(preUpdateTables), preUpdateTables);
+    final AtomicReference<TableNodeStatus> tableStatusRef = new AtomicReference<>();
+    final Map<String, Map<String, Long>> specialStatusMap =
+        mayGetTableInSpecialStatusMap(database, tableName, tableStatusRef, leaseFencedRetryPolicy);
+
+    if (Objects.nonNull(specialStatusMap) && !specialStatusMap.isEmpty()) {
+      Map<String, Map<String, TsTable>> fetchedTables =
+          getTablesInConfigNode(specialStatusMap, tableStatusRef.get());
+      if (tableStatusRef.get() == TableNodeStatus.USING) {
+        updateUsingTable(fetchedTables, specialStatusMap, leaseFencedRetryPolicy);
+      } else {
+        updateDeleteTable(fetchedTables, database, tableName, leaseFencedRetryPolicy);
+      }
     }
-    final TsTable table = getTableInCache(database, tableName);
+    final TsTable table = getTableInCache(database, tableName, leaseFencedRetryPolicy);
     if (Objects.isNull(table) && force) {
-      TableMetadataImpl.throwTableNotExistsException(database, tableName);
+      CommonMetadataUtils.throwTableNotExistsException(database, tableName);
     }
     return table;
   }
 
-  private Map<String, Map<String, Long>> mayGetTableInPreUpdateMap(
-      final String database, final String tableName) {
+  private Map<String, Map<String, Long>> mayGetTableInSpecialStatusMap(
+      final String database,
+      final String tableName,
+      final AtomicReference<TableNodeStatus> tableNodeStatus,
+      final LeaseFencedRetryPolicy leaseFencedRetryPolicy) {
     readWriteLock.readLock().lock();
     try {
-      return preUpdateTableMap.containsKey(database)
-              && preUpdateTableMap.get(database).containsKey(tableName)
-              && Objects.nonNull(preUpdateTableMap.get(database).get(tableName).getLeft())
-          ? preUpdateTableMap.entrySet().stream()
-              .filter(
-                  entry -> {
-                    entry
-                        .getValue()
-                        .entrySet()
-                        .removeIf(tableEntry -> Objects.isNull(tableEntry.getValue().getLeft()));
-                    return !entry.getValue().isEmpty();
-                  })
-              .collect(
-                  Collectors.toMap(
-                      Map.Entry::getKey,
-                      entry ->
-                          entry.getValue().entrySet().stream()
-                              .collect(
-                                  Collectors.toMap(
-                                      Map.Entry::getKey,
-                                      innerEntry -> innerEntry.getValue().getRight()))))
-          : null;
+      failIfMetadataLeaseFenced(leaseFencedRetryPolicy);
+      final Map<String, Pair<TsTable, Long>> targetDatabaseMap = specialStatusMap.get(database);
+      if (Objects.isNull(targetDatabaseMap)) {
+        return null;
+      }
+
+      final Pair<TsTable, Long> targetTablePair = targetDatabaseMap.get(tableName);
+      if (Objects.isNull(targetTablePair) || Objects.isNull(targetTablePair.getLeft())) {
+        return null;
+      }
+      final boolean targetIsPreDelete = targetTablePair.getLeft() instanceof PreDeleteTsTable;
+      final Map<String, Map<String, Long>> result = new HashMap<>();
+      for (final Map.Entry<String, Map<String, Pair<TsTable, Long>>> databaseEntry :
+          specialStatusMap.entrySet()) {
+        final Map<String, Long> tableVersionMap =
+            getSpecificStatusTable(databaseEntry, targetIsPreDelete);
+        if (!tableVersionMap.isEmpty()) {
+          result.put(databaseEntry.getKey(), tableVersionMap);
+        }
+      }
+      tableNodeStatus.set(targetIsPreDelete ? TableNodeStatus.PRE_DELETE : TableNodeStatus.USING);
+      return result;
     } finally {
       readWriteLock.readLock().unlock();
     }
   }
 
+  private Map<String, Long> getSpecificStatusTable(
+      Map.Entry<String, Map<String, Pair<TsTable, Long>>> databaseEntry,
+      boolean targetIsPreDelete) {
+    final Map<String, Long> tableVersionMap = new HashMap<>();
+    for (final Map.Entry<String, Pair<TsTable, Long>> tableEntry :
+        databaseEntry.getValue().entrySet()) {
+      final TsTable candidate = tableEntry.getValue().getLeft();
+      if (Objects.isNull(candidate)) {
+        continue;
+      }
+      if ((candidate instanceof PreDeleteTsTable) == targetIsPreDelete) {
+        tableVersionMap.put(tableEntry.getKey(), tableEntry.getValue().getRight());
+      }
+    }
+    return tableVersionMap;
+  }
+
   private Map<String, Map<String, TsTable>> getTablesInConfigNode(
-      final Map<String, Map<String, Long>> tableInput) {
+      final Map<String, Map<String, Long>> tableInput, final TableNodeStatus tableNodeStatus) {
     Map<String, Map<String, TsTable>> result = Collections.emptyMap();
+    boolean acquired = false;
     try {
       fetchTableSemaphore.acquire();
+      acquired = true;
       final TFetchTableResp resp =
           ClusterConfigTaskExecutor.getInstance()
               .fetchTables(
                   tableInput.entrySet().stream()
                       .collect(
-                          Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().keySet())));
+                          Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().keySet())),
+                  tableNodeStatus);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
         result = TsTableInternalRPCUtil.deserializeTsTableFetchResult(resp.getTableInfoMap());
       }
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.warn(
-          "Interrupted when trying to acquire semaphore when trying to get tables from configNode, ignore.");
-    } catch (final Exception e) {
-      fetchTableSemaphore.release();
-      throw e;
+      LOGGER.warn(DataNodeSchemaMessages.INTERRUPTED_ACQUIRE_SEMAPHORE_GET_TABLES);
+    } finally {
+      if (acquired) {
+        fetchTableSemaphore.release();
+      }
     }
-    fetchTableSemaphore.release();
     return result;
   }
 
-  private void updateTable(
+  private void updateUsingTable(
       final Map<String, Map<String, TsTable>> fetchedTables,
-      final Map<String, Map<String, Long>> previousVersions) {
+      final Map<String, Map<String, Long>> previousVersions,
+      final LeaseFencedRetryPolicy leaseFencedRetryPolicy) {
     readWriteLock.writeLock().lock();
     try {
+      failIfMetadataLeaseFenced(leaseFencedRetryPolicy);
       final AtomicBoolean isUpdated = new AtomicBoolean(false);
       fetchedTables.forEach(
           (qualifiedDatabase, tableInfoMap) -> {
             final String database = PathUtils.unQualifyDatabaseName(qualifiedDatabase);
-            if (preUpdateTableMap.containsKey(database)) {
+            if (specialStatusMap.containsKey(database)) {
               tableInfoMap.forEach(
                   (tableName, tsTable) -> {
                     final Pair<TsTable, Long> existingPair =
-                        preUpdateTableMap.get(database).get(tableName);
+                        specialStatusMap.get(database).get(tableName);
                     if (Objects.isNull(existingPair)
                         || Objects.isNull(existingPair.getLeft())
                         || !Objects.equals(
@@ -420,7 +789,7 @@ public class DataNodeTableCache implements ITableCache {
                     isUpdated.set(true);
                     if (LOGGER.isDebugEnabled()) {
                       LOGGER.debug(
-                          "Update table {}.{} by table fetch, {}",
+                          DataNodeSchemaMessages.UPDATE_TABLE_BY_FETCH_WITH_DETAIL,
                           database,
                           tableName,
                           compareTable(
@@ -429,13 +798,15 @@ public class DataNodeTableCache implements ITableCache {
                                   .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
                                   .get(tableName)));
                     } else if (LOGGER.isInfoEnabled()) {
-                      LOGGER.info("Update table {}.{} by table fetch.", database, tableName);
+                      LOGGER.info(
+                          DataNodeSchemaMessages.UPDATE_TABLE_BY_FETCH, database, tableName);
                     }
                     existingPair.setLeft(null);
                     if (Objects.nonNull(tsTable)) {
                       databaseTableMap
                           .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
                           .put(tableName, tsTable);
+                      invalidateLastCacheIfDisabled(database, tableName, tsTable);
                     } else if (databaseTableMap.containsKey(database)) {
                       databaseTableMap.get(database).remove(tableName);
                     }
@@ -450,15 +821,89 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
+  /** fetch the pre delete table to update */
+  private void updateDeleteTable(
+      Map<String, Map<String, TsTable>> fetchedTables,
+      String targetDatabase,
+      final String targetTable,
+      final LeaseFencedRetryPolicy leaseFencedRetryPolicy) {
+    readWriteLock.writeLock().lock();
+    try {
+      failIfMetadataLeaseFenced(leaseFencedRetryPolicy);
+      boolean isUpdated = false;
+      boolean targetTableIsStillDeleting = false;
+
+      for (final Map.Entry<String, Map<String, TsTable>> databaseEntry : fetchedTables.entrySet()) {
+        final String currentDatabase = PathUtils.unQualifyDatabaseName(databaseEntry.getKey());
+
+        final Map<String, Pair<TsTable, Long>> existingDatabaseMap =
+            this.specialStatusMap.get(currentDatabase);
+        if (Objects.isNull(existingDatabaseMap)) {
+          continue;
+        }
+        for (final Map.Entry<String, TsTable> tableEntry : databaseEntry.getValue().entrySet()) {
+          final String currentTableName = tableEntry.getKey();
+
+          final Pair<TsTable, Long> existingPair = existingDatabaseMap.get(currentTableName);
+          if (Objects.isNull(existingPair)
+              || Objects.isNull(existingPair.getLeft())
+              || !(existingPair.getLeft() instanceof PreDeleteTsTable)) {
+            continue;
+          }
+
+          final TsTable fetchedTable = tableEntry.getValue();
+          // case 1. the table is still in the pre delete status, do not update
+          // and only remind user of it
+          // the CN may be still in drop table procedure or has finished the procedure with error
+          if (fetchedTable instanceof PreDeleteTsTable) {
+            if (targetDatabase.equals(currentDatabase) && targetTable.equals(currentTableName)) {
+              targetTableIsStillDeleting = true;
+            }
+            continue;
+          }
+
+          isUpdated = true;
+          // case 2. the TsTable is normal TsTable, means that the drop table procedure rollback
+          // recovery it in databaseTableMap
+          if (Objects.nonNull(fetchedTable)) {
+            databaseTableMap
+                .computeIfAbsent(currentDatabase, k -> new ConcurrentHashMap<>())
+                .put(currentTableName, fetchedTable);
+          } else if (databaseTableMap.containsKey(currentDatabase)) {
+            // case 3. the CN do not hold the table, means that the table has been deleted
+            databaseTableMap.get(currentDatabase).remove(currentTableName);
+          }
+          // case 2 and case 3, remove table from specialStatusMap
+          existingPair.setLeft(null);
+        }
+      }
+      if (isUpdated) {
+        instanceVersion.incrementAndGet();
+      }
+      if (targetTableIsStillDeleting) {
+        throw new SemanticException(
+            String.format(
+                CommonMessages
+                    .EXCEPTION_THE_TABLE_ARG_ARG_IS_IN_THE_PRE_DELETE_STATE_PLEASE_WAIT_A_FEW_SECONDS_IF_THE_TABLE_IS_STILL_IN_THIS_STATE_PLEASE_DROP_IT_AGAIN_13B9D39F,
+                targetDatabase,
+                targetTable),
+            TSStatusCode.TABLE_IN_PRE_DELETE.getStatusCode());
+      }
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
   private String compareTable(final TsTable oldTable, final TsTable newTable) {
     if (Objects.isNull(oldTable)) {
-      return "Added table: " + newTable;
+      return DataNodeSchemaMessages.COMPARE_TABLE_ADDED + newTable;
     }
     if (Objects.isNull(newTable)) {
-      return "Removed table: " + oldTable;
+      return DataNodeSchemaMessages.COMPARE_TABLE_REMOVED + oldTable;
     }
     boolean modified = false;
-    final StringBuilder builder = new StringBuilder("Table name: " + oldTable.getTableName());
+    final StringBuilder builder =
+        new StringBuilder(DataNodeSchemaMessages.COMPARE_TABLE_NAME + oldTable.getTableName());
     final Map<String, String> oldProps =
         Objects.nonNull(oldTable.getProps())
             ? new HashMap<>(oldTable.getProps())
@@ -479,10 +924,10 @@ public class DataNodeTableCache implements ITableCache {
                 return false;
               });
       if (!oldProps.isEmpty()) {
-        builder.append(" Removed props: ").append(oldProps);
+        builder.append(DataNodeSchemaMessages.COMPARE_TABLE_REMOVED_PROPS).append(oldProps);
       }
       if (!newProps.isEmpty()) {
-        builder.append(" Added props: ").append(newProps);
+        builder.append(DataNodeSchemaMessages.COMPARE_TABLE_ADDED_PROPS).append(newProps);
       }
       modified = true;
     }
@@ -517,19 +962,32 @@ public class DataNodeTableCache implements ITableCache {
             .collect(Collectors.toList());
 
     if (!oldSchema.isEmpty()) {
-      builder.append(" Removed column(s): ").append(oldSchema);
+      builder.append(DataNodeSchemaMessages.COMPARE_TABLE_REMOVED_COLUMNS).append(oldSchema);
       modified = true;
     }
     if (!newSchema.isEmpty()) {
-      builder.append(" Added column(s): ").append(newSchema);
+      builder.append(DataNodeSchemaMessages.COMPARE_TABLE_ADDED_COLUMNS).append(newSchema);
       modified = true;
     }
-    return modified ? builder.toString() : " Not modified";
+    return modified ? builder.toString() : DataNodeSchemaMessages.COMPARE_TABLE_NOT_MODIFIED;
   }
 
-  private TsTable getTableInCache(final String database, final String tableName) {
+  /** Returns the current local schema without fetching or resolving updates from ConfigNode. */
+  @Override
+  public TsTable getTableInCache(final String database, final String tableName) {
+    return getTableInCache(
+        PathUtils.unQualifyDatabaseName(database),
+        tableName,
+        LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
+  }
+
+  private TsTable getTableInCache(
+      final String database,
+      final String tableName,
+      final LeaseFencedRetryPolicy leaseFencedRetryPolicy) {
     readWriteLock.readLock().lock();
     try {
+      failIfMetadataLeaseFenced(leaseFencedRetryPolicy);
       final TsTable result =
           databaseTableMap.containsKey(database)
               ? databaseTableMap.get(database).get(tableName)
@@ -543,13 +1001,16 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   public boolean isDatabaseExist(final String database) {
+    failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
     if (databaseTableMap.containsKey(database)) {
       return true;
     }
-    if (getTablesInConfigNode(Collections.singletonMap(database, Collections.emptyMap()))
+    if (getTablesInConfigNode(
+            Collections.singletonMap(database, Collections.emptyMap()), TableNodeStatus.USING)
         .containsKey(database)) {
       readWriteLock.readLock().lock();
       try {
+        failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
         databaseTableMap.computeIfAbsent(database, k -> new ConcurrentHashMap<>());
         return true;
       } finally {
@@ -560,6 +1021,7 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   // Database shall not start with "root"
+  @Override
   public String tryGetInternColumnName(
       final @Nonnull String database,
       final @Nonnull String tableName,

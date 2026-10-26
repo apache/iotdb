@@ -108,6 +108,14 @@ public class IoTDBTableIT {
         assertFalse(resultSet.next());
       }
 
+      try {
+        statement.execute(
+            "create table test1.table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (ttl=100, ttl=200, ttl=300)");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("701: Duplicated property: ttl", e.getMessage());
+      }
+
       // or use full qualified table name
       // test "TTL=INF"
       // "FIELD" can be omitted when type is specified
@@ -127,6 +135,7 @@ public class IoTDBTableIT {
       String[] ttls = new String[] {"INF"};
       String[] statuses = new String[] {"USING"};
       String[] comments = new String[] {"test"};
+      String[] needLastCaches = new String[] {"true"};
 
       statement.execute("use test2");
 
@@ -146,6 +155,7 @@ public class IoTDBTableIT {
           assertEquals(ttls[cnt], resultSet.getString(2));
           assertEquals(statuses[cnt], resultSet.getString(3));
           assertEquals(comments[cnt], resultSet.getString(4));
+          assertEquals(needLastCaches[cnt], resultSet.getString(6));
           cnt++;
         }
         assertEquals(tableNames.length, cnt);
@@ -190,6 +200,9 @@ public class IoTDBTableIT {
 
       statement.execute("comment on table test1.table1 is 'new_test'");
       comments = new String[] {"new_test"};
+
+      statement.execute("alter table test1.table1 set properties need_last_cache=false");
+      needLastCaches = new String[] {"false"};
       // using SHOW tables from
       try (final ResultSet resultSet = statement.executeQuery("SHOW tables details from test1")) {
         int cnt = 0;
@@ -203,6 +216,7 @@ public class IoTDBTableIT {
           assertEquals(tableNames[cnt], resultSet.getString(1));
           assertEquals(ttls[cnt], resultSet.getString(2));
           assertEquals(comments[cnt], resultSet.getString(4));
+          assertEquals(needLastCaches[cnt], resultSet.getString(6));
           cnt++;
         }
         assertEquals(tableNames.length, cnt);
@@ -298,7 +312,7 @@ public class IoTDBTableIT {
       }
 
       statement.execute(
-          "create table table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD) with (TTL=6600000)");
+          "create table table2(t1 TIMESTAMP TIME, region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD) with (TTL=6600000)");
 
       statement.execute("alter table table2 add column speed DOUBLE FIELD COMMENT 'fast'");
 
@@ -306,7 +320,7 @@ public class IoTDBTableIT {
           statement.executeQuery("show create table table2"),
           "Table,Create Table,",
           Collections.singleton(
-              "table2,CREATE TABLE \"table2\" (\"region_id\" STRING TAG,\"plant_id\" STRING TAG,\"color\" STRING ATTRIBUTE,\"temperature\" FLOAT FIELD,\"speed\" DOUBLE FIELD COMMENT 'fast') WITH (ttl=6600000),"));
+              "table2,CREATE TABLE \"table2\" (\"t1\" TIMESTAMP TIME,\"region_id\" STRING TAG,\"plant_id\" STRING TAG,\"color\" STRING ATTRIBUTE,\"temperature\" FLOAT FIELD,\"speed\" DOUBLE FIELD COMMENT 'fast') WITH (ttl=6600000, need_last_cache=true),"));
 
       try {
         statement.execute("alter table table2 add column speed DOUBLE FIELD");
@@ -414,7 +428,7 @@ public class IoTDBTableIT {
         assertEquals(columnNames.length, cnt);
       }
 
-      columnNames = new String[] {"time", "region_id", "plant_id", "color", "temperature", "speed"};
+      columnNames = new String[] {"t1", "region_id", "plant_id", "color", "temperature", "speed"};
       dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "STRING", "FLOAT", "DOUBLE"};
       categories = new String[] {"TIME", "TAG", "TAG", "ATTRIBUTE", "FIELD", "FIELD"};
 
@@ -443,7 +457,7 @@ public class IoTDBTableIT {
 
       // Test comment
       // Before
-      columnNames = new String[] {"time", "region_id", "plant_id", "temperature", "speed"};
+      columnNames = new String[] {"t1", "region_id", "plant_id", "temperature", "speed"};
       dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "FLOAT", "DOUBLE"};
       categories = new String[] {"TIME", "TAG", "TAG", "FIELD", "FIELD"};
       statuses = new String[] {"USING", "USING", "USING", "USING", "USING"};
@@ -472,7 +486,7 @@ public class IoTDBTableIT {
       // After
       statement.execute("COMMENT ON COLUMN table2.region_id IS '重庆'");
       statement.execute("COMMENT ON COLUMN table2.region_id IS NULL");
-      statement.execute("COMMENT ON COLUMN test2.table2.time IS 'recent'");
+      statement.execute("COMMENT ON COLUMN test2.table2.t1 IS 'recent'");
       statement.execute("COMMENT ON COLUMN test2.table2.region_id IS ''");
 
       comments = new String[] {"recent", "", null, null, "fast"};
@@ -519,7 +533,7 @@ public class IoTDBTableIT {
       }
 
       try {
-        statement.execute("alter table table2 drop column time");
+        statement.execute("alter table table2 drop column t1");
       } catch (final SQLException e) {
         assertEquals("701: Dropping tag or time column is not supported.", e.getMessage());
       }
@@ -531,7 +545,7 @@ public class IoTDBTableIT {
           "speed,",
           Collections.singleton("null,"));
 
-      statement.execute("drop table table2");
+      TestUtils.dropTable(connection, "test2", "table2");
       try {
         statement.executeQuery("describe table2");
         fail();
@@ -611,12 +625,127 @@ public class IoTDBTableIT {
 
       // Test time column
       // More time column tests are included in other IT
-      statement.execute("create table test100 (time time)");
-      statement.execute("create table test101 (time timestamp time)");
+      statement.execute("create table test100 (t1 time) with (ttl='INF')");
+      statement.execute("create table test101 (t1 timestamp time)");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create table test100"),
+          "Table,Create Table,",
+          Collections.singleton(
+              "test100,CREATE TABLE \"test100\" (\"t1\" TIMESTAMP TIME) WITH (ttl='INF', need_last_cache=true),"));
     } catch (final SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void testNeedLastCacheTableAndViewProperty() throws Exception {
+    try (final Connection treeConnection = EnvFactory.getEnv().getConnection();
+        final Statement treeStatement = treeConnection.createStatement()) {
+      treeStatement.execute("create database root.need_cache_view_source");
+      treeStatement.execute("create timeseries root.need_cache_view_source.d1.s1 int32");
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database need_cache_db with (need_last_cache=false)");
+      statement.execute("create database need_cache_default_db");
+      statement.execute("use need_cache_db");
+
+      statement.execute(
+          "create table inherited_table(time timestamp time, device_id string tag, temperature float field)");
+      statement.execute(
+          "create table override_table(time timestamp time, device_id string tag, temperature float field) with (need_last_cache=true)");
+      statement.execute(
+          "create table explicit_false_table(time timestamp time, device_id string tag, temperature float field) with (need_last_cache=false)");
+
+      assertTableNeedLastCache(statement, "need_cache_db", "inherited_table", false);
+      assertTableNeedLastCache(statement, "need_cache_db", "override_table", true);
+      assertTableNeedLastCache(statement, "need_cache_db", "explicit_false_table", false);
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create table explicit_false_table"),
+          "Table,Create Table,",
+          Collections.singleton(
+              "explicit_false_table,CREATE TABLE \"explicit_false_table\" (\"time\" TIMESTAMP TIME,\"device_id\" STRING TAG,\"temperature\" FLOAT FIELD) WITH (ttl='INF', need_last_cache=false),"));
+
+      statement.execute("alter table inherited_table set properties need_last_cache=true");
+      assertTableNeedLastCache(statement, "need_cache_db", "inherited_table", true);
+
+      statement.execute("alter table inherited_table set properties need_last_cache=default");
+      assertTableNeedLastCache(statement, "need_cache_db", "inherited_table", false);
+
+      statement.execute("alter table override_table set properties need_last_cache=false");
+      assertTableNeedLastCache(statement, "need_cache_db", "override_table", false);
+
+      statement.execute("alter table override_table set properties need_last_cache=true");
+      assertTableNeedLastCache(statement, "need_cache_db", "override_table", true);
+
+      statement.execute("use need_cache_default_db");
+      statement.execute(
+          "create table default_reset_table(time timestamp time, device_id string tag, temperature float field) with (need_last_cache=false)");
+      statement.execute("alter table default_reset_table set properties need_last_cache=default");
+      assertTableNeedLastCache(statement, "need_cache_default_db", "default_reset_table", true);
+
+      statement.execute("use need_cache_db");
+      try {
+        statement.execute(
+            "create view invalid_need_cache_view (tag1 string tag, s1 int32 field) restrict with (ttl=100, need_last_cache=false) as root.need_cache_view_source.**");
+        fail("tree view need_last_cache should be rejected");
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: The tree view does not support need_last_cache property.", e.getMessage());
+      }
+
+      statement.execute(
+          "create view explicit_view (tag1 string tag, s1 int32 field) restrict with (ttl=100) as root.need_cache_view_source.**");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create view explicit_view"),
+          "View,Create View,",
+          Collections.singleton(
+              "explicit_view,CREATE VIEW \"explicit_view\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"s1\" INT32 FIELD) RESTRICT WITH (ttl=100) AS root.\"need_cache_view_source\".**,"));
+
+      try {
+        statement.execute("alter view explicit_view set properties need_last_cache=false");
+        fail("tree view need_last_cache alter should be rejected");
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: The tree view does not support need_last_cache property.", e.getMessage());
+      }
+    }
+  }
+
+  private static void assertTableNeedLastCache(
+      final Statement statement,
+      final String database,
+      final String table,
+      final boolean expectedNeedLastCache)
+      throws SQLException {
+    try (final ResultSet resultSet =
+        statement.executeQuery("show tables details from " + database)) {
+      boolean found = false;
+      while (resultSet.next()) {
+        if (!table.equals(resultSet.getString("TableName"))) {
+          continue;
+        }
+        found = true;
+        assertEquals(expectedNeedLastCache, resultSet.getBoolean("NeedLastCache"));
+      }
+      assertTrue(found);
+    }
+
+    TestUtils.assertResultSetEqual(
+        statement.executeQuery(
+            "select database, table_name, need_last_cache from information_schema.tables where database = '"
+                + database
+                + "' and table_name = '"
+                + table
+                + "'"),
+        "database,table_name,need_last_cache,",
+        Collections.singleton(database + "," + table + "," + expectedNeedLastCache + ","));
   }
 
   @Test
@@ -635,7 +764,7 @@ public class IoTDBTableIT {
       Assert.assertThrows(SQLException.class, () -> userStmt.execute("select * from db.test"));
       TestUtils.assertResultSetEqual(
           userStmt.executeQuery("select * from information_schema.tables where database = 'db'"),
-          "database,table_name,ttl(ms),status,comment,table_type,",
+          "database,table_name,ttl(ms),status,comment,table_type,need_last_cache,",
           Collections.emptySet());
       TestUtils.assertResultSetEqual(
           userStmt.executeQuery("select * from information_schema.columns where database = 'db'"),
@@ -757,14 +886,93 @@ public class IoTDBTableIT {
   }
 
   @Test
+  public void testCreateViewFromTreePathWithSpaces() throws Exception {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.tv143_cmp_3");
+      statement.execute("CREATE TIMESERIES root.`tv143_cmp_3`.`a b`.`d1`.s1 INT32");
+      statement.execute("INSERT INTO root.`tv143_cmp_3`.`a b`.`d1`(time,s1) VALUES (1,10)");
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE tv143_cmp_3");
+      statement.execute("USE tv143_cmp_3");
+      statement.execute(
+          "CREATE VIEW v (device STRING TAG, value INT32 FIELD FROM s1) WITH (ttl='INF') "
+              + "AS root.\"`tv143_cmp_3`\".\"`a b`\".**");
+
+      try (final ResultSet resultSet =
+          statement.executeQuery("SELECT value FROM v ORDER BY time")) {
+        assertTrue(resultSet.next());
+        assertEquals(10, resultSet.getInt("value"));
+        assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  @Test
+  public void testShowCreateViewPreservesQuotedTreePath() throws Exception {
+    final String[][] pathNodes = {
+      {"`a``b`", "\"`a``b`\""},
+      {"`a b`", "\"`a b`\""},
+      {"`a\"b`", "\"`a\"\"b`\""}
+    };
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.show_create_view_source");
+      for (int i = 0; i < pathNodes.length; i++) {
+        final String device = "root.show_create_view_source." + pathNodes[i][0] + ".d1";
+        statement.execute("CREATE TIMESERIES " + device + ".s1 INT32");
+        statement.execute("INSERT INTO " + device + "(time,s1) VALUES (1," + (10 + i) + ")");
+      }
+      statement.execute("CREATE TIMESERIES root.show_create_view_source.ab.d1.s1 INT32");
+      statement.execute("INSERT INTO root.show_create_view_source.ab.d1(time,s1) VALUES (1,999)");
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE show_create_view_db");
+      statement.execute("USE show_create_view_db");
+      for (int i = 0; i < pathNodes.length; i++) {
+        final String viewName = "v" + i;
+        final String prefixPath = "root.\"show_create_view_source\"." + pathNodes[i][1] + ".**";
+        statement.execute(
+            "CREATE VIEW "
+                + viewName
+                + " (device STRING TAG, value INT32 FIELD FROM s1) AS "
+                + prefixPath);
+        for (final String command : new String[] {"SHOW CREATE VIEW ", "SHOW CREATE TABLE "}) {
+          final String createSql;
+          try (final ResultSet resultSet = statement.executeQuery(command + viewName)) {
+            assertTrue(resultSet.next());
+            assertEquals(viewName, resultSet.getString(1));
+            createSql = resultSet.getString(2);
+            assertTrue(createSql.endsWith(" AS " + prefixPath));
+            assertFalse(resultSet.next());
+          }
+          statement.execute("DROP VIEW " + viewName);
+          statement.execute(createSql);
+          TestUtils.assertResultSetEqual(
+              statement.executeQuery("SELECT value FROM " + viewName + " ORDER BY time"),
+              "value,",
+              Collections.singleton((10 + i) + ","));
+        }
+      }
+    }
+  }
+
+  @Test
   public void testTreeViewTable() throws Exception {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute("create database root.another");
-      statement.execute("create database root.`重庆`.b");
-      statement.execute("create timeSeries root.`重庆`.b.c.S1 int32");
-      statement.execute("create timeSeries root.`重庆`.b.c.s2 string");
-      statement.execute("create timeSeries root.`重庆`.b.S1 int32");
+      statement.execute("create database root.`重庆`.`1`.b");
+      statement.execute("create timeSeries root.`重庆`.`1`.b.`2`.S1 int32");
+      statement.execute("create timeSeries root.`重庆`.`1`.b.`2`.s2 string");
+      statement.execute("create timeSeries root.`重庆`.`1`.b.S1 int32");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -783,13 +991,13 @@ public class IoTDBTableIT {
             "701: Cannot specify view pattern to match more than one tree database.",
             e.getMessage());
       }
-      statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.\"重庆\".**");
+      statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.\"重庆\".\"1\".**");
       statement.execute("drop view tree_table");
     }
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("create timeSeries root.`重庆`.b.d.s1 int32");
+      statement.execute("create timeSeries root.`重庆`.`1`.b.`1`.s1 int32");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -800,7 +1008,7 @@ public class IoTDBTableIT {
       statement.execute("use tree_view_db");
 
       try {
-        statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.\"重庆\".**");
+        statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.\"重庆\".\"1\".**");
         fail();
       } catch (final SQLException e) {
         final Set<String> result =
@@ -814,13 +1022,13 @@ public class IoTDBTableIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("drop timeSeries root.`重庆`.b.d.s1");
+      statement.execute("drop timeSeries root.`重庆`.`1`.b.`1`.s1");
       statement.execute("create device template t1 (S1 boolean, s9 int32)");
-      statement.execute("set schema template t1 to root.`重庆`.b.d");
-      statement.execute("create timeSeries root.`重庆`.b.c.f.g.h.S1 int32");
+      statement.execute("set schema template t1 to root.`重庆`.`1`.b.`1`");
+      statement.execute("create timeSeries root.`重庆`.`1`.b.`2`.f.g.h.S1 int32");
 
       // Put schema cache
-      statement.execute("select S1, s2 from root.`重庆`.b.c");
+      statement.execute("select S1, s2 from root.`重庆`.`1`.b.`2`");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -830,29 +1038,18 @@ public class IoTDBTableIT {
         final Statement statement = connection.createStatement()) {
       statement.execute("use tree_view_db");
 
-      try {
-        statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.\"重庆\".**");
-        fail();
-      } catch (final SQLException e) {
-        assertEquals(
-            "614: Multiple types encountered when auto detecting type of measurement 'S1', please check",
-            e.getMessage());
-      }
-
-      try {
-        statement.execute(
-            "create view tree_table (tag1 tag, tag2 tag, S1 field) as root.\"重庆\".**");
-        fail();
-      } catch (final SQLException e) {
-        assertEquals(
-            "614: Multiple types encountered when auto detecting type of measurement 'S1', please check",
-            e.getMessage());
-      }
+      // Template t1 is set but not activated, so its S1 BOOLEAN is not a created series and does
+      // not take part in the detection
+      statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.\"重庆\".\"1\".**");
+      statement.execute("drop view tree_table");
+      statement.execute(
+          "create view tree_table (tag1 tag, tag2 tag, S1 field) as root.\"重庆\".\"1\".**");
+      statement.execute("drop view tree_table");
     }
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("create timeSeries root.`重庆`.b.e.s1 int32");
+      statement.execute("create timeSeries root.`重庆`.`1`.b.e.s1 int32");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -873,7 +1070,7 @@ public class IoTDBTableIT {
       // Temporary
       try {
         statement.execute(
-            "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 boolean from S1) as root.\"重庆\".**");
+            "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 boolean from S1) as root.\"重庆\".\"1\".**");
         fail();
       } catch (final SQLException e) {
         assertEquals(
@@ -882,14 +1079,14 @@ public class IoTDBTableIT {
 
       try {
         statement.execute(
-            "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 from s2, s8 field) as root.\"重庆\".**");
+            "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 from s2, s8 field) as root.\"重庆\".\"1\".**");
         fail();
       } catch (final SQLException e) {
         assertEquals("528: Measurements not found for s8, cannot auto detect", e.getMessage());
       }
 
       statement.execute(
-          "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 from s2) as root.\"重庆\".**");
+          "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 from s2) as root.\"重庆\".\"1\".**");
 
       // Cannot be written
       try {
@@ -918,8 +1115,8 @@ public class IoTDBTableIT {
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show tables details"),
-          "TableName,TTL(ms),Status,Comment,TableType,",
-          Collections.singleton("view_table,100,USING,comment,VIEW FROM TREE,"));
+          "TableName,TTL(ms),Status,Comment,TableType,NeedLastCache,",
+          Collections.singleton("view_table,100,USING,comment,VIEW FROM TREE,true,"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc view_table"),
@@ -937,11 +1134,15 @@ public class IoTDBTableIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from view_table where tag1 = 'b'"),
           "tag1,tag2,",
-          new HashSet<>(Arrays.asList("b,c,", "b,null,", "b,e,")));
+          new HashSet<>(Arrays.asList("b,`2`,", "b,null,", "b,e,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from view_table where tag1 = 'b' and tag2 is null"),
           "tag1,tag2,",
           Collections.singleton("b,null,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show devices from view_table where tag1 = 'b' and tag2 = '`2`'"),
+          "tag1,tag2,",
+          Collections.singleton("b,`2`,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from view_table"),
           "count(devices),",
@@ -953,7 +1154,7 @@ public class IoTDBTableIT {
         final Statement statement = connection.createStatement()) {
       // Test create & replace + restrict
       statement.execute(
-          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.`重庆`.**");
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.`重庆`.`1`.**");
       fail();
     } catch (final SQLException e) {
       assertTrue(
@@ -974,7 +1175,7 @@ public class IoTDBTableIT {
                 .getConnection("testUser", "testUser123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".**");
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".\"1\".**");
       fail();
     } catch (final SQLException e) {
       assertEquals(
@@ -995,7 +1196,7 @@ public class IoTDBTableIT {
                 .getConnection("testUser", "testUser123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".**");
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".\"1\".**");
       fail();
     } catch (final SQLException e) {
       assertEquals(
@@ -1015,7 +1216,7 @@ public class IoTDBTableIT {
                 .getConnection("testUser", "testUser123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".**");
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".\"1\".**");
       fail();
     } catch (final SQLException e) {
       assertEquals(
@@ -1031,13 +1232,18 @@ public class IoTDBTableIT {
     }
 
     try (final Connection connection =
-            EnvFactory.getEnv()
-                .getConnection("testUser", "testUser123456", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
+      statement.execute("alter database tree_view_db set properties ttl=100");
       statement.execute(
-          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".**");
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict as root.\"重庆\".\"1\".**");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show tables from tree_view_db"),
+          "TableName,TTL(ms),",
+          Collections.singleton("view_table,100,"));
     } catch (final SQLException e) {
-      fail();
+      fail(e.getMessage());
     }
 
     try (final Connection connection =
@@ -1054,14 +1260,14 @@ public class IoTDBTableIT {
           statement.executeQuery("show create view view_table"),
           "View,Create View,",
           Collections.singleton(
-              "view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".**,"));
+              "view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".\"`1`\".**,"));
 
       // Can also use "show create table"
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show create table view_table"),
           "View,Create View,",
           Collections.singleton(
-              "view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".**,"));
+              "view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".\"`1`\".**,"));
 
       statement.execute("create table a ()");
       try {
@@ -1088,6 +1294,42 @@ public class IoTDBTableIT {
         fail();
       } catch (final SQLException e) {
         assertEquals("551: Table 'tree_view_db.a' already exists.", e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void testAsyncDropTableProgress() throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement();
+        final Statement procedureStatement = TestUtils.createSingleNodeStatement(connection)) {
+      statement.execute("create database async_drop_db");
+      statement.execute("use async_drop_db");
+      statement.execute("create table drop_target (device string tag, reading int32)");
+      // The drop may finish before the first query. Its completed result remains visible until
+      // the procedure cleaner evicts it, so verify that result after waiting for completion.
+      TestUtils.dropTable(connection, "async_drop_db", "drop_target");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show tables from async_drop_db"),
+          "TableName,TTL(ms),",
+          Collections.emptySet());
+      try (final ResultSet resultSet =
+          procedureStatement.executeQuery(
+              "select procedure_id, state, progress, error_message, "
+                  + "written_mod_file_count, remaining_mod_file_count "
+                  + "from information_schema.drop_table_procedures "
+                  + "where database = 'async_drop_db' and table_name = 'drop_target'")) {
+        assertTrue(resultSet.next());
+        assertTrue(resultSet.getLong(1) >= 0);
+        assertEquals("SUCCESS", resultSet.getString(2));
+        assertEquals("SUCCESS", resultSet.getString(3));
+        Assert.assertNull(resultSet.getString(4));
+        assertEquals(0, resultSet.getLong(5));
+        assertFalse(resultSet.wasNull());
+        assertEquals(0, resultSet.getLong(6));
+        assertFalse(resultSet.wasNull());
+        assertFalse(resultSet.next());
       }
     }
   }

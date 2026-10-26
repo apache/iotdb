@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 
@@ -49,6 +50,7 @@ public class WALReader implements Closeable {
   private final DataInputStream logStream;
   private WALEntry nextEntry;
   private boolean fileCorrupted = false;
+  private boolean endMarkerReached = false;
 
   public WALReader(File logFile) throws IOException {
     this(logFile, false);
@@ -57,8 +59,9 @@ public class WALReader implements Closeable {
   public WALReader(File logFile, boolean fileMayCorrupt) throws IOException {
     this.logFile = logFile;
     this.fileMayCorrupt = fileMayCorrupt;
-    this.walInputStream = new WALInputStream(logFile);
+    this.walInputStream = new WALInputStream(logFile, fileMayCorrupt);
     this.logStream = new DataInputStream(walInputStream);
+    this.endMarkerReached = walInputStream.available() == 0;
   }
 
   /** Like {@link Iterator#hasNext()}. */
@@ -67,12 +70,18 @@ public class WALReader implements Closeable {
       return true;
     }
     // read WALEntries from log stream
-    if (fileCorrupted) {
+    if (fileCorrupted || endMarkerReached) {
       return false;
     }
     try {
+      // An active WAL has no end marker until its writer closes. Reaching EOF exactly between
+      // entries is therefore valid, while EOF during deserialization still marks a partial entry.
+      if (walInputStream.available() == 0) {
+        return false;
+      }
       nextEntry = WALEntry.deserialize(logStream);
       if (nextEntry.getType() == WALEntryType.WAL_FILE_INFO_END_MARKER) {
+        endMarkerReached = true;
         nextEntry = null;
         return false;
       }
@@ -83,11 +92,11 @@ public class WALReader implements Closeable {
       fileCorrupted = true;
       // log only when file should be complete
       if (!fileMayCorrupt) {
-        logger.warn("Fail to read WALEntry from wal file {}, skip broken WALEntries.", logFile, e);
+        logger.warn(StorageEngineMessages.FAIL_TO_READ_WAL_ENTRY_SKIP_BROKEN, logFile, e);
       }
     } catch (Exception e) {
       fileCorrupted = true;
-      logger.warn("Fail to read WALEntry from wal file {}, skip broken WALEntries.", logFile, e);
+      logger.warn(StorageEngineMessages.FAIL_TO_READ_WAL_ENTRY_SKIP_BROKEN, logFile, e);
     }
 
     return nextEntry != null;
@@ -95,6 +104,15 @@ public class WALReader implements Closeable {
 
   public long getWALCurrentReadOffset() throws IOException {
     return walInputStream.getFileCurrentPos();
+  }
+
+  /** Returns whether reading stopped because the WAL contents were malformed or truncated. */
+  public boolean isFileCorrupted() {
+    return fileCorrupted;
+  }
+
+  public long getLogicalReadOffset() {
+    return walInputStream.getLogicalReadOffset();
   }
 
   /**

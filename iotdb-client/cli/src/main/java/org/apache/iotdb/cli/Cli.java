@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cli;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.type.ExitType;
 import org.apache.iotdb.cli.utils.CliContext;
 import org.apache.iotdb.cli.utils.JlineUtils;
@@ -26,6 +27,7 @@ import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.UrlUtils;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -111,6 +113,15 @@ public class Cli extends AbstractCli {
       info.setProperty("use_ssl", useSsl);
       info.setProperty("trust_store", trustStore);
       info.setProperty("trust_store_pwd", trustStorePwd);
+      if (keyStore != null) {
+        info.setProperty(Config.KEY_STORE, keyStore);
+      }
+      if (keyStorePwd != null) {
+        info.setProperty(Config.KEY_STORE_PWD, keyStorePwd);
+      }
+      if (sslProtocol != null) {
+        info.setProperty(Config.SSL_PROTOCOL, sslProtocol);
+      }
     }
     info.setProperty("user", username);
     info.setProperty("password", password);
@@ -159,9 +170,23 @@ public class Cli extends AbstractCli {
   private static void serve(CliContext ctx) {
     try {
       useSsl = commandLine.getOptionValue(USE_SSL_ARGS);
+      sslProtocol = commandLine.getOptionValue(SSL_PROTOCOL_ARGS);
       if (Boolean.parseBoolean(useSsl)) {
-        trustStore = ctx.getLineReader().readLine("please input your trust_store:", '\0');
-        trustStorePwd = ctx.getLineReader().readLine("please input your trust_store_pwd:", '\0');
+        trustStore = commandLine.getOptionValue(TRUST_STORE_ARGS);
+        if (trustStore == null) {
+          trustStore = ctx.getLineReader().readLine("please input your trust_store:", '\0');
+        }
+        trustStorePwd = commandLine.getOptionValue(TRUST_STORE_PWD_ARGS);
+        if (trustStorePwd == null) {
+          trustStorePwd = ctx.getLineReader().readLine("please input your trust_store_pwd:", '\0');
+        }
+        keyStore = commandLine.getOptionValue(KEY_STORE_ARGS);
+        keyStorePwd = commandLine.getOptionValue(KEY_STORE_PWD_ARGS);
+        if (keyStore != null && keyStorePwd == null) {
+          keyStorePwd = ctx.getLineReader().readLine("please input your key_store_pwd:", '\0');
+        } else if (keyStore == null && keyStorePwd != null) {
+          keyStore = ctx.getLineReader().readLine("please input your key_store:", '\0');
+        }
       }
       password = commandLine.getOptionValue(PW_ARGS);
       if (password == null) {
@@ -181,8 +206,7 @@ public class Cli extends AbstractCli {
 
   private static void executeSql(CliContext ctx) throws TException {
     try (IoTDBConnection connection =
-        (IoTDBConnection)
-            DriverManager.getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", info)) {
+        (IoTDBConnection) DriverManager.getConnection(buildJdbcUrl(host, port), info)) {
       connection.setQueryTimeout(queryTimeout);
       properties = connection.getServerProperties();
       timestampPrecision = properties.getTimestampPrecision();
@@ -197,15 +221,15 @@ public class Cli extends AbstractCli {
 
   private static void receiveCommands(CliContext ctx) throws TException {
     try (IoTDBConnection connection =
-        (IoTDBConnection)
-            DriverManager.getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", info)) {
+        (IoTDBConnection) DriverManager.getConnection(buildJdbcUrl(host, port), info)) {
       connection.setQueryTimeout(queryTimeout);
       properties = connection.getServerProperties();
       timestampPrecision = properties.getTimestampPrecision();
 
       echoStarting(ctx);
       displayLogo(ctx, properties.getLogo(), properties.getVersion(), properties.getBuildInfo());
-      ctx.getPrinter().println(String.format("Successfully login at %s:%s", host, port));
+      ctx.getPrinter()
+          .println(String.format(CliMessages.SUCCESSFULLY_LOGIN_AT, formatEndpoint(host, port)));
       while (true) {
         boolean readLine = readerReadLine(ctx, connection);
         if (readLine) {
@@ -216,6 +240,14 @@ public class Cli extends AbstractCli {
       ctx.getErr().printf("%s: %s%n", IOTDB_ERROR_PREFIX, e.getMessage());
       ctx.exit(CODE_ERROR);
     }
+  }
+
+  private static String formatEndpoint(String host, String port) {
+    return UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port);
+  }
+
+  private static String buildJdbcUrl(String host, String port) {
+    return Config.IOTDB_URL_PREFIX + formatEndpoint(host, port) + "/";
   }
 
   private static boolean readerReadLine(CliContext ctx, IoTDBConnection connection) {

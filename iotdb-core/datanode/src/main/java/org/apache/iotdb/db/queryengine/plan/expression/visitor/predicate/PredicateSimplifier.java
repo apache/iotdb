@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.ArithmeticBinaryExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicOrExpression;
@@ -45,6 +46,10 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionAnalyze
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructBinaryExpression;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpression;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructTernaryExpression;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructUnaryExpression;
 import static org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertPredicateToFilterVisitor.getValue;
 
 public class PredicateSimplifier extends ExpressionAnalyzeVisitor<Expression, Void> {
@@ -59,8 +64,7 @@ public class PredicateSimplifier extends ExpressionAnalyzeVisitor<Expression, Vo
         return ConstantOperand.TRUE;
       }
     }
-    isNullExpression.setExpression(simplifiedInputExpression);
-    return isNullExpression;
+    return reconstructUnaryIfNeeded(isNullExpression, simplifiedInputExpression);
   }
 
   @Override
@@ -83,8 +87,7 @@ public class PredicateSimplifier extends ExpressionAnalyzeVisitor<Expression, Vo
     if (simplifiedInputExpression.getExpressionType().equals(ExpressionType.NULL)) {
       return ConstantOperand.FALSE;
     }
-    unaryExpression.setExpression(simplifiedInputExpression);
-    return unaryExpression;
+    return reconstructUnaryIfNeeded(unaryExpression, simplifiedInputExpression);
   }
 
   @Override
@@ -96,8 +99,7 @@ public class PredicateSimplifier extends ExpressionAnalyzeVisitor<Expression, Vo
     if (simplifiedInputExpression.equals(ConstantOperand.FALSE)) {
       return ConstantOperand.TRUE;
     }
-    logicNotExpression.setExpression(simplifiedInputExpression);
-    return logicNotExpression;
+    return reconstructUnaryIfNeeded(logicNotExpression, simplifiedInputExpression);
   }
 
   @Override
@@ -106,8 +108,7 @@ public class PredicateSimplifier extends ExpressionAnalyzeVisitor<Expression, Vo
     if (simplifiedInputExpression.getExpressionType().equals(ExpressionType.NULL)) {
       return new NullOperand();
     }
-    negationExpression.setExpression(simplifiedInputExpression);
-    return negationExpression;
+    return reconstructUnaryIfNeeded(negationExpression, simplifiedInputExpression);
   }
 
   @Override
@@ -121,9 +122,7 @@ public class PredicateSimplifier extends ExpressionAnalyzeVisitor<Expression, Vo
       // null calculation will return null
       return new NullOperand();
     }
-    arithmeticBinaryExpression.setLeftExpression(simplifiedLeft);
-    arithmeticBinaryExpression.setRightExpression(simplifiedRight);
-    return arithmeticBinaryExpression;
+    return reconstructBinaryIfNeeded(arithmeticBinaryExpression, simplifiedLeft, simplifiedRight);
   }
 
   @Override
@@ -144,9 +143,7 @@ public class PredicateSimplifier extends ExpressionAnalyzeVisitor<Expression, Vo
     if (isLeftFalse || isRightFalse) {
       return ConstantOperand.FALSE;
     }
-    logicAndExpression.setLeftExpression(simplifiedLeft);
-    logicAndExpression.setRightExpression(simplifiedRight);
-    return logicAndExpression;
+    return reconstructBinaryIfNeeded(logicAndExpression, simplifiedLeft, simplifiedRight);
   }
 
   @Override
@@ -167,9 +164,7 @@ public class PredicateSimplifier extends ExpressionAnalyzeVisitor<Expression, Vo
     } else if (isRightFalse) {
       return simplifiedLeft;
     }
-    logicOrExpression.setLeftExpression(simplifiedLeft);
-    logicOrExpression.setRightExpression(simplifiedRight);
-    return logicOrExpression;
+    return reconstructBinaryIfNeeded(logicOrExpression, simplifiedLeft, simplifiedRight);
   }
 
   @Override
@@ -183,9 +178,7 @@ public class PredicateSimplifier extends ExpressionAnalyzeVisitor<Expression, Vo
       // null comparison will return false
       return ConstantOperand.FALSE;
     }
-    compareBinaryExpression.setLeftExpression(simplifiedLeft);
-    compareBinaryExpression.setRightExpression(simplifiedRight);
-    return compareBinaryExpression;
+    return reconstructBinaryIfNeeded(compareBinaryExpression, simplifiedLeft, simplifiedRight);
   }
 
   @Override
@@ -228,10 +221,16 @@ public class PredicateSimplifier extends ExpressionAnalyzeVisitor<Expression, Vo
         return ConstantOperand.FALSE;
       }
     }
-    betweenExpression.setFirstExpression(simplifiedFirstExpression);
-    betweenExpression.setSecondExpression(simplifiedSecondExpression);
-    betweenExpression.setThirdExpression(simplifiedThirdExpression);
-    return betweenExpression;
+    if (simplifiedFirstExpression == betweenExpression.getFirstExpression()
+        && simplifiedSecondExpression == betweenExpression.getSecondExpression()
+        && simplifiedThirdExpression == betweenExpression.getThirdExpression()) {
+      return betweenExpression;
+    }
+    return reconstructTernaryExpression(
+        betweenExpression,
+        simplifiedFirstExpression,
+        simplifiedSecondExpression,
+        simplifiedThirdExpression);
   }
 
   private <T extends Comparable<T>> boolean lessThan(
@@ -243,16 +242,42 @@ public class PredicateSimplifier extends ExpressionAnalyzeVisitor<Expression, Vo
 
   @Override
   public Expression visitFunctionExpression(FunctionExpression functionExpression, Void context) {
-    List<Expression> simplifiedInputExpressions = new ArrayList<>();
-    for (Expression inputExpression : functionExpression.getExpressions()) {
+    List<Expression> inputExpressions = functionExpression.getExpressions();
+    List<Expression> simplifiedInputExpressions = null;
+    for (int i = 0; i < inputExpressions.size(); i++) {
+      Expression inputExpression = inputExpressions.get(i);
       Expression simplifiedInputExpression = process(inputExpression, context);
       if (simplifiedInputExpression.getExpressionType().equals(ExpressionType.NULL)) {
         return new NullOperand();
       }
-      simplifiedInputExpressions.add(simplifiedInputExpression);
+      if (simplifiedInputExpression != inputExpression) {
+        if (simplifiedInputExpressions == null) {
+          simplifiedInputExpressions = new ArrayList<>(inputExpressions);
+        }
+        simplifiedInputExpressions.set(i, simplifiedInputExpression);
+      }
     }
-    functionExpression.setExpressions(simplifiedInputExpressions);
-    return functionExpression;
+    if (simplifiedInputExpressions == null) {
+      return functionExpression;
+    }
+    return reconstructFunctionExpression(functionExpression, simplifiedInputExpressions);
+  }
+
+  private Expression reconstructUnaryIfNeeded(
+      UnaryExpression originalExpression, Expression simplifiedChild) {
+    if (simplifiedChild == originalExpression.getExpression()) {
+      return originalExpression;
+    }
+    return reconstructUnaryExpression(originalExpression, simplifiedChild);
+  }
+
+  private Expression reconstructBinaryIfNeeded(
+      BinaryExpression originalExpression, Expression simplifiedLeft, Expression simplifiedRight) {
+    if (simplifiedLeft == originalExpression.getLeftExpression()
+        && simplifiedRight == originalExpression.getRightExpression()) {
+      return originalExpression;
+    }
+    return reconstructBinaryExpression(originalExpression, simplifiedLeft, simplifiedRight);
   }
 
   @Override

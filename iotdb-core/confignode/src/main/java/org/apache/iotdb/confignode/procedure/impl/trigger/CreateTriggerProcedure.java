@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnri
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -77,7 +78,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
     try {
       switch (state) {
         case INIT:
-          LOG.info("Start to create trigger [{}]", triggerInformation.getTriggerName());
+          LOG.info(ProcedureMessages.START_TO_CREATE_TRIGGER, triggerInformation.getTriggerName());
 
           TriggerInfo triggerInfo = env.getConfigManager().getTriggerManager().getTriggerInfo();
           triggerInfo.acquireTriggerTableLock();
@@ -92,7 +93,8 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
           ConfigManager configManager = env.getConfigManager();
 
           LOG.info(
-              "Start to add trigger [{}] in TriggerTable on Config Nodes, needToSaveJar[{}]",
+              ProcedureMessages
+                  .LOG_START_ADD_TRIGGER_ARG_TRIGGERTABLE_CONFIG_NODES_NEEDTOSAVEJAR_ARG_0C23D81E,
               triggerInformation.getTriggerName(),
               jarFile != null);
 
@@ -112,7 +114,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
 
         case CONFIG_NODE_INACTIVE:
           LOG.info(
-              "Start to create triggerInstance [{}] on Data Nodes",
+              ProcedureMessages.LOG_START_CREATE_TRIGGERINSTANCE_ARG_DATA_NODES_917C3313,
               triggerInformation.getTriggerName());
 
           if (RpcUtils.squashResponseStatusList(
@@ -123,14 +125,15 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
           } else {
             throw new TriggerManagementException(
                 String.format(
-                    "Fail to create triggerInstance [%s] on Data Nodes",
+                    ProcedureMessages.FAIL_TO_CREATE_TRIGGERINSTANCE_ON_DATA_NODES,
                     triggerInformation.getTriggerName()));
           }
           break;
 
         case DATA_NODE_INACTIVE:
           LOG.info(
-              "Start to active trigger [{}] on Data Nodes", triggerInformation.getTriggerName());
+              ProcedureMessages.LOG_START_ACTIVE_TRIGGER_ARG_DATA_NODES_A4AB8131,
+              triggerInformation.getTriggerName());
 
           if (RpcUtils.squashResponseStatusList(
                       env.activeTriggerOnDataNodes(triggerInformation.getTriggerName()))
@@ -140,14 +143,15 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
           } else {
             throw new TriggerManagementException(
                 String.format(
-                    "Fail to active triggerInstance [%s] on Data Nodes",
+                    ProcedureMessages.FAIL_TO_ACTIVE_TRIGGERINSTANCE_ON_DATA_NODES,
                     triggerInformation.getTriggerName()));
           }
           break;
 
         case DATA_NODE_ACTIVE:
           LOG.info(
-              "Start to active trigger [{}] on Config Nodes", triggerInformation.getTriggerName());
+              ProcedureMessages.LOG_START_ACTIVE_TRIGGER_ARG_CONFIG_NODES_153A5D40,
+              triggerInformation.getTriggerName());
           env.getConfigManager()
               .getConsensusManager()
               .write(
@@ -165,15 +169,15 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
           return Flow.NO_MORE_STATE;
 
         default:
-          throw new IllegalArgumentException("Unknown CreateTriggerState: " + state);
+          throw new IllegalArgumentException(ProcedureMessages.UNKNOWN_CREATETRIGGERSTATE + state);
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
-        LOG.warn("Create trigger {} failed.", triggerInformation.getTriggerName(), e);
+        LOG.warn(ProcedureMessages.CREATE_TRIGGER_FAILED, triggerInformation.getTriggerName(), e);
         setFailure(new ProcedureException(e));
       } else {
         LOG.error(
-            "Retrievable error trying to create trigger [{}], state [{}]",
+            ProcedureMessages.LOG_RETRIEVABLE_ERROR_TRYING_CREATE_TRIGGER_ARG_STATE_ARG_44976C4E,
             triggerInformation.getTriggerName(),
             state,
             e);
@@ -181,8 +185,9 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
           setFailure(
               new ProcedureException(
                   String.format(
-                      "Fail to create trigger [%s] at STATE [%s]",
-                      triggerInformation.getTriggerName(), state)));
+                      ProcedureMessages.FAIL_TO_CREATE_TRIGGER_AT_STATE,
+                      triggerInformation.getTriggerName(),
+                      state)));
         }
       }
     }
@@ -194,13 +199,16 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
       throws IOException, InterruptedException, ProcedureException {
     switch (state) {
       case INIT:
-        LOG.info("Start [INIT] rollback of trigger [{}]", triggerInformation.getTriggerName());
+        LOG.info(
+            ProcedureMessages.START_INIT_ROLLBACK_OF_TRIGGER, triggerInformation.getTriggerName());
 
         env.getConfigManager().getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
         break;
 
       case VALIDATED:
-        LOG.info("Start [VALIDATED] rollback of trigger [{}]", triggerInformation.getTriggerName());
+        LOG.info(
+            ProcedureMessages.START_VALIDATED_ROLLBACK_OF_TRIGGER,
+            triggerInformation.getTriggerName());
 
         try {
           env.getConfigManager()
@@ -211,13 +219,13 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
                           new DeleteTriggerInTablePlan(triggerInformation.getTriggerName()))
                       : new DeleteTriggerInTablePlan(triggerInformation.getTriggerName()));
         } catch (ConsensusException e) {
-          LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
+          LOG.warn(ProcedureMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
         }
         break;
 
       case CONFIG_NODE_INACTIVE:
         LOG.info(
-            "Start to [CONFIG_NODE_INACTIVE] rollback of trigger [{}]",
+            ProcedureMessages.LOG_START_CONFIG_NODE_INACTIVE_ROLLBACK_TRIGGER_ARG_536929E5,
             triggerInformation.getTriggerName());
 
         if (RpcUtils.squashResponseStatusList(
@@ -226,14 +234,14 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
             != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           throw new TriggerManagementException(
               String.format(
-                  "Fail to [CONFIG_NODE_INACTIVE] rollback of trigger [%s]",
+                  ProcedureMessages.FAIL_TO_CONFIG_NODE_INACTIVE_ROLLBACK_OF_TRIGGER,
                   triggerInformation.getTriggerName()));
         }
         break;
 
       case DATA_NODE_INACTIVE:
         LOG.info(
-            "Start to [DATA_NODE_INACTIVE] rollback of trigger [{}]",
+            ProcedureMessages.LOG_START_DATA_NODE_INACTIVE_ROLLBACK_TRIGGER_ARG_38C93D64,
             triggerInformation.getTriggerName());
 
         if (RpcUtils.squashResponseStatusList(
@@ -242,7 +250,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
             != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           throw new TriggerManagementException(
               String.format(
-                  "Fail to [DATA_NODE_INACTIVE] rollback of trigger [%s]",
+                  ProcedureMessages.FAIL_TO_DATA_NODE_INACTIVE_ROLLBACK_OF_TRIGGER,
                   triggerInformation.getTriggerName()));
         }
         break;
@@ -307,7 +315,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
     if (that instanceof CreateTriggerProcedure) {
       CreateTriggerProcedure thatProc = (CreateTriggerProcedure) that;
       return thatProc.getProcId() == this.getProcId()
-          && thatProc.getCurrentState().equals(this.getCurrentState())
+          && Objects.equals(thatProc.getCurrentState(), this.getCurrentState())
           && thatProc.getCycles() == this.getCycles()
           && thatProc.isGeneratedByPipe == this.isGeneratedByPipe
           && thatProc.triggerInformation.equals(this.triggerInformation);

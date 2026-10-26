@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.commons.utils;
 
+import org.apache.iotdb.commons.i18n.UtilMessages;
+
+import com.google.common.collect.Maps;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -52,7 +55,7 @@ public class BasicStructureSerDeUtil {
     if (size < 0) {
       return null;
     }
-    List<String> stringList = new ArrayList<>();
+    List<String> stringList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       stringList.add(readString(buffer));
     }
@@ -110,7 +113,7 @@ public class BasicStructureSerDeUtil {
    */
   public static int write(List<String> stringList, DataOutputStream stream) throws IOException {
     if (stringList == null) {
-      throw new IllegalArgumentException("stringList must not be null!");
+      throw new IllegalArgumentException(UtilMessages.STRING_LIST_MUST_NOT_BE_NULL);
     }
     int res = 0;
     int size = stringList.size();
@@ -215,7 +218,7 @@ public class BasicStructureSerDeUtil {
     if (length == -1) {
       return null;
     }
-    Map<String, String> map = new HashMap<>(length);
+    Map<String, String> map = Maps.newHashMapWithExpectedSize(length);
     for (int i = 0; i < length; i++) {
       // key
       String key = readString(buffer);
@@ -261,13 +264,13 @@ public class BasicStructureSerDeUtil {
     if (length == -1) {
       return null;
     }
-    Map<String, List<String>> map = new HashMap<>(length);
+    Map<String, List<String>> map = Maps.newHashMapWithExpectedSize(length);
     for (int i = 0; i < length; i++) {
       // key
       String key = readString(buffer);
       // value
       int listSize = readInt(buffer);
-      List<String> valueList = new ArrayList<>();
+      List<String> valueList = new ArrayList<>(listSize);
       for (int j = 0; j < listSize; j++) {
         String value = readString(buffer);
         valueList.add(value);
@@ -303,13 +306,13 @@ public class BasicStructureSerDeUtil {
     if (length == -1) {
       return null;
     }
-    Map<Integer, List<Integer>> map = new HashMap<>(length);
+    Map<Integer, List<Integer>> map = Maps.newHashMapWithExpectedSize(length);
     for (int i = 0; i < length; i++) {
       // key
       int key = readInt(buffer);
       // value
       int listSize = readInt(buffer);
-      List<Integer> valueList = new ArrayList<>();
+      List<Integer> valueList = new ArrayList<>(listSize);
       for (int j = 0; j < listSize; j++) {
         int value = readInt(buffer);
         valueList.add(value);

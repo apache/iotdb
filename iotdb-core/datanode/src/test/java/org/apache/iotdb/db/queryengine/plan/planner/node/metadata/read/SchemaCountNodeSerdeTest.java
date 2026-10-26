@@ -21,12 +21,12 @@ package org.apache.iotdb.db.queryengine.plan.planner.node.metadata.read;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.node.PlanNodeDeserializeHelper;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.DevicesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.LevelTimeSeriesCountNode;
@@ -87,7 +87,9 @@ public class SchemaCountNodeSerdeTest {
             10,
             null,
             Collections.emptyMap(),
-            SchemaConstant.ALL_MATCH_SCOPE);
+            SchemaConstant.ALL_MATCH_SCOPE,
+            true,
+            true);
     IdentitySinkNode sinkNode =
         new IdentitySinkNode(
             new PlanNodeId("sink"),
@@ -122,7 +124,9 @@ public class SchemaCountNodeSerdeTest {
             true,
             null,
             Collections.emptyMap(),
-            SchemaConstant.ALL_MATCH_SCOPE);
+            SchemaConstant.ALL_MATCH_SCOPE,
+            true,
+            true);
     IdentitySinkNode sinkNode =
         new IdentitySinkNode(
             new PlanNodeId("sink"),

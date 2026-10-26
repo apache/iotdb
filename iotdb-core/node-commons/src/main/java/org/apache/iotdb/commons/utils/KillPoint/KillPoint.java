@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.utils.KillPoint;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.i18n.UtilMessages;
 
 import com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
@@ -48,7 +49,7 @@ public class KillPoint {
     Set<String> result =
         Arrays.stream(s.replace("[", "").replace("]", "").replace(" ", "").split(","))
             .collect(Collectors.toSet());
-    LOGGER.info("Kill point set: {}", result);
+    LOGGER.info(UtilMessages.KILL_POINT_SET, result);
     return ImmutableSet.copyOf(result);
   }
 

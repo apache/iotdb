@@ -175,15 +175,16 @@ public class IoTDBTableViewQueryIT {
           "select current from view1 where time > 1",
           "select current from table1 where time > 1" + (aligned ? "" : " and current is not null"),
           true);
+      // FILL runs before an outer ORDER BY, so give both sources the same ordered input.
       compareQueryResults(
           session,
-          "select * from view1 fill method linear",
-          "select * from table1 fill method linear",
+          "select * from (select * from view1 order by battery, time) fill method linear",
+          "select * from (select * from table1 order by battery, time) fill method linear",
           true);
       compareQueryResults(
           session,
-          "select * from view1 fill method previous",
-          "select * from table1 fill method previous",
+          "select * from (select * from view1 order by battery, time) fill method previous",
+          "select * from (select * from table1 order by battery, time) fill method previous",
           true);
       compareQueryResults(
           session,
@@ -339,7 +340,7 @@ public class IoTDBTableViewQueryIT {
           true);
       // empty result
       compareQueryResults(
-          session, "select * from view3 limit 1", "select * from table1 limit 0", true);
+          session, "select * from view3 limit 1", "select * from table1 where battery = 'b'", true);
 
       // not exists
       compareQueryResults(
@@ -349,8 +350,8 @@ public class IoTDBTableViewQueryIT {
           false);
       compareQueryResults(
           session,
-          "select * from (select time, battery as device1 from view1 where battery = 'b1') as t1 full outer join (select time, battery as device2 from view2 where battery = 'b') as t2 using(time)",
-          "select * from (select time, battery as device1 from table1 where battery = 'b1') as t1 full outer join (select time, battery as device2 from table1 where battery = 'b') as t2 using(time)",
+          "select * from (select time, battery as battery1 from view1 where battery = 'b1') as t1 full outer join (select time, battery as battery2 from view2 where battery = 'b') as t2 using(time)",
+          "select * from (select time, battery as battery1 from table1 where battery = 'b1') as t1 full outer join (select time, battery as battery2 from table1 where battery = 'b') as t2 using(time)",
           true);
       compareQueryResults(
           session,
@@ -379,6 +380,54 @@ public class IoTDBTableViewQueryIT {
           session,
           "select count(distinct battery) from view4 where battery = 'b1'",
           "select count(distinct battery) from table1 where battery = 'b1'",
+          true);
+
+      compareQueryResults(
+          session,
+          "select count(time) from view1 where time > 604800000",
+          "select count(time) from table1 where time > 604800000",
+          true);
+
+      compareQueryResults(
+          session,
+          "select count(battery),count(time) from view1 where time > 604800000",
+          "select count(battery),count(time) from table1 where time > 604800000",
+          true);
+
+      compareQueryResults(
+          session,
+          "select count(battery),count(time),count(current) from view1 where time > 604800000",
+          "select count(battery),count(time),count(current) from table1 where time > 604800000",
+          true);
+
+      compareQueryResults(
+          session,
+          "select distinct battery from view1 where time > 604800000",
+          "select distinct battery from table1 where time > 604800000",
+          true);
+
+      compareQueryResults(
+          session,
+          "select count(current) from view1 where time > 604800000 group by battery",
+          "select count(current) from table1 where time > 604800000 group by battery",
+          true);
+
+      compareQueryResults(
+          session,
+          "select count(current) from view1 group by date_bin(2ms,time)",
+          "select count(current) from table1 group by date_bin(2ms,time)",
+          true);
+
+      compareQueryResults(
+          session,
+          "select count(current) from view1 group by battery,date_bin(2ms,time)",
+          "select count(current) from table1 group by battery,date_bin(2ms,time)",
+          true);
+
+      compareQueryResults(
+          session,
+          "select last(columns(*)) from view1 group by battery,date_bin(2ms,time)",
+          "select last(columns(*)) from table1 group by battery,date_bin(2ms,time)",
           true);
     }
   }

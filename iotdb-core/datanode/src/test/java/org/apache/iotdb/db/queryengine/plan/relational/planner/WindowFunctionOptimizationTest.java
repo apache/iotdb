@@ -31,6 +31,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.group;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.limit;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.rowNumber;
@@ -97,13 +98,14 @@ public class WindowFunctionOptimizationTest {
         "SELECT sum(s1) OVER (PARTITION BY tag1, s1), min(s1) OVER (PARTITION BY tag1) FROM table1";
     LogicalQueryPlan logicalQueryPlan2 = planTester.createPlan(sql2);
 
-    // Two window function has swapped, but the query plan remains the same
+    // The initial sort by (tag1, s1) satisfies both windows. The second window can therefore
+    // reuse the grouping over tag1 without an extra sort.
     /*
      *   └──OutputNode
      *        └──ProjectNode
-     *             └──WindowNode(PARTITION BY tag1, s1)
-     *                 └──SortNode
-     *                     └──WindowNode(PARTITION BY tag1)
+     *             └──WindowNode(PARTITION BY tag1)
+     *                 └──GroupNode(PARTITION BY tag1)
+     *                     └──WindowNode(PARTITION BY tag1, s1)
      *                         └──SortNode
      *                              └──TableScanNode
      */
@@ -112,9 +114,13 @@ public class WindowFunctionOptimizationTest {
         output(
             project(
                 window(
-                    ImmutableList.of("tag1", "s1"),
+                    ImmutableList.of("tag1"),
                     ImmutableList.of(),
-                    sort(window(sort(tableScan)))))));
+                    group(
+                        window(
+                            ImmutableList.of("tag1", "s1"),
+                            ImmutableList.of(),
+                            sort(tableScan)))))));
   }
 
   @Test
@@ -146,14 +152,19 @@ public class WindowFunctionOptimizationTest {
      *               │        └──TableScan
      *               └──ExchangeNode
      *                    └──TopKRankingNode
-     *                        └──SortNode
-     *                            └──TableScan
+     *                        └──MergeSortNode
+     *                            ├──ExchangeNode ← TableScan
+     *                            └──ExchangeNode ← TableScan
      */
     assertPlan(
         planTester.getFragmentPlan(0), output((collect(exchange(), exchange(), exchange()))));
     assertPlan(planTester.getFragmentPlan(1), topKRanking(tableScan));
     assertPlan(planTester.getFragmentPlan(2), topKRanking(tableScan));
-    assertPlan(planTester.getFragmentPlan(3), topKRanking(sort(tableScan)));
+    // A device spanning regions must retain both inputs. TopK ranks them without an input field
+    // sort.
+    assertPlan(planTester.getFragmentPlan(3), topKRanking(mergeSort(exchange(), exchange())));
+    assertPlan(planTester.getFragmentPlan(4), tableScan);
+    assertPlan(planTester.getFragmentPlan(5), tableScan);
   }
 
   @Test

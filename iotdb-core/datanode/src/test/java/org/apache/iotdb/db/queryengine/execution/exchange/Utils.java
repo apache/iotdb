@@ -20,14 +20,15 @@
 package org.apache.iotdb.db.queryengine.execution.exchange;
 
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
+import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool.MemoryReservationResult;
 
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
-import org.apache.tsfile.utils.Pair;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -68,21 +69,25 @@ public class Utils {
     settableFuture.get().set(null);
     AtomicReference<Long> reservedBytes = new AtomicReference<>(0L);
     Mockito.when(
-            mockMemoryPool.reserve(
+            mockMemoryPool.reserveWithPriority(
                 Mockito.eq(queryId),
                 Mockito.eq(fragmentInstanceId),
                 Mockito.eq(planNodeId),
                 Mockito.anyLong(),
-                Mockito.anyLong()))
+                Mockito.anyLong(),
+                Mockito.anyBoolean()))
         .thenAnswer(
             invocation -> {
               long bytesToReserve = invocation.getArgument(3);
               if (reservedBytes.get() + bytesToReserve <= capacityInBytes) {
-                reservedBytes.updateAndGet(v -> v + (long) invocation.getArgument(3));
-                return new Pair<>(settableFuture.get(), true);
+                reservedBytes.updateAndGet(v -> v + bytesToReserve);
+                return new MemoryReservationResult(settableFuture.get(), true, bytesToReserve);
               } else {
+                if (invocation.getArgument(5)) {
+                  return new MemoryReservationResult(settableFuture.get(), true, 0L);
+                }
                 settableFuture.set(SettableFuture.create());
-                return new Pair<>(settableFuture.get(), false);
+                return new MemoryReservationResult(settableFuture.get(), false, bytesToReserve);
               }
             });
     Mockito.doAnswer(
@@ -124,13 +129,17 @@ public class Utils {
   public static MemoryPool createMockNonBlockedMemoryPool() {
     MemoryPool mockMemoryPool = Mockito.mock(MemoryPool.class);
     Mockito.when(
-            mockMemoryPool.reserve(
+            mockMemoryPool.reserveWithPriority(
                 Mockito.anyString(),
                 Mockito.anyString(),
                 Mockito.anyString(),
                 Mockito.anyLong(),
-                Mockito.anyLong()))
-        .thenReturn(new Pair<>(immediateFuture(null), true));
+                Mockito.anyLong(),
+                Mockito.anyBoolean()))
+        .thenAnswer(
+            invocation ->
+                new MemoryReservationResult(
+                    immediateFuture(null), true, invocation.getArgument(3)));
     Mockito.when(
             mockMemoryPool.tryReserve(
                 Mockito.anyString(),
@@ -147,6 +156,12 @@ public class Utils {
     TsBlock mockTsBlock = Mockito.mock(TsBlock.class);
     Mockito.when(mockTsBlock.getRetainedSizeInBytes()).thenReturn(mockTsBlockSize);
     Mockito.when(mockTsBlock.getSizeInBytes()).thenReturn(mockTsBlockSize);
+    try {
+      Mockito.when(mockTsBlockSerde.serialize(Mockito.any(TsBlock.class)))
+          .thenReturn(ByteBuffer.allocate(Math.toIntExact(mockTsBlockSize)));
+    } catch (IOException e) {
+      throw new AssertionError(e);
+    }
     Mockito.when(mockTsBlockSerde.deserialize(Mockito.any(ByteBuffer.class)))
         .thenReturn(mockTsBlock);
     return mockTsBlockSerde;

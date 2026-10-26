@@ -21,15 +21,13 @@ package org.apache.iotdb.consensus.exception;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.i18n.ConsensusMessages;
 
 import java.util.List;
 
 public class IllegalPeerEndpointException extends ConsensusException {
 
   public IllegalPeerEndpointException(TEndPoint currentNode, List<Peer> peers) {
-    super(
-        String.format(
-            "Illegal addConsensusGroup because currentNode %s is not in consensusGroup %s",
-            currentNode, peers));
+    super(String.format(ConsensusMessages.ILLEGAL_PEER_ENDPOINT, currentNode, peers));
   }
 }

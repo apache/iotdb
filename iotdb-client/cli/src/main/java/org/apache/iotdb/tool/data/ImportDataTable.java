@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.tool.data;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 import org.apache.iotdb.tool.common.Constants;
 import org.apache.iotdb.tool.tsfile.ImportTsFileScanTool;
@@ -52,6 +54,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -65,10 +68,21 @@ public class ImportDataTable extends AbstractImportData {
   private static Map<String, TSDataType> dataTypes = new HashMap<>();
   private static Map<String, ColumnCategory> columnCategory = new HashMap<>();
 
+  private static final Pattern DB_FROM_SQL_PATTERN;
+
+  static {
+    // group N:   双引号标识符 (""转义)
+    // group N+1: 反引号标识符 (``转义)
+    // group N+2: 普通标识符
+    String id = "(?:\"((?:[^\"]|\"\")*)\"" + "|`((?:[^`]|``)*)`" + "|(\\w+))";
+    DB_FROM_SQL_PATTERN =
+        Pattern.compile("into\\s+" + id + "\\s*\\.\\s*" + id, Pattern.CASE_INSENSITIVE);
+  }
+
   public void init() throws InterruptedException {
     TableSessionPoolBuilder tableSessionPoolBuilder =
         new TableSessionPoolBuilder()
-            .nodeUrls(Collections.singletonList(host + ":" + port))
+            .nodeUrls(Collections.singletonList(UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port)))
             .user(username)
             .password(password)
             .maxSize(threadNum + 1)
@@ -77,8 +91,7 @@ public class ImportDataTable extends AbstractImportData {
             .enableAutoFetch(false)
             .database(database);
     if (useSsl) {
-      tableSessionPoolBuilder =
-          tableSessionPoolBuilder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+      tableSessionPoolBuilder = configureSsl(tableSessionPoolBuilder);
     }
     sessionPool = tableSessionPoolBuilder.build();
     final File file = new File(targetPath);
@@ -123,7 +136,9 @@ public class ImportDataTable extends AbstractImportData {
               }
             }
           } else {
-            ioTPrinter.println(String.format(Constants.TARGET_TABLE_NOT_EXIST_MSG, null));
+            ioTPrinter.println(
+                CliMessages
+                    .MESSAGE_INVALID_ARGS_REQUIRED_VALUES_FOR_OPTION_TABLE_NOT_PROVIDED_4BC3FCFA);
             System.exit(1);
           }
         }
@@ -160,9 +175,22 @@ public class ImportDataTable extends AbstractImportData {
     loadFileSuccessfulNum.increment();
   }
 
+  private static String extractDbFromSql(String sql) {
+
+    Matcher matcher = DB_FROM_SQL_PATTERN.matcher(sql);
+    if (matcher.find()) {
+      // db name: group 1 (双引号), group 2 (反引号), group 3 (普通)
+      if (matcher.group(1) != null) return matcher.group(1).replace("\"\"", "\"");
+      if (matcher.group(2) != null) return matcher.group(2).replace("``", "`");
+      return matcher.group(3);
+    }
+    return null;
+  }
+
   @SuppressWarnings("java:S2259")
   protected void importFromSqlFile(File file) {
     ArrayList<List<Object>> failedRecords = new ArrayList<>();
+    boolean fileFailed = false;
     String failedFilePath;
     if (failedFileDirectory == null) {
       failedFilePath = file.getAbsolutePath() + ".failed";
@@ -173,16 +201,35 @@ public class ImportDataTable extends AbstractImportData {
       String sql;
       while ((sql = br.readLine()) != null) {
         try (ITableSession session = sessionPool.getSession()) {
-          sql = sql.replace(";", "");
+          sql = sql.trim();
+          if (sql.endsWith(";")) {
+            sql = sql.substring(0, sql.length() - 1);
+          }
+          String dbName = extractDbFromSql(sql);
+          if (database != null && dbName != null && !dbName.equalsIgnoreCase(database)) {
+            ioTPrinter.println(
+                String.format(
+                    "The extracted database '%s' in SQL statement does not match the target database '%s'",
+                    dbName, database));
+            failedRecords.add(Collections.singletonList(sql));
+            fileFailed = true;
+            continue;
+          }
           session.executeNonQueryStatement(sql);
         } catch (IoTDBConnectionException | StatementExecutionException e) {
+          fileFailed = true;
           ioTPrinter.println(e.getMessage());
           failedRecords.add(Collections.singletonList(sql));
         }
       }
-      processSuccessFile();
     } catch (IOException e) {
+      fileFailed = true;
       ioTPrinter.println("SQL file read exception because: " + e.getMessage());
+    }
+    if (fileFailed) {
+      markFileFailed();
+    } else {
+      processSuccessFile();
     }
     if (!failedRecords.isEmpty()) {
       FileWriter writer = null;
@@ -192,6 +239,7 @@ public class ImportDataTable extends AbstractImportData {
           writer.write(failedRecord.get(0).toString() + "\n");
         }
       } catch (IOException e) {
+        markImportFailed();
         ioTPrinter.println("Cannot dump fail result because: " + e.getMessage());
       } finally {
         if (ObjectUtils.isNotEmpty(writer)) {
@@ -219,15 +267,16 @@ public class ImportDataTable extends AbstractImportData {
   protected void importFromCsvFile(File file) {
     if (file.getName().endsWith(Constants.CSV_SUFFIXS)
         || file.getName().endsWith(Constants.TXT_SUFFIXS)) {
-      try {
-        CSVParser csvRecords = readCsvFile(file.getAbsolutePath());
+      try (CSVParser csvRecords = readCsvFile(file.getAbsolutePath())) {
         List<String> headerNames = csvRecords.getHeaderNames();
         Stream<CSVRecord> records = csvRecords.stream();
         if (headerNames.isEmpty()) {
+          markFileFailed();
           ioTPrinter.println("Empty file!");
           return;
         }
         if (!timeColumn.toLowerCase().equalsIgnoreCase(filterBomHeader(headerNames.get(0)))) {
+          markFileFailed();
           ioTPrinter.println("The first field of header must be `time`!");
           return;
         }
@@ -237,21 +286,29 @@ public class ImportDataTable extends AbstractImportData {
         } else {
           failedFilePath = failedFileDirectory + file.getName() + ".failed";
         }
-        writeData(headerNames, records.collect(Collectors.toList()), failedFilePath);
-        processSuccessFile();
+        if (writeData(headerNames, records.collect(Collectors.toList()), failedFilePath)) {
+          processSuccessFile();
+        }
       } catch (IOException e) {
+        markFileFailed();
         ioTPrinter.println("CSV file read exception because: " + e.getMessage());
       }
     } else {
+      markFileFailed();
       ioTPrinter.println("The file name must end with \"csv\" or \"txt\"!");
     }
   }
 
-  protected void writeData(
+  protected boolean writeData(
       List<String> headerNames, List<CSVRecord> records, String failedFilePath) {
     Map<String, TSDataType> headerTypeMap = new HashMap<>();
     Map<String, String> headerNameMap = new HashMap<>();
-    parseHeaders(headerNames, headerTypeMap, headerNameMap);
+    if (!parseHeaders(headerNames, headerTypeMap, headerNameMap)) {
+      markFileFailed();
+      ioTPrinter.println(
+          CliMessages.MESSAGE_MULTIPLE_CSV_HEADERS_RESOLVE_TO_THE_SAME_TARGET_COLUMN_99189563);
+      return false;
+    }
     queryType(headerTypeMap);
     List<List<Object>> failedRecords = new ArrayList<>();
     List<IMeasurementSchema> schemas = new ArrayList<>();
@@ -329,41 +386,60 @@ public class ImportDataTable extends AbstractImportData {
     if (!failedRecords.isEmpty()) {
       writeFailedLinesFile(headerNames, failedFilePath, failedRecords);
     }
+    return true;
   }
 
   private static void writeAndEmptyDataSet(Tablet tablet, int retryTime) {
-    try (ITableSession session = sessionPool.getSession()) {
-      session.insert(tablet);
-    } catch (IoTDBConnectionException e) {
-      if (retryTime > 0) {
-        writeAndEmptyDataSet(tablet, --retryTime);
-      }
-    } catch (StatementExecutionException e) {
-      ioTPrinter.println(Constants.INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
-      System.exit(1);
-    }
+    executeWithRetry(
+        () -> {
+          try (ITableSession session = sessionPool.getSession()) {
+            session.insert(tablet);
+          }
+        },
+        retryTime);
   }
 
-  private void parseHeaders(
+  private boolean parseHeaders(
       List<String> headerNames,
       Map<String, TSDataType> headerTypeMap,
       Map<String, String> headerNameMap) {
-    String regex = "(?<=\\()\\S+(?=\\))";
+    String regex = "\\(([^()]+)\\)$";
     Pattern pattern = Pattern.compile(regex);
+    List<String> unmatchedHeaders = new ArrayList<>();
     for (String headerName : headerNames) {
-      headerName = headerName.toLowerCase();
+      String normalizedHeaderName = headerName.toLowerCase(Locale.ROOT);
+      // A complete table column name takes precedence over a possible type suffix.
+      if (dataTypes.containsKey(normalizedHeaderName)) {
+        if (headerNameMap.containsKey(normalizedHeaderName)) {
+          return false;
+        }
+        headerNameMap.put(normalizedHeaderName, headerName);
+        headerTypeMap.put(normalizedHeaderName, dataTypes.get(normalizedHeaderName));
+      } else {
+        unmatchedHeaders.add(headerName);
+      }
+    }
+    for (String headerName : unmatchedHeaders) {
+      String normalizedHeaderName = headerName.toLowerCase(Locale.ROOT);
       Matcher matcher = pattern.matcher(headerName);
       String type;
       String headerNameWithoutType;
       if (matcher.find()) {
-        type = matcher.group();
-        headerNameWithoutType = headerName.replace("(" + type + ")", "").replaceAll("\\s+", "");
+        type = matcher.group(1);
+        headerNameWithoutType = headerName.substring(0, matcher.start()).toLowerCase(Locale.ROOT);
+        if (headerNameMap.containsKey(headerNameWithoutType)) {
+          return false;
+        }
         headerNameMap.put(headerNameWithoutType, headerName);
-        headerTypeMap.put(headerNameWithoutType, getType(type));
+        headerTypeMap.put(headerNameWithoutType, getType(type.toUpperCase(Locale.ROOT)));
       } else {
-        headerNameMap.put(headerName, headerName);
+        if (headerNameMap.containsKey(normalizedHeaderName)) {
+          return false;
+        }
+        headerNameMap.put(normalizedHeaderName, headerName);
       }
     }
+    return true;
   }
 
   private void queryType(Map<String, TSDataType> dataType) {

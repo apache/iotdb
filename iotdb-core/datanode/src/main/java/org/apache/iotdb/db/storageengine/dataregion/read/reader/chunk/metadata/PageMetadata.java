@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IMetadata;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
@@ -79,7 +81,9 @@ public class PageMetadata implements IMetadata {
       int measurementIndex) {
     checkArgument(
         measurementIndex == 0,
-        "Non-aligned chunk only has one measurement, but measurementIndex is " + measurementIndex);
+        StorageEngineMessages
+                .EXCEPTION_NON_MINUS_ALIGNED_CHUNK_ONLY_HAS_ONE_MEASUREMENT_COMMA_BUT_MEASUREMENTINDEX_IS_E1A87F80
+            + measurementIndex);
     return Optional.ofNullable(statistics);
   }
 

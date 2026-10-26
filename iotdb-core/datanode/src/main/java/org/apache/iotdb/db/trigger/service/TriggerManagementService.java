@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.trigger.api.Trigger;
@@ -251,7 +252,7 @@ public class TriggerManagementService {
             TriggerExecutableManager.getInstance().readTextFromFileUnderTemporaryRoot(md5FilePath);
         hasComputed = true;
       } catch (IOException e) {
-        LOGGER.warn("Error occurred when trying to read md5 of {}", md5FilePath);
+        LOGGER.warn(DataNodeMiscMessages.ERROR_READING_MD5, md5FilePath);
       }
     }
     if (!hasComputed) {
@@ -332,7 +333,10 @@ public class TriggerManagementService {
         | ClassCastException e) {
       throw new TriggerManagementException(
           String.format(
-              "Failed to reflect trigger instance with className(%s), because %s", className, e));
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_FAILED_TO_REFLECT_TRIGGER_INSTANCE_WITH_CLASSNAME_S_BECAUSE_C0CC44E2,
+              className,
+              e));
     }
   }
 

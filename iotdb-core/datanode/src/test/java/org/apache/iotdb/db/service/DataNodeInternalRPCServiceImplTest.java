@@ -28,8 +28,10 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
@@ -45,32 +47,42 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeInternalRPCServiceImpl;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
+import org.apache.iotdb.db.schemaengine.rescon.DataNodeSchemaQuotaManager;
+import org.apache.iotdb.db.service.DataNode.DataNodeContext;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeReq;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.util.FileUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -78,6 +90,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.mockito.Mockito.when;
 
 public class DataNodeInternalRPCServiceImplTest {
 
@@ -87,6 +104,12 @@ public class DataNodeInternalRPCServiceImplTest {
   private static final int dataNodeId = 0;
   private static final File storageDir = new File("target" + java.io.File.separator + "impl");
   private static DataRegion dataRegion;
+
+  // Each parallel surefire fork binds its own consensus port. Reuses
+  // EnvironmentUtils.FORK_PORT_OFFSET so this binding and examinePorts() are
+  // guaranteed to look at the same port — fork-local leaks still fail, sibling
+  // forks no longer cause cross-fork false positives.
+  private static final int CONSENSUS_PORT = 6667 + EnvironmentUtils.FORK_PORT_OFFSET;
 
   @BeforeClass
   public static void setUpBeforeClass() throws IOException, MetadataException, ConsensusException {
@@ -104,7 +127,7 @@ public class DataNodeInternalRPCServiceImplTest {
                 ConsensusFactory.IOT_CONSENSUS,
                 ConsensusConfig.newBuilder()
                     .setThisNodeId(1)
-                    .setThisNode(new TEndPoint("0.0.0.0", 6667))
+                    .setThisNode(new TEndPoint("0.0.0.0", CONSENSUS_PORT))
                     .setStorageDir(storageDir.getAbsolutePath())
                     .setConsensusGroupType(TConsensusGroupType.DataRegion)
                     .build(),
@@ -119,7 +142,8 @@ public class DataNodeInternalRPCServiceImplTest {
         ((IoTConsensus) DataRegionConsensusImpl.getInstance()).getImpl(new DataRegionId(1)))) {
       DataRegionConsensusImpl.getInstance()
           .createLocalPeer(
-              id, Collections.singletonList(new Peer(id, 1, new TEndPoint("0.0.0.0", 6667))));
+              id,
+              Collections.singletonList(new Peer(id, 1, new TEndPoint("0.0.0.0", CONSENSUS_PORT))));
     }
     DataRegionConsensusImpl.getInstance().start();
     SchemaRegionConsensusImpl.getInstance().start();
@@ -133,7 +157,9 @@ public class DataNodeInternalRPCServiceImplTest {
         .createLocalPeer(
             ConsensusGroupId.Factory.createFromTConsensusGroupId(regionReplicaSet.getRegionId()),
             genSchemaRegionPeerList(regionReplicaSet));
-    dataNodeInternalRPCServiceImpl = new DataNodeInternalRPCServiceImpl();
+    DataNodeContext context = Mockito.mock(DataNodeContext.class);
+    when(context.isAllConsensusStarted()).thenReturn(true);
+    dataNodeInternalRPCServiceImpl = new DataNodeInternalRPCServiceImpl(context);
   }
 
   @After
@@ -209,10 +235,73 @@ public class DataNodeInternalRPCServiceImplTest {
     ((IoTConsensus) DataRegionConsensusImpl.getInstance())
         .getImpl(new DataRegionId(1))
         .setActive(false);
-    dataRegion.loadNewTsFile(new TsFileResource(), false, false, false);
+    dataRegion.loadNewTsFile(new TsFileResource(), false, false, false, Optional.empty());
     ((IoTConsensus) DataRegionConsensusImpl.getInstance())
         .getImpl(new DataRegionId(1))
         .setActive(true);
+  }
+
+  @Test
+  public void testHeartbeatSkipsSchemaUsageWhenMetadataLeaseIsFenced() throws Exception {
+    final MetadataLeaseManager leaseManager = MetadataLeaseManager.getInstance();
+    final Field hasPullTaskNowRefField =
+        MetadataLeaseManager.class.getDeclaredField("hasPullTaskNowRef");
+    hasPullTaskNowRefField.setAccessible(true);
+    final AtomicBoolean hasPullTaskNowRef =
+        (AtomicBoolean) hasPullTaskNowRefField.get(leaseManager);
+    final Map<String, Long> tableDeviceNumberMap =
+        SchemaEngine.getInstance()
+            .getSchemaRegion(new SchemaRegionId(0))
+            .getSchemaRegionStatistics()
+            .getTable2DevicesNumMap();
+
+    try {
+      Awaitility.await()
+          .atMost(10, TimeUnit.SECONDS)
+          .until(() -> SchemaRegionConsensusImpl.getInstance().isLeader(new SchemaRegionId(0)));
+      hasPullTaskNowRef.set(true);
+      tableDeviceNumberMap.put("table", 1L);
+      leaseManager.recoveryLeaseForTest(false);
+      final Method checkLeaseStatus =
+          MetadataLeaseManager.class.getDeclaredMethod("checkLeaseStatus");
+      checkLeaseStatus.setAccessible(true);
+      checkLeaseStatus.invoke(leaseManager);
+      Assert.assertTrue(leaseManager.isFenced());
+
+      final TDataNodeHeartbeatReq req =
+          new TDataNodeHeartbeatReq()
+              .setHeartbeatTimestamp(1L)
+              .setNeedJudgeLeader(false)
+              .setNeedSamplingLoad(false)
+              .setTimeSeriesQuotaRemain(10L)
+              .setDeviceQuotaRemain(10L)
+              .setLogicalClock(0L);
+      final Map<Integer, Long> previousDeviceCountMap = new HashMap<>();
+      previousDeviceCountMap.put(-1, 1L);
+      final Map<Integer, Long> previousSeriesCountMap = new HashMap<>();
+      previousSeriesCountMap.put(-1, 2L);
+      final TDataNodeHeartbeatResp schemaCountResp =
+          new TDataNodeHeartbeatResp()
+              .setRegionDeviceUsageMap(new HashMap<>(previousDeviceCountMap))
+              .setRegionSeriesUsageMap(new HashMap<>(previousSeriesCountMap));
+
+      Assert.assertThrows(
+          MetadataLeaseFencedException.class,
+          () -> SchemaEngine.getInstance().updateAndFillSchemaCountMap(req, schemaCountResp));
+      Assert.assertEquals(previousDeviceCountMap, schemaCountResp.getRegionDeviceUsageMap());
+      Assert.assertEquals(previousSeriesCountMap, schemaCountResp.getRegionSeriesUsageMap());
+
+      final TDataNodeHeartbeatResp resp = dataNodeInternalRPCServiceImpl.getDataNodeHeartBeat(req);
+
+      Assert.assertEquals(req.getHeartbeatTimestamp(), resp.getHeartbeatTimestamp());
+      Assert.assertFalse(resp.isSetRegionDeviceUsageMap());
+      Assert.assertFalse(resp.isSetRegionSeriesUsageMap());
+    } finally {
+      tableDeviceNumberMap.remove("table");
+      hasPullTaskNowRef.set(false);
+      leaseManager.recoveryLeaseForTest(true);
+      DataNodeSchemaQuotaManager.getInstance().updateRemain(-1, -1);
+    }
   }
 
   @Test
@@ -380,6 +469,30 @@ public class DataNodeInternalRPCServiceImplTest {
             new TSendBatchPlanNodeReq(Collections.singletonList(request)));
 
     Assert.assertTrue(response.getResponses().get(0).accepted);
+  }
+
+  @Test
+  public void testRegionOperationRetryReturnsAlreadyCompletedStatus() {
+    TRegionReplicaSet regionReplicaSet = genRegionReplicaSet();
+    regionReplicaSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 2));
+    TCreateSchemaRegionReq createReq =
+        new TCreateSchemaRegionReq()
+            .setRegionReplicaSet(regionReplicaSet)
+            .setStorageGroup("root.retry_test");
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        dataNodeInternalRPCServiceImpl.createSchemaRegion(createReq).getCode());
+    Assert.assertEquals(
+        TSStatusCode.REGION_ALREADY_EXISTS.getStatusCode(),
+        dataNodeInternalRPCServiceImpl.createSchemaRegion(createReq).getCode());
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        dataNodeInternalRPCServiceImpl.deleteRegion(regionReplicaSet.getRegionId()).getCode());
+    Assert.assertEquals(
+        TSStatusCode.REGION_NOT_EXIST.getStatusCode(),
+        dataNodeInternalRPCServiceImpl.deleteRegion(regionReplicaSet.getRegionId()).getCode());
   }
 
   private TRegionReplicaSet genRegionReplicaSet() {

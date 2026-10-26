@@ -20,12 +20,12 @@
 package org.apache.iotdb.consensus.iot.util;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.DeserializedBatchIndexedConsensusRequest;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.consensus.iot.log.GetConsensusReqReaderPlan;
@@ -97,11 +97,17 @@ public class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
   public IConsensusRequest deserializeRequest(IConsensusRequest request) {
     if (request instanceof BatchIndexedConsensusRequest) {
       BatchIndexedConsensusRequest consensusRequest = (BatchIndexedConsensusRequest) request;
+      final IndexedConsensusRequest lastIndexedRequest =
+          consensusRequest.getRequests().isEmpty()
+              ? null
+              : consensusRequest.getRequests().get(consensusRequest.getRequests().size() - 1);
       DeserializedBatchIndexedConsensusRequest result =
           new DeserializedBatchIndexedConsensusRequest(
               consensusRequest.getStartSyncIndex(),
               consensusRequest.getEndSyncIndex(),
-              consensusRequest.getRequests().size());
+              consensusRequest.getRequests().size(),
+              consensusRequest.getSourcePeerId(),
+              lastIndexedRequest != null ? lastIndexedRequest.getPhysicalTime() : 0L);
       for (IndexedConsensusRequest r : consensusRequest.getRequests()) {
         result.add(r);
       }
@@ -136,5 +142,7 @@ public class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
   }
 
   @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {}
+  public boolean loadSnapshot(File latestSnapshotRootDir) {
+    return true;
+  }
 }

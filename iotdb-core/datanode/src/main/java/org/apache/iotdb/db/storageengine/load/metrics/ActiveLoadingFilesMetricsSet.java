@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.metrics;
 
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -64,7 +65,7 @@ public abstract class ActiveLoadingFilesMetricsSet implements IMetricSet {
   public void updatePendingFileCounterInDir(final String dirName, final long number) {
     final Counter counter = dir2PendingFileCounterMap.get(dirName);
     if (counter == null) {
-      LOGGER.debug("Failed to update file counter, dir({}) does not exist", dirName);
+      LOGGER.debug(StorageEngineMessages.FAILED_UPDATE_FILE_COUNTER_DIR_NOT_EXIST, dirName);
       return;
     }
     counter.inc(number - counter.getCount());
@@ -146,6 +147,12 @@ public abstract class ActiveLoadingFilesMetricsSet implements IMetricSet {
 
     // Dir2PendingFileCounters' binding is triggered by updatePendingDirList
     // FailedDirCounter's binding is triggered by updateFailedDir
+    // Both are only triggered by changes, so bind them again for the existing dirs, e.g. when the
+    // metric service restarts
+    rebindDir2PendingFileCounters();
+    if (Objects.nonNull(failedDir.get())) {
+      rebindFailedDirCounter();
+    }
     bindOtherCounters(metricService);
   }
 

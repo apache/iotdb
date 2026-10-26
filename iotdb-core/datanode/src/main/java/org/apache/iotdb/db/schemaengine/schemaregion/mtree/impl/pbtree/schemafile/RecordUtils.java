@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
@@ -286,7 +287,7 @@ public class RecordUtils {
       ViewExpression viewExpression = ViewExpression.deserialize(buffer);
       return paddingLogicalView(nodeName, tagIndex, isPreDeleted, viewExpression);
     }
-    throw new MetadataException("Unrecognized node type: " + nodeType);
+    throw new MetadataException(DataNodeSchemaMessages.UNRECOGNIZED_NODE_TYPE + nodeType);
   }
 
   // region Getter and Setter to Record Buffer

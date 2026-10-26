@@ -41,13 +41,33 @@ import java.util.Objects;
 public class SubscriptionEventSingleResponse
     implements SubscriptionEventResponse<CachedSubscriptionPollResponse> {
 
-  private final CachedSubscriptionPollResponse response;
+  private volatile CachedSubscriptionPollResponse response;
 
   public SubscriptionEventSingleResponse(
       final short responseType,
       final SubscriptionPollPayload payload,
       final SubscriptionCommitContext commitContext) {
     this.response = new CachedSubscriptionPollResponse(responseType, payload, commitContext);
+  }
+
+  public SubscriptionEventSingleResponse(
+      final short responseType,
+      final SubscriptionPollPayload payload,
+      final SubscriptionCommitContext commitContext,
+      final boolean timeSelected) {
+    this.response =
+        new CachedSubscriptionPollResponse(responseType, payload, commitContext, timeSelected);
+  }
+
+  public SubscriptionEventSingleResponse(
+      final short responseType,
+      final SubscriptionPollPayload payload,
+      final SubscriptionCommitContext commitContext,
+      final boolean timeSelected,
+      final Map<String, Map<String, Boolean>> timeSelectedByTable) {
+    this.response =
+        new CachedSubscriptionPollResponse(
+            responseType, payload, commitContext, timeSelected, timeSelectedByTable);
   }
 
   public SubscriptionEventSingleResponse(final SubscriptionPollResponse response) {
@@ -87,6 +107,19 @@ public class SubscriptionEventSingleResponse
   @Override
   public void invalidateCurrentResponseByteBuffer() {
     SubscriptionPollResponseCache.getInstance().invalidate(response);
+  }
+
+  public void replaceCurrentPayload(final SubscriptionPollPayload payload) {
+    final CachedSubscriptionPollResponse previous = response;
+    SubscriptionPollResponseCache.getInstance().invalidate(previous);
+    previous.closeMemoryBlock();
+    response =
+        new CachedSubscriptionPollResponse(
+            previous.getResponseType(),
+            payload,
+            previous.getCommitContext(),
+            previous.isTimeSelected(),
+            previous.getTimeSelectedByTable());
   }
 
   @Override

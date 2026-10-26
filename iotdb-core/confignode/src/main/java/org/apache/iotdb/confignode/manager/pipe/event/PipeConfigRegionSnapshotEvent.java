@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.commons.pipe.resource.snapshot.PipeSnapshotResourceManager;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
@@ -173,8 +174,10 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
     } catch (final Exception e) {
       LOGGER.warn(
           String.format(
-              "Increase reference count for snapshot %s error. Holder Message: %s",
-              snapshotPath, holderMessage),
+              ManagerMessages
+                  .LOG_INCREASE_REFERENCE_COUNT_SNAPSHOT_ARG_ERROR_HOLDER_MESSAGE_ARG_962E8672,
+              snapshotPath,
+              holderMessage),
           e);
       return false;
     }
@@ -191,8 +194,10 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
     } catch (final Exception e) {
       LOGGER.warn(
           String.format(
-              "Decrease reference count for snapshot %s error. Holder Message: %s",
-              snapshotPath, holderMessage),
+              ManagerMessages
+                  .LOG_DECREASE_REFERENCE_COUNT_SNAPSHOT_ARG_ERROR_HOLDER_MESSAGE_ARG_8C7FF9CE,
+              snapshotPath,
+              holderMessage),
           e);
       return false;
     }
@@ -349,7 +354,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
           resourceManager.decreaseSnapshotReference(templateFilePath);
         }
       } catch (final Exception e) {
-        LOGGER.warn("Decrease reference count for snapshot {} error.", snapshotPath, e);
+        LOGGER.warn(ManagerMessages.DECREASE_REFERENCE_COUNT_FOR_SNAPSHOT_ERROR, snapshotPath, e);
       }
     }
   }

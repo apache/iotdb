@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Pr
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneApplyCorrelation;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneApplySourceColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneAssignUniqueIdColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneCopyToColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneCorrelatedJoinColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneCorrelatedJoinCorrelation;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneDistinctAggregation;
@@ -147,6 +148,7 @@ public class LogicalOptimizeFactory {
             new PruneOffsetColumns(),
             new PruneOutputSourceColumns(),
             new PruneExplainAnalyzeColumns(),
+            new PruneCopyToColumns(),
             new PruneProjectColumns(),
             new PruneSortColumns(),
             new PruneTableFunctionProcessorColumns(),
@@ -209,6 +211,8 @@ public class LogicalOptimizeFactory {
     ImmutableList.Builder<PlanOptimizer> optimizerBuilder = ImmutableList.builder();
 
     optimizerBuilder.add(
+        // Remove superseded COPY TO ordering before scan ordering and limit pushdown.
+        new RemoveRedundantSortForCopyTo(),
         new IterativeOptimizer(
             plannerContext,
             ruleStats,
@@ -388,6 +392,7 @@ public class LogicalOptimizeFactory {
                 new MergeLimitWithSort(),
                 new MergeLimitOverProjectWithSort(),
                 new PushTopKThroughUnion())),
+        new TopKRuntimeFilterOptimizer(),
         new ParallelizeGrouping());
 
     this.planOptimizers = optimizerBuilder.build();

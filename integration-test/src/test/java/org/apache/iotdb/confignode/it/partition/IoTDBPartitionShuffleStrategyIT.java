@@ -56,7 +56,7 @@ public class IoTDBPartitionShuffleStrategyIT {
   public static final String SHUFFLE = "SHUFFLE";
   private static final int testSeriesSlotNum = 1000;
   private static final long testTimePartitionInterval = 604800000;
-  private static final double testDataRegionPerDataNode = 5.0;
+  private static final int testDataRegionPerDataNode = 5;
 
   private static final String database = "root.database";
   private static final int testTimePartitionSlotsNum = 100;

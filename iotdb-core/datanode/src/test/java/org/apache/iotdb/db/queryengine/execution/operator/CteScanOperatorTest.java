@@ -21,13 +21,13 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.CteScanOperator;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
-import org.apache.iotdb.db.utils.cte.CteDataStore;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -177,7 +177,7 @@ public class CteScanOperatorTest {
         new CteScanOperator(operatorContext, planNodeId, cteDataStore, queryId);
     assertEquals(2, cteDataStore.getCount());
 
-    assertEquals(896, cteDataStore.ramBytesUsed());
+    assertEquals(904, cteDataStore.ramBytesUsed());
 
     // Both operators should be able to read data
     assertTrue(operator1.hasNext());

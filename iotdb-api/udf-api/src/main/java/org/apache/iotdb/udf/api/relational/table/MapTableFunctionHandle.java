@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.udf.api.relational.table;
 
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
 import org.apache.iotdb.udf.api.type.Type;
 
 import java.nio.ByteBuffer;
@@ -39,7 +40,7 @@ public class MapTableFunctionHandle implements TableFunctionHandle {
 
   public void addProperty(String key, Object value) {
     if (!SUPPORT_VALUE_TYPE.contains(value.getClass())) {
-      throw new IllegalArgumentException("Unsupported value type.");
+      throw new IllegalArgumentException(UdfApiMessages.UNSUPPORTED_VALUE_TYPE);
     }
     map.put(key, value);
   }
@@ -134,7 +135,7 @@ public class MapTableFunctionHandle implements TableFunctionHandle {
           map.put(key, new String(b, StandardCharsets.UTF_8));
           break;
         default:
-          throw new IllegalArgumentException("Unknown type: " + type);
+          throw new IllegalArgumentException(UdfApiMessages.UNKNOWN_TYPE + type);
       }
     }
   }
@@ -171,7 +172,7 @@ public class MapTableFunctionHandle implements TableFunctionHandle {
 
     public Builder addProperty(String key, Object value) {
       if (!SUPPORT_VALUE_TYPE.contains(value.getClass())) {
-        throw new IllegalArgumentException("Unsupported value type.");
+        throw new IllegalArgumentException(UdfApiMessages.UNSUPPORTED_VALUE_TYPE);
       }
       map.put(key, value);
       return this;

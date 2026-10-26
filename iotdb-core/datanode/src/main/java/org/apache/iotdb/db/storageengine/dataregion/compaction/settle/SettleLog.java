@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.settle;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,13 +54,13 @@ public class SettleLog {
       }
       boolean success = settleLogPath.createNewFile();
       if (!success && settleLogPath.isDirectory()) {
-        logger.error("meet error when creating settle log, file path:{}", settleLogPath);
+        logger.error(StorageEngineMessages.ERROR_CREATING_SETTLE_LOG, settleLogPath);
         return false;
       }
       settleLogWriter = new BufferedWriter(new FileWriter(getSettleLogPath(), true));
       return true;
     } catch (IOException e) {
-      logger.error("meet error when creating settle log, file path:{}", settleLogPath, e);
+      logger.error(StorageEngineMessages.ERROR_CREATING_SETTLE_LOG, settleLogPath, e);
       return false;
     }
   }
@@ -72,7 +73,7 @@ public class SettleLog {
       settleLogWriter.flush();
       return true;
     } catch (IOException e) {
-      logger.error("write settle log file failed, the log file:{}", getSettleLogPath(), e);
+      logger.error(StorageEngineMessages.WRITE_SETTLE_LOG_FAILED, getSettleLogPath(), e);
       return false;
     } finally {
       settleLogFileLock.writeLock().unlock();
@@ -85,7 +86,7 @@ public class SettleLog {
         settleLogWriter.close();
       }
     } catch (IOException e) {
-      logger.error("close upgrade log file failed, the log file:{}", getSettleLogPath(), e);
+      logger.error(StorageEngineMessages.CLOSE_UPGRADE_LOG_FAILED, getSettleLogPath(), e);
     }
   }
 

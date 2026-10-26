@@ -20,12 +20,17 @@
 
 package org.apache.iotdb.commons.exception;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
 import static org.apache.iotdb.rpc.TSStatusCode.QUERY_TIMEOUT;
 
 public class QueryTimeoutException extends IoTDBRuntimeException {
 
   public QueryTimeoutException() {
-    super("Query execution is time out", QUERY_TIMEOUT.getStatusCode(), true);
+    super(
+        CommonMessages.EXCEPTION_QUERY_EXECUTION_TIME_OUT_A5DC7BFB,
+        QUERY_TIMEOUT.getStatusCode(),
+        true);
   }
 
   public QueryTimeoutException(String message) {

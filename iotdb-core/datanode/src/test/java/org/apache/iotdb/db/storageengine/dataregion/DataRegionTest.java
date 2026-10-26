@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -30,50 +32,77 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant.InnerSequenceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
+import org.apache.iotdb.db.storageengine.dataregion.flush.FlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DropTableModProgress;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.NOP;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.MemTableManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.storageengine.rescon.memory.WriteMemoryBlock;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.TsFileReader;
+import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.expression.QueryExpression;
+import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.TSRecord;
@@ -84,22 +113,37 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertRowNode;
 import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertTabletNode;
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyList;
 
 public class DataRegionTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -140,7 +184,8 @@ public class DataRegionTest {
     DataNodeTableCache.getInstance()
         .preUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.genTsTable(), null);
     DataNodeTableCache.getInstance()
-        .commitUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.tableName(), null);
+        .commitUpdateTable(
+            dataRegion.getDatabaseName(), StatementTestUtils.tableName(), null, null);
   }
 
   @After
@@ -149,6 +194,7 @@ public class DataRegionTest {
       dataRegion.syncDeleteDataFiles();
       StorageEngine.getInstance().deleteDataRegion(new DataRegionId(0));
     }
+    TreeDeviceSchemaCacheManager.getInstance().cleanUp();
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
     CompactionTaskManager.getInstance().stop();
     EnvironmentUtils.cleanEnv();
@@ -187,6 +233,143 @@ public class DataRegionTest {
             false);
     insertRowNode.setMeasurementSchemas(measurementSchemas);
     return insertRowNode;
+  }
+
+  @Test
+  public void testRejectedRowFlushesOnlySelectedOtherMemtable() throws Exception {
+    assertRejectedInsertionFlushesOnlySelectedOtherMemtable(false);
+  }
+
+  @Test
+  public void testRejectedTabletFlushesOnlySelectedOtherMemtable() throws Exception {
+    assertRejectedInsertionFlushesOnlySelectedOtherMemtable(true);
+  }
+
+  private void assertRejectedInsertionFlushesOnlySelectedOtherMemtable(boolean tablet)
+      throws Exception {
+    final SystemInfo systemInfo = SystemInfo.getInstance();
+    final int originalWait = config.getMaxWaitingTimeWhenInsertBlocked();
+    final int originalPeriod = config.getCheckPeriodWhenInsertBlocked();
+    final boolean originalSeparateData = config.isEnableSeparateData();
+    final long partitionInterval = TimePartitionUtils.getTimePartitionInterval();
+    try {
+      config.setEnableSeparateData(true);
+      for (int i = 1; i <= 384; i++) {
+        insertMemoryAdmissionTestRow(i, i);
+      }
+      final TsFileProcessor selected =
+          dataRegion.getWorkSequenceTsFileProcessors().stream()
+              .max(
+                  (left, right) ->
+                      Long.compare(left.getWorkMemTableRamCost(), right.getWorkMemTableRamCost()))
+              .get();
+      // Fill the first primitive arrays so that the rejected write owns a new reservation.
+      for (int i = 1; i <= 128; i++) {
+        insertMemoryAdmissionTestRow(partitionInterval + i, i);
+      }
+      final TsFileProcessor current =
+          dataRegion.getWorkSequenceTsFileProcessors().stream()
+              .filter(processor -> processor != selected)
+              .findFirst()
+              .get();
+      insertMemoryAdmissionTestRow(2 * partitionInterval + 1, 1);
+      final TsFileProcessor unselected =
+          dataRegion.getWorkSequenceTsFileProcessors().stream()
+              .filter(processor -> processor != selected && processor != current)
+              .findFirst()
+              .get();
+      final IMemTable currentMemTable = current.getWorkMemTable();
+      final IMemTable unselectedMemTable = unselected.getWorkMemTable();
+      final IMemTable selectedMemTable = selected.getWorkMemTable();
+
+      final Field regionInfoField = DataRegion.class.getDeclaredField("dataRegionInfo");
+      regionInfoField.setAccessible(true);
+      final DataRegionInfo regionInfo = (DataRegionInfo) regionInfoField.get(dataRegion);
+      final long memoryBefore = regionInfo.getMemCost();
+      setMemoryAdmissionTestThreshold("memorySizeForMemtable", 2 * memoryBefore);
+      setMemoryAdmissionTestThreshold(
+          "FLUSH_THRESHOLD", (double) memoryBefore - selected.getWorkMemTableRamCost() / 2);
+      setMemoryAdmissionTestThreshold("REJECT_THRESHOLD", (double) memoryBefore - 1);
+      config.setMaxWaitingTimeWhenInsertBlocked(5_000);
+      config.setCheckPeriodWhenInsertBlocked(10);
+      regionInfo.setNeedToReportToSystem(true);
+
+      // Keep the region lock held until the write succeeds. The asynchronous flush submitter
+      // cannot acquire it, so the insertion must submit the selected processor itself.
+      dataRegion.writeLock("testMemoryAdmission");
+      try {
+        if (tablet) {
+          dataRegion.insertTablet(
+              new InsertTabletNode(
+                  new PlanNodeId("memoryAdmission"),
+                  new PartialPath(deviceId),
+                  false,
+                  new String[] {measurementId},
+                  new TSDataType[] {TSDataType.INT32},
+                  new MeasurementSchema[] {new MeasurementSchema(measurementId, TSDataType.INT32)},
+                  new long[] {partitionInterval + 129},
+                  null,
+                  new Object[] {new int[] {129}},
+                  1));
+        } else {
+          insertMemoryAdmissionTestRow(partitionInterval + 129, 129);
+        }
+        Assert.assertTrue(selectedMemTable.shouldFlush());
+        Assert.assertNull(selected.getWorkMemTable());
+        Assert.assertSame(currentMemTable, current.getWorkMemTable());
+        Assert.assertSame(unselectedMemTable, unselected.getWorkMemTable());
+        Assert.assertFalse(currentMemTable.shouldFlush());
+        Assert.assertFalse(unselectedMemTable.shouldFlush());
+        Assert.assertEquals(129, currentMemTable.getTotalPointsNum());
+        for (WriteMemoryBlock block : regionInfo.getWriteMemoryManager().getMemoryBlocks()) {
+          Assert.assertEquals(0, block.getReservedMemoryInBytes());
+        }
+        Assert.assertFalse(systemInfo.isRejected());
+      } finally {
+        dataRegion.writeUnlock();
+      }
+
+      // A later write still reuses the small current MemTable instead of creating another file.
+      insertMemoryAdmissionTestRow(partitionInterval + 130, 130);
+      Assert.assertSame(currentMemTable, current.getWorkMemTable());
+      Assert.assertEquals(3, dataRegion.getTsFileManager().getTsFileList(true).size());
+      dataRegion.syncCloseAllWorkingAndClosingTsFileProcessors();
+      int points = 0;
+      for (TsFileResource resource : dataRegion.getTsFileManager().getTsFileList(true)) {
+        try (TsFileSequenceReader reader = new TsFileSequenceReader(resource.getTsFilePath());
+            TsFileReader tsFileReader = new TsFileReader(reader)) {
+          final QueryDataSet dataSet =
+              tsFileReader.query(
+                  QueryExpression.create(
+                      Collections.singletonList(new Path(deviceId, measurementId, false)), null));
+          while (dataSet.hasNext()) {
+            final RowRecord row = dataSet.next();
+            Assert.assertEquals(
+                row.getTimestamp() % partitionInterval, row.getFields().get(0).getIntV());
+            points++;
+          }
+        }
+      }
+      Assert.assertEquals(515, points);
+    } finally {
+      systemInfo.loadWriteMemory();
+      config.setMaxWaitingTimeWhenInsertBlocked(originalWait);
+      config.setCheckPeriodWhenInsertBlocked(originalPeriod);
+      config.setEnableSeparateData(originalSeparateData);
+    }
+  }
+
+  private void insertMemoryAdmissionTestRow(long time, int value) throws Exception {
+    final TSRecord record = new TSRecord(deviceId, time);
+    record.addTuple(
+        DataPoint.getDataPoint(TSDataType.INT32, measurementId, Integer.toString(value)));
+    dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+  }
+
+  private void setMemoryAdmissionTestThreshold(String name, Object value) throws Exception {
+    final Field field = SystemInfo.class.getDeclaredField(name);
+    field.setAccessible(true);
+    field.set(SystemInfo.getInstance(), value);
   }
 
   @Test
@@ -437,12 +620,12 @@ public class DataRegionTest {
             new QueryId("test_write").genPlanNodeId(),
             new PartialPath("root.vehicle.d0"),
             false,
-            measurements,
-            dataTypes,
-            measurementSchemas,
+            measurements.clone(),
+            dataTypes.clone(),
+            measurementSchemas.clone(),
             times,
             null,
-            columns,
+            columns.clone(),
             times.length);
 
     dataRegion.insertTablet(insertTabletNode2);
@@ -641,13 +824,15 @@ public class DataRegionTest {
             new QueryId("test_write").genPlanNodeId(),
             new PartialPath("root.vehicle.d0"),
             false,
-            measurements,
-            dataTypes,
-            measurementSchemas,
+            measurements.clone(),
+            dataTypes.clone(),
+            measurementSchemas.clone(),
             times,
             null,
-            columns,
+            columns.clone(),
             times.length);
+    insertTabletNode1.markFailedMeasurement(0);
+    insertTabletNode1.markFailedMeasurement(1);
     insertTabletNode1.setFailedMeasurementNumber(2);
 
     dataRegion.insertTablet(insertTabletNode1);
@@ -664,13 +849,15 @@ public class DataRegionTest {
             new QueryId("test_write").genPlanNodeId(),
             new PartialPath("root.vehicle.d0"),
             false,
-            measurements,
-            dataTypes,
-            measurementSchemas,
+            measurements.clone(),
+            dataTypes.clone(),
+            measurementSchemas.clone(),
             times,
             null,
-            columns,
+            columns.clone(),
             times.length);
+    insertTabletNode2.markFailedMeasurement(0);
+    insertTabletNode2.markFailedMeasurement(1);
     insertTabletNode2.setFailedMeasurementNumber(2);
 
     dataRegion.insertTablet(insertTabletNode2);
@@ -724,6 +911,7 @@ public class DataRegionTest {
       TSRecord record = new TSRecord(deviceId, j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       InsertRowNode rowNode = buildInsertRowNodeByTSRecord(record);
+      rowNode.markFailedMeasurement(0);
       rowNode.setFailedMeasurementNumber(1);
       dataRegion.insert(rowNode);
       dataRegion.syncCloseAllWorkingTsFileProcessors();
@@ -733,6 +921,7 @@ public class DataRegionTest {
       TSRecord record = new TSRecord(deviceId, j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       InsertRowNode rowNode = buildInsertRowNodeByTSRecord(record);
+      rowNode.markFailedMeasurement(0);
       rowNode.setFailedMeasurementNumber(1);
       dataRegion.insert(rowNode);
       dataRegion.syncCloseAllWorkingTsFileProcessors();
@@ -1062,6 +1251,382 @@ public class DataRegionTest {
       assertTrue(resource.isClosed());
     }
     dataRegion1.syncDeleteDataFiles();
+  }
+
+  @Test
+  public void testInsertRowPropagatesTsFileProcessorCreationFailure()
+      throws IllegalPathException, DataRegionException, TsFileProcessorException {
+    final HookedDataRegion dataRegion1 = new HookedDataRegion(systemDir, "root.fail_row");
+    dataRegion1.setTsFileProcessorSupplier(
+        (timePartitionId, sequence) -> {
+          throw new WriteProcessRejectException("mock creation failure");
+        });
+
+    final TSRecord record = new TSRecord("root.fail_row", 1);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1)));
+    final InsertRowNode insertRowNode = buildInsertRowNodeByTSRecord(record);
+
+    try {
+      dataRegion1.insert(insertRowNode);
+      Assert.fail("Expected WriteProcessRejectException");
+    } catch (WriteProcessRejectException e) {
+      Assert.assertTrue(e.getMessage().contains("mock creation failure"));
+    } catch (WriteProcessException e) {
+      Assert.fail("Expected WriteProcessRejectException but got " + e.getClass().getSimpleName());
+    } finally {
+      dataRegion1.syncDeleteDataFiles();
+    }
+  }
+
+  @Test
+  public void testInsertRowsMarkAllFailedRowsForSameProcessor() throws Exception {
+    final HookedDataRegion dataRegion1 = new HookedDataRegion(systemDir, "root.fail_rows");
+    final TsFileProcessor processor = Mockito.mock(TsFileProcessor.class);
+    Mockito.doThrow(new WriteProcessException("mock insert rows failure"))
+        .when(processor)
+        .insertRows(any(InsertRowsNode.class), any(long[].class));
+    Mockito.when(processor.shouldFlush()).thenReturn(false);
+    Mockito.when(processor.isSequence()).thenReturn(true);
+    dataRegion1.setTsFileProcessorSupplier((timePartitionId, sequence) -> processor);
+
+    final List<Integer> indexList = Arrays.asList(0, 1);
+    final List<InsertRowNode> nodes = new ArrayList<>();
+    for (long time : new long[] {1, 2}) {
+      final TSRecord record = new TSRecord("root.fail_rows", time);
+      record.addTuple(
+          DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(time)));
+      nodes.add(buildInsertRowNodeByTSRecord(record));
+    }
+    final InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""), indexList, nodes);
+
+    try {
+      dataRegion1.insert(insertRowsNode);
+      Assert.fail("Expected BatchProcessException");
+    } catch (BatchProcessException e) {
+      Assert.assertEquals(2, insertRowsNode.getResults().size());
+      Assert.assertEquals(
+          TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode(),
+          insertRowsNode.getResults().get(0).getCode());
+      Assert.assertEquals(
+          TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode(),
+          insertRowsNode.getResults().get(1).getCode());
+    } finally {
+      dataRegion1.syncDeleteDataFiles();
+    }
+  }
+
+  @Test
+  public void testInsertRowsTypeRetryKeepsSuccessfulFragments() throws Exception {
+    assertInsertRowsTypeRetryKeepsSuccessfulFragments(false);
+  }
+
+  @Test
+  public void testInsertRowsOfOneDeviceTypeRetryKeepsSuccessfulFragments() throws Exception {
+    assertInsertRowsTypeRetryKeepsSuccessfulFragments(true);
+  }
+
+  private void assertInsertRowsTypeRetryKeepsSuccessfulFragments(final boolean oneDevice)
+      throws Exception {
+    final boolean originalEnableSeparateData = config.isEnableSeparateData();
+    config.setEnableSeparateData(true);
+    final String devicePath = oneDevice ? "root.retry_rows_one_device" : "root.retry_rows";
+    final HookedDataRegion dataRegion1 = new HookedDataRegion(systemDir, devicePath);
+    try {
+      final TSRecord existingRecord = new TSRecord(devicePath, 5);
+      existingRecord.addTuple(
+          DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(5)));
+      dataRegion1.insert(buildInsertRowNodeByTSRecord(existingRecord));
+      final TsFileProcessor initialProcessor =
+          dataRegion1.getWorkSequenceTsFileProcessors().iterator().next();
+
+      final TsFileProcessor successfulRetryProcessor = Mockito.mock(TsFileProcessor.class);
+      final TsFileProcessor failedRetryProcessor = Mockito.mock(TsFileProcessor.class);
+      Mockito.when(successfulRetryProcessor.shouldFlush()).thenReturn(false);
+      Mockito.doThrow(new WriteProcessException("mock retry fragment failure"))
+          .when(failedRetryProcessor)
+          .insertRows(any(InsertRowsNode.class), any(long[].class));
+
+      final AtomicInteger processorLookupCount = new AtomicInteger();
+      dataRegion1.setTsFileProcessorSupplier(
+          (timePartitionId, sequence) -> {
+            if (processorLookupCount.getAndIncrement() < 2) {
+              return initialProcessor;
+            }
+            return sequence ? failedRetryProcessor : successfulRetryProcessor;
+          });
+
+      final List<Integer> indexList = Arrays.asList(0, 1);
+      final List<InsertRowNode> rows = new ArrayList<>();
+      for (long time : new long[] {3, 7}) {
+        final TSRecord record = new TSRecord(devicePath, time);
+        record.addTuple(
+            DataPoint.getDataPoint(TSDataType.INT64, measurementId, String.valueOf(time)));
+        rows.add(buildInsertRowNodeByTSRecord(record));
+      }
+
+      if (oneDevice) {
+        final InsertRowsOfOneDeviceNode insertRowsNode =
+            new InsertRowsOfOneDeviceNode(new PlanNodeId(""), indexList, rows);
+        insertRowsNode.setTargetPath(new PartialPath(devicePath));
+        try {
+          dataRegion1.insert(insertRowsNode);
+          Assert.fail("Expected BatchProcessException");
+        } catch (BatchProcessException e) {
+          assertOnlySecondRetryFragmentFailed(insertRowsNode.getResults());
+        }
+      } else {
+        final InsertRowsNode insertRowsNode =
+            new InsertRowsNode(new PlanNodeId(""), indexList, rows);
+        try {
+          dataRegion1.insert(insertRowsNode);
+          Assert.fail("Expected BatchProcessException");
+        } catch (BatchProcessException e) {
+          assertOnlySecondRetryFragmentFailed(insertRowsNode.getResults());
+        }
+      }
+
+      Mockito.verify(successfulRetryProcessor)
+          .insertRows(any(InsertRowsNode.class), any(long[].class));
+      Mockito.verify(failedRetryProcessor).insertRows(any(InsertRowsNode.class), any(long[].class));
+    } finally {
+      dataRegion1.syncDeleteDataFiles();
+      config.setEnableSeparateData(originalEnableSeparateData);
+    }
+  }
+
+  private void assertOnlySecondRetryFragmentFailed(final Map<Integer, TSStatus> results) {
+    Assert.assertEquals(1, results.size());
+    Assert.assertFalse(results.containsKey(0));
+    Assert.assertEquals(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode(), results.get(1).getCode());
+  }
+
+  @Test
+  public void testInsertRowsLastCacheSkipsFailedRows() throws Exception {
+    final boolean originalLastCacheEnable = COMMON_CONFIG.isLastCacheEnable();
+    COMMON_CONFIG.setLastCacheEnable(true);
+
+    final HookedDataRegion dataRegion1 = new HookedDataRegion(systemDir, "root.cache_rows");
+    final TsFileProcessor successProcessor = Mockito.mock(TsFileProcessor.class);
+    Mockito.when(successProcessor.shouldFlush()).thenReturn(false);
+    Mockito.when(successProcessor.isSequence()).thenReturn(true);
+    final long failingTime = TimePartitionUtils.getTimePartitionInterval() + 1;
+    final long failingPartitionId = TimePartitionUtils.getTimePartitionId(failingTime);
+    dataRegion1.setTsFileProcessorSupplier(
+        (timePartitionId, sequence) -> {
+          if (timePartitionId == failingPartitionId) {
+            throw new WriteProcessException("mock row failure");
+          }
+          return successProcessor;
+        });
+
+    final MeasurementPath lastCachePath =
+        new MeasurementPath(
+            "root.cache_rows",
+            measurementId,
+            new MeasurementSchema(
+                measurementId, TSDataType.INT32, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
+    TreeDeviceSchemaCacheManager.getInstance()
+        .declareLastCache(dataRegion1.getDatabaseName(), lastCachePath);
+
+    final List<Integer> indexList = Arrays.asList(0, 1);
+    final List<InsertRowNode> nodes = new ArrayList<>();
+    final long[] times = new long[] {1, failingTime};
+    final int[] values = new int[] {10, 20};
+    for (int i = 0; i < times.length; i++) {
+      final long time = times[i];
+      final TSRecord record = new TSRecord("root.cache_rows", time);
+      record.addTuple(
+          DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(values[i])));
+      nodes.add(buildInsertRowNodeByTSRecord(record));
+    }
+    final InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""), indexList, nodes);
+
+    try {
+      dataRegion1.insert(insertRowsNode);
+      Assert.fail("Expected BatchProcessException");
+    } catch (BatchProcessException e) {
+      final TimeValuePair lastCache =
+          TreeDeviceSchemaCacheManager.getInstance().getLastCache(lastCachePath);
+      Assert.assertNotNull(lastCache);
+      Assert.assertEquals(1, lastCache.getTimestamp());
+      Assert.assertEquals(10, lastCache.getValue().getInt());
+    } finally {
+      dataRegion1.syncDeleteDataFiles();
+      COMMON_CONFIG.setLastCacheEnable(originalLastCacheEnable);
+    }
+  }
+
+  @Test
+  public void testInsertTabletLastCacheSkipsFailedRows() throws Exception {
+    final boolean originalLastCacheEnable = COMMON_CONFIG.isLastCacheEnable();
+    COMMON_CONFIG.setLastCacheEnable(true);
+
+    final HookedDataRegion dataRegion1 = new HookedDataRegion(systemDir, "root.cache_tablet");
+    final TsFileProcessor processor = Mockito.mock(TsFileProcessor.class);
+    Mockito.doAnswer(
+            invocation -> {
+              TSStatus[] results = invocation.getArgument(2);
+              results[0] = RpcUtils.SUCCESS_STATUS;
+              results[1] =
+                  RpcUtils.getStatus(
+                      TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), "mock row failure");
+              throw new WriteProcessException("mock tablet failure");
+            })
+        .when(processor)
+        .insertTablet(
+            any(InsertTabletNode.class),
+            anyList(),
+            any(TSStatus[].class),
+            anyBoolean(),
+            any(long[].class));
+    Mockito.when(processor.shouldFlush()).thenReturn(false);
+    Mockito.when(processor.isSequence()).thenReturn(true);
+    dataRegion1.setTsFileProcessorSupplier((timePartitionId, sequence) -> processor);
+
+    final MeasurementPath lastCachePath =
+        new MeasurementPath(
+            "root.cache_tablet",
+            measurementId,
+            new MeasurementSchema(
+                measurementId, TSDataType.INT32, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
+    TreeDeviceSchemaCacheManager.getInstance()
+        .declareLastCache(dataRegion1.getDatabaseName(), lastCachePath);
+
+    final String[] measurements = new String[] {measurementId};
+    final TSDataType[] dataTypes = new TSDataType[] {TSDataType.INT32};
+    final MeasurementSchema[] measurementSchemas =
+        new MeasurementSchema[] {
+          new MeasurementSchema(measurementId, TSDataType.INT32, TSEncoding.PLAIN)
+        };
+    final long[] times = new long[] {1, 2};
+    final Object[] columns = new Object[] {new int[] {10, 20}};
+    final InsertTabletNode insertTabletNode =
+        new InsertTabletNode(
+            new QueryId("test_write").genPlanNodeId(),
+            new PartialPath("root.cache_tablet"),
+            false,
+            measurements,
+            dataTypes,
+            measurementSchemas,
+            times,
+            null,
+            columns,
+            times.length);
+
+    try {
+      dataRegion1.insertTablet(insertTabletNode);
+      Assert.fail("Expected BatchProcessException");
+    } catch (BatchProcessException e) {
+      final TimeValuePair lastCache =
+          TreeDeviceSchemaCacheManager.getInstance().getLastCache(lastCachePath);
+      Assert.assertNotNull(lastCache);
+      Assert.assertEquals(1, lastCache.getTimestamp());
+      Assert.assertEquals(10, lastCache.getValue().getInt());
+    } finally {
+      dataRegion1.syncDeleteDataFiles();
+      COMMON_CONFIG.setLastCacheEnable(originalLastCacheEnable);
+    }
+  }
+
+  @Test
+  public void testInsertTabletRejectMarksAllRowsFailed() throws Exception {
+    final HookedDataRegion dataRegion1 = new HookedDataRegion(systemDir, "root.reject_tablet");
+    final TsFileProcessor processor = Mockito.mock(TsFileProcessor.class);
+    Mockito.doThrow(new WriteProcessRejectException("mock tablet rejection"))
+        .when(processor)
+        .insertTablet(
+            any(InsertTabletNode.class),
+            anyList(),
+            any(TSStatus[].class),
+            anyBoolean(),
+            any(long[].class));
+    dataRegion1.setTsFileProcessorSupplier((timePartitionId, sequence) -> processor);
+
+    final InsertTabletNode insertTabletNode =
+        new InsertTabletNode(
+            new QueryId("test_write").genPlanNodeId(),
+            new PartialPath("root.reject_tablet"),
+            false,
+            new String[] {measurementId},
+            new TSDataType[] {TSDataType.INT64},
+            new MeasurementSchema[] {
+              new MeasurementSchema(measurementId, TSDataType.INT64, TSEncoding.PLAIN)
+            },
+            new long[] {1L, 2L},
+            null,
+            new Object[] {new long[] {1L, 2L}},
+            2);
+
+    try {
+      dataRegion1.insertTablet(insertTabletNode);
+      Assert.fail("Expected BatchProcessException");
+    } catch (final BatchProcessException e) {
+      for (final TSStatus status : e.getFailingStatus()) {
+        Assert.assertEquals(TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode(), status.getCode());
+      }
+    } finally {
+      dataRegion1.syncDeleteDataFiles();
+    }
+  }
+
+  @Test
+  public void testInsertTabletTypeRetryDoesNotReplaySuccessfulFragments() throws Exception {
+    final HookedDataRegion dataRegion1 = new HookedDataRegion(systemDir, "root.retry_tablet");
+    final TsFileProcessor firstProcessor = Mockito.mock(TsFileProcessor.class);
+    final TsFileProcessor secondProcessor = Mockito.mock(TsFileProcessor.class);
+    final AtomicInteger insertionCount = new AtomicInteger();
+    final org.mockito.stubbing.Answer<Void> insertionAnswer =
+        invocation -> {
+          if (insertionCount.incrementAndGet() == 2) {
+            throw new DataTypeInconsistentException(TSDataType.INT32, TSDataType.INT64);
+          }
+          return null;
+        };
+    Mockito.doAnswer(insertionAnswer)
+        .when(firstProcessor)
+        .insertTablet(
+            any(InsertTabletNode.class),
+            anyList(),
+            any(TSStatus[].class),
+            anyBoolean(),
+            any(long[].class));
+    Mockito.doAnswer(insertionAnswer)
+        .when(secondProcessor)
+        .insertTablet(
+            any(InsertTabletNode.class),
+            anyList(),
+            any(TSStatus[].class),
+            anyBoolean(),
+            any(long[].class));
+
+    final long firstTime = 1L;
+    final long secondTime = firstTime + TimePartitionUtils.getTimePartitionInterval();
+    final long firstPartitionId = TimePartitionUtils.getTimePartitionId(firstTime);
+    Assert.assertNotEquals(firstPartitionId, TimePartitionUtils.getTimePartitionId(secondTime));
+    dataRegion1.setTsFileProcessorSupplier(
+        (timePartitionId, sequence) ->
+            timePartitionId == firstPartitionId ? firstProcessor : secondProcessor);
+
+    final InsertTabletNode insertTabletNode =
+        new InsertTabletNode(
+            new QueryId("test_write").genPlanNodeId(),
+            new PartialPath("root.retry_tablet"),
+            false,
+            new String[] {measurementId},
+            new TSDataType[] {TSDataType.INT64},
+            new MeasurementSchema[] {
+              new MeasurementSchema(measurementId, TSDataType.INT64, TSEncoding.PLAIN)
+            },
+            new long[] {firstTime, secondTime},
+            null,
+            new Object[] {new long[] {1L, 2L}},
+            2);
+    try {
+      dataRegion1.insertTablet(insertTabletNode);
+      Assert.assertEquals(3, insertionCount.get());
+    } finally {
+      dataRegion1.syncDeleteDataFiles();
+    }
   }
 
   @Test
@@ -1659,11 +2224,55 @@ public class DataRegionTest {
         dataRegion.getWorkSequenceTsFileProcessors().contains(tsFileResource.getProcessor()));
   }
 
+  @Test
+  public void testDeletedRegionStopsItsLoadManagerAndRefusesANewOne() throws Exception {
+    final LoadTsFileManager manager = dataRegion.getLoadTsFileManager();
+    Assert.assertFalse(manager.isStopped());
+
+    StorageEngine.getInstance().deleteDataRegion(new DataRegionId(0));
+
+    Assert.assertTrue(manager.isStopped());
+    // The region keeps the one manager it published, stopped.
+    Assert.assertSame(manager, dataRegion.getLoadTsFileManagerIfPresent().orElse(null));
+    try {
+      dataRegion.getLoadTsFileManager();
+      Assert.fail("A deleted region has to refuse to publish a LOAD manager");
+    } catch (final IllegalStateException e) {
+      Assert.assertTrue(e.getMessage().contains("is deleted"));
+    }
+  }
+
   public static class DummyDataRegion extends DataRegion {
 
     public DummyDataRegion(String systemInfoDir, String storageGroupName)
         throws DataRegionException {
       super(systemInfoDir, "0", new TsFileFlushPolicy.DirectFlushPolicy(), storageGroupName);
+    }
+  }
+
+  private interface TsFileProcessorSupplier {
+    TsFileProcessor get(long timePartitionId, boolean sequence) throws WriteProcessException;
+  }
+
+  private static class HookedDataRegion extends DummyDataRegion {
+    private TsFileProcessorSupplier tsFileProcessorSupplier;
+
+    private HookedDataRegion(String systemInfoDir, String storageGroupName)
+        throws DataRegionException {
+      super(systemInfoDir, storageGroupName);
+    }
+
+    private void setTsFileProcessorSupplier(TsFileProcessorSupplier tsFileProcessorSupplier) {
+      this.tsFileProcessorSupplier = tsFileProcessorSupplier;
+    }
+
+    @Override
+    protected TsFileProcessor getOrCreateTsFileProcessor(long timeRangeId, boolean sequence)
+        throws WriteProcessException {
+      if (tsFileProcessorSupplier != null) {
+        return tsFileProcessorSupplier.get(timeRangeId, sequence);
+      }
+      return super.getOrCreateTsFileProcessor(timeRangeId, sequence);
     }
   }
 
@@ -1778,6 +2387,190 @@ public class DataRegionTest {
   }
 
   @Test
+  public void testTableDeletionFallsBackToModsForCompactingFile() throws Exception {
+    RelationalInsertTabletNode insertTabletNode = genInsertTabletNode(10, 0);
+    dataRegion.insertTablet(insertTabletNode);
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    TsFileResource sourceTsFile = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    assertTrue(sourceTsFile.transformStatus(TsFileResourceStatus.COMPACTION_CANDIDATE));
+    assertTrue(sourceTsFile.transformStatus(TsFileResourceStatus.COMPACTING));
+
+    TsFileResource targetTsFile =
+        new TsFileResource(new File(sourceTsFile.getTsFile().getParent(), "target.tsfile"));
+    CompactionUtils.prepareCompactionModFiles(
+        Collections.singletonList(targetTsFile), Collections.singletonList(sourceTsFile));
+    Assert.assertFalse(targetTsFile.anyModFileExists());
+
+    TableDeletionEntry deletionEntry =
+        new TableDeletionEntry(
+            new DeletionPredicate(StatementTestUtils.tableName(), new NOP()),
+            new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE));
+    dataRegion.deleteByTable(
+        new RelationalDeleteDataNode(
+            DropTableModProgress.planNodeId(42), deletionEntry, dataRegion.getDatabaseName()));
+
+    Assert.assertEquals(
+        new TDropTableModProgress(1).setRemainingModFileCount(0),
+        dataRegion.getDropTableModProgress(42));
+
+    assertTrue(sourceTsFile.getTsFile().exists());
+    assertTrue(sourceTsFile.isCompacting());
+    assertTrue(sourceTsFile.anyModFileExists());
+    assertTrue(targetTsFile.anyModFileExists());
+    try {
+      targetTsFile.getModFileForWrite().close();
+      Assert.assertEquals(
+          Collections.singletonList(deletionEntry),
+          ModificationFile.readAllModifications(targetTsFile.getTsFile(), false));
+    } finally {
+      targetTsFile.removeModFile();
+    }
+  }
+
+  @Test
+  public void testDropTableModProgressWhileClosingSharedFile() throws Exception {
+    checkDropTableModProgressWhileClosingFile(true);
+  }
+
+  @Test
+  public void testDropTableModProgressWhileClosingFile() throws Exception {
+    checkDropTableModProgressWhileClosingFile(false);
+  }
+
+  private void checkDropTableModProgressWhileClosingFile(final boolean shareModFile)
+      throws Exception {
+    dataRegion.insertTablet(genInsertTabletNode(10, 0));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    dataRegion.insertTablet(genInsertTabletNode(10, 100));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    final List<TsFileResource> resources = dataRegion.getTsFileManager().getTsFileList(true);
+    Assert.assertEquals(2, resources.size());
+    final CountDownLatch closeStarted = new CountDownLatch(1);
+    final CountDownLatch allowClose = new CountDownLatch(1);
+    final AtomicInteger writeCount = new AtomicInteger();
+    final ModificationFile modFile =
+        new ModificationFile(resources.get(0).getModFileForWrite().getFile(), true) {
+          @Override
+          public int hashCode() {
+            // Separate HashSet buckets ensure the stream can split these two writes.
+            return 0;
+          }
+
+          @Override
+          public void write(final ModEntry entry) throws IOException {
+            writeCount.incrementAndGet();
+            super.write(entry);
+          }
+
+          @Override
+          public void close() throws IOException {
+            closeStarted.countDown();
+            try {
+              assertTrue(allowClose.await(10, TimeUnit.SECONDS));
+            } catch (final InterruptedException e) {
+              Thread.currentThread().interrupt();
+              throw new IOException(e);
+            }
+            super.close();
+          }
+        };
+    for (final TsFileResource resource : resources) {
+      assertTrue(resource.transformStatus(TsFileResourceStatus.COMPACTION_CANDIDATE));
+      assertTrue(resource.transformStatus(TsFileResourceStatus.COMPACTING));
+      if (shareModFile || resource == resources.get(0)) {
+        resource.setExclusiveModFile(modFile);
+      } else {
+        resource.setExclusiveModFile(
+            new ModificationFile(resource.getModFileForWrite().getFile(), true) {
+              @Override
+              public int hashCode() {
+                return 15;
+              }
+            });
+      }
+    }
+
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      final Future<?> deletion =
+          executor.submit(
+              () -> {
+                dataRegion.deleteByTable(dropTableNode(43));
+                return null;
+              });
+      assertTrue(closeStarted.await(10, TimeUnit.SECONDS));
+      Assert.assertFalse(deletion.isDone());
+      // A successful write is still pending until close returns. With independent mod files,
+      // the other file finishes while this one is blocked. Shared mod files are counted once.
+      await()
+          .atMost(10, TimeUnit.SECONDS)
+          .untilAsserted(
+              () ->
+                  Assert.assertEquals(
+                      new TDropTableModProgress(shareModFile ? 0 : 1).setRemainingModFileCount(1),
+                      dataRegion.getDropTableModProgress(43)));
+      allowClose.countDown();
+      deletion.get(10, TimeUnit.SECONDS);
+      Assert.assertEquals(
+          new TDropTableModProgress(shareModFile ? 1 : 2).setRemainingModFileCount(0),
+          dataRegion.getDropTableModProgress(43));
+      Assert.assertEquals(1, writeCount.get());
+    } finally {
+      allowClose.countDown();
+      executor.shutdown();
+      assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+    }
+  }
+
+  @Test
+  public void testDropTableModProgressDoesNotCountFailedClose() throws Exception {
+    dataRegion.insertTablet(genInsertTabletNode(10, 0));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    final TsFileResource resource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    assertTrue(resource.transformStatus(TsFileResourceStatus.COMPACTION_CANDIDATE));
+    assertTrue(resource.transformStatus(TsFileResourceStatus.COMPACTING));
+    final ModificationFile modFile = Mockito.spy(resource.getModFileForWrite());
+    resource.setExclusiveModFile(modFile);
+    Mockito.doThrow(new IOException()).when(modFile).close();
+    try {
+      Assert.assertThrows(IOException.class, () -> dataRegion.deleteByTable(dropTableNode(44)));
+      Assert.assertEquals(
+          new TDropTableModProgress(0).setRemainingModFileCount(1),
+          dataRegion.getDropTableModProgress(44));
+    } finally {
+      Mockito.doCallRealMethod().when(modFile).close();
+      modFile.close();
+    }
+  }
+
+  @Test
+  public void testDropTableModProgressWithoutModFiles() throws Exception {
+    dataRegion.deleteByTable(dropTableNode(45));
+    Assert.assertEquals(
+        new TDropTableModProgress(0).setRemainingModFileCount(0),
+        dataRegion.getDropTableModProgress(45));
+    dataRegion.insertTablet(genInsertTabletNode(10, 0));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    final TsFileResource resource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    dataRegion.deleteByTable(dropTableNode(46));
+    Assert.assertFalse(resource.getTsFile().exists());
+    Assert.assertEquals(
+        new TDropTableModProgress(0).setRemainingModFileCount(0),
+        dataRegion.getDropTableModProgress(46));
+    Assert.assertNull(dataRegion.getDropTableModProgress(45));
+  }
+
+  private RelationalDeleteDataNode dropTableNode(final long procedureId) {
+    return new RelationalDeleteDataNode(
+        DropTableModProgress.planNodeId(procedureId),
+        new TableDeletionEntry(
+            new DeletionPredicate(StatementTestUtils.tableName()),
+            new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
+        dataRegion.getDatabaseName());
+  }
+
+  @Test
   public void testFlushSpecifiedResource()
       throws IllegalPathException, WriteProcessException, ExecutionException, InterruptedException {
     for (int j = 100; j < 200; j++) {
@@ -1792,5 +2585,181 @@ public class DataRegionTest {
 
     future.get();
     assertTrue(tsFileResourceSeq.isClosed());
+  }
+
+  @Test
+  public void testFullFlushClosesProcessorAfterOrdinaryAsyncFlush() throws Exception {
+    final TSRecord record = new TSRecord(deviceId, 100);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(100)));
+    dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+
+    final TsFileProcessor tsFileProcessor =
+        dataRegion.getWorkSequenceTsFileProcessors().iterator().next();
+    final TsFileResource tsFileResource = tsFileProcessor.getTsFileResource();
+    tsFileProcessor.asyncFlush();
+    final Future<?> ordinaryFlushFuture = tsFileProcessor.getCloseFuture();
+    Assert.assertNotNull(ordinaryFlushFuture);
+    ordinaryFlushFuture.get();
+
+    Assert.assertFalse(tsFileProcessor.alreadyMarkedClosing());
+    Assert.assertFalse(tsFileResource.isClosed());
+
+    dataRegion.syncCloseAllWorkingAndClosingTsFileProcessors();
+
+    Assert.assertTrue(tsFileResource.isClosed());
+    Assert.assertFalse(dataRegion.getWorkSequenceTsFileProcessors().contains(tsFileProcessor));
+  }
+
+  @Test
+  public void testFullFlushWaitsForRunningOrdinaryAsyncFlush() throws Exception {
+    final CountDownLatch ordinaryFlushBlocked = new CountDownLatch(1);
+    final CountDownLatch allowOrdinaryFlush = new CountDownLatch(1);
+    dataRegion.setCustomFlushListeners(
+        Collections.singletonList(
+            new FlushListener() {
+              @Override
+              public void onMemTableFlushStarted(final IMemTable memTable) {
+                // Do nothing.
+              }
+
+              @Override
+              public void onMemTableFlushed(final IMemTable memTable) {
+                ordinaryFlushBlocked.countDown();
+                try {
+                  allowOrdinaryFlush.await();
+                } catch (final InterruptedException e) {
+                  Thread.currentThread().interrupt();
+                  throw new AssertionError(e);
+                }
+              }
+            }));
+
+    final TSRecord record = new TSRecord(deviceId, 100);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(100)));
+    dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    final TsFileProcessor tsFileProcessor =
+        dataRegion.getWorkSequenceTsFileProcessors().iterator().next();
+    final TsFileResource tsFileResource = tsFileProcessor.getTsFileResource();
+
+    tsFileProcessor.asyncFlush();
+    Assert.assertTrue(ordinaryFlushBlocked.await(30, TimeUnit.SECONDS));
+    final CompletableFuture<Void> fullFlushFuture =
+        CompletableFuture.runAsync(
+            () -> {
+              try {
+                dataRegion.syncCloseAllWorkingAndClosingTsFileProcessors();
+              } catch (final InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new CompletionException(e);
+              } catch (final ExecutionException e) {
+                throw new CompletionException(e);
+              }
+            });
+
+    try {
+      fullFlushFuture.get(200, TimeUnit.MILLISECONDS);
+      Assert.fail();
+    } catch (final TimeoutException expected) {
+      // The full flush must wait until the ordinary flush releases the processor.
+    } finally {
+      allowOrdinaryFlush.countDown();
+    }
+
+    fullFlushFuture.get(30, TimeUnit.SECONDS);
+    Assert.assertTrue(tsFileResource.isClosed());
+    Assert.assertFalse(dataRegion.getWorkSequenceTsFileProcessors().contains(tsFileProcessor));
+  }
+
+  @Test
+  public void testFullFlushDoesNotChaseProcessorCreatedAfterSnapshot() throws Exception {
+    final CountDownLatch closeListenerBlocked = new CountDownLatch(1);
+    final CountDownLatch allowCloseListener = new CountDownLatch(1);
+    dataRegion.setCustomCloseFileListeners(
+        Collections.singletonList(
+            processor -> {
+              closeListenerBlocked.countDown();
+              try {
+                allowCloseListener.await();
+              } catch (final InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new TsFileProcessorException(e);
+              }
+            }));
+
+    final TSRecord firstRecord = new TSRecord(deviceId, 100);
+    firstRecord.addTuple(
+        DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(100)));
+    dataRegion.insert(buildInsertRowNodeByTSRecord(firstRecord));
+    final TsFileProcessor initialProcessor =
+        dataRegion.getWorkSequenceTsFileProcessors().iterator().next();
+
+    final CompletableFuture<Void> fullFlushFuture =
+        CompletableFuture.runAsync(
+            () -> {
+              try {
+                dataRegion.syncCloseAllWorkingAndClosingTsFileProcessors();
+              } catch (final InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new CompletionException(e);
+              } catch (final ExecutionException e) {
+                throw new CompletionException(e);
+              }
+            });
+
+    TsFileProcessor replacementProcessor;
+    try {
+      Assert.assertTrue(closeListenerBlocked.await(30, TimeUnit.SECONDS));
+      final TSRecord secondRecord = new TSRecord(deviceId, 101);
+      secondRecord.addTuple(
+          DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(101)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(secondRecord));
+      replacementProcessor = dataRegion.getWorkSequenceTsFileProcessors().iterator().next();
+      Assert.assertNotSame(initialProcessor, replacementProcessor);
+    } finally {
+      allowCloseListener.countDown();
+    }
+
+    fullFlushFuture.get(30, TimeUnit.SECONDS);
+    Assert.assertTrue(dataRegion.getWorkSequenceTsFileProcessors().contains(replacementProcessor));
+    Assert.assertFalse(replacementProcessor.alreadyMarkedClosing());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testSyncCloseWaitsForAlreadyClosingProcessor() throws Exception {
+    TsFileProcessor processor = Mockito.mock(TsFileProcessor.class);
+    Future<?> closeFuture = Mockito.mock(Future.class);
+    CountDownLatch waitStarted = new CountDownLatch(1);
+    CountDownLatch allowClose = new CountDownLatch(1);
+    Mockito.doReturn(closeFuture).when(processor).getCloseFuture();
+    Mockito.when(closeFuture.get())
+        .thenAnswer(
+            invocation -> {
+              waitStarted.countDown();
+              assertTrue(allowClose.await(10, TimeUnit.SECONDS));
+              return null;
+            });
+
+    Field closingProcessorsField =
+        DataRegion.class.getDeclaredField("closingSequenceTsFileProcessor");
+    closingProcessorsField.setAccessible(true);
+    Set<TsFileProcessor> closingProcessors =
+        (Set<TsFileProcessor>) closingProcessorsField.get(dataRegion);
+    closingProcessors.add(processor);
+
+    CompletableFuture<Void> syncCloseTask = null;
+    try {
+      syncCloseTask = CompletableFuture.runAsync(dataRegion::syncCloseAllWorkingTsFileProcessors);
+      assertTrue(waitStarted.await(10, TimeUnit.SECONDS));
+      Assert.assertFalse(syncCloseTask.isDone());
+      allowClose.countDown();
+      syncCloseTask.get(10, TimeUnit.SECONDS);
+    } finally {
+      allowClose.countDown();
+      closingProcessors.remove(processor);
+      if (syncCloseTask != null) {
+        syncCloseTask.get(10, TimeUnit.SECONDS);
+      }
+    }
   }
 }

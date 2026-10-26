@@ -30,7 +30,7 @@ import org.apache.iotdb.db.pipe.processor.aggregate.window.processor.TumblingWin
 import org.apache.iotdb.db.pipe.processor.downsampling.changing.ChangingValueSamplingProcessor;
 import org.apache.iotdb.db.pipe.processor.downsampling.sdt.SwingingDoorTrendingSamplingProcessor;
 import org.apache.iotdb.db.pipe.processor.downsampling.tumbling.TumblingTimeSamplingProcessor;
-import org.apache.iotdb.db.pipe.processor.pipeconsensus.PipeConsensusProcessor;
+import org.apache.iotdb.db.pipe.processor.iotconsensusv2.IoTConsensusV2Processor;
 import org.apache.iotdb.db.pipe.processor.schemachange.RenameDatabaseProcessor;
 import org.apache.iotdb.db.pipe.processor.twostage.plugin.TwoStageCountProcessor;
 
@@ -67,8 +67,12 @@ class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor {
     pluginConstructors.put(
         BuiltinPipePlugin.COUNT_POINT_PROCESSOR.getPipePluginName(), TwoStageCountProcessor::new);
     pluginConstructors.put(
+        BuiltinPipePlugin.IOT_CONSENSUS_V2_PROCESSOR.getPipePluginName(),
+        IoTConsensusV2Processor::new);
+    // Keep the pre-rename plugin name wired to the new implementation for stale PipeMeta.
+    pluginConstructors.put(
         BuiltinPipePlugin.PIPE_CONSENSUS_PROCESSOR.getPipePluginName(),
-        PipeConsensusProcessor::new);
+        IoTConsensusV2Processor::new);
     pluginConstructors.put(
         BuiltinPipePlugin.RENAME_DATABASE_PROCESSOR.getPipePluginName(),
         RenameDatabaseProcessor::new);

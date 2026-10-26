@@ -32,6 +32,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.NoValidValueException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
@@ -56,6 +57,7 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.session.i18n.SessionMessages;
 import org.apache.iotdb.session.rpccompress.TabletEncoder;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.TemplateQueryType;
@@ -68,10 +70,8 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -81,15 +81,14 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -106,6 +105,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.IntToLongFunction;
 import java.util.stream.Collectors;
 
 @SuppressWarnings({"java:S107", "java:S1135"}) // need enough parameters, ignore todos
@@ -126,12 +126,17 @@ public class Session implements ISession {
           new LinkedBlockingQueue<>(SessionConfig.DEFAULT_SESSION_EXECUTOR_TASK_NUM),
           ThreadUtils.createThreadFactory("SessionExecutor", true));
   protected List<String> nodeUrls;
+  private final List<String> initialNodeUrls;
   protected String username;
   protected String password;
+  protected boolean useEncryptedPassword;
   protected int fetchSize;
   protected boolean useSSL;
   protected String trustStore;
   protected String trustStorePwd;
+  protected String keyStore;
+  protected String keyStorePwd;
+  protected String sslProtocol;
 
   /**
    * Timeout of query can be set by users. A negative number means using the default configuration
@@ -201,9 +206,7 @@ public class Session implements ISession {
   // may be null
   protected volatile String database;
 
-  private static final String REDIRECT_TWICE = "redirect twice";
-
-  private static final String REDIRECT_TWICE_RETRY = "redirect twice, please try again.";
+  protected volatile boolean enableAutoCreateSchema = true;
 
   private static final String VALUES_SIZE_SHOULD_BE_EQUAL =
       "times, measurementsList and valuesList's size should be equal";
@@ -217,7 +220,7 @@ public class Session implements ISession {
       "All values are null and this submission is ignored,deviceId is [{}],times are [{}],measurements are [{}]";
   private static final String ALL_VALUES_ARE_NULL_MULTI_DEVICES =
       "All values are null and this submission is ignored,deviceIds are [{}],times are [{}],measurements are [{}]";
-  private static final String ALL_INSERT_DATA_IS_NULL = "All inserted data is null.";
+  private static final String ALL_INSERT_DATA_IS_NULL = SessionMessages.ALL_INSERT_DATA_IS_NULL;
 
   protected static final String TABLE = "table";
   protected static final String TREE = "tree";
@@ -366,6 +369,8 @@ public class Session implements ISession {
       boolean enableRedirection,
       Version version) {
     this.defaultEndPoint = new TEndPoint(host, rpcPort);
+    this.initialNodeUrls =
+        Collections.singletonList(UrlUtils.convertTEndPointIpv4AndIpv6Url(defaultEndPoint));
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
@@ -431,10 +436,11 @@ public class Session implements ISession {
       boolean enableRedirection,
       Version version) {
     if (nodeUrls.isEmpty()) {
-      throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
+      throw new IllegalArgumentException(SessionMessages.NODE_URLS_EMPTY);
     }
-    nodeUrls = shuffleNodeUrls(nodeUrls);
+    nodeUrls = shuffleNodeUrls(new ArrayList<>(nodeUrls));
     this.nodeUrls = nodeUrls;
+    this.initialNodeUrls = Collections.unmodifiableList(new ArrayList<>(nodeUrls));
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
@@ -448,13 +454,15 @@ public class Session implements ISession {
   public Session(AbstractSessionBuilder builder) {
     if (builder.nodeUrls != null) {
       if (builder.nodeUrls.isEmpty()) {
-        throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
+        throw new IllegalArgumentException(SessionMessages.NODE_URLS_EMPTY);
       }
-      builder.nodeUrls = shuffleNodeUrls(builder.nodeUrls);
-      this.nodeUrls = builder.nodeUrls;
+      this.nodeUrls = shuffleNodeUrls(new ArrayList<>(builder.nodeUrls));
+      this.initialNodeUrls = Collections.unmodifiableList(new ArrayList<>(nodeUrls));
       this.enableQueryRedirection = true;
     } else {
       this.defaultEndPoint = new TEndPoint(builder.host, builder.rpcPort);
+      this.initialNodeUrls =
+          Collections.singletonList(UrlUtils.convertTEndPointIpv4AndIpv6Url(defaultEndPoint));
       this.enableQueryRedirection = builder.enableRedirection;
     }
     this.enableThriftRpcCompaction = builder.isThriftRpcCompactionEnabled;
@@ -466,20 +474,26 @@ public class Session implements ISession {
     this.enableRecordsAutoConvertTablet = builder.enableRecordsAutoConvertTablet;
     this.username = builder.username;
     this.password = builder.pw;
+    this.useEncryptedPassword = builder.useEncryptedPassword;
     this.fetchSize = builder.fetchSize;
     this.zoneId = builder.zoneId;
     this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
     this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
+    this.connectionTimeoutInMs = builder.connectionTimeoutInMs;
     this.version = builder.version;
     this.useSSL = builder.useSSL;
     this.trustStore = builder.trustStore;
     this.trustStorePwd = builder.trustStorePwd;
+    this.keyStore = builder.keyStore;
+    this.keyStorePwd = builder.keyStorePwd;
+    this.sslProtocol = builder.sslProtocol;
     this.enableAutoFetch = builder.enableAutoFetch;
     this.maxRetryCount = builder.maxRetryCount;
     this.retryIntervalInMs = builder.retryIntervalInMs;
     this.sqlDialect = builder.sqlDialect;
     this.queryTimeoutInMs = builder.timeOut;
     this.database = builder.database;
+    this.enableAutoCreateSchema = builder.enableAutoCreateSchema;
   }
 
   @Override
@@ -533,6 +547,7 @@ public class Session implements ISession {
       this.availableNodes =
           NodesSupplier.createNodeSupplier(
               getNodeUrls(),
+              SessionUtils.parseSeedNodeUrls(initialNodeUrls),
               executorService,
               username,
               password,
@@ -543,10 +558,16 @@ public class Session implements ISession {
               useSSL,
               trustStore,
               trustStorePwd,
+              keyStore,
+              keyStorePwd,
+              sslProtocol,
               enableRPCCompaction,
               version.toString());
     } else {
-      this.availableNodes = new DummyNodesSupplier(getNodeUrls());
+      // A static supplier has no separate seed tier. Keep every configured address after reopen.
+      Set<TEndPoint> staticNodes = new LinkedHashSet<>(getNodeUrls());
+      staticNodes.addAll(SessionUtils.parseSeedNodeUrls(initialNodeUrls));
+      this.availableNodes = new DummyNodesSupplier(new ArrayList<>(staticNodes));
     }
 
     this.connectionTimeoutInMs = connectionTimeoutInMs;
@@ -589,11 +610,9 @@ public class Session implements ISession {
   }
 
   private List<TEndPoint> getNodeUrls() {
-    if (defaultEndPoint != null) {
-      return Collections.singletonList(defaultEndPoint);
-    } else {
-      return SessionUtils.parseSeedNodeUrls(nodeUrls);
-    }
+    return defaultEndPoint == null
+        ? SessionUtils.parseSeedNodeUrls(initialNodeUrls)
+        : Collections.singletonList(defaultEndPoint.deepCopy());
   }
 
   @Override
@@ -851,31 +870,12 @@ public class Session implements ISession {
     TSCreateAlignedTimeseriesReq request = new TSCreateAlignedTimeseriesReq();
     request.setPrefixPath(prefixPath);
     request.setMeasurements(measurements);
-    request.setDataTypes(dataTypes.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
-    request.setEncodings(encodings.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
-    request.setCompressors(
-        compressors.stream().map(i -> (int) i.serialize()).collect(Collectors.toList()));
-    if (measurementAliasList != null) {
-      measurementAliasList =
-          measurementAliasList.stream()
-              .map(value -> value != null ? value : "")
-              .collect(Collectors.toList());
-    }
-    request.setMeasurementAlias(measurementAliasList);
-    if (tagsList != null) {
-      tagsList =
-          tagsList.stream()
-              .map(value -> value != null ? value : new HashMap<String, String>())
-              .collect(Collectors.toList());
-    }
-    request.setTagsList(tagsList);
-    if (attributesList != null) {
-      attributesList =
-          attributesList.stream()
-              .map(value -> value != null ? value : new HashMap<String, String>())
-              .collect(Collectors.toList());
-    }
-    request.setAttributesList(attributesList);
+    request.setDataTypes(toDataTypeOrdinals(dataTypes));
+    request.setEncodings(toEncodingOrdinals(encodings));
+    request.setCompressors(toCompressionOrdinals(compressors));
+    request.setMeasurementAlias(replaceNullStrings(measurementAliasList));
+    request.setTagsList(replaceNullMaps(tagsList));
+    request.setAttributesList(replaceNullMaps(attributesList));
     return request;
   }
 
@@ -915,47 +915,14 @@ public class Session implements ISession {
     TSCreateMultiTimeseriesReq request = new TSCreateMultiTimeseriesReq();
 
     request.setPaths(paths);
-
-    List<Integer> dataTypeOrdinals = new ArrayList<>(dataTypes.size());
-    for (TSDataType dataType : dataTypes) {
-      dataTypeOrdinals.add(dataType.ordinal());
-    }
-    request.setDataTypes(dataTypeOrdinals);
-
-    List<Integer> encodingOrdinals = new ArrayList<>(dataTypes.size());
-    for (TSEncoding encoding : encodings) {
-      encodingOrdinals.add(encoding.ordinal());
-    }
-    request.setEncodings(encodingOrdinals);
-
-    List<Integer> compressionOrdinals = new ArrayList<>(paths.size());
-    for (CompressionType compression : compressors) {
-      compressionOrdinals.add((int) compression.serialize());
-    }
-    request.setCompressors(compressionOrdinals);
+    request.setDataTypes(toDataTypeOrdinals(dataTypes));
+    request.setEncodings(toEncodingOrdinals(encodings));
+    request.setCompressors(toCompressionOrdinals(compressors));
 
     request.setPropsList(propsList);
-    if (tagsList != null) {
-      tagsList =
-          tagsList.stream()
-              .map(value -> value != null ? value : new HashMap<String, String>())
-              .collect(Collectors.toList());
-    }
-    request.setTagsList(tagsList);
-    if (attributesList != null) {
-      attributesList =
-          attributesList.stream()
-              .map(value -> value != null ? value : new HashMap<String, String>())
-              .collect(Collectors.toList());
-    }
-    request.setAttributesList(attributesList);
-    if (measurementAliasList != null) {
-      measurementAliasList =
-          measurementAliasList.stream()
-              .map(value -> value != null ? value : "")
-              .collect(Collectors.toList());
-    }
-    request.setMeasurementAliasList(measurementAliasList);
+    request.setTagsList(replaceNullMaps(tagsList));
+    request.setAttributesList(replaceNullMaps(attributesList));
+    request.setMeasurementAliasList(replaceNullStrings(measurementAliasList));
 
     return request;
   }
@@ -1021,8 +988,9 @@ public class Session implements ISession {
         try {
           return getDefaultSessionConnection().executeQueryStatement(sql, queryTimeoutInMs);
         } catch (RedirectException redirectException) {
-          logger.error("{} redirect twice", sql, redirectException);
-          throw new StatementExecutionException(sql + " redirect twice, please try again.");
+          logger.error(SessionMessages.REDIRECT_TWICE_LOG_WITH_SQL, sql, redirectException);
+          throw new StatementExecutionException(
+              String.format(SessionMessages.REDIRECT_TWICE_MSG_WITH_SQL, sql));
         }
       } else {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
@@ -1071,7 +1039,7 @@ public class Session implements ISession {
           try {
             sessionConnection.executeNonQueryStatement(sql);
           } catch (Throwable t) {
-            logger.warn("failed to execute '{}' for {}", sql, entry.getKey());
+            logger.warn(SessionMessages.FAILED_TO_EXECUTE_FOR_ENDPOINT, sql, entry.getKey());
             iterator.remove();
           }
         }
@@ -1104,8 +1072,8 @@ public class Session implements ISession {
           return getDefaultSessionConnection()
               .executeRawDataQuery(paths, startTime, endTime, timeOut);
         } catch (RedirectException redirectException) {
-          logger.error(REDIRECT_TWICE, redirectException);
-          throw new StatementExecutionException(REDIRECT_TWICE_RETRY);
+          logger.error(SessionMessages.REDIRECT_TWICE_LOG, redirectException);
+          throw new StatementExecutionException(SessionMessages.REDIRECT_TWICE_MSG);
         }
       } else {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
@@ -1144,8 +1112,8 @@ public class Session implements ISession {
         try {
           return getDefaultSessionConnection().executeLastDataQuery(paths, lastTime, timeOut);
         } catch (RedirectException redirectException) {
-          logger.error(REDIRECT_TWICE, redirectException);
-          throw new StatementExecutionException(REDIRECT_TWICE_RETRY);
+          logger.error(SessionMessages.REDIRECT_TWICE_LOG, redirectException);
+          throw new StatementExecutionException(SessionMessages.REDIRECT_TWICE_MSG);
         }
       } else {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
@@ -1161,8 +1129,7 @@ public class Session implements ISession {
   @Override
   public SessionDataSet executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException {
-    long time = 0L;
-    return executeLastDataQuery(paths, time, queryTimeoutInMs);
+    return executeLastDataQuery(paths, Long.MIN_VALUE, queryTimeoutInMs);
   }
 
   @Override
@@ -1217,8 +1184,8 @@ public class Session implements ISession {
         try {
           return getDefaultSessionConnection().executeAggregationQuery(paths, aggregations);
         } catch (RedirectException redirectException) {
-          logger.error(REDIRECT_TWICE, redirectException);
-          throw new StatementExecutionException(REDIRECT_TWICE_RETRY);
+          logger.error(SessionMessages.REDIRECT_TWICE_LOG, redirectException);
+          throw new StatementExecutionException(SessionMessages.REDIRECT_TWICE_MSG);
         }
       } else {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
@@ -1241,8 +1208,8 @@ public class Session implements ISession {
           return getDefaultSessionConnection()
               .executeAggregationQuery(paths, aggregations, startTime, endTime);
         } catch (RedirectException redirectException) {
-          logger.error(REDIRECT_TWICE, redirectException);
-          throw new StatementExecutionException(REDIRECT_TWICE_RETRY);
+          logger.error(SessionMessages.REDIRECT_TWICE_LOG, redirectException);
+          throw new StatementExecutionException(SessionMessages.REDIRECT_TWICE_MSG);
         }
       } else {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
@@ -1269,8 +1236,8 @@ public class Session implements ISession {
           return getDefaultSessionConnection()
               .executeAggregationQuery(paths, aggregations, startTime, endTime, interval);
         } catch (RedirectException redirectException) {
-          logger.error(REDIRECT_TWICE, redirectException);
-          throw new StatementExecutionException(REDIRECT_TWICE_RETRY);
+          logger.error(SessionMessages.REDIRECT_TWICE_LOG, redirectException);
+          throw new StatementExecutionException(SessionMessages.REDIRECT_TWICE_MSG);
         }
       } else {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
@@ -1299,8 +1266,8 @@ public class Session implements ISession {
               .executeAggregationQuery(
                   paths, aggregations, startTime, endTime, interval, slidingStep);
         } catch (RedirectException redirectException) {
-          logger.error(REDIRECT_TWICE, redirectException);
-          throw new StatementExecutionException(REDIRECT_TWICE_RETRY);
+          logger.error(SessionMessages.REDIRECT_TWICE_LOG, redirectException);
+          throw new StatementExecutionException(SessionMessages.REDIRECT_TWICE_MSG);
         }
       } else {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
@@ -1457,7 +1424,7 @@ public class Session implements ISession {
   private void handleRedirection(String deviceId, TEndPoint endpoint) {
     if (enableRedirection) {
       // no need to redirection
-      if (endpoint.ip.equals("0.0.0.0")) {
+      if (UrlUtils.isWildcardAddress(endpoint.ip)) {
         return;
       }
       if (!deviceIdToEndpoint.containsKey(deviceId)
@@ -1483,7 +1450,7 @@ public class Session implements ISession {
   private void handleRedirection(IDeviceID deviceId, TEndPoint endpoint) {
     if (enableRedirection) {
       // no need to redirection
-      if (endpoint.ip.equals("0.0.0.0")) {
+      if (UrlUtils.isWildcardAddress(endpoint.ip)) {
         return;
       }
       if (!tableModelDeviceIdToEndpoint.containsKey(deviceId)
@@ -1715,7 +1682,8 @@ public class Session implements ISession {
     int len = deviceIds.size();
     if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(
-          "deviceIds, times, measurementsList and valuesList's size should be equal");
+          SessionMessages
+              .EXCEPTION_DEVICEIDS_TIMES_MEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_EC87D88B);
     }
     if (enableRedirection) {
       insertStringRecordsWithLeaderCache(deviceIds, times, measurementsList, valuesList, false);
@@ -1819,20 +1787,24 @@ public class Session implements ISession {
       List<String> measurementsList,
       List<TSDataType> types,
       List<Object> valuesList) {
-    Map<String, Object> nullMap = new HashMap<>();
+    Map<String, Object> nullMap = logger.isInfoEnabled() ? new HashMap<>() : null;
     for (int i = valuesList.size() - 1; i >= 0; i--) {
       if (valuesList.get(i) == null) {
-        nullMap.put(measurementsList.get(i), valuesList.get(i));
+        if (nullMap != null) {
+          nullMap.put(measurementsList.get(i), valuesList.get(i));
+        }
         valuesList.remove(i);
         measurementsList.remove(i);
         types.remove(i);
       }
     }
     if (valuesList.isEmpty()) {
-      logger.info("All values of the {} are null,null values are {}", deviceId, nullMap);
+      if (nullMap != null) {
+        logger.info(SessionMessages.ALL_VALUES_NULL, deviceId, nullMap);
+      }
       return true;
-    } else {
-      logger.info("Some values of {} are null,null values are {}", deviceId, nullMap);
+    } else if (nullMap != null) {
+      logger.info(SessionMessages.SOME_VALUES_NULL, deviceId, nullMap);
     }
     return false;
   }
@@ -1867,19 +1839,23 @@ public class Session implements ISession {
    */
   private boolean filterNullValueAndMeasurementWithStringType(
       List<String> valuesList, String deviceId, List<String> measurementsList) {
-    Map<String, Object> nullMap = new HashMap<>();
+    Map<String, Object> nullMap = logger.isInfoEnabled() ? new HashMap<>() : null;
     for (int i = valuesList.size() - 1; i >= 0; i--) {
       if (valuesList.get(i) == null) {
-        nullMap.put(measurementsList.get(i), valuesList.get(i));
+        if (nullMap != null) {
+          nullMap.put(measurementsList.get(i), valuesList.get(i));
+        }
         valuesList.remove(i);
         measurementsList.remove(i);
       }
     }
     if (valuesList.isEmpty()) {
-      logger.info("All values of the {} are null,null values are {}", deviceId, nullMap);
+      if (nullMap != null) {
+        logger.info(SessionMessages.ALL_VALUES_NULL, deviceId, nullMap);
+      }
       return true;
-    } else {
-      logger.info("Some values of {} are null,null values are {}", deviceId, nullMap);
+    } else if (nullMap != null) {
+      logger.info(SessionMessages.SOME_VALUES_NULL, deviceId, nullMap);
     }
     return false;
   }
@@ -1924,7 +1900,8 @@ public class Session implements ISession {
     int len = deviceIds.size();
     if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(
-          "prefixPaths, times, subMeasurementsList and valuesList's size should be equal");
+          SessionMessages
+              .EXCEPTION_PREFIXPATHS_TIMES_SUBMEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_1465011C);
     }
     if (enableRedirection) {
       insertStringRecordsWithLeaderCache(deviceIds, times, measurementsList, valuesList, true);
@@ -2099,7 +2076,8 @@ public class Session implements ISession {
     int len = deviceIds.size();
     if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(
-          "deviceIds, times, measurementsList and valuesList's size should be equal");
+          SessionMessages
+              .EXCEPTION_DEVICEIDS_TIMES_MEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_EC87D88B);
     }
     // judge if convert records to tablets.
     if (enableRecordsAutoConvertTablet && len >= MIN_RECORDS_SIZE) {
@@ -2153,7 +2131,8 @@ public class Session implements ISession {
     int len = deviceIds.size();
     if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(
-          "prefixPaths, times, subMeasurementsList and valuesList's size should be equal");
+          SessionMessages
+              .EXCEPTION_PREFIXPATHS_TIMES_SUBMEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_1465011C);
     }
     // judge if convert records to tablets.
     if (enableRecordsAutoConvertTablet && len >= MIN_RECORDS_SIZE) {
@@ -2381,7 +2360,8 @@ public class Session implements ISession {
     int len = times.size();
     if (len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(
-          "times, subMeasurementsList and valuesList's size should be equal");
+          SessionMessages
+              .EXCEPTION_TIMES_SUBMEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_002C539A);
     }
     if (enableRecordsAutoConvertTablet
         && len >= MIN_RECORDS_SIZE
@@ -2533,11 +2513,7 @@ public class Session implements ISession {
 
     if (!checkSorted(times)) {
       // sort
-      Integer[] index = new Integer[times.size()];
-      for (int i = 0; i < times.size(); i++) {
-        index[i] = i;
-      }
-      Arrays.sort(index, Comparator.comparingLong(times::get));
+      int[] index = sortedIndex(times);
       times.sort(Long::compareTo);
       // sort measurementList
       measurementsList = sortList(measurementsList, index);
@@ -2590,11 +2566,7 @@ public class Session implements ISession {
     }
 
     if (!checkSorted(times)) {
-      Integer[] index = new Integer[times.size()];
-      for (int i = 0; i < index.length; i++) {
-        index[i] = i;
-      }
-      Arrays.sort(index, Comparator.comparingLong(times::get));
+      int[] index = sortedIndex(times);
       times.sort(Long::compareTo);
       // sort measurementsList
       measurementsList = sortList(measurementsList, index);
@@ -2621,8 +2593,66 @@ public class Session implements ISession {
    * @param <T> Input type
    * @return ordered list
    */
-  private static <T> List<T> sortList(List<T> source, Integer[] index) {
-    return Arrays.stream(index).map(source::get).collect(Collectors.toList());
+  private static <T> List<T> sortList(List<T> source, int[] index) {
+    List<T> sortedList = new ArrayList<>(index.length);
+    for (int position : index) {
+      sortedList.add(source.get(position));
+    }
+    return sortedList;
+  }
+
+  private static List<Integer> toDataTypeOrdinals(List<TSDataType> dataTypes) {
+    List<Integer> ordinals = new ArrayList<>(dataTypes.size());
+    for (TSDataType dataType : dataTypes) {
+      ordinals.add(dataType.ordinal());
+    }
+    return ordinals;
+  }
+
+  private static List<Integer> toEncodingOrdinals(List<TSEncoding> encodings) {
+    List<Integer> ordinals = new ArrayList<>(encodings.size());
+    for (TSEncoding encoding : encodings) {
+      ordinals.add(encoding.ordinal());
+    }
+    return ordinals;
+  }
+
+  private static List<Integer> toCompressionOrdinals(List<CompressionType> compressors) {
+    List<Integer> ordinals = new ArrayList<>(compressors.size());
+    for (CompressionType compression : compressors) {
+      ordinals.add((int) compression.serialize());
+    }
+    return ordinals;
+  }
+
+  private static List<Byte> toEnumOrdinalsAsBytes(List<? extends Enum<?>> enumValues) {
+    List<Byte> ordinals = new ArrayList<>(enumValues.size());
+    for (Enum<?> enumValue : enumValues) {
+      ordinals.add((byte) enumValue.ordinal());
+    }
+    return ordinals;
+  }
+
+  private static List<String> replaceNullStrings(List<String> values) {
+    if (values == null) {
+      return null;
+    }
+    List<String> replacedValues = new ArrayList<>(values.size());
+    for (String value : values) {
+      replacedValues.add(value != null ? value : "");
+    }
+    return replacedValues;
+  }
+
+  private static List<Map<String, String>> replaceNullMaps(List<Map<String, String>> values) {
+    if (values == null) {
+      return null;
+    }
+    List<Map<String, String>> replacedValues = new ArrayList<>(values.size());
+    for (Map<String, String> value : values) {
+      replacedValues.add(value != null ? value : new HashMap<>());
+    }
+    return replacedValues;
   }
 
   private List<ByteBuffer> objectValuesListToByteBufferList(
@@ -2630,7 +2660,7 @@ public class Session implements ISession {
       List<List<TSDataType>> typesList,
       List<List<String>> measurementsList)
       throws IoTDBConnectionException {
-    List<ByteBuffer> buffersList = new ArrayList<>();
+    List<ByteBuffer> buffersList = new ArrayList<>(valuesList.size());
     for (int i = 0; i < valuesList.size(); i++) {
       ByteBuffer buffer =
           SessionUtils.getValueBuffer(typesList.get(i), valuesList.get(i), measurementsList.get(i));
@@ -2663,7 +2693,8 @@ public class Session implements ISession {
         recordsGroup.putIfAbsent(connection, request);
       } catch (NoValidValueException e) {
         logger.warn(
-            "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements are [{}]",
+            SessionMessages
+                .LOG_ALL_VALUES_NULL_SUBMISSION_IGNORED_DEVICEID_ARG_TIME_ARG_MEASUREMENTS_07AFDDFE,
             deviceIds.get(i),
             times.get(i),
             measurementsList.get(i));
@@ -2776,6 +2807,14 @@ public class Session implements ISession {
   public void insertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, false);
+    if (request == null) {
+      logger.warn(
+          ALL_VALUES_ARE_NULL,
+          tablet.getDeviceId(),
+          tablet.getRowSize() > 0 ? tablet.getTimestamp(0) : null,
+          tablet.getSchemas());
+      return;
+    }
     insertTabletInternal(tablet, request);
   }
 
@@ -2819,11 +2858,15 @@ public class Session implements ISession {
       insertRelationalTabletWithLeaderCache(tablet);
     } else {
       TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, false);
+      if (request == null) {
+        logger.warn(
+            ALL_VALUES_ARE_NULL,
+            tablet.getDeviceId(),
+            tablet.getRowSize() > 0 ? tablet.getTimestamp(0) : null,
+            tablet.getSchemas());
+        return;
+      }
       request.setWriteToTable(true);
-      request.setColumnCategories(
-          tablet.getColumnTypes().stream()
-              .map(t -> (byte) t.ordinal())
-              .collect(Collectors.toList()));
       try {
         getDefaultSessionConnection().insertTablet(request);
       } catch (RedirectException ignored) {
@@ -2848,7 +2891,7 @@ public class Session implements ISession {
             (k, v) -> {
               if (v == null) {
                 List<String> measurements = new ArrayList<>(tablet.getSchemas().size());
-                List<TSDataType> dataTypes = new ArrayList<>();
+                List<TSDataType> dataTypes = new ArrayList<>(tablet.getSchemas().size());
                 tablet
                     .getSchemas()
                     .forEach(
@@ -2888,9 +2931,15 @@ public class Session implements ISession {
     SessionConnection connection = entry.getKey();
     Tablet tablet = entry.getValue();
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, false);
+    if (request == null) {
+      logger.warn(
+          ALL_VALUES_ARE_NULL,
+          tablet.getDeviceId(),
+          tablet.getRowSize() > 0 ? tablet.getTimestamp(0) : null,
+          tablet.getSchemas());
+      return;
+    }
     request.setWriteToTable(true);
-    request.setColumnCategories(
-        tablet.getColumnTypes().stream().map(t -> (byte) t.ordinal()).collect(Collectors.toList()));
     try {
       connection.insertTablet(request);
     } catch (RedirectException e) {
@@ -2930,11 +2979,15 @@ public class Session implements ISession {
                   return CompletableFuture.runAsync(
                       () -> {
                         TSInsertTabletReq request = genTSInsertTabletReq(subTablet, false, false);
+                        if (request == null) {
+                          logger.warn(
+                              ALL_VALUES_ARE_NULL,
+                              subTablet.getDeviceId(),
+                              subTablet.getRowSize() > 0 ? subTablet.getTimestamp(0) : null,
+                              subTablet.getSchemas());
+                          return;
+                        }
                         request.setWriteToTable(true);
-                        request.setColumnCategories(
-                            subTablet.getColumnTypes().stream()
-                                .map(t -> (byte) t.ordinal())
-                                .collect(Collectors.toList()));
                         InsertConsumer<TSInsertTabletReq> insertConsumer =
                             SessionConnection::insertTablet;
                         try {
@@ -2966,15 +3019,17 @@ public class Session implements ISession {
             .collect(Collectors.toList());
 
     StringBuilder errMsgBuilder = new StringBuilder();
+    List<Throwable> errors = new ArrayList<>();
     for (CompletableFuture<Void> completableFuture : completableFutures) {
       try {
         completableFuture.join();
       } catch (CompletionException completionException) {
         Throwable cause = completionException.getCause();
-        logger.error("Meet error when async insert!", cause);
+        logger.error(SessionMessages.MEET_ERROR_WHEN_ASYNC_INSERT, cause);
         if (cause instanceof IoTDBConnectionException) {
           throw (IoTDBConnectionException) cause;
         } else {
+          errors.add(cause);
           if (errMsgBuilder.length() > 0) {
             errMsgBuilder.append(";");
           }
@@ -2983,7 +3038,10 @@ public class Session implements ISession {
       }
     }
     if (errMsgBuilder.length() > 0) {
-      throw new StatementExecutionException(errMsgBuilder.toString());
+      StatementExecutionException exception =
+          new StatementExecutionException(errMsgBuilder.toString());
+      errors.forEach(exception::addSuppressed);
+      throw exception;
     }
   }
 
@@ -3013,6 +3071,14 @@ public class Session implements ISession {
   public void insertAlignedTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, true);
+    if (request == null) {
+      logger.warn(
+          ALL_VALUES_ARE_NULL,
+          tablet.getDeviceId(),
+          tablet.getRowSize() > 0 ? tablet.getTimestamp(0) : null,
+          tablet.getSchemas());
+      return;
+    }
     try {
       getSessionConnection(tablet.getDeviceId()).insertTablet(request);
     } catch (RedirectException e) {
@@ -3041,34 +3107,42 @@ public class Session implements ISession {
       sortTablet(tablet);
     }
 
+    Tablet filtered = SessionUtils.filterNullColumns(tablet);
+    if (filtered == null) {
+      return null;
+    }
+
     TSInsertTabletReq request = new TSInsertTabletReq();
 
-    for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+    for (IMeasurementSchema measurementSchema : filtered.getSchemas()) {
       if (measurementSchema.getMeasurementName() == null) {
-        throw new IllegalArgumentException("measurement should be non null value");
+        throw new IllegalArgumentException(SessionMessages.MEASUREMENT_NON_NULL);
       }
       request.addToMeasurements(measurementSchema.getMeasurementName());
       request.addToTypes(measurementSchema.getType().ordinal());
     }
 
-    request.setPrefixPath(tablet.getDeviceId());
+    request.setPrefixPath(filtered.getDeviceId());
     request.setIsAligned(isAligned);
+    if (filtered.getColumnTypes() != null) {
+      request.setColumnCategories(toEnumOrdinalsAsBytes(filtered.getColumnTypes()));
+    }
 
     boolean trulyEnableRpcCompression =
-        enableIoTDBRpcCompression && tablet.getRowSize() >= tabletCompressionMinRowSize;
+        enableIoTDBRpcCompression && filtered.getRowSize() >= tabletCompressionMinRowSize;
 
     List<Byte> encodingTypes;
     if (trulyEnableRpcCompression) {
-      encodingTypes = new ArrayList<>(tablet.getSchemas().size() + 1);
+      encodingTypes = new ArrayList<>(filtered.getSchemas().size() + 1);
       encodingTypes.add(
           this.columnEncodersMap
               .getOrDefault(
                   TSDataType.INT64,
                   TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()))
               .serialize());
-      for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+      for (IMeasurementSchema measurementSchema : filtered.getSchemas()) {
         if (measurementSchema.getMeasurementName() == null) {
-          throw new IllegalArgumentException("measurement should be non null value");
+          throw new IllegalArgumentException(SessionMessages.MEASUREMENT_NON_NULL);
         }
         encodingTypes.add(
             this.columnEncodersMap
@@ -3081,7 +3155,7 @@ public class Session implements ISession {
       }
     } else {
       encodingTypes =
-          Collections.nCopies(tablet.getSchemas().size() + 1, TSEncoding.PLAIN.serialize());
+          Collections.nCopies(filtered.getSchemas().size() + 1, TSEncoding.PLAIN.serialize());
     }
 
     TabletEncoder encoder =
@@ -3094,10 +3168,10 @@ public class Session implements ISession {
       request.setCompressType(compressionType.serialize());
       request.setEncodingTypes(encodingTypes);
     }
-    request.setTimestamps(encoder.encodeTime(tablet));
-    request.setValues(encoder.encodeValues(tablet));
+    request.setTimestamps(encoder.encodeTime(filtered));
+    request.setValues(encoder.encodeValues(filtered));
 
-    request.setSize(tablet.getRowSize());
+    request.setSize(filtered.getRowSize());
     return request;
   }
 
@@ -3130,6 +3204,9 @@ public class Session implements ISession {
     } else {
       TSInsertTabletsReq request =
           genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted, false);
+      if (request == null) {
+        return;
+      }
       try {
         getDefaultSessionConnection().insertTablets(request);
       } catch (RedirectException ignored) {
@@ -3166,6 +3243,9 @@ public class Session implements ISession {
     } else {
       TSInsertTabletsReq request =
           genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted, true);
+      if (request == null) {
+        return;
+      }
       try {
         getDefaultSessionConnection().insertTablets(request);
       } catch (RedirectException ignored) {
@@ -3184,6 +3264,11 @@ public class Session implements ISession {
       updateTSInsertTabletsReq(request, entry.getValue(), sorted, isAligned);
     }
 
+    tabletGroup.entrySet().removeIf(e -> e.getValue().getPrefixPathsSize() == 0);
+    if (tabletGroup.isEmpty()) {
+      return;
+    }
+
     if (tabletGroup.size() == 1) {
       insertOnce(tabletGroup, SessionConnection::insertTablets);
     } else {
@@ -3195,10 +3280,13 @@ public class Session implements ISession {
       List<Tablet> tablets, boolean sorted, boolean isAligned) throws BatchExecutionException {
     TSInsertTabletsReq request = new TSInsertTabletsReq();
     if (tablets.isEmpty()) {
-      throw new BatchExecutionException("No tablet is inserting!");
+      throw new BatchExecutionException(SessionMessages.NO_TABLET_INSERTING);
     }
     for (Tablet tablet : tablets) {
       updateTSInsertTabletsReq(request, tablet, sorted, isAligned);
+    }
+    if (request.getPrefixPathsSize() == 0) {
+      return null;
     }
     return request;
   }
@@ -3208,22 +3296,31 @@ public class Session implements ISession {
     if (!checkSorted(tablet)) {
       sortTablet(tablet);
     }
-    request.addToPrefixPaths(tablet.getDeviceId());
-    List<String> measurements = new ArrayList<>();
-    List<Integer> dataTypes = new ArrayList<>();
+    Tablet filtered = SessionUtils.filterNullColumns(tablet);
+    if (filtered == null) {
+      logger.warn(
+          ALL_VALUES_ARE_NULL,
+          tablet.getDeviceId(),
+          tablet.getRowSize() > 0 ? tablet.getTimestamp(0) : null,
+          tablet.getSchemas());
+      return;
+    }
+    request.addToPrefixPaths(filtered.getDeviceId());
+    List<String> measurements = new ArrayList<>(filtered.getSchemas().size());
+    List<Integer> dataTypes = new ArrayList<>(filtered.getSchemas().size());
     request.setIsAligned(isAligned);
-    for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+    for (IMeasurementSchema measurementSchema : filtered.getSchemas()) {
       if (measurementSchema.getMeasurementName() == null) {
-        throw new IllegalArgumentException("measurement should be non null value");
+        throw new IllegalArgumentException(SessionMessages.MEASUREMENT_NON_NULL);
       }
       measurements.add(measurementSchema.getMeasurementName());
       dataTypes.add(measurementSchema.getType().ordinal());
     }
     request.addToMeasurementsList(measurements);
     request.addToTypesList(dataTypes);
-    request.addToTimestampsList(SessionUtils.getTimeBuffer(tablet));
-    request.addToValuesList(SessionUtils.getValueBuffer(tablet));
-    request.addToSizeList(tablet.getRowSize());
+    request.addToTimestampsList(SessionUtils.getTimeBuffer(filtered));
+    request.addToValuesList(SessionUtils.getValueBuffer(filtered));
+    request.addToSizeList(filtered.getRowSize());
   }
 
   // sample some records and judge whether need to add too many null values to convert to tablet.
@@ -3441,6 +3538,14 @@ public class Session implements ISession {
   public void testInsertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, false);
+    if (request == null) {
+      logger.warn(
+          ALL_VALUES_ARE_NULL,
+          tablet.getDeviceId(),
+          tablet.getRowSize() > 0 ? tablet.getTimestamp(0) : null,
+          tablet.getSchemas());
+      return;
+    }
     getDefaultSessionConnection().testInsertTablet(request);
   }
 
@@ -3463,6 +3568,9 @@ public class Session implements ISession {
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletsReq request =
         genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted, false);
+    if (request == null) {
+      return;
+    }
     getDefaultSessionConnection().testInsertTablets(request);
   }
 
@@ -3658,11 +3766,7 @@ public class Session implements ISession {
     long[] timestamps = tablet.getTimestamps();
     Object[] values = tablet.getValues();
     BitMap[] bitMaps = tablet.getBitMaps();
-    Integer[] index = new Integer[tablet.getRowSize()];
-    for (int i = 0; i < tablet.getRowSize(); i++) {
-      index[i] = i;
-    }
-    Arrays.sort(index, Comparator.comparingLong(o -> timestamps[o]));
+    int[] index = sortedIndex(timestamps, tablet.getRowSize());
     Arrays.sort(timestamps, 0, tablet.getRowSize());
     int columnIndex = 0;
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
@@ -3696,64 +3800,8 @@ public class Session implements ISession {
    * @param index index
    * @return sorted list
    */
-  private Object sortList(Object valueList, TSDataType dataType, Integer[] index) {
-    switch (dataType) {
-      case BOOLEAN:
-        boolean[] boolValues = (boolean[]) valueList;
-        boolean[] sortedValues = new boolean[boolValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedValues[i] = boolValues[index[i]];
-        }
-        return sortedValues;
-      case INT32:
-        int[] intValues = (int[]) valueList;
-        int[] sortedIntValues = new int[intValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedIntValues[i] = intValues[index[i]];
-        }
-        return sortedIntValues;
-      case DATE:
-        LocalDate[] date = (LocalDate[]) valueList;
-        LocalDate[] sortedDateValues = new LocalDate[date.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedDateValues[i] = date[index[i]];
-        }
-        return sortedDateValues;
-      case INT64:
-      case TIMESTAMP:
-        long[] longValues = (long[]) valueList;
-        long[] sortedLongValues = new long[longValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedLongValues[i] = longValues[index[i]];
-        }
-        return sortedLongValues;
-      case FLOAT:
-        float[] floatValues = (float[]) valueList;
-        float[] sortedFloatValues = new float[floatValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedFloatValues[i] = floatValues[index[i]];
-        }
-        return sortedFloatValues;
-      case DOUBLE:
-        double[] doubleValues = (double[]) valueList;
-        double[] sortedDoubleValues = new double[doubleValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedDoubleValues[i] = doubleValues[index[i]];
-        }
-        return sortedDoubleValues;
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        Binary[] binaryValues = (Binary[]) valueList;
-        Binary[] sortedBinaryValues = new Binary[binaryValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedBinaryValues[i] = binaryValues[index[i]];
-        }
-        return sortedBinaryValues;
-      default:
-        throw new UnSupportedDataTypeException(MSG_UNSUPPORTED_DATA_TYPE + dataType);
-    }
+  private Object sortList(Object valueList, TSDataType dataType, int[] index) {
+    return SessionUtils.sortValueList(valueList, dataType, index);
   }
 
   /**
@@ -3763,7 +3811,7 @@ public class Session implements ISession {
    * @param index index
    * @return sorted bitMap
    */
-  private BitMap sortBitMap(BitMap bitMap, Integer[] index) {
+  private BitMap sortBitMap(BitMap bitMap, int[] index) {
     BitMap sortedBitMap = new BitMap(bitMap.getSize());
     for (int i = 0; i < index.length; i++) {
       if (bitMap.isMarked(index[i])) {
@@ -3771,6 +3819,86 @@ public class Session implements ISession {
       }
     }
     return sortedBitMap;
+  }
+
+  private static int[] sortedIndex(List<Long> values) {
+    return sortedIndex(values.size(), index -> values.get(index));
+  }
+
+  private static int[] sortedIndex(long[] values, int size) {
+    return sortedIndex(size, index -> values[index]);
+  }
+
+  private static int[] sortedIndex(int size, IntToLongFunction valueProvider) {
+    int[] index = new int[size];
+    for (int i = 0; i < size; i++) {
+      index[i] = i;
+    }
+    // A strictly descending input can be reversed without changing equal-timestamp order.
+    int descendingEnd = 1;
+    while (descendingEnd < size
+        && valueProvider.applyAsLong(index[descendingEnd - 1])
+            > valueProvider.applyAsLong(index[descendingEnd])) {
+      descendingEnd++;
+    }
+    if (descendingEnd == size) {
+      for (int left = 0, right = size - 1; left < right; left++, right--) {
+        int originalIndex = index[left];
+        index[left] = index[right];
+        index[right] = originalIndex;
+      }
+    } else if (size > 1) {
+      sortIndexes(index, new int[size], 0, size, valueProvider);
+    }
+    return index;
+  }
+
+  private static void sortIndexes(
+      int[] index, int[] scratch, int from, int to, IntToLongFunction valueProvider) {
+    if (to - from < 2) {
+      return;
+    }
+    // Stop at existing ordered runs before recursing. Restrict the scan to larger ranges
+    // to avoid adding per-leaf probes on random inputs.
+    if (to - from >= 1024) {
+      int orderedEnd = from + 1;
+      while (orderedEnd < to
+          && valueProvider.applyAsLong(index[orderedEnd - 1])
+              <= valueProvider.applyAsLong(index[orderedEnd])) {
+        orderedEnd++;
+      }
+      if (orderedEnd == to) {
+        return;
+      }
+    }
+    int middle = (from + to) >>> 1;
+    sortIndexes(index, scratch, from, middle, valueProvider);
+    sortIndexes(index, scratch, middle, to, valueProvider);
+    // Skip ordered merges above small leaf ranges; probing every leaf costs random-input
+    // throughput.
+    if (to - from >= 32
+        && valueProvider.applyAsLong(index[middle - 1])
+            <= valueProvider.applyAsLong(index[middle])) {
+      return;
+    }
+
+    int left = from;
+    int right = middle;
+    int destination = from;
+    while (left < middle && right < to) {
+      if (valueProvider.applyAsLong(index[left]) <= valueProvider.applyAsLong(index[right])) {
+        scratch[destination++] = index[left++];
+      } else {
+        scratch[destination++] = index[right++];
+      }
+    }
+    while (left < middle) {
+      scratch[destination++] = index[left++];
+    }
+    while (right < to) {
+      scratch[destination++] = index[right++];
+    }
+    System.arraycopy(scratch, from, index, from, to - from);
   }
 
   @Override
@@ -3830,8 +3958,8 @@ public class Session implements ISession {
     int len = measurements.size();
     if (len != dataTypes.size() || len != encodings.size() || len != compressors.size()) {
       throw new StatementExecutionException(
-          "Different length of measurements, datatypes, encodings "
-              + "or compressors when create device template.");
+          SessionMessages.EXCEPTION_DIFFERENT_LENGTH_MEASUREMENTS_DATATYPES_ENCODINGS_ED354A24
+              + SessionMessages.EXCEPTION_COMPRESSORS_CREATE_DEVICE_TEMPLATE_BBDBB28E);
     }
     for (int idx = 0; idx < measurements.size(); idx++) {
       MeasurementNode mNode =
@@ -3869,9 +3997,9 @@ public class Session implements ISession {
       List<List<TSEncoding>> encodings,
       List<CompressionType> compressors)
       throws IoTDBConnectionException, StatementExecutionException {
-    List<String> flatMeasurements = new ArrayList<>();
-    List<TSDataType> flatDataTypes = new ArrayList<>();
-    List<TSEncoding> flatEncodings = new ArrayList<>();
+    List<String> flatMeasurements = new ArrayList<>(measurements.size());
+    List<TSDataType> flatDataTypes = new ArrayList<>(measurements.size());
+    List<TSEncoding> flatEncodings = new ArrayList<>(measurements.size());
     for (int idx = 0; idx < measurements.size(); idx++) {
       flatMeasurements.add(measurements.get(idx).get(0));
       flatDataTypes.add(dataTypes.get(idx).get(0));
@@ -3904,10 +4032,9 @@ public class Session implements ISession {
     TSAppendSchemaTemplateReq req = new TSAppendSchemaTemplateReq();
     req.setName(templateName);
     req.setMeasurements(measurementsPath);
-    req.setDataTypes(dataTypes.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
-    req.setEncodings(encodings.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
-    req.setCompressors(
-        compressors.stream().map(i -> (int) i.serialize()).collect(Collectors.toList()));
+    req.setDataTypes(toDataTypeOrdinals(dataTypes));
+    req.setEncodings(toEncodingOrdinals(encodings));
+    req.setCompressors(toCompressionOrdinals(compressors));
     req.setIsAligned(true);
     getDefaultSessionConnection().appendSchemaTemplate(req);
   }
@@ -3950,10 +4077,9 @@ public class Session implements ISession {
     TSAppendSchemaTemplateReq req = new TSAppendSchemaTemplateReq();
     req.setName(templateName);
     req.setMeasurements(measurementsPath);
-    req.setDataTypes(dataTypes.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
-    req.setEncodings(encodings.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
-    req.setCompressors(
-        compressors.stream().map(i -> (int) i.serialize()).collect(Collectors.toList()));
+    req.setDataTypes(toDataTypeOrdinals(dataTypes));
+    req.setEncodings(toEncodingOrdinals(encodings));
+    req.setCompressors(toCompressionOrdinals(compressors));
     req.setIsAligned(false);
     getDefaultSessionConnection().appendSchemaTemplate(req);
   }
@@ -4146,7 +4272,7 @@ public class Session implements ISession {
       throws IoTDBConnectionException, StatementExecutionException {
     if (devicePathList == null || devicePathList.contains(null)) {
       throw new StatementExecutionException(
-          "Given device path list should not be  or contains null.");
+          SessionMessages.EXCEPTION_GIVEN_DEVICE_PATH_LIST_SHOULD_NOT_CONTAINS_NULL_E9132577);
     }
     TCreateTimeseriesUsingSchemaTemplateReq request = new TCreateTimeseriesUsingSchemaTemplateReq();
     request.setDevicePathList(devicePathList);
@@ -4228,7 +4354,7 @@ public class Session implements ISession {
         completableFuture.join();
       } catch (CompletionException completionException) {
         Throwable cause = completionException.getCause();
-        logger.error("Meet error when async insert!", cause);
+        logger.error(SessionMessages.MEET_ERROR_WHEN_ASYNC_INSERT, cause);
         if (cause instanceof IoTDBConnectionException) {
           throw (IoTDBConnectionException) cause;
         } else {
@@ -4295,7 +4421,7 @@ public class Session implements ISession {
 
   protected SessionConnection getDefaultSessionConnection() throws IoTDBConnectionException {
     if (defaultSessionConnection == null) {
-      throw new IoTDBConnectionException("Session is not open, please invoke Session.open() first");
+      throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
     }
     return defaultSessionConnection;
   }
@@ -4374,6 +4500,10 @@ public class Session implements ISession {
       return this;
     }
 
+    /**
+     * Configure recovery seeds using the same host/IP form as each DataNode's dn_rpc_address.
+     * Hostname aliases and IP literals are not DNS-deduplicated during recovery.
+     */
     public Builder nodeUrls(List<String> nodeUrls) {
       this.nodeUrls = nodeUrls;
       return this;
@@ -4414,6 +4544,11 @@ public class Session implements ISession {
       return this;
     }
 
+    public Builder enableAutoCreateSchema(boolean enableAutoCreateSchema) {
+      this.enableAutoCreateSchema = enableAutoCreateSchema;
+      return this;
+    }
+
     public Builder useSSL(boolean useSSL) {
       this.useSSL = useSSL;
       return this;
@@ -4429,11 +4564,27 @@ public class Session implements ISession {
       return this;
     }
 
+    public Builder keyStore(String keyStore) {
+      this.keyStore = keyStore;
+      return this;
+    }
+
+    public Builder keyStorePwd(String keyStorePwd) {
+      this.keyStorePwd = keyStorePwd;
+      return this;
+    }
+
+    public Builder sslProtocol(String sslProtocol) {
+      this.sslProtocol = sslProtocol;
+      return this;
+    }
+
     public Session build() {
       if (nodeUrls != null
           && (!SessionConfig.DEFAULT_HOST.equals(host) || rpcPort != SessionConfig.DEFAULT_PORT)) {
         throw new IllegalArgumentException(
-            "You should specify either nodeUrls or (host + rpcPort), but not both");
+            SessionMessages
+                .EXCEPTION_YOU_SHOULD_SPECIFY_EITHER_NODEURLS_HOST_RPCPORT_BUT_NOT_BOTH_77E7B084);
       }
       return new Session(this);
     }

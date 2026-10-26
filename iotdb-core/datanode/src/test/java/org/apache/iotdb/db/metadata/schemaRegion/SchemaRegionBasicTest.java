@@ -1186,6 +1186,28 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
   }
 
   @Test
+  public void testShowTimeseriesWildcardSuffixWithNestedAndLeafDevices() throws Exception {
+    final ISchemaRegion schemaRegion = getSchemaRegion("root.test", 0);
+
+    SchemaRegionTestUtil.createSimpleTimeSeriesByList(
+        schemaRegion,
+        Arrays.asList(
+            "root.test.d1.s1", "root.test.d1.a.d2.s1", "root.test.d3.s1", "root.test.d4.s2"));
+
+    final List<ITimeSeriesSchemaInfo> result =
+        SchemaRegionTestUtil.showTimeseries(schemaRegion, new PartialPath("root.test.**.s1"));
+    final Set<String> expectedPathList =
+        new HashSet<>(Arrays.asList("root.test.d1.s1", "root.test.d1.a.d2.s1", "root.test.d3.s1"));
+    Assert.assertEquals(expectedPathList.size(), result.size());
+
+    final Set<String> actualPathList = new HashSet<>();
+    for (final ITimeSeriesSchemaInfo timeSeriesSchemaInfo : result) {
+      actualPathList.add(timeSeriesSchemaInfo.getFullPath());
+    }
+    Assert.assertEquals(expectedPathList, actualPathList);
+  }
+
+  @Test
   public void testGetMatchedDevicesWithSpecialPattern2() throws Exception {
     final ISchemaRegion schemaRegion = getSchemaRegion("root.test", 0);
 

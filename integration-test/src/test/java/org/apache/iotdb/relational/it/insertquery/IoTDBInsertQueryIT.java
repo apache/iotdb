@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.relational.it.insertquery;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -48,6 +49,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import static org.apache.iotdb.itbase.runtime.ClusterTestResultSet.getNodeResultSets;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -99,7 +101,7 @@ public class IoTDBInsertQueryIT {
   public void tearDown() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("DROP DATABASE IF EXISTS test");
+      TestUtils.dropDatabaseWithRetry(statement, "test");
     } catch (Exception e) {
       fail(e.getMessage());
     }
@@ -268,10 +270,14 @@ public class IoTDBInsertQueryIT {
 
       // It is allowed to insert without tags
       statement.execute("INSERT INTO vehicle1(time, s1, s2) SELECT time, s1, s2 FROM vehicle0");
-      ResultSet resultSet = statement.executeQuery("SELECT deviceId, manufacturer FROM vehicle1");
-      while (resultSet.next()) {
-        for (int i = 1; i <= 2; i++) {
-          assertNull(resultSet.getString(i));
+      try (ResultSet clusterResult =
+          statement.executeQuery("SELECT deviceId, manufacturer FROM vehicle1")) {
+        for (ResultSet resultSet : getNodeResultSets(clusterResult)) {
+          while (resultSet.next()) {
+            for (int i = 1; i <= 2; i++) {
+              assertNull(resultSet.getString(i));
+            }
+          }
         }
       }
 
@@ -279,13 +285,17 @@ public class IoTDBInsertQueryIT {
       statement.execute("DELETE FROM vehicle1");
       statement.execute(
           "INSERT INTO vehicle1(time, s2, manufacturer) SELECT time, s2, manufacturer FROM vehicle0");
-      resultSet = statement.executeQuery("SELECT deviceId, manufacturer, s1, s2 FROM vehicle1");
-      while (resultSet.next()) {
-        for (int i = 1; i <= 4; i++) {
-          if (i % 2 == 1) {
-            assertNull(resultSet.getString(i));
-          } else {
-            assertNotNull(resultSet.getString(i));
+      try (ResultSet clusterResult =
+          statement.executeQuery("SELECT deviceId, manufacturer, s1, s2 FROM vehicle1")) {
+        for (ResultSet resultSet : getNodeResultSets(clusterResult)) {
+          while (resultSet.next()) {
+            for (int i = 1; i <= 4; i++) {
+              if (i % 2 == 1) {
+                assertNull(resultSet.getString(i));
+              } else {
+                assertNotNull(resultSet.getString(i));
+              }
+            }
           }
         }
       }
@@ -459,7 +469,8 @@ public class IoTDBInsertQueryIT {
       Assert.assertTrue(
           e.getMessage(),
           e.getMessage()
-              .contains("700: line 1:9: mismatched input 'INSERT'. Expecting: 'ANALYZE', <query>"));
+              .contains(
+                  "700: line 1:9: mismatched input 'INSERT'. Expecting: '(', 'ANALYZE', 'COPY', 'EXECUTE', <query>"));
     }
 
     try {
@@ -471,7 +482,7 @@ public class IoTDBInsertQueryIT {
           e.getMessage(),
           e.getMessage()
               .contains(
-                  "700: line 1:17: mismatched input 'INSERT'. Expecting: 'VERBOSE', <query>"));
+                  "700: line 1:17: mismatched input 'INSERT'. Expecting: '(', 'COPY', 'EXECUTE', 'VERBOSE', <query>"));
     }
   }
 

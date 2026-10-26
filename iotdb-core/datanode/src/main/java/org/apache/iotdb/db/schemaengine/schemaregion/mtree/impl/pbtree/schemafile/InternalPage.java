@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafi
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentOverflowException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -222,7 +223,7 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
   @Override
   public void extendsTo(ByteBuffer newBuffer) throws MetadataException {
     if (newBuffer.capacity() != this.pageBuffer.capacity()) {
-      throw new MetadataException("InternalPage can only extend to buffer with same capacity.");
+      throw new MetadataException(DataNodeSchemaMessages.INTERNAL_PAGE_EXTEND_CAPACITY);
     }
 
     syncPageBuffer();
@@ -237,15 +238,15 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
       throws MetadataException {
     // TODO: initiation and registration methods in SchemaFile
     if (dstBuffer.capacity() != this.pageBuffer.capacity()) {
-      throw new MetadataException("Segments only split with same capacity.");
+      throw new MetadataException(DataNodeSchemaMessages.SEGMENTS_SPLIT_SAME_CAPACITY);
     }
 
     if (key == null || tPk == null) {
-      throw new MetadataException("Internal Segment cannot split without insert key");
+      throw new MetadataException(DataNodeSchemaMessages.INTERNAL_SEGMENT_SPLIT_NO_KEY);
     }
 
     if (this.memberNum < 2) {
-      throw new MetadataException("Segment has less than 2 pointers can not be split.");
+      throw new MetadataException(DataNodeSchemaMessages.INTERNAL_SEGMENT_LESS_THAN_2_POINTERS);
     }
 
     int pk = tPk;

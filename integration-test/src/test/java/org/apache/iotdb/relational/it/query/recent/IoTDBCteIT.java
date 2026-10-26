@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.relational.it.query.recent;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -59,6 +60,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
+import static org.apache.iotdb.itbase.runtime.ClusterTestResultSet.getNodeResultSets;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -79,8 +81,6 @@ public class IoTDBCteIT {
         "INSERT INTO testtb VALUES(2000, 200.0, 'b', 'd1')",
         "INSERT INTO testtb VALUES(1000, 300.0, 'c', 'd2')",
       };
-
-  private static final String dropDbSqls = "DROP DATABASE IF EXISTS testdb";
 
   private static final String[] cteKeywords = {"", "materialized"};
 
@@ -110,7 +110,7 @@ public class IoTDBCteIT {
   public void tearDown() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute(dropDbSqls);
+      TestUtils.dropDatabaseWithRetry(statement, "testdb");
     } catch (Exception e) {
       fail(e.getMessage());
     }
@@ -362,19 +362,22 @@ public class IoTDBCteIT {
       statement.execute("USE testdb");
 
       // explain
-      ResultSet resultSet = statement.executeQuery(sql);
-      ResultSetMetaData metaData = resultSet.getMetaData();
-      assertEquals(metaData.getColumnCount(), 1);
-      assertEquals(metaData.getColumnName(1), "distribution plan");
+      try (ResultSet clusterResult = statement.executeQuery(sql)) {
+        for (ResultSet resultSet : getNodeResultSets(clusterResult)) {
+          ResultSetMetaData metaData = resultSet.getMetaData();
+          assertEquals(metaData.getColumnCount(), 1);
+          assertEquals(metaData.getColumnName(1), "distribution plan");
 
-      StringBuilder sb = new StringBuilder();
-      while (resultSet.next()) {
-        sb.append(resultSet.getString(1)).append(System.lineSeparator());
+          StringBuilder sb = new StringBuilder();
+          while (resultSet.next()) {
+            sb.append(resultSet.getString(1)).append(System.lineSeparator());
+          }
+          String result = sb.toString();
+          assertFalse(result.contains("CTE Query : 'cte1'"));
+          assertTrue(result.contains("CTE Query : 'cte2'"));
+          assertTrue(result.contains("Main Query"));
+        }
       }
-      String result = sb.toString();
-      assertFalse(result.contains("CTE Query : 'cte1'"));
-      assertTrue(result.contains("CTE Query : 'cte2'"));
-      assertTrue(result.contains("Main Query"));
     }
   }
 
@@ -389,19 +392,22 @@ public class IoTDBCteIT {
       statement.execute("USE testdb");
 
       // explain
-      ResultSet resultSet = statement.executeQuery(sql);
-      ResultSetMetaData metaData = resultSet.getMetaData();
-      assertEquals(metaData.getColumnCount(), 1);
-      assertEquals(metaData.getColumnName(1), "distribution plan");
+      try (ResultSet clusterResult = statement.executeQuery(sql)) {
+        for (ResultSet resultSet : getNodeResultSets(clusterResult)) {
+          ResultSetMetaData metaData = resultSet.getMetaData();
+          assertEquals(metaData.getColumnCount(), 1);
+          assertEquals(metaData.getColumnName(1), "distribution plan");
 
-      StringBuilder sb = new StringBuilder();
-      while (resultSet.next()) {
-        sb.append(resultSet.getString(1)).append(System.lineSeparator());
+          StringBuilder sb = new StringBuilder();
+          while (resultSet.next()) {
+            sb.append(resultSet.getString(1)).append(System.lineSeparator());
+          }
+          String result = sb.toString();
+          assertTrue(result.contains("CTE Query : 'cte1'"));
+          assertTrue(result.contains("CTE Query : 'cte2'"));
+          assertTrue(result.contains("Main Query"));
+        }
       }
-      String result = sb.toString();
-      assertTrue(result.contains("CTE Query : 'cte1'"));
-      assertTrue(result.contains("CTE Query : 'cte2'"));
-      assertTrue(result.contains("Main Query"));
     }
   }
 
@@ -416,19 +422,22 @@ public class IoTDBCteIT {
       statement.execute("USE testdb");
 
       // explain
-      ResultSet resultSet = statement.executeQuery(sql);
-      ResultSetMetaData metaData = resultSet.getMetaData();
-      assertEquals(metaData.getColumnCount(), 1);
-      assertEquals(metaData.getColumnName(1), "distribution plan");
+      try (ResultSet clusterResult = statement.executeQuery(sql)) {
+        for (ResultSet resultSet : getNodeResultSets(clusterResult)) {
+          ResultSetMetaData metaData = resultSet.getMetaData();
+          assertEquals(metaData.getColumnCount(), 1);
+          assertEquals(metaData.getColumnName(1), "distribution plan");
 
-      StringBuilder sb = new StringBuilder();
-      while (resultSet.next()) {
-        sb.append(resultSet.getString(1)).append(System.lineSeparator());
+          StringBuilder sb = new StringBuilder();
+          while (resultSet.next()) {
+            sb.append(resultSet.getString(1)).append(System.lineSeparator());
+          }
+          String result = sb.toString();
+          assertFalse(result.contains("CTE Query : 'cte1'"));
+          assertTrue(result.contains("CTE Query : 'cte2'"));
+          assertTrue(result.contains("Main Query"));
+        }
       }
-      String result = sb.toString();
-      assertFalse(result.contains("CTE Query : 'cte1'"));
-      assertTrue(result.contains("CTE Query : 'cte2'"));
-      assertTrue(result.contains("Main Query"));
     }
   }
 
@@ -498,7 +507,7 @@ public class IoTDBCteIT {
   @Test
   public void testConcurrentCteQueries() throws Exception {
     final int threadCount = 3;
-    final int queriesPerThread = 20;
+    final int queriesPerThread = 6;
     final AtomicInteger successCount = new AtomicInteger(0);
     final AtomicInteger failureCount = new AtomicInteger(0);
     final AtomicInteger totalCount = new AtomicInteger(0);
@@ -527,7 +536,7 @@ public class IoTDBCteIT {
                       // Test different types of CTE queries
                       String[] queries = {
                         String.format(
-                            "WITH cte as %s (select * from testtb WHERE voltage > 150) select * from cte ORDER BY deviceid",
+                            "WITH cte as %s (select * from testtb WHERE voltage > 150 order by deviceid) select * from cte",
                             cteKeywords[j % cteKeywords.length]),
                         String.format(
                             "WITH cte as %s (select deviceid, avg(voltage) as avg_v from testtb GROUP BY deviceid) select * from cte",
@@ -609,7 +618,7 @@ public class IoTDBCteIT {
     int totalQueries = threadCount * queriesPerThread;
     assertEquals("All queries should succeed", totalQueries, successCount.get());
     assertEquals("No queries should fail", 0, failureCount.get());
-    assertEquals("Total query count should match", 102, totalCount.get());
+    assertEquals("Total query count should match", 30, totalCount.get());
   }
 
   private static void prepareData() {

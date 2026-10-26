@@ -19,13 +19,16 @@
 
 package org.apache.iotdb.commons.subscription.consumer;
 
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
@@ -35,6 +38,44 @@ import java.util.Map;
 import static org.junit.Assert.fail;
 
 public class ConsumerGroupDeSerTest {
+
+  @Test
+  public void testEmptyGroupPreservesDialectAcrossSerializationAndRejoin() throws Exception {
+    for (final String dialect : new String[] {"tree", "table"}) {
+      final Map<String, String> attributes =
+          Collections.singletonMap(ConsumerConstant.SQL_DIALECT_KEY, dialect);
+      final ConsumerGroupMeta group =
+          new ConsumerGroupMeta("retained", 1L, new ConsumerMeta("consumer", 1L, attributes));
+      group.removeConsumer("consumer");
+      final ByteBuffer buffer = group.serialize();
+      final byte[] bytes = new byte[buffer.remaining()];
+      buffer.duplicate().get(bytes);
+      final ConsumerGroupMeta[] restoredGroups = {
+        group.deepCopy(),
+        ConsumerGroupMeta.deserialize(buffer),
+        ConsumerGroupMeta.deserialize(new ByteArrayInputStream(bytes))
+      };
+      for (final ConsumerGroupMeta restored : restoredGroups) {
+        Assert.assertEquals(group, restored);
+        Assert.assertTrue(restored.isEmpty());
+        Assert.assertEquals("table".equals(dialect), restored.visibleUnder(true));
+        final ConsumerMeta replacement = new ConsumerMeta("replacement", 2L, attributes);
+        restored.checkAuthorityBeforeJoinConsumerGroup(replacement);
+        Assert.assertThrows(
+            SubscriptionException.class,
+            () ->
+                restored.checkAuthorityBeforeJoinConsumerGroup(
+                    new ConsumerMeta(
+                        "other",
+                        2L,
+                        Collections.singletonMap(
+                            ConsumerConstant.SQL_DIALECT_KEY,
+                            "table".equals(dialect) ? "tree" : "table"))));
+        restored.addConsumer(replacement);
+        Assert.assertEquals("table".equals(dialect), restored.visibleUnder(true));
+      }
+    }
+  }
 
   @Test
   public void test() throws IOException {
@@ -68,5 +109,74 @@ public class ConsumerGroupDeSerTest {
     Assert.assertEquals(
         consumerGroupMeta.getConsumerGroupId(), consumerGroupMeta2.getConsumerGroupId());
     Assert.assertEquals(consumerGroupMeta.getCreationTime(), consumerGroupMeta2.getCreationTime());
+  }
+
+  @Test
+  public void testDeepCopyShouldNotShareSubscribedConsumerSets() {
+    Map<String, String> consumerAttributes = new HashMap<>();
+    consumerAttributes.put("username", "user");
+    consumerAttributes.put("password", "password");
+
+    ConsumerGroupMeta consumerGroupMeta =
+        new ConsumerGroupMeta(
+            "test_consumer_group", 1, new ConsumerMeta("test_consumer1", 1, consumerAttributes));
+    consumerGroupMeta.addSubscription("test_consumer1", Collections.singleton("test_topic"));
+
+    ConsumerGroupMeta copiedConsumerGroupMeta = consumerGroupMeta.deepCopy();
+    copiedConsumerGroupMeta.removeSubscription(
+        "test_consumer1", Collections.singleton("test_topic"));
+
+    Assert.assertTrue(
+        consumerGroupMeta.getConsumersSubscribingTopic("test_topic").contains("test_consumer1"));
+    Assert.assertTrue(copiedConsumerGroupMeta.getConsumersSubscribingTopic("test_topic").isEmpty());
+  }
+
+  @Test
+  public void testConsumerGroupShouldRejectMixedSqlDialects() {
+    final Map<String, String> treeConsumerAttributes = new HashMap<>();
+    treeConsumerAttributes.put("username", "user");
+    treeConsumerAttributes.put("password", "password");
+    treeConsumerAttributes.put(
+        ConsumerConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+
+    final Map<String, String> tableConsumerAttributes = new HashMap<>(treeConsumerAttributes);
+    tableConsumerAttributes.put(
+        ConsumerConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+
+    final ConsumerGroupMeta consumerGroupMeta =
+        new ConsumerGroupMeta(
+            "test_consumer_group", 1, new ConsumerMeta("tree_consumer", 1, treeConsumerAttributes));
+
+    Assert.assertThrows(
+        SubscriptionException.class,
+        () ->
+            consumerGroupMeta.checkAuthorityBeforeJoinConsumerGroup(
+                new ConsumerMeta("table_consumer", 2, tableConsumerAttributes)));
+  }
+
+  @Test
+  public void testConsumerGroupShouldAllowDifferentCredentials() throws SubscriptionException {
+    final Map<String, String> firstConsumerAttributes = new HashMap<>();
+    firstConsumerAttributes.put("username", "first_user");
+    firstConsumerAttributes.put("password", "first_password");
+
+    final Map<String, String> secondConsumerAttributes = new HashMap<>();
+    secondConsumerAttributes.put("username", "second_user");
+    secondConsumerAttributes.put("password", "second_password");
+
+    final ConsumerGroupMeta consumerGroupMeta =
+        new ConsumerGroupMeta(
+            "test_consumer_group",
+            1,
+            new ConsumerMeta("first_consumer", 1, firstConsumerAttributes));
+    final ConsumerMeta secondConsumer =
+        new ConsumerMeta("second_consumer", 2, secondConsumerAttributes);
+
+    consumerGroupMeta.checkAuthorityBeforeJoinConsumerGroup(secondConsumer);
+    consumerGroupMeta.addConsumer(secondConsumer);
+    consumerGroupMeta.addSubscription("first_consumer", Collections.singleton("test_topic"));
+
+    Assert.assertTrue(
+        consumerGroupMeta.allowSubscribeTopicForConsumer("test_topic", "second_consumer"));
   }
 }

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.itbase.runtime;
 
-import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.itbase.exception.ParallelRequestTimeoutException;
 
 import java.sql.SQLException;
@@ -37,10 +37,20 @@ import java.util.concurrent.TimeoutException;
  */
 public class ParallelRequestDelegate<T> extends RequestDelegate<T> {
   private final int taskTimeoutSeconds;
+  private final Runnable dumpTestJVMSnapshot;
 
-  public ParallelRequestDelegate(List<String> endpoints, int taskTimeoutSeconds) {
+  public ParallelRequestDelegate(
+      final List<String> endpoints, final int taskTimeoutSeconds, final AbstractEnv env) {
+    this(endpoints, taskTimeoutSeconds, env != null ? env::dumpTestJVMSnapshot : () -> {});
+  }
+
+  public ParallelRequestDelegate(
+      final List<String> endpoints,
+      final int taskTimeoutSeconds,
+      final Runnable dumpTestJVMSnapshot) {
     super(endpoints);
     this.taskTimeoutSeconds = taskTimeoutSeconds;
+    this.dumpTestJVMSnapshot = dumpTestJVMSnapshot;
   }
 
   public List<T> requestAll() throws SQLException {
@@ -57,7 +67,7 @@ public class ParallelRequestDelegate<T> extends RequestDelegate<T> {
       } catch (ExecutionException e) {
         exceptions[i] = e;
       } catch (InterruptedException | TimeoutException e) {
-        EnvFactory.getEnv().dumpTestJVMSnapshot();
+        dumpTestJVMSnapshot.run();
         for (int j = i; j < getEndpoints().size(); j++) {
           resultFutures.get(j).cancel(true);
         }

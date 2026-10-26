@@ -19,39 +19,41 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.calc.transformation.dag.util.CastFunctionUtils;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.InterpretedFunctionInvoker;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CoalesceExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Extract;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InListExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
-import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper.CastFunctionHelper;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
-import org.apache.iotdb.db.queryengine.plan.relational.function.InterpretedFunctionInvoker;
-import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeCoercion;
 
 import com.google.common.collect.ImmutableList;
@@ -76,12 +78,12 @@ import static com.google.common.base.Verify.verify;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.calc.transformation.dag.column.unary.scalar.ExtractTransformer.constructEvaluateFunction;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression.Sign.MINUS;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression.Sign.PLUS;
+import static org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator.isDeterministic;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.isEffectivelyLiteral;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression.Sign.MINUS;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression.Sign.PLUS;
-import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ExtractTransformer.constructEvaluateFunction;
 
 public class IrExpressionInterpreter {
 
@@ -102,14 +104,20 @@ public class IrExpressionInterpreter {
       PlannerContext plannerContext,
       SessionInfo session,
       Map<NodeRef<Expression>, Type> expressionTypes) {
-    this.expression = requireNonNull(expression, "expression is null");
-    this.plannerContext = requireNonNull(plannerContext, "plannerContext is null");
+    this.expression =
+        requireNonNull(expression, DataNodeQueryMessages.EXCEPTION_EXPRESSION_IS_NULL_16C079B5);
+    this.plannerContext =
+        requireNonNull(
+            plannerContext, DataNodeQueryMessages.EXCEPTION_PLANNERCONTEXT_IS_NULL_B7C7DE50);
     this.metadata = plannerContext.getMetadata();
     this.literalInterpreter = new LiteralInterpreter(plannerContext, session);
     this.literalEncoder = new LiteralEncoder(plannerContext);
-    this.session = requireNonNull(session, "session is null");
+    this.session =
+        requireNonNull(session, DataNodeQueryMessages.EXCEPTION_SESSION_IS_NULL_6CF0F47D);
     this.expressionTypes =
-        ImmutableMap.copyOf(requireNonNull(expressionTypes, "expressionTypes is null"));
+        ImmutableMap.copyOf(
+            requireNonNull(
+                expressionTypes, DataNodeQueryMessages.EXCEPTION_EXPRESSIONTYPES_IS_NULL_4107A4A2));
     verify(expressionTypes.containsKey(NodeRef.of(expression)));
     this.functionInvoker = new InterpretedFunctionInvoker();
     this.typeCoercion = new TypeCoercion(plannerContext.getTypeManager()::getType);
@@ -126,7 +134,8 @@ public class IrExpressionInterpreter {
     Object result = new Visitor(false).processWithExceptionHandling(expression, null);
     verify(
         !(result instanceof Expression),
-        "Expression interpreter returned an unresolved expression");
+        DataNodeQueryMessages
+            .EXCEPTION_EXPRESSION_INTERPRETER_RETURNED_AN_UNRESOLVED_EXPRESSION_5BCE9A51);
     return result;
   }
 
@@ -134,7 +143,8 @@ public class IrExpressionInterpreter {
     Object result = new Visitor(false).processWithExceptionHandling(expression, inputs);
     verify(
         !(result instanceof Expression),
-        "Expression interpreter returned an unresolved expression");
+        DataNodeQueryMessages
+            .EXCEPTION_EXPRESSION_INTERPRETER_RETURNED_AN_UNRESOLVED_EXPRESSION_5BCE9A51);
     return result;
   }
 
@@ -142,7 +152,7 @@ public class IrExpressionInterpreter {
     return new Visitor(true).processWithExceptionHandling(expression, inputs);
   }
 
-  private class Visitor extends AstVisitor<Object, Object> {
+  private class Visitor implements AstVisitor<Object, Object> {
     private final boolean optimize;
 
     private Visitor(boolean optimize) {
@@ -172,17 +182,17 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitSymbolReference(SymbolReference node, Object context) {
+    public Object visitSymbolReference(SymbolReference node, Object context) {
       return ((SymbolResolver) context).getValue(Symbol.from(node));
     }
 
     @Override
-    protected Object visitLiteral(Literal node, Object context) {
+    public Object visitLiteral(Literal node, Object context) {
       return literalInterpreter.evaluate(node, type(node));
     }
 
     @Override
-    protected Object visitIsNullPredicate(IsNullPredicate node, Object context) {
+    public Object visitIsNullPredicate(IsNullPredicate node, Object context) {
       Object value = processWithExceptionHandling(node.getValue(), context);
 
       if (value instanceof Expression) {
@@ -193,7 +203,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitIsNotNullPredicate(IsNotNullPredicate node, Object context) {
+    public Object visitIsNotNullPredicate(IsNotNullPredicate node, Object context) {
       Object value = processWithExceptionHandling(node.getValue(), context);
 
       if (value instanceof Expression) {
@@ -204,7 +214,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitSearchedCaseExpression(SearchedCaseExpression node, Object context) {
+    public Object visitSearchedCaseExpression(SearchedCaseExpression node, Object context) {
       Object newDefault = null;
       boolean foundNewDefault = false;
 
@@ -247,7 +257,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitIfExpression(IfExpression node, Object context) {
+    public Object visitIfExpression(IfExpression node, Object context) {
       Object condition = processWithExceptionHandling(node.getCondition(), context);
 
       if (condition instanceof Expression) {
@@ -268,7 +278,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitSimpleCaseExpression(SimpleCaseExpression node, Object context) {
+    public Object visitSimpleCaseExpression(SimpleCaseExpression node, Object context) {
       Object operand = processWithExceptionHandling(node.getOperand(), context);
       Type operandType = type(node.getOperand());
 
@@ -330,12 +340,15 @@ public class IrExpressionInterpreter {
 
     private Type type(Expression expression) {
       Type type = expressionTypes.get(NodeRef.of(expression));
-      checkState(type != null, "Type not found for expression: %s", expression);
+      checkState(
+          type != null,
+          DataNodeQueryMessages.EXCEPTION_TYPE_NOT_FOUND_FOR_EXPRESSION_COLON_ARG_C26C9237,
+          expression);
       return type;
     }
 
     @Override
-    protected Object visitCoalesceExpression(CoalesceExpression node, Object context) {
+    public Object visitCoalesceExpression(CoalesceExpression node, Object context) {
       List<Object> newOperands = processOperands(node, context);
       if (newOperands.isEmpty()) {
         return null;
@@ -367,7 +380,8 @@ public class IrExpressionInterpreter {
                   !(nestedOperand instanceof NullLiteral)
                       && !(nestedOperand instanceof Cast
                           && ((Cast) nestedOperand).getExpression() instanceof NullLiteral),
-                  "Null operand should have been removed by recursive coalesce processing");
+                  DataNodeQueryMessages
+                      .EXCEPTION_NULL_OPERAND_SHOULD_HAVE_BEEN_REMOVED_BY_RECURSIVE_COALESCE_PROCESSING_B6D4D443);
               return newOperands;
             }
           }
@@ -375,7 +389,8 @@ public class IrExpressionInterpreter {
           Expression expr = (Expression) value;
           verify(
               !(value instanceof NullLiteral),
-              "Null value is expected to be represented as null, not NullLiteral");
+              DataNodeQueryMessages
+                  .EXCEPTION_NULL_VALUE_IS_EXPECTED_TO_BE_REPRESENTED_AS_NULL_COMMA_NOT_NULLLITERAL_9B96D25A);
           // Skip duplicates unless they are non-deterministic.
           if (!isDeterministic(expr) || uniqueNewOperands.add(expr)) {
             newOperands.add(expr);
@@ -390,7 +405,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitInPredicate(InPredicate node, Object context) {
+    public Object visitInPredicate(InPredicate node, Object context) {
       Object value = processWithExceptionHandling(node.getValue(), context);
 
       InListExpression valueList = (InListExpression) node.getValueList();
@@ -493,7 +508,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitArithmeticUnary(ArithmeticUnaryExpression node, Object context) {
+    public Object visitArithmeticUnary(ArithmeticUnaryExpression node, Object context) {
       Object value = processWithExceptionHandling(node.getValue(), context);
       if (value == null) {
         return null;
@@ -534,7 +549,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitArithmeticBinary(ArithmeticBinaryExpression node, Object context) {
+    public Object visitArithmeticBinary(ArithmeticBinaryExpression node, Object context) {
       Object left = processWithExceptionHandling(node.getLeft(), context);
       if (left == null) {
         return null;
@@ -562,7 +577,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitComparisonExpression(ComparisonExpression node, Object context) {
+    public Object visitComparisonExpression(ComparisonExpression node, Object context) {
       ComparisonExpression.Operator operator = node.getOperator();
       Expression left = node.getLeft();
       Expression right = node.getRight();
@@ -643,7 +658,8 @@ public class IrExpressionInterpreter {
             toExpression(right, type(rightExpression)));
       } else {
         if (!(left instanceof Number) || !(right instanceof Number)) {
-          throw new IllegalArgumentException("Both object must be type of number");
+          throw new IllegalArgumentException(
+              DataNodeQueryMessages.BOTH_OBJECT_MUST_BE_TYPE_OF_NUMBER);
         }
 
         if (left instanceof Integer && right instanceof Integer) {
@@ -741,12 +757,12 @@ public class IrExpressionInterpreter {
               comparisonExpression.getLeft());
         default:
           throw new IllegalStateException(
-              "Unexpected value: " + comparisonExpression.getOperator());
+              DataNodeQueryMessages.UNEXPECTED_VALUE + comparisonExpression.getOperator());
       }
     }
 
     @Override
-    protected Object visitBetweenPredicate(BetweenPredicate node, Object context) {
+    public Object visitBetweenPredicate(BetweenPredicate node, Object context) {
       Object value = processWithExceptionHandling(node.getValue(), context);
       if (value == null) {
         return null;
@@ -791,7 +807,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitNotExpression(NotExpression node, Object context) {
+    public Object visitNotExpression(NotExpression node, Object context) {
       Object value = processWithExceptionHandling(node.getValue(), context);
       if (value == null) {
         return null;
@@ -805,7 +821,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitLogicalExpression(LogicalExpression node, Object context) {
+    public Object visitLogicalExpression(LogicalExpression node, Object context) {
       List<Object> terms = new ArrayList<>();
       List<Type> types = new ArrayList<>();
 
@@ -858,12 +874,12 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitBooleanLiteral(BooleanLiteral node, Object context) {
+    public Object visitBooleanLiteral(BooleanLiteral node, Object context) {
       return node.equals(BooleanLiteral.TRUE_LITERAL);
     }
 
     @Override
-    protected Object visitFunctionCall(FunctionCall node, Object context) {
+    public Object visitFunctionCall(FunctionCall node, Object context) {
       List<Type> argumentTypes = new ArrayList<>();
       List<Object> argumentValues = new ArrayList<>();
       for (Expression expr : node.getArguments()) {
@@ -874,7 +890,7 @@ public class IrExpressionInterpreter {
       }
 
       if (optimize && hasUnresolvedValue(argumentValues)) {
-        verify(!node.isDistinct(), "distinct not supported");
+        verify(!node.isDistinct(), DataNodeQueryMessages.EXCEPTION_DISTINCT_NOT_SUPPORTED_0E97D0BB);
         //        verify(node.getOrderBy().isEmpty(), "order by not supported");
         //        verify(node.getFilter().isEmpty(), "filter not supported");
         //        verify(node.getWindow().isEmpty(), "window not supported");
@@ -909,7 +925,7 @@ public class IrExpressionInterpreter {
       }
 
       try {
-        return CastFunctionHelper.cast(value, sourceType, targetType, session);
+        return CastFunctionUtils.cast(value, sourceType, targetType, session);
       } catch (RuntimeException e) {
         if (node.isSafe()) {
           return null;
@@ -919,7 +935,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitExtract(Extract node, Object context) {
+    public Object visitExtract(Extract node, Object context) {
       Object value = processWithExceptionHandling(node.getExpression(), context);
       if (value == null) {
         return null;
@@ -931,13 +947,16 @@ public class IrExpressionInterpreter {
         return constructEvaluateFunction(node.getField(), session.getZoneId()).apply((Long) value);
       }
 
-      checkState(value instanceof Expression, "Value reach here must be Expression");
+      checkState(
+          value instanceof Expression,
+          DataNodeQueryMessages.EXCEPTION_VALUE_REACH_HERE_MUST_BE_EXPRESSION_C7CA1971);
       return new Extract((Expression) value, node.getField());
     }
 
     @Override
-    protected Object visitExpression(Expression node, Object context) {
-      throw new SemanticException("not yet implemented: " + node.getClass().getName());
+    public Object visitExpression(Expression node, Object context) {
+      throw new SemanticException(
+          DataNodeQueryMessages.NOT_YET_IMPLEMENTED + node.getClass().getName());
     }
 
     private List<Type> types(Expression... expressions) {

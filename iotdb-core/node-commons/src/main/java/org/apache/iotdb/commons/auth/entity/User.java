@@ -18,18 +18,11 @@
  */
 package org.apache.iotdb.commons.auth.entity;
 
-import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TListUserInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -41,6 +34,25 @@ public class User extends Role {
   public static final long INTERNAL_SYSTEM_ADMIN = 1;
   public static final long INTERNAL_SECURITY_ADMIN = 2;
   public static final long INTERNAL_AUDIT_ADMIN = 3;
+
+  /**
+   * Login name of the built-in internal audit log writer. Always starts with {@link
+   * #BUILTIN_USERNAME_PREFIX}.
+   */
+  public static final String BUILTIN_INTERNAL_AUDIT_LOG_USERNAME = "__internal_auditor";
+
+  /**
+   * User names with this prefix are reserved for system-style built-in accounts. New user creation
+   * and {@code RENAME USER} targets must reject this prefix; accounts that already use such a name
+   * keep working until renamed. See {@link
+   * org.apache.iotdb.commons.utils.AuthUtils#validateNewUserUsername(String)}.
+   */
+  public static final String BUILTIN_USERNAME_PREFIX = "__";
+
+  /** True if the name has the system-reserved {@link #BUILTIN_USERNAME_PREFIX} prefix. */
+  public static boolean isSystemReservedUsername(String username) {
+    return username != null && username.startsWith(BUILTIN_USERNAME_PREFIX);
+  }
 
   private long userId = -1;
 
@@ -166,63 +178,6 @@ public class User extends Role {
         super.getSysPrivilege(),
         roleSet,
         isOpenIdUser);
-  }
-
-  @Override
-  public ByteBuffer serialize() {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-
-    SerializeUtils.serialize(super.getName(), dataOutputStream);
-    SerializeUtils.serialize(password, dataOutputStream);
-
-    try {
-      dataOutputStream.writeInt(super.getSysPrivilege().size());
-      for (PrivilegeType item : super.getSysPrivilege()) {
-        dataOutputStream.writeInt(item.ordinal());
-      }
-      dataOutputStream.writeInt(super.getSysPriGrantOpt().size());
-      for (PrivilegeType item : super.getSysPriGrantOpt()) {
-        dataOutputStream.writeInt(item.ordinal());
-      }
-      dataOutputStream.writeInt(super.getPathPrivilegeList().size());
-      for (PathPrivilege pathPrivilege : super.getPathPrivilegeList()) {
-        dataOutputStream.write(pathPrivilege.serialize().array());
-      }
-    } catch (IOException e) {
-      // unreachable
-    }
-    SerializeUtils.serializeStringList(new ArrayList<>(roleSet), dataOutputStream);
-
-    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
-  }
-
-  @Override
-  public void deserialize(ByteBuffer buffer) {
-    super.setName(SerializeUtils.deserializeString(buffer));
-    password = SerializeUtils.deserializeString(buffer);
-    int systemPriSize = buffer.getInt();
-    Set<PrivilegeType> sysPri = new HashSet<>();
-    for (int i = 0; i < systemPriSize; i++) {
-      sysPri.add(PrivilegeType.values()[buffer.getInt()]);
-    }
-    super.setSysPrivilegeSet(sysPri);
-    int sysPriGrantOptSize = buffer.getInt();
-    Set<PrivilegeType> grantOpt = new HashSet<>();
-    for (int i = 0; i < sysPriGrantOptSize; i++) {
-      grantOpt.add(PrivilegeType.values()[buffer.getInt()]);
-    }
-    super.setSysPriGrantOpt(grantOpt);
-
-    int privilegeListSize = buffer.getInt();
-    List<PathPrivilege> privilegeList = new ArrayList<>(privilegeListSize);
-    for (int i = 0; i < privilegeListSize; i++) {
-      PathPrivilege pathPrivilege = new PathPrivilege();
-      pathPrivilege.deserialize(buffer);
-      privilegeList.add(pathPrivilege);
-    }
-    super.setPrivilegeList(privilegeList);
-    roleSet = new HashSet<>(SerializeUtils.deserializeStringList(buffer));
   }
 
   /**

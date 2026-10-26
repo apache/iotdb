@@ -25,17 +25,17 @@ import org.apache.iotdb.commons.client.async.AsyncConfigNodeInternalServiceClien
 import org.apache.iotdb.commons.client.async.AsyncDataNodeExternalServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeMPPDataExchangeServiceClient;
-import org.apache.iotdb.commons.client.async.AsyncPipeConsensusServiceClient;
+import org.apache.iotdb.commons.client.async.AsyncIoTConsensusV2ServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty;
-import org.apache.iotdb.commons.client.property.PipeConsensusClientProperty;
+import org.apache.iotdb.commons.client.property.IoTConsensusV2ClientProperty;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty.DefaultProperty;
 import org.apache.iotdb.commons.client.sync.SyncAINodeClient;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
-import org.apache.iotdb.commons.client.sync.SyncPipeConsensusServiceClient;
+import org.apache.iotdb.commons.client.sync.SyncIoTConsensusV2ServiceClient;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -74,6 +74,12 @@ public class ClientPoolFactory {
   public static class AsyncConfigNodeInternalServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, AsyncConfigNodeInternalServiceClient> {
 
+    private final int selectorNumOfAsyncClientManager;
+
+    public AsyncConfigNodeInternalServiceClientPoolFactory(int selectorNumOfAsyncClientManager) {
+      this.selectorNumOfAsyncClientManager = selectorNumOfAsyncClientManager;
+    }
+
     @Override
     public GenericKeyedObjectPool<TEndPoint, AsyncConfigNodeInternalServiceClient> createClientPool(
         ClientManager<TEndPoint, AsyncConfigNodeInternalServiceClient> manager) {
@@ -84,7 +90,7 @@ public class ClientPoolFactory {
                   new ThriftClientProperty.Builder()
                       .setConnectionTimeoutMs(conf.getCnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
-                      .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
+                      .setSelectorNumOfAsyncClientManager(selectorNumOfAsyncClientManager)
                       .build(),
                   ThreadName.ASYNC_CONFIGNODE_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncConfigNodeInternalServiceClient>()
@@ -122,6 +128,12 @@ public class ClientPoolFactory {
   public static class AsyncDataNodeInternalServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, AsyncDataNodeInternalServiceClient> {
 
+    private final int selectorNumOfAsyncClientManager;
+
+    public AsyncDataNodeInternalServiceClientPoolFactory(int selectorNumOfAsyncClientManager) {
+      this.selectorNumOfAsyncClientManager = selectorNumOfAsyncClientManager;
+    }
+
     @Override
     public GenericKeyedObjectPool<TEndPoint, AsyncDataNodeInternalServiceClient> createClientPool(
         ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> manager) {
@@ -132,7 +144,7 @@ public class ClientPoolFactory {
                   new ThriftClientProperty.Builder()
                       .setConnectionTimeoutMs(conf.getDnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
-                      .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
+                      .setSelectorNumOfAsyncClientManager(selectorNumOfAsyncClientManager)
                       .setPrintLogWhenEncounterException(false)
                       .build(),
                   ThreadName.ASYNC_DATANODE_CLIENT_POOL.getName()),
@@ -148,6 +160,12 @@ public class ClientPoolFactory {
   public static class AsyncDataNodeExternalServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, AsyncDataNodeExternalServiceClient> {
 
+    private final int selectorNumOfAsyncClientManager;
+
+    public AsyncDataNodeExternalServiceClientPoolFactory(int selectorNumOfAsyncClientManager) {
+      this.selectorNumOfAsyncClientManager = selectorNumOfAsyncClientManager;
+    }
+
     @Override
     public GenericKeyedObjectPool<TEndPoint, AsyncDataNodeExternalServiceClient> createClientPool(
         ClientManager<TEndPoint, AsyncDataNodeExternalServiceClient> manager) {
@@ -158,7 +176,7 @@ public class ClientPoolFactory {
                   new ThriftClientProperty.Builder()
                       .setConnectionTimeoutMs(conf.getDnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
-                      .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
+                      .setSelectorNumOfAsyncClientManager(selectorNumOfAsyncClientManager)
                       .build(),
                   ThreadName.ASYNC_DATANODE_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncDataNodeExternalServiceClient>()
@@ -173,6 +191,12 @@ public class ClientPoolFactory {
   public static class AsyncConfigNodeHeartbeatServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, AsyncConfigNodeInternalServiceClient> {
 
+    private final int selectorNumOfAsyncClientManager;
+
+    public AsyncConfigNodeHeartbeatServiceClientPoolFactory(int selectorNumOfAsyncClientManager) {
+      this.selectorNumOfAsyncClientManager = selectorNumOfAsyncClientManager;
+    }
+
     @Override
     public GenericKeyedObjectPool<TEndPoint, AsyncConfigNodeInternalServiceClient> createClientPool(
         ClientManager<TEndPoint, AsyncConfigNodeInternalServiceClient> manager) {
@@ -184,7 +208,7 @@ public class ClientPoolFactory {
                   new ThriftClientProperty.Builder()
                       .setConnectionTimeoutMs(conf.getCnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
-                      .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
+                      .setSelectorNumOfAsyncClientManager(selectorNumOfAsyncClientManager)
                       .setPrintLogWhenEncounterException(false)
                       .build(),
                   ThreadName.ASYNC_CONFIGNODE_HEARTBEAT_CLIENT_POOL.getName()),
@@ -199,6 +223,13 @@ public class ClientPoolFactory {
 
   public static class AsyncDataNodeHeartbeatServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, AsyncDataNodeInternalServiceClient> {
+
+    private final int selectorNumOfAsyncClientManager;
+
+    public AsyncDataNodeHeartbeatServiceClientPoolFactory(int selectorNumOfAsyncClientManager) {
+      this.selectorNumOfAsyncClientManager = selectorNumOfAsyncClientManager;
+    }
+
     @Override
     public GenericKeyedObjectPool<TEndPoint, AsyncDataNodeInternalServiceClient> createClientPool(
         ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> manager) {
@@ -209,7 +240,7 @@ public class ClientPoolFactory {
                   new ThriftClientProperty.Builder()
                       .setConnectionTimeoutMs(conf.getCnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
-                      .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
+                      .setSelectorNumOfAsyncClientManager(selectorNumOfAsyncClientManager)
                       .setPrintLogWhenEncounterException(false)
                       .build(),
                   ThreadName.ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL.getName()),
@@ -249,6 +280,13 @@ public class ClientPoolFactory {
   public static class AsyncDataNodeMPPDataExchangeServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, AsyncDataNodeMPPDataExchangeServiceClient> {
 
+    private final int selectorNumOfAsyncClientManager;
+
+    public AsyncDataNodeMPPDataExchangeServiceClientPoolFactory(
+        int selectorNumOfAsyncClientManager) {
+      this.selectorNumOfAsyncClientManager = selectorNumOfAsyncClientManager;
+    }
+
     @Override
     public GenericKeyedObjectPool<TEndPoint, AsyncDataNodeMPPDataExchangeServiceClient>
         createClientPool(
@@ -260,7 +298,7 @@ public class ClientPoolFactory {
                   new ThriftClientProperty.Builder()
                       .setConnectionTimeoutMs(conf.getDnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
-                      .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
+                      .setSelectorNumOfAsyncClientManager(selectorNumOfAsyncClientManager)
                       .build(),
                   ThreadName.ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncDataNodeMPPDataExchangeServiceClient>()
@@ -293,7 +331,7 @@ public class ClientPoolFactory {
                       .setRpcThriftCompressionEnabled(conf.isPipeSinkRPCThriftCompressionEnabled())
                       .setSelectorNumOfAsyncClientManager(conf.getPipeAsyncSinkSelectorNumber())
                       .build(),
-                  ThreadName.PIPE_ASYNC_CONNECTOR_CLIENT_POOL.getName(),
+                  ThreadName.PIPE_ASYNC_SINK_CLIENT_POOL.getName(),
                   this.candidatePorts),
               new ClientPoolProperty.Builder<AsyncPipeDataTransferServiceClient>()
                   .setMaxClientNumForEachNode(conf.getPipeAsyncSinkMaxClientNumber())
@@ -327,7 +365,7 @@ public class ClientPoolFactory {
                       .setSelectorNumOfAsyncClientManager(conf.getPipeAsyncSinkSelectorNumber())
                       .setPrintLogWhenEncounterException(conf.isPrintLogWhenEncounterException())
                       .build(),
-                  ThreadName.PIPE_ASYNC_CONNECTOR_CLIENT_POOL.getName(),
+                  ThreadName.PIPE_ASYNC_SINK_CLIENT_POOL.getName(),
                   this.candidatePorts),
               new ClientPoolProperty.Builder<AsyncPipeDataTransferServiceClient>()
                   .setMaxClientNumForEachNode(conf.getPipeAsyncSinkMaxTsFileClientNumber())
@@ -339,21 +377,21 @@ public class ClientPoolFactory {
     }
   }
 
-  public static class SyncPipeConsensusServiceClientPoolFactory
-      implements IClientPoolFactory<TEndPoint, SyncPipeConsensusServiceClient> {
+  public static class SyncIoTConsensusV2ServiceClientPoolFactory
+      implements IClientPoolFactory<TEndPoint, SyncIoTConsensusV2ServiceClient> {
 
-    private final PipeConsensusClientProperty config;
+    private final IoTConsensusV2ClientProperty config;
 
-    public SyncPipeConsensusServiceClientPoolFactory(PipeConsensusClientProperty config) {
+    public SyncIoTConsensusV2ServiceClientPoolFactory(IoTConsensusV2ClientProperty config) {
       this.config = config;
     }
 
     @Override
-    public GenericKeyedObjectPool<TEndPoint, SyncPipeConsensusServiceClient> createClientPool(
-        ClientManager<TEndPoint, SyncPipeConsensusServiceClient> manager) {
-      GenericKeyedObjectPool<TEndPoint, SyncPipeConsensusServiceClient> clientPool =
+    public GenericKeyedObjectPool<TEndPoint, SyncIoTConsensusV2ServiceClient> createClientPool(
+        ClientManager<TEndPoint, SyncIoTConsensusV2ServiceClient> manager) {
+      GenericKeyedObjectPool<TEndPoint, SyncIoTConsensusV2ServiceClient> clientPool =
           new GenericKeyedObjectPool<>(
-              new SyncPipeConsensusServiceClient.Factory(
+              new SyncIoTConsensusV2ServiceClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
                       // TODO: consider timeout and evict strategy.
@@ -362,7 +400,7 @@ public class ClientPoolFactory {
                       .setPrintLogWhenEncounterException(
                           config.isPrintLogWhenThriftClientEncounterException())
                       .build()),
-              new ClientPoolProperty.Builder<SyncPipeConsensusServiceClient>()
+              new ClientPoolProperty.Builder<SyncIoTConsensusV2ServiceClient>()
                   .setMaxClientNumForEachNode(config.getMaxClientNumForEachNode())
                   .build()
                   .getConfig());
@@ -372,21 +410,21 @@ public class ClientPoolFactory {
     }
   }
 
-  public static class AsyncPipeConsensusServiceClientPoolFactory
-      implements IClientPoolFactory<TEndPoint, AsyncPipeConsensusServiceClient> {
+  public static class AsyncIoTConsensusV2ServiceClientPoolFactory
+      implements IClientPoolFactory<TEndPoint, AsyncIoTConsensusV2ServiceClient> {
 
-    private final PipeConsensusClientProperty config;
+    private final IoTConsensusV2ClientProperty config;
 
-    public AsyncPipeConsensusServiceClientPoolFactory(PipeConsensusClientProperty config) {
+    public AsyncIoTConsensusV2ServiceClientPoolFactory(IoTConsensusV2ClientProperty config) {
       this.config = config;
     }
 
     @Override
-    public GenericKeyedObjectPool<TEndPoint, AsyncPipeConsensusServiceClient> createClientPool(
-        ClientManager<TEndPoint, AsyncPipeConsensusServiceClient> manager) {
-      GenericKeyedObjectPool<TEndPoint, AsyncPipeConsensusServiceClient> clientPool =
+    public GenericKeyedObjectPool<TEndPoint, AsyncIoTConsensusV2ServiceClient> createClientPool(
+        ClientManager<TEndPoint, AsyncIoTConsensusV2ServiceClient> manager) {
+      GenericKeyedObjectPool<TEndPoint, AsyncIoTConsensusV2ServiceClient> clientPool =
           new GenericKeyedObjectPool<>(
-              new AsyncPipeConsensusServiceClient.Factory(
+              new AsyncIoTConsensusV2ServiceClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
                       // TODO: consider timeout and evict strategy.
@@ -396,8 +434,8 @@ public class ClientPoolFactory {
                       .setPrintLogWhenEncounterException(
                           config.isPrintLogWhenThriftClientEncounterException())
                       .build(),
-                  ThreadName.ASYNC_DATANODE_PIPE_CONSENSUS_CLIENT_POOL.getName()),
-              new ClientPoolProperty.Builder<AsyncPipeConsensusServiceClient>()
+                  ThreadName.ASYNC_DATANODE_IOT_CONSENSUS_V2_CLIENT_POOL.getName()),
+              new ClientPoolProperty.Builder<AsyncIoTConsensusV2ServiceClient>()
                   .setMaxClientNumForEachNode(config.getMaxClientNumForEachNode())
                   .build()
                   .getConfig());
@@ -431,6 +469,12 @@ public class ClientPoolFactory {
   public static class AsyncAINodeHeartbeatServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, AsyncAINodeInternalServiceClient> {
 
+    private final int selectorNumOfAsyncClientManager;
+
+    public AsyncAINodeHeartbeatServiceClientPoolFactory(int selectorNumOfAsyncClientManager) {
+      this.selectorNumOfAsyncClientManager = selectorNumOfAsyncClientManager;
+    }
+
     @Override
     public GenericKeyedObjectPool<TEndPoint, AsyncAINodeInternalServiceClient> createClientPool(
         ClientManager<TEndPoint, AsyncAINodeInternalServiceClient> manager) {
@@ -441,7 +485,7 @@ public class ClientPoolFactory {
                   new ThriftClientProperty.Builder()
                       .setConnectionTimeoutMs(conf.getCnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
-                      .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
+                      .setSelectorNumOfAsyncClientManager(selectorNumOfAsyncClientManager)
                       .setPrintLogWhenEncounterException(false)
                       .build(),
                   ThreadName.ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL.getName()),

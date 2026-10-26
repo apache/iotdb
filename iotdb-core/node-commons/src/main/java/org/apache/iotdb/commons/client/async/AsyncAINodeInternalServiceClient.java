@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.i18n.ClientMessages;
 import org.apache.iotdb.rpc.TNonblockingTransportWrapper;
 
 import org.apache.commons.pool2.PooledObject;
@@ -86,7 +87,7 @@ public class AsyncAINodeInternalServiceClient extends IAINodeRPCService.AsyncCli
   @Override
   public void invalidate() {
     if (!hasError()) {
-      super.onError(new Exception("This client has been invalidated"));
+      super.onError(new Exception(ClientMessages.CLIENT_INVALIDATED));
     }
   }
 
@@ -115,7 +116,7 @@ public class AsyncAINodeInternalServiceClient extends IAINodeRPCService.AsyncCli
       return true;
     } catch (Exception e) {
       if (printLogWhenEncounterException) {
-        logger.error("Unexpected exception occurs in {} : {}", this, e.getMessage());
+        logger.error(ClientMessages.UNEXPECTED_EXCEPTION_IN_CLIENT, this, e.getMessage());
       }
       return false;
     }
@@ -144,7 +145,7 @@ public class AsyncAINodeInternalServiceClient extends IAINodeRPCService.AsyncCli
           new AsyncAINodeInternalServiceClient(
               thriftClientProperty,
               endPoint,
-              tManagers[clientCnt.incrementAndGet() % tManagers.length],
+              tManagers[Math.floorMod(clientCnt.incrementAndGet(), tManagers.length)],
               clientManager));
     }
 

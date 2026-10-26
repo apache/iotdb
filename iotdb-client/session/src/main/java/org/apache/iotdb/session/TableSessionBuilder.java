@@ -49,6 +49,9 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   /**
    * Sets the list of node URLs for the IoTDB cluster.
    *
+   * <p>Use the same host/IP form as each DataNode's dn_rpc_address. Recovery deduplicates literal
+   * addresses, not DNS aliases.
+   *
    * @param nodeUrls a list of node URLs.
    * @return the current {@link TableSessionBuilder} instance.
    * @defaultValue Collection.singletonList(" localhost : 6667 ")
@@ -180,6 +183,18 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   }
 
   /**
+   * Enables or disables schema auto-creation for this session's write requests.
+   *
+   * @param enableAutoCreateSchema whether to allow auto creating tables and columns.
+   * @return the current {@link TableSessionBuilder} instance.
+   * @defaultValue true
+   */
+  public TableSessionBuilder enableAutoCreateSchema(boolean enableAutoCreateSchema) {
+    this.enableAutoCreateSchema = enableAutoCreateSchema;
+    return this;
+  }
+
+  /**
    * Sets the maximum number of retries for connection attempts.
    *
    * @param maxRetryCount the maximum retry count.
@@ -236,6 +251,42 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
    */
   public TableSessionBuilder trustStorePwd(String trustStorePwd) {
     this.trustStorePwd = trustStorePwd;
+    return this;
+  }
+
+  /**
+   * Sets the key store path for mutual SSL connections.
+   *
+   * @param keyStore the key store path.
+   * @return the current {@link TableSessionBuilder} instance.
+   * @defaultValue null
+   */
+  public TableSessionBuilder keyStore(String keyStore) {
+    this.keyStore = keyStore;
+    return this;
+  }
+
+  /**
+   * Sets the key store password for mutual SSL connections.
+   *
+   * @param keyStorePwd the key store password.
+   * @return the current {@link TableSessionBuilder} instance.
+   * @defaultValue null
+   */
+  public TableSessionBuilder keyStorePwd(String keyStorePwd) {
+    this.keyStorePwd = keyStorePwd;
+    return this;
+  }
+
+  /**
+   * Sets the SSL protocol for secure connections.
+   *
+   * @param sslProtocol the SSL protocol.
+   * @return the current {@link TableSessionBuilder} instance.
+   * @defaultValue TLS
+   */
+  public TableSessionBuilder sslProtocol(String sslProtocol) {
+    this.sslProtocol = sslProtocol;
     return this;
   }
 

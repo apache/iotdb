@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.metric.sink;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.pipe.agent.task.PipeConfigNodeSubtask;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -49,7 +50,7 @@ public class PipeConfigRegionSinkMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
+  public synchronized void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
     ImmutableSet.copyOf(subtaskMap.keySet()).forEach(this::createMetrics);
   }
@@ -73,12 +74,11 @@ public class PipeConfigRegionSinkMetrics implements IMetricSet {
   }
 
   @Override
-  public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(subtaskMap.keySet()).forEach(this::deregister);
-    if (!subtaskMap.isEmpty()) {
-      LOGGER.warn(
-          "Failed to unbind from pipe config region connector metrics, connector map not empty");
-    }
+  public synchronized void unbindFrom(final AbstractMetricService metricService) {
+    // Keep the subtasks registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    // Synchronized with the (de)registrations, which may remove a registration being unbound.
+    ImmutableSet.copyOf(subtaskMap.keySet()).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final String taskID) {
@@ -100,7 +100,7 @@ public class PipeConfigRegionSinkMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(final PipeConfigNodeSubtask pipeConfigNodeSubtask) {
+  public synchronized void register(final PipeConfigNodeSubtask pipeConfigNodeSubtask) {
     final String taskID = pipeConfigNodeSubtask.getTaskID();
     subtaskMap.putIfAbsent(taskID, pipeConfigNodeSubtask);
     if (Objects.nonNull(metricService)) {
@@ -108,11 +108,9 @@ public class PipeConfigRegionSinkMetrics implements IMetricSet {
     }
   }
 
-  public void deregister(final String taskID) {
+  public synchronized void deregister(final String taskID) {
     if (!subtaskMap.containsKey(taskID)) {
-      LOGGER.warn(
-          "Failed to deregister pipe config region connector metrics, PipeConfigNodeSubtask({}) does not exist",
-          taskID);
+      LOGGER.warn(ManagerMessages.FAILED_TO_DEREGISTER_PIPE_CONFIG_REGION_CONNECTOR, taskID);
       return;
     }
     if (Objects.nonNull(metricService)) {
@@ -128,7 +126,7 @@ public class PipeConfigRegionSinkMetrics implements IMetricSet {
     final Rate rate = configRateMap.get(taskID);
     if (rate == null) {
       LOGGER.info(
-          "Failed to mark pipe config region write plan event, PipeConfigNodeSubtask({}) does not exist",
+          ManagerMessages.FAILED_TO_MARK_PIPE_CONFIG_REGION_WRITE_PLAN_EVENT_PIPECONFIGNODESUBTASK,
           taskID);
       return;
     }

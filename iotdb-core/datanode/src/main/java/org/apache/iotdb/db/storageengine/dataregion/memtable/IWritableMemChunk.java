@@ -84,7 +84,7 @@ public interface IWritableMemChunk extends WALEntryValue {
       int end,
       TSStatus[] results);
 
-  long count();
+  long count(boolean ignoreAllNullRows);
 
   long rowCount();
 
@@ -100,7 +100,7 @@ public interface IWritableMemChunk extends WALEntryValue {
 
   void releaseTemporaryTvListForFlush();
 
-  default long getMaxTime() {
+  default long getMaxTime(boolean ignoreAllNullRows) {
     return Long.MAX_VALUE;
   }
 
@@ -115,15 +115,19 @@ public interface IWritableMemChunk extends WALEntryValue {
 
   IChunkWriter createIChunkWriter();
 
-  void encode(BlockingQueue<Object> ioTaskQueue, BatchEncodeInfo encodeInfo, long[] times);
+  void encode(
+      BlockingQueue<Object> ioTaskQueue,
+      BatchEncodeInfo encodeInfo,
+      long[] times,
+      boolean ignoreAllNullRows);
 
   void release();
 
   long getFirstPoint();
 
-  long getLastPoint();
+  long getLastPoint(boolean ignoreAllNullRows);
 
-  boolean isEmpty();
+  boolean isEmpty(boolean ignoreAllNullRows);
 
   List<? extends TVList> getSortedList();
 
@@ -132,4 +136,7 @@ public interface IWritableMemChunk extends WALEntryValue {
   void setWorkingTVList(TVList list);
 
   void setEncryptParameter(EncryptParameter encryptParameter);
+
+  TVList initWorkingListForFlushIfNecessary(
+      TVList workingList, boolean needCloneTimesAndIndicesInWorkingTVList);
 }

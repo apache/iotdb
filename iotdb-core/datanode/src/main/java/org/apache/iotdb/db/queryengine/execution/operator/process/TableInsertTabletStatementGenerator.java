@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import org.apache.tsfile.block.column.Column;
@@ -115,7 +116,8 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
 
   @Override
   public long getWrittenCount(String measurement) {
-    throw new UnsupportedOperationException("getWrittenCount(measurement) is not supported");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.GETWRITTENCOUNT_MEASUREMENT_IS_NOT_SUPPORTED);
   }
 
   @Override

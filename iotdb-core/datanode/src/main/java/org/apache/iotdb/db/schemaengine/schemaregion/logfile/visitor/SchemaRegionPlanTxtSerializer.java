@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.ISerializer;
@@ -79,7 +80,8 @@ public class SchemaRegionPlanTxtSerializer implements ISerializer<ISchemaRegionP
     @Override
     public Void visitSchemaRegionPlan(ISchemaRegionPlan plan, StringBuilder stringBuilder) {
       throw new UnsupportedOperationException(
-          String.format("%s plan doesn't support serialization.", plan.getPlanType().name()));
+          String.format(
+              DataNodeSchemaMessages.PLAN_NOT_SUPPORT_SERIALIZATION, plan.getPlanType().name()));
     }
 
     @Override

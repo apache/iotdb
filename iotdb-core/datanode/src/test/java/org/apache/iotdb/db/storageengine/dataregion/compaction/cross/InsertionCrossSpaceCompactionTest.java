@@ -564,13 +564,7 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     TsFileResource unseqResource1 =
         generateSingleNonAlignedSeriesFileWithDevices(
             "2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, false);
-    FileMetrics.getInstance()
-        .addTsFile(
-            unseqResource1.getDatabaseName(),
-            unseqResource1.getDataRegionId(),
-            unseqResource1.getTsFileSize(),
-            false,
-            unseqResource1.getTsFile().getName());
+    FileMetrics.getInstance().addTsFile(unseqResource1);
 
     long seqFileNumBeforeCompaction = FileMetrics.getInstance().getFileCount(true);
     long unseqFileNumBeforeCompaction = FileMetrics.getInstance().getFileCount(false);
@@ -588,13 +582,7 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     TsFileResource unseqResource2 =
         generateSingleNonAlignedSeriesFileWithDevices(
             "3-3-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(5, 6)}, false);
-    FileMetrics.getInstance()
-        .addTsFile(
-            unseqResource2.getDatabaseName(),
-            unseqResource2.getDataRegionId(),
-            unseqResource2.getTsFileSize(),
-            false,
-            unseqResource2.getTsFile().getName());
+    FileMetrics.getInstance().addTsFile(unseqResource2);
 
     seqFileNumBeforeCompaction = FileMetrics.getInstance().getFileCount(true);
     unseqFileNumBeforeCompaction = FileMetrics.getInstance().getFileCount(false);

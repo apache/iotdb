@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.commons.cq;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
 public enum CQState {
   INACTIVE((byte) 0),
   ACTIVE((byte) 1);
@@ -39,7 +41,7 @@ public enum CQState {
       case 1:
         return ACTIVE;
       default:
-        throw new IllegalArgumentException("Unknown CQState: " + t);
+        throw new IllegalArgumentException(CommonMessages.UNKNOWN_CQ_STATE + t);
     }
   }
 }

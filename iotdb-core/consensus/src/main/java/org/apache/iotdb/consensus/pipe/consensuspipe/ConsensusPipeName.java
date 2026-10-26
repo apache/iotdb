@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.pipe.consensuspipe;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.i18n.ConsensusMessages;
 
 import java.util.Objects;
 
@@ -46,14 +47,14 @@ public class ConsensusPipeName {
 
   public ConsensusPipeName(String pipeName) throws IllegalArgumentException {
     if (!pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
-      throw new IllegalArgumentException("Invalid pipe name: " + pipeName);
+      throw new IllegalArgumentException(ConsensusMessages.INVALID_PIPE_NAME + pipeName);
     }
     String[] pipeNameParts =
         pipeName
             .substring(PipeStaticMeta.CONSENSUS_PIPE_PREFIX.length())
             .split(CONSENSUS_PIPE_NAME_SPLITTER_CHAR);
     if (pipeNameParts.length != 3) {
-      throw new IllegalArgumentException("Invalid pipe name: " + pipeName);
+      throw new IllegalArgumentException(ConsensusMessages.INVALID_PIPE_NAME + pipeName);
     }
     this.consensusGroupId = ConsensusGroupId.Factory.createFromString(pipeNameParts[0]);
     this.senderDataNodeId = Integer.parseInt(pipeNameParts[1]);

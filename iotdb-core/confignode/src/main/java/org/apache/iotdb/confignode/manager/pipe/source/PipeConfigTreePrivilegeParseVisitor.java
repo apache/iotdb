@@ -47,6 +47,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnse
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -156,7 +157,7 @@ public class PipeConfigTreePrivilegeParseVisitor
               .anyMatch(path -> hasReadPrivilege(userEntity, path, true, true));
     } catch (final Exception e) {
       LOGGER.warn(
-          "Un-parse-able path name encountered during template privilege trimming, please check",
+          ManagerMessages.UN_PARSE_ABLE_PATH_NAME_ENCOUNTERED_DURING_TEMPLATE_PRIVILEGE_TRIMMING,
           e);
       return false;
     }
@@ -272,7 +273,7 @@ public class PipeConfigTreePrivilegeParseVisitor
       if (!skip && !originalTree.equals(intersectedTree)) {
         logger.recordObjectAuthenticationAuditLog(userEntity.setResult(false), () -> auditObject);
         throw new AccessDeniedException(
-            "Not has privilege to transfer plan: " + pipeDeleteTimeSeriesPlan);
+            ManagerMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + pipeDeleteTimeSeriesPlan);
       }
       final boolean result = !intersectedTree.isEmpty();
       logger.recordObjectAuthenticationAuditLog(userEntity.setResult(result), () -> auditObject);
@@ -280,9 +281,7 @@ public class PipeConfigTreePrivilegeParseVisitor
           ? Optional.of(new PipeDeleteTimeSeriesPlan(intersectedTree.serialize()))
           : Optional.empty();
     } catch (final IOException e) {
-      LOGGER.warn(
-          "Serialization failed for the delete time series plan in pipe transmission, skip transfer",
-          e);
+      LOGGER.warn(ManagerMessages.SERIALIZATION_FAILED_FOR_THE_DELETE_TIME_SERIES_PLAN_IN_PIPE, e);
       logger.recordObjectAuthenticationAuditLog(userEntity.setResult(false), () -> auditObject);
       return Optional.empty();
     } catch (final AuthException e) {
@@ -291,7 +290,7 @@ public class PipeConfigTreePrivilegeParseVisitor
         return Optional.empty();
       } else {
         throw new AccessDeniedException(
-            "Not has privilege to transfer plan: " + pipeDeleteTimeSeriesPlan);
+            ManagerMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + pipeDeleteTimeSeriesPlan);
       }
     }
   }
@@ -310,7 +309,7 @@ public class PipeConfigTreePrivilegeParseVisitor
       if (!skip && !originalTree.equals(intersectedTree)) {
         logger.recordObjectAuthenticationAuditLog(userEntity.setResult(false), () -> auditObject);
         throw new AccessDeniedException(
-            "Not has privilege to transfer plan: " + pipeDeleteLogicalViewPlan);
+            ManagerMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + pipeDeleteLogicalViewPlan);
       }
       final boolean result = !intersectedTree.isEmpty();
       logger.recordObjectAuthenticationAuditLog(userEntity.setResult(result), () -> auditObject);
@@ -318,9 +317,7 @@ public class PipeConfigTreePrivilegeParseVisitor
           ? Optional.of(new PipeDeleteLogicalViewPlan(intersectedTree.serialize()))
           : Optional.empty();
     } catch (final IOException e) {
-      LOGGER.warn(
-          "Serialization failed for the delete time series plan in pipe transmission, skip transfer",
-          e);
+      LOGGER.warn(ManagerMessages.SERIALIZATION_FAILED_FOR_THE_DELETE_TIME_SERIES_PLAN_IN_PIPE, e);
       logger.recordObjectAuthenticationAuditLog(userEntity.setResult(false), () -> auditObject);
       return Optional.empty();
     } catch (final AuthException e) {
@@ -329,7 +326,7 @@ public class PipeConfigTreePrivilegeParseVisitor
         return Optional.empty();
       } else {
         throw new AccessDeniedException(
-            "Not has privilege to transfer plan: " + pipeDeleteLogicalViewPlan);
+            ManagerMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + pipeDeleteLogicalViewPlan);
       }
     }
   }
@@ -349,7 +346,7 @@ public class PipeConfigTreePrivilegeParseVisitor
       if (!skip && !originalTree.equals(intersectedTree)) {
         logger.recordObjectAuthenticationAuditLog(userEntity.setResult(false), () -> auditObject);
         throw new AccessDeniedException(
-            "Not has privilege to transfer plan: " + pipeAlterEncodingCompressor);
+            ManagerMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + pipeAlterEncodingCompressor);
       }
       final boolean result = !intersectedTree.isEmpty();
       logger.recordObjectAuthenticationAuditLog(userEntity.setResult(result), () -> auditObject);
@@ -362,9 +359,7 @@ public class PipeConfigTreePrivilegeParseVisitor
                   pipeAlterEncodingCompressor.isMayAlterAudit()))
           : Optional.empty();
     } catch (final IOException e) {
-      LOGGER.warn(
-          "Serialization failed for the delete time series plan in pipe transmission, skip transfer",
-          e);
+      LOGGER.warn(ManagerMessages.SERIALIZATION_FAILED_FOR_THE_DELETE_TIME_SERIES_PLAN_IN_PIPE, e);
       logger.recordObjectAuthenticationAuditLog(userEntity.setResult(false), () -> auditObject);
       return Optional.empty();
     } catch (final AuthException e) {
@@ -373,7 +368,7 @@ public class PipeConfigTreePrivilegeParseVisitor
         return Optional.empty();
       } else {
         throw new AccessDeniedException(
-            "Not has privilege to transfer plan: " + pipeAlterEncodingCompressor);
+            ManagerMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + pipeAlterEncodingCompressor);
       }
     }
   }
@@ -409,7 +404,7 @@ public class PipeConfigTreePrivilegeParseVisitor
         return Optional.empty();
       } else {
         throw new AccessDeniedException(
-            "Not has privilege to transfer plan: " + pipeDeactivateTemplatePlan);
+            ManagerMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + pipeDeactivateTemplatePlan);
       }
     }
   }
@@ -437,7 +432,8 @@ public class PipeConfigTreePrivilegeParseVisitor
       if (skip) {
         return Optional.empty();
       } else {
-        throw new AccessDeniedException("Not has privilege to transfer plan: " + setTTLPlan);
+        throw new AccessDeniedException(
+            ManagerMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + setTTLPlan);
       }
     }
   }
@@ -472,7 +468,7 @@ public class PipeConfigTreePrivilegeParseVisitor
         return Optional.empty();
       } else {
         throw new AccessDeniedException(
-            "Not has privilege to transfer plan: " + pipeAlterTimeSeriesPlan);
+            ManagerMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + pipeAlterTimeSeriesPlan);
       }
     }
   }
@@ -486,7 +482,7 @@ public class PipeConfigTreePrivilegeParseVisitor
     final PathPatternTree intersectedTree =
         thisPatternTree.intersectWithFullPathPrefixTree(getAuthorizedPTree(userEntity));
     if (!skip && !thisPatternTree.equals(intersectedTree)) {
-      throw new AccessDeniedException("Not has privilege to transfer plan: " + plan);
+      throw new AccessDeniedException(ManagerMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + plan);
     }
     return intersectedTree.getAllPathPatterns();
   }
@@ -593,7 +589,7 @@ public class PipeConfigTreePrivilegeParseVisitor
     try {
       partialPath = new PartialPath(path);
     } catch (final IllegalPathException e) {
-      LOGGER.warn("Unable to parse path when checking READ privilege, path: {}", path);
+      LOGGER.warn(ManagerMessages.UNABLE_TO_PARSE_PATH_WHEN_CHECKING_READ_PRIVILEGE_PATH, path);
       return false;
     }
     if (withWildcard) {

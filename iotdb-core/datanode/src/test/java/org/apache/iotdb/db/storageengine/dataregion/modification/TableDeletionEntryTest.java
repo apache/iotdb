@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.And;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.NOP;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.SegmentExactMatch;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.And;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.DeviceIn;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.FullExactMatch;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.NOP;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.SegmentExactMatch;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
@@ -30,21 +31,28 @@ import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class TableDeletionEntryTest {
   @Test
   public void testSerialization() throws IOException {
     TableDeletionEntry entry =
-        new TableDeletionEntry(new DeletionPredicate("table1", new NOP()), new TimeRange(1, 5));
+        new TableDeletionEntry(
+            new DeletionPredicate(
+                "表格一", new SegmentExactMatch("区域一", 1), Arrays.asList("温度值", "状态值")),
+            new TimeRange(1, 5));
     ByteBuffer buffer = ByteBuffer.allocate(entry.serializedSize());
     entry.serialize(buffer);
+    assertEquals(entry.serializedSize(), buffer.position());
     buffer.flip();
     ModEntry deserialized1 = ModEntry.createFrom(buffer);
     assertEquals(entry, deserialized1);
@@ -52,9 +60,38 @@ public class TableDeletionEntryTest {
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     entry.serialize(bos);
     byte[] byteArray = bos.toByteArray();
+    assertEquals(entry.serializedSize(), byteArray.length);
     ByteArrayInputStream bis = new ByteArrayInputStream(byteArray);
     ModEntry deserialized2 = ModEntry.createFrom(bis);
     assertEquals(entry, deserialized2);
+  }
+
+  @Test
+  public void testDeserializePredicateTypeFromEmptyStream() {
+    assertThrows(
+        EOFException.class,
+        () -> TagPredicate.TagPredicateType.deserialize(new ByteArrayInputStream(new byte[0])));
+  }
+
+  @Test
+  public void testDeviceInSerialization() throws IOException {
+    DeviceIn predicate =
+        new DeviceIn(
+            Arrays.asList(
+                Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1", "id2"}),
+                Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id3", "id4"})));
+
+    ByteBuffer buffer = ByteBuffer.allocate(predicate.serializedSize());
+    predicate.serialize(buffer);
+    assertEquals(predicate.serializedSize(), buffer.position());
+    buffer.flip();
+    assertEquals(predicate, TagPredicate.createFrom(buffer));
+
+    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+    predicate.serialize(bos);
+    byte[] byteArray = bos.toByteArray();
+    assertEquals(predicate.serializedSize(), byteArray.length);
+    assertEquals(predicate, TagPredicate.createFrom(new ByteArrayInputStream(byteArray)));
   }
 
   @Test
@@ -76,6 +113,15 @@ public class TableDeletionEntryTest {
             new DeletionPredicate(
                 "table1",
                 new And(new SegmentExactMatch("id1", 1), new SegmentExactMatch("id2", 2))),
+            new TimeRange(1, 5));
+    TableDeletionEntry entry5 =
+        new TableDeletionEntry(
+            new DeletionPredicate(
+                "table1",
+                new DeviceIn(
+                    Arrays.asList(
+                        Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1", "id2"}),
+                        Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1"})))),
             new TimeRange(1, 5));
 
     IDeviceID deviceID1 = Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1", "id2"});
@@ -113,6 +159,13 @@ public class TableDeletionEntryTest {
     assertFalse(entry4.affects(deviceID4));
     assertFalse(entry4.affects(deviceID5));
     assertFalse(entry4.affects(deviceID6));
+
+    assertTrue(entry5.affects(deviceID1));
+    assertFalse(entry5.affects(deviceID2));
+    assertFalse(entry5.affects(deviceID3));
+    assertTrue(entry5.affects(deviceID4));
+    assertFalse(entry5.affects(deviceID5));
+    assertFalse(entry5.affects(deviceID6));
   }
 
   @Test

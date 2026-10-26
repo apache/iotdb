@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.library.dprofile.util;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
+
 import org.eclipse.collections.impl.map.mutable.UnifiedMap;
 
 import java.util.Arrays;
@@ -197,7 +199,7 @@ public class MADSketch {
     int pIndex = findPIndex(buckets, totalCount);
 
     if (pIndex == -1) {
-      throw new NoSuchElementException("No values in the time series");
+      throw new NoSuchElementException(LibraryUdfMessages.NO_VALUES_IN_TIME_SERIES);
     }
 
     int qIndex = findQIndex(pIndex, buckets, totalCount);

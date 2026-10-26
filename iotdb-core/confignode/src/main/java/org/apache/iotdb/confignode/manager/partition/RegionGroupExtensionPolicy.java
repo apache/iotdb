@@ -18,12 +18,16 @@
  */
 package org.apache.iotdb.confignode.manager.partition;
 
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
+
 import java.io.IOException;
 
 public enum RegionGroupExtensionPolicy {
   CUSTOM("CUSTOM"),
 
-  AUTO("AUTO");
+  AUTO("AUTO"),
+
+  PROACTIVE("PROACTIVE");
 
   private final String policy;
 
@@ -42,6 +46,6 @@ public enum RegionGroupExtensionPolicy {
       }
     }
     throw new IOException(
-        String.format("DataRegionGroupExtensionPolicy %s doesn't exist.", policy));
+        String.format(ManagerMessages.DATAREGIONGROUPEXTENSIONPOLICY_DOESN_T_EXIST, policy));
   }
 }

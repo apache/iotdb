@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
@@ -28,25 +29,21 @@ public class CompactionLastTimeCheckFailedException extends RuntimeException {
   public CompactionLastTimeCheckFailedException(
       String path, long currentTimestamp, long lastTimestamp) {
     super(
-        "Timestamp of the current point of "
-            + path
-            + " is "
-            + currentTimestamp
-            + ", which should be later than the last time "
-            + lastTimestamp);
+        String.format(
+            StorageEngineMessages.CURRENT_POINT_TIMESTAMP_SHOULD_BE_LATER_FMT,
+            path,
+            currentTimestamp,
+            lastTimestamp));
   }
 
   public CompactionLastTimeCheckFailedException(
       IDeviceID device, String measurement, long currentTimestamp, long lastTimestamp) {
     super(
-        "Timestamp of the current point of "
-            + device
-            + IoTDBConstant.PATH_SEPARATOR
-            + measurement
-            + " is "
-            + currentTimestamp
-            + ", which should be later than the last time "
-            + lastTimestamp);
+        String.format(
+            StorageEngineMessages.CURRENT_POINT_TIMESTAMP_SHOULD_BE_LATER_FMT,
+            device.toString() + IoTDBConstant.PATH_SEPARATOR + measurement,
+            currentTimestamp,
+            lastTimestamp));
   }
 
   @Override

@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.pipe.resource.memory;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.utils.MemUtils;
 
@@ -34,6 +36,7 @@ import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -113,12 +116,16 @@ public class PipeMemoryWeightUtil {
           totalSizeInBytes += binary == null ? 8 : binary.ramBytesUsed();
         } else {
           totalSizeInBytes +=
-              roundUpToMultiple(TsPrimitiveType.getByType(tsDataType).getSize() + 8, 8);
+              roundUpToMultiple(
+                  Type.fromTsDataType(tsDataType).getTsPrimitiveType().getSize() + 8, 8);
         }
       }
     }
 
-    return calculateTabletRowCountAndMemoryBySize(totalSizeInBytes, schemaCount);
+    return calculateTabletRowCountAndMemoryBySize(
+        totalSizeInBytes,
+        schemaCount,
+        PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
   }
 
   /**
@@ -158,12 +165,14 @@ public class PipeMemoryWeightUtil {
           final Binary binary = batchData.getBinary();
           totalSizeInBytes += binary == null ? 8 : binary.ramBytesUsed();
         } else {
-          totalSizeInBytes += roundUpToMultiple(TsPrimitiveType.getByType(type).getSize() + 8, 8);
+          totalSizeInBytes +=
+              roundUpToMultiple(Type.fromTsDataType(type).getTsPrimitiveType().getSize() + 8, 8);
         }
       }
     }
 
-    return calculateTabletRowCountAndMemoryBySize(totalSizeInBytes, schemaCount);
+    return calculateTabletRowCountAndMemoryBySize(
+        totalSizeInBytes, schemaCount, batchData.length());
   }
 
   /**
@@ -173,33 +182,44 @@ public class PipeMemoryWeightUtil {
    * @return left is the row count of tablet, right is the memory cost of tablet in bytes
    */
   public static Pair<Integer, Integer> calculateTabletRowCountAndMemory(PipeRow row) {
-    return calculateTabletRowCountAndMemoryBySize(row.getCurrentRowSize(), row.size());
+    return calculateTabletRowCountAndMemoryBySize(
+        row.getCurrentRowSize(),
+        row.size(),
+        PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
   }
 
   private static Pair<Integer, Integer> calculateTabletRowCountAndMemoryBySize(
-      int rowSize, int schemaCount) {
-    if (rowSize <= 0) {
+      int rowBytesUsed, int schemaCount, int inputNum) {
+    if (rowBytesUsed <= 0) {
       return new Pair<>(1, 0);
     }
 
-    // Calculate row number according to the max size of a pipe tablet.
-    // "-100" is the estimated size of other data structures in a pipe tablet.
+    final int configuredTabletRowSize =
+        PipeConfig.getInstance().getPipeDataStructureTabletRowSize();
+    final boolean hasTabletRowSizeLimit = configuredTabletRowSize > 0;
+    final double inputSizeLimit =
+        hasTabletRowSizeLimit && inputNum > 0
+            ? 100 + inputNum * (double) rowBytesUsed * 1.2
+            : Integer.MAX_VALUE;
+
+    // Calculate row number according to the max size of a pipe tablet. "100" is the estimated size
+    // of other data structures in a pipe tablet.
     // "*8" converts bytes to bits, because the bitmap size is 1 bit per schema.
-    int rowNumber =
-        8
-            * (PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes() - 100)
-            / (8 * rowSize + schemaCount);
+    int sizeLimit =
+        (int)
+            Math.min(
+                IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes(),
+                Math.min(Integer.MAX_VALUE, inputSizeLimit));
+
+    int rowNumber = 8 * (sizeLimit - 100) / (8 * rowBytesUsed + schemaCount);
     rowNumber = Math.max(1, rowNumber);
 
-    if ( // This means the row number is larger than the max row count of a pipe tablet
-    rowNumber > PipeConfig.getInstance().getPipeDataStructureTabletRowSize()) {
+    // This means the row number is larger than the max row count of a pipe tablet.
+    if (hasTabletRowSizeLimit && rowNumber > configuredTabletRowSize) {
       // Bound the row number, the memory cost is rowSize * rowNumber
-      return new Pair<>(
-          PipeConfig.getInstance().getPipeDataStructureTabletRowSize(),
-          rowSize * PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
+      return new Pair<>(configuredTabletRowSize, rowBytesUsed * configuredTabletRowSize);
     } else {
-      return new Pair<>(
-          rowNumber, PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes());
+      return new Pair<>(rowNumber, sizeLimit);
     }
   }
 
@@ -220,7 +240,9 @@ public class PipeMemoryWeightUtil {
       totalSizeInBytes +=
           NUM_BYTES_ARRAY_HEADER + (long) NUM_BYTES_OBJECT_REF * measurementSchemas.size();
       for (IMeasurementSchema measurementSchema : measurementSchemas) {
-        InsertNodeMemoryEstimator.sizeOfMeasurementSchema((MeasurementSchema) measurementSchema);
+        totalSizeInBytes +=
+            InsertNodeMemoryEstimator.sizeOfMeasurementSchema(
+                (MeasurementSchema) measurementSchema);
       }
     }
 
@@ -260,7 +282,8 @@ public class PipeMemoryWeightUtil {
           totalSizeInBytes +=
               roundUpToMultiple((binary == null ? 8 : binary.getLength() + 8) + 8, 8);
         } else {
-          totalSizeInBytes += roundUpToMultiple(TsPrimitiveType.getByType(type).getSize() + 8, 8);
+          totalSizeInBytes +=
+              roundUpToMultiple(Type.fromTsDataType(type).getTsPrimitiveType().getSize() + 8, 8);
         }
       }
     }
@@ -304,7 +327,7 @@ public class PipeMemoryWeightUtil {
    */
   private static int roundUpToMultiple(int num, int n) {
     if (n == 0) {
-      throw new IllegalArgumentException("The multiple n must be greater than 0");
+      throw new IllegalArgumentException(DataNodePipeMessages.THE_MULTIPLE_N_MUST_BE_GREATER_THAN);
     }
     // Calculate the rounded up value to the nearest multiple of n
     return ((num + n - 1) / n) * n;

@@ -1,0 +1,141 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.commons.queryengine.plan.relational.function;
+
+import org.apache.iotdb.commons.i18n.QueryMessages;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.ClassifyTableFunction;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.ForecastTableFunction;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.PatternMatchTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.CapacityTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.CumulateTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.FFTTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.HOPTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.HighPassTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.LowPassTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.M4TableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.SessionTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.TumbleTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.VariationTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.XCorrTableFunction;
+import org.apache.iotdb.udf.api.relational.TableFunction;
+
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+public enum TableBuiltinTableFunction {
+  TUMBLE("tumble", true),
+  HOP("hop", true),
+  CUMULATE("cumulate", true),
+  SESSION("session", true),
+  VARIATION("variation", true),
+  CAPACITY("capacity", true),
+  M4("m4"),
+  FFT("fft"),
+  FORECAST("forecast"),
+  PATTERN_MATCH("pattern_match"),
+  CLASSIFY("classify"),
+  LOWPASS("lowpass"),
+  HIGHPASS("highpass"),
+  XCORR("xcorr");
+
+  private final String functionName;
+  private final boolean preservesInputOrder;
+
+  TableBuiltinTableFunction(String functionName) {
+    this(functionName, false);
+  }
+
+  TableBuiltinTableFunction(String functionName, boolean preservesInputOrder) {
+    this.functionName = functionName;
+    this.preservesInputOrder = preservesInputOrder;
+  }
+
+  public String getFunctionName() {
+    return functionName;
+  }
+
+  private static final Set<String> BUILT_IN_TABLE_FUNCTION_NAME =
+      new HashSet<>(
+          Arrays.stream(TableBuiltinTableFunction.values())
+              .map(TableBuiltinTableFunction::getFunctionName)
+              .collect(Collectors.toList()));
+
+  private static final Set<String> INPUT_ORDER_PRESERVING_FUNCTIONS =
+      Arrays.stream(values())
+          .filter(function -> function.preservesInputOrder)
+          .map(TableBuiltinTableFunction::getFunctionName)
+          .collect(Collectors.toSet());
+
+  /**
+   * Whether a built-in emits pass-through rows with nondecreasing input indices. Generated columns
+   * have no ordering guarantee. SESSION and VARIATION drain disjoint input ranges; CAPACITY emits
+   * all copies of the current row before advancing, including when its windows overlap.
+   */
+  public static boolean preservesInputOrder(String functionName) {
+    return INPUT_ORDER_PRESERVING_FUNCTIONS.contains(functionName.toLowerCase(Locale.ROOT));
+  }
+
+  public static Set<String> getBuiltInTableFunctionName() {
+    return BUILT_IN_TABLE_FUNCTION_NAME;
+  }
+
+  public static boolean isBuiltInTableFunction(String functionName) {
+    return BUILT_IN_TABLE_FUNCTION_NAME.contains(functionName.toLowerCase());
+  }
+
+  public static TableFunction getBuiltinTableFunction(String functionName) {
+    switch (functionName.toLowerCase()) {
+      case "tumble":
+        return new TumbleTableFunction();
+      case "hop":
+        return new HOPTableFunction();
+      case "cumulate":
+        return new CumulateTableFunction();
+      case "session":
+        return new SessionTableFunction();
+      case "variation":
+        return new VariationTableFunction();
+      case "pattern_match":
+        return new PatternMatchTableFunction();
+      case "capacity":
+        return new CapacityTableFunction();
+      case "m4":
+        return new M4TableFunction();
+      case "fft":
+        return new FFTTableFunction();
+      case "forecast":
+        return new ForecastTableFunction();
+      case "classify":
+        return new ClassifyTableFunction();
+      case "lowpass":
+        return new LowPassTableFunction();
+      case "highpass":
+        return new HighPassTableFunction();
+      case "xcorr":
+        return new XCorrTableFunction();
+      default:
+        throw new UnsupportedOperationException(
+            String.format(QueryMessages.UNSUPPORTED_TABLE_FUNCTION, functionName));
+    }
+  }
+}

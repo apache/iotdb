@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.StartupChecks;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractLeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -62,9 +63,9 @@ public class ConfigNodeStartupCheck extends StartupChecks {
     portSet.add(CONF.getConsensusPort());
     portSet.add(CONF.getInternalPort());
     if (portSet.size() != CONFIGNODE_PORTS) {
-      throw new StartupException("ports used in configNode have repeat.");
+      throw new StartupException(ConfigNodeMessages.PORTS_USED_IN_CONFIGNODE_HAVE_REPEAT);
     } else {
-      LOGGER.info("configNode port check successful.");
+      LOGGER.info(ConfigNodeMessages.CONFIGNODE_PORT_CHECK_SUCCESSFUL);
     }
   }
 
@@ -97,17 +98,24 @@ public class ConfigNodeStartupCheck extends StartupChecks {
             || CONF.getInternalPort() != CONF.getSeedConfigNode().getPort())) {
       throw new ConfigurationException(
           IoTDBConstant.CN_SEED_CONFIG_NODE,
-          CONF.getSeedConfigNode().getIp() + ":" + CONF.getSeedConfigNode().getPort(),
-          CONF.getInternalAddress() + ":" + CONF.getInternalPort(),
-          "the config_node_consensus_protocol_class is set to" + ConsensusFactory.SIMPLE_CONSENSUS);
+          CONF.getSeedConfigNode().getIp()
+              + ConfigNodeMessages.EXCEPTION_COLON_5D70AD09
+              + CONF.getSeedConfigNode().getPort(),
+          CONF.getInternalAddress()
+              + ConfigNodeMessages.EXCEPTION_COLON_5D70AD09
+              + CONF.getInternalPort(),
+          ConfigNodeMessages.EXCEPTION_CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS_SET_E7A83ED6
+              + ConsensusFactory.SIMPLE_CONSENSUS);
     }
 
     // The replication factor should be positive
     if (CONF.getSchemaReplicationFactor() <= 0) {
-      throw new ConfigurationException("The schema_replication_factor should be positive");
+      throw new ConfigurationException(
+          ConfigNodeMessages.THE_SCHEMA_REPLICATION_FACTOR_SHOULD_BE_POSITIVE);
     }
     if (CONF.getDataReplicationFactor() <= 0) {
-      throw new ConfigurationException("The data_replication_factor should be positive");
+      throw new ConfigurationException(
+          ConfigNodeMessages.THE_DATA_REPLICATION_FACTOR_SHOULD_BE_POSITIVE);
     }
 
     // When the schema_replication_factor is greater than 1
@@ -115,11 +123,12 @@ public class ConfigNodeStartupCheck extends StartupChecks {
     if (CONF.getSchemaReplicationFactor() > 1
         && ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getSchemaRegionConsensusProtocolClass())) {
       throw new ConfigurationException(
-          "schema_region_consensus_protocol_class",
+          ConfigNodeMessages.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS,
           CONF.getSchemaRegionConsensusProtocolClass(),
           ConsensusFactory.RATIS_CONSENSUS,
           ConsensusFactory.SIMPLE_CONSENSUS
-              + "available only when schema_replication_factor is set to 1");
+              + ConfigNodeMessages
+                  .EXCEPTION_AVAILABLE_ONLY_SCHEMA_REPLICATION_FACTOR_SET_1_45667207);
     }
 
     // When the data_replication_factor is greater than 1
@@ -127,72 +136,84 @@ public class ConfigNodeStartupCheck extends StartupChecks {
     if (CONF.getDataReplicationFactor() > 1
         && ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
       throw new ConfigurationException(
-          "data_region_consensus_protocol_class",
+          ConfigNodeMessages.DATA_REGION_CONSENSUS_PROTOCOL_CLASS,
           CONF.getDataRegionConsensusProtocolClass(),
-          ConsensusFactory.IOT_CONSENSUS + "or" + ConsensusFactory.RATIS_CONSENSUS,
+          ConsensusFactory.IOT_CONSENSUS
+              + ConfigNodeMessages.EXCEPTION_MESSAGE_E81C4E4F
+              + ConsensusFactory.RATIS_CONSENSUS,
           ConsensusFactory.SIMPLE_CONSENSUS
-              + "available only when data_replication_factor is set to 1");
+              + ConfigNodeMessages.EXCEPTION_AVAILABLE_ONLY_DATA_REPLICATION_FACTOR_SET_1_71748D3D);
     }
 
     // When the schemaengine region consensus protocol is set to IoTConsensus,
     // we should report an error
     if (CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
       throw new ConfigurationException(
-          "schema_region_consensus_protocol_class",
+          ConfigNodeMessages.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS,
           String.valueOf(CONF.getSchemaRegionConsensusProtocolClass()),
           String.format(
-              "%s or %s", ConsensusFactory.SIMPLE_CONSENSUS, ConsensusFactory.RATIS_CONSENSUS),
-          "the SchemaRegion doesn't support org.apache.iotdb.consensus.iot.IoTConsensus");
+              ConfigNodeMessages.EXCEPTION_ARG_ARG_6E068B23,
+              ConsensusFactory.SIMPLE_CONSENSUS,
+              ConsensusFactory.RATIS_CONSENSUS),
+          ConfigNodeMessages
+              .EXCEPTION_SCHEMAREGION_DOESN_T_SUPPORT_ORG_APACHE_IOTDB_CONSENSUS_IOT_IOTCONSENSUS_84350FD1);
     }
 
     // When the schemaengine region consensus protocol is set to IoTConsensusV2,
     // we should report an error
     if (CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
       throw new ConfigurationException(
-          "schema_region_consensus_protocol_class",
+          ConfigNodeMessages.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS,
           String.valueOf(CONF.getSchemaRegionConsensusProtocolClass()),
           String.format(
-              "%s or %s", ConsensusFactory.SIMPLE_CONSENSUS, ConsensusFactory.RATIS_CONSENSUS),
-          "the SchemaRegion doesn't support org.apache.iotdb.consensus.iot.IoTConsensusV2");
+              ConfigNodeMessages.EXCEPTION_ARG_ARG_6E068B23,
+              ConsensusFactory.SIMPLE_CONSENSUS,
+              ConsensusFactory.RATIS_CONSENSUS),
+          ConfigNodeMessages
+              .EXCEPTION_SCHEMAREGION_DOESN_T_SUPPORT_ORG_APACHE_IOTDB_CONSENSUS_IOT_IOTCONSENSUSV2_BA353C6D);
     }
 
     // The leader distribution policy is limited
     if (!AbstractLeaderBalancer.GREEDY_POLICY.equals(CONF.getLeaderDistributionPolicy())
-        && !AbstractLeaderBalancer.CFD_POLICY.equals(CONF.getLeaderDistributionPolicy())
+        && !AbstractLeaderBalancer.CFS_POLICY.equals(CONF.getLeaderDistributionPolicy())
         && !AbstractLeaderBalancer.HASH_POLICY.equals(CONF.getLeaderDistributionPolicy())) {
       throw new ConfigurationException(
-          "leader_distribution_policy",
+          ConfigNodeMessages.LEADER_DISTRIBUTION_POLICY,
           CONF.getRoutePriorityPolicy(),
-          "GREEDY or MIN_COST_FLOW or HASH",
-          "an unrecognized leader_distribution_policy is set");
+          ConfigNodeMessages.EXCEPTION_GREEDY_MIN_COST_FLOW_HASH_C07DA2EE,
+          ConfigNodeMessages.EXCEPTION_UNRECOGNIZED_LEADER_DISTRIBUTION_POLICY_SET_F9FFB410);
     }
 
     // The route priority policy is limited
     if (!CONF.getRoutePriorityPolicy().equals(IPriorityBalancer.LEADER_POLICY)
         && !CONF.getRoutePriorityPolicy().equals(IPriorityBalancer.GREEDY_POLICY)) {
       throw new ConfigurationException(
-          "route_priority_policy",
+          ConfigNodeMessages.ROUTE_PRIORITY_POLICY,
           CONF.getRoutePriorityPolicy(),
-          "LEADER or GREEDY",
-          "an unrecognized route_priority_policy is set");
+          ConfigNodeMessages.EXCEPTION_LEADER_GREEDY_55C6B994,
+          ConfigNodeMessages.EXCEPTION_UNRECOGNIZED_ROUTE_PRIORITY_POLICY_SET_C0012AE4);
     }
 
     // The default RegionGroupNum should be positive
     if (CONF.getDefaultSchemaRegionGroupNumPerDatabase() <= 0) {
-      throw new ConfigurationException("The default_schema_region_group_num should be positive");
+      throw new ConfigurationException(
+          ConfigNodeMessages.THE_DEFAULT_SCHEMA_REGION_GROUP_NUM_SHOULD_BE_POSITIVE);
     }
     if (CONF.getDefaultDataRegionGroupNumPerDatabase() <= 0) {
-      throw new ConfigurationException("The default_data_region_group_num should be positive");
+      throw new ConfigurationException(
+          ConfigNodeMessages.THE_DEFAULT_DATA_REGION_GROUP_NUM_SHOULD_BE_POSITIVE);
     }
 
     // Check time partition origin
     if (COMMON_CONFIG.getTimePartitionOrigin() < 0) {
-      throw new ConfigurationException("The time_partition_origin should be non-negative");
+      throw new ConfigurationException(
+          ConfigNodeMessages.THE_TIME_PARTITION_ORIGIN_SHOULD_BE_NON_NEGATIVE);
     }
 
     // Check time partition interval
     if (COMMON_CONFIG.getTimePartitionInterval() <= 0) {
-      throw new ConfigurationException("The time_partition_interval should be positive");
+      throw new ConfigurationException(
+          ConfigNodeMessages.THE_TIME_PARTITION_INTERVAL_SHOULD_BE_POSITIVE);
     }
 
     // Check timestamp precision
@@ -200,7 +221,8 @@ public class ConfigNodeStartupCheck extends StartupChecks {
     if (!("ms".equals(timestampPrecision)
         || "us".equals(timestampPrecision)
         || "ns".equals(timestampPrecision))) {
-      throw new ConfigurationException("The timestamp_precision should be ms, us or ns");
+      throw new ConfigurationException(
+          ConfigNodeMessages.THE_TIMESTAMP_PRECISION_SHOULD_BE_MS_US_OR_NS);
     }
   }
 
@@ -217,11 +239,11 @@ public class ConfigNodeStartupCheck extends StartupChecks {
   private void createDirIfEmpty(File dir) throws IOException {
     if (!dir.exists()) {
       if (dir.mkdirs()) {
-        LOGGER.info("Make dirs: {}", dir);
+        LOGGER.info(ConfigNodeMessages.MAKE_DIRS, dir);
       } else {
         throw new IOException(
             String.format(
-                "Start ConfigNode failed, because couldn't make system dirs: %s.",
+                ConfigNodeMessages.START_CONFIGNODE_FAILED_BECAUSE_COULDN_T_MAKE_SYSTEM_DIRS,
                 dir.getAbsolutePath()));
       }
     }

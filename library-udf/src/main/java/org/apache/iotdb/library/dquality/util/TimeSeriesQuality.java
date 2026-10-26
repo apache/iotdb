@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.dquality.util;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowIterator;
@@ -79,7 +80,7 @@ public class TimeSeriesQuality {
       index2++;
     }
     if (index2 >= n) {
-      throw new UDFException("At least two non-NaN values are needed");
+      throw new UDFException(LibraryUdfMessages.AT_LEAST_TWO_NON_NAN_VALUES_NEEDED);
     }
     // interpolation at the beginning of the series
     for (int i = 0; i < index2; i++) {

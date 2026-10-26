@@ -76,6 +76,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.inclusion", "all");
       extractorAttributes.put("extractor.capture.tree", "false");
       extractorAttributes.put("extractor.capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("extractor.database-name", "test");
       extractorAttributes.put("extractor.table-name", "t.*[0-9]");
       extractorAttributes.put("user", "root");
@@ -183,8 +184,11 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           Collections.emptySet(),
           dbName);
 
-      TestUtils.executeNonQuery(
-          dbName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, "drop database test", null);
+      // Receiver metadata can disappear before the sender's asynchronous drop has finished.
+      try (Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+          Statement statement = connection.createStatement()) {
+        TestUtils.dropDatabaseWithRetry(statement, dbName);
+      }
 
       // Will not include no-transfer database
       TestUtils.assertDataEventuallyOnEnv(
@@ -212,6 +216,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.inclusion", "all");
       extractorAttributes.put("extractor.capture.tree", "false");
       extractorAttributes.put("extractor.capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
@@ -230,15 +235,13 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           senderEnv,
           Arrays.asList(
               "create database root.test",
-              "alter database root.test with schema_region_group_num=2, data_region_group_num=3",
               "create timeSeries root.test.d1.s1 int32",
-              "insert into root.test.d1 (s1) values (1)"),
-          null);
+              "insert into root.test.d1 (s1) values (1)"));
 
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
           "show databases",
-          "Database,SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
+          "Database,SchemaReplicationFactor,DataReplicationFactor,TimePartitionOrigin,TimePartitionInterval,",
           Collections.emptySet());
     }
   }
@@ -296,7 +299,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           "show databases",
           "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
           Collections.singleton("information_schema,INF,null,null,null,"),
-          dbName);
+          "information_schema");
     }
   }
 
@@ -331,6 +334,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.inclusion", "all");
       extractorAttributes.put("extractor.capture.tree", "false");
       extractorAttributes.put("extractor.capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("extractor.database-name", "test");
       extractorAttributes.put("extractor.table-name", "t.*[0-9]");
       extractorAttributes.put("user", "root");
@@ -358,18 +362,17 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           "grant alter on any to user testUser with grant option",
           null);
 
-      TestUtils.assertDataAlwaysOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "list privileges of user testUser",
           "Role,Scope,Privileges,GrantOption,",
           new HashSet<>(
               Arrays.asList(
-                  ",,MANAGE_USER,false,",
-                  ",,MANAGE_ROLE,false,",
-                  ",,MAINTAIN,false,",
+                  ",,SYSTEM,false,",
+                  ",,SECURITY,false,",
                   ",*.*,ALTER,true,",
                   ",test.*,DROP,false,")),
-          (String) null);
+          "information_schema");
     }
   }
 
@@ -417,5 +420,37 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
         assertEquals("1107: The 'inclusion' string contains illegal path.", e.getMessage());
       }
     }
+  }
+
+  @Test
+  public void testAttributeSync() {
+    TestUtils.executeNonQueries(
+        receiverEnv,
+        Arrays.asList(
+            "create database test",
+            "use test",
+            "create table table1(a tag, b attribute, c attribute, d int32)",
+            "insert into table1 (time, a, b, c, d) values(1, 1, null, 1, 1), (2, 2, 2, null, 2)"),
+        BaseEnv.TABLE_SQL_DIALECT);
+
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "create database test",
+            "use test",
+            "create table table1(a tag, b attribute, c attribute, d int32)",
+            "insert into table1 (time, a, b, c, d) values(1, 1, 1, null, 1), (2, 2, null, 2, 2)",
+            String.format(
+                "create pipe a2b with source ('inclusion'='schema') with sink ('node-urls'='%s')",
+                receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString())),
+        BaseEnv.TABLE_SQL_DIALECT);
+
+    // Schema snapshots and device attribute caches are updated asynchronously after pipe creation.
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "show devices from table1",
+        "a,b,c,",
+        new HashSet<>(Arrays.asList("1,1,1,", "2,2,2,")),
+        "test");
   }
 }

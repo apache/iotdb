@@ -23,8 +23,10 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
@@ -66,10 +68,12 @@ public class SettleSelectorImpl implements ISettleSelector {
   private final boolean heavySelect;
   private final String storageGroupName;
   private final String dataRegionId;
+  private final boolean isTableModel;
   private final long timePartition;
   private final TsFileManager tsFileManager;
   private boolean isSeq;
   private final CompactionScheduleContext context;
+  private final boolean ttlAuditEnabled;
 
   public SettleSelectorImpl(
       boolean heavySelect,
@@ -81,22 +85,32 @@ public class SettleSelectorImpl implements ISettleSelector {
     this.heavySelect = heavySelect;
     this.storageGroupName = storageGroupName;
     this.dataRegionId = dataRegionId;
+    this.isTableModel = PathUtils.isTableModelDatabase(storageGroupName);
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
     this.context = context;
+    // this will be enabled in other branches
+    this.ttlAuditEnabled = false;
   }
 
   static class FileDirtyInfo {
     DirtyStatus status;
     long dirtyDataSize = 0;
+    Set<String> ttlTables = Collections.emptySet();
 
     public FileDirtyInfo(DirtyStatus status) {
       this.status = status;
     }
 
-    public FileDirtyInfo(DirtyStatus status, long dirtyDataSize) {
+    public FileDirtyInfo(DirtyStatus status, Set<String> ttlTables) {
+      this.status = status;
+      this.ttlTables = ttlTables;
+    }
+
+    public FileDirtyInfo(DirtyStatus status, long dirtyDataSize, Set<String> ttlTables) {
       this.status = status;
       this.dirtyDataSize = dirtyDataSize;
+      this.ttlTables = ttlTables;
     }
   }
 
@@ -105,15 +119,19 @@ public class SettleSelectorImpl implements ISettleSelector {
     List<TsFileResource> fullyDirtyResources = new ArrayList<>();
     List<TsFileResource> partiallyDirtyResources = new ArrayList<>();
     long totalPartiallyDirtyFileSize = 0;
+    final Set<String> ttlTables = new HashSet<>();
 
-    public void addFullyDirtyResource(TsFileResource resource) {
+    public void addFullyDirtyResource(TsFileResource resource, Set<String> fileTTLTables) {
       fullyDirtyResources.add(resource);
+      ttlTables.addAll(fileTTLTables);
     }
 
-    public boolean addPartiallyDirtyResource(TsFileResource resource, long dirtyDataSize) {
+    public boolean addPartiallyDirtyResource(
+        TsFileResource resource, long dirtyDataSize, Set<String> fileTTLTables) {
       partiallyDirtyResources.add(resource);
       totalPartiallyDirtyFileSize += resource.getTsFileSize();
       totalPartiallyDirtyFileSize -= dirtyDataSize;
+      ttlTables.addAll(fileTTLTables);
       return checkHasReachedThreshold();
     }
 
@@ -123,6 +141,10 @@ public class SettleSelectorImpl implements ISettleSelector {
 
     public List<TsFileResource> getPartiallyDirtyResources() {
       return partiallyDirtyResources;
+    }
+
+    public Set<String> getTTLTables() {
+      return ttlTables;
     }
 
     public boolean checkHasReachedThreshold() {
@@ -164,11 +186,12 @@ public class SettleSelectorImpl implements ISettleSelector {
 
         switch (fileDirtyInfo.status) {
           case FULLY_DIRTY:
-            settleTaskResource.addFullyDirtyResource(resource);
+            settleTaskResource.addFullyDirtyResource(resource, fileDirtyInfo.ttlTables);
             break;
           case PARTIALLY_DIRTY:
             shouldStop =
-                settleTaskResource.addPartiallyDirtyResource(resource, fileDirtyInfo.dirtyDataSize);
+                settleTaskResource.addPartiallyDirtyResource(
+                    resource, fileDirtyInfo.dirtyDataSize, fileDirtyInfo.ttlTables);
             break;
           case NOT_SATISFIED:
             shouldStop = !settleTaskResource.getPartiallyDirtyResources().isEmpty();
@@ -192,7 +215,10 @@ public class SettleSelectorImpl implements ISettleSelector {
       return createTask(partiallyDirtyResourceList);
     } catch (Exception e) {
       LOGGER.error(
-          "{}-{} cannot select file for settle compaction", storageGroupName, dataRegionId, e);
+          StorageEngineMessages.STORAGE_LOG_CANNOT_SELECT_FILE_FOR_SETTLE_COMPACTION_08C958D3,
+          storageGroupName,
+          dataRegionId,
+          e);
     }
     return Collections.emptyList();
   }
@@ -227,6 +253,7 @@ public class SettleSelectorImpl implements ISettleSelector {
       timeIndex = CompactionUtils.buildDeviceTimeIndex(resource);
     }
     Set<IDeviceID> deletedDevices = new HashSet<>();
+    Set<String> ttlTables = new HashSet<>();
     boolean hasExpiredTooLong = false;
     long currentTime = CommonDateTimeUtils.currentTime();
 
@@ -236,12 +263,17 @@ public class SettleSelectorImpl implements ISettleSelector {
 
       long ttl;
       String tableName = device.getTableName();
-      if (tableName.startsWith("root.")) {
+      boolean hasSetTTL;
+      if (!isTableModel) {
         ttl = DataNodeTTLCache.getInstance().getTTLForTree(device);
+        hasSetTTL = ttl != Long.MAX_VALUE;
       } else {
         ttl = DataNodeTTLCache.getInstance().getTTLForTable(storageGroupName, tableName);
+        hasSetTTL = ttl != Long.MAX_VALUE;
+        if (hasSetTTL && ttlAuditEnabled) {
+          ttlTables.add(tableName);
+        }
       }
-      boolean hasSetTTL = ttl != Long.MAX_VALUE;
 
       long endTime = timeIndex.getEndTime(device).get();
       boolean isDeleted =
@@ -252,7 +284,7 @@ public class SettleSelectorImpl implements ISettleSelector {
         if (!isDeleted) {
           // For devices with TTL set, all data must expire in order to meet the conditions for
           // being selected.
-          return new FileDirtyInfo(DirtyStatus.NOT_SATISFIED);
+          return new FileDirtyInfo(DirtyStatus.NOT_SATISFIED, ttlTables);
         }
 
         if (currentTime > endTime) {
@@ -261,7 +293,7 @@ public class SettleSelectorImpl implements ISettleSelector {
             // overflow, like 100 - Long.MIN
             outdatedTimeDiff = Long.MAX_VALUE;
           }
-          long ttlThreshold = 3 * ttl > ttl ? ttl : Long.MAX_VALUE;
+          long ttlThreshold = ttl <= Long.MAX_VALUE / 3 ? 3 * ttl : Long.MAX_VALUE;
           hasExpiredTooLong =
               hasExpiredTooLong
                   || outdatedTimeDiff > Math.min(config.getMaxExpiredTime(), ttlThreshold);
@@ -277,13 +309,14 @@ public class SettleSelectorImpl implements ISettleSelector {
         ((double) deletedDevices.size()) / ((ArrayDeviceTimeIndex) timeIndex).getDevices().size();
     if (deletedDeviceRatio == 1d) {
       // the whole file is completely dirty
-      return new FileDirtyInfo(DirtyStatus.FULLY_DIRTY);
+      return new FileDirtyInfo(DirtyStatus.FULLY_DIRTY, ttlTables);
     }
     hasExpiredTooLong = config.getMaxExpiredTime() != Long.MAX_VALUE && hasExpiredTooLong;
-    if (hasExpiredTooLong || deletedDeviceRatio >= config.getExpiredDataRatio()) {
+    if (hasExpiredTooLong
+        || (deletedDeviceRatio > 0 && deletedDeviceRatio >= config.getExpiredDataRatio())) {
       // evaluate dirty data size in the tsfile
       return new FileDirtyInfo(
-          PARTIALLY_DIRTY, (long) (deletedDeviceRatio * resource.getTsFileSize()));
+          PARTIALLY_DIRTY, (long) (deletedDeviceRatio * resource.getTsFileSize()), ttlTables);
     }
     return new FileDirtyInfo(DirtyStatus.NOT_SATISFIED);
   }
@@ -297,7 +330,7 @@ public class SettleSelectorImpl implements ISettleSelector {
       throws IllegalPathException {
     return ModificationUtils.isAllDeletedByMods(
         CompactionUtils.getMatchedModifications(
-            modifications, device, AlignedPath.VECTOR_PLACEHOLDER, null),
+            modifications, device, AlignedPath.VECTOR_PLACEHOLDER, null, isTableModel),
         startTime,
         endTime);
   }

@@ -38,7 +38,7 @@ public class PipeTaskSinkStage extends PipeTaskStage {
   protected final int regionId;
   protected final Supplier<? extends PipeSinkSubtaskExecutor> executor;
 
-  protected String connectorSubtaskId;
+  protected String sinkSubtaskId;
 
   public PipeTaskSinkStage(
       String pipeName,
@@ -56,7 +56,7 @@ public class PipeTaskSinkStage extends PipeTaskStage {
   }
 
   protected void registerSubtask() {
-    this.connectorSubtaskId =
+    this.sinkSubtaskId =
         PipeSinkSubtaskManager.instance()
             .register(
                 executor,
@@ -71,21 +71,33 @@ public class PipeTaskSinkStage extends PipeTaskStage {
 
   @Override
   public void startSubtask() throws PipeException {
-    PipeSinkSubtaskManager.instance().start(connectorSubtaskId);
+    PipeSinkSubtaskManager.instance().start(pipeName, creationTime, sinkSubtaskId);
   }
 
   @Override
   public void stopSubtask() throws PipeException {
-    PipeSinkSubtaskManager.instance().stop(connectorSubtaskId);
+    PipeSinkSubtaskManager.instance().stop(pipeName, creationTime, sinkSubtaskId);
+  }
+
+  @Override
+  public void registerReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    PipeSinkSubtaskManager.instance()
+        .registerReceiverRuntimeSessions(sinkSubtaskId, pipeName, creationTime);
+  }
+
+  @Override
+  public void discardReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    PipeSinkSubtaskManager.instance()
+        .discardReceiverRuntimeSessions(sinkSubtaskId, pipeName, creationTime);
   }
 
   @Override
   public void dropSubtask() throws PipeException {
-    PipeSinkSubtaskManager.instance()
-        .deregister(pipeName, creationTime, regionId, connectorSubtaskId);
+    PipeSinkSubtaskManager.instance().deregister(pipeName, creationTime, regionId, sinkSubtaskId);
   }
 
   public UnboundedBlockingPendingQueue<Event> getPipeSinkPendingQueue() {
-    return PipeSinkSubtaskManager.instance().getPipeSinkPendingQueue(connectorSubtaskId);
+    return PipeSinkSubtaskManager.instance()
+        .getPipeSinkPendingQueue(pipeName, creationTime, sinkSubtaskId);
   }
 }

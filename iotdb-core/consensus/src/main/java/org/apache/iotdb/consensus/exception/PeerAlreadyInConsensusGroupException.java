@@ -21,12 +21,15 @@ package org.apache.iotdb.consensus.exception;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.i18n.ConsensusMessages;
 
 public class PeerAlreadyInConsensusGroupException extends ConsensusException {
   public PeerAlreadyInConsensusGroupException(ConsensusGroupId groupId, Peer peer) {
     super(
         String.format(
-            "Peer %s:%d is already in group %d",
-            peer.getEndpoint().getIp(), peer.getEndpoint().getPort(), groupId.getId()));
+            ConsensusMessages.PEER_ALREADY_IN_GROUP,
+            peer.getEndpoint().getIp(),
+            peer.getEndpoint().getPort(),
+            groupId.getId()));
   }
 }

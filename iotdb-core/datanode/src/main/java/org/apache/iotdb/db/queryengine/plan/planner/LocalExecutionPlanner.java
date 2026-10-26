@@ -19,25 +19,29 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.plan.planner.memory.PipelineMemoryEstimator;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
-import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
+import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimator;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.OperatorMemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
@@ -54,7 +58,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static org.apache.iotdb.db.protocol.session.IClientSession.SqlDialect.TREE;
+import static org.apache.iotdb.commons.queryengine.common.SqlDialect.TREE;
 
 /**
  * Used to plan a fragment instance. One fragment instance could be split into multiple pipelines so
@@ -103,7 +107,8 @@ public class LocalExecutionPlanner {
       throws MemoryNotEnoughException {
     if (Objects.isNull(plan)) {
       throw new IoTDBRuntimeException(
-          "The planNode is null during local execution, maybe caused by closing of the current dataNode",
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_THE_PLANNODE_IS_NULL_DURING_LOCAL_EXECUTION_MAYBE_CAUSED_C5B942CA,
           TSStatusCode.CLOSE_OPERATION_ERROR.getStatusCode());
     }
     LocalExecutionPlanContext context =
@@ -111,13 +116,16 @@ public class LocalExecutionPlanner {
 
     Operator root = generateOperator(instanceContext, context, plan);
 
+    // Select Collect consumption before estimating its retained input memory.
+    setExchangeMemoryLimits(plan, context);
+
     PipelineMemoryEstimator memoryEstimator =
         context.constructPipelineMemoryEstimator(root, null, plan, -1);
     // set the map to null for gc
     context.invalidateParentPlanNodeIdToMemoryEstimator();
 
     // check whether current free memory is enough to execute current query
-    long estimatedMemorySize = checkMemory(memoryEstimator, instanceContext.getStateMachine());
+    long estimatedMemorySize = checkMemory(memoryEstimator, instanceContext);
 
     context.addPipelineDriverFactory(root, context.getDriverContext(), estimatedMemorySize);
 
@@ -127,9 +135,6 @@ public class LocalExecutionPlanner {
         getQueryDataSourceType((DataDriverContext) context.getDriverContext()));
 
     context.getTimePartitions().ifPresent(instanceContext::setTimePartitions);
-
-    // set maxBytes one SourceHandle can reserve after visiting the whole tree
-    context.setMaxBytesOneHandleCanReserve();
 
     return context.getPipelineDriverFactories();
   }
@@ -142,7 +147,8 @@ public class LocalExecutionPlanner {
       throws MemoryNotEnoughException {
     if (Objects.isNull(plan)) {
       throw new IoTDBRuntimeException(
-          "The planNode is null during local execution, maybe caused by closing of the current dataNode",
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_THE_PLANNODE_IS_NULL_DURING_LOCAL_EXECUTION_MAYBE_CAUSED_C5B942CA,
           TSStatusCode.CLOSE_OPERATION_ERROR.getStatusCode());
     }
     LocalExecutionPlanContext context =
@@ -150,18 +156,18 @@ public class LocalExecutionPlanner {
 
     Operator root = generateOperator(instanceContext, context, plan);
 
+    // Select Collect consumption before estimating its retained input memory.
+    setExchangeMemoryLimits(plan, context);
+
     PipelineMemoryEstimator memoryEstimator =
         context.constructPipelineMemoryEstimator(root, null, plan, -1);
     // set the map to null for gc
     context.invalidateParentPlanNodeIdToMemoryEstimator();
 
     // check whether current free memory is enough to execute current query
-    checkMemory(memoryEstimator, instanceContext.getStateMachine());
+    checkMemory(memoryEstimator, instanceContext);
 
     context.addPipelineDriverFactory(root, context.getDriverContext(), 0);
-
-    // set maxBytes one SourceHandle can reserve after visiting the whole tree
-    context.setMaxBytesOneHandleCanReserve();
 
     return context.getPipelineDriverFactories();
   }
@@ -171,7 +177,7 @@ public class LocalExecutionPlanner {
     // Generate pipelines, return the last pipeline data structure
     // TODO Replace operator with operatorFactory to build multiple driver for one pipeline
     Operator root;
-    IClientSession.SqlDialect sqlDialect =
+    SqlDialect sqlDialect =
         instanceContext.getSessionInfo() == null
             ? TREE
             : instanceContext.getSessionInfo().getSqlDialect();
@@ -182,16 +188,33 @@ public class LocalExecutionPlanner {
         break;
       case TABLE:
         instanceContext.setIgnoreAllNullRows(false);
-        root = node.accept(new TableOperatorGenerator(metadata), context);
+        root = node.accept(new DataNodeTableOperatorGenerator(metadata), context);
         break;
       default:
-        throw new IllegalArgumentException(String.format("Unknown sql dialect: %s", sqlDialect));
+        throw new IllegalArgumentException(
+            String.format(DataNodeQueryMessages.UNKNOWN_SQL_DIALECT, sqlDialect));
     }
     return root;
   }
 
+  private void setExchangeMemoryLimits(PlanNode plan, LocalExecutionPlanContext context) {
+    FragmentInstanceContext instanceContext = context.getInstanceContext();
+    if (instanceContext.getSessionInfo() == null
+        || instanceContext.getSessionInfo().getSqlDialect() == TREE) {
+      context.setMaxBytesOneHandleCanReserve();
+      return;
+    }
+    // Choose the table FI policy only after all operators and pipelines are known.
+    context.setExchangeMemoryLimits(
+        plan,
+        MPPDataExchangeService.getInstance()
+            .getMPPDataExchangeManager()
+            .getLocalMemoryManager()
+            .getQueryPool());
+  }
+
   private long checkMemory(
-      final PipelineMemoryEstimator memoryEstimator, FragmentInstanceStateMachine stateMachine)
+      final PipelineMemoryEstimator memoryEstimator, FragmentInstanceContext instanceContext)
       throws MemoryNotEnoughException {
 
     // if it is disabled, just return
@@ -204,37 +227,65 @@ public class LocalExecutionPlanner {
 
     QueryRelatedResourceMetricSet.getInstance().updateEstimatedMemory(estimatedMemorySize);
 
-    if (OPERATORS_MEMORY_BLOCK.allocate(estimatedMemorySize)) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "[ConsumeMemory] consume: {}, current remaining memory: {}",
-            estimatedMemorySize,
-            OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes());
-      }
-    } else {
+    long reservedBytes =
+        allocateOperatorsMemory(estimatedMemorySize, instanceContext.isHighestPriority());
+    if (reservedBytes < 0) {
       throw new MemoryNotEnoughException(
           String.format(
-              "There is not enough memory to execute current fragment instance, "
-                  + "current remaining free memory is %dB, "
-                  + "estimated memory usage for current fragment instance is %dB",
-              OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes(), estimatedMemorySize));
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_THERE_IS_NOT_ENOUGH_MEMORY_TO_EXECUTE_CURRENT_FRAGMENT_INSTANCE_6071A581,
+              OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes(),
+              estimatedMemorySize));
     }
-    stateMachine.addStateChangeListener(
-        newState -> {
-          if (newState.isDone()) {
-            try (SetThreadName fragmentInstanceName =
-                new SetThreadName(stateMachine.getFragmentInstanceId().getFullId())) {
-              OPERATORS_MEMORY_BLOCK.release(estimatedMemorySize);
-              if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug(
-                    "[ReleaseMemory] release: {}, current remaining memory: {}",
-                    estimatedMemorySize,
-                    OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes());
+    FragmentInstanceStateMachine stateMachine = instanceContext.getStateMachine();
+    if (reservedBytes > 0) {
+      stateMachine.addStateChangeListener(
+          newState -> {
+            if (newState.isDone()) {
+              try (SetThreadName fragmentInstanceName =
+                  new SetThreadName(stateMachine.getFragmentInstanceId().getFullId())) {
+                OPERATORS_MEMORY_BLOCK.release(reservedBytes);
+                if (LOGGER.isDebugEnabled()) {
+                  LOGGER.debug(
+                      DataNodeQueryMessages.RELEASEMEMORY_RELEASE_ARG_CURRENT_REMAINING_MEMORY_ARG,
+                      reservedBytes,
+                      OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes());
+                }
               }
             }
-          }
-        });
-    return estimatedMemorySize;
+          });
+    }
+    return reservedBytes;
+  }
+
+  /**
+   * Try to reserve bytes from the operators memory block.
+   *
+   * @return allocated bytes on success ({@code > 0}), {@code 0} if nothing to allocate or
+   *     highest-priority fallback applies, {@code -1} if allocation failed
+   */
+  private long allocateOperatorsMemory(final long memoryInBytes, final boolean isHighestPriority) {
+    if (memoryInBytes <= 0) {
+      return 0L;
+    }
+    if (OPERATORS_MEMORY_BLOCK.allocate(memoryInBytes)) {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            DataNodeQueryMessages.CONSUMEMEMORY_CONSUME_ARG_CURRENT_REMAINING_MEMORY_ARG,
+            memoryInBytes,
+            OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes());
+      }
+      return memoryInBytes;
+    }
+    if (isHighestPriority) {
+      return 0L;
+    }
+    return -1L;
+  }
+
+  @TestOnly
+  long allocateOperatorsMemoryForTest(final long memoryInBytes, final boolean isHighestPriority) {
+    return allocateOperatorsMemory(memoryInBytes, isHighestPriority);
   }
 
   private QueryDataSourceType getQueryDataSourceType(DataDriverContext dataDriverContext) {
@@ -256,7 +307,10 @@ public class LocalExecutionPlanner {
         .forEach(
             pipeline -> {
               DataDriverContext dataDriverContext = (DataDriverContext) pipeline.getDriverContext();
-              sourcePaths.addAll(dataDriverContext.getPaths());
+              if (dataDriverContext.getSourceOperators().stream()
+                  .anyMatch(sourceOperator -> !sourceOperator.isBatchQueryDataSource())) {
+                sourcePaths.addAll(dataDriverContext.getPaths());
+              }
               dataDriverContext.clearPaths();
             });
     return sourcePaths;
@@ -289,41 +343,41 @@ public class LocalExecutionPlanner {
     }
   }
 
-  public void reserveFromFreeMemoryForOperators(
+  public long reserveFromFreeMemoryForOperators(
       final long memoryInBytes,
       final long reservedBytes,
       final String queryId,
-      final String contextHolder) {
+      final String contextHolder,
+      final boolean isHighestPriority)
+      throws MemoryNotEnoughException {
     if (memoryInBytes <= 0) {
       throw new IllegalArgumentException(
-          "Bytes to reserve from free memory for operators should be larger than 0");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_BYTES_TO_RESERVE_FROM_FREE_MEMORY_FOR_OPERATORS_SHOULD_BE_4DC404D5);
     }
-    if (OPERATORS_MEMORY_BLOCK.allocate(memoryInBytes)) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "[ConsumeMemory] consume: {}, current remaining memory: {}",
-            memoryInBytes,
-            OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes());
-      }
-    } else {
-      throw new MemoryNotEnoughException(
+    long allocated = allocateOperatorsMemory(memoryInBytes, isHighestPriority);
+    if (allocated < 0) {
+      long freeBytes = OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes();
+      throw new OperatorMemoryNotEnoughException(
           String.format(
-              "There is not enough memory for Query %s, the contextHolder is %s,"
-                  + "current remaining free memory is %dB, "
-                  + "already reserved memory for this context in total is %dB, "
-                  + "the memory requested this time is %dB",
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_THERE_IS_NOT_ENOUGH_MEMORY_FOR_QUERY_S_THE_CONTEXTHOLDER_546CDD02,
               queryId,
               contextHolder,
-              OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes(),
+              freeBytes,
               reservedBytes,
-              memoryInBytes));
+              memoryInBytes),
+          memoryInBytes,
+          freeBytes);
     }
+    return allocated;
   }
 
   public void releaseToFreeMemoryForOperators(final long memoryInBytes) {
     if (memoryInBytes <= 0) {
       throw new IllegalArgumentException(
-          "Bytes to release to free memory for operators should be larger than 0");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_BYTES_TO_RELEASE_TO_FREE_MEMORY_FOR_OPERATORS_SHOULD_BE_3E5B0CB1);
     }
     OPERATORS_MEMORY_BLOCK.release(memoryInBytes);
   }

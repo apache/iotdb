@@ -20,13 +20,14 @@
 package org.apache.iotdb.consensus.exception;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.consensus.i18n.ConsensusMessages;
 
 public class ConsensusGroupAlreadyExistException extends ConsensusException {
 
   private final transient ConsensusGroupId groupId;
 
   public ConsensusGroupAlreadyExistException(ConsensusGroupId groupId) {
-    super(String.format("The consensus group %d already exists", groupId.getId()));
+    super(String.format(ConsensusMessages.CONSENSUS_GROUP_ALREADY_EXIST, groupId.getId()));
     this.groupId = groupId;
   }
 

@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Map;
@@ -39,9 +43,14 @@ public class CreateTopic extends SubscriptionStatement {
       final String topicName,
       final boolean ifNotExistsCondition,
       final Map<String, String> topicAttributes) {
-    this.topicName = requireNonNull(topicName, "topic name can not be null");
+    this.topicName =
+        requireNonNull(
+            topicName, DataNodeQueryMessages.EXCEPTION_TOPIC_NAME_CAN_NOT_BE_NULL_EA4ED0BF);
     this.ifNotExistsCondition = ifNotExistsCondition;
-    this.topicAttributes = requireNonNull(topicAttributes, "topic attributes can not be null");
+    this.topicAttributes =
+        requireNonNull(
+            topicAttributes,
+            DataNodeQueryMessages.EXCEPTION_TOPIC_ATTRIBUTES_CAN_NOT_BE_NULL_791A8FED);
   }
 
   public String getTopicName() {
@@ -57,8 +66,8 @@ public class CreateTopic extends SubscriptionStatement {
   }
 
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitCreateTopic(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitCreateTopic(this, context);
   }
 
   @Override

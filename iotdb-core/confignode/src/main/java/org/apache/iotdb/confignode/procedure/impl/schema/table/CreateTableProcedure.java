@@ -28,6 +28,8 @@ import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTab
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -35,6 +37,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.CreateTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -44,7 +47,6 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Map;
 import java.util.Objects;
 
 import static org.apache.iotdb.rpc.TSStatusCode.TABLE_ALREADY_EXISTS;
@@ -76,33 +78,36 @@ public class CreateTableProcedure
     try {
       switch (state) {
         case CHECK_TABLE_EXISTENCE:
-          LOGGER.info("Check the existence of table {}.{}", database, table.getTableName());
+          LOGGER.info(
+              ProcedureMessages.CHECK_THE_EXISTENCE_OF_TABLE, database, table.getTableName());
           checkTableExistence(env);
           break;
         case PRE_CREATE:
-          LOGGER.info("Pre create table {}.{}", database, table.getTableName());
+          LOGGER.info(ProcedureMessages.PRE_CREATE_TABLE, database, table.getTableName());
           preCreateTable(env);
           break;
         case PRE_RELEASE:
-          LOGGER.info("Pre release table {}.{}", database, table.getTableName());
+          LOGGER.info(ProcedureMessages.PRE_RELEASE_TABLE, database, table.getTableName());
           preReleaseTable(env);
           break;
         case COMMIT_CREATE:
-          LOGGER.info("Commit create table {}.{}", database, table.getTableName());
+          LOGGER.info(ProcedureMessages.COMMIT_CREATE_TABLE, database, table.getTableName());
           commitCreateTable(env);
           break;
         case COMMIT_RELEASE:
-          LOGGER.info("Commit release table {}.{}", database, table.getTableName());
+          LOGGER.info(ProcedureMessages.COMMIT_RELEASE_TABLE, database, table.getTableName());
           commitReleaseTable(env);
+          reconcileTree2TableViewColumns(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized CreateTableState " + state));
+          setFailure(
+              new ProcedureException(ProcedureMessages.UNRECOGNIZED_CREATETABLESTATE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "CreateTable-{}.{}-{} costs {}ms",
+          ProcedureMessages.CREATETABLE_COSTS_MS,
           database,
           table.getTableName(),
           state,
@@ -119,7 +124,8 @@ public class CreateTableProcedure
         setFailure(
             new ProcedureException(
                 new IoTDBException(
-                    String.format("Table '%s.%s' already exists.", database, table.getTableName()),
+                    String.format(
+                        ProcedureMessages.TABLE_ALREADY_EXISTS, database, table.getTableName()),
                     TABLE_ALREADY_EXISTS.getStatusCode())));
       } else {
         final TDatabaseSchema schema =
@@ -128,6 +134,10 @@ public class CreateTableProcedure
             && schema.isSetTTL()
             && schema.getTTL() != Long.MAX_VALUE) {
           table.addProp(TsTable.TTL_PROPERTY, String.valueOf(schema.getTTL()));
+        }
+        if (!table.getPropValue(TsTable.NEED_LAST_CACHE_PROPERTY).isPresent()
+            && schema.isSetNeedLastCache()) {
+          table.addProp(TsTable.NEED_LAST_CACHE_PROPERTY, String.valueOf(schema.isNeedLastCache()));
         }
         setNextState(CreateTableState.PRE_CREATE);
       }
@@ -146,22 +156,33 @@ public class CreateTableProcedure
     }
   }
 
-  private void preReleaseTable(final ConfigNodeProcedureEnv env) {
-    final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.preReleaseTable(database, table, env.getConfigManager(), null);
+  protected void preReleaseTable(final ConfigNodeProcedureEnv env) {
+    // Broadcast the pre-update to all DataNodes. Instead of failing whenever any DataNode is
+    // unreachable, proceed once every unacked DataNode is provably self-fenced: such a DataNode
+    // fails closed on its (now-stale) table cache and resyncs on lease recovery, so it cannot serve
+    // dirty schema. Only fail if an unacked DataNode is not provably fenced (it may still be
+    // serving clients).
+    final TUpdateTableReq req = buildPreReleaseTableReq();
+    final boolean proceeded =
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
+            .propagate(targets -> SchemaUtils.broadcastTableUpdate(req, targets));
 
-    if (!failedResults.isEmpty()) {
-      // All dataNodes must clear the related schema cache
+    if (!proceeded) {
       LOGGER.warn(
-          "Failed to sync table {}.{} pre-create info to DataNode, failure results: {}",
+          ProcedureMessages.FAILED_TO_SYNC_TABLE_PRE_CREATE_INFO_TO_DATANODE_FAILURE,
           database,
           table.getTableName(),
-          failedResults);
-      setFailure(new ProcedureException(new MetadataException("Pre create table failed")));
+          ProcedureMessages.FAILED_TO_PROVE_AN_UNREACHABLE_DN_IS_FENCED);
+      setFailure(
+          new ProcedureException(new MetadataException(ProcedureMessages.PRE_CREATE_TABLE_FAILED)));
       return;
     }
 
     setNextState(CreateTableState.COMMIT_CREATE);
+  }
+
+  protected TUpdateTableReq buildPreReleaseTableReq() {
+    return SchemaUtils.buildPreUpdateTableReq(database, table, null);
   }
 
   private void commitCreateTable(final ConfigNodeProcedureEnv env) {
@@ -179,23 +200,46 @@ public class CreateTableProcedure
     }
   }
 
-  private void commitReleaseTable(final ConfigNodeProcedureEnv env) {
-    final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.commitReleaseTable(
-            database, table.getTableName(), env.getConfigManager(), null);
+  /**
+   * The request broadcast at commit-release. A subclass whose change also affects the tree-to-table
+   * view index of the DataNodes overrides this to declare the effect.
+   */
+  protected TUpdateTableReq buildCommitReleaseTableReq() {
+    return SchemaUtils.buildCommitUpdateTableReq(database, table.getTableName(), null);
+  }
 
-    if (!failedResults.isEmpty()) {
+  private void commitReleaseTable(final ConfigNodeProcedureEnv env) {
+    final TUpdateTableReq req = buildCommitReleaseTableReq();
+    final boolean proceeded = SchemaUtils.commitReleaseTableWithHA(req, env.getConfigManager());
+
+    if (!proceeded) {
       LOGGER.warn(
-          "Failed to sync table {}.{} commit-create info to DataNode {}, failure results: ",
+          ProcedureMessages.FAILED_TO_SYNC_TABLE_COMMIT_CREATE_INFO_TO_DATANODE_FAILURE,
           database,
           table.getTableName(),
-          failedResults);
+          ProcedureMessages.FAILED_TO_PROVE_AN_UNREACHABLE_DN_IS_FENCED);
     }
+  }
+
+  /**
+   * Adds the columns of the tree series which already exist under a newly created tree-to-table
+   * view's path. A plain table has no such path, so the base procedure does nothing.
+   */
+  protected void reconcileTree2TableViewColumns(final ConfigNodeProcedureEnv env) {
+    // do nothing here
   }
 
   @Override
   protected boolean isRollbackSupported(final CreateTableState state) {
-    return true;
+    switch (state) {
+      case CHECK_TABLE_EXISTENCE:
+      case PRE_CREATE:
+      case PRE_RELEASE:
+      case COMMIT_CREATE:
+        return true;
+      default:
+        return false;
+    }
   }
 
   @Override
@@ -205,17 +249,21 @@ public class CreateTableProcedure
     try {
       switch (state) {
         case PRE_CREATE:
-          LOGGER.info("Start rollback pre create table {}.{}", database, table.getTableName());
+          LOGGER.info(
+              ProcedureMessages.START_ROLLBACK_PRE_CREATE_TABLE, database, table.getTableName());
           rollbackCreate(env);
           break;
         case PRE_RELEASE:
-          LOGGER.info("Start rollback pre release table {}.{}", database, table.getTableName());
+          LOGGER.info(
+              ProcedureMessages.START_ROLLBACK_PRE_RELEASE_TABLE, database, table.getTableName());
           rollbackPreRelease(env);
           break;
       }
     } finally {
       LOGGER.info(
-          "Rollback CreateTable-{} costs {}ms.", state, (System.currentTimeMillis() - startTime));
+          ProcedureMessages.ROLLBACK_CREATETABLE_COSTS_MS,
+          state,
+          (System.currentTimeMillis() - startTime));
     }
   }
 
@@ -224,25 +272,33 @@ public class CreateTableProcedure
         SchemaUtils.executeInConsensusLayer(
             new RollbackCreateTablePlan(database, table.getTableName()), env, LOGGER);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to rollback table creation {}.{}", database, table.getTableName());
+      LOGGER.warn(
+          ProcedureMessages.FAILED_TO_ROLLBACK_TABLE_CREATION, database, table.getTableName());
       setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
-  private void rollbackPreRelease(final ConfigNodeProcedureEnv env) {
-    final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.rollbackPreRelease(
-            database, table.getTableName(), env.getConfigManager(), null);
+  protected void rollbackPreRelease(final ConfigNodeProcedureEnv env) {
+    // A down DataNode must not block rollback if it is already provably self-fenced.
+    final TUpdateTableReq req = buildRollbackTableReq();
+    final boolean proceeded =
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
+            .propagate(targets -> SchemaUtils.broadcastTableUpdate(req, targets));
 
-    if (!failedResults.isEmpty()) {
-      // All dataNodes must clear the related schema cache
+    if (!proceeded) {
       LOGGER.warn(
-          "Failed to sync table {}.{} rollback-create info to DataNode {}, failure results: ",
+          ProcedureMessages.FAILED_TO_SYNC_TABLE_ROLLBACK_CREATE_INFO_TO_DATANODE_FAILURE,
           database,
           table.getTableName(),
-          failedResults);
-      setFailure(new ProcedureException(new MetadataException("Rollback create table failed")));
+          ProcedureMessages.FAILED_TO_PROVE_DN_IS_FENCED);
+      setFailure(
+          new ProcedureException(
+              new MetadataException(ProcedureMessages.ROLLBACK_CREATE_TABLE_FAILED)));
     }
+  }
+
+  protected TUpdateTableReq buildRollbackTableReq() {
+    return SchemaUtils.rollbackUpdateTableReq(database, table.getTableName(), null);
   }
 
   @Override

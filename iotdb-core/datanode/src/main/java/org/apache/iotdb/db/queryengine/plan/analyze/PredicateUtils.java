@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
@@ -41,12 +44,9 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.Convert
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.PredicatePushIntoScanChecker;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.PredicateSimplifier;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ReversePredicateVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.filter.basic.Filter;
-import org.apache.tsfile.utils.Pair;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -56,6 +56,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class PredicateUtils {
@@ -65,88 +66,94 @@ public class PredicateUtils {
   }
 
   /**
-   * Extract global time predicate from query predicate.
+   * Extracts the global time predicate and the predicate that still needs to be evaluated.
+   *
+   * <p>This method never modifies {@code predicate}. A {@code null} global time predicate
+   * represents {@code TRUE}. The returned predicates satisfy the following invariant:
+   *
+   * <pre>
+   * predicate == globalTimePredicate AND residualPredicate
+   * </pre>
+   *
+   * where a {@code null} global time predicate is omitted from the conjunction.
    *
    * @param predicate raw query predicate
-   * @param canRewrite determined by the father of current expression
-   * @param isFirstOr whether it is the first LogicOrExpression encountered
-   * @return global time predicate
+   * @return the extracted global time predicate, residual predicate and value-filter flag
    * @throws UnknownExpressionTypeException unknown expression type
    */
-  public static Pair<Expression, Boolean> extractGlobalTimePredicate(
-      Expression predicate, boolean canRewrite, boolean isFirstOr) {
+  public static GlobalTimePredicateExtractionResult extractGlobalTimePredicate(
+      Expression predicate) {
     if (predicate.getExpressionType().equals(ExpressionType.LOGIC_AND)) {
-      Pair<Expression, Boolean> leftResultPair =
-          extractGlobalTimePredicate(
-              ((BinaryExpression) predicate).getLeftExpression(), canRewrite, isFirstOr);
-      Pair<Expression, Boolean> rightResultPair =
-          extractGlobalTimePredicate(
-              ((BinaryExpression) predicate).getRightExpression(), canRewrite, isFirstOr);
+      GlobalTimePredicateExtractionResult leftResult =
+          extractGlobalTimePredicate(((BinaryExpression) predicate).getLeftExpression());
+      GlobalTimePredicateExtractionResult rightResult =
+          extractGlobalTimePredicate(((BinaryExpression) predicate).getRightExpression());
 
-      // rewrite predicate to avoid duplicate calculation on time filter
-      // If Left-child or Right-child does not contain value filter
-      // We can set it to true in Predicate Tree
-      if (canRewrite) {
-        if (leftResultPair.left != null && !leftResultPair.right) {
-          ((BinaryExpression) predicate)
-              .setLeftExpression(new ConstantOperand(TSDataType.BOOLEAN, "true"));
-        }
-        if (rightResultPair.left != null && !rightResultPair.right) {
-          ((BinaryExpression) predicate)
-              .setRightExpression(new ConstantOperand(TSDataType.BOOLEAN, "true"));
-        }
-      }
-
-      if (leftResultPair.left != null && rightResultPair.left != null) {
-        return new Pair<>(
-            ExpressionFactory.and(leftResultPair.left, rightResultPair.left),
-            leftResultPair.right || rightResultPair.right);
-      } else if (leftResultPair.left != null) {
-        return new Pair<>(leftResultPair.left, true);
-      } else if (rightResultPair.left != null) {
-        return new Pair<>(rightResultPair.left, true);
-      }
-      return new Pair<>(null, true);
+      return new GlobalTimePredicateExtractionResult(
+          combineConjuncts(
+              leftResult.getGlobalTimePredicate(), rightResult.getGlobalTimePredicate(), null),
+          combineConjuncts(
+              leftResult.getResidualPredicate(),
+              rightResult.getResidualPredicate(),
+              ConstantOperand.TRUE),
+          leftResult.hasValueFilter() || rightResult.hasValueFilter());
     } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_OR)) {
-      Pair<Expression, Boolean> leftResultPair =
-          extractGlobalTimePredicate(
-              ((BinaryExpression) predicate).getLeftExpression(), false, false);
-      Pair<Expression, Boolean> rightResultPair =
-          extractGlobalTimePredicate(
-              ((BinaryExpression) predicate).getRightExpression(), false, false);
+      GlobalTimePredicateExtractionResult leftResult =
+          extractGlobalTimePredicate(((BinaryExpression) predicate).getLeftExpression());
+      GlobalTimePredicateExtractionResult rightResult =
+          extractGlobalTimePredicate(((BinaryExpression) predicate).getRightExpression());
 
-      if (leftResultPair.left != null && rightResultPair.left != null) {
-        if (Boolean.TRUE.equals(isFirstOr && !leftResultPair.right && !rightResultPair.right)) {
-          ((BinaryExpression) predicate)
-              .setLeftExpression(new ConstantOperand(TSDataType.BOOLEAN, "true"));
-          ((BinaryExpression) predicate)
-              .setRightExpression(new ConstantOperand(TSDataType.BOOLEAN, "true"));
+      if (leftResult.getGlobalTimePredicate() != null
+          && rightResult.getGlobalTimePredicate() != null) {
+        Expression globalTimePredicate =
+            ExpressionFactory.or(
+                leftResult.getGlobalTimePredicate(), rightResult.getGlobalTimePredicate());
+        boolean hasValueFilter = leftResult.hasValueFilter() || rightResult.hasValueFilter();
+        if (!hasValueFilter) {
+          return new GlobalTimePredicateExtractionResult(
+              globalTimePredicate, ConstantOperand.TRUE, false);
         }
-        return new Pair<>(
-            ExpressionFactory.or(leftResultPair.left, rightResultPair.left),
-            leftResultPair.right || rightResultPair.right);
+
+        // (G1 AND R1) OR (G2 AND R2) implies G1 OR G2, but R1 OR R2 is not an
+        // equivalent residual. Keeping the original OR predicate preserves
+        // P == (G1 OR G2) AND P without copying or mutating its subtrees.
+        return new GlobalTimePredicateExtractionResult(globalTimePredicate, predicate, true);
       }
-      return new Pair<>(null, true);
+      return new GlobalTimePredicateExtractionResult(null, predicate, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_NOT)) {
-      Pair<Expression, Boolean> childResultPair =
-          extractGlobalTimePredicate(
-              ((UnaryExpression) predicate).getExpression(), canRewrite, isFirstOr);
-      if (childResultPair.left != null) {
-        return new Pair<>(ExpressionFactory.not(childResultPair.left), childResultPair.right);
+      Expression negatedExpression = ((UnaryExpression) predicate).getExpression();
+      GlobalTimePredicateExtractionResult childResult =
+          extractGlobalTimePredicate(negatedExpression);
+      if (childResult.getGlobalTimePredicate() != null && !childResult.hasValueFilter()) {
+        return new GlobalTimePredicateExtractionResult(
+            ExpressionFactory.not(childResult.getGlobalTimePredicate()),
+            ConstantOperand.TRUE,
+            false);
       }
-      return new Pair<>(null, true);
+      // NOT(G AND R) cannot in general be represented as NOT(G) AND NOT(R). Do
+      // not extract a time predicate when the negated subtree contains a value
+      // filter.
+      //
+      // NOT(A OR B) is NOT(A) AND NOT(B) though, so every disjunct that is a pure
+      // time predicate still bounds the time range of the whole negation, e.g.
+      // NOT (time > 2 OR s1 > 5) implies time <= 2.
+      Expression negatedTimePredicate = extractNegatedTimePredicateFromDisjuncts(negatedExpression);
+      if (negatedTimePredicate != null) {
+        return new GlobalTimePredicateExtractionResult(negatedTimePredicate, predicate, true);
+      }
+      return new GlobalTimePredicateExtractionResult(null, predicate, true);
     } else if (predicate.isCompareBinaryExpression()) {
       Expression leftExpression = ((BinaryExpression) predicate).getLeftExpression();
       Expression rightExpression = ((BinaryExpression) predicate).getRightExpression();
       if (checkIsTimeFilter(leftExpression, rightExpression)
           || checkIsTimeFilter(rightExpression, leftExpression)) {
-        return new Pair<>(predicate, false);
+        return new GlobalTimePredicateExtractionResult(predicate, ConstantOperand.TRUE, false);
       }
-      return new Pair<>(null, true);
+      return new GlobalTimePredicateExtractionResult(null, predicate, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.LIKE)
         || predicate.getExpressionType().equals(ExpressionType.REGEXP)) {
       // time filter don't support LIKE and REGEXP
-      return new Pair<>(null, true);
+      return new GlobalTimePredicateExtractionResult(null, predicate, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.BETWEEN)) {
       Expression firstExpression = ((TernaryExpression) predicate).getFirstExpression();
       Expression secondExpression = ((TernaryExpression) predicate).getSecondExpression();
@@ -161,28 +168,86 @@ public class PredicateUtils {
         isTimeFilter = checkBetweenConstantSatisfy(secondExpression, firstExpression);
       }
       if (isTimeFilter) {
-        return new Pair<>(predicate, false);
+        return new GlobalTimePredicateExtractionResult(predicate, ConstantOperand.TRUE, false);
       }
-      return new Pair<>(null, true);
+      return new GlobalTimePredicateExtractionResult(null, predicate, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.IS_NULL)) {
       // time filter don't support IS_NULL
-      return new Pair<>(null, true);
+      return new GlobalTimePredicateExtractionResult(null, predicate, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.IN)) {
       Expression timeExpression = ((InExpression) predicate).getExpression();
       if (timeExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
-        return new Pair<>(predicate, false);
+        return new GlobalTimePredicateExtractionResult(predicate, ConstantOperand.TRUE, false);
       }
-      return new Pair<>(null, true);
+      return new GlobalTimePredicateExtractionResult(null, predicate, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.TIMESERIES)
         || predicate.getExpressionType().equals(ExpressionType.CONSTANT)
         || predicate.getExpressionType().equals(ExpressionType.NULL)) {
-      return new Pair<>(null, true);
+      return new GlobalTimePredicateExtractionResult(null, predicate, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.CASE_WHEN_THEN)) {
-      return new Pair<>(null, true);
+      return new GlobalTimePredicateExtractionResult(null, predicate, true);
     } else if (ExpressionType.FUNCTION.equals(predicate.getExpressionType())) {
-      return new Pair<>(null, true);
+      return new GlobalTimePredicateExtractionResult(null, predicate, true);
     } else {
       throw new UnknownExpressionTypeException(predicate.getExpressionType());
+    }
+  }
+
+  private static Expression combineConjuncts(
+      Expression leftExpression, Expression rightExpression, Expression identity) {
+    if (leftExpression == null || leftExpression.equals(identity)) {
+      return rightExpression;
+    }
+    if (rightExpression == null || rightExpression.equals(identity)) {
+      return leftExpression;
+    }
+    return ExpressionFactory.and(leftExpression, rightExpression);
+  }
+
+  /**
+   * Collects the negation of every disjunct that is a pure time predicate. It is only called for
+   * the subtree negated by a {@code not()}, where De Morgan's law turns the disjunction into a
+   * conjunction, so each collected term is a sound time bound for the whole predicate.
+   */
+  private static Expression extractNegatedTimePredicateFromDisjuncts(Expression predicate) {
+    if (predicate.getExpressionType().equals(ExpressionType.LOGIC_OR)) {
+      return combineConjuncts(
+          extractNegatedTimePredicateFromDisjuncts(
+              ((BinaryExpression) predicate).getLeftExpression()),
+          extractNegatedTimePredicateFromDisjuncts(
+              ((BinaryExpression) predicate).getRightExpression()),
+          null);
+    }
+    GlobalTimePredicateExtractionResult result = extractGlobalTimePredicate(predicate);
+    if (result.getGlobalTimePredicate() != null && !result.hasValueFilter()) {
+      return ExpressionFactory.not(result.getGlobalTimePredicate());
+    }
+    return null;
+  }
+
+  public static final class GlobalTimePredicateExtractionResult {
+
+    private final Expression globalTimePredicate;
+    private final Expression residualPredicate;
+    private final boolean hasValueFilter;
+
+    private GlobalTimePredicateExtractionResult(
+        Expression globalTimePredicate, Expression residualPredicate, boolean hasValueFilter) {
+      this.globalTimePredicate = globalTimePredicate;
+      this.residualPredicate = residualPredicate;
+      this.hasValueFilter = hasValueFilter;
+    }
+
+    public Expression getGlobalTimePredicate() {
+      return globalTimePredicate;
+    }
+
+    public Expression getResidualPredicate() {
+      return residualPredicate;
+    }
+
+    public boolean hasValueFilter() {
+      return hasValueFilter;
     }
   }
 
@@ -217,33 +282,63 @@ public class PredicateUtils {
    *
    * <p>eg: not(and(eq(), not(eq(y))) -&gt; or(notEq(), eq(y))
    *
-   * <p>The returned predicate should have the same meaning as the original, but without the use of
-   * the not() operator.
+   * <p>The returned predicate has the same meaning as the original. A {@code not()} is retained
+   * when the operand cannot be inverted safely, for example for non-comparison expressions or
+   * ordered comparisons on FLOAT/DOUBLE values where NaN semantics differ.
    *
    * <p>See also {@link PredicateUtils#reversePredicate(Expression)}, which is used to do the
    * inversion.
    *
    * @param predicate the predicate to remove not() from
-   * @return the predicate with all not() operators removed
+   * @return the predicate with safely invertible not() operators removed
    */
   public static Expression predicateRemoveNot(Expression predicate) {
+    return predicateRemoveNot(predicate, null);
+  }
+
+  /**
+   * @param predicate the predicate to remove not() from
+   * @return the predicate with safely invertible not() operators removed. The original instance is
+   *     returned when no not() could be removed, so callers can detect that nothing changed.
+   */
+  public static Expression predicateRemoveNot(
+      Expression predicate, Function<Expression, TSDataType> typeProvider) {
     if (predicate.getExpressionType().equals(ExpressionType.LOGIC_AND)) {
-      return ExpressionFactory.and(
-          predicateRemoveNot(((BinaryExpression) predicate).getLeftExpression()),
-          predicateRemoveNot(((BinaryExpression) predicate).getRightExpression()));
+      Expression leftExpression =
+          predicateRemoveNot(((BinaryExpression) predicate).getLeftExpression(), typeProvider);
+      Expression rightExpression =
+          predicateRemoveNot(((BinaryExpression) predicate).getRightExpression(), typeProvider);
+      if (leftExpression == ((BinaryExpression) predicate).getLeftExpression()
+          && rightExpression == ((BinaryExpression) predicate).getRightExpression()) {
+        return predicate;
+      }
+      return ExpressionFactory.and(leftExpression, rightExpression);
     } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_OR)) {
-      return ExpressionFactory.or(
-          predicateRemoveNot(((BinaryExpression) predicate).getLeftExpression()),
-          predicateRemoveNot(((BinaryExpression) predicate).getRightExpression()));
+      Expression leftExpression =
+          predicateRemoveNot(((BinaryExpression) predicate).getLeftExpression(), typeProvider);
+      Expression rightExpression =
+          predicateRemoveNot(((BinaryExpression) predicate).getRightExpression(), typeProvider);
+      if (leftExpression == ((BinaryExpression) predicate).getLeftExpression()
+          && rightExpression == ((BinaryExpression) predicate).getRightExpression()) {
+        return predicate;
+      }
+      return ExpressionFactory.or(leftExpression, rightExpression);
     } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_NOT)) {
-      return reversePredicate(((LogicNotExpression) predicate).getExpression());
+      Expression innerExpression = ((LogicNotExpression) predicate).getExpression();
+      Expression reversedExpression = reversePredicate(innerExpression, typeProvider);
+      if (reversedExpression.getExpressionType().equals(ExpressionType.LOGIC_NOT)
+          && ((LogicNotExpression) reversedExpression).getExpression() == innerExpression) {
+        // The operand cannot be inverted safely, so the not() is kept as is.
+        return predicate;
+      }
+      return reversedExpression;
     }
     return predicate;
   }
 
   /**
    * Converts a predicate to its logical inverse. The returned predicate should be equivalent to
-   * not(p), but without the use of a not() operator.
+   * not(p). A {@code not()} is retained when the inverse cannot be represented safely.
    *
    * <p>See also {@link PredicateUtils#predicateRemoveNot(Expression)}, which can remove the use of
    * all not() operators without inverting the overall predicate.
@@ -252,7 +347,12 @@ public class PredicateUtils {
    * @return the predicate after reversing
    */
   public static Expression reversePredicate(Expression predicate) {
-    return new ReversePredicateVisitor().process(predicate, null);
+    return reversePredicate(predicate, null);
+  }
+
+  public static Expression reversePredicate(
+      Expression predicate, Function<Expression, TSDataType> typeProvider) {
+    return new ReversePredicateVisitor(typeProvider).process(predicate, null);
   }
 
   /**
@@ -284,7 +384,7 @@ public class PredicateUtils {
   }
 
   public static Filter convertPredicateToTimeFilter(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression predicate,
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression predicate,
       ZoneId zoneId,
       TimeUnit currPrecision) {
     if (predicate == null) {
@@ -312,7 +412,7 @@ public class PredicateUtils {
   }
 
   public static Filter convertPredicateToFilter(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression predicate,
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression predicate,
       Map<String, Integer> measurementColumnsIndexMap,
       Map<Symbol, ColumnSchema> schemaMap,
       String timeColumnName,
@@ -341,7 +441,8 @@ public class PredicateUtils {
 
     if (conjuncts.size() > 1000) {
       throw new SemanticException(
-          "There are too many conjuncts (more than 1000) in predicate after rewriting, this may be caused by too many devices in query, try to use ALIGN BY DEVICE");
+          DataNodeQueryMessages
+              .THERE_ARE_TOO_MANY_CONJUNCTS_MORE_THAN_1000_IN_PREDICATE_AFTER_REWRITING_THIS_MAY_BE);
     }
 
     return constructRightDeepTreeWithAnd(conjuncts);
@@ -383,7 +484,8 @@ public class PredicateUtils {
 
   /**
    * Extract the source symbol (full path for non-aligned path, device path for aligned path) from
-   * the given predicate. If the predicate contains multiple source symbols, return null.
+   * the given predicate. If the predicate contains no source symbols or multiple source symbols,
+   * return null.
    *
    * @param predicate given predicate
    * @return the source symbol extracted from the given predicate
@@ -394,6 +496,9 @@ public class PredicateUtils {
         sourceExpressions.stream()
             .map(expression -> ((TimeSeriesOperand) expression).getPath())
             .collect(Collectors.toSet());
+    if (sourcePaths.isEmpty()) {
+      return null;
+    }
     Iterator<PartialPath> pathIterator = sourcePaths.iterator();
     MeasurementPath firstPath = (MeasurementPath) pathIterator.next();
 
@@ -442,7 +547,7 @@ public class PredicateUtils {
   }
 
   public static boolean predicateCanPushIntoScan(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression predicate) {
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression predicate) {
     return new org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate
             .PredicatePushIntoScanChecker()
         .process(predicate, null);

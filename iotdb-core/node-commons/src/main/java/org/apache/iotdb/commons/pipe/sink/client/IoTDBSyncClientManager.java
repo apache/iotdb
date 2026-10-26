@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.interval.IntervalManager;
 import org.apache.iotdb.commons.pipe.datastructure.interval.PlainInterval;
@@ -30,6 +31,7 @@ import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferHandshakeV1Req;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferHandshakeV2Req;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferPipeReceiverRuntimeInfoCleanupReq;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -58,6 +60,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
   private final boolean useSSL;
   private final String trustStorePath;
   private final String trustStorePwd;
+  private final String keyStorePath;
+  private final String keyStorePwd;
 
   protected final Map<TEndPoint, Pair<IoTDBSyncClient, Boolean>> endPoint2ClientAndStatus =
       new ConcurrentHashMap<>();
@@ -72,6 +76,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       final boolean useSSL,
       final String trustStorePath,
       final String trustStorePwd,
+      final String keyStorePath,
+      final String keyStorePwd,
       /* The following parameters are used locally. */
       final boolean useLeaderCache,
       final String loadBalanceStrategy,
@@ -99,6 +105,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
     this.useSSL = useSSL;
     this.trustStorePath = trustStorePath;
     this.trustStorePwd = trustStorePwd;
+    this.keyStorePath = keyStorePath;
+    this.keyStorePwd = keyStorePwd;
 
     for (final TEndPoint endPoint : endPoints) {
       endPoint2ClientAndStatus.put(endPoint, new Pair<>(null, false));
@@ -115,9 +123,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         loadBalancer = new PriorityLoadBalancer();
         break;
       default:
-        LOGGER.warn(
-            "Unknown load balance strategy: {}, use round-robin strategy instead.",
-            loadBalanceStrategy);
+        LOGGER.warn(PipeMessages.UNKNOWN_LOAD_BALANCE_STRATEGY, loadBalanceStrategy);
         loadBalancer = new RoundRobinLoadBalancer();
     }
   }
@@ -172,6 +178,11 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
   }
 
   protected void reconstructClient(TEndPoint endPoint) {
+    reconstructClient(endPoint, pipeName, pipeCreationTime);
+  }
+
+  private void reconstructClient(
+      final TEndPoint endPoint, final String pipeName, final long pipeCreationTime) {
     endPoint2HandshakeErrorMessage.remove(endPoint);
 
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = endPoint2ClientAndStatus.get(endPoint);
@@ -181,7 +192,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         clientAndStatus.getLeft().close();
       } catch (Exception e) {
         LOGGER.warn(
-            "Failed to close client with target server ip: {}, port: {}, because: {}. Ignore it.",
+            PipeMessages.FAILED_TO_CLOSE_CLIENT_WITH_TARGET,
             endPoint.getIp(),
             endPoint.getPort(),
             e.getMessage());
@@ -192,7 +203,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
     // is returned, it means that the initialization is not successful and the handshake operation
     // is not performed.
     if (initClientAndStatus(clientAndStatus, endPoint)) {
-      sendHandshakeReq(clientAndStatus);
+      sendHandshakeReq(clientAndStatus, pipeName, pipeCreationTime);
     }
   }
 
@@ -211,6 +222,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
               useSSL,
               trustStorePath,
               trustStorePwd,
+              keyStorePath,
+              keyStorePwd,
               candidatePorts));
       return true;
     } catch (Exception e) {
@@ -218,7 +231,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       PipeLogger.log(
           LOGGER::warn,
           e,
-          "Failed to initialize client with target server ip: %s, port: %s, because %s",
+          PipeMessages.FAILED_TO_INIT_CLIENT,
           endPoint.getIp(),
           endPoint.getPort(),
           e.getMessage());
@@ -227,6 +240,13 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
   }
 
   public void sendHandshakeReq(final Pair<IoTDBSyncClient, Boolean> clientAndStatus) {
+    sendHandshakeReq(clientAndStatus, pipeName, pipeCreationTime);
+  }
+
+  private void sendHandshakeReq(
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus,
+      final String pipeName,
+      final long pipeCreationTime) {
     final IoTDBSyncClient client = clientAndStatus.getLeft();
     try {
       final HashMap<String, String> params = new HashMap<>();
@@ -255,6 +275,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_SKIP_IF,
           Boolean.toString(skipIfNoPrivileges));
+      appendPipeInfoToHandshakeParams(params, pipeName, pipeCreationTime);
 
       // Try to handshake by PipeTransferHandshakeV2Req.
       TPipeTransferResp resp = client.pipeTransfer(buildHandshakeV2Req(params));
@@ -262,8 +283,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       // PipeTransferHandshakeV1Req.
       if (resp.getStatus().getCode() == TSStatusCode.PIPE_TYPE_ERROR.getStatusCode()) {
         LOGGER.warn(
-            "Handshake error with target server ip: {}, port: {}, because: {}. "
-                + "Retry to handshake by PipeTransferHandshakeV1Req.",
+            PipeMessages.HANDSHAKE_ERROR_WITH_TARGET_RETRY,
             client.getIpAddress(),
             client.getPort(),
             resp.getStatus());
@@ -273,22 +293,23 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
 
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
-            "Handshake error with target server ip: {}, port: {}, because: {}.",
+            PipeMessages.HANDSHAKE_ERROR_WITH_TARGET_SERVER,
             client.getIpAddress(),
             client.getPort(),
             resp.getStatus());
-        endPoint2HandshakeErrorMessage.put(client.getEndPoint(), resp.getStatus().getMessage());
+        endPoint2HandshakeErrorMessage.put(
+            client.getEndPoint(),
+            String.format(
+                "code: %d, message: %s",
+                resp.getStatus().getCode(), resp.getStatus().getMessage()));
       } else {
         clientAndStatus.setRight(true);
         client.setTimeout(CONNECTION_TIMEOUT_MS.get());
-        LOGGER.info(
-            "Handshake success. Target server ip: {}, port: {}",
-            client.getIpAddress(),
-            client.getPort());
+        LOGGER.info(PipeMessages.HANDSHAKE_SUCCESS_TARGET, client.getIpAddress(), client.getPort());
       }
     } catch (Exception e) {
       LOGGER.warn(
-          "Handshake error with target server ip: {}, port: {}, because: {}.",
+          PipeMessages.HANDSHAKE_ERROR_WITH_TARGET_SERVER,
           client.getIpAddress(),
           client.getPort(),
           e.getMessage(),
@@ -323,16 +344,110 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         if (clientAndStatus.getLeft() != null) {
           clientAndStatus.getLeft().close();
         }
-        LOGGER.info("Client {}:{} closed.", endPoint.getIp(), endPoint.getPort());
+        LOGGER.info(PipeMessages.CLIENT_CLOSED, endPoint.getIp(), endPoint.getPort());
       } catch (Exception e) {
         LOGGER.warn(
-            "Failed to close client {}:{}, because: {}.",
+            PipeMessages.FAILED_TO_CLOSE_CLIENT_ENDPOINT,
             endPoint.getIp(),
             endPoint.getPort(),
             e.getMessage(),
             e);
       } finally {
         clientAndStatus.setRight(false);
+      }
+    }
+  }
+
+  public void discardReceiverRuntimeSessions() {
+    try {
+      sendPipeReceiverRuntimeInfoCleanupReq(pipeName, pipeCreationTime);
+    } finally {
+      close();
+    }
+  }
+
+  public void discardReceiverRuntimeSessions(final String pipeName, final long pipeCreationTime) {
+    sendPipeReceiverRuntimeInfoCleanupReq(pipeName, pipeCreationTime);
+  }
+
+  public void registerReceiverRuntimeSessions(final String pipeName, final long pipeCreationTime) {
+    if (pipeName == null) {
+      return;
+    }
+
+    for (final Map.Entry<TEndPoint, Pair<IoTDBSyncClient, Boolean>> entry :
+        endPoint2ClientAndStatus.entrySet()) {
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus = entry.getValue();
+      if (clientAndStatus == null) {
+        continue;
+      }
+
+      if (clientAndStatus.getLeft() == null || !Boolean.TRUE.equals(clientAndStatus.getRight())) {
+        reconstructClient(entry.getKey(), pipeName, pipeCreationTime);
+      } else {
+        sendHandshakeReq(clientAndStatus, pipeName, pipeCreationTime);
+      }
+    }
+  }
+
+  private void sendPipeReceiverRuntimeInfoCleanupReq(
+      final String pipeName, final long pipeCreationTime) {
+    if (pipeName == null) {
+      return;
+    }
+
+    final PipeTransferPipeReceiverRuntimeInfoCleanupReq req;
+    try {
+      req =
+          PipeTransferPipeReceiverRuntimeInfoCleanupReq.toTPipeTransferReq(
+              pipeName, pipeCreationTime);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "Failed to build pipe receiver runtime info cleanup request for pipe {}@{}.",
+          pipeName,
+          pipeCreationTime,
+          e);
+      return;
+    }
+
+    for (final Map.Entry<TEndPoint, Pair<IoTDBSyncClient, Boolean>> entry :
+        endPoint2ClientAndStatus.entrySet()) {
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus = entry.getValue();
+      if (clientAndStatus == null
+          || !Boolean.TRUE.equals(clientAndStatus.getRight())
+          || clientAndStatus.getLeft() == null) {
+        continue;
+      }
+
+      try {
+        clientAndStatus.getLeft().setTimeout(PIPE_CONFIG.getPipeSinkHandshakeTimeoutMs());
+        final TPipeTransferResp resp = clientAndStatus.getLeft().pipeTransfer(req);
+        if (resp == null || resp.getStatus() == null) {
+          LOGGER.warn(
+              "Failed to cleanup pipe receiver runtime info for pipe {}@{} on target {}:{}, response is null.",
+              pipeName,
+              pipeCreationTime,
+              entry.getKey().getIp(),
+              entry.getKey().getPort());
+        } else if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && resp.getStatus().getCode() != TSStatusCode.PIPE_TYPE_ERROR.getStatusCode()) {
+          LOGGER.warn(
+              "Failed to cleanup pipe receiver runtime info for pipe {}@{} on target {}:{}, response status: {}.",
+              pipeName,
+              pipeCreationTime,
+              entry.getKey().getIp(),
+              entry.getKey().getPort(),
+              resp.getStatus());
+        }
+      } catch (final Exception e) {
+        clientAndStatus.setRight(false);
+        LOGGER.warn(
+            "Failed to cleanup pipe receiver runtime info for pipe {}@{} on target {}:{}.",
+            pipeName,
+            pipeCreationTime,
+            entry.getKey().getIp(),
+            entry.getKey().getPort(),
+            e);
       }
     }
   }
@@ -357,8 +472,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         }
       }
 
-      throw new PipeConnectionException(
-          "All clients are dead, please check the connection to the receiver.");
+      throw new PipeConnectionException(PipeMessages.ALL_CLIENTS_DEAD);
     }
   }
 
@@ -379,13 +493,12 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         final Pair<IoTDBSyncClient, Boolean> nextClientAndStatus =
             endPoint2ClientAndStatus.get(endPointList.get(nextClientIndex));
         if (Boolean.TRUE.equals(nextClientAndStatus.getRight())
-            && clientAndStatus.getLeft() != null) {
+            && nextClientAndStatus.getLeft() != null) {
           return nextClientAndStatus;
         }
       }
 
-      throw new PipeConnectionException(
-          "All clients are dead, please check the connection to the receiver.");
+      throw new PipeConnectionException(PipeMessages.ALL_CLIENTS_DEAD);
     }
   }
 
@@ -401,8 +514,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         }
       }
 
-      throw new PipeConnectionException(
-          "All clients are dead, please check the connection to the receiver.");
+      throw new PipeConnectionException(PipeMessages.ALL_CLIENTS_DEAD);
     }
   }
 }

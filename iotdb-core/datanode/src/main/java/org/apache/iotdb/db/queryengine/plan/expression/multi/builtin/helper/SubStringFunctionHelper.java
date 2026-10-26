@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScalarFunctionHelper;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.Transformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scalar.SubStringFunctionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scalar.SubStringFunctionTransformer;
@@ -34,11 +35,11 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import static org.apache.iotdb.db.utils.constant.SqlConstant.SUBSTRING_FOR;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.SUBSTRING_FROM;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.SUBSTRING_IS_STANDARD;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.SUBSTRING_LENGTH;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.SUBSTRING_START;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.SUBSTRING_FOR;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.SUBSTRING_FROM;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.SUBSTRING_IS_STANDARD;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.SUBSTRING_LENGTH;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.SUBSTRING_START;
 
 public class SubStringFunctionHelper implements BuiltInScalarFunctionHelper {
   public static final String BLANK_STRING = " ";
@@ -52,11 +53,13 @@ public class SubStringFunctionHelper implements BuiltInScalarFunctionHelper {
     if (functionExpression.getFunctionAttributes().isEmpty()
         || functionExpression.getExpressions().size() != 1) {
       throw new SemanticException(
-          "Argument exception,the scalar function [SUBSTRING] needs at least one argument,it must be a signed integer");
+          DataNodeQueryMessages
+              .ARGUMENT_EXCEPTION_THE_SCALAR_FUNCTION_SUBSTRING_NEEDS_AT_LEAST_ONE_ARGUMENT_IT_MUST_BE);
     }
     if (functionExpression.getExpressionString().contains(NULL_STRING)) {
       throw new SemanticException(
-          "Syntax error,please check that the parameters of the function are correct");
+          DataNodeQueryMessages
+              .SYNTAX_ERROR_PLEASE_CHECK_THAT_THE_PARAMETERS_OF_THE_FUNCTION_ARE_CORRECT);
     }
   }
 
@@ -67,7 +70,8 @@ public class SubStringFunctionHelper implements BuiltInScalarFunctionHelper {
       return;
     }
     throw new SemanticException(
-        String.format("Unsupported data type %s for function SUBSTRING.", tsDataType));
+        String.format(
+            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_S_FOR_FUNCTION_SUBSTRING, tsDataType));
   }
 
   @Override
@@ -85,7 +89,8 @@ public class SubStringFunctionHelper implements BuiltInScalarFunctionHelper {
     int subStringStart = Integer.parseInt(functionAttributes.getOrDefault(SUBSTRING_START, "0"));
     if (subStringLength < 0 || subStringStart < 0) {
       throw new SemanticException(
-          "Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0");
+          DataNodeQueryMessages
+              .ARGUMENT_EXCEPTION_THE_SCALAR_FUNCTION_SUBSTRING_BEGINPOSITION_AND_LENGTH_MUST_BE);
     }
 
     return new SubStringFunctionColumnTransformer(
@@ -105,7 +110,8 @@ public class SubStringFunctionHelper implements BuiltInScalarFunctionHelper {
     int subStringStart = Integer.parseInt(functionAttributes.getOrDefault(SUBSTRING_START, "0"));
     if (subStringLength < 0 || subStringStart < 0) {
       throw new SemanticException(
-          "Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0");
+          DataNodeQueryMessages
+              .ARGUMENT_EXCEPTION_THE_SCALAR_FUNCTION_SUBSTRING_BEGINPOSITION_AND_LENGTH_MUST_BE);
     }
     return new SubStringFunctionTransformer(layerReader, subStringStart, subStringLength);
   }

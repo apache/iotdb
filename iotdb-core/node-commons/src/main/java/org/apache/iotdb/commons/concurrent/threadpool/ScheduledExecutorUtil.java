@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.commons.concurrent.threadpool;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
 import com.google.common.base.Throwables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -152,7 +154,7 @@ public class ScheduledExecutorUtil {
           try {
             command.run();
           } catch (Throwable t) {
-            logger.error("Schedule task failed", t);
+            logger.error(CommonMessages.SCHEDULE_TASK_FAILED, t);
             if (unsafe) {
               throw t;
             }
@@ -176,7 +178,7 @@ public class ScheduledExecutorUtil {
           try {
             command.run();
           } catch (Throwable t) {
-            logger.error("Schedule task failed", t);
+            logger.error(CommonMessages.SCHEDULE_TASK_FAILED, t);
             if (unsafe) {
               throw t;
             }
@@ -188,7 +190,7 @@ public class ScheduledExecutorUtil {
   }
 
   public static RuntimeException propagate(Throwable throwable) {
-    logger.error("Run thread failed", throwable);
+    logger.error(CommonMessages.RUN_THREAD_FAILED, throwable);
     Throwables.throwIfUnchecked(throwable);
     throw new RuntimeException(throwable);
   }

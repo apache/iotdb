@@ -31,7 +31,7 @@ class ModelInfo:
         pipeline_cls: str = "",
         repo_id: str = "",
         auto_map: Optional[Dict] = None,
-        transformers_registered: bool = False,
+        hub_mixin_cls: Optional[str] = None,
     ):
         self.model_id = model_id
         self.model_type = model_type
@@ -39,16 +39,15 @@ class ModelInfo:
         self.state = state
         self.pipeline_cls = pipeline_cls
         self.repo_id = repo_id
-        self.auto_map = auto_map  # If exists, indicates it's a Transformers model
-        self.transformers_registered = (
-            transformers_registered  # Internal flag: whether registered to Transformers
-        )
+        self.auto_map = auto_map
+        self.hub_mixin_cls = hub_mixin_cls
 
     def __repr__(self):
         return (
             f"ModelInfo(model_id={self.model_id}, model_type={self.model_type}, "
             f"category={self.category.value}, state={self.state.value}, "
-            f"has_auto_map={self.auto_map is not None})"
+            f"has_auto_map={self.auto_map is not None}), "
+            f"has_hub_mix_in_cls={self.hub_mixin_cls is not None})"
         )
 
 
@@ -118,7 +117,6 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
             "AutoConfig": "configuration_timer.TimerConfig",
             "AutoModelForCausalLM": "modeling_timer.TimerForPrediction",
         },
-        transformers_registered=True,
     ),
     "sundial": ModelInfo(
         model_id="sundial",
@@ -131,7 +129,6 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
             "AutoConfig": "configuration_sundial.SundialConfig",
             "AutoModelForCausalLM": "modeling_sundial.SundialForPrediction",
         },
-        transformers_registered=True,
     ),
     "chronos2": ModelInfo(
         model_id="chronos2",
@@ -156,6 +153,29 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
             "AutoConfig": "configuration_moirai2.Moirai2Config",
             "AutoModelForCausalLM": "modeling_moirai2.Moirai2ForPrediction",
         },
-        transformers_registered=True,
+    ),
+    "toto": ModelInfo(
+        model_id="toto",
+        category=ModelCategory.BUILTIN,
+        state=ModelStates.INACTIVE,
+        model_type="toto",
+        pipeline_cls="pipeline_toto.TotoPipeline",
+        repo_id="Datadog/Toto-Open-Base-1.0",
+        auto_map={
+            "AutoConfig": "configuration_toto.TotoConfig",
+            "AutoModelForCausalLM": "modeling_toto.TotoForPrediction",
+        },
+    ),
+    "moment": ModelInfo(
+        model_id="moment",
+        category=ModelCategory.BUILTIN,
+        state=ModelStates.INACTIVE,
+        model_type="moment",
+        pipeline_cls="pipeline_moment.MomentPipeline",
+        repo_id="AutonLab/MOMENT-1-large",
+        auto_map={
+            "AutoConfig": "configuration_moment.MomentConfig",
+            "AutoModelForCausalLM": "modeling_moment.MomentForPrediction",
+        },
     ),
 }

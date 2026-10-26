@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 
 import org.slf4j.Logger;
 
@@ -71,7 +72,8 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
       final String database = regionGroupEntry.getKey();
       for (final TRegionReplicaSet regionReplicaSet : regionGroupEntry.getValue()) {
         logger.info(
-            "[CreateRegionGroups] RegionGroup: {}, belonged database: {}, on DataNodes: {}",
+            ManagerMessages
+                .LOG_CREATEREGIONGROUPS_REGIONGROUP_ARG_BELONGED_DATABASE_ARG_DATANODES_ARG_5270AB6B,
             regionReplicaSet.getRegionId(),
             database,
             regionReplicaSet.getDataNodeLocations().stream()

@@ -29,9 +29,9 @@ import org.apache.iotdb.itbase.constant.BuiltinTimeSeriesGeneratingFunctionEnum;
 import org.apache.iotdb.itbase.constant.TestConstant;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -49,15 +49,23 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBSyntaxConventionStringLiteralIT {
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  private static void executeQuietly(Statement statement, String sql) {
+    try {
+      statement.execute(sql);
+    } catch (SQLException ignored) {
+      // ignore cleanup errors
+    }
   }
 
   /** Legal cases of using StringLiteral with single quote in insert and select clause. */
@@ -89,29 +97,32 @@ public class IoTDBSyntaxConventionStringLiteralIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 TEXT");
-      for (int i = 0; i < insertData.length; i++) {
-        String insertSql =
-            String.format("INSERT INTO root.sg1.d1(time, s1) values (%d, %s)", i, insertData[i]);
-        statement.execute(insertSql);
-      }
-
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          Assert.assertEquals(resultData[cnt], resultSet.getString("root.sg1.d1.s1"));
-          cnt++;
+      try {
+        statement.execute("CREATE TIMESERIES root.sg1.d1.s1 TEXT");
+        for (int i = 0; i < insertData.length; i++) {
+          String insertSql =
+              String.format("INSERT INTO root.sg1.d1(time, s1) values (%d, %s)", i, insertData[i]);
+          statement.execute(insertSql);
         }
-        Assert.assertEquals(insertData.length, cnt);
-      }
 
-      for (String insertDatum : insertData) {
-        String querySql = String.format("SELECT s1 FROM root.sg1.d1 WHERE s1 = %s", insertDatum);
-        try (ResultSet resultSet = statement.executeQuery(querySql)) {
-          Assert.assertTrue(resultSet.next());
+        try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
+          int cnt = 0;
+          while (resultSet.next()) {
+            Assert.assertEquals(resultData[cnt], resultSet.getString("root.sg1.d1.s1"));
+            cnt++;
+          }
+          Assert.assertEquals(insertData.length, cnt);
         }
-      }
 
+        for (String insertDatum : insertData) {
+          String querySql = String.format("SELECT s1 FROM root.sg1.d1 WHERE s1 = %s", insertDatum);
+          try (ResultSet resultSet = statement.executeQuery(querySql)) {
+            Assert.assertTrue(resultSet.next());
+          }
+        }
+      } finally {
+        executeQuietly(statement, "DELETE DATABASE root.sg1");
+      }
     } catch (SQLException e) {
       e.printStackTrace();
       fail();
@@ -147,29 +158,32 @@ public class IoTDBSyntaxConventionStringLiteralIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 TEXT");
-      for (int i = 0; i < insertData.length; i++) {
-        String insertSql =
-            String.format("INSERT INTO root.sg1.d1(time, s1) values (%d, %s)", i, insertData[i]);
-        statement.execute(insertSql);
-      }
-
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          Assert.assertEquals(resultData[cnt], resultSet.getString("root.sg1.d1.s1"));
-          cnt++;
+      try {
+        statement.execute("CREATE TIMESERIES root.sg1.d1.s1 TEXT");
+        for (int i = 0; i < insertData.length; i++) {
+          String insertSql =
+              String.format("INSERT INTO root.sg1.d1(time, s1) values (%d, %s)", i, insertData[i]);
+          statement.execute(insertSql);
         }
-        Assert.assertEquals(insertData.length, cnt);
-      }
 
-      for (String insertDatum : insertData) {
-        String querySql = String.format("SELECT s1 FROM root.sg1.d1 WHERE s1 = %s", insertDatum);
-        try (ResultSet resultSet = statement.executeQuery(querySql)) {
-          Assert.assertTrue(resultSet.next());
+        try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
+          int cnt = 0;
+          while (resultSet.next()) {
+            Assert.assertEquals(resultData[cnt], resultSet.getString("root.sg1.d1.s1"));
+            cnt++;
+          }
+          Assert.assertEquals(insertData.length, cnt);
         }
-      }
 
+        for (String insertDatum : insertData) {
+          String querySql = String.format("SELECT s1 FROM root.sg1.d1 WHERE s1 = %s", insertDatum);
+          try (ResultSet resultSet = statement.executeQuery(querySql)) {
+            Assert.assertTrue(resultSet.next());
+          }
+        }
+      } finally {
+        executeQuietly(statement, "DELETE DATABASE root.sg1");
+      }
     } catch (SQLException e) {
       e.printStackTrace();
       fail();
@@ -178,62 +192,71 @@ public class IoTDBSyntaxConventionStringLiteralIT {
 
   @Test
   public void testStringLiteralIllegalCase() {
-    String errorMsg =
-        TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
-            + ": Error occurred while parsing SQL to physical plan: "
-            + "line 1:45 mismatched input 'string' expecting {FALSE, NAN, NOW, NULL, TRUE, '-', '+', '/', '.', STRING_LITERAL, BINARY_LITERAL, DATETIME_LITERAL, INTEGER_LITERAL, EXPONENT_NUM_PART}";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 TEXT");
-    } catch (SQLException e) {
-      fail(e.getMessage());
-    }
-    // without ' or "
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("INSERT INTO root.sg1.d1(time, s1) values (1, string)");
-      fail();
-    } catch (SQLException e) {
-      Assert.assertEquals(errorMsg, e.getMessage());
-    }
+    try {
+      String errorMsg =
+          TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+              + ": Error occurred while parsing SQL to physical plan: "
+              + "line 1:45 mismatched input 'string' expecting {FALSE, NAN, NOW, NULL, TRUE, '-', '+', '/', '.', STRING_LITERAL, BINARY_LITERAL, DATETIME_LITERAL, INTEGER_LITERAL, EXPONENT_NUM_PART}";
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute("CREATE TIMESERIES root.sg1.d1.s1 TEXT");
+      } catch (SQLException e) {
+        fail(e.getMessage());
+      }
+      // without ' or "
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute("INSERT INTO root.sg1.d1(time, s1) values (1, string)");
+        fail();
+      } catch (SQLException e) {
+        Assert.assertEquals(errorMsg, e.getMessage());
+      }
 
-    String errorMsg1 =
-        TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
-            + ": Error occurred while parsing SQL to physical plan: "
-            + "line 1:45 mismatched input '`string`' expecting {FALSE, NAN, NOW, NULL, TRUE, '-', '+', '/', '.', STRING_LITERAL, BINARY_LITERAL, DATETIME_LITERAL, INTEGER_LITERAL, EXPONENT_NUM_PART}";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      // wrap STRING_LITERAL with ``
-      statement.execute("INSERT INTO root.sg1.d1(time, s1) values (1, `string`)");
-      fail();
-    } catch (SQLException e) {
-      Assert.assertEquals(errorMsg1, e.getMessage());
-    }
+      String errorMsg1 =
+          TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+              + ": Error occurred while parsing SQL to physical plan: "
+              + "line 1:45 mismatched input '`string`' expecting {FALSE, NAN, NOW, NULL, TRUE, '-', '+', '/', '.', STRING_LITERAL, BINARY_LITERAL, DATETIME_LITERAL, INTEGER_LITERAL, EXPONENT_NUM_PART}";
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        // wrap STRING_LITERAL with ``
+        statement.execute("INSERT INTO root.sg1.d1(time, s1) values (1, `string`)");
+        fail();
+      } catch (SQLException e) {
+        Assert.assertEquals(errorMsg1, e.getMessage());
+      }
 
-    String errorMsg2 =
-        TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
-            + ": Error occurred while parsing SQL to physical plan: "
-            + "line 1:47 extraneous input 'string' expecting {',', ')'}";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      // single ' in ''
-      statement.execute("INSERT INTO root.sg1.d1(time, s1) values (1, ''string')");
-      fail();
-    } catch (SQLException e) {
-      Assert.assertEquals(errorMsg2, e.getMessage());
-    }
+      String errorMsg2 =
+          TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+              + ": Error occurred while parsing SQL to physical plan: "
+              + "line 1:47 extraneous input 'string' expecting {',', ')'}";
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        // single ' in ''
+        statement.execute("INSERT INTO root.sg1.d1(time, s1) values (1, ''string')");
+        fail();
+      } catch (SQLException e) {
+        Assert.assertEquals(errorMsg2, e.getMessage());
+      }
 
-    String errorMsg3 =
-        TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
-            + ": Error occurred while parsing SQL to physical plan: "
-            + "line 1:47 extraneous input 'string' expecting {',', ')'}";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      // single " in ""
-      statement.execute("INSERT INTO root.sg1.d1(time, s1) values (1, \"\"string\")");
-      fail();
-    } catch (SQLException e) {
-      Assert.assertEquals(errorMsg3, e.getMessage());
+      String errorMsg3 =
+          TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+              + ": Error occurred while parsing SQL to physical plan: "
+              + "line 1:47 extraneous input 'string' expecting {',', ')'}";
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        // single " in ""
+        statement.execute("INSERT INTO root.sg1.d1(time, s1) values (1, \"\"string\")");
+        fail();
+      } catch (SQLException e) {
+        Assert.assertEquals(errorMsg3, e.getMessage());
+      }
+    } finally {
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        executeQuietly(statement, "DELETE DATABASE root.sg1");
+      } catch (SQLException ignored) {
+        // ignore cleanup errors
+      }
     }
   }
 
@@ -281,121 +304,149 @@ public class IoTDBSyntaxConventionStringLiteralIT {
 
   @Test
   public void testUserPassword() {
-    String errorMsg =
-        TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
-            + ": Error occurred while parsing SQL to physical plan: "
-            + "line 1:18 mismatched input 'test123456789' expecting STRING_LITERAL";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("CREATE USER test1 'test123456789'");
-      // password should be STRING_LITERAL
-      statement.execute("CREATE USER test1 test123456789");
-      fail();
-    } catch (SQLException e) {
-      Assert.assertEquals(errorMsg, e.getMessage());
-    }
+    try {
+      String errorMsg =
+          TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+              + ": Error occurred while parsing SQL to physical plan: "
+              + "line 1:18 mismatched input 'test123456789' expecting STRING_LITERAL";
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute("CREATE USER test1 'test123456789'");
+        // password should be STRING_LITERAL
+        statement.execute("CREATE USER test1 test123456789");
+        fail();
+      } catch (SQLException e) {
+        Assert.assertEquals(errorMsg, e.getMessage());
+      }
 
-    String errorMsg1 =
-        TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
-            + ": Error occurred while parsing SQL to physical plan: "
-            + "line 1:17 mismatched input '`test123456789`' expecting STRING_LITERAL";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("CREATE USER test \"test123456789\"");
-      // password should be STRING_LITERAL
-      statement.execute("CREATE USER test `test123456789`");
-      fail();
-    } catch (SQLException e) {
-      Assert.assertEquals(errorMsg1, e.getMessage());
+      String errorMsg1 =
+          TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+              + ": Error occurred while parsing SQL to physical plan: "
+              + "line 1:17 mismatched input '`test123456789`' expecting STRING_LITERAL";
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute("CREATE USER test \"test123456789\"");
+        // password should be STRING_LITERAL
+        statement.execute("CREATE USER test `test123456789`");
+        fail();
+      } catch (SQLException e) {
+        Assert.assertEquals(errorMsg1, e.getMessage());
+      }
+    } finally {
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        executeQuietly(statement, "DROP USER test1");
+        executeQuietly(statement, "DROP USER test");
+      } catch (SQLException ignored) {
+        // ignore cleanup errors
+      }
     }
   }
 
   @Test
   public void testUDFClassName() {
-    String errorMsg =
-        TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
-            + ": Error occurred while parsing SQL to physical plan: "
-            + "line 1:23 mismatched input 'org' expecting STRING_LITERAL";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      // udf class name should be STRING_LITERAL
-      statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
+    try {
+      String errorMsg =
+          TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+              + ": Error occurred while parsing SQL to physical plan: "
+              + "line 1:23 mismatched input 'org' expecting STRING_LITERAL";
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        // udf class name should be STRING_LITERAL
+        statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
 
-      // executed correctly
-      try (ResultSet resultSet = statement.executeQuery("show functions")) {
-        assertEquals(4, resultSet.getMetaData().getColumnCount());
-        int count = 0;
-        while (resultSet.next()) {
-          StringBuilder stringBuilder = new StringBuilder();
-          for (int i = 1; i <= resultSet.getMetaData().getColumnCount(); ++i) {
-            stringBuilder.append(resultSet.getString(i)).append(",");
+        // executed correctly
+        try (ResultSet resultSet = statement.executeQuery("show functions")) {
+          assertEquals(4, resultSet.getMetaData().getColumnCount());
+          int count = 0;
+          while (resultSet.next()) {
+            StringBuilder stringBuilder = new StringBuilder();
+            for (int i = 1; i <= resultSet.getMetaData().getColumnCount(); ++i) {
+              stringBuilder.append(resultSet.getString(i)).append(",");
+            }
+            String result = stringBuilder.toString();
+            if (result.contains(TestConstant.FUNCTION_TYPE_NATIVE)) {
+              continue;
+            }
+            ++count;
           }
-          String result = stringBuilder.toString();
-          if (result.contains(TestConstant.FUNCTION_TYPE_NATIVE)) {
-            continue;
-          }
-          ++count;
+          Assert.assertEquals(
+              1
+                  + BuiltinTimeSeriesGeneratingFunctionEnum.values().length
+                  + BuiltinScalarFunctionEnum.values().length,
+              count);
         }
-        Assert.assertEquals(
-            1
-                + BuiltinTimeSeriesGeneratingFunctionEnum.values().length
-                + BuiltinScalarFunctionEnum.values().length,
-            count);
+        statement.execute("drop function udf");
+
+        // without '' or ""
+        statement.execute("create function udf as org.apache.iotdb.db.query.udf.example.Adder");
+        fail();
+      } catch (SQLException e) {
+        Assert.assertEquals(errorMsg, e.getMessage());
       }
-      statement.execute("drop function udf");
 
-      // without '' or ""
-      statement.execute("create function udf as org.apache.iotdb.db.query.udf.example.Adder");
-      fail();
-    } catch (SQLException e) {
-      Assert.assertEquals(errorMsg, e.getMessage());
-    }
-
-    // Illegal name with back quote
-    String errorMsg1 =
-        TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
-            + ": Error occurred while parsing SQL to physical plan: "
-            + "line 1:23 mismatched input '`org.apache.iotdb.db.query.udf.example.Adder`' "
-            + "expecting STRING_LITERAL";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      // udf class name should be STRING_LITERAL
-      statement.execute("create function udf as `org.apache.iotdb.db.query.udf.example.Adder`");
-      fail();
-    } catch (SQLException e) {
-      Assert.assertEquals(errorMsg1, e.getMessage());
+      // Illegal name with back quote
+      String errorMsg1 =
+          TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+              + ": Error occurred while parsing SQL to physical plan: "
+              + "line 1:23 mismatched input '`org.apache.iotdb.db.query.udf.example.Adder`' "
+              + "expecting STRING_LITERAL";
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        // udf class name should be STRING_LITERAL
+        statement.execute("create function udf as `org.apache.iotdb.db.query.udf.example.Adder`");
+        fail();
+      } catch (SQLException e) {
+        Assert.assertEquals(errorMsg1, e.getMessage());
+      }
+    } finally {
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        executeQuietly(statement, "drop function udf");
+      } catch (SQLException ignored) {
+        // ignore cleanup errors
+      }
     }
   }
 
   @Test
   public void testUDFAttribute() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.vehicle.d1.s1 FLOAT");
-      statement.execute("INSERT INTO root.vehicle.d1(time,s1) values (1,2.0),(2,3.0)");
+    try {
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute("CREATE TIMESERIES root.vehicle.d1.s1 FLOAT");
+        statement.execute("INSERT INTO root.vehicle.d1(time,s1) values (1,2.0),(2,3.0)");
 
-      try (ResultSet resultSet =
-          statement.executeQuery("select bottom_k(s1,'k' = '1') from root.vehicle.d1")) {
-        assertTrue(resultSet.next());
-        Assert.assertEquals("2.0", resultSet.getString(2));
+        try (ResultSet resultSet =
+            statement.executeQuery("select bottom_k(s1,'k' = '1') from root.vehicle.d1")) {
+          assertTrue(resultSet.next());
+          Assert.assertEquals("2.0", resultSet.getString(2));
+        }
+      } catch (SQLException e) {
+        e.printStackTrace();
+        fail();
       }
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail();
-    }
 
-    // Illegal attribute
-    String errorMsg =
-        TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
-            + ": Error occurred while parsing SQL to physical plan: "
-            + "line 1:22 token recognition error at: '` = 1) from root.vehicle.d1'";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      // UDF attribute should be STRING_LITERAL
-      statement.executeQuery("select bottom_k(s1,``k` = 1) from root.vehicle.d1");
-      fail();
-    } catch (SQLException e) {
-      Assert.assertEquals(errorMsg, e.getMessage());
+      // Illegal attribute
+      String errorMsg =
+          TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+              + ": Error occurred while parsing SQL to physical plan: "
+              + "line 1:21 no viable alternative at input 'select bottom_k(s1,``k'";
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        // UDF attribute should be STRING_LITERAL
+        statement.executeQuery("select bottom_k(s1,``k` = 1) from root.vehicle.d1");
+        fail();
+      } catch (SQLException e) {
+        Assert.assertEquals(errorMsg, e.getMessage());
+      }
+    } finally {
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        executeQuietly(statement, "DELETE DATABASE root.vehicle");
+      } catch (SQLException ignored) {
+        // ignore cleanup errors
+      }
     }
   }
 
@@ -403,32 +454,36 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   public void testCreateTimeSeriesAttribute() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      // besides datatype,encoding,compression,compressor, attributes in create time series clause
-      // could be STRING_LITERAL
-      statement.execute(
-          "create timeseries root.vehicle.d1.s1 "
-              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
-      statement.execute(
-          "create timeseries root.vehicle.d1.s2 "
-              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY, max_point_number = 5");
-      statement.execute(
-          "create timeseries root.vehicle.d1.s3 "
-              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY, 'max_point_number' = '5'");
-      statement.execute(
-          "create timeseries root.vehicle.d1.s4 "
-              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY, max_point_number = '5'");
-      statement.execute(
-          "create timeseries root.vehicle.d1.s5 "
-              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY, `max_point_number` = 5");
-      statement.execute(
-          "create timeseries root.vehicle.d1.s6 "
-              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY, `max_point_number` = `5`");
-      try (ResultSet resultSet = statement.executeQuery("show timeseries root.vehicle.**")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          cnt++;
+      try {
+        // besides datatype,encoding,compression,compressor, attributes in create time series clause
+        // could be STRING_LITERAL
+        statement.execute(
+            "create timeseries root.vehicle.d1.s1 "
+                + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
+        statement.execute(
+            "create timeseries root.vehicle.d1.s2 "
+                + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY, max_point_number = 5");
+        statement.execute(
+            "create timeseries root.vehicle.d1.s3 "
+                + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY, 'max_point_number' = '5'");
+        statement.execute(
+            "create timeseries root.vehicle.d1.s4 "
+                + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY, max_point_number = '5'");
+        statement.execute(
+            "create timeseries root.vehicle.d1.s5 "
+                + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY, `max_point_number` = 5");
+        statement.execute(
+            "create timeseries root.vehicle.d1.s6 "
+                + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY, `max_point_number` = `5`");
+        try (ResultSet resultSet = statement.executeQuery("show timeseries root.vehicle.**")) {
+          int cnt = 0;
+          while (resultSet.next()) {
+            cnt++;
+          }
+          Assert.assertEquals(6, cnt);
         }
-        Assert.assertEquals(6, cnt);
+      } finally {
+        executeQuietly(statement, "DELETE DATABASE root.vehicle");
       }
     } catch (SQLException e) {
       e.printStackTrace();
@@ -440,44 +495,48 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   public void testCreateTimeSeriesTags() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(
-          "create timeseries root.vehicle.d1.s1 "
-              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
-              + "tags(tag1=v1)");
-      statement.execute(
-          "create timeseries root.vehicle.d1.s2 "
-              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
-              + "tags(`tag1`=v1)");
-      statement.execute(
-          "create timeseries root.vehicle.d1.s3 "
-              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
-              + "tags('tag1'=v1)");
-      statement.execute(
-          "create timeseries root.vehicle.d1.s4 "
-              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
-              + "tags(\"tag1\"=v1)");
-      statement.execute(
-          "create timeseries root.vehicle.d1.s5 "
-              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
-              + "tags(tag1=`v1`)");
-      statement.execute(
-          "create timeseries root.vehicle.d1.s6 "
-              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
-              + "tags(tag1='v1')");
-      statement.execute(
-          "create timeseries root.vehicle.d1.s7 "
-              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
-              + "tags(tag1=\"v1\")");
-      statement.execute(
-          "create timeseries root.vehicle.d1.s8 "
-              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
-              + "tags(tag1=v1)");
-      try (ResultSet resultSet = statement.executeQuery("show timeseries root.vehicle.**")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          cnt++;
+      try {
+        statement.execute(
+            "create timeseries root.vehicle.d1.s1 "
+                + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+                + "tags(tag1=v1)");
+        statement.execute(
+            "create timeseries root.vehicle.d1.s2 "
+                + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+                + "tags(`tag1`=v1)");
+        statement.execute(
+            "create timeseries root.vehicle.d1.s3 "
+                + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+                + "tags('tag1'=v1)");
+        statement.execute(
+            "create timeseries root.vehicle.d1.s4 "
+                + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+                + "tags(\"tag1\"=v1)");
+        statement.execute(
+            "create timeseries root.vehicle.d1.s5 "
+                + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+                + "tags(tag1=`v1`)");
+        statement.execute(
+            "create timeseries root.vehicle.d1.s6 "
+                + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+                + "tags(tag1='v1')");
+        statement.execute(
+            "create timeseries root.vehicle.d1.s7 "
+                + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+                + "tags(tag1=\"v1\")");
+        statement.execute(
+            "create timeseries root.vehicle.d1.s8 "
+                + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+                + "tags(tag1=v1)");
+        try (ResultSet resultSet = statement.executeQuery("show timeseries root.vehicle.**")) {
+          int cnt = 0;
+          while (resultSet.next()) {
+            cnt++;
+          }
+          Assert.assertEquals(8, cnt);
         }
-        Assert.assertEquals(8, cnt);
+      } finally {
+        executeQuietly(statement, "DELETE DATABASE root.vehicle");
       }
     } catch (SQLException e) {
       e.printStackTrace();
@@ -490,28 +549,32 @@ public class IoTDBSyntaxConventionStringLiteralIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(
-          "create timeseries root.vehicle.d1.s1 "
-              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
-              + "attributes('attr1'='v1', 'attr2'='v2')");
-      statement.execute(
-          "create timeseries root.vehicle.d1.s2 "
-              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
-              + "attributes(attr1=v1, attr2=v2)");
-      statement.execute(
-          "create timeseries root.vehicle.d1.s3 "
-              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
-              + "attributes(`attr1`=`v1`, `attr2`=v2)");
-      statement.execute(
-          "create timeseries root.vehicle.d1.s4 "
-              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
-              + "attributes('attr1'=v1, attr2=v2)");
-      try (ResultSet resultSet = statement.executeQuery("show timeseries root.vehicle.**")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          cnt++;
+      try {
+        statement.execute(
+            "create timeseries root.vehicle.d1.s1 "
+                + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+                + "attributes('attr1'='v1', 'attr2'='v2')");
+        statement.execute(
+            "create timeseries root.vehicle.d1.s2 "
+                + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+                + "attributes(attr1=v1, attr2=v2)");
+        statement.execute(
+            "create timeseries root.vehicle.d1.s3 "
+                + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+                + "attributes(`attr1`=`v1`, `attr2`=v2)");
+        statement.execute(
+            "create timeseries root.vehicle.d1.s4 "
+                + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+                + "attributes('attr1'=v1, attr2=v2)");
+        try (ResultSet resultSet = statement.executeQuery("show timeseries root.vehicle.**")) {
+          int cnt = 0;
+          while (resultSet.next()) {
+            cnt++;
+          }
+          Assert.assertEquals(4, cnt);
         }
-        Assert.assertEquals(4, cnt);
+      } finally {
+        executeQuietly(statement, "DELETE DATABASE root.vehicle");
       }
     } catch (SQLException e) {
       e.printStackTrace();
@@ -531,24 +594,27 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(
-          "create timeseries root.sg.a "
-              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY ");
-      statement.execute("insert into root.sg(time, a) values (1,1)");
-
-      String selectSql = "select a as %s from root.sg";
-      for (int i = 0; i < alias.length; i++) {
-        try (ResultSet resultSet = statement.executeQuery(String.format(selectSql, alias[i]))) {
-          Assert.assertEquals(res[i], resultSet.getMetaData().getColumnName(2));
-        }
-      }
-
       try {
-        statement.execute("select a as test.b from root.sg");
-        fail();
-      } catch (Exception ignored) {
-      }
+        statement.execute(
+            "create timeseries root.sg.a "
+                + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY ");
+        statement.execute("insert into root.sg(time, a) values (1,1)");
 
+        String selectSql = "select a as %s from root.sg";
+        for (int i = 0; i < alias.length; i++) {
+          try (ResultSet resultSet = statement.executeQuery(String.format(selectSql, alias[i]))) {
+            Assert.assertEquals(res[i], resultSet.getMetaData().getColumnName(2));
+          }
+        }
+
+        try {
+          statement.execute("select a as test.b from root.sg");
+          fail();
+        } catch (Exception ignored) {
+        }
+      } finally {
+        executeQuietly(statement, "DELETE DATABASE root.sg");
+      }
     } catch (SQLException e) {
       e.printStackTrace();
       fail();
@@ -566,25 +632,28 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(
-          "create timeseries root.sg.a "
-              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY ");
-
-      String alterSql = "ALTER timeseries root.sg.a UPSERT alias = %s";
-      for (int i = 0; i < alias.length; i++) {
-        statement.execute(String.format(alterSql, alias[i]));
-        try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
-          resultSet.next();
-          Assert.assertEquals(res[i], resultSet.getString(ColumnHeaderConstant.ALIAS));
-        }
-      }
-
       try {
-        statement.execute("ALTER timeseries root.sg.a UPSERT alias = test.a");
-        fail();
-      } catch (Exception ignored) {
-      }
+        statement.execute(
+            "create timeseries root.sg.a "
+                + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY ");
 
+        String alterSql = "ALTER timeseries root.sg.a UPSERT alias = %s";
+        for (int i = 0; i < alias.length; i++) {
+          statement.execute(String.format(alterSql, alias[i]));
+          try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
+            resultSet.next();
+            Assert.assertEquals(res[i], resultSet.getString(ColumnHeaderConstant.ALIAS));
+          }
+        }
+
+        try {
+          statement.execute("ALTER timeseries root.sg.a UPSERT alias = test.a");
+          fail();
+        } catch (Exception ignored) {
+        }
+      } finally {
+        executeQuietly(statement, "DELETE DATABASE root.sg");
+      }
     } catch (SQLException e) {
       e.printStackTrace();
       fail();

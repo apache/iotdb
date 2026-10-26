@@ -20,6 +20,7 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.xerial.snappy.Snappy;
 
 import java.io.IOException;
@@ -41,13 +42,13 @@ public class TSnappyElasticFramedTransport extends TCompressedElasticFramedTrans
     }
 
     @Override
-    public TTransport getTransport(TTransport trans) {
+    public TTransport getTransport(TTransport trans) throws TTransportException {
       return new TSnappyElasticFramedTransport(
           trans, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
     }
   }
 
-  public TSnappyElasticFramedTransport(TTransport underlying) {
+  public TSnappyElasticFramedTransport(TTransport underlying) throws TTransportException {
     this(underlying, RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY, RpcUtils.THRIFT_FRAME_MAX_SIZE, true);
   }
 
@@ -55,7 +56,8 @@ public class TSnappyElasticFramedTransport extends TCompressedElasticFramedTrans
       TTransport underlying,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
-      boolean copyBinary) {
+      boolean copyBinary)
+      throws TTransportException {
     super(underlying, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
   }
 

@@ -19,11 +19,16 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.sql.Timestamp;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.Collections;
 
 public class RpcUtilsTest {
 
@@ -73,5 +78,74 @@ public class RpcUtilsTest {
     Assert.assertTrue(RpcUtils.isSetSqlDialect("set  sql_dialect =table"));
     Assert.assertFalse(RpcUtils.isSetSqlDialect("setsql_dialect =table"));
     Assert.assertFalse(RpcUtils.isSetSqlDialect("set           sql_dia"));
+  }
+
+  @Test
+  public void testVerifySuccessListAllowsSuccessfulStatuses() throws BatchExecutionException {
+    RpcUtils.verifySuccess(
+        Arrays.asList(
+            RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS),
+            RpcUtils.getStatus(TSStatusCode.REDIRECTION_RECOMMEND)));
+  }
+
+  @Test
+  public void testVerifySuccessListThrowsOnFailure() {
+    TSStatus failedStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "failed");
+
+    try {
+      RpcUtils.verifySuccess(Collections.singletonList(failedStatus));
+      Assert.fail("Expected BatchExecutionException");
+    } catch (BatchExecutionException e) {
+      Assert.assertEquals(Collections.singletonList(failedStatus), e.getStatusList());
+      Assert.assertTrue(e.getMessage().contains("failed"));
+    }
+  }
+
+  @Test
+  public void testSslProtocolNormalization() {
+    Assert.assertEquals("TLS", RpcSslUtils.normalizeProtocol(null));
+    Assert.assertEquals("TLSv1.3", RpcSslUtils.normalizeProtocol(" TLSv1.3 "));
+    Assert.assertEquals("ProviderProtocol", RpcSslUtils.normalizeProtocol(" ProviderProtocol "));
+  }
+
+  @Test
+  public void testSslProtocolResolution() {
+    String originProtocol = RpcSslUtils.getProtocol();
+    try {
+      RpcSslUtils.configure("ConfiguredProtocol");
+
+      Assert.assertEquals("ConfiguredProtocol", RpcSslUtils.resolveProtocol(null));
+      Assert.assertEquals("ConfiguredProtocol", RpcSslUtils.resolveProtocol(" "));
+      Assert.assertEquals("ExplicitProtocol", RpcSslUtils.resolveProtocol(" ExplicitProtocol "));
+    } finally {
+      RpcSslUtils.configure(originProtocol);
+    }
+  }
+
+  @Test
+  public void convertToTimestampKeepsPreEpochFractions() {
+    // 1.5 seconds before the epoch in each precision
+    Assert.assertEquals(new Timestamp(-1_500L), RpcUtils.convertToTimestamp(-1_500L, 1_000));
+    Assert.assertEquals(
+        new Timestamp(-1_500L), RpcUtils.convertToTimestamp(-1_500_000L, 1_000_000));
+    Assert.assertEquals(
+        new Timestamp(-1_500L), RpcUtils.convertToTimestamp(-1_500_000_000L, 1_000_000_000));
+
+    // 1 ns before the epoch: the second before it, plus 999,999,999 ns
+    Timestamp oneNanoBeforeEpoch = new Timestamp(-1_000L);
+    oneNanoBeforeEpoch.setNanos(999_999_999);
+    Assert.assertEquals(oneNanoBeforeEpoch, RpcUtils.convertToTimestamp(-1L, 1_000_000_000));
+
+    // Whole seconds and post-epoch values are unaffected
+    Assert.assertEquals(new Timestamp(-2_000L), RpcUtils.convertToTimestamp(-2_000L, 1_000));
+    Assert.assertEquals(new Timestamp(1_500L), RpcUtils.convertToTimestamp(1_500L, 1_000));
+  }
+
+  @Test
+  public void splitTimeIntoFlooredSecondsAndNonNegativeNanos() {
+    Assert.assertEquals(-2_000L, RpcUtils.getMilliSecond(-1_500L, 1_000));
+    Assert.assertEquals(500_000_000, RpcUtils.getNanoSecond(-1_500L, 1_000));
+    Assert.assertEquals(1_000L, RpcUtils.getMilliSecond(1_500L, 1_000));
+    Assert.assertEquals(500_000_000, RpcUtils.getNanoSecond(1_500L, 1_000));
   }
 }

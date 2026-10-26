@@ -22,14 +22,16 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPartitionRelatedNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.SubPlanTypeExtractor;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.IPartitionRelatedNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.DataNodePlanNodeDeserializer;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.VirtualSourceNode;
@@ -160,10 +162,13 @@ public class PlanFragment {
           ((InformationSchemaTableScanNode) root).getRegionReplicaSet();
 
       checkArgument(
-          regionReplicaSet != null, "InformationSchemaTableScanNode must have regionReplicaSet");
+          regionReplicaSet != null,
+          DataNodeQueryMessages
+              .EXCEPTION_INFORMATIONSCHEMATABLESCANNODE_MUST_HAVE_REGIONREPLICASET_0411DBCB);
       checkArgument(
           regionReplicaSet.getDataNodeLocations().size() == 1,
-          "each InformationSchemaTableScanNode have only one DataNodeLocation");
+          DataNodeQueryMessages
+              .EXCEPTION_EACH_INFORMATIONSCHEMATABLESCANNODE_HAVE_ONLY_ONE_DATANODELOCATION_FA3E82C4);
 
       return regionReplicaSet.getDataNodeLocations().get(0);
     }
@@ -198,7 +203,7 @@ public class PlanFragment {
       // so there is no need to serialize all the SeriesScanNode repeated
       if (typeProvider.getTemplatedInfo() != null) {
         typeProvider.serialize(stream);
-        planNodeTree.serializeUseTemplate(stream, typeProvider);
+        planNodeTree.serializeUseTemplate(stream);
         return;
       }
 
@@ -224,7 +229,8 @@ public class PlanFragment {
   public static PlanNode deserializeHelper(ByteBuffer byteBuffer, TypeProvider typeProvider) {
     PlanNode root;
     if (typeProvider != null && typeProvider.getTemplatedInfo() != null) {
-      root = PlanNodeType.deserializeWithTemplate(byteBuffer, typeProvider);
+      root =
+          DataNodePlanNodeDeserializer.INSTANCE.deserializeWithTemplate(byteBuffer, typeProvider);
       if (root instanceof AlignedSeriesScanNode
           || root instanceof AlignedSeriesAggregationScanNode) {
         return root;
@@ -243,6 +249,10 @@ public class PlanFragment {
   public void clearUselessField() {
     planNodeTree = null;
     typeProvider = null;
+  }
+
+  public void clearUselessFieldsAfterRouting() {
+    planNodeTree.clearUselessFieldsAfterRouting();
   }
 
   public void clearTypeProvider() {

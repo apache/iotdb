@@ -19,13 +19,13 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.pagemgr;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaPage;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.log.SchemaFileLogReader;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.log.SchemaFileLogWriter;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -94,9 +94,14 @@ public class PageIOChannel {
 
     // complete log file
     if (!res.isEmpty()) {
-      try (FileOutputStream outputStream = new FileOutputStream(logPath, true)) {
-        outputStream.write(new byte[] {SchemaFileConfig.SF_COMMIT_MARK});
-        return outputStream.getChannel().size();
+      try (FileChannel logChannel =
+          FileChannel.open(
+              new File(logPath).toPath(),
+              StandardOpenOption.CREATE,
+              StandardOpenOption.WRITE,
+              StandardOpenOption.APPEND)) {
+        logChannel.write(ByteBuffer.wrap(new byte[] {SchemaFileConfig.SF_COMMIT_MARK}));
+        return logChannel.size();
       }
     }
     return 0L;
@@ -107,7 +112,7 @@ public class PageIOChannel {
     if (!readChannel.isOpen()) {
       readChannel = FileChannel.open(pmtFile.toPath(), StandardOpenOption.READ);
     }
-    readChannel.read(dst, getPageAddress(pageIndex));
+    IOUtils.readFully(readChannel, dst, getPageAddress(pageIndex));
   }
 
   // region Flush Strategy

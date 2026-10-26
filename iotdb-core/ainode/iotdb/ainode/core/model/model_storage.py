@@ -20,11 +20,9 @@ import concurrent.futures
 import json
 import os
 import shutil
-from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 from huggingface_hub import hf_hub_download
-from transformers import AutoConfig, AutoModelForCausalLM
 
 from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.constant import TSStatusCode
@@ -35,8 +33,8 @@ from iotdb.ainode.core.exception import (
 )
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.model.model_constants import (
-    MODEL_CONFIG_FILE_IN_JSON,
-    MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
+    CONFIG_JSON,
+    MODEL_SAFETENSORS,
     ModelCategory,
     ModelStates,
     UriType,
@@ -51,10 +49,8 @@ from iotdb.ainode.core.model.utils import (
     _fetch_model_from_local,
     ensure_init_file,
     get_parsed_uri,
-    import_class_from_path,
     load_model_config_in_json,
     parse_uri_type,
-    temporary_sys_path,
     validate_model_files,
 )
 from iotdb.ainode.core.util.lock import ModelLockPool
@@ -147,13 +143,13 @@ class ModelStorage:
         def _download_model_if_necessary() -> bool:
             """Returns: True if the model is existed or downloaded successfully, False otherwise."""
             repo_id = BUILTIN_HF_TRANSFORMERS_MODEL_MAP[model_id].repo_id
-            weights_path = os.path.join(model_dir, MODEL_WEIGHTS_FILE_IN_SAFETENSORS)
-            config_path = os.path.join(model_dir, MODEL_CONFIG_FILE_IN_JSON)
+            weights_path = os.path.join(model_dir, MODEL_SAFETENSORS)
+            config_path = os.path.join(model_dir, CONFIG_JSON)
             if not os.path.exists(weights_path):
                 try:
                     hf_hub_download(
                         repo_id=repo_id,
-                        filename=MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
+                        filename=MODEL_SAFETENSORS,
                         local_dir=model_dir,
                     )
                 except Exception as e:
@@ -165,7 +161,7 @@ class ModelStorage:
                 try:
                     hf_hub_download(
                         repo_id=repo_id,
-                        filename=MODEL_CONFIG_FILE_IN_JSON,
+                        filename=CONFIG_JSON,
                         local_dir=model_dir,
                     )
                 except Exception as e:
@@ -191,7 +187,7 @@ class ModelStorage:
                         self._models_dir,
                         ModelCategory.BUILTIN.value,
                         model_id,
-                        MODEL_CONFIG_FILE_IN_JSON,
+                        CONFIG_JSON,
                     )
                     if os.path.exists(config_path):
                         with open(config_path, "r", encoding="utf-8") as f:
@@ -218,15 +214,17 @@ class ModelStorage:
 
     def _process_user_defined_model_directory(self, model_dir: str, model_id: str):
         """Handling the discovery logic for a user-defined model directory."""
-        config_path = os.path.join(model_dir, MODEL_CONFIG_FILE_IN_JSON)
+        config_path = os.path.join(model_dir, CONFIG_JSON)
         model_type = ""
         auto_map = {}
         pipeline_cls = ""
+        hub_mixin_cls = ""
         if os.path.exists(config_path):
             config = load_model_config_in_json(config_path)
             model_type = config.get("model_type", "")
             auto_map = config.get("auto_map", None)
             pipeline_cls = config.get("pipeline_cls", "")
+            hub_mixin_cls = config.get("hub_mixin_cls", "")
         model_info = ModelInfo(
             model_id=model_id,
             model_type=model_type,
@@ -234,14 +232,8 @@ class ModelStorage:
             state=ModelStates.ACTIVE,
             pipeline_cls=pipeline_cls,
             auto_map=auto_map,
-            transformers_registered=False,  # Lazy registration
+            hub_mixin_cls=hub_mixin_cls,
         )
-        with self._lock_pool.get_lock(model_id).write_lock():
-            self._models[ModelCategory.USER_DEFINED.value][model_id] = model_info
-        if self.ensure_transformers_registered(model_id) is None:
-            model_info.state = ModelStates.INACTIVE
-        else:
-            model_info.transformers_registered = True
         with self._lock_pool.get_lock(model_id).write_lock():
             self._models[ModelCategory.USER_DEFINED.value][model_id] = model_info
 
@@ -259,7 +251,6 @@ class ModelStorage:
         Raises:
             ModelExistedException: If the model_id already exists.
             InvalidModelUriException: If the URI format is invalid.
-            Exception: For other errors during transformers model registration.
         """
 
         if self.is_model_registered(model_id):
@@ -284,6 +275,7 @@ class ModelStorage:
         model_type = config.get("model_type", "")
         auto_map = config.get("auto_map")
         pipeline_cls = config.get("pipeline_cls", "")
+        hub_mixin_cls = config.get("hub_mixin_cls", "")
 
         with self._lock_pool.get_lock(model_id).write_lock():
             model_info = ModelInfo(
@@ -293,127 +285,11 @@ class ModelStorage:
                 state=ModelStates.ACTIVE,
                 pipeline_cls=pipeline_cls,
                 auto_map=auto_map,
-                transformers_registered=False,  # Register later
+                hub_mixin_cls=hub_mixin_cls,
             )
             self._models[ModelCategory.USER_DEFINED.value][model_id] = model_info
 
-            if auto_map:
-                # Transformers model: immediately register to Transformers autoloading mechanism
-                try:
-                    if self._register_transformers_model(model_info):
-                        model_info.transformers_registered = True
-                except Exception as e:
-                    model_info.state = ModelStates.INACTIVE
-                    logger.error(
-                        f"Failed to register Transformers model {model_id}, because {e}"
-                    )
-                    raise e
-            else:
-                # Other type models: only log
-                self._register_other_model(model_info)
-
         logger.info(f"Successfully registered model {model_id} from URI: {uri}")
-
-    def _register_transformers_model(self, model_info: ModelInfo) -> bool:
-        """
-        Register Transformers model to autoloading mechanism (internal method)
-        Returns:
-            True if registration is successful
-        Raises:
-            Exception: Transformers internal exception if registration fails
-        """
-        auto_map = model_info.auto_map
-        if not auto_map:
-            return False
-
-        auto_config_path = auto_map.get("AutoConfig")
-        auto_model_path = auto_map.get("AutoModelForCausalLM")
-
-        try:
-            model_path = os.path.join(
-                self._models_dir, model_info.category.value, model_info.model_id
-            )
-            module_parent = str(Path(model_path).parent.absolute())
-            with temporary_sys_path(module_parent):
-                config_class = import_class_from_path(
-                    model_info.model_id, auto_config_path
-                )
-                AutoConfig.register(model_info.model_type, config_class)
-                logger.info(
-                    f"Registered AutoConfig: {model_info.model_type} -> {auto_config_path}"
-                )
-
-                model_class = import_class_from_path(
-                    model_info.model_id, auto_model_path
-                )
-                AutoModelForCausalLM.register(config_class, model_class)
-                logger.info(
-                    f"Registered AutoModelForCausalLM: {config_class.__name__} -> {auto_model_path}"
-                )
-            return True
-        except Exception as e:
-            logger.warning(
-                f"Failed to register Transformers model {model_info.model_id}: {e}. Model may still work via auto_map, but ensure module path is correct."
-            )
-            raise e
-
-    def _register_other_model(self, model_info: ModelInfo):
-        """Register other type models (non-Transformers models)"""
-        logger.info(
-            f"Registered other type model: {model_info.model_id} ({model_info.model_type})"
-        )
-
-    def ensure_transformers_registered(self, model_id: str) -> ModelInfo | None:
-        """
-        Ensure Transformers model is registered.
-        Returns:
-            ModelInfo | None: None if registration failed, otherwise returns the corresponding ModelInfo
-        """
-        # Use lock to protect entire check-execute process
-        with self._lock_pool.get_lock(model_id).write_lock():
-            # Directly access _models dictionary (avoid calling get_model_info which may cause deadlock)
-            model_info = None
-            for category_dict in self._models.values():
-                if model_id in category_dict:
-                    model_info = category_dict[model_id]
-                    break
-
-            if not model_info:
-                return None
-
-            # If already registered, return directly
-            if model_info.transformers_registered:
-                return model_info
-
-            # If no auto_map, not a Transformers model, mark as registered (avoid duplicate checks)
-            if (
-                not model_info.auto_map
-                or model_id in BUILTIN_HF_TRANSFORMERS_MODEL_MAP.keys()
-            ):
-                model_info.transformers_registered = True
-                return model_info
-
-            # Execute registration (under lock protection)
-            try:
-                if self._register_transformers_model(model_info):
-                    model_info.transformers_registered = True
-                    logger.info(
-                        f"Model {model_id} successfully registered to Transformers"
-                    )
-                    return model_info
-                else:
-                    model_info.state = ModelStates.INACTIVE
-                    logger.error(f"Model {model_id} failed to register to Transformers")
-                    return None
-
-            except Exception as e:
-                # Ensure state consistency in exception cases
-                model_info.state = ModelStates.INACTIVE
-                model_info.transformers_registered = False
-                logger.error(
-                    f"Exception occurred while registering model {model_id} to Transformers: {e}"
-                )
-                return None
 
     # ==================== Show and Delete Models ====================
 
@@ -526,7 +402,7 @@ class ModelStorage:
                 return self._models[category.value].get(model_id)
         else:
             # Category not specified, need to traverse all dictionaries, use global lock
-            with self._lock_pool.get_lock("").read_lock():
+            with self._lock_pool.get_lock(model_id).read_lock():
                 for category_dict in self._models.values():
                     if model_id in category_dict:
                         return category_dict[model_id]
@@ -534,10 +410,6 @@ class ModelStorage:
 
     def is_model_registered(self, model_id: str) -> bool:
         """Check if model is registered (search in _models)"""
-        # Lazy registration: if it's a Transformers model and not registered, register it first
-        if self.ensure_transformers_registered(model_id) is None:
-            return False
-
         with self._lock_pool.get_lock("").read_lock():
             for category_dict in self._models.values():
                 if model_id in category_dict:

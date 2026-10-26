@@ -48,4 +48,11 @@ public class CachedTraverserIterator extends AbstractTraverserIterator<ICachedMN
     }
     super.close();
   }
+
+  @Override
+  protected void releaseSkippedNode(final ICachedMNode node) {
+    if (usingDirectChildrenIterator) {
+      store.unPin(node);
+    }
+  }
 }

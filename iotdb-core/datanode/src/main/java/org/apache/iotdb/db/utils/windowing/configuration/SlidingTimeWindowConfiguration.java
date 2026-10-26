@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils.windowing.configuration;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.utils.windowing.exception.WindowingException;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -44,11 +45,17 @@ public class SlidingTimeWindowConfiguration extends Configuration {
   public void check() throws WindowingException {
     if (timeInterval <= 0) {
       throw new WindowingException(
-          String.format("Parameter timeInterval(%d) should be positive.", timeInterval));
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_PARAMETER_TIMEINTERVAL_D_SHOULD_BE_POSITIVE_53A6CE3B,
+              timeInterval));
     }
     if (slidingStep <= 0) {
       throw new WindowingException(
-          String.format("Parameter slidingStep(%d) should be positive.", slidingStep));
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_PARAMETER_SLIDINGSTEP_D_SHOULD_BE_POSITIVE_C0C25C2C,
+              slidingStep));
     }
   }
 

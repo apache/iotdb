@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -27,10 +29,9 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.series.PaginationController;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -41,6 +42,7 @@ public abstract class MultiTVListIterator extends MemPointIterator {
   protected List<TVList.TVListIterator> tvListIterators;
   protected int floatPrecision;
   protected TSEncoding encoding;
+  protected final TypeServices.TVListBatchWriter batchWriter;
 
   protected boolean probeNext = false;
   protected boolean hasNext = false;
@@ -60,8 +62,9 @@ public abstract class MultiTVListIterator extends MemPointIterator {
       List<TimeRange> deletionList,
       Integer floatPrecision,
       TSEncoding encoding,
-      int maxNumberOfPointsInPage) {
-    super(scanOrder);
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
+    super(scanOrder, queryContext);
     this.tsDataType = tsDataType;
     this.tvListIterators = new ArrayList<>(tvLists.size());
     if (scanOrder.isAscending()) {
@@ -76,7 +79,8 @@ public abstract class MultiTVListIterator extends MemPointIterator {
                 deletionList,
                 null,
                 null,
-                maxNumberOfPointsInPage);
+                maxNumberOfPointsInPage,
+                queryContext);
         tvListIterators.add(iterator);
       }
     } else {
@@ -91,12 +95,16 @@ public abstract class MultiTVListIterator extends MemPointIterator {
                 deletionList,
                 null,
                 null,
-                maxNumberOfPointsInPage);
+                maxNumberOfPointsInPage,
+                queryContext);
         tvListIterators.add(iterator);
       }
     }
     this.floatPrecision = floatPrecision != null ? floatPrecision : 0;
     this.encoding = encoding;
+    this.batchWriter =
+        TypeServices.StorageEngine.TV_LIST_BATCH_WRITER_SERVICE.call(
+            Type.fromTsDataType(tsDataType));
     this.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
   }
 
@@ -143,98 +151,30 @@ public abstract class MultiTVListIterator extends MemPointIterator {
   @Override
   public TsBlock nextBatch() {
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(tsDataType));
-    switch (tsDataType) {
-      case BOOLEAN:
-        while (hasNextTimeValuePair() && builder.getPositionCount() < maxNumberOfPointsInPage) {
-          TVList.TVListIterator iterator = tvListIterators.get(iteratorIndex);
-          boolean aBoolean = iterator.getTVList().getBoolean(iterator.getScanOrderIndex(rowIndex));
-          if (pushDownFilter == null || pushDownFilter.satisfyBoolean(currentTime, aBoolean)) {
-            builder.getTimeColumnBuilder().writeLong(currentTime);
-            builder.getColumnBuilder(0).writeBoolean(aBoolean);
-            builder.declarePosition();
-          }
-          next();
-        }
-        break;
-      case INT32:
-      case DATE:
-        while (hasNextTimeValuePair() && builder.getPositionCount() < maxNumberOfPointsInPage) {
-          TVList.TVListIterator iterator = tvListIterators.get(iteratorIndex);
-          int anInt = iterator.getTVList().getInt(iterator.getScanOrderIndex(rowIndex));
-          if (pushDownFilter == null || pushDownFilter.satisfyInteger(currentTime, anInt)) {
-            builder.getTimeColumnBuilder().writeLong(currentTime);
-            builder.getColumnBuilder(0).writeInt(anInt);
-            builder.declarePosition();
-          }
-          next();
-        }
-        break;
-      case INT64:
-      case TIMESTAMP:
-        while (hasNextTimeValuePair() && builder.getPositionCount() < maxNumberOfPointsInPage) {
-          TVList.TVListIterator iterator = tvListIterators.get(iteratorIndex);
-          long aLong = iterator.getTVList().getLong(iterator.getScanOrderIndex(rowIndex));
-          if (pushDownFilter == null || pushDownFilter.satisfyLong(currentTime, aLong)) {
-            builder.getTimeColumnBuilder().writeLong(currentTime);
-            builder.getColumnBuilder(0).writeLong(aLong);
-            builder.declarePosition();
-          }
-          next();
-        }
-        break;
-      case FLOAT:
-        while (hasNextTimeValuePair() && builder.getPositionCount() < maxNumberOfPointsInPage) {
-          TVList.TVListIterator iterator = tvListIterators.get(iteratorIndex);
-          TVList floatTvList = iterator.getTVList();
-          float aFloat =
-              floatTvList.roundValueWithGivenPrecision(
-                  floatTvList.getFloat(iterator.getScanOrderIndex(rowIndex)),
-                  floatPrecision,
-                  encoding);
-          if (pushDownFilter == null || pushDownFilter.satisfyFloat(currentTime, aFloat)) {
-            builder.getTimeColumnBuilder().writeLong(currentTime);
-            builder.getColumnBuilder(0).writeFloat(aFloat);
-            builder.declarePosition();
-          }
-          next();
-        }
-        break;
-      case DOUBLE:
-        while (hasNextTimeValuePair() && builder.getPositionCount() < maxNumberOfPointsInPage) {
-          TVList.TVListIterator iterator = tvListIterators.get(iteratorIndex);
-          TVList doubleTvList = iterator.getTVList();
-          double aDouble =
-              doubleTvList.roundValueWithGivenPrecision(
-                  doubleTvList.getDouble(iterator.getScanOrderIndex(rowIndex)),
-                  floatPrecision,
-                  encoding);
-          if (pushDownFilter == null || pushDownFilter.satisfyDouble(currentTime, aDouble)) {
-            builder.getTimeColumnBuilder().writeLong(currentTime);
-            builder.getColumnBuilder(0).writeDouble(aDouble);
-            builder.declarePosition();
-          }
-          next();
-        }
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        while (hasNextTimeValuePair() && builder.getPositionCount() < maxNumberOfPointsInPage) {
-          TVList.TVListIterator iterator = tvListIterators.get(iteratorIndex);
-          Binary binary = iterator.getTVList().getBinary(iterator.getScanOrderIndex(rowIndex));
-          if (pushDownFilter == null || pushDownFilter.satisfyBinary(currentTime, binary)) {
-            builder.getTimeColumnBuilder().writeLong(currentTime);
-            builder.getColumnBuilder(0).writeBinary(binary);
-            builder.declarePosition();
-          }
-          next();
-        }
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", tsDataType));
+    long filteredRowsByPushDownFilter = 0;
+    while (hasNextTimeValuePair() && builder.getPositionCount() < maxNumberOfPointsInPage) {
+      TVList.TVListIterator iterator = tvListIterators.get(iteratorIndex);
+      TVList tvList = iterator.getTVList();
+      if (!batchWriter.write(
+          tvList,
+          iterator.getScanOrderIndex(rowIndex),
+          currentTime,
+          pushDownFilter,
+          builder,
+          floatPrecision,
+          encoding,
+          null)) {
+        filteredRowsByPushDownFilter++;
+      }
+      next();
     }
+
+    if (this.getQueryContext().isVerbose() && filteredRowsByPushDownFilter > 0) {
+      this.getQueryContext()
+          .getQueryStatistics()
+          .addFilteredRowsOfRowLevel(filteredRowsByPushDownFilter);
+    }
+
     // There is no need to process pushDownFilter here because it has been applied when
     // constructing the tsBlock
     TsBlock tsBlock = paginationController.applyTsBlock(builder.build());

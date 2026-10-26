@@ -55,6 +55,7 @@ keyWords
     | BOUNDARY
     | BY
     | CACHE
+    | CALCULATION
     | CALL
     | CASE
     | CAST
@@ -81,7 +82,7 @@ keyWords
     | CURRENT_USER
     | DATA
     | DATA_REPLICATION_FACTOR
-    | DATA_REGION_GROUP_NUM
+    | MAX_DATA_REGION_GROUP_NUM
     | DATABASE
     | DATABASES
     | DATANODE
@@ -99,6 +100,7 @@ keyWords
     | DEVICES
     | DISABLE
     | DISCARD
+    | DISK_USAGE
     | DROP
     | ELAPSEDTIME
     | ELSE
@@ -146,6 +148,7 @@ keyWords
     | LOAD
     | LOCAL
     | LOCK
+    | MEMORY
     | MERGE
     | METADATA
     | MIGRATE
@@ -154,6 +157,7 @@ keyWords
     | MODELS
     | MODIFY
     | NAN
+    | NEED_LAST_CACHE
     | NODEID
     | NODES
     | NONE
@@ -179,12 +183,15 @@ keyWords
     | PIPESINKTYPE
     | PIPEPLUGIN
     | PIPEPLUGINS
+    | POINT
+    | POINTS
     | POLICY
     | PREVIOUS
     | PREVIOUSUNTILLAST
     | PRIVILEGES
     | PRIVILEGE_VALUE
     | PROCESSLIST
+    | PROGRESS
     | PROCESSOR
     | PROPERTY
     | PRUNE
@@ -192,6 +199,7 @@ keyWords
     | QUERY
     | QUERYID
     | QUOTA
+    | RECEIVERS
     | RANGE
     | READONLY
     | READ
@@ -211,7 +219,7 @@ keyWords
     | RUNNING
     | SCHEMA
     | SCHEMA_REPLICATION_FACTOR
-    | SCHEMA_REGION_GROUP_NUM
+    | MAX_SCHEMA_REGION_GROUP_NUM
     | SECURITY
     | SELECT
     | SERIESSLOTID
@@ -223,6 +231,7 @@ keyWords
     | SGLEVEL
     | SHOW
     | SINK
+    | SIZEINBYTES
     | SLIMIT
     | SOFFSET
     | SOURCE
@@ -289,6 +298,7 @@ keyWords
     | WRITABLE
     | WRITE
     | AUDIT
+    | AUTH
     | OPTION
     | INF
     | CURRENT_TIMESTAMP

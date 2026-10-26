@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -30,10 +30,15 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 public class ExchangeOperator implements SourceOperator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ExchangeOperator.class);
+
+  private final AtomicLong receivedSizeInBytes = new AtomicLong(0);
+  public static final String SIZE_IN_BYTES = "size_in_bytes";
 
   private final OperatorContext operatorContext;
 
@@ -53,6 +58,7 @@ public class ExchangeOperator implements SourceOperator {
     this.operatorContext = operatorContext;
     this.sourceHandle = sourceHandle;
     this.sourceId = sourceId;
+    this.operatorContext.getSpecifiedInfo().put(SIZE_IN_BYTES, receivedSizeInBytes);
   }
 
   /**
@@ -70,6 +76,7 @@ public class ExchangeOperator implements SourceOperator {
     this.sourceHandle = sourceHandle;
     this.sourceId = sourceId;
     this.maxReturnSize = maxReturnSize;
+    this.operatorContext.getSpecifiedInfo().put(SIZE_IN_BYTES, receivedSizeInBytes);
   }
 
   @Override
@@ -79,7 +86,11 @@ public class ExchangeOperator implements SourceOperator {
 
   @Override
   public TsBlock next() throws Exception {
-    return sourceHandle.receive();
+    TsBlock receiveBlock = sourceHandle.receive();
+    if (receiveBlock != null) {
+      receivedSizeInBytes.addAndGet(receiveBlock.getSizeInBytes());
+    }
+    return receiveBlock;
   }
 
   @Override

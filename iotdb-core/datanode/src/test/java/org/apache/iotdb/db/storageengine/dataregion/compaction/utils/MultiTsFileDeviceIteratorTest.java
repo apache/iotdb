@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.utils;
 
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
@@ -412,7 +413,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
           IOException,
           WriteProcessException,
           StorageEngineException,
-          InterruptedException {
+          InterruptedException,
+          DiskSpaceInsufficientException {
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);
     int oldAlignedDeviceOffset = TsFileGeneratorUtils.alignDeviceOffset;
     TsFileGeneratorUtils.alignDeviceOffset = 0;
@@ -566,7 +568,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
           IOException,
           WriteProcessException,
           StorageEngineException,
-          InterruptedException {
+          InterruptedException,
+          DiskSpaceInsufficientException {
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);
     int oldAlignedDeviceOffset = TsFileGeneratorUtils.alignDeviceOffset;
     TsFileGeneratorUtils.alignDeviceOffset = 0;

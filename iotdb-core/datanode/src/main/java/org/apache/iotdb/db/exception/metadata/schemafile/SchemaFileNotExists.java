@@ -21,13 +21,14 @@
 package org.apache.iotdb.db.exception.metadata.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class SchemaFileNotExists extends MetadataException {
 
   public SchemaFileNotExists(String fileName) {
     super(
-        String.format("PBTree file [%s] not exists.", fileName),
+        String.format(DataNodeSchemaMessages.PBTREE_FILE_NOT_EXISTS_FMT, fileName),
         TSStatusCode.PBTREE_FILE_NOT_EXISTS.getStatusCode(),
         true);
   }

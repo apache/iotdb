@@ -40,9 +40,12 @@ services:
       - ain_cluster_ingress_username=root
       - ain_cluster_ingress_password=root
       - ain_cluster_ingress_time_zone=UTC+8
+    ports:
+      - "10810:10810"
     volumes:
       - ainode-data:/ainode/data
       - ./logs/ainode:/ainode/logs
+    restart: unless-stopped
       # - ./lib/ainode:/ainode/lib  # Uncomment for rolling upgrade
     # Note: Some environments set an extremely high container nofile limit (~2^30 = 1073741824).
     # This can make the startup step "Checking whether the ports are already occupied..." appear to hang (lsof slow).

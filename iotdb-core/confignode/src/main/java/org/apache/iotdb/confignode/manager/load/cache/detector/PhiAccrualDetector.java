@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.load.cache.detector;
 
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.IFailureDetector;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
@@ -86,12 +87,14 @@ public class PhiAccrualDetector implements IFailureDetector {
     if (Boolean.TRUE.equals(previousAvailability) && !isAvailable) {
       final StringBuilder builder = buildRecentHeartbeatHistory(phiAccrual);
       LOGGER.info(
-          "[PhiAccrualDetector] Topology {} is broken, heartbeat history (ms): {}", id, builder);
+          ManagerMessages.PHIACCRUALDETECTOR_TOPOLOGY_IS_BROKEN_HEARTBEAT_HISTORY_MS, id, builder);
     }
     if (Boolean.FALSE.equals(previousAvailability) && isAvailable) {
       final StringBuilder builder = buildRecentHeartbeatHistory(phiAccrual);
       LOGGER.info(
-          "[PhiAccrualDetector] Topology {} is recovered, heartbeat history (ms): {}", id, builder);
+          ManagerMessages.PHIACCRUALDETECTOR_TOPOLOGY_IS_RECOVERED_HEARTBEAT_HISTORY_MS,
+          id,
+          builder);
     }
     return isAvailable;
   }

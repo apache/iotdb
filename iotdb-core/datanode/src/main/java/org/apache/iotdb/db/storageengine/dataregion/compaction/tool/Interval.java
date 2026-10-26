@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 public class Interval {
   private long start;
   private long end;
@@ -27,7 +29,7 @@ public class Interval {
     this.start = start;
     this.end = end;
     if (end < start) {
-      throw new IllegalArgumentException("end must greater than start");
+      throw new IllegalArgumentException(StorageEngineMessages.END_MUST_GREATER_THAN_START);
     }
   }
 

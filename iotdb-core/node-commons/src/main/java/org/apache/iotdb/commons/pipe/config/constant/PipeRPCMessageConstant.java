@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.pipe.config.constant;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
+
 public class PipeRPCMessageConstant {
   // These two message are used in multi-modules such as pipe and IoTV2
   public static final String PIPE_ALREADY_EXIST_MSG =
@@ -26,6 +28,6 @@ public class PipeRPCMessageConstant {
   public static final String PIPE_NOT_EXIST_MSG = "the pipe does not exist";
 
   private PipeRPCMessageConstant() {
-    throw new IllegalStateException("Utility class");
+    throw new IllegalStateException(PipeMessages.UTILITY_CLASS);
   }
 }

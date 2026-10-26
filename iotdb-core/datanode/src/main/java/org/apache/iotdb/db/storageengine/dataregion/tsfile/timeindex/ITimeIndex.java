@@ -21,8 +21,10 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.load.PartitionViolationException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -73,6 +75,13 @@ public interface ITimeIndex {
    * @return device names
    */
   Set<IDeviceID> getDevices(String tsFilePath, TsFileResource tsFileResource);
+
+  /**
+   * get devices in TimeIndex and limit files reading rate
+   *
+   * @return device names
+   */
+  Set<IDeviceID> getDevices(String tsFilePath, TsFileResource tsFileResource, RateLimiter limiter);
 
   /**
    * @return whether end time is empty (Long.MIN_VALUE)
@@ -223,7 +232,7 @@ public interface ITimeIndex {
       throws IOException {
     byte timeIndexType = ReadWriteIOUtils.readByte(inputStream);
     if (timeIndexType == -1) {
-      throw new IOException("The end of stream has been reached");
+      throw new IOException(StorageEngineMessages.END_OF_STREAM_REACHED);
     }
     return TimeIndexLevel.valueOf(timeIndexType)
         .getTimeIndex()

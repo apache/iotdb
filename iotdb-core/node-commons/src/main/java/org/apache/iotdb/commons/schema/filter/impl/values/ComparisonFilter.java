@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.schema.filter.impl.values;
 
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
@@ -42,8 +43,8 @@ public class ComparisonFilter extends SchemaFilter {
   private final String value;
 
   public ComparisonFilter(final Operator operator, final String value) {
-    requireNonNull(operator, "operator is null");
-    requireNonNull(value, "value is null");
+    requireNonNull(operator, SchemaMessages.EXCEPTION_OPERATOR_IS_NULL_F5BB9F59);
+    requireNonNull(value, SchemaMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
 
     this.operator = operator;
     this.value = value;

@@ -20,10 +20,14 @@
 package org.apache.iotdb.confignode.exception;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 
 public class AddConsensusGroupException extends ConfigNodeException {
 
   public AddConsensusGroupException(TConfigNodeLocation configNodeLocation) {
-    super(String.format("Add ConsensusGroup to: %s failed.", configNodeLocation.toString()));
+    super(
+        String.format(
+            ConfigNodeMessages.EXCEPTION_ADD_CONSENSUSGROUP_ARG_FAILED_D3FDDC1B,
+            configNodeLocation.toString()));
   }
 }

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -32,6 +33,8 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
+import org.apache.iotdb.db.schemaengine.metric.ISchemaEngineMetric;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.metric.SchemaMetricManager;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaEngineStatistics;
@@ -57,6 +60,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -87,6 +91,9 @@ public class SchemaEngine {
 
   private SchemaMetricManager schemaMetricManager;
 
+  // Published so write handlers can identify teardown failures before region locks are removed.
+  private volatile boolean clearing;
+
   private final DataNodeSchemaQuotaManager schemaQuotaManager =
       DataNodeSchemaQuotaManager.getInstance();
 
@@ -106,8 +113,9 @@ public class SchemaEngine {
   }
 
   public void init() {
+    clearing = false;
     logger.info(
-        "used schema engine mode: {}.",
+        DataNodeSchemaMessages.USED_SCHEMA_ENGINE_MODE,
         CommonDescriptor.getInstance().getConfig().getSchemaEngineMode());
 
     schemaRegionLoader.init(CommonDescriptor.getInstance().getConfig().getSchemaEngineMode());
@@ -180,6 +188,7 @@ public class SchemaEngine {
   private void initSchemaRegion() {
     // recover SchemaRegion concurrently
     final Map<String, List<SchemaRegionId>> localSchemaRegionInfo = getLocalSchemaRegionInfo();
+    validateNoDuplicatedSchemaRegionId(localSchemaRegionInfo);
     final ExecutorService schemaRegionRecoverPools =
         IoTDBThreadPoolFactory.newFixedThreadPool(
             Runtime.getRuntime().availableProcessors(),
@@ -197,10 +206,31 @@ public class SchemaEngine {
         final ISchemaRegion schemaRegion = future.get();
         schemaRegionMap.put(schemaRegion.getSchemaRegionId(), schemaRegion);
       } catch (final ExecutionException | InterruptedException | RuntimeException e) {
-        logger.error("Something wrong happened during SchemaRegion recovery", e);
+        logger.error(DataNodeSchemaMessages.SCHEMA_REGION_RECOVERY_ERROR, e);
       }
     }
     schemaRegionRecoverPools.shutdown();
+  }
+
+  static void validateNoDuplicatedSchemaRegionId(
+      final Map<String, List<SchemaRegionId>> localSchemaRegionInfo) {
+    final Map<SchemaRegionId, String> databaseBySchemaRegionId = new HashMap<>();
+    localSchemaRegionInfo.forEach(
+        (database, schemaRegionIds) -> {
+          for (final SchemaRegionId schemaRegionId : schemaRegionIds) {
+            final String existingDatabase =
+                databaseBySchemaRegionId.putIfAbsent(schemaRegionId, database);
+            if (existingDatabase != null) {
+              throw new IllegalStateException(
+                  String.format(
+                      DataNodeSchemaMessages
+                          .EXCEPTION_CANNOT_RECOVER_DUPLICATED_SCHEMAREGION_ARG_FOUND_IN_DATABASES_ARG_AND_ARG_D9F60E05,
+                      schemaRegionId,
+                      existingDatabase,
+                      database));
+            }
+          }
+        });
   }
 
   private void initSchemaEngineStatistics() {
@@ -218,6 +248,7 @@ public class SchemaEngine {
   }
 
   public synchronized void clear() {
+    clearing = true;
     schemaRegionLoader.clear();
 
     // clearSchemaResource will shut down release and flush task in PBTree mode, which must be
@@ -233,13 +264,17 @@ public class SchemaEngine {
       schemaRegion.clear();
     }
     schemaRegionMap.clear();
-    logger.info("clear schema region map.");
+    logger.info(DataNodeSchemaMessages.CLEAR_SCHEMA_REGION_MAP);
 
     // SchemaMetric should be cleared lastly
     if (schemaMetricManager != null) {
       schemaMetricManager.clear();
     }
     ClusterTemplateManager.getInstance().clear();
+  }
+
+  public boolean isClearing() {
+    return clearing;
   }
 
   public ISchemaRegion getSchemaRegion(final SchemaRegionId regionId) {
@@ -265,7 +300,7 @@ public class SchemaEngine {
               .updateSubtreeMeasurementCountForTemplate(templateId, delta);
         } catch (MetadataException e) {
           logger.warn(
-              "Failed to update subtree measurement count for template {} in schemaRegion {}",
+              DataNodeSchemaMessages.FAILED_TO_UPDATE_SUBTREE_MEASUREMENT_COUNT,
               templateId,
               schemaRegion.getSchemaRegionId(),
               e);
@@ -277,7 +312,7 @@ public class SchemaEngine {
   public synchronized void createSchemaRegion(
       final String storageGroup, final SchemaRegionId schemaRegionId) throws MetadataException {
     if (this.schemaRegionMap == null) {
-      throw new MetadataException("Peer is shutting down now.");
+      throw new MetadataException(DataNodeSchemaMessages.PEER_IS_SHUTTING_DOWN);
     }
     final ISchemaRegion schemaRegion = this.schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {
@@ -286,9 +321,10 @@ public class SchemaEngine {
       } else {
         throw new MetadataException(
             String.format(
-                "SchemaRegion [%s] is duplicated between [%s] and [%s], "
-                    + "and the former one has been recovered.",
-                schemaRegionId, schemaRegion.getDatabaseFullPath(), storageGroup));
+                DataNodeSchemaMessages.SCHEMA_REGION_DUPLICATED,
+                schemaRegionId,
+                schemaRegion.getDatabaseFullPath(),
+                storageGroup));
       }
     }
     this.schemaRegionMap.put(
@@ -301,21 +337,21 @@ public class SchemaEngine {
     return () -> {
       long timeRecord = System.currentTimeMillis();
       try {
-        // TODO: handle duplicated regionId across different database
         ISchemaRegion schemaRegion =
             createSchemaRegionWithoutExistenceCheck(storageGroup, schemaRegionId);
         timeRecord = System.currentTimeMillis() - timeRecord;
         logger.info(
-            "Recover [{}] spend: {} ms",
+            DataNodeSchemaMessages.RECOVER_SPEND,
             storageGroup + TsFileConstant.PATH_SEPARATOR + schemaRegionId.toString(),
             timeRecord);
         return schemaRegion;
       } catch (final MetadataException e) {
-        logger.error(
+        throw new RuntimeException(
             String.format(
-                "SchemaRegion [%d] in StorageGroup [%s] failed to recover.",
-                schemaRegionId.getId(), storageGroup));
-        throw new RuntimeException(e);
+                DataNodeSchemaMessages.SCHEMA_REGION_FAILED_TO_RECOVER,
+                schemaRegionId.getId(),
+                storageGroup),
+            e);
       }
     };
   }
@@ -330,12 +366,12 @@ public class SchemaEngine {
     return schemaRegion;
   }
 
-  public synchronized void deleteSchemaRegion(SchemaRegionId schemaRegionId)
+  public synchronized boolean deleteSchemaRegion(SchemaRegionId schemaRegionId)
       throws MetadataException {
     ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion == null) {
-      logger.warn("SchemaRegion(id = {}) has been deleted, skiped", schemaRegionId);
-      return;
+      logger.warn(DataNodeSchemaMessages.SCHEMA_REGION_ALREADY_DELETED, schemaRegionId);
+      return false;
     }
     schemaRegion.deleteSchemaRegion();
     schemaMetricManager.removeSchemaRegionMetric(schemaRegionId.getId());
@@ -359,6 +395,7 @@ public class SchemaEngine {
         FileUtils.deleteFileOrDirectory(sgDir);
       }
     }
+    return true;
   }
 
   public int getSchemaRegionNumber() {
@@ -367,11 +404,13 @@ public class SchemaEngine {
 
   public Map<Integer, Long> countDeviceNumBySchemaRegion(final List<Integer> schemaIds) {
     final Map<Integer, Long> deviceNum = new HashMap<>();
+    final Collection<Integer> targetSchemaIds =
+        schemaIds.size() > 1 ? new HashSet<>(schemaIds) : schemaIds;
 
     schemaRegionMap.entrySet().stream()
         .filter(
             entry ->
-                schemaIds.contains(entry.getKey().getId())
+                targetSchemaIds.contains(entry.getKey().getId())
                     && SchemaRegionConsensusImpl.getInstance().isLeader(entry.getKey()))
         .forEach(
             entry ->
@@ -383,19 +422,26 @@ public class SchemaEngine {
 
   public Map<Integer, Long> countTimeSeriesNumBySchemaRegion(final List<Integer> schemaIds) {
     final Map<Integer, Long> timeSeriesNum = new HashMap<>();
+    final Collection<Integer> targetSchemaIds =
+        schemaIds.size() > 1 ? new HashSet<>(schemaIds) : schemaIds;
     schemaRegionMap.entrySet().stream()
         .filter(
             entry ->
-                schemaIds.contains(entry.getKey().getId())
-                    && SchemaRegionConsensusImpl.getInstance().isLeader(entry.getKey()))
+                targetSchemaIds.contains(entry.getKey().getId())
+                    && SchemaRegionConsensusImpl.getInstance().isLeader(entry.getKey())
+                    && !entry
+                        .getValue()
+                        .getDatabaseFullPath()
+                        .equals(SystemConstant.AUDIT_DATABASE))
         .forEach(
             entry ->
-                timeSeriesNum.put(entry.getKey().getId(), getTimeSeriesNumber(entry.getValue())));
+                timeSeriesNum.put(
+                    entry.getKey().getId(), getTimeSeriesNumber4Quota(entry.getValue())));
     return timeSeriesNum;
   }
 
   // not including view number
-  private long getTimeSeriesNumber(ISchemaRegion schemaRegion) {
+  private long getTimeSeriesNumber4Quota(final ISchemaRegion schemaRegion) {
     return schemaRegion.getSchemaRegionStatistics().getSeriesNumber(false)
         + schemaRegion.getSchemaRegionStatistics().getTable2DevicesNumMap().entrySet().stream()
             .map(
@@ -408,7 +454,7 @@ public class SchemaEngine {
                               false);
                   if (Objects.isNull(table)) {
                     logger.warn(
-                        "Failed to get table {}.{} when calculating the time series number. Maybe the cluster is restarting or the table is being dropped.",
+                        DataNodeSchemaMessages.FAILED_TO_GET_TABLE_FOR_TIMESERIES_COUNT,
                         PathUtils.unQualifyDatabaseName(schemaRegion.getDatabaseFullPath()),
                         tableEntry.getKey());
                     return 0L;
@@ -432,11 +478,21 @@ public class SchemaEngine {
     schemaQuotaManager.updateRemain(
         req.getTimeSeriesQuotaRemain(),
         req.isSetDeviceQuotaRemain() ? req.getDeviceQuotaRemain() : -1);
+    // Build both maps on snapshots and publish them together only after all counts succeed, so a
+    // failure cannot leave a partially updated heartbeat response.
+    Map<Integer, Long> regionDeviceUsageMap =
+        resp.getRegionDeviceUsageMap() == null
+            ? null
+            : new HashMap<>(resp.getRegionDeviceUsageMap());
+    Map<Integer, Long> regionSeriesUsageMap =
+        resp.getRegionSeriesUsageMap() == null
+            ? null
+            : new HashMap<>(resp.getRegionSeriesUsageMap());
     if (schemaQuotaManager.isDeviceLimit()) {
-      if (resp.getRegionDeviceUsageMap() == null) {
-        resp.setRegionDeviceUsageMap(new HashMap<>());
+      if (regionDeviceUsageMap == null) {
+        regionDeviceUsageMap = new HashMap<>();
       }
-      final Map<Integer, Long> tmp = resp.getRegionDeviceUsageMap();
+      final Map<Integer, Long> tmp = regionDeviceUsageMap;
       SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIds().stream()
           .filter(
               consensusGroupId ->
@@ -452,21 +508,34 @@ public class SchemaEngine {
                           .orElse(0L)));
     }
     if (schemaQuotaManager.isMeasurementLimit()) {
-      if (resp.getRegionSeriesUsageMap() == null) {
-        resp.setRegionSeriesUsageMap(new HashMap<>());
+      if (regionSeriesUsageMap == null) {
+        regionSeriesUsageMap = new HashMap<>();
       }
-      final Map<Integer, Long> tmp = resp.getRegionSeriesUsageMap();
+      final Map<Integer, Long> tmp = regionSeriesUsageMap;
       SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIds().stream()
           .filter(
               consensusGroupId ->
-                  SchemaRegionConsensusImpl.getInstance().isLeader(consensusGroupId))
+                  SchemaRegionConsensusImpl.getInstance().isLeader(consensusGroupId)
+                      && Optional.ofNullable(schemaRegionMap.get((SchemaRegionId) consensusGroupId))
+                          .map(
+                              schemaRegion ->
+                                  !schemaRegion
+                                      .getDatabaseFullPath()
+                                      .equals(SystemConstant.AUDIT_DATABASE))
+                          .orElse(false))
           .forEach(
               consensusGroupId ->
                   tmp.put(
                       consensusGroupId.getId(),
                       Optional.ofNullable(schemaRegionMap.get(consensusGroupId))
-                          .map(this::getTimeSeriesNumber)
+                          .map(this::getTimeSeriesNumber4Quota)
                           .orElse(0L)));
+    }
+    if (regionDeviceUsageMap != null) {
+      resp.setRegionDeviceUsageMap(regionDeviceUsageMap);
+    }
+    if (regionSeriesUsageMap != null) {
+      resp.setRegionSeriesUsageMap(regionSeriesUsageMap);
     }
   }
 
@@ -474,7 +543,13 @@ public class SchemaEngine {
     return schemaEngineStatistics;
   }
 
+  public ISchemaEngineMetric getSchemaEngineMetric() {
+    return schemaMetricManager == null ? null : schemaMetricManager.getEngineMetric();
+  }
+
   public ISchemaRegionMetric getSchemaRegionMetric(int schemaRegionId) {
-    return schemaMetricManager.getSchemaRegionMetric(schemaRegionId);
+    return schemaMetricManager == null
+        ? null
+        : schemaMetricManager.getSchemaRegionMetric(schemaRegionId);
   }
 }

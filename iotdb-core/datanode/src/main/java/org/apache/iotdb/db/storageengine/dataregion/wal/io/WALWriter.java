@@ -34,11 +34,11 @@ public class WALWriter extends LogWriter {
   private WALFileStatus walFileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;
   // wal files' metadata
   protected final WALMetaData metaData = new WALMetaData();
-  // By default is V2
-  private WALFileVersion version = WALFileVersion.V2;
+  // By default is V3 for writer-progress metadata support.
+  private WALFileVersion version = WALFileVersion.V3;
 
   public WALWriter(File logFile) throws IOException {
-    this(logFile, WALFileVersion.V2);
+    this(logFile, WALFileVersion.V3);
   }
 
   public WALWriter(File logFile, WALFileVersion version) throws IOException {
@@ -58,12 +58,18 @@ public class WALWriter extends LogWriter {
     return write(buffer);
   }
 
-  public void updateMetaData(WALMetaData metaData) {
+  public synchronized void updateMetaData(WALMetaData metaData) {
     this.metaData.addAll(metaData);
   }
 
-  private void endFile() throws IOException {
-    if (logFile.length() == WALFileVersion.V2.getVersionBytes().length) {
+  public synchronized WALMetaData snapshotMetaData() {
+    return metaData.copy();
+  }
+
+  private synchronized void endFile() throws IOException {
+    // The writer channel is write-only; its known version and size identify an empty header.
+    if (version != WALFileVersion.V1 && logChannel.size() == version.getVersionBytes().length) {
+      // A WAL with no entries is valid and has no marker or metadata trailer to append.
       super.close();
       return;
     }
@@ -72,12 +78,12 @@ public class WALWriter extends LogWriter {
     // mark info part ends
     endMarker.serialize(markerBuffer);
     write(markerBuffer, false);
-    int metaDataSize = metaData.serializedSize();
+    int metaDataSize = metaData.serializedSize(version);
 
     ByteBuffer buffer =
         ByteBuffer.allocate(metaDataSize + Integer.BYTES + version.getVersionBytes().length);
-    // flush meta data
-    metaData.serialize(buffer);
+    // flush meta data with version-aware serialization
+    metaData.serialize(buffer, version);
     buffer.putInt(metaDataSize);
     // add magic string
     buffer.put(version.getVersionBytes());
@@ -86,12 +92,26 @@ public class WALWriter extends LogWriter {
 
   private void writeMetadata(ByteBuffer buffer) throws IOException {
     buffer.flip();
-    logChannel.write(buffer);
+    // A successful seal is the recovery boundary for switching to the next WAL file.
+    while (buffer.hasRemaining()) {
+      logChannel.write(buffer);
+    }
   }
 
   @Override
   public void close() throws IOException {
-    endFile();
+    try {
+      endFile();
+    } catch (IOException | RuntimeException e) {
+      // In particular, failed recovery-file sealing must release the handle before its temporary
+      // file can be removed on Windows, while preserving the original failure.
+      try {
+        super.close();
+      } catch (IOException closeException) {
+        e.addSuppressed(closeException);
+      }
+      throw e;
+    }
     super.close();
   }
 

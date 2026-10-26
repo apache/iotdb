@@ -323,6 +323,9 @@ public class IoTConsensusConfig {
     private final IMemoryBlock consensusMemoryBlock;
     private final double maxMemoryRatioForQueue;
     private final long regionMigrationSpeedLimitBytesPerSecond;
+    private final long subscriptionWalRetentionSizeInBytes;
+    private final long subscriptionWalRetentionTimeMs;
+    private final long snapshotTransmissionProgressLogIntervalMs;
 
     private Replication(
         int maxLogEntriesNumPerBatch,
@@ -338,7 +341,10 @@ public class IoTConsensusConfig {
         long checkpointGap,
         IMemoryBlock consensusMemoryBlock,
         double maxMemoryRatioForQueue,
-        long regionMigrationSpeedLimitBytesPerSecond) {
+        long regionMigrationSpeedLimitBytesPerSecond,
+        long subscriptionWalRetentionSizeInBytes,
+        long subscriptionWalRetentionTimeMs,
+        long snapshotTransmissionProgressLogIntervalMs) {
       this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
       this.maxSizePerBatch = maxSizePerBatch;
       this.maxPendingBatchesNum = maxPendingBatchesNum;
@@ -353,6 +359,9 @@ public class IoTConsensusConfig {
       this.consensusMemoryBlock = consensusMemoryBlock;
       this.maxMemoryRatioForQueue = maxMemoryRatioForQueue;
       this.regionMigrationSpeedLimitBytesPerSecond = regionMigrationSpeedLimitBytesPerSecond;
+      this.subscriptionWalRetentionSizeInBytes = subscriptionWalRetentionSizeInBytes;
+      this.subscriptionWalRetentionTimeMs = subscriptionWalRetentionTimeMs;
+      this.snapshotTransmissionProgressLogIntervalMs = snapshotTransmissionProgressLogIntervalMs;
     }
 
     public int getMaxLogEntriesNumPerBatch() {
@@ -411,6 +420,18 @@ public class IoTConsensusConfig {
       return regionMigrationSpeedLimitBytesPerSecond;
     }
 
+    public long getSubscriptionWalRetentionSizeInBytes() {
+      return subscriptionWalRetentionSizeInBytes;
+    }
+
+    public long getSubscriptionWalRetentionTimeMs() {
+      return subscriptionWalRetentionTimeMs;
+    }
+
+    public long getSnapshotTransmissionProgressLogIntervalMs() {
+      return snapshotTransmissionProgressLogIntervalMs;
+    }
+
     public static Replication.Builder newBuilder() {
       return new Replication.Builder();
     }
@@ -434,6 +455,13 @@ public class IoTConsensusConfig {
               "Consensus-Default", null, Runtime.getRuntime().maxMemory() / 10);
       private double maxMemoryRatioForQueue = 0.6;
       private long regionMigrationSpeedLimitBytesPerSecond = 32 * 1024 * 1024L;
+      private long subscriptionWalRetentionSizeInBytes = 0;
+      private long subscriptionWalRetentionTimeMs = -1L;
+      // Throttle the per-file snapshot-transmission progress log to at most once per this interval;
+      // a snapshot may contain hundreds of thousands of files, so one INFO line per file is itself
+      // a
+      // heavy IO/string-building cost. A value <= 0 logs every file.
+      private long snapshotTransmissionProgressLogIntervalMs = 5000L;
 
       public Replication.Builder setMaxLogEntriesNumPerBatch(int maxLogEntriesNumPerBatch) {
         this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
@@ -508,6 +536,23 @@ public class IoTConsensusConfig {
         return this;
       }
 
+      public Builder setSubscriptionWalRetentionSizeInBytes(
+          long subscriptionWalRetentionSizeInBytes) {
+        this.subscriptionWalRetentionSizeInBytes = subscriptionWalRetentionSizeInBytes;
+        return this;
+      }
+
+      public Builder setSubscriptionWalRetentionTimeMs(long subscriptionWalRetentionTimeMs) {
+        this.subscriptionWalRetentionTimeMs = subscriptionWalRetentionTimeMs;
+        return this;
+      }
+
+      public Builder setSnapshotTransmissionProgressLogIntervalMs(
+          long snapshotTransmissionProgressLogIntervalMs) {
+        this.snapshotTransmissionProgressLogIntervalMs = snapshotTransmissionProgressLogIntervalMs;
+        return this;
+      }
+
       public Replication build() {
         return new Replication(
             maxLogEntriesNumPerBatch,
@@ -523,7 +568,10 @@ public class IoTConsensusConfig {
             checkpointGap,
             consensusMemoryBlock,
             maxMemoryRatioForQueue,
-            regionMigrationSpeedLimitBytesPerSecond);
+            regionMigrationSpeedLimitBytesPerSecond,
+            subscriptionWalRetentionSizeInBytes,
+            subscriptionWalRetentionTimeMs,
+            snapshotTransmissionProgressLogIntervalMs);
       }
     }
   }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.event;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
 import org.apache.iotdb.db.subscription.event.cache.CachedSubscriptionPollResponse;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.subscription.event.response.SubscriptionEventTsFileRe
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
+import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 
 import org.apache.thrift.annotation.Nullable;
 import org.slf4j.Logger;
@@ -42,12 +44,14 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
 
 public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
 
@@ -58,6 +62,9 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
   private final SubscriptionPipeEvents pipeEvents;
   private final SubscriptionEventResponse<CachedSubscriptionPollResponse> response;
   private final SubscriptionCommitContext commitContext;
+
+  private volatile boolean payloadDetached;
+  private volatile Consumer<SubscriptionPollResponse> responseDeliveryListener;
 
   // lastPolledConsumerId is not used as a criterion for determining pollability
   private volatile String lastPolledConsumerId = null;
@@ -71,6 +78,9 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
   private volatile SubscriptionCommitContext rootCommitContext;
 
   private static final long NACK_COUNT_REPORT_THRESHOLD = 3;
+
+  private static final long POISON_MESSAGE_NACK_THRESHOLD = 10;
+
   private final AtomicLong nackCount = new AtomicLong();
 
   /**
@@ -81,14 +91,38 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
       final short responseType,
       final SubscriptionPollPayload payload,
       final SubscriptionCommitContext commitContext) {
+    this(responseType, payload, commitContext, true);
+  }
+
+  public SubscriptionEvent(
+      final short responseType,
+      final SubscriptionPollPayload payload,
+      final SubscriptionCommitContext commitContext,
+      final boolean timeSelected) {
+    this(responseType, payload, commitContext, timeSelected, null);
+  }
+
+  public SubscriptionEvent(
+      final short responseType,
+      final SubscriptionPollPayload payload,
+      final SubscriptionCommitContext commitContext,
+      final boolean timeSelected,
+      final Map<String, Map<String, Boolean>> timeSelectedByTable) {
     this.pipeEvents = new SubscriptionPipeEmptyEvent();
-    this.response = new SubscriptionEventSingleResponse(responseType, payload, commitContext);
+    this.response =
+        new SubscriptionEventSingleResponse(
+            responseType, payload, commitContext, timeSelected, timeSelectedByTable);
     this.commitContext = commitContext;
   }
 
   @TestOnly
   public SubscriptionEvent(final SubscriptionPollResponse response) {
-    this(response.getResponseType(), response.getPayload(), response.getCommitContext());
+    this(
+        response.getResponseType(),
+        response.getPayload(),
+        response.getCommitContext(),
+        response.isTimeSelected(),
+        response.getTimeSelectedByTable());
   }
 
   /**
@@ -159,16 +193,15 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
   }
 
   public boolean isCommitted() {
-    if (commitContext.getCommitId() == INVALID_COMMIT_ID) {
-      // event with invalid commit id is committed
+    if (!commitContext.isCommittable()) {
+      // fire-and-forget events are treated as already committed
       return true;
     }
     return committedTimestamp.get() != INVALID_TIMESTAMP;
   }
 
   public boolean isCommittable() {
-    if (commitContext.getCommitId() == INVALID_COMMIT_ID) {
-      // event with invalid commit id is uncommittable
+    if (!commitContext.isCommittable()) {
       return false;
     }
     return response.isCommittable();
@@ -183,11 +216,51 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
    * {@link ConcurrentHashMap#compute} method of inFlightEvents in {@link
    * SubscriptionPrefetchingQueue} or {@link SubscriptionPrefetchingQueue#cleanUp}.
    */
-  public void cleanUp(final boolean force) {
+  public synchronized void cleanUp(final boolean force) {
     pipeEvents.cleanUp(force);
     response.cleanUp();
+    responseDeliveryListener = null;
 
     // TODO: clean more fields
+  }
+
+  /** Marks this event's serialized response as safe for a broker to detach, if supported. */
+  public void markResponseDelivered(final SubscriptionPollResponse deliveredResponse) {
+    final Consumer<SubscriptionPollResponse> listener = responseDeliveryListener;
+    if (listener != null) {
+      listener.accept(deliveredResponse);
+    }
+  }
+
+  public void setResponseDeliveryListener(final Consumer<SubscriptionPollResponse> listener) {
+    responseDeliveryListener = listener;
+  }
+
+  public boolean isPayloadDetached() {
+    return payloadDetached;
+  }
+
+  /** Detaches the tablet payload while preserving commit and response metadata. */
+  public synchronized boolean detachCurrentPayload(
+      final SubscriptionPollResponse deliveredResponse) {
+    final CachedSubscriptionPollResponse currentResponse = response.getCurrentResponse();
+    if (payloadDetached
+        || !(response instanceof SubscriptionEventSingleResponse)
+        || currentResponse != deliveredResponse
+        || !(currentResponse.getPayload() instanceof TabletsPayload)) {
+      return false;
+    }
+    final int nextOffset = ((TabletsPayload) currentResponse.getPayload()).getNextOffset();
+    ((SubscriptionEventSingleResponse) response)
+        .replaceCurrentPayload(new TabletsPayload(Collections.emptyMap(), nextOffset));
+    payloadDetached = true;
+    return true;
+  }
+
+  /** Restores a detached payload before redelivery. */
+  public synchronized void restorePayload(final SubscriptionPollPayload payload) {
+    ((SubscriptionEventSingleResponse) response).replaceCurrentPayload(payload);
+    payloadDetached = false;
   }
 
   //////////////////////////// pollable ////////////////////////////
@@ -208,13 +281,18 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
    *     are not pollable.
    */
   public boolean pollable() {
+    return pollable(
+        SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalMs());
+  }
+
+  public boolean pollable(final long recycleUncommittedEventIntervalMs) {
     if (isCommitted()) {
       return false;
     }
     if (lastPolledTimestamp.get() == INVALID_TIMESTAMP) {
       return true;
     }
-    return canRecycle();
+    return canRecycle(recycleUncommittedEventIntervalMs);
   }
 
   /**
@@ -228,14 +306,15 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
     return lastPolledTimestamp.get() == INVALID_TIMESTAMP;
   }
 
-  private boolean canRecycle() {
+  private boolean canRecycle(final long recycleUncommittedEventIntervalMs) {
     // Recycle events that may not be able to be committed, i.e., those that have been polled but
     // not committed within a certain period of time.
-    return System.currentTimeMillis() - lastPolledTimestamp.get()
-        > SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalMs();
+    return recycleUncommittedEventIntervalMs > 0L
+        && System.currentTimeMillis() - lastPolledTimestamp.get()
+            > recycleUncommittedEventIntervalMs;
   }
 
-  public void nack() {
+  public synchronized void nack() {
     // nack response
     response.nack();
 
@@ -244,8 +323,22 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
 
     // record nack count
     if (nackCount.getAndIncrement() > NACK_COUNT_REPORT_THRESHOLD) {
-      LOGGER.warn("{} has been nacked {} times", this, nackCount);
+      LOGGER.warn(DataNodeMiscMessages.EVENT_NACKED_TIMES, this, nackCount);
     }
+  }
+
+  /** Makes this event pollable again without treating local response-size control as a nack. */
+  public void resetLastPolledTimestamp() {
+    lastPolledTimestamp.set(INVALID_TIMESTAMP);
+  }
+
+  /** Returns the current nack count for this event. */
+  public long getNackCount() {
+    return nackCount.get();
+  }
+
+  public boolean isPoisoned() {
+    return nackCount.get() >= POISON_MESSAGE_NACK_THRESHOLD;
   }
 
   public void recordLastPolledConsumerId(final String consumerId) {
@@ -272,12 +365,26 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
     response.trySerializeRemainingResponses();
   }
 
-  public void trySerializeCurrentResponse() {
-    response.trySerializeCurrentResponse();
+  public synchronized void trySerializeCurrentResponse() {
+    if (!payloadDetached) {
+      response.trySerializeCurrentResponse();
+    }
   }
 
-  public ByteBuffer getCurrentResponseByteBuffer() throws IOException {
+  public synchronized ByteBuffer getCurrentResponseByteBuffer() throws IOException {
+    if (payloadDetached) {
+      throw new IOException(DataNodeMiscMessages.NULL_RESPONSE_WHEN_SERIALIZING);
+    }
     return response.getCurrentResponseByteBuffer();
+  }
+
+  /** Serializes the selected response while fencing payload replacement and cleanup. */
+  public synchronized ByteBuffer getResponseByteBuffer(
+      final SubscriptionPollResponse selectedResponse) throws IOException {
+    if (selectedResponse != response.getCurrentResponse()) {
+      throw new IOException(DataNodeMiscMessages.NULL_RESPONSE_WHEN_SERIALIZING);
+    }
+    return getCurrentResponseByteBuffer();
   }
 
   public void invalidateCurrentResponseByteBuffer() {

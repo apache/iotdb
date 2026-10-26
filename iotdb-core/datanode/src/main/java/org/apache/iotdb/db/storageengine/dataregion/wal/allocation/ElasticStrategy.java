@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.allocation;
 
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
@@ -88,7 +89,9 @@ public class ElasticStrategy extends AbstractNodeAllocationStrategy {
         if (walNode != null) {
           walNode.close();
           if (walNode.getLogDirectory().exists()) {
-            FileUtils.deleteFileOrDirectory(walNode.getLogDirectory());
+            FileUtils.deleteFileOrDirectoryWithRateLimiter(
+                walNode.getLogDirectory(),
+                RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);
           }
           WALManager.getInstance().subtractTotalDiskUsage(walNode.getDiskUsage());
           WALManager.getInstance().subtractTotalFileNum(walNode.getFileNum());

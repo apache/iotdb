@@ -48,10 +48,10 @@ public class IoTDBComplexQueryTableViewIT {
         "create aligned timeseries root.test.employees.D002(name TEXT,Gender TEXT,Status BOOLEAN,employee_id INT32,salary DOUBLE,date_of_birth DATE,Contac_info string)",
         "create aligned timeseries root.test.employees.D002(name TEXT,Gender TEXT,Status BOOLEAN,employee_id INT32,salary DOUBLE,date_of_birth DATE,Contac_info string)",
         "create aligned timeseries root.test.employees.D003(name TEXT,Gender TEXT,Status BOOLEAN,employee_id INT32,salary DOUBLE,date_of_birth DATE,Contac_info string)",
-        "create aligned timeseries root.test.departments.D001(department_id STRING,dep_name TEXT,dep_phone TEXT,dep_status BOOLEAN,dep_member INT32,employee_id INT32)",
-        "create aligned timeseries root.test.departments.D002(department_id STRING,dep_name TEXT,dep_phone TEXT,dep_status BOOLEAN,dep_member INT32,employee_id INT32)",
-        "create aligned timeseries root.test.departments.D003(department_id STRING,dep_name TEXT,dep_phone TEXT,dep_status BOOLEAN,dep_member INT32,employee_id INT32)",
-        "create aligned timeseries root.test.departments.D004(department_id STRING,dep_name TEXT,dep_phone TEXT,dep_status BOOLEAN,dep_member INT32,employee_id INT32)",
+        "create aligned timeseries root.test.departments.D001(`1department_id` STRING,dep_name TEXT,dep_phone TEXT,dep_status BOOLEAN,dep_member INT32,employee_id INT32)",
+        "create aligned timeseries root.test.departments.D002(`1department_id` STRING,dep_name TEXT,dep_phone TEXT,dep_status BOOLEAN,dep_member INT32,employee_id INT32)",
+        "create aligned timeseries root.test.departments.D003(`1department_id` STRING,dep_name TEXT,dep_phone TEXT,dep_status BOOLEAN,dep_member INT32,employee_id INT32)",
+        "create aligned timeseries root.test.departments.D004(`1department_id` STRING,dep_name TEXT,dep_phone TEXT,dep_status BOOLEAN,dep_member INT32,employee_id INT32)",
         "insert into root.test.employees.D001(time, name, gender, status, employee_id, salary, date_of_birth, contac_info) aligned values(1, 'Mary','Female', false, 1223, 5500.22, '1988-10-12', '133-1212-1234')",
         "insert into root.test.employees.D001(time, name, gender, status, employee_id, salary, date_of_birth, contac_info) aligned values(2, 'John', 'Male', true, 40012, 8822, '1985-06-15', '130-1002-1334')",
         "insert into root.test.employees.D002(time, name, gender, status, employee_id, salary, date_of_birth, contac_info) aligned values(3, 'Nancy', 'Female', true, 30112, 10002, '1983-08-15', '135-1302-1354')",
@@ -69,8 +69,8 @@ public class IoTDBComplexQueryTableViewIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "create view employees(department_id STRING TAG,name TEXT FIELD,Gender TEXT FIELD,Status BOOLEAN FIELD,employee_id INT32 FIELD,salary DOUBLE FIELD,date_of_birth DATE FIELD,Contac_info string FIELD) as root.test.employees.**",
-        "create view departments(department_id STRING TAG,dep_name TEXT FIELD,dep_phone TEXT FIELD,dep_status BOOLEAN FIELD,dep_member INT32 FIELD,employee_id INT32 FIELD) as root.test.departments.**",
+        "create view employees(\"`1department_id`\" STRING TAG,name TEXT FIELD,Gender TEXT FIELD,Status BOOLEAN FIELD,employee_id INT32 FIELD,salary DOUBLE FIELD,date_of_birth DATE FIELD,Contac_info string FIELD) as root.test.employees.**",
+        "create view departments(\"`1department_id`\" STRING TAG,dep_name TEXT FIELD,dep_phone TEXT FIELD,dep_status BOOLEAN FIELD,dep_member INT32 FIELD,employee_id INT32 FIELD) as root.test.departments.**",
       };
 
   @BeforeClass
@@ -88,11 +88,11 @@ public class IoTDBComplexQueryTableViewIT {
   @Test
   public void queryTest1() {
     // Look for the non-intersecting departments in the two tables
-    String[] expectedHeader = new String[] {"department_id", "dep_name"};
+    String[] expectedHeader = new String[] {"`1department_id`", "dep_name"};
     String[] retArray = new String[] {"D004,人事部,"};
     tableResultSetEqualTest(
-        "select department_id, dep_name from departments where not exists("
-            + "select 1 from employees where employees.department_id = departments.department_id)",
+        "select \"`1department_id`\", dep_name from departments where not exists("
+            + "select 1 from employees where employees.\"`1department_id`\" = departments.\"`1department_id`\")",
         expectedHeader,
         retArray,
         DATABASE_NAME);

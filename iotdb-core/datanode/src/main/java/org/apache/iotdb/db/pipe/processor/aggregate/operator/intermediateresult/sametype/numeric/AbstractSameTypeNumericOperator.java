@@ -19,18 +19,22 @@
 
 package org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.sametype.numeric;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.IntermediateResultOperator;
+import org.apache.iotdb.db.utils.TypeServices.Pipe.SameTypeNumericOperatorStrategy;
 import org.apache.iotdb.pipe.api.type.Binary;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.LocalDate;
 import java.util.Map;
+
+import static org.apache.iotdb.db.utils.TypeServices.Pipe.SAME_TYPE_NUMERIC_OPERATOR_STRATEGY_SERVICE;
 
 /**
  * {@link AbstractSameTypeNumericOperator} is the parent class of all the operators where there
@@ -96,100 +100,94 @@ public abstract class AbstractSameTypeNumericOperator implements IntermediateRes
   @Override
   public void updateValue(final boolean input, final long timestamp) {
     throw new UnsupportedOperationException(
-        "AbstractSameTypeNumericOperator does not support boolean input");
+        DataNodePipeMessages.ABSTRACTSAMETYPENUMERICOPERATOR_DOES_NOT_SUPPORT_BOOLEAN_INPUT);
   }
 
   @Override
   public void updateValue(final LocalDate input, final long timestamp) {
     throw new UnsupportedOperationException(
-        "AbstractSameTypeNumericOperator does not support date input");
+        DataNodePipeMessages.ABSTRACTSAMETYPENUMERICOPERATOR_DOES_NOT_SUPPORT_DATE_INPUT);
   }
 
   @Override
   public void updateValue(final String input, final long timestamp) {
     throw new UnsupportedOperationException(
-        "AbstractSameTypeNumericOperator does not support string input");
+        DataNodePipeMessages.ABSTRACTSAMETYPENUMERICOPERATOR_DOES_NOT_SUPPORT_STRING_INPUT);
   }
 
   @Override
   public void updateValue(final Binary input, final long timestamp) {
     throw new UnsupportedOperationException(
-        "AbstractSameTypeNumericOperator does not support binary input");
+        DataNodePipeMessages.ABSTRACTSAMETYPENUMERICOPERATOR_DOES_NOT_SUPPORT_BINARY_INPUT);
   }
 
   @Override
   public Pair<TSDataType, Object> getResult() {
-    switch (outPutDataType) {
-      case INT32:
-        return new Pair<>(TSDataType.INT32, intValue);
-      case INT64:
-        return new Pair<>(TSDataType.INT64, longValue);
-      case FLOAT:
-        return new Pair<>(TSDataType.FLOAT, floatValue);
-      case DOUBLE:
-        return new Pair<>(TSDataType.DOUBLE, doubleValue);
-      case BLOB:
-      case TEXT:
-      case BOOLEAN:
-      case STRING:
-      case TIMESTAMP:
-      case DATE:
-      default:
-        return null;
+    try {
+      return getStrategy().getResult(this);
+    } catch (final UnsupportedOperationException ignored) {
+      return null;
     }
   }
 
   @Override
   public void serialize(final DataOutputStream outputStream) throws IOException {
     outPutDataType.serializeTo(outputStream);
-    switch (outPutDataType) {
-      case INT32:
-        ReadWriteIOUtils.write(intValue, outputStream);
-        break;
-      case INT64:
-        ReadWriteIOUtils.write(longValue, outputStream);
-        break;
-      case FLOAT:
-        ReadWriteIOUtils.write(floatValue, outputStream);
-        break;
-      case DOUBLE:
-        ReadWriteIOUtils.write(doubleValue, outputStream);
-        break;
-      case TIMESTAMP:
-      case DATE:
-      case BOOLEAN:
-      case STRING:
-      case TEXT:
-      case BLOB:
-      default:
-        throw new IOException(String.format("Unsupported output datatype %s", outPutDataType));
+    try {
+      getStrategy().serialize(this, outputStream);
+    } catch (final UnsupportedOperationException ignored) {
+      throw unsupportedOutputDataTypeException();
     }
   }
 
   @Override
   public void deserialize(final ByteBuffer byteBuffer) throws IOException {
     outPutDataType = TSDataType.deserializeFrom(byteBuffer);
-    switch (outPutDataType) {
-      case INT32:
-        intValue = ReadWriteIOUtils.readInt(byteBuffer);
-        break;
-      case INT64:
-        longValue = ReadWriteIOUtils.readLong(byteBuffer);
-        break;
-      case FLOAT:
-        floatValue = ReadWriteIOUtils.readFloat(byteBuffer);
-        break;
-      case DOUBLE:
-        doubleValue = ReadWriteIOUtils.readDouble(byteBuffer);
-        break;
-      case TEXT:
-      case BLOB:
-      case BOOLEAN:
-      case STRING:
-      case DATE:
-      case TIMESTAMP:
-      default:
-        throw new IOException(String.format("Unsupported output datatype %s", outPutDataType));
+    try {
+      getStrategy().deserialize(this, byteBuffer);
+    } catch (final UnsupportedOperationException ignored) {
+      throw unsupportedOutputDataTypeException();
     }
+  }
+
+  private SameTypeNumericOperatorStrategy getStrategy() {
+    return SAME_TYPE_NUMERIC_OPERATOR_STRATEGY_SERVICE.call(Type.fromTsDataType(outPutDataType));
+  }
+
+  private IOException unsupportedOutputDataTypeException() {
+    return new IOException(
+        String.format(DataNodePipeMessages.UNSUPPORTED_OUTPUT_DATATYPE_FMT, outPutDataType));
+  }
+
+  public int getIntValue() {
+    return intValue;
+  }
+
+  public void setIntValue(final int intValue) {
+    this.intValue = intValue;
+  }
+
+  public long getLongValue() {
+    return longValue;
+  }
+
+  public void setLongValue(final long longValue) {
+    this.longValue = longValue;
+  }
+
+  public float getFloatValue() {
+    return floatValue;
+  }
+
+  public void setFloatValue(final float floatValue) {
+    this.floatValue = floatValue;
+  }
+
+  public double getDoubleValue() {
+    return doubleValue;
+  }
+
+  public void setDoubleValue(final double doubleValue) {
+    this.doubleValue = doubleValue;
   }
 }

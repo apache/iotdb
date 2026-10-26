@@ -27,13 +27,14 @@ import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.subscription.it.triple.treemodel.regression.AbstractSubscriptionTreeRegressionIT;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.query.dataset.ResultSet;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -56,7 +57,7 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
  * DataSet
  * pattern: ts
  * loose-range: time
- * live
+ * initial
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionTreeRegressionConsumer.class})
@@ -83,7 +84,7 @@ public class IoTDBTimeLooseTsDatasetPushConsumerIT extends AbstractSubscriptionT
         "2024-01-01T00:00:00+08:00",
         "2024-02-13T08:00:02+08:00",
         false,
-        TopicConstant.MODE_LIVE_VALUE,
+        TopicConstant.MODE_INITIAL_VALUE,
         TopicConstant.LOOSE_RANGE_TIME_VALUE);
     session_src.createTimeseries(
         device + ".s_0", TSDataType.INT64, TSEncoding.GORILLA, CompressionType.LZ4);
@@ -166,10 +167,10 @@ public class IoTDBTimeLooseTsDatasetPushConsumerIT extends AbstractSubscriptionT
             .fileSaveDir("target")
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final ResultSet dataSet : message.getResultSets()) {
                     try {
-                      session_dest.insertTablet(dataSet.getTablet());
+                      session_dest.insertTablet(
+                          ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet).getTablet());
                     } catch (StatementExecutionException e) {
                       throw new RuntimeException(e);
                     } catch (IoTDBConnectionException e) {

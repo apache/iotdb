@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.resource.tsfile;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 
 import org.slf4j.Logger;
@@ -51,7 +52,7 @@ public class PipeTsFileResourceSegmentLock {
                       SEGMENT_LOCK_MAX_SIZE);
             } catch (final Exception e) {
               LOGGER.warn(
-                  "Cannot get data region ids, use default lock segment size: {}", lockSegmentSize);
+                  DataNodePipeMessages.CANNOT_GET_DATA_REGION_IDS_USE_DEFAULT, lockSegmentSize);
               lockSegmentSize = SEGMENT_LOCK_MIN_SIZE;
             }
           }
@@ -77,17 +78,21 @@ public class PipeTsFileResourceSegmentLock {
 
   public void lock(final File file) {
     initIfNecessary();
-    locks[Math.abs(file.hashCode()) % locks.length].lock();
+    locks[getLockIndex(file)].lock();
   }
 
   public boolean tryLock(final File file, final long timeout, final TimeUnit timeUnit)
       throws InterruptedException {
     initIfNecessary();
-    return locks[Math.abs(file.hashCode()) % locks.length].tryLock(timeout, timeUnit);
+    return locks[getLockIndex(file)].tryLock(timeout, timeUnit);
   }
 
   public void unlock(final File file) {
     initIfNecessary();
-    locks[Math.abs(file.hashCode()) % locks.length].unlock();
+    locks[getLockIndex(file)].unlock();
+  }
+
+  private int getLockIndex(final File file) {
+    return (int) (Math.abs((long) file.hashCode()) % locks.length);
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.udf.api.relational.table;
 
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionLeafProcessor;
 
@@ -29,7 +30,8 @@ public interface TableFunctionProcessorProvider {
    * It is called once per each partition processed by the table function.
    */
   default TableFunctionDataProcessor getDataProcessor() {
-    throw new UnsupportedOperationException("this table function does not process input data");
+    throw new UnsupportedOperationException(
+        UdfApiMessages.TABLE_FUNCTION_DOES_NOT_PROCESS_INPUT_DATA);
   }
 
   /**
@@ -38,6 +40,7 @@ public interface TableFunctionProcessorProvider {
    * It is called once per each split processed by the table function.
    */
   default TableFunctionLeafProcessor getSplitProcessor() {
-    throw new UnsupportedOperationException("this table function does not process leaf data");
+    throw new UnsupportedOperationException(
+        UdfApiMessages.TABLE_FUNCTION_DOES_NOT_PROCESS_LEAF_DATA);
   }
 }

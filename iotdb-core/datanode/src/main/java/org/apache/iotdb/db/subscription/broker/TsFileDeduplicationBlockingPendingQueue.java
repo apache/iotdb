@@ -22,6 +22,7 @@ package org.apache.iotdb.db.subscription.broker;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -39,13 +40,13 @@ public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockin
   private static final Logger LOGGER =
       LoggerFactory.getLogger(TsFileDeduplicationBlockingPendingQueue.class);
 
-  private final Cache<Integer, Boolean> hashCodeToIsGeneratedByHistoricalExtractor;
+  private final Cache<String, Boolean> tsFilePathToIsGeneratedByHistoricalExtractor;
 
   public TsFileDeduplicationBlockingPendingQueue(
       final UnboundedBlockingPendingQueue<Event> inputPendingQueue) {
     super(inputPendingQueue);
 
-    this.hashCodeToIsGeneratedByHistoricalExtractor =
+    this.tsFilePathToIsGeneratedByHistoricalExtractor =
         Caffeine.newBuilder()
             .expireAfterAccess(
                 SubscriptionConfig.getInstance().getSubscriptionTsFileDeduplicationWindowSeconds(),
@@ -65,7 +66,7 @@ public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockin
 
   @Override
   public void directOffer(final Event event) {
-    inputPendingQueue.directOffer(event);
+    inputPendingQueue.offer(event);
   }
 
   private synchronized Event filter(final Event event) { // make it synchronized
@@ -100,12 +101,13 @@ public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockin
   }
 
   private boolean isDuplicated(final PipeTsFileInsertionEvent event) {
-    final int hashCode = event.getTsFile().hashCode();
+    final String tsFilePath = event.getTsFile().toPath().toAbsolutePath().normalize().toString();
     final boolean isGeneratedByHistoricalExtractor = event.isGeneratedByHistoricalExtractor();
     final Boolean existedIsGeneratedByHistoricalExtractor =
-        hashCodeToIsGeneratedByHistoricalExtractor.getIfPresent(hashCode);
+        tsFilePathToIsGeneratedByHistoricalExtractor.getIfPresent(tsFilePath);
     if (Objects.isNull(existedIsGeneratedByHistoricalExtractor)) {
-      hashCodeToIsGeneratedByHistoricalExtractor.put(hashCode, isGeneratedByHistoricalExtractor);
+      tsFilePathToIsGeneratedByHistoricalExtractor.put(
+          tsFilePath, isGeneratedByHistoricalExtractor);
       return false;
     }
     // Multiple PipeRawTabletInsertionEvents parsed from the same PipeTsFileInsertionEvent (i.e.,
@@ -114,7 +116,8 @@ public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockin
       return false;
     }
     LOGGER.info(
-        "Subscription: Detect duplicated PipeTsFileInsertionEvent {}, commit it directly",
+        DataNodePipeMessages
+            .PIPE_LOG_SUBSCRIPTION_DETECT_DUPLICATED_PIPETSFILEINSERTIONEVENT_23A4740C,
         event.coreReportMessage());
     return true;
   }

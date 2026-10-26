@@ -30,7 +30,7 @@ class Moirai2Pipeline(ForecastPipeline):
     def __init__(self, model_info, **model_kwargs):
         super().__init__(model_info, **model_kwargs)
 
-    def preprocess(self, inputs, **infer_kwargs):
+    def _preprocess(self, inputs, **infer_kwargs):
         """
         Preprocess input data for moirai2.
 
@@ -48,7 +48,6 @@ class Moirai2Pipeline(ForecastPipeline):
         list of dict
             Processed inputs compatible with moirai2 format (time, features).
         """
-        super().preprocess(inputs, **infer_kwargs)
         # Moirai2.predict() expects past_target in (time, features) format
         processed_inputs = []
         for item in inputs:
@@ -141,7 +140,7 @@ class Moirai2Pipeline(ForecastPipeline):
                 f"Model must be an instance of Moirai2ForPrediction, got {type(self.model)}"
             )
 
-    def postprocess(
+    def _postprocess(
         self, outputs: list[torch.Tensor], **infer_kwargs
     ) -> list[torch.Tensor]:
         """
@@ -165,5 +164,4 @@ class Moirai2Pipeline(ForecastPipeline):
             else:
                 # If no quantiles, get the mean
                 outputs_list.append(output.mean(dim=1))
-        super().postprocess(outputs_list, **infer_kwargs)
         return outputs_list

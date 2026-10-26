@@ -19,21 +19,22 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InListExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.IrTypeAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.NoOpSymbolResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
@@ -50,8 +51,8 @@ import java.util.function.Predicate;
 
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.FALSE_LITERAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral.FALSE_LITERAL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 
 public final class IrUtils {
   private IrUtils() {}
@@ -142,8 +143,8 @@ public final class IrUtils {
 
   public static Expression logicalExpression(
       LogicalExpression.Operator operator, Collection<Expression> expressions) {
-    requireNonNull(operator, "operator is null");
-    requireNonNull(expressions, "expressions is null");
+    requireNonNull(operator, DataNodeQueryMessages.EXCEPTION_OPERATOR_IS_NULL_F5BB9F59);
+    requireNonNull(expressions, DataNodeQueryMessages.EXCEPTION_EXPRESSIONS_IS_NULL_C44D9384);
 
     if (expressions.isEmpty()) {
       switch (operator) {
@@ -152,7 +153,8 @@ public final class IrUtils {
         case OR:
           return FALSE_LITERAL;
       }
-      throw new IllegalArgumentException("Unsupported LogicalExpression operator");
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.UNSUPPORTED_LOGICALEXPRESSION_OPERATOR);
     }
 
     if (expressions.size() == 1) {
@@ -180,7 +182,7 @@ public final class IrUtils {
   }
 
   public static Expression combineConjuncts(Collection<Expression> expressions) {
-    requireNonNull(expressions, "expressions is null");
+    requireNonNull(expressions, DataNodeQueryMessages.EXCEPTION_EXPRESSIONS_IS_NULL_C44D9384);
 
     List<Expression> conjuncts =
         expressions.stream()
@@ -198,7 +200,7 @@ public final class IrUtils {
   }
 
   public static Expression combineConjunctsWithDuplicates(Collection<Expression> expressions) {
-    requireNonNull(expressions, "expressions is null");
+    requireNonNull(expressions, DataNodeQueryMessages.EXCEPTION_EXPRESSIONS_IS_NULL_C44D9384);
 
     List<Expression> conjuncts =
         expressions.stream()
@@ -223,7 +225,7 @@ public final class IrUtils {
 
   public static Expression combineDisjunctsWithDefault(
       Collection<Expression> expressions, Expression emptyDefault) {
-    requireNonNull(expressions, "expressions is null");
+    requireNonNull(expressions, DataNodeQueryMessages.EXCEPTION_EXPRESSIONS_IS_NULL_C44D9384);
 
     List<Expression> disjuncts =
         expressions.stream()

@@ -22,6 +22,7 @@ package org.apache.iotdb.metrics;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
+import org.apache.iotdb.metrics.i18n.MetricsMessages;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalMemoryReporter;
@@ -95,7 +96,7 @@ public abstract class AbstractMetricService {
 
   /** Start metric core module. */
   protected void startCoreModule() {
-    LOGGER.info("Start metric service at level: {}", METRIC_CONFIG.getMetricLevel().name());
+    LOGGER.info(MetricsMessages.START_METRIC_SERVICE, METRIC_CONFIG.getMetricLevel().name());
     // load metric manager
     loadManager();
     // load metric reporter

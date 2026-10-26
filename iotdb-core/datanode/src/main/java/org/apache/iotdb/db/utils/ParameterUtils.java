@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+
 public class ParameterUtils {
 
   /**
@@ -29,7 +31,8 @@ public class ParameterUtils {
   public static void checkNonEmptyString(String string, String name)
       throws IllegalArgumentException {
     if (string == null || string.isEmpty()) {
-      throw new IllegalArgumentException("Expecting a non-empty string for " + name);
+      throw new IllegalArgumentException(
+          DataNodeMiscMessages.EXPECTING_NON_EMPTY_STRING_FOR + name);
     }
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.protocol.session;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 
 import java.net.Socket;
@@ -80,9 +81,36 @@ public class ClientSession extends IClientSession {
     Set<Long> queryIds = statementIdToQueryId.get(statementId);
     if (queryIds == null) {
       throw new IllegalStateException(
-          "StatementId: " + statementId + " doesn't exist in this session " + this);
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_STATEMENTID_S_DOESN_T_EXIST_IN_THIS_SESSION_S_4AA25E49,
+              statementId,
+              this));
     }
     queryIds.add(queryId);
+  }
+
+  @Override
+  public boolean containsQueryId(Long statementId, long queryId) {
+    return containsQueryId(statementIdToQueryId, statementId, queryId);
+  }
+
+  public static boolean containsQueryId(
+      Map<Long, Set<Long>> statementIdToQueryId, Long statementId, long queryId) {
+    // Set#contains takes an Object, so box the primitive queryId once: a client that does not send
+    // a statement id makes this method visit every statement set of the session, and a box per
+    // visited set would allocate once per statement on every fetched page.
+    Long boxedQueryId = queryId;
+    if (statementId == null) {
+      for (Set<Long> queryIds : statementIdToQueryId.values()) {
+        if (queryIds != null && queryIds.contains(boxedQueryId)) {
+          return true;
+        }
+      }
+      return false;
+    }
+    Set<Long> queryIds = statementIdToQueryId.get(statementId);
+    return queryIds != null && queryIds.contains(boxedQueryId);
   }
 
   @Override

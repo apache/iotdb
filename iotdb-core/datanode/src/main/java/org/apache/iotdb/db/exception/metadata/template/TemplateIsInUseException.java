@@ -21,11 +21,15 @@
 package org.apache.iotdb.db.exception.metadata.template;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class TemplateIsInUseException extends MetadataException {
 
   public TemplateIsInUseException(String path) {
-    super("Template is in use on " + path, TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode(), true);
+    super(
+        String.format(DataNodeSchemaMessages.TEMPLATE_IS_IN_USE_ON_FMT, path),
+        TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode(),
+        true);
   }
 }

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPend
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeCompactedTsFileInsertionEvent;
@@ -72,31 +73,30 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   }
 
   @Override
-  public boolean directOffer(final Event event) {
-    checkBeforeOffer(event);
+  public boolean offer(final Event event) {
+    if (!checkBeforeOffer(event)) {
+      return false;
+    }
 
     if (event instanceof TsFileInsertionEvent) {
       tsfileInsertEventDeque.add((TsFileInsertionEvent) event);
       return true;
     }
 
-    if (event instanceof PipeHeartbeatEvent && super.peekLast() instanceof PipeHeartbeatEvent) {
+    if (event instanceof PipeHeartbeatEvent
+        && !((PipeHeartbeatEvent) event).isCompletionBarrier()
+        && super.peekLast() instanceof PipeHeartbeatEvent) {
       // We can NOT keep too many PipeHeartbeatEvent in bufferQueue because they may cause OOM.
       ((EnrichedEvent) event).decreaseReferenceCount(PipeEventCollector.class.getName(), false);
       return false;
     } else {
-      return super.directOffer(event);
+      return super.offer(event);
     }
   }
 
   @Override
-  public boolean waitedOffer(final Event event) {
-    return directOffer(event);
-  }
-
-  @Override
   public boolean put(final Event event) {
-    directOffer(event);
+    offer(event);
     return true;
   }
 
@@ -222,7 +222,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     if (eventsToBeRemovedGroupByCommitterKey.isEmpty()) {
       LOGGER.info(
-          "Region {}: No TsFileInsertionEvents to replace for source files {}",
+          DataNodePipeMessages.REGION_NO_TSFILEINSERTIONEVENTS_TO_REPLACE_FOR_SOURCE,
           regionId,
           sourceFiles.stream()
               .map(TsFileResource::getTsFilePath)
@@ -280,10 +280,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
         try {
           event.decreaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName(), false);
         } catch (final Exception e) {
-          LOGGER.warn(
-              "Failed to decrease reference count for event {} in PipeRealtimePriorityBlockingQueue",
-              event,
-              e);
+          LOGGER.warn(DataNodePipeMessages.FAILED_TO_DECREASE_REFERENCE_COUNT_FOR_EVENT, event, e);
         }
       }
       return; // Exit early if any event failed to increase the reference count
@@ -305,9 +302,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
             event.decreaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName(), false);
           } catch (final Exception e) {
             LOGGER.warn(
-                "Failed to decrease reference count for event {} in PipeRealtimePriorityBlockingQueue",
-                event,
-                e);
+                DataNodePipeMessages.FAILED_TO_DECREASE_REFERENCE_COUNT_FOR_EVENT, event, e);
           }
           eventCounter.decreaseEventCount(event);
         }
@@ -321,7 +316,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     tsfileInsertEventDeque.removeIf(eventsToRemove::contains);
 
     LOGGER.info(
-        "Region {}: Replaced TsFileInsertionEvents {} with {}",
+        DataNodePipeMessages.REGION_REPLACED_TSFILEINSERTIONEVENTS_WITH,
         regionId,
         eventsToBeRemovedGroupByCommitterKey.values().stream()
             .flatMap(Set::stream)
@@ -361,13 +356,18 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   }
 
   @Override
-  public void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
-    super.discardEventsOfPipe(pipeNameToDrop, regionId);
+  public void discardEventsOfPipe(
+      final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
+    discardEventsOfPipe(new CommitterKey(pipeNameToDrop, creationTimeToDrop, regionId, -1));
+  }
+
+  @Override
+  public void discardEventsOfPipe(final CommitterKey committerKey) {
+    super.discardEventsOfPipe(committerKey);
     tsfileInsertEventDeque.removeIf(
         event -> {
           if (event instanceof EnrichedEvent
-              && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())
-              && regionId == ((EnrichedEvent) event).getRegionId()) {
+              && isEventFromPipe((EnrichedEvent) event, committerKey)) {
             if (((EnrichedEvent) event)
                 .clearReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName())) {
               eventCounter.decreaseEventCount(event);

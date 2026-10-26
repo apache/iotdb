@@ -19,28 +19,36 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.metric.QueryExecutionMetricSet;
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
-import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.ThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryDataSource;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryResource;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
@@ -51,8 +59,6 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceForRegio
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
-import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 
@@ -70,16 +76,28 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.AGGREGATION_FROM_RAW_DATA;
+import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.AGGREGATION_FROM_STATISTICS;
+import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.AGGREGATION_OPERATOR_FROM_RAW_DATA;
+import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.QUERY_RESOURCE_INIT;
 import static org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils.getRootCause;
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.BLOCK_QUEUED_TIME;
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.READY_QUEUED_TIME;
@@ -91,14 +109,21 @@ public class FragmentInstanceContext extends QueryContext {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceContext.class);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   private static final long END_TIME_INITIAL_VALUE = -1L;
   // wait over 5s for driver to close is abnormal
   private static final long LONG_WAIT_DURATION = 5_000_000_000L;
+  private static final int MODS_MEMORY_ESTIMATE_READ_INTERVAL = 10_000;
   private final FragmentInstanceId id;
 
   private final FragmentInstanceStateMachine stateMachine;
 
   private final MemoryReservationManager memoryReservationManager;
+
+  // Initialized after the complete local plan is generated, before drivers start. Both are zero
+  // when this FI uses independent per-plan-node exchange quotas.
+  private long inputMaxBytes;
+  private long outputMaxBytes;
 
   protected IDataRegionForQuery dataRegion;
   private Filter globalTimeFilter;
@@ -112,6 +137,9 @@ public class FragmentInstanceContext extends QueryContext {
   // Used for region scan, relating methods are to be added.
   private Map<IDeviceID, DeviceContext> devicePathsToContext;
 
+  private ExternalTsFileQueryResource externalTsFileQueryResource;
+  private boolean externalTsFileQueryResourceRetained;
+
   // Shared by all scan operators in this fragment instance to avoid memory problem
   protected IQueryDataSource sharedQueryDataSource;
 
@@ -120,6 +148,9 @@ public class FragmentInstanceContext extends QueryContext {
 
   /** unClosed tsfile used in this fragment instance. */
   private Set<TsFileResource> unClosedFilePaths;
+
+  private final Set<QueryDataSourceLease> batchQueryDataSourceLeases =
+      ConcurrentHashMap.newKeySet();
 
   /** check if there is tmp file to be deleted. */
   private boolean mayHaveTmpFile = false;
@@ -146,6 +177,9 @@ public class FragmentInstanceContext extends QueryContext {
   // session info
   private SessionInfo sessionInfo;
 
+  // Outer query deadline (startTime + timeout) for IoTDBLocal UDF
+  private long outerQueryDeadlineMs = -1L;
+
   private final Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap;
   private DataNodeQueryContext dataNodeQueryContext;
 
@@ -153,22 +187,30 @@ public class FragmentInstanceContext extends QueryContext {
   // it will not be released until it's fetched.
   private TFetchFragmentInstanceStatisticsResp fragmentInstanceStatistics = null;
 
-  private long initQueryDataSourceCost = 0;
-  private int initQueryDataSourceRetryCount = 0;
+  private final AtomicLong initQueryDataSourceCost = new AtomicLong(0);
+  private final AtomicInteger initQueryDataSourceRetryCount = new AtomicInteger(0);
   private final AtomicLong readyQueueTime = new AtomicLong(0);
   private final AtomicLong blockQueueTime = new AtomicLong(0);
-  private long unclosedSeqFileNum = 0;
-  private long unclosedUnseqFileNum = 0;
-  private long closedSeqFileNum = 0;
-  private long closedUnseqFileNum = 0;
+  private final AtomicLong scanAggregationFromRawDataCost = new AtomicLong(0);
+  private final AtomicLong scanAggregationFromStatisticsCost = new AtomicLong(0);
+  private final AtomicLong aggregationOperatorFromRawDataCost = new AtomicLong(0);
+  private final AtomicLong unclosedSeqFileNum = new AtomicLong(0);
+  private final AtomicLong unclosedUnseqFileNum = new AtomicLong(0);
+  private final AtomicLong closedSeqFileNum = new AtomicLong(0);
+  private final AtomicLong closedUnseqFileNum = new AtomicLong(0);
+  private boolean highestPriority = false;
+
+  // accessed value columns on each referenced AlignedTVList.
+  private Map<TVList, Set<Integer>> alignedTVListColumnAccessMap = new ConcurrentHashMap<>();
 
   public static FragmentInstanceContext createFragmentInstanceContext(
       FragmentInstanceId id,
       FragmentInstanceStateMachine stateMachine,
       SessionInfo sessionInfo,
-      boolean debug) {
+      boolean debug,
+      boolean isVerbose) {
     FragmentInstanceContext instanceContext =
-        new FragmentInstanceContext(id, stateMachine, sessionInfo, debug);
+        new FragmentInstanceContext(id, stateMachine, sessionInfo, debug, isVerbose);
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -181,9 +223,11 @@ public class FragmentInstanceContext extends QueryContext {
       SessionInfo sessionInfo,
       IDataRegionForQuery dataRegion,
       Filter timeFilter,
-      boolean debug) {
+      boolean debug,
+      boolean isVerbose) {
     FragmentInstanceContext instanceContext =
-        new FragmentInstanceContext(id, stateMachine, sessionInfo, dataRegion, timeFilter, debug);
+        new FragmentInstanceContext(
+            id, stateMachine, sessionInfo, dataRegion, timeFilter, debug, isVerbose);
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -196,7 +240,9 @@ public class FragmentInstanceContext extends QueryContext {
       IDataRegionForQuery dataRegion,
       TimePredicate globalTimePredicate,
       Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap,
-      boolean debug) {
+      long outerQueryDeadlineMs,
+      boolean debug,
+      boolean isVerbose) {
     FragmentInstanceContext instanceContext =
         new FragmentInstanceContext(
             id,
@@ -205,18 +251,68 @@ public class FragmentInstanceContext extends QueryContext {
             dataRegion,
             globalTimePredicate,
             dataNodeQueryContextMap,
-            debug);
+            outerQueryDeadlineMs,
+            debug,
+            isVerbose);
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
   }
 
   public static FragmentInstanceContext createFragmentInstanceContextForCompaction(long queryId) {
-    return new FragmentInstanceContext(queryId, null, null, null, false);
+    return new FragmentInstanceContext(queryId, null, null, null, false, false);
   }
 
   public void setQueryDataSourceType(QueryDataSourceType queryDataSourceType) {
     this.queryDataSourceType = queryDataSourceType;
+  }
+
+  @Override
+  public boolean isExternalTsFileScan() {
+    return queryDataSourceType == QueryDataSourceType.EXTERNAL_TSFILE_SCAN;
+  }
+
+  /**
+   * Record columns of the AlignedTVList accessed by the query. This method is called from
+   * prepareTvListMapForQuery with tvList.lockQueryList() held. Even though the HashSet inside
+   * alignedTVListColumnAccessMap is not thread-safe, the calling pattern guarantees thread safety
+   * without requiring additional synchronization.
+   *
+   * @param tvList the TVList being accessed
+   * @param columnIndexList list of column indices being accessed
+   */
+  public void putAccessedColumns(TVList tvList, List<Integer> columnIndexList) {
+    Set<Integer> accessedColumns =
+        alignedTVListColumnAccessMap.computeIfAbsent(tvList, ignored -> new HashSet<>());
+    columnIndexList.stream()
+        .filter(Objects::nonNull)
+        .forEach(
+            index -> {
+              if (index >= 0) {
+                accessedColumns.add(index);
+              }
+            });
+  }
+
+  /** Remove column-access metadata for an unpublished TVList when clone preparation fails. */
+  public void removeAccessedColumns(TVList tvList) {
+    alignedTVListColumnAccessMap.remove(tvList);
+  }
+
+  /**
+   * Get columns of the AlignedTVList accessed by the query. This method is called from
+   * prepareTvListMapForQuery with tvList.lockQueryList() held, ensuring that no other thread can
+   * change accessed columns for the same TVList concurrently.
+   *
+   * @param tvList the TVList being accessed
+   * @return set of column indices being accessed, or null if the TVList is not tracked by this
+   *     query. An empty (non-null) set means the TVList is tracked but only the time column is
+   *     accessed (e.g. a time-only scan), which is different from being untracked.
+   */
+  @Override
+  public Set<Integer> getAccessedAlignedColumns(TVList tvList) {
+    Set<Integer> accessedColumns = alignedTVListColumnAccessMap.get(tvList);
+    return accessedColumns == null ? null : Collections.unmodifiableSet(accessedColumns);
   }
 
   @TestOnly
@@ -227,6 +323,7 @@ public class FragmentInstanceContext extends QueryContext {
             id,
             stateMachine,
             new SessionInfo(1, new UserEntity(666, "test", "127.0.0.1"), ZoneId.systemDefault()),
+            false,
             false);
     instanceContext.initialize();
     instanceContext.start();
@@ -244,6 +341,7 @@ public class FragmentInstanceContext extends QueryContext {
             stateMachine,
             new SessionInfo(1, new UserEntity(666, "test", "127.0.0.1"), ZoneId.systemDefault()),
             memoryReservationManager,
+            false,
             false);
     instanceContext.initialize();
     instanceContext.start();
@@ -257,12 +355,15 @@ public class FragmentInstanceContext extends QueryContext {
       IDataRegionForQuery dataRegion,
       TimePredicate globalTimePredicate,
       Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap,
-      boolean debug) {
-    super(debug);
+      long outerQueryDeadlineMs,
+      boolean debug,
+      boolean verbose) {
+    super(debug, verbose);
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
     this.sessionInfo = sessionInfo;
+    this.outerQueryDeadlineMs = outerQueryDeadlineMs;
     this.dataRegion = dataRegion;
     this.globalTimeFilter =
         globalTimePredicate == null
@@ -279,8 +380,9 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceId id,
       FragmentInstanceStateMachine stateMachine,
       SessionInfo sessionInfo,
-      boolean debug) {
-    super(debug);
+      boolean debug,
+      boolean verbose) {
+    super(debug, verbose);
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
@@ -296,8 +398,9 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceStateMachine stateMachine,
       SessionInfo sessionInfo,
       MemoryReservationManager memoryReservationManager,
-      boolean debug) {
-    super(debug);
+      boolean debug,
+      boolean verbose) {
+    super(debug, verbose);
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
@@ -313,8 +416,9 @@ public class FragmentInstanceContext extends QueryContext {
       SessionInfo sessionInfo,
       IDataRegionForQuery dataRegion,
       Filter globalTimeFilter,
-      boolean debug) {
-    super(debug);
+      boolean debug,
+      boolean verbose) {
+    super(debug, verbose);
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
@@ -337,8 +441,9 @@ public class FragmentInstanceContext extends QueryContext {
       MemoryReservationManager memoryReservationManager,
       Filter timeFilter,
       DataRegion dataRegion,
-      boolean debug) {
-    super(debug);
+      boolean debug,
+      boolean verbose) {
+    super(debug, verbose);
     this.queryId = queryId;
     this.id = null;
     this.stateMachine = null;
@@ -360,41 +465,58 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   @Override
-  protected PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> getAllModifications(
-      TsFileResource resource) {
-    if (isSingleSourcePath() || memoryReservationManager == null) {
-      return loadAllModificationsFromDisk(resource);
+  public List<ModEntry> getPathModifications(
+      TsFileResource tsFileResource, IDeviceID deviceID, String measurement) {
+    if (!checkIfModificationExists(tsFileResource)) {
+      return Collections.emptyList();
     }
+    if (memoryReservationManager == null) {
+      return super.getPathModifications(tsFileResource, deviceID, measurement);
+    }
+    try (QueryModificationLoader modificationLoader =
+        getQueryModificationLoader(
+            tsFileResource,
+            modification -> modification.affects(deviceID) && modification.affects(measurement),
+            mods -> getPathModifications(mods, deviceID, measurement))) {
+      return modificationLoader.getPathModifications();
+    } catch (IllegalPathException e) {
+      throw new IllegalStateException(e);
+    }
+  }
 
-    AtomicReference<PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
-        atomicReference = new AtomicReference<>();
-    PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> cachedResult =
-        fileModCache.computeIfAbsent(
-            resource.getTsFileID(),
-            k -> {
-              PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> allMods =
-                  loadAllModificationsFromDisk(resource);
-              atomicReference.set(allMods);
-              if (cachedModEntriesSize.get() >= CONFIG.getModsCacheSizeLimitPerFI()) {
-                return null;
-              }
-              long memCost =
-                  RamUsageEstimator.sizeOfObject(allMods)
-                      + RamUsageEstimator.SHALLOW_SIZE_OF_CONCURRENT_HASHMAP_ENTRY;
-              long alreadyUsedMemoryForCachedModEntries = cachedModEntriesSize.get();
-              while (alreadyUsedMemoryForCachedModEntries + memCost
-                  < CONFIG.getModsCacheSizeLimitPerFI()) {
-                if (cachedModEntriesSize.compareAndSet(
-                    alreadyUsedMemoryForCachedModEntries,
-                    alreadyUsedMemoryForCachedModEntries + memCost)) {
-                  memoryReservationManager.reserveMemoryCumulatively(memCost);
-                  return allMods;
-                }
-                alreadyUsedMemoryForCachedModEntries = cachedModEntriesSize.get();
-              }
-              return null;
-            });
-    return cachedResult == null ? atomicReference.get() : cachedResult;
+  @Override
+  public List<ModEntry> getPathModifications(TsFileResource tsFileResource, IDeviceID deviceID)
+      throws IllegalPathException {
+    if (!checkIfModificationExists(tsFileResource)) {
+      return Collections.emptyList();
+    }
+    if (memoryReservationManager == null) {
+      return super.getPathModifications(tsFileResource, deviceID);
+    }
+    try (QueryModificationLoader modificationLoader =
+        getQueryModificationLoader(
+            tsFileResource,
+            modification ->
+                isTableModel() ? modification.affects(deviceID) : modification.affectsAll(deviceID),
+            mods -> getPathModifications(mods, deviceID))) {
+      return modificationLoader.getPathModifications();
+    }
+  }
+
+  private QueryModificationLoader getQueryModificationLoader(
+      TsFileResource tsFileResource,
+      Predicate<ModEntry> fallbackModificationMatcher,
+      QueryModificationLoader.ModsTreeMatcher modsTreeMatcher) {
+    return new QueryModificationLoader(
+        this,
+        tsFileResource,
+        memoryReservationManager,
+        CONFIG.getModsCacheSizeLimitPerFI(),
+        MODS_MEMORY_ESTIMATE_READ_INTERVAL,
+        fileModCache,
+        cachedModEntriesSize,
+        fallbackModificationMatcher,
+        modsTreeMatcher);
   }
 
   // the state change listener is added here in a separate initialize() method
@@ -432,6 +554,19 @@ public class FragmentInstanceContext extends QueryContext {
 
   public FragmentInstanceId getId() {
     return id;
+  }
+
+  public void initializeExchangeMemoryBudget(long inputMaxBytes, long outputMaxBytes) {
+    this.inputMaxBytes = inputMaxBytes;
+    this.outputMaxBytes = outputMaxBytes;
+  }
+
+  public long getInputMaxBytes() {
+    return inputMaxBytes;
+  }
+
+  public long getOutputMaxBytes() {
+    return outputMaxBytes;
   }
 
   public void failed(Throwable cause) {
@@ -510,7 +645,7 @@ public class FragmentInstanceContext extends QueryContext {
         status = new TSStatus(DATE_OUT_OF_RANGE.getStatusCode());
         status.setMessage(failure.getMessage());
       } else {
-        LOGGER.warn("[Unknown exception]: ", failure);
+        LOGGER.warn(DataNodeQueryMessages.UNKNOWN_EXCEPTION, failure);
       }
     }
 
@@ -527,6 +662,10 @@ public class FragmentInstanceContext extends QueryContext {
 
   public SessionInfo getSessionInfo() {
     return sessionInfo;
+  }
+
+  public long getOuterQueryDeadlineMs() {
+    return outerQueryDeadlineMs;
   }
 
   public Optional<Throwable> getFailureCause() {
@@ -594,6 +733,54 @@ public class FragmentInstanceContext extends QueryContext {
     this.devicePathsToContext = devicePathsToContext;
   }
 
+  public void addExternalTsFileQueryResource(
+      ExternalTsFileQueryResource externalTsFileQueryResource) {
+    if (this.externalTsFileQueryResource != null) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXTERNAL_TSFILE_QUERY_RESOURCE_HAS_ALREADY_BEEN_SET);
+    }
+    this.externalTsFileQueryResource = externalTsFileQueryResource;
+  }
+
+  public boolean initExternalTsFileQueryDataSource(
+      ExternalTsFileQueryResource externalTsFileQueryResource) {
+    long startTime = System.nanoTime();
+    try {
+      if (externalTsFileQueryResource == null) {
+        this.sharedQueryDataSource = EMPTY_QUERY_DATA_SOURCE;
+      } else {
+        if (!externalTsFileQueryResourceRetained) {
+          externalTsFileQueryResource.retainFragmentInstanceUsage();
+          externalTsFileQueryResourceRetained = true;
+        }
+        this.sharedQueryDataSource = new ExternalTsFileQueryDataSource(externalTsFileQueryResource);
+        closedUnseqFileNum.addAndGet(externalTsFileQueryResource.getSharedTsFileResources().size());
+      }
+    } finally {
+      addInitQueryDataSourceCost(System.nanoTime() - startTime);
+    }
+    return true;
+  }
+
+  private void releaseExternalTsFileQueryResource() {
+    if (!externalTsFileQueryResourceRetained || externalTsFileQueryResource == null) {
+      externalTsFileQueryResource = null;
+      externalTsFileQueryResourceRetained = false;
+      return;
+    }
+    try {
+      // This FragmentInstance retained the resource during datasource initialization. Releasing the
+      // last runtime usage closes the shared resource and deletes its temporary run files.
+      externalTsFileQueryResource.closeByFragmentInstance();
+    } catch (Exception e) {
+      LOGGER.warn(
+          DataNodeQueryMessages.MESSAGE_FAILED_TO_RELEASE_EXTERNAL_TSFILE_QUERY_RESOURCE_712EE978,
+          e);
+    }
+    externalTsFileQueryResource = null;
+    externalTsFileQueryResourceRetained = false;
+  }
+
   public MemoryReservationManager getMemoryReservationContext() {
     return memoryReservationManager;
   }
@@ -603,76 +790,120 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public boolean initQueryDataSource(List<IFullPath> sourcePaths) throws QueryProcessException {
+    return initializeQueryDataSource(
+        sourcePaths,
+        deferredReleases -> {
+          sharedQueryDataSource = EMPTY_QUERY_DATA_SOURCE;
+          return true;
+        },
+        () -> false,
+        (dataSource, deferredReleases) -> {
+          sharedQueryDataSource = dataSource;
+          closedFilePaths = new HashSet<>();
+          unClosedFilePaths = new HashSet<>();
+          addUsedFilesForQuery(dataSource, closedFilePaths, unClosedFilePaths, deferredReleases);
+          return true;
+        });
+  }
+
+  public QueryDataSourceLease initBatchQueryDataSource(List<IFullPath> sourcePaths)
+      throws QueryProcessException {
+    return initializeQueryDataSource(
+        sourcePaths,
+        deferredReleases ->
+            createBatchQueryDataSourceLease(EMPTY_QUERY_DATA_SOURCE, deferredReleases),
+        () -> {
+          recordQueryDataSourceRetry();
+          return null;
+        },
+        this::createBatchQueryDataSourceLease);
+  }
+
+  private <T> T initializeQueryDataSource(
+      List<IFullPath> sourcePaths,
+      Function<DeferredFileReaderReleases, T> emptyResultSupplier,
+      Supplier<T> unfinishedResultSupplier,
+      BiFunction<QueryDataSource, DeferredFileReaderReleases, T> initializer)
+      throws QueryProcessException {
     long startTime = System.nanoTime();
-    if (sourcePaths == null || sourcePaths.isEmpty()) {
-      this.sharedQueryDataSource = EMPTY_QUERY_DATA_SOURCE;
-      return true;
-    }
-
-    IDeviceID singleDeviceId = null;
-    if (sourcePaths.size() == 1) {
-      singleDeviceId = sourcePaths.get(0).getDeviceId();
-    } else {
-      Set<IDeviceID> selectedDeviceIdSet = new HashSet<>();
-      for (IFullPath sourcePath : sourcePaths) {
-        if (sourcePath instanceof AlignedFullPath) {
-          singleDeviceId = null;
-          break;
-        } else {
-          singleDeviceId = sourcePath.getDeviceId();
-          selectedDeviceIdSet.add(singleDeviceId);
-          if (selectedDeviceIdSet.size() > 1) {
-            singleDeviceId = null;
-            break;
-          }
-        }
+    try (DeferredFileReaderReleases deferredReleases = new DeferredFileReaderReleases()) {
+      if (sourcePaths == null || sourcePaths.isEmpty()) {
+        return emptyResultSupplier.apply(deferredReleases);
       }
-    }
 
-    long waitForLockTime = CONFIG.getDriverTaskExecutionTimeSliceInMs();
-    long startAcquireLockTime = System.nanoTime();
-    if (dataRegion.tryReadLock(waitForLockTime)) {
+      IDeviceID singleDeviceId = findSingleDeviceId(sourcePaths);
+      long waitForLockTime = COMMON_CONFIG.getDriverTaskExecutionTimeSliceInMs();
+      long startAcquireLockTime = System.nanoTime();
+      if (!dataRegion.tryReadLock(waitForLockTime)) {
+        return unfinishedResultSupplier.get();
+      }
       try {
-        // minus already consumed time
+        // Subtract the time already spent acquiring the read lock from the remaining time slice.
         waitForLockTime -= (System.nanoTime() - startAcquireLockTime) / 1_000_000;
-
-        // no remaining time slice
         if (waitForLockTime <= 0) {
-          return false;
+          // There is no remaining time slice for querying the DataRegion.
+          return unfinishedResultSupplier.get();
         }
-
-        this.sharedQueryDataSource =
+        // When all selected series belong to the same device, the QueryDataSource can be
+        // filtered by the device's time index.
+        QueryDataSource dataSource =
             dataRegion.query(
                 sourcePaths,
-                // when all the selected series are under the same device, the QueryDataSource will
-                // be
-                // filtered according to timeIndex
                 singleDeviceId,
                 this,
-                // time filter may be stateful, so we need to copy it
+                // The time filter may be stateful, so each QueryDataSource gets its own copy.
                 globalTimeFilter != null ? globalTimeFilter.copy() : null,
                 timePartitions,
                 waitForLockTime);
-
-        // used files should be added before mergeLock is unlocked, or they may be deleted by
-        // running merge
-        if (sharedQueryDataSource != null) {
-          closedFilePaths = new HashSet<>();
-          unClosedFilePaths = new HashSet<>();
-          addUsedFilesForQuery((QueryDataSource) sharedQueryDataSource);
-          ((QueryDataSource) sharedQueryDataSource).setSingleDevice(singleDeviceId != null);
-          return true;
-        } else {
-          // failed to acquire lock within the specific time
-          return false;
+        if (dataSource == null) {
+          // The DataRegion could not be queried within the specified time slice.
+          return unfinishedResultSupplier.get();
         }
+        dataSource.setSingleDevice(singleDeviceId != null);
+        // The initializer retains referenced files while the DataRegion read lock is held;
+        // otherwise a concurrent merge may delete them after the lock is released.
+        return initializer.apply(dataSource, deferredReleases);
       } finally {
-        addInitQueryDataSourceCost(System.nanoTime() - startTime);
         dataRegion.readUnlock();
       }
-    } else {
+    } finally {
       addInitQueryDataSourceCost(System.nanoTime() - startTime);
-      return false;
+    }
+  }
+
+  private IDeviceID findSingleDeviceId(List<IFullPath> sourcePaths) {
+    if (sourcePaths.size() == 1) {
+      return sourcePaths.get(0).getDeviceId();
+    }
+    Set<IDeviceID> selectedDeviceIdSet = new HashSet<>();
+    for (IFullPath sourcePath : sourcePaths) {
+      if (sourcePath instanceof AlignedFullPath) {
+        return null;
+      }
+      selectedDeviceIdSet.add(sourcePath.getDeviceId());
+      if (selectedDeviceIdSet.size() > 1) {
+        return null;
+      }
+    }
+    return selectedDeviceIdSet.iterator().next();
+  }
+
+  private QueryDataSourceLease createBatchQueryDataSourceLease(
+      QueryDataSource dataSource, DeferredFileReaderReleases deferredReleases) {
+    Set<TsFileResource> closedResources = new HashSet<>();
+    Set<TsFileResource> unclosedResources = new HashSet<>();
+    try {
+      addUsedFilesForQuery(dataSource, closedResources, unclosedResources, deferredReleases);
+      QueryDataSourceLease lease =
+          new QueryDataSourceLease(dataSource, closedResources, unclosedResources, this);
+      batchQueryDataSourceLeases.add(lease);
+      return lease;
+    } catch (RuntimeException | Error e) {
+      // No lease owns a partially initialized batch. Release its retained files after region
+      // unlock.
+      deferredReleases.addAll(closedResources, true);
+      deferredReleases.addAll(unclosedResources, false);
+      throw e;
     }
   }
 
@@ -682,8 +913,11 @@ public class FragmentInstanceContext extends QueryContext {
       return true;
     }
 
-    long waitForLockTime = CONFIG.getDriverTaskExecutionTimeSliceInMs();
-    if (dataRegion.tryReadLock(waitForLockTime)) {
+    try (DeferredFileReaderReleases deferredReleases = new DeferredFileReaderReleases()) {
+      long waitForLockTime = COMMON_CONFIG.getDriverTaskExecutionTimeSliceInMs();
+      if (!dataRegion.tryReadLock(waitForLockTime)) {
+        return false;
+      }
       try {
         // minus already consumed time
         waitForLockTime -= (System.nanoTime() - startTime) / 1_000_000;
@@ -703,19 +937,18 @@ public class FragmentInstanceContext extends QueryContext {
         if (sharedQueryDataSource != null) {
           closedFilePaths = new HashSet<>();
           unClosedFilePaths = new HashSet<>();
-          addUsedFilesForRegionQuery((QueryDataSourceForRegionScan) sharedQueryDataSource);
+          addUsedFilesForRegionQuery(
+              (QueryDataSourceForRegionScan) sharedQueryDataSource, deferredReleases);
           return true;
         } else {
           // failed to acquire lock within the specific time
           return false;
         }
       } finally {
-        addInitQueryDataSourceCost(System.nanoTime() - startTime);
         dataRegion.readUnlock();
       }
-    } else {
+    } finally {
       addInitQueryDataSourceCost(System.nanoTime() - startTime);
-      return false;
     }
   }
 
@@ -724,16 +957,20 @@ public class FragmentInstanceContext extends QueryContext {
     if (pathList == null) {
       return true;
     }
-    long waitForLockTime = CONFIG.getDriverTaskExecutionTimeSliceInMs();
-    if (dataRegion.tryReadLock(waitForLockTime)) {
-      // minus already consumed time
-      waitForLockTime -= (System.nanoTime() - startTime) / 1_000_000;
 
-      // no remaining time slice
-      if (waitForLockTime <= 0) {
+    try (DeferredFileReaderReleases deferredReleases = new DeferredFileReaderReleases()) {
+      long waitForLockTime = COMMON_CONFIG.getDriverTaskExecutionTimeSliceInMs();
+      if (!dataRegion.tryReadLock(waitForLockTime)) {
         return false;
       }
       try {
+        // minus already consumed time
+        waitForLockTime -= (System.nanoTime() - startTime) / 1_000_000;
+
+        // no remaining time slice
+        if (waitForLockTime <= 0) {
+          return false;
+        }
         this.sharedQueryDataSource =
             dataRegion.queryForSeriesRegionScan(
                 pathList,
@@ -745,19 +982,18 @@ public class FragmentInstanceContext extends QueryContext {
         if (sharedQueryDataSource != null) {
           closedFilePaths = new HashSet<>();
           unClosedFilePaths = new HashSet<>();
-          addUsedFilesForRegionQuery((QueryDataSourceForRegionScan) sharedQueryDataSource);
+          addUsedFilesForRegionQuery(
+              (QueryDataSourceForRegionScan) sharedQueryDataSource, deferredReleases);
           return true;
         } else {
           // failed to acquire lock within the specific time
           return false;
         }
       } finally {
-        addInitQueryDataSourceCost(System.nanoTime() - startTime);
         dataRegion.readUnlock();
       }
-    } else {
+    } finally {
       addInitQueryDataSourceCost(System.nanoTime() - startTime);
-      return false;
     }
   }
 
@@ -786,36 +1022,110 @@ public class FragmentInstanceContext extends QueryContext {
             return getUnfinishedQueryDataSource();
           }
           break;
+        case EXTERNAL_TSFILE_SCAN:
+          if (!initExternalTsFileQueryDataSource(externalTsFileQueryResource)) {
+            return getUnfinishedQueryDataSource();
+          }
+          break;
         default:
           throw new QueryProcessException(
-              "Unsupported query data source type: " + queryDataSourceType);
+              String.format(
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_UNSUPPORTED_QUERY_DATA_SOURCE_TYPE_S_7424E63F,
+                  queryDataSourceType));
       }
     }
     return sharedQueryDataSource;
   }
 
   private IQueryDataSource getUnfinishedQueryDataSource() {
-    increaseInitQueryDataSourceRetryCount();
-    // record warn log every 10 times retry
-    if (initQueryDataSourceRetryCount % 10 == 0) {
-      LOGGER.warn(
-          "Failed to acquire the read lock of DataRegion-{} for {} times",
-          dataRegion == null ? "UNKNOWN" : dataRegion.getDataRegionIdString(),
-          initQueryDataSourceRetryCount);
-    }
+    recordQueryDataSourceRetry();
     return UNFINISHED_QUERY_DATA_SOURCE;
   }
 
+  private void recordQueryDataSourceRetry() {
+    int retryCount = increaseInitQueryDataSourceRetryCount();
+    // record warn log every 10 times retry
+    if (retryCount % 10 == 0) {
+      LOGGER.warn(
+          DataNodeQueryMessages.FAILED_TO_ACQUIRE_THE_READ_LOCK_OF_DATAREGION_ARG_FOR_ARG_TIMES,
+          dataRegion == null ? "UNKNOWN" : dataRegion.getDataRegionIdString(),
+          retryCount);
+    }
+  }
+
+  /** Owns pending file references until they can be released outside region locks. */
+  static final class DeferredFileReaderReleases implements AutoCloseable {
+    private final List<Pair<TsFileResource, Boolean>> references = new ArrayList<>();
+
+    private void add(TsFileResource resource, boolean isClosed, Set<TsFileResource> owners) {
+      if (!owners.contains(resource)) {
+        return;
+      }
+      // Allocate the pending record before removing its old owner, including on allocation failure.
+      references.add(new Pair<>(resource, isClosed));
+      if (!owners.remove(resource)) {
+        references.remove(references.size() - 1);
+      }
+    }
+
+    void addAll(Set<TsFileResource> owners, boolean isClosed) {
+      Iterator<TsFileResource> iterator = owners.iterator();
+      while (iterator.hasNext()) {
+        references.add(new Pair<>(iterator.next(), isClosed));
+        iterator.remove();
+      }
+    }
+
+    @Override
+    public void close() {
+      Throwable failure = null;
+      try {
+        for (Pair<TsFileResource, Boolean> reference : references) {
+          try {
+            FileReaderManager.getInstance()
+                .decreaseFileReaderReference(reference.left, reference.right);
+          } catch (RuntimeException | Error e) {
+            if (failure == null) {
+              failure = e;
+            } else if (failure != e) {
+              failure.addSuppressed(e);
+            }
+          }
+        }
+      } finally {
+        references.clear();
+      }
+      if (failure instanceof Error) {
+        throw (Error) failure;
+      }
+      if (failure != null) {
+        throw (RuntimeException) failure;
+      }
+    }
+  }
+
   /** Lock and check if tsFileResource is deleted */
-  private boolean processTsFileResource(TsFileResource tsFileResource, boolean isClosed) {
-    addFilePathToMap(tsFileResource, isClosed);
+  private boolean processTsFileResource(
+      TsFileResource tsFileResource,
+      boolean isClosed,
+      DeferredFileReaderReleases deferredReleases) {
+    return processTsFileResource(
+        tsFileResource, isClosed, closedFilePaths, unClosedFilePaths, deferredReleases);
+  }
+
+  private boolean processTsFileResource(
+      TsFileResource tsFileResource,
+      boolean isClosed,
+      Set<TsFileResource> closedResources,
+      Set<TsFileResource> unclosedResources,
+      DeferredFileReaderReleases deferredReleases) {
+    addFilePathToMap(tsFileResource, isClosed, closedResources, unclosedResources);
     // this file may be deleted just before we lock it
     if (tsFileResource.isDeleted()) {
-      Set<TsFileResource> pathSet = isClosed ? closedFilePaths : unClosedFilePaths;
-      // This resource may be removed by other threads of this query.
-      if (pathSet.remove(tsFileResource)) {
-        FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource, isClosed);
-      }
+      Set<TsFileResource> pathSet = isClosed ? closedResources : unclosedResources;
+      // Keep the file reference until region unlock; the last release may wait for reader I/O.
+      deferredReleases.add(tsFileResource, isClosed, pathSet);
       return true;
     } else {
       return false;
@@ -823,47 +1133,70 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   /** Add the unique file paths to closeddFilePathsMap and unClosedFilePathsMap. */
-  private void addUsedFilesForQuery(QueryDataSource dataSource) {
+  private void addUsedFilesForQuery(
+      QueryDataSource dataSource,
+      Set<TsFileResource> closedResources,
+      Set<TsFileResource> unclosedResources,
+      DeferredFileReaderReleases deferredReleases) {
 
     // sequence data
     dataSource
         .getSeqResources()
         .removeIf(
-            tsFileResource -> processTsFileResource(tsFileResource, tsFileResource.isClosed()));
+            tsFileResource ->
+                processTsFileResource(
+                    tsFileResource,
+                    tsFileResource.isClosed(),
+                    closedResources,
+                    unclosedResources,
+                    deferredReleases));
 
     // Record statistics of seqFiles
-    unclosedSeqFileNum = unClosedFilePaths.size();
-    closedSeqFileNum = closedFilePaths.size();
+    int unclosedSeqFileCount = unclosedResources.size();
+    int closedSeqFileCount = closedResources.size();
+    unclosedSeqFileNum.addAndGet(unclosedSeqFileCount);
+    closedSeqFileNum.addAndGet(closedSeqFileCount);
 
     // unsequence data
     dataSource
         .getUnseqResources()
         .removeIf(
-            tsFileResource -> processTsFileResource(tsFileResource, tsFileResource.isClosed()));
+            tsFileResource ->
+                processTsFileResource(
+                    tsFileResource,
+                    tsFileResource.isClosed(),
+                    closedResources,
+                    unclosedResources,
+                    deferredReleases));
 
     // Record statistics of files of unseqFiles
-    unclosedUnseqFileNum = unClosedFilePaths.size() - unclosedSeqFileNum;
-    closedUnseqFileNum = closedFilePaths.size() - closedSeqFileNum;
+    unclosedUnseqFileNum.addAndGet(unclosedResources.size() - unclosedSeqFileCount);
+    closedUnseqFileNum.addAndGet(closedResources.size() - closedSeqFileCount);
   }
 
-  private void addUsedFilesForRegionQuery(QueryDataSourceForRegionScan dataSource) {
+  private void addUsedFilesForRegionQuery(
+      QueryDataSourceForRegionScan dataSource, DeferredFileReaderReleases deferredReleases) {
     dataSource
         .getSeqFileScanHandles()
         .removeIf(
             fileScanHandle ->
-                processTsFileResource(fileScanHandle.getTsResource(), fileScanHandle.isClosed()));
+                processTsFileResource(
+                    fileScanHandle.getTsResource(), fileScanHandle.isClosed(), deferredReleases));
 
-    unclosedSeqFileNum = unClosedFilePaths.size();
-    closedSeqFileNum = closedFilePaths.size();
+    int unclosedSeqFileCount = unClosedFilePaths.size();
+    int closedSeqFileCount = closedFilePaths.size();
+    unclosedSeqFileNum.addAndGet(unclosedSeqFileCount);
+    closedSeqFileNum.addAndGet(closedSeqFileCount);
 
     dataSource
         .getUnseqFileScanHandles()
         .removeIf(
             fileScanHandle ->
-                processTsFileResource(fileScanHandle.getTsResource(), fileScanHandle.isClosed()));
+                processTsFileResource(
+                    fileScanHandle.getTsResource(), fileScanHandle.isClosed(), deferredReleases));
 
-    unclosedUnseqFileNum = unClosedFilePaths.size() - unclosedSeqFileNum;
-    closedUnseqFileNum = closedFilePaths.size() - closedSeqFileNum;
+    unclosedUnseqFileNum.addAndGet(unClosedFilePaths.size() - unclosedSeqFileCount);
+    closedUnseqFileNum.addAndGet(closedFilePaths.size() - closedSeqFileCount);
   }
 
   /**
@@ -873,11 +1206,35 @@ public class FragmentInstanceContext extends QueryContext {
    * not return null.
    */
   private void addFilePathToMap(TsFileResource tsFile, boolean isClosed) {
-    Set<TsFileResource> pathSet = isClosed ? closedFilePaths : unClosedFilePaths;
-    if (!pathSet.contains(tsFile)) {
-      pathSet.add(tsFile);
-      FileReaderManager.getInstance().increaseFileReaderReference(tsFile, isClosed);
+    addFilePathToMap(tsFile, isClosed, closedFilePaths, unClosedFilePaths);
+  }
+
+  static void addFilePathToMap(
+      TsFileResource tsFile,
+      boolean isClosed,
+      Set<TsFileResource> closedResources,
+      Set<TsFileResource> unclosedResources) {
+    Set<TsFileResource> pathSet = isClosed ? closedResources : unclosedResources;
+    if (pathSet.add(tsFile)) {
+      try {
+        FileReaderManager.getInstance().increaseFileReaderReference(tsFile, isClosed);
+      } catch (RuntimeException | Error e) {
+        // Registration already rolled back its read lock. Do not release it a second time later.
+        pathSet.remove(tsFile);
+        throw e;
+      }
     }
+  }
+
+  void releaseBatchQueryDataSource(
+      QueryDataSourceLease lease,
+      Set<TsFileResource> closedResources,
+      Set<TsFileResource> unclosedResources) {
+    closedResources.forEach(
+        resource -> FileReaderManager.getInstance().decreaseFileReaderReference(resource, true));
+    unclosedResources.forEach(
+        resource -> FileReaderManager.getInstance().decreaseFileReaderReference(resource, false));
+    batchQueryDataSourceLeases.remove(lease);
   }
 
   public void initializeNumOfDrivers(int numOfDrivers) {
@@ -899,12 +1256,14 @@ public class FragmentInstanceContext extends QueryContext {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         LOGGER.warn(
-            "Interrupted when await on allDriversClosed, FragmentInstance Id is {}", this.getId());
+            DataNodeQueryMessages
+                .INTERRUPTED_WHEN_AWAIT_ON_ALLDRIVERSCLOSED_FRAGMENTINSTANCE_ID_IS_ARG,
+            this.getId());
       }
     }
     long duration = System.nanoTime() - startTime;
     if (duration >= LONG_WAIT_DURATION) {
-      LOGGER.warn("Wait {}ms for all Drivers closed", duration / 1_000_000);
+      LOGGER.warn(DataNodeQueryMessages.WAIT_MS_FOR_ALL_DRIVERS_CLOSED, duration / 1_000_000);
     }
     releaseResource();
   }
@@ -917,22 +1276,24 @@ public class FragmentInstanceContext extends QueryContext {
    */
   private void releaseTVListOwnedByQuery() {
     for (TVList tvList : tvListSet) {
-      long tvListRamSize = tvList.calculateRamSize();
       tvList.lockQueryList();
       Set<QueryContext> queryContextSet = tvList.getQueryContextSet();
       try {
         queryContextSet.remove(this);
         if (tvList.getOwnerQuery() == this) {
+          long tvListRamSize = tvList.calculateRamSize().getRamSize();
           if (tvList.getReservedMemoryBytes() != tvListRamSize) {
             LOGGER.warn(
-                "Release TVList owned by query: allocate size {}, release size {}",
+                DataNodeQueryMessages
+                    .RELEASE_TVLIST_OWNED_BY_QUERY_ALLOCATE_SIZE_ARG_RELEASE_SIZE_ARG,
                 tvList.getReservedMemoryBytes(),
                 tvListRamSize);
           }
           if (queryContextSet.isEmpty()) {
             if (LOGGER.isDebugEnabled()) {
               LOGGER.debug(
-                  "TVList {} is released by the query, FragmentInstance Id is {}",
+                  DataNodeQueryMessages
+                      .TVLIST_ARG_IS_RELEASED_BY_THE_QUERY_FRAGMENTINSTANCE_ID_IS_ARG,
                   tvList,
                   this.getId());
             }
@@ -946,13 +1307,29 @@ public class FragmentInstanceContext extends QueryContext {
                 memoryReservationManager.releaseMemoryVirtually(tvList.getReservedMemoryBytes());
             FragmentInstanceContext queryContext =
                 (FragmentInstanceContext) queryContextSet.iterator().next();
-            queryContext
-                .getMemoryReservationContext()
-                .reserveMemoryVirtually(releasedBytes.left, releasedBytes.right);
+            try {
+              queryContext
+                  .getMemoryReservationContext()
+                  .reserveMemoryVirtually(releasedBytes.left, releasedBytes.right);
+            } catch (MemoryNotEnoughException ex) {
+              LOGGER.warn(
+                  DataNodeQueryMessages
+                      .MEMORYNOTENOUGHEXCEPTION_WHEN_TRANSFERRING_TVLIST_OWNERSHIP_FROM_QUERY_ARG_TO_ANOTHER,
+                  this.getId(),
+                  queryContext.getId());
+            } catch (RuntimeException ex) {
+              LOGGER.warn(
+                  DataNodeQueryMessages
+                      .UNEXPECTED_EXCEPTION_WHEN_TRANSFERRING_TVLIST_OWNERSHIP_FROM_QUERY_ARG_TO_ANOTHER_QUERY,
+                  this.getId(),
+                  queryContext.getId(),
+                  ex);
+            }
 
             if (LOGGER.isDebugEnabled()) {
               LOGGER.debug(
-                  "TVList {} is now owned by another query, FragmentInstance Id is {}",
+                  DataNodeQueryMessages
+                      .TVLIST_ARG_IS_NOW_OWNED_BY_ANOTHER_QUERY_FRAGMENTINSTANCE_ID_IS_ARG,
                   tvList,
                   queryContext.getId());
             }
@@ -970,6 +1347,7 @@ public class FragmentInstanceContext extends QueryContext {
    * be decreased.
    */
   public synchronized void releaseResource() {
+    batchQueryDataSourceLeases.forEach(QueryDataSourceLease::close);
     // For schema related query FI, closedFilePaths and unClosedFilePaths will be null
     if (closedFilePaths != null) {
       for (TsFileResource tsFile : closedFilePaths) {
@@ -985,8 +1363,11 @@ public class FragmentInstanceContext extends QueryContext {
       unClosedFilePaths = null;
     }
 
+    releaseExternalTsFileQueryResource();
+
     // release TVList/AlignedTVList owned by current query
     releaseTVListOwnedByQuery();
+    alignedTVListColumnAccessMap = null;
 
     fileModCache = null;
     tables = null;
@@ -1002,6 +1383,8 @@ public class FragmentInstanceContext extends QueryContext {
         .recordTaskQueueTime(READY_QUEUED_TIME, readyQueueTime.get());
 
     QueryRelatedResourceMetricSet.getInstance().updateFragmentInstanceTime(durationTime);
+
+    recordAggregationCostToMetric();
 
     QueryResourceMetricSet.getInstance()
         .recordInitQueryResourceRetryCount(getInitQueryDataSourceRetryCount());
@@ -1087,6 +1470,9 @@ public class FragmentInstanceContext extends QueryContext {
 
     SeriesScanCostMetricSet.getInstance()
         .updatePageReaderMemoryUsage(getQueryStatistics().getPageReaderMaxUsedMemorySize().get());
+
+    QueryExecutionMetricSet.getInstance()
+        .recordExecutionCost(QUERY_RESOURCE_INIT, getInitQueryDataSourceCost());
   }
 
   private void releaseDataNodeQueryContext() {
@@ -1127,19 +1513,19 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public void addInitQueryDataSourceCost(long initQueryDataSourceCost) {
-    this.initQueryDataSourceCost += initQueryDataSourceCost;
+    this.initQueryDataSourceCost.addAndGet(initQueryDataSourceCost);
   }
 
   public long getInitQueryDataSourceCost() {
-    return initQueryDataSourceCost;
+    return initQueryDataSourceCost.get();
   }
 
-  public void increaseInitQueryDataSourceRetryCount() {
-    this.initQueryDataSourceRetryCount++;
+  public int increaseInitQueryDataSourceRetryCount() {
+    return initQueryDataSourceRetryCount.incrementAndGet();
   }
 
   public int getInitQueryDataSourceRetryCount() {
-    return initQueryDataSourceRetryCount;
+    return initQueryDataSourceRetryCount.get();
   }
 
   public void addReadyQueuedTime(long time) {
@@ -1148,6 +1534,49 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void addBlockQueuedTime(long time) {
     blockQueueTime.addAndGet(time);
+  }
+
+  public void recordScanAggregationFromRawDataCost(long costTimeInNanos) {
+    addCost(scanAggregationFromRawDataCost, costTimeInNanos);
+  }
+
+  public void recordScanAggregationFromStatisticsCost(long costTimeInNanos) {
+    addCost(scanAggregationFromStatisticsCost, costTimeInNanos);
+  }
+
+  public void recordAggregationOperatorFromRawDataCost(long costTimeInNanos) {
+    addCost(aggregationOperatorFromRawDataCost, costTimeInNanos);
+  }
+
+  private void addCost(AtomicLong cost, long costTimeInNanos) {
+    if (costTimeInNanos > 0) {
+      cost.addAndGet(costTimeInNanos);
+    }
+  }
+
+  long drainScanAggregationFromRawDataCost() {
+    return scanAggregationFromRawDataCost.getAndSet(0);
+  }
+
+  long drainScanAggregationFromStatisticsCost() {
+    return scanAggregationFromStatisticsCost.getAndSet(0);
+  }
+
+  long drainAggregationOperatorFromRawDataCost() {
+    return aggregationOperatorFromRawDataCost.getAndSet(0);
+  }
+
+  void recordAggregationCostToMetric() {
+    recordAggregationCost(AGGREGATION_FROM_RAW_DATA, drainScanAggregationFromRawDataCost());
+    recordAggregationCost(AGGREGATION_FROM_STATISTICS, drainScanAggregationFromStatisticsCost());
+    recordAggregationCost(
+        AGGREGATION_OPERATOR_FROM_RAW_DATA, drainAggregationOperatorFromRawDataCost());
+  }
+
+  private void recordAggregationCost(String stage, long costTimeInNanos) {
+    if (costTimeInNanos > 0) {
+      QueryExecutionMetricSet.getInstance().recordExecutionCost(stage, costTimeInNanos);
+    }
   }
 
   public long getReadyQueueTime() {
@@ -1159,23 +1588,38 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public long getClosedSeqFileNum() {
-    return closedSeqFileNum;
+    return closedSeqFileNum.get();
   }
 
   public long getUnclosedUnseqFileNum() {
-    return unclosedUnseqFileNum;
+    return unclosedUnseqFileNum.get();
   }
 
   public long getClosedUnseqFileNum() {
-    return closedUnseqFileNum;
+    return closedUnseqFileNum.get();
   }
 
   public long getUnclosedSeqFileNum() {
-    return unclosedSeqFileNum;
+    return unclosedSeqFileNum.get();
   }
 
   public boolean ignoreNotExistsDevice() {
     return ignoreNotExistsDevice;
+  }
+
+  /**
+   * Same flag as {@link
+   * org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis#needSetHighestPriority()}.
+   */
+  public boolean isHighestPriority() {
+    return highestPriority;
+  }
+
+  public void setHighestPriority(boolean highestPriority) {
+    this.highestPriority = highestPriority;
+    if (memoryReservationManager != null) {
+      memoryReservationManager.setHighestPriority(highestPriority);
+    }
   }
 
   public boolean isSingleSourcePath() {

@@ -36,16 +36,15 @@ import org.apache.iotdb.common.rpc.thrift.TShowAppliedConfigurationsResp;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TShowTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
+import org.apache.iotdb.commons.client.AbstractConfigNodeClient;
+import org.apache.iotdb.commons.client.AbstractConfigNodeInfo;
 import org.apache.iotdb.commons.client.ClientManager;
-import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.request.TestConnectionUtils;
 import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
-import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
+import org.apache.iotdb.commons.i18n.ConfigMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterResp;
@@ -59,10 +58,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerRelationalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatReq;
@@ -83,6 +85,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLeaseRecoveryResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
@@ -117,7 +120,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetClusterIdResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetCommitProgressReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetCommitProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
@@ -125,6 +129,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
@@ -160,11 +166,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDropTableProceduresResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRepairDataPartitionTableProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
@@ -178,14 +186,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
-import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.pool2.PooledObject;
@@ -195,277 +202,57 @@ import org.apache.thrift.transport.TTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.net.ssl.SSLHandshakeException;
-
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Predicate;
 
-public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClient, AutoCloseable {
-
+public class ConfigNodeClient extends AbstractConfigNodeClient<ConfigNodeClient> {
   private static final Logger logger = LoggerFactory.getLogger(ConfigNodeClient.class);
 
-  private static final int RETRY_NUM = 15;
+  private static final String NODE_TYPE_NAME = "DataNode";
 
   public static final String MSG_RECONNECTION_FAIL =
-      "Fail to connect to any config node. Please check status of ConfigNodes or logs of connected DataNode";
+      String.format(ConfigMessages.MSG_RECONNECTION_FAIL, NODE_TYPE_NAME);
 
-  private static final String MSG_RECONNECTION_DATANODE_FAIL =
-      "Failed to connect to ConfigNode %s from DataNode %s when executing %s, Exception:";
-  private static final long RETRY_INTERVAL_MS = 1000L;
-  private static final long WAIT_CN_LEADER_ELECTION_INTERVAL_MS = 2000L;
+  private static final long REGISTER_LEADER_WARMING_UP_RETRY_TIMEOUT_MS = 60_000L;
 
   private static final String UNSUPPORTED_INVOCATION =
-      "This method is not supported for invocation by DataNode";
-
-  private final ThriftClientProperty property;
-
-  private IConfigNodeRPCService.Iface client;
-
-  private TTransport transport;
-
-  private TEndPoint configLeader;
-
-  private List<TEndPoint> configNodes;
-
-  private TEndPoint configNode;
-
-  private int cursor = 0;
-
-  private boolean isFirstInitiated;
+      DataNodeMiscMessages.UNSUPPORTED_INVOCATION_BY_DATANODE;
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
-  private final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
-
-  ClientManager<ConfigRegionId, ConfigNodeClient> clientManager;
-
-  ConfigRegionId configRegionId = ConfigNodeInfo.CONFIG_REGION_ID;
 
   public ConfigNodeClient(
       List<TEndPoint> configNodes,
       ThriftClientProperty property,
       ClientManager<ConfigRegionId, ConfigNodeClient> clientManager)
       throws TException {
-    this.configNodes = configNodes;
-    this.property = property;
-    this.clientManager = clientManager;
-    // Set the first configNode as configLeader for a tentative connection
-    this.configLeader = this.configNodes.get(0);
-    this.isFirstInitiated = true;
-
-    connectAndSync();
+    super(configNodes, property, clientManager);
   }
 
-  public void connect(TEndPoint endpoint, int timeoutMs) throws TException {
-    transport =
-        commonConfig.isEnableInternalSSL()
-            ? DeepCopyRpcTransportFactory.INSTANCE.getTransport(
-                endpoint.getIp(),
-                endpoint.getPort(),
-                timeoutMs,
-                commonConfig.getTrustStorePath(),
-                commonConfig.getTrustStorePwd(),
-                commonConfig.getKeyStorePath(),
-                commonConfig.getKeyStorePwd())
-            : DeepCopyRpcTransportFactory.INSTANCE.getTransport(
-                // As there is a try-catch already, we do not need to use TSocket.wrap
-                endpoint.getIp(), endpoint.getPort(), timeoutMs);
-    if (!transport.isOpen()) {
-      transport.open();
-    }
-    configNode = endpoint;
-
-    client = new IConfigNodeRPCService.Client(property.getProtocolFactory().getProtocol(transport));
-  }
-
-  private void connectAndSync() throws TException {
-    try {
-      tryToConnect(property.getConnectionTimeoutMs());
-    } catch (TException e) {
-      // Can not connect to each config node
-      syncLatestConfigNodeList();
-      tryToConnect(property.getConnectionTimeoutMs());
-    }
-  }
-
-  private void connectAndSync(int timeoutMs) throws TException {
-    try {
-      tryToConnect(timeoutMs);
-    } catch (TException e) {
-      // Can not connect to each config node
-      syncLatestConfigNodeList();
-      tryToConnect(timeoutMs);
-    }
-  }
-
-  private void tryToConnect(int timeoutMs) throws TException {
-    TException exception = null;
-    if (configLeader != null) {
-      try {
-        connect(configLeader, timeoutMs);
-        return;
-      } catch (TException e) {
-        logger.warn("The current node leader may have been down {}, try next node", configLeader);
-        configLeader = null;
-        exception = e;
-      }
-    } else {
-      try {
-        // Wait to start the next try
-        Thread.sleep(RETRY_INTERVAL_MS);
-      } catch (InterruptedException ignore) {
-        Thread.currentThread().interrupt();
-        logger.warn("Unexpected interruption when waiting to try to connect to ConfigNode");
-      }
-    }
-
-    if (transport != null) {
-      transport.close();
-    }
-
-    for (int tryHostNum = 0; tryHostNum < configNodes.size(); tryHostNum++) {
-      cursor = (cursor + 1) % configNodes.size();
-      TEndPoint tryEndpoint = configNodes.get(cursor);
-
-      try {
-        connect(tryEndpoint, timeoutMs);
-        return;
-      } catch (TException e) {
-        logger.warn("The current node may have been down {},try next node", tryEndpoint);
-        exception = e;
-      }
-    }
-    if (exception != null
-        && exception.getCause() != null
-        && exception.getCause().getCause() != null
-        && exception.getCause().getCause() instanceof IOException) {
-      throw new TException(exception.getCause().getCause());
-    }
-
-    throw new TException(MSG_RECONNECTION_FAIL);
-  }
-
-  public TTransport getTransport() {
-    return transport;
-  }
-
-  public void syncLatestConfigNodeList() {
-    configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
-    cursor = 0;
+  public TEndPoint getConfigNode() {
+    return configNode;
   }
 
   @Override
-  public void close() {
-    clientManager.returnClient(configRegionId, this);
+  protected final String getNodeTypeName() {
+    return NODE_TYPE_NAME;
   }
 
   @Override
-  public void invalidate() {
-    Optional.ofNullable(transport).ifPresent(TTransport::close);
+  protected final TEndPoint getAddressAndPort() {
+    return config.getAddressAndPort();
   }
 
   @Override
-  public void invalidateAll() {
-    clientManager.clear(ConfigNodeInfo.CONFIG_REGION_ID);
+  protected final AbstractConfigNodeInfo getConfigNodeInfo() {
+    return ConfigNodeInfo.getInstance();
   }
 
-  @Override
-  public boolean printLogWhenEncounterException() {
-    return property.isPrintLogWhenEncounterException();
-  }
-
-  private boolean updateConfigNodeLeader(TSStatus status) {
-    try {
-      if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-        if (status.isSetRedirectNode()) {
-          configLeader =
-              new TEndPoint(status.getRedirectNode().getIp(), status.getRedirectNode().getPort());
-        } else {
-          configLeader = null;
-        }
-        if (!isFirstInitiated) {
-          logger.info(
-              "Failed to connect to ConfigNode {} from DataNode {}, because the current node is not "
-                  + "leader or not ready yet, will try again later",
-              configNode,
-              config.getAddressAndPort());
-        }
-        return true;
-      }
-      return false;
-    } finally {
-      isFirstInitiated = false;
-    }
-  }
-
-  /**
-   * The frame of execute RPC, include logic of retry and exception handling.
-   *
-   * @param call which rpc should call
-   * @param check check the rpc's result
-   * @return rpc's result
-   * @param <T> the type of rpc result
-   * @throws TException if fails more than RETRY_NUM times, throw TException(MSG_RECONNECTION_FAIL)
-   */
-  private <T> T executeRemoteCallWithRetry(final Operation<T> call, final Predicate<T> check)
-      throws TException {
-    int detectedNodeNum = 0;
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        final T result = call.execute();
-        if (check.test(result)) {
-          return result;
-        }
-        detectedNodeNum++;
-      } catch (TException e) {
-        final String message =
-            String.format(
-                MSG_RECONNECTION_DATANODE_FAIL,
-                configNode,
-                config.getAddressAndPort(),
-                Thread.currentThread().getStackTrace()[2].getMethodName());
-        logger.warn(message, e);
-        configLeader = null;
-        if (e.getCause() != null && e.getCause() instanceof SSLHandshakeException) {
-          throw e;
-        }
-      }
-
-      // If we have detected all configNodes and still not return
-      if (detectedNodeNum >= configNodes.size()) {
-        // Clear count
-        detectedNodeNum = 0;
-        // Wait to start the next try
-        try {
-          Thread.sleep(WAIT_CN_LEADER_ELECTION_INTERVAL_MS);
-        } catch (InterruptedException ignore) {
-          Thread.currentThread().interrupt();
-          logger.warn(
-              "Unexpected interruption when waiting to try to connect to ConfigNode, may because current node has been down. Will break current execution process to avoid meaningless wait.");
-          break;
-        }
-      }
-
-      connectAndSync();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
-  }
-
-  @FunctionalInterface
-  private interface Operation<T> {
-    T execute() throws TException;
-  }
-
-  @Override
-  public TSystemConfigurationResp getSystemConfiguration() throws TException {
-    return executeRemoteCallWithRetry(
-        () -> client.getSystemConfiguration(), resp -> !updateConfigNodeLeader(resp.status));
+  private boolean isConfigNodeLeaderWarmingUp(TSStatus status) {
+    return status.getCode() == TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP.getStatusCode();
   }
 
   @Override
@@ -476,26 +263,41 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
+    boolean leaderWarmingUpObserved = false;
+    long leaderWarmingUpRetryDeadline = 0;
+    for (int i = 0;
+        i < RETRY_NUM
+            || (leaderWarmingUpObserved
+                && System.currentTimeMillis() < leaderWarmingUpRetryDeadline);
+        i++) {
       try {
         TDataNodeRegisterResp resp = client.registerDataNode(req);
 
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
+        if (isConfigNodeLeaderWarmingUp(resp.status) && !leaderWarmingUpObserved) {
+          leaderWarmingUpObserved = true;
+          leaderWarmingUpRetryDeadline =
+              System.currentTimeMillis() + REGISTER_LEADER_WARMING_UP_RETRY_TIMEOUT_MS;
+        }
 
         // set latest config node list
-        List<TEndPoint> newConfigNodes = new ArrayList<>();
-        for (TConfigNodeLocation configNodeLocation : resp.getConfigNodeList()) {
-          newConfigNodes.add(configNodeLocation.getInternalEndPoint());
+        if (resp.isSetConfigNodeList()) {
+          List<TEndPoint> newConfigNodes = new ArrayList<>();
+          for (TConfigNodeLocation configNodeLocation : resp.getConfigNodeList()) {
+            newConfigNodes.add(configNodeLocation.getInternalEndPoint());
+          }
+          ConfigNodeInfo.getInstance().updateConfigNodeLocations(resp.getConfigNodeList());
+          configNodes = newConfigNodes;
         }
-        configNodes = newConfigNodes;
       } catch (TException e) {
         String message =
             String.format(
-                MSG_RECONNECTION_DATANODE_FAIL,
+                ConfigMessages.MSG_RECONNECTION_NODE_FAIL,
                 configNode,
-                config.getAddressAndPort(),
+                getNodeTypeName(),
+                getAddressAndPort(),
                 Thread.currentThread().getStackTrace()[1].getMethodName());
         logger.warn(message, e);
         configLeader = null;
@@ -509,6 +311,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.restartDataNode(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TDataNodeLeaseRecoveryResp reloadCacheAfterLeaseRecovery() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.reloadCacheAfterLeaseRecovery(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
@@ -618,6 +426,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         () -> client.showTTL(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
+  @Override
   public TSStatus callSpecialProcedure(TTestOperation operation) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.callSpecialProcedure(operation), status -> !updateConfigNodeLeader(status));
@@ -701,6 +510,20 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSStatus dataPartitionTableIntegrityCheck() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.dataPartitionTableIntegrityCheck(), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TShowRepairDataPartitionTableProgressResp showRepairDataPartitionTableProgress()
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showRepairDataPartitionTableProgress(),
+        resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
   public TSStatus operatePermission(TAuthorizerReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.operatePermission(req), status -> !updateConfigNodeLeader(status));
@@ -749,6 +572,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         () -> client.fetchAuthizedPatternTree(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
+  @Override
   public TPermissionInfoResp checkRoleOfUser(TAuthorizerReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.checkRoleOfUser(req), resp -> !updateConfigNodeLeader(resp.status));
@@ -756,17 +580,17 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support registerConfigNode.");
+    throw new TException(DataNodeMiscMessages.DN_CLIENT_NOT_SUPPORT_REGISTER_CN);
   }
 
   @Override
   public TSStatus addConsensusGroup(TAddConsensusGroupReq registerResp) throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support addConsensusGroup.");
+    throw new TException(DataNodeMiscMessages.DN_CLIENT_NOT_SUPPORT_ADD_CONSENSUS_GROUP);
   }
 
   @Override
   public TSStatus notifyRegisterSuccess() throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support notifyRegisterSuccess.");
+    throw new TException(DataNodeMiscMessages.DN_CLIENT_NOT_SUPPORT_NOTIFY_REGISTER);
   }
 
   @Override
@@ -777,18 +601,18 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TSStatus deleteConfigNodePeer(TConfigNodeLocation configNodeLocation) throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support removeConsensusGroup.");
+    throw new TException(DataNodeMiscMessages.DN_CLIENT_NOT_SUPPORT_REMOVE_CONSENSUS_GROUP);
   }
 
   @Override
   public TSStatus reportConfigNodeShutdown(TConfigNodeLocation configNodeLocation)
       throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support reportConfigNodeShutdown.");
+    throw new TException(DataNodeMiscMessages.DN_CLIENT_NOT_SUPPORT_REPORT_SHUTDOWN);
   }
 
   @Override
   public TSStatus stopAndClearConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support stopAndClearConfigNode.");
+    throw new TException(DataNodeMiscMessages.DN_CLIENT_NOT_SUPPORT_STOP_AND_CLEAR);
   }
 
   @Override
@@ -836,7 +660,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   @Override
   public TSStatus loadConfiguration() throws TException {
     throw new UnsupportedOperationException(
-        UNSUPPORTED_INVOCATION + ", please call submitLoadConfigurationTask instead");
+        DataNodeMiscMessages.UNSUPPORTED_INVOCATION_BY_DATANODE_USE_SUBMIT_LOAD_CONFIGURATION_TASK);
   }
 
   @Override
@@ -860,7 +684,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TSStatus setDataNodeStatus(TSetDataNodeStatusReq req) throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support setDataNodeStatus.");
+    throw new TException(DataNodeMiscMessages.DN_CLIENT_NOT_SUPPORT_SET_STATUS);
   }
 
   @Override
@@ -869,12 +693,6 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     return executeRemoteCallWithRetry(
         () -> client.killQuery(queryId, dataNodeId, allowedUsername),
         status -> !updateConfigNodeLeader(status));
-  }
-
-  @Override
-  public TGetDataNodeLocationsResp getReadableDataNodeLocations() throws TException {
-    return executeRemoteCallWithRetry(
-        () -> client.getReadableDataNodeLocations(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
@@ -953,7 +771,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   @Override
   public TConfigNodeHeartbeatResp getConfigNodeHeartBeat(TConfigNodeHeartbeatReq req)
       throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support getConfigNodeHeartBeat.");
+    throw new TException(DataNodeMiscMessages.DN_CLIENT_NOT_SUPPORT_GET_HEARTBEAT);
   }
 
   @Override
@@ -1000,6 +818,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         resp -> !updateConfigNodeLeader(resp.status));
   }
 
+  @Override
   public TGetTriggerTableResp getTriggerTable() throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getTriggerTable(), resp -> !updateConfigNodeLeader(resp.status));
@@ -1200,6 +1019,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSStatus alterTopic(TAlterTopicReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.alterTopic(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
   public TSStatus dropTopic(String topicName) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.dropTopic(topicName), status -> !updateConfigNodeLeader(status));
@@ -1266,6 +1091,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TGetCommitProgressResp getCommitProgress(TGetCommitProgressReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.getCommitProgress(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
   public TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req)
       throws TException {
     return executeRemoteCallWithRetry(
@@ -1291,6 +1122,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         () -> client.getTimeSlotList(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
+  @Override
   public TCountTimeSlotListResp countTimeSlotList(TCountTimeSlotListReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.countTimeSlotList(req), resp -> !updateConfigNodeLeader(resp.status));
@@ -1300,6 +1132,13 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getSeriesSlotList(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TGetRegionGroupsByTimeResp getRegionGroupsByTime(TGetRegionGroupsByTimeReq req)
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.getRegionGroupsByTime(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
@@ -1439,6 +1278,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TShowDropTableProceduresResp showDropTableProcedures() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showDropTableProcedures(), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
   public TDescTableResp describeTable(
       final String database, final String tableName, final boolean isDetails) throws TException {
     return executeRemoteCallWithRetry(
@@ -1453,10 +1298,11 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap)
+  public TFetchTableResp fetchTables(Map<String, Set<String>> fetchTableMap, byte tableNodeStatus)
       throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.fetchTables(fetchTableMap), resp -> !updateConfigNodeLeader(resp.status));
+        () -> client.fetchTables(fetchTableMap, tableNodeStatus),
+        resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
@@ -1469,6 +1315,13 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus createTableView(TCreateTableViewReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.createTableView(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TAutoSyncViewColumnsResp autoSyncViewColumns(TAutoSyncViewColumnsReq req)
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.autoSyncViewColumns(req), status -> !updateConfigNodeLeader(status.status));
   }
 
   @Override

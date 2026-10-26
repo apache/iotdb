@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.tools.validate;
 
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -94,7 +95,7 @@ public class TsFileResourcePipeStatisticsSetTool {
         }
         i--;
       } else {
-        LOGGER.info("Unknown argument: {}", args[i]);
+        LOGGER.info(DataNodeMiscMessages.UNKNOWN_ARGUMENT, args[i]);
         LOGGER.info(USAGE);
         // Exit if an unknown argument is encountered
         System.exit(1);
@@ -102,18 +103,18 @@ public class TsFileResourcePipeStatisticsSetTool {
     }
 
     if (dataDirs.isEmpty()) {
-      LOGGER.info("No data directories provided. Please specify with --dirs <dir1> <dir2> ...");
+      LOGGER.info(DataNodeMiscMessages.NO_DATA_DIRS_PROVIDED);
       System.exit(1);
     }
 
-    LOGGER.info("------------------------------------------------------");
-    LOGGER.info("isGeneratedByPipe mark: {}", isGeneratedByPipeMark);
-    LOGGER.info("resetProgressIndex: {}", resetProgressIndex);
-    LOGGER.info("Data directories: ");
+    LOGGER.info(DataNodeMiscMessages.SEPARATOR_LINE);
+    LOGGER.info(DataNodeMiscMessages.IS_GENERATED_BY_PIPE_MARK, isGeneratedByPipeMark);
+    LOGGER.info(DataNodeMiscMessages.RESET_PROGRESS_INDEX, resetProgressIndex);
+    LOGGER.info(DataNodeMiscMessages.DATA_DIRECTORIES);
     for (File dir : dataDirs) {
-      LOGGER.info("  {}", dir.getAbsolutePath());
+      LOGGER.info(DataNodeMiscMessages.INDENT_PATH, dir.getAbsolutePath());
     }
-    LOGGER.info("------------------------------------------------------");
+    LOGGER.info(DataNodeMiscMessages.SEPARATOR_LINE);
   }
 
   private static List<File> findAllPartitionDirs() {
@@ -167,7 +168,7 @@ public class TsFileResourcePipeStatisticsSetTool {
         } catch (final Exception e) {
           // Continue processing other resources even if one fails
           LOGGER.warn(
-              "Error validating or repairing resource {}: {}",
+              DataNodeMiscMessages.ERROR_VALIDATING_REPAIRING_RESOURCE,
               resource.getTsFile().getAbsolutePath(),
               e.getMessage(),
               e);
@@ -175,7 +176,7 @@ public class TsFileResourcePipeStatisticsSetTool {
       }
     } catch (final Exception e) {
       LOGGER.warn(
-          "Error loading resources from partition {}: {}",
+          DataNodeMiscMessages.ERROR_LOADING_RESOURCES_FROM_PARTITION,
           partitionDir.getAbsolutePath(),
           e.getMessage(),
           e);
@@ -186,7 +187,7 @@ public class TsFileResourcePipeStatisticsSetTool {
     toResetProgressIndexNum.addAndGet(toResetProgressIndexResource.get());
     changedNum.addAndGet(changedResource.get());
     LOGGER.info(
-        "TimePartition {} has {} total resources, {} to set isGeneratedByPipe resources, {} to reset progressIndex resources, {} changed resources. Process completed.",
+        DataNodeMiscMessages.TIME_PARTITION_PROCESS_COMPLETED,
         partitionDir,
         totalTsFileResource.get(),
         toResetFlagResource.get(),
@@ -208,7 +209,7 @@ public class TsFileResourcePipeStatisticsSetTool {
 
         if (!new File(resourcePath).exists()) {
           LOGGER.info(
-              "{} is skipped because resource file is not exist.", tsfile.getAbsolutePath());
+              DataNodeMiscMessages.SKIPPED_RESOURCE_FILE_NOT_EXIST, tsfile.getAbsolutePath());
           continue;
         }
 
@@ -238,7 +239,7 @@ public class TsFileResourcePipeStatisticsSetTool {
         && resource.isGeneratedByPipe() != isGeneratedByPipeMark.get()) {
       // The resource is valid, no need to repair
       LOGGER.info(
-          "Repairing TsFileResource: {}, isGeneratedByPipe mark: {}, actual mark: {}",
+          DataNodeMiscMessages.REPAIRING_TSFILE_RESOURCE,
           resource.getTsFile().getAbsolutePath(),
           isGeneratedByPipeMark.get(),
           resource.isGeneratedByPipe());
@@ -250,7 +251,7 @@ public class TsFileResourcePipeStatisticsSetTool {
     if (resetProgressIndex && resource.getProgressIndex() != MinimumProgressIndex.INSTANCE) {
       // The resource is valid, no need to repair
       LOGGER.info(
-          "Resetting TsFileResource:{} 's progressIndex to minimum, original progressIndex: {}",
+          DataNodeMiscMessages.RESETTING_PROGRESS_INDEX_TO_MINIMUM,
           resource.getTsFile().getAbsolutePath(),
           resource.getProgressIndex());
 
@@ -266,15 +267,17 @@ public class TsFileResourcePipeStatisticsSetTool {
       repairSingleTsFileResource(resource);
 
       LOGGER.info(
-          "Marked TsFileResource as {} in resource: {}",
+          DataNodeMiscMessages.MARKED_TSFILE_RESOURCE_AS,
           isGeneratedByPipeMark.get(),
           resource.getTsFile().getAbsolutePath());
       LOGGER.info(
-          "Reset TsFileResource:{} 's progressIndex to minimum.",
+          DataNodeMiscMessages.RESET_PROGRESS_INDEX_TO_MINIMUM,
           resource.getTsFile().getAbsolutePath());
     } catch (final Exception e) {
       LOGGER.warn(
-          "ERROR: Failed to repair TsFileResource: {}", resource.getTsFile().getAbsolutePath(), e);
+          DataNodeMiscMessages.FAILED_TO_REPAIR_TSFILE_RESOURCE,
+          resource.getTsFile().getAbsolutePath(),
+          e);
     }
   }
 
@@ -289,10 +292,10 @@ public class TsFileResourcePipeStatisticsSetTool {
   }
 
   private static void printStatistics() {
-    LOGGER.info("------------------------------------------------------");
-    LOGGER.info("Validation and repair completed. Statistics:");
+    LOGGER.info(DataNodeMiscMessages.SEPARATOR_LINE);
+    LOGGER.info(DataNodeMiscMessages.VALIDATION_REPAIR_COMPLETED);
     LOGGER.info(
-        "Total time taken: {} ms, total TsFile resources: {}, set isGeneratedByPipe resources: {}, reset progressIndex resources: {}, changed resources: {}",
+        DataNodeMiscMessages.TOTAL_TIME_TAKEN,
         System.currentTimeMillis() - runtime.get(),
         totalTsFileNum.get(),
         toResetFlagNum.get(),

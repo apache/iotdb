@@ -247,7 +247,8 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
 
       // get time modifications of this file
       List<ModEntry> timeModifications =
-          getModificationsFromCache(resource, deviceId, AlignedPath.VECTOR_PLACEHOLDER);
+          getModificationsFromCache(
+              resource, deviceId, AlignedPath.VECTOR_PLACEHOLDER, !ignoreAllNullRows);
       // get value modifications of this file
       List<List<ModEntry>> valueModifications = new ArrayList<>();
       alignedChunkMetadataList
@@ -260,7 +261,8 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
                     valueModifications.add(null);
                   } else {
                     valueModifications.add(
-                        getModificationsFromCache(resource, deviceId, x.getMeasurementUid()));
+                        getModificationsFromCache(
+                            resource, deviceId, x.getMeasurementUid(), !ignoreAllNullRows));
                   }
                 } catch (IllegalPathException e) {
                   throw new RuntimeException(e);
@@ -276,21 +278,27 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
 
   private boolean isValueChunkDataTypeMatchSchema(
       List<IChunkMetadata> chunkMetadataListOfOneValueColumn) {
-    boolean isMatch = false;
+    boolean needAlter = false;
     for (IChunkMetadata chunkMetadata : chunkMetadataListOfOneValueColumn) {
       if (chunkMetadata == null) {
         continue;
       }
       String measurement = chunkMetadata.getMeasurementUid();
       IMeasurementSchema schema = measurementSchemaMap.get(measurement);
-      if (MetadataUtils.canAlter(chunkMetadata.getDataType(), schema.getType())) {
-        if (schema.getType() != chunkMetadata.getDataType()) {
-          chunkMetadata.setNewType(schema.getType());
+      if (!needAlter) {
+        // Since all chunks in chunkMetadataListOfOneValueColumn share the same dataType, perform
+        // the compatibility check and early-return only on the first non-null chunk.
+        if (!MetadataUtils.canAlter(chunkMetadata.getDataType(), schema.getType())) {
+          return false;
         }
-        isMatch = true;
+        if (schema.getType() == chunkMetadata.getDataType()) {
+          return true;
+        }
       }
+      needAlter = true;
+      chunkMetadata.setNewType(schema.getType());
     }
-    return isMatch;
+    return true;
   }
 
   /**

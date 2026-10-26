@@ -23,6 +23,7 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.MetricConstant;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.i18n.MetricsMessages;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.FileStoreUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -41,6 +42,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
 import java.nio.file.FileStore;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -60,7 +62,8 @@ public class SystemMetrics implements IMetricSet {
 
   static final String SYSTEM = "system";
   private final com.sun.management.OperatingSystemMXBean osMxBean;
-  private Set<FileStore> fileStores = new HashSet<>();
+  private volatile Set<FileStore> fileStores = new HashSet<>();
+  private volatile List<String> diskDirs = Collections.emptyList();
   private static final String FAILED_TO_STATISTIC = "Failed to statistic the size of {}, because";
 
   public SystemMetrics() {
@@ -68,6 +71,7 @@ public class SystemMetrics implements IMetricSet {
   }
 
   public void setDiskDirs(List<String> diskDirs) {
+    this.diskDirs = diskDirs;
     if (!MetricConfigDescriptor.getInstance()
         .getMetricConfig()
         .getMetricLevel()
@@ -217,8 +221,9 @@ public class SystemMetrics implements IMetricSet {
     long time = System.currentTimeMillis();
     if (time - lastUpdateTime > MetricConstant.UPDATE_INTERVAL) {
       lastUpdateTime = time;
+      Process process = null;
       try {
-        Process process = runtime.exec(getSystemMemoryCommand);
+        process = runtime.exec(getSystemMemoryCommand);
         StringBuilder result = new StringBuilder();
         try (BufferedReader input =
             new BufferedReader(new InputStreamReader(process.getInputStream()))) {
@@ -227,6 +232,7 @@ public class SystemMetrics implements IMetricSet {
             result.append(line).append("\n");
           }
         }
+        process.waitFor();
         String[] lines = result.toString().trim().split("\n");
         // if failed to get result
         if (lines.length >= 2) {
@@ -239,7 +245,14 @@ public class SystemMetrics implements IMetricSet {
           }
         }
       } catch (IOException e) {
-        logger.debug("Failed to get memory, because ", e);
+        logger.debug(MetricsMessages.LOG_FAILED_GET_MEMORY_BECAUSE_041BE661, e);
+      } catch (InterruptedException e) {
+        logger.debug(MetricsMessages.LOG_INTERRUPTED_WAITING_MEMORY_COMMAND_CF538E10, e);
+        Thread.currentThread().interrupt();
+      } finally {
+        if (process != null && process.isAlive()) {
+          process.destroyForcibly();
+        }
       }
     }
   }
@@ -282,6 +295,11 @@ public class SystemMetrics implements IMetricSet {
   }
 
   private void collectSystemDiskInfo(AbstractMetricService metricService) {
+    // The file stores are skipped when the metric level is OFF, so collect them if the metric
+    // service restarts with another level
+    if (fileStores.isEmpty() && !CONFIG.getMetricLevel().equals(MetricLevel.OFF)) {
+      fileStores = getFileStores(diskDirs);
+    }
     metricService.createAutoGauge(
         SystemMetric.SYS_DISK_TOTAL_SPACE.toString(),
         MetricLevel.CORE,
@@ -321,7 +339,8 @@ public class SystemMetrics implements IMetricSet {
         SystemMetric.SYS_DISK_AVAILABLE_SPACE.toString(),
         SystemTag.NAME.toString(),
         SYSTEM);
-    fileStores.clear();
+    // Keep the file stores: they are also read by the disk load sampling, and are only collected
+    // again when the disk dirs change, not when the metric service restarts
   }
 
   public long getSystemDiskTotalSpace() {

@@ -29,11 +29,13 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -41,6 +43,80 @@ public class GreedyRegionGroupAllocatorTest {
 
   private static final GreedyRegionGroupAllocator ALLOCATOR = new GreedyRegionGroupAllocator();
   private static final int TEST_REPLICATION_FACTOR = 3;
+
+  /**
+   * Multi-database regression: each database's replicas should be evenly distributed across all
+   * DataNodes. With 2 databases × 30 RGs × rf 3 on 10 DNs, per-(db, DN) replica count must be
+   * exactly 9 (60 RGs × 3 / 10 / 2 = 9).
+   */
+  @Test
+  public void testPerDatabaseBalance() {
+    int dataNodeNum = 10;
+    int databaseNum = 2;
+    int regionGroupsPerDatabase = 30;
+    int rf = 3;
+
+    Map<Integer, TDataNodeConfiguration> availableDataNodeMap = new ConcurrentHashMap<>();
+    Map<Integer, Double> freeSpaceMap = new ConcurrentHashMap<>();
+    Random random = new Random(0);
+    for (int i = 1; i <= dataNodeNum; i++) {
+      availableDataNodeMap.put(
+          i, new TDataNodeConfiguration().setLocation(new TDataNodeLocation().setDataNodeId(i)));
+      freeSpaceMap.put(i, random.nextDouble());
+    }
+
+    List<TRegionReplicaSet> allocatedRegionGroups = new ArrayList<>();
+    Map<Integer, List<TRegionReplicaSet>> databaseAllocatedRegionGroups = new TreeMap<>();
+    for (int db = 0; db < databaseNum; db++) {
+      databaseAllocatedRegionGroups.put(db, new ArrayList<>());
+    }
+
+    int regionId = 0;
+    for (int round = 0; round < regionGroupsPerDatabase; round++) {
+      for (int db = 0; db < databaseNum; db++) {
+        TRegionReplicaSet newRegionGroup =
+            ALLOCATOR.generateOptimalRegionReplicasDistribution(
+                availableDataNodeMap,
+                freeSpaceMap,
+                allocatedRegionGroups,
+                databaseAllocatedRegionGroups.get(db),
+                rf,
+                new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId++));
+        allocatedRegionGroups.add(newRegionGroup);
+        databaseAllocatedRegionGroups.get(db).add(newRegionGroup);
+      }
+    }
+
+    int expectedPerDb = regionGroupsPerDatabase * rf / dataNodeNum;
+    for (int db = 0; db < databaseNum; db++) {
+      Map<Integer, Integer> perDnReplicaCount = new HashMap<>();
+      for (TRegionReplicaSet rg : databaseAllocatedRegionGroups.get(db)) {
+        for (TDataNodeLocation loc : rg.getDataNodeLocations()) {
+          perDnReplicaCount.merge(loc.getDataNodeId(), 1, Integer::sum);
+        }
+      }
+      for (int dnId = 1; dnId <= dataNodeNum; dnId++) {
+        Assert.assertEquals(
+            "db " + db + " dn " + dnId + " replica count",
+            expectedPerDb,
+            perDnReplicaCount.getOrDefault(dnId, 0).intValue());
+      }
+    }
+
+    Map<Integer, Integer> globalCount = new HashMap<>();
+    for (TRegionReplicaSet rg : allocatedRegionGroups) {
+      for (TDataNodeLocation loc : rg.getDataNodeLocations()) {
+        globalCount.merge(loc.getDataNodeId(), 1, Integer::sum);
+      }
+    }
+    int expectedGlobal = databaseNum * regionGroupsPerDatabase * rf / dataNodeNum;
+    for (int dnId = 1; dnId <= dataNodeNum; dnId++) {
+      Assert.assertEquals(
+          "dn " + dnId + " global replica count",
+          expectedGlobal,
+          globalCount.getOrDefault(dnId, 0).intValue());
+    }
+  }
 
   @Test
   public void testEvenDistribution() {

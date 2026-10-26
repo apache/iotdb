@@ -22,11 +22,13 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateAlignedTimeSeriesPlan;
@@ -179,7 +181,8 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode
 
   @Override
   public PlanNode clone() {
-    throw new NotImplementedException("Clone of CreateAlignedTimeSeriesNode is not implemented");
+    throw new NotImplementedException(
+        DataNodeQueryMessages.CLONE_OF_CREATEALIGNEDTIMESERIESNODE_IS_NOT_IMPLEMENTED);
   }
 
   @Override
@@ -193,8 +196,8 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C schemaRegion) {
-    return visitor.visitCreateAlignedTimeSeries(this, schemaRegion);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C schemaRegion) {
+    return ((PlanVisitor<R, C>) visitor).visitCreateAlignedTimeSeries(this, schemaRegion);
   }
 
   public static CreateAlignedTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
@@ -214,33 +217,34 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode
     try {
       devicePath = DataNodeDevicePathCache.getInstance().getPartialPath(new String(bytes));
     } catch (IllegalPathException e) {
-      throw new IllegalArgumentException("Can not deserialize CreateAlignedTimeSeriesNode", e);
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.CAN_NOT_DESERIALIZE_CREATEALIGNEDTIMESERIESNODE, e);
     }
 
-    measurements = new ArrayList<>();
     int size = byteBuffer.getInt();
+    measurements = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       measurements.add(ReadWriteIOUtils.readString(byteBuffer));
     }
 
-    dataTypes = new ArrayList<>();
+    dataTypes = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       dataTypes.add(TSDataType.values()[byteBuffer.get()]);
     }
 
-    encodings = new ArrayList<>();
+    encodings = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       encodings.add(TSEncoding.values()[byteBuffer.get()]);
     }
 
-    compressors = new ArrayList<>();
+    compressors = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       compressors.add(CompressionType.deserialize(byteBuffer.get()));
     }
 
     byte label = byteBuffer.get();
     if (label >= 0) {
-      aliasList = new ArrayList<>();
+      aliasList = new ArrayList<>(label == 1 ? size : 0);
       if (label == 1) {
         for (int i = 0; i < size; i++) {
           aliasList.add(ReadWriteIOUtils.readString(byteBuffer));
@@ -250,7 +254,7 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode
 
     label = byteBuffer.get();
     if (label >= 0) {
-      tagsList = new ArrayList<>();
+      tagsList = new ArrayList<>(label == 1 ? size : 0);
       if (label == 1) {
         for (int i = 0; i < size; i++) {
           tagsList.add(ReadWriteIOUtils.readMap(byteBuffer));
@@ -260,7 +264,7 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode
 
     label = byteBuffer.get();
     if (label >= 0) {
-      attributesList = new ArrayList<>();
+      attributesList = new ArrayList<>(label == 1 ? size : 0);
       if (label == 1) {
         for (int i = 0; i < size; i++) {
           attributesList.add(ReadWriteIOUtils.readMap(byteBuffer));

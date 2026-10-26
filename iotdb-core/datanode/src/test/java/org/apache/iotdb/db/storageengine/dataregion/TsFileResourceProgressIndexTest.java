@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.TimePartitionProgressIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -53,6 +54,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import java.util.stream.IntStream;
 
@@ -217,6 +219,14 @@ public class TsFileResourceProgressIndexTest {
     }
 
     @Override
+    public <T extends ProgressIndex> Optional<T> getProgressIndexByType(
+        final Class<T> progressIndexClass) {
+      return progressIndexClass.isInstance(this)
+          ? Optional.of(progressIndexClass.cast(this))
+          : Optional.empty();
+    }
+
+    @Override
     public TotalOrderSumTuple getTotalOrderSumTuple() {
       return new TotalOrderSumTuple((long) val);
     }
@@ -246,6 +256,47 @@ public class TsFileResourceProgressIndexTest {
     Assert.assertFalse(hybridProgressIndex.isAfter(new IoTProgressIndex(2, 200L)));
     Assert.assertFalse(
         hybridProgressIndex.isAfter(new RecoverProgressIndex(1, new SimpleProgressIndex(2, 21))));
+  }
+
+  @Test
+  public void testTimePartitionProgressIndex() {
+    final TimePartitionProgressIndex partition0Progress100 =
+        new TimePartitionProgressIndex(0L, new SimpleProgressIndex(0, 100));
+
+    Assert.assertTrue(
+        partition0Progress100.isProgressIndexEqualOrAfter(0L, new SimpleProgressIndex(0, 50)));
+    Assert.assertFalse(
+        partition0Progress100.isProgressIndexEqualOrAfter(1L, new SimpleProgressIndex(0, 50)));
+
+    final TimePartitionProgressIndex partition0Progress120 =
+        (TimePartitionProgressIndex)
+            partition0Progress100.updateToMinimumEqualOrIsAfterProgressIndex(
+                new TimePartitionProgressIndex(0L, new SimpleProgressIndex(0, 120)));
+    Assert.assertTrue(
+        partition0Progress120.isProgressIndexEqualOrAfter(0L, new SimpleProgressIndex(0, 120)));
+    Assert.assertFalse(
+        partition0Progress120.isProgressIndexEqualOrAfter(0L, new SimpleProgressIndex(0, 121)));
+
+    final TimePartitionProgressIndex partition0And1Progress =
+        (TimePartitionProgressIndex)
+            partition0Progress120.updateToMinimumEqualOrIsAfterProgressIndex(
+                new TimePartitionProgressIndex(1L, new SimpleProgressIndex(0, 20)));
+    Assert.assertTrue(
+        partition0And1Progress.isProgressIndexEqualOrAfter(0L, new SimpleProgressIndex(0, 120)));
+    Assert.assertTrue(
+        partition0And1Progress.isProgressIndexEqualOrAfter(1L, new SimpleProgressIndex(0, 20)));
+
+    final ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+    partition0And1Progress.serialize(byteBuffer);
+    byteBuffer.flip();
+    Assert.assertEquals(partition0And1Progress, ProgressIndexType.deserializeFrom(byteBuffer));
+
+    final ProgressIndex hybridProgressIndex =
+        partition0And1Progress.updateToMinimumEqualOrIsAfterProgressIndex(
+            new IoTProgressIndex(1, 100L));
+    Assert.assertTrue(hybridProgressIndex instanceof HybridProgressIndex);
+    Assert.assertTrue(hybridProgressIndex.isEqualOrAfter(partition0And1Progress));
+    Assert.assertTrue(hybridProgressIndex.isEqualOrAfter(new IoTProgressIndex(1, 100L)));
   }
 
   @Test

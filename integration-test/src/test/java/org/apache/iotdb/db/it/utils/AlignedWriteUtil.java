@@ -44,6 +44,7 @@ public class AlignedWriteUtil {
         "create timeseries root.sg1.d2.s3 WITH DATATYPE=INT64",
         "create timeseries root.sg1.d2.s4 WITH DATATYPE=BOOLEAN",
         "create timeseries root.sg1.d2.s5 WITH DATATYPE=TEXT",
+        "create timeseries root.sg1.d2.s6 WITH DATATYPE=DOUBLE",
         "insert into root.sg1.d1(time, s1, s2, s3, s4, s5) aligned values(1, 1.0, 1, 1, TRUE, 'aligned_test1')",
         "insert into root.sg1.d1(time, s1, s2, s3, s5) aligned values(2, 2.0, 2, 2, 'aligned_test2')",
         "insert into root.sg1.d1(time, s1, s3, s4, s5) aligned values(3, 3.0, 3, FALSE, 'aligned_test3')",
@@ -130,6 +131,7 @@ public class AlignedWriteUtil {
         "insert into root.sg1.d2(time, s2, s5) values(38, 38, 'non_aligned_test38')",
         "insert into root.sg1.d2(time, s2, s5) values(39, 39, 'non_aligned_test39')",
         "insert into root.sg1.d2(time, s2, s5) values(40, 40, 'non_aligned_test40')",
+        "insert into root.sg1.d2(time, s6) values(-40, 40)",
       };
 
   public static void insertData() {

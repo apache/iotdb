@@ -19,17 +19,19 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+
 import java.util.LinkedList;
 import java.util.Optional;
 
 public class StackableAstVisitor<R, C>
-    extends AstVisitor<R, StackableAstVisitor.StackableAstVisitorContext<C>> {
+    implements AstVisitor<R, StackableAstVisitor.StackableAstVisitorContext<C>> {
 
   @Override
   public R process(Node node, StackableAstVisitorContext<C> context) {
     context.push(node);
     try {
-      return node.accept(this, context);
+      return AstVisitor.super.process(node, context);
     } finally {
       context.pop();
     }

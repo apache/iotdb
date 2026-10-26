@@ -19,14 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.parser;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterEqualExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LessThanExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicAndExpression;
@@ -34,8 +36,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -56,6 +56,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.AlterTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSchemaTemplateStatement;
@@ -63,7 +65,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowNode
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
 import org.apache.iotdb.isession.template.TemplateNode;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
@@ -86,6 +90,7 @@ import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.template.MeasurementNode;
 
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -121,6 +126,51 @@ import static org.junit.Assert.assertTrue;
 public class StatementGeneratorTest {
 
   @Test
+  public void testAlterTopicStatement() {
+    final Statement statement =
+        StatementGenerator.createStatement(
+            "ALTER TOPIC topic1 WITH ('owner-id'='owner2','owner-epoch'='6')",
+            ZonedDateTime.now().getOffset());
+
+    Assert.assertTrue(statement instanceof AlterTopicStatement);
+    final AlterTopicStatement alterTopicStatement = (AlterTopicStatement) statement;
+    Assert.assertEquals("topic1", alterTopicStatement.getTopicName());
+    Assert.assertEquals("owner2", alterTopicStatement.getTopicAttributes().get("owner-id"));
+    Assert.assertEquals("6", alterTopicStatement.getTopicAttributes().get("owner-epoch"));
+  }
+
+  @Test
+  public void testShowDiskUsage() {
+
+    Statement showDiskUsage =
+        StatementGenerator.createStatement(
+            "show disk_usage from root.test.** order by database, datanodeid, regionid, timepartition, sizeinbytes",
+            ZonedDateTime.now().getOffset());
+    Assert.assertTrue(showDiskUsage instanceof ShowDiskUsageStatement);
+    Assert.assertEquals(
+        ((ShowDiskUsageStatement) showDiskUsage).getSortItemList().get(0),
+        new SortItem(OrderByKey.DATABASE, Ordering.ASC));
+    Assert.assertEquals(
+        ((ShowDiskUsageStatement) showDiskUsage).getSortItemList().get(1),
+        new SortItem(OrderByKey.DATANODEID, Ordering.ASC));
+    Assert.assertEquals(
+        ((ShowDiskUsageStatement) showDiskUsage).getSortItemList().get(2),
+        new SortItem(OrderByKey.REGIONID, Ordering.ASC));
+    Assert.assertEquals(
+        ((ShowDiskUsageStatement) showDiskUsage).getSortItemList().get(3),
+        new SortItem(OrderByKey.TIMEPARTITION, Ordering.ASC));
+    Assert.assertEquals(
+        ((ShowDiskUsageStatement) showDiskUsage).getSortItemList().get(4),
+        new SortItem(OrderByKey.SIZEINBYTES, Ordering.ASC));
+
+    Assert.assertThrows(
+        SemanticException.class,
+        () ->
+            StatementGenerator.createStatement(
+                "show disk_usage from root.test.** order by a", ZonedDateTime.now().getOffset()));
+  }
+
+  @Test
   public void testShowQueries() {
     Statement showQueries =
         StatementGenerator.createStatement(
@@ -147,6 +197,32 @@ public class StatementGeneratorTest {
         () ->
             StatementGenerator.createStatement(
                 "show queries order by a", ZonedDateTime.now().getOffset()));
+  }
+
+  @Test
+  public void testShowReceivers() {
+    final Statement showReceivers =
+        StatementGenerator.createStatement("show receivers", ZonedDateTime.now().getOffset());
+    Assert.assertTrue(showReceivers instanceof ShowReceiversStatement);
+    Assert.assertEquals(
+        Arrays.asList(
+            new SortItem("ReceiverNodeType", Ordering.ASC),
+            new SortItem("ReceiverNodeId", Ordering.ASC),
+            new SortItem("Protocol", Ordering.ASC),
+            new SortItem("SenderClusterId", Ordering.ASC),
+            new SortItem("SenderAddress", Ordering.ASC),
+            new SortItem("UserName", Ordering.ASC)),
+        ((ShowReceiversStatement) showReceivers).getSortItemList());
+    Assert.assertThrows(
+        ParseCancellationException.class,
+        () ->
+            StatementGenerator.createStatement(
+                "show receivers where protocol = 'thrift'", ZonedDateTime.now().getOffset()));
+    Assert.assertThrows(
+        ParseCancellationException.class,
+        () ->
+            StatementGenerator.createStatement(
+                "show receivers order by ReceiverNodeId", ZonedDateTime.now().getOffset()));
   }
 
   @Test
@@ -556,6 +632,65 @@ public class StatementGeneratorTest {
         statement.getPaths());
     assertEquals(1L, statement.getDeleteStartTime());
     assertEquals(100L, statement.getDeleteEndTime());
+  }
+
+  @Test
+  public void testDeleteDataWithTimeRangeBoundary() {
+    DeleteDataStatement statement =
+        (DeleteDataStatement)
+            StatementGenerator.createStatement(
+                "DELETE FROM root.sg.d1.s1 WHERE time > 9223372036854775806",
+                ZonedDateTime.now().getOffset());
+    assertEquals(Long.MAX_VALUE, statement.getDeleteStartTime());
+    assertEquals(Long.MAX_VALUE, statement.getDeleteEndTime());
+
+    statement =
+        (DeleteDataStatement)
+            StatementGenerator.createStatement(
+                "DELETE FROM root.sg.d1.s1 WHERE time < -9223372036854775807",
+                ZonedDateTime.now().getOffset());
+    assertEquals(Long.MIN_VALUE, statement.getDeleteStartTime());
+    assertEquals(Long.MIN_VALUE, statement.getDeleteEndTime());
+  }
+
+  @Test
+  public void testDeleteDataWithEmptyTimeRangeBoundary() {
+    Assert.assertThrows(
+        SemanticException.class,
+        () ->
+            StatementGenerator.createStatement(
+                "DELETE FROM root.sg.d1.s1 WHERE time > 9223372036854775807",
+                ZonedDateTime.now().getOffset()));
+    Assert.assertThrows(
+        SemanticException.class,
+        () ->
+            StatementGenerator.createStatement(
+                "DELETE FROM root.sg.d1.s1 WHERE time < -9223372036854775808",
+                ZonedDateTime.now().getOffset()));
+  }
+
+  @Test
+  public void testGetRegionIdWithTimeRangeBoundary() {
+    GetRegionIdStatement statement =
+        (GetRegionIdStatement)
+            StatementGenerator.createStatement(
+                "SHOW DATA REGIONID WHERE DATABASE = root.sg AND time > 9223372036854775806",
+                ZonedDateTime.now().getOffset());
+    assertEquals(Long.MAX_VALUE, statement.getStartTimeStamp());
+    assertEquals(Long.MAX_VALUE, statement.getEndTimeStamp());
+
+    assertThrows(
+        SemanticException.class,
+        () ->
+            StatementGenerator.createStatement(
+                "SHOW DATA REGIONID WHERE DATABASE = root.sg AND time > 9223372036854775807",
+                ZonedDateTime.now().getOffset()));
+    assertThrows(
+        SemanticException.class,
+        () ->
+            StatementGenerator.createStatement(
+                "SHOW DATA REGIONID WHERE DATABASE = root.sg AND time < -9223372036854775808",
+                ZonedDateTime.now().getOffset()));
   }
 
   @Test
@@ -1006,6 +1141,27 @@ public class StatementGeneratorTest {
     path2.add(new PartialPath("root.sg.d2"));
     assertEquals(path2, stmt.getSourcePaths().fullPathList);
     assertEquals(null, stmt.getQueryStatement());
+  }
+
+  @Test
+  public void testShowRepairDataPartitionTableProgress() {
+    Statement statement =
+        StatementGenerator.createStatement(
+            "SHOW REPAIR DATA PARTITION TABLE PROGRESS;", ZonedDateTime.now().getOffset());
+    assertEquals(StatementType.SHOW_REPAIR_DATA_PARTITION_TABLE_PROGRESS, statement.getType());
+
+    QueryStatement queryStatement =
+        (QueryStatement)
+            StatementGenerator.createStatement(
+                "SELECT progress FROM root.sg.d1;", ZonedDateTime.now().getOffset());
+    assertEquals(
+        "progress",
+        queryStatement
+            .getSelectComponent()
+            .getResultColumns()
+            .get(0)
+            .getExpression()
+            .getExpressionString());
   }
 
   // TODO: add more tests

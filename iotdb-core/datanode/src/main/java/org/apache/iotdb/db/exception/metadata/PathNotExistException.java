@@ -20,21 +20,26 @@
 package org.apache.iotdb.db.exception.metadata;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.List;
 
 public class PathNotExistException extends MetadataException {
 
-  private static final String PATH_NOT_EXIST_WRONG_MESSAGE = "Path [%s] does not exist";
+  private static final String PATH_NOT_EXIST_WRONG_MESSAGE =
+      DataNodeSchemaMessages.PATH_NOT_EXIST_WRONG_MESSAGE;
+  private static final String TIMESERIES_NOT_EXIST_AND_DATA_TYPE_CANNOT_BE_INFERRED_FROM_NULL =
+      DataNodeSchemaMessages
+          .EXCEPTION_TIMESERIES_ARG_DOES_NOT_EXIST_AND_ITS_DATA_TYPE_CANNOT_BE_INFERRED_FROM_THE_NULL_VALUE_36406D43;
   private static final String SOURCE_PATH_NOT_EXIST_WRONG_MESSAGE =
-      "The source path [%s] of view [%s] does not exist.";
+      DataNodeSchemaMessages.SOURCE_PATH_NOT_EXIST_WRONG_MESSAGE;
 
   private static final String NORMAL_TIMESERIES_NOT_EXIST_WRONG_MESSAGE =
-      "Timeseries [%s] does not exist or is represented by device template";
+      DataNodeSchemaMessages.NORMAL_TIMESERIES_NOT_EXIST_WRONG_MESSAGE;
 
   private static final String TEMPLATE_TIMESERIES_NOT_EXIST_WRONG_MESSAGE =
-      "Timeseries [%s] does not exist or is not represented by device template";
+      DataNodeSchemaMessages.TEMPLATE_TIMESERIES_NOT_EXIST_WRONG_MESSAGE;
 
   public PathNotExistException(String sourcePath, String viewPath) {
     super(
@@ -45,6 +50,16 @@ public class PathNotExistException extends MetadataException {
   public PathNotExistException(String path) {
     super(
         String.format(PATH_NOT_EXIST_WRONG_MESSAGE, path),
+        TSStatusCode.PATH_NOT_EXIST.getStatusCode());
+  }
+
+  private PathNotExistException(String message, int errorCode) {
+    super(message, errorCode);
+  }
+
+  public static PathNotExistException forNullValue(String path) {
+    return new PathNotExistException(
+        String.format(TIMESERIES_NOT_EXIST_AND_DATA_TYPE_CANNOT_BE_INFERRED_FROM_NULL, path),
         TSStatusCode.PATH_NOT_EXIST.getStatusCode());
   }
 
@@ -61,7 +76,9 @@ public class PathNotExistException extends MetadataException {
             PATH_NOT_EXIST_WRONG_MESSAGE,
             paths.size() == 1
                 ? paths.get(0)
-                : paths.get(0) + " ... " + paths.get(paths.size() - 1)),
+                : paths.get(0)
+                    + DataNodeSchemaMessages.PATH_LIST_ELLIPSIS_SEPARATOR
+                    + paths.get(paths.size() - 1)),
         TSStatusCode.PATH_NOT_EXIST.getStatusCode());
   }
 
@@ -73,7 +90,9 @@ public class PathNotExistException extends MetadataException {
                 : NORMAL_TIMESERIES_NOT_EXIST_WRONG_MESSAGE,
             paths.size() == 1
                 ? paths.get(0)
-                : paths.get(0) + " ... " + paths.get(paths.size() - 1)),
+                : paths.get(0)
+                    + DataNodeSchemaMessages.PATH_LIST_ELLIPSIS_SEPARATOR
+                    + paths.get(paths.size() - 1)),
         TSStatusCode.PATH_NOT_EXIST.getStatusCode());
   }
 }

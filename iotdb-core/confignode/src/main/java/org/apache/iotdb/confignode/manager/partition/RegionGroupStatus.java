@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.confignode.manager.partition;
 
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
+
 public enum RegionGroupStatus {
 
   /** All Regions in RegionGroup are in the Running status */
@@ -56,7 +58,8 @@ public enum RegionGroupStatus {
         return regionGroupStatus;
       }
     }
-    throw new RuntimeException(String.format("RegionGroupStatus %s doesn't exist.", status));
+    throw new RuntimeException(
+        String.format(ManagerMessages.REGIONGROUPSTATUS_DOESN_T_EXIST, status));
   }
 
   /**

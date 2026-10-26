@@ -19,8 +19,13 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.BrokenWALFileException;
+import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRepairWriter;
 import org.apache.iotdb.db.utils.SerializedSize;
 
 import org.slf4j.Logger;
@@ -32,13 +37,19 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
  * Metadata exists at the end of each wal file, including each entry's size, search index of first
  * entry and the number of entries.
+ *
+ * <p>V3 extension stores per-entry writer progress metadata, plus file-level timestamp range, to
+ * support consensus subscription recovery.
  */
 public class WALMetaData implements SerializedSize {
 
@@ -53,6 +64,19 @@ public class WALMetaData implements SerializedSize {
   // memTable ids of this wal file
   private final Set<Long> memTablesId;
   private long truncateOffSet = 0;
+  private boolean recoveredFromEntries;
+
+  // V3 fields: file-level data timestamp range for timestamp-based seek
+  private long minDataTs = Long.MAX_VALUE;
+  private long maxDataTs = Long.MIN_VALUE;
+  // V3 extension for subscription progress.
+  private final List<Long> physicalTimes;
+  private final List<Short> nodeIds;
+  private final List<Long> localSeqs;
+
+  private static final short DEFAULT_NODE_ID = (short) -1;
+  private static final int V3_EMPTY_METADATA_REMAINING_WITHOUT_MEMTABLE_COUNT =
+      Long.BYTES * 2 + Short.BYTES + Integer.BYTES;
 
   public WALMetaData() {
     this(ConsensusReqReader.DEFAULT_SEARCH_INDEX, new ArrayList<>(), new HashSet<>());
@@ -62,14 +86,47 @@ public class WALMetaData implements SerializedSize {
     this.firstSearchIndex = firstSearchIndex;
     this.buffersSize = buffersSize;
     this.memTablesId = memTablesId;
+    this.physicalTimes = new ArrayList<>();
+    this.nodeIds = new ArrayList<>();
+    this.localSeqs = new ArrayList<>();
   }
 
+  /** Adds an entry without explicit writer progress metadata. */
   public void add(int size, long searchIndex, long memTableId) {
+    add(size, searchIndex, memTableId, 0L, DEFAULT_NODE_ID, searchIndex);
+  }
+
+  public void add(
+      int size, long searchIndex, long memTableId, long physicalTime, int nodeId, long localSeq) {
     if (buffersSize.isEmpty()) {
       firstSearchIndex = searchIndex;
     }
     buffersSize.add(size);
     memTablesId.add(memTableId);
+    physicalTimes.add(physicalTime);
+    nodeIds.add(toShortExact(nodeId, "nodeId"));
+    localSeqs.add(localSeq);
+  }
+
+  private static short toShortExact(long value, String fieldName) {
+    if (value < Short.MIN_VALUE || value > Short.MAX_VALUE) {
+      throw new IllegalArgumentException(
+          String.format(
+              StorageEngineMessages.STORAGE_EXCEPTION_S_S_EXCEEDS_SHORT_RANGE_1DF75A2D,
+              fieldName,
+              value));
+    }
+    return (short) value;
+  }
+
+  /** Update file-level timestamp range with a data point's timestamp. */
+  public void updateTimestampRange(long dataTs) {
+    if (dataTs < minDataTs) {
+      minDataTs = dataTs;
+    }
+    if (dataTs > maxDataTs) {
+      maxDataTs = dataTs;
+    }
   }
 
   public void addAll(WALMetaData metaData) {
@@ -78,16 +135,46 @@ public class WALMetaData implements SerializedSize {
     }
     buffersSize.addAll(metaData.getBuffersSize());
     memTablesId.addAll(metaData.getMemTablesId());
+    physicalTimes.addAll(metaData.getPhysicalTimes());
+    nodeIds.addAll(metaData.getNodeIds());
+    localSeqs.addAll(metaData.getLocalSeqs());
+    if (metaData.minDataTs < this.minDataTs) {
+      this.minDataTs = metaData.minDataTs;
+    }
+    if (metaData.maxDataTs > this.maxDataTs) {
+      this.maxDataTs = metaData.maxDataTs;
+    }
   }
 
   @Override
   public int serializedSize() {
-    return FIXED_SERIALIZED_SIZE
-        + buffersSize.size() * Integer.BYTES
-        + (memTablesId.isEmpty() ? 0 : Integer.BYTES + memTablesId.size() * Long.BYTES);
+    return serializedSize(WALFileVersion.V2);
+  }
+
+  public int serializedSize(WALFileVersion version) {
+    int size =
+        FIXED_SERIALIZED_SIZE
+            + buffersSize.size() * Integer.BYTES
+            + (memTablesId.isEmpty() ? 0 : Integer.BYTES + memTablesId.size() * Long.BYTES);
+    if (version == WALFileVersion.V3) {
+      // minDataTs(long) + maxDataTs(long)
+      size += Long.BYTES * 2;
+      // physicalTimes(long[]) + nodeIds(short compressed) + localSeqs(long[])
+      size += buffersSize.size() * Long.BYTES * 2;
+      // defaultNodeId(short) + overrideCount(int)
+      // + override ordinals(int[]) + override nodeIds(short[])
+      final int overrideCount = getNodeIdOverrideCount();
+      size += Short.BYTES + Integer.BYTES;
+      size += overrideCount * (Integer.BYTES + Short.BYTES);
+    }
+    return size;
   }
 
   public void serialize(ByteBuffer buffer) {
+    serialize(buffer, WALFileVersion.V2);
+  }
+
+  public void serialize(ByteBuffer buffer, WALFileVersion version) {
     buffer.putLong(firstSearchIndex);
     buffer.putInt(buffersSize.size());
     for (int size : buffersSize) {
@@ -99,23 +186,107 @@ public class WALMetaData implements SerializedSize {
         buffer.putLong(memTableId);
       }
     }
+    if (version == WALFileVersion.V3) {
+      buffer.putLong(minDataTs);
+      buffer.putLong(maxDataTs);
+      for (long physicalTime : physicalTimes) {
+        buffer.putLong(physicalTime);
+      }
+      final short defaultNodeId = computeDefaultNodeId();
+      final List<Integer> overrideIndexes = new ArrayList<>();
+      final List<Short> overrideNodeIds = new ArrayList<>();
+      for (int i = 0; i < buffersSize.size(); i++) {
+        final short nodeId = nodeIds.get(i);
+        if (nodeId != defaultNodeId) {
+          overrideIndexes.add(i);
+          overrideNodeIds.add(nodeId);
+        }
+      }
+      buffer.putShort(defaultNodeId);
+      buffer.putInt(overrideIndexes.size());
+      for (int overrideIndex : overrideIndexes) {
+        buffer.putInt(overrideIndex);
+      }
+      for (short nodeId : overrideNodeIds) {
+        buffer.putShort(nodeId);
+      }
+      for (long localSeq : localSeqs) {
+        buffer.putLong(localSeq);
+      }
+    }
   }
 
   public static WALMetaData deserialize(ByteBuffer buffer) {
+    return deserialize(buffer, WALFileVersion.V2);
+  }
+
+  public static WALMetaData deserialize(ByteBuffer buffer, WALFileVersion version) {
     long firstSearchIndex = buffer.getLong();
     int entriesNum = buffer.getInt();
+    // Reject corrupted counts before allocating arrays from an untrusted footer.
+    if (entriesNum < 0 || entriesNum > buffer.remaining() / Integer.BYTES) {
+      throw new IllegalArgumentException(StorageEngineMessages.UNEXPECTED_EXCEPTION);
+    }
     List<Integer> buffersSize = new ArrayList<>(entriesNum);
     for (int i = 0; i < entriesNum; ++i) {
-      buffersSize.add(buffer.getInt());
+      int size = buffer.getInt();
+      if (size <= 0) {
+        throw new IllegalArgumentException(StorageEngineMessages.UNEXPECTED_EXCEPTION);
+      }
+      buffersSize.add(size);
     }
     Set<Long> memTablesId = new HashSet<>();
-    if (buffer.hasRemaining()) {
+    final boolean serializedEmptyV3WithoutMemTableCount =
+        version == WALFileVersion.V3
+            && entriesNum == 0
+            && buffer.remaining() == V3_EMPTY_METADATA_REMAINING_WITHOUT_MEMTABLE_COUNT;
+    if (buffer.hasRemaining() && !serializedEmptyV3WithoutMemTableCount) {
       int memTablesIdNum = buffer.getInt();
+      if (memTablesIdNum < 0 || memTablesIdNum > buffer.remaining() / Long.BYTES) {
+        throw new IllegalArgumentException(StorageEngineMessages.UNEXPECTED_EXCEPTION);
+      }
       for (int i = 0; i < memTablesIdNum; ++i) {
         memTablesId.add(buffer.getLong());
       }
     }
-    return new WALMetaData(firstSearchIndex, buffersSize, memTablesId);
+    WALMetaData result = new WALMetaData(firstSearchIndex, buffersSize, memTablesId);
+    // V3 extension: file-level timestamp range + per-entry writer progress metadata
+    if (version == WALFileVersion.V3 && buffer.hasRemaining()) {
+      result.minDataTs = buffer.getLong();
+      result.maxDataTs = buffer.getLong();
+      if (buffer.remaining() >= entriesNum * Long.BYTES * 2 + Short.BYTES + Integer.BYTES) {
+        for (int i = 0; i < entriesNum; i++) {
+          result.physicalTimes.add(buffer.getLong());
+        }
+        final short defaultNodeId = buffer.getShort();
+        final int overrideCount = buffer.getInt();
+        if (overrideCount < 0
+            || overrideCount > entriesNum
+            || overrideCount > buffer.remaining() / (Integer.BYTES + Short.BYTES)) {
+          throw new IllegalArgumentException(StorageEngineMessages.UNEXPECTED_EXCEPTION);
+        }
+        final int[] overrideIndexes = new int[overrideCount];
+        final short[] overrideNodeIds = new short[overrideCount];
+        for (int i = 0; i < overrideCount; i++) {
+          overrideIndexes[i] = buffer.getInt();
+        }
+        for (int i = 0; i < overrideCount; i++) {
+          overrideNodeIds[i] = buffer.getShort();
+        }
+        for (int i = 0; i < entriesNum; i++) {
+          result.nodeIds.add(defaultNodeId);
+        }
+        for (int i = 0; i < overrideCount; i++) {
+          result.nodeIds.set(overrideIndexes[i], overrideNodeIds[i]);
+        }
+        for (int i = 0; i < entriesNum; i++) {
+          result.localSeqs.add(buffer.getLong());
+        }
+      } else {
+        result.rebuildWriterMetadataWithDefaults();
+      }
+    }
+    return result;
   }
 
   public List<Integer> getBuffersSize() {
@@ -130,9 +301,164 @@ public class WALMetaData implements SerializedSize {
     return firstSearchIndex;
   }
 
+  public List<Long> getPhysicalTimes() {
+    return physicalTimes;
+  }
+
+  public List<Short> getNodeIds() {
+    return nodeIds;
+  }
+
+  public List<Long> getLocalSeqs() {
+    return localSeqs;
+  }
+
+  /** Diagnostic summary for an abnormal footer recovery, never for the normal write path. */
+  public Map<String, Object> getWriterProgressDiagnostics() {
+    final Map<String, Object> result = new LinkedHashMap<>();
+    final int entries = buffersSize.size();
+    final int progressEntries =
+        Math.min(
+            entries, Math.min(physicalTimes.size(), Math.min(nodeIds.size(), localSeqs.size())));
+    int attributedEntries = 0;
+    int defaultLocalProgressEntries = 0;
+    final List<String> unattributedSamples = new ArrayList<>();
+    for (int i = 0; i < progressEntries; i++) {
+      final long physicalTime = physicalTimes.get(i);
+      final int nodeId = nodeIds.get(i);
+      final long localSeq = localSeqs.get(i);
+      if (nodeId >= 0 && physicalTime >= 0 && localSeq >= 0) {
+        attributedEntries++;
+      } else {
+        if (unattributedSamples.size() < 4) {
+          unattributedSamples.add(i + ":(" + physicalTime + "," + nodeId + "," + localSeq + ")");
+        }
+        if (nodeId < 0 && physicalTime == 0 && localSeq >= 0) {
+          defaultLocalProgressEntries++;
+        }
+      }
+    }
+    result.put("entryCount", entries);
+    result.put("firstSearchIndex", firstSearchIndex);
+    result.put("attributedProgressEntries", attributedEntries);
+    result.put("unattributedProgressEntries", progressEntries - attributedEntries);
+    result.put("missingProgressEntries", entries - progressEntries);
+    result.put("defaultLocalProgressEntries", defaultLocalProgressEntries);
+    result.put("unattributedSamples", unattributedSamples);
+    return result;
+  }
+
+  private int getNodeIdOverrideCount() {
+    final short defaultNodeId = computeDefaultNodeId();
+    int count = 0;
+    for (int i = 0; i < buffersSize.size(); i++) {
+      if (nodeIds.get(i) != defaultNodeId) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  private short computeDefaultNodeId() {
+    if (nodeIds.isEmpty()) {
+      return DEFAULT_NODE_ID;
+    }
+    final Map<Short, Integer> counts = new HashMap<>();
+    short bestNodeId = nodeIds.get(0);
+    int bestCount = 0;
+    for (final short nodeId : nodeIds) {
+      final int count = counts.merge(nodeId, 1, Integer::sum);
+      if (count > bestCount) {
+        bestCount = count;
+        bestNodeId = nodeId;
+      }
+    }
+    return bestNodeId;
+  }
+
+  public WALMetaData copy() {
+    WALMetaData copy =
+        new WALMetaData(firstSearchIndex, new ArrayList<>(buffersSize), new HashSet<>(memTablesId));
+    copy.truncateOffSet = truncateOffSet;
+    copy.recoveredFromEntries = recoveredFromEntries;
+    copy.physicalTimes.addAll(physicalTimes);
+    copy.nodeIds.addAll(nodeIds);
+    copy.localSeqs.addAll(localSeqs);
+    copy.minDataTs = minDataTs;
+    copy.maxDataTs = maxDataTs;
+    return copy;
+  }
+
+  public long getMinDataTs() {
+    return minDataTs;
+  }
+
+  public long getMaxDataTs() {
+    return maxDataTs;
+  }
+
+  private void rebuildWriterMetadataWithDefaults() {
+    physicalTimes.clear();
+    nodeIds.clear();
+    localSeqs.clear();
+    for (int i = 0; i < buffersSize.size(); i++) {
+      physicalTimes.add(0L);
+      nodeIds.add(DEFAULT_NODE_ID);
+      localSeqs.add(firstSearchIndex + i);
+    }
+  }
+
   public static WALMetaData readFromWALFile(File logFile, FileChannel channel) throws IOException {
-    if (channel.size() < WALFileVersion.V2.getVersionBytes().length
-        || !isValidMagicString(channel)) {
+    try {
+      return readFromWALFileWithoutRecovery(logFile, channel);
+    } catch (IOException metadataFailure) {
+      logger.warn(StorageEngineMessages.FAIL_TO_READ_WAL_LOGS_SKIP, logFile, metadataFailure);
+      // Keep the original file when some entries are readable. The reconstructed metadata is an
+      // in-memory view of that prefix; rewriting compressed segments while readers hold the file
+      // open would invalidate their offsets.
+      // Writer progress that exists only in a V3 footer cannot be recovered from entry bodies;
+      // add() supplies the existing unknown/default progress values for those fields.
+      WALMetaData recovered = new WALMetaData();
+      try (WALReader reader = new WALReader(logFile, true)) {
+        long previousOffset = 0;
+        while (reader.hasNext()) {
+          WALEntry entry = reader.next();
+          long offset = reader.getLogicalReadOffset();
+          long searchIndex =
+              entry.getType().needSearch() && entry.getValue() instanceof SearchNode searchNode
+                  ? searchNode.getSearchIndex()
+                  : ConsensusReqReader.DEFAULT_SEARCH_INDEX;
+          // Use bytes consumed, since reserializing a legacy entry may change its encoded size.
+          recovered.add(
+              Math.toIntExact(offset - previousOffset), searchIndex, entry.getMemTableId());
+          recovered.setTruncateOffSet(reader.getWALCurrentReadOffset());
+          previousOffset = offset;
+        }
+        if (!recovered.getBuffersSize().isEmpty() || !reader.isFileCorrupted()) {
+          recovered.recoveredFromEntries = true;
+          return recovered;
+        }
+      }
+      // Do not turn an unreadable nonempty file into an empty metadata result, which would let
+      // WAL cleanup delete it. The suffix also excludes it from subsequent WAL enumeration.
+      new WALRepairWriter(logFile).quarantine();
+      throw metadataFailure;
+    }
+  }
+
+  public boolean isRecoveredFromEntries() {
+    return recoveredFromEntries;
+  }
+
+  /** Reads the footer only, so repair can validate it without recursively triggering recovery. */
+  public static WALMetaData readFromWALFileWithoutRecovery(File logFile, FileChannel channel)
+      throws IOException {
+    if (WALFileVersion.isEmptyOrHeaderOnly(channel)) {
+      return new WALMetaData();
+    }
+    WALFileVersion version = WALFileVersion.getVersion(channel);
+    if (channel.size() < version.getVersionBytes().length + Integer.BYTES
+        || !isValidMagicString(channel, version)) {
       throw new BrokenWALFileException(logFile);
     }
 
@@ -141,24 +467,27 @@ public class WALMetaData implements SerializedSize {
     long position;
     try {
       ByteBuffer metadataSizeBuf = ByteBuffer.allocate(Integer.BYTES);
-      WALFileVersion version = WALFileVersion.getVersion(channel);
       position = channel.size() - Integer.BYTES - (version.getVersionBytes().length);
-      channel.read(metadataSizeBuf, position);
+      IOUtils.readFully(channel, metadataSizeBuf, position);
       metadataSizeBuf.flip();
       // load metadata
       int metadataSize = metadataSizeBuf.getInt();
+      long dataStart = version == WALFileVersion.V1 ? 0 : version.getVersionBytes().length;
+      if (metadataSize < FIXED_SERIALIZED_SIZE || metadataSize > position - dataStart) {
+        throw new BrokenWALFileException(logFile);
+      }
       ByteBuffer metadataBuf = ByteBuffer.allocate(metadataSize);
-      channel.read(metadataBuf, position - metadataSize);
+      IOUtils.readFully(channel, metadataBuf, position - metadataSize);
       metadataBuf.flip();
-      metaData = WALMetaData.deserialize(metadataBuf);
+      metaData = WALMetaData.deserialize(metadataBuf, version);
       // versions before V1.3, should recover memTable ids from entries
       if (metaData.memTablesId.isEmpty()) {
         int offset = Byte.BYTES;
         for (int size : metaData.buffersSize) {
           channel.position(offset);
           ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-          channel.read(buffer);
-          buffer.clear();
+          IOUtils.readFully(channel, buffer);
+          buffer.flip();
           metaData.memTablesId.add(buffer.getLong());
           offset += size;
         }
@@ -168,18 +497,23 @@ public class WALMetaData implements SerializedSize {
     } catch (IOException e) {
       throw e;
     } catch (Exception e) {
-      throw new IOException("Unexpected exception", e);
+      throw new IOException(StorageEngineMessages.UNEXPECTED_EXCEPTION, e);
     }
     return metaData;
   }
 
-  private static boolean isValidMagicString(FileChannel channel) throws IOException {
-    ByteBuffer magicStringBytes = ByteBuffer.allocate(WALFileVersion.V2.getVersionBytes().length);
-    channel.read(magicStringBytes, channel.size() - WALFileVersion.V2.getVersionBytes().length);
+  private static boolean isValidMagicString(FileChannel channel, WALFileVersion version)
+      throws IOException {
+    int magicLength = version.getVersionBytes().length;
+    if (channel.size() < magicLength) {
+      return false;
+    }
+    ByteBuffer magicStringBytes = ByteBuffer.allocate(magicLength);
+    IOUtils.readFully(channel, magicStringBytes, channel.size() - magicLength);
+
     magicStringBytes.flip();
     String magicString = new String(magicStringBytes.array(), StandardCharsets.UTF_8);
-    return magicString.equals(WALFileVersion.V2.getVersionString())
-        || magicString.contains(WALFileVersion.V1.getVersionString());
+    return version.getVersionString().equals(magicString);
   }
 
   public void setTruncateOffSet(long offset) {

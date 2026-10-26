@@ -19,22 +19,23 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.DataOrganizationSpecification;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.DataOrganizationSpecification;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -68,7 +69,7 @@ public class TransformAggregationToStreamable implements PlanOptimizer {
     return plan.accept(new Rewriter(), null);
   }
 
-  private static class Rewriter extends PlanVisitor<PlanNode, Void> {
+  private static class Rewriter implements PlanVisitor<PlanNode, Void> {
 
     @Override
     public PlanNode visitPlan(PlanNode node, Void context) {
@@ -91,7 +92,8 @@ public class TransformAggregationToStreamable implements PlanOptimizer {
     @Override
     public PlanNode visitAggregationTableScan(AggregationTableScanNode node, Void context) {
       throw new RuntimeException(
-          "This optimizer should be used before optimizer of PushAggregationIntoTableScan");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_THIS_OPTIMIZER_SHOULD_BE_USED_BEFORE_OPTIMIZER_OF_PUSHAGGREGATIONINTOTABLESCAN_9F6016E3);
     }
   }
 
@@ -100,7 +102,7 @@ public class TransformAggregationToStreamable implements PlanOptimizer {
    * preGroupedSymbols of child-AggregationNode should have been calculated. GroupContext: The
    * GroupingKeys of current AggregationNode.
    */
-  private static class DeriveGroupProperties extends PlanVisitor<List<Symbol>, GroupContext> {
+  private static class DeriveGroupProperties implements PlanVisitor<List<Symbol>, GroupContext> {
 
     @Override
     public List<Symbol> visitPlan(PlanNode node, GroupContext context) {
@@ -160,7 +162,7 @@ public class TransformAggregationToStreamable implements PlanOptimizer {
         TableFunctionProcessorNode node, GroupContext context) {
       if (node.getChildren().isEmpty()) {
         return ImmutableList.of();
-      } else if (node.isRowSemantic()) {
+      } else if (node.isRowSemantic() && TableFunctionOrdering.preservesInputOrder(node)) {
         return visitPlan(node, context);
       }
       Optional<DataOrganizationSpecification> dataOrganizationSpecification =
@@ -169,7 +171,8 @@ public class TransformAggregationToStreamable implements PlanOptimizer {
           .<List<Symbol>>map(
               organizationSpecification ->
                   organizationSpecification.getPartitionBy().stream()
-                      .filter(context.groupingKeys::contains)
+                      // A later partition column can recur under different earlier keys.
+                      .takeWhile(context.groupingKeys::contains)
                       .collect(Collectors.toList()))
           .orElseGet(ImmutableList::of);
     }
@@ -202,7 +205,8 @@ public class TransformAggregationToStreamable implements PlanOptimizer {
     public List<Symbol> visitAggregationTableScan(
         AggregationTableScanNode node, GroupContext context) {
       throw new RuntimeException(
-          "This optimizer should be used before optimizer of PushAggregationIntoTableScan");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_THIS_OPTIMIZER_SHOULD_BE_USED_BEFORE_OPTIMIZER_OF_PUSHAGGREGATIONINTOTABLESCAN_9F6016E3);
     }
   }
 

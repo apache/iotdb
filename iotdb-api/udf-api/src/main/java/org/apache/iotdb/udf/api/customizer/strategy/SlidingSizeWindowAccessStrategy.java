@@ -24,6 +24,7 @@ import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
 
 /**
  * Used in {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
@@ -102,11 +103,15 @@ public class SlidingSizeWindowAccessStrategy implements AccessStrategy {
   public void check() {
     if (windowSize <= 0) {
       throw new RuntimeException(
-          String.format("Parameter windowSize(%d) should be positive.", windowSize));
+          String.format(
+              UdfApiMessages.EXCEPTION_PARAMETER_WINDOWSIZE_ARG_SHOULD_BE_POSITIVE_7170E783,
+              windowSize));
     }
     if (slidingStep <= 0) {
       throw new RuntimeException(
-          String.format("Parameter slidingStep(%d) should be positive.", slidingStep));
+          String.format(
+              UdfApiMessages.EXCEPTION_PARAMETER_SLIDINGSTEP_ARG_SHOULD_BE_POSITIVE_BBB66A4C,
+              slidingStep));
     }
   }
 

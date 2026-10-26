@@ -1,0 +1,292 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.consensus.iot;
+
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserDataTransferAuditHandler;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.request.IConsensusRequest;
+import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.request.DeserializedBatchIndexedConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
+import org.apache.iotdb.consensus.config.IoTConsensusConfig;
+import org.apache.iotdb.consensus.config.UserDataTransferAuditClassifier;
+import org.apache.iotdb.consensus.i18n.ConsensusMessages;
+import org.apache.iotdb.consensus.iot.util.TestEntry;
+import org.apache.iotdb.consensus.iot.util.TestStateMachine;
+import org.apache.iotdb.rpc.TSStatusCode;
+
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+import java.lang.reflect.Field;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.Spliterator;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+public class IoTConsensusServerImplTest {
+
+  private static final int WRITER_COUNT = 4;
+  private static final int READER_COUNT = 4;
+  private static final int PEERS_PER_WRITER = 1_000;
+
+  @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+  @Test
+  public void testSyncLogBecomesReadOnlyWhileWaiting() throws Exception {
+    final ScheduledExecutorService backgroundTaskService =
+        Executors.newSingleThreadScheduledExecutor();
+    final AtomicBoolean readOnly = new AtomicBoolean();
+    final TestStateMachine stateMachine =
+        new TestStateMachine() {
+          @Override
+          public boolean isReadOnly() {
+            return readOnly.get();
+          }
+        };
+    final Peer thisNode = new Peer(new DataRegionId(1), 0, new TEndPoint("127.0.0.1", 6667));
+    final IoTConsensusServerImpl server =
+        new IoTConsensusServerImpl(
+            temporaryFolder.getRoot().getAbsolutePath(),
+            null,
+            DirectoryStrategyType.SEQUENCE_STRATEGY,
+            thisNode,
+            Collections.singletonList(thisNode),
+            stateMachine,
+            backgroundTaskService,
+            null,
+            null,
+            IoTConsensusConfig.newBuilder()
+                .setReplication(
+                    IoTConsensusConfig.Replication.newBuilder()
+                        .setMaxWaitingTimeForWaitBatchInMs(100)
+                        .build())
+                .build());
+    final DeserializedBatchIndexedConsensusRequest request =
+        new DeserializedBatchIndexedConsensusRequest(1, 2, 2, 1, 2);
+    for (int index = 1; index <= 2; index++) {
+      request.add(
+          new IndexedConsensusRequest(
+              index, index, Collections.singletonList(new TestEntry(index, thisNode))));
+    }
+    final AtomicReference<TSStatus> status = new AtomicReference<>();
+    final Thread syncLogThread = new Thread(() -> status.set(server.syncLog(1, request)));
+    try {
+      assertFalse(server.isReadOnly());
+      syncLogThread.start();
+      final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+      while (syncLogThread.getState() != Thread.State.TIMED_WAITING
+          && System.nanoTime() < deadline) {
+        Thread.sleep(10);
+      }
+      assertEquals(Thread.State.TIMED_WAITING, syncLogThread.getState());
+      readOnly.set(true);
+      syncLogThread.join(TimeUnit.SECONDS.toMillis(15));
+      assertFalse(syncLogThread.isAlive());
+      assertEquals(2, status.get().getSubStatusSize());
+      assertEquals(
+          TSStatusCode.SYSTEM_READ_ONLY.getStatusCode(),
+          status.get().getSubStatus().get(0).getCode());
+      assertEquals(
+          ConsensusMessages.SYNC_LOG_SYSTEM_READ_ONLY,
+          status.get().getSubStatus().get(0).getMessage());
+      assertEquals(
+          TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode(),
+          status.get().getSubStatus().get(1).getCode());
+      assertTrue(stateMachine.getRequestSet().isEmpty());
+      assertEquals(0, server.getEffectiveSafePhysicalTime(1));
+
+      // The sender must be able to retry the complete batch after the replica becomes writable.
+      readOnly.set(false);
+      server.reloadConsensusConfig(
+          IoTConsensusConfig.newBuilder()
+              .setReplication(
+                  IoTConsensusConfig.Replication.newBuilder()
+                      .setMaxPendingBatchesNum(1)
+                      .setMaxWaitingTimeForWaitBatchInMs(100)
+                      .build())
+              .build());
+      final TSStatus retryStatus = server.syncLog(1, request);
+      assertTrue(
+          retryStatus.getSubStatus().stream()
+              .allMatch(s -> s.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      assertEquals(2, stateMachine.getRequestSet().size());
+    } finally {
+      syncLogThread.interrupt();
+      syncLogThread.join(TimeUnit.SECONDS.toMillis(5));
+      backgroundTaskService.shutdownNow();
+    }
+  }
+
+  @Test
+  public void testSnapshotTransferAppliesGroupClassifier() {
+    final DataRegionId groupId = new DataRegionId(1);
+    final UserDataTransferAuditHandler enabledHandler = event -> {};
+    final UserDataTransferAuditClassifier auditDatabaseClassifier =
+        new UserDataTransferAuditClassifier() {
+          @Override
+          public boolean containsUserData(
+              ConsensusGroupId ignoredGroupId, IConsensusRequest request) {
+            return false;
+          }
+
+          @Override
+          public boolean containsUserData(ConsensusGroupId ignoredGroupId) {
+            return false;
+          }
+        };
+
+    assertTrue(
+        IoTConsensusServerImpl.shouldAuditSnapshotTransfer(
+            enabledHandler, (ignoredGroupId, request) -> false, groupId));
+    assertFalse(
+        IoTConsensusServerImpl.shouldAuditSnapshotTransfer(
+            enabledHandler, auditDatabaseClassifier, groupId));
+    assertFalse(
+        IoTConsensusServerImpl.shouldAuditSnapshotTransfer(
+            UserDataTransferAuditHandler.NO_OP,
+            UserDataTransferAuditClassifier.NO_USER_DATA,
+            groupId));
+  }
+
+  /**
+   * Verifies that configuration snapshots can be read while several writers concurrently add and
+   * remove distinct peers. Every snapshot must remain duplicate-free and sorted, and the final
+   * configuration must contain exactly the peers that were not removed.
+   */
+  @Test
+  public void testConfigurationConcurrentReadAndWrite() throws Exception {
+    final ScheduledExecutorService backgroundTaskService =
+        Executors.newSingleThreadScheduledExecutor();
+    final ExecutorService executorService =
+        Executors.newFixedThreadPool(WRITER_COUNT + READER_COUNT);
+    try {
+      final Peer thisNode = new Peer(new DataRegionId(1), 0, new TEndPoint("127.0.0.1", 6667));
+      final IoTConsensusServerImpl server =
+          new IoTConsensusServerImpl(
+              temporaryFolder.getRoot().getAbsolutePath(),
+              null,
+              DirectoryStrategyType.SEQUENCE_STRATEGY,
+              thisNode,
+              Collections.singletonList(thisNode),
+              new TestStateMachine(),
+              backgroundTaskService,
+              null,
+              null,
+              IoTConsensusConfig.newBuilder().build());
+      final Set<Peer> configuration = getConfiguration(server);
+      assertTrue(configuration.spliterator().hasCharacteristics(Spliterator.CONCURRENT));
+
+      final CountDownLatch startLatch = new CountDownLatch(1);
+      final CountDownLatch writersDoneLatch = new CountDownLatch(WRITER_COUNT);
+      final Set<Peer> expectedConfiguration = new HashSet<>();
+      expectedConfiguration.add(thisNode);
+
+      final Future<?>[] writerFutures = new Future<?>[WRITER_COUNT];
+      for (int writerIndex = 0; writerIndex < WRITER_COUNT; writerIndex++) {
+        final int currentWriterIndex = writerIndex;
+        writerFutures[writerIndex] =
+            executorService.submit(
+                () -> {
+                  startLatch.await();
+                  try {
+                    for (int peerIndex = 0; peerIndex < PEERS_PER_WRITER; peerIndex++) {
+                      final Peer peer = createPeer(currentWriterIndex, peerIndex);
+                      configuration.add(peer);
+                      if ((peerIndex & 1) == 0) {
+                        configuration.remove(peer);
+                      }
+                    }
+                  } finally {
+                    writersDoneLatch.countDown();
+                  }
+                  return null;
+                });
+        for (int peerIndex = 1; peerIndex < PEERS_PER_WRITER; peerIndex += 2) {
+          expectedConfiguration.add(createPeer(writerIndex, peerIndex));
+        }
+      }
+
+      final Future<?>[] readerFutures = new Future<?>[READER_COUNT];
+      for (int readerIndex = 0; readerIndex < READER_COUNT; readerIndex++) {
+        readerFutures[readerIndex] =
+            executorService.submit(
+                () -> {
+                  startLatch.await();
+                  do {
+                    assertValidSnapshot(server.getConfiguration());
+                  } while (writersDoneLatch.getCount() > 0);
+                  assertValidSnapshot(server.getConfiguration());
+                  return null;
+                });
+      }
+
+      startLatch.countDown();
+      for (Future<?> writerFuture : writerFutures) {
+        writerFuture.get(30, TimeUnit.SECONDS);
+      }
+      for (Future<?> readerFuture : readerFutures) {
+        readerFuture.get(30, TimeUnit.SECONDS);
+      }
+
+      assertEquals(expectedConfiguration, new HashSet<>(server.getConfiguration()));
+    } finally {
+      executorService.shutdownNow();
+      backgroundTaskService.shutdownNow();
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Set<Peer> getConfiguration(IoTConsensusServerImpl server) throws Exception {
+    final Field configurationField = IoTConsensusServerImpl.class.getDeclaredField("configuration");
+    configurationField.setAccessible(true);
+    return (Set<Peer>) configurationField.get(server);
+  }
+
+  private static Peer createPeer(int writerIndex, int peerIndex) {
+    final int nodeId = writerIndex * PEERS_PER_WRITER + peerIndex + 1;
+    return new Peer(new DataRegionId(1), nodeId, new TEndPoint("127.0.0.1", 10_000 + nodeId));
+  }
+
+  private static void assertValidSnapshot(List<Peer> snapshot) {
+    assertEquals(snapshot.size(), new HashSet<>(snapshot).size());
+    for (int index = 1; index < snapshot.size(); index++) {
+      assertTrue(snapshot.get(index - 1).compareTo(snapshot.get(index)) < 0);
+    }
+  }
+}

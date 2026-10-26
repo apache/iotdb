@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.client.async.handlers.audit;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -36,12 +37,15 @@ public class DataNodeWriteAuditLogHandler implements AsyncMethodCallback<TSStatu
   @Override
   public void onComplete(TSStatus tsStatus) {
     if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      logger.error("Failed to write audit log to DataNode {}, response: {}", nodeId, tsStatus);
+      logger.error(
+          ConfigNodeMessages.LOG_FAILED_WRITE_AUDIT_LOG_DATANODE_ARG_RESPONSE_ARG_691ABC90,
+          nodeId,
+          tsStatus);
     }
   }
 
   @Override
   public void onError(Exception e) {
-    logger.error("Failed to write audit log to DataNode {}", nodeId, e);
+    logger.error(ConfigNodeMessages.LOG_FAILED_WRITE_AUDIT_LOG_DATANODE_ARG_90F15E13, nodeId, e);
   }
 }

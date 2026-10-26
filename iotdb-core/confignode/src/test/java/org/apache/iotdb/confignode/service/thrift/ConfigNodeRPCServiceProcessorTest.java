@@ -27,12 +27,15 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.confignode.service.ConfigNode;
+import org.apache.iotdb.consensus.IConsensus;
+import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.TimeoutChangeableTFastFramedTransport;
 
@@ -160,5 +163,49 @@ public class ConfigNodeRPCServiceProcessorTest extends TestCase {
     Assert.assertEquals(
         "1.2.3.4",
         sentRequest.getDataNodeConfiguration().getLocation().getClientRpcEndPoint().getIp());
+  }
+
+  public void testDeleteConfigNodePeerShouldIgnoreMissingLocalPeer() throws Exception {
+    CommonConfig commonConfig = Mockito.mock(CommonConfig.class);
+    ConfigNodeConfig configNodeConfig = Mockito.mock(ConfigNodeConfig.class);
+    ConfigNode configNode = Mockito.mock(ConfigNode.class);
+    ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    ConsensusManager consensusManager = Mockito.mock(ConsensusManager.class);
+    IConsensus consensus = Mockito.mock(IConsensus.class);
+    Mockito.when(configManager.getConsensusManager()).thenReturn(consensusManager);
+    Mockito.when(consensusManager.getConsensusGroupId())
+        .thenReturn(ConsensusManager.DEFAULT_CONSENSUS_GROUP_ID);
+    Mockito.when(consensusManager.getConsensusImpl()).thenReturn(consensus);
+    Mockito.doThrow(
+            new ConsensusGroupNotExistException(ConsensusManager.DEFAULT_CONSENSUS_GROUP_ID))
+        .when(consensus)
+        .deleteLocalPeer(ConsensusManager.DEFAULT_CONSENSUS_GROUP_ID);
+    ConfigNodeRPCServiceProcessor sut =
+        new ConfigNodeRPCServiceProcessor(
+            commonConfig, configNodeConfig, configNode, configManager);
+
+    TSStatus status = sut.deleteConfigNodePeer(new TConfigNodeLocation());
+
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Mockito.verify(configManager, Mockito.never()).getNodeManager();
+  }
+
+  public void testDeleteConfigNodePeerShouldRejectMismatchedTarget() throws Exception {
+    CommonConfig commonConfig = Mockito.mock(CommonConfig.class);
+    ConfigNodeConfig configNodeConfig = Mockito.mock(ConfigNodeConfig.class);
+    ConfigNode configNode = Mockito.mock(ConfigNode.class);
+    ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    Mockito.when(configNodeConfig.getConfigNodeId()).thenReturn(2);
+    ConfigNodeRPCServiceProcessor sut =
+        new ConfigNodeRPCServiceProcessor(
+            commonConfig, configNodeConfig, configNode, configManager);
+
+    TSStatus status =
+        sut.deleteConfigNodePeer(
+            new TConfigNodeLocation(
+                1, new TEndPoint("127.0.0.1", 10710), new TEndPoint("127.0.0.1", 10720)));
+
+    Assert.assertEquals(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode(), status.getCode());
+    Mockito.verify(configManager, Mockito.never()).getConsensusManager();
   }
 }

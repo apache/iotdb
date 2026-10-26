@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.util;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.utils.ModificationUtils;
@@ -61,7 +64,8 @@ public class ModsOperationUtil {
           .forEach(
               modification -> modifications.append(modification.keyOfPatternTree(), modification));
     } catch (Exception e) {
-      throw new PipeException("Failed to load modifications from TsFile: " + tsFile.getPath(), e);
+      throw new PipeException(
+          DataNodePipeMessages.FAILED_TO_LOAD_MODIFICATIONS_FROM_TSFILE + tsFile.getPath(), e);
     }
 
     return modifications;
@@ -76,6 +80,7 @@ public class ModsOperationUtil {
    * @param startTime start time
    * @param endTime end time
    * @param modifications modification records
+   * @param isTableModel whether the device belongs to table model
    * @return true if data is completely deleted, false otherwise
    */
   public static boolean isAllDeletedByMods(
@@ -83,18 +88,20 @@ public class ModsOperationUtil {
       String measurementID,
       long startTime,
       long endTime,
-      PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications) {
+      PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications,
+      boolean isTableModel) {
     if (modifications == null) {
       return false;
     }
 
-    final List<ModEntry> mods = modifications.getOverlapped(deviceID, measurementID);
+    final List<ModEntry> mods =
+        getOverlappedMods(deviceID, measurementID, modifications, isTableModel);
     if (mods == null || mods.isEmpty()) {
       return false;
     }
 
     // Different logic for tree model and table model
-    if (deviceID.isTableModel()) {
+    if (isTableModel) {
       // For table model: check if any modification affects the device and covers the time range
       return mods.stream()
           .anyMatch(
@@ -115,17 +122,20 @@ public class ModsOperationUtil {
    * @param deviceID device ID
    * @param measurements measurement list
    * @param modifications modification records
+   * @param isTableModel whether the device belongs to table model
    * @return mapping from measurement ID to mods list and index
    */
   public static List<ModsInfo> initializeMeasurementMods(
       IDeviceID deviceID,
       List<String> measurements,
-      PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications) {
+      PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications,
+      boolean isTableModel) {
 
     List<ModsInfo> modsInfos = new ArrayList<>(measurements.size());
 
     for (final String measurement : measurements) {
-      final List<ModEntry> mods = modifications.getOverlapped(deviceID, measurement);
+      final List<ModEntry> mods =
+          getOverlappedMods(deviceID, measurement, modifications, isTableModel);
       if (mods == null || mods.isEmpty()) {
         // No mods, use empty list and index 0
         modsInfos.add(new ModsInfo(Collections.emptyList(), 0));
@@ -135,7 +145,7 @@ public class ModsOperationUtil {
       // Sort by time range for efficient lookup
       // Different filtering logic for tree model and table model
       final List<ModEntry> filteredMods;
-      if (deviceID.isTableModel()) {
+      if (isTableModel) {
         // For table model: filter modifications that affect the device
         filteredMods =
             mods.stream()
@@ -152,6 +162,19 @@ public class ModsOperationUtil {
     }
 
     return modsInfos;
+  }
+
+  private static List<ModEntry> getOverlappedMods(
+      final IDeviceID deviceID,
+      final String measurement,
+      final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications,
+      final boolean isTableModel) {
+    try {
+      return modifications.getOverlapped(
+          CompactionPathUtils.getPath(deviceID, measurement, isTableModel));
+    } catch (final IllegalPathException e) {
+      throw new PipeException(e.getMessage(), e);
+    }
   }
 
   /**

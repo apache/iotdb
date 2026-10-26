@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.itbase.runtime;
 
+import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
+
 import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
@@ -38,6 +40,7 @@ import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -47,17 +50,34 @@ public class ClusterTestResultSet implements ResultSet {
   private final List<ResultSet> resultSets;
   private final List<String> endpoints;
   private final int queryTimeoutSeconds;
+  private final AbstractEnv env;
 
   public ClusterTestResultSet(
-      List<Statement> statements, List<String> endpoints, String sql, int queryTimeoutSeconds)
+      final List<Statement> statements,
+      final List<String> endpoints,
+      final String sql,
+      final int queryTimeoutSeconds,
+      final AbstractEnv env)
       throws SQLException {
     this.queryTimeoutSeconds = queryTimeoutSeconds;
     this.endpoints = endpoints;
-    RequestDelegate<ResultSet> delegate = createRequestDelegate();
+    final RequestDelegate<ResultSet> delegate = createRequestDelegate();
     for (Statement st : statements) {
       delegate.addRequest(() -> st.executeQuery(sql));
     }
     resultSets = delegate.requestAll();
+    this.env = env;
+  }
+
+  /**
+   * Returns each node's result for assertions that do not require identical row order or plan text.
+   * Every returned result must be checked. The caller must close the original result set and must
+   * not mix per-node iteration with iteration through the cluster wrapper.
+   */
+  public static List<ResultSet> getNodeResultSets(ResultSet resultSet) {
+    return resultSet instanceof ClusterTestResultSet
+        ? Collections.unmodifiableList(((ClusterTestResultSet) resultSet).resultSets)
+        : Collections.singletonList(resultSet);
   }
 
   @Override
@@ -1177,7 +1197,7 @@ public class ClusterTestResultSet implements ResultSet {
    * executed in parallel in order to accelerate the test.
    */
   private <T> RequestDelegate<T> createRequestDelegate() {
-    return new ParallelRequestDelegate<>(endpoints, queryTimeoutSeconds);
+    return new ParallelRequestDelegate<>(endpoints, queryTimeoutSeconds, env);
   }
 
   private <T> RequestDelegate<T> createLocalRequestDelegate() {

@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.pipe.processor.downsampling;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.utils.MemUtils;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -37,8 +39,18 @@ public abstract class PartialPathLastObjectCache<T> implements AutoCloseable {
 
   private final Cache<String, T> partialPath2ObjectCache;
 
+  public void setPipeOwner(final String pipeName, final long creationTime) {
+    allocatedMemoryBlock.setPipeOwner(pipeName, creationTime);
+  }
+
   protected PartialPathLastObjectCache(final long memoryLimitInBytes) {
-    allocatedMemoryBlock = PipeDataNodeResourceManager.memory().tryAllocate(memoryLimitInBytes);
+    allocatedMemoryBlock =
+        PipeDataNodeResourceManager.memory()
+            .tryAllocate(
+                PartialPathLastObjectCache.class.getSimpleName(),
+                memoryLimitInBytes,
+                PipeMemoryBlockCategory.CACHE,
+                PartialPathLastObjectCache.class.getSimpleName());
 
     // Currently disable the metric here because it's not a constant cache and the number may
     // fluctuate. In the future all the "processorCache"s may be recorded in single metric entry
@@ -65,7 +77,8 @@ public abstract class PartialPathLastObjectCache<T> implements AutoCloseable {
                   .eviction()
                   .ifPresent(eviction -> eviction.setMaximum(newMemory));
               LOGGER.info(
-                  "PartialPathLastObjectCache.allocatedMemoryBlock has shrunk from {} to {}.",
+                  DataNodePipeMessages
+                      .PARTIALPATHLASTOBJECTCACHE_ALLOCATEDMEMORYBLOCK_HAS_SHRUNK_FROM_TO,
                   oldMemory,
                   newMemory);
             })
@@ -77,7 +90,8 @@ public abstract class PartialPathLastObjectCache<T> implements AutoCloseable {
                   .eviction()
                   .ifPresent(eviction -> eviction.setMaximum(newMemory));
               LOGGER.info(
-                  "PartialPathLastObjectCache.allocatedMemoryBlock has expanded from {} to {}.",
+                  DataNodePipeMessages
+                      .PARTIALPATHLASTOBJECTCACHE_ALLOCATEDMEMORYBLOCK_HAS_EXPANDED_FROM_TO,
                   oldMemory,
                   newMemory);
             });

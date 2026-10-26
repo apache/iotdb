@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.agent.task;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.stage.PipeTaskStage;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.Map;
@@ -49,7 +50,9 @@ public class PipeConfigNodeTaskStage extends PipeTaskStage {
     } catch (final Exception e) {
       throw new PipeException(
           String.format(
-              "Failed to create subtask for pipe %s, creation time %d", pipeName, creationTime),
+              ManagerMessages.FAILED_TO_CREATE_SUBTASK_FOR_PIPE_CREATION_TIME,
+              pipeName,
+              creationTime),
           e);
     }
   }
@@ -67,6 +70,16 @@ public class PipeConfigNodeTaskStage extends PipeTaskStage {
   @Override
   public void stopSubtask() throws PipeException {
     PipeConfigNodeSubtaskExecutor.getInstance().stop(subtask.getTaskID());
+  }
+
+  @Override
+  public void registerReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    subtask.registerReceiverRuntimeSessions(pipeName, creationTime);
+  }
+
+  @Override
+  public void discardReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    subtask.discardReceiverRuntimeSessions(pipeName, creationTime);
   }
 
   @Override

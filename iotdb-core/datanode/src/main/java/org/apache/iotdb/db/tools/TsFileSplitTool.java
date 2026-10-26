@@ -21,6 +21,7 @@ package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -41,9 +42,8 @@ import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.reader.page.PageReader;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
@@ -92,7 +92,7 @@ public class TsFileSplitTool {
   public static void main(String[] args) throws IOException {
     checkArgs(args);
     String fileName = args[0];
-    LOGGER.info("Splitting TsFile {} ...", fileName);
+    LOGGER.info(DataNodeMiscMessages.SPLITTING_TSFILE, fileName);
     new TsFileSplitTool(fileName).run();
   }
 
@@ -105,7 +105,7 @@ public class TsFileSplitTool {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void run() throws IOException {
     if (ModificationFile.getExclusiveMods(new File(filename)).exists()) {
-      throw new IOException("Unsupported to split TsFile with modification currently.");
+      throw new IOException(DataNodeMiscMessages.UNSUPPORTED_SPLIT_WITH_MODIFICATION);
     }
 
     TsFileIOWriter writer = null;
@@ -163,7 +163,7 @@ public class TsFileSplitTool {
               || chunkHeader.getChunkType()
                   == (byte)
                       (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK)) {
-            throw new IOException("Unsupported to split TsFile with aligned timeseries currently.");
+            throw new IOException(DataNodeMiscMessages.UNSUPPORTED_SPLIT_WITH_ALIGNED);
           }
 
           MeasurementSchema measurementSchema =
@@ -239,33 +239,7 @@ public class TsFileSplitTool {
 
   private void writeToChunkWriter(
       ChunkWriterImpl chunkWriter, long time, Object value, TSDataType dataType) {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        chunkWriter.write(time, (int) value);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        chunkWriter.write(time, (long) value);
-        break;
-      case FLOAT:
-        chunkWriter.write(time, (float) value);
-        break;
-      case DOUBLE:
-        chunkWriter.write(time, (double) value);
-        break;
-      case BOOLEAN:
-        chunkWriter.write(time, (boolean) value);
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        chunkWriter.write(time, (Binary) value);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
-    }
+    Type.fromTsDataType(dataType).write(chunkWriter, time, value);
   }
 
   private TsFileResource endFileAndGenerateResource(TsFileIOWriter writer) throws IOException {
@@ -311,6 +285,6 @@ public class TsFileSplitTool {
         return;
       }
     }
-    throw new UnsupportedOperationException("Invalid param");
+    throw new UnsupportedOperationException(DataNodeMiscMessages.INVALID_PARAM);
   }
 }

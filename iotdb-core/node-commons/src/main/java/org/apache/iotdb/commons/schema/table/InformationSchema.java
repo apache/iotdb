@@ -21,24 +21,38 @@ package org.apache.iotdb.commons.schema.table;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 
+import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.enums.TSDataType;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.ServiceLoader;
+import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 public class InformationSchema {
   public static final String INFORMATION_DATABASE = "information_schema";
   private static final Map<String, TsTable> schemaTables = new HashMap<>();
+  private static final Map<String, Set<String>> columnsThatSupportPushDownPredicate =
+      new HashMap<>();
+  private static final Set<String> tablesThatSupportPushDownLimitOffset = new HashSet<>();
 
   public static final String QUERIES = "queries";
   public static final String DATABASES = "databases";
   public static final String TABLES = "tables";
+  public static final String DROP_TABLE_PROCEDURES = "drop_table_procedures";
   public static final String COLUMNS = "columns";
   public static final String REGIONS = "regions";
   public static final String PIPES = "pipes";
+  public static final String PIPE_MEMORY = "pipe_memory";
+  public static final String RECEIVERS = "receivers";
   public static final String PIPE_PLUGINS = "pipe_plugins";
   public static final String TOPICS = "topics";
   public static final String SUBSCRIPTIONS = "subscriptions";
@@ -49,6 +63,7 @@ public class InformationSchema {
   public static final String NODES = "nodes";
   public static final String CONFIG_NODES = "config_nodes";
   public static final String DATA_NODES = "data_nodes";
+  public static final String TABLE_DISK_USAGE = "table_disk_usage";
   public static final String CONNECTIONS = "connections";
   public static final String CURRENT_QUERIES = "current_queries";
   public static final String QUERIES_COSTS_HISTOGRAM = "queries_costs_histogram";
@@ -69,6 +84,13 @@ public class InformationSchema {
         new AttributeColumnSchema(ColumnHeaderConstant.STATEMENT_TABLE_MODEL, TSDataType.STRING));
     queriesTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.USER_TABLE_MODEL, TSDataType.STRING));
+    queriesTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.WAIT_TIME_IN_SERVER_TABLE_MODEL, TSDataType.FLOAT));
+    queriesTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.CLIENT_IP, TSDataType.STRING));
+    queriesTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.TIMEOUT_TABLE_MODEL, TSDataType.INT64));
     schemaTables.put(QUERIES, queriesTable);
 
     final TsTable databaseTable = new TsTable(DATABASES);
@@ -92,7 +114,17 @@ public class InformationSchema {
             ColumnHeaderConstant.SCHEMA_REGION_GROUP_NUM_TABLE_MODEL, TSDataType.INT32));
     databaseTable.addColumnSchema(
         new AttributeColumnSchema(
+            ColumnHeaderConstant.MAX_SCHEMA_REGION_GROUP_NUM_TABLE_MODEL, TSDataType.INT32));
+    databaseTable.addColumnSchema(
+        new AttributeColumnSchema(
             ColumnHeaderConstant.DATA_REGION_GROUP_NUM_TABLE_MODEL, TSDataType.INT32));
+    databaseTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.MAX_DATA_REGION_GROUP_NUM_TABLE_MODEL, TSDataType.INT32));
+    databaseTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.NEED_LAST_CACHE_TABLE_MODEL, TSDataType.BOOLEAN));
+    databaseTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(DATABASES, databaseTable);
 
     final TsTable tableTable = new TsTable(TABLES);
@@ -112,7 +144,36 @@ public class InformationSchema {
             ColumnHeaderConstant.COMMENT.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     tableTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.TABLE_TYPE_TABLE_MODEL, TSDataType.STRING));
+    tableTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.NEED_LAST_CACHE_TABLE_MODEL, TSDataType.BOOLEAN));
+    tableTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(TABLES, tableTable);
+
+    final TsTable dropTableProceduresTable = new TsTable(DROP_TABLE_PROCEDURES);
+    dropTableProceduresTable.addColumnSchema(
+        new TagColumnSchema(
+            ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    dropTableProceduresTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL, TSDataType.STRING));
+    dropTableProceduresTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.PROCEDURE_ID_TABLE_MODEL, TSDataType.INT64));
+    dropTableProceduresTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.STATE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    dropTableProceduresTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.PROGRESS_TABLE_MODEL, TSDataType.STRING));
+    dropTableProceduresTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.ERROR_MESSAGE_TABLE_MODEL, TSDataType.STRING));
+    dropTableProceduresTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.WRITTEN_MOD_FILE_COUNT_TABLE_MODEL, TSDataType.INT64));
+    dropTableProceduresTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.REMAINING_MOD_FILE_COUNT_TABLE_MODEL, TSDataType.INT64));
+    dropTableProceduresTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
+    schemaTables.put(DROP_TABLE_PROCEDURES, dropTableProceduresTable);
 
     final TsTable columnTable = new TsTable(COLUMNS);
     columnTable.addColumnSchema(
@@ -203,7 +264,82 @@ public class InformationSchema {
     pipeTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.ESTIMATED_REMAINING_SECONDS_TABLE_MODEL, TSDataType.DOUBLE));
+    pipeTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.IS_DEGRADED_TABLE_MODEL, TSDataType.BOOLEAN));
+    pipeTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.RECENT_FAILURES_TABLE_MODEL, TSDataType.STRING));
     schemaTables.put(PIPES, pipeTable);
+
+    final TsTable pipeMemoryTable = new TsTable(PIPE_MEMORY);
+    pipeMemoryTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.BLOCK_ID_TABLE_MODEL, TSDataType.INT64));
+    pipeMemoryTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.NAME_TABLE_MODEL, TSDataType.STRING));
+    pipeMemoryTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.CATEGORY_TABLE_MODEL, TSDataType.STRING));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.PIPE_NAME_TABLE_MODEL, TSDataType.STRING));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.PIPE_MODEL_TABLE_MODEL, TSDataType.STRING));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.MEMORY_USAGE_IN_BYTES_TABLE_MODEL, TSDataType.INT64));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.PEAK_MEMORY_SIZE_IN_BYTES_TABLE_MODEL, TSDataType.INT64));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.MAX_MEMORY_SIZE_IN_BYTES_TABLE_MODEL, TSDataType.INT64));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.ALLOCATION_TIME_TABLE_MODEL, TSDataType.TIMESTAMP));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.ASSIGNER_TABLE_MODEL, TSDataType.STRING));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.PARENT_BLOCK_ID_TABLE_MODEL, TSDataType.INT64));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.HIERARCHY_LEVEL_TABLE_MODEL, TSDataType.INT32));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.ACCOUNTED_MEMORY_USAGE_IN_BYTES_TABLE_MODEL, TSDataType.INT64));
+    schemaTables.put(PIPE_MEMORY, pipeMemoryTable);
+
+    final TsTable receiversTable = new TsTable(RECEIVERS);
+    receiversTable.addColumnSchema(
+        new TagColumnSchema(
+            ColumnHeaderConstant.RECEIVER_NODE_TYPE_TABLE_MODEL, TSDataType.STRING));
+    receiversTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.RECEIVER_NODE_ID_TABLE_MODEL, TSDataType.INT32));
+    receiversTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.PROTOCOL_TABLE_MODEL, TSDataType.STRING));
+    receiversTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.SENDER_CLUSTER_ID_TABLE_MODEL, TSDataType.STRING));
+    receiversTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.SENDER_ADDRESS_TABLE_MODEL, TSDataType.STRING));
+    receiversTable.addColumnSchema(
+        new TagColumnSchema(
+            ColumnHeaderConstant.RECEIVER_USER_NAME_TABLE_MODEL, TSDataType.STRING));
+    receiversTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.SENDER_PORTS_TABLE_MODEL, TSDataType.STRING));
+    receiversTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.CONNECTION_COUNT_TABLE_MODEL, TSDataType.INT32));
+    receiversTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.PIPE_COUNT_TABLE_MODEL, TSDataType.INT32));
+    receiversTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.PIPE_IDS_TABLE_MODEL, TSDataType.STRING));
+    receiversTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.LAST_HANDSHAKE_TIME_TABLE_MODEL, TSDataType.TIMESTAMP));
+    receiversTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.LAST_TRANSFER_TIME_TABLE_MODEL, TSDataType.TIMESTAMP));
+    schemaTables.put(RECEIVERS, receiversTable);
 
     final TsTable pipePluginTable = new TsTable(PIPE_PLUGINS);
     pipePluginTable.addColumnSchema(
@@ -214,6 +350,9 @@ public class InformationSchema {
         new AttributeColumnSchema(ColumnHeaderConstant.CLASS_NAME_TABLE_MODEL, TSDataType.STRING));
     pipePluginTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.PLUGIN_JAR_TABLE_MODEL, TSDataType.STRING));
+    pipePluginTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.EXCEPTION_MESSAGE_TABLE_MODEL, TSDataType.STRING));
     schemaTables.put(PIPE_PLUGINS, pipePluginTable);
 
     final TsTable topicTable = new TsTable(TOPICS);
@@ -286,6 +425,9 @@ public class InformationSchema {
             ColumnHeaderConstant.STATUS.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     nodesTable.addColumnSchema(
         new AttributeColumnSchema(
+            ColumnHeaderConstant.STATUS_REASON_TABLE_MODEL, TSDataType.STRING));
+    nodesTable.addColumnSchema(
+        new AttributeColumnSchema(
             ColumnHeaderConstant.INTERNAL_ADDRESS_TABLE_MODEL, TSDataType.STRING));
     nodesTable.addColumnSchema(
         new AttributeColumnSchema(
@@ -330,6 +472,25 @@ public class InformationSchema {
         new AttributeColumnSchema(
             ColumnHeaderConstant.SCHEMA_CONSENSUS_PORT_TABLE_MODEL, TSDataType.INT32));
     schemaTables.put(DATA_NODES, dataNodesTable);
+
+    final TsTable tableDiskUsageTable = new TsTable(TABLE_DISK_USAGE);
+    tableDiskUsageTable.addColumnSchema(
+        new FieldColumnSchema(
+            ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    tableDiskUsageTable.addColumnSchema(
+        new FieldColumnSchema(ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL, TSDataType.STRING));
+    tableDiskUsageTable.addColumnSchema(
+        new FieldColumnSchema(ColumnHeaderConstant.TABLE_TYPE_TABLE_MODEL, TSDataType.STRING));
+    tableDiskUsageTable.addColumnSchema(
+        new FieldColumnSchema(ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL, TSDataType.INT32));
+    tableDiskUsageTable.addColumnSchema(
+        new FieldColumnSchema(ColumnHeaderConstant.REGION_ID_TABLE_MODEL, TSDataType.INT32));
+    tableDiskUsageTable.addColumnSchema(
+        new FieldColumnSchema(ColumnHeaderConstant.TIME_PARTITION_TABLE_MODEL, TSDataType.INT64));
+    tableDiskUsageTable.addColumnSchema(
+        new FieldColumnSchema(ColumnHeaderConstant.SIZE_IN_BYTES_TABLE_MODEL, TSDataType.INT64));
+    tableDiskUsageTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
+    schemaTables.put(TABLE_DISK_USAGE, tableDiskUsageTable);
 
     final TsTable connectionsTable = new TsTable(CONNECTIONS);
     connectionsTable.addColumnSchema(
@@ -388,8 +549,65 @@ public class InformationSchema {
     schemaTables.put(SERVICES, servicesTable);
   }
 
+  static {
+    columnsThatSupportPushDownPredicate.put(
+        TABLE_DISK_USAGE,
+        ImmutableSet.of(
+            ColumnHeaderConstant.DATABASE.toLowerCase(),
+            ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL,
+            ColumnHeaderConstant.TABLE_TYPE_TABLE_MODEL,
+            ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL,
+            ColumnHeaderConstant.REGION_ID_TABLE_MODEL,
+            ColumnHeaderConstant.TIME_PARTITION_TABLE_MODEL));
+
+    tablesThatSupportPushDownLimitOffset.add(TABLE_DISK_USAGE);
+  }
+
+  // ==================== SPI extension point ====================
+
+  static {
+    for (final InformationSchemaExtension extension :
+        ServiceLoader.load(InformationSchemaExtension.class)) {
+      extension.registerAdditionalInformationSchemaTables(schemaTables::put);
+      extension.enhanceInformationSchemaTables(schemaTables::get);
+    }
+  }
+
+  /** Extends the information schema by adding new tables or enhancing existing tables. */
+  public interface InformationSchemaExtension {
+
+    /**
+     * Registers extension-specific information schema tables that do not exist in the built-in
+     * schema.
+     *
+     * @param registerFunc accepts the table name and its schema definition
+     */
+    default void registerAdditionalInformationSchemaTables(
+        final BiConsumer<String, TsTable> registerFunc) {
+      // Do nothing by default
+    }
+
+    /**
+     * Enhances built-in information schema tables, for example by adding extension-specific
+     * columns. The provider returns the mutable schema definition of the requested table.
+     *
+     * @param tableProvider returns the schema definition for a built-in table name
+     */
+    default void enhanceInformationSchemaTables(final Function<String, TsTable> tableProvider) {
+      // Do nothing by default
+    }
+  }
+
   public static Map<String, TsTable> getSchemaTables() {
     return schemaTables;
+  }
+
+  public static Set<String> getColumnsSupportPushDownPredicate(String tableName) {
+    return columnsThatSupportPushDownPredicate.getOrDefault(tableName, Collections.emptySet());
+  }
+
+  public static boolean supportsPushDownLimitOffset(String tableName) {
+    return tablesThatSupportPushDownLimitOffset.contains(tableName);
   }
 
   private InformationSchema() {

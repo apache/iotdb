@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
+import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -53,7 +56,9 @@ public class MinTimeAccumulator implements Accumulator {
   // partialResult should be like: | partialMinTimeValue |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of MinTime should be 1");
+    checkArgument(
+        partialResult.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_MINTIME_SHOULD_BE_1_B7EFE10B);
     if (partialResult[0].isNull(0)) {
       return;
     }
@@ -81,7 +86,9 @@ public class MinTimeAccumulator implements Accumulator {
   // columnBuilder should be single in minTimeAccumulator
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 1, "partialResult of MinTime should be 1");
+    checkArgument(
+        columnBuilders.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_MINTIME_SHOULD_BE_1_B7EFE10B);
     if (!hasCandidateResult) {
       columnBuilders[0].appendNull();
     } else {

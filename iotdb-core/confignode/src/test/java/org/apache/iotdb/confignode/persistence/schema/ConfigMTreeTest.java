@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.db.utils.SchemaUtils;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -290,7 +291,7 @@ public class ConfigMTreeTest {
 
     final ConfigMTree newTree = new ConfigMTree(false);
     final ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
-    newTree.deserialize(inputStream);
+    newTree.deserialize(inputStream, new ConfigSchemaStatistics());
 
     for (int i = 0; i < pathList.length; i++) {
       final TDatabaseSchema storageGroupSchema =
@@ -366,7 +367,7 @@ public class ConfigMTreeTest {
 
     final ConfigMTree newTree = new ConfigMTree(true);
     final ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
-    newTree.deserialize(inputStream);
+    newTree.deserialize(inputStream, new ConfigSchemaStatistics());
 
     for (int i = 0; i < pathList.length; i++) {
       final TDatabaseSchema storageGroupSchema =
@@ -404,6 +405,119 @@ public class ConfigMTreeTest {
       // currently, only construct the TsTable would not carry the time column
       assertEquals(3, table.getColumnNum());
     }
+  }
+
+  @Test
+  public void testAlterColumnTypeUpdatesCompatibleEncoding() throws Exception {
+    root = new ConfigMTree(true);
+
+    final PartialPath database = new PartialPath("root.sg");
+    root.setStorageGroup(database);
+    final IDatabaseMNode<IConfigMNode> databaseNode = root.getDatabaseNodeByDatabasePath(database);
+    databaseNode
+        .getAsMNode()
+        .getDatabaseSchema()
+        .setName(PathUtils.unQualifyDatabaseName(database.getFullPath()));
+    databaseNode.getAsMNode().getDatabaseSchema().setIsTableModel(true);
+
+    final TsTable table = new TsTable("table1");
+    table.addColumnSchema(new TagColumnSchema("id", TSDataType.STRING));
+    table.addColumnSchema(
+        new FieldColumnSchema(
+            "measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
+    root.preCreateTable(database, table);
+    root.commitCreateTable(database, table.getTableName());
+
+    root.preAlterColumnDataType(database, table.getTableName(), "measurement", TSDataType.STRING);
+
+    final TSEncoding expectedEncoding =
+        SchemaUtils.getDataTypeCompatibleEncoding(TSDataType.STRING, TSEncoding.GORILLA);
+    Assert.assertNotEquals(TSEncoding.GORILLA, expectedEncoding);
+
+    final TsTable preAlteredTable = root.getUsingTableSchema(database, table.getTableName());
+    final FieldColumnSchema preAlteredField =
+        (FieldColumnSchema) preAlteredTable.getColumnSchema("measurement");
+    Assert.assertEquals(TSDataType.STRING, preAlteredField.getDataType());
+    Assert.assertEquals(expectedEncoding, preAlteredField.getEncoding());
+
+    root.commitAlterColumnDataType(
+        database, table.getTableName(), "measurement", TSDataType.STRING);
+
+    final TsTable committedTable = root.getUsingTableSchema(database, table.getTableName());
+    final FieldColumnSchema committedField =
+        (FieldColumnSchema) committedTable.getColumnSchema("measurement");
+    Assert.assertEquals(TSDataType.STRING, committedField.getDataType());
+    Assert.assertEquals(expectedEncoding, committedField.getEncoding());
+
+    Assert.assertTrue(
+        root.getTableSchemaDetails(database, table.getTableName()).preAlteredColumns.isEmpty());
+  }
+
+  @Test
+  public void testDescKeepsPreDeletedColumns() throws Exception {
+    root = new ConfigMTree(true);
+
+    final PartialPath database = new PartialPath("root.sg");
+    root.setStorageGroup(database);
+    final IDatabaseMNode<IConfigMNode> databaseNode = root.getDatabaseNodeByDatabasePath(database);
+    databaseNode
+        .getAsMNode()
+        .getDatabaseSchema()
+        .setName(PathUtils.unQualifyDatabaseName(database.getFullPath()));
+    databaseNode.getAsMNode().getDatabaseSchema().setIsTableModel(true);
+
+    final TsTable table = new TsTable("table1");
+    table.addColumnSchema(new TagColumnSchema("id", TSDataType.STRING));
+    table.addColumnSchema(
+        new FieldColumnSchema(
+            "measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
+    root.preCreateTable(database, table);
+    root.commitCreateTable(database, table.getTableName());
+
+    root.preDeleteColumn(database, table.getTableName(), "measurement", false);
+
+    // DESC keeps a column whose deletion is still pending, so that the user can see it.
+    Assert.assertNotNull(
+        root.getTableSchemaForDesc(database, table.getTableName()).getColumnSchema("measurement"));
+    // A DataNode must not see that column any more.
+    Assert.assertNull(
+        root.getUsingTableSchema(database, table.getTableName()).getColumnSchema("measurement"));
+  }
+
+  @Test
+  public void testDropColumnClearsPendingDataTypeChange() throws Exception {
+    root = new ConfigMTree(true);
+
+    final PartialPath database = new PartialPath("root.sg");
+    root.setStorageGroup(database);
+    final IDatabaseMNode<IConfigMNode> databaseNode = root.getDatabaseNodeByDatabasePath(database);
+    databaseNode
+        .getAsMNode()
+        .getDatabaseSchema()
+        .setName(PathUtils.unQualifyDatabaseName(database.getFullPath()));
+    databaseNode.getAsMNode().getDatabaseSchema().setIsTableModel(true);
+
+    final TsTable table = new TsTable("table1");
+    table.addColumnSchema(new TagColumnSchema("id", TSDataType.STRING));
+    table.addColumnSchema(
+        new FieldColumnSchema(
+            "measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
+    root.preCreateTable(database, table);
+    root.commitCreateTable(database, table.getTableName());
+
+    root.preAlterColumnDataType(database, table.getTableName(), "measurement", TSDataType.STRING);
+    Assert.assertTrue(
+        root.getTableSchemaDetails(database, table.getTableName())
+            .preAlteredColumns
+            .containsKey("measurement"));
+
+    root.preDeleteColumn(database, table.getTableName(), "measurement", false);
+
+    ConfigMTree.TableSchemaDetails tableSchemaDetails =
+        root.getTableSchemaDetails(database, table.getTableName());
+    Assert.assertTrue(tableSchemaDetails.preDeletedColumns.contains("measurement"));
+    // The pending data type change is moot once the column is dropped.
+    Assert.assertFalse(tableSchemaDetails.preAlteredColumns.containsKey("measurement"));
   }
 
   @Test
@@ -450,7 +564,7 @@ public class ConfigMTreeTest {
     File schemaFile = new File(pathStr);
     try (InputStream inputStream = Files.newInputStream(schemaFile.getAbsoluteFile().toPath())) {
       ConfigMTree treeMTree = new ConfigMTree(false);
-      treeMTree.deserialize(inputStream);
+      treeMTree.deserialize(inputStream, new ConfigSchemaStatistics());
 
       Set<String> databaseSet = new HashSet<>();
       for (PartialPath path : treeMTree.getAllDatabasePaths(false)) {
@@ -468,7 +582,7 @@ public class ConfigMTreeTest {
     File schemaFile = new File(pathStr);
     try (InputStream inputStream = Files.newInputStream(schemaFile.getAbsoluteFile().toPath())) {
       ConfigMTree tableMTree = new ConfigMTree(true);
-      tableMTree.deserialize(inputStream);
+      tableMTree.deserialize(inputStream, new ConfigSchemaStatistics());
 
       Set<String> databaseSet = new HashSet<>();
       for (PartialPath path : tableMTree.getAllDatabasePaths(true)) {

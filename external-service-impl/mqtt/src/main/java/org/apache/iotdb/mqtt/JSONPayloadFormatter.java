@@ -18,6 +18,8 @@
 
 package org.apache.iotdb.mqtt;
 
+import org.apache.iotdb.mqtt.i18n.MqttMessages;
+
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -79,7 +81,7 @@ public class JSONPayloadFormatter implements PayloadFormatter {
       }
       return messages;
     }
-    throw new JsonParseException("payload is invalidate");
+    throw new JsonParseException(MqttMessages.PAYLOAD_INVALID);
   }
 
   @Override

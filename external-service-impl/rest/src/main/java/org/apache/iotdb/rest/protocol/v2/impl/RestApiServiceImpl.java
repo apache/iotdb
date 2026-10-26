@@ -19,13 +19,13 @@ package org.apache.iotdb.rest.protocol.v2.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -40,11 +40,13 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rest.protocol.handler.AuthorizationHandler;
+import org.apache.iotdb.rest.protocol.handler.QueryRowLimitUtils;
 import org.apache.iotdb.rest.protocol.model.ExecutionStatus;
 import org.apache.iotdb.rest.protocol.utils.InsertTabletSortDataUtils;
 import org.apache.iotdb.rest.protocol.v2.NotFoundException;
@@ -58,22 +60,19 @@ import org.apache.iotdb.rest.protocol.v2.handler.StatementConstructionHandler;
 import org.apache.iotdb.rest.protocol.v2.model.InsertRecordsRequest;
 import org.apache.iotdb.rest.protocol.v2.model.InsertTabletRequest;
 import org.apache.iotdb.rest.protocol.v2.model.PrefixPathList;
-import org.apache.iotdb.rest.protocol.v2.model.QueryDataSet;
 import org.apache.iotdb.rest.protocol.v2.model.SQL;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 
-import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -97,21 +96,22 @@ public class RestApiServiceImpl extends RestApiService {
   private final ISchemaFetcher schemaFetcher;
   private final AuthorizationHandler authorizationHandler;
 
-  private final Integer defaultQueryRowLimit;
+  private final int defaultQueryRowLimit;
 
   public RestApiServiceImpl() {
     partitionFetcher = ClusterPartitionFetcher.getInstance();
     schemaFetcher = ClusterSchemaFetcher.getInstance();
     authorizationHandler = new AuthorizationHandler();
     defaultQueryRowLimit =
-        IoTDBRestServiceDescriptor.getInstance().getConfig().getRestQueryDefaultRowSizeLimit();
+        QueryRowLimitUtils.normalizeRowSizeLimit(
+            IoTDBRestServiceDescriptor.getInstance().getConfig().getRestQueryDefaultRowSizeLimit());
   }
 
   @Override
   public Response executeFastLastQueryStatement(
       PrefixPathList prefixPathList, SecurityContext securityContext) {
     Long queryId = null;
-    Statement statement = null;
+    QueryStatement statement = null;
     boolean finish = false;
     long startTime = System.nanoTime();
     Throwable t = null;
@@ -123,7 +123,17 @@ public class RestApiServiceImpl extends RestApiService {
           new PartialPath(prefixPathList.getPrefixPaths().toArray(new String[0]));
       final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> resultMap =
           new HashMap<>();
-      int sensorNum = 0;
+
+      // Check permission, the cost is rather low because the req only contains one prefix path
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      final TSLastDataQueryReq tsLastDataQueryReq =
+          FastLastHandler.createTSLastDataQueryReq(clientSession, prefixPathList);
+      statement = StatementGenerator.createStatement(tsLastDataQueryReq);
+
+      final Response response = authorizationHandler.checkAuthority(securityContext, statement);
+      if (response != null) {
+        return response;
+      }
 
       final String prefixString = prefixPath.toString();
       for (final ISchemaRegion region : SchemaEngine.getInstance().getAllSchemaRegions()) {
@@ -131,21 +141,14 @@ public class RestApiServiceImpl extends RestApiService {
             && !region.getDatabaseFullPath().startsWith(prefixString)) {
           continue;
         }
-        sensorNum += region.fillLastQueryMap(prefixPath, resultMap);
+        region.fillLastQueryMap(prefixPath, resultMap, statement.getAuthorityScope());
       }
+
       // Check cache first
       if (!TableDeviceSchemaCache.getInstance().getLastCache(resultMap)) {
-        IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-        TSLastDataQueryReq tsLastDataQueryReq =
-            FastLastHandler.createTSLastDataQueryReq(clientSession, prefixPathList);
-        statement = StatementGenerator.createStatement(tsLastDataQueryReq);
-
         if (ExecuteStatementHandler.validateStatement(statement)) {
           return FastLastHandler.buildErrorResponse(TSStatusCode.EXECUTE_STATEMENT_ERROR);
         }
-
-        Optional.ofNullable(authorizationHandler.checkAuthority(securityContext, statement))
-            .ifPresent(Response.class::cast);
 
         queryId = SESSION_MANAGER.requestQueryId();
         SessionInfo sessionInfo = SESSION_MANAGER.getSessionInfo(clientSession);
@@ -175,42 +178,16 @@ public class RestApiServiceImpl extends RestApiService {
         }
       }
 
-      // Cache hit: build response directly
-      QueryDataSet targetDataSet = new QueryDataSet();
-
-      FastLastHandler.setupTargetDataSet(targetDataSet);
-      List<Object> timeseries = new ArrayList<>();
-      List<Object> valueList = new ArrayList<>();
-      List<Object> dataTypeList = new ArrayList<>();
-
-      for (final Map.Entry<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>>
-          result : resultMap.entrySet()) {
-        for (final Map.Entry<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>
-            device2MeasurementLastEntry : result.getValue().entrySet()) {
-          final String deviceWithSeparator =
-              device2MeasurementLastEntry.getKey().toString() + TsFileConstant.PATH_SEPARATOR;
-          for (final Map.Entry<String, Pair<TSDataType, TimeValuePair>> measurementLastEntry :
-              device2MeasurementLastEntry.getValue().entrySet()) {
-            final TimeValuePair tvPair = measurementLastEntry.getValue().getRight();
-            valueList.add(tvPair.getValue().getStringValue());
-            dataTypeList.add(tvPair.getValue().getDataType().name());
-            targetDataSet.addTimestampsItem(tvPair.getTimestamp());
-            timeseries.add(deviceWithSeparator + measurementLastEntry.getKey());
-          }
-        }
-      }
-      if (!timeseries.isEmpty()) {
-        targetDataSet.addValuesItem(timeseries);
-        targetDataSet.addValuesItem(valueList);
-        targetDataSet.addValuesItem(dataTypeList);
-      }
+      // Cache hit: build response directly (capped by defaultQueryRowLimit).
       finish = true;
-      return Response.ok().entity(targetDataSet).build();
+      return FastLastHandler.fillLastValueDataSet(resultMap, defaultQueryRowLimit);
 
     } catch (Exception e) {
       finish = true;
       t = e;
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long endTime = System.nanoTime();
       long costTime = endTime - startTime;
@@ -270,7 +247,9 @@ public class RestApiServiceImpl extends RestApiService {
     boolean finish = false;
     try {
       RequestValidationHandler.validateSQL(sql);
-      statement = StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
+      IClientSession session = SESSION_MANAGER.getCurrSession();
+      ZoneId zoneId = (session != null) ? session.getZoneId() : ZoneId.systemDefault();
+      statement = StatementGenerator.createStatement(sql.getSql(), zoneId);
       if (statement == null) {
         return Response.ok()
             .entity(
@@ -288,7 +267,8 @@ public class RestApiServiceImpl extends RestApiService {
             .build();
       }
 
-      Response response = authorizationHandler.checkAuthority(securityContext, statement);
+      Response response =
+          authorizationHandler.checkAuthority(securityContext, statement, sql.getSql());
       if (response != null) {
         return response;
       }
@@ -307,12 +287,15 @@ public class RestApiServiceImpl extends RestApiService {
       return responseGenerateHelper(result);
     } catch (Exception e) {
       finish = true;
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long costTime = System.nanoTime() - startTime;
-      if (statement != null)
+      if (statement != null) {
         CommonUtils.addStatementExecutionLatency(
             OperationType.EXECUTE_NON_QUERY_PLAN, statement.getType().name(), costTime);
+      }
       if (queryId != null) {
         if (finish) {
           long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
@@ -332,7 +315,9 @@ public class RestApiServiceImpl extends RestApiService {
     boolean finish = false;
     try {
       RequestValidationHandler.validateSQL(sql);
-      statement = StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
+      IClientSession session = SESSION_MANAGER.getCurrSession();
+      ZoneId zoneId = (session != null) ? session.getZoneId() : ZoneId.systemDefault();
+      statement = StatementGenerator.createStatement(sql.getSql(), zoneId);
 
       if (statement == null) {
         return Response.ok()
@@ -384,11 +369,13 @@ public class RestApiServiceImpl extends RestApiService {
         return QueryDataSetHandler.fillQueryDataSet(
             queryExecution,
             statement,
-            sql.getRowLimit() == null ? defaultQueryRowLimit : sql.getRowLimit());
+            QueryRowLimitUtils.resolveActualRowSizeLimit(sql.getRowLimit(), defaultQueryRowLimit));
       }
     } catch (Exception e) {
       finish = true;
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long costTime = System.nanoTime() - startTime;
       Optional.ofNullable(statement)
@@ -438,7 +425,9 @@ public class RestApiServiceImpl extends RestApiService {
       return responseGenerateHelper(result);
 
     } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long costTime = System.nanoTime() - startTime;
       Optional.ofNullable(insertRowsStatement)
@@ -492,7 +481,9 @@ public class RestApiServiceImpl extends RestApiService {
               false);
       return responseGenerateHelper(result);
     } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long costTime = System.nanoTime() - startTime;
       Optional.ofNullable(insertTabletStatement)

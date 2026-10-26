@@ -19,10 +19,15 @@
 
 package org.apache.iotdb.rpc.stmt;
 
+import org.apache.iotdb.rpc.i18n.RpcMessages;
+
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -33,6 +38,8 @@ import java.util.List;
 
 /** Serializer for PreparedStatement parameters. */
 public class PreparedParameterSerde {
+
+  private static final char[] HEX_DIGITS = "0123456789ABCDEF".toCharArray();
 
   public static class DeserializedParam {
     public final TSDataType type;
@@ -61,7 +68,7 @@ public class PreparedParameterSerde {
       return ByteBuffer.wrap(outputStream.getBuf(), 0, outputStream.size());
     } catch (IOException e) {
       // Should not happen with PublicBAOS
-      throw new IllegalStateException("Failed to serialize parameters", e);
+      throw new IllegalStateException(RpcMessages.FAILED_TO_SERIALIZE_PARAMETERS, e);
     }
   }
 
@@ -126,7 +133,7 @@ public class PreparedParameterSerde {
     buffer.rewind();
     int count = ReadWriteIOUtils.readInt(buffer);
     if (count < 0 || count > buffer.remaining()) {
-      throw new IllegalArgumentException("Invalid parameter count: " + count);
+      throw new IllegalArgumentException(RpcMessages.INVALID_PARAMETER_COUNT + count);
     }
 
     List<DeserializedParam> result = new ArrayList<>(count);
@@ -141,35 +148,36 @@ public class PreparedParameterSerde {
   }
 
   private static Object deserializeValue(ByteBuffer buffer, TSDataType type) {
-    switch (type) {
-      case UNKNOWN:
-        return null;
-      case BOOLEAN:
-        return ReadWriteIOUtils.readBool(buffer);
-      case INT32:
-        return ReadWriteIOUtils.readInt(buffer);
-      case INT64:
-        return ReadWriteIOUtils.readLong(buffer);
-      case FLOAT:
-        return ReadWriteIOUtils.readFloat(buffer);
-      case DOUBLE:
-        return ReadWriteIOUtils.readDouble(buffer);
-      case TEXT:
-      case STRING:
-        return ReadWriteIOUtils.readString(buffer);
-      case BLOB:
-        return ReadWriteIOUtils.readBinary(buffer).getValues();
-      default:
-        throw new IllegalArgumentException("Unsupported type: " + type);
+    if (type == TSDataType.UNKNOWN) {
+      return null;
     }
+    if (!type.isNumeric()
+        && type != TSDataType.BOOLEAN
+        && type != TSDataType.TEXT
+        && type != TSDataType.STRING
+        && type != TSDataType.BLOB) {
+      throw new IllegalArgumentException(RpcMessages.UNSUPPORTED_TYPE + type);
+    }
+
+    TsPrimitiveType value = Type.fromTsDataType(type).deserialize(buffer);
+    if (type == TSDataType.BLOB) {
+      return value.getBinary().getValues();
+    }
+    if (type == TSDataType.TEXT || type == TSDataType.STRING) {
+      return value.getBinary().getStringValue(TSFileConfig.STRING_CHARSET);
+    }
+    return value.getValue();
   }
 
   /** Convert byte array to hexadecimal string representation. */
   public static String bytesToHex(byte[] bytes) {
-    StringBuilder sb = new StringBuilder(bytes.length * 2);
-    for (byte b : bytes) {
-      sb.append(String.format("%02X", b));
+    char[] chars = new char[bytes.length * 2];
+    for (int i = 0; i < bytes.length; i++) {
+      int value = bytes[i] & 0xFF;
+      int index = i * 2;
+      chars[index] = HEX_DIGITS[value >>> 4];
+      chars[index + 1] = HEX_DIGITS[value & 0x0F];
     }
-    return sb.toString();
+    return new String(chars);
   }
 }

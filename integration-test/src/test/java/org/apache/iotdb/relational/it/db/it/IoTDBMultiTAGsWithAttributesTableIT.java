@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.relational.it.db.it;
 
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
@@ -32,15 +34,18 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.List;
 
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode.JoinType.FULL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode.JoinType.LEFT;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode.JoinType.RIGHT;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqual;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.FULL;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.LEFT;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.RIGHT;
 import static org.junit.Assert.fail;
 
 /** In this IT, table has more than one TAGs and Attributes. */
@@ -1375,12 +1380,20 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     expectedHeader = buildHeaders(30);
+    // Exclude l4 so both blob extrema are unique; tied rows may arrive in either order.
     sql =
-        "select max_by(time,blob),max_by(device,blob),max_by(level,blob),max_by(attr1,blob),max_by(attr2,blob),max_by(num,blob),max_by(bignum,blob),max_by(floatnum,blob),max_by(str,blob),max_by(bool,blob),max_by(date,blob),max_by(blob,blob),max_by(ts,blob),max_by(stringv,blob),max_by(doubleNum,blob),min_by(time,blob),min_by(device,blob),min_by(level,blob),min_by(attr1,blob),min_by(attr2,blob),min_by(num,blob),min_by(bignum,blob),min_by(floatnum,blob),min_by(str,blob),min_by(bool,blob),min_by(date,blob),min_by(blob,blob),min_by(ts,blob),min_by(stringv,blob),min_by(doubleNum,blob) from table0";
+        "select max_by(time,blob),max_by(device,blob),max_by(level,blob),max_by(attr1,blob),max_by(attr2,blob),max_by(num,blob),max_by(bignum,blob),max_by(floatnum,blob),max_by(str,blob),max_by(bool,blob),max_by(date,blob),max_by(blob,blob),max_by(ts,blob),max_by(stringv,blob),max_by(doubleNum,blob),min_by(time,blob),min_by(device,blob),min_by(level,blob),min_by(attr1,blob),min_by(attr2,blob),min_by(num,blob),min_by(bignum,blob),min_by(floatnum,blob),min_by(str,blob),min_by(bool,blob),min_by(date,blob),min_by(blob,blob),min_by(ts,blob),min_by(stringv,blob),min_by(doubleNum,blob) from table0 where level != 'l4'";
     retArray =
         new String[] {
           "1971-01-01T00:00:10.000Z,d1,l5,null,null,7,2147983648,213.112,lemon,true,null,0x108dcd63,2024-09-25T06:15:35.000Z,null,null,1970-01-01T00:00:00.020Z,d1,l2,yy,zz,2,2147483648,434.12,pineapple,true,null,0x108dcd62,2024-09-24T06:15:35.000Z,null,6666.8,",
         };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    // Retain the unfiltered ties: either associated value is valid, but the extrema are fixed.
+    expectedHeader = buildHeaders(4);
+    sql =
+        "select max_by(num,blob) in (7,9),min_by(num,blob) in (2,5),max_by(blob,blob),min_by(blob,blob) from table0";
+    retArray = new String[] {"true,true,0x108dcd63,0x108dcd62,"};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     expectedHeader = buildHeaders(3);
@@ -2466,6 +2479,8 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
 
   @Test
   public void lastCacheTest() {
+    prepareStaleLastRowCacheOnSingleDataNode();
+
     expectedHeader =
         new String[] {
           "level", "attr1", "device", "attr2", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
@@ -2922,6 +2937,69 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
       String sql, String[] expectedHeader, String[] retArray, String dbName, int repeatTimes) {
     for (int i = 0; i < repeatTimes; i++) {
       tableResultSetEqualTest(sql, expectedHeader, retArray, dbName);
+    }
+  }
+
+  private static void prepareStaleLastRowCacheOnSingleDataNode() {
+    try {
+      final List<DataNodeWrapper> dataNodeWrappers = EnvFactory.getEnv().getDataNodeWrapperList();
+      for (final DataNodeWrapper dataNodeWrapper : dataNodeWrappers) {
+        executeTableStatementOnSingleDataNode(dataNodeWrapper, "clear query cache on local");
+      }
+
+      final DataNodeWrapper pollutedDataNode = dataNodeWrappers.get(0);
+
+      tableResultSetEqualOnSingleDataNode(
+          pollutedDataNode,
+          "select last_by(num,time),last_by(bignum,time),last_by(floatnum,time) "
+              + "from table0 where device='d1' and level='l2' and time<1971-04-26T17:46:40.000",
+          new String[] {"_col0", "_col1", "_col2"},
+          new String[] {"10,3147483648,231.55,"});
+      // This only refreshes the cached row time on one DataNode, keeping the field caches stale.
+      tableResultSetEqualOnSingleDataNode(
+          pollutedDataNode,
+          "select last(time),last(device),last(level),last(attr1),last(attr2) "
+              + "from table0 where device='d1' and level='l2'",
+          new String[] {"_col0", "_col1", "_col2", "_col3", "_col4"},
+          new String[] {"1971-04-26T17:46:40.000Z,d1,l2,yy,zz,"});
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  private static void executeTableStatementOnSingleDataNode(
+      final DataNodeWrapper dataNodeWrapper, final String sql) throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv()
+                .getConnection(
+                    dataNodeWrapper,
+                    SessionConfig.DEFAULT_USER,
+                    SessionConfig.DEFAULT_PASSWORD,
+                    "table");
+        final Statement statement = connection.createStatement()) {
+      statement.execute(sql);
+    }
+  }
+
+  private static void tableResultSetEqualOnSingleDataNode(
+      final DataNodeWrapper dataNodeWrapper,
+      final String sql,
+      final String[] expectedHeader,
+      final String[] expectedRetArray)
+      throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv()
+                .getConnection(
+                    dataNodeWrapper,
+                    SessionConfig.DEFAULT_USER,
+                    SessionConfig.DEFAULT_PASSWORD,
+                    "table");
+        final Statement statement = connection.createStatement()) {
+      statement.execute("use " + DATABASE_NAME);
+      try (final ResultSet resultSet = statement.executeQuery(sql)) {
+        tableResultSetEqual(resultSet, expectedHeader, expectedRetArray);
+      }
     }
   }
 

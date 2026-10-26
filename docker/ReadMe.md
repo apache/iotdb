@@ -53,20 +53,24 @@ e.g.
 ./do-docker-build.sh -t standalone -v 1.0.0
 # for ainode, start from 2.0.5
 ./do-docker-build.sh -t ainode -v 2.0.5-SNAPSHOT
+# for ainode, start from 2.0.8
+cd src/main
+./build-ainode.sh -v 2.0.8-SNAPSHOT -d /data/ainode
 ```
 Notice:
-Make directory of src/main/target and put the zip file downloading from the official download page. 
-e.g.
+Create `src/main/target` and place the downloaded release archives there.
+ConfigNode, DataNode, standalone and latest images all use `apache-iotdb-<version>-all-bin.zip`;
+their entrypoints still start only the requested components. The separate CLI, ConfigNode and
+DataNode archives are no longer published. AINode uses its own archive.
+
+For example:
 ```shell
-$ ls -hl target/
-total 215M
--rw-r--r-- 1 root root 75M Nov 30 20:04 apache-iotdb-1.0.0-all-bin.zip
--rw-r--r-- 1 root root 69M Dec  1 17:12 apache-iotdb-1.0.0-confignode-bin.zip
--rw-r--r-- 1 root root 73M Dec  1 17:13 apache-iotdb-1.0.0-datanode-bin.zip
--rw-r--r-- 1 root root 329K  7 15 17:12 apache-iotdb-2.0.5-SNAPSHOT-ainode-bin.zip
+$ ls target/
+apache-iotdb-2.0.11-SNAPSHOT-all-bin.zip
+apache-iotdb-2.0.11-SNAPSHOT-ainode-bin.zip
 ```
 
-To avoid mannually copy these files, you can run our `do-docker-build.sh` with argument `-b`.
+To avoid manually copy these files, you can run our `do-docker-build.sh` with argument `-b`.
 
 # How to run IoTDB server 
 
@@ -81,7 +85,7 @@ docker run -d --name iotdb -p 6667:6667 -p 31999:31999 -p 8181:8181 -p 5555:5555
 ```shell
 docker run -d --name iotdb -p 6667:6667 -p 31999:31999 -p 8181:8181 -p 5555:5555 -p 9003:9003 -p 40010:40010 apache/iotdb:<version>
 ```
-Since 1.0.0, see [offical documents.](https://iotdb.apache.org/UserGuide/latest/QuickStart/QuickStart.html)
+Since 1.0.0, see [official documents.](https://iotdb.apache.org/UserGuide/latest/QuickStart/QuickStart.html)
 
 # How to register AINode to IoTDB cluster
 
@@ -89,6 +93,23 @@ Since 1.0.0, see [offical documents.](https://iotdb.apache.org/UserGuide/latest/
 Please download `docker-compose-ainode.yml` in `docker/src/main/DockerCompose` first. After replace the correct IoTDB cluster configurations, run
 ```shell
 docker compose -f docker-compose-ainode.yml up -d
+```
+
+Start from v2.0.7, run
+```shell
+docker run -d \
+  --name iotdb-ainode \
+  --network host \
+  -p 10810:10810 \
+  -p 8080:8080 \
+  -e AIN_SEED_CONFIG_NODE=127.0.0.1:10710 \
+  -e AIN_RPC_ADDRESS=127.0.0.1 \
+  -e AIN_RPC_PORT=10810 \
+  -e AIN_CLUSTER_INGRESS_ADDRESS=127.0.0.1 \
+  -e AIN_CLUSTER_INGRESS_PORT=6667 \
+  -e AIN_CLUSTER_INGRESS_USERNAME=root \
+  -e AIN_CLUSTER_INGRESS_PASSWORD=root \
+  apache/iotdb:2.0.11-SNAPSHOT-ainode
 ```
 
 ## Quick start

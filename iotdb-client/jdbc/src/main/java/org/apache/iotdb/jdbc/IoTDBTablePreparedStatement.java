@@ -20,6 +20,7 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -59,6 +60,7 @@ import java.sql.SQLXML;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -69,7 +71,7 @@ import java.util.Map;
 public class IoTDBTablePreparedStatement extends IoTDBStatement implements PreparedStatement {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBTablePreparedStatement.class);
-  private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
+  private static final String METHOD_NOT_SUPPORTED_STRING = JdbcMessages.METHOD_NOT_SUPPORTED;
 
   private final String sql;
   private final String preparedStatementName;
@@ -114,7 +116,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
           parameterTypes[i] = Types.NULL;
         }
       } catch (TException | StatementExecutionException e) {
-        throw new SQLException("Failed to prepare statement: " + e.getMessage(), e);
+        throw new SQLException(JdbcMessages.FAILED_TO_PREPARE_STATEMENT + e.getMessage(), e);
       }
     } else {
       // For non-query statements, only keep text parameters for client-side substitution.
@@ -188,7 +190,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       if (parameterTypes[i] == Types.NULL
           && parameterValues[i] == null
           && !parameters.containsKey(i + 1)) {
-        throw new SQLException("Parameter #" + (i + 1) + " is unset");
+        throw new SQLException(String.format(JdbcMessages.PARAMETER_UNSET, i + 1));
       }
     }
 
@@ -198,16 +200,19 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     req.setParameters(
         PreparedParameterSerde.serialize(parameterValues, parameterTypes, parameterCount));
     req.setStatementId(getStmtId());
+    req.setFetchSize(getRequestFetchSize());
     if (queryTimeout > 0) {
       req.setTimeout(queryTimeout * 1000L);
     }
 
+    clearCancelled();
     try {
       TSExecuteStatementResp resp = client.executePreparedStatement(req);
+      setQueryId(resp.isSetQueryId() ? resp.getQueryId() : -1);
       RpcUtils.verifySuccess(resp.getStatus());
       return resp;
     } catch (TException | StatementExecutionException e) {
-      throw new SQLException("Failed to execute prepared statement: " + e.getMessage(), e);
+      throw new SQLException(JdbcMessages.FAILED_TO_EXECUTE_PREPARED_STATEMENT + e.getMessage(), e);
     }
   }
 
@@ -245,10 +250,10 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       try {
         TSStatus status = client.deallocatePreparedStatement(req);
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          logger.warn("Failed to deallocate prepared statement: {}", status.getMessage());
+          logger.warn(JdbcMessages.FAILED_TO_DEALLOCATE_PREPARED_STATEMENT, status.getMessage());
         }
       } catch (TException e) {
-        logger.warn("Error deallocating prepared statement", e);
+        logger.warn(JdbcMessages.ERROR_DEALLOCATING_PREPARED_STATEMENT, e);
       }
     }
     super.close();
@@ -369,14 +374,32 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   public void setFloat(int parameterIndex, float x) throws SQLException {
     checkParameterIndex(parameterIndex);
     setPreparedParameterValue(parameterIndex, x, Types.FLOAT);
-    this.parameters.put(parameterIndex, Float.toString(x));
+    this.parameters.put(parameterIndex, floatingPointLiteral(x, Float.toString(x)));
   }
 
   @Override
   public void setDouble(int parameterIndex, double x) throws SQLException {
     checkParameterIndex(parameterIndex);
     setPreparedParameterValue(parameterIndex, x, Types.DOUBLE);
-    this.parameters.put(parameterIndex, Double.toString(x));
+    this.parameters.put(parameterIndex, floatingPointLiteral(x, Double.toString(x)));
+  }
+
+  /**
+   * The literal for a FLOAT or DOUBLE parameter of SQL completed on the client. IoTDB SQL has no
+   * NaN or Infinity literal, but stores the string 'NaN' as NaN and rejects Infinity in any form.
+   */
+  private String floatingPointLiteral(double value, String text) throws SQLException {
+    if (serverSidePrepared || Double.isFinite(value)) {
+      return text;
+    }
+    if (Double.isNaN(value)) {
+      return "'NaN'";
+    }
+    throw new SQLException(
+        String.format(
+            JdbcMessages
+                .EXCEPTION_CANNOT_BIND_ARG_IOTDB_SQL_HAS_NO_LITERAL_INFINITE_FLOATING_4068FF32,
+            text));
   }
 
   @Override
@@ -400,9 +423,13 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public void setDate(int parameterIndex, Date x) throws SQLException {
+    setLocalDate(parameterIndex, x.toLocalDate());
+  }
+
+  private void setLocalDate(int parameterIndex, LocalDate x) throws SQLException {
     checkParameterIndex(parameterIndex);
     // Use ISO-8601 format YYYY-MM-DD for DATE columns
-    String dateStr = x.toLocalDate().toString();
+    String dateStr = x.toString();
     setPreparedParameterValue(parameterIndex, dateStr, Types.DATE);
     this.parameters.put(parameterIndex, "'" + dateStr + "'");
   }
@@ -433,7 +460,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       setPreparedParameterValue(parameterIndex, time, Types.BIGINT);
       this.parameters.put(parameterIndex, Long.toString(time));
     } catch (TException e) {
-      throw new SQLException("Failed to get time precision: " + e.getMessage(), e);
+      throw new SQLException(JdbcMessages.FAILED_TO_GET_TIME_PRECISION + e.getMessage(), e);
     }
   }
 
@@ -445,10 +472,32 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   @Override
   public void setTimestamp(int parameterIndex, Timestamp x) throws SQLException {
     checkParameterIndex(parameterIndex);
-    // Use millisecond value for SQL compatibility with TIMESTAMP columns
-    long timestampMs = x.getTime();
-    setPreparedParameterValue(parameterIndex, timestampMs, Types.BIGINT);
-    this.parameters.put(parameterIndex, Long.toString(timestampMs));
+    // The server reads time values in its own precision (ms, us or ns)
+    long time = toServerTime(x);
+    setPreparedParameterValue(parameterIndex, time, Types.BIGINT);
+    this.parameters.put(parameterIndex, Long.toString(time));
+  }
+
+  private long toServerTime(Timestamp x) throws SQLException {
+    int timeFactor = getTimeFactor();
+    // getTime() carries the milliseconds of getNanos(), so only its whole seconds are used
+    long seconds = Math.floorDiv(x.getTime(), 1_000L);
+    long fraction = x.getNanos() / (1_000_000_000 / timeFactor);
+    try {
+      if (seconds < 0 && fraction > 0) {
+        // Borrow a second, as Instant.toEpochMilli() does, so that the product cannot underflow
+        // for a value whose positive fraction brings it back into range
+        return Math.addExact(Math.multiplyExact(seconds + 1, timeFactor), fraction - timeFactor);
+      }
+      return Math.addExact(Math.multiplyExact(seconds, timeFactor), fraction);
+    } catch (ArithmeticException e) {
+      throw new SQLException(
+          String.format(
+              JdbcMessages.EXCEPTION_TIMESTAMP_ARG_OUT_RANGE_TIME_PRECISION_ARG_E25E3001,
+              x,
+              RpcUtils.getTimePrecision(timeFactor)),
+          e);
+    }
   }
 
   @Override
@@ -476,6 +525,8 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       setTimestamp(parameterIndex, (Timestamp) x);
     } else if (x instanceof Date) {
       setDate(parameterIndex, (Date) x);
+    } else if (x instanceof LocalDate) {
+      setLocalDate(parameterIndex, (LocalDate) x);
     } else if (x instanceof Time) {
       setTime(parameterIndex, (Time) x);
     } else if (x instanceof byte[]) {
@@ -483,7 +534,8 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     } else {
       throw new SQLException(
           String.format(
-              "Can't infer the SQL type for an instance of %s. Use setObject() with explicit type.",
+              JdbcMessages
+                  .EXCEPTION_CAN_T_INFER_SQL_TYPE_INSTANCE_ARG_USE_SETOBJECT_EXPLICIT_F457F33A,
               x.getClass().getName()));
     }
   }
@@ -505,7 +557,11 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     }
     if (index < 1 || index > parameterCount) {
       throw new SQLException(
-          "Parameter index out of range: " + index + " (expected 1-" + parameterCount + ")");
+          JdbcMessages.EXCEPTION_PARAMETER_INDEX_OUT_RANGE_3DD066E0
+              + index
+              + JdbcMessages.EXCEPTION_EXPECTED_1_3F4E8D6E
+              + parameterCount
+              + JdbcMessages.RIGHT_PARENTHESIS);
     }
   }
 
@@ -557,7 +613,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       byte[] bytes = ReadWriteIOUtils.readBytes(x, length);
       setBytes(parameterIndex, bytes);
     } catch (IOException e) {
-      throw new SQLException("Failed to read binary stream: " + e.getMessage(), e);
+      throw new SQLException(JdbcMessages.FAILED_TO_READ_BINARY_STREAM + e.getMessage(), e);
     }
   }
 
@@ -689,7 +745,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     StringBuilder newSql = new StringBuilder(parts.get(0));
     for (int i = 1; i < parts.size(); i++) {
       if (!parameters.containsKey(i)) {
-        throw new SQLException("Parameter #" + i + " is unset");
+        throw new SQLException(String.format(JdbcMessages.PARAMETER_UNSET, i));
       }
       newSql.append(parameters.get(i));
       newSql.append(parts.get(i));
@@ -697,36 +753,54 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     return newSql.toString();
   }
 
+  /**
+   * Splits the SQL at its parameter markers, skipping string literals, quoted identifiers and
+   * comments as the table-model lexer does. Quotes are escaped only by doubling them; a backslash
+   * is an ordinary character.
+   */
   private List<String> splitSqlStatement(final String sql) {
     List<String> parts = new ArrayList<>();
-    int apCount = 0;
     int off = 0;
-    boolean skip = false;
-
-    for (int i = 0; i < sql.length(); i++) {
+    int i = 0;
+    while (i < sql.length()) {
       char c = sql.charAt(i);
-      if (skip) {
-        skip = false;
-        continue;
-      }
-      switch (c) {
-        case '\'':
-          apCount++;
-          break;
-        case '\\':
-          skip = true;
-          break;
-        case '?':
-          if ((apCount & 1) == 0) {
-            parts.add(sql.substring(off, i));
-            off = i + 1;
-          }
-          break;
-        default:
-          break;
+      if (c == '\'' || c == '"' || c == '`') {
+        i = skipQuoted(sql, i, c);
+      } else if (sql.startsWith("--", i)) {
+        // Like the lexer's SIMPLE_COMMENT, the comment ends at the first CR or LF
+        i += 2;
+        while (i < sql.length() && sql.charAt(i) != '\r' && sql.charAt(i) != '\n') {
+          i++;
+        }
+      } else if (sql.startsWith("/*", i)) {
+        int end = sql.indexOf("*/", i + 2);
+        i = end < 0 ? sql.length() : end + 2;
+      } else {
+        if (c == '?') {
+          parts.add(sql.substring(off, i));
+          off = i + 1;
+        }
+        i++;
       }
     }
     parts.add(sql.substring(off));
     return parts;
+  }
+
+  /** Returns the index just past the quoted text that starts at {@code start}. */
+  private static int skipQuoted(String sql, int start, char quote) {
+    int i = start + 1;
+    while (i < sql.length()) {
+      if (sql.charAt(i) == quote) {
+        if (i + 1 < sql.length() && sql.charAt(i + 1) == quote) {
+          // A doubled quote stands for the quote character itself
+          i += 2;
+          continue;
+        }
+        return i + 1;
+      }
+      i++;
+    }
+    return sql.length();
   }
 }

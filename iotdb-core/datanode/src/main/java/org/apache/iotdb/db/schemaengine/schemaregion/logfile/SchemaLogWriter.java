@@ -20,14 +20,18 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.logfile;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 
 /**
  * This class provides the common ability to write a log storing T.
@@ -40,7 +44,8 @@ public class SchemaLogWriter<T> implements AutoCloseable {
 
   private final File logFile;
 
-  private final FileOutputStream fileOutputStream;
+  private final FileChannel fileChannel;
+  private final OutputStream fileOutputStream;
 
   private final ISerializer<T> serializer;
 
@@ -54,14 +59,15 @@ public class SchemaLogWriter<T> implements AutoCloseable {
     File dir = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!dir.exists()) {
       if (dir.mkdirs()) {
-        LOGGER.info("create schema folder {}.", dir);
+        LOGGER.info(DataNodeSchemaMessages.CREATE_SCHEMA_FOLDER, dir);
       } else {
-        LOGGER.warn("create schema folder {} failed.", dir);
+        LOGGER.warn(DataNodeSchemaMessages.CREATE_SCHEMA_FOLDER_FAILED, dir);
       }
     }
 
     logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
-    fileOutputStream = new FileOutputStream(logFile, true);
+    fileChannel = openFileChannel(logFile);
+    fileOutputStream = Channels.newOutputStream(fileChannel);
     this.serializer = serializer;
 
     this.forceEachWrite = forceEachWrite;
@@ -70,7 +76,8 @@ public class SchemaLogWriter<T> implements AutoCloseable {
   public SchemaLogWriter(String logFilePath, ISerializer<T> serializer, boolean forceEachWrite)
       throws IOException {
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
-    fileOutputStream = new FileOutputStream(logFile, true);
+    fileChannel = openFileChannel(logFile);
+    fileOutputStream = Channels.newOutputStream(fileChannel);
     this.serializer = serializer;
 
     this.forceEachWrite = forceEachWrite;
@@ -90,11 +97,11 @@ public class SchemaLogWriter<T> implements AutoCloseable {
       return;
     }
     hasSynced = true;
-    fileOutputStream.getFD().sync();
+    fileChannel.force(true);
   }
 
   private void syncBufferToDisk() throws IOException {
-    fileOutputStream.getFD().sync();
+    fileChannel.force(true);
     hasSynced = true;
   }
 
@@ -112,6 +119,14 @@ public class SchemaLogWriter<T> implements AutoCloseable {
   }
 
   public long position() throws IOException {
-    return fileOutputStream.getChannel().position();
+    return fileChannel.position();
+  }
+
+  private static FileChannel openFileChannel(File file) throws IOException {
+    return FileChannel.open(
+        file.toPath(),
+        StandardOpenOption.CREATE,
+        StandardOpenOption.WRITE,
+        StandardOpenOption.APPEND);
   }
 }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.service.externalservice;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +42,7 @@ public class ExternalServiceClassLoader extends URLClassLoader {
   public ExternalServiceClassLoader(String libRoot) throws IOException {
     super(new URL[0]);
     this.libRoot = libRoot;
-    LOGGER.info("External Service lib root: {}", libRoot);
+    LOGGER.info(DataNodeMiscMessages.EXTERNAL_SERVICE_LIB_ROOT, libRoot);
     addURLs();
   }
 

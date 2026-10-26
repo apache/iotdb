@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
+import org.apache.iotdb.calc.utils.ObjectTypeUtils;
 import org.apache.iotdb.db.exception.ChunkTypeInconsistentException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.utils.ObjectTypeUtils;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.MetaMarker;
@@ -37,6 +37,7 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
 
+import java.io.File;
 import java.io.IOException;
 
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.INIT_CHUNK_READER_NONALIGNED_DISK;
@@ -103,7 +104,11 @@ public class DiskChunkLoader implements IChunkLoader {
       }
 
       long t2 = System.nanoTime();
-      IChunkReader chunkReader = new ChunkReader(chunk, globalTimeFilter);
+      IChunkReader chunkReader =
+          new ChunkReader(
+              chunk,
+              globalTimeFilter,
+              this.context.getQueryStatistics()::addFilteredRowsOfPageLevel);
       SeriesScanCostMetricSet.getInstance()
           .recordSeriesScanCost(INIT_CHUNK_READER_NONALIGNED_DISK, System.nanoTime() - t2);
 
@@ -117,5 +122,9 @@ public class DiskChunkLoader implements IChunkLoader {
 
   public TsFileID getTsFileID() {
     return resource.getTsFileID();
+  }
+
+  public File getTsFile() {
+    return resource.getTsFile();
   }
 }

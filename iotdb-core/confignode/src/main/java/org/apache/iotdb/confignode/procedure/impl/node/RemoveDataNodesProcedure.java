@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeHandler;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -53,6 +54,7 @@ import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANOD
 public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNodeState> {
   private static final Logger LOG = LoggerFactory.getLogger(RemoveDataNodesProcedure.class);
   private static final int RETRY_THRESHOLD = 5;
+  private static final long ROLLBACK_RETRY_INTERVAL_MS = 5_000;
 
   private List<TDataNodeLocation> removedDataNodes;
 
@@ -76,7 +78,8 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
     configNodeProcedureEnv.getSchedulerLock().lock();
     try {
       LOG.info(
-          "procedureId {}-RemoveDataNodes skips acquiring lock, since upper layer ensures the serial execution.",
+          ProcedureMessages
+              .LOG_PROCEDUREID_ARG_REMOVEDATANODES_SKIPS_ACQUIRING_LOCK_SINCE_UPPER_LAYER_ENSURES_C7546FF8,
           getProcId());
       return ProcedureLockState.LOCK_ACQUIRED;
     } finally {
@@ -85,11 +88,18 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
   }
 
   @Override
+  protected void waitForLock(ConfigNodeProcedureEnv env) {
+    // This procedure does not acquire the node lock. Failed cleanup is rescheduled by the timeout
+    // executor; waiting on an unowned node lock would requeue it immediately.
+  }
+
+  @Override
   protected void releaseLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
     configNodeProcedureEnv.getSchedulerLock().lock();
     try {
       LOG.info(
-          "procedureId {}-RemoveDataNodes skips releasing lock, since it hasn't acquire any lock.",
+          ProcedureMessages
+              .LOG_PROCEDUREID_ARG_REMOVEDATANODES_SKIPS_RELEASING_LOCK_SINCE_IT_HASN_T_AED8A3DA,
           getProcId());
     } finally {
       configNodeProcedureEnv.getSchedulerLock().unlock();
@@ -110,12 +120,15 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
             setNextState(RemoveDataNodeState.REMOVE_DATA_NODE_PREPARE);
           } else {
             LOG.error(
-                "{}, Can not remove DataNode {} "
-                    + "because the number of DataNodes is less or equal than region replica number",
+                ProcedureMessages.LOG_ARG_CAN_NOT_REMOVE_DATANODE_ARG_495F9F85
+                    + ProcedureMessages
+                        .LOG_BECAUSE_NUMBER_DATANODES_LESS_EQUAL_THAN_REGION_REPLICA_NUMBER_DEC0CB38,
                 REMOVE_DATANODE_PROCESS,
                 removedDataNodes);
             return Flow.NO_MORE_STATE;
           }
+          // Retry preparation separately: changing nodes to Removing affects the capacity check.
+          break;
         case REMOVE_DATA_NODE_PREPARE:
           Map<Integer, NodeStatus> removedNodeStatusMap = new HashMap<>();
           removedDataNodes.forEach(
@@ -124,7 +137,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
           regionMigrationPlans =
               removeDataNodeHandler.selectedRegionMigrationPlans(removedDataNodes);
           LOG.info(
-              "{}, DataNode regions to be removed is {}",
+              ProcedureMessages.LOG_ARG_DATANODE_REGIONS_REMOVED_ARG_216A7DC7,
               REMOVE_DATANODE_PROCESS,
               regionMigrationPlans);
           setNextState(RemoveDataNodeState.BROADCAST_DISABLE_DATA_NODE);
@@ -145,17 +158,16 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
-      if (isRollbackSupported(state)) {
-        setFailure(new ProcedureException("Remove Data Node failed " + state));
+      // Rollback support permits failure cleanup; transient execution errors still retry here.
+      LOG.error(
+          ProcedureMessages.LOG_RETRIEVABLE_ERROR_TRYING_REMOVE_DATA_NODE_ARG_STATE_ARG_4EFEB850,
+          removedDataNodes,
+          state,
+          e);
+      if (getCycles() > RETRY_THRESHOLD) {
+        setFailure(new ProcedureException(ProcedureMessages.STATE_STUCK_AT + state));
       } else {
-        LOG.error(
-            "Retrievable error trying to remove data node {}, state {}",
-            removedDataNodes,
-            state,
-            e);
-        if (getCycles() > RETRY_THRESHOLD) {
-          setFailure(new ProcedureException("State stuck at " + state));
-        }
+        setNextState(state);
       }
     }
     return Flow.HAS_MORE_STATE;
@@ -184,7 +196,8 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
                     coordinatorForRemovePeer);
             addChildProcedure(regionMigrateProcedure);
             LOG.info(
-                "Submit RegionMigrateProcedure for regionId {}: removedDataNode={}, destDataNode={}, coordinatorForAddPeer={}, coordinatorForRemovePeer={}",
+                ProcedureMessages
+                    .LOG_SUBMIT_REGIONMIGRATEPROCEDURE_REGIONID_ARG_REMOVEDDATANODE_ARG_DESTDATANODE_ARG_COORDINATORFORADDPEER_ARG_,
                 regionId,
                 simplifyTDataNodeLocation(removedDataNode),
                 simplifyTDataNodeLocation(destDataNode),
@@ -192,7 +205,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
                 simplifyTDataNodeLocation(coordinatorForRemovePeer));
           } else {
             LOG.error(
-                "{}, Cannot find target DataNode to migrate the region: {}",
+                ProcedureMessages.LOG_ARG_CANNOT_FIND_TARGET_DATANODE_MIGRATE_REGION_ARG_81A78E06,
                 REMOVE_DATANODE_PROCESS,
                 regionId);
             // TODO terminate all the uncompleted remove datanode process
@@ -206,7 +219,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
         dataNodeLocation.getDataNodeId(), dataNodeLocation.getInternalEndPoint().getIp());
   }
 
-  private void checkRegionStatusAndStopDataNode(ConfigNodeProcedureEnv env) {
+  private void checkRegionStatusAndStopDataNode(ConfigNodeProcedureEnv env) throws IOException {
     List<TRegionReplicaSet> replicaSets =
         env.getConfigManager().getPartitionManager().getAllReplicaSets();
     List<TDataNodeLocation> rollBackDataNodes = new ArrayList<>();
@@ -222,8 +235,10 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
               .collect(Collectors.toList());
       if (!migratedFailedRegions.isEmpty()) {
         LOG.warn(
-            "{}, Some regions are migrated failed in DataNode: {}, migratedFailedRegions: {}."
-                + "Regions that have been successfully migrated will not roll back, you can submit the RemoveDataNodes task again later.",
+            ProcedureMessages
+                    .LOG_ARG_SOME_REGIONS_MIGRATED_FAILED_DATANODE_ARG_MIGRATEDFAILEDREGIONS_ARG_11644841
+                + ProcedureMessages
+                    .LOG_REGIONS_HAVE_BEEN_SUCCESSFULLY_MIGRATED_WILL_NOT_ROLL_BACK_YOU_AE904563,
             REMOVE_DATANODE_PROCESS,
             dataNode,
             migratedFailedRegions);
@@ -234,7 +249,8 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
     }
     if (!successDataNodes.isEmpty()) {
       LOG.info(
-          "{}, DataNodes: {} all regions migrated successfully, start to stop them.",
+          ProcedureMessages
+              .LOG_ARG_DATANODES_ARG_ALL_REGIONS_MIGRATED_SUCCESSFULLY_START_STOP_THEM_32D56F28,
           REMOVE_DATANODE_PROCESS,
           successDataNodes);
       env.getRemoveDataNodeHandler().removeDataNodePersistence(successDataNodes);
@@ -242,13 +258,13 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
     }
     if (!rollBackDataNodes.isEmpty()) {
       LOG.info(
-          "{}, Start to roll back the DataNodes status: {}",
+          ProcedureMessages.LOG_ARG_START_ROLL_BACK_DATANODES_STATUS_ARG_05C67270,
           REMOVE_DATANODE_PROCESS,
           rollBackDataNodes);
       env.getRemoveDataNodeHandler().changeDataNodeStatus(rollBackDataNodes, nodeStatusMap);
       env.getRemoveDataNodeHandler().broadcastDataNodeStatusChange(rollBackDataNodes);
       LOG.info(
-          "{}, Roll back the DataNodes status successfully: {}",
+          ProcedureMessages.LOG_ARG_ROLL_BACK_DATANODES_STATUS_SUCCESSFULLY_ARG_6773A2DF,
           REMOVE_DATANODE_PROCESS,
           rollBackDataNodes);
     }
@@ -256,11 +272,25 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
 
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, RemoveDataNodeState state)
-      throws IOException, InterruptedException, ProcedureException {}
+      throws IOException {
+    if (state == RemoveDataNodeState.STOP_DATA_NODE) {
+      // The parent advances here before waiting for migration children. A failed child skips
+      // normal execution, so finish node cleanup without undoing migrations or clearing its
+      // failure.
+      checkRegionStatusAndStopDataNode(env);
+    }
+  }
+
+  @Override
+  protected long getRollbackRetryTimeout() {
+    return ROLLBACK_RETRY_INTERVAL_MS;
+  }
 
   @Override
   protected boolean isRollbackSupported(RemoveDataNodeState state) {
-    return false;
+    // A failed migration child must still trigger node cleanup. This restores node statuses and
+    // stops drained nodes without undoing completed region migrations.
+    return state == RemoveDataNodeState.STOP_DATA_NODE;
   }
 
   /**
@@ -328,7 +358,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
         nodeStatusMap.put(dataNodeId, nodeStatus);
       }
     } catch (ThriftSerDeException e) {
-      LOG.error("Error in deserialize RemoveConfigNodeProcedure", e);
+      LOG.error(ProcedureMessages.ERROR_IN_DESERIALIZE_REMOVECONFIGNODEPROCEDURE, e);
     }
   }
 

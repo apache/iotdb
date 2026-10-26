@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.schedule.queue;
 
+import org.apache.iotdb.calc.execution.schedule.queue.ID;
+import org.apache.iotdb.calc.execution.schedule.queue.IDIndexedAccessible;
+import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingQueue;
+
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
@@ -58,7 +62,7 @@ public class L1PriorityQueue<E extends IDIndexedAccessible> extends IndexedBlock
   }
 
   @Override
-  protected boolean isEmpty() {
+  public boolean isEmpty() {
     return keyedElements.isEmpty();
   }
 

@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.iterative.GroupReference;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import java.util.List;
@@ -29,15 +31,15 @@ import static java.util.Objects.requireNonNull;
 
 public final class Plans {
   public static PlanNode resolveGroupReferences(PlanNode node, Lookup lookup) {
-    requireNonNull(node, "node is null");
+    requireNonNull(node, DataNodeQueryMessages.EXCEPTION_NODE_IS_NULL_C1479F4A);
     return node.accept(new ResolvingVisitor(lookup), null);
   }
 
-  private static class ResolvingVisitor extends PlanVisitor<PlanNode, Void> {
+  private static class ResolvingVisitor implements PlanVisitor<PlanNode, Void> {
     private final Lookup lookup;
 
     public ResolvingVisitor(Lookup lookup) {
-      this.lookup = requireNonNull(lookup, "lookup is null");
+      this.lookup = requireNonNull(lookup, DataNodeQueryMessages.EXCEPTION_LOOKUP_IS_NULL_B8FD7E65);
     }
 
     @Override

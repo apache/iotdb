@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
@@ -94,7 +95,7 @@ public class TreeInsertTabletStatementGenerator extends InsertTabletStatementGen
 
   @Override
   public long getWrittenCount() {
-    throw new UnsupportedOperationException("getWrittenCount() is not supported");
+    throw new UnsupportedOperationException(DataNodeQueryMessages.GETWRITTENCOUNT_IS_NOT_SUPPORTED);
   }
 
   @Override

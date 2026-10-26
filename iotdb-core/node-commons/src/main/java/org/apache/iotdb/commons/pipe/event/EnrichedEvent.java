@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.event;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
@@ -57,6 +58,9 @@ public abstract class EnrichedEvent implements Event {
   protected final long creationTime;
 
   protected final PipeTaskMeta pipeTaskMeta;
+
+  // Identifies the source instance that produced this event, including across task restarts.
+  protected long sourceId = Long.MIN_VALUE;
 
   protected CommitterKey committerKey;
   public static final long NO_COMMIT_ID = -1;
@@ -135,7 +139,7 @@ public abstract class EnrichedEvent implements Event {
 
     if (isReleased.get()) {
       LOGGER.warn(
-          "re-increase reference count to event that has already been released: {}, stack trace: {}",
+          PipeMessages.LOG_RE_INCREASE_REFERENCE_COUNT_EVENT_HAS_ALREADY_BEEN_RELEASED_ARG_B8DAAAEE,
           coreReportMessage(),
           Thread.currentThread().getStackTrace());
       isSuccessful = false;
@@ -154,7 +158,8 @@ public abstract class EnrichedEvent implements Event {
       }
     } else {
       LOGGER.warn(
-          "increase reference count failed, EnrichedEvent: {}, stack trace: {}",
+          PipeMessages
+              .LOG_INCREASE_REFERENCE_COUNT_FAILED_ENRICHEDEVENT_ARG_STACK_TRACE_ARG_94C472FC,
           coreReportMessage(),
           Thread.currentThread().getStackTrace());
     }
@@ -191,7 +196,8 @@ public abstract class EnrichedEvent implements Event {
 
     if (isReleased.get()) {
       LOGGER.warn(
-          "decrease reference count to event that has already been released: {}, stack trace: {}",
+          PipeMessages
+              .LOG_DECREASE_REFERENCE_COUNT_EVENT_HAS_ALREADY_BEEN_RELEASED_ARG_STACK_99FCAB8B,
           coreReportMessage(),
           Thread.currentThread().getStackTrace());
       isSuccessful = false;
@@ -205,7 +211,8 @@ public abstract class EnrichedEvent implements Event {
       // We assume that this function will not throw any exceptions.
       if (!internallyDecreaseResourceReferenceCount(holderMessage)) {
         LOGGER.warn(
-            "resource reference count is decreased to 0, but failed to release the resource, EnrichedEvent: {}, stack trace: {}",
+            PipeMessages
+                .LOG_RESOURCE_REFERENCE_COUNT_DECREASED_0_BUT_FAILED_RELEASE_RESOURCE_ENRICHEDEVENT_A02A86AF,
             coreReportMessage(),
             Thread.currentThread().getStackTrace());
       }
@@ -219,7 +226,7 @@ public abstract class EnrichedEvent implements Event {
       isSuccessful = newReferenceCount == 0;
       if (newReferenceCount < 0) {
         LOGGER.warn(
-            "reference count is decreased to {}, event: {}, stack trace: {}",
+            PipeMessages.LOG_REFERENCE_COUNT_DECREASED_ARG_EVENT_ARG_STACK_TRACE_ARG_A4BF56FC,
             newReferenceCount,
             coreReportMessage(),
             Thread.currentThread().getStackTrace());
@@ -229,7 +236,8 @@ public abstract class EnrichedEvent implements Event {
 
     if (!isSuccessful) {
       LOGGER.warn(
-          "decrease reference count failed, EnrichedEvent: {}, stack trace: {}",
+          PipeMessages
+              .LOG_DECREASE_REFERENCE_COUNT_FAILED_ENRICHEDEVENT_ARG_STACK_TRACE_ARG_6A2024AB,
           coreReportMessage(),
           Thread.currentThread().getStackTrace());
     }
@@ -256,7 +264,8 @@ public abstract class EnrichedEvent implements Event {
       // We assume that this function will not throw any exceptions.
       if (!internallyDecreaseResourceReferenceCount(holderMessage)) {
         LOGGER.warn(
-            "resource reference count is decreased to 0, but failed to release the resource, EnrichedEvent: {}, stack trace: {}",
+            PipeMessages
+                .LOG_RESOURCE_REFERENCE_COUNT_DECREASED_0_BUT_FAILED_RELEASE_RESOURCE_ENRICHEDEVENT_A02A86AF,
             coreReportMessage(),
             Thread.currentThread().getStackTrace());
       }
@@ -289,7 +298,7 @@ public abstract class EnrichedEvent implements Event {
   }
 
   public void bindProgressIndex(final ProgressIndex progressIndex) {
-    throw new UnsupportedOperationException("This event does not support binding progressIndex.");
+    throw new UnsupportedOperationException(PipeMessages.EVENT_NOT_SUPPORT_BINDING_PROGRESS_INDEX);
   }
 
   public abstract ProgressIndex getProgressIndex();
@@ -309,6 +318,17 @@ public abstract class EnrichedEvent implements Event {
 
   public final long getCreationTime() {
     return creationTime;
+  }
+
+  @Override
+  public void bindSource(final long sourceId) {
+    if (this.sourceId == Long.MIN_VALUE) {
+      this.sourceId = sourceId;
+    }
+  }
+
+  public final long getSourceId() {
+    return sourceId;
   }
 
   public final int getRegionId() {
@@ -494,10 +514,10 @@ public abstract class EnrichedEvent implements Event {
   }
 
   /**
-   * Used for pipeConsensus. In PipeConsensus, we only need committerKey, commitId and rebootTimes
+   * Used for iotConsensusV2. In IoTConsensusV2, we only need committerKey, commitId and rebootTimes
    * to uniquely identify an event
    */
-  public boolean equalsInPipeConsensus(final Object o) {
+  public boolean equalsInIoTConsensusV2(final Object o) {
     if (this == o) {
       return true;
     }

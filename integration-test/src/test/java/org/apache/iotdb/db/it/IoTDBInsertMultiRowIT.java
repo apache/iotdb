@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertNonQueryTestFail;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -93,6 +94,16 @@ public class IoTDBInsertMultiRowIT {
     }
 
     statement.close();
+  }
+
+  @Test
+  public void testInsertAlignedSeriesAutoCreate() throws SQLException {
+    try (Statement statement = connection.createStatement()) {
+      assertNonQueryTestFail(
+          statement,
+          "insert into root.aligned_auto_create.d1 (time, s1, s2) aligned values (0, null, 15.2)",
+          "Timeseries [root.aligned_auto_create.d1.s1] does not exist and its data type cannot be inferred from the null value");
+    }
   }
 
   @Test

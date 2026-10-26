@@ -19,29 +19,30 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ResolvedFunction;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ApplyNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SimplePlanRewriter;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -56,27 +57,28 @@ import java.util.function.Function;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.globalAggregation;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.singleAggregation;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ApplyNode.Quantifier.ALL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral.FALSE_LITERAL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN_OR_EQUAL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.NOT_EQUAL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignatureTranslator.toSqlType;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SimplePlanRewriter.rewriteWith;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.combineConjuncts;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.globalAggregation;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.singleAggregation;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode.Quantifier.ALL;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.FALSE_LITERAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN_OR_EQUAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.NOT_EQUAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toSqlType;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 
 public class TransformQuantifiedComparisonApplyToCorrelatedJoin implements PlanOptimizer {
   private final Metadata metadata;
 
   public TransformQuantifiedComparisonApplyToCorrelatedJoin(Metadata metadata) {
-    this.metadata = requireNonNull(metadata, "metadata is null");
+    this.metadata =
+        requireNonNull(metadata, DataNodeQueryMessages.EXCEPTION_METADATA_IS_NULL_6F8F9BA0);
   }
 
   @Override
@@ -91,9 +93,13 @@ public class TransformQuantifiedComparisonApplyToCorrelatedJoin implements PlanO
     private final Metadata metadata;
 
     public Rewriter(QueryId idAllocator, SymbolAllocator symbolAllocator, Metadata metadata) {
-      this.idAllocator = requireNonNull(idAllocator, "idAllocator is null");
-      this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
-      this.metadata = requireNonNull(metadata, "metadata is null");
+      this.idAllocator =
+          requireNonNull(idAllocator, DataNodeQueryMessages.EXCEPTION_IDALLOCATOR_IS_NULL_752B308D);
+      this.symbolAllocator =
+          requireNonNull(
+              symbolAllocator, DataNodeQueryMessages.EXCEPTION_SYMBOLALLOCATOR_IS_NULL_E2BE1908);
+      this.metadata =
+          requireNonNull(metadata, DataNodeQueryMessages.EXCEPTION_METADATA_IS_NULL_6F8F9BA0);
     }
 
     @Override
@@ -119,7 +125,9 @@ public class TransformQuantifiedComparisonApplyToCorrelatedJoin implements PlanO
 
       Symbol outputColumn = getOnlyElement(subqueryPlan.getOutputSymbols());
       Type outputColumnType = symbolAllocator.getTypes().getTableModelType(outputColumn);
-      checkState(outputColumnType.isOrderable(), "Subquery result type must be orderable");
+      checkState(
+          outputColumnType.isOrderable(),
+          DataNodeQueryMessages.EXCEPTION_SUBQUERY_RESULT_TYPE_MUST_BE_ORDERABLE_82AF0EFA);
 
       Symbol minValue = symbolAllocator.newSymbol("min", outputColumnType);
       Symbol maxValue = symbolAllocator.newSymbol("max", outputColumnType);
@@ -261,7 +269,9 @@ public class TransformQuantifiedComparisonApplyToCorrelatedJoin implements PlanO
             boundValue.toSymbolReference());
       }
       throw new IllegalArgumentException(
-          "Unsupported quantified comparison: " + quantifiedComparison);
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_QUANTIFIED_COMPARISON_S_C3700430,
+              quantifiedComparison));
     }
 
     private static ComparisonExpression.Operator mapOperator(
@@ -281,7 +291,9 @@ public class TransformQuantifiedComparisonApplyToCorrelatedJoin implements PlanO
           return GREATER_THAN_OR_EQUAL;
         default:
           throw new IllegalArgumentException(
-              "Unexpected quantifiedComparison: " + quantifiedComparison.getOperator());
+              String.format(
+                  DataNodeQueryMessages.QUERY_EXCEPTION_UNEXPECTED_QUANTIFIEDCOMPARISON_S_F13E4EB2,
+                  quantifiedComparison.getOperator()));
       }
     }
 
@@ -298,7 +310,7 @@ public class TransformQuantifiedComparisonApplyToCorrelatedJoin implements PlanO
             case GREATER_THAN_OR_EQUAL:
               return false;
             default:
-              throw new IllegalArgumentException("Unexpected value: " + operator);
+              throw new IllegalArgumentException(DataNodeQueryMessages.UNEXPECTED_VALUE + operator);
           }
         case ANY:
         case SOME:
@@ -310,11 +322,13 @@ public class TransformQuantifiedComparisonApplyToCorrelatedJoin implements PlanO
             case GREATER_THAN_OR_EQUAL:
               return true;
             default:
-              throw new IllegalArgumentException("Unexpected value: " + operator);
+              throw new IllegalArgumentException(DataNodeQueryMessages.UNEXPECTED_VALUE + operator);
           }
         default:
           throw new IllegalArgumentException(
-              "Unexpected Quantifier: " + quantifiedComparison.getQuantifier());
+              String.format(
+                  DataNodeQueryMessages.QUERY_EXCEPTION_UNEXPECTED_QUANTIFIER_S_62214B74,
+                  quantifiedComparison.getQuantifier()));
       }
     }
 

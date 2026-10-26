@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.metric.overview;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -56,7 +57,7 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
+  public synchronized void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
     ImmutableSet.copyOf(pipe).forEach(this::createMetrics);
   }
@@ -100,13 +101,11 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
   }
 
   @Override
-  public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(pipe).forEach(this::deregister);
-    if (!pipe.isEmpty()) {
-      LOGGER.warn(
-          "Failed to unbind from pipe tsfile to tablets metrics, pipe map is not empty, pipe: {}",
-          pipe);
-    }
+  public synchronized void unbindFrom(final AbstractMetricService metricService) {
+    // Keep the pipes registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    // Synchronized with the (de)registrations, which may remove a registration being unbound.
+    ImmutableSet.copyOf(pipe).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final String pipeID) {
@@ -148,7 +147,7 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister ////////////////////////////
 
-  public void register(final IoTDBDataRegionSource extractor) {
+  public synchronized void register(final IoTDBDataRegionSource extractor) {
     final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
     pipe.add(pipeID);
     if (Objects.nonNull(metricService)) {
@@ -156,10 +155,9 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
     }
   }
 
-  public void deregister(final String pipeID) {
+  public synchronized void deregister(final String pipeID) {
     if (!pipe.contains(pipeID)) {
-      LOGGER.warn(
-          "Failed to deregister pipe tsfile to tablets metrics, pipeID({}) does not exist", pipeID);
+      LOGGER.info(DataNodePipeMessages.SKIP_DEREGISTER_PIPE_TSFILE_TO_TABLETS, pipeID);
       return;
     }
     try {
@@ -179,8 +177,7 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
     }
     final Rate rate = pipeRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.info(
-          "Failed to mark pipe tsfile to tablets invocation, pipeID({}) does not exist", taskID);
+      LOGGER.info(DataNodePipeMessages.FAILED_TO_MARK_PIPE_TSFILE_TO_TABLETS, taskID);
       return;
     }
     rate.mark();
@@ -192,8 +189,7 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
     }
     final Timer timer = pipeTimerMap.get(taskID);
     if (timer == null) {
-      LOGGER.info(
-          "Failed to record pipe tsfile to tablets time, pipeID({}) does not exist", taskID);
+      LOGGER.info(DataNodePipeMessages.FAILED_TO_RECORD_PIPE_TSFILE_TO_TABLETS, taskID);
       return;
     }
     timer.updateNanos(costTimeInNanos);
@@ -210,7 +206,7 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
     }
     final Counter tabletCount = pipeTabletCountMap.get(taskID);
     if (tabletCount == null) {
-      LOGGER.info("Failed to record tablet generated, pipeID({}) does not exist", taskID);
+      LOGGER.info(DataNodePipeMessages.FAILED_TO_RECORD_TABLET_GENERATED_PIPEID_DOES, taskID);
       return;
     }
     tabletCount.inc();

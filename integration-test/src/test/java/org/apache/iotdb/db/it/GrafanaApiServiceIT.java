@@ -37,9 +37,9 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -47,6 +47,9 @@ import org.junit.runner.RunWith;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -59,10 +62,10 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class, RemoteIT.class})
 public class GrafanaApiServiceIT {
 
-  private int port = 18080;
+  private static int port = 18080;
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     BaseEnv baseEnv = EnvFactory.getEnv();
     baseEnv.getConfig().getDataNodeConfig().setEnableRestService(true);
     baseEnv.initClusterEnvironment();
@@ -70,9 +73,26 @@ public class GrafanaApiServiceIT {
     port = portConflictDataNodeWrapper.getRestServicePort();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  private static void executeQuietly(Statement statement, String sql) {
+    try {
+      statement.execute(sql);
+    } catch (SQLException ignored) {
+      // ignore
+    }
+  }
+
+  private static void cleanupSg25() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      executeQuietly(statement, "DELETE DATABASE root.sg25");
+    } catch (SQLException ignored) {
+      // ignore
+    }
   }
 
   private String getAuthorization(String username, String password) {
@@ -399,53 +419,69 @@ public class GrafanaApiServiceIT {
   @Test
   public void expressionWithConditionControlTest() {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
-    rightInsertTablet(httpClient);
-    expressionWithConditionControl(httpClient);
     try {
-      httpClient.close();
-    } catch (IOException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+      rightInsertTablet(httpClient);
+      expressionWithConditionControl(httpClient);
+    } finally {
+      try {
+        httpClient.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+      cleanupSg25();
     }
   }
 
   @Test
   public void expressionTest() {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
-    rightInsertTablet(httpClient);
-    expression(httpClient);
-    // expressionGroupByLevel(httpClient);
     try {
-      httpClient.close();
-    } catch (IOException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+      rightInsertTablet(httpClient);
+      expression(httpClient);
+      // expressionGroupByLevel(httpClient);
+    } finally {
+      try {
+        httpClient.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+      cleanupSg25();
     }
   }
 
   @Test
   public void expressionWithControlTest() {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
-    rightInsertTablet(httpClient);
-    expressionWithControl(httpClient);
     try {
-      httpClient.close();
-    } catch (IOException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+      rightInsertTablet(httpClient);
+      expressionWithControl(httpClient);
+    } finally {
+      try {
+        httpClient.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+      cleanupSg25();
     }
   }
 
   @Test
   public void variableTest() {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
-    rightInsertTablet(httpClient);
-    variable(httpClient);
     try {
-      httpClient.close();
-    } catch (IOException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+      rightInsertTablet(httpClient);
+      variable(httpClient);
+    } finally {
+      try {
+        httpClient.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+      cleanupSg25();
     }
   }
 }

@@ -19,26 +19,31 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.calc.plan.relational.utils.matching.Capture;
+import org.apache.iotdb.calc.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.calc.plan.relational.utils.matching.Pattern;
+import org.apache.iotdb.calc.plan.relational.utils.matching.PropertyPattern;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.DataOrganizationSpecification;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GroupNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.PropertyPattern;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -49,13 +54,14 @@ import java.util.stream.Stream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
+import static org.apache.iotdb.calc.plan.relational.utils.matching.Capture.newCapture;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Util.restrictOutputs;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Util.transpose;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.groupNode;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.source;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.window;
-import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture.newCapture;
 
 public class GatherAndMergeWindows {
   private GatherAndMergeWindows() {}
@@ -224,7 +230,9 @@ public class GatherAndMergeWindows {
     @Override
     protected Optional<PlanNode> manipulateAdjacentWindowNodes(
         WindowNode parent, WindowNode child, Context context) {
-      if ((compare(parent, child) < 0) && (!dependsOn(parent, child))) {
+      if ((compare(parent, child) < 0)
+          && (!dependsOn(parent, child))
+          && childInputSatisfies(parent, child)) {
         PlanNode transposedWindows = transpose(parent, child);
         return Optional.of(
             restrictOutputs(
@@ -234,6 +242,55 @@ public class GatherAndMergeWindows {
                 .orElse(transposedWindows));
       }
       return Optional.empty();
+    }
+
+    private static boolean childInputSatisfies(WindowNode parent, WindowNode child) {
+      return inputSatisfies(parent.getSpecification(), child.getChild());
+    }
+
+    private static boolean inputSatisfies(
+        DataOrganizationSpecification specification, PlanNode input) {
+      if (input instanceof ProjectNode) {
+        return inputSatisfies(specification, ((ProjectNode) input).getChild());
+      }
+      if (!(input instanceof GroupNode)) {
+        return false;
+      }
+      return orderingSatisfies(specification, ((GroupNode) input).getOrderingScheme());
+    }
+
+    private static boolean orderingSatisfies(
+        DataOrganizationSpecification specification, OrderingScheme orderingScheme) {
+      List<Symbol> requiredSymbols = new ArrayList<>();
+      Map<Symbol, SortOrder> requiredOrderings = new HashMap<>();
+      for (Symbol symbol : specification.getPartitionBy()) {
+        requiredSymbols.add(symbol);
+        requiredOrderings.put(symbol, ASC_NULLS_LAST);
+      }
+      specification
+          .getOrderingScheme()
+          .ifPresent(
+              scheme -> {
+                for (Symbol symbol : scheme.getOrderBy()) {
+                  if (!requiredOrderings.containsKey(symbol)) {
+                    requiredSymbols.add(symbol);
+                    requiredOrderings.put(symbol, scheme.getOrdering(symbol));
+                  }
+                }
+              });
+
+      if (requiredSymbols.size() > orderingScheme.getOrderBy().size()) {
+        return false;
+      }
+      for (int i = 0; i < requiredSymbols.size(); i++) {
+        Symbol requiredSymbol = requiredSymbols.get(i);
+        Symbol actualSymbol = orderingScheme.getOrderBy().get(i);
+        if (!requiredSymbol.equals(actualSymbol)
+            || requiredOrderings.get(requiredSymbol) != orderingScheme.getOrdering(actualSymbol)) {
+          return false;
+        }
+      }
+      return true;
     }
 
     private static int compare(WindowNode o1, WindowNode o2) {

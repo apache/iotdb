@@ -63,7 +63,8 @@ public class SyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSer
                         commonConfig.getTrustStorePath(),
                         commonConfig.getTrustStorePwd(),
                         commonConfig.getKeyStorePath(),
-                        commonConfig.getKeyStorePwd())
+                        commonConfig.getKeyStorePwd(),
+                        commonConfig.getSslProtocol())
                     : DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                         new TSocket(
                             TConfigurationConst.defaultTConfiguration,

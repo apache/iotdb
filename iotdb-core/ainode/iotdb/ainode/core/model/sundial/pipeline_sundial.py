@@ -30,7 +30,7 @@ class SundialPipeline(ForecastPipeline):
     def __init__(self, model_info: ModelInfo, **model_kwargs):
         super().__init__(model_info, **model_kwargs)
 
-    def preprocess(self, inputs, **infer_kwargs) -> torch.Tensor:
+    def _preprocess(self, inputs, **infer_kwargs) -> torch.Tensor:
         """
         Preprocess the input data by converting it to a 2D tensor (Sundial only supports 2D inputs).
 
@@ -48,7 +48,6 @@ class SundialPipeline(ForecastPipeline):
                                              (i.e., when inputs.shape[1] != 1).
         """
         model_id = self.model_info.model_id
-        inputs = super().preprocess(inputs, **infer_kwargs)
         # Here, we assume element in list has same history_length,
         # otherwise, the model cannot proceed
         if inputs[0].get("past_covariates", None) or inputs[0].get(
@@ -93,7 +92,7 @@ class SundialPipeline(ForecastPipeline):
         )
         return outputs
 
-    def postprocess(self, outputs: torch.Tensor, **infer_kwargs) -> list[torch.Tensor]:
+    def _postprocess(self, outputs: torch.Tensor, **infer_kwargs) -> list[torch.Tensor]:
         """
         Postprocess the model's output by averaging across the num_samples dimension and
         expanding the dimensions to match the expected shape.
@@ -107,5 +106,4 @@ class SundialPipeline(ForecastPipeline):
         """
         outputs = outputs.mean(dim=1).unsqueeze(1)
         outputs = [outputs[i] for i in range(outputs.size(0))]
-        outputs = super().postprocess(outputs, **infer_kwargs)
         return outputs

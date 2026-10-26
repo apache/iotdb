@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.table;
 
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
@@ -28,13 +29,20 @@ import java.util.Set;
 public class FetchTablePlan extends ConfigPhysicalReadPlan {
 
   private final Map<String, Set<String>> fetchTableMap;
+  private final Set<TableNodeStatus> tableNodeStatusSet;
 
-  public FetchTablePlan(final Map<String, Set<String>> fetchTableMap) {
+  public FetchTablePlan(
+      final Map<String, Set<String>> fetchTableMap, Set<TableNodeStatus> tableNodeStatus) {
     super(ConfigPhysicalPlanType.FetchTable);
     this.fetchTableMap = fetchTableMap;
+    this.tableNodeStatusSet = tableNodeStatus;
   }
 
   public Map<String, Set<String>> getFetchTableMap() {
     return fetchTableMap;
+  }
+
+  public Set<TableNodeStatus> getTableNodeStatusSet() {
+    return tableNodeStatusSet;
   }
 }

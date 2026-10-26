@@ -34,6 +34,7 @@ import java.util.List;
  */
 public class CountStatement extends ShowStatement {
   protected PartialPath pathPattern;
+  private boolean canSeeSystemDB = true;
 
   public CountStatement(PartialPath pathPattern) {
     this.pathPattern = pathPattern;
@@ -51,5 +52,13 @@ public class CountStatement extends ShowStatement {
   @Override
   public List<PartialPath> getPaths() {
     return Collections.singletonList(pathPattern);
+  }
+
+  public boolean isCanSeeSystemDB() {
+    return canSeeSystemDB;
+  }
+
+  public void setCanSeeSystemDB(boolean canSeeSystemDB) {
+    this.canSeeSystemDB = canSeeSystemDB;
   }
 }

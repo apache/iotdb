@@ -19,42 +19,48 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CoalesceExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CurrentTime;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DereferenceExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ExistsPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Extract;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FieldReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InListExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Parameter;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Row;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortItem;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Trim;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Window;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowSpecification;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentTime;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 
 import com.google.common.collect.ImmutableList;
 
@@ -71,11 +77,13 @@ import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractAggregateFunctions;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractWindowExpressions;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.isAggregationFunction;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ScopeReferenceExtractor.getReferencesToScope;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ScopeReferenceExtractor.hasReferencesToScope;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ScopeReferenceExtractor.isFieldFromScope;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware.scopeAwareKey;
+import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
 
 /** Checks whether an expression is constant with respect to the group */
 class AggregationAnalyzer {
@@ -120,10 +128,11 @@ class AggregationAnalyzer {
       Scope sourceScope,
       Optional<Scope> orderByScope,
       Analysis analysis) {
-    requireNonNull(groupByExpressions, "groupByExpressions is null");
-    requireNonNull(sourceScope, "sourceScope is null");
-    requireNonNull(orderByScope, "orderByScope is null");
-    requireNonNull(analysis, "analysis is null");
+    requireNonNull(
+        groupByExpressions, DataNodeQueryMessages.EXCEPTION_GROUPBYEXPRESSIONS_IS_NULL_BFDC07D2);
+    requireNonNull(sourceScope, DataNodeQueryMessages.EXCEPTION_SOURCESCOPE_IS_NULL_4B3626A7);
+    requireNonNull(orderByScope, DataNodeQueryMessages.EXCEPTION_ORDERBYSCOPE_IS_NULL_A6017E73);
+    requireNonNull(analysis, DataNodeQueryMessages.EXCEPTION_ANALYSIS_IS_NULL_66666A58);
 
     this.sourceScope = sourceScope;
     this.orderByScope = orderByScope;
@@ -149,7 +158,7 @@ class AggregationAnalyzer {
         fieldId -> {
           checkState(
               isFieldFromScope(fieldId, sourceScope),
-              "Grouping field %s should originate from %s",
+              DataNodeQueryMessages.EXCEPTION_GROUPING_FIELD_ARG_SHOULD_ORIGINATE_FROM_ARG_6DBBCE6B,
               fieldId,
               sourceScope.getRelationType());
         });
@@ -160,20 +169,24 @@ class AggregationAnalyzer {
     if (!visitor.process(expression, null)) {
       throw new SemanticException(
           String.format(
-              "'%s' must be an aggregate expression or appear in GROUP BY clause", expression));
+              DataNodeQueryMessages.S_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE,
+              expression));
     }
   }
 
   /** visitor returns true if all expressions are constant with respect to the group. */
-  private class Visitor extends AstVisitor<Boolean, Void> {
+  private class Visitor implements AstVisitor<Boolean, Void> {
     @Override
-    protected Boolean visitExpression(Expression node, Void context) {
+    public Boolean visitExpression(Expression node, Void context) {
       throw new UnsupportedOperationException(
-          "aggregation analysis not yet implemented for: " + node.getClass().getName());
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_AGGREGATION_ANALYSIS_NOT_YET_IMPLEMENTED_FOR_S_38B64170,
+              node.getClass().getName()));
     }
 
     @Override
-    protected Boolean visitSubqueryExpression(SubqueryExpression node, Void context) {
+    public Boolean visitSubqueryExpression(SubqueryExpression node, Void context) {
       /*
        * Column reference can resolve to (a) some subquery's scope, (b) a projection (ORDER BY scope),
        * (c) source scope or (d) outer query scope (effectively a constant).
@@ -186,123 +199,198 @@ class AggregationAnalyzer {
               expression -> {
                 throw new SemanticException(
                     String.format(
-                        "Subquery uses '%s' which must appear in GROUP BY clause", expression));
+                        DataNodeQueryMessages.SUBQUERY_USES_S_WHICH_MUST_APPEAR_IN_GROUP_BY_CLAUSE,
+                        expression));
               });
 
       return true;
     }
 
     @Override
-    protected Boolean visitExists(ExistsPredicate node, Void context) {
+    public Boolean visitExists(ExistsPredicate node, Void context) {
       checkState(node.getSubquery() instanceof SubqueryExpression);
       return process(node.getSubquery(), context);
     }
 
     @Override
-    protected Boolean visitCast(Cast node, Void context) {
+    public Boolean visitCast(Cast node, Void context) {
       return process(node.getExpression(), context);
     }
 
     @Override
-    protected Boolean visitCoalesceExpression(CoalesceExpression node, Void context) {
+    public Boolean visitCoalesceExpression(CoalesceExpression node, Void context) {
       return node.getOperands().stream().allMatch(expression -> process(expression, context));
     }
 
     @Override
-    protected Boolean visitNullIfExpression(NullIfExpression node, Void context) {
+    public Boolean visitNullIfExpression(NullIfExpression node, Void context) {
       return process(node.getFirst(), context) && process(node.getSecond(), context);
     }
 
     @Override
-    protected Boolean visitExtract(Extract node, Void context) {
+    public Boolean visitExtract(Extract node, Void context) {
       return process(node.getExpression(), context);
     }
 
     @Override
-    protected Boolean visitBetweenPredicate(BetweenPredicate node, Void context) {
+    public Boolean visitBetweenPredicate(BetweenPredicate node, Void context) {
       return process(node.getMin(), context)
           && process(node.getValue(), context)
           && process(node.getMax(), context);
     }
 
     @Override
-    protected Boolean visitCurrentTime(CurrentTime node, Void context) {
+    public Boolean visitCurrentTime(CurrentTime node, Void context) {
       return true;
     }
 
     @Override
-    protected Boolean visitArithmeticBinary(ArithmeticBinaryExpression node, Void context) {
+    public Boolean visitArithmeticBinary(ArithmeticBinaryExpression node, Void context) {
       return process(node.getLeft(), context) && process(node.getRight(), context);
     }
 
     @Override
-    protected Boolean visitComparisonExpression(ComparisonExpression node, Void context) {
+    public Boolean visitComparisonExpression(ComparisonExpression node, Void context) {
       return process(node.getLeft(), context) && process(node.getRight(), context);
     }
 
     @Override
-    protected Boolean visitLiteral(Literal node, Void context) {
+    public Boolean visitLiteral(Literal node, Void context) {
       return true;
     }
 
     @Override
-    protected Boolean visitIsNotNullPredicate(IsNotNullPredicate node, Void context) {
+    public Boolean visitIsNotNullPredicate(IsNotNullPredicate node, Void context) {
       return process(node.getValue(), context);
     }
 
     @Override
-    protected Boolean visitIsNullPredicate(IsNullPredicate node, Void context) {
+    public Boolean visitIsNullPredicate(IsNullPredicate node, Void context) {
       return process(node.getValue(), context);
     }
 
     @Override
-    protected Boolean visitLikePredicate(LikePredicate node, Void context) {
+    public Boolean visitLikePredicate(LikePredicate node, Void context) {
       return process(node.getValue(), context) && process(node.getPattern(), context);
     }
 
     @Override
-    protected Boolean visitInListExpression(InListExpression node, Void context) {
+    public Boolean visitInListExpression(InListExpression node, Void context) {
       return node.getValues().stream().allMatch(expression -> process(expression, context));
     }
 
     @Override
-    protected Boolean visitInPredicate(InPredicate node, Void context) {
+    public Boolean visitInPredicate(InPredicate node, Void context) {
       return process(node.getValue(), context) && process(node.getValueList(), context);
     }
 
     @Override
-    protected Boolean visitQuantifiedComparisonExpression(
+    public Boolean visitQuantifiedComparisonExpression(
         QuantifiedComparisonExpression node, Void context) {
       return process(node.getValue(), context) && process(node.getSubquery(), context);
     }
 
     @Override
-    protected Boolean visitTrim(Trim node, Void context) {
+    public Boolean visitTrim(Trim node, Void context) {
       return process(node.getTrimSource(), context)
           && (!node.getTrimCharacter().isPresent()
               || process(node.getTrimCharacter().get(), context));
     }
 
     @Override
-    protected Boolean visitFunctionCall(FunctionCall node, Void context) {
+    public Boolean visitFunctionCall(FunctionCall node, Void context) {
       if (isAggregationFunction(node.getName().toString())) {
-        List<FunctionCall> aggregateFunctions = extractAggregateFunctions(node.getArguments());
+        if (node.getWindow().isEmpty()) {
+          List<FunctionCall> aggregateFunctions = extractAggregateFunctions(node.getArguments());
+          List<Expression> windowExpressions = extractWindowExpressions(node.getArguments());
 
-        if (!aggregateFunctions.isEmpty()) {
-          throw new SemanticException(
-              String.format(
-                  "Cannot nest aggregations inside aggregation '%s': %s",
-                  node.getName(), aggregateFunctions));
+          if (!aggregateFunctions.isEmpty()) {
+            throw new SemanticException(
+                String.format(
+                    DataNodeQueryMessages
+                        .EXCEPTION_CANNOT_NEST_AGGREGATIONS_INSIDE_AGGREGATION_ARG_ARG_6E5073A4,
+                    node.getName(),
+                    aggregateFunctions));
+          }
+
+          if (!windowExpressions.isEmpty()) {
+            throw new SemanticException(
+                String.format(
+                    DataNodeQueryMessages
+                        .EXCEPTION_CANNOT_NEST_WINDOW_FUNCTIONS_INSIDE_AGGREGATION_ARG_ARG_8F94A897,
+                    node.getName(),
+                    windowExpressions));
+          }
+
+          return true;
         }
+      } else {
+        // Reject FILTER for non-aggregation functions when FunctionCall supports FILTER.
+        // Reject ORDER BY for non-aggregation functions when FunctionCall supports function-level
+        // ORDER BY.
+      }
 
-        return true;
+      if (node.getWindow().isPresent()) {
+        Window window = node.getWindow().get();
+        if (window instanceof WindowSpecification windowSpecification
+            && !process(windowSpecification, context)) {
+          return false;
+        }
       }
 
       return node.getArguments().stream().allMatch(expression -> process(expression, context));
     }
 
     @Override
-    protected Boolean visitIdentifier(Identifier node, Void context) {
+    public Boolean visitWindowSpecification(WindowSpecification node, Void context) {
+      for (Expression expression : node.getPartitionBy()) {
+        if (!process(expression, context)) {
+          throw new SemanticException(
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_PARTITION_BY_EXPRESSION_ARG_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_E3C696D6,
+                  expression));
+        }
+      }
+
+      for (SortItem sortItem : getSortItemsFromOrderBy(node.getOrderBy())) {
+        Expression expression = sortItem.getSortKey();
+        if (!process(expression, context)) {
+          throw new SemanticException(
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_ORDER_BY_EXPRESSION_ARG_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_7FF8267B,
+                  expression));
+        }
+      }
+
+      if (node.getFrame().isPresent()) {
+        process(node.getFrame().get(), context);
+      }
+
+      return true;
+    }
+
+    @Override
+    public Boolean visitWindowFrame(WindowFrame node, Void context) {
+      if (node.getStart().getValue().isPresent()
+          && !process(node.getStart().getValue().get(), context)) {
+        throw new SemanticException(
+            DataNodeQueryMessages
+                .EXCEPTION_WINDOW_FRAME_START_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_74E30A63);
+      }
+      if (node.getEnd().isPresent()
+          && node.getEnd().get().getValue().isPresent()
+          && !process(node.getEnd().get().getValue().get(), context)) {
+        throw new SemanticException(
+            DataNodeQueryMessages
+                .EXCEPTION_WINDOW_FRAME_END_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_31784B55);
+      }
+      return true;
+    }
+
+    @Override
+    public Boolean visitIdentifier(Identifier node, Void context) {
       //      if (analysis.getLambdaArgumentReferences().containsKey(NodeRef.of(node))) {
       //        return true;
       //      }
@@ -316,7 +404,7 @@ class AggregationAnalyzer {
     }
 
     @Override
-    protected Boolean visitDereferenceExpression(DereferenceExpression node, Void context) {
+    public Boolean visitDereferenceExpression(DereferenceExpression node, Void context) {
 
       if (!hasReferencesToScope(node, analysis, sourceScope)) {
         // reference to outer scope is group-invariant
@@ -333,7 +421,9 @@ class AggregationAnalyzer {
 
     private boolean isGroupingKey(Expression node) {
       FieldId fieldId =
-          requireNonNull(columnReferences.get(NodeRef.of(node)), () -> "No field for " + node)
+          requireNonNull(
+                  columnReferences.get(NodeRef.of(node)),
+                  () -> DataNodeQueryMessages.EXCEPTION_NO_FIELD_FOR_E99DCE9A + node)
               .getFieldId();
 
       if (orderByScope.isPresent() && isFieldFromScope(fieldId, orderByScope.get())) {
@@ -344,13 +434,15 @@ class AggregationAnalyzer {
     }
 
     @Override
-    protected Boolean visitFieldReference(FieldReference node, Void context) {
+    public Boolean visitFieldReference(FieldReference node, Void context) {
       if (orderByScope.isPresent()) {
         return true;
       }
 
       FieldId fieldId =
-          requireNonNull(columnReferences.get(NodeRef.of(node)), () -> "No field for " + node)
+          requireNonNull(
+                  columnReferences.get(NodeRef.of(node)),
+                  () -> DataNodeQueryMessages.EXCEPTION_NO_FIELD_FOR_E99DCE9A + node)
               .getFieldId();
       boolean inGroup = groupingFields.contains(fieldId);
       if (!inGroup) {
@@ -365,28 +457,29 @@ class AggregationAnalyzer {
           column = "'" + field.getName().get() + "'";
         }
 
-        throw new SemanticException(String.format("Column %s not in GROUP BY clause", column));
+        throw new SemanticException(
+            String.format(DataNodeQueryMessages.COLUMN_NOT_IN_GROUP_BY_CLAUSE, column));
       }
       return inGroup;
     }
 
     @Override
-    protected Boolean visitArithmeticUnary(ArithmeticUnaryExpression node, Void context) {
+    public Boolean visitArithmeticUnary(ArithmeticUnaryExpression node, Void context) {
       return process(node.getValue(), context);
     }
 
     @Override
-    protected Boolean visitNotExpression(NotExpression node, Void context) {
+    public Boolean visitNotExpression(NotExpression node, Void context) {
       return process(node.getValue(), context);
     }
 
     @Override
-    protected Boolean visitLogicalExpression(LogicalExpression node, Void context) {
+    public Boolean visitLogicalExpression(LogicalExpression node, Void context) {
       return node.getTerms().stream().allMatch(item -> process(item, context));
     }
 
     @Override
-    protected Boolean visitIfExpression(IfExpression node, Void context) {
+    public Boolean visitIfExpression(IfExpression node, Void context) {
       ImmutableList.Builder<Expression> expressions =
           ImmutableList.<Expression>builder().add(node.getCondition()).add(node.getTrueValue());
 
@@ -398,7 +491,7 @@ class AggregationAnalyzer {
     }
 
     @Override
-    protected Boolean visitSimpleCaseExpression(SimpleCaseExpression node, Void context) {
+    public Boolean visitSimpleCaseExpression(SimpleCaseExpression node, Void context) {
       if (!process(node.getOperand(), context)) {
         return false;
       }
@@ -414,7 +507,7 @@ class AggregationAnalyzer {
     }
 
     @Override
-    protected Boolean visitSearchedCaseExpression(SearchedCaseExpression node, Void context) {
+    public Boolean visitSearchedCaseExpression(SearchedCaseExpression node, Void context) {
       for (WhenClause whenClause : node.getWhenClauses()) {
         if (!process(whenClause.getOperand(), context)
             || !process(whenClause.getResult(), context)) {
@@ -426,19 +519,20 @@ class AggregationAnalyzer {
     }
 
     @Override
-    protected Boolean visitRow(Row node, Void context) {
+    public Boolean visitRow(Row node, Void context) {
       return node.getItems().stream().allMatch(item -> process(item, context));
     }
 
     @Override
-    protected Boolean visitParameter(Parameter node, Void context) {
+    public Boolean visitParameter(Parameter node, Void context) {
       //      if (analysis.isDescribe()) {
       //        return true;
       //      }
       Map<NodeRef<Parameter>, Expression> parameters = analysis.getParameters();
       checkArgument(
           node.getId() < parameters.size(),
-          "Invalid parameter number %s, max values is %s",
+          DataNodeQueryMessages
+              .EXCEPTION_INVALID_PARAMETER_NUMBER_ARG_COMMA_MAX_VALUES_IS_ARG_B3F5C4E8,
           node.getId(),
           parameters.size() - 1);
       return process(parameters.get(NodeRef.of(node)), context);
@@ -452,7 +546,7 @@ class AggregationAnalyzer {
         return true;
       }
 
-      return super.process(node, context);
+      return AstVisitor.super.process(node, context);
     }
 
     private boolean hasOrderByReferencesToOutputColumns(Node node) {

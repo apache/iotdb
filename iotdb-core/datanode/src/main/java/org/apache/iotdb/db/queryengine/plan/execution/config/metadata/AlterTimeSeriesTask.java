@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
@@ -46,12 +47,13 @@ public class AlterTimeSeriesTask implements IConfigTask {
       if (alterTimeSeriesStatement.getDataType() == null) {
         throw new IllegalArgumentException(
             String.format(
-                "Data type cannot be null executing the statement that alter timeseries %s set data type",
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_DATA_TYPE_CANNOT_BE_NULL_EXECUTING_THE_STATEMENT_THAT_ALTER_4C959B2F,
                 alterTimeSeriesStatement.getPath().getFullPath()));
       }
       return configTaskExecutor.alterTimeSeriesDataType(queryId, alterTimeSeriesStatement);
     } else {
-      throw new UnsupportedOperationException("Not support current statement");
+      throw new UnsupportedOperationException(DataNodeQueryMessages.NOT_SUPPORT_CURRENT_STATEMENT);
     }
   }
 }

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -57,7 +58,7 @@ public class PipeTemporaryMetaInCoordinatorMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
+  public synchronized void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
     ImmutableSet.copyOf(pipeTemporaryMetaMap.keySet()).forEach(this::createMetrics);
   }
@@ -90,12 +91,10 @@ public class PipeTemporaryMetaInCoordinatorMetrics implements IMetricSet {
   }
 
   @Override
-  public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(pipeTemporaryMetaMap.keySet()).forEach(this::deregister);
-    if (!pipeTemporaryMetaMap.isEmpty()) {
-      LOGGER.warn(
-          "Failed to unbind from pipe temporary meta metrics, PipeTemporaryMeta map not empty");
-    }
+  public synchronized void unbindFrom(final AbstractMetricService metricService) {
+    // Keep the pipes registered so that a metric service restart can bind them again.
+    // Synchronized with the (de)registrations, which may remove a registration being unbound.
+    ImmutableSet.copyOf(pipeTemporaryMetaMap.keySet()).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final String pipeID) {
@@ -118,12 +117,11 @@ public class PipeTemporaryMetaInCoordinatorMetrics implements IMetricSet {
         pipeNameAndCreationTime[0],
         Tag.CREATION_TIME.toString(),
         pipeNameAndCreationTime[1]);
-    pipeTemporaryMetaMap.remove(pipeID);
   }
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(final PipeMeta pipeMeta) {
+  public synchronized void register(final PipeMeta pipeMeta) {
     final String taskID =
         pipeMeta.getStaticMeta().getPipeName() + "_" + pipeMeta.getStaticMeta().getCreationTime();
     pipeTemporaryMetaMap.putIfAbsent(
@@ -133,16 +131,18 @@ public class PipeTemporaryMetaInCoordinatorMetrics implements IMetricSet {
     }
   }
 
-  public void deregister(final String pipeID) {
+  public synchronized void deregister(final String pipeID) {
     if (!pipeTemporaryMetaMap.containsKey(pipeID)) {
       LOGGER.warn(
-          "Failed to deregister pipe temporary meta metrics, PipeTemporaryMeta({}) does not exist",
+          ManagerMessages
+              .FAILED_TO_DEREGISTER_PIPE_TEMPORARY_META_METRICS_PIPETEMPORARYMETA_DOES_NOT,
           pipeID);
       return;
     }
     if (Objects.nonNull(metricService)) {
       removeMetrics(pipeID);
     }
+    pipeTemporaryMetaMap.remove(pipeID);
   }
 
   public void handleTemporaryMetaChanges(final Iterable<PipeMeta> pipeMetaList) {

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.common.schematree;
 
-import org.apache.iotdb.db.queryengine.common.NodeRef;
+import org.apache.iotdb.commons.queryengine.common.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 
