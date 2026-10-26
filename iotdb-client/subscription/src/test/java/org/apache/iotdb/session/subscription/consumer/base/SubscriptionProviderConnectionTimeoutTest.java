@@ -22,10 +22,13 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestType;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHandshakeResp;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
+import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
@@ -123,6 +126,133 @@ public class SubscriptionProviderConnectionTimeoutTest {
     } finally {
       provider.close();
       releaseCommit.countDown();
+      server.stop();
+      serverThread.join(2_000);
+    }
+  }
+
+  @Test
+  public void testMissingBrokerPollErrorMarksProviderUnavailable() throws Exception {
+    assertPollError(
+        "Subscription: no broker bound to consumer group [group]", true /* broker missing */);
+  }
+
+  @Test
+  public void testMissingFileBrokerPollErrorMarksProviderUnavailable() throws Exception {
+    assertPollError(
+        "Subscription: pipe broker bound to consumer group [group] does not exist", true);
+  }
+
+  @Test
+  public void testMissingTabletBrokerPollErrorMarksProviderUnavailable() throws Exception {
+    assertPollError("Subscription: broker bound to consumer group [group] does not exist", true);
+  }
+
+  @Test
+  public void testMissingTabletBrokerPollErrorFromChineseServerMarksProviderUnavailable()
+      throws Exception {
+    assertPollError("订阅：绑定到消费者组 [group] 的 Broker 不存在", true);
+  }
+
+  @Test
+  public void testOtherPollErrorRemainsNonCritical() throws Exception {
+    assertPollError("other poll error", false /* broker missing */);
+  }
+
+  @Test
+  public void testNullPollErrorRemainsNonCritical() throws Exception {
+    assertPollError(null, false /* broker missing */);
+  }
+
+  private void assertPollError(final String message, final boolean brokerMissing) throws Exception {
+    final AtomicInteger subscriptionCloseCount = new AtomicInteger();
+    final AtomicInteger sessionCloseCount = new AtomicInteger();
+    final ServerSocket socket = new ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"));
+    final TServerSocket serverSocket = new TServerSocket(socket);
+    final IClientRPCService.Iface service =
+        (IClientRPCService.Iface)
+            Proxy.newProxyInstance(
+                IClientRPCService.Iface.class.getClassLoader(),
+                new Class<?>[] {IClientRPCService.Iface.class},
+                (proxy, method, args) -> {
+                  switch (method.getName()) {
+                    case "openSession":
+                      return new TSOpenSessionResp(
+                              successStatus(), TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3)
+                          .setSessionId(1L);
+                    case "requestStatementId":
+                      return 1L;
+                    case "getProperties":
+                      return new ServerProperties(
+                          "test", Arrays.asList("max_time", "min_time"), "ms", 1);
+                    case "pipeSubscribe":
+                      final TPipeSubscribeReq request = (TPipeSubscribeReq) args[0];
+                      if (request.getType() == PipeSubscribeRequestType.HANDSHAKE.getType()) {
+                        return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
+                            successStatus(), 1, "consumer", "group");
+                      }
+                      if (request.getType() != PipeSubscribeRequestType.POLL.getType()) {
+                        if (request.getType() == PipeSubscribeRequestType.CLOSE.getType()) {
+                          subscriptionCloseCount.incrementAndGet();
+                        }
+                        return new TPipeSubscribeResp(successStatus(), (byte) 1, (short) 6);
+                      }
+                      return new TPipeSubscribeResp(
+                          new TSStatus(TSStatusCode.SUBSCRIPTION_POLL_ERROR.getStatusCode())
+                              .setMessage(message),
+                          (byte) 1,
+                          (short) 6);
+                    case "closeSession":
+                      sessionCloseCount.incrementAndGet();
+                      return successStatus();
+                    default:
+                      return defaultValue(method.getReturnType());
+                  }
+                });
+    final TSimpleServer server =
+        new TSimpleServer(
+            new TSimpleServer.Args(serverSocket)
+                .processor(new IClientRPCService.Processor<>(service))
+                .transportFactory(new org.apache.iotdb.rpc.TElasticFramedTransport.Factory()));
+    final Thread serverThread =
+        new Thread(server::serve, "subscription-provider-poll-error-server");
+    serverThread.setDaemon(true);
+    serverThread.start();
+
+    final TestSubscriptionProvider provider = new TestSubscriptionProvider(socket.getLocalPort());
+    try {
+      provider.handshake();
+      final TTransport transport = getTransport(provider.getSessionConnection());
+      final SubscriptionCommitContext context =
+          new SubscriptionCommitContext(1, 0, "topic", "group", 1L);
+
+      if (brokerMissing) {
+        Assert.assertThrows(
+            SubscriptionConnectionException.class,
+            () -> provider.poll(Collections.singleton("topic"), 1_000L));
+        Assert.assertFalse(provider.isAvailable());
+        Assert.assertThrows(
+            SubscriptionConnectionException.class, () -> provider.pollFile(context, 0L, 1_000L));
+        Assert.assertThrows(
+            SubscriptionConnectionException.class, () -> provider.pollTablets(context, 0, 1_000L));
+        provider.closeSession();
+        Assert.assertFalse(transport.isOpen());
+        Assert.assertEquals(0, subscriptionCloseCount.get());
+        Assert.assertEquals(0, sessionCloseCount.get());
+      } else {
+        Assert.assertThrows(
+            SubscriptionRuntimeNonCriticalException.class,
+            () -> provider.poll(Collections.singleton("topic"), 1_000L));
+        Assert.assertTrue(provider.isAvailable());
+        Assert.assertThrows(
+            SubscriptionRuntimeNonCriticalException.class,
+            () -> provider.pollFile(context, 0L, 1_000L));
+        Assert.assertThrows(
+            SubscriptionRuntimeNonCriticalException.class,
+            () -> provider.pollTablets(context, 0, 1_000L));
+      }
+    } finally {
+      provider.close();
       server.stop();
       serverThread.join(2_000);
     }

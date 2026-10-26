@@ -22,6 +22,7 @@ package org.apache.iotdb.session.subscription.consumer.base;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionConsumerFencedException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
@@ -40,6 +41,9 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -47,6 +51,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -134,11 +144,252 @@ public class SubscriptionConsumerMultiProviderPollTest {
     }
   }
 
+  @Test
+  public void testPollReconnectsWhenOneOfMultipleProvidersBecomesUnavailable()
+      throws SubscriptionException {
+    final TestPullConsumer consumer = new TestPullConsumer(1, 0, false, true, 3);
+    try {
+      consumer.open();
+      consumer.subscribeTopic();
+
+      final List<SubscriptionMessage> messages = consumer.pollForTest(2_000L);
+
+      Assert.assertEquals(1, messages.size());
+      Assert.assertEquals(4, consumer.getCreatedProviderCount());
+      Assert.assertEquals(2, consumer.getPollCount(1));
+    } finally {
+      consumer.close();
+    }
+  }
+
+  @Test
+  public void testPartialRecoveryPreservesHealthyProvidersAndClosesOnlyFailedSession()
+      throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer(1, 0);
+    try {
+      consumer.open();
+      final AbstractSubscriptionProviders providers = getProviders(consumer);
+      final TestSubscriptionProvider failed = consumer.createdProviders.get(0);
+      final AbstractSubscriptionProvider healthy = providers.getProvider(2);
+      failed.setUnavailable();
+
+      providers.sync(consumer);
+
+      Assert.assertEquals(4, consumer.getCreatedProviderCount());
+      Assert.assertNotSame(failed, providers.getProvider(1));
+      Assert.assertSame(healthy, providers.getProvider(2));
+      Assert.assertEquals(1, failed.sessionCloseCount.get());
+      Assert.assertEquals(0, failed.closeCount.get());
+      Assert.assertTrue(providers.getProvider(1).isAvailable());
+    } finally {
+      consumer.close();
+    }
+  }
+
+  @Test
+  public void testAllUnavailableRecoveryClosesSessionsWithoutClosingConsumer() throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer(1, 0);
+    try {
+      consumer.open();
+      final List<TestSubscriptionProvider> failedProviders =
+          new ArrayList<>(consumer.createdProviders);
+      failedProviders.forEach(AbstractSubscriptionProvider::setUnavailable);
+
+      getProviders(consumer).sync(consumer);
+
+      Assert.assertEquals(6, consumer.getCreatedProviderCount());
+      for (final TestSubscriptionProvider failed : failedProviders) {
+        Assert.assertEquals(1, failed.sessionCloseCount.get());
+        Assert.assertEquals(0, failed.closeCount.get());
+      }
+    } finally {
+      consumer.close();
+    }
+  }
+
+  @Test
+  public void testLateHeartbeatCannotReviveFailedProvider() throws Exception {
+    assertLateHeartbeatIgnored(false);
+  }
+
+  @Test
+  public void testRetiredHeartbeatCannotFenceRecoveredConsumer() throws Exception {
+    assertLateHeartbeatIgnored(true);
+  }
+
+  private void assertLateHeartbeatIgnored(final boolean fenced) throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer(1, 0);
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    final CountDownLatch heartbeatStarted = new CountDownLatch(1);
+    final CountDownLatch releaseHeartbeat = new CountDownLatch(1);
+    try {
+      consumer.open();
+      consumer.subscribeTopic();
+      final AbstractSubscriptionProviders providers = getProviders(consumer);
+      final TestSubscriptionProvider failed = consumer.createdProviders.get(0);
+      failed.emptyHeartbeatTopics = true;
+      failed.heartbeatAction =
+          () -> {
+            heartbeatStarted.countDown();
+            await(releaseHeartbeat);
+            if (fenced) {
+              throw new SubscriptionConsumerFencedException("retired connection fenced");
+            }
+          };
+      final Method heartbeat =
+          AbstractSubscriptionProviders.class.getDeclaredMethod(
+              "heartbeatProvider",
+              AbstractSubscriptionConsumer.class,
+              AbstractSubscriptionProvider.class);
+      heartbeat.setAccessible(true);
+      final Future<?> result = executor.submit(() -> heartbeat.invoke(providers, consumer, failed));
+      Assert.assertTrue(heartbeatStarted.await(5, TimeUnit.SECONDS));
+
+      failed.setUnavailable();
+      if (fenced) {
+        providers.sync(consumer);
+      }
+      releaseHeartbeat.countDown();
+      result.get(5, TimeUnit.SECONDS);
+
+      Assert.assertFalse(failed.isAvailable());
+      Assert.assertFalse(consumer.isFenced());
+      Assert.assertTrue(consumer.subscribedTopics.containsKey(TOPIC));
+      providers.sync(consumer);
+      Assert.assertNotSame(failed, providers.getProvider(1));
+    } finally {
+      releaseHeartbeat.countDown();
+      consumer.close();
+      executor.shutdownNow();
+      executor.awaitTermination(5, TimeUnit.SECONDS);
+    }
+  }
+
+  @Test
+  public void testCloseDuringReplacementHandshakeDoesNotOpenMoreProviders() throws Exception {
+    assertCloseDuringReplacementHandshake(false);
+    assertCloseDuringReplacementHandshake(true);
+  }
+
+  private void assertCloseDuringReplacementHandshake(final boolean allUnavailable)
+      throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer(1, 0);
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    final CountDownLatch handshakeStarted = new CountDownLatch(1);
+    final CountDownLatch releaseHandshake = new CountDownLatch(1);
+    try {
+      consumer.open();
+      final AbstractSubscriptionProviders providers = getProviders(consumer);
+      if (allUnavailable) {
+        consumer.createdProviders.forEach(AbstractSubscriptionProvider::setUnavailable);
+      } else {
+        consumer.createdProviders.get(0).setUnavailable();
+      }
+      consumer.handshakeAction =
+          () -> {
+            handshakeStarted.countDown();
+            await(releaseHandshake);
+          };
+      final Future<?> sync = executor.submit(() -> providers.sync(consumer));
+      Assert.assertTrue(handshakeStarted.await(5, TimeUnit.SECONDS));
+
+      consumer.close();
+      releaseHandshake.countDown();
+      sync.get(5, TimeUnit.SECONDS);
+
+      Assert.assertTrue(consumer.isClosed());
+      Assert.assertTrue(providers.hasNoProviders());
+      Assert.assertEquals(4, consumer.getCreatedProviderCount());
+      Assert.assertEquals(1, consumer.createdProviders.get(3).closeCount.get());
+    } finally {
+      releaseHandshake.countDown();
+      consumer.close();
+      executor.shutdownNow();
+      executor.awaitTermination(5, TimeUnit.SECONDS);
+    }
+  }
+
+  @Test
+  public void testContinuationAndCommitFailuresSchedulePartialRecovery() throws Exception {
+    for (final String operation :
+        new String[] {"pollFileInternal", "pollTabletsInternal", "commitInternal"}) {
+      final TestPullConsumer consumer = new TestPullConsumer(1, 0);
+      try {
+        consumer.open();
+        final TestSubscriptionProvider failed = consumer.createdProviders.get(0);
+        failed.failContinuation = true;
+        final CountDownLatch replacementStarted = new CountDownLatch(1);
+        consumer.handshakeAction = replacementStarted::countDown;
+        final SubscriptionCommitContext context =
+            new SubscriptionCommitContext(1, 0, TOPIC, CONSUMER_GROUP_ID, 0L);
+        final Method method;
+        final Object[] arguments;
+        if ("commitInternal".equals(operation)) {
+          method =
+              AbstractSubscriptionConsumer.class.getDeclaredMethod(
+                  operation, int.class, List.class, boolean.class);
+          arguments = new Object[] {1, Collections.singletonList(context), false};
+        } else {
+          method =
+              AbstractSubscriptionConsumer.class.getDeclaredMethod(
+                  operation,
+                  SubscriptionCommitContext.class,
+                  "pollFileInternal".equals(operation) ? long.class : int.class,
+                  long.class);
+          arguments =
+              new Object[] {
+                context, "pollFileInternal".equals(operation) ? (Object) 0L : 0, 1_000L
+              };
+        }
+        method.setAccessible(true);
+        try {
+          method.invoke(consumer, arguments);
+          Assert.assertNotEquals("commitInternal", operation);
+        } catch (final InvocationTargetException e) {
+          Assert.assertEquals("commitInternal", operation);
+          Assert.assertTrue(e.getCause() instanceof SubscriptionConnectionException);
+        }
+
+        Assert.assertTrue(replacementStarted.await(5, TimeUnit.SECONDS));
+        final AbstractSubscriptionProviders providers = getProviders(consumer);
+        providers.acquireReadLock();
+        try {
+          Assert.assertNotSame(failed, providers.getProvider(1));
+          Assert.assertEquals(3, providers.getAvailableProviderCount());
+          Assert.assertEquals("commitInternal".equals(operation) ? 1 : 0, failed.commitCount.get());
+          Assert.assertEquals(0, consumer.createdProviders.get(3).commitCount.get());
+        } finally {
+          providers.releaseReadLock();
+        }
+      } finally {
+        consumer.close();
+      }
+    }
+  }
+
+  private static AbstractSubscriptionProviders getProviders(
+      final AbstractSubscriptionConsumer consumer) throws Exception {
+    final Field field = AbstractSubscriptionConsumer.class.getDeclaredField("providers");
+    field.setAccessible(true);
+    return (AbstractSubscriptionProviders) field.get(consumer);
+  }
+
+  private static void await(final CountDownLatch latch) {
+    try {
+      Assert.assertTrue(latch.await(5, TimeUnit.SECONDS));
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError(e);
+    }
+  }
+
   private static class TestPullConsumer extends AbstractSubscriptionPullConsumer {
 
     private final Map<Integer, Integer> pollCounts = new HashMap<>();
     private final List<SubscriptionCommitContext> acknowledgedCommitContexts = new ArrayList<>();
     private final AtomicInteger createdProviderCount = new AtomicInteger();
+    private final List<TestSubscriptionProvider> createdProviders = new CopyOnWriteArrayList<>();
+    private volatile Runnable handshakeAction = () -> {};
     private final AtomicBoolean failFirstPoll;
     private final int dataProviderId;
     private final int emptyPollsBeforeData;
@@ -191,24 +442,28 @@ public class SubscriptionConsumerMultiProviderPollTest {
         final long heartbeatIntervalMs,
         final int connectionTimeoutInMs) {
       createdProviderCount.incrementAndGet();
-      return new TestSubscriptionProvider(
-          endPoint,
-          username,
-          password,
-          encryptedPassword,
-          consumerId,
-          consumerGroupId,
-          ownerId,
-          ownerEpoch,
-          thriftMaxFrameSize,
-          heartbeatIntervalMs,
-          connectionTimeoutInMs,
-          pollCounts,
-          dataProviderId,
-          emptyPollsBeforeData,
-          emptyTabletBatch,
-          failFirstPoll,
-          providerCount);
+      final TestSubscriptionProvider provider =
+          new TestSubscriptionProvider(
+              endPoint,
+              username,
+              password,
+              encryptedPassword,
+              consumerId,
+              consumerGroupId,
+              ownerId,
+              ownerEpoch,
+              thriftMaxFrameSize,
+              heartbeatIntervalMs,
+              connectionTimeoutInMs,
+              pollCounts,
+              dataProviderId,
+              emptyPollsBeforeData,
+              emptyTabletBatch,
+              failFirstPoll,
+              providerCount);
+      provider.handshakeAction = () -> handshakeAction.run();
+      createdProviders.add(provider);
+      return provider;
     }
 
     private void subscribeTopic() {
@@ -250,6 +505,14 @@ public class SubscriptionConsumerMultiProviderPollTest {
   }
 
   private static class TestSubscriptionProvider extends AbstractSubscriptionProvider {
+
+    private final AtomicInteger closeCount = new AtomicInteger();
+    private final AtomicInteger sessionCloseCount = new AtomicInteger();
+    private final AtomicInteger commitCount = new AtomicInteger();
+    private volatile Runnable heartbeatAction = () -> {};
+    private boolean emptyHeartbeatTopics;
+    private Runnable handshakeAction = () -> {};
+    private boolean failContinuation;
 
     private final int dataNodeId;
     private final Map<Integer, Integer> pollCounts;
@@ -320,11 +583,19 @@ public class SubscriptionConsumerMultiProviderPollTest {
 
     @Override
     synchronized void handshake() {
+      handshakeAction.run();
       setAvailable();
     }
 
     @Override
     synchronized void close() {
+      closeCount.incrementAndGet();
+      setUnavailable();
+    }
+
+    @Override
+    synchronized void closeSession() {
+      sessionCloseCount.incrementAndGet();
       setUnavailable();
     }
 
@@ -336,8 +607,11 @@ public class SubscriptionConsumerMultiProviderPollTest {
     @Override
     PipeSubscribeHeartbeatResp heartbeat(
         final List<SubscriptionCommitContext> processorBufferedCommitContexts) {
+      heartbeatAction.run();
       final PipeSubscribeHeartbeatResp response = new PipeSubscribeHeartbeatResp();
-      response.getTopics().put(TOPIC, new TopicConfig());
+      if (!emptyHeartbeatTopics) {
+        response.getTopics().put(TOPIC, new TopicConfig());
+      }
       for (int id = 1; id <= providerCount; id++) {
         response.getEndPoints().put(id, new TEndPoint(HOST, FIRST_PORT + id - 1));
       }
@@ -389,6 +663,7 @@ public class SubscriptionConsumerMultiProviderPollTest {
     List<SubscriptionPollResponse> pollTablets(
         final SubscriptionCommitContext commitContext, final int offset, final long timeoutMs)
         throws SubscriptionException {
+      failContinuationIfRequested();
       if (emptyTabletBatch && dataNodeId == dataProviderId && offset == 1) {
         return Collections.singletonList(
             new SubscriptionPollResponse(
@@ -397,6 +672,29 @@ public class SubscriptionConsumerMultiProviderPollTest {
                 commitContext));
       }
       return Collections.emptyList();
+    }
+
+    @Override
+    List<SubscriptionPollResponse> pollFile(
+        final SubscriptionCommitContext commitContext,
+        final long writingOffset,
+        final long timeoutMs) {
+      failContinuationIfRequested();
+      return Collections.emptyList();
+    }
+
+    @Override
+    CommitResult commit(final List<SubscriptionCommitContext> contexts, final boolean nack) {
+      commitCount.incrementAndGet();
+      failContinuationIfRequested();
+      return new CommitResult(contexts, Collections.emptyMap());
+    }
+
+    private void failContinuationIfRequested() {
+      if (failContinuation) {
+        setUnavailable();
+        throw new SubscriptionConnectionException("transport failed");
+      }
     }
   }
 }

@@ -87,6 +87,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimePa
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByVariationParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillComponent;
@@ -1485,9 +1486,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           deviceToWhereExpression.entrySet()) {
         IDeviceID deviceName = deviceWhereExpressionEntry.getKey();
         Expression whereExpression = deviceWhereExpressionEntry.getValue();
-        deviceToSourceExpressions
-            .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
-            .addAll(searchSourceExpressions(whereExpression));
+        // null means the predicate of this device is always true, so it needs no value filter
+        if (whereExpression != null) {
+          deviceToSourceExpressions
+              .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
+              .addAll(searchSourceExpressions(whereExpression));
+        }
       }
     }
 
@@ -1547,7 +1551,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     while (deviceIterator.hasNext()) {
       PartialPath devicePath = deviceIterator.next();
       Expression whereExpression =
-          analyzeWhereSplitByDevice(queryStatement, devicePath, schemaTree, queryContext);
+          analyzeWhereSplitByDevice(analysis, queryStatement, devicePath, schemaTree, queryContext);
       if (whereExpression.equals(ConstantOperand.FALSE)) {
         deviceIterator.remove();
       } else if (whereExpression.equals(ConstantOperand.TRUE)) {
@@ -1580,7 +1584,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             schemaTree,
             true,
             queryContext);
-    Expression whereExpression = convertConJunctionsToWhereExpression(conJunctions);
+    Expression whereExpression = convertConJunctionsToWhereExpression(analysis, conJunctions);
     if (whereExpression.equals(ConstantOperand.TRUE)) {
       analysis.setWhereExpression(null);
       analysis.setHasValueFilter(false);
@@ -1595,6 +1599,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private Expression analyzeWhereSplitByDevice(
+      final Analysis analysis,
       final QueryStatement queryStatement,
       final PartialPath devicePath,
       final ISchemaTree schemaTree,
@@ -1606,16 +1611,25 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             schemaTree,
             true,
             queryContext);
-    return convertConJunctionsToWhereExpression(conJunctions);
+    return convertConJunctionsToWhereExpression(analysis, conJunctions);
   }
 
-  private Expression convertConJunctionsToWhereExpression(List<Expression> conJunctions) {
+  private Expression convertConJunctionsToWhereExpression(
+      Analysis analysis, List<Expression> conJunctions) {
     Expression predicate =
         PredicateUtils.combineConjuncts(
             conJunctions.stream().distinct().collect(Collectors.toList()));
     predicate = PredicateUtils.simplifyPredicate(predicate);
     predicate = normalizeExpression(predicate);
-    return predicate;
+    analyzeExpressionType(analysis, predicate);
+    Expression predicateWithoutNot =
+        PredicateUtils.predicateRemoveNot(predicate, analysis::getType);
+    if (predicateWithoutNot != predicate) {
+      predicateWithoutNot = PredicateUtils.simplifyPredicate(predicateWithoutNot);
+      predicateWithoutNot = normalizeExpression(predicateWithoutNot);
+      analyzeExpressionType(analysis, predicateWithoutNot);
+    }
+    return predicateWithoutNot;
   }
 
   private void analyzeDeviceViewOutput(Analysis analysis, QueryStatement queryStatement) {
@@ -2890,7 +2904,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analysis,
         insertRowStatement,
         () -> SchemaValidator.validate(schemaFetcher, insertRowStatement, context));
-    InsertBaseStatement realInsertStatement = removeLogicalView(analysis, insertRowStatement);
+    InsertBaseStatement realInsertStatement =
+        removeLogicalView(analysis, insertRowStatement, context);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
@@ -2930,7 +2945,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         insertRowsStatement,
         () -> SchemaValidator.validate(schemaFetcher, insertRowsStatement, context));
     InsertRowsStatement realInsertRowsStatement =
-        (InsertRowsStatement) removeLogicalView(analysis, insertRowsStatement);
+        (InsertRowsStatement) removeLogicalView(analysis, insertRowsStatement, context);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
@@ -2955,7 +2970,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         insertMultiTabletsStatement,
         () -> SchemaValidator.validate(schemaFetcher, insertMultiTabletsStatement, context));
     InsertMultiTabletsStatement realStatement =
-        (InsertMultiTabletsStatement) removeLogicalView(analysis, insertMultiTabletsStatement);
+        (InsertMultiTabletsStatement)
+            removeLogicalView(analysis, insertMultiTabletsStatement, context);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
@@ -2980,7 +2996,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         insertRowsOfOneDeviceStatement,
         () -> SchemaValidator.validate(schemaFetcher, insertRowsOfOneDeviceStatement, context));
     InsertBaseStatement realInsertStatement =
-        removeLogicalView(analysis, insertRowsOfOneDeviceStatement);
+        removeLogicalView(analysis, insertRowsOfOneDeviceStatement, context);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
@@ -3712,6 +3728,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         }
       }
       deleteDataStatement.setPathList(new ArrayList<>(deletePatternSet));
+      // Deletes through a writable view are rewritten to the view's source series as well.
+      final TSStatus systemDatabaseStatus =
+          TreeAccessCheckVisitor.checkSystemDatabaseWrite(
+              context, deleteDataStatement.getPathList());
+      if (systemDatabaseStatus != null) {
+        analysis.setFinishQueryAfterAnalyze(true);
+        analysis.setFailStatus(systemDatabaseStatus);
+        return analysis;
+      }
     } else {
       for (PartialPath devicePattern : patternTree.getAllDevicePaths()) {
         schemaTree

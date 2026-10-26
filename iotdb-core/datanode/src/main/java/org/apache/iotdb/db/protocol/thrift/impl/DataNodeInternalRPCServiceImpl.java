@@ -3557,12 +3557,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       InsertRowStatement statement = StatementGenerator.createStatement(req);
       SessionInfo sessionInfo =
           new SessionInfo(
-              0,
-              new UserEntity(
-                  AuthorityChecker.SUPER_USER_ID,
-                  AuthorityChecker.SUPER_USER,
-                  IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
-              ZoneId.systemDefault());
+                  0,
+                  new UserEntity(
+                      AuthorityChecker.SUPER_USER_ID,
+                      AuthorityChecker.SUPER_USER,
+                      IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
+                  ZoneId.systemDefault())
+              .setInternal(true);
 
       long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =

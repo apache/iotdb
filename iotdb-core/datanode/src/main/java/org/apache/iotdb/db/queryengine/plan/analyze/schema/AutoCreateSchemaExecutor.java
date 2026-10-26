@@ -567,8 +567,7 @@ class AutoCreateSchemaExecutor {
 
   private void internalActivateTemplate(PartialPath devicePath, MPPQueryContext context) {
     ActivateTemplateStatement statement = new ActivateTemplateStatement(devicePath);
-    TSStatus status =
-        AuthorityChecker.checkAuthority(statement, context.getSession().getUserEntity());
+    TSStatus status = AuthorityChecker.checkAuthority(statement, context);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
     }
@@ -585,8 +584,7 @@ class AutoCreateSchemaExecutor {
       MPPQueryContext context) {
     InternalBatchActivateTemplateStatement statement =
         new InternalBatchActivateTemplateStatement(devicesNeedActivateTemplate);
-    TSStatus status =
-        AuthorityChecker.checkAuthority(statement, context.getSession().getUserEntity());
+    TSStatus status = AuthorityChecker.checkAuthority(statement, context);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
     }

@@ -58,4 +58,9 @@ public interface IAuditEntity {
   String getSqlString();
 
   IAuditEntity setSqlString(String sqlString);
+
+  /** Whether the caller is a dedicated internal writer of the database itself. */
+  default boolean isInternal() {
+    return false;
+  }
 }

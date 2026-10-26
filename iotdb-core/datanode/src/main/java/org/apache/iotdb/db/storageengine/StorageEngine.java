@@ -77,6 +77,7 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALException;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALFormatException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.storageengine.load.LoadTsFilePieceNodeAssembler;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadAgent;
@@ -231,6 +232,13 @@ public class StorageEngine implements IService {
         WALRecoverManager.getInstance().recover();
       } catch (WALException e) {
         LOGGER.error(StorageEngineMessages.FAIL_TO_RECOVER_WAL, e);
+        if (WALFormatException.isFatal(e)) {
+          cachedThreadPool.shutdownNow();
+          StartupException failure =
+              new StartupException(StorageEngineMessages.FAIL_TO_RECOVER_WAL);
+          failure.initCause(e);
+          throw failure;
+        }
       }
     }
 

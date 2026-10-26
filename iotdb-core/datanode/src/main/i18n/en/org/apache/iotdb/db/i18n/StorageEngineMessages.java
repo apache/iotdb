@@ -30,6 +30,12 @@ public final class StorageEngineMessages {
       "Precalculated chunk staging is not supported by the file encryption policy";
   public static final String EXCEPTION_MULTIPLE_FILE_ENCRYPTION_PARAMETER_PROVIDERS_ARE_CONFIGURED_5E7DDA5B =
       "Multiple file encryption parameter providers are configured";
+  public static final String EXCEPTION_UNSUPPORTED_OR_UNAVAILABLE_WAL_FORMAT_4629CFE4 =
+      "Unsupported or unavailable WAL format";
+  public static final String EXCEPTION_MULTIPLE_WAL_FORMAT_PROVIDERS_ARE_CONFIGURED_DD78877D =
+      "Multiple WAL format providers are configured";
+  public static final String EXCEPTION_INVALID_WAL_LOGICAL_POSITION_8CF34AFE =
+      "Invalid WAL logical position";
 
   public static final String LOG_REBUILT_UNREADABLE_WAL_FOOTER_FILE_ARG_VERSION_ARG_ORIGINALFILEBYTES_ARG_WRITERPROGRESS_ARG_1DBF836E =
       "Rebuilt unreadable WAL footer: file={}, version={}, originalFileBytes={}, writerProgress={}.";

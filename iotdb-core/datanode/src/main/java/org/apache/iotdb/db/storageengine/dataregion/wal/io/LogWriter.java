@@ -41,6 +41,9 @@ public abstract class LogWriter implements ILogWriter {
   protected final File logFile;
   protected final FileChannel logChannel;
   protected long originalSize = 0;
+  protected WALFileContext fileContext;
+  protected long blockIndex;
+  protected long dataStartOffset;
 
   /**
    * 1 byte for whether enable compression, 4 byte for compressedSize, 4 byte for uncompressedSize
@@ -68,20 +71,30 @@ public abstract class LogWriter implements ILogWriter {
             StandardOpenOption.WRITE,
             StandardOpenOption.APPEND);
     try {
-      if (logChannel.size() == 0
+      if (version == WALFileVersion.EXTENDED) {
+        fileContext = WALFormats.create(logFile, logChannel);
+      } else if (logChannel.size() == 0
           && (version == WALFileVersion.V2 || version == WALFileVersion.V3)) {
         ByteBuffer magic = ByteBuffer.wrap(version.getVersionBytes());
         while (magic.hasRemaining()) {
           logChannel.write(magic);
         }
       }
-    } catch (IOException e) {
+      dataStartOffset = logChannel.position();
+    } catch (IOException | RuntimeException | Error e) {
       // A full disk can fail initialization after open() succeeds. Release the orphan channel
       // before the owner retries creating the successor.
       try {
         logChannel.close();
       } catch (IOException closeException) {
         e.addSuppressed(closeException);
+      }
+      if (fileContext != null) {
+        try {
+          fileContext.close();
+        } catch (RuntimeException | Error closeException) {
+          e.addSuppressed(closeException);
+        }
       }
       throw e;
     }
@@ -132,6 +145,19 @@ public abstract class LogWriter implements ILogWriter {
       WritingMetrics.getInstance().recordCompressWALBufferCost(System.nanoTime() - startTime);
     }
     startTime = System.nanoTime();
+    if (fileContext != null) {
+      int written =
+          fileContext.writeData(
+              logChannel,
+              blockIndex,
+              compressed ? compressionType : CompressionType.UNCOMPRESSED,
+              uncompressedSize,
+              buffer);
+      blockIndex++;
+      WritingMetrics.getInstance()
+          .recordWroteWALBuffer(uncompressedSize, written, System.nanoTime() - startTime);
+      return ((double) written / uncompressedSize);
+    }
     headerBuffer.flip();
     while (headerBuffer.hasRemaining()) {
       logChannel.write(headerBuffer);
@@ -183,7 +209,13 @@ public abstract class LogWriter implements ILogWriter {
           logChannel.force(true);
         }
       } finally {
-        logChannel.close();
+        try {
+          logChannel.close();
+        } finally {
+          if (fileContext != null) {
+            fileContext.close();
+          }
+        }
       }
     }
   }

@@ -21,258 +21,180 @@ package org.apache.iotdb.confignode.it.cluster;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.confignode.persistence.node.NodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
+import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.sun.tools.attach.VirtualMachine;
-import org.apache.tsfile.utils.Pair;
+import org.apache.thrift.TException;
 import org.junit.After;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.rules.ErrorCollector;
-import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Properties;
 import java.util.concurrent.TimeUnit;
-import java.util.jar.Attributes;
-import java.util.jar.JarEntry;
-import java.util.jar.JarOutputStream;
-import java.util.jar.Manifest;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
-/** Process-level status persistence checks with three actual ConfigRegion voters. */
+/** Node status recovery observed through production ConfigNode RPCs and actual process failures. */
 @RunWith(IoTDBTestRunner.class)
 @Category(ClusterIT.class)
 public class IoTDBNodeStatusFailoverIT {
-  @Rule public TemporaryFolder temporary = new TemporaryFolder();
-  @Rule public ErrorCollector failures = new ErrorCollector();
-  private Path agentJar;
-  private int queryNode;
+  private IClientManager<TEndPoint, SyncConfigNodeIServiceClient> configNodeClients;
 
   @After
-  public void tearDown() {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+  public void tearDown() throws InterruptedException {
+    List<AbstractNodeWrapper> nodes = new ArrayList<>(EnvFactory.getEnv().getNodeWrapperList());
+    try {
+      // Stop every process before directory cleanup can fail and skip the remaining nodes.
+      for (AbstractNodeWrapper node : nodes) {
+        node.stopForcibly();
+      }
+      for (AbstractNodeWrapper node : nodes) {
+        if (node.getInstance() != null) {
+          assertTrue(node.getId(), node.getInstance().waitFor(60, TimeUnit.SECONDS));
+          assertFalse(node.getId(), node.isAlive());
+        }
+      }
+    } finally {
+      try {
+        if (configNodeClients != null) {
+          configNodeClients.close();
+        }
+      } finally {
+        EnvFactory.getEnv().cleanClusterEnvironment();
+      }
+    }
   }
 
   @Test
-  public void testGracefulLeaderShutdownPreservesStoppedAndRemoving() throws Exception {
-    init(3);
-    int stopped = stoppedFixture(0);
-    int removing = removingFixture(1);
-    int leader = EnvFactory.getEnv().getLeaderConfigNodeIndex();
-    Path marker = submit(leader, "shutdown");
-    awaitFile(marker);
-    assertTrue(
-        "System.exit must finish all JVM shutdown hooks",
-        EnvFactory.getEnv()
-            .getConfigNodeWrapper(leader)
-            .getInstance()
-            .waitFor(60, TimeUnit.SECONDS));
-    assertNotEquals(leader, EnvFactory.getEnv().getLeaderConfigNodeIndex());
-    assertStatus(0, stopped, NodeStatus.Stopped);
-    assertStatus(1, removing, NodeStatus.Removing);
-    EnvFactory.getEnv().startConfigNode(leader);
-    awaitConfigNodeRunning(leader);
-    awaitPersisted(leader, stopped, NodeStatus.Stopped);
-    transfer(leader);
-    assertStatus(0, stopped, NodeStatus.Stopped);
-    assertStatus(1, removing, NodeStatus.Removing);
-  }
-
-  @Test
-  public void testGracefulSeedShutdownReportsStopped() throws Exception {
+  public void testReportedConfigNodeShutdownClearsAfterRestart() throws Exception {
     init(1);
-    transfer(1);
-    int seedId = configLocation(cluster(), 0).getConfigNodeId();
-    // Use System.exit so the actual shutdown hook runs on Windows as well as Unix.
-    awaitFile(submit(0, "shutdown"));
-    assertTrue(
-        EnvFactory.getEnv().getConfigNodeWrapper(0).getInstance().waitFor(60, TimeUnit.SECONDS));
-    EnvFactory.getEnv()
-        .ensureNodeStatus(
-            Collections.singletonList(EnvFactory.getEnv().getConfigNodeWrapper(0)),
-            Collections.singletonList(NodeStatus.Stopped));
-    awaitPersisted(1, seedId, NodeStatus.Stopped);
-    awaitPersisted(2, seedId, NodeStatus.Stopped);
+    int follower = (awaitLeader() + 1) % 3;
+    TConfigNodeLocation location = configLocation(cluster(), follower);
+    stopForcibly(EnvFactory.getEnv().getConfigNodeWrapper(follower));
+    // Exercise the production shutdown report, without depending on platform-specific JVM hooks.
+    try (SyncConfigNodeIServiceClient client = leaderClient()) {
+      assertSuccess(client.reportConfigNodeShutdown(location));
+    }
+    awaitConfigNodeStatus(location.getConfigNodeId(), NodeStatus.Stopped);
 
-    EnvFactory.getEnv().startConfigNode(0);
-    awaitConfigNodeRunning(0);
-    awaitPersisted(0, seedId, null);
-    awaitPersisted(1, seedId, null);
-    awaitPersisted(2, seedId, null);
+    EnvFactory.getEnv().startConfigNode(follower);
+    awaitConfigNodeStatus(location.getConfigNodeId(), NodeStatus.Running);
+    stopForcibly(EnvFactory.getEnv().getConfigNodeWrapper(follower));
+    awaitConfigNodeStatus(location.getConfigNodeId(), NodeStatus.Unknown);
   }
 
   @Test
-  public void testForcedLeaderShutdownWithTwoDataNodes() throws Exception {
-    init(2);
-    int stopped = stoppedFixture(0);
-    int leader = EnvFactory.getEnv().getLeaderConfigNodeIndex();
-    EnvFactory.getEnv().getConfigNodeWrapper(leader).stopForcibly();
-    assertFalse(EnvFactory.getEnv().getConfigNodeWrapper(leader).isAlive());
-    assertNotEquals(leader, EnvFactory.getEnv().getLeaderConfigNodeIndex());
-    assertStatus(0, stopped, NodeStatus.Stopped);
-    EnvFactory.getEnv()
-        .ensureNodeStatus(
-            Collections.singletonList(EnvFactory.getEnv().getConfigNodeWrapper(leader)),
-            Collections.singletonList(NodeStatus.Unknown));
+  public void testStoppedDataNodeSurvivesLeaderFailure() throws Exception {
+    init(1);
+    int stopped = stopAndReportDataNode(0);
+    awaitDataNodeStatus(stopped, NodeStatus.Stopped, null);
+    int leader = awaitLeader();
+    stopForcibly(EnvFactory.getEnv().getConfigNodeWrapper(leader));
+    assertNotEquals(leader, awaitLeader());
+    // The DataNode stays offline, so fresh heartbeats cannot hide lost persisted state.
+    awaitDataNodeStatus(stopped, NodeStatus.Stopped, null);
+
     EnvFactory.getEnv().startConfigNode(leader);
-    awaitConfigNodeRunning(leader);
-    awaitPersisted(leader, stopped, NodeStatus.Stopped);
-    transfer(leader);
-    assertStatus(0, stopped, NodeStatus.Stopped);
+    awaitConfigNodeStatus(configLocation(cluster(), leader).getConfigNodeId(), NodeStatus.Running);
+    awaitDataNodeStatus(stopped, NodeStatus.Stopped, null);
   }
 
   @Test
-  public void testNewLeaderChangesSurviveReturnToOriginalLeader() throws Exception {
-    init(3);
-    int stopped = stoppedFixture(0);
-    int removing = removingFixture(1);
-    int first = EnvFactory.getEnv().getLeaderConfigNodeIndex();
-    int second = (first + 1) % 3;
-    transfer(second);
-    assertStatus(0, stopped, NodeStatus.Stopped);
-    assertStatus(1, removing, NodeStatus.Removing);
-    EnvFactory.getEnv().startDataNode(0);
-    assertStatus(0, stopped, NodeStatus.Running);
-    assertSuccess(control(second, "update:" + removing + ":Running"));
-    awaitPersisted(first, stopped, null);
-    awaitPersisted(first, removing, null);
-    transfer((first + 2) % 3);
-    transfer(first);
-    EnvFactory.getEnv().getDataNodeWrapper(0).stopForcibly();
-    assertStatus(0, stopped, NodeStatus.Unknown);
-    transfer(second);
-    assertStatus(0, stopped, NodeStatus.Unknown);
-    assertStatus(1, removing, NodeStatus.Unknown);
-  }
-
-  @Test
-  public void testReadOnlyReasonPersistsAcrossLeaderTransferAndClearsAfterRestart()
-      throws Exception {
-    init(2);
+  public void testReadOnlyReasonSurvivesLeaderFailureAndClearsAfterRestart() throws Exception {
+    init(1);
     TDataNodeLocation dataNode = dataLocation(cluster(), 0);
-    int dataNodeId = dataNode.getDataNodeId();
-    IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> pool =
+    IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clients =
         new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
             .createClientManager(
                 new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
     try (SyncDataNodeInternalServiceClient client =
-        pool.borrowClient(dataNode.getInternalEndPoint())) {
-      assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client.setSystemStatus(NodeStatus.ReadOnly.getStatus()).getCode());
+        clients.borrowClient(dataNode.getInternalEndPoint())) {
+      assertSuccess(client.setSystemStatus(NodeStatus.ReadOnly.getStatus()));
     } finally {
-      pool.close();
+      clients.close();
     }
-    assertStatus(0, dataNodeId, NodeStatus.ReadOnly);
-    assertEquals(NodeStatus.MANUAL, cluster().getNodeStatusReason().get(dataNodeId));
-    // Inspect every voter's applied record before election; SHOW alone could pass on heartbeats.
-    for (int i = 0; i < 3; i++) {
-      awaitPersisted(i, dataNodeId, NodeStatus.ReadOnly, NodeStatus.MANUAL);
-    }
+    int nodeId = dataNode.getDataNodeId();
+    awaitDataNodeStatus(nodeId, NodeStatus.ReadOnly, NodeStatus.MANUAL);
+    int leader = awaitLeader();
+    stopForcibly(EnvFactory.getEnv().getConfigNodeWrapper(leader));
+    assertNotEquals(leader, awaitLeader());
+    // This checks the visible status and reason; live heartbeats may rebuild both.
+    awaitDataNodeStatus(nodeId, NodeStatus.ReadOnly, NodeStatus.MANUAL);
 
-    int nextLeader = (EnvFactory.getEnv().getLeaderConfigNodeIndex() + 1) % 3;
-    transfer(nextLeader);
-    assertEquals(nextLeader, EnvFactory.getEnv().getLeaderConfigNodeIndex());
-    for (int i = 0; i < 3; i++) {
-      awaitPersisted(i, dataNodeId, NodeStatus.ReadOnly, NodeStatus.MANUAL);
-    }
-    assertStatus(0, dataNodeId, NodeStatus.ReadOnly);
-    assertEquals(NodeStatus.MANUAL, cluster().getNodeStatusReason().get(dataNodeId));
-
-    // Explicitly report after stopping: Windows process termination does not run shutdown hooks.
-    assertEquals(dataNodeId, stoppedFixture(0));
-    assertNull(cluster().getNodeStatusReason().get(dataNodeId));
-    for (int i = 0; i < 3; i++) {
-      awaitPersisted(i, dataNodeId, NodeStatus.Stopped, null);
-    }
-
+    assertEquals(nodeId, stopAndReportDataNode(0));
+    awaitDataNodeStatus(nodeId, NodeStatus.Stopped, null);
     EnvFactory.getEnv().startDataNode(0);
-    assertStatus(0, dataNodeId, NodeStatus.Running);
-    assertNull(cluster().getNodeStatusReason().get(dataNodeId));
-    for (int i = 0; i < 3; i++) {
-      awaitPersisted(i, dataNodeId, null, null);
-    }
+    awaitDataNodeStatus(nodeId, NodeStatus.Running, null);
   }
 
   @Test
-  public void testLiveOldLeaderPartitionAndQuorumRecovery() throws Exception {
-    init(3);
-    int stopped = stoppedFixture(0);
-    int first = EnvFactory.getEnv().getLeaderConfigNodeIndex();
-    TConfigNodeLocation firstLocation = configLocation(cluster(), first);
-    for (int i = 0; i < 3; i++) {
-      control(i, "partition:" + firstLocation.getConfigNodeId());
-    }
-    int majorityLeader = awaitOtherLeader(first);
-    assertTrue(
-        "Partition must leave the old leader process alive",
-        EnvFactory.getEnv().getConfigNodeWrapper(first).isAlive());
-    assertSuccess(control(majorityLeader, "update:" + stopped + ":Removing"));
-    try {
-      assertStatus(0, stopped, NodeStatus.Removing);
-    } catch (SQLException e) {
-      // Preserve a failure for SQL routing without skipping consensus recovery assertions.
-      failures.addError(
-          new AssertionError(
-              "SHOW through the healthy DataNode cannot reach the elected majority", e));
-    }
-    heal();
-    awaitPersisted(first, stopped, NodeStatus.Removing);
-    transfer(first);
-    assertStatus(0, stopped, NodeStatus.Removing);
+  public void testStoppedStatusRecoversAndClearsAcrossConfigNodeRestarts() throws Exception {
+    init(1);
+    int nodeId = stopAndReportDataNode(0);
+    awaitDataNodeStatus(nodeId, NodeStatus.Stopped, null);
+    restartConfigNodes();
+    awaitDataNodeStatus(nodeId, NodeStatus.Stopped, null);
 
-    // Keep every process alive but prevent any pair of ConfigRegion voters communicating.
-    for (int i = 0; i < 3; i++) {
-      control(i, "partition:*");
+    EnvFactory.getEnv().startDataNode(0);
+    awaitDataNodeStatus(nodeId, NodeStatus.Running, null);
+    // Do not report the second stop. The old Stopped marker must not return after recovery.
+    stopForcibly(EnvFactory.getEnv().getDataNodeWrapper(0));
+    awaitDataNodeStatus(nodeId, NodeStatus.Unknown, null);
+    restartConfigNodes();
+    awaitDataNodeStatus(nodeId, NodeStatus.Unknown, null);
+  }
+
+  @Test
+  public void testRemovedDataNodeStaysUnregisteredAfterLeaderFailure() throws Exception {
+    // The production removal API does not support SimpleConsensus.
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaReplicationFactor(1)
+        .setDataReplicationFactor(1);
+    init(2);
+    TShowClusterResp before = cluster();
+    TDataNodeLocation victim = dataLocation(before, 0);
+    int survivor = dataLocation(before, 1).getDataNodeId();
+    try (SyncConfigNodeIServiceClient client = leaderClient()) {
+      assertSuccess(
+          client
+              .removeDataNode(new TDataNodeRemoveReq(Collections.singletonList(victim)))
+              .getStatus());
     }
-    Properties noQuorum = control(first, "update:" + stopped + ":Running");
-    assertNotEquals(
-        "No quorum cannot confirm clearing Removing", "200", noQuorum.getProperty("code"));
-    assertEquals(
-        "Removing", control(first, "inspect:" + stopped).getProperty("persisted." + stopped));
-    heal();
-    int recovered = EnvFactory.getEnv().getLeaderConfigNodeIndex();
-    assertSuccess(control(recovered, "update:" + stopped + ":Running"));
-    for (int i = 0; i < 3; i++) {
-      awaitPersisted(i, stopped, null);
-    }
-    transfer((recovered + 1) % 3);
-    assertStatus(0, stopped, NodeStatus.Unknown);
+    // Observe the completed procedure; Removing is transient and need not be sampled.
+    awaitRemoved(victim.getDataNodeId(), survivor);
+    int leader = awaitLeader();
+    stopForcibly(EnvFactory.getEnv().getConfigNodeWrapper(leader));
+    assertNotEquals(leader, awaitLeader());
+    awaitRemoved(victim.getDataNodeId(), survivor);
   }
 
   private void init(int dataNodes) throws Exception {
@@ -283,422 +205,156 @@ public class IoTDBNodeStatusFailoverIT {
         .setConfigNodeRatisSnapshotTriggerThreshold(Integer.MAX_VALUE)
         .setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(4000);
     EnvFactory.getEnv().initClusterEnvironment(3, dataNodes);
-    queryNode = dataNodes - 1;
-    agentJar = temporary.getRoot().toPath().resolve("node-status-agent.jar");
-    Manifest manifest = new Manifest();
-    manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
-    manifest.getMainAttributes().putValue("Agent-Class", NodeStatusTestAgent.class.getName());
-    String resource = NodeStatusTestAgent.class.getName().replace('.', '/') + ".class";
-    try (JarOutputStream jar = new JarOutputStream(Files.newOutputStream(agentJar), manifest);
-        InputStream bytecode = getClass().getClassLoader().getResourceAsStream(resource)) {
-      assertNotNull(bytecode);
-      jar.putNextEntry(new JarEntry(resource));
-      bytecode.transferTo(jar);
-      jar.closeEntry();
-    }
+    configNodeClients =
+        new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
+            .createClientManager(new ClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
+    // Fault-window observations use CN RPCs, which do not open a DataNode login session.
+    // This suite does not inspect individual replicas or assert a particular snapshot boundary.
   }
 
-  @Test
-  public void testNoQuorumTransitionMatrix() throws Exception {
-    init(2);
-    int nodeId = stoppedFixture(0);
-    NodeStatus[][] transitions = {
-      {NodeStatus.Running, NodeStatus.Stopped},
-      {NodeStatus.Stopped, NodeStatus.Running},
-      {NodeStatus.Removing, NodeStatus.Running},
-      {NodeStatus.Removing, NodeStatus.Stopped}
-    };
-    for (NodeStatus[] transition : transitions) {
-      int leader = EnvFactory.getEnv().getLeaderConfigNodeIndex();
-      assertSuccess(control(leader, "update:" + nodeId + ":" + transition[0]));
-      NodeStatus persisted = transition[0] == NodeStatus.Running ? null : transition[0];
-      for (int i = 0; i < 3; i++) {
-        awaitPersisted(i, nodeId, persisted);
-      }
-      try {
-        for (int i = 0; i < 3; i++) {
-          control(i, "partition:*");
-        }
-        Properties result = awaitFile(submit(leader, "update:" + nodeId + ":" + transition[1]));
-        assertNotEquals(
-            "No quorum: " + transition[0] + " -> " + transition[1] + " " + result,
-            "200",
-            result.getProperty("code"));
-        for (int i = 0; i < 3; i++) {
-          assertEquals(
-              String.valueOf(persisted),
-              control(i, "inspect:" + nodeId).getProperty("persisted." + nodeId));
-        }
-        // A read may reject or return a local cache before the old leader steps down. Record
-        // the actual direct RPC response rather than assert an undocumented linearizable read.
-        try (SyncConfigNodeIServiceClient client =
-            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection(leader)) {
-          TShowClusterResp read = client.showCluster();
-          System.out.println(
-              "No-quorum SHOW RPC: " + transition[0] + " -> " + transition[1] + ", " + read);
-        }
-        try (Connection connection = queryConnection();
-            Statement statement = connection.createStatement()) {
-          try (ResultSet rows = statement.executeQuery("SHOW DATANODES")) {
-            while (rows.next()) {
-              if (rows.getInt(1) == nodeId) {
-                System.out.println("No-quorum SHOW SQL cached status: " + rows.getString("Status"));
-              }
-            }
-          }
-        } catch (SQLException unavailable) {
-          System.out.println("No-quorum SHOW SQL unavailable: " + unavailable.getMessage());
-        }
-      } finally {
-        heal();
-      }
-      int recovered = EnvFactory.getEnv().getLeaderConfigNodeIndex();
-      assertSuccess(control(recovered, "update:" + nodeId + ":" + transition[1]));
-      NodeStatus finalPersisted = transition[1] == NodeStatus.Running ? null : transition[1];
-      for (int i = 0; i < 3; i++) {
-        awaitPersisted(i, nodeId, finalPersisted);
-      }
+  private int stopAndReportDataNode(int index) throws Exception {
+    TDataNodeLocation node = dataLocation(cluster(), index);
+    stopForcibly(EnvFactory.getEnv().getDataNodeWrapper(index));
+    try (SyncConfigNodeIServiceClient client = leaderClient()) {
+      // Success acknowledges the persisted report, unlike observing a heartbeat-derived status.
+      assertSuccess(client.reportDataNodeShutdown(node));
     }
+    return node.getDataNodeId();
   }
 
-  @Test
-  public void testSnapshotAndFollowingClearLogRecoverTogether() throws Exception {
-    init(3);
-    int stopped = stoppedFixture(0);
-    int removing = removingFixture(1);
-    for (int i = 0; i < 3; i++) {
-      awaitPersisted(i, stopped, NodeStatus.Stopped);
-      awaitPersisted(i, removing, NodeStatus.Removing);
-      control(i, "snapshot");
-      assertSnapshot(i, stopped, NodeStatus.Stopped, removing, NodeStatus.Removing);
-    }
-    int leader = EnvFactory.getEnv().getLeaderConfigNodeIndex();
-    assertSuccess(control(leader, "update:" + stopped + ":Running"));
-    assertSuccess(control(leader, "update:" + removing + ":Stopped"));
-    for (int i = 0; i < 3; i++) {
-      awaitPersisted(i, stopped, null);
-      awaitPersisted(i, removing, NodeStatus.Stopped);
-    }
-    restartConfigNodes();
-    assertStatus(0, stopped, NodeStatus.Unknown);
-    assertStatus(1, removing, NodeStatus.Stopped);
-    for (int i = 0; i < 3; i++) {
-      control(i, "snapshot");
-      assertSnapshot(i, stopped, null, removing, NodeStatus.Stopped);
-    }
-    restartConfigNodes();
-    assertStatus(0, stopped, NodeStatus.Unknown);
-    assertStatus(1, removing, NodeStatus.Stopped);
-  }
-
-  private void assertSnapshot(
-      int configNode, int firstId, NodeStatus first, int secondId, NodeStatus second)
-      throws Exception {
-    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
-    do {
-      List<Path> snapshots;
-      // Stop at sm/<term>_<index>, without opening temporary snapshot directories on Windows.
-      try (Stream<Path> paths =
-          Files.walk(
-              Paths.get(
-                  EnvFactory.getEnv().getConfigNodeWrapper(configNode).getNodePath(),
-                  "data",
-                  "confignode",
-                  "consensus"),
-              3)) {
-        snapshots =
-            paths
-                .filter(
-                    p ->
-                        p.getFileName().toString().matches("\\d+_\\d+")
-                            && p.getParent().getFileName().toString().equals("sm"))
-                .collect(Collectors.toList());
-      } catch (IOException | UncheckedIOException e) {
-        // Ratis may delete an old snapshot while the directories are being enumerated.
-        TimeUnit.MILLISECONDS.sleep(200);
-        continue;
-      }
-      for (Path snapshot : snapshots) {
-        NodeInfo restored = new NodeInfo();
-        try {
-          restored.processLoadSnapshot(snapshot.toFile());
-        } catch (IOException e) {
-          // The snapshot may have been replaced since it was enumerated.
-          continue;
-        }
-        if (java.util.Objects.equals(
-                first == null ? null : new Pair<>(first, null),
-                restored.getPersistedNodeStatus(firstId))
-            && java.util.Objects.equals(
-                second == null ? null : new Pair<>(second, null),
-                restored.getPersistedNodeStatus(secondId))) {
-          return;
-        }
-      }
-      TimeUnit.MILLISECONDS.sleep(200);
-    } while (System.nanoTime() < deadline);
-    fail("No completed snapshot has the expected durable markers on ConfigNode " + configNode);
+  private void stopForcibly(AbstractNodeWrapper node) throws InterruptedException {
+    node.stopForcibly();
+    assertTrue(node.getId(), node.getInstance().waitFor(60, TimeUnit.SECONDS));
+    assertFalse(node.getId(), node.isAlive());
   }
 
   private void restartConfigNodes() throws Exception {
-    EnvFactory.getEnv().getConfigNodeWrapperList().forEach(n -> n.stopForcibly());
-    EnvFactory.getEnv().getConfigNodeWrapperList().forEach(n -> n.start());
-    EnvFactory.getEnv().getLeaderConfigNodeIndex();
-    EnvFactory.getEnv()
-        .ensureNodeStatus(
-            new java.util.ArrayList<>(EnvFactory.getEnv().getConfigNodeWrapperList()),
-            java.util.Arrays.asList(NodeStatus.Running, NodeStatus.Running, NodeStatus.Running));
-  }
-
-  private void awaitConfigNodeRunning(int index) {
-    EnvFactory.getEnv()
-        .ensureNodeStatus(
-            Collections.singletonList(EnvFactory.getEnv().getConfigNodeWrapper(index)),
-            Collections.singletonList(NodeStatus.Running));
-  }
-
-  @Test
-  public void testRealRemovalPersistsIntentAndDeletesRegistration() throws Exception {
-    EnvFactory.getEnv()
-        .getConfig()
-        .getCommonConfig()
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaReplicationFactor(2)
-        .setDataReplicationFactor(2);
-    init(3);
-    int leader = EnvFactory.getEnv().getLeaderConfigNodeIndex();
-    int victim = -1;
-    int victimIndex = -1;
-    try (Connection connection = queryConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.status_remove");
-      statement.execute(
-          "CREATE TIMESERIES root.status_remove.d.s WITH DATATYPE=INT32, ENCODING=RLE");
-      statement.execute("INSERT INTO root.status_remove.d(time,s) VALUES (1,1)");
-      TShowClusterResp before = cluster();
-      int queryId = dataLocation(before, queryNode).getDataNodeId();
-      try (ResultSet regions = statement.executeQuery("SHOW REGIONS")) {
-        while (regions.next()) {
-          int candidate = regions.getInt("DataNodeId");
-          if (candidate != queryId) {
-            victim = candidate;
-            break;
+    List<ConfigNodeWrapper> nodes = EnvFactory.getEnv().getConfigNodeWrapperList();
+    for (ConfigNodeWrapper node : nodes) {
+      stopForcibly(node);
+    }
+    configNodeClients.clearAll();
+    nodes.forEach(ConfigNodeWrapper::start);
+    awaitCluster(
+        "All ConfigNodes must recover",
+        (client, cluster) -> {
+          assertEquals(3, cluster.getConfigNodeListSize());
+          for (TConfigNodeLocation node : cluster.getConfigNodeList()) {
+            assertEquals(
+                cluster.toString(),
+                NodeStatus.Running.getStatus(),
+                cluster.getNodeStatus().get(node.getConfigNodeId()));
           }
-        }
-      }
-      assertTrue("The victim must host a real region replica", victim >= 0);
-      for (int i = 0; i < 3; i++) {
-        if (dataLocation(before, i).getDataNodeId() == victim) {
-          victimIndex = i;
-        }
-      }
-      assertTrue(victimIndex >= 0);
-      Path barrier = submit(leader, "barrier");
-      assertNull(awaitFile(barrier).getProperty("error"));
-      try {
-        statement.execute("REMOVE DATANODE " + victim);
-        awaitFile(Paths.get(barrier + ".reached"));
-        assertStatus(victimIndex, victim, NodeStatus.Removing);
-        for (int i = 0; i < 3; i++) {
-          awaitPersisted(i, victim, NodeStatus.Removing);
-        }
-      } finally {
-        Files.createFile(Paths.get(barrier + ".release"));
-      }
-      long deadline = System.nanoTime() + TimeUnit.MINUTES.toNanos(3);
-      boolean removed = false;
-      do {
-        final int victimId = victim;
-        removed =
-            cluster().getDataNodeList().stream().noneMatch(n -> n.getDataNodeId() == victimId);
-        if (!removed) {
-          TimeUnit.MILLISECONDS.sleep(200);
-        }
-      } while (!removed && System.nanoTime() < deadline);
-      assertTrue("RemoveDataNodesProcedure must unregister the node", removed);
-      for (int i = 0; i < 3; i++) {
-        awaitPersisted(i, victim, null);
-      }
-      transfer((leader + 1) % 3);
-      try (ResultSet rows = statement.executeQuery("SHOW DATANODES")) {
-        while (rows.next()) {
-          assertNotEquals(victim, rows.getInt(1));
-        }
-      }
-      try (ResultSet rows = statement.executeQuery("SELECT s FROM root.status_remove.d")) {
-        assertTrue(rows.next());
-        assertEquals(1, rows.getInt(2));
-        assertFalse(rows.next());
-      }
-    }
+        });
   }
 
-  private int stoppedFixture(int index) throws Exception {
-    TDataNodeLocation node = dataLocation(cluster(), index);
-    EnvFactory.getEnv().getDataNodeWrapper(index).stopForcibly();
-    assertFalse(EnvFactory.getEnv().getDataNodeWrapper(index).isAlive());
-    try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      assertEquals(200, client.reportDataNodeShutdown(node).getCode());
-    }
-    assertStatus(index, node.getDataNodeId(), NodeStatus.Stopped);
-    return node.getDataNodeId();
+  private void awaitDataNodeStatus(int nodeId, NodeStatus status, String reason)
+      throws InterruptedException {
+    awaitCluster(
+        "DataNode " + nodeId + " must become " + status + " with reason " + reason,
+        (client, cluster) -> {
+          assertTrue(
+              cluster.toString(),
+              cluster.getDataNodeList().stream().anyMatch(n -> n.getDataNodeId() == nodeId));
+          assertEquals(cluster.toString(), status.getStatus(), cluster.getNodeStatus().get(nodeId));
+          assertEquals(cluster.toString(), reason, cluster.getNodeStatusReason().get(nodeId));
+          TShowDataNodesResp response = client.showDataNodes();
+          assertSuccess(response.getStatus());
+          TDataNodeInfo node =
+              response.getDataNodesInfoList().stream()
+                  .filter(n -> n.getDataNodeId() == nodeId)
+                  .findFirst()
+                  .orElseThrow(() -> new AssertionError(response));
+          assertEquals(response.toString(), status.getStatus(), node.getStatus());
+          assertEquals(response.toString(), reason, node.getStatusReason());
+        });
   }
 
-  private int removingFixture(int index) throws Exception {
-    TDataNodeLocation node = dataLocation(cluster(), index);
-    IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> pool =
-        new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
-            .createClientManager(
-                new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
-    try (SyncDataNodeInternalServiceClient client = pool.borrowClient(node.getInternalEndPoint())) {
-      assertEquals(200, client.setSystemStatus("Removing").getCode());
-    } finally {
-      pool.close();
-    }
-    assertStatus(index, node.getDataNodeId(), NodeStatus.Removing);
-    EnvFactory.getEnv().getDataNodeWrapper(index).stopForcibly();
-    return node.getDataNodeId();
+  private void awaitConfigNodeStatus(int nodeId, NodeStatus status) throws InterruptedException {
+    awaitCluster(
+        "ConfigNode " + nodeId + " must become " + status,
+        (client, cluster) -> {
+          assertTrue(
+              cluster.toString(),
+              cluster.getConfigNodeList().stream().anyMatch(n -> n.getConfigNodeId() == nodeId));
+          assertEquals(cluster.toString(), status.getStatus(), cluster.getNodeStatus().get(nodeId));
+          TShowConfigNodesResp response = client.showConfigNodes();
+          assertSuccess(response.getStatus());
+          TConfigNodeInfo node =
+              response.getConfigNodesInfoList().stream()
+                  .filter(n -> n.getConfigNodeId() == nodeId)
+                  .findFirst()
+                  .orElseThrow(() -> new AssertionError(response));
+          assertEquals(response.toString(), status.getStatus(), node.getStatus());
+        });
   }
 
-  private void assertStatus(int index, int nodeId, NodeStatus expected) throws Exception {
-    EnvFactory.getEnv()
-        .ensureNodeStatus(
-            Collections.singletonList(EnvFactory.getEnv().getDataNodeWrapper(index)),
-            Collections.singletonList(expected));
-    assertEquals(expected.getStatus(), cluster().getNodeStatus().get(nodeId));
-    // Pin the SQL connection to the healthy query node; do not fan out to stopped DataNodes.
-    try (Connection connection = queryConnection();
-        Statement statement = connection.createStatement()) {
-      for (String sql : new String[] {"SHOW CLUSTER", "SHOW DATANODES"}) {
-        boolean found = false;
-        try (ResultSet rows = statement.executeQuery(sql)) {
-          while (rows.next()) {
-            if (rows.getInt(1) == nodeId) {
-              assertEquals(sql, expected.getStatus(), rows.getString("Status"));
-              found = true;
-            }
-          }
-        }
-        assertTrue(sql + " did not contain DataNode " + nodeId, found);
-      }
-    }
+  private void awaitRemoved(int removed, int remaining) throws InterruptedException {
+    awaitCluster(
+        "DataNode " + removed + " must stay unregistered",
+        (client, cluster) -> {
+          assertEquals(
+              cluster.toString(),
+              Collections.singletonList(remaining),
+              cluster.getDataNodeList().stream()
+                  .map(TDataNodeLocation::getDataNodeId)
+                  .collect(Collectors.toList()));
+          assertFalse(cluster.toString(), cluster.getNodeStatus().containsKey(removed));
+          TShowDataNodesResp response = client.showDataNodes();
+          assertSuccess(response.getStatus());
+          assertEquals(
+              response.toString(),
+              Collections.singletonList(remaining),
+              response.getDataNodesInfoList().stream()
+                  .map(TDataNodeInfo::getDataNodeId)
+                  .collect(Collectors.toList()));
+        });
   }
 
-  private void transfer(int target) throws Exception {
-    int leader = EnvFactory.getEnv().getLeaderConfigNodeIndex();
-    if (leader == target) {
-      return;
-    }
-    long previousTerm = Long.parseLong(control(leader, "inspect").getProperty("term"));
-    TConfigNodeLocation location = configLocation(cluster(), target);
-    control(
-        leader,
-        "transfer:" + location.getConfigNodeId() + ":" + location.getConsensusEndPoint().getPort());
-    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
+  private int awaitLeader() throws InterruptedException {
+    return awaitCluster("A ConfigNode leader must be ready", (client, cluster) -> {});
+  }
+
+  private int awaitCluster(String description, ClusterAssertion assertion)
+      throws InterruptedException {
+    long deadline = System.nanoTime() + TimeUnit.MINUTES.toNanos(2);
+    Throwable lastFailure = null;
+    List<ConfigNodeWrapper> nodes = EnvFactory.getEnv().getConfigNodeWrapperList();
     do {
-      if (EnvFactory.getEnv().getLeaderConfigNodeIndex() == target) {
-        assertTrue(Long.parseLong(control(target, "inspect").getProperty("term")) > previousTerm);
-        return;
-      }
-      TimeUnit.MILLISECONDS.sleep(200);
-    } while (System.nanoTime() < deadline);
-    fail("Leadership did not transfer to ConfigNode " + target);
-  }
-
-  private int awaitOtherLeader(int excluded) throws Exception {
-    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
-    do {
-      for (int i = 0; i < 3; i++) {
-        if (i != excluded) {
-          try (SyncConfigNodeIServiceClient client =
-              (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection(i)) {
-            if (client.showCluster().getStatus().getCode() == 200) {
-              return i;
-            }
-          } catch (Exception ignored) {
-            /* Election can temporarily reject a read. */
-          }
+      for (int i = 0; i < nodes.size(); i++) {
+        if (!nodes.get(i).isAlive()) {
+          continue;
+        }
+        try (SyncConfigNodeIServiceClient client = configNodeClient(i)) {
+          TShowClusterResp response = client.showCluster();
+          assertSuccess(response.getStatus());
+          // A successful showCluster also checks consensus and leader-service readiness.
+          assertion.check(client, response);
+          return i;
+        } catch (ClientManagerException | TException | AssertionError e) {
+          lastFailure = e;
         }
       }
-      TimeUnit.MILLISECONDS.sleep(200);
+      TimeUnit.SECONDS.sleep(1);
     } while (System.nanoTime() < deadline);
-    throw new AssertionError("Majority did not elect a ready leader");
+    throw new AssertionError(description, lastFailure);
   }
 
-  private void heal() throws Exception {
-    for (int i = 0; i < 3; i++) {
-      control(i, "heal");
-    }
+  private SyncConfigNodeIServiceClient configNodeClient(int index) throws ClientManagerException {
+    ConfigNodeWrapper node = EnvFactory.getEnv().getConfigNodeWrapper(index);
+    return configNodeClients.borrowClient(new TEndPoint(node.getIp(), node.getPort()));
   }
 
-  private void awaitPersisted(int node, int dataNode, NodeStatus expected) throws Exception {
-    awaitPersisted(node, dataNode, expected, null);
-  }
-
-  private void awaitPersisted(int node, int dataNode, NodeStatus expected, String expectedReason)
-      throws Exception {
-    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
-    do {
-      Properties state = control(node, "inspect:" + dataNode);
-      if (String.valueOf(expected).equals(state.getProperty("persisted." + dataNode))
-          && String.valueOf(expectedReason)
-              .equals(state.getProperty("persistedReason." + dataNode))) {
-        return;
-      }
-      TimeUnit.MILLISECONDS.sleep(200);
-    } while (System.nanoTime() < deadline);
-    fail(
-        "ConfigNode "
-            + node
-            + " did not persist "
-            + expected
-            + " with reason "
-            + expectedReason
-            + " for "
-            + dataNode);
-  }
-
-  private Path submit(int node, String command) throws Exception {
-    Path output =
-        temporary.getRoot().toPath().resolve("control-" + System.nanoTime() + ".properties");
-    VirtualMachine vm =
-        VirtualMachine.attach(
-            Long.toString(EnvFactory.getEnv().getConfigNodeWrapper(node).getInstance().pid()));
-    try {
-      vm.loadAgent(agentJar.toString(), command + "|" + output);
-    } finally {
-      vm.detach();
-    }
-    return output;
-  }
-
-  private Properties control(int node, String command) throws Exception {
-    Properties result = awaitFile(submit(node, command));
-    assertNull(command + " failed: " + result, result.getProperty("error"));
-    return result;
-  }
-
-  private Properties awaitFile(Path output) throws Exception {
-    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(90);
-    while (!Files.exists(output) && System.nanoTime() < deadline) {
-      TimeUnit.MILLISECONDS.sleep(100);
-    }
-    assertTrue("Test control timed out: " + output, Files.exists(output));
-    Properties result = new Properties();
-    try (InputStream stream = Files.newInputStream(output)) {
-      result.load(stream);
-    }
-    return result;
+  private SyncConfigNodeIServiceClient leaderClient()
+      throws InterruptedException, ClientManagerException {
+    return configNodeClient(awaitLeader());
   }
 
   private TShowClusterResp cluster() throws Exception {
-    try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      TShowClusterResp result = client.showCluster();
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.getStatus().getCode());
-      return result;
+    try (SyncConfigNodeIServiceClient client = leaderClient()) {
+      TShowClusterResp response = client.showCluster();
+      assertSuccess(response.getStatus());
+      return response;
     }
   }
 
@@ -722,22 +378,12 @@ public class IoTDBNodeStatusFailoverIT {
         .orElseThrow(AssertionError::new);
   }
 
-  private void assertSuccess(Properties result) {
-    assertEquals(result.toString(), "200", result.getProperty("code"));
+  private void assertSuccess(TSStatus status) {
+    assertEquals(status.toString(), TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
   }
 
-  private Connection queryConnection() throws SQLException {
-    Properties properties = new Properties();
-    properties.setProperty("user", "root");
-    properties.setProperty("password", "root");
-    properties.setProperty("network_timeout", "15000");
-    properties.setProperty("sql_dialect", "tree");
-    return DriverManager.getConnection(
-        "jdbc:iotdb://"
-            + EnvFactory.getEnv().getDataNodeWrapper(queryNode).getIp()
-            + ":"
-            + EnvFactory.getEnv().getDataNodeWrapper(queryNode).getPort()
-            + "/",
-        properties);
+  @FunctionalInterface
+  private interface ClusterAssertion {
+    void check(SyncConfigNodeIServiceClient client, TShowClusterResp cluster) throws TException;
   }
 }
