@@ -303,6 +303,18 @@ Under the root path of iotdb:
 
 After being built, the IoTDB distribution is located at the folder: "distribution/target".
 
+### Build IoTDB Edge
+
+The distribution build also produces `apache-iotdb-<version>-edge-bin.zip`. IoTDB Edge runs the ConfigNode and DataNode in one JVM for resource-constrained, single-node deployments. It is an additional artifact and does not replace any existing distribution package.
+
+After extracting the package, configure `conf/iotdb-system.properties`, then start or stop the Edge process with:
+
+```bash
+sbin/start-edge.sh
+sbin/stop-edge.sh
+```
+
+On Windows, use `sbin\windows\start-edge.bat` and `sbin\windows\stop-edge.bat`. The package retains tools that are compatible with the combined Edge process.
 
 ### Only build cli
 

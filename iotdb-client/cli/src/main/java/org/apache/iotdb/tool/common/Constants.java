@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.tool.common;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
+
 import org.apache.tsfile.enums.TSDataType;
 
 import java.text.SimpleDateFormat;
@@ -222,7 +224,8 @@ public class Constants {
   public static final String QUERY_COMMAND_NAME = "query";
   public static final String QUERY_COMMAND_ARGS_NAME = "query_command";
   public static final String QUERY_COMMAND_DESC =
-      "The query command that you want to execute.If sql_dialect is table The 'q' parameter is only applicable to export types of CSV, and is not available for other types.If the '- q' parameter is not empty, then the parameters' creatTime ',' EndTime 'and' table 'are not effective.(optional)";
+      CliMessages
+          .MESSAGE_QUERY_TO_EXPORT_TABLE_SQL_TSFILE_QUERIES_REQUIRE_A_SINGLE_TABLE_WITHOUT_JOINS_SUBQUERIES_OR_CTES_OVERRIDES_TABLE_START_TIME_AND_END_TIME_OPTIONAL_CC12D400;
 
   public static final String TARGET_FILE_ARGS = "pfn";
   public static final String TARGET_FILE_NAME = "prefix_file_name";

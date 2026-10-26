@@ -19,15 +19,37 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser;
 
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 
 /** Allocates parser working memory from the pool owned by the caller. */
 public interface TsFileInsertionEventParserMemoryManager {
 
-  TsFileInsertionEventParserMemoryBlock forceAllocateForTabletWithRetry(long sizeInBytes);
+  TsFileInsertionEventParserMemoryBlock forceAllocateForTabletWithRetry(
+      String name, long sizeInBytes);
 
-  TsFileInsertionEventParserMemoryBlock forceAllocate(long sizeInBytes);
+  TsFileInsertionEventParserMemoryBlock forceAllocate(String name, long sizeInBytes);
+
+  /** Allocates a parser child block when the caller has an event-level parent. */
+  default TsFileInsertionEventParserMemoryBlock forceAllocateForTabletWithRetry(
+      final String name,
+      final long sizeInBytes,
+      final PipeMemoryBlock parent,
+      final Object assigner) {
+    return forceAllocateForTabletWithRetry(name, sizeInBytes);
+  }
+
+  /** Allocates a generic parser child block when the caller has an event-level parent. */
+  default TsFileInsertionEventParserMemoryBlock forceAllocate(
+      final String name,
+      final long sizeInBytes,
+      final PipeMemoryBlock parent,
+      final Object assigner) {
+    return forceAllocate(name, sizeInBytes);
+  }
 
   static TsFileInsertionEventParserMemoryManager pipe() {
     return PipeHolder.INSTANCE;
@@ -38,14 +60,46 @@ public interface TsFileInsertionEventParserMemoryManager {
         new TsFileInsertionEventParserMemoryManager() {
           @Override
           public TsFileInsertionEventParserMemoryBlock forceAllocateForTabletWithRetry(
-              final long sizeInBytes) {
+              final String name, final long sizeInBytes) {
             return new PipeBlock(
-                PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(sizeInBytes));
+                PipeDataNodeResourceManager.memory()
+                    .forceAllocateForTsFileParserWithRetry(
+                        name, sizeInBytes, TsFileInsertionEventParser.class.getSimpleName()));
           }
 
           @Override
-          public TsFileInsertionEventParserMemoryBlock forceAllocate(final long sizeInBytes) {
-            return new PipeBlock(PipeDataNodeResourceManager.memory().forceAllocate(sizeInBytes));
+          public TsFileInsertionEventParserMemoryBlock forceAllocate(
+              final String name, final long sizeInBytes) {
+            return new PipeBlock(
+                PipeDataNodeResourceManager.memory()
+                    .forceAllocate(
+                        name,
+                        sizeInBytes,
+                        PipeMemoryBlockCategory.PARSER,
+                        TsFileInsertionEventParser.class.getSimpleName()));
+          }
+
+          @Override
+          public TsFileInsertionEventParserMemoryBlock forceAllocateForTabletWithRetry(
+              final String name,
+              final long sizeInBytes,
+              final PipeMemoryBlock parent,
+              final Object assigner) {
+            return new PipeBlock(
+                PipeDataNodeResourceManager.memory()
+                    .forceAllocateForTsFileParserWithRetry(name, sizeInBytes, assigner, parent));
+          }
+
+          @Override
+          public TsFileInsertionEventParserMemoryBlock forceAllocate(
+              final String name,
+              final long sizeInBytes,
+              final PipeMemoryBlock parent,
+              final Object assigner) {
+            return new PipeBlock(
+                PipeDataNodeResourceManager.memory()
+                    .forceAllocate(
+                        name, sizeInBytes, PipeMemoryBlockCategory.PARSER, assigner, parent));
           }
         };
   }
@@ -64,7 +118,12 @@ public interface TsFileInsertionEventParserMemoryManager {
 
     @Override
     public void forceResize(final long newSizeInBytes) {
-      PipeDataNodeResourceManager.memory().forceResize(delegate, newSizeInBytes);
+      final long oldSize = delegate.getMemoryUsageInBytes();
+      final PipeMemoryManager memoryManager = PipeDataNodeResourceManager.memory();
+      if (!memoryManager.tryResize(delegate, newSizeInBytes)) {
+        throw new PipeRuntimeOutOfMemoryCriticalException(
+            memoryManager.getResizeFailureMessage(0, newSizeInBytes - oldSize));
+      }
     }
 
     @Override

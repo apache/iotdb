@@ -21,6 +21,11 @@ package org.apache.iotdb.db.i18n;
 
 /** Compile-time i18n constants for DataNode misc subsystems (English). */
 public final class DataNodeMiscMessages {
+  public static final String MESSAGE_QUERY_DOES_NOT_BELONG_TO_CURRENT_SESSION_A1198237 =
+      "The requested query does not belong to the current session.";
+
+  public static final String MESSAGE_MISSING_LOAD_TSFILE_SLICE_METADATA_ARG_DE4333DA =
+      "Missing Load TsFile slice metadata: %s";
 
     public static final String INVALID_PIPE_NAME =
       "Invalid pipeName";
@@ -118,6 +123,84 @@ public final class DataNodeMiscMessages {
   public static final String COLUMN_FILTER_LIKE_PATTERN = "LIKE pattern";
   public static final String COLUMN_FILTER_LIKE_ESCAPE = "LIKE escape";
   public static final String COLUMN_FILTER_REGEXP_PATTERN = "REGEXP pattern";
+  public static final String EXCEPTION_INVALID_TAG_FILTER_ARG_E4B1C1C6 =
+      "Invalid tag-filter: %s";
+  public static final String EXCEPTION_TAG_FILTER_SHOULD_NOT_BE_EMPTY_507CA5B0 =
+      "tag-filter should not be empty";
+  public static final String
+      EXCEPTION_ONLY_AND_COMPARISONS_ARE_SUPPORTED_IN_TAG_FILTER_19946958 =
+          "only =, !=, and <> comparisons are supported in tag-filter";
+  public static final String EXCEPTION_LEFT_OPERAND_MUST_BE_A_TAG_COLUMN_F9D4548B =
+      "left operand must be a TAG column";
+  public static final String EXCEPTION_TAG_FILTER_EVALUATION_FAILED_ARG_1B239B2F =
+      "Tag-filter evaluation failed: %s";
+  public static final String EXCEPTION_TAG_FILTER_SCHEMA_BINDING_FAILED_ARG_7A5D2D47 =
+      "Tag-filter schema binding failed: %s";
+  public static final String EXCEPTION_TAG_FILTER_EXCEEDS_MAXIMUM_UTF_8_LENGTH_OF_ARG_BYTES_9C8400F2 =
+      "tag-filter exceeds maximum UTF-8 length of %s bytes";
+  public static final String EXCEPTION_TAG_FILTER_AST_DEPTH_EXCEEDS_MAXIMUM_OF_ARG_64C92731 =
+      "tag-filter AST depth exceeds maximum of %s";
+  public static final String EXCEPTION_TAG_FILTER_AST_NODE_COUNT_EXCEEDS_MAXIMUM_OF_ARG_40CCE694 =
+      "tag-filter AST node count exceeds maximum of %s";
+  public static final String EXCEPTION_TAG_FILTER_IN_LIST_EXCEEDS_MAXIMUM_OF_ARG_VALUES_07E7FC6C =
+      "tag-filter IN list exceeds maximum of %s values";
+  public static final String EXCEPTION_TAG_FILTER_REGEXP_PATTERN_EXCEEDS_MAXIMUM_LENGTH_OF_ARG_CHARACTERS_67590971 =
+      "tag-filter REGEXP pattern exceeds maximum length of %s characters";
+  public static final String EXCEPTION_TABLE_SCHEMA_IS_NOT_AVAILABLE_FOR_TAG_FILTER_993AB728 =
+      "table schema is not available for tag-filter";
+  public static final String
+      EXCEPTION_TABLE_SCHEMA_ARG_ARG_IS_ABSENT_FROM_THIS_DATANODE_S_TABLE_CACHE_THE_TABLE_MAY_NOT_EXIST_OR_ITS_SCHEMA_HAS_NOT_BEEN_SYNCHRONIZED_YET_23975BDF =
+          "Table schema %s.%s is absent from this DataNode's table cache; the table may not exist or its schema has not been synchronized yet";
+  public static final String
+      EXCEPTION_TABLE_SCHEMA_KEPT_CHANGING_WHILE_BINDING_TAG_FILTER_FOR_DATABASE_PATTERN_ARG_AND_TABLE_PATTERN_ARG_RETRY_AFTER_SCHEMA_SYNCHRONIZATION_77A005E9 =
+          "Table schema kept changing while binding tag-filter for database pattern %s and table pattern %s; retry after schema synchronization";
+  public static final String EXCEPTION_REFERENCED_TAG_COLUMN_IS_MISSING_ARG_F5300BEA =
+      "referenced TAG column is missing: %s";
+  public static final String EXCEPTION_REFERENCED_COLUMN_IS_NOT_A_TAG_COLUMN_ARG_34D60881 =
+      "referenced column is not a TAG column: %s";
+  public static final String EXCEPTION_UNCOMPILED_LIKE_PREDICATE_01AEE439 =
+      "uncompiled LIKE predicate";
+  public static final String EXCEPTION_UNCOMPILED_REGEXP_PREDICATE_2B0DD646 =
+      "uncompiled REGEXP predicate";
+  public static final String EXCEPTION_MATCHER_IS_UNAVAILABLE_1A659D47 = "matcher is unavailable";
+  public static final String EXCEPTION_TABLET_SCHEMA_IS_MISSING_164075B0 = "tablet schema is missing";
+  public static final String EXCEPTION_TABLET_VALUE_COLUMNS_ARE_INCOMPLETE_DCD09F3C =
+      "tablet value columns are incomplete";
+  public static final String EXCEPTION_FAILED_TO_EVALUATE_A_TABLET_ROW_7E4E94CE =
+      "failed to evaluate a tablet row";
+  public static final String EXCEPTION_TABLE_BINDING_IS_NOT_AVAILABLE_882C5F2F =
+      "table binding is not available";
+  public static final String EXCEPTION_REFERENCED_COLUMN_IS_NOT_A_TAG_COLUMN_33FA34BC =
+      "referenced column is not a TAG column";
+  public static final String EXCEPTION_REFERENCED_COLUMN_CATEGORY_CHANGED_564594D8 =
+      "referenced column category changed";
+  public static final String EXCEPTION_REFERENCED_TAG_COLUMN_IS_MISSING_55E07377 =
+      "referenced TAG column is missing";
+  public static final String EXCEPTION_TABLET_MEASUREMENT_SCHEMA_IS_INCOMPLETE_6A813472 =
+      "tablet measurement schema is incomplete";
+  public static final String EXCEPTION_FAILED_TO_COMPACT_FILTERED_TABLET_5D4AD8AA =
+      "failed to compact filtered tablet";
+  public static final String EXCEPTION_TABLET_COLUMN_CATEGORIES_ARE_MISSING_2C660532 =
+      "tablet column categories are missing";
+  public static final String EXCEPTION_TABLET_COLUMN_CATEGORY_IS_MISSING_A812B500 =
+      "tablet column category is missing";
+  public static final String EXCEPTION_TABLET_TIMESTAMPS_ARE_INCOMPLETE_24F8CE6F =
+      "tablet timestamps are incomplete";
+  public static final String EXCEPTION_TABLET_BITMAPS_ARE_INCOMPLETE_7BBC8035 =
+      "tablet bitmaps are incomplete";
+  public static final String EXCEPTION_TABLET_VALUE_COLUMN_IS_INCOMPLETE_845721FE =
+      "tablet value column is incomplete";
+  public static final String EXCEPTION_TREE_VIEW_PROJECTOR_IS_UNAVAILABLE_FOR_FILTERED_SUBSCRIPTION_DATA_B5F396A5 =
+      "Tree View projector is unavailable for filtered subscription data";
+  public static final String
+      EXCEPTION_TOPIC_CONFIGURATION_IS_NOT_AVAILABLE_FOR_TAG_FILTER_1E023E3A =
+          "topic configuration is not available for tag-filter";
+  public static final String
+      EXCEPTION_TOPIC_CONFIGURATION_CHANGED_WHILE_CAPTURING_TAG_FILTER_SNAPSHOT_984CEB1B =
+          "topic configuration changed while capturing tag-filter snapshot";
+  public static final String
+      LOG_SUBSCRIPTION_TABLE_SCHEMA_IS_NOT_AVAILABLE_FOR_TAG_FILTER_TOPIC_ARG_E864C98F =
+      "Subscription: table schema is not available for tag-filter topic [{}]";
 
   public static final String CREATE_NEW_REGION_ERROR_FMT = "create new region %s error,  exception:%s";
   public static final String CREATE_NEW_REGION_SUCCEED_FMT = "create new region %s succeed";
@@ -131,34 +214,6 @@ public final class DataNodeMiscMessages {
       "There are more than one ServerContextFactory implementation. pls check.";
   public static final String SET_SERVER_CONTEXT_FACTORY =
       "Will set ServerContextFactory from {} ";
-
-  // ---------------------------------------------------------------------------
-  // protocol – ConfigNodeInfo
-  // ---------------------------------------------------------------------------
-  public static final String UPDATE_CONFIG_NODE_SUCCESSFULLY =
-      "Update ConfigNode Successfully: {}, which takes {} ms.";
-  public static final String UPDATE_CONFIG_NODE_FAILED = "Update ConfigNode failed.";
-  public static final String SYSTEM_PROPERTIES_NOT_EXIST =
-      "System properties file not exist, not necessary to store ConfigNode list";
-  public static final String LOAD_CONFIG_NODE_SUCCESSFULLY =
-      "Load ConfigNode successfully: {}, which takes {} ms.";
-  public static final String CANNOT_PARSE_CONFIG_NODE_LIST =
-      "Cannot parse config node list in system.properties";
-
-  // ---------------------------------------------------------------------------
-  // protocol – ConfigNodeClient
-  // ---------------------------------------------------------------------------
-  public static final String NODE_LEADER_MAY_DOWN_TRY_NEXT =
-      "The current node leader may have been down {}, try next node";
-  public static final String UNEXPECTED_INTERRUPTION_CONNECT_CONFIG_NODE =
-      "Unexpected interruption when waiting to try to connect to ConfigNode";
-  public static final String NODE_MAY_DOWN_TRY_NEXT =
-      "The current node may have been down {},try next node";
-  public static final String FAILED_CONNECT_CONFIG_NODE_NOT_LEADER =
-      "Failed to connect to ConfigNode {} from DataNode {}, because the current node is not "
-          + "leader or not ready yet, will try again later";
-  public static final String UNEXPECTED_INTERRUPTION_CONNECT_CONFIG_NODE_BREAK =
-      "Unexpected interruption when waiting to try to connect to ConfigNode, may because current node has been down. Will break current execution process to avoid meaningless wait.";
 
   // ---------------------------------------------------------------------------
   // protocol – DataNodeInternalClient
@@ -446,8 +501,6 @@ public final class DataNodeMiscMessages {
   // ---------------------------------------------------------------------------
   // service – metrics
   // ---------------------------------------------------------------------------
-  public static final String FAILED_GET_PROCESS_RESIDENT_MEMORY =
-      "Failed to get process resident memory for pid {}";
   public static final String DATANODE_PORT_CHECK_SUCCESSFUL = "DataNode port check successful.";
 
   // ---------------------------------------------------------------------------
@@ -633,7 +686,12 @@ public final class DataNodeMiscMessages {
   public static final String INPUT_DOUBLE_INFINITY = "The input double value is Infinity";
   public static final String BOOLEAN_PARSE_ERROR =
       "The BOOLEAN should be true/TRUE, false/FALSE or 0/1";
-  public static final String UNSUPPORTED_DATA_TYPE_FMT = "Unsupported data type:%s";
+  public static final String EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_ARG_REGISTERED_ARG_0EF32FD3 =
+      "data type is not consistent, input %s, registered %s";
+  public static final String EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_ARG_REGISTERED_ARG_BECAUSE_ARG_C8637858 =
+      "data type is not consistent, input %s, registered %s because %s";
+  public static final String UNSUPPORTED_DATA_TYPE_FMT =
+      "Unsupported data type:%s";
   public static final String UNSUPPORTED_DATA_TYPE = "Unsupported data type: ";
   public static final String AGGREGATE_FUNCTION_NAME_NULL =
       "AggregateFunction Name must not be null";
@@ -672,8 +730,6 @@ public final class DataNodeMiscMessages {
   public static final String STARTING_IOTDB = "Starting IoTDB {}";
   public static final String CANNOT_CREATE_SCHEMA_DIR = "Can not create schema dir: {}";
   public static final String SCHEMA_DIR_CREATED = " {} dir has been created.";
-  public static final String IOTDB_VERSION_TOO_OLD = "IoTDB version is too old";
-  public static final String REPAIR_SYSTEM_PROPERTIES = "repair system.properties, lack {}";
   public static final String UNEXPECTED_CONSENSUS_GROUP_TYPE =
       "Unexpected consensus group type";
   public static final String ENCRYPT_MAGIC_STRING_NOT_MATCHED =
@@ -815,6 +871,14 @@ public final class DataNodeMiscMessages {
       "Subscription: failed to lazily refresh column-filter matcher for topic [{}]";
   public static final String SUBSCRIPTION_DROP_COLUMN_FILTER =
       "Subscription: dropped column-filter matcher for topic [{}]";
+  public static final String
+      LOG_SUBSCRIPTION_FAILED_TO_REFRESH_TAG_FILTER_MATCHER_FOR_TOPIC_ARG_USE_EMPTY_MATCHER_TO_FAIL_CLOSED_3CB76D70 =
+          "Subscription: failed to refresh tag-filter matcher for topic [{}], use empty matcher to fail closed";
+  public static final String
+      LOG_SUBSCRIPTION_REFRESHED_TAG_FILTER_MATCHER_FOR_TOPIC_ARG_71598849 =
+          "Subscription: refreshed tag-filter matcher for topic [{}]";
+  public static final String LOG_SUBSCRIPTION_DROPPED_TAG_FILTER_MATCHER_FOR_TOPIC_ARG_9EA52458 =
+      "Subscription: dropped tag-filter matcher for topic [{}]";
   public static final String SUBSCRIPTION_UNSUPPORTED_CONSENSUS_PROGRESS_FILE_VERSION_FMT =
       "Unsupported consensus subscription progress file version %s";
 
@@ -855,6 +919,8 @@ public final class DataNodeMiscMessages {
       "Exception occurred when sealing events from batch {}";
   public static final String EXCEPTION_CONSTRUCT_NEW_BATCH =
       "Exception occurred when construct new batch";
+  public static final String EXCEPTION_FAILED_TO_SEAL_SUBSCRIPTION_EVENT_BATCH_1FB7E92C =
+      "Failed to seal subscription event batch";
 
   // ---------------------------------------------------------------------------
   // subscription – SubscriptionPrefetchingQueue
@@ -1060,6 +1126,10 @@ public final class DataNodeMiscMessages {
   // --- DataNodeInternalRPCServiceImpl ---
   public static final String LOAD_COMMAND_REQUIRES_TIME_PARTITION_TO_PROGRESS_INDEX_MAP =
       "Load command requires time partition to progress index map";
+  public static final String LOG_THE_LOAD_COMMAND_PROTOCOL_WAS_REMOVED_THE_REQUEST_OF_TASK_ARG_IS_REJECTED_76937A9C =
+      "The LOAD command protocol was removed; the request of task {} is rejected.";
+  public static final String MESSAGE_THE_LOAD_COMMAND_PROTOCOL_WAS_REMOVED_LOAD_TRAVELS_THROUGH_CONSENSUS_NOW_0165EE16 =
+      "The LOAD command protocol was removed, LOAD travels through consensus now.";
   public static final String TOPOLOGY_PROBING_TIMED_OUT_AFTER_S_MS =
       "Topology probing timed out after %sms";
   public static final String NO_SUCH_QUERY = "No such query";
@@ -1103,8 +1173,7 @@ public final class DataNodeMiscMessages {
   public static final String MISC_LOG_DATANODE_EXITS_JVM_MEMORY_USAGE_BE69D1F5 =
       "DataNode exits. Jvm memory usage: {}";
   public static final String MISC_LOG_FAILED_TO_REPORT_DATANODE_S_SHUTDOWN_TO_CONFIGNODE_THE_CLUSTER_E6727497 =
-      "Failed to report DataNode's shutdown to ConfigNode. The cluster will still take the current "
-          + "DataNode as Running for a few seconds.";
+      "Failed to confirm the DataNode shutdown report with the ConfigNode leader.";
   public static final String MISC_LOG_SOMETHING_WRONG_HAPPENED_WHILE_CALLING_CONSENSUS_LAYER_S_8B8FBB16 =
       "Something wrong happened while calling consensus layer's triggerSnapshot API.";
   public static final String MISC_LOG_THE_ADDREGIONPEERTASK_HAS_ALREADY_BEEN_SUBMITTED_AND_WILL_4D398F73 =
@@ -1151,12 +1220,8 @@ public final class DataNodeMiscMessages {
       "Totally find {} tsFiles to be settled.";
   public static final String MISC_LOG_SYSTEM_PROPERTIES_FILE_HAS_BEEN_MOVED_SUCCESSFULLY_4445A448 =
       "system.properties file has been moved successfully: {} -> {}";
-  public static final String MISC_LOG_SERIALIZE_MUTABLE_SYSTEM_PROPERTIES_SUCCESSFULLY_WHICH_TAKES_4656A206 =
-      "Serialize mutable system properties successfully, which takes {} ms.";
   public static final String MISC_LOG_SYSTEMPROPERTIES_NORMALIZE_FROM_TO_FOR_COMPATIBILITY_BE1C725F =
       "[SystemProperties] Normalize {} from {} to {} for compatibility.";
-  public static final String MISC_LOG_DO_NOT_UPGRADE_IOTDB_FROM_V0_9_OR_LOWER_VERSION_TO_V1_0_9878EC88 =
-      "DO NOT UPGRADE IoTDB from v0.9 or lower version to v1.0! Please upgrade to v0.10 first";
   public static final String MISC_LOG_CANNOT_FIND_IOTDB_HOME_OR_IOTDB_CONF_ENVIRONMENT_VARIABLE_BE01B2FE =
       "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading config file {}, use "
           + "default configuration";
@@ -1402,12 +1467,7 @@ public final class DataNodeMiscMessages {
           + "should be an integer, which is %s";
   public static final String MISC_EXCEPTION_ILLEGAL_DEFAULTDATABASELEVEL_D_SHOULD_1_03088B38 =
       "Illegal defaultDatabaseLevel: %d, should >= 1";
-  public static final String MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_OR_95B4DB23 =
-      "loadTsFileSpiltPartitionMaxSize should be greater than or equal to 0";
-  public static final String MISC_EXCEPTION_REMOVING_IS_ONLY_ALLOWED_IN_AN_ENVIRONMENT_WHERE_THE_DATANODE_5A3E1FEA =
-      "Removing is only allowed in an environment where the datanode has been successfully "
-          + "started. Please check whether it is removed on the confignode, or if you have deleted the "
-          + "system.properties file by mistake.";
+  public static final String MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_0_17B75192 = "loadTsFileSpiltPartitionMaxSize should be greater than 0";
   public static final String MISC_EXCEPTION_STATEMENTID_SDOESN_T_EXIST_IN_THIS_SESSION_S_BD5B4733 =
       "StatementId: %sdoesn't exist in this session %s";
   public static final String MISC_EXCEPTION_INTERNALCLIENTSESSION_SHOULD_NEVER_CALL_PREPARE_STATEMENT_CCAB3CDC =
@@ -1430,8 +1490,6 @@ public final class DataNodeMiscMessages {
       "%s is not allowed, only support %s";
   public static final String MISC_EXCEPTION_S_IS_NOT_ALLOWED_ONLY_SUPPORT_S_1B06E0B7 =
       " %s is not allowed, only support %s";
-  public static final String PARAMETER_CANNOT_BE_MODIFIED_AFTER_FIRST_STARTUP_FMT =
-      "%s can't be modified after first startup";
   public static final String UNSUPPORTED_INVOCATION_BY_DATANODE =
       "This method is not supported for invocation by DataNode";
   public static final String UNSUPPORTED_INVOCATION_BY_DATANODE_USE_SUBMIT_LOAD_CONFIGURATION_TASK =
@@ -1486,7 +1544,8 @@ public final class DataNodeMiscMessages {
   public static final String MESSAGE_CHANGEREGIONLEADER_SUCCESSFULLY_CHANGE_LEADER_REGIONGROUP_462797B4 = "[ChangeRegionLeader] Successfully change the leader of RegionGroup: ";
   public static final String MESSAGE_MESSAGE_3501C7E6 = " to ";
   public static final String MESSAGE_EXECUTEFASTLASTDATAQUERYFORONEPREFIXPATH_DOS_NOT_SUPPORT_WILDCARDS_8E8F44F5 = "The \"executeFastLastDataQueryForOnePrefixPath\" dos not support wildcards.";
-  public static final String MESSAGE_TEMPLATE_NULL_TRYING_ACTIVATE_TEMPLATE_MAY_TEMPLATE_BEING_UNSET_1CE92779 = "The template is null when trying to activate template, may be the template is being unset.";
+  public static final String MESSAGE_THE_TEMPLATE_IS_NULL_WHEN_TRYING_TO_ACTIVATE_TEMPLATE_MAY_BE_THE_TEMPLATE_IS_BEING_UNSET_THE_TEMPLATE_IDS_ARE_ARG_7B5F4F72 =
+      "The template is null when trying to activate template, may be the template is being unset. The template ids are %s.";
   public static final String MESSAGE_DOT_9D9B854A = ".";
   public static final String MESSAGE_ERROR_OCCURRED_WHILE_PARSING_SQL_TO_PHYSICAL_PLAN_COLON_5C9F2C59 = "Error occurred while parsing SQL to physical plan: ";
   public static final String MESSAGE_ERROR_OCCURRED_IN_READ_PROCESS_COLON_CD184195 = "Error occurred in read process: ";
@@ -1496,9 +1555,6 @@ public final class DataNodeMiscMessages {
   public static final String EXCEPTION_RUNTIMESTATE_D4D018BA = "runtimeState";
   public static final String EXCEPTION_STATEMENTNAME_IS_NULL_C03BB8D4 = "statementName is null";
   public static final String EXCEPTION_SQL_IS_NULL_BEDB2B7A = "sql is null";
-  public static final String MESSAGE_CONFIGNODE_LEADER_ARG_IS_WARMING_UP_BEFORE_SERVING_DATANODE_ARG_WILL_WAIT_AND_RETRY_AAB5F962 = "ConfigNode leader {} is warming up before serving DataNode {}, will wait and retry.";
-  public static final String MESSAGE_CONFIGNODE_LEADER_ARG_IS_WARMING_UP_BEFORE_SERVING_DATANODE_ARG_WILL_WAIT_AND_RETRY_REASON_ARG_3A2A4163 =
-      "ConfigNode leader {} is warming up before serving DataNode {}, will wait and retry. Reason: {}";
   public static final String EXCEPTION_TRUST_STORE_PATH_MUST_BE_SET_WHEN_THRIFT_SSL_CLIENT_AUTH_IS_TRUE_36016171 = "trust_store_path must be set when thrift_ssl_client_auth is true";
   public static final String EXCEPTION_CONTINUOUS_QUERY_MIN_EVERY_INTERVAL_IN_MS_SHOULD_BE_GREATER_THAN_0_BUT_CURRENT_VALUE_IS_F9A1BEC4 = "continuous_query_min_every_interval_in_ms should be greater than 0, but current value is ";
   public static final String EXCEPTION_UNKNOWN_READ_CONSISTENCY_LEVEL_ARG_PLEASE_SET_TO_STRONG_OR_WEAK_8CF29949 = "Unknown read_consistency_level: %s, please set to \"strong\" or \"weak\"";
@@ -1530,5 +1586,29 @@ public final class DataNodeMiscMessages {
       "Missing value arrays for aligned column index %d during expand";
   public static final String EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_MARK_NULL_VALUE_2893628E =
       "Missing value arrays for aligned column index %d during mark null value";
+  public static final String
+      LOG_TABLE_QUERY_DEVICE_ENTRY_BATCH_SIZE_IN_BYTES_ARG_EXCEEDS_DN_THRIFT_MAX_FRAME_SIZE_ARG_USING_ARG_AS_THE_EFFECTIVE_VALUE_2AE1BEDA =
+          "table_query_device_entry_batch_size_in_bytes (%d) exceeds the maximum RPC payload (dn_thrift_max_frame_size %d minus 1024 bytes); using %d as the effective value";
+  public static final String
+      LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_NOT_POSITIVE_USING_DEFAULT_VALUE_ARG_1AA821B2 =
+          "mpp_data_exchange_max_payload_size_in_bytes (%d) is not positive, using default value %d";
+  public static final String
+      LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_EXCEEDS_MAXIMUM_ALLOWED_VALUE_ARG_USING_ARG_D9BF0BBC =
+          "mpp_data_exchange_max_payload_size_in_bytes (%d) exceeds the maximum allowed value %d, using %d";
+  public static final String
+      LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_BELOW_MINIMUM_ALLOWED_VALUE_ARG_USING_ARG_794ABC76 =
+          "mpp_data_exchange_max_payload_size_in_bytes (%d) is below the minimum allowed value %d, using %d";
+
+  public static final String MESSAGE_MULTIPLE_TYPES_ENCOUNTERED_WHEN_AUTO_DETECTING_TYPE_OF_MEASUREMENT_ARG_PLEASE_CHECK_6EDF48DB =
+      "Multiple types encountered when auto detecting type of measurement '%s', please check";
+
+  public static final String LOG_FAILED_TO_COLLECT_THE_DEVICES_USING_THE_EXTENDED_TEMPLATE_ARG_AB32D554 =
+      "Failed to collect the devices using the extended template {}";
+
+  public static final String
+      MISC_EXCEPTION_LOAD_TSFILE_WRITE_BUFFER_SIZE_SHOULD_BE_GREATER_THAN_0_AB1BA936 =
+          "loadTsFileWriteBufferSize should be greater than 0";
+  public static final String EXCEPTION_BUFFER_SIZE_SHOULD_BE_GREATER_THAN_0_BB68B5C4 =
+      "bufferSize should be greater than 0";
 
 }

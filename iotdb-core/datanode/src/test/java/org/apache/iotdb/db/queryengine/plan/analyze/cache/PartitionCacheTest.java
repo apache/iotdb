@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -53,6 +54,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class PartitionCacheTest {
@@ -62,7 +64,7 @@ public class PartitionCacheTest {
       SeriesPartitionExecutor.getSeriesPartitionExecutor(
           config.getSeriesPartitionExecutorClass(), config.getSeriesPartitionSlotNum());
 
-  private static final Set<String> storageGroups = new HashSet<>();
+  private static final Set<String> databases = new HashSet<>();
   private static final Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>>
       schemaPartitionTable = new HashMap<>();
   private static final Map<
@@ -85,7 +87,7 @@ public class PartitionCacheTest {
         storageGroupNumber++) {
       // init each database
       String storageGroupName = getDatabaseName(storageGroupNumber);
-      storageGroups.add(storageGroupName);
+      databases.add(storageGroupName);
       if (!schemaPartitionTable.containsKey(storageGroupName)) {
         schemaPartitionTable.put(storageGroupName, new HashMap<>());
       }
@@ -148,7 +150,7 @@ public class PartitionCacheTest {
   @Before
   public void setUp() throws Exception {
     partitionCache = new PartitionCache();
-    partitionCache.updateDatabaseCache(storageGroups);
+    partitionCache.updateDatabaseCache(databases);
     partitionCache.updateSchemaPartitionCache(schemaPartitionTable);
     partitionCache.updateDataPartitionCache(dataPartitionTable);
     partitionCache.updateGroupIdToReplicaSetMap(100, consensusGroupIdToRegionReplicaSet);
@@ -244,6 +246,29 @@ public class PartitionCacheTest {
   }
 
   @Test
+  public void testNeedLastCacheDefaultsToTrueWhenUnset() {
+    final Map<String, TDatabaseSchema> databaseSchemaMap = new HashMap<>();
+
+    final TDatabaseSchema unsetSchema = new TDatabaseSchema();
+    databaseSchemaMap.put("root.unset", unsetSchema);
+
+    final TDatabaseSchema enabledSchema = new TDatabaseSchema();
+    enabledSchema.setNeedLastCache(true);
+    databaseSchemaMap.put("root.enabled", enabledSchema);
+
+    final TDatabaseSchema disabledSchema = new TDatabaseSchema();
+    disabledSchema.setNeedLastCache(false);
+    databaseSchemaMap.put("root.disabled", disabledSchema);
+
+    partitionCache.updateDatabaseCache(databaseSchemaMap);
+
+    assertTrue(partitionCache.isNeedLastCache("root.unset"));
+    assertTrue(partitionCache.isNeedLastCache("root.enabled"));
+    assertFalse(partitionCache.isNeedLastCache("root.disabled"));
+    assertTrue(partitionCache.isNeedLastCache("root.missing"));
+  }
+
+  @Test
   public void testRegionReplicaSetCache() {
     // test update regionReplicaSetCache with small timestamp
     assertFalse(partitionCache.updateGroupIdToReplicaSetMap(0, consensusGroupIdToRegionReplicaSet));
@@ -272,6 +297,18 @@ public class PartitionCacheTest {
         }
       }
     }
+  }
+
+  /**
+   * Dropping the cached route of one region keeps the routes of the others, so re-resolving one
+   * region does not send every other lookup to the ConfigNode.
+   */
+  @Test
+  public void testInvalidatingOneRegionReplicaSetCacheKeepsTheOthers() {
+    final List<TConsensusGroupId> regions =
+        new ArrayList<>(consensusGroupIdToRegionReplicaSet.keySet());
+    partitionCache.invalidReplicaSetCache(regions.get(0));
+    checkRegionReplicaSet(regions.get(1));
   }
 
   private void checkRegionReplicaSet(TConsensusGroupId consensusGroupId) {

@@ -47,6 +47,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.queryengine.plan.udf.ForecastTimeUtils.calculateForecastInterval;
+import static org.apache.iotdb.commons.queryengine.plan.udf.ForecastTimeUtils.calculateForecastOutputTime;
+import static org.apache.iotdb.commons.queryengine.plan.udf.ForecastTimeUtils.calculateForecastStartTime;
+
 public class UDTFForecast implements UDTF {
   private static final TsBlockSerde serde = new TsBlockSerde();
   private String model_id;
@@ -225,15 +229,12 @@ public class UDTFForecast implements UDTF {
           String.format(
               QueryMessages.INPUT_END_TIME_LESS_THAN_START_TIME, inputStartTime, inputEndTime));
     }
-    long interval = this.outputInterval;
-    if (outputInterval <= 0) {
-      interval = (inputEndTime - inputStartTime) / (inputRows.size() - 1);
-    }
-    long outputTime =
-        (this.outputStartTime == Long.MIN_VALUE) ? inputEndTime + interval : this.outputStartTime;
+    long interval =
+        calculateForecastInterval(inputStartTime, inputEndTime, inputRows.size(), outputInterval);
+    long outputTime = calculateForecastStartTime(inputEndTime, this.outputStartTime, interval);
     long[] outputTimes = new long[this.outputLength];
     for (int i = 0; i < this.outputLength; i++) {
-      outputTimes[i] = outputTime + interval * i;
+      outputTimes[i] = calculateForecastOutputTime(outputTime, interval, i);
     }
 
     TsBlock forecastResult = forecast();

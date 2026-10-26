@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.load.metrics;
 
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
@@ -34,8 +35,11 @@ public class LoadTsFileMemMetricSet implements IMetricSet {
 
   private static final String LOAD_TSFILE_DATA_CACHE_MEMORY = "LoadTsFileDataCacheMemory";
 
+  // Keep the size to restore it when the metric service recreates the gauge, e.g. on restart
+  private long otherMemorySizeInBytes = 0;
+
   @Override
-  public void bindTo(AbstractMetricService metricService) {
+  public synchronized void bindTo(AbstractMetricService metricService) {
     metricService.createAutoGauge(
         Metric.LOAD_MEM.toString(),
         MetricLevel.IMPORTANT,
@@ -58,7 +62,18 @@ public class LoadTsFileMemMetricSet implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             LOAD_TSFILE_OTHER_MEMORY)
-        .set(0L);
+        .set(otherMemorySizeInBytes);
+  }
+
+  public synchronized void updateOtherMemory(long deltaInBytes) {
+    otherMemorySizeInBytes += deltaInBytes;
+    MetricService.getInstance()
+        .getOrCreateGauge(
+            Metric.LOAD_MEM.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            LOAD_TSFILE_OTHER_MEMORY)
+        .set(otherMemorySizeInBytes);
   }
 
   @Override

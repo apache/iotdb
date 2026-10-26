@@ -100,12 +100,22 @@ SessionPool& SessionPool::setWaitToGetSessionTimeoutMs(int64_t timeoutMs) {
 }
 
 SessionPool& SessionPool::setUseSSL(bool useSSL) {
-  useSSL_ = useSSL;
+  sslConfig_.useSsl = useSSL;
   return *this;
 }
 
 SessionPool& SessionPool::setTrustCertFilePath(std::string path) {
-  trustCertFilePath_ = std::move(path);
+  sslConfig_.trustCertFilePath = std::move(path);
+  return *this;
+}
+
+SessionPool& SessionPool::setClientCertificateFilePath(std::string path) {
+  sslConfig_.clientCertificateFilePath = std::move(path);
+  return *this;
+}
+
+SessionPool& SessionPool::setClientPrivateKeyFilePath(std::string path) {
+  sslConfig_.clientPrivateKeyFilePath = std::move(path);
   return *this;
 }
 
@@ -124,8 +134,7 @@ std::shared_ptr<Session> SessionPool::constructNewSession() {
   builder.enableRedirections = enableRedirection_;
   builder.enableRPCCompression = enableRPCCompression_;
   builder.connectTimeoutMs = connectTimeoutMs_;
-  builder.useSSL = useSSL_;
-  builder.trustCertFilePath = trustCertFilePath_;
+  builder.sslConfig = sslConfig_;
 
   auto session = std::make_shared<Session>(&builder);
   session->open(enableRPCCompression_, connectTimeoutMs_);

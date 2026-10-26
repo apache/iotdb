@@ -143,6 +143,8 @@ public final class ManagerMessages {
       "Failed to collect user name for user id {}";
   public static final String FAILED_TO_CREATE_CONSUMER_IN_CONSUMER_GROUP_RESULT_STATUS =
       "Failed to create consumer {} in consumer group {}. Result status: {}.";
+  public static final String EXCEPTION_FAILED_TO_SUBSCRIBE_TOPIC_ARG_FOR_CONSUMER_ARG_CONSUMER_DOES_NOT_EXIST_IN_CONSUMER_GROUP_BFF68F12 =
+      "Failed to subscribe topic %s for consumer %s because the consumer does not exist in the consumer group";
   public static final String FAILED_TO_CREATE_PEER_FOR_CONSENSUS_GROUP =
       "Failed to create peer for consensus group";
   public static final String FAILED_TO_CREATE_PIPE_RESULT_STATUS =
@@ -202,14 +204,6 @@ public final class ManagerMessages {
       "Failed to sync template {} extension info to DataNode {}";
   public static final String FAILED_TO_SYNC_TOPIC_META_RESULT_STATUS =
       "Failed to sync topic meta. Result status: {}.";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_CONFIG_REGION_CONNECTOR_METRICS_CONNECTOR =
-      "Failed to unbind from pipe config region connector metrics, connector map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_CONFIG_REGION_EXTRACTOR_METRICS_EXTRACTOR =
-      "Failed to unbind from pipe config region extractor metrics, extractor map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_REMAINING_TIME_METRICS_REMAININGTIMEOPERATOR_MAP =
-      "Failed to unbind from pipe remaining time metrics, RemainingTimeOperator map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_TEMPORARY_META_METRICS_PIPETEMPORARYMETA_MAP =
-      "Failed to unbind from pipe temporary meta metrics, PipeTemporaryMeta map not empty";
   public static final String FAILED_TO_UPDATE_PIPE_PROCEDURE_TIMER_PIPEPROCEDURE_DOES_NOT_EXIST =
       "Failed to update pipe procedure timer, PipeProcedure({}) does not exist";
   public static final String FAILED_TO_UPDATE_THE_LAST_EXECUTION_TIME_OF_CQ_BECAUSE =
@@ -287,6 +281,26 @@ public final class ManagerMessages {
       "LoadStatistics service is started successfully.";
   public static final String LOADSTATISTICS_SERVICE_IS_STOPPED_SUCCESSFULLY =
       "LoadStatistics service is stopped successfully.";
+  public static final String
+      LOG_SKIP_DUPLICATE_REGION_ID_ARG_IN_RECONSTRUCTREGION_REQUEST_TO_DATANODE_ARG_ED195F69 =
+          "Skip duplicate Region ID {} in ReconstructRegion request to DataNode {}.";
+  public static final String
+      LOG_SKIP_NON_EXISTENT_REGION_ID_ARG_IN_RECONSTRUCTREGION_REQUEST_TO_DATANODE_ARG_7F76D789 =
+          "Skip non-existent Region ID {} in ReconstructRegion request to DataNode {}.";
+  public static final String MESSAGE_DUPLICATE_REGION_ID_ARG_IN_THE_REQUEST_B6FFCCFC =
+      "Duplicate Region ID %d in the request";
+  public static final String MESSAGE_REGION_IDS_MUST_NOT_BE_EMPTY_B42DAAFD =
+      "Region IDs must not be empty";
+  public static final String MESSAGE_SOURCE_AND_TARGET_DATANODE_IDS_MUST_BE_DIFFERENT_ARG_286D3838 =
+      "Source and target DataNode IDs must be different: %d";
+  public static final String LOG_SUBMIT_REGION_OPERATION_PROCEDURE_SUCCESSFULLY_ARG_90468B38 =
+      "Submit region operation procedure successfully: {}";
+  public static final String MESSAGE_REGION_ARG_DOES_NOT_EXIST_3C8400C9 =
+      "Region %d does not exist";
+  public static final String MESSAGE_SOURCE_DATANODE_ARG_DOES_NOT_EXIST_IN_THE_CLUSTER_2255633C =
+      "Source DataNode %s does not exist in the cluster";
+  public static final String MESSAGE_TARGET_DATANODE_ARG_DOES_NOT_EXIST_IN_THE_CLUSTER_679D59AF =
+      "Target DataNode %s does not exist in the cluster";
   public static final String MIGRATEREGION_SUBMIT_REGIONMIGRATEPROCEDURE_SUCCESSFULLY_REGION_ORIGIN_DATANODE =
       "[MigrateRegion] Submit RegionMigrateProcedure successfully, Region: {}, Origin DataNode: {}, Dest DataNode: {}, Add Coordinator: {}, Remove Coordinator: {}";
   public static final String SUBMIT_REGIONMIGRATEPROCEDURE_FAILED_BECAUSE_REGIONGROUP_DOESN_T_EXIST =
@@ -469,8 +483,8 @@ public final class ManagerMessages {
       "Successfully transferred config region snapshot {}.";
   public static final String THERE_IS_NO_RUNNING_DATANODE_TO_EXECUTE_CQ =
       "There is no RUNNING DataNode to execute CQ {}";
-  public static final String THE_CONFIGNODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_UNKNOWN =
-      "The ConfigNode-{} will be shutdown soon, mark it as Unknown";
+  public static final String LOG_NODE_ARG_REPORTED_SHUTDOWN_CURRENT_STATUS_IS_ARG_A375D665 =
+      "Node {} reported shutdown; current status is {}.";
   public static final String THE_CONFIG_REGION_AIR_GAP_CONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING =
       "The config region air gap connector does not support transferring single file piece bytes.";
   public static final String THE_CONFIG_REGION_SINK_DOES_NOT_SUPPORT_TRANSFERRING_SINGLE_FILE =
@@ -479,8 +493,6 @@ public final class ManagerMessages {
       "The config region snapshots %s cannot be parsed.";
   public static final String THE_DATABASE_DOESN_T_EXIST_MAYBE_IT_HAS_BEEN_PRE =
       "The Database: {} doesn't exist. Maybe it has been pre-deleted.";
-  public static final String THE_DATANODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_UNKNOWN =
-      "The DataNode-{} will be shutdown soon, mark it as Unknown";
   public static final String THE_REMOVENODEREPLICASELECT_METHOD_OF_GREEDYREGIONGROUPALLOCATOR_IS_YET =
       "The removeNodeReplicaSelect method of GreedyRegionGroupAllocator is yet to be implemented.";
   public static final String THE_REMOVENODEREPLICASELECT_METHOD_OF_PARTITEGRAPHPLACEMENTREGIONGROUPALLOCATOR =
@@ -597,10 +609,14 @@ public final class ManagerMessages {
   public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_USE_ROLE_FILE_TYPE_ARG_1B548759 = "Got IOException when deserialize use&role file, type:{}";
   public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_ROLELIST_1354F29E = "Got IOException when deserialize roleList";
   public static final String LOG_GOT_EXCEPTION_DESERIALIZING_TTL_FILE_F806EB40 = "Got exception when deserializing ttl file";
+  public static final String LOG_UNSUPPORTED_USER_ROLE_PROFILE_VERSION_ARG_THIS_NODE_SUPPORTS_UP_TO_ARG_2ABBF4FA = "Unsupported user/role profile version %d, this node supports up to %d";
   public static final String LOG_UNRECOGNIZED_NODE_TYPE_CANNOT_DESERIALIZE_MTREE_GIVEN_BUFFER_5CF3121B = "Unrecognized node type. Cannot deserialize MTree from given buffer";
   public static final String LOG_GOT_IOEXCEPTION_CONSTRUCT_DATABASE_TREE_49436621 = "Got IOException when construct database Tree";
   public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_TEMPLATE_INFO_49EE617E = "Got IOException when deserialize template info";
   public static final String MESSAGE_MEASUREMENTS_NOT_FOUND_ARG_CANNOT_AUTO_DETECT_980D7D44 = "Measurements not found for %s, cannot auto detect";
+  public static final String EXCEPTION_THE_DUPLICATED_SOURCE_MEASUREMENT_ARG_IS_UNSUPPORTED_YET_873AF566 = "The duplicated source measurement %s is unsupported yet.";
+  public static final String MESSAGE_MULTIPLE_TYPES_ENCOUNTERED_WHEN_AUTO_DETECTING_TYPE_OF_MEASUREMENT_ARG_PLEASE_CHECK_6EDF48DB = "Multiple types encountered when auto detecting type of measurement '%s', please check";
+  public static final String MESSAGE_THE_MEASUREMENTS_ARG_AND_ARG_SHARE_THE_SAME_LOWER_CASE_WHEN_AUTO_DETECTING_TYPE_PLEASE_CHECK_7225D062 = "The measurements %s and %s share the same lower case when auto detecting type, please check";
   public static final String LOG_FAILED_TAKE_SNAPSHOT_BECAUSE_SNAPSHOT_FILE_ARG_ALREADY_EXIST_EB2A6093 = "Failed to take snapshot, because snapshot file [{}] is already exist.";
   public static final String LOG_FAILED_LOAD_SNAPSHOT_SNAPSHOT_FILE_ARG_NOT_EXIST_8828CFBA = "Failed to load snapshot,snapshot file [{}] is not exist.";
   public static final String LOG_YOU_MAYBE_NEED_RENAME_SIMPLE_DIR_0_0_MANUALLY_2A12C5C9 = "you maybe need to rename the simple dir to 0_0 manually.";
@@ -702,4 +718,6 @@ public final class ManagerMessages {
       MESSAGE_ARG_PLEASE_MANUALLY_CHECK_LATER_WHETHER_THE_PROCEDURE_IS_EXECUTED_SUCCESSFULLY_A82B739D =
           "%s Please manually check later whether the procedure is executed successfully.";
 
+  public static final String MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_NODE_STATUS_PERSISTENCE_8CA96809 =
+      "ConfigNode leader is waiting for node status persistence.";
 }

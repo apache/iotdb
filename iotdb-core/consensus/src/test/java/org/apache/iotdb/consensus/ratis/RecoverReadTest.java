@@ -24,7 +24,9 @@ import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
+import org.apache.iotdb.consensus.ratis.utils.Utils;
 
+import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.util.TimeDuration;
 import org.junit.After;
 import org.junit.Assert;
@@ -35,6 +37,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -46,6 +52,7 @@ public class RecoverReadTest {
   private static class SlowRecoverStateMachine extends TestUtils.IntegerCounter {
     private final TimeDuration stallDuration;
     private final AtomicBoolean stallApply = new AtomicBoolean(false);
+    private final CountDownLatch stopped = new CountDownLatch(1);
 
     private SlowRecoverStateMachine(TimeDuration stallDuration) {
       this.stallDuration = stallDuration;
@@ -68,6 +75,11 @@ public class RecoverReadTest {
         }
       }
       return super.write(request);
+    }
+
+    @Override
+    public void stop() {
+      stopped.countDown();
     }
 
     @Override
@@ -123,6 +135,64 @@ public class RecoverReadTest {
     } finally {
       TestUtils.assertNoUnexpectedRatisExit();
       logger.info("[RECOVER TEST] end tearing down the test env");
+    }
+  }
+
+  @Test
+  public void stopWaitsForInFlightLeaderCheck() throws Exception {
+    final ConsensusGroupId gid = miniCluster.getGid();
+    for (RatisConsensus server : miniCluster.getServers()) {
+      server.createLocalPeer(gid, miniCluster.getPeers());
+    }
+    miniCluster.waitUntilActiveLeaderElectedAndReady();
+
+    int leaderIndex = 0;
+    while (!miniCluster.getServer(leaderIndex).isLeader(gid)) {
+      leaderIndex++;
+    }
+    final RaftServer.Division leader =
+        miniCluster
+            .getServer(leaderIndex)
+            .getServer()
+            .getDivision(Utils.fromConsensusGroupIdToRaftGroupId(gid));
+    final SlowRecoverStateMachine stateMachine =
+        (SlowRecoverStateMachine) miniCluster.getStateMachines().get(leaderIndex);
+    final CountDownLatch checkStarted = new CountDownLatch(1);
+    final CountDownLatch finishCheck = new CountDownLatch(1);
+    final CountDownLatch stopStarted = new CountDownLatch(1);
+    final ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      final Future<?> check =
+          executor.submit(
+              () -> {
+                // LeaderStateImpl performs its leadership checks under this monitor.
+                synchronized (leader) {
+                  checkStarted.countDown();
+                  Assert.assertTrue(finishCheck.await(30, TimeUnit.SECONDS));
+                  leader.getRaftLog().getLastEntryTermIndex();
+                }
+                return null;
+              });
+      Assert.assertTrue(checkStarted.await(30, TimeUnit.SECONDS));
+      final Future<?> stop =
+          executor.submit(
+              () -> {
+                stopStarted.countDown();
+                miniCluster.stop();
+                return null;
+              });
+      Assert.assertTrue(stopStarted.await(30, TimeUnit.SECONDS));
+      Assert.assertFalse(
+          "The state machine must remain open until the in-flight leader check finishes",
+          stateMachine.stopped.await(5, TimeUnit.SECONDS));
+      finishCheck.countDown();
+      check.get(30, TimeUnit.SECONDS);
+      stop.get(30, TimeUnit.SECONDS);
+      Assert.assertEquals(0, stateMachine.stopped.getCount());
+    } finally {
+      finishCheck.countDown();
+      executor.shutdown();
+      Assert.assertTrue(executor.awaitTermination(30, TimeUnit.SECONDS));
     }
   }
 

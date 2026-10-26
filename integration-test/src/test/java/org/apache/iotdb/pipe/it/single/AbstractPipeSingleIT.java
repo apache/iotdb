@@ -30,7 +30,7 @@ abstract class AbstractPipeSingleIT {
   protected BaseEnv env;
 
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     MultiEnvFactory.createEnv(1);
     env = MultiEnvFactory.getEnv(0);
     env.getConfig()

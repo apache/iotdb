@@ -279,4 +279,35 @@ public class IoTDBNullOperandIT {
         expectedHeader,
         retArray);
   }
+
+  @Test
+  public void testSeriesNotExistInWhereAlignByDevice() {
+    // a predicate on a series that the device does not have is always true for that device
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, "Device", "s1", "s3", "s4"};
+    String[] retArray =
+        new String[] {
+          "1,root.test.sg1,1,true,false,",
+          "2,root.test.sg1,2,true,null,",
+          "3,root.test.sg1,3,null,false,",
+        };
+    resultSetEqualTest(
+        "select s1, s3, s4 from root.** where notExist is null align by device",
+        expectedHeader,
+        retArray);
+    resultSetEqualTest(
+        "select s1, s3, s4 from root.** where not(notExist > 0) align by device",
+        expectedHeader,
+        retArray);
+    resultSetEqualTest(
+        "select s1, s3, s4 from root.** where notExist is null and time > 1 align by device",
+        expectedHeader,
+        new String[] {"2,root.test.sg1,2,true,null,", "3,root.test.sg1,3,null,false,"});
+
+    expectedHeader = new String[] {"Device", "count(s1)"};
+    retArray = new String[] {"root.test.sg1,3,"};
+    resultSetEqualTest(
+        "select count(s1) from root.** where notExist is null align by device",
+        expectedHeader,
+        retArray);
+  }
 }

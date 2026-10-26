@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
-import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
@@ -58,7 +58,11 @@ public class ShowAvailableUrlsTask implements IConfigTask {
     if (showDataNodesResp.getDataNodesInfoList() != null) {
       for (TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
         String status = dataNodeInfo.getStatus();
-        if (RegionStatus.Removing.getStatus().equals(status)) {
+        if (NodeStatus.Removing.getStatus().equals(status)
+            || NodeStatus.Unknown.getStatus().equals(status)
+            || NodeStatus.Stopped.getStatus().equals(status)
+            || (NodeStatus.ReadOnly.getStatus().equals(status)
+                && NodeStatus.STOPPING.equals(dataNodeInfo.getStatusReason()))) {
           continue;
         }
         builder.getTimeColumnBuilder().writeLong(0L);

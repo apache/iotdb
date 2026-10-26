@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ChunkTypeInconsistentException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
@@ -185,6 +186,7 @@ public abstract class AbstractCompactionTask {
           chunkTypeInconsistentException.measurement,
           chunkTypeInconsistentException.offsetOfChunkHeader);
     } else {
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       logger.error(
           StorageEngineMessages.STORAGE_LOG_COMPACTION_TASK_MEETS_ERROR_1002C659,
           storageGroupName,

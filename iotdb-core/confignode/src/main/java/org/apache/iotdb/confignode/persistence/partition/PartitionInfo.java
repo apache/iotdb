@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.commons.snapshot.SnapshotStreamFactory;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
@@ -80,14 +81,15 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -118,9 +120,6 @@ import java.util.stream.Collectors;
 public class PartitionInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionInfo.class);
-
-  // Allocate 8MB buffer for load snapshot of PartitionInfo
-  private static final int PARTITION_TABLE_BUFFER_SIZE = 32 * 1024 * 1024;
 
   /** For Cluster Partition. */
   // For allocating Regions
@@ -245,7 +244,9 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public TSStatus pollRegionMaintainTask() {
     synchronized (regionMaintainTaskList) {
-      regionMaintainTaskList.remove(0);
+      if (!regionMaintainTaskList.isEmpty()) {
+        regionMaintainTaskList.remove(0);
+      }
       return RpcUtils.SUCCESS_STATUS;
     }
   }
@@ -792,11 +793,9 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public List<TRegionReplicaSet> getReplicaSets(
       String database, List<TConsensusGroupId> regionGroupIds) {
-    if (databasePartitionTables.containsKey(database)) {
-      return databasePartitionTables.get(database).getReplicaSets(regionGroupIds);
-    } else {
-      return Collections.emptyList();
-    }
+    // A database can be deleted while a Region lookup is in progress.
+    DatabasePartitionTable table = databasePartitionTables.get(database);
+    return table == null ? Collections.emptyList() : table.getReplicaSets(regionGroupIds);
   }
 
   /**
@@ -913,6 +912,17 @@ public class PartitionInfo implements SnapshotProcessor {
         .orElse(0);
   }
 
+  /** Count the series slots of one region type, including those in the pending allocation. */
+  public int getSeriesPartitionSlotsCount(
+      String database, TConsensusGroupType type, Collection<TSeriesPartitionSlot> unassignedSlots)
+      throws DatabaseNotExistsException {
+    final DatabasePartitionTable partitionTable = databasePartitionTables.get(database);
+    if (partitionTable == null || !partitionTable.isNotPreDeleted()) {
+      throw new DatabaseNotExistsException(database);
+    }
+    return partitionTable.getSeriesPartitionSlotsCount(type, unassignedSlots);
+  }
+
   /**
    * Only leader use this interface.
    *
@@ -993,9 +1003,11 @@ public class PartitionInfo implements SnapshotProcessor {
     // snapshot operation.
     File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
 
+    // The write buffer is bounded by config_node_snapshot_buffer_size_max, so a small partition
+    // table no longer allocates a fixed 32MB buffer per snapshot.
     try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
-        BufferedOutputStream bufferedOutputStream =
-            new BufferedOutputStream(fileOutputStream, PARTITION_TABLE_BUFFER_SIZE);
+        OutputStream bufferedOutputStream =
+            SnapshotStreamFactory.createOutputStream(fileOutputStream);
         TIOStreamTransport tioStreamTransport = new TIOStreamTransport(bufferedOutputStream)) {
       TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
 
@@ -1010,9 +1022,14 @@ public class PartitionInfo implements SnapshotProcessor {
         databasePartitionTableEntry.getValue().serialize(bufferedOutputStream, protocol);
       }
 
+      final List<RegionMaintainTask> copiedRegionMaintainTaskList;
+      synchronized (regionMaintainTaskList) {
+        copiedRegionMaintainTaskList = new ArrayList<>(regionMaintainTaskList);
+      }
+
       // serialize regionCleanList
-      ReadWriteIOUtils.write(regionMaintainTaskList.size(), bufferedOutputStream);
-      for (RegionMaintainTask task : regionMaintainTaskList) {
+      ReadWriteIOUtils.write(copiedRegionMaintainTaskList.size(), bufferedOutputStream);
+      for (RegionMaintainTask task : copiedRegionMaintainTaskList) {
         task.serialize(bufferedOutputStream, protocol);
       }
 
@@ -1050,9 +1067,12 @@ public class PartitionInfo implements SnapshotProcessor {
       return;
     }
 
-    try (final BufferedInputStream fileInputStream =
-            new BufferedInputStream(
-                Files.newInputStream(snapshotFile.toPath()), PARTITION_TABLE_BUFFER_SIZE);
+    // The read buffer is sized from the file size and capped by
+    // config_node_snapshot_buffer_size_max,
+    // so loading a snapshot never allocates more than the configured cap.
+    try (final InputStream fileInputStream =
+            SnapshotStreamFactory.createInputStream(
+                Files.newInputStream(snapshotFile.toPath()), snapshotFile.length());
         final TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileInputStream)) {
       final TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
       // before restoring a snapshot, clear all old data

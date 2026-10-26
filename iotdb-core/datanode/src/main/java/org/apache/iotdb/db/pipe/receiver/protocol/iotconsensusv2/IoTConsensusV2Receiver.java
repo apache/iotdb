@@ -66,7 +66,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TableDiskUsageStatisticUtil;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
-import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
+import org.apache.iotdb.db.storageengine.load.metrics.LoadPointCountMetrics;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -148,7 +148,8 @@ public class IoTConsensusV2Receiver {
     }
 
     try {
-      this.folderManager = new FolderManager(receiveDirs, DirectoryStrategyType.SEQUENCE_STRATEGY);
+      this.folderManager =
+          new FolderManager(receiveDirs, DirectoryStrategyType.SEQUENCE_STRATEGY, false);
       this.iotConsensusV2TsFileWriterPool = new IoTConsensusV2TsFileWriterPool(consensusPipeName);
     } catch (Exception e) {
       LOGGER.error(DataNodePipeMessages.FAIL_TO_CREATE_IOTCONSENSUSV2_RECEIVER_FILE_FOLDERS, e);
@@ -742,7 +743,7 @@ public class IoTConsensusV2Receiver {
                     .getNonSystemDatabaseName()
                     .ifPresent(
                         databaseName ->
-                            LoadTsFileManager.updateWritePointCountMetrics(
+                            LoadPointCountMetrics.updateWritePointCountMetrics(
                                 dataRegion, databaseName, writePointCount, true)));
   }
 

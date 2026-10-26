@@ -806,6 +806,15 @@ public final class ProcedureMessages {
       "RemoveRegionLocation：从 DataNode {} 移除 region {}，结果为 {}";
   public static final String REMOVEREGIONPEER_STATE_FAILED = "RemoveRegionPeer 状态 {} 失败";
   public static final String REMOVEREGIONPEER_STATE_SUCCESS = "RemoveRegionPeer 状态 {} 成功";
+  public static final String
+      LOG_CANNOT_RECONCILE_PEER_LIST_FOR_ARG_AFTER_REMOVING_DATANODE_ARG_THE_CURRENT_REPLICA_SET_STILL_CONTAINS_THE_REMOVED_DATANODE_DBBF45DC =
+          "无法纠正 {} 在移除 DataNode {} 后的 peer 列表：当前副本集仍包含已移除的 DataNode。";
+  public static final String
+      LOG_FAILED_TO_RESET_PEER_LIST_FOR_ARG_ON_DATANODE_ARG_TO_ARG_ARG_C8D872B4 =
+          "将 {} 在 DataNode {} 上的 peer 列表重置为 {} 失败：{}";
+  public static final String
+      EXCEPTION_FAILED_TO_FINALIZE_REGION_PEER_REMOVAL_FOR_ARG_AT_STATE_ARG_AFTER_ARG_ATTEMPTS_382EA168 =
+          "Region %s 的 peer 移除收尾在状态 %s 尝试 %d 次后失败。";
   public static final String REMOVEREGION_RATIS_TRANSFER_LEADER_FAIL_BUT_PROCEDURE_WILL_CONTINUE =
       "[RemoveRegion] Ratis 转换 leader 失败，但 procedure 将继续。";
   public static final String REMOVE_CONFIG_NODE = "移除 ConfigNode";
@@ -1137,6 +1146,9 @@ public final class ProcedureMessages {
       "暂停 pid={}, activeCount={}";
   public static final String LOG_EXCEPTION_HAPPENED_WORKER_ARG_EXECUTE_PROCEDURE_ARG_6E3AD27D =
       "worker {} 执行 procedure {} 时发生异常";
+  public static final String
+      LOG_FAILED_TO_COMMIT_RELEASE_ARG_FOR_TABLE_ARG_ARG_TO_DATANODE_FAILURE_RESULTS_ARG_55386572 =
+          "在 {} procedure 操作中， 对表{}.{} 的正式提交失败，失败结果：{}";
   public static final String LOG_WORKER_STUCK_ARG_ARG_RUN_TIME_ARG_MS_FB612354 =
       "Worker 卡住 {}({})，运行时间 {} ms";
   public static final String LOG_PROCEDURE_WORKERS_ARG_RUNNING_ARG_RUNNING_STUCK_1565936D =
@@ -1167,6 +1179,9 @@ public final class ProcedureMessages {
           "移除 ConfigNode 失败，原因：更新 ConsensusGroup peer 信息失败。";
   public static final String MESSAGE_CAN_T_REMOVE_DATANODE_LIMIT_REPLICATION_FACTOR_D960E3A6 =
       "无法移除 DataNode，原因：受副本因子限制，";
+  public static final String
+      MESSAGE_SUBMIT_REMOVEDATANODESPROCEDURE_FAILED_BECAUSE_WHEN_THERE_ARE_OTHER_UNKNOWN_STOPPED_OR_READONLY_NODES_IN_THE_CONSENSUS_GROUP_THAT_ARE_NOT_REMOVE_NODES_THE_REMOVE_OPERATION_CANNOT_BE_PERFORMED_FOR_SECURITY_REASONS_PLEASE_CHECK_THE_STATUS_OF_THE_NODE_ARG_AND_ENSURE_IT_IS_RUNNING_5063B3F6 =
+          "提交 RemoveDataNodesProcedure 失败：共识组内存在非移除目标且状态为 Unknown、Stopped 或 ReadOnly 的其他节点时，出于安全考虑无法执行移除操作。请检查节点 %s 的状态并确保其处于 Running 状态。";
   public static final String
       MESSAGE_AVAILABLEDATANODESIZE_ARG_MAXREPLICAFACTOR_ARG_MAX_ALLOWED_REMOVED_DATA_NODE_SIZE_FB8C382C =
           "availableDataNodeSize：%s，maxReplicaFactor：%s，允许移除的最大 DataNode 数量为：%s";
@@ -1500,11 +1515,25 @@ public final class ProcedureMessages {
   public static final String
       MESSAGE_THE_PREVIOUS_ATTEMPT_FAILED_WITH_ARG_AND_THIS_STATE_IS_BEING_RETRIED_7A541F27 =
           "上一次尝试因“%s”失败，正在重试此状态。";
-  public static final String
-      MESSAGE_THE_STATE_FAILED_WITH_ARG_AND_ROLLBACK_IS_PENDING_E7B43829 =
-          "此状态因“%s”失败，正在等待回滚。";
-  public static final String MESSAGE_ROLLING_BACK_AFTER_FAILURE_ARG_474DF456 =
-      "正在回滚，失败原因：%s。";
+  public static final String MESSAGE_THE_STATE_FAILED_WITH_ARG_AND_ROLLBACK_IS_PENDING_E7B43829 =
+      "此状态因“%s”失败，正在等待回滚。";
+  public static final String MESSAGE_ROLLING_BACK_AFTER_FAILURE_ARG_474DF456 = "正在回滚，失败原因：%s。";
   public static final String MESSAGE_ROLLING_BACK_AFTER_AN_EARLIER_FAILURE_850D0AF5 =
       "正在回滚此前发生的失败。";
+  public static final String
+      MESSAGE_SOME_OTHER_TASK_IS_SETTING_OR_UNSETTING_A_TEMPLATE_ON_TARGET_PATH_ARG_D4FEE38F =
+          "有其他任务正在目标路径 %s 上设置或卸载模板。";
+  public static final String EXCEPTION_DATANODE_SETSYSTEMSTATUS_RPC_FAILED_ARG_ARG_ARG_7E8E5F9F =
+      "DataNode setSystemStatus RPC 失败：%s：%s：%s； ";
+  public static final String EXCEPTION_CONFIGNODE_TRYSETNODESTATUS_FAILED_ARG_ARG_ARG_C9BA78F4 =
+      "ConfigNode trySetNodeStatus 失败：%s：%s：%s； ";
+  public static final String
+      LOG_FAILED_TO_DETECT_THE_TREE_SERIES_UNDER_THE_NEW_VIEW_ARG_ARG_ARG_8F20CAE7 =
+          "扫描新建视图 {}.{} 下的树序列失败：{}";
+  public static final String
+      LOG_PROCEDURE_ARG_IS_PAST_ITS_COMMIT_POINT_KEEPING_EVERY_STATE_IT_EXECUTED_CA21D7E9 =
+          "流程 {} 已越过提交点，保留它执行过的所有状态。";
+  public static final String LOG_FINISH_PROCEDURE_WITHOUT_ROLLBACK_41F7A354 = "结束流程（不回滚）";
+  public static final String LOG_DELETE_CHILD_PROCEDURES_WITHOUT_ROLLBACK_6E62D1C1 =
+      "删除子流程（不回滚）";
 }
