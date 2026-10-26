@@ -1453,6 +1453,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         if (isClosed()) {
           return Collections.emptyList();
         }
+        providers.syncIfUnavailable(this);
         throw new SubscriptionConnectionException(
             String.format(
                 SubscriptionMessages
@@ -1464,6 +1465,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       try {
         return provider.pollFile(commitContext, writingOffset, timeoutMs);
       } catch (final SubscriptionConnectionException ignored) {
+        providers.syncIfUnavailable(this);
         return Collections.emptyList();
       }
     } finally {
@@ -1482,6 +1484,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         if (isClosed()) {
           return Collections.emptyList();
         }
+        providers.syncIfUnavailable(this);
         throw new SubscriptionConnectionException(
             String.format(
                 SubscriptionMessages
@@ -1493,6 +1496,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       try {
         return provider.pollTablets(commitContext, offset, timeoutMs);
       } catch (final SubscriptionConnectionException ignored) {
+        providers.syncIfUnavailable(this);
         return Collections.emptyList();
       }
     } finally {
@@ -1684,6 +1688,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         if (isClosed()) {
           return AbstractSubscriptionProvider.CommitResult.empty();
         }
+        providers.syncIfUnavailable(this);
         throw new SubscriptionConnectionException(
             String.format(
                 SubscriptionMessages
@@ -1696,6 +1701,9 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         return provider.commit(subscriptionCommitContexts, nack);
       } catch (final SubscriptionConsumerFencedException e) {
         fence(e);
+        throw e;
+      } catch (final SubscriptionConnectionException e) {
+        providers.syncIfUnavailable(this);
         throw e;
       }
     } finally {
