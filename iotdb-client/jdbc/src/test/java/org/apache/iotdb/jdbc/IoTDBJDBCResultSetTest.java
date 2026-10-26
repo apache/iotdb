@@ -20,6 +20,7 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
@@ -349,10 +350,14 @@ public class IoTDBJDBCResultSetTest {
 
     SQLException unsupportedException =
         Assert.assertThrows(SQLException.class, () -> resultSet.absolute(1));
-    Assert.assertEquals("ResultSet has been closed", unsupportedException.getMessage());
+    Assert.assertEquals(
+        JdbcMessages.EXCEPTION_RESULTSET_HAS_BEEN_CLOSED_45F3BF52,
+        unsupportedException.getMessage());
     unsupportedException =
         Assert.assertThrows(SQLException.class, () -> resultSet.updateString(1, "x"));
-    Assert.assertEquals("ResultSet has been closed", unsupportedException.getMessage());
+    Assert.assertEquals(
+        JdbcMessages.EXCEPTION_RESULTSET_HAS_BEEN_CLOSED_45F3BF52,
+        unsupportedException.getMessage());
   }
 
   @SuppressWarnings("resource")
@@ -429,6 +434,52 @@ public class IoTDBJDBCResultSetTest {
 
     Assert.assertTrue(resultSet.isClosed());
     Assert.assertThrows(SQLException.class, resultSet::next);
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testExecuteRetriesFailedResultSetClose() throws Exception {
+    mockVehicleQueryResponse();
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+    ResultSet previousResultSet = statement.getResultSet();
+    TSStatus closeFailure = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+    closeFailure.setMessage("close failed");
+    when(client.closeOperation(any(TSCloseOperationReq.class)))
+        .thenReturn(closeFailure, successStatus);
+
+    Assert.assertThrows(
+        SQLException.class, () -> statement.execute("select * from root.vehicle.d0"));
+    Assert.assertTrue(previousResultSet.isClosed());
+    Assert.assertSame(previousResultSet, statement.getResultSet());
+    verify(client, times(1)).executeStatementV2(any(TSExecuteStatementReq.class));
+
+    mockVehicleQueryResponse();
+    execResp.queryResult = FakedFirstFetchTsBlockResult();
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+    verify(client, times(2)).closeOperation(any(TSCloseOperationReq.class));
+    Assert.assertNotSame(previousResultSet, statement.getResultSet());
+    statement.getResultSet().close();
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testExplicitCloseRetriesFailedServerCleanup() throws Exception {
+    mockVehicleQueryResponse();
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+    ResultSet resultSet = statement.getResultSet();
+    TSStatus closeFailure = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+    closeFailure.setMessage("close failed");
+    when(client.closeOperation(any(TSCloseOperationReq.class)))
+        .thenReturn(closeFailure, successStatus);
+
+    Assert.assertThrows(SQLException.class, resultSet::close);
+    Assert.assertTrue(resultSet.isClosed());
+    resultSet.close();
+    resultSet.close();
+
+    verify(client, times(2)).closeOperation(any(TSCloseOperationReq.class));
+    statement.cancel();
+    verify(client, times(0)).cancelOperation(any(TSCancelOperationReq.class));
   }
 
   @SuppressWarnings("resource")

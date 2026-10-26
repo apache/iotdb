@@ -74,7 +74,7 @@ public class IoTDBStatement implements Statement {
   private static final String NOT_SUPPORT_EXECUTE = "Not support execute";
   private static final String NOT_SUPPORT_EXECUTE_UPDATE = "Not support executeUpdate";
   private static final String CANNOT_AFTER_STATEMENT_CLOSED =
-      "Cannot %s after statement has been closed!";
+      JdbcMessages.EXCEPTION_CANNOT_ARG_AFTER_STATEMENT_HAS_BEEN_CLOSED_A35AD40C;
 
   /** Keep state so we can fail certain calls made after close(). */
   private boolean isClosed = false;
@@ -306,6 +306,7 @@ public class IoTDBStatement implements Statement {
 
     if (clientOperationClosed) {
       isClosed = true;
+      resultSet = null;
     }
     if (isClosed) {
       unregisterStatement();
@@ -872,9 +873,11 @@ public class IoTDBStatement implements Statement {
 
   protected void closeCurrentResultSet() throws SQLException {
     if (resultSet != null) {
-      ResultSet currentResultSet = resultSet;
+      resultSet.close();
       resultSet = null;
-      currentResultSet.close();
+    }
+    if (queryId != -1) {
+      closeQueryOperation(queryId);
     }
   }
 
@@ -882,7 +885,9 @@ public class IoTDBStatement implements Statement {
     if (current == null) {
       return next;
     }
-    current.addSuppressed(next);
+    if (current != next) {
+      current.addSuppressed(next);
+    }
     return current;
   }
 

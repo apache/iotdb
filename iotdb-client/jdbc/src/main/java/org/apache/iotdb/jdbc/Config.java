@@ -21,6 +21,12 @@ package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.jdbc.Constant.Version;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public class Config {
 
   private Config() {
@@ -51,8 +57,9 @@ public class Config {
   static final int RETRY_NUM = 3;
   static final long RETRY_INTERVAL_MS = 1000;
 
-  static final int DRIVER_MAJOR_VERSION = 4;
-  static final int DRIVER_MINOR_VERSION = 3;
+  public static final String DRIVER_VERSION = loadDriverVersion();
+  static final int DRIVER_MAJOR_VERSION = getDriverVersionPart(1);
+  static final int DRIVER_MINOR_VERSION = getDriverVersionPart(2);
 
   public static final int DEFAULT_FETCH_SIZE = 5000;
   static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
@@ -96,4 +103,27 @@ public class Config {
   public static final String SQL_DIALECT = "sql_dialect";
 
   public static final String DATABASE = "db";
+
+  private static String loadDriverVersion() {
+    // The resource also identifies this driver when another application shades its JAR.
+    try (InputStream stream = Config.class.getResourceAsStream("driver-version.properties")) {
+      if (stream != null) {
+        Properties properties = new Properties();
+        properties.load(stream);
+        String version = properties.getProperty("version");
+        if (version != null) {
+          return version;
+        }
+      }
+    } catch (IOException ignored) {
+      // Keep the manifest fallback for environments where the resource cannot be read.
+    }
+    String version = Config.class.getPackage().getImplementationVersion();
+    return version == null ? "UNKNOWN" : version;
+  }
+
+  private static int getDriverVersionPart(int part) {
+    Matcher matcher = Pattern.compile("(\\d+)\\.(\\d+).*").matcher(DRIVER_VERSION);
+    return matcher.matches() ? Integer.parseInt(matcher.group(part)) : 0;
+  }
 }

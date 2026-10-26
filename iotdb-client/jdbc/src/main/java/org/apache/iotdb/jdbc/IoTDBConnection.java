@@ -25,6 +25,7 @@ import org.apache.iotdb.jdbc.relational.IoTDBRelationalDatabaseMetadata;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
@@ -134,6 +135,11 @@ public class IoTDBConnection implements Connection {
   }
 
   public IoTDBConnection(String url, Properties info) throws SQLException, TTransportException {
+    this(url, info, 0);
+  }
+
+  IoTDBConnection(String url, Properties info, int loginTimeoutInMs)
+      throws SQLException, TTransportException {
     if (url == null) {
       throw new IoTDBURLException(JdbcMessages.INPUT_URL_NULL);
     }
@@ -144,10 +150,18 @@ public class IoTDBConnection implements Connection {
     this.networkTimeout = params.getNetworkTimeout();
     this.zoneId = ZoneId.of(params.getTimeZone());
     this.charset = params.getCharset();
-    openTransport();
+    int connectionTimeout = networkTimeout;
+    if (loginTimeoutInMs > 0) {
+      connectionTimeout =
+          networkTimeout > 0 ? Math.min(networkTimeout, loginTimeoutInMs) : loginTimeoutInMs;
+    }
+    openTransport(connectionTimeout);
     openClient();
     // open client session
     openSession();
+    if (connectionTimeout != networkTimeout) {
+      ((TimeoutChangeableTransport) transport).setTimeout(networkTimeout);
+    }
     // Wrap the client with a thread-safe proxy to serialize the RPC calls
     setClient(RpcUtils.newSynchronizedClient(getClient()));
   }
@@ -395,7 +409,7 @@ public class IoTDBConnection implements Connection {
     // changeDefaultDatabase(arg0);
     if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
       if (arg0 == null) {
-        throw new SQLException("schema cannot be null");
+        throw new SQLException(JdbcMessages.EXCEPTION_SCHEMA_CANNOT_BE_NULL_E93264A3);
       }
       for (String str : IoTDBRelationalDatabaseMetadata.allIotdbTableSQLKeywords) {
         if (arg0.equalsIgnoreCase(str)) {
@@ -463,7 +477,7 @@ public class IoTDBConnection implements Connection {
   @Override
   public boolean isValid(int arg0) throws SQLException {
     if (arg0 < 0) {
-      throw new SQLException("timeout must be >= 0");
+      throw new SQLException(JdbcMessages.EXCEPTION_TIMEOUT_MUST_BE_0_80BF04B8);
     }
     return !isClosed;
   }
@@ -497,7 +511,7 @@ public class IoTDBConnection implements Connection {
   public PreparedStatement prepareStatement(String sql) throws SQLException {
     checkOpen("prepareStatement");
     if (sql == null) {
-      throw new SQLException("SQL statement cannot be null");
+      throw new SQLException(JdbcMessages.EXCEPTION_SQL_STATEMENT_CANNOT_BE_NULL_163667FF);
     }
     IoTDBStatement statement;
     if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
@@ -622,6 +636,10 @@ public class IoTDBConnection implements Connection {
   }
 
   private void openTransport() throws TTransportException {
+    openTransport(networkTimeout);
+  }
+
+  private void openTransport(int timeout) throws TTransportException {
     DeepCopyRpcTransportFactory transportFactory =
         DeepCopyRpcTransportFactory.getInstance(
             params.getThriftDefaultBufferSize(), params.getThriftMaxFrameSize());
@@ -631,14 +649,14 @@ public class IoTDBConnection implements Connection {
           transportFactory.getTransport(
               params.getHost(),
               params.getPort(),
-              networkTimeout,
+              timeout,
               params.getTrustStore(),
               params.getTrustStorePwd(),
               params.getKeyStore(),
               params.getKeyStorePwd(),
               params.getSslProtocol());
     } else {
-      transport = transportFactory.getTransport(params.getHost(), params.getPort(), networkTimeout);
+      transport = transportFactory.getTransport(params.getHost(), params.getPort(), timeout);
     }
     if (!transport.isOpen()) {
       transport.open();
@@ -776,12 +794,14 @@ public class IoTDBConnection implements Connection {
 
   private static ZoneId parseTimeZone(String timeZone) throws IoTDBSQLException {
     if (timeZone == null) {
-      throw new IoTDBSQLException("Invalid time_zone: null");
+      throw new IoTDBSQLException(
+          String.format(JdbcMessages.EXCEPTION_INVALID_TIME_ZONE_ARG_625F2BE2, timeZone));
     }
     try {
       return ZoneId.of(timeZone);
     } catch (DateTimeException e) {
-      throw new IoTDBSQLException("Invalid time_zone: " + timeZone, e);
+      throw new IoTDBSQLException(
+          String.format(JdbcMessages.EXCEPTION_INVALID_TIME_ZONE_ARG_625F2BE2, timeZone), e);
     }
   }
 

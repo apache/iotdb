@@ -2891,7 +2891,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
   protected final void checkConnectionOpen() throws SQLException {
     if (connection == null || connection.isClosed()) {
       throw new SQLException(
-          String.format(JdbcMessages.CANNOT_AFTER_CONNECTION_CLOSED, "get metadata"));
+          String.format(JdbcMessages.CANNOT_AFTER_CONNECTION_CLOSED, "getMetaData"));
     }
   }
 }

@@ -155,7 +155,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   private static String requireNonNullSql(String sql) throws SQLException {
     if (sql == null) {
-      throw new SQLException("SQL statement cannot be null");
+      throw new SQLException(JdbcMessages.EXCEPTION_SQL_STATEMENT_CANNOT_BE_NULL_163667FF);
     }
     return sql;
   }
@@ -596,7 +596,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public void setObject(int parameterIndex, Object x) throws SQLException {
-    checkConnection("set parameter");
+    checkConnection(JdbcMessages.MESSAGE_SET_PARAMETER_CFE301D0);
     if (x == null) {
       setNull(parameterIndex, Types.NULL);
     } else if (x instanceof String) {
@@ -642,13 +642,13 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   }
 
   private void checkParameterIndex(int index) throws SQLException {
-    checkConnection("set parameter");
+    checkConnection(JdbcMessages.MESSAGE_SET_PARAMETER_CFE301D0);
     checkParameterIndexRange(index);
   }
 
   private SQLException unsupportedParameterOperation(int index, String message)
       throws SQLException {
-    checkConnection("set parameter");
+    checkConnection(JdbcMessages.MESSAGE_SET_PARAMETER_CFE301D0);
     return new SQLException(message);
   }
 
@@ -660,11 +660,10 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   private void checkParameterIndexRange(int index) throws SQLException {
     if (index < 1 || index > parameterCount) {
       throw new SQLException(
-          JdbcMessages.EXCEPTION_PARAMETER_INDEX_OUT_RANGE_3DD066E0
-              + index
-              + JdbcMessages.EXCEPTION_EXPECTED_1_3F4E8D6E
-              + parameterCount
-              + JdbcMessages.RIGHT_PARENTHESIS);
+          String.format(
+              JdbcMessages.EXCEPTION_PARAMETER_INDEX_OUT_OF_RANGE_ARG_EXPECTED_1_ARG_65BF83C6,
+              index,
+              parameterCount));
     }
   }
 
@@ -714,7 +713,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   public void setBinaryStream(int parameterIndex, InputStream x, int length) throws SQLException {
     checkParameterIndex(parameterIndex);
     if (length < 0) {
-      throw new SQLException("length must be >= 0");
+      throw new SQLException(JdbcMessages.EXCEPTION_LENGTH_MUST_BE_0_53AF26C8);
     }
     if (x == null) {
       setNull(parameterIndex, Types.BINARY);

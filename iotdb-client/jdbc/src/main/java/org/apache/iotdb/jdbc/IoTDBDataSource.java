@@ -85,7 +85,8 @@ public class IoTDBDataSource implements DataSource {
 
   public void setPort(Integer port) {
     if (port != null && (port < 0 || port > 65535)) {
-      throw new IllegalArgumentException("port must be between 0 and 65535");
+      throw new IllegalArgumentException(
+          JdbcMessages.EXCEPTION_PORT_MUST_BE_BETWEEN_0_AND_65535_F641E74D);
     }
     this.port = port == null || port == 0 ? Config.IOTDB_DEFAULT_PORT : port;
   }
@@ -188,7 +189,7 @@ public class IoTDBDataSource implements DataSource {
   @Override
   public void setLoginTimeout(int i) throws SQLException {
     if (i < 0) {
-      throw new SQLException("loginTimeout must be >= 0");
+      throw new SQLException(JdbcMessages.EXCEPTION_LOGINTIMEOUT_MUST_BE_0_A213D684);
     }
     this.loginTimeout = i;
   }
@@ -214,14 +215,14 @@ public class IoTDBDataSource implements DataSource {
   }
 
   private Connection createConnection(Properties connectionProperties) throws SQLException {
-    applyLoginTimeout(connectionProperties);
     try {
-      return new IoTDBConnection(getConnectionUrl(), connectionProperties);
+      int loginTimeoutInMs = (int) Math.min((long) loginTimeout * 1000, Integer.MAX_VALUE);
+      return new IoTDBConnection(getConnectionUrl(), connectionProperties, loginTimeoutInMs);
     } catch (TTransportException e) {
       LOGGER.error(JdbcMessages.GET_CONNECTION_ERROR, e);
       throw new SQLException(
-          "Connection Error, please check whether the network is available or the server"
-              + " has started.",
+          JdbcMessages
+              .EXCEPTION_CONNECTION_ERROR_PLEASE_CHECK_WHETHER_THE_NETWORK_IS_AVAILABLE_OR_THE_SERVER_HAS_STARTED_64F1DA01,
           e);
     }
   }
@@ -238,15 +239,6 @@ public class IoTDBDataSource implements DataSource {
       builder.append('/').append(databaseName);
     }
     return builder.toString();
-  }
-
-  private void applyLoginTimeout(Properties connectionProperties) {
-    if (loginTimeout <= 0 || connectionProperties.containsKey(Config.NETWORK_TIMEOUT)) {
-      return;
-    }
-    long timeoutInMs = (long) loginTimeout * 1000;
-    connectionProperties.setProperty(
-        Config.NETWORK_TIMEOUT, String.valueOf(Math.min(timeoutInMs, Integer.MAX_VALUE)));
   }
 
   private void setProperty(String key, String value) {

@@ -19,8 +19,13 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.relational.IoTDBRelationalDatabaseMetadata;
+
 import org.junit.Test;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.sql.DatabaseMetaData;
 import java.sql.DriverPropertyInfo;
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -45,11 +50,30 @@ public class IoTDBDriverTest {
   }
 
   @Test
-  public void testDriverVersion() {
+  public void testDriverVersion() throws IOException, SQLException {
     IoTDBDriver driver = new IoTDBDriver();
+    Properties buildInfo = new Properties();
+    try (InputStream stream = IoTDBDriver.class.getResourceAsStream("driver-version.properties")) {
+      assertNotNull(stream);
+      buildInfo.load(stream);
+    }
+    String version = buildInfo.getProperty("version");
+    assertTrue(version.matches("\\d+\\.\\d+\\..*"));
+    String[] parts = version.split("\\.");
 
-    assertEquals(Config.DRIVER_MAJOR_VERSION, driver.getMajorVersion());
-    assertEquals(Config.DRIVER_MINOR_VERSION, driver.getMinorVersion());
+    assertEquals(Integer.parseInt(parts[0]), driver.getMajorVersion());
+    assertEquals(Integer.parseInt(parts[1]), driver.getMinorVersion());
+    DatabaseMetaData[] metadata = {
+      new IoTDBDatabaseMetadata(null, null, 0, null),
+      new IoTDBRelationalDatabaseMetadata(null, null, 0, null)
+    };
+    for (DatabaseMetaData databaseMetaData : metadata) {
+      assertEquals(version, databaseMetaData.getDriverVersion());
+      assertEquals(driver.getMajorVersion(), databaseMetaData.getDriverMajorVersion());
+      assertEquals(driver.getMinorVersion(), databaseMetaData.getDriverMinorVersion());
+      assertEquals(4, databaseMetaData.getJDBCMajorVersion());
+      assertEquals(3, databaseMetaData.getJDBCMinorVersion());
+    }
   }
 
   @Test
@@ -60,6 +84,9 @@ public class IoTDBDriverTest {
     properties.setProperty(Config.AUTH_PASSWORD, "secret");
     properties.setProperty(Config.USE_SSL, "true");
     properties.setProperty(Config.TRUST_STORE_PWD, "trust-store-secret");
+    properties.setProperty(Config.KEY_STORE, "client.jks");
+    properties.setProperty(Config.KEY_STORE_PWD, "key-store-secret");
+    properties.setProperty(Config.SSL_PROTOCOL, "TLSv1.3");
 
     DriverPropertyInfo[] propertyInfos =
         driver.getPropertyInfo("jdbc:iotdb://localhost:6667", properties);
@@ -68,6 +95,9 @@ public class IoTDBDriverTest {
     assertEquals("root", findProperty(propertyInfos, Config.AUTH_USER).value);
     assertNull(findProperty(propertyInfos, Config.AUTH_PASSWORD).value);
     assertNull(findProperty(propertyInfos, Config.TRUST_STORE_PWD).value);
+    assertEquals("client.jks", findProperty(propertyInfos, Config.KEY_STORE).value);
+    assertNull(findProperty(propertyInfos, Config.KEY_STORE_PWD).value);
+    assertEquals("TLSv1.3", findProperty(propertyInfos, Config.SSL_PROTOCOL).value);
     assertEquals("true", findProperty(propertyInfos, Config.USE_SSL).value);
     assertEquals(
         Arrays.asList("true", "false"),
@@ -87,6 +117,8 @@ public class IoTDBDriverTest {
 
     assertNotNull(propertyInfos);
     assertEquals(Config.DEFAULT_USER, findProperty(propertyInfos, Config.AUTH_USER).value);
+    assertEquals(
+        Config.DEFAULT_SSL_PROTOCOL, findProperty(propertyInfos, Config.SSL_PROTOCOL).value);
   }
 
   @Test

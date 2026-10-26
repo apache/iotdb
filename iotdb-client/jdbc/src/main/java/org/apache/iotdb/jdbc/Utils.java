@@ -401,7 +401,11 @@ public class Utils {
 
   private static IoTDBURLException invalidPropertyValue(String key, String value, Throwable cause) {
     return new IoTDBURLException(
-        "Invalid value for JDBC connection property " + key + ": " + value, cause);
+        String.format(
+            JdbcMessages.EXCEPTION_INVALID_VALUE_FOR_JDBC_CONNECTION_PROPERTY_ARG_ARG_2193D0EE,
+            key,
+            value),
+        cause);
   }
 
   private Utils() {}

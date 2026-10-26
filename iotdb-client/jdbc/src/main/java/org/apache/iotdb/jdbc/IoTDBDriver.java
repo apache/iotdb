@@ -104,48 +104,73 @@ public class IoTDBDriver implements Driver {
     }
     return new DriverPropertyInfo[] {
       createProperty(
-          Config.AUTH_USER, Config.DEFAULT_USER, "User name for authentication.", properties),
-      createSensitiveProperty(Config.AUTH_PASSWORD, "Password for authentication."),
+          Config.AUTH_USER,
+          Config.DEFAULT_USER,
+          JdbcMessages.MESSAGE_USER_NAME_FOR_AUTHENTICATION_77DCB7F1,
+          properties),
+      createSensitiveProperty(
+          Config.AUTH_PASSWORD, JdbcMessages.MESSAGE_PASSWORD_FOR_AUTHENTICATION_4D6EDD1E),
       createProperty(
           Config.DEFAULT_BUFFER_CAPACITY,
           String.valueOf(RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY),
-          "Thrift default buffer capacity in bytes.",
+          JdbcMessages.MESSAGE_THRIFT_DEFAULT_BUFFER_CAPACITY_IN_BYTES_58ED1E5F,
           properties),
       createProperty(
           Config.THRIFT_FRAME_MAX_SIZE,
           String.valueOf(RpcUtils.THRIFT_FRAME_MAX_SIZE),
-          "Thrift max frame size in bytes.",
+          JdbcMessages.MESSAGE_THRIFT_MAX_FRAME_SIZE_IN_BYTES_158D5D1C,
           properties),
       createProperty(
           Config.VERSION,
           Config.DEFAULT_VERSION.name(),
           VERSION_CHOICES,
-          "Client compatibility version.",
+          JdbcMessages.MESSAGE_CLIENT_COMPATIBILITY_VERSION_9EE5FB89,
           properties),
       createProperty(
           Config.NETWORK_TIMEOUT,
           String.valueOf(Config.DEFAULT_CONNECTION_TIMEOUT_MS),
-          "Network timeout in milliseconds.",
+          JdbcMessages.MESSAGE_NETWORK_TIMEOUT_IN_MILLISECONDS_2443578F,
           properties),
       createProperty(
-          Config.TIME_ZONE, ZoneId.systemDefault().toString(), "Connection time zone.", properties),
+          Config.TIME_ZONE,
+          ZoneId.systemDefault().toString(),
+          JdbcMessages.MESSAGE_CONNECTION_TIME_ZONE_9B0E092D,
+          properties),
       createProperty(
-          Config.CHARSET, TSFileConfig.STRING_CHARSET.name(), "Connection charset.", properties),
+          Config.CHARSET,
+          TSFileConfig.STRING_CHARSET.name(),
+          JdbcMessages.MESSAGE_CONNECTION_CHARSET_F72FB844,
+          properties),
       createProperty(
-          Config.USE_SSL, "false", BOOLEAN_CHOICES, "Whether to enable SSL.", properties),
+          Config.USE_SSL,
+          "false",
+          BOOLEAN_CHOICES,
+          JdbcMessages.MESSAGE_WHETHER_TO_ENABLE_SSL_F2608B05,
+          properties),
       createProperty(
           Utils.RPC_COMPRESS,
           String.valueOf(Config.rpcThriftCompressionEnable),
           BOOLEAN_CHOICES,
-          "Whether to enable RPC thrift compression.",
+          JdbcMessages.MESSAGE_WHETHER_TO_ENABLE_RPC_THRIFT_COMPRESSION_C65D1138,
           properties),
-      createProperty(Config.TRUST_STORE, null, "SSL trust store path.", properties),
-      createSensitiveProperty(Config.TRUST_STORE_PWD, "SSL trust store password."),
+      createProperty(
+          Config.TRUST_STORE, null, JdbcMessages.MESSAGE_SSL_TRUST_STORE_PATH_1D832EA9, properties),
+      createSensitiveProperty(
+          Config.TRUST_STORE_PWD, JdbcMessages.MESSAGE_SSL_TRUST_STORE_PASSWORD_CDFFB811),
+      createProperty(
+          Config.KEY_STORE, null, JdbcMessages.MESSAGE_SSL_KEY_STORE_PATH_24E4E925, properties),
+      createSensitiveProperty(
+          Config.KEY_STORE_PWD, JdbcMessages.MESSAGE_SSL_KEY_STORE_PASSWORD_8D36E9E7),
+      createProperty(
+          Config.SSL_PROTOCOL,
+          Config.DEFAULT_SSL_PROTOCOL,
+          JdbcMessages.MESSAGE_SSL_PROTOCOL_7ED42B2B,
+          properties),
       createProperty(
           Config.SQL_DIALECT,
           Constant.TREE,
           SQL_DIALECT_CHOICES,
-          "SQL dialect for the connection.",
+          JdbcMessages.MESSAGE_SQL_DIALECT_FOR_THE_CONNECTION_35A5F380,
           properties)
     };
   }

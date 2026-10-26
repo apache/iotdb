@@ -20,6 +20,7 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Iface;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
@@ -175,11 +176,23 @@ public class IoTDBPreparedStatementTest {
 
     SQLException unsupportedException =
         assertThrows(SQLException.class, () -> ps.setArray(1, null));
-    assertTrue(unsupportedException.getMessage().contains("statement has been closed"));
+    assertEquals(
+        String.format(
+            JdbcMessages.EXCEPTION_CANNOT_ARG_AFTER_STATEMENT_HAS_BEEN_CLOSED_A35AD40C,
+            JdbcMessages.MESSAGE_SET_PARAMETER_CFE301D0),
+        unsupportedException.getMessage());
     unsupportedException = assertThrows(SQLException.class, () -> ps.setRowId(1, null));
-    assertTrue(unsupportedException.getMessage().contains("statement has been closed"));
+    assertEquals(
+        String.format(
+            JdbcMessages.EXCEPTION_CANNOT_ARG_AFTER_STATEMENT_HAS_BEEN_CLOSED_A35AD40C,
+            JdbcMessages.MESSAGE_SET_PARAMETER_CFE301D0),
+        unsupportedException.getMessage());
     unsupportedException = assertThrows(SQLException.class, () -> ps.setObject(1, new Object()));
-    assertTrue(unsupportedException.getMessage().contains("statement has been closed"));
+    assertEquals(
+        String.format(
+            JdbcMessages.EXCEPTION_CANNOT_ARG_AFTER_STATEMENT_HAS_BEEN_CLOSED_A35AD40C,
+            JdbcMessages.MESSAGE_SET_PARAMETER_CFE301D0),
+        unsupportedException.getMessage());
   }
 
   @SuppressWarnings("resource")

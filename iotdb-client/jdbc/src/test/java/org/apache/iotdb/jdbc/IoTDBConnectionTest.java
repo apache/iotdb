@@ -20,6 +20,7 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
@@ -349,11 +350,15 @@ public class IoTDBConnectionTest {
     SQLClientInfoException clientInfoException =
         assertThrows(
             SQLClientInfoException.class, () -> connection.setClientInfo("time_zone", "+07:00"));
-    assertTrue(clientInfoException.getMessage().contains("connection has been closed"));
+    assertEquals(
+        String.format(JdbcMessages.CANNOT_AFTER_CONNECTION_CLOSED, "setClientInfo"),
+        clientInfoException.getMessage());
     clientInfoException =
         assertThrows(
             SQLClientInfoException.class, () -> connection.setClientInfo(new Properties()));
-    assertTrue(clientInfoException.getMessage().contains("connection has been closed"));
+    assertEquals(
+        String.format(JdbcMessages.CANNOT_AFTER_CONNECTION_CLOSED, "setClientInfo"),
+        clientInfoException.getMessage());
     assertThrows(SQLException.class, () -> connection.getHoldability());
     assertThrows(
         SQLException.class, () -> connection.setHoldability(ResultSet.HOLD_CURSORS_OVER_COMMIT));

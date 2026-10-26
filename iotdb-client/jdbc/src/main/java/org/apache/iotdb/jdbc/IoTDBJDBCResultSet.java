@@ -228,7 +228,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public void close() throws SQLException {
-    if (explicitlyClosed) {
+    if (explicitlyClosed && ioTDBRpcDataSet.isClosed()) {
       return;
     }
     try {
@@ -252,7 +252,8 @@ public class IoTDBJDBCResultSet implements ResultSet {
   public int findColumn(String columnName) throws SQLException {
     checkOpen();
     if (!ioTDBRpcDataSet.getColumnNameList().contains(columnName)) {
-      throw new SQLException("Unknown column name: " + columnName);
+      throw new SQLException(
+          String.format(JdbcMessages.EXCEPTION_UNKNOWN_COLUMN_NAME_ARG_F8369278, columnName));
     }
     return ioTDBRpcDataSet.findColumn(columnName);
   }
@@ -945,7 +946,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   private void checkOpen() throws SQLException {
     if (explicitlyClosed) {
-      throw new SQLException("ResultSet has been closed");
+      throw new SQLException(JdbcMessages.EXCEPTION_RESULTSET_HAS_BEEN_CLOSED_45F3BF52);
     }
   }
 

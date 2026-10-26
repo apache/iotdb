@@ -20,6 +20,7 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Iface;
@@ -56,6 +57,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -176,11 +178,22 @@ public class IoTDBStatementTest {
         assertThrows(
             SQLException.class,
             () -> statement.execute("select 1", Statement.RETURN_GENERATED_KEYS));
-    assertTrue(unsupportedException.getMessage().contains("statement has been closed"));
+    assertEquals(
+        String.format(
+            JdbcMessages.EXCEPTION_CANNOT_ARG_AFTER_STATEMENT_HAS_BEEN_CLOSED_A35AD40C, "execute"),
+        unsupportedException.getMessage());
     unsupportedException = assertThrows(SQLException.class, () -> statement.getGeneratedKeys());
-    assertTrue(unsupportedException.getMessage().contains("statement has been closed"));
+    assertEquals(
+        String.format(
+            JdbcMessages.EXCEPTION_CANNOT_ARG_AFTER_STATEMENT_HAS_BEEN_CLOSED_A35AD40C,
+            "getGeneratedKeys"),
+        unsupportedException.getMessage());
     unsupportedException = assertThrows(SQLException.class, statement::closeOnCompletion);
-    assertTrue(unsupportedException.getMessage().contains("statement has been closed"));
+    assertEquals(
+        String.format(
+            JdbcMessages.EXCEPTION_CANNOT_ARG_AFTER_STATEMENT_HAS_BEEN_CLOSED_A35AD40C,
+            "closeOnCompletion"),
+        unsupportedException.getMessage());
   }
 
   @Test
@@ -233,6 +246,32 @@ public class IoTDBStatementTest {
     assertEquals(2L, closeReq.getValue().getStatementId());
     assertEquals(queryId, closeReq.getValue().getQueryId());
     assertNull(statement.resultSet);
+  }
+
+  @Test
+  public void testExecuteRetriesQueryCleanupAfterResultSetCreationFailure() throws Exception {
+    IoTDBStatement statement = new IoTDBStatement(connection, client, sessionId, zoneID, 0, 1L);
+    TSExecuteStatementResp nextResponse = new TSExecuteStatementResp(RpcUtils.SUCCESS_STATUS);
+    when(client.executeStatementV2(any(TSExecuteStatementReq.class)))
+        .thenReturn(malformedQueryResponse(10L), nextResponse);
+    when(client.closeOperation(any(TSCloseOperationReq.class)))
+        .thenReturn(
+            new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()),
+            RpcUtils.SUCCESS_STATUS);
+
+    SQLException failure =
+        assertThrows(SQLException.class, () -> statement.execute("select s1 from root.sg.d"));
+    assertEquals(1, failure.getSuppressed().length);
+    assertFalse(statement.execute("flush"));
+
+    ArgumentCaptor<TSCloseOperationReq> closeReq =
+        ArgumentCaptor.forClass(TSCloseOperationReq.class);
+    verify(client, times(2)).closeOperation(closeReq.capture());
+    for (TSCloseOperationReq request : closeReq.getAllValues()) {
+      assertEquals(10L, request.getQueryId());
+    }
+    statement.cancel();
+    verify(client, never()).cancelOperation(any(TSCancelOperationReq.class));
   }
 
   @Test
