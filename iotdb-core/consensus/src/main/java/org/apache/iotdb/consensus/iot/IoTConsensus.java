@@ -111,8 +111,9 @@ public class IoTConsensus implements IConsensus {
   private IoTConsensusConfig config;
 
   /**
-   * Optional callback invoked after a new local peer is created via {@link #createLocalPeer}. Used
-   * by the subscription system to auto-bind prefetching queues to new DataRegions.
+   * Optional callback invoked after a local peer is started, either during recovery or via {@link
+   * #createLocalPeer}. Used by the subscription system to auto-bind prefetching queues to available
+   * DataRegions.
    */
   public static volatile BiConsumer<ConsensusGroupId, IoTConsensusServerImpl> onNewPeerCreated;
 
@@ -257,6 +258,10 @@ public class IoTConsensus implements IConsensus {
             callback.accept(consensusGroupId, consensus);
           }
           consensus.start();
+          // Subscription metadata may have been loaded before any local consensus peers existed.
+          // Recovered peers must trigger the same binding as newly created peers, after startup
+          // has restored their indices and installed the pre-start WAL-retention guards.
+          notifyPeerCreated(consensusGroupId, consensus);
         });
   }
 
@@ -362,11 +367,15 @@ public class IoTConsensus implements IConsensus {
       throw new ConsensusGroupAlreadyExistException(groupId);
     }
 
-    // Notify subscription system about new peer creation for auto-binding
+    notifyPeerCreated(groupId, stateMachineMap.get(groupId));
+  }
+
+  private void notifyPeerCreated(
+      final ConsensusGroupId groupId, final IoTConsensusServerImpl serverImpl) {
     final BiConsumer<ConsensusGroupId, IoTConsensusServerImpl> callback = onNewPeerCreated;
     if (callback != null) {
       try {
-        callback.accept(groupId, stateMachineMap.get(groupId));
+        callback.accept(groupId, serverImpl);
       } catch (final Exception e) {
         logger.warn(
             IoTConsensusMessages.LOG_ONNEWPEERCREATED_CALLBACK_FAILED_GROUP_ARG_2671FCDA,

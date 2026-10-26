@@ -769,14 +769,16 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     final StringBuilder builder = new StringBuilder("root.");
     for (int i = 0; i < nodeNames.size(); i++) {
       if (nodeNames.get(i).nodeNameWithoutWildcard() != null) {
-        builder
-            .append("`")
-            .append(
-                parseNodeString(
-                    ((Identifier) visit(nodeNames.get(i).nodeNameWithoutWildcard().identifier()))
-                        .getValue()))
-            .append("`")
-            .append(i == nodeNames.size() - 1 ? "" : ".");
+        final String nodeName =
+            parseNodeString(
+                ((Identifier) visit(nodeNames.get(i).nodeNameWithoutWildcard().identifier()))
+                    .getValue());
+        if (nodeName.startsWith("`") && nodeName.endsWith("`")) {
+          builder.append(nodeName);
+        } else {
+          builder.append("`").append(nodeName).append("`");
+        }
+        builder.append(i == nodeNames.size() - 1 ? "" : ".");
       } else {
         builder.append(nodeNames.get(i).getText());
       }
@@ -1804,6 +1806,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       properties = visit(ctx.propertyAssignments().property(), Property.class);
     }
     for (Property property : properties) {
+      if (property.isSetToDefault()) {
+        throw new SemanticException(
+            DataNodeQueryMessages
+                .EXCEPTION_DEFAULT_IS_NOT_SUPPORTED_FOR_SET_CONFIGURATION_D76F13AD);
+      }
       String key = property.getName().getValue();
       Expression propertyValue = property.getNonDefaultValue();
       if (!propertyValue.getExpressionType().equals(TableExpressionType.STRING_LITERAL)) {
@@ -1867,6 +1874,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     Statement innerStatement;
     if (ctx.query() != null) {
       innerStatement = (Statement) visit(ctx.query());
+    } else if (ctx.copyToStatement() != null) {
+      innerStatement = (Statement) visit(ctx.copyToStatement());
     } else if (ctx.executeStatement() != null) {
       innerStatement = (Statement) visit(ctx.executeStatement());
     } else {
@@ -1898,6 +1907,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     Statement innerStatement;
     if (ctx.query() != null) {
       innerStatement = (Statement) visit(ctx.query());
+    } else if (ctx.copyToStatement() != null) {
+      innerStatement = (Statement) visit(ctx.copyToStatement());
     } else if (ctx.executeStatement() != null) {
       innerStatement = (Statement) visit(ctx.executeStatement());
     } else {

@@ -35,6 +35,7 @@ import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -46,6 +47,31 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class CommitProgressKeeperTest {
+
+  @Test
+  public void testConsumerGroupCleanupRetainsOnlyConfiguredTopics() {
+    final CommitProgressKeeper keeper = new CommitProgressKeeper();
+    final String retained = CommitProgressKeeper.generateKey("group", "kept##topic", "1_1", 1);
+    final String retainedLegacy = CommitProgressKeeper.generateLegacyKey("group", "kept", "1_2", 2);
+    final String discarded = CommitProgressKeeper.generateKey("group", "discarded", "1_1", 1);
+    final String otherGroup = CommitProgressKeeper.generateKey("other", "kept", "1_1", 1);
+    for (final String key : new String[] {retained, retainedLegacy, discarded, otherGroup}) {
+      keeper.updateRegionProgress(key, ByteBuffer.wrap(new byte[] {1}));
+    }
+    keeper.removeConsumerGroupProgressExceptTopics(
+        "group", new java.util.HashSet<>(java.util.Arrays.asList("kept", "kept##topic")));
+    assertTrue(keeper.hasTopicProgress("group", "kept##topic"));
+    assertTrue(keeper.hasTopicProgress("group", "kept"));
+    assertFalse(keeper.hasTopicProgress("group", "discarded"));
+    assertTrue(keeper.hasConsumerGroupProgress("group"));
+    assertNotNull(keeper.getRegionProgress(retained));
+    assertNotNull(keeper.getRegionProgress(retainedLegacy));
+    assertNull(keeper.getRegionProgress(discarded));
+    assertNotNull(keeper.getRegionProgress(otherGroup));
+    keeper.removeConsumerGroupProgressExceptTopics("group", Collections.emptySet());
+    assertFalse(keeper.hasConsumerGroupProgress("group"));
+    assertNotNull(keeper.getRegionProgress(otherGroup));
+  }
 
   @Test
   public void testStateAccessUsesOneInstanceMonitor() throws Exception {

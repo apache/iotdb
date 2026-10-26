@@ -804,13 +804,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       try {
         getFileModelInfoBeforeTabletConversion();
       } catch (Exception e1) {
-        LOGGER.warn(
-            DataNodeQueryMessages
-                .LOAD_FAILED_TO_CONVERT_TO_TABLETS_FROM_STATEMENT_ARG_BECAUSE_FAILED_TO_READ_MODEL_INFO,
-            isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement,
-            e1.getMessage());
+        final String message =
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_FAILED_TO_READ_TSFILE_MODEL_INFORMATION_BEFORE_TABLET_CONVERSION_FOR_STATEMENT_ARG_ARG_F05C852A,
+                isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement,
+                e1);
+        LOGGER.warn(message, e1);
         analysis.setFailStatus(
-            new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
+            new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(message));
         analysis.setFinishQueryAfterAnalyze(true);
         setRealStatement(analysis);
         return;
@@ -822,6 +824,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     for (int i = 0; i < tsFiles.size(); i++) {
       final long startTime = System.nanoTime();
+      final String filePath = tsFiles.get(i).getPath();
       try {
         final TSStatus status =
             isTableModelTsFile.get(i)
@@ -846,30 +849,37 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                     .orElse(null);
 
         if (status == null) {
-          LOGGER.warn(
-              DataNodeQueryMessages
-                  .LOAD_FAILED_TO_CONVERT_TO_TABLETS_FROM_STATEMENT_ARG_STATUS_IS_NULL,
-              isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement);
+          final String message =
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD,
+                  filePath,
+                  DataNodeQueryMessages.MESSAGE_TABLET_CONVERSION_RETURNED_NO_STATUS_88BAB5D3);
+          LOGGER.warn(message);
           analysis.setFailStatus(
-              new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
-                  .setMessage(e.getMessage()));
+              new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(message));
           break;
         } else if (!loadTsFileDataTypeConverter.isSuccessful(status)) {
-          LOGGER.warn(
-              DataNodeQueryMessages.LOAD_FAILED_TO_CONVERT_TO_TABLETS_FROM_STATEMENT_ARG_STATUS_ARG,
-              isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement,
-              status);
-          analysis.setFailStatus(status);
+          final String message =
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477,
+                  filePath,
+                  status);
+          LOGGER.warn(message);
+          analysis.setFailStatus(status.deepCopy().setMessage(message));
           break;
         }
       } catch (final Exception e2) {
-        LOGGER.warn(
-            DataNodeQueryMessages
-                .LOAD_FAILED_TO_CONVERT_TO_TABLETS_FROM_STATEMENT_ARG_BECAUSE_EXCEPTION_ARG,
-            isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement,
-            e2.getMessage());
+        final String message =
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD,
+                filePath,
+                e2);
+        LOGGER.warn(message, e2);
         analysis.setFailStatus(
-            new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
+            new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(message));
         break;
       } finally {
         LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(

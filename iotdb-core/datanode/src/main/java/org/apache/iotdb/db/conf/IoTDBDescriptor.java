@@ -2605,6 +2605,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_clean_up_task_execution_delay_time_seconds",
                 String.valueOf(conf.getLoadCleanupTaskExecutionDelayTimeSeconds()))));
+    conf.setLoadCleanupTaskIdleTimeoutSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "load_clean_up_task_idle_timeout_seconds",
+                String.valueOf(conf.getLoadCleanupTaskIdleTimeoutSeconds()))));
     conf.setLoadTsFileRetryCountOnRegionChange(
         Integer.parseInt(
             properties.getProperty(
@@ -2615,6 +2620,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_write_throughput_bytes_per_second",
                 String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
+
+    conf.setLoadTsFileWriteBufferSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_write_buffer_size_in_byte",
+                String.valueOf(conf.getLoadTsFileWriteBufferSize()))));
 
     conf.setLoadTsFileAllowedDirs(
         Arrays.stream(properties.getProperty("load_tsfile_allowed_dirs", "").trim().split(","))
@@ -2751,12 +2762,25 @@ public class IoTDBDescriptor {
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "load_clean_up_task_execution_delay_time_seconds"))));
 
+    conf.setLoadCleanupTaskIdleTimeoutSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "load_clean_up_task_idle_timeout_seconds",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "load_clean_up_task_idle_timeout_seconds"))));
+
     conf.setLoadWriteThroughputBytesPerSecond(
         Double.parseDouble(
             properties.getProperty(
                 "load_write_throughput_bytes_per_second",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "load_write_throughput_bytes_per_second"))));
+
+    conf.setLoadTsFileWriteBufferSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_write_buffer_size_in_byte",
+                String.valueOf(conf.getLoadTsFileWriteBufferSize()))));
 
     conf.setLoadTsFileAllowedDirs(
         Arrays.stream(

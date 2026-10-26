@@ -614,6 +614,9 @@ public final class ManagerMessages {
   public static final String LOG_GOT_IOEXCEPTION_CONSTRUCT_DATABASE_TREE_49436621 = "Got IOException when construct database Tree";
   public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_TEMPLATE_INFO_49EE617E = "Got IOException when deserialize template info";
   public static final String MESSAGE_MEASUREMENTS_NOT_FOUND_ARG_CANNOT_AUTO_DETECT_980D7D44 = "Measurements not found for %s, cannot auto detect";
+  public static final String EXCEPTION_THE_DUPLICATED_SOURCE_MEASUREMENT_ARG_IS_UNSUPPORTED_YET_873AF566 = "The duplicated source measurement %s is unsupported yet.";
+  public static final String MESSAGE_MULTIPLE_TYPES_ENCOUNTERED_WHEN_AUTO_DETECTING_TYPE_OF_MEASUREMENT_ARG_PLEASE_CHECK_6EDF48DB = "Multiple types encountered when auto detecting type of measurement '%s', please check";
+  public static final String MESSAGE_THE_MEASUREMENTS_ARG_AND_ARG_SHARE_THE_SAME_LOWER_CASE_WHEN_AUTO_DETECTING_TYPE_PLEASE_CHECK_7225D062 = "The measurements %s and %s share the same lower case when auto detecting type, please check";
   public static final String LOG_FAILED_TAKE_SNAPSHOT_BECAUSE_SNAPSHOT_FILE_ARG_ALREADY_EXIST_EB2A6093 = "Failed to take snapshot, because snapshot file [{}] is already exist.";
   public static final String LOG_FAILED_LOAD_SNAPSHOT_SNAPSHOT_FILE_ARG_NOT_EXIST_8828CFBA = "Failed to load snapshot,snapshot file [{}] is not exist.";
   public static final String LOG_YOU_MAYBE_NEED_RENAME_SIMPLE_DIR_0_0_MANUALLY_2A12C5C9 = "you maybe need to rename the simple dir to 0_0 manually.";

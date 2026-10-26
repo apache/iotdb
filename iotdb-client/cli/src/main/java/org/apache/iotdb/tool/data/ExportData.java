@@ -236,15 +236,21 @@ public class ExportData extends AbstractDataTool {
           ioTPrinter.println(sql);
           String[] values = sql.trim().split(";");
           for (int i = 0; i < values.length; i++) {
-            exportData.exportBySql(values[i], i);
+            if (!exportData.exportBySql(values[i], i)) {
+              exitCode = Constants.CODE_ERROR;
+            }
           }
         } else {
-          exportData.exportBySql(null, 0);
+          if (!exportData.exportBySql(null, 0)) {
+            exitCode = Constants.CODE_ERROR;
+          }
         }
       } else {
         String[] values = queryCommand.trim().split(";");
         for (int i = 0; i < values.length; i++) {
-          exportData.exportBySql(values[i], i);
+          if (!exportData.exportBySql(values[i], i)) {
+            exitCode = Constants.CODE_ERROR;
+          }
         }
       }
     } catch (IOException e) {

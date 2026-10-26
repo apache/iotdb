@@ -63,6 +63,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerRelationalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatReq;
@@ -1313,6 +1315,13 @@ public class ConfigNodeClient extends AbstractConfigNodeClient<ConfigNodeClient>
   public TSStatus createTableView(TCreateTableViewReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.createTableView(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TAutoSyncViewColumnsResp autoSyncViewColumns(TAutoSyncViewColumnsReq req)
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.autoSyncViewColumns(req), status -> !updateConfigNodeLeader(status.status));
   }
 
   @Override

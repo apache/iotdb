@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PatternRecognitionNode;
@@ -31,6 +32,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNod
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKRankingNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneTableScanColumns;
@@ -38,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableS
 
 import com.google.common.collect.ImmutableSet;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -73,6 +76,28 @@ public class SortElimination implements PlanOptimizer {
         newNode.addChild(child.accept(this, context));
       }
       return newNode;
+    }
+
+    @Override
+    public PlanNode visitCollect(CollectNode node, Context context) {
+      return visitUnorderedFanIn(node, context);
+    }
+
+    @Override
+    public PlanNode visitUnion(UnionNode node, Context context) {
+      return visitUnorderedFanIn(node, context);
+    }
+
+    private PlanNode visitUnorderedFanIn(PlanNode node, Context context) {
+      if (node.getChildren().size() <= 1) {
+        return visitPlan(node, context);
+      }
+      List<PlanNode> children = new ArrayList<>();
+      for (PlanNode child : node.getChildren()) {
+        children.add(child.accept(this, new Context()));
+      }
+      context.addCannotEliminateSort(true);
+      return node.replaceChildren(children);
     }
 
     @Override

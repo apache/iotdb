@@ -130,11 +130,11 @@ public class ClusterTemplateManager implements ITemplateManager {
               e,
               TSStatusCode.CREATE_TEMPLATE_ERROR.getStatusCode()));
     } catch (ClientManagerException | TException e) {
-      throw new RuntimeException(
-          new IoTDBException(
-              DataNodeSchemaMessages.CREATE_TEMPLATE_ERROR,
-              e,
-              TSStatusCode.CREATE_TEMPLATE_ERROR.getStatusCode()));
+      throw wrapTemplateRpcException(
+          String.format(
+              DataNodeSchemaMessages.CREATE_TEMPLATE_ERROR, statement.getName(), e.getMessage()),
+          e,
+          TSStatusCode.CREATE_TEMPLATE_ERROR);
     }
   }
 
@@ -177,10 +177,10 @@ public class ClusterTemplateManager implements ITemplateManager {
         throw new IoTDBRuntimeException(resp.getStatus());
       }
     } catch (ClientManagerException | TException e) {
-      throw new RuntimeException(
-          new IoTDBException(
-              DataNodeSchemaMessages.GET_ALL_TEMPLATE_ERROR,
-              TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
+      throw wrapTemplateRpcException(
+          String.format(DataNodeSchemaMessages.GET_ALL_TEMPLATE_ERROR, e.getMessage()),
+          e,
+          TSStatusCode.UNDEFINED_TEMPLATE);
     }
     return templatesList;
   }
@@ -199,11 +199,19 @@ public class ClusterTemplateManager implements ITemplateManager {
         throw new IoTDBException(resp.status);
       }
     } catch (ClientManagerException | TException e) {
-      throw new RuntimeException(
-          new IoTDBException(
-              DataNodeSchemaMessages.GET_TEMPLATE_INFO_ERROR,
-              TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
+      throw wrapTemplateRpcException(
+          String.format(DataNodeSchemaMessages.GET_TEMPLATE_INFO_ERROR, name, e.getMessage()),
+          e,
+          TSStatusCode.UNDEFINED_TEMPLATE);
     }
+  }
+
+  private static RuntimeException wrapTemplateRpcException(
+      String message, Exception cause, TSStatusCode statusCode) {
+    IoTDBException exception = new IoTDBException(message, statusCode.getStatusCode());
+    // Query error handling uses the deepest cause to determine the status and message.
+    exception.addSuppressed(cause);
+    return new RuntimeException(exception);
   }
 
   @Override
@@ -256,7 +264,7 @@ public class ClusterTemplateManager implements ITemplateManager {
                     try {
                       listPath.add(new PartialPath(item));
                     } catch (IllegalPathException e) {
-                      LOGGER.error(DataNodeSchemaMessages.ILLEGAL_PATH_LOG, item);
+                      LOGGER.error(DataNodeSchemaMessages.ILLEGAL_PATH_LOG, item, e);
                     }
                   });
         }

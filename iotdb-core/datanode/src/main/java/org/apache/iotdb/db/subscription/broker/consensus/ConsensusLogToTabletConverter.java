@@ -42,6 +42,8 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
 import org.apache.iotdb.db.subscription.columnfilter.TabletColumnPruner;
+import org.apache.iotdb.db.subscription.tagfilter.TabletTagFilter;
+import org.apache.iotdb.db.subscription.tagfilter.TagFilterMatcher;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -71,6 +73,7 @@ public class ConsensusLogToTabletConverter {
   private final TablePattern tablePattern;
   private final String topicName;
   private final ColumnFilterMatcher fallbackColumnFilterMatcher;
+  private final TagFilterMatcher fallbackTagFilterMatcher;
 
   /**
    * The actual database name of the DataRegion this converter processes (table-model format without
@@ -83,7 +86,13 @@ public class ConsensusLogToTabletConverter {
       final TablePattern tablePattern,
       final ColumnFilterMatcher columnFilterMatcher,
       final String databaseName) {
-    this(treePattern, tablePattern, null, columnFilterMatcher, databaseName);
+    this(
+        treePattern,
+        tablePattern,
+        null,
+        columnFilterMatcher,
+        TagFilterMatcher.matchAll(),
+        databaseName);
   }
 
   public ConsensusLogToTabletConverter(
@@ -92,16 +101,56 @@ public class ConsensusLogToTabletConverter {
       final String topicName,
       final ColumnFilterMatcher columnFilterMatcher,
       final String databaseName) {
+    this(
+        treePattern,
+        tablePattern,
+        topicName,
+        columnFilterMatcher,
+        TagFilterMatcher.matchAll(),
+        databaseName);
+  }
+
+  public ConsensusLogToTabletConverter(
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
+      final ColumnFilterMatcher columnFilterMatcher,
+      final TagFilterMatcher tagFilterMatcher,
+      final String databaseName) {
+    this(treePattern, tablePattern, null, columnFilterMatcher, tagFilterMatcher, databaseName);
+  }
+
+  public ConsensusLogToTabletConverter(
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
+      final String topicName,
+      final ColumnFilterMatcher columnFilterMatcher,
+      final TagFilterMatcher tagFilterMatcher,
+      final String databaseName) {
     this.treePattern = treePattern;
     this.tablePattern = tablePattern;
     this.topicName = topicName;
     this.fallbackColumnFilterMatcher =
         Objects.nonNull(columnFilterMatcher) ? columnFilterMatcher : ColumnFilterMatcher.matchAll();
+    this.fallbackTagFilterMatcher =
+        Objects.nonNull(tagFilterMatcher) ? tagFilterMatcher : TagFilterMatcher.matchAll();
     this.databaseName = databaseName;
   }
 
   public String getDatabaseName() {
     return databaseName;
+  }
+
+  /** Freezes the column and TAG filters used by a delivered batch for later WAL replay. */
+  ConsensusLogToTabletConverter snapshotForReplay() {
+    return new ConsensusLogToTabletConverter(
+        treePattern, tablePattern, getColumnFilterMatcher(), getTagFilterMatcher(), databaseName);
+  }
+
+  boolean hasSameReplayProjection(final ConsensusLogToTabletConverter other) {
+    return treePattern == other.treePattern
+        && tablePattern == other.tablePattern
+        && fallbackColumnFilterMatcher == other.fallbackColumnFilterMatcher
+        && fallbackTagFilterMatcher == other.fallbackTagFilterMatcher;
   }
 
   boolean isTableModel() {
@@ -126,6 +175,16 @@ public class ConsensusLogToTabletConverter {
    * DataRegionStateMachine.grabPlanNode()}.
    */
   static InsertNode deserializeToInsertNode(final IndexedConsensusRequest indexedRequest) {
+    return deserializeToInsertNode(indexedRequest, false);
+  }
+
+  /** WAL replay must wait until every fragment, including the seal, is readable. */
+  static InsertNode deserializeCompleteInsertNode(final IndexedConsensusRequest indexedRequest) {
+    return deserializeToInsertNode(indexedRequest, true);
+  }
+
+  private static InsertNode deserializeToInsertNode(
+      final IndexedConsensusRequest indexedRequest, final boolean requireComplete) {
     final List<SearchNode> searchNodes = new ArrayList<>();
     PlanNode nonSearchNode = null;
 
@@ -151,6 +210,9 @@ public class ConsensusLogToTabletConverter {
             indexedRequest.getSearchIndex(),
             e.getMessage(),
             e);
+        if (requireComplete) {
+          return null;
+        }
         continue;
       }
 
@@ -173,6 +235,9 @@ public class ConsensusLogToTabletConverter {
     }
 
     if (!searchNodes.isEmpty()) {
+      if (requireComplete && !searchNodes.get(searchNodes.size() - 1).isLastFragment()) {
+        return null;
+      }
       final PlanNode merged = searchNodes.get(0).merge(searchNodes);
       if (merged instanceof InsertNode) {
         final InsertNode mergedInsert = (InsertNode) merged;
@@ -499,7 +564,10 @@ public class ConsensusLogToTabletConverter {
     }
 
     final Tablet prunedTablet =
-        TabletColumnPruner.pruneTableModelTablet(tablet, databaseName, getColumnFilterMatcher());
+        TabletColumnPruner.pruneTableModelTablet(
+            TabletTagFilter.filter(tablet, getTagFilterMatcher(), databaseName),
+            databaseName,
+            getColumnFilterMatcher());
     return Objects.nonNull(prunedTablet)
         ? Collections.singletonList(prunedTablet)
         : Collections.emptyList();
@@ -573,7 +641,10 @@ public class ConsensusLogToTabletConverter {
             rowCount);
 
     final Tablet prunedTablet =
-        TabletColumnPruner.pruneTableModelTablet(tablet, databaseName, getColumnFilterMatcher());
+        TabletColumnPruner.pruneTableModelTablet(
+            TabletTagFilter.filter(tablet, getTagFilterMatcher(), databaseName),
+            databaseName,
+            getColumnFilterMatcher());
     return Objects.nonNull(prunedTablet)
         ? Collections.singletonList(prunedTablet)
         : Collections.emptyList();
@@ -688,6 +759,12 @@ public class ConsensusLogToTabletConverter {
     return Objects.nonNull(topicName)
         ? SubscriptionAgent.broker().getColumnFilterMatcher(topicName, true)
         : fallbackColumnFilterMatcher;
+  }
+
+  private TagFilterMatcher getTagFilterMatcher() {
+    return Objects.nonNull(topicName)
+        ? SubscriptionAgent.broker().getTagFilterMatcher(topicName, true)
+        : fallbackTagFilterMatcher;
   }
 
   private boolean isValidColumn(
