@@ -342,7 +342,9 @@ public class AnalyzeUtils {
           failedMessages);
       partialInsertMessage =
           String.format(
-              "Fail to insert measurements %s caused by %s", failedMeasurements, failedMessages);
+              DataNodeQueryMessages.MESSAGE_FAIL_TO_INSERT_MEASUREMENTS_ARG_CAUSED_BY_ARG_B9858E6B,
+              failedMeasurements,
+              failedMessages);
       LOGGER.warn(partialInsertMessage);
       analysis.setFailStatus(
           RpcUtils.getStatus(TSStatusCode.METADATA_ERROR.getStatusCode(), partialInsertMessage));

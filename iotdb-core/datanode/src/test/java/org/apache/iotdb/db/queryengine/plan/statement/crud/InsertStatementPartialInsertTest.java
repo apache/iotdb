@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.crud;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 
@@ -365,7 +366,10 @@ public class InsertStatementPartialInsertTest {
     Assert.assertEquals(
         Arrays.asList("failed1", "failed2", "failed3"), rowsStatement.getFailedMessages());
     Assert.assertEquals(
-        "Fail to insert measurements [s1, s2, s1] caused by [failed1, failed2, failed3]",
+        String.format(
+            DataNodeQueryMessages.MESSAGE_FAIL_TO_INSERT_MEASUREMENTS_ARG_CAUSED_BY_ARG_B9858E6B,
+            "[s1, s2, s1]",
+            "[failed1, failed2, failed3]"),
         analysis.getFailStatus().getMessage());
   }
 
@@ -385,7 +389,10 @@ public class InsertStatementPartialInsertTest {
     AnalyzeUtils.validateSchema(analysis, rowsStatement, () -> {});
 
     Assert.assertEquals(
-        "Fail to insert measurements [s1, s2] caused by [failed1, failed2]",
+        String.format(
+            DataNodeQueryMessages.MESSAGE_FAIL_TO_INSERT_MEASUREMENTS_ARG_CAUSED_BY_ARG_B9858E6B,
+            "[s1, s2]",
+            "[failed1, failed2]"),
         analysis.getFailStatus().getMessage());
   }
 
