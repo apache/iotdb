@@ -31,8 +31,10 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTe
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.TestFileEncryptionParameterProvider;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -59,7 +61,9 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -67,6 +71,8 @@ import java.util.Set;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class EncryptedUnsealedTsFileRecoverPerformerTest {
@@ -78,6 +84,7 @@ public class EncryptedUnsealedTsFileRecoverPerformerTest {
   private static final String FILE_NAME =
       TsFileUtilsForRecoverTest.getTestTsFilePath(DATABASE, 0, 0, 1);
   private TsFileResource resource;
+  private int nextFileId = 100;
 
   @Before
   public void setUp() throws Exception {
@@ -117,6 +124,191 @@ public class EncryptedUnsealedTsFileRecoverPerformerTest {
   @Test
   public void testAlignedSnapshotRecovery() throws Exception {
     assertRecovery(true, true);
+  }
+
+  @Test
+  public void testEmptyFileInsertRecoveryUsesProvider() throws Exception {
+    assertNoDataRecovery(false, false, false);
+    assertNoDataRecovery(false, true, false);
+  }
+
+  @Test
+  public void testBaseHeaderInsertRecoveryUsesProvider() throws Exception {
+    assertNoDataRecovery(true, false, false);
+    assertNoDataRecovery(true, true, false);
+  }
+
+  @Test
+  public void testEmptyFileSnapshotRecoveryUsesProvider() throws Exception {
+    assertNoDataRecovery(false, false, true);
+    assertNoDataRecovery(false, true, true);
+  }
+
+  @Test
+  public void testBaseHeaderSnapshotRecoveryUsesProvider() throws Exception {
+    assertNoDataRecovery(true, false, true);
+    assertNoDataRecovery(true, true, true);
+  }
+
+  private void assertNoDataRecovery(boolean baseHeaderOnly, boolean aligned, boolean snapshot)
+      throws Exception {
+    File file = newRecoveryFile();
+    byte[] oldFileId;
+    try (EncryptParameter parameter = newFileParameter();
+        TsFileIOWriter writer = new TsFileIOWriter(file, parameter)) {
+      oldFileId = writer.getEncryptParameter().getFileCryptoId();
+    }
+    try (FileChannel channel = new FileOutputStream(file, true).getChannel()) {
+      channel.truncate(baseHeaderOnly ? baseHeader().length : 0);
+    }
+    resource = new TsFileResource(file);
+    byte[] recoveredFileId;
+    try (UnsealedTsFileRecoverPerformer performer =
+        new UnsealedTsFileRecoverPerformer(resource, true, ignored -> {})) {
+      performer.startRecovery();
+      assertTrue(performer.hasCrashed());
+      EncryptParameter parameter = performer.getWriter().getEncryptParameter();
+      assertTrue(parameter.isTdePageAead());
+      recoveredFileId = parameter.getFileCryptoId();
+      assertFalse(Arrays.equals(oldFileId, recoveredFileId));
+      performer.redoLog(firstEntry(aligned, snapshot));
+      performer.endRecovery();
+    }
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getPath())) {
+      assertTrue(reader.hasFileEncryptionHeader());
+      assertArrayEquals(recoveredFileId, reader.getEncryptParam().getFileCryptoId());
+      assertSingleRow(reader, aligned);
+    }
+    resource.close();
+  }
+
+  @Test
+  public void testProviderFailureDoesNotModifyUninitializedFiles() throws Exception {
+    TestFileEncryptionParameterProvider.RETURN_NULL.set(true);
+    for (boolean baseHeaderOnly : new boolean[] {false, true}) {
+      File file = newRecoveryFile();
+      byte[] original = baseHeaderOnly ? baseHeader() : new byte[0];
+      Files.write(file.toPath(), original);
+      resource = new TsFileResource(file);
+      try (UnsealedTsFileRecoverPerformer performer =
+          new UnsealedTsFileRecoverPerformer(resource, true, ignored -> {})) {
+        assertThrows(RuntimeException.class, performer::startRecovery);
+        assertNull(performer.getWriter());
+      }
+      assertArrayEquals(original, Files.readAllBytes(file.toPath()));
+      assertFalse(resource.resourceFileExists());
+      resource.close();
+    }
+  }
+
+  @Test
+  public void testPartialHeadersCannotBeReinitialized() throws Exception {
+    byte[] base = baseHeader();
+    byte[] partialEncryptionHeader = Arrays.copyOf(base, base.length + 1);
+    partialEncryptionHeader[base.length] = MetaMarker.ENCRYPTION_HEADER;
+    for (byte[] original :
+        new byte[][] {Arrays.copyOf(base, base.length - 1), partialEncryptionHeader}) {
+      File file = newRecoveryFile();
+      Files.write(file.toPath(), original);
+      resource = new TsFileResource(file);
+      try (UnsealedTsFileRecoverPerformer performer =
+          new UnsealedTsFileRecoverPerformer(resource, true, ignored -> {})) {
+        assertThrows(Exception.class, performer::startRecovery);
+      }
+      assertArrayEquals(original, Files.readAllBytes(file.toPath()));
+      resource.close();
+    }
+  }
+
+  @Test
+  public void testValidEncryptionHeaderWithoutDataKeepsOriginalContext() throws Exception {
+    File file = newRecoveryFile();
+    byte[] oldFileId;
+    long headerEnd;
+    try (EncryptParameter parameter = newFileParameter();
+        TsFileIOWriter writer = new TsFileIOWriter(file, parameter)) {
+      oldFileId = writer.getEncryptParameter().getFileCryptoId();
+      headerEnd = writer.getPos();
+      writer.endFile();
+    }
+    try (FileChannel channel = new FileOutputStream(file, true).getChannel()) {
+      channel.truncate(headerEnd);
+    }
+    resource = new TsFileResource(file);
+    try (UnsealedTsFileRecoverPerformer performer =
+        new UnsealedTsFileRecoverPerformer(resource, true, ignored -> {})) {
+      performer.startRecovery();
+      assertArrayEquals(oldFileId, performer.getWriter().getEncryptParameter().getFileCryptoId());
+      performer.redoLog(firstEntry(false, false));
+      performer.endRecovery();
+    }
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getPath())) {
+      assertArrayEquals(oldFileId, reader.getEncryptParam().getFileCryptoId());
+      assertSingleRow(reader, false);
+    }
+  }
+
+  private File newRecoveryFile() throws Exception {
+    File file = new File(new File(FILE_NAME).getParentFile(), nextFileId++ + "-1-0-0.tsfile");
+    Files.createDirectories(file.getParentFile().toPath());
+    Files.createFile(file.toPath());
+    return file;
+  }
+
+  private static byte[] baseHeader() {
+    byte[] magic = TSFileConfig.MAGIC_STRING.getBytes(StandardCharsets.UTF_8);
+    return ByteBuffer.allocate(magic.length + Byte.BYTES)
+        .put(magic)
+        .put(TSFileConfig.VERSION_NUMBER)
+        .array();
+  }
+
+  private static EncryptParameter newFileParameter() {
+    return TestFileEncryptionParameterProvider.newParameter();
+  }
+
+  private static WALEntry firstEntry(boolean aligned, boolean snapshot) throws Exception {
+    InsertRowNode row =
+        new InsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath(DEVICE),
+            aligned,
+            new String[] {"s1"},
+            new TSDataType[] {TSDataType.INT64},
+            1,
+            new Object[] {10L},
+            false);
+    row.setMeasurementSchemas(new MeasurementSchema[] {SCHEMA});
+    if (!snapshot) {
+      return roundTrip(new WALInfoEntry(1, row));
+    }
+    PrimitiveMemTable table = new PrimitiveMemTable(DATABASE, "0");
+    if (aligned) {
+      table.insertAlignedRow(row);
+    } else {
+      table.insert(row);
+    }
+    return roundTrip(new WALInfoEntry(1, table));
+  }
+
+  private static void assertSingleRow(TsFileSequenceReader reader, boolean aligned)
+      throws Exception {
+    if (aligned) {
+      AbstractAlignedChunkMetadata metadata = reader.getAlignedChunkMetadata(DEVICE, false).get(0);
+      try (Chunk time = reader.readMemChunk((ChunkMetadata) metadata.getTimeChunkMetadata());
+          Chunk value =
+              reader.readMemChunk((ChunkMetadata) metadata.getValueChunkMetadataList().get(0));
+          IChunkReader chunks =
+              new AlignedChunkReader(time, Collections.singletonList(value), null)) {
+        assertEquals(1, assertRows(chunks, 0, true));
+      }
+    } else {
+      ChunkMetadata metadata = reader.getChunkMetadataList(new Path(DEVICE, "s1", true)).get(0);
+      try (Chunk chunk = reader.readMemChunk(metadata);
+          IChunkReader chunks = new ChunkReader(chunk)) {
+        assertEquals(1, assertRows(chunks, 0, false));
+      }
+    }
   }
 
   private void assertRecovery(boolean aligned, boolean snapshot) throws Exception {
