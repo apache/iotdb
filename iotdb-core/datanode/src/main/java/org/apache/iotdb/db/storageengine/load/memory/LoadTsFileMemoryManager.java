@@ -121,6 +121,50 @@ public class LoadTsFileMemoryManager {
     return new LoadTsFileMemoryBlock(sizeInBytes);
   }
 
+  /**
+   * Resize an allocated Load TsFile memory block while keeping the query memory accounting in sync.
+   *
+   * @throws LoadRuntimeOutOfMemoryException if the additional memory cannot be allocated
+   */
+  synchronized void forceResize(final LoadTsFileMemoryBlock memoryBlock, final long newSizeInBytes)
+      throws LoadRuntimeOutOfMemoryException {
+    if (newSizeInBytes < 0) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Load: Invalid memory size %d bytes, must be non-negative", newSizeInBytes));
+    }
+
+    final long oldSizeInBytes = memoryBlock.getTotalMemorySizeInBytes();
+    if (oldSizeInBytes == newSizeInBytes) {
+      return;
+    }
+
+    if (oldSizeInBytes > newSizeInBytes) {
+      if (memoryBlock.getMemoryUsageInBytes() > newSizeInBytes) {
+        LOGGER.error(
+            "Load: Memory block {} uses more memory than its resized limit {} bytes",
+            memoryBlock,
+            newSizeInBytes);
+      }
+      releaseToQuery(oldSizeInBytes - newSizeInBytes);
+      memoryBlock.setTotalMemorySizeInBytes(newSizeInBytes);
+      return;
+    }
+
+    final long bytesNeeded = newSizeInBytes - oldSizeInBytes;
+    try {
+      forceAllocateFromQuery(bytesNeeded);
+    } catch (LoadRuntimeOutOfMemoryException e) {
+      if (dataCacheMemoryBlock == null || !dataCacheMemoryBlock.doShrink(bytesNeeded)) {
+        throw e;
+      }
+      LOGGER.info(
+          "Load: Query engine memory is insufficient; resized memory block after shrinking data cache by {} bytes",
+          bytesNeeded);
+    }
+    memoryBlock.setTotalMemorySizeInBytes(newSizeInBytes);
+  }
+
   public synchronized LoadTsFileDataCacheMemoryBlock allocateDataCacheMemoryBlock()
       throws LoadRuntimeOutOfMemoryException {
     if (dataCacheMemoryBlock == null) {

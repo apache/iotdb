@@ -58,7 +58,7 @@ public class LoadTsFileDataTypeConverter {
     return TabletConversionSemaphoreHolder.INSTANCE;
   }
 
-  private static int getTabletConversionPermitCount() {
+  static int getTabletConversionPermitCount() {
     final int configuredThreadCount =
         Math.max(
             1,
@@ -204,6 +204,7 @@ public class LoadTsFileDataTypeConverter {
               ClusterPartitionFetcher.getInstance(),
               ClusterSchemaFetcher.getInstance(),
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+              false,
               false)
           .status;
     } finally {

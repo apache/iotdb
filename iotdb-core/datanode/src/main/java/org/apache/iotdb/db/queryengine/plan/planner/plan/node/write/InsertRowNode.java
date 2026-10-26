@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.LastCacheUpdateSource;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -57,11 +58,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class InsertRowNode extends InsertNode implements WALEntryValue {
+public class InsertRowNode extends InsertNode implements WALEntryValue, LastCacheUpdateSource {
 
   private static final byte TYPE_RAW_STRING = -1;
 
-  private static final byte TYPE_NULL = -2;
+  private static final byte TYPE_NULL_WITHOUT_TYPE = -2;
+  private static final byte TYPE_NULL_WITH_TYPE = -3;
 
   private static final String UNSUPPORTED_DATA_TYPE = "Unsupported data type: ";
 
@@ -167,9 +169,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   @Override
   public TSDataType[] getDataTypes() {
     if (isNeedInferType) {
-      TSDataType[] predictedDataTypes = new TSDataType[dataTypes.length];
-      for (int i = 0; i < dataTypes.length; i++) {
-        predictedDataTypes[i] = TypeInferenceUtils.getPredictedDataType(values[i], true);
+      TSDataType[] predictedDataTypes =
+          new TSDataType
+              [dataTypes == null ? (values == null ? 0 : values.length) : dataTypes.length];
+      for (int i = 0; i < predictedDataTypes.length; i++) {
+        predictedDataTypes[i] =
+            TypeInferenceUtils.getPredictedDataType(
+                values != null && i < values.length ? values[i] : null, true);
       }
       return predictedDataTypes;
     }
@@ -180,9 +186,10 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   @Override
   public TSDataType getDataType(int index) {
     if (isNeedInferType) {
-      return TypeInferenceUtils.getPredictedDataType(values[index], true);
+      return TypeInferenceUtils.getPredictedDataType(
+          values != null && index >= 0 && index < values.length ? values[index] : null, true);
     } else {
-      return dataTypes[index];
+      return getDataTypeIfPresent(index);
     }
   }
 
@@ -217,12 +224,45 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   @Override
   public void markFailedMeasurement(int index) {
-    if (measurements[index] == null) {
+    if (measurements == null
+        || index < 0
+        || index >= measurements.length
+        || measurements[index] == null) {
       return;
     }
     measurements[index] = null;
-    dataTypes[index] = null;
-    values[index] = null;
+    if (dataTypes != null && index < dataTypes.length) {
+      dataTypes[index] = null;
+    }
+    if (values != null && index < values.length) {
+      values[index] = null;
+    }
+  }
+
+  @Override
+  protected boolean shouldSerializeMeasurement(final int index) {
+    return measurements != null
+        && index >= 0
+        && index < measurements.length
+        && measurements[index] != null
+        && values != null
+        && index < values.length
+        && (measurementSchemas == null
+            || index < measurementSchemas.length && measurementSchemas[index] != null)
+        && (values[index] == null || isNeedInferType || getDataTypeIfPresent(index) != null);
+  }
+
+  @Override
+  protected boolean shouldSerializeMeasurementToWAL(final int index) {
+    return shouldSerializeMeasurement(index)
+        && measurementSchemas != null
+        && index < measurementSchemas.length
+        && measurementSchemas[index] != null
+        && (values[index] == null || !isNeedInferType && getDataTypeIfPresent(index) != null);
+  }
+
+  private TSDataType getDataTypeIfPresent(final int index) {
+    return dataTypes != null && index >= 0 && index < dataTypes.length ? dataTypes[index] : null;
   }
 
   @Override
@@ -251,7 +291,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   /** Serialize measurements and values, ignoring failed time series. */
   void serializeMeasurementsAndValues(ByteBuffer buffer) {
-    ReadWriteIOUtils.write(measurements.length - getFailedMeasurementNumber(), buffer);
+    ReadWriteIOUtils.write(getValidMeasurementNumber(), buffer);
     serializeMeasurementsOrSchemas(buffer);
     putDataTypesAndValues(buffer);
     ReadWriteIOUtils.write((byte) (isNeedInferType ? 1 : 0), buffer);
@@ -265,7 +305,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
    * @throws IOException - If an I/O error occurs.
    */
   void serializeMeasurementsAndValues(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(measurements.length - getFailedMeasurementNumber(), stream);
+    ReadWriteIOUtils.write(getValidMeasurementNumber(), stream);
     serializeMeasurementsOrSchemas(stream);
     putDataTypesAndValues(stream);
     ReadWriteIOUtils.write((byte) (isNeedInferType ? 1 : 0), stream);
@@ -275,9 +315,9 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   /** Serialize measurements or measurement schemas, ignoring failed time series. */
   private void serializeMeasurementsOrSchemas(ByteBuffer buffer) {
     ReadWriteIOUtils.write((byte) (measurementSchemas != null ? 1 : 0), buffer);
-    for (int i = 0; i < measurements.length; i++) {
-      // ignore failed partial insert
-      if (measurements[i] == null) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      // ignore failed partial insert and incomplete columns
+      if (!shouldSerializeMeasurement(i)) {
         continue;
       }
       // serialize measurement schemas when exist
@@ -297,9 +337,9 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
    */
   private void serializeMeasurementsOrSchemas(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write((byte) (measurementSchemas != null ? 1 : 0), stream);
-    for (int i = 0; i < measurements.length; i++) {
-      // ignore failed partial insert
-      if (measurements[i] == null) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      // ignore failed partial insert and incomplete columns
+      if (!shouldSerializeMeasurement(i)) {
         continue;
       }
       // serialize measurement schemas when exist
@@ -318,14 +358,19 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
    * @throws UnSupportedDataTypeException - If meets unsupported data type.
    */
   private void putDataTypesAndValues(ByteBuffer buffer) {
-    for (int i = 0; i < values.length; i++) {
-      // ignore failed partial insert
-      if (measurements[i] == null) {
+    for (int i = 0; values != null && i < values.length; i++) {
+      // ignore failed partial insert and incomplete columns
+      if (!shouldSerializeMeasurement(i)) {
         continue;
       }
+      final TSDataType dataType = getDataTypeIfPresent(i);
       // serialize null value
       if (values[i] == null) {
-        ReadWriteIOUtils.write(TYPE_NULL, buffer);
+        ReadWriteIOUtils.write(
+            dataType == null ? TYPE_NULL_WITHOUT_TYPE : TYPE_NULL_WITH_TYPE, buffer);
+        if (dataType != null) {
+          ReadWriteIOUtils.write(dataType, buffer);
+        }
         continue;
       }
       // types are not determined, the situation mainly occurs when the plan uses string values
@@ -334,8 +379,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         ReadWriteIOUtils.write(TYPE_RAW_STRING, buffer);
         serializeString(values[i].toString(), buffer);
       } else {
-        ReadWriteIOUtils.write(dataTypes[i], buffer);
-        switch (dataTypes[i]) {
+        ReadWriteIOUtils.write(dataType, buffer);
+        switch (dataType) {
           case BOOLEAN:
             ReadWriteIOUtils.write((Boolean) values[i], buffer);
             break;
@@ -359,7 +404,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
             ReadWriteIOUtils.write((Binary) values[i], buffer);
             break;
           default:
-            throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataTypes[i]);
+            throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataType);
         }
       }
     }
@@ -373,14 +418,19 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
    * @throws UnSupportedDataTypeException - If meets unsupported data type.
    */
   private void putDataTypesAndValues(DataOutputStream stream) throws IOException {
-    for (int i = 0; i < values.length; i++) {
-      // ignore failed partial insert
-      if (measurements[i] == null) {
+    for (int i = 0; values != null && i < values.length; i++) {
+      // ignore failed partial insert and incomplete columns
+      if (!shouldSerializeMeasurement(i)) {
         continue;
       }
+      final TSDataType dataType = getDataTypeIfPresent(i);
       // serialize null value
       if (values[i] == null) {
-        ReadWriteIOUtils.write(TYPE_NULL, stream);
+        ReadWriteIOUtils.write(
+            dataType == null ? TYPE_NULL_WITHOUT_TYPE : TYPE_NULL_WITH_TYPE, stream);
+        if (dataType != null) {
+          ReadWriteIOUtils.write(dataType, stream);
+        }
         continue;
       }
       // types are not determined, the situation mainly occurs when the plan uses string values
@@ -389,8 +439,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         ReadWriteIOUtils.write(TYPE_RAW_STRING, stream);
         serializeString(values[i].toString(), stream);
       } else {
-        ReadWriteIOUtils.write(dataTypes[i], stream);
-        switch (dataTypes[i]) {
+        ReadWriteIOUtils.write(dataType, stream);
+        switch (dataType) {
           case BOOLEAN:
             ReadWriteIOUtils.write((Boolean) values[i], stream);
             break;
@@ -414,7 +464,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
             ReadWriteIOUtils.write((Binary) values[i], stream);
             break;
           default:
-            throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataTypes[i]);
+            throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataType);
         }
       }
     }
@@ -475,8 +525,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       // types are not determined, the situation mainly occurs when the node uses string values
       // and is forwarded to other nodes
       byte typeNum = (byte) ReadWriteIOUtils.read(buffer);
-      if (typeNum == TYPE_RAW_STRING || typeNum == TYPE_NULL) {
+      if (typeNum == TYPE_RAW_STRING
+          || typeNum == TYPE_NULL_WITHOUT_TYPE
+          || typeNum == TYPE_NULL_WITH_TYPE) {
         values[i] = typeNum == TYPE_RAW_STRING ? deserializeString(buffer) : null;
+        if (typeNum == TYPE_NULL_WITH_TYPE) {
+          dataTypes[i] = ReadWriteIOUtils.readDataType(buffer);
+        }
         continue;
       }
       dataTypes[i] = TSDataType.values()[typeNum];
@@ -535,18 +590,22 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     size += serializeMeasurementSchemasSize();
 
     // putValues
-    for (int i = 0; i < values.length; i++) {
-      // ignore failed partial insert
-      if (measurements[i] == null) {
+    for (int i = 0; values != null && i < values.length; i++) {
+      // ignore failed partial insert and incomplete columns
+      if (!shouldSerializeMeasurementToWAL(i)) {
         continue;
       }
+      final TSDataType dataType = getDataTypeIfPresent(i);
       // serialize null value
       if (values[i] == null) {
         size += Byte.BYTES;
+        if (dataType != null) {
+          size += Byte.BYTES;
+        }
         continue;
       }
       size += Byte.BYTES;
-      switch (dataTypes[i]) {
+      switch (dataType) {
         case BOOLEAN:
           size += Byte.BYTES;
           break;
@@ -570,7 +629,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           size += ReadWriteIOUtils.sizeToWrite((Binary) values[i]);
           break;
         default:
-          throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataTypes[i]);
+          throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataType);
       }
     }
 
@@ -597,7 +656,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   /** Serialize measurements and values, ignoring failed time series. */
   private void serializeMeasurementsAndValues(IWALByteBufferView buffer) {
-    buffer.putInt(measurements.length - getFailedMeasurementNumber());
+    buffer.putInt(getValidMeasurementNumberForWAL());
     serializeMeasurementSchemasToWAL(buffer);
     putDataTypesAndValues(buffer);
     buffer.put((byte) (isAligned ? 1 : 0));
@@ -610,18 +669,23 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
    * @throws UnSupportedDataTypeException - If meets unsupported data type.
    */
   private void putDataTypesAndValues(IWALByteBufferView buffer) {
-    for (int i = 0; i < values.length; i++) {
-      // ignore failed partial insert
-      if (measurements[i] == null) {
+    for (int i = 0; values != null && i < values.length; i++) {
+      // ignore failed partial insert and incomplete columns
+      if (!shouldSerializeMeasurementToWAL(i)) {
         continue;
       }
+      final TSDataType dataType = getDataTypeIfPresent(i);
       // serialize null value
       if (values[i] == null) {
-        WALWriteUtils.write(TYPE_NULL, buffer);
+        WALWriteUtils.write(
+            dataType == null ? TYPE_NULL_WITHOUT_TYPE : TYPE_NULL_WITH_TYPE, buffer);
+        if (dataType != null) {
+          WALWriteUtils.write(dataType, buffer);
+        }
         continue;
       }
-      WALWriteUtils.write(dataTypes[i], buffer);
-      switch (dataTypes[i]) {
+      WALWriteUtils.write(dataType, buffer);
+      switch (dataType) {
         case BOOLEAN:
           WALWriteUtils.write((Boolean) values[i], buffer);
           break;
@@ -645,7 +709,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           WALWriteUtils.write((Binary) values[i], buffer);
           break;
         default:
-          throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataTypes[i]);
+          throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataType);
       }
     }
   }
@@ -703,7 +767,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   public void fillDataTypesAndValuesFromWAL(DataInputStream stream) throws IOException {
     for (int i = 0; i < dataTypes.length; i++) {
       byte typeNum = stream.readByte();
-      if (typeNum == TYPE_NULL) {
+      if (typeNum == TYPE_RAW_STRING
+          || typeNum == TYPE_NULL_WITHOUT_TYPE
+          || typeNum == TYPE_NULL_WITH_TYPE) {
+        values[i] = typeNum == TYPE_RAW_STRING ? ReadWriteIOUtils.readString(stream) : null;
+        if (typeNum == TYPE_NULL_WITH_TYPE) {
+          dataTypes[i] = ReadWriteIOUtils.readDataType(stream);
+        }
         continue;
       }
       dataTypes[i] = TSDataType.values()[typeNum];
@@ -788,7 +858,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   public void fillDataTypesAndValuesFromWAL(ByteBuffer buffer) {
     for (int i = 0; i < dataTypes.length; i++) {
       byte typeNum = buffer.get();
-      if (typeNum == TYPE_NULL) {
+      if (typeNum == TYPE_RAW_STRING
+          || typeNum == TYPE_NULL_WITHOUT_TYPE
+          || typeNum == TYPE_NULL_WITH_TYPE) {
+        values[i] = typeNum == TYPE_RAW_STRING ? ReadWriteIOUtils.readString(buffer) : null;
+        if (typeNum == TYPE_NULL_WITH_TYPE) {
+          dataTypes[i] = ReadWriteIOUtils.readDataType(buffer);
+        }
         continue;
       }
       dataTypes[i] = TSDataType.values()[typeNum];
@@ -853,22 +929,44 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   public TimeValuePair composeTimeValuePair(int columnIndex) {
-    if (columnIndex >= values.length || Objects.isNull(dataTypes[columnIndex])) {
+    if (!canComposeTimeValuePair(columnIndex)) {
       return null;
     }
     Object value = values[columnIndex];
-    return Objects.nonNull(value)
-        ? new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[columnIndex], value))
-        : null;
+    return new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[columnIndex], value));
+  }
+
+  @Override
+  public long getLastCacheTimestamp() {
+    return time;
+  }
+
+  @Override
+  public boolean hasLastCacheValue(final int index) {
+    return canComposeTimeValuePair(index);
+  }
+
+  @Override
+  public TimeValuePair getLastCacheValue(final int index) {
+    return composeTimeValuePair(index);
+  }
+
+  private boolean canComposeTimeValuePair(final int columnIndex) {
+    return measurements != null
+        && columnIndex >= 0
+        && columnIndex < measurements.length
+        && measurements[columnIndex] != null
+        && values != null
+        && columnIndex < values.length
+        && values[columnIndex] != null
+        && dataTypes != null
+        && columnIndex < dataTypes.length
+        && dataTypes[columnIndex] != null;
   }
 
   public void updateLastCache(String databaseName) {
-    TimeValuePair[] timeValuePairs = new TimeValuePair[measurements.length];
-    for (int i = 0; i < measurements.length; i++) {
-      timeValuePairs[i] = composeTimeValuePair(i);
-    }
     DataNodeSchemaCache.getInstance()
         .updateLastCacheIfExists(
-            databaseName, devicePath, measurements, timeValuePairs, isAligned, measurementSchemas);
+            databaseName, devicePath, measurements, this, isAligned, measurementSchemas);
   }
 }

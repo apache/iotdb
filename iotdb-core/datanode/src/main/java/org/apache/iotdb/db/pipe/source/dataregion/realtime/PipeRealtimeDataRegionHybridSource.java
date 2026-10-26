@@ -29,7 +29,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeOperator;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -178,7 +178,8 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     final long floatingMemoryUsageInByte =
         PipeDataNodeAgent.task().getFloatingMemoryUsageInByte(pipeName);
     final long pipeCount = PipeDataNodeAgent.task().getPipeCount();
-    long totalFloatingMemorySizeInBytes = PipeMemoryManager.getTotalFloatingMemorySizeInBytes();
+    long totalFloatingMemorySizeInBytes =
+        PipeDataNodeResourceManager.memory().getTotalFloatingMemorySizeInBytes();
     // If the occupied memory has reached the max, it may cause a large latency to the receiver due
     // to queuing. To reduce the latency, we lower the memory limit forcibly in the single tsFile
     // since the tsFile is doomed to be transferred, then more downgrading will just cause more

@@ -97,6 +97,9 @@ public class TypeInferenceUtils {
     } else if (value instanceof Double) {
       return TSDataType.DOUBLE;
     } else if (inferType) {
+      if (value == null) {
+        return null;
+      }
       String strValue = value.toString();
       if (isBoolean(strValue)) {
         return CONF.getBooleanStringInferType();

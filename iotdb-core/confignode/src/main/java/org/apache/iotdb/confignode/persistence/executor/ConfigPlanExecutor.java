@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.persistence.executor;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
@@ -663,9 +664,16 @@ public class ConfigPlanExecutor {
               }
             });
     if (result.get()) {
-      LOGGER.info(
-          "[ConfigNodeSnapshot] Load snapshot success, latestSnapshotRootDir: {}",
-          latestSnapshotRootDir);
+      try {
+        PipeConfigNodeAgent.runtime()
+            .reconcileListenerReferences(pipeInfo.getPipeTaskInfo().getPipeMetaList());
+        LOGGER.info(
+            "[ConfigNodeSnapshot] Load snapshot success, latestSnapshotRootDir: {}",
+            latestSnapshotRootDir);
+      } catch (final IllegalPathException e) {
+        result.set(false);
+        LOGGER.error(e.getMessage(), e);
+      }
     }
   }
 

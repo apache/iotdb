@@ -71,7 +71,7 @@ public class PipeSinkConstant {
 
   public static final String CONNECTOR_SERIALIZE_BY_REGION_KEY = "connector.serialize-by-region";
   public static final String SINK_SERIALIZE_BY_REGION_KEY = "sink.serialize-by-region";
-  public static final boolean CONNECTOR_SERIALIZE_BY_REGION_DEFAULT_VALUE = true;
+  public static final boolean CONNECTOR_SERIALIZE_BY_REGION_DEFAULT_VALUE = false;
 
   public static boolean isSerializeByRegionEnabled(final PipeParameters parameters) {
     return parameters.getBooleanOrDefault(
@@ -124,6 +124,13 @@ public class PipeSinkConstant {
       "sink.exception.data.convert-on-type-mismatch";
   public static final boolean CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE =
       true;
+  public static final String
+      CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_KEY =
+          "connector.exception.data.convert-on-type-mismatch.tsfile.async-load";
+  public static final String SINK_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_KEY =
+      "sink.exception.data.convert-on-type-mismatch.tsfile.async-load";
+  public static final boolean
+      CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_DEFAULT_VALUE = true;
 
   public static final String CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY =
       "connector.exception.conflict.resolve-strategy";
@@ -189,6 +196,10 @@ public class PipeSinkConstant {
   public static final String SINK_OPC_UA_HTTPS_BIND_PORT_KEY = "sink.opcua.https.port";
   public static final int CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE = 8443;
 
+  public static final String CONNECTOR_OPC_UA_ADVERTISED_HOST_KEY =
+      "connector.opcua.advertised-host";
+  public static final String SINK_OPC_UA_ADVERTISED_HOST_KEY = "sink.opcua.advertised-host";
+
   public static final String CONNECTOR_OPC_UA_SECURITY_DIR_KEY = "connector.opcua.security.dir";
   public static final String SINK_OPC_UA_SECURITY_DIR_KEY = "sink.opcua.security.dir";
   public static final String CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE =
@@ -223,6 +234,11 @@ public class PipeSinkConstant {
 
   public static final String CONNECTOR_OPC_UA_NODE_URL_KEY = "connector.opcua.node-url";
   public static final String SINK_OPC_UA_NODE_URL_KEY = "sink.opcua.node-url";
+  public static final String CONNECTOR_OPC_UA_ALLOW_ENDPOINT_REDIRECT_KEY =
+      "connector.opcua.allow-endpoint-redirect";
+  public static final String SINK_OPC_UA_ALLOW_ENDPOINT_REDIRECT_KEY =
+      "sink.opcua.allow-endpoint-redirect";
+  public static final boolean CONNECTOR_OPC_UA_ALLOW_ENDPOINT_REDIRECT_DEFAULT_VALUE = false;
 
   public static final String CONNECTOR_OPC_UA_SECURITY_POLICY_KEY =
       "connector.opcua.security-policy";

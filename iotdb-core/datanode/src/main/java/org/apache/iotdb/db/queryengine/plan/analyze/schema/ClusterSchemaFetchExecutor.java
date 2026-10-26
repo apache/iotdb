@@ -96,7 +96,8 @@ class ClusterSchemaFetchExecutor {
         ClusterPartitionFetcher.getInstance(),
         schemaFetcher,
         timeout,
-        false);
+        false,
+        statement.isDebug());
   }
 
   /**

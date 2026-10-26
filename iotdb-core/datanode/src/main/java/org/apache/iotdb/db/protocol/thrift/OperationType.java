@@ -51,7 +51,10 @@ public enum OperationType {
   CHECK_AUTHORITY("checkAuthority"),
   EXECUTE_NON_QUERY_PLAN("executeNonQueryPlan"),
   QUERY_LATENCY("queryLatency"),
-  DISPATCH_FRAGMENT_INSTANCE("dispatchFragmentInstance");
+  DISPATCH_FRAGMENT_INSTANCE("dispatchFragmentInstance"),
+  GET_EARLIEST_TIMESLOTS("getEarliestTimeslots"),
+  GENERATE_DATA_PARTITION_TABLE("generateDataPartitionTable"),
+  CHECK_DATA_PARTITION_TABLE_STATUS("checkDataPartitionTableStatus");
   private final String name;
 
   OperationType(String name) {

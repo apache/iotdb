@@ -25,16 +25,18 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
-import org.apache.iotdb.commons.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
+import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -1088,6 +1090,34 @@ public class IoTDBDescriptor {
     loadQuerySampleThroughput(properties);
     // update trusted_uri_pattern
     loadTrustedUriPattern(properties);
+    int partitionTableRecoverWorkerNum =
+        Integer.parseInt(
+            properties.getProperty(
+                "partition_table_recover_worker_num",
+                String.valueOf(conf.getPartitionTableRecoverWorkerNum())));
+    if (partitionTableRecoverWorkerNum <= 0) {
+      LOGGER.warn(
+          "partition_table_recover_worker_num should be greater than 0, "
+              + "but current value is {}, ignore that and use the default value {}",
+          partitionTableRecoverWorkerNum,
+          conf.getPartitionTableRecoverWorkerNum());
+      partitionTableRecoverWorkerNum = conf.getPartitionTableRecoverWorkerNum();
+    }
+    conf.setPartitionTableRecoverWorkerNum(partitionTableRecoverWorkerNum);
+    int partitionTableRecoverMaxReadMBsPerSecond =
+        Integer.parseInt(
+            properties.getProperty(
+                "partition_table_recover_max_read_mb_per_sec",
+                String.valueOf(conf.getPartitionTableRecoverMaxReadMBsPerSecond())));
+    if (partitionTableRecoverMaxReadMBsPerSecond <= 0) {
+      LOGGER.warn(
+          "partition_table_recover_max_read_mb_per_sec should be greater than 0, "
+              + "but current value is {}, ignore that and use the default value {}",
+          partitionTableRecoverMaxReadMBsPerSecond,
+          conf.getPartitionTableRecoverMaxReadMBsPerSecond());
+      partitionTableRecoverMaxReadMBsPerSecond = conf.getPartitionTableRecoverMaxReadMBsPerSecond();
+    }
+    conf.setPartitionTableRecoverMaxReadMBsPerSecond(partitionTableRecoverMaxReadMBsPerSecond);
   }
 
   private void loadFixedSizeLimitForQuery(
@@ -2061,6 +2091,9 @@ public class IoTDBDescriptor {
       // update trusted_uri_pattern
       loadTrustedUriPattern(properties);
 
+      // update REST request limits
+      IoTDBRestServiceDescriptor.getInstance().loadHotModifiedProps(properties);
+
       // tvlist_sort_threshold
       conf.setTVListSortThreshold(
           Integer.parseInt(
@@ -2647,7 +2680,8 @@ public class IoTDBDescriptor {
 
   private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {
     PipeDescriptor.loadPipeProps(commonDescriptor.getConfig(), properties, true);
-    PipePeriodicalLogReducer.update();
+    PipeDataNodeResourceManager.memory().notifyNextTsFileParserMemoryReservation();
+    LoggerPeriodicalLogReducer.update();
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero

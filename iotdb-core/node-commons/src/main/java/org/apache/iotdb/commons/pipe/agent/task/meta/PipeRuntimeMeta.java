@@ -88,8 +88,8 @@ public class PipeRuntimeMeta {
    * <p>1. {@link PipeRuntimeCriticalException}, to record the failure of pushing {@link PipeMeta},
    * and will result in the halt of pipe execution.
    *
-   * <p>2. {@link PipeRuntimeSinkCriticalException}, to record the exception reported by other pipes
-   * sharing the same connector, and will stop the pipe likewise.
+   * <p>2. {@link PipeRuntimeSinkCriticalException}, retained for compatibility with runtime meta
+   * written before sink subtasks were isolated by pipe.
    */
   private final ConcurrentMap<Integer, PipeRuntimeException> nodeId2PipeRuntimeExceptionMap =
       new ConcurrentHashMap<>();

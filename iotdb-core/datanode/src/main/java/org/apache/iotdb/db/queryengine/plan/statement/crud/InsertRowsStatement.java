@@ -181,6 +181,24 @@ public class InsertRowsStatement extends InsertBaseStatement {
   }
 
   @Override
+  public String getPipeLoggingString() {
+    if (Objects.isNull(insertRowStatementList) || insertRowStatementList.isEmpty()) {
+      return "InsertRowsStatement{rowCount=0}";
+    }
+
+    final int rowCount = insertRowStatementList.size();
+    return "InsertRowsStatement{"
+        + "rowCount="
+        + rowCount
+        + ", firstRow="
+        + insertRowStatementList.get(0).getPipeLoggingString()
+        + (rowCount > 1
+            ? ", lastRow=" + insertRowStatementList.get(rowCount - 1).getPipeLoggingString()
+            : "")
+        + '}';
+  }
+
+  @Override
   public String toString() {
     return "InsertRowsStatement{" + "insertRowStatementList=" + insertRowStatementList + '}';
   }

@@ -1883,5 +1883,10 @@ public class MergeSortOperatorTest {
     public boolean isUserQuery() {
       return false;
     }
+
+    @Override
+    public boolean isDebug() {
+      return false;
+    }
   }
 }

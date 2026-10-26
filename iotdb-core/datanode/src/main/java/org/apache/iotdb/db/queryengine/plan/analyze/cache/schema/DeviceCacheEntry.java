@@ -80,13 +80,22 @@ public class DeviceCacheEntry {
       return 0;
     }
     // Safe here because schema is invalidated by the whole entry
-    final int result =
-        (deviceSchema.compareAndSet(null, new DeviceNormalSchema(database, isAligned))
-            ? DeviceNormalSchema.INSTANCE_SIZE
-            : 0);
-    return deviceSchema.get() instanceof DeviceNormalSchema
-        ? result + ((DeviceNormalSchema) deviceSchema.get()).update(measurements, schemas)
-        : 0;
+    IDeviceSchema schema = deviceSchema.get();
+    int result = 0;
+    if (schema == null) {
+      final DeviceNormalSchema newSchema = new DeviceNormalSchema(database, isAligned);
+      if (deviceSchema.compareAndSet(null, newSchema)) {
+        schema = newSchema;
+        result = DeviceNormalSchema.INSTANCE_SIZE;
+      } else {
+        schema = deviceSchema.get();
+      }
+    }
+    if (!(schema instanceof DeviceNormalSchema)) {
+      return 0;
+    }
+    result += ((DeviceNormalSchema) schema).update(measurements, schemas);
+    return deviceSchema.get() == schema ? result : 0;
   }
 
   IDeviceSchema getDeviceSchema() {
@@ -134,6 +143,18 @@ public class DeviceCacheEntry {
 
   int tryUpdateLastCache(final String[] measurements, final TimeValuePair[] timeValuePairs) {
     return tryUpdateLastCache(measurements, timeValuePairs, false);
+  }
+
+  int tryUpdateLastCache(
+      final String[] measurements,
+      final @Nullable IMeasurementSchema[] measurementSchemas,
+      final LastCacheUpdateSource updateSource) {
+    final DeviceLastCache cache = lastCache.get();
+    final int result =
+        Objects.nonNull(cache)
+            ? cache.tryUpdate(measurements, measurementSchemas, updateSource)
+            : 0;
+    return Objects.nonNull(lastCache.get()) ? result : 0;
   }
 
   int tryUpdateLastCache(

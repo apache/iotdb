@@ -21,6 +21,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.protocol.rest.handler.AuthorizationHandler;
+import org.apache.iotdb.db.protocol.rest.handler.QueryRowLimitUtils;
 import org.apache.iotdb.db.protocol.rest.utils.InsertTabletSortDataUtils;
 import org.apache.iotdb.db.protocol.rest.v1.RestApiService;
 import org.apache.iotdb.db.protocol.rest.v1.handler.ExceptionHandler;
@@ -47,8 +48,8 @@ import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 
 import java.time.ZoneId;
 import java.util.Optional;
@@ -66,14 +67,15 @@ public class RestApiServiceImpl extends RestApiService {
   private final ISchemaFetcher schemaFetcher;
   private final AuthorizationHandler authorizationHandler;
 
-  private final Integer defaultQueryRowLimit;
+  private final int defaultQueryRowLimit;
 
   public RestApiServiceImpl() {
     partitionFetcher = ClusterPartitionFetcher.getInstance();
     schemaFetcher = ClusterSchemaFetcher.getInstance();
     authorizationHandler = new AuthorizationHandler();
     defaultQueryRowLimit =
-        IoTDBRestServiceDescriptor.getInstance().getConfig().getRestQueryDefaultRowSizeLimit();
+        QueryRowLimitUtils.normalizeRowSizeLimit(
+            IoTDBRestServiceDescriptor.getInstance().getConfig().getRestQueryDefaultRowSizeLimit());
   }
 
   @Override
@@ -208,7 +210,7 @@ public class RestApiServiceImpl extends RestApiService {
         return QueryDataSetHandler.fillQueryDataSet(
             queryExecution,
             statement,
-            sql.getRowLimit() == null ? defaultQueryRowLimit : sql.getRowLimit());
+            QueryRowLimitUtils.resolveActualRowSizeLimit(sql.getRowLimit(), defaultQueryRowLimit));
       }
     } catch (Exception e) {
       finish = true;
@@ -283,7 +285,9 @@ public class RestApiServiceImpl extends RestApiService {
                       .message(result.status.getMessage()))
           .build();
     } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long costTime = System.nanoTime() - startTime;
       Optional.ofNullable(insertTabletStatement)

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.processor.twostage.plugin;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
@@ -93,6 +94,9 @@ public class TwoStageCountProcessor implements PipeProcessor {
   private final Queue<Pair<long[], ProgressIndex> /* ([timestamp, local count], progress index) */>
       localCommitQueue = new ConcurrentLinkedQueue<>();
 
+  private UserEntity sourceUserEntity;
+  private String sourcePassword;
+
   private TwoStageAggregateSender twoStageAggregateSender;
   private final Queue<Pair<Long, Long> /* (timestamp, global count) */> globalCountQueue =
       new ConcurrentLinkedQueue<>();
@@ -126,17 +130,13 @@ public class TwoStageCountProcessor implements PipeProcessor {
     creationTime = runtimeEnvironment.getCreationTime();
     regionId = runtimeEnvironment.getRegionId();
     pipeTaskMeta = runtimeEnvironment.getPipeTaskMeta();
+    sourceUserEntity = runtimeEnvironment.getSourceUserEntity();
+    sourcePassword = runtimeEnvironment.getSourcePassword();
 
     outputSeries = parseOutputSeries(parameters);
 
     if (Objects.nonNull(pipeTaskMeta) && Objects.nonNull(pipeTaskMeta.getProgressIndex())) {
-      if (pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex) {
-        pipeTaskMeta.updateProgressIndex(
-            new StateProgressIndex(Long.MIN_VALUE, new HashMap<>(), MinimumProgressIndex.INSTANCE));
-      }
-
-      final StateProgressIndex stateProgressIndex =
-          (StateProgressIndex) pipeTaskMeta.getProgressIndex();
+      final StateProgressIndex stateProgressIndex = initializeStateProgressIndex(pipeTaskMeta);
       localCommitProgressIndex.set(stateProgressIndex.getInnerProgressIndex());
       final Binary localCountState = stateProgressIndex.getState().get(LOCAL_COUNT_STATE_KEY);
       localCount.set(
@@ -156,7 +156,8 @@ public class TwoStageCountProcessor implements PipeProcessor {
     PipeCombineHandlerManager.getInstance()
         .register(
             pipeName, creationTime, (combineId) -> new CountOperator(combineId, globalCountQueue));
-    twoStageAggregateSender = new TwoStageAggregateSender(pipeName, creationTime);
+    twoStageAggregateSender =
+        new TwoStageAggregateSender(pipeName, creationTime, sourceUserEntity, sourcePassword);
   }
 
   static PartialPath parseOutputSeries(final PipeParameters parameters)
@@ -164,6 +165,26 @@ public class TwoStageCountProcessor implements PipeProcessor {
     return new PartialPath(
         parameters.getStringByKeys(
             PipeProcessorConstant.PROCESSOR_OUTPUT_SERIES_KEY, LEGACY_PROCESSOR_OUTPUT_SERIES_KEY));
+  }
+
+  static StateProgressIndex initializeStateProgressIndex(final PipeTaskMeta pipeTaskMeta) {
+    final ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
+    if (progressIndex instanceof StateProgressIndex) {
+      return (StateProgressIndex) progressIndex;
+    }
+
+    final ProgressIndex updatedProgressIndex =
+        pipeTaskMeta.updateProgressIndex(
+            new StateProgressIndex(
+                Long.MIN_VALUE, Collections.emptyMap(), MinimumProgressIndex.INSTANCE));
+    return updatedProgressIndex
+        .getProgressIndexByType(StateProgressIndex.class)
+        .orElseThrow(
+            () ->
+                new PipeException(
+                    String.format(
+                        "Failed to initialize StateProgressIndex from progress index %s.",
+                        updatedProgressIndex)));
   }
 
   @Override

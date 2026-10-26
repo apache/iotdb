@@ -21,11 +21,14 @@ package org.apache.iotdb.db.pipe.sink.protocol.thrift.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.sink.limiter.TsFileSendRateLimiter;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFilePieceReq;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
@@ -35,6 +38,8 @@ import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeSyncClientManager;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventBatch;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventPlainBatch;
@@ -68,6 +73,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.file.NoSuchFileException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -138,7 +144,17 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
 
     try {
       if (isTabletBatchModeEnabled) {
-        tabletBatchBuilder.onEvent(tabletInsertionEvent);
+        try {
+          tabletBatchBuilder.onEvent(tabletInsertionEvent);
+        } catch (final PipeRuntimeOutOfMemoryCriticalException memoryException) {
+          try {
+            doTransferWrapper();
+          } catch (final Exception transferException) {
+            transferException.addSuppressed(memoryException);
+            throw transferException;
+          }
+          tabletBatchBuilder.onEvent(tabletInsertionEvent);
+        }
         doTransferWrapper();
       } else {
         if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
@@ -273,20 +289,27 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
       throws IOException, WriteProcessException {
     final List<File> sealedFiles = batchToTransfer.sealTsFiles();
     final Map<Pair<String, Long>, Double> pipe2WeightMap = batchToTransfer.deepCopyPipe2WeightMap();
+    final List<EnrichedEvent> events = batchToTransfer.deepCopyEvents();
 
-    for (final File tsFile : sealedFiles) {
-      doTransfer(pipe2WeightMap, tsFile, null, null);
-      try {
-        RetryUtils.retryOnException(
-            () -> {
-              FileUtils.delete(tsFile);
-              return null;
-            });
-      } catch (final NoSuchFileException e) {
-        LOGGER.info("The file {} is not found, may already be deleted.", tsFile);
-      } catch (final Exception e) {
-        LOGGER.warn(
-            "Failed to delete batch file {}, this file should be deleted manually later", tsFile);
+    try {
+      for (int outputIndex = 0; outputIndex < sealedFiles.size(); outputIndex++) {
+        final File tsFile = sealedFiles.get(outputIndex);
+        doTransfer(pipe2WeightMap, tsFile, null, null, events, outputIndex);
+      }
+    } finally {
+      for (final File tsFile : sealedFiles) {
+        try {
+          RetryUtils.retryOnException(
+              () -> {
+                FileUtils.delete(tsFile);
+                return null;
+              });
+        } catch (final NoSuchFileException e) {
+          LOGGER.info("The file {} is not found, may already be deleted.", tsFile);
+        } catch (final Exception e) {
+          LOGGER.warn(
+              "Failed to delete batch file {}, this file should be deleted manually later", tsFile);
+        }
       }
     }
   }
@@ -352,6 +375,10 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
       clientManager.updateLeaderCache(
           // pipeInsertNodeTabletInsertionEvent.getDeviceId() is null for InsertRowsNode
           pipeInsertNodeTabletInsertionEvent.getDeviceId(), status.getRedirectNode());
+    }
+    for (final Pair<String, TEndPoint> redirectPair :
+        LeaderCacheUtils.parseRecommendedRedirections(status)) {
+      clientManager.updateLeaderCache(redirectPair.getLeft(), redirectPair.getRight());
     }
   }
 
@@ -429,7 +456,9 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
               1.0),
           pipeTsFileInsertionEvent.getTsFile(),
           pipeTsFileInsertionEvent.isWithMod() ? pipeTsFileInsertionEvent.getModFile() : null,
-          pipeTsFileInsertionEvent.getDatabaseName());
+          pipeTsFileInsertionEvent.getDatabaseName(),
+          Collections.singletonList(pipeTsFileInsertionEvent),
+          0);
     } finally {
       pipeTsFileInsertionEvent.decreaseReferenceCount(
           IoTDBDataRegionSyncSink.class.getName(), false);
@@ -440,11 +469,22 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
       final Map<Pair<String, Long>, Double> pipeName2WeightMap,
       final File tsFile,
       final File modFile,
-      final String dataBaseName)
+      final String dataBaseName,
+      final Iterable<? extends EnrichedEvent> events,
+      final int outputIndex)
       throws PipeException, IOException {
 
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
     final TPipeTransferResp resp;
+    final String conversionTaskId =
+        shouldAsyncLoadTsFileOnTypeMismatch
+            ? PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+                sinkTaskId,
+                events,
+                dataBaseName,
+                outputIndex,
+                Objects.nonNull(modFile) && clientManager.supportModsIfIsDataNodeReceiver())
+            : null;
 
     // 1. Transfer tsFile, and mod file if exists and receiver's version >= 2
     if (Objects.nonNull(modFile) && clientManager.supportModsIfIsDataNodeReceiver()) {
@@ -456,11 +496,13 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
         final TPipeTransferReq req =
             compressIfNeeded(
                 PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    modFile.getName(),
-                    modFile.length(),
-                    tsFile.getName(),
-                    tsFile.length(),
-                    dataBaseName));
+                        modFile.getName(),
+                        modFile.length(),
+                        tsFile.getName(),
+                        tsFile.length(),
+                        dataBaseName,
+                        shouldWaitForSchemaBeforeLoad)
+                    .setConversionTaskInfo(conversionTaskId, shouldAsyncLoadTsFileOnTypeMismatch));
 
         pipeName2WeightMap.forEach(
             (pipePair, weight) ->
@@ -485,11 +527,16 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
       try {
         final TPipeTransferReq req =
             compressIfNeeded(
-                dataBaseName == null
+                conversionTaskId == null && dataBaseName == null && !shouldWaitForSchemaBeforeLoad
                     ? PipeTransferTsFileSealReq.toTPipeTransferReq(
                         tsFile.getName(), tsFile.length())
                     : PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                        tsFile.getName(), tsFile.length(), dataBaseName));
+                            tsFile.getName(),
+                            tsFile.length(),
+                            dataBaseName,
+                            shouldWaitForSchemaBeforeLoad)
+                        .setConversionTaskInfo(
+                            conversionTaskId, shouldAsyncLoadTsFileOnTypeMismatch));
 
         pipeName2WeightMap.forEach(
             (pipePair, weight) ->
@@ -523,10 +570,135 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
   }
 
   @Override
+  protected void transferFilePieces(
+      final Map<Pair<String, Long>, Double> pipe2WeightMap,
+      final File file,
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus,
+      final boolean isMultiFile)
+      throws PipeException, IOException {
+    final int readFileBufferSize = getReadFileBufferSize(file);
+    try (final PipeTsFileMemoryBlock ignored =
+            PipeDataNodeResourceManager.memory()
+                .forceAllocateForTsFileWithRetry(readFileBufferSize);
+        final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
+      final byte[] readBuffer = new byte[readFileBufferSize];
+      long position = 0;
+      int readLength;
+      while ((readLength = readNextFilePiece(reader, readBuffer)) != -1) {
+        position =
+            transferFilePiece(
+                pipe2WeightMap,
+                file,
+                clientAndStatus,
+                isMultiFile,
+                readBuffer,
+                position,
+                readLength,
+                reader);
+      }
+    }
+  }
+
+  private int readNextFilePiece(final RandomAccessFile reader, final byte[] readBuffer)
+      throws IOException {
+    final int readLength = reader.read(readBuffer);
+    if (readLength != -1) {
+      mayLimitRateAndRecordIO(readLength);
+    }
+    return readLength;
+  }
+
+  private long transferFilePiece(
+      final Map<Pair<String, Long>, Double> pipe2WeightMap,
+      final File file,
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus,
+      final boolean isMultiFile,
+      final byte[] readBuffer,
+      final long position,
+      final int readLength,
+      final RandomAccessFile reader)
+      throws PipeException, IOException {
+    final byte[] payLoad = buildFilePiecePayload(readBuffer, readLength);
+    final PipeTransferFilePieceResp resp =
+        doTransferFilePiece(pipe2WeightMap, file, clientAndStatus, isMultiFile, payLoad, position);
+    return handleTransferFilePieceResp(file, clientAndStatus, reader, position + readLength, resp);
+  }
+
+  private byte[] buildFilePiecePayload(final byte[] readBuffer, final int readLength) {
+    return readLength == readBuffer.length
+        ? readBuffer
+        : Arrays.copyOfRange(readBuffer, 0, readLength);
+  }
+
+  private PipeTransferFilePieceResp doTransferFilePiece(
+      final Map<Pair<String, Long>, Double> pipe2WeightMap,
+      final File file,
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus,
+      final boolean isMultiFile,
+      final byte[] payLoad,
+      final long position)
+      throws PipeException, IOException {
+    try {
+      final TPipeTransferReq req =
+          compressIfNeeded(
+              isMultiFile
+                  ? getTransferMultiFilePieceReq(file.getName(), position, payLoad)
+                  : getTransferSingleFilePieceReq(file.getName(), position, payLoad));
+      pipe2WeightMap.forEach(
+          (namePair, weight) ->
+              rateLimitIfNeeded(
+                  namePair.getLeft(),
+                  namePair.getRight(),
+                  clientAndStatus.getLeft().getEndPoint(),
+                  (long) (req.getBody().length * weight)));
+      return PipeTransferFilePieceResp.fromTPipeTransferResp(
+          clientAndStatus.getLeft().pipeTransfer(req));
+    } catch (final Exception e) {
+      clientAndStatus.setRight(false);
+      throw new PipeConnectionException(
+          String.format("Network error when transfer file %s, because %s.", file, e.getMessage()),
+          e);
+    }
+  }
+
+  private long handleTransferFilePieceResp(
+      final File file,
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus,
+      final RandomAccessFile reader,
+      final long nextPosition,
+      final PipeTransferFilePieceResp resp)
+      throws PipeException, IOException {
+    final TSStatus status = resp.getStatus();
+    if (status.getCode() == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
+      reader.seek(resp.getEndWritingOffset());
+      LOGGER.info("Redirect file position to {}.", resp.getEndWritingOffset());
+      return resp.getEndWritingOffset();
+    }
+
+    if (status.getCode() == TSStatusCode.PIPE_CONFIG_RECEIVER_HANDSHAKE_NEEDED.getStatusCode()) {
+      getClientManager().sendHandshakeReq(clientAndStatus);
+    }
+
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      receiverStatusHandler.handle(
+          resp.getStatus(),
+          String.format("Transfer file %s error, result status %s.", file, resp.getStatus()),
+          file.getName());
+    }
+    return nextPosition;
+  }
+
+  private int getReadFileBufferSize(final File file) {
+    return (int)
+        Math.min(
+            PipeConfig.getInstance().getPipeSinkReadFileBufferSize(), Math.max(file.length(), 1L));
+  }
+
+  @Override
   public TPipeTransferReq compressIfNeeded(final TPipeTransferReq req) throws IOException {
-    if (Objects.isNull(compressionTimer) && Objects.nonNull(attributeSortedString)) {
-      compressionTimer =
-          PipeDataRegionSinkMetrics.getInstance().getCompressionTimer(attributeSortedString);
+    if (Objects.isNull(compressionTimer) && Objects.nonNull(sinkTaskId)) {
+      compressionTimer = PipeDataRegionSinkMetrics.getInstance().getCompressionTimer(sinkTaskId);
     }
     return super.compressIfNeeded(req);
   }

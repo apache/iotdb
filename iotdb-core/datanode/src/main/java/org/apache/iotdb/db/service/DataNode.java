@@ -169,6 +169,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   private boolean schemaRegionConsensusStarted = false;
   private boolean dataRegionConsensusStarted = false;
+  private long schemaEngineRecoveryTimeInMs;
   private static Thread watcherThread;
 
   public DataNode() {
@@ -710,12 +711,12 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       logger.error("Meet error while starting up.", e);
       throw new StartupException("Error in activating IoTDB DataNode.");
     }
-    logger.info("IoTDB DataNode has started.");
 
     try {
       long startTime = System.currentTimeMillis();
       SchemaRegionConsensusImpl.getInstance().start();
       long schemaRegionEndTime = System.currentTimeMillis();
+      logger.info("Recover schema successfully, which takes {} ms.", schemaEngineRecoveryTimeInMs);
       logger.info(
           "SchemaRegion consensus start successfully, which takes {} ms.",
           (schemaRegionEndTime - startTime));
@@ -731,6 +732,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     } catch (IOException e) {
       throw new StartupException(e);
     }
+    logger.info("IoTDB DataNode has started.");
   }
 
   void processPid() {
@@ -789,7 +791,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       }
     }
     long endTime = System.currentTimeMillis();
-    logger.info("Wait for all databases ready, which takes {} ms.", (endTime - startTime));
+    logger.info(
+        "Wait for local DataRegion recovery tasks to finish, which takes {} ms.",
+        (endTime - startTime));
     // Must init after SchemaEngine and StorageEngine prepared well
     DataNodeRegionManager.getInstance().init();
 
@@ -1153,8 +1157,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   private void initSchemaEngine() {
     long startTime = System.currentTimeMillis();
     SchemaEngine.getInstance().init();
-    long endTime = System.currentTimeMillis();
-    logger.info("Recover schema successfully, which takes {} ms.", (endTime - startTime));
+    schemaEngineRecoveryTimeInMs = System.currentTimeMillis() - startTime;
   }
 
   private void classLoader() {

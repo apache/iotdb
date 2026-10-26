@@ -180,11 +180,11 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
     long position = 0;
     try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
       while (true) {
-        mayLimitRateAndRecordIO(readFileBufferSize);
         final int readLength = reader.read(readBuffer);
         if (readLength == -1) {
           break;
         }
+        mayLimitRateAndRecordIO(readLength);
 
         final byte[] payLoad =
             readLength == readFileBufferSize

@@ -307,6 +307,7 @@ struct TDataNodeHeartbeatResp {
   14: optional list<bool> pipeCompletedList
   15: optional list<i64> pipeRemainingEventCountList
   16: optional list<double> pipeRemainingTimeList
+  19: optional list<map<string, i64>> pipeRecentFailureList
 }
 
 struct TPipeHeartbeatReq {
@@ -332,6 +333,9 @@ struct TTsFilePieceReq {
     1: required binary body
     2: required string uuid
     3: required common.TConsensusGroupId consensusGroupId
+    4: optional i32 sliceIndex
+    5: optional i32 sliceCount
+    6: optional i32 originBodySize
 }
 
 struct TLoadCommandReq {
@@ -566,6 +570,44 @@ struct TFetchTimeseriesResp {
   7: optional bool hasMoreData
 }
 /**
+* BEGIN: Data Partition Table Integrity Check Structures
+**/
+
+struct TGetEarliestTimeslotsResp {
+  1: required common.TSStatus status
+  2: optional map<string, i64> databaseToEarliestTimeslot
+}
+
+struct TGenerateDataPartitionTableReq {
+  1: required set<string> databases
+}
+
+struct TGenerateDataPartitionTableResp {
+  1: required common.TSStatus status
+  2: required i32 errorCode
+  3: optional string message
+}
+
+struct TGenerateDataPartitionTableHeartbeatResp {
+  1: required common.TSStatus status
+  2: required i32 errorCode
+  3: optional string message
+  4: optional list<binary> databaseScopedDataPartitionTables
+  5: optional double progress
+}
+
+struct TGetDataPartitionTableGeneratorProgressResp {
+  1: required common.TSStatus status
+  2: required i32 errorCode
+  3: required double progress
+  4: optional string message
+}
+
+/**
+* END: Data Partition Table Integrity Check Structures
+**/
+
+/**
 * BEGIN: Used for EXPLAIN ANALYZE
 **/
 struct TOperatorStatistics{
@@ -690,6 +732,8 @@ service IDataNodeRPCService {
   TCancelResp cancelFragmentInstance(TCancelFragmentInstanceReq req);
 
   TSchemaFetchResponse fetchSchema(TSchemaFetchRequest req);
+
+  i32 getThriftMaxFrameSize();
 
   TLoadResp sendTsFilePieceNode(TTsFilePieceReq req);
 
@@ -1061,6 +1105,34 @@ service IDataNodeRPCService {
 
   /** Empty rpc, only for connection test */
   common.TSStatus testConnectionEmptyRPC()
+  /**
+  * BEGIN: Data Partition Table Integrity Check
+  **/
+
+  /**
+   * Get earliest timeslot information from DataNode
+   * Returns map of database name to earliest timeslot id
+   */
+  TGetEarliestTimeslotsResp getEarliestTimeslots()
+
+  /**
+   * Request DataNode to generate DataPartitionTable by scanning tsfile resources
+   */
+  TGenerateDataPartitionTableResp generateDataPartitionTable(TGenerateDataPartitionTableReq req)
+
+  /**
+   * Check the status of DataPartitionTable generation task
+   */
+  TGenerateDataPartitionTableHeartbeatResp generateDataPartitionTableHeartbeat(TGenerateDataPartitionTableReq req)
+
+  /**
+   * Get the progress of DataPartitionTable generation task without consuming the generated table.
+   */
+  TGetDataPartitionTableGeneratorProgressResp getDataPartitionTableGeneratorProgress()
+
+  /**
+  * END: Data Partition Table Integrity Check
+  **/
 }
 
 service MPPDataExchangeService {

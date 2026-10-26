@@ -88,7 +88,7 @@ public class UpdateModelInfoPlan extends ConfigPhysicalPlan {
     this.modelName = ReadWriteIOUtils.readString(buffer);
     this.modelInformation = ModelInformation.deserialize(buffer);
     int size = ReadWriteIOUtils.readInt(buffer);
-    this.nodeIds = new ArrayList<>();
+    this.nodeIds = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       this.nodeIds.add(ReadWriteIOUtils.readInt(buffer));
     }

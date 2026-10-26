@@ -34,6 +34,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 
@@ -101,6 +102,38 @@ public class ActiveLoadTsFileLoaderTest {
     Assert.assertTrue(
         new File(failDir, tsFile.getName() + TsFileResource.RESOURCE_SUFFIX).exists());
     Assert.assertTrue(new File(failDir, tsFile.getName() + ModificationFile.FILE_SUFFIX).exists());
+  }
+
+  @Test
+  public void testStopClearsPendingFilesForRestart() throws Exception {
+    final ActiveLoadTsFileLoader loader = new ActiveLoadTsFileLoader();
+    final Field pendingQueueField = ActiveLoadTsFileLoader.class.getDeclaredField("pendingQueue");
+    pendingQueueField.setAccessible(true);
+    final ActiveLoadPendingQueue pendingQueue =
+        (ActiveLoadPendingQueue) pendingQueueField.get(loader);
+    final String tsFilePath = new File(tempDir, "pending.tsfile").getAbsolutePath();
+    Assert.assertTrue(pendingQueue.enqueue(tsFilePath, tempDir.getAbsolutePath(), false));
+    Assert.assertTrue(loader.isFilePendingOrLoading(new File(tsFilePath)));
+
+    // A loader restart reuses this queue. Stale pending membership otherwise makes the scanner
+    // believe the on-disk TsFile is already scheduled and it will never enqueue it again.
+    loader.stop();
+
+    Assert.assertFalse(loader.isFilePendingOrLoading(new File(tsFilePath)));
+    Assert.assertTrue(pendingQueue.isEmpty());
+  }
+
+  @Test
+  public void testPendingEntryRetainsConversionTaskId() {
+    final ActiveLoadPendingQueue pendingQueue = new ActiveLoadPendingQueue();
+    final String tsFilePath = new File(tempDir, "task.tsfile").getAbsolutePath();
+    Assert.assertTrue(
+        pendingQueue.enqueue(tsFilePath, tempDir.getAbsolutePath(), true, "conversion-task"));
+
+    final ActiveLoadPendingQueue.ActiveLoadEntry entry = pendingQueue.dequeueFromPending();
+    Assert.assertNotNull(entry);
+    Assert.assertEquals("conversion-task", entry.getConversionTaskId());
+    pendingQueue.removeFromLoading(tsFilePath);
   }
 
   private File createTsFileWithCompanionFiles(final String fileName) throws Exception {

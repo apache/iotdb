@@ -89,6 +89,7 @@ utilityStatement
     | showQueries | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
     | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
     | removeFile | unloadFile
+    | repairDataPartitionTable | showRepairDataPartitionTableProgress
     ;
 
 /**
@@ -115,8 +116,8 @@ databaseAttributeKey
     | SCHEMA_REPLICATION_FACTOR
     | DATA_REPLICATION_FACTOR
     | TIME_PARTITION_INTERVAL
-    | SCHEMA_REGION_GROUP_NUM
-    | DATA_REGION_GROUP_NUM
+    | MAX_SCHEMA_REGION_GROUP_NUM
+    | MAX_DATA_REGION_GROUP_NUM
     ;
 
 // ---- Drop Database
@@ -1086,6 +1087,16 @@ startRepairData
 // Stop Repair Data
 stopRepairData
     : STOP REPAIR DATA (ON (LOCAL | CLUSTER))?
+    ;
+
+// Repair Data Partition Table
+repairDataPartitionTable
+    : REPAIR DATA PARTITION TABLE
+    ;
+
+// Show Repair Data Partition Table Progress
+showRepairDataPartitionTableProgress
+    : SHOW REPAIR DATA PARTITION TABLE PROGRESS
     ;
 
 // Explain

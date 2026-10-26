@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.common;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.OperatorMemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -47,45 +49,6 @@ import java.util.function.LongConsumer;
  * info and so on.
  */
 public class MPPQueryContext {
-  private static final String RESULT_SET_COLUMN_METADATA_MEMORY_NOT_ENOUGH =
-      "Not enough memory while analyzing metadata for query result columns. "
-          + "The result set has too many columns. "
-          + "Before the failure, IoTDB had matched %,d source columns for result-column "
-          + "expansion, expanded %,d source columns, and generated %,d result-set columns. "
-          + "%s"
-          + "Current series pagination is %s. "
-          + "Use SLIMIT/SOFFSET to reduce returned series%s, narrow the path pattern, "
-          + "or increase query memory%s. "
-          + "Memory details: source-column memory for result expansion %s, "
-          + "generated-result-column memory %s, requested this time %s, current free memory %s. "
-          + "Original error: %s";
-  private static final String RESULT_SET_COLUMNS_EXCEED_MEMORY_CAPACITY =
-      "The matched source columns exceed the estimated current memory capacity by "
-          + "at least %,d columns. ";
-  private static final String SCHEMA_FETCH_METADATA_MEMORY_NOT_ENOUGH =
-      "Not enough memory while fetching metadata for query analysis. "
-          + "The result set may have too many columns. "
-          + "Before the failure, IoTDB had deserialized %,d time-series columns from schema "
-          + "fetch results. Schema fetch memory may be reserved before safely deserializing "
-          + "the whole fetched metadata, so this count can be lower than the matched schema "
-          + "columns. %s"
-          + "Current series pagination is %s. "
-          + "Use SLIMIT/SOFFSET to reduce returned series%s, narrow the path pattern, "
-          + "or increase query memory%s. "
-          + "Memory details: fetched schema tree estimated memory %s, "
-          + "fetched schema tree reserved memory %s, requested this time %s, "
-          + "current free memory %s. Original error: %s";
-  private static final String SCHEMA_FETCH_COLUMNS_EXCEED_MEMORY_CAPACITY =
-      "The fetched schema columns exceed the estimated current memory capacity by "
-          + "at least %,d columns. ";
-  private static final String USE_ALIGN_BY_DEVICE_TO_REDUCE_RESULT_COLUMNS =
-      ", use ALIGN BY DEVICE to reduce cross-device result columns";
-  private static final String BY_AT_LEAST_MEMORY_SIZE = " by at least %s";
-  private static final String FOR_QUERY_ENGINE_OPERATOR_MEMORY_POOL =
-      " for the query engine/operator memory pool";
-  private static final String SERIES_PAGINATION_FOR_DIAGNOSTICS = "SLIMIT=%s, SOFFSET=%,d";
-  private static final String NOT_SET = "not set";
-  private static final String UNKNOWN = "unknown";
   private String sql;
   private final QueryId queryId;
 
@@ -130,6 +93,45 @@ public class MPPQueryContext {
   private final MemoryReservationManager memoryReservationManager;
 
   private static final int minSizeToUseSampledTimeseriesOperandMemCost = 100;
+  private static final String RESULT_SET_COLUMN_METADATA_MEMORY_NOT_ENOUGH =
+      "Not enough memory while analyzing metadata for query result columns. "
+          + "The result set has too many columns. "
+          + "Before the failure, IoTDB had matched %,d source columns for result-column "
+          + "expansion, expanded %,d source columns, and generated %,d result-set columns. "
+          + "%s"
+          + "Current series pagination is %s. "
+          + "Use SLIMIT/SOFFSET to reduce returned series%s, narrow the path pattern, "
+          + "or increase query memory%s. "
+          + "Memory details: source-column memory for result expansion %s, "
+          + "generated-result-column memory %s, requested this time %s, current free memory %s. "
+          + "Original error: %s";
+  private static final String RESULT_SET_COLUMNS_EXCEED_MEMORY_CAPACITY =
+      "The matched source columns exceed the estimated current memory capacity by "
+          + "at least %,d columns. ";
+  private static final String SCHEMA_FETCH_METADATA_MEMORY_NOT_ENOUGH =
+      "Not enough memory while fetching metadata for query analysis. "
+          + "The result set may have too many columns. "
+          + "Before the failure, IoTDB had deserialized %,d time-series columns from schema "
+          + "fetch results. Schema fetch memory may be reserved before safely deserializing "
+          + "the whole fetched metadata, so this count can be lower than the matched schema "
+          + "columns. %s"
+          + "Current series pagination is %s. "
+          + "Use SLIMIT/SOFFSET to reduce returned series%s, narrow the path pattern, "
+          + "or increase query memory%s. "
+          + "Memory details: fetched schema tree estimated memory %s, "
+          + "fetched schema tree reserved memory %s, requested this time %s, "
+          + "current free memory %s. Original error: %s";
+  private static final String SCHEMA_FETCH_COLUMNS_EXCEED_MEMORY_CAPACITY =
+      "The fetched schema columns exceed the estimated current memory capacity by "
+          + "at least %,d columns. ";
+  private static final String USE_ALIGN_BY_DEVICE_TO_REDUCE_RESULT_COLUMNS =
+      ", use ALIGN BY DEVICE to reduce cross-device result columns";
+  private static final String BY_AT_LEAST_MEMORY_SIZE = " by at least %s";
+  private static final String FOR_QUERY_ENGINE_OPERATOR_MEMORY_POOL =
+      " for the query engine/operator memory pool";
+  private static final String SERIES_PAGINATION_FOR_DIAGNOSTICS = "SLIMIT=%s, SOFFSET=%,d";
+  private static final String NOT_SET = "not set";
+  private static final String UNKNOWN = "unknown";
   private double avgTimeseriesOperandMemCost = 0;
   private int numsOfSampledTimeseriesOperand = 0;
   // When there is no view in a last query and no device exists in multiple regions,
@@ -162,6 +164,8 @@ public class MPPQueryContext {
    * insufficient. Set from analysis via {@link #setNeedSetHighestPriority(boolean)}.
    */
   private boolean needSetHighestPriority = false;
+
+  private boolean debug = false;
 
   @TestOnly
   public MPPQueryContext(QueryId queryId) {
@@ -256,7 +260,10 @@ public class MPPQueryContext {
     return queryType;
   }
 
-  /** the max executing time of query in ms. Unit: millisecond */
+  /**
+   * Returns the total query timeout in milliseconds, measured from {@link #getStartTime()}. This
+   * value never represents the remaining timeout.
+   */
   public long getTimeOut() {
     return timeOut;
   }
@@ -513,7 +520,7 @@ public class MPPQueryContext {
     schemaFetchDeserializedColumnCount = 0;
   }
 
-  private MemoryNotEnoughException enrichResultSetColumnMemoryNotEnoughException(
+  MemoryNotEnoughException enrichResultSetColumnMemoryNotEnoughException(
       MemoryNotEnoughException e, long requestedBytes) {
     if (!resultSetColumnMemoryTrackingEnabled
         || (matchedSourceColumnsForResultSet == 0
@@ -522,10 +529,23 @@ public class MPPQueryContext {
       return e;
     }
 
-    long freeBytes = LocalExecutionPlanner.getInstance().getFreeMemoryForOperators();
+    long freeBytes =
+        e instanceof OperatorMemoryNotEnoughException
+            ? ((OperatorMemoryNotEnoughException) e).getFreeBytes()
+            : LocalExecutionPlanner.getInstance().getFreeMemoryForOperators();
+    long failedReservationBytes =
+        e instanceof OperatorMemoryNotEnoughException
+            ? ((OperatorMemoryNotEnoughException) e).getRequestedBytes()
+            : requestedBytes;
     long shortageBytes =
-        requestedBytes > 0 && requestedBytes > freeBytes ? requestedBytes - freeBytes : -1;
+        failedReservationBytes > 0 && failedReservationBytes > freeBytes
+            ? failedReservationBytes - freeBytes
+            : -1;
     long exceededColumns = estimateExceededColumns(freeBytes, requestedBytes);
+    long columnEquivalentShortage =
+        exceededColumns > 0
+            ? 0
+            : estimateColumnEquivalentShortage(freeBytes, failedReservationBytes, requestedBytes);
 
     return new MemoryNotEnoughException(
         String.format(
@@ -537,7 +557,10 @@ public class MPPQueryContext {
             exceededColumns > 0
                 ? String.format(
                     Locale.ROOT, RESULT_SET_COLUMNS_EXCEED_MEMORY_CAPACITY, exceededColumns)
-                : "",
+                : String.format(
+                    Locale.ROOT,
+                    DataNodeQueryMessages.RESULT_SET_COLUMN_MEMORY_SHORTAGE_EQUIVALENT,
+                    columnEquivalentShortage),
             formatSeriesPaginationForDiagnostics(),
             alignByDeviceForResultSetColumnTracking
                 ? ""
@@ -547,7 +570,7 @@ public class MPPQueryContext {
                 : FOR_QUERY_ENGINE_OPERATOR_MEMORY_POOL,
             formatBytes(sourceColumnMemoryCostForResultSet),
             formatBytes(generatedResultSetColumnMemoryCost),
-            formatBytes(requestedBytes),
+            formatBytes(failedReservationBytes),
             formatBytes(freeBytes),
             e.getMessage()));
   }
@@ -601,6 +624,26 @@ public class MPPQueryContext {
     long columnsToCompare =
         Math.max(matchedSourceColumnsForResultSet, expandedSourceColumnsForResultSet + 1);
     return Math.max(0, columnsToCompare - estimatedCapacity);
+  }
+
+  /** Converts a failed batch's memory deficit into an observed-column-size equivalent. */
+  private long estimateColumnEquivalentShortage(
+      long freeBytes, long failedReservationBytes, long requestedBytes) {
+    long avgColumnMemory;
+    if (generatedResultSetColumns > 0 && generatedResultSetColumnMemoryCost > 0) {
+      avgColumnMemory =
+          Math.max(1, divideCeil(generatedResultSetColumnMemoryCost, generatedResultSetColumns));
+    } else if (expandedSourceColumnsForResultSet > 0 && sourceColumnMemoryCostForResultSet > 0) {
+      avgColumnMemory =
+          Math.max(
+              1, divideCeil(sourceColumnMemoryCostForResultSet, expandedSourceColumnsForResultSet));
+    } else {
+      avgColumnMemory = Math.max(1, requestedBytes > 0 ? requestedBytes : failedReservationBytes);
+    }
+
+    // The failed allocation proves a shortage, even if memory was released before it was read.
+    long shortageBytes = Math.max(1, failedReservationBytes - freeBytes);
+    return divideCeil(shortageBytes, avgColumnMemory);
   }
 
   private long estimateExceededSchemaFetchColumns(long freeBytes, long requestedBytes) {
@@ -711,6 +754,14 @@ public class MPPQueryContext {
 
   public void setUserQuery(boolean userQuery) {
     this.userQuery = userQuery;
+  }
+
+  public boolean isDebug() {
+    return debug;
+  }
+
+  public void setDebug(boolean debug) {
+    this.debug = debug;
   }
 
   public boolean needSetHighestPriority() {

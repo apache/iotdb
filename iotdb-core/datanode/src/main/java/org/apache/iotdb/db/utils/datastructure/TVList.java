@@ -64,19 +64,30 @@ public abstract class TVList implements WALEntryValue {
   public static class RamInfo {
     private final int timestampsSize;
     private final long arrayMemCost;
+    private final long ramSize;
     private final int rowCount;
     private final List<TSDataType> dataTypes;
 
     public RamInfo(
         int timestampCount, long arrayMemCost, int rowCount, List<TSDataType> dataTypes) {
+      this(timestampCount, arrayMemCost, (long) timestampCount * arrayMemCost, rowCount, dataTypes);
+    }
+
+    public RamInfo(
+        int timestampCount,
+        long arrayMemCost,
+        long ramSize,
+        int rowCount,
+        List<TSDataType> dataTypes) {
       this.timestampsSize = timestampCount;
       this.rowCount = rowCount;
       this.arrayMemCost = arrayMemCost;
+      this.ramSize = ramSize;
       this.dataTypes = dataTypes;
     }
 
     public long getRamSize() {
-      return timestampsSize * arrayMemCost;
+      return ramSize;
     }
 
     public int getTimestampsSize() {
@@ -529,11 +540,6 @@ public abstract class TVList implements WALEntryValue {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public TVList getTvListByColumnIndex(
-      List<Integer> columnIndexList, List<TSDataType> dataTypeList) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
   public long getMaxTime() {
     return maxTime;
   }
@@ -558,7 +564,13 @@ public abstract class TVList implements WALEntryValue {
     return clone();
   }
 
-  public int delete(long lowerBound, long upperBound) {
+  /*
+   * Must be synchronized with sort() on the same TVList instance: a query may sort
+   * this list in place (sort() is synchronized), and a concurrent delete would
+   * otherwise read the half-rebuilt indices and throw IndexOutOfBoundsException
+   * or delete wrong rows.
+   */
+  public synchronized int delete(long lowerBound, long upperBound) {
     int deletedNumber = 0;
     long maxTime = Long.MIN_VALUE;
     long minTime = Long.MAX_VALUE;
@@ -792,6 +804,16 @@ public abstract class TVList implements WALEntryValue {
     return queryContextSet;
   }
 
+  /**
+   * Get the union of all columns accessed by queries on this TVList. For non-AlignedTVList, returns
+   * empty set. This method should be called with queryListLock held for thread safety.
+   *
+   * @return set of accessed column indices, or empty set if no columns are tracked
+   */
+  public Set<Integer> getAccessedColumnsForQuery() {
+    return null;
+  }
+
   public List<BitMap> getBitMap() {
     return bitMap;
   }
@@ -909,9 +931,10 @@ public abstract class TVList implements WALEntryValue {
       int newIndex = getScanOrderIndex(indexInTVList);
       if (newIndex > index) {
         index = newIndex;
+        // If the cursor does not move, a duplicate-timestamp group prepared for the current
+        // position remains valid. Invalidate it only after the cursor actually advances.
+        probeNext = false;
       }
-
-      probeNext = false;
     }
 
     protected void prepareNext() {
@@ -1216,6 +1239,7 @@ public abstract class TVList implements WALEntryValue {
       // been applied when constructing the tsBlock
       TsBlock tsBlock = builder.build();
       addTsBlock(tsBlock);
+      probeNext = false;
       return tsBlock;
     }
 

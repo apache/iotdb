@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -36,6 +37,7 @@ import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoRe
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.enums.TSDataType;
@@ -115,6 +117,20 @@ public class ClusterSchemaInfoTest {
     Map<String, TDatabaseSchema> reloadResult =
         clusterSchemaInfo.getMatchedDatabaseSchemas(getStorageGroupReq).getSchemaMap();
     Assert.assertEquals(testMap, reloadResult);
+  }
+
+  @Test
+  public void testDatabasePathWithEmptyNodeIsInvalid() throws MetadataException {
+    clusterSchemaInfo.isDatabaseNameValid("root.database");
+
+    for (final String database : Arrays.asList("", "root.", "root..database", "root.database.")) {
+      try {
+        clusterSchemaInfo.isDatabaseNameValid(database);
+        Assert.fail("Expected IllegalPathException for database: " + database);
+      } catch (final IllegalPathException e) {
+        Assert.assertEquals(TSStatusCode.ILLEGAL_PATH.getStatusCode(), e.getErrorCode());
+      }
+    }
   }
 
   @Test

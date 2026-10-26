@@ -171,7 +171,9 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(3)
-        .setDataReplicationFactor(2);
+        .setDataReplicationFactor(2)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
     receiverEnv
         .getConfig()
         .getCommonConfig()
@@ -180,7 +182,9 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(1)
-        .setDataReplicationFactor(1);
+        .setDataReplicationFactor(1)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
@@ -313,8 +317,8 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
       TestUtils.executeNonQueries(
           senderEnv, Arrays.asList("insert into root.db.d1(time,s1) values (3,3)", "flush"), null);
 
-      Thread.sleep(5000);
-      TestUtils.assertDataEventuallyOnEnv(
+      // A stopped pipe must keep the receiver data unchanged.
+      TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -350,7 +354,9 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
         .setDataReplicationFactor(1)
         .setEnableSeqSpaceCompaction(false)
         .setEnableUnseqSpaceCompaction(false)
-        .setEnableCrossSpaceCompaction(false);
+        .setEnableCrossSpaceCompaction(false)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
     receiverEnv
         .getConfig()
         .getCommonConfig()
@@ -360,7 +366,9 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(3)
-        .setDataReplicationFactor(2);
+        .setDataReplicationFactor(2)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);

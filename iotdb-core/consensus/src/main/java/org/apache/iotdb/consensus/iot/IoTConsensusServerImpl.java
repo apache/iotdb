@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
@@ -1010,7 +1011,13 @@ public class IoTConsensusServerImpl {
         List<TSStatus> subStatus = new LinkedList<>();
         for (IConsensusRequest insertNode : request.getInsertNodes()) {
           insertNode.markAsGeneratedByRemoteConsensusLeader();
-          subStatus.add(stateMachine.write(insertNode));
+          // Reject requests that became read-only while queued. This is an early rejection only:
+          // the state machine must also fence the full apply against storage shutdown, since the
+          // replica can become read-only after this check.
+          subStatus.add(
+              isReadOnly()
+                  ? StatusUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY)
+                  : stateMachine.write(insertNode));
         }
         long applyTime = System.nanoTime();
         ioTConsensusServerMetrics.recordApplyCost(applyTime - sortTime);

@@ -25,13 +25,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
 
+import com.google.common.collect.Maps;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -178,21 +178,22 @@ public class DeviceViewNode extends MultiChildProcessNode {
     OrderByParameter mergeOrderParameter = OrderByParameter.deserialize(byteBuffer);
 
     int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> outputColumnNames = new ArrayList<>();
+    List<String> outputColumnNames = new ArrayList<>(columnSize);
     while (columnSize > 0) {
       outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
       columnSize--;
     }
 
     int devicesSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> devices = new ArrayList<>();
+    List<String> devices = new ArrayList<>(devicesSize);
     while (devicesSize > 0) {
       devices.add(ReadWriteIOUtils.readString(byteBuffer));
       devicesSize--;
     }
 
     int mapSize = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>(mapSize);
+    Map<String, List<Integer>> deviceToMeasurementIndexesMap =
+        Maps.newHashMapWithExpectedSize(mapSize);
     while (mapSize > 0) {
       String deviceName = ReadWriteIOUtils.readString(byteBuffer);
       int listSize = ReadWriteIOUtils.readInt(byteBuffer);

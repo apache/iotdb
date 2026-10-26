@@ -330,7 +330,7 @@ public class SessionUtils {
     if (nodeUrls == null) {
       throw new NumberFormatException("nodeUrls is null");
     }
-    List<TEndPoint> endPointsList = new ArrayList<>();
+    List<TEndPoint> endPointsList = new ArrayList<>(nodeUrls.size());
     for (String nodeUrl : nodeUrls) {
       TEndPoint endPoint = UrlUtils.parseTEndPointIpv4AndIpv6Url(nodeUrl);
       endPointsList.add(endPoint);

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.event.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventTsFileBatch;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTsFileQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
@@ -28,6 +29,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +44,7 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
       LoggerFactory.getLogger(SubscriptionPipeTsFileEventBatch.class);
 
   private final PipeTabletEventTsFileBatch batch;
+  private final List<File> sealedFiles = new ArrayList<>();
 
   public SubscriptionPipeTsFileEventBatch(
       final int regionId,
@@ -52,6 +55,17 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
     this.batch = new PipeTabletEventTsFileBatch(maxDelayInMs, maxBatchSizeInBytes);
   }
 
+  @TestOnly
+  SubscriptionPipeTsFileEventBatch(
+      final int regionId,
+      final SubscriptionPrefetchingTsFileQueue prefetchingQueue,
+      final int maxDelayInMs,
+      final long maxBatchSizeInBytes,
+      final PipeTabletEventTsFileBatch batch) {
+    super(regionId, prefetchingQueue, maxDelayInMs, maxBatchSizeInBytes);
+    this.batch = batch;
+  }
+
   @Override
   public synchronized void ack() {
     batch.decreaseEventsReferenceCount(this.getClass().getName(), true);
@@ -59,9 +73,14 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
 
   @Override
   public synchronized void cleanUp(final boolean force) {
-    // close batch, it includes clearing the reference count of events
-    batch.close();
-    enrichedEvents.clear();
+    try {
+      // close batch, it includes clearing the reference count of events
+      batch.close();
+    } finally {
+      sealedFiles.forEach(FileUtils::deleteQuietly);
+      sealedFiles.clear();
+      enrichedEvents.clear();
+    }
   }
 
   /////////////////////////////// utility ///////////////////////////////
@@ -95,6 +114,7 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
 
     final List<SubscriptionEvent> events = new ArrayList<>();
     final List<File> tsFiles = batch.sealTsFiles();
+    sealedFiles.addAll(tsFiles);
     final AtomicInteger ackReferenceCount = new AtomicInteger(tsFiles.size());
     final AtomicInteger cleanReferenceCount = new AtomicInteger(tsFiles.size());
     for (final File tsFile : tsFiles) {

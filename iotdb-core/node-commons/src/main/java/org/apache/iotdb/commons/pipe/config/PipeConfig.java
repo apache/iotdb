@@ -66,6 +66,7 @@ public class PipeConfig {
   }
 
   public double getPipeTotalFloatingMemoryProportion() {
+    // This is the upper limit of floating memory, not a statically reserved partition.
     return COMMON_CONFIG.getPipeTotalFloatingMemoryProportion();
   }
 
@@ -81,6 +82,14 @@ public class PipeConfig {
 
   public long getTsFileParserMemory() {
     return COMMON_CONFIG.getPipeTsFileParserMemory();
+  }
+
+  public int getPipeTsFileParserInFlightMaxNum() {
+    return COMMON_CONFIG.getPipeTsFileParserInFlightMaxNum();
+  }
+
+  public int getPipeTsFileParserInFlightMaxNumPerPipeRegion() {
+    return COMMON_CONFIG.getPipeTsFileParserInFlightMaxNumPerPipeRegion();
   }
 
   public long getSinkBatchMemoryInsertNode() {
@@ -221,6 +230,14 @@ public class PipeConfig {
 
   public long getPipeAsyncSinkMaxRetryExecutionTimeMsPerCall() {
     return COMMON_CONFIG.getPipeAsyncSinkMaxRetryExecutionTimeMsPerCall();
+  }
+
+  public long getPipeAsyncSinkRetryMaxDurationMs() {
+    return COMMON_CONFIG.getPipeAsyncSinkRetryMaxDurationMs();
+  }
+
+  public long getPipeAsyncSinkRetryProbeIntervalMs() {
+    return COMMON_CONFIG.getPipeAsyncSinkRetryProbeIntervalMs();
   }
 
   public int getPipeAsyncSinkSelectorNumber() {
@@ -494,6 +511,10 @@ public class PipeConfig {
 
     LOGGER.info("IsPipeEnableMemoryCheck: {}", isPipeEnableMemoryCheck());
     LOGGER.info("PipeTsFileParserMemory: {}", getTsFileParserMemory());
+    LOGGER.info("PipeTsFileParserInFlightMaxNum: {}", getPipeTsFileParserInFlightMaxNum());
+    LOGGER.info(
+        "PipeTsFileParserInFlightMaxNumPerPipeRegion: {}",
+        getPipeTsFileParserInFlightMaxNumPerPipeRegion());
     LOGGER.info("SinkBatchMemoryInsertNode: {}", getSinkBatchMemoryInsertNode());
     LOGGER.info("SinkBatchMemoryTsFile: {}", getSinkBatchMemoryTsFile());
     LOGGER.info("SendTsFileReadBuffer: {}", getSendTsFileReadBuffer());
@@ -593,6 +614,8 @@ public class PipeConfig {
     LOGGER.info(
         "PipeAsyncSinkMaxRetryExecutionTimeMsPerCall: {}",
         getPipeAsyncSinkMaxRetryExecutionTimeMsPerCall());
+    LOGGER.info("PipeAsyncSinkRetryMaxDurationMs: {}", getPipeAsyncSinkRetryMaxDurationMs());
+    LOGGER.info("PipeAsyncSinkRetryProbeIntervalMs: {}", getPipeAsyncSinkRetryProbeIntervalMs());
     LOGGER.info("PipeAsyncSinkSelectorNumber: {}", getPipeAsyncSinkSelectorNumber());
     LOGGER.info("PipeAsyncSinkMaxClientNumber: {}", getPipeAsyncSinkMaxClientNumber());
     LOGGER.info("PipeAsyncSinkMaxTsFileClientNumber: {}", getPipeAsyncSinkMaxTsFileClientNumber());
@@ -636,7 +659,7 @@ public class PipeConfig {
         getPipeAirGapReceiverMaxPayloadSizeInBytes());
     LOGGER.info("PipeReceiverLoadConversionEnabled: {}", isPipeReceiverLoadConversionEnabled());
     LOGGER.info(
-        "PipePeriodicalLogMinIntervalSeconds: {}", getPipePeriodicalLogMinIntervalSeconds());
+        "LoggerPeriodicalLogMinIntervalSeconds: {}", getPipePeriodicalLogMinIntervalSeconds());
     LOGGER.info(
         "PipeRetryLocallyForParallelOrUserConflict: {}",
         isPipeRetryLocallyForParallelOrUserConflict());
@@ -645,7 +668,7 @@ public class PipeConfig {
     LOGGER.info("PipeMetaReportMaxLogIntervalRounds: {}", getPipeMetaReportMaxLogIntervalRounds());
     LOGGER.info("PipeTsFilePinMaxLogNumPerRound: {}", getPipeTsFilePinMaxLogNumPerRound());
     LOGGER.info("PipeTsFilePinMaxLogIntervalRounds: {}", getPipeTsFilePinMaxLogIntervalRounds());
-    LOGGER.info("PipeLoggerCacheMaxSizeInBytes: {}", getPipeLoggerCacheMaxSizeInBytes());
+    LOGGER.info("LoggerCacheMaxSizeInBytes: {}", getPipeLoggerCacheMaxSizeInBytes());
 
     LOGGER.info("PipeMemoryManagementEnabled: {}", getPipeMemoryManagementEnabled());
     LOGGER.info("PipeMemoryAllocateMaxRetries: {}", getPipeMemoryAllocateMaxRetries());

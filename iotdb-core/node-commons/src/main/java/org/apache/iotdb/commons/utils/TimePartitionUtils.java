@@ -122,6 +122,10 @@ public class TimePartitionUtils {
     return partitionId.longValue();
   }
 
+  public static long getStartTimeByPartitionId(long partitionId) {
+    return (partitionId * timePartitionInterval) + timePartitionOrigin;
+  }
+
   public static boolean satisfyPartitionId(long startTime, long endTime, long partitionId) {
     long startPartition =
         originMayCauseOverflow

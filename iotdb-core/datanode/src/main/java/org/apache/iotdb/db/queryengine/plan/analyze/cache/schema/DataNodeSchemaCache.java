@@ -166,17 +166,24 @@ public class DataNodeSchemaCache {
   public List<Integer> computeWithoutTemplate(final ISchemaComputation schemaComputation) {
     final List<Integer> indexOfMissingMeasurements = new ArrayList<>();
     final String[] measurements = schemaComputation.getMeasurements();
+    if (measurements == null) {
+      return indexOfMissingMeasurements;
+    }
 
     final IDeviceSchema schema =
         deviceSchemaCache.getDeviceSchema(schemaComputation.getDevicePath());
     if (!(schema instanceof DeviceNormalSchema)) {
-      return IntStream.range(0, schemaComputation.getMeasurements().length)
+      return IntStream.range(0, measurements.length)
+          .filter(i -> measurements[i] != null)
           .boxed()
           .collect(Collectors.toList());
     }
     final DeviceNormalSchema treeSchema = (DeviceNormalSchema) schema;
 
-    for (int i = 0; i < schemaComputation.getMeasurements().length; i++) {
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurements[i] == null) {
+        continue;
+      }
       final SchemaCacheEntry value = treeSchema.getSchemaCacheEntry(measurements[i]);
       if (value == null) {
         indexOfMissingMeasurements.add(i);
@@ -325,6 +332,17 @@ public class DataNodeSchemaCache {
       final IMeasurementSchema[] measurementSchemas) {
     deviceSchemaCache.updateLastCache(
         database, deviceID, measurements, timeValuePairs, isAligned, measurementSchemas, false);
+  }
+
+  public void updateLastCacheIfExists(
+      final String database,
+      final PartialPath deviceID,
+      final String[] measurements,
+      final LastCacheUpdateSource updateSource,
+      final boolean isAligned,
+      final IMeasurementSchema[] measurementSchemas) {
+    deviceSchemaCache.updateLastCache(
+        database, deviceID, measurements, updateSource, isAligned, measurementSchemas);
   }
 
   /**

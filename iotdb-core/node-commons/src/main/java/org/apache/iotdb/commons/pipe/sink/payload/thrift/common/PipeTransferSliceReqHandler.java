@@ -42,8 +42,14 @@ public class PipeTransferSliceReqHandler {
 
   private int sliceCount = -1;
   private final List<byte[]> sliceBodies = new ArrayList<>();
+  private long receivedBodySize = 0;
 
   public boolean receiveSlice(final PipeTransferSliceReq req) {
+    if (!isValidSliceReq(req)) {
+      clear();
+      return false;
+    }
+
     if (orderId == -1
         || originReqType == -1
         || originBodySize == -1
@@ -58,6 +64,7 @@ public class PipeTransferSliceReqHandler {
         originReqType = req.getOriginReqType();
         originBodySize = req.getOriginBodySize();
         sliceCount = req.getSliceCount();
+        receivedBodySize = 0;
       } else {
         LOGGER.warn(
             "Invalid state: orderId={}, originReqType={}, originBodySize={}, sliceCount={}, sliceBodies.size={}",
@@ -104,8 +111,37 @@ public class PipeTransferSliceReqHandler {
       return false;
     }
 
+    if (receivedBodySize + req.getSliceBody().length > originBodySize) {
+      LOGGER.warn(
+          "Received slice body size {} exceeds origin body size {}",
+          receivedBodySize + req.getSliceBody().length,
+          originBodySize);
+      clear();
+      return false;
+    }
+
     sliceBodies.add(req.getSliceBody());
+    receivedBodySize += req.getSliceBody().length;
+
+    if (sliceBodies.size() == sliceCount && receivedBodySize != originBodySize) {
+      LOGGER.warn(
+          "Received slice body size {} is not equal to origin body size {}",
+          receivedBodySize,
+          originBodySize);
+      clear();
+      return false;
+    }
+
     return true;
+  }
+
+  private boolean isValidSliceReq(final PipeTransferSliceReq req) {
+    return req.getOriginBodySize() >= 0
+        && req.getSliceCount() > 0
+        && req.getSliceIndex() >= 0
+        && req.getSliceIndex() < req.getSliceCount()
+        && req.getSliceBody() != null
+        && req.getSliceBody().length <= req.getOriginBodySize();
   }
 
   public Optional<TPipeTransferReq> makeReqIfComplete() {
@@ -131,5 +167,6 @@ public class PipeTransferSliceReqHandler {
     originBodySize = -1;
     sliceCount = -1;
     sliceBodies.clear();
+    receivedBodySize = 0;
   }
 }

@@ -123,7 +123,7 @@ public class PipeConsensusReceiver {
 
     try {
       this.folderManager =
-          new FolderManager(receiverBaseDirsName, DirectoryStrategyType.SEQUENCE_STRATEGY);
+          new FolderManager(receiverBaseDirsName, DirectoryStrategyType.SEQUENCE_STRATEGY, false);
     } catch (Exception e) {
       LOGGER.error(
           "Fail to create pipeConsensus receiver file folders allocation strategy because all disks of folders are full.",

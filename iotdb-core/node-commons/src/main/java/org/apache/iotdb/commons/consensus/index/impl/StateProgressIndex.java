@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -36,6 +37,7 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
@@ -197,6 +199,14 @@ public class StateProgressIndex extends ProgressIndex {
   }
 
   @Override
+  public <T extends ProgressIndex> Optional<T> getProgressIndexByType(
+      final Class<T> progressIndexClass) {
+    return progressIndexClass.isInstance(this)
+        ? Optional.of(progressIndexClass.cast(this))
+        : getInnerProgressIndex().getProgressIndexByType(progressIndexClass);
+  }
+
+  @Override
   public TotalOrderSumTuple getTotalOrderSumTuple() {
     return innerProgressIndex.getTotalOrderSumTuple();
   }
@@ -204,8 +214,8 @@ public class StateProgressIndex extends ProgressIndex {
   public static StateProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
     final long version = ReadWriteIOUtils.readLong(byteBuffer);
 
-    final Map<String, Binary> state = new HashMap<>();
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
+    final Map<String, Binary> state = Maps.newHashMapWithExpectedSize(size);
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(byteBuffer);
       final Binary value = ReadWriteIOUtils.readBinary(byteBuffer);
@@ -220,8 +230,8 @@ public class StateProgressIndex extends ProgressIndex {
   public static StateProgressIndex deserializeFrom(InputStream stream) throws IOException {
     final long version = ReadWriteIOUtils.readLong(stream);
 
-    final Map<String, Binary> state = new HashMap<>();
     final int size = ReadWriteIOUtils.readInt(stream);
+    final Map<String, Binary> state = Maps.newHashMapWithExpectedSize(size);
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(stream);
       final Binary value = ReadWriteIOUtils.readBinary(stream);

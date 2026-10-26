@@ -30,6 +30,10 @@ public class PipeSourceConstant {
   public static final String SOURCE_IOTDB_USERNAME_KEY = "source.username";
   public static final String EXTRACTOR_IOTDB_PASSWORD_KEY = "extractor.password";
   public static final String SOURCE_IOTDB_PASSWORD_KEY = "source.password";
+  public static final String EXTRACTOR_IOTDB_USER_ID = "extractor.user-id";
+  public static final String SOURCE_IOTDB_USER_ID = "source.user-id";
+  public static final String EXTRACTOR_IOTDB_CLI_HOSTNAME = "extractor.cli-hostname";
+  public static final String SOURCE_IOTDB_CLI_HOSTNAME = "source.cli-hostname";
 
   public static final String EXTRACTOR_INCLUSION_KEY = "extractor.inclusion";
   public static final String SOURCE_INCLUSION_KEY = "source.inclusion";
@@ -85,9 +89,19 @@ public class PipeSourceConstant {
   public static final String EXTRACTOR_HISTORY_LOOSE_RANGE_PATH_VALUE = "path";
   public static final String EXTRACTOR_HISTORY_LOOSE_RANGE_ALL_VALUE = "all";
   public static final String EXTRACTOR_HISTORY_LOOSE_RANGE_DEFAULT_VALUE = "";
+  public static final String EXTRACTOR_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_KEY =
+      "extractor.history.tsfile.order-by-query-priority";
+  public static final String SOURCE_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_KEY =
+      "source.history.tsfile.order-by-query-priority";
+  public static final boolean EXTRACTOR_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_DEFAULT_VALUE = true;
   public static final String EXTRACTOR_MODS_ENABLE_KEY = "extractor.mods.enable";
   public static final String SOURCE_MODS_ENABLE_KEY = "source.mods.enable";
   public static final boolean EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE = false;
+
+  public static final String EXTRACTOR_TSFILE_PARSER_KEY = "extractor.tsfile.parser";
+  public static final String SOURCE_TSFILE_PARSER_KEY = "source.tsfile.parser";
+  public static final String EXTRACTOR_TSFILE_PARSER_QUERY_VALUE = "query";
+  public static final String EXTRACTOR_TSFILE_PARSER_SCAN_VALUE = "scan";
 
   public static final String EXTRACTOR_REALTIME_ENABLE_KEY = "extractor.realtime.enable";
   public static final String SOURCE_REALTIME_ENABLE_KEY = "source.realtime.enable";

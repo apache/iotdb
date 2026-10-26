@@ -84,7 +84,11 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
         ((EnrichedEvent) event)
             .decreaseReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName(), true);
       }
-      if (status.isSetRedirectNode()) {
+      // A multi-device InsertRowsNode response stores redirect endpoints in per-device
+      // sub-statuses instead of on the top-level status.
+      if (status.isSetRedirectNode()
+          || (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+              && status.isSetSubStatus())) {
         updateLeaderCache(status);
       }
     } catch (final Exception e) {
@@ -108,7 +112,7 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
           event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitterKey() : null,
           event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitIds() : null);
     } finally {
-      sink.addFailureEventToRetryQueue(event, exception);
+      sink.addFailureEventToRetryQueue(event, exception, this);
     }
   }
 

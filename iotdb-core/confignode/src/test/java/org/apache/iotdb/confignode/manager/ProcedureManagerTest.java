@@ -30,15 +30,18 @@ import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeHandler;
+import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -49,6 +52,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.db.service.RegionMigrateService.isFailed;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
@@ -139,6 +143,22 @@ public class ProcedureManagerTest {
 
     TSStatus status = PROCEDURE_MANAGER.checkRemoveDataNodes(removedDataNodes);
     Assert.assertTrue(isFailed(status));
+  }
+
+  @Test
+  public void testPreSubmissionFailureWithNoProcedureIdIsReportedImmediately() throws Exception {
+    final Procedure<ConfigNodeProcedureEnv> procedure = mock(Procedure.class);
+    when(procedure.getProcId()).thenReturn(Procedure.NO_PROC_ID);
+    when(procedure.isFinished()).thenReturn(false);
+    when(procedure.isFailed()).thenReturn(true);
+    when(procedure.getException()).thenReturn(new ProcedureException("conflict"));
+
+    final Method waitingProcedureFinished =
+        ProcedureManager.class.getDeclaredMethod("waitingProcedureFinished", Procedure.class);
+    waitingProcedureFinished.setAccessible(true);
+    final TSStatus status =
+        (TSStatus) waitingProcedureFinished.invoke(PROCEDURE_MANAGER, procedure);
+    Assert.assertEquals(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), status.getCode());
   }
 
   @Test

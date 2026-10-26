@@ -156,29 +156,44 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       final PipeInsertNodeTabletInsertionEvent insertNodeTabletInsertionEvent =
           (PipeInsertNodeTabletInsertionEvent) event;
       final List<Tablet> tablets = insertNodeTabletInsertionEvent.convertToTablets();
+      final List<Tablet> retainedTablets = new ArrayList<>(tablets.size());
+      final List<Boolean> retainedAlignedFlags = new ArrayList<>(tablets.size());
       for (int i = 0; i < tablets.size(); ++i) {
         final Tablet tablet = tablets.get(i);
         if (tablet.rowSize == 0) {
           continue;
         }
+        retainedTablets.add(tablet);
+        retainedAlignedFlags.add(insertNodeTabletInsertionEvent.isAligned(i));
+      }
+
+      if (retainedTablets.isEmpty()) {
+        return false;
+      }
+      increaseTotalBufferSizeAndUpdateMemoryBlock(calculateTabletsSizeInBytes(retainedTablets));
+      for (int i = 0; i < retainedTablets.size(); ++i) {
+        final Tablet tablet = retainedTablets.get(i);
         bufferTablet(
             insertNodeTabletInsertionEvent.getPipeName(),
             insertNodeTabletInsertionEvent.getCreationTime(),
             tablet,
-            insertNodeTabletInsertionEvent.isAligned(i));
+            retainedAlignedFlags.get(i));
       }
+      return true;
     } else if (event instanceof PipeRawTabletInsertionEvent) {
       final PipeRawTabletInsertionEvent rawTabletInsertionEvent =
           (PipeRawTabletInsertionEvent) event;
       final Tablet tablet = rawTabletInsertionEvent.convertToTablet();
       if (tablet.rowSize == 0) {
-        return true;
+        return false;
       }
+      increaseTotalBufferSizeAndUpdateMemoryBlock(calculateTabletSizeInBytes(tablet));
       bufferTablet(
           rawTabletInsertionEvent.getPipeName(),
           rawTabletInsertionEvent.getCreationTime(),
           tablet,
           rawTabletInsertionEvent.isAligned());
+      return true;
     } else {
       LOGGER.warn(
           "Batch id = {}: Unsupported event {} type {} when constructing tsfile batch",
@@ -186,7 +201,57 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
           event,
           event.getClass());
     }
-    return true;
+    return false;
+  }
+
+  private long calculateTabletsSizeInBytes(final List<Tablet> tablets) {
+    return tablets.stream()
+        .filter(tablet -> tablet.rowSize > 0)
+        .mapToLong(PipeTabletEventTsFileBatch::calculateTabletSizeInBytes)
+        .sum();
+  }
+
+  private static long calculateTabletSizeInBytes(final Tablet tablet) {
+    return PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) * 2;
+  }
+
+  @Override
+  public Object captureBatchState() {
+    return new BatchState(
+        tabletList.size(), isTabletAlignedList.size(), new HashMap<>(pipeName2WeightMap));
+  }
+
+  @Override
+  public void rollbackBatchState(final Object state) {
+    if (!(state instanceof BatchState)) {
+      return;
+    }
+    final BatchState batchState = (BatchState) state;
+    truncate(tabletList, batchState.tabletListSize);
+    truncate(isTabletAlignedList, batchState.isTabletAlignedListSize);
+    pipeName2WeightMap.clear();
+    pipeName2WeightMap.putAll(batchState.pipeName2WeightMap);
+  }
+
+  private static <T> void truncate(final List<T> list, final int size) {
+    if (list.size() > size) {
+      list.subList(size, list.size()).clear();
+    }
+  }
+
+  private static final class BatchState {
+    private final int tabletListSize;
+    private final int isTabletAlignedListSize;
+    private final Map<Pair<String, Long>, Double> pipeName2WeightMap;
+
+    private BatchState(
+        final int tabletListSize,
+        final int isTabletAlignedListSize,
+        final Map<Pair<String, Long>, Double> pipeName2WeightMap) {
+      this.tabletListSize = tabletListSize;
+      this.isTabletAlignedListSize = isTabletAlignedListSize;
+      this.pipeName2WeightMap = pipeName2WeightMap;
+    }
   }
 
   private void bufferTablet(
@@ -195,10 +260,6 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       final Tablet tablet,
       final boolean isAligned) {
     new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
-
-    // TODO: Currently, PipeTsFileBuilderV2 still uses a fallback builder, so memory table writing
-    // and storing temporary tablets require double the memory.
-    totalBufferSize += PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) * 2;
 
     pipeName2WeightMap.compute(
         new Pair<>(pipeName, creationTime),
@@ -277,7 +338,13 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     // Try making the tsfile size as large as possible
     while (!device2TabletsLinkedList.isEmpty()) {
       if (Objects.isNull(fileWriter)) {
-        fileWriter = new TsFileWriter(createFile());
+        final File file = createFile();
+        try {
+          fileWriter = new TsFileWriter(file);
+        } catch (final IOException | RuntimeException e) {
+          FileUtils.deleteQuietly(file);
+          throw e;
+        }
       }
 
       try {
@@ -464,9 +531,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   }
 
   @Override
-  public synchronized void onSuccess() {
-    super.onSuccess();
-
+  protected void clearBatchData() {
     pipeName2WeightMap.clear();
 
     tabletList.clear();
@@ -478,38 +543,36 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   }
 
   @Override
-  public synchronized void close() {
-    super.close();
-
+  protected void closeBatchData() {
     pipeName2WeightMap.clear();
-
     tabletList.clear();
     isTabletAlignedList.clear();
 
     if (Objects.nonNull(fileWriter)) {
+      final File file = fileWriter.getIOWriter().getFile();
       try {
         fileWriter.close();
       } catch (final Exception e) {
         LOGGER.info(
             "Batch id = {}: Failed to close the tsfile {} when trying to close batch, because {}",
             currentBatchId.get(),
-            fileWriter.getIOWriter().getFile().getPath(),
+            file.getPath(),
             e.getMessage(),
             e);
       }
 
       try {
-        RetryUtils.retryOnException(() -> FileUtils.delete(fileWriter.getIOWriter().getFile()));
+        RetryUtils.retryOnException(() -> FileUtils.delete(file));
       } catch (final Exception e) {
         LOGGER.info(
             "Batch id = {}: Failed to delete the tsfile {} when trying to close batch, because {}",
             currentBatchId.get(),
-            fileWriter.getIOWriter().getFile().getPath(),
+            file.getPath(),
             e.getMessage(),
             e);
+      } finally {
+        fileWriter = null;
       }
-
-      fileWriter = null;
     }
   }
 
@@ -537,10 +600,17 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
         throws org.apache.iotdb.db.exception.WriteProcessException {
       final IMemTable memTable = new PrimitiveMemTable(null, null);
       final List<File> sealedFiles = new ArrayList<>();
-      try (final RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(createFile())) {
-        writeTabletsIntoOneFile(memTable, writer);
-        sealedFiles.add(writer.getFile());
+      File file = null;
+      try {
+        file = createFile();
+        try (final RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(file)) {
+          writeTabletsIntoOneFile(memTable, writer);
+          sealedFiles.add(writer.getFile());
+        }
       } catch (final Exception e) {
+        if (file != null) {
+          FileUtils.deleteQuietly(file);
+        }
         LOGGER.warn(
             "Batch id = {}: Failed to write tablets into tsfile, because {}",
             currentBatchId.get(),

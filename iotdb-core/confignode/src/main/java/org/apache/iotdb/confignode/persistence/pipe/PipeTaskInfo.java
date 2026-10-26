@@ -213,6 +213,13 @@ public class PipeTaskInfo implements SnapshotProcessor {
       LOGGER.info(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
+    if (PipeStatus.PRE_DELETE.equals(getPipeStatus(alterPipeRequest.getPipeName()))) {
+      final String exceptionMessage =
+          String.format(
+              "Failed to alter pipe %s, the pipe is being dropped", alterPipeRequest.getPipeName());
+      LOGGER.info(exceptionMessage);
+      throw new PipeException(exceptionMessage);
+    }
 
     final PipeStaticMeta pipeStaticMetaFromCoordinator =
         getPipeMetaByPipeName(alterPipeRequest.getPipeName()).getStaticMeta();
@@ -298,6 +305,12 @@ public class PipeTaskInfo implements SnapshotProcessor {
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
+    if (pipeStatus == PipeStatus.PRE_DELETE) {
+      final String exceptionMessage =
+          String.format("Failed to start pipe %s, the pipe is being dropped", pipeName);
+      LOGGER.warn(exceptionMessage);
+      throw new PipeException(exceptionMessage);
+    }
   }
 
   public void checkBeforeStopPipe(final String pipeName) throws PipeException {
@@ -321,6 +334,12 @@ public class PipeTaskInfo implements SnapshotProcessor {
     if (pipeStatus == PipeStatus.DROPPED) {
       final String exceptionMessage =
           String.format("Failed to stop pipe %s, the pipe is already dropped", pipeName);
+      LOGGER.warn(exceptionMessage);
+      throw new PipeException(exceptionMessage);
+    }
+    if (pipeStatus == PipeStatus.PRE_DELETE) {
+      final String exceptionMessage =
+          String.format("Failed to stop pipe %s, the pipe is being dropped", pipeName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
@@ -349,6 +368,17 @@ public class PipeTaskInfo implements SnapshotProcessor {
     acquireReadLock();
     try {
       return pipeMetaKeeper.containsPipeMeta(pipeName);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public boolean isPipeBeingDropped(final String pipeName) {
+    acquireReadLock();
+    try {
+      final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+      return pipeMeta != null
+          && PipeStatus.PRE_DELETE.equals(pipeMeta.getRuntimeMeta().getStatus().get());
     } finally {
       releaseReadLock();
     }
@@ -836,6 +866,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
                   final PipeRuntimeMeta runtimeMeta =
                       pipeMetaKeeper.getPipeMeta(message.getPipeName()).getRuntimeMeta();
 
+                  if (PipeStatus.PRE_DELETE.equals(runtimeMeta.getStatus().get())) {
+                    return;
+                  }
+
                   // Keep user-stopped pipes out of the auto-restart flow. Otherwise, a failed
                   // STOPPED meta sync can turn a manually stopped pipe into a runtime-stopped one
                   // and the next PipeMetaSyncer round will restart it automatically.
@@ -889,7 +923,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
         .forEach(
             pipeMeta -> {
               final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
-              if (runtimeMeta.getIsStoppedByRuntimeException()) {
+              if (!PipeStatus.PRE_DELETE.equals(runtimeMeta.getStatus().get())
+                  && runtimeMeta.getIsStoppedByRuntimeException()) {
                 runtimeMeta.setExceptionsClearTime(exceptionsClearTime);
                 runtimeMeta.getStatus().set(PipeStatus.RUNNING);
 

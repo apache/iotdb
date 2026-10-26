@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalJobExecutor;
 import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalPhantomReferenceCleaner;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
@@ -32,7 +33,6 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
-import org.apache.iotdb.commons.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -89,23 +89,23 @@ public class PipeDataNodeRuntimeAgent implements IService {
 
     IoTDBPipePattern.setDevicePathGetter(CompactionPathUtils::getPath);
     IoTDBPipePattern.setMeasurementPathGetter(CompactionPathUtils::getPath);
-    initPipePeriodicalLogReducer();
+    initLoggerPeriodicalLogReducer();
   }
 
-  private void initPipePeriodicalLogReducer() {
+  private void initLoggerPeriodicalLogReducer() {
     if (pipeLogReducerMemoryBlock == null) {
       pipeLogReducerMemoryBlock =
           PipeDataNodeResourceManager.memory()
               .tryAllocate(PipeConfig.getInstance().getPipeLoggerCacheMaxSizeInBytes());
     }
 
-    PipePeriodicalLogReducer.setMemoryResizeFunction(
+    LoggerPeriodicalLogReducer.setMemoryResizeFunction(
         targetSizeInBytes -> {
           PipeDataNodeResourceManager.memory()
               .resize(pipeLogReducerMemoryBlock, Math.max(0, targetSizeInBytes), false);
           return pipeLogReducerMemoryBlock.getMemoryUsageInBytes();
         });
-    PipeLogger.setLogger(PipePeriodicalLogReducer::log);
+    PipeLogger.setLogger(LoggerPeriodicalLogReducer::log);
   }
 
   @Override
@@ -220,13 +220,25 @@ public class PipeDataNodeRuntimeAgent implements IService {
 
   public void report(EnrichedEvent event, PipeRuntimeException pipeRuntimeException) {
     if (event.getPipeTaskMeta() != null) {
-      report(event.getPipeTaskMeta(), pipeRuntimeException);
+      report(
+          event.getPipeName(),
+          event.getCreationTime(),
+          event.getPipeTaskMeta(),
+          pipeRuntimeException);
     } else {
       LOGGER.warn("Attempt to report pipe exception to a null PipeTaskMeta.", pipeRuntimeException);
     }
   }
 
   public void report(PipeTaskMeta pipeTaskMeta, PipeRuntimeException pipeRuntimeException) {
+    report(null, Long.MIN_VALUE, pipeTaskMeta, pipeRuntimeException);
+  }
+
+  private void report(
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipeRuntimeException pipeRuntimeException) {
     LOGGER.warn(
         "Report PipeRuntimeException to local PipeTaskMeta({}), exception message: {}",
         pipeTaskMeta,
@@ -237,7 +249,8 @@ public class PipeDataNodeRuntimeAgent implements IService {
     // no need to wait for the next heartbeat cycle.
     if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
       PipeDataNodeAgent.task()
-          .stopAllPipesWithCriticalExceptionAndTrackException(pipeTaskMeta, pipeRuntimeException);
+          .stopAllPipesWithCriticalExceptionAndTrackException(
+              pipeName, creationTime, pipeTaskMeta, pipeRuntimeException);
     }
   }
 

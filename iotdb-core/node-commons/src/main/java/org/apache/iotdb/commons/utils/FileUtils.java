@@ -39,6 +39,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
@@ -584,5 +585,20 @@ public class FileUtils {
       return WindowsOSUtils.OS_SEGMENT_ERROR;
     }
     return null;
+  }
+
+  /**
+   * Validates a path segment before it is used to construct a path.
+   *
+   * <p>In addition to the application-level checks above, constructing a {@link Path} validates
+   * platform-specific path syntax (for example, NUL characters on Unix).
+   */
+  public static String validatePathSegment(final String pathSegment) {
+    final String pathError = getIllegalError4Directory(pathSegment);
+    if (pathError != null) {
+      throw new IllegalArgumentException(pathError);
+    }
+    Paths.get(pathSegment);
+    return pathSegment;
   }
 }

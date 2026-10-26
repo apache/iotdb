@@ -120,10 +120,14 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
       return;
     }
 
-    super.open();
-
     // set isClosed to false before submitting workers
     isClosed.set(false);
+    try {
+      super.open();
+    } catch (final SubscriptionException e) {
+      isClosed.set(true);
+      throw e;
+    }
     emptyPollLogThrottler.reset();
 
     // submit auto poll worker
@@ -136,8 +140,8 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
       return;
     }
 
-    super.close();
     isClosed.set(true);
+    super.close();
   }
 
   @Override

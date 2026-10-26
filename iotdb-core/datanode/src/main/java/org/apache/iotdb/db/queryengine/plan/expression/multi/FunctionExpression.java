@@ -109,7 +109,7 @@ public class FunctionExpression extends Expression {
     functionAttributes = ReadWriteIOUtils.readLinkedHashMap(byteBuffer);
 
     int expressionSize = ReadWriteIOUtils.readInt(byteBuffer);
-    expressions = new ArrayList<>();
+    expressions = new ArrayList<>(expressionSize);
     for (int i = 0; i < expressionSize; i++) {
       expressions.add(Expression.deserialize(byteBuffer));
     }
@@ -304,7 +304,7 @@ public class FunctionExpression extends Expression {
 
   public List<PartialPath> getPaths() {
     if (paths == null) {
-      paths = new ArrayList<>();
+      paths = new ArrayList<>(expressions.size());
       for (Expression expression : expressions) {
         paths.add(
             expression instanceof TimeSeriesOperand

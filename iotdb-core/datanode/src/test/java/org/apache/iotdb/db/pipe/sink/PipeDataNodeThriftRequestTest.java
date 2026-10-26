@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.pipe.sink;
 
+import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.CombineRequest;
@@ -35,6 +38,7 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTable
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealReq;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -53,12 +57,14 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -360,6 +366,22 @@ public class PipeDataNodeThriftRequestTest {
   }
 
   @Test
+  public void testPipeTransferTabletBatchReqSkipsStringInterningForSingleRawTablet()
+      throws IOException {
+    final PipeTransferTabletBatchReq deserializedReq =
+        PipeTransferTabletBatchReq.fromTPipeTransferReq(
+            PipeTransferTabletBatchReq.toTPipeTransferReq(
+                Collections.emptyList(),
+                Collections.singletonList(
+                    serializeTablet(
+                        createSingleValueTablet(new String("s1"), new String("s1")), false))));
+
+    final Tablet tablet = deserializedReq.getTabletReqs().get(0).getTablet();
+    Assert.assertEquals(tablet.deviceId, tablet.getSchemas().get(0).getMeasurementId());
+    Assert.assertNotSame(tablet.deviceId, tablet.getSchemas().get(0).getMeasurementId());
+  }
+
+  @Test
   public void testPipeTransferTabletBatchReqInternsRepeatedMeasurementNames() throws IOException {
     final List<ByteBuffer> tabletBuffers = new ArrayList<>();
     tabletBuffers.add(
@@ -474,6 +496,60 @@ public class PipeDataNodeThriftRequestTest {
 
     Assert.assertEquals(req.getFileName(), deserializeReq.getFileName());
     Assert.assertEquals(req.getFileLength(), deserializeReq.getFileLength());
+  }
+
+  @Test
+  public void testPipeTransferTsFileSealWithModReq() throws IOException {
+    final String modFileName = "1.tsfile.mod";
+    final String tsFileName = "1.tsfile";
+
+    final PipeTransferTsFileSealWithModReq req =
+        PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+            modFileName, 10, tsFileName, 100, "root.db");
+    final PipeTransferTsFileSealWithModReq deserializeReq =
+        PipeTransferTsFileSealWithModReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(Arrays.asList(modFileName, tsFileName), deserializeReq.getFileNames());
+    Assert.assertEquals(Arrays.asList(10L, 100L), deserializeReq.getFileLengths());
+    Assert.assertEquals("root.db", deserializeReq.getDatabaseNameByTsFileName());
+    Assert.assertFalse(deserializeReq.shouldWaitForSchemaBeforeLoad());
+  }
+
+  @Test
+  public void testPipeTransferTsFileSealWithModReqWaitsForSchema() throws IOException {
+    final PipeTransferTsFileSealWithModReq req =
+        PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+            "1.tsfile.mod", 10, "1.tsfile", 100, "root.db", true);
+    final PipeTransferTsFileSealWithModReq deserializeReq =
+        PipeTransferTsFileSealWithModReq.fromTPipeTransferReq(req);
+
+    Assert.assertTrue(deserializeReq.shouldWaitForSchemaBeforeLoad());
+  }
+
+  @Test
+  public void testPipeTransferTsFileSealConversionTaskIdDistinguishesProgressIndexes() {
+    final CommitterKey committerKey = new CommitterKey("pipe", 1L, 1, 0);
+    final EnrichedEvent firstEvent = Mockito.mock(EnrichedEvent.class);
+    Mockito.when(firstEvent.getCommitterKey()).thenReturn(committerKey);
+    Mockito.when(firstEvent.getCommitIds()).thenReturn(Collections.singletonList(1L));
+    Mockito.when(firstEvent.getProgressIndex()).thenReturn(new IoTProgressIndex(1, 1L));
+
+    final EnrichedEvent secondEvent = Mockito.mock(EnrichedEvent.class);
+    Mockito.when(secondEvent.getCommitterKey()).thenReturn(committerKey);
+    Mockito.when(secondEvent.getCommitIds()).thenReturn(Collections.singletonList(1L));
+    Mockito.when(secondEvent.getProgressIndex()).thenReturn(new IoTProgressIndex(1, 100L));
+
+    final String firstTaskId =
+        PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+            "sink-task", Collections.singletonList(firstEvent), "root.db", 0);
+    Assert.assertEquals(
+        firstTaskId,
+        PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+            "sink-task", Collections.singletonList(firstEvent), "root.db", 0));
+    Assert.assertNotEquals(
+        firstTaskId,
+        PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+            "sink-task", Collections.singletonList(secondEvent), "root.db", 0));
   }
 
   @Test

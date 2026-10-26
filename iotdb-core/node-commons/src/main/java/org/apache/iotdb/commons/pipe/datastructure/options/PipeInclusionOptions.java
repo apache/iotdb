@@ -21,6 +21,8 @@ package org.apache.iotdb.commons.pipe.datastructure.options;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -190,6 +192,35 @@ public class PipeInclusionOptions {
       throw exception.get();
     }
     return options;
+  }
+
+  public static String getInclusionString(final PipeParameters parameters) {
+    return parameters.getStringOrDefault(
+        Arrays.asList(
+            PipeSourceConstant.EXTRACTOR_INCLUSION_KEY, PipeSourceConstant.SOURCE_INCLUSION_KEY),
+        PipeSourceConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE);
+  }
+
+  public static String getExclusionString(final PipeParameters parameters) {
+    return parameters.getStringOrDefault(
+        Arrays.asList(
+            PipeSourceConstant.EXTRACTOR_EXCLUSION_KEY, PipeSourceConstant.SOURCE_EXCLUSION_KEY),
+        PipeSourceConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE);
+  }
+
+  public static boolean areOptionsEnabled(final PipeParameters parameters, final String... options)
+      throws IllegalPathException {
+    final Set<PartialPath> inclusionOptions = parseOptions(getInclusionString(parameters));
+    final Set<PartialPath> exclusionOptions = parseOptions(getExclusionString(parameters));
+
+    for (final String option : options) {
+      final PartialPath optionPath = new PartialPath(option);
+      if (inclusionOptions.stream().noneMatch(optionPath::matchPrefixPath)
+          || exclusionOptions.stream().anyMatch(optionPath::matchPrefixPath)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private PipeInclusionOptions() {

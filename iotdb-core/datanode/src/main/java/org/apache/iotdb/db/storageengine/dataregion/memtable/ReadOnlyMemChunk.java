@@ -136,11 +136,11 @@ public class ReadOnlyMemChunk {
       int queryRowCount = entry.getValue();
       if (!tvList.isSorted() && queryRowCount > tvList.seqRowCount()) {
         entry.setValue(tvList.sort());
-        long tvListRamSize = tvList.calculateRamSize().getRamSize();
         tvList.lockQueryList();
         try {
           FragmentInstanceContext ownerQuery = (FragmentInstanceContext) tvList.getOwnerQuery();
           if (ownerQuery != null) {
+            long tvListRamSize = tvList.calculateRamSize().getRamSize();
             long deltaBytes = tvListRamSize - tvList.getReservedMemoryBytes();
             if (deltaBytes > 0) {
               ownerQuery.getMemoryReservationContext().reserveMemoryCumulatively(deltaBytes);
@@ -288,11 +288,11 @@ public class ReadOnlyMemChunk {
       int queryLength = entry.getValue();
       if (!tvList.isSorted() && queryLength > tvList.seqRowCount()) {
         entry.setValue(tvList.sort());
-        long tvListRamSize = tvList.calculateRamSize().getRamSize();
         tvList.lockQueryList();
         try {
           FragmentInstanceContext ownerQuery = (FragmentInstanceContext) tvList.getOwnerQuery();
           if (ownerQuery != null) {
+            long tvListRamSize = tvList.calculateRamSize().getRamSize();
             long deltaBytes = tvListRamSize - tvList.getReservedMemoryBytes();
             if (deltaBytes > 0) {
               ownerQuery.getMemoryReservationContext().reserveMemoryCumulatively(deltaBytes);

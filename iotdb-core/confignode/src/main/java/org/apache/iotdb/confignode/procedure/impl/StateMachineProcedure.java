@@ -132,6 +132,17 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   }
 
   /**
+   * Returns whether the specified state is already present in the persisted state history.
+   *
+   * <p>The current state is included once it has been scheduled. This is useful when an append-only
+   * state is added to a procedure and the new execution path needs to coexist with procedures
+   * persisted by an older version.
+   */
+  protected final boolean hasReachedState(final TState state) {
+    return states.contains(getStateId(state));
+  }
+
+  /**
    * Add a child procedure to execute.
    *
    * @param childProcedure the child procedure
@@ -145,10 +156,19 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
     updateTimestamp();
     try {
       if (noMoreState() || isFailed()) {
-        return null;
+        return new Procedure[0];
       }
 
       TState state = getCurrentState();
+      if (state == null) {
+        LOG.warn(
+            "StateMachineProcedure pid={} is scheduled with EOF state, skip execution: {}",
+            getProcId(),
+            this);
+        stateFlow = Flow.NO_MORE_STATE;
+        setStateDeserialized(false);
+        return new Procedure[0];
+      }
 
       // init for the first execution
       if (states.isEmpty()) {
@@ -168,7 +188,9 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
         subProcList.clear();
         return subProcedures;
       }
-      return (isWaiting() || isFailed() || noMoreState()) ? null : new Procedure[] {this};
+      return (isWaiting() || isFailed() || noMoreState())
+          ? new Procedure[0]
+          : new Procedure[] {this};
     } finally {
       updateTimestamp();
     }
@@ -212,11 +234,15 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
       states.removeLast();
     }
 
+    boolean completed = false;
     try {
       updateTimestamp();
       rollbackState(env, getCurrentState());
+      completed = true;
     } finally {
-      states.removeLast();
+      if ((completed || getRollbackRetryTimeout() < 0) && !states.isEmpty()) {
+        states.removeLast();
+      }
       updateTimestamp();
     }
   }

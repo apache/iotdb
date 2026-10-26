@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.confignode.it.regionmigration.pass.commit;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework;
+import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -29,12 +31,14 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.read.common.RowRecord;
 import org.awaitility.Awaitility;
 import org.junit.Assert;
+import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
@@ -43,6 +47,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.sql.Connection;
 import java.sql.Statement;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -144,5 +149,50 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
       Assert.assertEquals("2.0", rowRecord.getFields().get(0).getStringValue());
       Assert.assertEquals("1.0", rowRecord.getFields().get(1).getStringValue());
     }
+  }
+
+  @Test
+  public void rejectInvalidTargetDataNodeTest() throws Exception {
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDataReplicationFactor(1)
+        .setSchemaReplicationFactor(1);
+
+    EnvFactory.getEnv().initClusterEnvironment(1, 3);
+
+    try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+        Statement statement = makeItCloseQuietly(connection.createStatement());
+        SyncConfigNodeIServiceClient client =
+            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      statement.execute(INSERTION1);
+      statement.execute(FLUSH_COMMAND);
+
+      Map<Integer, Set<Integer>> regionMap = getAllRegionMap(statement);
+      Set<Integer> allDataNodeIds = getAllDataNodes(statement);
+      Assert.assertFalse(regionMap.isEmpty());
+
+      int selectedRegion = regionMap.keySet().iterator().next();
+      int unknownDataNodeId = Collections.max(allDataNodeIds) + 1000;
+      int configNodeId = client.showCluster().getConfigNodeList().get(0).getConfigNodeId();
+      Assert.assertFalse(allDataNodeIds.contains(configNodeId));
+
+      assertReconstructRegionRejected(client, selectedRegion, unknownDataNodeId);
+      assertReconstructRegionRejected(client, selectedRegion, configNodeId);
+      Assert.assertEquals(regionMap, getAllRegionMap(statement));
+    }
+  }
+
+  private void assertReconstructRegionRejected(
+      SyncConfigNodeIServiceClient client, int regionId, int dataNodeId) throws Exception {
+    TSStatus status =
+        client.reconstructRegion(
+            new TReconstructRegionReq(Collections.singletonList(regionId), dataNodeId));
+    Assert.assertEquals(TSStatusCode.RECONSTRUCT_REGION_ERROR.getStatusCode(), status.getCode());
+    Assert.assertEquals(
+        String.format("Target DataNode %s does not exist in the cluster", dataNodeId),
+        status.getMessage());
   }
 }

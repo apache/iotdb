@@ -83,7 +83,8 @@ public class TypeInferenceUtilsTest {
       "4E5",
       "1.0",
       "4F",
-      "4L"
+      "4L",
+      null
     };
     TSDataType[] inferredTypes = {
       TSDataType.INT32,
@@ -105,6 +106,7 @@ public class TypeInferenceUtilsTest {
       config.getFloatingStringInferType(),
       TSDataType.TEXT,
       TSDataType.TEXT,
+      null,
     };
 
     for (int i = 0; i < values.length; i++) {

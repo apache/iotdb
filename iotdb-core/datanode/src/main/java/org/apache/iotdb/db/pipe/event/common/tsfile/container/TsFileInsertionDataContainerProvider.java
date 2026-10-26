@@ -28,7 +28,6 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.container.query.TsFileInsert
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInsertionScanDataContainer;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFilePublicResource;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -39,6 +38,9 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_QUERY_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_SCAN_VALUE;
 
 public class TsFileInsertionDataContainerProvider {
 
@@ -52,6 +54,7 @@ public class TsFileInsertionDataContainerProvider {
 
   protected final PipeTaskMeta pipeTaskMeta;
   protected final PipeTsFileInsertionEvent sourceEvent;
+  private final String tsFileParser;
 
   public TsFileInsertionDataContainerProvider(
       final String pipeName,
@@ -62,6 +65,28 @@ public class TsFileInsertionDataContainerProvider {
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipeTsFileInsertionEvent sourceEvent) {
+    this(
+        pipeName,
+        creationTime,
+        tsFile,
+        pipePattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        sourceEvent,
+        null);
+  }
+
+  public TsFileInsertionDataContainerProvider(
+      final String pipeName,
+      final long creationTime,
+      final File tsFile,
+      final PipePattern pipePattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipeTsFileInsertionEvent sourceEvent,
+      final String tsFileParser) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
     this.tsFile = tsFile;
@@ -70,6 +95,7 @@ public class TsFileInsertionDataContainerProvider {
     this.endTime = endTime;
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
+    this.tsFileParser = tsFileParser;
   }
 
   public TsFileInsertionDataContainer provide(final boolean isWithMod) throws IOException {
@@ -78,9 +104,35 @@ public class TsFileInsertionDataContainerProvider {
           .markTsFileToTabletInvocation(pipeName + "_" + creationTime);
     }
 
+    if (EXTRACTOR_TSFILE_PARSER_QUERY_VALUE.equals(tsFileParser)) {
+      return new TsFileInsertionQueryDataContainer(
+          pipeName,
+          creationTime,
+          tsFile,
+          pattern,
+          startTime,
+          endTime,
+          pipeTaskMeta,
+          sourceEvent,
+          isWithMod);
+    }
+
+    if (EXTRACTOR_TSFILE_PARSER_SCAN_VALUE.equals(tsFileParser)) {
+      return new TsFileInsertionScanDataContainer(
+          pipeName,
+          creationTime,
+          tsFile,
+          pattern,
+          startTime,
+          endTime,
+          pipeTaskMeta,
+          sourceEvent,
+          isWithMod);
+    }
+
     // Use scan container to save memory
     if ((double) PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes()
-            / PipeMemoryManager.getTotalNonFloatingMemorySizeInBytes()
+            / PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
         > PipeTsFilePublicResource.MEMORY_SUFFICIENT_THRESHOLD) {
       return new TsFileInsertionScanDataContainer(
           pipeName,

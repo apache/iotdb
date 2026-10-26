@@ -21,10 +21,12 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.load.PartitionViolationException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.utils.FilePathUtils;
@@ -95,6 +97,40 @@ public class FileTimeIndex implements ITimeIndex {
       // The first byte is VERSION_NUMBER, second byte is timeIndexType.
       ReadWriteIOUtils.readBytes(inputStream, 2);
       return DeviceTimeIndex.getDevices(inputStream);
+    } catch (NoSuchFileException e) {
+      // deleted by ttl
+      if (tsFileResource.isDeleted()) {
+        return Collections.emptySet();
+      } else {
+        logger.error(
+            "Can't read file {} from disk ", tsFilePath + TsFileResource.RESOURCE_SUFFIX, e);
+        throw new RuntimeException(
+            "Can't read file " + tsFilePath + TsFileResource.RESOURCE_SUFFIX + " from disk");
+      }
+    } catch (Exception e) {
+      logger.error(
+          "Failed to get devices from tsfile: {}", tsFilePath + TsFileResource.RESOURCE_SUFFIX, e);
+      throw new RuntimeException(
+          "Failed to get devices from tsfile: " + tsFilePath + TsFileResource.RESOURCE_SUFFIX);
+    } finally {
+      tsFileResource.readUnlock();
+    }
+  }
+
+  @Override
+  public Set<IDeviceID> getDevices(
+      String tsFilePath, TsFileResource tsFileResource, RateLimiter limiter) {
+    tsFileResource.readLock();
+    try {
+      try (IOUtils.RatelimitedInputStream inputStream =
+          new IOUtils.RatelimitedInputStream(
+              FSFactoryProducer.getFSFactory()
+                  .getBufferedInputStream(tsFilePath + TsFileResource.RESOURCE_SUFFIX),
+              limiter)) {
+        // The first byte is VERSION_NUMBER, second byte is timeIndexType.
+        ReadWriteIOUtils.readBytes(inputStream, 2);
+        return DeviceTimeIndex.getDevices(inputStream);
+      }
     } catch (NoSuchFileException e) {
       // deleted by ttl
       if (tsFileResource.isDeleted()) {

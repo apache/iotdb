@@ -64,7 +64,37 @@ public class SchemaValidator {
       List<CompressionType[]> compressionTypes,
       List<Boolean> isAlignedList,
       MPPQueryContext context) {
-    return schemaFetcher.fetchSchemaListWithAutoCreate(
-        devicePaths, measurements, dataTypes, encodings, compressionTypes, isAlignedList, context);
+    return validate(
+        schemaFetcher,
+        devicePaths,
+        measurements,
+        dataTypes,
+        encodings,
+        compressionTypes,
+        isAlignedList,
+        true,
+        context);
+  }
+
+  public static ISchemaTree validate(
+      final ISchemaFetcher schemaFetcher,
+      final List<PartialPath> devicePaths,
+      final List<String[]> measurements,
+      final List<TSDataType[]> dataTypes,
+      final List<TSEncoding[]> encodings,
+      final List<CompressionType[]> compressionTypes,
+      final List<Boolean> isAlignedList,
+      final boolean autoCreateSchema,
+      final MPPQueryContext context) {
+    return autoCreateSchema
+        ? schemaFetcher.fetchSchemaListWithAutoCreate(
+            devicePaths,
+            measurements,
+            dataTypes,
+            encodings,
+            compressionTypes,
+            isAlignedList,
+            context)
+        : schemaFetcher.fetchSchemaList(devicePaths, measurements, context);
   }
 }

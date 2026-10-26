@@ -29,8 +29,11 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Counter;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
+
+import java.util.concurrent.TimeUnit;
 
 public class PipeResourceMetrics implements IMetricSet {
 
@@ -44,6 +47,11 @@ public class PipeResourceMetrics implements IMetricSet {
   private static final String PIPE_TOTAL_MEMORY = "PipeTotalMemory";
   private static final String PIPE_FLOATING_MEMORY = "PipeFloatingMemory";
   private Counter diskIOCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private volatile Counter tsFileParserAdmissionRejectCounter =
+      DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private volatile Counter tsFileParserAdmissionYieldCounter =
+      DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private volatile Timer tsFileParserAdmissionWaitTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
@@ -75,14 +83,14 @@ public class PipeResourceMetrics implements IMetricSet {
         Metric.PIPE_MEM.toString(),
         MetricLevel.IMPORTANT,
         PipeDataNodeResourceManager.memory(),
-        o -> PipeMemoryManager.getTotalNonFloatingMemorySizeInBytes(),
+        PipeMemoryManager::getTotalNonFloatingMemorySizeInBytes,
         Tag.NAME.toString(),
         PIPE_TOTAL_MEMORY);
     metricService.createAutoGauge(
         Metric.PIPE_MEM.toString(),
         MetricLevel.IMPORTANT,
         PipeDataNodeResourceManager.memory(),
-        o -> PipeMemoryManager.getTotalFloatingMemorySizeInBytes(),
+        PipeMemoryManager::getTotalFloatingMemorySizeInBytes,
         Tag.NAME.toString(),
         PIPE_FLOATING_MEMORY);
     metricService.createAutoGauge(
@@ -102,6 +110,25 @@ public class PipeResourceMetrics implements IMetricSet {
     diskIOCounter =
         metricService.getOrCreateCounter(
             Metric.PIPE_TSFILE_SEND_DISK_IO.toString(), MetricLevel.IMPORTANT);
+    tsFileParserAdmissionRejectCounter =
+        metricService.getOrCreateCounter(
+            Metric.PIPE_TSFILE_PARSER_ADMISSION_REJECT.toString(), MetricLevel.IMPORTANT);
+    tsFileParserAdmissionYieldCounter =
+        metricService.getOrCreateCounter(
+            Metric.PIPE_TSFILE_PARSER_ADMISSION_YIELD.toString(), MetricLevel.IMPORTANT);
+    tsFileParserAdmissionWaitTimer =
+        metricService.getOrCreateTimer(
+            Metric.PIPE_TSFILE_PARSER_ADMISSION_WAIT.toString(), MetricLevel.IMPORTANT);
+    metricService.createAutoGauge(
+        Metric.PIPE_TSFILE_PARSER_IN_FLIGHT.toString(),
+        MetricLevel.IMPORTANT,
+        PipeDataNodeResourceManager.memory(),
+        PipeMemoryManager::getReservedTsFileParserCount);
+    metricService.createAutoGauge(
+        Metric.PIPE_TSFILE_PARSER_WAITING.toString(),
+        MetricLevel.IMPORTANT,
+        PipeDataNodeResourceManager.memory(),
+        PipeMemoryManager::getWaitingTsFileParserCount);
   }
 
   @Override
@@ -138,10 +165,30 @@ public class PipeResourceMetrics implements IMetricSet {
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_PHANTOM_REFERENCE_COUNT.toString());
 
     metricService.remove(MetricType.COUNTER, Metric.PIPE_TSFILE_SEND_DISK_IO.toString());
+    metricService.remove(MetricType.COUNTER, Metric.PIPE_TSFILE_PARSER_ADMISSION_REJECT.toString());
+    metricService.remove(MetricType.COUNTER, Metric.PIPE_TSFILE_PARSER_ADMISSION_YIELD.toString());
+    metricService.remove(MetricType.TIMER, Metric.PIPE_TSFILE_PARSER_ADMISSION_WAIT.toString());
+    metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_TSFILE_PARSER_IN_FLIGHT.toString());
+    metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_TSFILE_PARSER_WAITING.toString());
+    tsFileParserAdmissionRejectCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+    tsFileParserAdmissionYieldCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+    tsFileParserAdmissionWaitTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   }
 
   public void recordDiskIO(final long bytes) {
     diskIOCounter.inc(bytes);
+  }
+
+  public void recordTsFileParserAdmissionReject() {
+    tsFileParserAdmissionRejectCounter.inc();
+  }
+
+  public void recordTsFileParserAdmissionYield() {
+    tsFileParserAdmissionYieldCounter.inc();
+  }
+
+  public void recordTsFileParserAdmissionWait(final long waitTimeInNanos) {
+    tsFileParserAdmissionWaitTimer.update(waitTimeInNanos, TimeUnit.NANOSECONDS);
   }
 
   //////////////////////////// singleton ////////////////////////////

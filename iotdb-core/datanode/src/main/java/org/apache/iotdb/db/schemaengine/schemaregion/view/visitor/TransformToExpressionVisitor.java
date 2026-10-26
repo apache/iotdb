@@ -76,7 +76,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 
 import org.apache.tsfile.utils.Pair;
 
-import javax.ws.rs.NotSupportedException;
+import jakarta.ws.rs.NotSupportedException;
 
 import java.util.ArrayList;
 import java.util.List;

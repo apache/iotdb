@@ -112,7 +112,7 @@ public class MergeSortNode extends MultiChildProcessNode {
   public static MergeSortNode deserialize(ByteBuffer byteBuffer) {
     OrderByParameter orderByParameter = OrderByParameter.deserialize(byteBuffer);
     int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> outputColumns = new ArrayList<>();
+    List<String> outputColumns = new ArrayList<>(columnSize);
     while (columnSize > 0) {
       outputColumns.add(ReadWriteIOUtils.readString(byteBuffer));
       columnSize--;

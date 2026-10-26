@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.commons.pipe.task;
 
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.TimePartitionProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
@@ -48,6 +50,14 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PipeMetaDeSerTest {
+
+  @Test
+  public void testPipeStatusTypeCompatibility() {
+    Assert.assertEquals((byte) 0, PipeStatus.RUNNING.getType());
+    Assert.assertEquals((byte) 1, PipeStatus.STOPPED.getType());
+    Assert.assertEquals((byte) 2, PipeStatus.DROPPED.getType());
+    Assert.assertEquals((byte) 3, PipeStatus.PRE_DELETE.getType());
+  }
 
   @Test
   public void test() throws IOException {
@@ -110,6 +120,17 @@ public class PipeMetaDeSerTest {
                     new PipeTaskMeta(
                         new TimeWindowStateProgressIndex(timeSeries2TimestampWindowBufferPairMap),
                         789));
+                put(
+                    789,
+                    new PipeTaskMeta(
+                        new TimePartitionProgressIndex(
+                            new HashMap<Long, ProgressIndex>() {
+                              {
+                                put(0L, new SimpleProgressIndex(0, 1));
+                                put(1L, new SimpleProgressIndex(0, 2));
+                              }
+                            }),
+                        789));
                 put(Integer.MIN_VALUE, new PipeTaskMeta(new MetaProgressIndex(987), 0));
               }
             });
@@ -142,6 +163,11 @@ public class PipeMetaDeSerTest {
         .get(456)
         .trackExceptionMessage(new PipeRuntimeSinkCriticalException("test456"));
 
+    runtimeByteBuffer = pipeRuntimeMeta.serialize();
+    pipeRuntimeMeta1 = PipeRuntimeMeta.deserialize(runtimeByteBuffer);
+    Assert.assertEquals(pipeRuntimeMeta, pipeRuntimeMeta1);
+
+    pipeRuntimeMeta.getStatus().set(PipeStatus.PRE_DELETE);
     runtimeByteBuffer = pipeRuntimeMeta.serialize();
     pipeRuntimeMeta1 = PipeRuntimeMeta.deserialize(runtimeByteBuffer);
     Assert.assertEquals(pipeRuntimeMeta, pipeRuntimeMeta1);

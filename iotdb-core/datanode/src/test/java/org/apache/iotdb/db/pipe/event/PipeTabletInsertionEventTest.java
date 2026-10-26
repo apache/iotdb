@@ -28,6 +28,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.pipe.event.common.tablet.TabletInsertionDataContainer;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
@@ -42,6 +43,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -262,6 +264,63 @@ public class PipeTabletInsertionEventTest {
     tabletForInsertTabletNode.rowSize = times.length;
     tabletForInsertTabletNode.bitMaps =
         PipeTabletUtils.compactBitMaps(bitMapsForInsertTabletNode, times.length);
+  }
+
+  @Test
+  public void markAsNeedToReportShouldInheritSourceTsFileGeneratedReportSkipping()
+      throws Exception {
+    final PipeTsFileInsertionEvent sourceEvent = Mockito.mock(PipeTsFileInsertionEvent.class);
+    Mockito.when(sourceEvent.shouldReportGeneratedEventsOnCommit()).thenReturn(true);
+    final PipeRawTabletInsertionEvent tabletEvent =
+        new PipeRawTabletInsertionEvent(
+            false,
+            null,
+            null,
+            null,
+            tabletForInsertTabletNode,
+            false,
+            null,
+            0,
+            null,
+            sourceEvent,
+            false);
+
+    tabletEvent.markAsNeedToReport();
+    Assert.assertTrue(tabletEvent.isShouldReportOnCommit());
+
+    Mockito.when(sourceEvent.shouldReportGeneratedEventsOnCommit()).thenReturn(false);
+    final PipeRawTabletInsertionEvent skippedTabletEvent =
+        new PipeRawTabletInsertionEvent(
+            false,
+            null,
+            null,
+            null,
+            tabletForInsertTabletNode,
+            false,
+            null,
+            0,
+            null,
+            sourceEvent,
+            false);
+
+    skippedTabletEvent.markAsNeedToReport();
+    Assert.assertFalse(skippedTabletEvent.isShouldReportOnCommit());
+
+    final PipeRawTabletInsertionEvent constructorSkippedTabletEvent =
+        new PipeRawTabletInsertionEvent(
+            false,
+            null,
+            null,
+            null,
+            tabletForInsertTabletNode,
+            false,
+            null,
+            0,
+            null,
+            sourceEvent,
+            true);
+
+    Assert.assertFalse(constructorSkippedTabletEvent.isShouldReportOnCommit());
   }
 
   @Test

@@ -49,6 +49,9 @@ public class LoadTsFileConfigurator {
       case VERIFY_KEY:
         validateVerifyParam(value);
         break;
+      case AUTO_CREATE_SCHEMA_KEY:
+        validateAutoCreateSchemaParam(value);
+        break;
       case PIPE_GENERATED_KEY:
         validatePipeGeneratedParam(value);
         break;
@@ -163,6 +166,25 @@ public class LoadTsFileConfigurator {
   public static boolean parseOrGetDefaultVerify(final Map<String, String> loadAttributes) {
     return Boolean.parseBoolean(
         loadAttributes.getOrDefault(VERIFY_KEY, String.valueOf(VERIFY_DEFAULT_VALUE)));
+  }
+
+  public static final String AUTO_CREATE_SCHEMA_KEY = "auto-create-schema";
+  private static final boolean AUTO_CREATE_SCHEMA_DEFAULT_VALUE = true;
+
+  public static void validateAutoCreateSchemaParam(final String autoCreateSchema) {
+    if (!"true".equalsIgnoreCase(autoCreateSchema) && !"false".equalsIgnoreCase(autoCreateSchema)) {
+      throw new SemanticException(
+          String.format(
+              "Given %s value '%s' is not supported, please input a valid boolean value.",
+              AUTO_CREATE_SCHEMA_KEY, autoCreateSchema));
+    }
+  }
+
+  public static boolean parseOrGetDefaultAutoCreateSchema(
+      final Map<String, String> loadAttributes) {
+    return Boolean.parseBoolean(
+        loadAttributes.getOrDefault(
+            AUTO_CREATE_SCHEMA_KEY, String.valueOf(AUTO_CREATE_SCHEMA_DEFAULT_VALUE)));
   }
 
   public static final String PIPE_GENERATED_KEY = "pipe-generated";

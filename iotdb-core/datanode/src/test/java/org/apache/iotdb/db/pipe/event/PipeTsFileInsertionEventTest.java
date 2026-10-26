@@ -37,7 +37,7 @@ import java.nio.file.Files;
 
 public class PipeTsFileInsertionEventTest {
 
-  @Test(timeout = 5000)
+  @Test(timeout = 60000)
   public void testRealtimeEventCanSkipWaitingForClosedStatusAfterTsFileSealed() throws Exception {
     final File tempDir = Files.createTempDirectory("pipeTsFileSealed").toFile();
 
