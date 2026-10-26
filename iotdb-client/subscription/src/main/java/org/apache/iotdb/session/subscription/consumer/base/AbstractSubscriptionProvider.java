@@ -736,7 +736,19 @@ public abstract class AbstractSubscriptionProvider {
       setUnavailable();
       throw new SubscriptionConnectionException(e.getMessage(), e);
     }
-    verifyPipeSubscribeSuccess(resp.status);
+    try {
+      verifyPipeSubscribeSuccess(resp.status);
+    } catch (final SubscriptionRuntimeNonCriticalException e) {
+      // A missing broker is reported as a poll error instead of a transport failure. Treat it as a
+      // provider failure so the consumer can recreate this provider before the next poll.
+      if (resp.status.code == TSStatusCode.SUBSCRIPTION_POLL_ERROR.getStatusCode()
+          && resp.status.message != null
+          && resp.status.message.contains("no broker bound to consumer group")) {
+        setUnavailable();
+        throw new SubscriptionConnectionException(e.getMessage(), e);
+      }
+      throw e;
+    }
     final PipeSubscribePollResp pollResp = PipeSubscribePollResp.fromTPipeSubscribeResp(resp);
     return pollResp.getResponses();
   }

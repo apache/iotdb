@@ -398,7 +398,7 @@ final class AbstractSubscriptionProviders {
     }
   }
 
-  /** Reconnects providers immediately after a failed RPC when every provider is unavailable. */
+  /** Reconnects unavailable providers immediately after a failed RPC. */
   void syncIfUnavailable(final AbstractSubscriptionConsumer consumer) {
     if (consumer.isClosed()
         || consumer.isFenced()
@@ -415,7 +415,7 @@ final class AbstractSubscriptionProviders {
                 }
                 acquireWriteLock();
                 try {
-                  if (consumer.isClosed() || consumer.isFenced() || !hasNoAvailableProviders()) {
+                  if (consumer.isClosed() || consumer.isFenced()) {
                     return;
                   }
                   final long now = System.currentTimeMillis();
@@ -462,33 +462,14 @@ final class AbstractSubscriptionProviders {
       return;
     }
 
-    // add new providers or handshake existing providers
+    // Add new providers, replace unavailable providers, or heartbeat existing providers.
     for (final Map.Entry<Integer, TEndPoint> entry : allEndPoints.entrySet()) {
       if (consumer.isFenced()) {
         return;
       }
-      final AbstractSubscriptionProvider provider = getProvider(entry.getKey());
-      if (Objects.isNull(provider)) {
-        // new provider
-        final TEndPoint endPoint = entry.getValue();
-        final AbstractSubscriptionProvider newProvider;
-        try {
-          newProvider = consumer.constructProviderAndHandshake(endPoint);
-        } catch (final SubscriptionConsumerFencedException e) {
-          consumer.fence(e);
-          return;
-        } catch (final Exception e) {
-          LOGGER.warn(
-              SubscriptionMessages.LOG_ARG_FAILED_CREATE_CONNECTION_ARG_BECAUSE_ARG_E536E22A,
-              consumer,
-              endPoint,
-              e,
-              e);
-          continue;
-        }
-        addProvider(entry.getKey(), newProvider);
-      } else {
-        // existing provider
+      AbstractSubscriptionProvider provider = getProvider(entry.getKey());
+      if (Objects.nonNull(provider) && provider.isAvailable()) {
+        // Existing provider
         try {
           consumer.subscribedTopics = provider.heartbeat().getTopics();
           provider.setAvailable();
@@ -506,20 +487,43 @@ final class AbstractSubscriptionProviders {
               e);
           provider.setUnavailable();
         }
-        // close and remove unavailable provider (reset the connection as much as possible)
-        if (!provider.isAvailable()) {
-          try {
-            closeAndRemoveProvider(entry.getKey());
-          } catch (final Exception e) {
-            LOGGER.warn(
-                SubscriptionMessages
-                    .LOG_EXCEPTION_OCCURRED_ARG_CLOSING_REMOVING_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_2EC38739,
-                consumer,
-                provider,
-                e,
-                e);
-          }
+      }
+
+      if (Objects.nonNull(provider) && !provider.isAvailable()) {
+        // Remove unavailable providers before creating replacements in this same sync round.
+        try {
+          closeAndRemoveProvider(entry.getKey());
+        } catch (final Exception e) {
+          LOGGER.warn(
+              SubscriptionMessages
+                  .LOG_EXCEPTION_OCCURRED_ARG_CLOSING_REMOVING_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_2EC38739,
+              consumer,
+              provider,
+              e,
+              e);
         }
+        provider = null;
+      }
+
+      if (Objects.isNull(provider)) {
+        // New or replacement provider
+        final TEndPoint endPoint = entry.getValue();
+        final AbstractSubscriptionProvider newProvider;
+        try {
+          newProvider = consumer.constructProviderAndHandshake(endPoint);
+        } catch (final SubscriptionConsumerFencedException e) {
+          consumer.fence(e);
+          return;
+        } catch (final Exception e) {
+          LOGGER.warn(
+              SubscriptionMessages.LOG_ARG_FAILED_CREATE_CONNECTION_ARG_BECAUSE_ARG_E536E22A,
+              consumer,
+              endPoint,
+              e,
+              e);
+          continue;
+        }
+        addProvider(entry.getKey(), newProvider);
       }
     }
 

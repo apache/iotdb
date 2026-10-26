@@ -134,6 +134,24 @@ public class SubscriptionConsumerMultiProviderPollTest {
     }
   }
 
+  @Test
+  public void testPollReconnectsWhenOneOfMultipleProvidersBecomesUnavailable()
+      throws SubscriptionException {
+    final TestPullConsumer consumer = new TestPullConsumer(1, 0, false, true, 3);
+    try {
+      consumer.open();
+      consumer.subscribeTopic();
+
+      final List<SubscriptionMessage> messages = consumer.pollForTest(2_000L);
+
+      Assert.assertEquals(1, messages.size());
+      Assert.assertEquals(4, consumer.getCreatedProviderCount());
+      Assert.assertEquals(2, consumer.getPollCount(1));
+    } finally {
+      consumer.close();
+    }
+  }
+
   private static class TestPullConsumer extends AbstractSubscriptionPullConsumer {
 
     private final Map<Integer, Integer> pollCounts = new HashMap<>();
