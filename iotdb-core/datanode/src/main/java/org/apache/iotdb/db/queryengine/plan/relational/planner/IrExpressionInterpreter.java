@@ -426,17 +426,21 @@ public class IrExpressionInterpreter {
         // optimization
         if (!inListCache.containsKey(valueList)) {
           if (valueList.getValues().stream().allMatch(Literal.class::isInstance)
-              && valueList.getValues().stream().noneMatch(NullLiteral.class::isInstance)) {
+              && valueList.getValues().stream().noneMatch(NullLiteral.class::isInstance)
+              && valueList.getValues().stream()
+                  .allMatch(item -> type(item).equals(type(node.getValue())))) {
             set =
                 valueList.getValues().stream()
                     .map(expr -> processWithExceptionHandling(expr, context))
+                    // INT32 literals and folded arithmetic may use different Java containers.
+                    .map(item -> normalizeArithmeticValue(item, type(node.getValue())))
                     .collect(Collectors.toSet());
           }
           inListCache.put(valueList, set);
         }
 
         if (set != null) {
-          return set.contains(value);
+          return set.contains(normalizeArithmeticValue(value, type(node.getValue())));
         }
       }
 
@@ -471,7 +475,11 @@ public class IrExpressionInterpreter {
         if (inValue == null) {
           hasNullValue = true;
         } else {
-          Boolean result = value.equals(inValue);
+          Boolean result =
+              value instanceof Number && inValue instanceof Number
+                  ? evaluateNumericComparison(
+                      ComparisonExpression.Operator.EQUAL, (Number) value, (Number) inValue)
+                  : value.equals(inValue);
           if (result == null) {
             hasNullValue = true;
           } else if (!found && result) {
@@ -584,19 +592,8 @@ public class IrExpressionInterpreter {
       if (operator == ComparisonExpression.Operator.IS_DISTINCT_FROM) {
         return processIsDistinctFrom(context, left, right);
       }
-      // Execution engine does not have not equal and greater than operators, so interpret with
-      // equal or less than, but do not flip operator in result, as many optimizers depend on
-      // operators not flipping
-      if (node.getOperator() == ComparisonExpression.Operator.NOT_EQUAL) {
-        Object result = visitComparisonExpression(flipComparison(node), context);
-        if (result == null) {
-          return null;
-        }
-        if (result instanceof ComparisonExpression) {
-          return flipComparison((ComparisonExpression) result);
-        }
-        return !(Boolean) result;
-      }
+      // Interpret greater-than comparisons with operands swapped, but preserve the original
+      // operator in unresolved results, as many optimizers depend on operators not flipping.
       if (node.getOperator() == ComparisonExpression.Operator.GREATER_THAN
           || node.getOperator() == ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL) {
         Object result = visitComparisonExpression(flipComparison(node), context);
@@ -1097,6 +1094,9 @@ public class IrExpressionInterpreter {
 
     private Boolean evaluateNumericComparison(
         ComparisonExpression.Operator operator, Number left, Number right) {
+      if (Double.isNaN(left.doubleValue()) || Double.isNaN(right.doubleValue())) {
+        return false;
+      }
       int comparison =
           (left instanceof Float
                   || left instanceof Double
@@ -1111,6 +1111,8 @@ public class IrExpressionInterpreter {
           return comparison <= 0;
         case EQUAL:
           return comparison == 0;
+        case NOT_EQUAL:
+          return comparison != 0;
         default:
           return null;
       }

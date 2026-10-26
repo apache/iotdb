@@ -107,6 +107,37 @@ public class InsertValuesTest {
   }
 
   @Test
+  public void testFoldedNumericInPredicates() {
+    for (String columns : new String[] {" (time, device_id, value)", ""}) {
+      for (String predicate :
+          new String[] {"1 + 1 IN (2, 3)", "2 IN (1 + 1, 3)", "1 + 1 IN (2.0, 3.0)"}) {
+        InsertValues insert = parse(columns + " VALUES (1, 'd1', if(" + predicate + ", 11, 22))");
+        insert.materialize(plannerContext, session);
+        InsertRowStatement row = insert.getInnerTreeStatement().getInsertRowStatementList().get(0);
+        assertEquals(predicate, 11, ((Number) row.getValues()[1]).intValue());
+      }
+    }
+  }
+
+  @Test
+  public void testFoldedNaNComparisons() {
+    for (String columns : new String[] {" (time, device_id, value)", ""}) {
+      for (String predicate :
+          new String[] {
+            "1.0 < (0.0 / 0.0)",
+            "(0.0 / 0.0) >= 1.0",
+            "(0.0 / 0.0) = (0.0 / 0.0)",
+            "(0.0 / 0.0) <> 1.0"
+          }) {
+        InsertValues insert = parse(columns + " VALUES (1, 'd1', if(" + predicate + ", 11, 22))");
+        insert.materialize(plannerContext, session);
+        InsertRowStatement row = insert.getInnerTreeStatement().getInsertRowStatementList().get(0);
+        assertEquals(predicate, 22, ((Number) row.getValues()[1]).intValue());
+      }
+    }
+  }
+
+  @Test
   public void testUnboundParametersRemainSemanticErrors() {
     for (String columns : new String[] {" (time, device_id, value)", ""}) {
       for (String values :
