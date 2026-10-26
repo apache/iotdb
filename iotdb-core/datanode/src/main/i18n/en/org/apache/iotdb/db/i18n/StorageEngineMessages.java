@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.i18n;
 
 public final class StorageEngineMessages {
+  public static final String LOG_WAL_NODE_RECOVERY_IN_ARG_WAS_INCOMPLETE_RETAINING_WAL_AND_CHECKPOINT_FILES_FOR_RETRY_48C1F7BF =
+      "WAL node recovery in {} was incomplete; retaining WAL and checkpoint files for retry.";
   public static final String EXCEPTION_FILE_ENCRYPTION_PARAMETER_PROVIDER_RETURNED_NULL_15C41723 =
       "File encryption parameter provider returned null";
   public static final String EXCEPTION_PRECALCULATED_CHUNK_STAGING_IS_NOT_SUPPORTED_BY_THE_FILE_ENCRYPTION_POLICY_13DA8C32 =
