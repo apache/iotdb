@@ -1864,7 +1864,7 @@ public class SeriesScanUtil implements Accountable {
           context.getQueryStatistics().getPageReadersDecodeAlignedMemCount().getAndAdd(1);
           context.getQueryStatistics().getPageReadersDecodeAlignedMemTime().getAndAdd(time);
         } else {
-          context.getQueryStatistics().getPageReadersDecodeAlignedMemCount().getAndAdd(1);
+          context.getQueryStatistics().getPageReadersDecodeNonAlignedMemCount().getAndAdd(1);
           context.getQueryStatistics().getPageReadersDecodeNonAlignedMemTime().getAndAdd(time);
         }
       }
