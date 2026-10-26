@@ -21,6 +21,9 @@ package org.apache.iotdb.db.i18n;
 
 public final class StorageEngineMessages {
 
+  public static final String LOG_REBUILT_UNREADABLE_WAL_FOOTER_FILE_ARG_VERSION_ARG_ORIGINALFILEBYTES_ARG_WRITERPROGRESS_ARG_1DBF836E =
+      "已重建不可读的 WAL footer：file={}，version={}，originalFileBytes={}，writerProgress={}。";
+
   public static final String MESSAGE_LOAD_TSFILE_SLICE_BODY_IS_NULL_OR_EMPTY_2A65366C =
       "Load TsFile 分片内容为 null 或为空";
   public static final String MESSAGE_INVALID_LOAD_TSFILE_SLICE_METADATA_SLICECOUNT_ARG_ORIGINBODYSIZE_ARG_379BF1B8 =
@@ -80,8 +83,9 @@ public final class StorageEngineMessages {
       "LOAD 快照进度文件 {} 无法读取：{}";
   public static final String MESSAGE_LOAD_CONSENSUS_PIECE_CHECKSUM_MISMATCH_CF261675 =
       "LOAD 共识分片校验和不一致，loadId: %s，pieceIndex: %d";
-  public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_EOF_8743387D =
-      "读取已暂存的分片 %s 时意外到达文件末尾，offset: %s。";
+  public static final String
+      EXCEPTION_UNEXPECTED_END_OF_FILE_WHEN_READING_THE_STAGED_PIECE_ARG_ARG_BYTES_WERE_REQUESTED_FROM_OFFSET_ARG_BUT_THE_FILE_ENDED_AT_POSITION_ARG_3F9CA32B =
+          "读取已暂存的分片 %s 时意外到达文件末尾：期望读取 %d 字节（起始偏移 %d），但文件在位置 %d 处结束。";
   public static final String EXCEPTION_STAGED_PIECE_FILE_ARG_IS_MISSING_AND_CANNOT_BE_READ_BACK_4F62F9C6 =
       "已暂存的分片文件 %s 不存在，无法回读。";
   public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_CHUNK_PAYLOAD_REF_PATH_ARG_OFFSET_ARG_SIZE_ARG_6B70A61B =
@@ -1590,6 +1594,15 @@ public final class StorageEngineMessages {
       "Load：设备 {} 测点 {} 在 TsFile {} 中的查询回退初始化失败。拆分或跳过该查询任务并继续。";
   public static final String MESSAGE_THE_ASSOCIATED_RESOURCE_FILE_OF_ARG_IS_NOT_FOUND_IN_THE_SNAPSHOT_CB9152B5 = "在快照中未找到 {} 关联的资源文件";
   public static final String MESSAGE_EVICTED_NON_EXISTING_EXISTING_SERIES_COUNT_ARG_ARG_ARG_TOTAL_REQUEST_ARG_3026ADBD = "淘汰的不存在/已存在时间序列数量：{}/{}({})，总请求数：{}";
+
+  public static final String EXCEPTION_WRITE_MEMORY_BLOCK_ARG_IS_CLOSED_9E2561DF =
+      "写入内存块 %s 已关闭";
+  public static final String EXCEPTION_WRITE_MEMORY_SIZE_MUST_BE_NON_NEGATIVE_ARG_2CBCF358 =
+      "写入内存大小不能为负数：%s";
+  public static final String EXCEPTION_CANNOT_RELEASE_ARG_BYTES_FROM_WRITE_MEMORY_BLOCK_ARG_WITH_ARG_BYTES_3783A614 =
+      "无法释放 %s 字节：写入内存块 %s 当前占用 %s 字节";
+  public static final String EXCEPTION_WRITE_MEMORY_BLOCK_ARG_ALREADY_BELONGS_TO_ANOTHER_MANAGER_A05A8229 =
+      "写入内存块 %s 已属于其他管理器";
 
   public static final String EXCEPTION_CHUNK_LAYOUT_IS_MISSING_E87C71C0 = "缺少 Chunk layout";
   public static final String EXCEPTION_CHUNK_HEADER_LIST_IS_EMPTY_5DE68C78 = "Chunk header 列表为空。";

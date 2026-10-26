@@ -420,12 +420,14 @@ public class RemoveDataNodePersistenceTest {
     failStatusWrite = true;
     TestProcedure procedure = procedure(NodeStatus.Running, RemoveDataNodeState.STOP_DATA_NODE);
     procedure.step(env);
+    assertFalse("A transient cleanup failure must remain retryable", procedure.isFailed());
     assertEquals(
         "The state-machine executor must retain the failed compensation step",
         RemoveDataNodeState.STOP_DATA_NODE,
         procedure.state());
     failStatusWrite = false;
     procedure.step(env);
+    assertFalse("Successful cleanup retry must not leave a failure", procedure.isFailed());
     assertStates(FIRST, NodeStatus.Running, NodeStatus.Running, null);
   }
 

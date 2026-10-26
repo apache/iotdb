@@ -41,6 +41,7 @@ public class CopyToNode extends SingleChildProcessNode {
   private final List<Symbol> childPermittedOutputs;
   private final List<Symbol> innerQueryOutputSymbols;
   private final DatasetHeader innerQueryDatasetHeader;
+  private final List<Symbol> outputSymbols;
 
   public CopyToNode(
       PlanNodeId id,
@@ -49,7 +50,8 @@ public class CopyToNode extends SingleChildProcessNode {
       CopyToOptions copyToOptions,
       List<Symbol> childPermittedOutputs,
       DatasetHeader innerQueryDatasetHeader,
-      List<Symbol> innerQueryOutputSymbols) {
+      List<Symbol> innerQueryOutputSymbols,
+      List<Symbol> outputSymbols) {
     super(id);
     this.child = child;
     this.targetFilePath = targetFilePath;
@@ -57,6 +59,7 @@ public class CopyToNode extends SingleChildProcessNode {
     this.childPermittedOutputs = childPermittedOutputs;
     this.innerQueryDatasetHeader = innerQueryDatasetHeader;
     this.innerQueryOutputSymbols = innerQueryOutputSymbols;
+    this.outputSymbols = outputSymbols;
   }
 
   public DatasetHeader getInnerQueryDatasetHeader() {
@@ -88,7 +91,8 @@ public class CopyToNode extends SingleChildProcessNode {
         copyToOptions,
         childPermittedOutputs,
         innerQueryDatasetHeader,
-        innerQueryOutputSymbols);
+        innerQueryOutputSymbols,
+        outputSymbols);
   }
 
   @Override
@@ -98,7 +102,7 @@ public class CopyToNode extends SingleChildProcessNode {
 
   @Override
   public List<Symbol> getOutputSymbols() {
-    return copyToOptions.getOutputSymbols();
+    return outputSymbols;
   }
 
   @Override
@@ -115,7 +119,8 @@ public class CopyToNode extends SingleChildProcessNode {
         copyToOptions,
         childPermittedOutputs,
         innerQueryDatasetHeader,
-        innerQueryOutputSymbols);
+        innerQueryOutputSymbols,
+        outputSymbols);
   }
 
   @Override

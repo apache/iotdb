@@ -1368,6 +1368,23 @@ struct TCreateTableViewReq {
     2: required bool replace
 }
 
+ struct TAutoSyncViewColumnsFailure {
+      1: required string database
+      2: required string tableName
+      3: required common.TSStatus status
+  }
+
+
+struct TAutoSyncViewColumnsResp{
+    1: required common.TSStatus status
+    2: optional list<TAutoSyncViewColumnsFailure> failedViews
+}
+
+struct TAutoSyncViewColumnsReq{
+    1:required list<TAlterOrDropTableReq> viewInfos
+}
+
+
 service IConfigNodeRPCService {
 
   // ======================================================
@@ -2171,4 +2188,6 @@ service IConfigNodeRPCService {
   // Table view
 
   common.TSStatus createTableView(TCreateTableViewReq req)
+
+  TAutoSyncViewColumnsResp autoSyncViewColumns(TAutoSyncViewColumnsReq req)
 }

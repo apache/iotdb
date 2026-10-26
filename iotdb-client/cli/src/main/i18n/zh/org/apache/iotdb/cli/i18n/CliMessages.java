@@ -76,7 +76,23 @@ public final class CliMessages {
       MESSAGE_INVALID_ARGS_REQUIRED_VALUES_FOR_OPTION_TABLE_NOT_PROVIDED_4BC3FCFA =
           "参数无效：未提供 table 选项的必填值。";
 
+  // Data import/export
+  public static final String EXCEPTION_FAILED_TO_INSERT_CSV_BATCH_ARG_159E0269 =
+      "CSV 批次写入失败：%s";
+  public static final String MESSAGE_ARG_UNEXPECTED_ERROR_OCCURRED_ARG_E7255EE6 =
+      "[%s] - 发生意外错误：%s";
+  public static final String
+      EXCEPTION_SQL_TSFILE_EXPORT_REQUIRES_A_QUERY_FROM_A_SINGLE_TABLE_IN_DATABASE_ARG_C9EB3768 =
+          "SQL/TsFile 导出要求查询仅来自数据库 %s 中的一张表。";
+  public static final String
+      MESSAGE_QUERY_TO_EXPORT_TABLE_SQL_TSFILE_QUERIES_REQUIRE_A_SINGLE_TABLE_WITHOUT_JOINS_SUBQUERIES_OR_CTES_OVERRIDES_TABLE_START_TIME_AND_END_TIME_OPTIONAL_CC12D400 =
+          "导出查询。表模型 SQL/TsFile 查询要求仅包含一张表，不支持联接、子查询或 CTE。指定后忽略 -table、-start_time 和 -end_time。（可选）";
+  public static final String
+      MESSAGE_MULTIPLE_CSV_HEADERS_RESOLVE_TO_THE_SAME_TARGET_COLUMN_99189563 =
+          "多个 CSV 表头映射到同一目标列。";
+
   private CliMessages() {}
+
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------

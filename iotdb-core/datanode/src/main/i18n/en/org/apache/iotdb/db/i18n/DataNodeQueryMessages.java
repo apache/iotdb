@@ -20,6 +20,23 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477 =
+      "Failed to convert TsFile %s to tablets. Status: %s";
+  public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD =
+      "Failed to convert TsFile %s to tablets: %s";
+  public static final String MESSAGE_TABLET_CONVERSION_RETURNED_NO_STATUS_88BAB5D3 =
+      "Tablet conversion returned no status";
+  public static final String EXCEPTION_FAILED_TO_READ_TSFILE_MODEL_INFORMATION_BEFORE_TABLET_CONVERSION_FOR_STATEMENT_ARG_ARG_F05C852A =
+      "Failed to read TsFile model information before tablet conversion for statement %s: %s";
+  public static final String EXCEPTION_FAILED_TO_LOAD_TSFILES_AFTER_TABLET_CONVERSION_DETAILS_ARG_53647EC5 =
+      "Failed to load TsFiles after tablet conversion. Details: %s";
+  public static final String LOG_LOAD_REJECTED_UUID_ARG_REGION_ARG_ENDPOINT_ARG_STATUS_ARG_8ED0679E =
+      "LOAD rejected: uuid={}, region={}, endpoint={}, status={}";
+  public static final String MESSAGE_TARGET_NODE_REJECTED_LOAD_WITHOUT_A_STATUS_OR_A_MESSAGE_F4E4C645 =
+      "Target node rejected LOAD without a status or a message";
+  public static final String MESSAGE_FAILED_TO_DISPATCH_LOAD_ARG_FOR_REGION_ARG_TO_NODE_ARG_ARG_57EFEC3A =
+      "Failed to dispatch LOAD %s for region %s to node %s: %s";
+
   public static final String MESSAGE_SCHEMA_REGION_IS_UNAVAILABLE_PLEASE_RETRY_LATER_D642510A =
       "Schema region is unavailable. Please retry later.";
 
@@ -280,6 +297,9 @@ public final class DataNodeQueryMessages {
           + " (configure copy_to_allowed_export_dirs to permit it): ";
   public static final String DATA_TYPE_OF_TARGET_TIME_COLUMN_IS_NOT =
       "Data type of target time column is not TIMESTAMP";
+  public static final String
+      EXCEPTION_SPECIFIED_TIME_COLUMN_ARG_DOES_NOT_EXIST_IN_THE_QUERY_RESULT_34791B26 =
+          "Specified TIME column %s does not exist in the query result";
   public static final String DUPLICATE_COLUMN_NAMES_IN_QUERY_DATASET =
       "Duplicate column names in query dataset.";
   public static final String SOME_SPECIFIED_TAG_COLUMNS_ARE_NOT_EXIST_IN =
@@ -622,8 +642,6 @@ public final class DataNodeQueryMessages {
       "TIMESTAMP IN-list literal can only be LongLiteral, DoubleLiteral, or GenericLiteral; actual type: %s";
   public static final String IS_NULL_CAN_BE_PUSHED_DOWN =
       "IS NULL can be pushed down";
-  public static final String GROUP_BY_TIME_CANNOT_BE_REVERSED =
-      "GROUP BY TIME cannot be reversed";
 
   // --- Plan / Optimization ---
 
@@ -1243,6 +1261,7 @@ public final class DataNodeQueryMessages {
       "Interrupted when dispatching read async";
   public static final String INTERRUPTED_WHEN_DISPATCHING_WRITE_ASYNC =
       "Interrupted when dispatching write async";
+  public static final String MESSAGE_INTERRUPTED_ERRORS_ARG_876F1B4B = "Interrupted errors: %s";
   public static final String DESERIALIZE_CONSENSUSGROUPID_FAILED =
       "Deserialize ConsensusGroupId failed. ";
   public static final String CAN_T_CONNECT_TO_NODE =
@@ -3456,6 +3475,7 @@ public final class DataNodeQueryMessages {
       "already being cancelled";
   public static final String DRIVER_TASK_ABORTED_BY_INTERNAL_ERROR_SCHEDULED =
       "internal error scheduled";
+  public static final String EXCEPTION_SCHEDULER_SHUTDOWN_323938F5 = "scheduler shutdown";
   public static final String DRIVER_TASK_ABORTED_BY_MEMORY_NOT_ENOUGH =
       "Memory is not enough to execute the query task.";
   public static final String ROOT_FRAGMENT_INSTANCE_PLACEMENT_ERROR_FMT =
@@ -4032,10 +4052,26 @@ public final class DataNodeQueryMessages {
           "No materializer is available to enforce the DeviceEntry memory limit";
   public static final String EXCEPTION_NO_MORE_DEVICEENTRY_RECORDS_ARE_AVAILABLE_8D51C199 =
       "No more DeviceEntry records are available";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_DUPLICATE_ARG_ATTRIBUTES_ARE_NOT_ALLOWED_27315578 =
+          "Failed to create or alter topic, duplicate %s attributes are not allowed";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_IS_ONLY_SUPPORTED_FOR_TABLE_TOPICS_A5126607 =
+          "Failed to create or alter topic, %s is only supported for table topics";
   public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
       "Only InMemoryDeviceEntryDataSet supports get inline device entries";
   public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_PIECE_REF_F3498507 =
       "Invalid LOAD consensus piece ref: path %s, offset %d, size %d";
+  public static final String EXCEPTION_AUTO_SYNC_SCHEMA_IS_ONLY_SUPPORTED_BY_TREE_TO_TABLE_VIEWS_C6586215 =
+      "auto_sync_schema is only supported by tree to table views";
+
+  public static final String MESSAGE_COPYTO_ARG_38343199 = "CopyTo-%s";
+  public static final String MESSAGE_TARGETFILE_ARG_EC484B24 = "TargetFile: %s";
+  public static final String MESSAGE_FORMAT_ARG_CE5DC4EE = "Format: %s";
+  public static final String MESSAGE_TARGETTABLE_ARG_00BE4714 = "TargetTable: %s";
+  public static final String MESSAGE_TIMECOLUMN_ARG_54F6A2A6 = "TimeColumn: %s";
+  public static final String MESSAGE_TAGCOLUMNS_ARG_6520A0C2 = "TagColumns: %s";
+  public static final String MESSAGE_MEMORYTHRESHOLD_ARG_3676AB46 = "MemoryThreshold: %s";
 
   public static final String EXCEPTION_CHUNKDATA_CONTAINS_NO_PHYSICAL_CHUNK_607BCFC8 =
       "ChunkData contains no physical chunk";
@@ -4051,4 +4087,7 @@ public final class DataNodeQueryMessages {
       "Dispatch LOAD piece: loadId={}, regionId={}, pieceIndex={}, tsFile={}, dataSize={}, replicaSet={}";
   public static final String LOG_DISPATCH_LOAD_PIECE_SUCCESS_LOADID_ARG_REGIONID_ARG_PIECEINDEX_ARG_DATASIZE_ARG_75F7AEFE =
       "Dispatch LOAD piece success: loadId={}, regionId={}, pieceIndex={}, dataSize={}";
+  public static final String EXCEPTION_PLAN_NODE_ARG_IS_ALREADY_REGISTERED_ON_MEMORY_SIDE_ARG_NOT_ARG_4C1BB625 = "Plan node %s is already registered on memory side %s, not %s";
+  public static final String EXCEPTION_MEMORY_RESERVATION_IS_NOT_REGISTERED_FOR_QUERY_ARG_FRAGMENT_ARG_PLAN_NODE_ARG_67A4B81F = "Memory reservation is not registered for query %s, fragment %s, plan node %s";
+  public static final String LOG_SHARED_EXCHANGE_BUDGET_FOR_FI_ARG_INPUT_ARG_OUTPUT_ARG_98AE1109 = "Shared exchange budget for FI {}: INPUT={}, OUTPUT={}";
 }

@@ -125,7 +125,8 @@ public class ClusterScheduler implements IScheduler {
         if (needRetry(result.getFailureStatus())) {
           stateMachine.transitionToPendingRetry(result.getFailureStatus());
         } else {
-          stateMachine.transitionToFailed(result.getFailureStatus());
+          stateMachine.transitionToFailed(
+              result.getFailureStatus(), result.isFailureCausedByInterruption());
         }
         return;
       }

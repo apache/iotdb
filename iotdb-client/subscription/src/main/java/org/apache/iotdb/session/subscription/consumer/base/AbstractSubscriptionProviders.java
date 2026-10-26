@@ -21,6 +21,7 @@ package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConsumerFencedException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
@@ -51,6 +52,7 @@ final class AbstractSubscriptionProviders {
   private final SortedMap<Integer, AbstractSubscriptionProvider> subscriptionProviders =
       new ConcurrentSkipListMap<>();
   private final AtomicBoolean isClosing = new AtomicBoolean(false);
+  private final AtomicBoolean unavailableSyncInFlight = new AtomicBoolean(false);
   private final Set<AbstractSubscriptionProvider> providersWithHeartbeatInFlight =
       ConcurrentHashMap.newKeySet();
   private final Object heartbeatResponseLock = new Object();
@@ -59,6 +61,7 @@ final class AbstractSubscriptionProviders {
   private final ReentrantReadWriteLock subscriptionProvidersLock = new ReentrantReadWriteLock(true);
 
   private final Set<TEndPoint> initialEndpoints;
+  private long lastUnavailableSyncTimeMs;
 
   AbstractSubscriptionProviders(final Set<TEndPoint> initialEndpoints) {
     this.initialEndpoints = initialEndpoints;
@@ -392,6 +395,43 @@ final class AbstractSubscriptionProviders {
       syncInternal(consumer);
     } finally {
       releaseWriteLock();
+    }
+  }
+
+  /** Reconnects providers immediately after a failed RPC when every provider is unavailable. */
+  void syncIfUnavailable(final AbstractSubscriptionConsumer consumer) {
+    if (consumer.isClosed()
+        || consumer.isFenced()
+        || !unavailableSyncInFlight.compareAndSet(false, true)) {
+      return;
+    }
+
+    if (Objects.isNull(
+        SubscriptionExecutorServiceManager.submitProviderHeartbeat(
+            () -> {
+              try {
+                if (consumer.isClosed() || consumer.isFenced()) {
+                  return;
+                }
+                acquireWriteLock();
+                try {
+                  if (consumer.isClosed() || consumer.isFenced() || !hasNoAvailableProviders()) {
+                    return;
+                  }
+                  final long now = System.currentTimeMillis();
+                  if (now - lastUnavailableSyncTimeMs
+                      >= ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_MIN_VALUE) {
+                    lastUnavailableSyncTimeMs = now;
+                    syncInternal(consumer);
+                  }
+                } finally {
+                  releaseWriteLock();
+                }
+              } finally {
+                unavailableSyncInFlight.set(false);
+              }
+            }))) {
+      unavailableSyncInFlight.set(false);
     }
   }
 

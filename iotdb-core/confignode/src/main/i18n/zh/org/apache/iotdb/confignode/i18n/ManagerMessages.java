@@ -606,6 +606,9 @@ public final class ManagerMessages {
   public static final String LOG_GOT_IOEXCEPTION_CONSTRUCT_DATABASE_TREE_49436621 = "构建数据库树时发生 IOException";
   public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_TEMPLATE_INFO_49EE617E = "反序列化模板信息时发生 IOException";
   public static final String MESSAGE_MEASUREMENTS_NOT_FOUND_ARG_CANNOT_AUTO_DETECT_980D7D44 = "未找到 %s 的测点，无法自动检测";
+  public static final String EXCEPTION_THE_DUPLICATED_SOURCE_MEASUREMENT_ARG_IS_UNSUPPORTED_YET_873AF566 = "暂不支持重复的源测点 %s。";
+  public static final String MESSAGE_MULTIPLE_TYPES_ENCOUNTERED_WHEN_AUTO_DETECTING_TYPE_OF_MEASUREMENT_ARG_PLEASE_CHECK_6EDF48DB = "自动检测测点 %s 的类型时遇到多种类型，请检查";
+  public static final String MESSAGE_THE_MEASUREMENTS_ARG_AND_ARG_SHARE_THE_SAME_LOWER_CASE_WHEN_AUTO_DETECTING_TYPE_PLEASE_CHECK_7225D062 = "自动检测类型时，测点 %s 和 %s 的小写形式相同，请检查";
   public static final String LOG_FAILED_TAKE_SNAPSHOT_BECAUSE_SNAPSHOT_FILE_ARG_ALREADY_EXIST_EB2A6093 = "获取快照失败，原因：快照文件 [{}] 已存在。";
   public static final String LOG_FAILED_LOAD_SNAPSHOT_SNAPSHOT_FILE_ARG_NOT_EXIST_8828CFBA = "无法加载快照，快照文件 [{}] 不存在。";
   public static final String LOG_YOU_MAYBE_NEED_RENAME_SIMPLE_DIR_0_0_MANUALLY_2A12C5C9 = "可能需要手动将 simple 目录重命名为 0_0。";
