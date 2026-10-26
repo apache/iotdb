@@ -762,6 +762,17 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
     }
   }
 
+  public boolean hasQueueForRegion(final String topicName, final String regionId) {
+    synchronized (queueLifecycleLock) {
+      return topicNameToConsensusPrefetchingQueues
+          .getOrDefault(topicName, Collections.emptyList())
+          .stream()
+          .anyMatch(
+              queue ->
+                  !queue.isClosed() && regionId.equals(queue.getConsensusGroupId().toString()));
+    }
+  }
+
   public void rollbackConsensusPrefetchingQueues(
       final String topicName, final Set<String> existingRegionIds) {
     final List<ConsensusPrefetchingQueue> queuesToClose = new ArrayList<>();

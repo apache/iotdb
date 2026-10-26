@@ -974,6 +974,12 @@ public class SubscriptionBrokerAgent {
     return regionIdsByTopic;
   }
 
+  public boolean hasConsensusQueueForRegion(
+      final String consumerGroupId, final String topicName, final String regionId) {
+    final ConsensusSubscriptionBroker broker = getConsensusBroker(consumerGroupId);
+    return Objects.nonNull(broker) && broker.hasQueueForRegion(topicName, regionId);
+  }
+
   public void rollbackConsensusPrefetchingQueues(
       final String consumerGroupId, final String topicName, final Set<String> existingRegionIds) {
     final ConsensusSubscriptionBroker broker = getConsensusBroker(consumerGroupId);

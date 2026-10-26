@@ -21,6 +21,8 @@ package org.apache.iotdb.db.subscription.broker.consensus;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
@@ -57,7 +59,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.LongSupplier;
 
 import static org.junit.Assert.assertEquals;
@@ -306,12 +314,7 @@ public class ConsensusSubscriptionSetupHandlerTest {
       when(consensus.getAllConsensusGroupIds()).thenReturn(Collections.singletonList(regionId));
 
       ConsensusSubscriptionSetupHandler.setupConsensusQueueForTopic(
-          consumerGroupId,
-          topicName,
-          false,
-          consensus,
-          manager,
-          broker.getQueueRegionIds(topicName));
+          consumerGroupId, topicName, false, consensus, manager);
 
       assertFalse(manager.isInitialProgressPending(consumerGroupId, topicName, regionId));
       assertTrue(manager.isConfigNodeProgressAvailable(consumerGroupId, topicName, regionId));
@@ -326,6 +329,163 @@ public class ConsensusSubscriptionSetupHandlerTest {
       SubscriptionAgent.topic().handleDropTopic(topicName, false);
       IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
     }
+  }
+
+  @Test
+  public void testRepairSkipsRegionWhileNewPeerCallbackIsPending() throws Exception {
+    final String consumerGroupId = "group-" + UUID.randomUUID();
+    final String topicName = "topic-" + UUID.randomUUID();
+    final DataRegionId regionId = new DataRegionId(54);
+    final IConsensus originalConsensus = DataRegionConsensusImpl.getInstance();
+    final IoTConsensus consensus = mock(IoTConsensus.class);
+    when(consensus.getAllConsensusGroupIds()).thenReturn(Collections.emptyList());
+    DataRegionConsensusImpl.setInstance(consensus);
+    try {
+      assertNull(
+          SubscriptionAgent.topic()
+              .handleSingleTopicMetaChanges(
+                  new TopicMeta(
+                      topicName,
+                      1L,
+                      Collections.singletonMap(
+                          TopicConstant.MODE_KEY, TopicConstant.MODE_INCREMENTAL_VALUE))));
+      createSubscribedConsumerGroup(consumerGroupId, topicName);
+      when(consensus.getAllConsensusGroupIds()).thenReturn(Collections.singletonList(regionId));
+      when(consensus.isPeerCreationCallbackPending(regionId)).thenReturn(true);
+
+      ConsensusSubscriptionSetupHandler.setupConsensusQueueForTopic(
+          consumerGroupId,
+          topicName,
+          false,
+          consensus,
+          ConsensusSubscriptionCommitManager.getInstance());
+
+      verify(consensus, never()).getImpl(regionId);
+      assertTrue(
+          getBrokers().getOrDefault(consumerGroupId, Collections.emptyList()).stream()
+              .noneMatch(ConsensusSubscriptionBroker.class::isInstance));
+    } finally {
+      SubscriptionAgent.consumer().handleDropConsumerGroup(consumerGroupId);
+      SubscriptionAgent.topic().handleDropTopic(topicName, false);
+      DataRegionConsensusImpl.setInstance(originalConsensus);
+    }
+  }
+
+  @Test
+  public void testNewSubscriptionDoesNotWaitForAnUnrelatedPeerCallback() throws Exception {
+    final String consumerGroupId = "group-" + UUID.randomUUID();
+    final String topicName = "topic-" + UUID.randomUUID();
+    final DataRegionId regionId = new DataRegionId(55);
+    final IoTConsensus consensus = mock(IoTConsensus.class);
+    when(consensus.getAllConsensusGroupIds()).thenReturn(Collections.singletonList(regionId));
+    when(consensus.isPeerCreationCallbackPending(regionId)).thenReturn(true);
+    try {
+      assertNull(
+          SubscriptionAgent.topic()
+              .handleSingleTopicMetaChanges(
+                  new TopicMeta(
+                      topicName,
+                      1L,
+                      Collections.singletonMap(
+                          TopicConstant.MODE_KEY, TopicConstant.MODE_INCREMENTAL_VALUE))));
+
+      ConsensusSubscriptionSetupHandler.setupConsensusQueueForTopic(
+          consumerGroupId,
+          topicName,
+          false,
+          consensus,
+          ConsensusSubscriptionCommitManager.getInstance());
+
+      verify(consensus).getImpl(regionId);
+    } finally {
+      SubscriptionAgent.topic().handleDropTopic(topicName, false);
+    }
+  }
+
+  @Test
+  public void testNewRegionCallbackWaitsForRepairAndRereadsSubscriptions() throws Exception {
+    final String consumerGroupId = "group-" + UUID.randomUUID();
+    final String topicName = "topic-" + UUID.randomUUID();
+    final DataRegionId regionId = new DataRegionId(56);
+    final IConsensus originalConsensus = DataRegionConsensusImpl.getInstance();
+    final IoTConsensus consensus = mock(IoTConsensus.class);
+    when(consensus.getAllConsensusGroupIds()).thenReturn(Collections.emptyList());
+    DataRegionConsensusImpl.setInstance(consensus);
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    final CountDownLatch callbackStarted = new CountDownLatch(1);
+    final CountDownLatch callbackFinished = new CountDownLatch(1);
+    final AtomicReference<Future<?>> callback = new AtomicReference<>();
+    final IoTConsensusServerImpl server = mock(IoTConsensusServerImpl.class);
+    when(server.getSearchIndex())
+        .thenAnswer(
+            ignored -> {
+              callbackStarted.countDown();
+              return 1L;
+            });
+    try {
+      assertNull(
+          SubscriptionAgent.topic()
+              .handleSingleTopicMetaChanges(
+                  new TopicMeta(
+                      topicName,
+                      1L,
+                      Collections.singletonMap(
+                          TopicConstant.MODE_KEY, TopicConstant.MODE_INCREMENTAL_VALUE))));
+      final ConsumerGroupMeta meta = createSubscribedConsumerGroup(consumerGroupId, topicName);
+
+      SubscriptionAgent.consumer()
+          .executeWithConsumerGroupLock(
+              consumerGroupId,
+              () -> {
+                callback.set(
+                    executor.submit(
+                        () -> {
+                          try {
+                            ConsensusSubscriptionSetupHandler.onNewRegionCreated(regionId, server);
+                          } finally {
+                            callbackFinished.countDown();
+                          }
+                        }));
+                try {
+                  assertTrue(callbackStarted.await(5, TimeUnit.SECONDS));
+                  assertFalse(callbackFinished.await(200, TimeUnit.MILLISECONDS));
+                } catch (final InterruptedException e) {
+                  Thread.currentThread().interrupt();
+                  throw new AssertionError(e);
+                }
+                final ConsumerGroupMeta unsubscribedMeta = meta.deepCopy();
+                unsubscribedMeta.removeSubscription(null, Collections.singleton(topicName));
+                assertNull(
+                    SubscriptionAgent.consumer()
+                        .handleSingleConsumerGroupMetaChanges(unsubscribedMeta));
+              });
+
+      callback.get().get(5, TimeUnit.SECONDS);
+      assertTrue(
+          SubscriptionAgent.consumer()
+              .getTopicNamesSubscribedByConsumerGroup(consumerGroupId)
+              .isEmpty());
+      assertTrue(
+          getBrokers().getOrDefault(consumerGroupId, Collections.emptyList()).stream()
+              .noneMatch(ConsensusSubscriptionBroker.class::isInstance));
+    } finally {
+      executor.shutdownNow();
+      executor.awaitTermination(5, TimeUnit.SECONDS);
+      SubscriptionAgent.consumer().handleDropConsumerGroup(consumerGroupId);
+      SubscriptionAgent.topic().handleDropTopic(topicName, false);
+      DataRegionConsensusImpl.setInstance(originalConsensus);
+    }
+  }
+
+  private static ConsumerGroupMeta createSubscribedConsumerGroup(
+      final String consumerGroupId, final String topicName) {
+    final String consumerId = "consumer-" + UUID.randomUUID();
+    final ConsumerGroupMeta meta =
+        new ConsumerGroupMeta(
+            consumerGroupId, 1L, new ConsumerMeta(consumerId, 1L, Collections.emptyMap()));
+    meta.addSubscription(consumerId, Collections.singleton(topicName));
+    assertNull(SubscriptionAgent.consumer().handleSingleConsumerGroupMetaChanges(meta));
+    return meta;
   }
 
   @SuppressWarnings("unchecked")

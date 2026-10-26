@@ -30,6 +30,7 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -336,7 +337,7 @@ public class SubscriptionConsumerAgent {
     }
   }
 
-  void executeWithConsumerGroupLock(final String consumerGroupId, final Runnable operation) {
+  public void executeWithConsumerGroupLock(final String consumerGroupId, final Runnable operation) {
     final ConsumerGroupOperationLock operationLock =
         consumerGroupOperationLocks.compute(
             consumerGroupId,
@@ -440,6 +441,19 @@ public class SubscriptionConsumerAgent {
     acquireReadLock();
     try {
       return consumerGroupMetaKeeper.isTopicSubscribedByConsumerGroup(topicName, consumerGroupId);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public Set<String> getTopicNamesSubscribedByConsumerGroup(final String consumerGroupId) {
+    acquireReadLock();
+    try {
+      final ConsumerGroupMeta consumerGroupMeta =
+          consumerGroupMetaKeeper.getConsumerGroupMeta(consumerGroupId);
+      return Objects.isNull(consumerGroupMeta)
+          ? Collections.emptySet()
+          : new LinkedHashSet<>(consumerGroupMeta.getSubscribedTopicNames());
     } finally {
       releaseReadLock();
     }
