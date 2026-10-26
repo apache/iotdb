@@ -149,4 +149,58 @@ public class IoTDBSharedDiffStateIT {
       }
     }
   }
+
+  @Test
+  public void testGuardedUpdateWithMatchingDeviceKeepsCaseProtection() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE);
+      statement.execute(
+          "CREATE TABLE guarded_update (id STRING TAG, src STRING ATTRIBUTE, a STRING ATTRIBUTE, v DOUBLE FIELD)");
+      statement.execute(
+          "INSERT INTO guarded_update(time,id,src,a,v) VALUES (1,'d0','1','seed',1),(2,'d1','5','seed',1),(3,'d2','n/a','seed',1)");
+      statement.execute(
+          "UPDATE guarded_update SET a = CAST(diff(CAST(src AS DOUBLE), src = 'x') AS STRING) WHERE CASE WHEN src = 'n/a' THEN false ELSE diff(CAST(src AS DOUBLE), src = 'x') > 0 END");
+      assertResultSetEqual(
+          statement.executeQuery("SHOW DEVICES FROM guarded_update"),
+          "id,src,a,",
+          new HashSet<>(Arrays.asList("d0,1,seed,", "d1,5,4.0,", "d2,n/a,seed,")));
+    }
+  }
+
+  @Test
+  public void testUpdateWritesTheDiffNullUsedByWhere() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE);
+      statement.execute(
+          "CREATE TABLE null_update (id STRING TAG, src STRING ATTRIBUTE, a STRING ATTRIBUTE, v DOUBLE FIELD)");
+      statement.execute(
+          "INSERT INTO null_update(time,id,src,a,v) VALUES (1,'d0','1','seed',1),(2,'d1','3','seed',1),(3,'d2','6','seed',1)");
+      statement.execute(
+          "UPDATE null_update SET a = coalesce(CAST(diff(CAST(src AS DOUBLE), src = 'x') AS STRING), 'NULL') WHERE CASE WHEN src = '3' THEN false ELSE diff(CAST(src AS DOUBLE), src = 'x') IS NULL END");
+      assertResultSetEqual(
+          statement.executeQuery("SHOW DEVICES FROM null_update"),
+          "id,src,a,",
+          new HashSet<>(Arrays.asList("d0,1,NULL,", "d1,3,seed,", "d2,6,NULL,")));
+    }
+  }
+
+  @Test
+  public void testUpdateBatchSplitDoesNotCreateMatches() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE);
+      statement.execute(
+          "CREATE TABLE split_update (id STRING TAG, src STRING ATTRIBUTE, a STRING ATTRIBUTE, v DOUBLE FIELD)");
+      statement.execute(
+          "INSERT INTO split_update(time,id,src,a,v) VALUES (1,'d0','10','seed',1),(2,'d1','20','seed',1),(3,'d2','0','seed',1),(4,'d3','5','seed',1)");
+      statement.execute(
+          "UPDATE split_update SET a = CAST(diff(CAST(src AS DOUBLE), src = 'x') AS STRING) WHERE CASE WHEN src = '0' THEN false ELSE diff(CAST(src AS DOUBLE), src = 'x') > 0 END");
+      assertResultSetEqual(
+          statement.executeQuery("SHOW DEVICES FROM split_update"),
+          "id,src,a,",
+          new HashSet<>(Arrays.asList("d0,10,seed,", "d1,20,10.0,", "d2,0,seed,", "d3,5,seed,")));
+    }
+  }
 }

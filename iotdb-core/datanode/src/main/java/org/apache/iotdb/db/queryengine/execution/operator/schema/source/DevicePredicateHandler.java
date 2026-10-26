@@ -61,7 +61,7 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
   protected TsBlock curBlock;
   protected Column curFilterColumn;
 
-  // Retain the original constructor descriptor for precompiled subclasses without common roots.
+  // Convenience constructor for callers that do not share filter and projection expressions.
   protected DevicePredicateHandler(
       final List<LeafColumnTransformer> filterLeafColumnTransformerList,
       final ColumnTransformer filterOutputTransformer,

@@ -39,7 +39,7 @@ public abstract class DeviceUpdater extends DevicePredicateHandler {
 
   private final BiFunction<Integer, String, Binary> attributeProvider;
 
-  // Retain the original constructor descriptor for precompiled subclasses without common roots.
+  // Convenience constructor for callers that do not share filter and projection expressions.
   protected DeviceUpdater(
       final List<LeafColumnTransformer> filterLeafColumnTransformerList,
       final ColumnTransformer filterOutputTransformer,

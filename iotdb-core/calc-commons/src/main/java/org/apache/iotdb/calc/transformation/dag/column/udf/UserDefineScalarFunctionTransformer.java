@@ -134,7 +134,8 @@ public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer 
   @Override
   public boolean canEvaluateWithSelection() {
     // User code has no purity contract: it may keep state across rows, so a masked evaluation
-    // cannot be assumed equivalent to a full one.
+    // cannot be assumed equivalent to a full one. This is a conservative default for future
+    // consumers; schema UPDATE does not currently execute scalar UDFs.
     return false;
   }
 

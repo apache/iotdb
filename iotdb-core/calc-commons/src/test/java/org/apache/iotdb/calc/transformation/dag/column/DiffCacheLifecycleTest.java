@@ -58,6 +58,47 @@ import static org.junit.Assert.assertTrue;
 public class DiffCacheLifecycleTest {
 
   @Test
+  public void testUpdateRetainsValuesAndNullsFromDifferentFilterMasks() {
+    Fixture fixture = binary();
+    DiffColumnTransformer diff = (DiffColumnTransformer) fixture.diff;
+    diff.retainResultForReuse();
+    fixture.init(block(new Double[] {1.0, 3.0, 6.0}, new Boolean[] {true, true, true}));
+    assertValues(fixture.selected(new boolean[] {true, true, false}), null, 2.0, null);
+    assertValues(fixture.selected(new boolean[] {false, false, true}), null, null, null);
+    diff.reuseRetainedResult();
+    assertValues(fixture.selected(new boolean[] {true, true, true}), null, 2.0, null);
+    fixture.init(block(new Double[] {10.0}, new Boolean[] {true}));
+    assertValues(fixture.full(), 4.0);
+  }
+
+  @Test
+  public void testAdditionalSetRowsPreserveWhereValuesAndNextBatchState() {
+    Fixture fixture = binary();
+    DiffColumnTransformer diff = (DiffColumnTransformer) fixture.diff;
+    diff.retainResultForReuse();
+    fixture.init(block(new Double[] {1.0, 9.0, 5.0}, new Boolean[] {false, false, false}));
+    assertValues(fixture.selected(new boolean[] {true, false, false}), null, null, null);
+    diff.reuseRetainedResult();
+    assertValues(fixture.selected(new boolean[] {false, true, false}), null, 8.0, null);
+    assertValues(fixture.selected(new boolean[] {false, false, true}), null, 8.0, -4.0);
+    fixture.init(block(new Double[] {10.0}, new Boolean[] {false}));
+    assertValues(fixture.full(), (Double) null);
+  }
+
+  @Test
+  public void testSetCanEvaluateDiffNotVisitedByWhere() {
+    Fixture fixture = binary();
+    DiffColumnTransformer diff = (DiffColumnTransformer) fixture.diff;
+    diff.retainResultForReuse();
+    fixture.init(block(new Double[] {1.0, 9.0, 5.0}, new Boolean[] {false, false, false}));
+    diff.reuseRetainedResult();
+    assertValues(fixture.selected(new boolean[] {false, true, false}), null, null, null);
+    diff.releaseRetainedResult();
+    fixture.init(block(new Double[] {10.0}, new Boolean[] {false}));
+    assertValues(fixture.full(), (Double) null);
+  }
+
+  @Test
   public void testBinaryFullEvaluationOwnsNextInputStateRegardlessOfMaskOrder() {
     for (boolean fullFirst : new boolean[] {true, false}) {
       Fixture fixture = binary();

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.DiffColumnTransformer;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -40,16 +41,19 @@ import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.calc.execution.operator.process.FilterAndProjectOperator.constructFilteredTsBlock;
-import static org.apache.iotdb.calc.execution.operator.process.FilterAndProjectOperator.satisfy;
 
 public class DeviceAttributeUpdater extends DeviceUpdater {
   private final List<ColumnTransformer> commonTransformerList;
+  private final boolean[] commonSupportsSelection;
+  private final boolean[] commonUsesRetainedDiff;
+  private final List<DiffColumnTransformer> commonDiffTransformers = new ArrayList<>();
   private final List<LeafColumnTransformer> projectLeafColumnTransformerList;
   private final List<ColumnTransformer> projectOutputTransformerList;
   private final ColumnTransformer[] projectCacheTransformers;
@@ -83,6 +87,29 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
         database,
         table);
     this.commonTransformerList = commonTransformerList;
+    this.commonSupportsSelection = new boolean[commonTransformerList.size()];
+    this.commonUsesRetainedDiff = new boolean[commonTransformerList.size()];
+    for (int i = 0; i < commonTransformerList.size(); i++) {
+      ColumnTransformer common = commonTransformerList.get(i);
+      commonSupportsSelection[i] = common.canEvaluateWithSelection();
+      if (!commonSupportsSelection[i]) {
+        for (ColumnTransformer transformer :
+            ColumnTransformer.collectTransformers(Collections.singletonList(common))) {
+          if (transformer instanceof DiffColumnTransformer) {
+            commonUsesRetainedDiff[i] = true;
+            break;
+          }
+        }
+      }
+    }
+    for (ColumnTransformer transformer :
+        ColumnTransformer.collectTransformers(commonTransformerList)) {
+      if (transformer instanceof DiffColumnTransformer) {
+        DiffColumnTransformer diff = (DiffColumnTransformer) transformer;
+        diff.retainResultForReuse();
+        commonDiffTransformers.add(diff);
+      }
+    }
     this.projectLeafColumnTransformerList = projectLeafColumnTransformerList;
     this.projectOutputTransformerList = projectOutputTransformerList;
     this.projectCacheTransformers =
@@ -100,6 +127,14 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
   }
 
   protected void update() throws MetadataException {
+    try {
+      updateAttributes();
+    } finally {
+      commonDiffTransformers.forEach(DiffColumnTransformer::releaseRetainedResult);
+    }
+  }
+
+  private void updateAttributes() throws MetadataException {
     if (!withoutFilter() && indexes.isEmpty()) {
       // No device needs an update. Do not retry expressions excluded by the filter's CASE guard.
       attributePointers.clear();
@@ -161,14 +196,28 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
         new ArrayList<>(Arrays.asList(curBlock.getValueColumns()));
 
     if (!commonTransformerList.isEmpty()) {
-      boolean[] selection = new boolean[deviceSchemaBatch.size()];
-      for (int i = 0; i < selection.length; i++) {
-        selection[i] = satisfy(curFilterColumn, i);
-      }
+      boolean[] selection = null;
       // CASE may clear a common expression. Recompute only rows whose filter guard passed.
-      for (ColumnTransformer transformer : commonTransformerList) {
-        if (transformer.canEvaluateWithSelection()) {
-          transformer.tryEvaluateWithSelection(selection);
+      commonDiffTransformers.forEach(DiffColumnTransformer::reuseRetainedResult);
+      for (int i = 0; i < commonTransformerList.size(); i++) {
+        ColumnTransformer transformer = commonTransformerList.get(i);
+        if (commonSupportsSelection[i] && transformer.getColumnCachePositionCount() > 0) {
+          filterResultColumns.add(transformer.getColumn());
+          continue;
+        }
+        if (commonSupportsSelection[i] || commonUsesRetainedDiff[i]) {
+          if (selection == null) {
+            selection = new boolean[deviceSchemaBatch.size()];
+            for (int index : indexes) {
+              selection[index] = true;
+            }
+          }
+          if (commonSupportsSelection[i]) {
+            transformer.tryEvaluateWithSelection(selection);
+          } else {
+            // Rebuild wrappers from the DIFF results actually used by WHERE, including nulls.
+            transformer.evaluateWithSelection(selection);
+          }
         } else {
           // Stateful transformers must be re-evaluated over every row: a masked evaluation
           // would read the masked rows as nulls and corrupt their running state. The snapshot

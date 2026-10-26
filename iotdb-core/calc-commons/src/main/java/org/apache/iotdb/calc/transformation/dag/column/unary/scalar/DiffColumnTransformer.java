@@ -26,6 +26,8 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
+import java.util.Arrays;
+
 public class DiffColumnTransformer extends BinaryColumnTransformer {
 
   // cache the last non-null value
@@ -43,6 +45,13 @@ public class DiffColumnTransformer extends BinaryColumnTransformer {
   private boolean lastValueIsNullAfterFullEvaluation;
   private boolean hasFullEvaluation;
 
+  // Schema UPDATE keeps the filter's results until its SET expressions have consumed them.
+  private boolean retainResults;
+  private boolean reuseRetainedResults;
+  private Column retainedResult;
+  private boolean[] retainedRows;
+  private boolean[] evaluationSelection;
+
   public DiffColumnTransformer(
       Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
     super(returnType, leftTransformer, rightTransformer);
@@ -53,13 +62,147 @@ public class DiffColumnTransformer extends BinaryColumnTransformer {
     lastValueBeforeCurrentInput = lastValue;
     lastValueIsNullBeforeCurrentInput = lastValueIsNull;
     hasFullEvaluation = false;
+    releaseRetainedResult();
   }
 
   @Override
   public boolean canEvaluateWithSelection() {
-    // The full-width transform reads the masked children at unselected rows as nulls, which
-    // corrupts the running state and the values of the selected rows that follow them.
+    // A fresh masked transform changes the running state. Schema UPDATE explicitly opts into
+    // reusing the filter's results instead of treating DIFF as a stateless expression.
     return false;
+  }
+
+  /** Enables result retention for a schema UPDATE's filter and SET phases. */
+  public void retainResultForReuse() {
+    retainResults = true;
+  }
+
+  /** Starts the SET phase without evaluating rows excluded by the filter's CASE guards. */
+  public void reuseRetainedResult() {
+    reuseRetainedResults = true;
+    columnCache.clear();
+  }
+
+  /** Releases this batch's columns while keeping the state produced by its filter. */
+  public void releaseRetainedResult() {
+    retainedResult = null;
+    retainedRows = null;
+    reuseRetainedResults = false;
+    evaluationSelection = null;
+  }
+
+  @Override
+  public void initializeColumnCache(Column column) {
+    super.initializeColumnCache(column);
+    if (!retainResults || reuseRetainedResults) {
+      return;
+    }
+    if (retainedResult == null || evaluationSelection == null) {
+      retainedResult = column;
+      retainedRows = new boolean[column.getPositionCount()];
+      if (evaluationSelection == null) {
+        Arrays.fill(retainedRows, true);
+      } else {
+        System.arraycopy(evaluationSelection, 0, retainedRows, 0, retainedRows.length);
+      }
+      return;
+    }
+    ColumnBuilder builder = returnType.createColumnBuilder(column.getPositionCount());
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      appendValue(builder, evaluationSelection[i] ? column : retainedResult, i);
+      retainedRows[i] |= evaluationSelection[i];
+    }
+    retainedResult = builder.build();
+  }
+
+  @Override
+  public void evaluate() {
+    if (reuseRetainedResults) {
+      evaluateRetainedResult(null);
+    } else {
+      super.evaluate();
+    }
+  }
+
+  @Override
+  public void evaluateWithSelection(boolean[] selection) {
+    if (reuseRetainedResults) {
+      evaluateRetainedResult(selection);
+      return;
+    }
+    evaluationSelection = selection;
+    try {
+      super.evaluateWithSelection(selection);
+    } finally {
+      evaluationSelection = null;
+    }
+  }
+
+  private void evaluateRetainedResult(boolean[] selection) {
+    boolean missing = retainedResult == null;
+    if (!missing) {
+      for (int i = 0; i < retainedRows.length; i++) {
+        if (!retainedRows[i] && (selection == null || selection[i])) {
+          missing = true;
+          break;
+        }
+      }
+    }
+    if (missing) {
+      Column previousResult = retainedResult;
+      boolean[] previousRows = retainedRows == null ? null : retainedRows.clone();
+      boolean[] expandedSelection = selection == null ? null : selection.clone();
+      if (expandedSelection != null && previousRows != null) {
+        for (int i = 0; i < expandedSelection.length; i++) {
+          expandedSelection[i] |= previousRows[i];
+        }
+      }
+      double savedLastValue = lastValue;
+      boolean savedLastValueIsNull = lastValueIsNull;
+      double savedFullValue = lastValueAfterFullEvaluation;
+      boolean savedFullValueIsNull = lastValueIsNullAfterFullEvaluation;
+      boolean savedHasFullEvaluation = hasFullEvaluation;
+      reuseRetainedResults = false;
+      evaluationSelection = expandedSelection;
+      try {
+        if (expandedSelection == null) {
+          super.evaluate();
+        } else {
+          super.evaluateWithSelection(expandedSelection);
+        }
+      } finally {
+        reuseRetainedResults = true;
+        evaluationSelection = null;
+        lastValue = savedLastValue;
+        lastValueIsNull = savedLastValueIsNull;
+        lastValueAfterFullEvaluation = savedFullValue;
+        lastValueIsNullAfterFullEvaluation = savedFullValueIsNull;
+        hasFullEvaluation = savedHasFullEvaluation;
+      }
+      // An additional SET consumer must not change values already used by WHERE.
+      if (previousResult != null) {
+        ColumnBuilder builder = returnType.createColumnBuilder(retainedRows.length);
+        for (int i = 0; i < retainedRows.length; i++) {
+          appendValue(builder, previousRows[i] ? previousResult : retainedResult, i);
+        }
+        retainedResult = builder.build();
+      }
+    }
+    initializeColumnCache(retainedResult);
+  }
+
+  private static void appendValue(ColumnBuilder builder, Column column, int index) {
+    if (column.isNull(index)) {
+      builder.appendNull();
+    } else {
+      builder.write(column, index);
+    }
+  }
+
+  @Override
+  public void close() {
+    releaseRetainedResult();
+    super.close();
   }
 
   @Override

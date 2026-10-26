@@ -71,7 +71,7 @@ public class IoTDBCaseDeviceCacheIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       createTable(statement, "predicate_cache");
-      for (String predicate : new String[] {CASE_RESULT + " = src"}) {
+      for (String predicate : new String[] {CASE_RESULT + " = src", "src = " + CASE_RESULT}) {
         assertResultSetEqual(
             statement.executeQuery("SHOW DEVICES FROM predicate_cache WHERE " + predicate),
             "id,src,a,b,",
@@ -104,6 +104,26 @@ public class IoTDBCaseDeviceCacheIT {
                   "d1,match,match,match,",
                   "d2,other,other,other,",
                   "d3,other,other,other,")));
+    }
+  }
+
+  @Test
+  public void testAttributeConcatRetainsInputClearedByCase() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      createTable(statement, "concat_cache");
+      statement.execute(
+          "UPDATE concat_cache SET b = concat(src, "
+              + "CASE WHEN src = 'match' THEN '-m' ELSE '-o' END)");
+      assertResultSetEqual(
+          statement.executeQuery("SHOW DEVICES FROM concat_cache"),
+          "id,src,a,b,",
+          new HashSet<>(
+              Arrays.asList(
+                  "d0,match,null,match-m,",
+                  "d1,match,null,match-m,",
+                  "d2,other,null,other-o,",
+                  "d3,other,null,other-o,")));
     }
   }
 

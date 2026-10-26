@@ -27,6 +27,7 @@ import org.apache.iotdb.calc.transformation.dag.column.binary.CompareGreaterThan
 import org.apache.iotdb.calc.transformation.dag.column.leaf.ConstantColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.IdentityColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.IsNullColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.CastFunctionColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.DiffColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.UpperColumnTransformer;
@@ -261,6 +262,40 @@ public class DevicePredicateHandlerTest {
   }
 
   @Test
+  public void testAttributeUpdaterPreservesDiffGuardWithMatchingDevice() throws Exception {
+    List<List<String>> updates = new ArrayList<>();
+    try (DeviceAttributeUpdater updater = guardedDiffUpdater(updates, "n/a", false)) {
+      updateBatch(updater, "1", "5", "n/a");
+      assertEquals(Collections.singletonList(Arrays.asList("5", "4.0")), updates);
+    }
+  }
+
+  @Test
+  public void testAttributeUpdaterWritesTheDiffNullSeenByWhere() throws Exception {
+    List<List<String>> updates = new ArrayList<>();
+    try (DeviceAttributeUpdater updater = guardedDiffUpdater(updates, "3", true)) {
+      updateBatch(updater, "1", "3", "6");
+      assertEquals(Arrays.asList(Arrays.asList("1", null), Arrays.asList("6", null)), updates);
+    }
+  }
+
+  @Test
+  public void testAttributeUpdaterDiffDoesNotDependOnBatchBoundaries() throws Exception {
+    for (boolean split : new boolean[] {false, true}) {
+      List<List<String>> updates = new ArrayList<>();
+      try (DeviceAttributeUpdater updater = guardedDiffUpdater(updates, "0", false)) {
+        if (split) {
+          updateBatch(updater, "10", "20", "0");
+          updateBatch(updater, "5");
+        } else {
+          updateBatch(updater, "10", "20", "0", "5");
+        }
+        assertEquals(Collections.singletonList(Arrays.asList("20", "10.0")), updates);
+      }
+    }
+  }
+
+  @Test
   public void testAttributeUpdaterSkipsGuardedCommonDiffWhenNoDevicesMatch() throws Exception {
     Graph filter = new Graph();
     ColumnTransformer input = filter.input(0);
@@ -343,6 +378,53 @@ public class DevicePredicateHandlerTest {
       assertTrue(updates.isEmpty());
       assertFalse(updater.hasComputedResult());
     }
+  }
+
+  private static DeviceAttributeUpdater guardedDiffUpdater(
+      List<List<String>> updates, String excluded, boolean selectNull) {
+    Graph filter = new Graph();
+    ColumnTransformer input = filter.input(0);
+    ColumnTransformer value =
+        new CastFunctionColumnTransformer(DOUBLE, reference(input), ZoneId.of("UTC"));
+    ColumnTransformer diff =
+        new DiffColumnTransformer(
+            DOUBLE, reference(value), reference(filter.equal(input, filter.constant("x"))));
+    ColumnTransformer condition =
+        selectNull
+            ? new IsNullColumnTransformer(BOOLEAN, reference(diff), false)
+            : new CompareGreaterThanColumnTransformer(
+                BOOLEAN,
+                reference(diff),
+                reference(
+                    filter.leaf(
+                        new ConstantColumnTransformer(
+                            DOUBLE, new DoubleColumn(1, Optional.empty(), new double[] {0})))));
+    ColumnTransformer predicate =
+        filter.caseWhen(
+            filter.equal(input, filter.constant(excluded)), filter.constant(false), condition);
+    Graph projection = new Graph();
+    ColumnTransformer common = projection.leaf(new IdentityColumnTransformer(DOUBLE, 1));
+    ColumnTransformer output =
+        new CastFunctionColumnTransformer(STRING, reference(common), ZoneId.of("UTC"));
+    return new DeviceAttributeUpdater(
+        Arrays.asList(TSDataType.STRING, TSDataType.DOUBLE),
+        filter.leaves,
+        reference(predicate),
+        Collections.singletonList(reference(diff)),
+        COLUMNS,
+        projection.leaves,
+        Collections.singletonList(reference(output)),
+        (pointer, name) -> null,
+        (deviceId, pointer, values) ->
+            updates.add(
+                Arrays.asList(
+                    deviceId[0],
+                    values[0] == null
+                        ? null
+                        : ((Binary) values[0]).getStringValue(TSFileConfig.STRING_CHARSET))),
+        Collections.singletonList("a"),
+        "test",
+        new TsTable("table"));
   }
 
   private static DevicePredicateFilter predicateFilter(Graph graph, ColumnTransformer predicate) {

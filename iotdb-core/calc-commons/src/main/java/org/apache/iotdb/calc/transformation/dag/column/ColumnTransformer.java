@@ -72,8 +72,9 @@ public abstract class ColumnTransformer {
   /**
    * Whether evaluating with a row-selection mask yields the same values at the selected rows
    * (unselected rows are nulled by design) and the same cross-block running state as a full
-   * evaluation, for this node and its whole subtree. Stateful transformers override this to return
-   * {@code false} so that callers re-evaluate them over every row.
+   * evaluation, for this node and its whole subtree. Schema UPDATE uses this property to choose
+   * between masked materialization and preserving a stateful result. CASE, AND and OR retain their
+   * own selection evaluation semantics.
    */
   public boolean canEvaluateWithSelection() {
     boolean[] result = {true};

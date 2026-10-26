@@ -84,7 +84,8 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
   @Override
   public boolean canEvaluateWithSelection() {
     // User code has no purity contract: a masked evaluation feeds the executor null-padded
-    // columns, which a stateful UDTF would process differently from a full evaluation.
+    // columns, which a stateful UDTF would process differently from a full evaluation. This
+    // tree-model transformer is not used by schema UPDATE.
     return false;
   }
 
