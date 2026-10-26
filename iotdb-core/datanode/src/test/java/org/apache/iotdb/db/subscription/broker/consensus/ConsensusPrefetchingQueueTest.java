@@ -3302,7 +3302,17 @@ public class ConsensusPrefetchingQueueTest {
       assertEquals("false", queue.coreReportMessage().get("realtimeAdmissionBlocked"));
       assertTrue(pendingEntries(queue).offer(createRequest(requestCount + 1L)));
 
-      assertNotNull(queue.poll("consumer"));
+      final SubscriptionEvent event = queue.poll("consumer");
+      assertNotNull(event);
+      queue.drivePrefetchOnce();
+
+      assertEquals(prefetchingQueueCapacity - 1, queue.getPrefetchedEventCount());
+      assertEquals(prefetchingQueueCapacity, queue.getSubscriptionRetainedEventCount());
+      assertEquals(prefetchingQueueCapacity, conversionCount.get());
+      assertEquals(2, pendingEntries(queue).size());
+      assertEquals("false", queue.coreReportMessage().get("realtimeAdmissionBlocked"));
+
+      assertTrue(queue.ack("consumer", event.getCommitContext()));
       queue.drivePrefetchOnce();
 
       assertEquals(prefetchingQueueCapacity, queue.getPrefetchedEventCount());

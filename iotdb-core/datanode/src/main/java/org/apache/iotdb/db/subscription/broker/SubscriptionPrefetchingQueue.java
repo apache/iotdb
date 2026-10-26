@@ -109,6 +109,9 @@ public abstract class SubscriptionPrefetchingQueue {
 
   private final SubscriptionPrefetchingQueueStates states;
 
+  // Keep the in-flight limit check and event claim atomic across concurrent polls.
+  private final Object pollLock = new Object();
+
   private long lastStateReportTimestamp = System.currentTimeMillis();
 
   private volatile boolean isCompleted = false;
@@ -230,7 +233,9 @@ public abstract class SubscriptionPrefetchingQueue {
   public SubscriptionEvent poll(final String consumerId) {
     acquireReadLock();
     try {
-      return isClosed() ? null : pollInternal(consumerId);
+      synchronized (pollLock) {
+        return isClosed() ? null : pollInternal(consumerId);
+      }
     } finally {
       releaseReadLock();
     }
@@ -281,14 +286,7 @@ public abstract class SubscriptionPrefetchingQueue {
     }
 
     remapInFlightEventsSnapshot(committedCleaner, pollableNacker);
-    if (!states.shouldThrottlePoll()) {
-      return false;
-    }
-
-    LOGGER.debug(
-        "Subscription: SubscriptionPrefetchingQueue {} throttles poll because too many events are in flight.",
-        this);
-    return true;
+    return states.shouldThrottlePoll();
   }
 
   public SubscriptionEvent pollV2(final String consumerId, final PollTimer timer) {
@@ -306,13 +304,15 @@ public abstract class SubscriptionPrefetchingQueue {
           return null;
         }
 
-        if (shouldThrottlePollByInFlightEvents()) {
-          return null;
-        }
+        synchronized (pollLock) {
+          if (shouldThrottlePollByInFlightEvents()) {
+            return null;
+          }
 
-        final SubscriptionEvent event = pollInternalV2(consumerId);
-        if (Objects.nonNull(event)) {
-          return event;
+          final SubscriptionEvent event = pollInternalV2(consumerId);
+          if (Objects.nonNull(event)) {
+            return event;
+          }
         }
       } finally {
         releaseReadLock();
