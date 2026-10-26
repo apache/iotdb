@@ -96,6 +96,7 @@ public class WALNodeRecoverTask implements Runnable {
       recoverTsFiles();
     } catch (Exception e) {
       recoveryFailed = true;
+      WALManager.getInstance().markRecoveryFailed(logDirectory.getName(), e);
       for (UnsealedTsFileRecoverPerformer recoverPerformer : memTableId2RecoverPerformer.values()) {
         recoverPerformer.getRecoverListener().fail(e);
       }
@@ -297,6 +298,7 @@ public class WALNodeRecoverTask implements Runnable {
         recoverPerformer.startRecovery();
       } catch (Exception e) {
         recoveryFailed = true;
+        WALManager.getInstance().markRecoveryFailed(logDirectory.getName(), e);
         failedMemTables.add(entry.getKey());
         recoverPerformer.getRecoverListener().fail(e);
       }
@@ -375,6 +377,7 @@ public class WALNodeRecoverTask implements Runnable {
         recoverPerformer.getRecoverListener().succeed();
       } catch (Exception e) {
         recoveryFailed = true;
+        WALManager.getInstance().markRecoveryFailed(logDirectory.getName(), e);
         failedMemTables.add(entry.getKey());
         recoverPerformer.getRecoverListener().fail(e);
       }

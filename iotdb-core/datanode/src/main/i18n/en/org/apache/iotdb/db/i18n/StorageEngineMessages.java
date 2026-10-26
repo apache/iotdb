@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.i18n;
 
 public final class StorageEngineMessages {
+  public static final String EXCEPTION_CANNOT_ENABLE_WAL_NODE_ARG_BECAUSE_ITS_PREVIOUS_RECOVERY_FAILED_RESTART_AFTER_RESOLVING_THE_RECOVERY_FAILURE_56DF9750 =
+      "Cannot enable WAL node %s because its previous recovery failed; restart after resolving the recovery failure.";
   public static final String LOG_WAL_NODE_RECOVERY_IN_ARG_WAS_INCOMPLETE_RETAINING_WAL_AND_CHECKPOINT_FILES_FOR_RETRY_48C1F7BF =
       "WAL node recovery in {} was incomplete; retaining WAL and checkpoint files for retry.";
   public static final String EXCEPTION_FILE_ENCRYPTION_PARAMETER_PROVIDER_RETURNED_NULL_15C41723 =

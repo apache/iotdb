@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
@@ -35,8 +36,10 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALRecoverExce
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.CheckpointWriter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter;
+import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.file.UnsealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -54,6 +57,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
@@ -61,6 +66,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -77,9 +83,10 @@ public class WALNodeRecoverTaskTest {
 
   @Before
   public void setUp() throws Exception {
+    previousConsensus = config.getDataRegionConsensusProtocolClass();
+    config.setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
     EnvironmentUtils.envSetUp();
     recovery.clear();
-    previousConsensus = config.getDataRegionConsensusProtocolClass();
     config.setDataRegionConsensusProtocolClass(ConsensusFactory.SIMPLE_CONSENSUS);
   }
 
@@ -112,18 +119,34 @@ public class WALNodeRecoverTaskTest {
   @Test
   public void testIoTConsensusFailureKeepsCheckpoint() throws Exception {
     config.setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
-    assertFailedRecovery(new IOException("injected initialization failure"), false, false);
+    assertFailedRecovery(new IOException("injected initialization failure"), false, true);
   }
 
   @Test
   public void testIoTConsensusV2FailureKeepsLogs() throws Exception {
     config.setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS_V2);
-    assertFailedRecovery(new IOException("injected initialization failure"), false, false);
+    assertFailedRecovery(new IOException("injected initialization failure"), false, true);
+  }
+
+  @Test
+  public void testIoTConsensusFinalizationFailureBlocksNodeReuse() throws Exception {
+    config.setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+    assertFailedRecovery(
+        new WALRecoverException(
+            "injected flush failure", new IOException("injected flush failure")),
+        true,
+        false);
   }
 
   private void assertFailedRecovery(Exception failure, boolean finalization, boolean retry)
       throws Exception {
     File node = folder.newFolder("node");
+    boolean stableNode =
+        config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+            || config
+                .getDataRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.IOT_CONSENSUS_V2);
+    long firstVersion = stableNode ? 7 : 0;
     List<File> files = new ArrayList<>();
     List<UnsealedTsFileRecoverPerformer> performers = new ArrayList<>();
     List<MemTableInfo> tables = new ArrayList<>();
@@ -135,7 +158,7 @@ public class WALNodeRecoverTaskTest {
       IMemTable table = mock(IMemTable.class);
       when(table.getMemTableId()).thenReturn(id);
       when(table.getDataRegionId()).thenReturn("0");
-      tables.add(new MemTableInfo(table, file.getAbsolutePath(), 0));
+      tables.add(new MemTableInfo(table, file.getAbsolutePath(), firstVersion));
       InsertRowNode row =
           new InsertRowNode(
               new PlanNodeId(""),
@@ -148,6 +171,9 @@ public class WALNodeRecoverTaskTest {
               false);
       row.setMeasurementSchemas(
           new MeasurementSchema[] {new MeasurementSchema("s1", TSDataType.INT64)});
+      if (stableNode) {
+        row.setSearchIndex(10 + id);
+      }
       entries.add(new WALInfoEntry(id, row));
     }
     Checkpoint checkpoint = new Checkpoint(CheckpointType.GLOBAL_MEMORY_TABLE_INFO, tables);
@@ -158,13 +184,14 @@ public class WALNodeRecoverTaskTest {
     try (CheckpointWriter writer = new CheckpointWriter(checkpointFile)) {
       writer.write(checkpointBytes, false);
     }
-    File wal = new File(node, "_0-0-0.wal");
+    File wal = new File(node, stableNode ? "_7-11-1.wal" : "_0-0-0.wal");
     try (WALWriter writer = new WALWriter(wal)) {
       for (WALEntry entry : entries) {
         ByteBuffer data = ByteBuffer.allocate(entry.serializedSize());
         entry.serialize(new WALByteBufferForTest(data));
         WALMetaData metadata = new WALMetaData();
-        metadata.add(data.position(), -1, entry.getMemTableId());
+        metadata.add(
+            data.position(), stableNode ? 10 + entry.getMemTableId() : -1, entry.getMemTableId());
         writer.write(data, metadata);
       }
     }
@@ -195,7 +222,38 @@ public class WALNodeRecoverTaskTest {
     verify(healthy).endRecovery();
     assertArrayEquals(walBefore, Files.readAllBytes(wal.toPath()));
     assertArrayEquals(checkpointBefore, Files.readAllBytes(checkpointFile.toPath()));
+    if (stableNode) {
+      WALManager manager = WALManager.getInstance();
+      for (int i = 0; i < 3; i++) {
+        IllegalStateException allocation =
+            assertThrows(
+                IllegalStateException.class, () -> manager.applyForWALNode(node.getName()));
+        assertSame(failure, allocation.getCause());
+        IllegalStateException registration =
+            assertThrows(
+                IllegalStateException.class,
+                () -> manager.registerWALNode(node.getName(), node.getAbsolutePath(), 8, 12));
+        assertSame(failure, registration.getCause());
+      }
+      WALMode previousMode = config.getWalMode();
+      try {
+        config.setWalMode(WALMode.DISABLE);
+        assertThrows(IllegalStateException.class, () -> manager.applyForWALNode(node.getName()));
+      } finally {
+        config.setWalMode(previousMode);
+      }
+      assertArrayEquals(walBefore, Files.readAllBytes(wal.toPath()));
+      assertArrayEquals(checkpointBefore, Files.readAllBytes(checkpointFile.toPath()));
+      assertEquals(
+          new HashSet<>(Arrays.asList(1L, 2L)),
+          CheckpointRecoverUtils.recoverMemTableInfo(node).getMemTableId2Info().keySet());
+      assertTrue(manager.applyForWALNode("unrelated-healthy-node") instanceof WALNode);
+    }
     if (retry) {
+      if (stableNode) {
+        // A fresh WAL service must recover the retained state before accepting this identifier.
+        WALManager.getInstance().clear();
+      }
       recovery.clear();
       List<UnsealedTsFileRecoverPerformer> retried = new ArrayList<>();
       for (File file : files) {
@@ -210,7 +268,13 @@ public class WALNodeRecoverTaskTest {
         verify(performer).redoLog(any());
         verify(performer).endRecovery();
       }
-      assertFalse(node.exists());
+      if (stableNode) {
+        WALNode restored = (WALNode) WALManager.getInstance().applyForWALNode(node.getName());
+        assertEquals(8, restored.getCurrentWALFileVersion());
+        assertEquals(12, restored.getCurrentSearchIndex());
+      } else {
+        assertFalse(node.exists());
+      }
       assertEquals(WALRecoverListener.Status.FAILURE, failed.getRecoverListener().waitForResult());
     } else {
       assertTrue(node.isDirectory());
