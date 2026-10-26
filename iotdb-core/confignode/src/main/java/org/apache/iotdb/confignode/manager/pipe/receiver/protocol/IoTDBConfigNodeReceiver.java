@@ -185,6 +185,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     try {
       final short rawRequestType = req.getType();
       final PipeConfigNodeReceiverMetrics metrics = PipeConfigNodeReceiverMetrics.getInstance();
+      // Capture the readable body before handlers consume or normalize the buffer.
+      final int requestBodySizeInBytes = req.body == null ? 0 : req.body.remaining();
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
         final PipeRequestType type = PipeRequestType.valueOf(rawRequestType);
         if (needHandshake(type)) {
@@ -208,7 +210,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 return recordConfigNodeHandshakeIfSuccess(resp, req);
               } finally {
                 metrics.recordHandshakeConfigNodeV1Timer(System.nanoTime() - startTime);
-                metrics.markHandshakeConfigNodeV1Size(req.body.limit());
+                metrics.markHandshakeConfigNodeV1Size(requestBodySizeInBytes);
               }
             }
           case HANDSHAKE_CONFIGNODE_V2:
@@ -224,7 +226,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 return recordConfigNodeHandshakeIfSuccess(resp, req);
               } finally {
                 metrics.recordHandshakeConfigNodeV2Timer(System.nanoTime() - startTime);
-                metrics.markHandshakeConfigNodeV2Size(req.body.limit());
+                metrics.markHandshakeConfigNodeV2Size(requestBodySizeInBytes);
               }
             }
           case TRANSFER_CONFIG_PLAN:
@@ -235,7 +237,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 return recordConfigNodeTransferIfSuccess(resp);
               } finally {
                 metrics.recordTransferConfigPlanTimer(System.nanoTime() - startTime);
-                metrics.markTransferConfigPlanSize(req.body.limit());
+                metrics.markTransferConfigPlanSize(requestBodySizeInBytes);
               }
             }
           case TRANSFER_CONFIG_SNAPSHOT_PIECE:
@@ -255,7 +257,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 }
               } finally {
                 metrics.recordTransferConfigSnapshotPieceTimer(System.nanoTime() - startTime);
-                metrics.markTransferConfigSnapshotPieceSize(req.body.limit());
+                metrics.markTransferConfigSnapshotPieceSize(requestBodySizeInBytes);
               }
             }
           case TRANSFER_CONFIG_SNAPSHOT_SEAL:
@@ -267,7 +269,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 return recordConfigNodeTransferIfSuccess(resp);
               } finally {
                 metrics.recordTransferConfigSnapshotSealTimer(System.nanoTime() - startTime);
-                metrics.markTransferConfigSnapshotSealSize(req.body.limit());
+                metrics.markTransferConfigSnapshotSealSize(requestBodySizeInBytes);
               }
             }
           case TRANSFER_COMPRESSED:
@@ -284,7 +286,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 }
               } finally {
                 metrics.recordTransferCompressedTimer(System.nanoTime() - startTime);
-                metrics.markTransferCompressedSize(req.body.limit());
+                metrics.markTransferCompressedSize(requestBodySizeInBytes);
               }
             }
           case TRANSFER_PIPE_RECEIVER_RUNTIME_INFO_CLEANUP:
