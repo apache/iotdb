@@ -21,9 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.statement.metadata.template;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActivateTemplateStatement;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
+import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -74,7 +74,9 @@ public class BatchActivateTemplateStatementTest {
                 new PartialPath("root.sg.v1.d1"),
                 new PartialPath("root.sg.v2.d1"),
                 // no template is set on this path, so it contributes no path
-                new PartialPath("root.sg.v3.d1")));
+                new PartialPath("root.sg.v3.d1"),
+                // A template mounted on a descendant cannot be used by its ancestor.
+                new PartialPath("root.sg")));
 
     final List<PartialPath> paths = statement.getPaths();
 
@@ -97,6 +99,8 @@ public class BatchActivateTemplateStatementTest {
     deviceMap.put(
         new PartialPath("root.sg.v2.d1"), new Pair<>(template2, new PartialPath("root.sg.v2")));
 
+    deviceMap.put(new PartialPath("root.sg"), new Pair<>(template1, new PartialPath("root.sg.v1")));
+
     final InternalBatchActivateTemplateStatement statement =
         new InternalBatchActivateTemplateStatement(deviceMap);
 
@@ -110,6 +114,16 @@ public class BatchActivateTemplateStatementTest {
                 new PartialPath("root.sg.v1.d1.s2"),
                 new PartialPath("root.sg.v2.d1.s3"))),
         new HashSet<>(paths));
+  }
+
+  @Test
+  public void testSingleGetPathsRequiresMountPathOrDescendant() throws IllegalPathException {
+    Assert.assertTrue(
+        new ActivateTemplateStatement(new PartialPath("root.sg")).getPaths().isEmpty());
+    Assert.assertEquals(
+        new HashSet<>(
+            Arrays.asList(new PartialPath("root.sg.v1.s1"), new PartialPath("root.sg.v1.s2"))),
+        new HashSet<>(new ActivateTemplateStatement(new PartialPath("root.sg.v1")).getPaths()));
   }
 
   private static Template createTemplate(
