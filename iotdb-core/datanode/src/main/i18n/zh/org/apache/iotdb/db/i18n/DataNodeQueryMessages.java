@@ -1662,6 +1662,8 @@ public final class DataNodeQueryMessages {
       "[清理查询]";
   public static final String RELEASE_QUERY_RESOURCE_STATE =
       "[释放查询资源] 状态为: {}";
+  public static final String IGNORE_EXCEPTION_AFTER_QUERY_DONE =
+      "[忽略异常] 查询 {} 已处于终态 {}，忽略并发清理资源导致的异常";
   public static final String SKIP_EXECUTE =
       "[跳过执行]";
   public static final String SKIP_EXECUTE_AFTER_LOGICAL_PLAN =

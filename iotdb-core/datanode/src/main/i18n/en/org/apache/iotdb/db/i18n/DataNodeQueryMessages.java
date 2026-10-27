@@ -1682,6 +1682,9 @@ public final class DataNodeQueryMessages {
       "[CleanUpQuery]]";
   public static final String RELEASE_QUERY_RESOURCE_STATE =
       "[ReleaseQueryResource] state is: {}";
+  public static final String IGNORE_EXCEPTION_AFTER_QUERY_DONE =
+      "[IgnoreException] Query {} is already in terminal state {}, the exception caused by "
+          + "concurrent resource cleanup is ignored";
   public static final String SKIP_EXECUTE =
       "[SkipExecute]";
   public static final String SKIP_EXECUTE_AFTER_LOGICAL_PLAN =

@@ -37,7 +37,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.UncheckedIOException;
 import java.lang.reflect.Field;
+import java.nio.file.NoSuchFileException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,6 +51,7 @@ import java.util.concurrent.ScheduledExecutorService;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -105,6 +108,50 @@ public class QueryExecutionRetryTest {
     assertEquals(TSStatusCode.DISPATCH_ERROR.getStatusCode(), result.status.code);
     assertEquals(Arrays.asList("begin", "analyze", "rollback"), planner.getAnalysisEvents());
     assertFalse(planner.getAnalysisEvents().contains("commit"));
+  }
+
+  @Test
+  public void testPlanningFailureIsNotSwallowedWhileNotDone() {
+    RecordingPlanner planner =
+        new RecordingPlanner(false) {
+          @Override
+          public LogicalQueryPlan doLogicalPlan(IAnalysis analysis, MPPQueryContext context) {
+            throw new IllegalStateException("planning failed");
+          }
+        };
+    QueryExecution execution =
+        new QueryExecution(planner, createQueryContext("plan_fails"), stateMachineExecutor);
+
+    IllegalStateException thrown = assertThrows(IllegalStateException.class, execution::start);
+    assertEquals("planning failed", thrown.getMessage());
+  }
+
+  @Test
+  public void testCleanupFailureAfterQueryCanceledIsIgnoredDuringStart() {
+    QueryExecution[] self = new QueryExecution[1];
+    RecordingPlanner planner =
+        new RecordingPlanner(false) {
+          @Override
+          public LogicalQueryPlan doLogicalPlan(IAnalysis analysis, MPPQueryContext context) {
+            // Simulate KILL QUERY arriving while the planner is still fetching device schema. The
+            // cancel releases the spill directory, so the next segment write fails with
+            // NoSuchFileException, which must not override the recorded QUERY_WAS_KILLED status.
+            self[0].cancel();
+            throw new UncheckedIOException(
+                new NoSuchFileException(
+                    "/tmp/device-entry/cancel_during_start/1/raw/segment-000002.tmp"));
+          }
+        };
+    QueryExecution execution =
+        new QueryExecution(
+            planner, createQueryContext("cancel_during_start"), stateMachineExecutor);
+    self[0] = execution;
+
+    execution.start();
+
+    assertEquals(Arrays.asList("begin", "analyze", "rollback"), planner.getAnalysisEvents());
+    ExecutionResult result = execution.getStatus();
+    assertEquals(TSStatusCode.QUERY_WAS_KILLED.getStatusCode(), result.status.code);
   }
 
   private static MPPQueryContext createQueryContext(String queryId) {
