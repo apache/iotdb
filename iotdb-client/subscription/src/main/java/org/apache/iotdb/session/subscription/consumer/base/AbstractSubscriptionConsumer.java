@@ -110,6 +110,9 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   private static final long SLEEP_MS = 100L;
   private static final long SLEEP_DELTA_MS = 50L;
   private static final long TIMER_DELTA_MS = 250L;
+  private static final int MAX_COMMIT_RETRIES = 3;
+  private static final long COMMIT_RETRY_INTERVAL_MS =
+      ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_MIN_VALUE;
   private static final AtomicLong LAST_CONSUMER_INSTANCE_EPOCH = new AtomicLong();
 
   private final String username;
@@ -1542,7 +1545,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       final List<SubscriptionCommitContext> groupedCommitContexts = entry.getValue();
       requestedCount += groupedCommitContexts.size();
       final AbstractSubscriptionProvider.CommitResult commitResp =
-          commitInternal(entry.getKey(), groupedCommitContexts, nack);
+          commitWithRetry(entry.getKey(), groupedCommitContexts, nack);
       final List<SubscriptionCommitContext> acceptedCommitContexts =
           commitResp.getAcceptedCommitContexts();
       acceptedCount += acceptedCommitContexts.size();
@@ -1567,6 +1570,40 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
           errorMessage,
           failedCommitContexts);
       throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+    }
+  }
+
+  private AbstractSubscriptionProvider.CommitResult commitWithRetry(
+      final int dataNodeId,
+      final List<SubscriptionCommitContext> commitContexts,
+      final boolean nack)
+      throws SubscriptionException {
+    for (int retries = 0; ; retries++) {
+      checkIfFenced();
+      try {
+        return commitInternal(dataNodeId, commitContexts, nack);
+      } catch (final SubscriptionConnectionException e) {
+        if (nack
+            || retries >= MAX_COMMIT_RETRIES
+            || isClosed()
+            || Thread.currentThread().isInterrupted()) {
+          throw e;
+        }
+        checkIfFenced();
+        // commitInternal schedules provider recovery. Release its read lock before waiting, and
+        // allow another recovery round even when the first reconnect attempt fails.
+        try {
+          Thread.sleep(COMMIT_RETRY_INTERVAL_MS);
+        } catch (final InterruptedException interruptedException) {
+          Thread.currentThread().interrupt();
+          e.addSuppressed(interruptedException);
+          throw e;
+        }
+        checkIfFenced();
+        if (isClosed()) {
+          throw e;
+        }
+      }
     }
   }
 

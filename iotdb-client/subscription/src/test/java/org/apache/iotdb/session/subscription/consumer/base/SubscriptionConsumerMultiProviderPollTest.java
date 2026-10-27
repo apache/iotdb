@@ -24,6 +24,8 @@ import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConsumerFencedException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
@@ -44,13 +46,17 @@ import org.junit.Test;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -59,6 +65,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class SubscriptionConsumerMultiProviderPollTest {
 
@@ -367,6 +374,213 @@ public class SubscriptionConsumerMultiProviderPollTest {
     }
   }
 
+  @Test(timeout = 20_000)
+  public void testSyncCommitRetriesFailedProviderWithoutRepeatingAcceptedGroups() throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer(1, 0, false, false, 3, true);
+    try {
+      consumer.open();
+      final TestSubscriptionProvider healthy = consumer.createdProviders.get(0);
+      final TestSubscriptionProvider failed = consumer.createdProviders.get(1);
+      failed.failContinuation = true;
+      final SubscriptionMessage first =
+          new SubscriptionMessage(
+              new SubscriptionCommitContext(1, 0, TOPIC, CONSUMER_GROUP_ID, 1L), 1L);
+      final SubscriptionMessage second =
+          new SubscriptionMessage(
+              new SubscriptionCommitContext(2, 0, TOPIC, CONSUMER_GROUP_ID, 2L), 2L);
+      final Field field =
+          AbstractSubscriptionPullConsumer.class.getDeclaredField("uncommittedCommitContexts");
+      field.setAccessible(true);
+      @SuppressWarnings("unchecked")
+      final SortedMap<Long, Set<SubscriptionCommitContext>> uncommitted =
+          (SortedMap<Long, Set<SubscriptionCommitContext>>) field.get(consumer);
+      uncommitted.put(0L, ConcurrentHashMap.newKeySet());
+      uncommitted.get(0L).add(first.getCommitContext());
+      uncommitted.get(0L).add(second.getCommitContext());
+
+      consumer.commitSync(Arrays.asList(first, second));
+
+      Assert.assertTrue(uncommitted.isEmpty());
+      Assert.assertEquals(1, healthy.commitCount.get());
+      Assert.assertEquals(1, failed.commitCount.get());
+      Assert.assertEquals(0, failed.closeCount.get());
+      Assert.assertEquals(1, failed.sessionCloseCount.get());
+      final TestSubscriptionProvider replacement =
+          (TestSubscriptionProvider) getProviders(consumer).getProvider(2);
+      Assert.assertNotSame(failed, replacement);
+      Assert.assertEquals(1, replacement.commitCount.get());
+      Assert.assertEquals(
+          Collections.singletonList(second.getCommitContext()), replacement.committed);
+    } finally {
+      consumer.close();
+    }
+  }
+
+  @Test(timeout = 20_000)
+  public void testSyncCommitRecoversAlreadyUnavailableProvider() throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer(1, 0);
+    try {
+      consumer.open();
+      final TestSubscriptionProvider failed = consumer.createdProviders.get(0);
+      failed.setUnavailable();
+
+      consumer.commitSync(
+          new SubscriptionMessage(
+              new SubscriptionCommitContext(1, 0, TOPIC, CONSUMER_GROUP_ID, 1L), 1L));
+
+      Assert.assertEquals(0, failed.commitCount.get());
+      final TestSubscriptionProvider replacement =
+          (TestSubscriptionProvider) getProviders(consumer).getProvider(1);
+      Assert.assertNotSame(failed, replacement);
+      Assert.assertEquals(1, replacement.commitCount.get());
+    } finally {
+      consumer.close();
+    }
+  }
+
+  @Test(timeout = 25_000)
+  public void testSyncCommitConnectionRetriesAreBounded() throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer(1, 0);
+    final SubscriptionConnectionException failure =
+        new SubscriptionConnectionException("read timed out", new SocketTimeoutException());
+    try {
+      consumer.open();
+      final TestSubscriptionProvider provider = consumer.createdProviders.get(0);
+      provider.commitAction =
+          () -> {
+            throw failure;
+          };
+
+      Assert.assertSame(
+          failure,
+          Assert.assertThrows(
+              SubscriptionConnectionException.class, () -> consumer.commitSync(commitMessage())));
+
+      Assert.assertEquals(4, provider.commitCount.get());
+    } finally {
+      consumer.close();
+    }
+  }
+
+  @Test
+  public void testSyncCommitDoesNotRetryServerErrorsOrPartialAcceptance() throws Exception {
+    for (final SubscriptionException failure :
+        new SubscriptionException[] {
+          new SubscriptionRuntimeNonCriticalException("commit rejected"),
+          new SubscriptionRuntimeCriticalException("commit failed"),
+          new SubscriptionConsumerFencedException("consumer fenced")
+        }) {
+      final TestPullConsumer consumer = new TestPullConsumer(1, 0);
+      try {
+        consumer.open();
+        final TestSubscriptionProvider provider = consumer.createdProviders.get(0);
+        provider.commitAction =
+            () -> {
+              throw failure;
+            };
+
+        Assert.assertSame(
+            failure,
+            Assert.assertThrows(
+                SubscriptionException.class, () -> consumer.commitSync(commitMessage())));
+        Assert.assertEquals(1, provider.commitCount.get());
+        Assert.assertEquals(
+            failure instanceof SubscriptionConsumerFencedException, consumer.isFenced());
+      } finally {
+        consumer.close();
+      }
+    }
+
+    final TestPullConsumer consumer = new TestPullConsumer(1, 0);
+    try {
+      consumer.open();
+      final TestSubscriptionProvider provider = consumer.createdProviders.get(0);
+      provider.rejectCommits = true;
+
+      Assert.assertThrows(
+          SubscriptionRuntimeNonCriticalException.class,
+          () -> consumer.commitSync(commitMessage()));
+      Assert.assertEquals(1, provider.commitCount.get());
+    } finally {
+      consumer.close();
+    }
+  }
+
+  @Test(timeout = 10_000)
+  public void testSyncCommitRetryPreservesInterruption() throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer(1, 0);
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    final CountDownLatch commitFailed = new CountDownLatch(1);
+    final AtomicReference<Thread> commitThread = new AtomicReference<>();
+    try {
+      consumer.open();
+      final TestSubscriptionProvider provider = consumer.createdProviders.get(0);
+      provider.commitAction =
+          () -> {
+            commitFailed.countDown();
+            throw new SubscriptionConnectionException("read timed out");
+          };
+      final Future<Boolean> interrupted =
+          executor.submit(
+              () -> {
+                commitThread.set(Thread.currentThread());
+                Assert.assertThrows(
+                    SubscriptionConnectionException.class,
+                    () -> consumer.commitSync(commitMessage()));
+                return Thread.currentThread().isInterrupted();
+              });
+      Assert.assertTrue(commitFailed.await(5, TimeUnit.SECONDS));
+      commitThread.get().interrupt();
+
+      Assert.assertTrue(interrupted.get(1, TimeUnit.SECONDS));
+      Assert.assertEquals(1, provider.commitCount.get());
+    } finally {
+      consumer.close();
+      executor.shutdownNow();
+      executor.awaitTermination(5, TimeUnit.SECONDS);
+    }
+  }
+
+  @Test(timeout = 10_000)
+  public void testSyncCommitStopsRetryingAfterCloseOrFencing() throws Exception {
+    for (final boolean closeConsumer : new boolean[] {true, false}) {
+      final TestPullConsumer consumer = new TestPullConsumer(1, 0);
+      try {
+        consumer.open();
+        final TestSubscriptionProvider provider = consumer.createdProviders.get(0);
+        final SubscriptionConsumerFencedException fenced =
+            new SubscriptionConsumerFencedException("consumer fenced");
+        provider.commitAction =
+            () -> {
+              if (closeConsumer) {
+                consumer.close();
+              } else {
+                consumer.fence(fenced);
+              }
+              throw new SubscriptionConnectionException("read timed out");
+            };
+
+        final SubscriptionException failure =
+            Assert.assertThrows(
+                SubscriptionException.class, () -> consumer.commitSync(commitMessage()));
+
+        if (closeConsumer) {
+          Assert.assertTrue(failure instanceof SubscriptionConnectionException);
+        } else {
+          Assert.assertSame(fenced, failure);
+        }
+        Assert.assertEquals(1, provider.commitCount.get());
+      } finally {
+        consumer.close();
+      }
+    }
+  }
+
+  private static SubscriptionMessage commitMessage() {
+    return new SubscriptionMessage(
+        new SubscriptionCommitContext(1, 0, TOPIC, CONSUMER_GROUP_ID, 1L), 1L);
+  }
+
   private static AbstractSubscriptionProviders getProviders(
       final AbstractSubscriptionConsumer consumer) throws Exception {
     final Field field = AbstractSubscriptionConsumer.class.getDeclaredField("providers");
@@ -412,6 +626,22 @@ public class SubscriptionConsumerMultiProviderPollTest {
         final boolean emptyTabletBatch,
         final boolean failFirstPoll,
         final int providerCount) {
+      this(
+          dataProviderId,
+          emptyPollsBeforeData,
+          emptyTabletBatch,
+          failFirstPoll,
+          providerCount,
+          false);
+    }
+
+    private TestPullConsumer(
+        final int dataProviderId,
+        final int emptyPollsBeforeData,
+        final boolean emptyTabletBatch,
+        final boolean failFirstPoll,
+        final int providerCount,
+        final boolean autoCommit) {
       super(
           new AbstractSubscriptionPullConsumerBuilder()
               .host(HOST)
@@ -420,7 +650,8 @@ public class SubscriptionConsumerMultiProviderPollTest {
               .consumerGroupId(CONSUMER_GROUP_ID)
               .heartbeatIntervalMs(LONG_INTERVAL_MS)
               .endpointsSyncIntervalMs(LONG_INTERVAL_MS)
-              .autoCommit(false));
+              .autoCommit(autoCommit)
+              .autoCommitIntervalMs(LONG_INTERVAL_MS));
       this.dataProviderId = dataProviderId;
       this.emptyPollsBeforeData = emptyPollsBeforeData;
       this.emptyTabletBatch = emptyTabletBatch;
@@ -513,6 +744,9 @@ public class SubscriptionConsumerMultiProviderPollTest {
     private boolean emptyHeartbeatTopics;
     private Runnable handshakeAction = () -> {};
     private boolean failContinuation;
+    private Runnable commitAction = () -> {};
+    private boolean rejectCommits;
+    private List<SubscriptionCommitContext> committed = Collections.emptyList();
 
     private final int dataNodeId;
     private final Map<Integer, Integer> pollCounts;
@@ -686,7 +920,12 @@ public class SubscriptionConsumerMultiProviderPollTest {
     @Override
     CommitResult commit(final List<SubscriptionCommitContext> contexts, final boolean nack) {
       commitCount.incrementAndGet();
+      commitAction.run();
       failContinuationIfRequested();
+      if (rejectCommits) {
+        return CommitResult.empty();
+      }
+      committed = new ArrayList<>(contexts);
       return new CommitResult(contexts, Collections.emptyMap());
     }
 
