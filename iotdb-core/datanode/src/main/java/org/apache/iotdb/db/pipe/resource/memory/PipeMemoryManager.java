@@ -855,13 +855,7 @@ public class PipeMemoryManager {
 
     if (force) {
       throw new PipeRuntimeOutOfMemoryCriticalException(
-          String.format(
-              DataNodePipeMessages
-                  .PIPE_EXCEPTION_FORCERESIZE_FAILED_TO_ALLOCATE_MEMORY_AFTER_D_RETRIES_TOTAL_8C6948BC,
-              memoryAllocateMaxRetries,
-              getTotalNonFloatingMemorySizeInBytes(),
-              memoryBlock.getUsedMemoryInBytes(),
-              sizeInBytes));
+          getResizeFailureMessage(memoryAllocateMaxRetries, sizeInBytes));
     }
   }
 

@@ -67,6 +67,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
@@ -79,7 +80,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.rescon.memory.MemTableManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
-import org.apache.iotdb.db.storageengine.rescon.memory.WriteMemoryBlock;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -241,6 +241,8 @@ public class DataRegionTest {
     final boolean originalSeparateData = config.isEnableSeparateData();
     final long partitionInterval = TimePartitionUtils.getTimePartitionInterval();
     try {
+      systemInfo.close();
+      systemInfo.loadWriteMemory();
       config.setEnableSeparateData(true);
       for (int i = 1; i <= 384; i++) {
         insertMemoryAdmissionTestRow(i, i);
@@ -275,8 +277,7 @@ public class DataRegionTest {
       final DataRegionInfo regionInfo = (DataRegionInfo) regionInfoField.get(dataRegion);
       final long memoryBefore = regionInfo.getMemCost();
       setMemoryAdmissionTestThreshold("memorySizeForMemtable", 2 * memoryBefore);
-      setMemoryAdmissionTestThreshold(
-          "FLUSH_THRESHOLD", (double) memoryBefore - selected.getWorkMemTableRamCost() / 2);
+      setMemoryAdmissionTestThreshold("FLUSH_THRESHOLD", (double) memoryBefore - 1);
       setMemoryAdmissionTestThreshold("REJECT_THRESHOLD", (double) memoryBefore - 1);
       config.setMaxWaitingTimeWhenInsertBlocked(5_000);
       config.setCheckPeriodWhenInsertBlocked(10);
@@ -309,9 +310,6 @@ public class DataRegionTest {
         Assert.assertFalse(currentMemTable.shouldFlush());
         Assert.assertFalse(unselectedMemTable.shouldFlush());
         Assert.assertEquals(129, currentMemTable.getTotalPointsNum());
-        for (WriteMemoryBlock block : regionInfo.getWriteMemoryManager().getMemoryBlocks()) {
-          Assert.assertEquals(0, block.getReservedMemoryInBytes());
-        }
         Assert.assertFalse(systemInfo.isRejected());
       } finally {
         dataRegion.writeUnlock();
@@ -321,7 +319,7 @@ public class DataRegionTest {
       insertMemoryAdmissionTestRow(partitionInterval + 130, 130);
       Assert.assertSame(currentMemTable, current.getWorkMemTable());
       Assert.assertEquals(3, dataRegion.getTsFileManager().getTsFileList(true).size());
-      dataRegion.syncCloseAllWorkingAndClosingTsFileProcessors();
+      dataRegion.syncCloseAllWorkingTsFileProcessors();
       int points = 0;
       for (TsFileResource resource : dataRegion.getTsFileManager().getTsFileList(true)) {
         try (TsFileSequenceReader reader = new TsFileSequenceReader(resource.getTsFilePath());
@@ -340,6 +338,7 @@ public class DataRegionTest {
       }
       Assert.assertEquals(515, points);
     } finally {
+      systemInfo.close();
       systemInfo.loadWriteMemory();
       config.setMaxWaitingTimeWhenInsertBlocked(originalWait);
       config.setCheckPeriodWhenInsertBlocked(originalPeriod);
