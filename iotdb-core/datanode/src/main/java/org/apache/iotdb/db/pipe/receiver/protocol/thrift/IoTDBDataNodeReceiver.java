@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.receiver.protocol.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.disk.FolderManager;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
@@ -602,7 +603,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
    * determined. Callers must not substitute a privileged default for the missing user.
    */
   private String getAuthenticatedUser() {
-    if (username != null && !username.isEmpty()) {
+    // A name that was not produced by a completed handshake is not an authenticated identity, no
+    // matter whether it was left over by a failed handshake or by a default value.
+    if (hasPipeHandshakeCredential && username != null && !username.isEmpty()) {
       return username;
     }
 
@@ -1595,6 +1598,25 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
 
     return AuthorityChecker.checkUser(username, password);
+  }
+
+  @Override
+  protected IAuditEntity createAuditEntity(final String username, final String cliHostname) {
+    // The user id must never be taken from the handshake: some table model authorization paths
+    // treat the super user id as a grant of every privilege, so an id supplied by the sender would
+    // allow any authenticated user to act as the super user.
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    if (Objects.nonNull(clientSession) && clientSession.isLogin()) {
+      // The statement is executed with the identity of this session, so authorizing and auditing
+      // it as another user would be inconsistent. The identity of a logged in session is set by
+      // the login flow from the local user manager and can not be chosen by the sender.
+      return new UserEntity(
+          clientSession.getUserId(), clientSession.getUsername(), clientSession.getClientAddress());
+    }
+    return new UserEntity(
+        Objects.isNull(username) ? -1L : AuthorityChecker.getUserId(username).orElse(-1L),
+        username,
+        cliHostname);
   }
 
   private TSStatus executeStatementForTableModel(

@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
@@ -167,6 +168,72 @@ public class IoTDBFileReceiverTest {
     }
   }
 
+  @Test
+  public void testHandshakeV2IgnoresSenderSuppliedUserId() throws Exception {
+    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
+    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
+    try {
+      final Map<String, String> params = buildHandshakeV2Params(true);
+      // A sender must not be able to choose its own user id. The super user id is especially
+      // dangerous, because some table model authorization paths treat it as a grant of every
+      // privilege.
+      params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USER_ID, "0");
+      params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLI_HOSTNAME, "sender-host");
+
+      final TPipeTransferResp response = receiver.handshakeV2(params);
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+      // The identity is created by the receiver, after the credentials have been verified.
+      Assert.assertEquals(1, receiver.getCreateAuditEntityCallCount());
+      Assert.assertEquals("root", receiver.getCreateAuditEntityUsername());
+      final IAuditEntity auditEntity = receiver.getUserEntity();
+      Assert.assertNotNull(auditEntity);
+      Assert.assertEquals("root", auditEntity.getUsername());
+      Assert.assertEquals("sender-host", auditEntity.getCliHostname());
+      // The base receiver resolves no id at all instead of reusing the id of the sender.
+      Assert.assertEquals(-1L, auditEntity.getUserId());
+    } finally {
+      receiver.handleExit();
+    }
+  }
+
+  @Test
+  public void testHandshakeV2DoesNotKeepIdentityWhenLoginFails() throws Exception {
+    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
+    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
+    try {
+      receiver.setLoginStatus(new TSStatus(TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode()));
+      final Map<String, String> params = buildHandshakeV2Params(true);
+      params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USER_ID, "0");
+
+      final TPipeTransferResp response = receiver.handshakeV2(params);
+
+      Assert.assertEquals(
+          TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode(), response.getStatus().getCode());
+      Assert.assertFalse(receiver.hasPipeHandshakeCredential());
+      Assert.assertNull(receiver.getUserEntity());
+      Assert.assertEquals(0, receiver.getCreateAuditEntityCallCount());
+    } finally {
+      receiver.handleExit();
+    }
+  }
+
+  @Test
+  public void testExitClearsIdentityOfTheTransfer() throws Exception {
+    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
+    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
+    receiver.handshakeV2(buildHandshakeV2Params(true));
+
+    Assert.assertNotNull(receiver.getUserEntity());
+    Assert.assertTrue(receiver.hasPipeHandshakeCredential());
+
+    receiver.handleExit();
+
+    Assert.assertNull(receiver.getUserEntity());
+    Assert.assertFalse(receiver.hasPipeHandshakeCredential());
+  }
+
   private Map<String, String> buildHandshakeV2Params(final boolean includeCredentials) {
     final Map<String, String> params = new HashMap<>();
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID, "sender-cluster");
@@ -250,7 +317,10 @@ public class IoTDBFileReceiverTest {
 
     private final File receiverFileBaseDir;
     private TSStatus loadFileV1Status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    private TSStatus loginStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     private int loginCallCount = 0;
+    private int createAuditEntityCallCount = 0;
+    private String createAuditEntityUsername = null;
     private boolean failFilePieceMemoryAllocation = false;
     private int filePieceMemoryCloseCount = 0;
 
@@ -370,7 +440,30 @@ public class IoTDBFileReceiverTest {
     @Override
     protected TSStatus login() {
       loginCallCount++;
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      return loginStatus;
+    }
+
+    @Override
+    protected IAuditEntity createAuditEntity(final String username, final String cliHostname) {
+      createAuditEntityCallCount++;
+      createAuditEntityUsername = username;
+      return super.createAuditEntity(username, cliHostname);
+    }
+
+    void setLoginStatus(final TSStatus loginStatus) {
+      this.loginStatus = loginStatus;
+    }
+
+    int getCreateAuditEntityCallCount() {
+      return createAuditEntityCallCount;
+    }
+
+    String getCreateAuditEntityUsername() {
+      return createAuditEntityUsername;
+    }
+
+    IAuditEntity getUserEntity() {
+      return userEntity;
     }
 
     @Override

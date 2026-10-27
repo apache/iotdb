@@ -63,8 +63,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
 
 /**
  * {@link IoTDBFileReceiver} is the parent class of receiver on both configNode and DataNode,
@@ -82,8 +80,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   // Used to restore the original thread name when the receiver is closed.
   private String originalThreadName;
 
-  protected String username = CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
-  protected String password = CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
+  // The identity of the sender is only set after a successful handshake or taken from a logged in
+  // session. There is deliberately no default user, because a missing identity must never degrade
+  // to a privileged one.
+  protected String username;
+  protected String password;
   protected IAuditEntity userEntity;
   protected boolean hasPipeHandshakeCredential = false;
 
@@ -297,14 +298,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       return new TPipeTransferResp(status);
     }
 
-    long userId = -1;
+    // The user id carried by the handshake is supplied by the sender and can be forged, so it is
+    // deliberately ignored here. The audit entity is resolved by the receiver after the credentials
+    // have been verified, see createAuditEntity.
     String cliHostname = "";
 
-    final String userIdString =
-        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USER_ID);
-    if (userIdString != null) {
-      userId = Long.parseLong(userIdString);
-    }
     final String cliHostnameString =
         req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLI_HOSTNAME);
     if (cliHostnameString != null) {
@@ -323,7 +321,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
     username = usernameString;
     password = passwordString;
-    userEntity = new UserEntity(userId, username, cliHostname);
+    userEntity = null;
     hasPipeHandshakeCredential = true;
 
     final TSStatus status;
@@ -331,15 +329,18 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       status = login();
     } catch (final Exception e) {
       hasPipeHandshakeCredential = false;
+      userEntity = null;
       throw e;
     }
     if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       hasPipeHandshakeCredential = false;
+      userEntity = null;
       PipeLogger.log(
           LOGGER::warn, PipeMessages.RECEIVER_HANDSHAKE_FAILED_LOGIN, receiverId.get(), status);
       return new TPipeTransferResp(status);
     } else {
       lastSuccessfulLoginTime = System.currentTimeMillis();
+      userEntity = createAuditEntity(username, cliHostname);
       LOGGER.info(PipeMessages.RECEIVER_USER_LOGIN_SUCCESS, receiverId.get(), username);
     }
 
@@ -399,6 +400,10 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     }
     hasPipeHandshakeCredential =
         handshakeResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    if (!hasPipeHandshakeCredential) {
+      // The handshake did not complete, so the identity of this transfer can not be used.
+      userEntity = null;
+    }
     return handshakeResp;
   }
 
@@ -443,6 +448,17 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   }
 
   protected abstract TSStatus login();
+
+  /**
+   * Creates the audit entity of a sender whose credentials have been verified.
+   *
+   * <p>The identity is resolved on the receiver side. Names and ids carried by the handshake are
+   * not authoritative, so implementations must look the user up in the user manager of their own
+   * node instead of trusting the sender.
+   */
+  protected IAuditEntity createAuditEntity(final String username, final String cliHostname) {
+    return new UserEntity(-1L, username, cliHostname);
+  }
 
   protected final TPipeTransferResp handleTransferFilePiece(
       final PipeTransferFilePieceReq req,
@@ -1132,6 +1148,13 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
     // Close the session
     closeSession();
+
+    // Do not keep the credentials or the identity of a finished transfer, so that a reused
+    // receiver object can never answer an unauthenticated request with them.
+    username = null;
+    password = null;
+    userEntity = null;
+    hasPipeHandshakeCredential = false;
 
     LOGGER.info(PipeMessages.RECEIVER_EXITED, receiverId.get());
 

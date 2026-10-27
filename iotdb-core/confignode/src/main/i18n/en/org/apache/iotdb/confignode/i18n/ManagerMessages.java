@@ -720,4 +720,7 @@ public final class ManagerMessages {
 
   public static final String MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_NODE_STATUS_PERSISTENCE_8CA96809 =
       "ConfigNode leader is waiting for node status persistence.";
+
+  public static final String LOG_FAILED_TO_RESOLVE_THE_USER_ID_OF_THE_PIPE_SENDER_ARG_THE_AUDIT_RECORDS_OF_THIS_TRANSFER_WILL_NOT_CONTAIN_A_USER_ID_07B646FE =
+      "Failed to resolve the user id of the pipe sender %s, the audit records of this transfer will not contain a user id.";
 }

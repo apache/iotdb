@@ -135,6 +135,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -1393,6 +1394,28 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     }
 
     return configManager.login(username, password, false).getStatus();
+  }
+
+  @Override
+  protected IAuditEntity createAuditEntity(final String username, final String cliHostname) {
+    // The user id must be resolved from the local permission manager instead of the handshake,
+    // because the id supplied by the sender is not authoritative.
+    long userId = -1L;
+    if (username != null) {
+      try {
+        final TUserResp user = configManager.getPermissionManager().getUser(username).getUserInfo();
+        if (user != null) {
+          userId = user.getUserId();
+        }
+      } catch (final Exception e) {
+        LOGGER.warn(
+            ManagerMessages
+                .LOG_FAILED_TO_RESOLVE_THE_USER_ID_OF_THE_PIPE_SENDER_ARG_THE_AUDIT_RECORDS_OF_THIS_TRANSFER_WILL_NOT_CONTAIN_A_USER_ID_07B646FE,
+            username,
+            e);
+      }
+    }
+    return new UserEntity(userId, username, cliHostname);
   }
 
   @Override
