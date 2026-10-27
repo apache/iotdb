@@ -138,6 +138,49 @@ public class SubscriptionConsumerAgentTest {
   }
 
   @Test
+  public void testRetainedTopicBrokerIsRecreatedAfterDataNodeRecoveryWithoutDataRegions() {
+    final SubscriptionConsumerAgent agent = SubscriptionAgent.consumer();
+    final SubscriptionBrokerAgent brokers = SubscriptionAgent.broker();
+    final String topicName = "retained_recovery_without_data_region";
+    final String groupId = "retained_recovery_without_data_region_group";
+    try {
+      assertNull(
+          SubscriptionAgent.topic()
+              .handleSingleTopicMetaChanges(
+                  new TopicMeta(
+                      topicName,
+                      1L,
+                      Map.of(
+                          TopicConstant.MODE_KEY,
+                          TopicConstant.MODE_INITIAL_VALUE,
+                          TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY,
+                          "true"))));
+
+      final ConsumerGroupMeta subscribed =
+          new ConsumerGroupMeta(
+              groupId, 1L, new ConsumerMeta("consumer", 1L, Collections.emptyMap()));
+      subscribed.addSubscription("consumer", Collections.singleton(topicName));
+      assertNull(agent.handleSingleConsumerGroupMetaChanges(subscribed));
+
+      final ConsumerGroupMeta detached = subscribed.deepCopy();
+      detached.removeSubscription("consumer", Collections.singleton(topicName));
+      detached.removeConsumer("consumer");
+      detached.retainTopic(topicName);
+      assertNull(agent.handleSingleConsumerGroupMetaChanges(detached));
+      assertTrue(brokers.isBrokerExist(groupId));
+
+      assertTrue(brokers.dropBroker(groupId));
+      assertFalse(brokers.isBrokerExist(groupId));
+
+      assertNull(agent.handleSingleConsumerGroupMetaChanges(detached.deepCopy()));
+      assertTrue(brokers.isBrokerExist(groupId));
+    } finally {
+      assertNull(agent.handleDropConsumerGroup(groupId));
+      assertNull(SubscriptionAgent.topic().handleDropTopic(topicName, false));
+    }
+  }
+
+  @Test
   public void testTopicDiffSetsUpBeforeTeardownAndMetaPublication() {
     final List<String> operations = new ArrayList<>();
 

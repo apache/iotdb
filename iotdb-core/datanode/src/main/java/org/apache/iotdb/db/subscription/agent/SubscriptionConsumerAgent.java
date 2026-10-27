@@ -108,7 +108,9 @@ public class SubscriptionConsumerAgent {
           ConsensusSubscriptionSetupHandler.retainConfiguredProgressForConsumerGroup(
               consumerGroupId, metaFromCoordinator.visibleUnder(true));
       final boolean retainTopicProgress = !metaFromCoordinator.getRetainedTopicNames().isEmpty();
-      if (!retainTopicProgress) {
+      if (retainTopicProgress) {
+        SubscriptionAgent.broker().createPipeBrokerIfNotExist(consumerGroupId);
+      } else {
         dropConsumerGroupBroker(consumerGroupId);
       }
       if (retainProgress || retainTopicProgress) {
