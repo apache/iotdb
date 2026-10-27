@@ -437,6 +437,16 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
 
   @Test
   public void testLoadAutoCreateWithoutInsertPermission() throws Exception {
+    testLoadAutoCreateWithoutInsertPermission("sync");
+  }
+
+  @Test
+  public void testAsyncLoadAutoCreateWithoutInsertPermission() throws Exception {
+    testLoadAutoCreateWithoutInsertPermission("async");
+  }
+
+  private void testLoadAutoCreateWithoutInsertPermission(final String loadTsFileStrategy)
+      throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
@@ -455,6 +465,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     connectorAttributes.put("connector.port", Integer.toString(receiverPort));
     connectorAttributes.put("connector.user", "user01");
     connectorAttributes.put("connector.password", "1234123456789");
+    connectorAttributes.put("connector.load-tsfile-strategy", loadTsFileStrategy);
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
