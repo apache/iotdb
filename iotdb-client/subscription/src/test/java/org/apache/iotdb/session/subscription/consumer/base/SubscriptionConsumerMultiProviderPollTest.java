@@ -26,11 +26,14 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionConsumerFencedExc
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
+import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
+import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
+import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHeartbeatResp;
 import org.apache.iotdb.session.AbstractSessionBuilder;
 import org.apache.iotdb.session.subscription.SubscriptionTreeSessionBuilder;
@@ -581,6 +584,119 @@ public class SubscriptionConsumerMultiProviderPollTest {
         new SubscriptionCommitContext(1, 0, TOPIC, CONSUMER_GROUP_ID, 1L), 1L);
   }
 
+  @Test(timeout = 20_000)
+  public void testSyncCommitRetriesOnlyUnconfirmedBatches() throws Exception {
+    assertCommitBatchRetry(false);
+  }
+
+  @Test(timeout = 25_000)
+  public void testSyncCommitRetainsAcceptedBatchesWhenRetriesAreExhausted() throws Exception {
+    assertCommitBatchRetry(true);
+  }
+
+  private void assertCommitBatchRetry(final boolean exhaustRetries) throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer(1, 0, false, false, 3, true);
+    try {
+      consumer.open();
+      final TestSubscriptionProvider provider = consumer.createdProviders.get(0);
+      final SubscriptionMessage first = commitMessage();
+      final SubscriptionMessage second =
+          new SubscriptionMessage(
+              new SubscriptionCommitContext(1, 0, TOPIC, CONSUMER_GROUP_ID, 2L), 2L);
+      enableCommitBatching(provider, first.getCommitContext());
+      provider.failAllRemainingBatches = exhaustRetries;
+      final SortedMap<Long, Set<SubscriptionCommitContext>> uncommitted =
+          getUncommittedCommitContexts(consumer);
+      uncommitted.put(0L, ConcurrentHashMap.newKeySet());
+      uncommitted.get(0L).add(first.getCommitContext());
+      uncommitted.get(0L).add(second.getCommitContext());
+
+      if (exhaustRetries) {
+        Assert.assertThrows(
+            SubscriptionConnectionException.class,
+            () -> consumer.commitSync(Arrays.asList(first, second)));
+        Assert.assertEquals(Collections.singleton(second.getCommitContext()), uncommitted.get(0L));
+      } else {
+        consumer.commitSync(Arrays.asList(first, second));
+        Assert.assertTrue(uncommitted.isEmpty());
+      }
+
+      Assert.assertEquals(
+          batchProgress(first.getCommitContext()).getRegionProgress().get("region1"),
+          consumer.committedPositions(TOPIC).getRegionProgress().get("region1"));
+      Assert.assertEquals(
+          exhaustRetries ? 1 : 2, consumer.committedPositions(TOPIC).getRegionProgress().size());
+
+      Assert.assertEquals(exhaustRetries ? 5 : 3, provider.commitBatches.size());
+      Assert.assertEquals(
+          Collections.singletonList(first.getCommitContext()), provider.commitBatches.get(0));
+      for (int i = 1; i < provider.commitBatches.size(); i++) {
+        Assert.assertEquals(
+            Collections.singletonList(second.getCommitContext()), provider.commitBatches.get(i));
+      }
+    } finally {
+      consumer.close();
+    }
+  }
+
+  @Test(timeout = 20_000)
+  public void testSyncCommitDoesNotReplayRejectedBatchAfterLaterConnectionFailure()
+      throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer(1, 0);
+    try {
+      consumer.open();
+      final TestSubscriptionProvider provider = consumer.createdProviders.get(0);
+      final SubscriptionMessage first = commitMessage();
+      final SubscriptionMessage second =
+          new SubscriptionMessage(
+              new SubscriptionCommitContext(1, 0, TOPIC, CONSUMER_GROUP_ID, 2L), 2L);
+      enableCommitBatching(provider, first.getCommitContext());
+      provider.rejectFirstBatch = true;
+
+      Assert.assertThrows(
+          SubscriptionConnectionException.class,
+          () -> consumer.commitSync(Arrays.asList(first, second)));
+
+      Assert.assertEquals(2, provider.commitBatches.size());
+    } finally {
+      consumer.close();
+    }
+  }
+
+  private static void enableCommitBatching(
+      final TestSubscriptionProvider provider, final SubscriptionCommitContext context)
+      throws Exception {
+    final Field field = AbstractSubscriptionProvider.class.getDeclaredField("requestBodySizeLimit");
+    field.setAccessible(true);
+    // Reserve exactly enough room for one context per commit RPC, including the response headroom.
+    field.setInt(
+        provider,
+        3
+            * (Integer.BYTES
+                + Byte.BYTES
+                + SubscriptionCommitContext.serialize(context).remaining()));
+    provider.batchCommits = true;
+  }
+
+  private static TopicProgress batchProgress(final SubscriptionCommitContext context) {
+    final String regionId = "region" + context.getCommitId();
+    return new TopicProgress(
+        Collections.singletonMap(
+            regionId,
+            new RegionProgress(
+                Collections.singletonMap(
+                    new WriterId(regionId, 1), new WriterProgress(1L, context.getCommitId())))));
+  }
+
+  @SuppressWarnings("unchecked")
+  private static SortedMap<Long, Set<SubscriptionCommitContext>> getUncommittedCommitContexts(
+      final TestPullConsumer consumer) throws Exception {
+    final Field field =
+        AbstractSubscriptionPullConsumer.class.getDeclaredField("uncommittedCommitContexts");
+    field.setAccessible(true);
+    return (SortedMap<Long, Set<SubscriptionCommitContext>>) field.get(consumer);
+  }
+
   private static AbstractSubscriptionProviders getProviders(
       final AbstractSubscriptionConsumer consumer) throws Exception {
     final Field field = AbstractSubscriptionConsumer.class.getDeclaredField("providers");
@@ -747,6 +863,10 @@ public class SubscriptionConsumerMultiProviderPollTest {
     private Runnable commitAction = () -> {};
     private boolean rejectCommits;
     private List<SubscriptionCommitContext> committed = Collections.emptyList();
+    private boolean batchCommits;
+    private boolean failAllRemainingBatches;
+    private boolean rejectFirstBatch;
+    private final List<List<SubscriptionCommitContext>> commitBatches = new ArrayList<>();
 
     private final int dataNodeId;
     private final Map<Integer, Integer> pollCounts;
@@ -920,6 +1040,9 @@ public class SubscriptionConsumerMultiProviderPollTest {
     @Override
     CommitResult commit(final List<SubscriptionCommitContext> contexts, final boolean nack) {
       commitCount.incrementAndGet();
+      if (batchCommits) {
+        return super.commit(contexts, nack);
+      }
       commitAction.run();
       failContinuationIfRequested();
       if (rejectCommits) {
@@ -927,6 +1050,19 @@ public class SubscriptionConsumerMultiProviderPollTest {
       }
       committed = new ArrayList<>(contexts);
       return new CommitResult(contexts, Collections.emptyMap());
+    }
+
+    @Override
+    CommitResult commitOnce(final List<SubscriptionCommitContext> contexts, final boolean nack) {
+      commitBatches.add(new ArrayList<>(contexts));
+      if (commitBatches.size() == 2 || (failAllRemainingBatches && commitBatches.size() > 1)) {
+        throw new SubscriptionConnectionException("read timed out", new SocketTimeoutException());
+      }
+      if (rejectFirstBatch && commitBatches.size() == 1) {
+        return CommitResult.empty();
+      }
+      return new CommitResult(
+          contexts, Collections.singletonMap(TOPIC, batchProgress(contexts.get(0))));
     }
 
     private void failContinuationIfRequested() {

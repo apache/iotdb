@@ -1578,11 +1578,37 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       final List<SubscriptionCommitContext> commitContexts,
       final boolean nack)
       throws SubscriptionException {
+    final List<SubscriptionCommitContext> remainingCommitContexts = new ArrayList<>(commitContexts);
+    final List<SubscriptionCommitContext> acceptedCommitContexts = new ArrayList<>();
+    final Map<String, TopicProgress> committedProgressByTopic = new HashMap<>();
     for (int retries = 0; ; retries++) {
       checkIfFenced();
       try {
-        return commitInternal(dataNodeId, commitContexts, nack);
+        final AbstractSubscriptionProvider.CommitResult result =
+            commitInternal(dataNodeId, remainingCommitContexts, nack);
+        acceptedCommitContexts.addAll(result.getAcceptedCommitContexts());
+        AbstractSubscriptionProvider.mergeTopicProgress(
+            committedProgressByTopic, result.getCommittedProgressByTopic());
+        return new AbstractSubscriptionProvider.CommitResult(
+            acceptedCommitContexts, committedProgressByTopic);
       } catch (final SubscriptionConnectionException e) {
+        if (e instanceof AbstractSubscriptionProvider.CommitConnectionException) {
+          final AbstractSubscriptionProvider.CommitConnectionException failure =
+              (AbstractSubscriptionProvider.CommitConnectionException) e;
+          final AbstractSubscriptionProvider.CommitResult completedResult =
+              failure.getCompletedResult();
+          overlayCommittedPositions(completedResult.getCommittedProgressByTopic());
+          onAckedCommitContexts(completedResult.getAcceptedCommitContexts());
+          // A completed batch's rejected contexts must keep failing, even if a later RPC times out.
+          if (failure.getCompletedCommitContextCount()
+              != completedResult.getAcceptedCommitContexts().size()) {
+            throw e;
+          }
+          acceptedCommitContexts.addAll(completedResult.getAcceptedCommitContexts());
+          AbstractSubscriptionProvider.mergeTopicProgress(
+              committedProgressByTopic, completedResult.getCommittedProgressByTopic());
+          remainingCommitContexts.subList(0, failure.getCompletedCommitContextCount()).clear();
+        }
         if (nack
             || retries >= MAX_COMMIT_RETRIES
             || isClosed()
