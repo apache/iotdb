@@ -962,6 +962,33 @@ public class SubscriptionBrokerAgent {
     prefetchingQueueCount.invalidate();
   }
 
+  public Map<String, Set<String>> getConsensusQueueRegionIds(
+      final String consumerGroupId, final Set<String> topicNames) {
+    final Map<String, Set<String>> regionIdsByTopic = new LinkedHashMap<>();
+    final ConsensusSubscriptionBroker broker = getConsensusBroker(consumerGroupId);
+    if (Objects.nonNull(broker)) {
+      for (final String topicName : topicNames) {
+        regionIdsByTopic.put(topicName, broker.getQueueRegionIds(topicName));
+      }
+    }
+    return regionIdsByTopic;
+  }
+
+  public boolean hasConsensusQueueForRegion(
+      final String consumerGroupId, final String topicName, final String regionId) {
+    final ConsensusSubscriptionBroker broker = getConsensusBroker(consumerGroupId);
+    return Objects.nonNull(broker) && broker.hasQueueForRegion(topicName, regionId);
+  }
+
+  public void rollbackConsensusPrefetchingQueues(
+      final String consumerGroupId, final String topicName, final Set<String> existingRegionIds) {
+    final ConsensusSubscriptionBroker broker = getConsensusBroker(consumerGroupId);
+    if (Objects.nonNull(broker)) {
+      broker.rollbackConsensusPrefetchingQueues(topicName, existingRegionIds);
+      prefetchingQueueCount.invalidate();
+    }
+  }
+
   public void unbindByRegion(final ConsensusGroupId regionId) {
     int totalClosed = 0;
     for (final ConsensusSubscriptionBroker broker : getBrokers(ConsensusSubscriptionBroker.class)) {
