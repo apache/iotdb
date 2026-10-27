@@ -26,6 +26,7 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionConsumerFencedExc
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
+import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
@@ -38,13 +39,16 @@ import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHeartbeat
 import org.apache.iotdb.session.AbstractSessionBuilder;
 import org.apache.iotdb.session.subscription.SubscriptionTreeSessionBuilder;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.util.PollTimer;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -79,6 +83,8 @@ public class SubscriptionConsumerMultiProviderPollTest {
   private static final String CONSUMER_ID = "test_consumer";
   private static final String CONSUMER_GROUP_ID = "test_consumer_group";
   private static final long LONG_INTERVAL_MS = 86_400_000L;
+
+  @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   @Test
   public void testPollTriesNextProviderBeforeBackingOff() throws SubscriptionException {
@@ -585,6 +591,102 @@ public class SubscriptionConsumerMultiProviderPollTest {
         new SubscriptionCommitContext(1, 0, TOPIC, CONSUMER_GROUP_ID, 1L), 1L);
   }
 
+  @Test
+  public void testPollCleanupConnectionFailureDoesNotMakePollCritical() throws Exception {
+    for (final boolean filePoll : new boolean[] {false, true}) {
+      final TestPullConsumer consumer = new TestPullConsumer(1, 0);
+      final SubscriptionRuntimeNonCriticalException pollFailure =
+          new SubscriptionRuntimeNonCriticalException("continuation poll failed");
+      final SubscriptionConnectionException nackFailure =
+          new SubscriptionConnectionException("NACK read timed out");
+      final AtomicInteger nackAttempts = new AtomicInteger();
+      try {
+        consumer.open();
+        final TestSubscriptionProvider provider = consumer.createdProviders.get(0);
+        provider.continuationAction =
+            () -> {
+              throw pollFailure;
+            };
+        provider.commitAction =
+            () -> {
+              if (nackAttempts.getAndIncrement() == 0) {
+                throw nackFailure;
+              }
+            };
+
+        final Throwable failure = invokeFailingContinuationPoll(consumer, filePoll);
+
+        Assert.assertTrue(failure instanceof SubscriptionRuntimeNonCriticalException);
+        Assert.assertSame(pollFailure, failure.getCause());
+        Assert.assertEquals(0, pollFailure.getSuppressed().length);
+        Assert.assertEquals(2, provider.commitCount.get());
+        Assert.assertFalse(consumer.isFenced());
+      } finally {
+        consumer.close();
+      }
+    }
+  }
+
+  @Test
+  public void testPollCleanupStillPropagatesFencingAndServerErrors() throws Exception {
+    for (final boolean filePoll : new boolean[] {false, true}) {
+      for (final SubscriptionException nackFailure :
+          new SubscriptionException[] {
+            new SubscriptionConsumerFencedException("consumer fenced"),
+            new SubscriptionRuntimeCriticalException("NACK failed"),
+            new SubscriptionRuntimeNonCriticalException("NACK rejected")
+          }) {
+        final TestPullConsumer consumer = new TestPullConsumer(1, 0);
+        try {
+          consumer.open();
+          final TestSubscriptionProvider provider = consumer.createdProviders.get(0);
+          provider.continuationAction =
+              () -> {
+                throw new SubscriptionRuntimeNonCriticalException("continuation poll failed");
+              };
+          provider.commitAction =
+              () -> {
+                throw nackFailure;
+              };
+
+          Assert.assertSame(nackFailure, invokeFailingContinuationPoll(consumer, filePoll));
+          Assert.assertEquals(1, provider.commitCount.get());
+          Assert.assertEquals(
+              nackFailure instanceof SubscriptionConsumerFencedException, consumer.isFenced());
+        } finally {
+          consumer.close();
+        }
+      }
+    }
+  }
+
+  private Throwable invokeFailingContinuationPoll(
+      final TestPullConsumer consumer, final boolean filePoll) throws Exception {
+    final Field directory = AbstractSubscriptionConsumer.class.getDeclaredField("fileSaveDir");
+    directory.setAccessible(true);
+    directory.set(consumer, temporaryFolder.newFolder().getAbsolutePath());
+    final SubscriptionCommitContext context = commitMessage().getCommitContext();
+    final SubscriptionPollResponse response =
+        filePoll
+            ? new SubscriptionPollResponse(
+                SubscriptionPollResponseType.FILE_INIT.getType(),
+                new FileInitPayload("test.tsfile"),
+                context)
+            : new SubscriptionPollResponse(
+                SubscriptionPollResponseType.TABLETS.getType(),
+                new TabletsPayload(Collections.emptyMap(), 1),
+                context);
+    final Method poll =
+        AbstractSubscriptionConsumer.class.getDeclaredMethod(
+            filePoll ? "pollFile" : "pollTablets", SubscriptionPollResponse.class, PollTimer.class);
+    poll.setAccessible(true);
+    return Assert.assertThrows(
+            InvocationTargetException.class,
+            () ->
+                poll.invoke(consumer, response, new PollTimer(System.currentTimeMillis(), 1_000L)))
+        .getCause();
+  }
+
   @Test(timeout = 20_000)
   public void testSyncCommitRetriesOnlyUnconfirmedBatches() throws Exception {
     assertCommitBatchRetry(false);
@@ -921,6 +1023,7 @@ public class SubscriptionConsumerMultiProviderPollTest {
     private boolean emptyHeartbeatTopics;
     private Runnable handshakeAction = () -> {};
     private boolean failContinuation;
+    private Runnable continuationAction = () -> {};
     private Runnable commitAction = () -> {};
     private boolean rejectCommits;
     private List<SubscriptionCommitContext> committed = Collections.emptyList();
@@ -1079,6 +1182,7 @@ public class SubscriptionConsumerMultiProviderPollTest {
     List<SubscriptionPollResponse> pollTablets(
         final SubscriptionCommitContext commitContext, final int offset, final long timeoutMs)
         throws SubscriptionException {
+      continuationAction.run();
       failContinuationIfRequested();
       if (emptyTabletBatch && dataNodeId == dataProviderId && offset == 1) {
         return Collections.singletonList(
@@ -1095,6 +1199,7 @@ public class SubscriptionConsumerMultiProviderPollTest {
         final SubscriptionCommitContext commitContext,
         final long writingOffset,
         final long timeoutMs) {
+      continuationAction.run();
       failContinuationIfRequested();
       return Collections.emptyList();
     }

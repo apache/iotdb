@@ -1063,9 +1063,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         inFlightFilesCommitContextSet.remove(commitContext);
       }
       // construct temporary message to nack
-      nack(
-          Collections.singletonList(
-              new SubscriptionMessage(commitContext, file.getAbsolutePath(), null)));
+      nackAfterPollFailure(new SubscriptionMessage(commitContext, file.getAbsolutePath(), null), e);
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
   }
@@ -1274,10 +1272,22 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         throw (SubscriptionConsumerFencedException) e;
       }
       // construct temporary message to nack
-      nack(
-          Collections.singletonList(
-              new SubscriptionMessage(response.getCommitContext(), Collections.emptyMap())));
+      nackAfterPollFailure(
+          new SubscriptionMessage(response.getCommitContext(), Collections.emptyMap()), e);
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+  }
+
+  private void nackAfterPollFailure(final SubscriptionMessage message, final Exception pollFailure)
+      throws SubscriptionException {
+    try {
+      nack(Collections.singletonList(message), true);
+    } catch (final SubscriptionConnectionException nackFailure) {
+      // Recovery was scheduled by commitInternal. If all cleanup retries fail, keep the original
+      // poll failure as the outcome; the server can recycle the unacked event.
+      if (nackFailure != pollFailure) {
+        pollFailure.addSuppressed(nackFailure);
+      }
     }
   }
 
@@ -1529,6 +1539,14 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
   private void commit(final Iterable<SubscriptionCommitContext> commitContexts, final boolean nack)
       throws SubscriptionException {
+    commit(commitContexts, nack, false);
+  }
+
+  private void commit(
+      final Iterable<SubscriptionCommitContext> commitContexts,
+      final boolean nack,
+      final boolean retryNackConnection)
+      throws SubscriptionException {
     checkIfFenced();
     final Map<Integer, List<SubscriptionCommitContext>> dataNodeIdToSubscriptionCommitContexts =
         new HashMap<>();
@@ -1545,7 +1563,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       final List<SubscriptionCommitContext> groupedCommitContexts = entry.getValue();
       requestedCount += groupedCommitContexts.size();
       final AbstractSubscriptionProvider.CommitResult commitResp =
-          commitWithRetry(entry.getKey(), groupedCommitContexts, nack);
+          commitWithRetry(entry.getKey(), groupedCommitContexts, nack, retryNackConnection);
       final List<SubscriptionCommitContext> acceptedCommitContexts =
           commitResp.getAcceptedCommitContexts();
       acceptedCount += acceptedCommitContexts.size();
@@ -1576,7 +1594,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   private AbstractSubscriptionProvider.CommitResult commitWithRetry(
       final int dataNodeId,
       final List<SubscriptionCommitContext> commitContexts,
-      final boolean nack)
+      final boolean nack,
+      final boolean retryNackConnection)
       throws SubscriptionException {
     final List<SubscriptionCommitContext> remainingCommitContexts = new ArrayList<>(commitContexts);
     final List<SubscriptionCommitContext> acceptedCommitContexts = new ArrayList<>();
@@ -1606,7 +1625,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
           acceptedCommitContexts.addAll(completedResult.getAcceptedCommitContexts());
           remainingCommitContexts.subList(0, failure.getCompletedCommitContextCount()).clear();
         }
-        if (nack
+        if ((!retryNackConnection && nack)
             || retries >= MAX_COMMIT_RETRIES
             || isClosed()
             || Thread.currentThread().isInterrupted()) {
@@ -1710,6 +1729,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   }
 
   protected void nack(final Iterable<SubscriptionMessage> messages) throws SubscriptionException {
+    nack(messages, false);
+  }
+
+  private void nack(final Iterable<SubscriptionMessage> messages, final boolean retryNackConnection)
+      throws SubscriptionException {
     final List<SubscriptionCommitContext> commitContexts = new ArrayList<>();
     for (final SubscriptionMessage message : messages) {
       // make every effort to delete stale intermediate file
@@ -1724,7 +1748,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       }
       commitContexts.add(message.getCommitContext());
     }
-    commit(commitContexts, true);
+    commit(commitContexts, true, retryNackConnection);
   }
 
   private void nack(final List<SubscriptionPollResponse> responses) throws SubscriptionException {
