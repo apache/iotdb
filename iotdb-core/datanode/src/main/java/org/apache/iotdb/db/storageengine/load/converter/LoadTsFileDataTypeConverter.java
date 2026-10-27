@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -50,6 +51,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Semaphore;
 
@@ -198,25 +200,43 @@ public class LoadTsFileDataTypeConverter {
     }
   }
 
-  private TSStatus executeForTableModel(final Statement statement, final String databaseName) {
-    final IClientSession session;
-    final boolean needToCreateSession = SESSION_MANAGER.getCurrSession() == null;
-    if (needToCreateSession) {
-      session =
-          new InternalClientSession(
-              String.format(
-                  "%s_%s",
-                  LoadTsFileDataTypeConverter.class.getSimpleName(),
-                  Thread.currentThread().getName()));
-      session.setUsername(AuthorityChecker.SUPER_USER);
-      session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
-      session.setZoneId(ZoneId.systemDefault());
-      session.setSqlDialect(SqlDialect.TABLE);
+  /**
+   * Creates and registers an internal session for a conversion that is executed outside of the
+   * request thread. The session inherits the identity of the load request, so the conversion is
+   * still authorized and audited as that user. A privileged default is used only when the query
+   * context carries no identity at all, which only happens for locally triggered loads.
+   */
+  private IClientSession createConversionSession(final SqlDialect sqlDialect) {
+    final IClientSession session =
+        new InternalClientSession(
+            String.format(
+                "%s_%s",
+                LoadTsFileDataTypeConverter.class.getSimpleName(),
+                Thread.currentThread().getName()));
 
-      SESSION_MANAGER.registerSession(session);
+    final UserEntity userEntity =
+        Objects.isNull(context) || Objects.isNull(context.getSession())
+            ? null
+            : context.getSession().getUserEntity();
+    if (Objects.nonNull(userEntity)) {
+      session.setUserId(userEntity.getUserId());
+      session.setUsername(userEntity.getUsername());
     } else {
-      session = SESSION_MANAGER.getCurrSession();
+      session.setUsername(AuthorityChecker.SUPER_USER);
     }
+    session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
+    session.setZoneId(ZoneId.systemDefault());
+    session.setSqlDialect(sqlDialect);
+
+    SESSION_MANAGER.registerSession(session);
+    return session;
+  }
+
+  private TSStatus executeForTableModel(final Statement statement, final String databaseName) {
+    final IClientSession currentSession = SESSION_MANAGER.getCurrSession();
+    final boolean needToCreateSession = Objects.isNull(currentSession);
+    final IClientSession session =
+        needToCreateSession ? createConversionSession(SqlDialect.TABLE) : currentSession;
     try {
       return Coordinator.getInstance()
           .executeForTableModel(
@@ -266,24 +286,10 @@ public class LoadTsFileDataTypeConverter {
   }
 
   private TSStatus executeForTreeModel(final Statement statement) {
-    final IClientSession session;
-    final boolean needToCreateSession = SESSION_MANAGER.getCurrSession() == null;
-    if (needToCreateSession) {
-      session =
-          new InternalClientSession(
-              String.format(
-                  "%s_%s",
-                  LoadTsFileDataTypeConverter.class.getSimpleName(),
-                  Thread.currentThread().getName()));
-      session.setUsername(AuthorityChecker.SUPER_USER);
-      session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
-      session.setZoneId(ZoneId.systemDefault());
-      session.setSqlDialect(SqlDialect.TREE);
-
-      SESSION_MANAGER.registerSession(session);
-    } else {
-      session = SESSION_MANAGER.getCurrSession();
-    }
+    final IClientSession currentSession = SESSION_MANAGER.getCurrSession();
+    final boolean needToCreateSession = Objects.isNull(currentSession);
+    final IClientSession session =
+        needToCreateSession ? createConversionSession(SqlDialect.TREE) : currentSession;
 
     try {
       return Coordinator.getInstance()

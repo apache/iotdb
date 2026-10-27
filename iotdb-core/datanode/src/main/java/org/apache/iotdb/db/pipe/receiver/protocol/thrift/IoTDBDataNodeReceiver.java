@@ -596,6 +596,21 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return new TPipeTransferResp(getNotLoggedInStatus());
   }
 
+  /**
+   * Returns the name of the user that has been authenticated for the current transfer, either by
+   * the handshake or by the login of the underlying session, or {@code null} if no user can be
+   * determined. Callers must not substitute a privileged default for the missing user.
+   */
+  private String getAuthenticatedUser() {
+    if (username != null && !username.isEmpty()) {
+      return username;
+    }
+
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    final String sessionUsername = clientSession == null ? null : clientSession.getUsername();
+    return sessionUsername == null || sessionUsername.isEmpty() ? null : sessionUsername;
+  }
+
   private static boolean requiresAuthentication(final PipeRequestType requestType) {
     switch (requestType) {
       case TRANSFER_TABLET_INSERT_NODE:
@@ -764,6 +779,15 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final boolean shouldWaitForSchemaBeforeLoad,
       final String conversionTaskId)
       throws IOException {
+    // The active load is executed asynchronously by another thread, where the sender's session is
+    // no longer available. The identity must therefore be captured from the authenticated request
+    // here, otherwise the load would run with the privileges of whichever user the receiver
+    // defaults to.
+    final String authenticatedUser = getAuthenticatedUser();
+    if (authenticatedUser == null) {
+      return getNotLoggedInStatus();
+    }
+
     final Map<String, String> loadAttributes =
         buildLoadTsFileAttributesForAsync(
             dataBaseName,
@@ -771,7 +795,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             validateTsFile.get(),
             shouldMarkAsPipeRequest.get(),
             shouldWaitForSchemaBeforeLoad,
-            conversionTaskId);
+            conversionTaskId,
+            authenticatedUser);
 
     if (!LoadUtil.loadFilesToActiveDir(loadAttributes, absolutePaths, true)) {
       throw new PipeException(DataNodePipeMessages.LOAD_ACTIVE_LISTENING_PIPE_DIR_IS_NOT);
@@ -803,38 +828,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final String dataBaseName,
       final boolean shouldConvertDataTypeOnTypeMismatch,
       final boolean validateTsFile,
-      final boolean shouldMarkAsPipeRequest) {
-    return buildLoadTsFileAttributesForAsync(
-        dataBaseName,
-        shouldConvertDataTypeOnTypeMismatch,
-        validateTsFile,
-        shouldMarkAsPipeRequest,
-        false,
-        null);
-  }
-
-  static Map<String, String> buildLoadTsFileAttributesForAsync(
-      final String dataBaseName,
-      final boolean shouldConvertDataTypeOnTypeMismatch,
-      final boolean validateTsFile,
-      final boolean shouldMarkAsPipeRequest,
-      final boolean shouldWaitForSchemaBeforeLoad) {
-    return buildLoadTsFileAttributesForAsync(
-        dataBaseName,
-        shouldConvertDataTypeOnTypeMismatch,
-        validateTsFile,
-        shouldMarkAsPipeRequest,
-        shouldWaitForSchemaBeforeLoad,
-        null);
-  }
-
-  static Map<String, String> buildLoadTsFileAttributesForAsync(
-      final String dataBaseName,
-      final boolean shouldConvertDataTypeOnTypeMismatch,
-      final boolean validateTsFile,
       final boolean shouldMarkAsPipeRequest,
       final boolean shouldWaitForSchemaBeforeLoad,
-      final String conversionTaskId) {
+      final String conversionTaskId,
+      final String userName) {
     return ActiveLoadPathHelper.buildAttributes(
         dataBaseName,
         LoadTsFileStatement.getDatabaseLevelByTreeDatabase(dataBaseName),
@@ -843,7 +840,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         !shouldWaitForSchemaBeforeLoad,
         null,
         shouldMarkAsPipeRequest,
-        AuthorityChecker.SUPER_USER,
+        // The user executing the asynchronous load. It must always be the authenticated sender: a
+        // privileged default here would let any authenticated account load data as that user.
+        userName,
         conversionTaskId);
   }
 
