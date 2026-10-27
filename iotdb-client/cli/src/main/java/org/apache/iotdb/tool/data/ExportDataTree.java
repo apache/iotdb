@@ -19,21 +19,15 @@
 
 package org.apache.iotdb.tool.data;
 
-import org.apache.iotdb.cli.utils.IoTPrinter;
-import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.cli.i18n.CliMessages;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.isession.SessionDataSet;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.tool.common.Constants;
 
-import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.external.commons.collections4.CollectionUtils;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.RowRecord;
@@ -42,16 +36,13 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.nio.file.Files;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -59,420 +50,398 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE;
 
 public class ExportDataTree extends AbstractExportData {
+  private Session session;
+  private final Map<String, Boolean> alignment = new HashMap<>();
+  private final Map<String, ExportTask.Measurement> measurements = new LinkedHashMap<>();
 
-  private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
-  private static Session session;
-  private static long processedRows;
-  private static long lastPrintTime;
+  ExportDataTree(ExportConfig config, ExportProgressReporter progress) {
+    super(config, progress);
+  }
 
-  @Override
-  public void init() throws IoTDBConnectionException, StatementExecutionException, TException {
-    Session.Builder sessionBuilder =
-        new Session.Builder()
-            .host(host)
-            .port(Integer.parseInt(port))
-            .username(username)
-            .password(password)
-            .fetchSize(SessionConfig.DEFAULT_FETCH_SIZE)
-            .zoneId(null)
-            .thriftDefaultBufferSize(SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY)
-            .thriftMaxFrameSize(rpcMaxFrameSize)
-            .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
-            .version(SessionConfig.DEFAULT_VERSION);
-    if (useSsl) {
-      sessionBuilder = configureSsl(sessionBuilder);
-    }
-    session = sessionBuilder.build();
-    session.open(false);
-    timestampPrecision = session.getTimestampPrecision();
-    if (timeZoneID != null) {
-      session.setTimeZone(timeZoneID);
-    }
-    zoneId = ZoneId.of(session.getTimeZone());
+  // A connected Session can be supplied for output regression tests.
+  ExportDataTree(ExportConfig config, ExportProgressReporter progress, Session session)
+      throws Exception {
+    this(config, progress);
+    this.session = own(session).get();
+    zoneId = java.time.ZoneId.of("UTC");
+    timestampPrecision = "ms";
   }
 
   @Override
-  public boolean exportBySql(String sql, int index) {
-    if (Constants.SQL_SUFFIXS.equalsIgnoreCase(exportType)
-        || Constants.TSFILE_SUFFIXS.equalsIgnoreCase(exportType)) {
-      legalCheck(sql);
-    }
-    final String path = targetDirectory + targetFile + index;
-    try (SessionDataSet sessionDataSet = session.executeQueryStatement(sql, timeout)) {
-      if (Constants.SQL_SUFFIXS.equalsIgnoreCase(exportType)) {
-        exportToSqlFile(sessionDataSet, path);
-      } else if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(exportType)) {
-        long start = System.currentTimeMillis();
-        boolean isComplete = exportToTsFile(sessionDataSet, path + ".tsfile");
-        if (isComplete) {
-          long end = System.currentTimeMillis();
-          ioTPrinter.println("Export completely!cost: " + (end - start) + " ms.");
+  public void init() throws Exception {
+    session = own(config.newTreeSession()).get();
+    readTimeSettings(session);
+  }
+
+  List<ExportTask> planMeasurements(MeasurementFile input, ExportTimeRange range) throws Exception {
+    progress.phase(ExportProgressReporter.Phase.DISCOVERING);
+    long matches = 0;
+    int unmatched = 0;
+    for (MeasurementFile.PatternLine pattern : input.patterns()) {
+      progress.checkActive();
+      long patternMatches = 0;
+      try (Resource<SessionDataSet> result =
+          own(
+              session.executeQueryStatement(
+                  "show timeseries " + pattern.path().getFullPath(), config.timeout))) {
+        SessionDataSet data = result.get();
+        List<String> columns = data.getColumnNames();
+        while (data.hasNext()) {
+          progress.checkActive();
+          ExportTask.Measurement measurement = measurement(data.next(), columns);
+          measurements.putIfAbsent(measurement.path().getFullPath(), measurement);
+          patternMatches++;
         }
-      } else {
-        exportToCsvFile(sessionDataSet, path);
       }
-      sessionDataSet.closeOperationHandle();
-      ioTPrinter.println(Constants.EXPORT_COMPLETELY);
-      return true;
-    } catch (StatementExecutionException
-        | IoTDBConnectionException
-        | IOException
-        | WriteProcessException e) {
-      ioTPrinter.println("Cannot dump result because: " + e.getMessage());
-      return false;
+      matches += patternMatches;
+      if (patternMatches == 0) {
+        unmatched++;
+        // The message names the pattern; the log also records which file it came from.
+        progress.warning(
+            String.format(
+                Locale.ROOT,
+                CliMessages.LOG_NO_MEASUREMENTS_MATCHED_ARG_MEASUREMENT_FILE_LINE_ARG_94C4EF10,
+                pattern.original(),
+                pattern.line()),
+            "source",
+            input.source(),
+            "line",
+            pattern.line(),
+            "pattern",
+            pattern.original());
+      }
     }
+    progress.discovered(input, matches, measurements.size(), unmatched);
+    if (measurements.isEmpty()) {
+      throw new ArgsErrorException(
+          CliMessages
+              .EXCEPTION_NO_MEASUREMENTS_REMAIN_AFTER_PATTERN_EXPANSION_AND_DEDUPLICATION_40D930B7);
+    }
+    ExportFileNames names = new ExportFileNames();
+    List<ExportTask> tasks = new ArrayList<>(measurements.size());
+    for (ExportTask.Measurement measurement : measurements.values()) {
+      PartialPath path = measurement.path();
+      java.nio.file.Path output = names.measurement(config, path.getFullPath());
+      // Validate collisions before the first data query. Split paths are also checked when opened.
+      ExportFileNames.checkOutputCollision(
+          java.nio.file.Path.of(
+              output + ("tsfile".equals(config.format) ? ".tsfile" : "_0." + config.format)),
+          config);
+      String sql =
+          "SELECT "
+              + path.getMeasurement()
+              + " FROM "
+              + devicePath(path).getFullPath()
+              + range.whereClause();
+      tasks.add(new ExportTask(sql, output, measurement, null));
+    }
+    return tasks;
   }
 
-  private void exportToSqlFileWithAlignDevice(SessionDataSet sessionDataSet, String filePath)
-      throws IOException, IoTDBConnectionException, StatementExecutionException {
-    processedRows = 0;
-    lastPrintTime = 0;
-
-    List<String> measurementNames = new ArrayList<>(sessionDataSet.getColumnNames());
-    if (CollectionUtils.isEmpty(measurementNames) || measurementNames.size() <= 1) {
-      return;
-    } else {
-      measurementNames.remove("Time");
-      measurementNames.remove("Device");
-    }
-    String sqlPrefix =
-        String.format(
-            "INSERT INTO %s(TIMESTAMP,%s) ALIGNED VALUES (%s);\n",
-            "%s", String.join(",", measurementNames), "%d,%s");
-
-    SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
-    List<String> columnTypeList = iterator.getColumnTypeList();
-    int totalColumns = columnTypeList.size();
-    String deviceName = null;
-    int fileIndex = 0;
-    int currentLines = 0;
-    String filePathTemplate = filePath + "_%d" + ".sql";
-    FileWriter writer = null;
-    while (iterator.next()) {
-      if (writer == null) {
-        writer = new FileWriter(String.format(filePathTemplate, fileIndex));
-      }
-      deviceName = iterator.getString(2);
-      if (deviceName.startsWith(SYSTEM_DATABASE + ".")
-          || deviceName.startsWith(AUDIT_DATABASE + ".")) {
-        continue;
-      }
-      List<String> values = new ArrayList<>();
-      for (int index = 2; index < totalColumns; index++) {
-        values.add(formatSqlValue(iterator.getString(index + 1), columnTypeList.get(index)));
-      }
-      long timestamp = iterator.getLong(1);
-      writer.write(String.format(sqlPrefix, deviceName, timestamp, String.join(",", values)));
-      processedRows += 1;
-      currentLines += 1;
-      if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
-        ioTPrinter.printf(Constants.PROCESSED_PROGRESS, processedRows);
-        lastPrintTime = System.currentTimeMillis();
-      }
-      if (currentLines >= linesPerFile) {
-        writer.flush();
-        writer.close();
-        fileIndex += 1;
-        writer = null;
-        currentLines = 0;
-      }
-    }
-    if (writer != null) {
-      writer.flush();
-      writer.close();
-    }
-    ioTPrinter.print("\n");
+  private static PartialPath devicePath(PartialPath measurement) {
+    String[] nodes = measurement.getNodes();
+    return new PartialPath(java.util.Arrays.copyOf(nodes, nodes.length - 1));
   }
 
-  private void exportToSqlFileWithoutAlign(SessionDataSet sessionDataSet, String filePath)
-      throws IoTDBConnectionException, StatementExecutionException, IOException {
-    processedRows = 0;
-    lastPrintTime = 0;
-    List<String> headers = sessionDataSet.getColumnNames();
-    Map<String, List<Integer>> deviceColumnIndices = new LinkedHashMap<>();
-    Map<Integer, String> measurements = new HashMap<>();
-    for (int i = 1; i < headers.size(); i++) {
-      Path path = new Path(headers.get(i), true);
-      String device = path.getDeviceString();
-      if (device.startsWith(SYSTEM_DATABASE + ".") || device.startsWith(AUDIT_DATABASE + ".")) {
-        continue;
-      }
-      deviceColumnIndices.computeIfAbsent(device, key -> new ArrayList<>()).add(i);
-      measurements.put(i, path.getMeasurement());
+  private ExportTask.Measurement measurement(RowRecord record, List<String> columns)
+      throws Exception {
+    List<Field> fields = record.getFields();
+    PartialPath path = new PartialPath(fields.get(columns.indexOf("Timeseries")).getStringValue());
+    TSDataType type =
+        AbstractDataTool.getType(fields.get(columns.indexOf("DataType")).getStringValue());
+    MeasurementSchema schema = new MeasurementSchema(path.getMeasurement(), type);
+    String encoding = fields.get(columns.indexOf("Encoding")).getStringValue();
+    String compression = fields.get(columns.indexOf("Compression")).getStringValue();
+    // Logical views may omit physical encoding and compression metadata.
+    if (encoding != null && !"null".equals(encoding)) {
+      schema.setEncoding(TSEncoding.valueOf(encoding));
     }
+    if (compression != null && !"null".equals(compression)) {
+      schema.setCompressionType(CompressionType.valueOf(compression));
+    }
+    return new ExportTask.Measurement(path, schema);
+  }
 
-    SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
-    List<String> columnTypes = iterator.getColumnTypeList();
-    int fileIndex = 0;
-    int currentLines = 0;
-    FileWriter writer = null;
-    try {
+  @Override
+  void export(ExportTask task) throws Exception {
+    if (!"csv".equals(config.format) && task.measurement() == null) {
+      legalCheck(task.sql());
+    }
+    progress.taskStarted(task);
+    try (Resource<SessionDataSet> result =
+        own(session.executeQueryStatement(task.sql(), config.timeout))) {
+      SessionDataSet data = result.get();
+      switch (config.format) {
+        case "sql":
+          exportSql(data, task);
+          break;
+        case "tsfile":
+          exportTsFile(data, task);
+          break;
+        default:
+          exportCsv(data, task);
+      }
+    }
+    progress.taskCompleted();
+  }
+
+  private void exportCsv(SessionDataSet data, ExportTask task) throws Exception {
+    List<String> names = data.getColumnNames();
+    SessionDataSet.DataIterator iterator = data.iterator();
+    List<String> types = iterator.getColumnTypeList();
+    try (Resource<ExportTextWriter> output =
+        own(new ExportTextWriter(config, task, progress, csvHeaders(names, types, true)))) {
       while (iterator.next()) {
-        for (Map.Entry<String, List<Integer>> entry : deviceColumnIndices.entrySet()) {
-          List<String> names = new ArrayList<>();
-          List<String> values = new ArrayList<>();
-          for (int index : entry.getValue()) {
-            if (!iterator.isNull(index + 1)) {
-              names.add(measurements.get(index));
-              values.add(formatSqlValue(iterator.getString(index + 1), columnTypes.get(index)));
-            }
-          }
-          // A timestamp present in another device must not create an empty record here.
-          if (values.isEmpty()) {
+        progress.checkActive();
+        List<Object> values = new ArrayList<>(types.size());
+        for (int i = 0; i < types.size(); i++) {
+          if (iterator.isNull(i + 1)) {
+            values.add("");
             continue;
           }
-          if (writer == null) {
-            writer = new FileWriter(filePath + "_" + fileIndex + ".sql");
+          if (i == 0 && "Time".equals(names.get(i))) {
+            values.add(timeTrans(iterator.getLong(i + 1)));
+            continue;
           }
-          writer.write(
-              String.format(
-                  "INSERT INTO %s(TIMESTAMP,%s) VALUES (%d,%s);\n",
-                  entry.getKey(),
-                  String.join(",", names),
-                  iterator.getLong(1),
-                  String.join(",", values)));
-          if (++currentLines >= linesPerFile) {
-            writer.close();
-            writer = null;
-            fileIndex++;
-            currentLines = 0;
+          String value = iterator.getString(i + 1);
+          if (("TEXT".equalsIgnoreCase(types.get(i)) || "STRING".equalsIgnoreCase(types.get(i)))
+              && !value.startsWith("root.")) {
+            value = '"' + value + '"';
           }
+          values.add(value);
         }
-        processedRows++;
-        if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
-          ioTPrinter.printf(Constants.PROCESSED_PROGRESS, processedRows);
-          lastPrintTime = System.currentTimeMillis();
-        }
+        output.get().csvRow(values);
       }
-    } finally {
-      if (writer != null) {
-        writer.close();
-      }
+      output.get().complete();
     }
-    ioTPrinter.print("\n");
   }
 
-  private void exportToSqlFile(SessionDataSet sessionDataSet, String filePath)
-      throws IOException, IoTDBConnectionException, StatementExecutionException {
-    List<String> headers = sessionDataSet.getColumnNames();
-    boolean alignByDeviceQuery = headers.contains("Device");
-    if (alignByDeviceQuery) {
-      exportToSqlFileWithAlignDevice(sessionDataSet, filePath);
+  private void exportSql(SessionDataSet data, ExportTask task) throws Exception {
+    List<String> headers = data.getColumnNames();
+    SessionDataSet.DataIterator iterator = data.iterator();
+    List<String> types = iterator.getColumnTypeList();
+    boolean byDevice = headers.contains("Device");
+    // Column lists are built once: parsing the column paths for every row slowed SQL export.
+    SqlColumns deviceRow = new SqlColumns();
+    Map<String, SqlColumns> deviceColumns = new LinkedHashMap<>();
+    if (byDevice) {
+      for (int i = 2; i < headers.size(); i++) {
+        deviceRow.add(i, headers.get(i));
+      }
     } else {
-      exportToSqlFileWithoutAlign(sessionDataSet, filePath);
-    }
-  }
-
-  private static Boolean exportToTsFile(SessionDataSet sessionDataSet, String filePath)
-      throws IOException,
-          IoTDBConnectionException,
-          StatementExecutionException,
-          WriteProcessException {
-    List<String> columnNames = sessionDataSet.getColumnNames();
-    List<String> columnTypes = sessionDataSet.getColumnTypes();
-    File f = FSFactoryProducer.getFSFactory().getFile(filePath);
-    if (f.exists()) {
-      Files.delete(f.toPath());
-    }
-    boolean isEmpty = false;
-    try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
-      // device -> column indices in columnNames
-      Map<String, List<Integer>> deviceColumnIndices = new HashMap<>();
-      Set<String> alignedDevices = new HashSet<>();
-      Map<String, List<IMeasurementSchema>> deviceSchemaMap = new LinkedHashMap<>();
-
-      collectSchemas(
-          columnNames, columnTypes, deviceSchemaMap, alignedDevices, deviceColumnIndices);
-
-      List<Tablet> tabletList = constructTablets(deviceSchemaMap, alignedDevices, tsFileWriter);
-
-      if (!tabletList.isEmpty()) {
-        writeWithTablets(
-            sessionDataSet, tabletList, alignedDevices, tsFileWriter, deviceColumnIndices);
-        tsFileWriter.flush();
-      } else {
-        isEmpty = true;
+      for (int i = 1; i < headers.size(); i++) {
+        PartialPath path = new PartialPath(headers.get(i));
+        if (!"root".equals(path.getFirstNode()) || path.hasWildcard()) {
+          throw new ArgsErrorException(
+              CliMessages
+                  .EXCEPTION_SQL_OUTPUT_REQUIRES_ORIGINAL_MEASUREMENT_PATHS_OR_AN_ALIGN_BY_DEVICE_QUERY_ADA72EA8);
+        }
+        deviceColumns
+            .computeIfAbsent(devicePath(path).getFullPath(), key -> new SqlColumns())
+            .add(i, path.getMeasurement());
       }
     }
-    if (isEmpty) {
-      ioTPrinter.println("!!!Warning:Tablet is empty,no data can be exported.");
-      return false;
-    }
-    return true;
-  }
-
-  private void exportToCsvFile(SessionDataSet sessionDataSet, String filePath)
-      throws IOException, IoTDBConnectionException, StatementExecutionException {
-    processedRows = 0;
-    lastPrintTime = 0;
-    List<String> headers = getCsvHeaders(sessionDataSet, true);
-    int fileIndex = 0;
-    SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
-    List<String> columnTypeList = iterator.getColumnTypeList();
-    int totalColumns = columnTypeList.size();
-    boolean fromOuterloop = false;
-    while (iterator.next()) {
-      final String finalFilePath = filePath + "_" + fileIndex + ".csv";
-      CSVPrinterWrapper csvPrinterWrapper = new CSVPrinterWrapper(finalFilePath);
-      try {
-        csvPrinterWrapper.printRecord(headers);
-        fromOuterloop = true;
-        int i = 0;
-        while (i++ < linesPerFile && (fromOuterloop || iterator.next())) {
-          fromOuterloop = false;
-          csvPrinterWrapper.print(timeTrans(iterator.getLong(1)));
-          for (int curColumnIndex = 1; curColumnIndex < totalColumns; curColumnIndex++) {
-            if (iterator.isNull(curColumnIndex + 1)) {
-              csvPrinterWrapper.print("");
-            } else {
-              String columnValue = iterator.getString(curColumnIndex + 1);
-              String curType = columnTypeList.get(curColumnIndex);
-              if ((curType.equalsIgnoreCase("TEXT") || curType.equalsIgnoreCase("STRING"))
-                  && !columnValue.startsWith("root.")) {
-                csvPrinterWrapper.print("\"" + columnValue + "\"");
-              } else {
-                csvPrinterWrapper.print(columnValue);
-              }
-            }
-          }
-          csvPrinterWrapper.println();
-          processedRows += 1;
-          if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
-            ioTPrinter.printf(Constants.PROCESSED_PROGRESS, processedRows);
-            lastPrintTime = System.currentTimeMillis();
+    try (Resource<ExportTextWriter> output =
+        own(new ExportTextWriter(config, task, progress, null))) {
+      while (iterator.next()) {
+        progress.checkActive();
+        // One result row is one data row: its statements for every device stay in one file.
+        StringBuilder row = new StringBuilder();
+        if (byDevice) {
+          // Every row of a device has the same columns, so a missing value is written as NULL.
+          appendInsert(row, iterator, types, iterator.getString(2), deviceRow, true, false);
+        } else {
+          for (Map.Entry<String, SqlColumns> device : deviceColumns.entrySet()) {
+            boolean aligned =
+                config.aligned || (task.measurement() != null && isAligned(device.getKey()));
+            // A row also carries the times of other devices: null columns are left out.
+            appendInsert(row, iterator, types, device.getKey(), device.getValue(), aligned, true);
           }
         }
-        fileIndex++;
-        csvPrinterWrapper.flush();
-      } finally {
-        csvPrinterWrapper.close();
-      }
-    }
-    ioTPrinter.print("\n");
-  }
-
-  private static void writeWithTablets(
-      SessionDataSet sessionDataSet,
-      List<Tablet> tabletList,
-      Set<String> alignedDevices,
-      TsFileWriter tsFileWriter,
-      Map<String, List<Integer>> deviceColumnIndices)
-      throws IoTDBConnectionException,
-          StatementExecutionException,
-          IOException,
-          WriteProcessException {
-    processedRows = 0;
-    lastPrintTime = 0;
-    while (sessionDataSet.hasNext()) {
-      RowRecord rowRecord = sessionDataSet.next();
-      List<Field> fields = rowRecord.getFields();
-
-      for (Tablet tablet : tabletList) {
-        String deviceId = tablet.getDeviceId();
-        List<Integer> columnIndices = deviceColumnIndices.get(deviceId);
-        int rowIndex = tablet.getRowSize();
-        tablet.addTimestamp(rowIndex, rowRecord.getTimestamp());
-        List<IMeasurementSchema> schemas = tablet.getSchemas();
-
-        for (int i = 0, columnIndicesSize = columnIndices.size(); i < columnIndicesSize; i++) {
-          Integer columnIndex = columnIndices.get(i);
-          IMeasurementSchema measurementSchema = schemas.get(i);
-          Object value = fields.get(columnIndex - 1).getObjectValue(measurementSchema.getType());
-          tablet.addValue(measurementSchema.getMeasurementName(), rowIndex, value);
-        }
-
-        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
-          writeToTsFile(alignedDevices, tsFileWriter, tablet);
-          processedRows += tablet.getRowSize();
-          tablet.reset();
+        if (row.length() > 0) {
+          output.get().sqlRow(row.toString());
         }
       }
-      if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
-        ioTPrinter.printf(Constants.PROCESSED_PROGRESS, processedRows);
-        lastPrintTime = System.currentTimeMillis();
-      }
-    }
-
-    for (Tablet tablet : tabletList) {
-      if (tablet.getRowSize() != 0) {
-        writeToTsFile(alignedDevices, tsFileWriter, tablet);
-        processedRows += tablet.getRowSize();
-      }
-      if (System.currentTimeMillis() - lastPrintTime > updateTimeInterval) {
-        ioTPrinter.printf(Constants.PROCESSED_PROGRESS, processedRows);
-        lastPrintTime = System.currentTimeMillis();
-      }
-    }
-    ioTPrinter.print("\n");
-  }
-
-  private static void writeToTsFile(
-      Set<String> deviceFilterSet, TsFileWriter tsFileWriter, Tablet tablet)
-      throws IOException, WriteProcessException {
-    if (deviceFilterSet.contains(tablet.getDeviceId())) {
-      tsFileWriter.writeAligned(tablet);
-    } else {
-      tsFileWriter.writeTree(tablet);
+      output.get().complete();
     }
   }
 
-  private static List<Tablet> constructTablets(
-      Map<String, List<IMeasurementSchema>> deviceSchemaMap,
-      Set<String> alignedDevices,
-      TsFileWriter tsFileWriter)
-      throws WriteProcessException {
-    List<Tablet> tabletList = new ArrayList<>(deviceSchemaMap.size());
-    for (Map.Entry<String, List<IMeasurementSchema>> stringListEntry : deviceSchemaMap.entrySet()) {
-      String deviceId = stringListEntry.getKey();
-      List<IMeasurementSchema> schemaList = stringListEntry.getValue();
-      Tablet tablet = new Tablet(deviceId, schemaList);
-      tablet.initBitMaps();
-      Path path = new Path(tablet.getDeviceId());
-      if (alignedDevices.contains(tablet.getDeviceId())) {
-        tsFileWriter.registerAlignedTimeseries(path, schemaList);
-      } else {
-        tsFileWriter.registerTimeseries(path, schemaList);
-      }
-      tabletList.add(tablet);
+  /** The result columns of one device and the measurement list its INSERT statements name. */
+  private static final class SqlColumns {
+    private final List<Integer> columns = new ArrayList<>();
+    private final List<String> measurements = new ArrayList<>();
+    private final StringBuilder names = new StringBuilder();
+
+    private void add(int column, String measurement) {
+      columns.add(column);
+      measurements.add(measurement);
+      names.append(',').append(measurement);
     }
-    return tabletList;
   }
 
-  private static void collectSchemas(
-      List<String> columnNames,
-      List<String> columnTypes,
-      Map<String, List<IMeasurementSchema>> deviceSchemaMap,
-      Set<String> alignedDevices,
-      Map<String, List<Integer>> deviceColumnIndices)
-      throws IoTDBConnectionException, StatementExecutionException {
-    for (int i = 0; i < columnNames.size(); i++) {
-      String column = columnNames.get(i);
-      if (!column.startsWith("root.")) {
+  private static void appendInsert(
+      StringBuilder row,
+      SessionDataSet.DataIterator iterator,
+      List<String> types,
+      String device,
+      SqlColumns columns,
+      boolean aligned,
+      boolean skipNulls)
+      throws Exception {
+    if (device.startsWith(SYSTEM_DATABASE + ".") || device.startsWith(AUDIT_DATABASE + ".")) {
+      return;
+    }
+    StringBuilder values = new StringBuilder();
+    // Stays null while every column has a value, so the prepared list is used.
+    StringBuilder names = null;
+    for (int i = 0; i < columns.columns.size(); i++) {
+      int column = columns.columns.get(i) + 1;
+      if (skipNulls && iterator.isNull(column)) {
+        if (names == null) {
+          names = new StringBuilder();
+          for (String measurement : columns.measurements.subList(0, i)) {
+            names.append(',').append(measurement);
+          }
+        }
         continue;
       }
-      TSDataType tsDataType = getType(columnTypes.get(i));
-      Path path = new Path(column, true);
-      String deviceId = path.getDeviceString();
-      // query whether the device is aligned or not
-      try (SessionDataSet deviceDataSet =
-          session.executeQueryStatement("show devices " + deviceId, timeout)) {
-        List<Field> deviceList = deviceDataSet.next().getFields();
-        if (deviceList.size() > 1 && "true".equals(deviceList.get(1).getStringValue())) {
-          alignedDevices.add(deviceId);
+      if (names != null) {
+        names.append(',').append(columns.measurements.get(i));
+      }
+      values.append(',').append(sqlValue(iterator, types.get(column - 1), column));
+    }
+    if (values.length() == 0) {
+      return;
+    }
+    row.append("INSERT INTO ")
+        .append(device)
+        .append("(TIMESTAMP")
+        .append(names == null ? columns.names : names)
+        .append(')');
+    if (aligned) {
+      row.append(" ALIGNED");
+    }
+    row.append(" VALUES (").append(iterator.getLong(1)).append(values).append(");\n");
+  }
+
+  private boolean isAligned(String device) throws Exception {
+    Boolean known = alignment.get(device);
+    if (known != null) {
+      return known;
+    }
+    boolean aligned = false;
+    try (Resource<SessionDataSet> result =
+        own(session.executeQueryStatement("show devices " + device, config.timeout))) {
+      SessionDataSet data = result.get();
+      if (data.hasNext()) {
+        List<Field> fields = data.next().getFields();
+        aligned = fields.size() > 1 && "true".equalsIgnoreCase(fields.get(1).getStringValue());
+      }
+    }
+    alignment.put(device, aligned);
+    return aligned;
+  }
+
+  private void exportTsFile(SessionDataSet data, ExportTask task) throws Exception {
+    java.nio.file.Path file = java.nio.file.Path.of(task.outputBase() + ".tsfile");
+    ExportFileNames.checkOutputCollision(file, config);
+    List<String> columnNames = data.getColumnNames();
+    Map<String, List<IMeasurementSchema>> schemas = new LinkedHashMap<>();
+    Map<String, List<Integer>> indices = new LinkedHashMap<>();
+    Set<String> alignedDevices = new HashSet<>();
+    for (int i = 0; i < columnNames.size(); i++) {
+      String name = columnNames.get(i);
+      if (i == 0 && "Time".equals(name)) {
+        continue;
+      }
+      if (i == 0 || !name.startsWith("root.")) {
+        throw new ArgsErrorException(
+            CliMessages
+                .EXCEPTION_TREE_TSFILE_OUTPUT_REQUIRES_A_TIME_COLUMN_AND_ORIGINAL_MEASUREMENT_PATHS_1DCEE8EA);
+      }
+      ExportTask.Measurement measurement = measurements.get(name);
+      if (measurement == null
+          && task.measurement() != null
+          && task.measurement().path().getFullPath().equals(name)) {
+        measurement = task.measurement();
+      }
+      if (measurement == null) {
+        try (Resource<SessionDataSet> result =
+            own(session.executeQueryStatement("show timeseries " + name, config.timeout))) {
+          if (!result.get().hasNext()) {
+            throw new ArgsErrorException(
+                String.format(
+                    CliMessages.EXCEPTION_CANNOT_OBTAIN_SCHEMA_FOR_MEASUREMENT_ARG_D3F1DAF3, name));
+          }
+          measurement = measurement(result.get().next(), result.get().getColumnNames());
+        }
+        measurements.put(name, measurement);
+      }
+      String device = devicePath(measurement.path()).getFullPath();
+      if (isAligned(device)) {
+        alignedDevices.add(device);
+      }
+      schemas.computeIfAbsent(device, key -> new ArrayList<>()).add(measurement.schema());
+      indices.computeIfAbsent(device, key -> new ArrayList<>()).add(i);
+    }
+    progress.fileStarted(file);
+    Files.deleteIfExists(file);
+    long startRows = progress.rows();
+    try (Resource<TsFileWriter> output = own(new TsFileWriter(file.toFile()))) {
+      TsFileWriter writer = output.get();
+      List<Tablet> tablets = new ArrayList<>();
+      for (Map.Entry<String, List<IMeasurementSchema>> schema : schemas.entrySet()) {
+        Tablet tablet = new Tablet(schema.getKey(), schema.getValue());
+        tablet.initBitMaps();
+        if (alignedDevices.contains(schema.getKey())) {
+          writer.registerAlignedTimeseries(new Path(schema.getKey()), schema.getValue());
+        } else {
+          writer.registerTimeseries(new Path(schema.getKey()), schema.getValue());
+        }
+        tablets.add(tablet);
+      }
+      long pendingRows = 0;
+      while (!tablets.isEmpty() && data.hasNext()) {
+        progress.checkActive();
+        RowRecord row = data.next();
+        for (Tablet tablet : tablets) {
+          int rowIndex = tablet.getRowSize();
+          tablet.addTimestamp(rowIndex, row.getTimestamp());
+          List<Integer> columns = indices.get(tablet.getDeviceId());
+          for (int i = 0; i < columns.size(); i++) {
+            IMeasurementSchema schema = tablet.getSchemas().get(i);
+            tablet.addValue(
+                schema.getMeasurementName(),
+                rowIndex,
+                row.getFields().get(columns.get(i) - 1).getObjectValue(schema.getType()));
+          }
+        }
+        pendingRows++;
+        if (tablets.get(0).getRowSize() == tablets.get(0).getMaxRowNumber()) {
+          writeTablets(tablets, alignedDevices, writer);
+          progress.rowsWritten(pendingRows);
+          pendingRows = 0;
         }
       }
+      if (pendingRows > 0) {
+        writeTablets(tablets, alignedDevices, writer);
+        progress.rowsWritten(pendingRows);
+      }
+      writer.flush();
+    }
+    progress.fileCompleted(file, progress.rows() - startRows);
+  }
 
-      // query timeseries metadata
-      MeasurementSchema measurementSchema =
-          new MeasurementSchema(path.getMeasurement(), tsDataType);
-      List<Field> seriesList =
-          session.executeQueryStatement("show timeseries " + column, timeout).next().getFields();
-      measurementSchema.setEncoding(TSEncoding.valueOf(seriesList.get(4).getStringValue()));
-      measurementSchema.setCompressionType(
-          CompressionType.valueOf(seriesList.get(5).getStringValue()));
-
-      deviceSchemaMap.computeIfAbsent(deviceId, key -> new ArrayList<>()).add(measurementSchema);
-      deviceColumnIndices.computeIfAbsent(deviceId, key -> new ArrayList<>()).add(i);
+  private static void writeTablets(List<Tablet> tablets, Set<String> aligned, TsFileWriter writer)
+      throws Exception {
+    for (Tablet tablet : tablets) {
+      if (aligned.contains(tablet.getDeviceId())) {
+        writer.writeAligned(tablet);
+      } else {
+        writer.writeTree(tablet);
+      }
+      tablet.reset();
+      tablet.initBitMaps();
     }
   }
 }

@@ -42,9 +42,13 @@ set JAVA_OPTS=-ea^
 @REM ***** CLASSPATH library setting *****
 set CLASSPATH=%CLASSPATH%;"%IOTDB_HOME%\lib\*"
 
+@REM Library logs would interleave with the progress line; the tool config keeps errors only.
+set LOG_CONFIG_OPTS=
+if exist "%IOTDB_HOME%\conf\logback-tool.xml" set LOG_CONFIG_OPTS=-Dlogback.configurationFile="%IOTDB_HOME%\conf\logback-tool.xml"
+
 REM -----------------------------------------------------------------------------
 
-"%JAVA_HOME%\bin\java" -DIOTDB_HOME="%IOTDB_HOME%" %JAVA_OPTS% -cp %CLASSPATH% %MAIN_CLASS% %*
+"%JAVA_HOME%\bin\java" -DIOTDB_HOME="%IOTDB_HOME%" %JAVA_OPTS% %LOG_CONFIG_OPTS% -cp %CLASSPATH% %MAIN_CLASS% %*
 set ret_code=%ERRORLEVEL%
 goto finally
 
