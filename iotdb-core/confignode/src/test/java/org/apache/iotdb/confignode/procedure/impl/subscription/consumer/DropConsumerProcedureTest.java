@@ -52,47 +52,48 @@ public class DropConsumerProcedureTest {
   public void testClosingLastConsumerPersistsConfiguredInitialRuntimeMarker() throws Exception {
     for (final boolean retain : new boolean[] {false, true}) {
       for (final String dialect : new String[] {"tree", "table"}) {
-        final SubscriptionInfo subscriptions = new SubscriptionInfo();
-        final Map<String, String> attributes = new HashMap<>();
-        attributes.put(SystemConstant.SQL_DIALECT_KEY, dialect);
-        attributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_INITIAL_VALUE);
-        attributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, String.valueOf(retain));
-        subscriptions.createTopic(new CreateTopicPlan(new TopicMeta("topic", 1L, attributes)));
-        final ConsumerGroupMeta group =
-            new ConsumerGroupMeta(
-                "group",
-                1L,
-                new ConsumerMeta(
-                    "consumer",
-                    1L,
-                    Collections.singletonMap(ConsumerConstant.SQL_DIALECT_KEY, dialect)));
-        group.addSubscription("consumer", Collections.singleton("topic"));
-        subscriptions.alterConsumerGroup(new AlterConsumerGroupPlan(group));
-        final DropConsumerProcedure procedure =
-            new DropConsumerProcedure(new TCloseConsumerReq("consumer", "group"));
-        final Field field =
-            AbstractOperateSubscriptionProcedure.class.getDeclaredField("subscriptionInfo");
-        field.setAccessible(true);
-        field.set(procedure, new AtomicReference<>(subscriptions));
-        procedure.executeFromValidate(null);
-        assertEquals(
-            retain,
-            procedure
-                .getUpdatedConsumerGroupMeta()
-                .getRetainedInitialTopicNames()
-                .contains("topic"));
-        assertTrue(procedure.getUpdatedConsumerGroupMeta().isEmpty());
+        for (final String mode :
+            new String[] {TopicConstant.MODE_INITIAL_VALUE, TopicConstant.MODE_SNAPSHOT_VALUE}) {
+          final SubscriptionInfo subscriptions = new SubscriptionInfo();
+          final Map<String, String> attributes = new HashMap<>();
+          attributes.put(SystemConstant.SQL_DIALECT_KEY, dialect);
+          attributes.put(TopicConstant.MODE_KEY, mode);
+          attributes.put(
+              TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, String.valueOf(retain));
+          subscriptions.createTopic(new CreateTopicPlan(new TopicMeta("topic", 1L, attributes)));
+          final ConsumerGroupMeta group =
+              new ConsumerGroupMeta(
+                  "group",
+                  1L,
+                  new ConsumerMeta(
+                      "consumer",
+                      1L,
+                      Collections.singletonMap(ConsumerConstant.SQL_DIALECT_KEY, dialect)));
+          group.addSubscription("consumer", Collections.singleton("topic"));
+          subscriptions.alterConsumerGroup(new AlterConsumerGroupPlan(group));
+          final DropConsumerProcedure procedure =
+              new DropConsumerProcedure(new TCloseConsumerReq("consumer", "group"));
+          final Field field =
+              AbstractOperateSubscriptionProcedure.class.getDeclaredField("subscriptionInfo");
+          field.setAccessible(true);
+          field.set(procedure, new AtomicReference<>(subscriptions));
+          procedure.executeFromValidate(null);
+          assertEquals(
+              retain,
+              procedure.getUpdatedConsumerGroupMeta().getRetainedTopicNames().contains("topic"));
+          assertTrue(procedure.getUpdatedConsumerGroupMeta().isEmpty());
 
-        final PublicBAOS bytes = new PublicBAOS();
-        procedure.serialize(new DataOutputStream(bytes));
-        final ByteBuffer buffer = ByteBuffer.wrap(bytes.getBuf(), 0, bytes.size());
-        final DropConsumerProcedure recovered =
-            (DropConsumerProcedure) ProcedureFactory.getInstance().create(buffer);
-        assertEquals(procedure, recovered);
-        assertEquals(0, buffer.remaining());
-        subscriptions.alterConsumerGroup(
-            new AlterConsumerGroupPlan(recovered.getUpdatedConsumerGroupMeta()));
-        assertEquals(retain, subscriptions.getConsumerGroupMeta("group") != null);
+          final PublicBAOS bytes = new PublicBAOS();
+          procedure.serialize(new DataOutputStream(bytes));
+          final ByteBuffer buffer = ByteBuffer.wrap(bytes.getBuf(), 0, bytes.size());
+          final DropConsumerProcedure recovered =
+              (DropConsumerProcedure) ProcedureFactory.getInstance().create(buffer);
+          assertEquals(procedure, recovered);
+          assertEquals(0, buffer.remaining());
+          subscriptions.alterConsumerGroup(
+              new AlterConsumerGroupPlan(recovered.getUpdatedConsumerGroupMeta()));
+          assertEquals(retain, subscriptions.getConsumerGroupMeta("group") != null);
+        }
       }
     }
   }

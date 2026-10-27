@@ -59,6 +59,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 public class AlterTopicProcedure extends AbstractOperateSubscriptionAndPipeProcedure {
 
@@ -172,7 +173,6 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionAndPipeProce
     subscriptionInfo.get().validateBeforeAlteringTopic(updatedTopicMeta);
 
     if (Objects.nonNull(existedTopicMeta)
-        && existedTopicMeta.getConfig().isInitialMode()
         && existedTopicMeta.getConfig().isProgressRetainedAfterUnsubscribe()
         && !updatedTopicMeta.getConfig().isProgressRetainedAfterUnsubscribe()) {
       prepareRetainedProgressCleanup(env);
@@ -185,7 +185,7 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionAndPipeProce
     final String topicName = updatedTopicMeta.getTopicName();
     final boolean isTableModel = updatedTopicMeta.visibleUnderTableModel();
     for (final ConsumerGroupMeta consumerGroupMeta :
-        subscriptionInfo.get().getConsumerGroupsRetainingInitialTopic(topicName, isTableModel)) {
+        subscriptionInfo.get().getConsumerGroupsRetainingTopic(topicName, isTableModel)) {
       retainedConsumerGroupMetas.add(consumerGroupMeta);
       retainedProgress.putAll(
           subscriptionInfo
@@ -218,7 +218,7 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionAndPipeProce
                   procedure ->
                       new DropPipePlanV2(
                           procedure.getPipeName(), updatedTopicMeta.visibleUnderTableModel()))
-              .collect(java.util.stream.Collectors.toList());
+              .collect(Collectors.toList());
       writeConsensusPlan(env, new OperateMultiplePipesPlanV2(dropPipePlans));
     }
     for (final ConsumerGroupMeta consumerGroupMeta : getUpdatedRetainedConsumerGroupMetas()) {
@@ -255,7 +255,7 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionAndPipeProce
     final List<ConsumerGroupMeta> updatedMetas = new ArrayList<>();
     for (final ConsumerGroupMeta existingMeta : retainedConsumerGroupMetas) {
       final ConsumerGroupMeta updatedMeta = existingMeta.deepCopy();
-      updatedMeta.removeRetainedInitialTopic(updatedTopicMeta.getTopicName());
+      updatedMeta.removeRetainedTopic(updatedTopicMeta.getTopicName());
       updatedMetas.add(updatedMeta);
     }
     return updatedMetas;

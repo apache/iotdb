@@ -83,7 +83,7 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
     validateAndGetOldAndNewMeta(env);
     subscriptionInfo
         .get()
-        .retainInitialSubscriptionProgress(existingConsumerGroupMeta, updatedConsumerGroupMeta);
+        .retainSubscriptionProgress(existingConsumerGroupMeta, updatedConsumerGroupMeta);
     return true;
   }
 

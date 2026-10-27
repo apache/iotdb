@@ -90,7 +90,7 @@ public class CreateSubscriptionProcedureTest {
         new ConsumerGroupMeta(
             "test_consumer_group", 1, new ConsumerMeta("old_consumer", 1, consumerAttributes));
     newConsumerGroupMeta.addSubscription("old_consumer", subscribeTopics);
-    newConsumerGroupMeta.retainInitialTopic("retained_topic");
+    newConsumerGroupMeta.retainTopic("retained_topic");
     AlterConsumerGroupProcedure alterConsumerGroupProcedure =
         new AlterConsumerGroupProcedure(newConsumerGroupMeta);
 
@@ -190,47 +190,50 @@ public class CreateSubscriptionProcedureTest {
   }
 
   @Test
-  public void executeFromValidateShouldReuseRetainedInitialPipe() throws Exception {
-    final Map<String, String> consumerAttributes = new HashMap<>();
-    consumerAttributes.put("username", "user");
-    consumerAttributes.put("password", "password");
+  public void executeFromValidateShouldReuseRetainedSnapshotAndInitialPipe() throws Exception {
+    for (final String mode :
+        new String[] {TopicConstant.MODE_INITIAL_VALUE, TopicConstant.MODE_SNAPSHOT_VALUE}) {
+      final Map<String, String> consumerAttributes = new HashMap<>();
+      consumerAttributes.put("username", "user");
+      consumerAttributes.put("password", "password");
 
-    final ConsumerGroupMeta consumerGroupMeta =
-        new ConsumerGroupMeta(
-            "test_consumer_group", 1, new ConsumerMeta("old_consumer", 1, consumerAttributes));
-    consumerGroupMeta.retainInitialTopic("test_topic");
+      final ConsumerGroupMeta consumerGroupMeta =
+          new ConsumerGroupMeta(
+              "test_consumer_group", 1, new ConsumerMeta("old_consumer", 1, consumerAttributes));
+      consumerGroupMeta.retainTopic("test_topic");
 
-    final Map<String, String> topicAttributes = new HashMap<>();
-    topicAttributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_INITIAL_VALUE);
-    topicAttributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "true");
-    final TopicMeta topicMeta = new TopicMeta("test_topic", 1, topicAttributes);
+      final Map<String, String> topicAttributes = new HashMap<>();
+      topicAttributes.put(TopicConstant.MODE_KEY, mode);
+      topicAttributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "true");
+      final TopicMeta topicMeta = new TopicMeta("test_topic", 1, topicAttributes);
 
-    final SubscriptionInfo subscriptionInfo = Mockito.mock(SubscriptionInfo.class);
-    Mockito.when(subscriptionInfo.getConsumerGroupMeta("test_consumer_group"))
-        .thenReturn(consumerGroupMeta);
-    Mockito.when(subscriptionInfo.deepCopyConsumerGroupMeta("test_consumer_group"))
-        .thenAnswer(invocation -> consumerGroupMeta.deepCopy());
-    Mockito.when(subscriptionInfo.deepCopyTopicMeta("test_topic", false)).thenReturn(topicMeta);
+      final SubscriptionInfo subscriptionInfo = Mockito.mock(SubscriptionInfo.class);
+      Mockito.when(subscriptionInfo.getConsumerGroupMeta("test_consumer_group"))
+          .thenReturn(consumerGroupMeta);
+      Mockito.when(subscriptionInfo.deepCopyConsumerGroupMeta("test_consumer_group"))
+          .thenAnswer(invocation -> consumerGroupMeta.deepCopy());
+      Mockito.when(subscriptionInfo.deepCopyTopicMeta("test_topic", false)).thenReturn(topicMeta);
 
-    final PipeTaskInfo pipeTaskInfo = Mockito.mock(PipeTaskInfo.class);
-    Mockito.when(
-            pipeTaskInfo.isPipeExisted(
-                PipeStaticMeta.generateSubscriptionPipeName("test_topic", "test_consumer_group"),
-                false))
-        .thenReturn(true);
+      final PipeTaskInfo pipeTaskInfo = Mockito.mock(PipeTaskInfo.class);
+      Mockito.when(
+              pipeTaskInfo.isPipeExisted(
+                  PipeStaticMeta.generateSubscriptionPipeName("test_topic", "test_consumer_group"),
+                  false))
+          .thenReturn(true);
 
-    final CreateSubscriptionProcedure proc =
-        new CreateSubscriptionProcedure(
-            new TSubscribeReq(
-                "old_consumer", "test_consumer_group", Collections.singleton("test_topic")));
-    setField(proc, "subscriptionInfo", new AtomicReference<>(subscriptionInfo));
-    setField(proc, "pipeTaskInfo", new AtomicReference<>(pipeTaskInfo));
+      final CreateSubscriptionProcedure proc =
+          new CreateSubscriptionProcedure(
+              new TSubscribeReq(
+                  "old_consumer", "test_consumer_group", Collections.singleton("test_topic")));
+      setField(proc, "subscriptionInfo", new AtomicReference<>(subscriptionInfo));
+      setField(proc, "pipeTaskInfo", new AtomicReference<>(pipeTaskInfo));
 
-    proc.executeFromValidate(mockCreateSubscriptionValidationEnv());
+      proc.executeFromValidate(mockCreateSubscriptionValidationEnv());
 
-    Assert.assertTrue(proc.getCreatePipeProcedures().isEmpty());
-    Mockito.verify(pipeTaskInfo, Mockito.never())
-        .checkBeforeCreatePipe(Mockito.any(TCreatePipeReq.class));
+      Assert.assertTrue(proc.getCreatePipeProcedures().isEmpty());
+      Mockito.verify(pipeTaskInfo, Mockito.never())
+          .checkBeforeCreatePipe(Mockito.any(TCreatePipeReq.class));
+    }
   }
 
   @Test

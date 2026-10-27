@@ -123,11 +123,10 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionAndPipeProced
             ? subscriptionInfo.get().deepCopyTopicMeta(topicName, isTableModel)
             : subscriptionInfo.get().deepCopyTopicMeta(topicName);
     if (Objects.nonNull(existedTopicMeta)
-        && existedTopicMeta.getConfig().isInitialMode()
         && existedTopicMeta.getConfig().isProgressRetainedAfterUnsubscribe()) {
       final boolean model = existedTopicMeta.visibleUnderTableModel();
       for (final ConsumerGroupMeta consumerGroupMeta :
-          subscriptionInfo.get().getConsumerGroupsRetainingInitialTopic(topicName, model)) {
+          subscriptionInfo.get().getConsumerGroupsRetainingTopic(topicName, model)) {
         retainedConsumerGroupMetas.add(consumerGroupMeta);
         retainedProgress.putAll(
             subscriptionInfo
@@ -193,7 +192,7 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionAndPipeProced
     final List<ConsumerGroupMeta> updatedMetas = new ArrayList<>();
     for (final ConsumerGroupMeta existingMeta : retainedConsumerGroupMetas) {
       final ConsumerGroupMeta updatedMeta = existingMeta.deepCopy();
-      updatedMeta.removeRetainedInitialTopic(topicName);
+      updatedMeta.removeRetainedTopic(topicName);
       updatedMetas.add(updatedMeta);
     }
     return updatedMetas;

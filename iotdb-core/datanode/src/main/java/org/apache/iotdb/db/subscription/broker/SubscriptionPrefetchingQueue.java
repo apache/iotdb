@@ -919,9 +919,7 @@ public abstract class SubscriptionPrefetchingQueue {
     return requeuedCount;
   }
 
-  /**
-   * Replays every uncommitted delivery when the last subscriber leaves a retained initial topic.
-   */
+  /** Replays every uncommitted delivery when the last subscriber leaves a retained topic. */
   public void resetAndRequeueInFlightEvents() {
     acquireWriteLock();
     try {

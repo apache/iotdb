@@ -121,8 +121,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
           continue;
         }
 
-        if (topicMeta.getConfig().isInitialMode()
-            && topicMeta.getConfig().isProgressRetainedAfterUnsubscribe()) {
+        if (topicMeta.getConfig().isProgressRetainedAfterUnsubscribe()) {
           continue;
         }
 

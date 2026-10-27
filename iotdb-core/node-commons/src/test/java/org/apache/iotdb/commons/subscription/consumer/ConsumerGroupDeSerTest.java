@@ -42,7 +42,7 @@ import static org.junit.Assert.fail;
 public class ConsumerGroupDeSerTest {
 
   @Test
-  public void testRetainedInitialTopicsAreSelfDelimitedAndPreserveModel() throws Exception {
+  public void testRetainedTopicsAreSelfDelimitedAndPreserveModel() throws Exception {
     for (final String dialect : new String[] {"tree", "table"}) {
       final ConsumerGroupMeta group =
           new ConsumerGroupMeta(
@@ -52,7 +52,7 @@ public class ConsumerGroupDeSerTest {
                   "consumer",
                   1L,
                   Collections.singletonMap(ConsumerConstant.SQL_DIALECT_KEY, dialect)));
-      group.retainInitialTopic("topic");
+      group.retainTopic("topic");
       group.removeConsumer("consumer");
       final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
       final DataOutputStream output = new DataOutputStream(bytes);
@@ -67,9 +67,9 @@ public class ConsumerGroupDeSerTest {
       Assert.assertEquals(group, ConsumerGroupMeta.deserialize(input));
       Assert.assertEquals(Integer.BYTES, input.available());
       final ConsumerGroupMeta copied = group.deepCopy();
-      copied.removeRetainedInitialTopic("topic");
-      Assert.assertEquals(Collections.singleton("topic"), group.getRetainedInitialTopicNames());
-      Assert.assertTrue(copied.getRetainedInitialTopicNames().isEmpty());
+      copied.removeRetainedTopic("topic");
+      Assert.assertEquals(Collections.singleton("topic"), group.getRetainedTopicNames());
+      Assert.assertTrue(copied.getRetainedTopicNames().isEmpty());
       Assert.assertEquals("table".equals(dialect), restored.visibleUnder(true));
     }
   }

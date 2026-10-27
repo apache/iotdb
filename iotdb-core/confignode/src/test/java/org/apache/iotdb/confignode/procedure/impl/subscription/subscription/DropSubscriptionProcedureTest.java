@@ -168,35 +168,38 @@ public class DropSubscriptionProcedureTest {
 
   @Test
   public void executeFromValidateShouldRetainInitialPipeWhenConfigured() throws Exception {
-    final ConsumerMeta consumerMeta = new ConsumerMeta("old_consumer", 1, Collections.emptyMap());
-    final ConsumerGroupMeta consumerGroupMeta =
-        new ConsumerGroupMeta("test_consumer_group", 1, consumerMeta);
-    consumerGroupMeta.addSubscription("old_consumer", Collections.singleton("test_topic"));
+    for (final String mode :
+        new String[] {TopicConstant.MODE_INITIAL_VALUE, TopicConstant.MODE_SNAPSHOT_VALUE}) {
+      final ConsumerMeta consumerMeta = new ConsumerMeta("old_consumer", 1, Collections.emptyMap());
+      final ConsumerGroupMeta consumerGroupMeta =
+          new ConsumerGroupMeta("test_consumer_group", 1, consumerMeta);
+      consumerGroupMeta.addSubscription("old_consumer", Collections.singleton("test_topic"));
 
-    final Map<String, String> topicAttributes = new HashMap<>();
-    topicAttributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_INITIAL_VALUE);
-    topicAttributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "true");
+      final Map<String, String> topicAttributes = new HashMap<>();
+      topicAttributes.put(TopicConstant.MODE_KEY, mode);
+      topicAttributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "true");
 
-    final SubscriptionInfo subscriptionInfo = Mockito.mock(SubscriptionInfo.class);
-    Mockito.when(subscriptionInfo.deepCopyConsumerGroupMeta("test_consumer_group"))
-        .thenAnswer(invocation -> consumerGroupMeta.deepCopy());
-    Mockito.when(subscriptionInfo.getConsumerGroupMeta("test_consumer_group"))
-        .thenReturn(consumerGroupMeta);
-    Mockito.when(subscriptionInfo.deepCopyTopicMeta("test_topic", false))
-        .thenReturn(new TopicMeta("test_topic", 1, topicAttributes));
+      final SubscriptionInfo subscriptionInfo = Mockito.mock(SubscriptionInfo.class);
+      Mockito.when(subscriptionInfo.deepCopyConsumerGroupMeta("test_consumer_group"))
+          .thenAnswer(invocation -> consumerGroupMeta.deepCopy());
+      Mockito.when(subscriptionInfo.getConsumerGroupMeta("test_consumer_group"))
+          .thenReturn(consumerGroupMeta);
+      Mockito.when(subscriptionInfo.deepCopyTopicMeta("test_topic", false))
+          .thenReturn(new TopicMeta("test_topic", 1, topicAttributes));
 
-    final PipeTaskInfo pipeTaskInfo = Mockito.mock(PipeTaskInfo.class);
-    final DropSubscriptionProcedure procedure =
-        new DropSubscriptionProcedure(
-            new TUnsubscribeReq(
-                "old_consumer", "test_consumer_group", Collections.singleton("test_topic")));
-    setField(procedure, "subscriptionInfo", new AtomicReference<>(subscriptionInfo));
-    setField(procedure, "pipeTaskInfo", new AtomicReference<>(pipeTaskInfo));
+      final PipeTaskInfo pipeTaskInfo = Mockito.mock(PipeTaskInfo.class);
+      final DropSubscriptionProcedure procedure =
+          new DropSubscriptionProcedure(
+              new TUnsubscribeReq(
+                  "old_consumer", "test_consumer_group", Collections.singleton("test_topic")));
+      setField(procedure, "subscriptionInfo", new AtomicReference<>(subscriptionInfo));
+      setField(procedure, "pipeTaskInfo", new AtomicReference<>(pipeTaskInfo));
 
-    procedure.executeFromValidate(Mockito.mock(ConfigNodeProcedureEnv.class));
+      procedure.executeFromValidate(Mockito.mock(ConfigNodeProcedureEnv.class));
 
-    Assert.assertTrue(procedure.getDropPipeProcedures().isEmpty());
-    Mockito.verify(pipeTaskInfo, Mockito.never()).checkBeforeDropPipe(Mockito.anyString());
+      Assert.assertTrue(procedure.getDropPipeProcedures().isEmpty());
+      Mockito.verify(pipeTaskInfo, Mockito.never()).checkBeforeDropPipe(Mockito.anyString());
+    }
   }
 
   private static ConfigNodeProcedureEnv mockConsensusFailureEnv(final TSStatus response)

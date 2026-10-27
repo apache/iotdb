@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -190,7 +191,8 @@ public class PipeHeartbeatParser {
           pipeHeartbeat.hasCompletedDataRegionReport(staticMeta);
       if (isFiniteInternalPipe
           && hasReliableDataRegionReport
-          && temporaryMeta.getCompletedDataRegionIds().containsAll(requiredDataRegionIds)) {
+          && temporaryMeta.getCompletedDataRegionIds().containsAll(requiredDataRegionIds)
+          && !isRetainedSubscriptionPipe(staticMeta)) {
         PipeLogger.log(
             LOGGER::info,
             ManagerMessages.ALL_DATANODES_REPORTED_HISTORICAL_PIPE_COMPLETED,
@@ -296,6 +298,23 @@ public class PipeHeartbeatParser {
         }
       }
     }
+  }
+
+  private boolean isRetainedSubscriptionPipe(final PipeStaticMeta staticMeta) {
+    if (!PipeStaticMeta.isSubscriptionPipe(staticMeta.getPipeName())) {
+      return false;
+    }
+    final String topicName =
+        staticMeta.getSinkParameters().getStringOrDefault(PipeSinkConstant.SINK_TOPIC_KEY, "");
+    final String consumerGroupId =
+        staticMeta
+            .getSinkParameters()
+            .getStringOrDefault(PipeSinkConstant.SINK_CONSUMER_GROUP_KEY, "");
+    return configManager
+        .getSubscriptionManager()
+        .getSubscriptionCoordinator()
+        .getSubscriptionInfo()
+        .shouldRetainSubscriptionPipe(consumerGroupId, topicName, staticMeta.visibleUnder(true));
   }
 
   /**

@@ -112,13 +112,16 @@ public class DropTopicProcedureTest {
   public void testRetainedRuntimeCleanupAndRollbackAreModelScoped() throws Exception {
     for (final boolean dropTopic : new boolean[] {false, true}) {
       for (final boolean tableModel : new boolean[] {false, true}) {
-        assertRetainedRuntimeCleanupAndRollback(dropTopic, tableModel);
+        for (final String mode :
+            new String[] {TopicConstant.MODE_INITIAL_VALUE, TopicConstant.MODE_SNAPSHOT_VALUE}) {
+          assertRetainedRuntimeCleanupAndRollback(dropTopic, tableModel, mode);
+        }
       }
     }
   }
 
   private void assertRetainedRuntimeCleanupAndRollback(
-      final boolean dropTopic, final boolean tableModel) throws Exception {
+      final boolean dropTopic, final boolean tableModel, final String mode) throws Exception {
     final String topicName = "retained_topic";
     final SubscriptionInfo subscriptions = new SubscriptionInfo();
     final PipeTaskInfo pipes = new PipeTaskInfo();
@@ -126,7 +129,7 @@ public class DropTopicProcedureTest {
       final String dialect = model ? "table" : "tree";
       final Map<String, String> attributes = new HashMap<>();
       attributes.put(SystemConstant.SQL_DIALECT_KEY, dialect);
-      attributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_INITIAL_VALUE);
+      attributes.put(TopicConstant.MODE_KEY, mode);
       attributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "true");
       subscriptions.createTopic(new CreateTopicPlan(new TopicMeta(topicName, 1L, attributes)));
       final String groupId = "retained_group_" + model;
@@ -138,7 +141,7 @@ public class DropTopicProcedureTest {
                   "consumer",
                   1L,
                   Collections.singletonMap(ConsumerConstant.SQL_DIALECT_KEY, dialect)));
-      group.retainInitialTopic(topicName);
+      group.retainTopic(topicName);
       group.removeConsumer("consumer");
       subscriptions.alterConsumerGroup(new AlterConsumerGroupPlan(group));
       final PipeRuntimeMeta runtime = new PipeRuntimeMeta();
@@ -241,17 +244,14 @@ public class DropTopicProcedureTest {
     }
     assertFalse(pipes.isPipeExisted(pipeName, tableModel));
     assertNull(subscriptions.getCommitProgressKeeper().getRegionProgress(progressKey));
-    assertTrue(
-        subscriptions.getConsumerGroupsRetainingInitialTopic(topicName, tableModel).isEmpty());
-    assertEquals(
-        1, subscriptions.getConsumerGroupsRetainingInitialTopic(topicName, !tableModel).size());
+    assertTrue(subscriptions.getConsumerGroupsRetainingTopic(topicName, tableModel).isEmpty());
+    assertEquals(1, subscriptions.getConsumerGroupsRetainingTopic(topicName, !tableModel).size());
     if (dropTopic) {
       ((DropTopicProcedure) recovered).rollbackFromOperateOnConfigNodes(env);
     } else {
       ((AlterTopicProcedure) recovered).rollbackFromOperateOnConfigNodes(env);
     }
-    assertEquals(
-        1, subscriptions.getConsumerGroupsRetainingInitialTopic(topicName, tableModel).size());
+    assertEquals(1, subscriptions.getConsumerGroupsRetainingTopic(topicName, tableModel).size());
     assertTrue(
         subscriptions
             .deepCopyTopicMeta(topicName, tableModel)
@@ -314,7 +314,7 @@ public class DropTopicProcedureTest {
     final ConsumerGroupMeta consumerGroupMeta =
         new ConsumerGroupMeta(
             "test_group", 1, new ConsumerMeta("consumer", 1, Collections.emptyMap()));
-    consumerGroupMeta.retainInitialTopic("test_topic");
+    consumerGroupMeta.retainTopic("test_topic");
 
     final DropTopicProcedure procedure = new DropTopicProcedure("test_topic", false);
     setField(procedure, "existedTopicMeta", topicMeta);

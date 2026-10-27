@@ -20,10 +20,6 @@
 package org.apache.iotdb.confignode.i18n;
 
 public final class ConfigNodeMessages {
-  public static final String
-      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_IS_NOT_SUPPORTED_FOR_SNAPSHOT_TOPICS_894FDD40 =
-          "创建或修改主题失败，快照模式不支持 %s";
-
   public static final String EXCEPTION_CONFIGNODE_SIMPLECONSENSUS_WRITES_ARE_DISABLED_AFTER_A_WAL_CLEANUP_FAILURE_RESTART_IS_REQUIRED_D52F0107 =
       "ConfigNode SimpleConsensus 因 WAL 清理失败已禁用写入，需要重启。";
   public static final String EXCEPTION_FAILED_TO_CLOSE_THE_CONFIGNODE_SIMPLECONSENSUS_LOG_WRITER_BC0F417C =

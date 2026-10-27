@@ -140,8 +140,8 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
       final boolean topicAlreadySubscribed =
           consumerGroupMeta.getSubscribedTopicNames().contains(topicName);
       final boolean topicProgressRetained =
-          consumerGroupMeta.getRetainedInitialTopicNames().contains(topicName);
-      // A retained initial subscription keeps the original Pipe and its sink queue alive. Reuse it
+          consumerGroupMeta.getRetainedTopicNames().contains(topicName);
+      // A retained subscription keeps the original Pipe and its sink queue alive. Reuse it
       // only while the group is subscribed or has an explicit retained-progress marker.
       if (!pipeExists || (!topicAlreadySubscribed && !topicProgressRetained)) {
         createPipeProcedures.add(

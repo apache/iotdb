@@ -609,13 +609,15 @@ public class SubscriptionInfoTopicValidationTest {
   }
 
   @Test
-  public void testRejectRetainingProgressOnSnapshotTopic() {
+  public void testAcceptRetainingProgressOnSnapshotTopic() throws Exception {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
     final Map<String, String> attributes = newInitialTableTopicAttributes();
     attributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_SNAPSHOT_VALUE);
     attributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "true");
 
-    assertCreateRejected(subscriptionInfo, attributes, "not supported for snapshot topics");
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("snapshot_topic").setTopicAttributes(attributes)));
   }
 
   @Test
@@ -632,7 +634,11 @@ public class SubscriptionInfoTopicValidationTest {
   public void testRejectIllegalRetainProgressValue() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
     for (final String mode :
-        new String[] {TopicConstant.MODE_INITIAL_VALUE, TopicConstant.MODE_INCREMENTAL_VALUE}) {
+        new String[] {
+          TopicConstant.MODE_INITIAL_VALUE,
+          TopicConstant.MODE_SNAPSHOT_VALUE,
+          TopicConstant.MODE_INCREMENTAL_VALUE
+        }) {
       final Map<String, String> attributes = newIncrementalTableTopicAttributes();
       attributes.put(TopicConstant.MODE_KEY, mode);
       attributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "yes");

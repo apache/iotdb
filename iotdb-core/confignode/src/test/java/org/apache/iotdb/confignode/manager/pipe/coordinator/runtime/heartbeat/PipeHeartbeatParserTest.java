@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
@@ -42,7 +43,10 @@ import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.PipeRuntimeCoordinator;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.task.PipeTaskCoordinator;
+import org.apache.iotdb.confignode.manager.subscription.SubscriptionCoordinator;
+import org.apache.iotdb.confignode.manager.subscription.SubscriptionManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
+import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -638,6 +642,54 @@ public class PipeHeartbeatParserTest {
     Assert.assertNull(pipeTaskInfo.getPipeMetaByPipeName("test_pipe"));
   }
 
+  @Test
+  public void testParseHeartbeatRetainsCompletedSnapshotSubscriptionPipe() throws Exception {
+    CommonDescriptor.getInstance().getConfig().setSeperatedPipeHeartbeatEnabled(false);
+
+    for (final boolean retainProgress : new boolean[] {false, true}) {
+      final String topicName = "snapshot_topic_" + retainProgress;
+      final String groupId = "snapshot_group_" + retainProgress;
+      final Map<String, String> sourceAttributes = new HashMap<>();
+      sourceAttributes.put("source.mode", "snapshot");
+      sourceAttributes.put("source.realtime.enable", Boolean.FALSE.toString());
+      final Map<String, String> sinkAttributes = new HashMap<>();
+      sinkAttributes.put(PipeSinkConstant.SINK_TOPIC_KEY, topicName);
+      sinkAttributes.put(PipeSinkConstant.SINK_CONSUMER_GROUP_KEY, groupId);
+      final PipeMeta pipeMeta =
+          new PipeMeta(
+              new PipeStaticMeta(
+                  PipeStaticMeta.generateSubscriptionPipeName(topicName, groupId),
+                  1L,
+                  sourceAttributes,
+                  Collections.emptyMap(),
+                  sinkAttributes),
+              new PipeRuntimeMeta(
+                  new ConcurrentHashMap<>(
+                      Collections.singletonMap(
+                          1, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, DATA_NODE_ID)))));
+      final PipeTaskInfo pipeTaskInfo = new PipeTaskInfo();
+      pipeTaskInfo.createPipe(
+          new CreatePipePlanV2(pipeMeta.getStaticMeta(), pipeMeta.getRuntimeMeta()));
+      final ParserTestContext context = createParserTestContext(1, pipeTaskInfo);
+      when(context.subscriptionInfo.shouldRetainSubscriptionPipe(groupId, topicName, false))
+          .thenReturn(retainProgress);
+
+      context.parser.parseHeartbeat(
+          1,
+          createPipeHeartbeatWithCompletedRegions(pipeMeta, false, Collections.singletonList(1)));
+
+      if (retainProgress) {
+        Assert.assertNotNull(
+            pipeTaskInfo.getPipeMetaByPipeName(pipeMeta.getStaticMeta().getPipeName()));
+        verify(context.procedureManager, never()).pipeHandleMetaChange(anyBoolean(), anyBoolean());
+      } else {
+        Assert.assertNull(
+            pipeTaskInfo.getPipeMetaByPipeName(pipeMeta.getStaticMeta().getPipeName()));
+        verify(context.procedureManager).pipeHandleMetaChange(true, true);
+      }
+    }
+  }
+
   private ParserTestContext createParserTestContext(final int registeredDataNodeCount) {
     return createParserTestContext(registeredDataNodeCount, new PipeTaskInfo());
   }
@@ -653,15 +705,24 @@ public class PipeHeartbeatParserTest {
     final PipeTaskCoordinator pipeTaskCoordinator = Mockito.mock(PipeTaskCoordinator.class);
     final PartitionManager partitionManager = Mockito.mock(PartitionManager.class);
     final ExecutorService procedureSubmitter = Mockito.mock(ExecutorService.class);
+    final SubscriptionManager subscriptionManager = Mockito.mock(SubscriptionManager.class);
+    final SubscriptionCoordinator subscriptionCoordinator =
+        Mockito.mock(SubscriptionCoordinator.class);
+    final SubscriptionInfo subscriptionInfo = Mockito.mock(SubscriptionInfo.class);
 
     when(configManager.getNodeManager()).thenReturn(nodeManager);
     when(configManager.getProcedureManager()).thenReturn(procedureManager);
     when(configManager.getPipeManager()).thenReturn(pipeManager);
+    when(configManager.getSubscriptionManager()).thenReturn(subscriptionManager);
     when(nodeManager.getRegisteredDataNodeCount()).thenReturn(registeredDataNodeCount);
     when(pipeManager.getPipeRuntimeCoordinator()).thenReturn(pipeRuntimeCoordinator);
     when(pipeManager.getPipeTaskCoordinator()).thenReturn(pipeTaskCoordinator);
     when(pipeRuntimeCoordinator.getProcedureSubmitter()).thenReturn(procedureSubmitter);
     when(configManager.getPartitionManager()).thenReturn(partitionManager);
+    when(subscriptionManager.getSubscriptionCoordinator()).thenReturn(subscriptionCoordinator);
+    when(subscriptionCoordinator.getSubscriptionInfo()).thenReturn(subscriptionInfo);
+    when(subscriptionInfo.shouldRetainSubscriptionPipe(any(), any(), anyBoolean()))
+        .thenReturn(false);
     when(partitionManager.isRegionGroupExists(any(TConsensusGroupId.class))).thenReturn(true);
     when(pipeTaskCoordinator.tryLock()).thenReturn(new AtomicReference<>(pipeTaskInfo));
     when(procedureManager.pipeHandleMetaChange(anyBoolean(), anyBoolean())).thenReturn(true);
@@ -673,7 +734,8 @@ public class PipeHeartbeatParserTest {
         .when(procedureSubmitter)
         .submit(any(Runnable.class));
 
-    return new ParserTestContext(new PipeHeartbeatParser(configManager), procedureManager);
+    return new ParserTestContext(
+        new PipeHeartbeatParser(configManager), procedureManager, subscriptionInfo);
   }
 
   private void createPipe(
@@ -806,11 +868,15 @@ public class PipeHeartbeatParserTest {
   private static class ParserTestContext {
     private final PipeHeartbeatParser parser;
     private final ProcedureManager procedureManager;
+    private final SubscriptionInfo subscriptionInfo;
 
     private ParserTestContext(
-        final PipeHeartbeatParser parser, final ProcedureManager procedureManager) {
+        final PipeHeartbeatParser parser,
+        final ProcedureManager procedureManager,
+        final SubscriptionInfo subscriptionInfo) {
       this.parser = parser;
       this.procedureManager = procedureManager;
+      this.subscriptionInfo = subscriptionInfo;
     }
   }
 }

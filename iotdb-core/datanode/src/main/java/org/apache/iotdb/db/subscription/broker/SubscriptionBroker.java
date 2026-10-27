@@ -112,7 +112,8 @@ public class SubscriptionBroker implements ISubscriptionBroker {
   public List<SubscriptionEvent> poll(
       final String consumerId, final Set<String> topicNames, final long maxBytes) {
     final List<SubscriptionEvent> eventsToPoll = new ArrayList<>();
-    final Set<String> candidateTopicNames = prepareCandidateTopicNames(topicNames, eventsToPoll);
+    final Set<String> candidateTopicNames =
+        prepareCandidateTopicNames(consumerId, topicNames, eventsToPoll);
 
     // Sort topic names based on the current subscription states (number of events received per
     // topic)
@@ -162,7 +163,7 @@ public class SubscriptionBroker implements ISubscriptionBroker {
 
       // A poll may have captured its topic set before the last subscriber left. Retained queues
       // stay alive, so check the published subscription again before handing out their events.
-      if (!canDeliverRetainedInitialEvent(consumerId, topicName)) {
+      if (!canDeliverRetainedEvent(consumerId, topicName)) {
         prefetchingQueue.requeue(consumerId, event.getCommitContext());
         continue;
       }
@@ -214,10 +215,9 @@ public class SubscriptionBroker implements ISubscriptionBroker {
     return eventsToPoll;
   }
 
-  private boolean canDeliverRetainedInitialEvent(final String consumerId, final String topicName) {
+  private boolean canDeliverRetainedEvent(final String consumerId, final String topicName) {
     final TopicConfig config = SubscriptionAgent.topic().getTopicConfig(topicName, isTableModel());
     return Objects.isNull(config)
-        || !config.isInitialMode()
         || !config.isProgressRetainedAfterUnsubscribe()
         || SubscriptionAgent.consumer()
             .getTopicNamesSubscribedByConsumer(brokerId, consumerId)
@@ -225,6 +225,7 @@ public class SubscriptionBroker implements ISubscriptionBroker {
   }
 
   private Set<String> prepareCandidateTopicNames(
+      final String consumerId,
       final Set<String> topicNames,
       final List<SubscriptionEvent> eventsToPoll /* output parameter */) {
     final Set<String> candidateTopicNames = new HashSet<>();
@@ -232,9 +233,10 @@ public class SubscriptionBroker implements ISubscriptionBroker {
       // Check pipe-based queue
       final SubscriptionPrefetchingQueue prefetchingQueue =
           topicNameToPrefetchingQueue.get(topicName);
-      // If there is no prefetching queue for the topic, check if it's completed
-      if (Objects.isNull(prefetchingQueue)) {
-        if (completedTopicNames.containsKey(topicName)) {
+      // Retained snapshot Pipes stay alive after completion, so their queues also report
+      // termination directly instead of waiting for the Pipe to unbind them.
+      if (isTopicCompleted(topicName, prefetchingQueue)) {
+        if (canDeliverRetainedEvent(consumerId, topicName)) {
           LOGGER.info(
               DataNodePipeMessages
                   .PIPE_LOG_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_ECB64624,
@@ -251,8 +253,10 @@ public class SubscriptionBroker implements ISubscriptionBroker {
                       topicName,
                       brokerId,
                       INVALID_COMMIT_ID)));
-          continue;
         }
+        continue;
+      }
+      if (Objects.isNull(prefetchingQueue)) {
         // There are two reasons for not printing logs here:
         // 1. There will be a delay in the creation of the prefetching queue after subscription.
         // 2. There is no corresponding prefetching queue on this DN:
@@ -462,8 +466,7 @@ public class SubscriptionBroker implements ISubscriptionBroker {
     for (final String topicName : topicNames) {
       final SubscriptionPrefetchingQueue prefetchingQueue =
           topicNameToPrefetchingQueue.get(topicName);
-      // If there is no prefetching queue for the topic, check if it's completed
-      if (Objects.isNull(prefetchingQueue) && completedTopicNames.containsKey(topicName)) {
+      if (isTopicCompleted(topicName, prefetchingQueue)) {
         LOGGER.info(
             DataNodePipeMessages
                 .PIPE_LOG_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_8F561EB2,
@@ -474,6 +477,20 @@ public class SubscriptionBroker implements ISubscriptionBroker {
     }
 
     return topicNamesToUnsubscribe;
+  }
+
+  private boolean isTopicCompleted(
+      final String topicName, final SubscriptionPrefetchingQueue prefetchingQueue) {
+    if (Objects.isNull(prefetchingQueue)) {
+      return completedTopicNames.containsKey(topicName);
+    }
+    if (!prefetchingQueue.isCompleted()) {
+      return false;
+    }
+    final TopicConfig config = SubscriptionAgent.topic().getTopicConfig(topicName, isTableModel());
+    return Objects.nonNull(config)
+        && config.isSnapshotMode()
+        && config.isProgressRetainedAfterUnsubscribe();
   }
 
   /////////////////////////////// prefetching queue ///////////////////////////////

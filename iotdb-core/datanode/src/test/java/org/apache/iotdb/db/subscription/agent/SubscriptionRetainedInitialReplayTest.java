@@ -53,6 +53,7 @@ import java.nio.file.Files;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -230,7 +231,7 @@ public class SubscriptionRetainedInitialReplayTest {
           SubscriptionAgent.consumer()
               .handleSingleConsumerGroupMetaChanges(subscription.meta.deepCopy()));
       subscription.meta.removeSubscription("second", Collections.singleton(subscription.topic));
-      subscription.meta.retainInitialTopic(subscription.topic);
+      subscription.meta.retainTopic(subscription.topic);
       assertNull(
           SubscriptionAgent.consumer()
               .handleSingleConsumerGroupMetaChanges(subscription.meta.deepCopy()));
@@ -259,30 +260,74 @@ public class SubscriptionRetainedInitialReplayTest {
 
   @Test
   public void testPollWithStaleTopicSetCannotStrandRetainedEvents() throws Exception {
-    for (final boolean closeConsumer : new boolean[] {false, true}) {
-      try (final RetainedSubscription subscription = new RetainedSubscription(false)) {
-        final SubscriptionEvent event = subscription.newEvent();
-        subscription.queue.prefetchEvent(event);
-        assertSame(event, subscription.poll("first"));
-        doAnswer(
-                invocation -> {
-                  invocation.callRealMethod();
-                  // Model a request admitted before unsubscribe that reaches the queue as soon as
-                  // the uncommitted event is released, before the meta-change handler returns.
-                  assertTrue(
-                      subscription
-                          .broker
-                          .poll("first", Collections.singleton(subscription.topic), Long.MAX_VALUE)
-                          .isEmpty());
-                  return null;
-                })
-            .when(subscription.queue)
-            .resetAndRequeueInFlightEvents();
-        subscription.detach(closeConsumer);
-        assertEquals(0L, subscription.queue.getSubscriptionUncommittedEventCount());
-        assertEquals(1, subscription.queue.getPrefetchedEventCount());
-        subscription.rejoin();
-        assertSame(event, subscription.poll("first"));
+    for (final String mode :
+        new String[] {TopicConstant.MODE_INITIAL_VALUE, TopicConstant.MODE_SNAPSHOT_VALUE}) {
+      for (final boolean closeConsumer : new boolean[] {false, true}) {
+        try (final RetainedSubscription subscription =
+            new RetainedSubscription(false, true, mode)) {
+          final SubscriptionEvent event = subscription.newEvent();
+          subscription.queue.prefetchEvent(event);
+          assertSame(event, subscription.poll("first"));
+          doAnswer(
+                  invocation -> {
+                    invocation.callRealMethod();
+                    // Model a request admitted before unsubscribe that reaches the queue as soon as
+                    // the uncommitted event is released, before the meta-change handler returns.
+                    assertTrue(
+                        subscription
+                            .broker
+                            .poll(
+                                "first", Collections.singleton(subscription.topic), Long.MAX_VALUE)
+                            .isEmpty());
+                    return null;
+                  })
+              .when(subscription.queue)
+              .resetAndRequeueInFlightEvents();
+          subscription.detach(closeConsumer);
+          assertEquals(0L, subscription.queue.getSubscriptionUncommittedEventCount());
+          assertEquals(1, subscription.queue.getPrefetchedEventCount());
+          subscription.rejoin();
+          assertSame(event, subscription.poll("first"));
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testCompletedRetainedSnapshotReportsTerminationAfterRejoin() throws Exception {
+    for (final boolean tableModel : new boolean[] {false, true}) {
+      for (final boolean closeConsumer : new boolean[] {false, true}) {
+        try (final RetainedSubscription subscription =
+            new RetainedSubscription(tableModel, true, TopicConstant.MODE_SNAPSHOT_VALUE)) {
+          final Set<String> topicNames = Collections.singleton(subscription.topic);
+          assertTrue(subscription.broker.fetchTopicNamesToUnsubscribe(topicNames).isEmpty());
+          subscription.queue.markCompleted();
+          assertEquals(
+              Collections.singletonList(subscription.topic),
+              subscription.broker.fetchTopicNamesToUnsubscribe(topicNames));
+          assertEquals(
+              SubscriptionPollResponseType.TERMINATION.getType(),
+              subscription
+                  .broker
+                  .poll("first", topicNames, Long.MAX_VALUE)
+                  .get(0)
+                  .getCurrentResponse()
+                  .getResponseType());
+
+          subscription.detach(closeConsumer);
+          assertFalse(subscription.queue.isClosed());
+          assertTrue(subscription.broker.poll("first", topicNames, Long.MAX_VALUE).isEmpty());
+          subscription.rejoin();
+          assertTrue(subscription.broker.hasQueue(subscription.topic));
+          final List<SubscriptionEvent> events =
+              subscription.broker.poll("first", topicNames, Long.MAX_VALUE);
+          assertEquals(1, events.size());
+          assertEquals(
+              SubscriptionPollResponseType.TERMINATION.getType(),
+              events.get(0).getCurrentResponse().getResponseType());
+          assertEquals(0L, subscription.queue.getSubscriptionUncommittedEventCount());
+          assertEquals(0, subscription.queue.getPrefetchedEventCount());
+        }
       }
     }
   }
@@ -297,11 +342,16 @@ public class SubscriptionRetainedInitialReplayTest {
     private ConsumerGroupMeta meta;
 
     private RetainedSubscription(final boolean tableModel) throws Exception {
-      this(tableModel, true);
+      this(tableModel, true, TopicConstant.MODE_INITIAL_VALUE);
+    }
+
+    private RetainedSubscription(final boolean tableModel, final boolean retain) throws Exception {
+      this(tableModel, retain, TopicConstant.MODE_INITIAL_VALUE);
     }
 
     @SuppressWarnings("unchecked")
-    private RetainedSubscription(final boolean tableModel, final boolean retain) throws Exception {
+    private RetainedSubscription(final boolean tableModel, final boolean retain, final String mode)
+        throws Exception {
       this.tableModel = tableModel;
       this.retain = retain;
       assertNull(
@@ -314,7 +364,7 @@ public class SubscriptionRetainedInitialReplayTest {
                           SystemConstant.SQL_DIALECT_KEY,
                           tableModel ? "table" : "tree",
                           TopicConstant.MODE_KEY,
-                          TopicConstant.MODE_INITIAL_VALUE,
+                          mode,
                           TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY,
                           String.valueOf(retain),
                           TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY,
@@ -360,7 +410,7 @@ public class SubscriptionRetainedInitialReplayTest {
     private void detach(final boolean closeConsumer) {
       meta.removeSubscription("first", Collections.singleton(topic));
       if (retain) {
-        meta.retainInitialTopic(topic);
+        meta.retainTopic(topic);
       }
       if (closeConsumer) {
         meta.removeConsumer("first");
@@ -374,7 +424,7 @@ public class SubscriptionRetainedInitialReplayTest {
         meta.addConsumer(consumer("first"));
       }
       meta.addSubscription("first", Collections.singleton(topic));
-      meta.removeRetainedInitialTopic(topic);
+      meta.removeRetainedTopic(topic);
       assertNull(
           SubscriptionAgent.consumer().handleSingleConsumerGroupMetaChanges(meta.deepCopy()));
     }
