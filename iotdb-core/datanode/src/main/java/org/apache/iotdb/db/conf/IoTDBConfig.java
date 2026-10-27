@@ -1241,16 +1241,14 @@ public class IoTDBConfig implements DefaultEncodingProvider {
   private boolean loadActiveListeningVerifyEnable = true;
 
   /**
-   * Whether a LOAD must resolve the user that executes it. When disabled (the default), a LOAD
-   * without user information is executed as the default user, which is the legacy behavior. When
-   * enabled, a LOAD without user information is rejected.
+   * Whether a LOAD without a user is rejected instead of being executed as the default user.
+   * Disabled by default to keep the legacy fallback.
    */
   private boolean loadRequireUserIdentity = false;
 
   /**
-   * Whether the pipe receiver must resolve the user that executes an asynchronous LOAD. When
-   * disabled (the default), a transfer without a resolvable sender is loaded as the default user,
-   * which is the legacy behavior. When enabled, such a transfer is rejected.
+   * Whether the pipe receiver rejects an asynchronous LOAD without an authenticated sender.
+   * Disabled by default to keep the legacy fallback.
    */
   private boolean pipeReceiverRequireUserIdentity = false;
 

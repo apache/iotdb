@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.load.util;
 
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
@@ -50,6 +51,7 @@ public class LoadUtilTest {
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private String[] originalListeningDirs;
+  private boolean originalRequireUserIdentity;
   private File tempDir;
   private File sourceDir;
   private File targetDir;
@@ -62,6 +64,7 @@ public class LoadUtilTest {
     Assert.assertTrue(sourceDir.mkdirs());
     Assert.assertTrue(targetDir.mkdirs());
     originalListeningDirs = config.getLoadActiveListeningDirs();
+    originalRequireUserIdentity = config.isLoadRequireUserIdentity();
     config.setLoadActiveListeningDirs(new String[] {targetDir.getAbsolutePath()});
     LoadUtil.updateLoadDiskSelector();
   }
@@ -69,6 +72,7 @@ public class LoadUtilTest {
   @After
   public void tearDown() {
     config.setLoadActiveListeningDirs(originalListeningDirs);
+    config.setLoadRequireUserIdentity(originalRequireUserIdentity);
     LoadUtil.updateLoadDiskSelector();
     deleteRecursively(tempDir);
   }
@@ -311,6 +315,7 @@ public class LoadUtilTest {
 
   @Test
   public void testLoadToActiveDirRejectsMissingUser() throws Exception {
+    config.setLoadRequireUserIdentity(true);
     final File tsFile = createCompletedTsFile("without-user.tsfile");
 
     try {
@@ -326,6 +331,41 @@ public class LoadUtilTest {
 
     Assert.assertTrue("The source must be kept", tsFile.isFile());
     Assert.assertEquals(0, targetDir.listFiles().length);
+  }
+
+  @Test
+  public void testLoadToActiveDirUsesTheDefaultUserWhenIdentityIsNotRequired() throws Exception {
+    config.setLoadRequireUserIdentity(false);
+    final File tsFile = createCompletedTsFile("default-user.tsfile");
+
+    Assert.assertTrue(
+        LoadUtil.loadFilesToActiveDir(
+            new HashMap<>(), Collections.singletonList(tsFile.getAbsolutePath()), false));
+
+    final File loadedTsFile = findTsFile(targetDir);
+    Assert.assertNotNull(loadedTsFile);
+    Assert.assertEquals(
+        AuthorityChecker.SUPER_USER,
+        ActiveLoadPathHelper.parseAttributes(loadedTsFile, targetDir)
+            .get(ActiveLoadPathHelper.USER_KEY));
+  }
+
+  private static File findTsFile(final File dir) {
+    final File[] files = dir.listFiles();
+    if (files == null) {
+      return null;
+    }
+    for (final File file : files) {
+      if (file.isDirectory()) {
+        final File nested = findTsFile(file);
+        if (nested != null) {
+          return nested;
+        }
+      } else if (file.getName().endsWith(".tsfile")) {
+        return file;
+      }
+    }
+    return null;
   }
 
   private File createCompletedTsFile(final String fileName) throws Exception {

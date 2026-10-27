@@ -2873,17 +2873,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "skip_failed_table_schema_check",
                 String.valueOf(conf.isSkipFailedTableSchemaCheck()))));
-
-    conf.setLoadRequireUserIdentity(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "load_require_user_identity", Boolean.toString(conf.isLoadRequireUserIdentity()))));
-
-    conf.setPipeReceiverRequireUserIdentity(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "pipe_receiver_require_user_identity",
-                Boolean.toString(conf.isPipeReceiverRequireUserIdentity()))));
   }
 
   private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {

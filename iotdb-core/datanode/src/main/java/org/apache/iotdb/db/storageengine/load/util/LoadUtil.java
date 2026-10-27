@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
@@ -186,14 +187,16 @@ public class LoadUtil {
       final IClientSession session = SessionManager.getInstance().getCurrSession();
       final String username = Objects.isNull(session) ? null : session.getUsername();
       if (Objects.isNull(username) || username.isEmpty()) {
-        // Never fall back to a privileged default here. The load would be authorized by the active
-        // loader with the identity stored in the attributes, so an unknown user means the load can
-        // not be authorized at all and must not be queued.
-        throw new IOException(
-            StorageEngineMessages
-                .EXCEPTION_FAILED_TO_DETERMINE_THE_USER_THAT_LOADS_THE_TSFILE_E47F7207);
+        if (IoTDBDescriptor.getInstance().getConfig().isLoadRequireUserIdentity()) {
+          throw new IOException(
+              StorageEngineMessages
+                  .EXCEPTION_FAILED_TO_DETERMINE_THE_USER_THAT_LOADS_THE_TSFILE_E47F7207);
+        }
+        // Legacy behavior: queue the load with the default user.
+        attributes.put(ActiveLoadPathHelper.USER_KEY, AuthorityChecker.SUPER_USER);
+      } else {
+        attributes.put(ActiveLoadPathHelper.USER_KEY, username);
       }
-      attributes.put(ActiveLoadPathHelper.USER_KEY, username);
     }
     return attributes;
   }
