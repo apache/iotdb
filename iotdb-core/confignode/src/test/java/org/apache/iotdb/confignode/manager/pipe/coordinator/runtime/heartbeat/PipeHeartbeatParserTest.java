@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
@@ -695,35 +696,77 @@ public class PipeHeartbeatParserTest {
       throws Exception {
     CommonDescriptor.getInstance().getConfig().setSeperatedPipeHeartbeatEnabled(false);
 
-    final String topicName = "snapshot_topic_without_data_regions";
-    final String groupId = "snapshot_group_without_data_regions";
-    final Map<String, String> sourceAttributes = new HashMap<>();
-    sourceAttributes.put("source.mode", "snapshot");
-    sourceAttributes.put("source.realtime.enable", Boolean.FALSE.toString());
-    final Map<String, String> sinkAttributes = new HashMap<>();
-    sinkAttributes.put(PipeSinkConstant.SINK_TOPIC_KEY, topicName);
-    sinkAttributes.put(PipeSinkConstant.SINK_CONSUMER_GROUP_KEY, groupId);
-    final PipeMeta pipeMeta =
-        new PipeMeta(
-            new PipeStaticMeta(
-                PipeStaticMeta.generateSubscriptionPipeName(topicName, groupId),
-                1L,
-                sourceAttributes,
-                Collections.emptyMap(),
-                sinkAttributes),
-            new PipeRuntimeMeta());
-    final PipeTaskInfo pipeTaskInfo = new PipeTaskInfo();
-    pipeTaskInfo.createPipe(
-        new CreatePipePlanV2(pipeMeta.getStaticMeta(), pipeMeta.getRuntimeMeta()));
-    final ParserTestContext context = createParserTestContext(1, pipeTaskInfo);
-    when(context.subscriptionInfo.shouldRetainSubscriptionPipe(groupId, topicName, false))
-        .thenReturn(true);
+    for (final boolean tableModel : new boolean[] {false, true}) {
+      final String topicName = "snapshot_topic_without_data_regions";
+      final String groupId = "snapshot_group_without_data_regions";
+      final Map<String, String> sourceAttributes = new HashMap<>();
+      sourceAttributes.put(SystemConstant.SQL_DIALECT_KEY, tableModel ? "table" : "tree");
+      sourceAttributes.put("source.mode", "snapshot");
+      sourceAttributes.put("source.realtime.enable", Boolean.FALSE.toString());
+      final Map<String, String> sinkAttributes = new HashMap<>();
+      sinkAttributes.put(PipeSinkConstant.SINK_TOPIC_KEY, topicName);
+      sinkAttributes.put(PipeSinkConstant.SINK_CONSUMER_GROUP_KEY, groupId);
+      final PipeMeta pipeMeta =
+          new PipeMeta(
+              new PipeStaticMeta(
+                  PipeStaticMeta.generateSubscriptionPipeName(topicName, groupId),
+                  1L,
+                  sourceAttributes,
+                  Collections.emptyMap(),
+                  sinkAttributes),
+              new PipeRuntimeMeta());
+      final PipeTaskInfo pipeTaskInfo = new PipeTaskInfo();
+      pipeTaskInfo.createPipe(
+          new CreatePipePlanV2(pipeMeta.getStaticMeta(), pipeMeta.getRuntimeMeta()));
+      final ParserTestContext context = createParserTestContext(1, pipeTaskInfo);
+      when(context.subscriptionInfo.shouldRetainSubscriptionPipe(groupId, topicName, tableModel))
+          .thenReturn(true);
 
-    context.parser.parseHeartbeat(
-        1, createPipeHeartbeatWithCompletedRegions(pipeMeta, false, Collections.emptyList()));
+      // Legacy heartbeats do not establish that a DataNode has received the empty snapshot.
+      context.parser.parseHeartbeat(1, createPipeHeartbeat(pipeMeta, false));
+      Assert.assertFalse(
+          sourceAttributes.containsKey(SystemConstant.SUBSCRIPTION_EMPTY_SNAPSHOT_COMPLETED_KEY));
+      verify(context.procedureManager, never()).pipeHandleMetaChange(anyBoolean(), anyBoolean());
 
-    Assert.assertNull(pipeTaskInfo.getPipeMetaByPipeName(pipeMeta.getStaticMeta().getPipeName()));
-    verify(context.procedureManager).pipeHandleMetaChange(true, true);
+      context.parser.parseHeartbeat(
+          1, createPipeHeartbeatWithCompletedRegions(pipeMeta, false, Collections.emptyList()));
+
+      final PipeMeta completedPipe =
+          pipeTaskInfo.getPipeMetaByPipeName(pipeMeta.getStaticMeta().getPipeName(), tableModel);
+      Assert.assertNotNull(completedPipe);
+      Assert.assertTrue(
+          completedPipe
+              .getStaticMeta()
+              .getSourceParameters()
+              .getBooleanOrDefault(
+                  SystemConstant.SUBSCRIPTION_EMPTY_SNAPSHOT_COMPLETED_KEY, false));
+      final PipeMeta recovered = PipeMeta.deserialize4Coordinator(completedPipe.serialize());
+      Assert.assertEquals(completedPipe.getStaticMeta(), recovered.getStaticMeta());
+      verify(context.procedureManager).pipeHandleMetaChange(true, true);
+
+      // Region creation after completion must neither reopen the snapshot nor prevent cleanup.
+      for (final PipeMeta meta : new PipeMeta[] {completedPipe, recovered}) {
+        meta.getRuntimeMeta()
+            .getConsensusGroupId2TaskMetaMap()
+            .put(7, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, DATA_NODE_ID));
+      }
+      // Completion is durable and idempotent; a later metadata sync must keep the same snapshot.
+      context.parser.parseHeartbeat(
+          1, createPipeHeartbeatWithCompletedRegions(recovered, false, Collections.emptyList()));
+      Assert.assertSame(
+          completedPipe,
+          pipeTaskInfo.getPipeMetaByPipeName(pipeMeta.getStaticMeta().getPipeName(), tableModel));
+      verify(context.procedureManager, times(1)).pipeHandleMetaChange(true, true);
+
+      // Turning retention off still releases the completed Pipe.
+      when(context.subscriptionInfo.shouldRetainSubscriptionPipe(groupId, topicName, tableModel))
+          .thenReturn(false);
+      context.parser.parseHeartbeat(
+          1, createPipeHeartbeatWithCompletedRegions(recovered, false, Collections.emptyList()));
+      Assert.assertNull(
+          pipeTaskInfo.getPipeMetaByPipeName(pipeMeta.getStaticMeta().getPipeName(), tableModel));
+      verify(context.procedureManager, times(2)).pipeHandleMetaChange(true, true);
+    }
   }
 
   private ParserTestContext createParserTestContext(final int registeredDataNodeCount) {

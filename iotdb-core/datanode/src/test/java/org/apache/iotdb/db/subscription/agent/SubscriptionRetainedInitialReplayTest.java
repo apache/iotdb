@@ -19,10 +19,20 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.db.pipe.agent.task.PipeDataNodeTaskAgent;
 import org.apache.iotdb.db.subscription.broker.ISubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBlockingPendingQueue;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
@@ -47,10 +57,12 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.powermock.reflect.Whitebox;
 
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -329,6 +341,152 @@ public class SubscriptionRetainedInitialReplayTest {
           assertEquals(0, subscription.queue.getPrefetchedEventCount());
         }
       }
+    }
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testEmptyRetainedSnapshotCompletionSurvivesRejoinAndBrokerRecovery()
+      throws Exception {
+    final CommonConfig originalConfig =
+        Whitebox.getInternalState(SubscriptionConfig.class, "COMMON_CONFIG");
+    final CommonConfig enabledConfig = spy(originalConfig);
+    when(enabledConfig.getSubscriptionEnabled()).thenReturn(true);
+    try {
+      Whitebox.setInternalState(SubscriptionConfig.class, "COMMON_CONFIG", enabledConfig);
+      for (final boolean tableModel : new boolean[] {false, true}) {
+        for (final boolean closeConsumer : new boolean[] {false, true}) {
+          try (final RetainedSubscription subscription =
+              new RetainedSubscription(tableModel, true, TopicConstant.MODE_SNAPSHOT_VALUE)) {
+            subscription.broker.removePrefetchingQueue(subscription.topic);
+            final Set<String> topics = Collections.singleton(subscription.topic);
+            final Map<String, String> source =
+                new HashMap<>(
+                    Map.of(
+                        SystemConstant.SQL_DIALECT_KEY,
+                        tableModel ? "table" : "tree",
+                        "source.mode",
+                        "snapshot"));
+            final PipeRuntimeMeta runtime = new PipeRuntimeMeta();
+            runtime.getStatus().set(PipeStatus.RUNNING);
+            final PipeMeta pipe =
+                new PipeMeta(
+                    new PipeStaticMeta(
+                        PipeStaticMeta.generateSubscriptionPipeName(
+                            subscription.topic, subscription.group),
+                        1L,
+                        source,
+                        Collections.emptyMap(),
+                        Map.of(
+                            PipeSinkConstant.SINK_TOPIC_KEY, subscription.topic,
+                            PipeSinkConstant.SINK_CONSUMER_GROUP_KEY, subscription.group)),
+                    runtime);
+            final PipeDataNodeTaskAgent taskAgent =
+                new PipeDataNodeTaskAgent() {
+                  @Override
+                  protected boolean isShutdown() {
+                    return false;
+                  }
+
+                  @Override
+                  protected void createPipeTask(
+                      final int regionId,
+                      final PipeStaticMeta staticMeta,
+                      final PipeTaskMeta taskMeta) {
+                    throw new AssertionError(
+                        "A completed empty snapshot must not accept new tasks");
+                  }
+                };
+            try {
+              assertNull(
+                  taskAgent.handleSinglePipeMetaChanges(
+                      PipeMeta.deserialize4TaskAgent(pipe.serialize())));
+              assertTrue(subscription.broker.poll("first", topics, Long.MAX_VALUE).isEmpty());
+
+              source.put(SystemConstant.SUBSCRIPTION_EMPTY_SNAPSHOT_COMPLETED_KEY, "true");
+              final PipeMeta completed = PipeMeta.deserialize4TaskAgent(pipe.serialize());
+              assertNull(taskAgent.handleSinglePipeMetaChanges(completed));
+              // Later DataRegions must not change the original snapshot's empty result.
+              runtime
+                  .getConsensusGroupId2TaskMetaMap()
+                  .put(7, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 0));
+              assertNull(
+                  taskAgent.handleSinglePipeMetaChanges(
+                      PipeMeta.deserialize4TaskAgent(pipe.serialize())));
+              assertEquals(
+                  Collections.singletonList(subscription.topic),
+                  subscription.broker.fetchTopicNamesToUnsubscribe(topics));
+              subscription.detach(closeConsumer);
+              assertTrue(subscription.broker.poll("first", topics, Long.MAX_VALUE).isEmpty());
+              subscription.rejoin();
+              assertEquals(
+                  SubscriptionPollResponseType.TERMINATION.getType(),
+                  subscription
+                      .broker
+                      .poll("first", topics, Long.MAX_VALUE)
+                      .get(0)
+                      .getCurrentResponse()
+                      .getResponseType());
+
+              // Restore an unsubscribed group and its persisted Pipe after losing all local
+              // brokers.
+              subscription.detach(closeConsumer);
+              assertNull(SubscriptionAgent.consumer().handleDropConsumerGroup(subscription.group));
+              assertNull(
+                  SubscriptionAgent.consumer()
+                      .handleSingleConsumerGroupMetaChanges(subscription.meta.deepCopy()));
+              final PipeDataNodeTaskAgent recoveredTaskAgent =
+                  new PipeDataNodeTaskAgent() {
+                    @Override
+                    protected boolean isShutdown() {
+                      return false;
+                    }
+
+                    @Override
+                    protected void createPipeTask(
+                        final int regionId,
+                        final PipeStaticMeta staticMeta,
+                        final PipeTaskMeta taskMeta) {
+                      throw new AssertionError(
+                          "A completed empty snapshot must not accept new tasks");
+                    }
+                  };
+              assertTrue(
+                  recoveredTaskAgent
+                      .handlePipeMetaChangesInternal(
+                          Collections.singletonList(
+                              PipeMeta.deserialize4TaskAgent(pipe.serialize())))
+                      .isEmpty());
+              final Field brokersField =
+                  SubscriptionBrokerAgent.class.getDeclaredField("consumerGroupIdToBrokers");
+              brokersField.setAccessible(true);
+              final Map<String, List<ISubscriptionBroker>> brokers =
+                  (Map<String, List<ISubscriptionBroker>>)
+                      brokersField.get(SubscriptionAgent.broker());
+              final SubscriptionBroker recovered =
+                  (SubscriptionBroker) brokers.get(subscription.group).get(0);
+              assertFalse(recovered.hasQueue(subscription.topic));
+              assertTrue(recovered.poll("first", topics, Long.MAX_VALUE).isEmpty());
+              subscription.rejoin();
+              assertEquals(
+                  SubscriptionPollResponseType.TERMINATION.getType(),
+                  recovered
+                      .poll("first", topics, Long.MAX_VALUE)
+                      .get(0)
+                      .getCurrentResponse()
+                      .getResponseType());
+              assertTrue(
+                  recoveredTaskAgent
+                      .handlePipeMetaChangesInternal(Collections.emptyList())
+                      .isEmpty());
+            } finally {
+              taskAgent.handlePipeMetaChangesInternal(Collections.emptyList());
+            }
+          }
+        }
+      }
+    } finally {
+      Whitebox.setInternalState(SubscriptionConfig.class, "COMMON_CONFIG", originalConfig);
     }
   }
 
