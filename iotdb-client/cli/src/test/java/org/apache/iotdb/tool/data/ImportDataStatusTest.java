@@ -44,6 +44,7 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doAnswer;
@@ -133,6 +134,22 @@ public class ImportDataStatusTest {
     assertEquals(0, ImportDataScanTool.getTsFileQueueSize());
     assertFalse(output.toString(StandardCharsets.UTF_8).contains("Import completely!"));
     verify(sessionPool).insertRecords(anyList(), anyList(), anyList(), anyList(), anyList());
+  }
+
+  @Test
+  public void asyncMissingSourceReturnsErrorWithoutCreatingSessionPool() throws Exception {
+    Path missing = temporaryFolder.getRoot().toPath().resolve("missing");
+    setImportOption("targetPath", missing.toString());
+    setImportOption("sessionPool", null);
+
+    assertEquals(AbstractDataTool.CODE_ERROR, invokeImport("importFromTargetPathAsync"));
+    assertEquals(
+        "Source file or directory " + missing + " does not exist" + System.lineSeparator(),
+        output.toString(StandardCharsets.UTF_8));
+    Field pool = ImportData.class.getDeclaredField("sessionPool");
+    pool.setAccessible(true);
+    assertNull(pool.get(null));
+    assertEquals(0, ImportDataScanTool.getTsFileQueueSize());
   }
 
   @Test

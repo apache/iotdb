@@ -595,6 +595,11 @@ public class ImportData extends AbstractDataTool {
 
   private static int importFromTargetPathAsync() {
     AsyncImportData.resetImportStatus();
+    final File file = new File(targetPath);
+    if (!file.isFile() && !file.isDirectory()) {
+      ioTPrinter.println(String.format("Source file or directory %s does not exist", targetPath));
+      return CODE_ERROR;
+    }
     try {
       sessionPool =
           new SessionPool.Builder()
@@ -612,11 +617,6 @@ public class ImportData extends AbstractDataTool {
       AsyncImportData.setSessionPool(sessionPool);
       AsyncImportData.setTimeZone();
       ImportDataScanTool.setSourceFullPath(targetPath);
-      final File file = new File(targetPath);
-      if (!file.isFile() && !file.isDirectory()) {
-        ioTPrinter.println(String.format("Source file or directory %s does not exist", targetPath));
-        return CODE_ERROR;
-      }
       ImportDataScanTool.traverseAndCollectFiles();
       asyncImportDataFiles();
       return AsyncImportData.hasImportFailed()
