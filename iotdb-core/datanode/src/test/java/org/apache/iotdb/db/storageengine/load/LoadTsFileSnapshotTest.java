@@ -43,8 +43,10 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.io.File;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -145,6 +147,85 @@ public class LoadTsFileSnapshotTest {
     assertTrue(
         "the snapshot has to record the staging root of its tasks",
         collected.contains("load/roots"));
+  }
+
+  @Test
+  public void testSnapshotDoesNotChangeWhenMorePiecesAreApplied() throws Exception {
+    final String loadId = "snapshot-before-append";
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.of(manager));
+    final NonAlignedChunkData first = laidOutChunk();
+    final NonAlignedChunkData second =
+        createNonAlignedChunkData(
+            new StringArrayDeviceID("root", "snapshot_test", "d1"), "s1", 100, 10);
+    final ChunkOffsetCalculator calculator = new ChunkOffsetCalculator();
+    calculator.assign(first);
+    calculator.assign(second);
+    final LoadTsFileConsensusNode firstPiece = stagedPiece(loadId, first);
+    manager.writePiece(firstPiece);
+    final File staged = new File(tempDir, firstPiece.getPieceRefs().get(0).getRelativePath());
+    final File snapshotDir = new File(tempDir, "snapshot-before-append");
+    assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir));
+    final File copiedStaged =
+        new File(
+            new File(new File(snapshotDir, LoadTsFileSnapshot.SNAPSHOT_SUBDIR_NAME), loadId),
+            staged.getName());
+    final File copiedProgress = LoadTsFileProgress.progressFileFor(copiedStaged);
+    final byte[] copiedData = Files.readAllBytes(copiedStaged.toPath());
+    final byte[] copiedLog = Files.readAllBytes(copiedProgress.toPath());
+
+    manager.writePiece(stagedPiece(loadId, second));
+
+    assertTrue(staged.length() > copiedData.length);
+    assertEquals(2, new LoadTsFileProgress(staged).readAllRecords().size());
+    assertArrayEquals(copiedData, Files.readAllBytes(copiedStaged.toPath()));
+    assertArrayEquals(copiedLog, Files.readAllBytes(copiedProgress.toPath()));
+    assertEquals(1, new LoadTsFileProgress(copiedStaged).readAllRecords().size());
+  }
+
+  @Test
+  public void testSnapshotRepairsIncompleteHeaderWithoutChangingSource() throws Exception {
+    assertSnapshotRepairsProgressWithoutChangingSource(true);
+  }
+
+  @Test
+  public void testSnapshotRepairsTornEntryWithoutChangingSource() throws Exception {
+    assertSnapshotRepairsProgressWithoutChangingSource(false);
+  }
+
+  private void assertSnapshotRepairsProgressWithoutChangingSource(final boolean incompleteHeader)
+      throws Exception {
+    final String loadId = "snapshot-torn-progress";
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.of(manager));
+    final LoadTsFileConsensusNode piece = stagedPiece(loadId, laidOutChunk());
+    manager.writePiece(piece);
+    final File staged = new File(tempDir, piece.getPieceRefs().get(0).getRelativePath());
+    final File progressFile = LoadTsFileProgress.progressFileFor(staged);
+    final byte[] completeLog = Files.readAllBytes(progressFile.toPath());
+    final byte[] tornLog;
+    if (incompleteHeader) {
+      tornLog = Arrays.copyOf(completeLog, Integer.BYTES - 1);
+    } else {
+      tornLog = Arrays.copyOf(completeLog, completeLog.length + Integer.BYTES + 1);
+      ByteBuffer.wrap(tornLog, completeLog.length, Integer.BYTES).putInt(32);
+    }
+    Files.write(progressFile.toPath(), tornLog);
+    final File snapshotDir = new File(tempDir, "snapshot-torn-progress");
+
+    assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir));
+
+    // Repair only the copied log. The live log may still be in the middle of an append.
+    assertArrayEquals(tornLog, Files.readAllBytes(progressFile.toPath()));
+    final File copiedStaged =
+        new File(
+            new File(new File(snapshotDir, LoadTsFileSnapshot.SNAPSHOT_SUBDIR_NAME), loadId),
+            staged.getName());
+    assertEquals(
+        incompleteHeader ? 0L : completeLog.length,
+        LoadTsFileProgress.progressFileFor(copiedStaged).length());
+    assertEquals(
+        incompleteHeader ? 0 : 1, new LoadTsFileProgress(copiedStaged).readAllRecords().size());
   }
 
   @Test

@@ -342,7 +342,9 @@ public final class LoadTsFileSnapshot {
     final File tempTarget =
         new File(parent, target.getName() + TEMP_FILE_SUFFIX + UUID.randomUUID());
     try {
-      LoadUtil.transferFile(source, tempTarget, true);
+      // Staged files and their progress logs remain writable, including after restore. A hard
+      // link would let appends or torn-tail repairs change both the source and its snapshot.
+      LoadUtil.transferFile(source, tempTarget, false);
       atomicMoveOrFallback(tempTarget, target);
     } catch (final IOException e) {
       Files.deleteIfExists(tempTarget.toPath());
