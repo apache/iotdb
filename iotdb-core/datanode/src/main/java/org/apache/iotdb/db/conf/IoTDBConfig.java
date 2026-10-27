@@ -1240,6 +1240,20 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   private boolean loadActiveListeningVerifyEnable = true;
 
+  /**
+   * Whether a LOAD must resolve the user that executes it. When disabled (the default), a LOAD
+   * without user information is executed as the default user, which is the legacy behavior. When
+   * enabled, a LOAD without user information is rejected.
+   */
+  private boolean loadRequireUserIdentity = false;
+
+  /**
+   * Whether the pipe receiver must resolve the user that executes an asynchronous LOAD. When
+   * disabled (the default), a transfer without a resolvable sender is loaded as the default user,
+   * which is the legacy behavior. When enabled, such a transfer is rejected.
+   */
+  private boolean pipeReceiverRequireUserIdentity = false;
+
   private String loadDiskSelectStrategy = LoadDiskSelectorType.MIN_IO_FIRST.getValue();
 
   private String loadDiskSelectStrategyForIoTV2AndPipe =
@@ -4363,6 +4377,22 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   public void setLoadActiveListeningVerifyEnable(boolean loadActiveListeningVerifyEnable) {
     this.loadActiveListeningVerifyEnable = loadActiveListeningVerifyEnable;
+  }
+
+  public boolean isLoadRequireUserIdentity() {
+    return loadRequireUserIdentity;
+  }
+
+  public void setLoadRequireUserIdentity(boolean loadRequireUserIdentity) {
+    this.loadRequireUserIdentity = loadRequireUserIdentity;
+  }
+
+  public boolean isPipeReceiverRequireUserIdentity() {
+    return pipeReceiverRequireUserIdentity;
+  }
+
+  public void setPipeReceiverRequireUserIdentity(boolean pipeReceiverRequireUserIdentity) {
+    this.pipeReceiverRequireUserIdentity = pipeReceiverRequireUserIdentity;
   }
 
   public String getLoadDiskSelectStrategy() {

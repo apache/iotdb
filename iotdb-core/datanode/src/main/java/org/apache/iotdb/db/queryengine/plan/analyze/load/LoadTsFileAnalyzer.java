@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeInvalidPathException;
@@ -314,6 +315,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       } else {
         databaseName = null;
       }
+      String userName =
+          Objects.nonNull(context) && Objects.nonNull(context.getSession())
+              ? context.getUsername()
+              : null;
+      if (Objects.isNull(userName)
+          && !IoTDBDescriptor.getInstance().getConfig().isLoadRequireUserIdentity()) {
+        // Legacy default: a load without a user is queued as the default user.
+        userName = AuthorityChecker.SUPER_USER;
+      }
       final Map<String, String> activeLoadAttributes =
           ActiveLoadPathHelper.buildAttributes(
               databaseName,
@@ -323,9 +333,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
               isAutoCreateSchemaRequested,
               tabletConversionThresholdBytes,
               isGeneratedByPipe,
-              Objects.nonNull(context) && Objects.nonNull(context.getSession())
-                  ? context.getUsername()
-                  : null);
+              userName);
 
       if (LoadUtil.loadTsFileAsyncToActiveDir(tsFiles, activeLoadAttributes, isDeleteAfterLoad)) {
         analysis.setFinishQueryAfterAnalyze(true);

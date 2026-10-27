@@ -2709,6 +2709,17 @@ public class IoTDBDescriptor {
                 "load_active_listening_verify_enable",
                 Boolean.toString(conf.isLoadActiveListeningVerifyEnable()))));
 
+    conf.setLoadRequireUserIdentity(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "load_require_user_identity", Boolean.toString(conf.isLoadRequireUserIdentity()))));
+
+    conf.setPipeReceiverRequireUserIdentity(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_receiver_require_user_identity",
+                Boolean.toString(conf.isPipeReceiverRequireUserIdentity()))));
+
     conf.setLoadDiskSelectStrategy(
         properties.getProperty(
             "load_disk_select_strategy",
@@ -2862,6 +2873,17 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "skip_failed_table_schema_check",
                 String.valueOf(conf.isSkipFailedTableSchemaCheck()))));
+
+    conf.setLoadRequireUserIdentity(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "load_require_user_identity", Boolean.toString(conf.isLoadRequireUserIdentity()))));
+
+    conf.setPipeReceiverRequireUserIdentity(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_receiver_require_user_identity",
+                Boolean.toString(conf.isPipeReceiverRequireUserIdentity()))));
   }
 
   private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {
