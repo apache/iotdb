@@ -113,6 +113,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDevice
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
@@ -2028,6 +2029,49 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               schemaFetcher);
 
       return result.status;
+    } catch (IoTDBException e) {
+      return onIoTDBException(e, OperationType.CREATE_MULTI_TIMESERIES, e.getErrorCode());
+    } catch (Exception e) {
+      return onQueryException(
+          e, OperationType.CREATE_MULTI_TIMESERIES.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
+  }
+
+  @Override
+  public TSStatus createMultiTimeseriesWithAlignment(
+      TSCreateMultiTimeseriesReq req, List<Boolean> isAlignedList) {
+    try {
+      IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+      if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        return getNotLoggedInStatus();
+      }
+
+      req.setMeasurementAliasList(
+          PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurementAliasList()));
+      InternalCreateMultiTimeSeriesStatement statement =
+          StatementGenerator.createStatement(req, isAlignedList);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+
+      long queryId = SESSION_MANAGER.requestQueryId();
+      return COORDINATOR.executeForTreeModel(
+              statement,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(clientSession),
+              "",
+              partitionFetcher,
+              schemaFetcher)
+          .status;
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.CREATE_MULTI_TIMESERIES, e.getErrorCode());
     } catch (Exception e) {

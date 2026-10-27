@@ -4094,4 +4094,18 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_PLAN_NODE_ARG_IS_ALREADY_REGISTERED_ON_MEMORY_SIDE_ARG_NOT_ARG_4C1BB625 = "Plan node %s is already registered on memory side %s, not %s";
   public static final String EXCEPTION_MEMORY_RESERVATION_IS_NOT_REGISTERED_FOR_QUERY_ARG_FRAGMENT_ARG_PLAN_NODE_ARG_67A4B81F = "Memory reservation is not registered for query %s, fragment %s, plan node %s";
   public static final String LOG_SHARED_EXCHANGE_BUDGET_FOR_FI_ARG_INPUT_ARG_OUTPUT_ARG_98AE1109 = "Shared exchange budget for FI {}: INPUT={}, OUTPUT={}";
+  public static final String EXCEPTION_THE_PATHS_LIST_MUST_NOT_BE_EMPTY_950C8343 =
+      "The paths list must not be empty.";
+  public static final String EXCEPTION_THE_ARG_LIST_MUST_CONTAIN_ARG_ENTRIES_8545AC0F =
+      "The %s list must contain %d entries.";
+  public static final String EXCEPTION_ALIGNMENT_FLAGS_MUST_NOT_BE_NULL_5FAC3B71 =
+      "Alignment flags must not be null.";
+  public static final String
+      EXCEPTION_TIME_SERIES_UNDER_DEVICE_ARG_MUST_USE_THE_SAME_ALIGNMENT_64142589 =
+          "Time series under device %s must use the same alignment.";
+  public static final String EXCEPTION_DUPLICATE_TIME_SERIES_IN_BATCH_ARG_C81567AE =
+      "Duplicate time series in batch: %s.";
+  public static final String
+      EXCEPTION_PROPERTIES_ARE_NOT_SUPPORTED_FOR_ALIGNED_TIME_SERIES_ARG_695D2CD7 =
+          "Properties are not supported for aligned time series: %s.";
 }

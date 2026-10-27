@@ -2810,8 +2810,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     final PathPatternTree pathPatternTree = new PathPatternTree();
     for (final Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> entry :
         internalCreateMultiTimeSeriesStatement.getDeviceMap().entrySet()) {
+      analyzeSchemaProps(entry.getValue().right.getPropsList());
       checkIsTemplateCompatible(
-          entry.getKey(), entry.getValue().right.getMeasurements(), null, context);
+          entry.getKey(),
+          entry.getValue().right.getMeasurements(),
+          entry.getValue().right.getAliasList(),
+          context);
       pathPatternTree.appendFullPath(entry.getKey().concatNode(ONE_LEVEL_PATH_WILDCARD));
     }
 

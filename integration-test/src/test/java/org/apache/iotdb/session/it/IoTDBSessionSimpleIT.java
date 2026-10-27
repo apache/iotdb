@@ -25,6 +25,7 @@ import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.SessionDataSet.DataIterator;
+import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -394,6 +395,186 @@ public class IoTDBSessionSimpleIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void createMultiTimeseriesWithAlignmentTest() throws Exception {
+    List<String> paths =
+        Arrays.asList("root.sg.d1.s1", "root.sg.d2.s1", "root.sg.d1.s2", "root.sg1.d3.s1");
+    List<TSDataType> types =
+        Arrays.asList(TSDataType.INT64, TSDataType.INT32, TSDataType.DOUBLE, TSDataType.BOOLEAN);
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.createMultiTimeseries(
+          paths,
+          types,
+          Collections.nCopies(4, TSEncoding.PLAIN),
+          Collections.nCopies(4, CompressionType.SNAPPY),
+          Arrays.asList(null, Collections.singletonMap("MAX_POINT_NUMBER", "3"), null, null),
+          Arrays.asList(Collections.singletonMap("tag", "first"), null, null, null),
+          Arrays.asList(null, null, Collections.singletonMap("attribute", "last"), null),
+          Arrays.asList("a1", null, "a2", null),
+          Arrays.asList(true, false, true, true));
+      Map<String, String> actualTypes = new HashMap<>();
+      try (SessionDataSet result = session.executeQueryStatement("SHOW TIMESERIES root.**")) {
+        DataIterator iterator = result.iterator();
+        while (iterator.next()) {
+          String path = iterator.getString("Timeseries");
+          if (!paths.contains(path)) {
+            continue;
+          }
+          actualTypes.put(path, iterator.getString("DataType"));
+          assertEquals("PLAIN", iterator.getString("Encoding"));
+          assertEquals("SNAPPY", iterator.getString("Compression"));
+          if (path.equals(paths.get(0))) {
+            assertEquals("a1", iterator.getString("Alias"));
+            assertEquals("{\"tag\":\"first\"}", iterator.getString("Tags"));
+          } else if (path.equals(paths.get(2))) {
+            assertEquals("a2", iterator.getString("Alias"));
+            assertEquals("{\"attribute\":\"last\"}", iterator.getString("Attributes"));
+          }
+        }
+      }
+      assertEquals(paths.size(), actualTypes.size());
+      for (int i = 0; i < paths.size(); i++) {
+        assertEquals(types.get(i).name(), actualTypes.get(paths.get(i)));
+      }
+      Map<String, String> devices = new HashMap<>();
+      try (SessionDataSet result = session.executeQueryStatement("SHOW DEVICES root.**")) {
+        DataIterator iterator = result.iterator();
+        while (iterator.next()) {
+          devices.put(iterator.getString("Device"), iterator.getString("IsAligned"));
+        }
+      }
+      assertEquals("true", devices.get("root.sg.d1"));
+      assertEquals("false", devices.get("root.sg.d2"));
+      assertEquals("true", devices.get("root.sg1.d3"));
+
+      ISessionPool pool = EnvFactory.getEnv().getSessionPool(1);
+      try {
+        pool.createMultiTimeseries(
+            Collections.singletonList("root.sg1.d4.s1"),
+            Collections.singletonList(TSDataType.INT64),
+            Collections.singletonList(TSEncoding.PLAIN),
+            Collections.singletonList(CompressionType.SNAPPY),
+            null,
+            null,
+            null,
+            null,
+            Collections.singletonList(true));
+        assertTrue(session.checkTimeseriesExists("root.sg1.d4.s1"));
+      } finally {
+        pool.close();
+      }
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void createMultiTimeseriesWithAlignmentPermissionTest() throws Exception {
+    try (ISession admin = EnvFactory.getEnv().getSessionConnection()) {
+      admin.executeNonQueryStatement("CREATE DATABASE root.sg");
+      admin.executeNonQueryStatement("CREATE USER batch_schema_user 'batchPassword123'");
+      try (ISession user =
+          EnvFactory.getEnv().getSessionConnection("batch_schema_user", "batchPassword123")) {
+        List<String> paths = Arrays.asList("root.sg.d1.s1", "root.sg.d2.s1");
+        List<TSDataType> types = Collections.nCopies(2, TSDataType.INT64);
+        List<TSEncoding> encodings = Collections.nCopies(2, TSEncoding.PLAIN);
+        List<CompressionType> compressors = Collections.nCopies(2, CompressionType.SNAPPY);
+        List<Boolean> aligned = Arrays.asList(true, false);
+        StatementExecutionException denied =
+            assertThrows(
+                StatementExecutionException.class,
+                () ->
+                    user.createMultiTimeseries(
+                        paths, types, encodings, compressors, null, null, null, null, aligned));
+        assertEquals(TSStatusCode.NO_PERMISSION.getStatusCode(), denied.getStatusCode());
+        admin.executeNonQueryStatement(
+            "GRANT WRITE_SCHEMA ON root.sg.d1.** TO USER batch_schema_user");
+        denied =
+            assertThrows(
+                StatementExecutionException.class,
+                () ->
+                    user.createMultiTimeseries(
+                        paths, types, encodings, compressors, null, null, null, null, aligned));
+        assertEquals(TSStatusCode.NO_PERMISSION.getStatusCode(), denied.getStatusCode());
+        assertFalse(admin.checkTimeseriesExists(paths.get(0)));
+        assertFalse(admin.checkTimeseriesExists(paths.get(1)));
+        admin.executeNonQueryStatement(
+            "GRANT WRITE_SCHEMA ON root.sg.d2.** TO USER batch_schema_user");
+        user.createMultiTimeseries(
+            paths, types, encodings, compressors, null, null, null, null, aligned);
+        assertTrue(admin.checkTimeseriesExists(paths.get(0)));
+        assertTrue(admin.checkTimeseriesExists(paths.get(1)));
+      } finally {
+        admin.executeNonQueryStatement("DROP USER batch_schema_user");
+      }
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void createMultiTimeseriesWithAlignmentValidationTest() throws Exception {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      List<String> paths = Arrays.asList("root.sg.d1.s1", "root.sg.d1.s2");
+      List<TSDataType> types = Collections.nCopies(2, TSDataType.INT64);
+      List<TSEncoding> encodings = Collections.nCopies(2, TSEncoding.PLAIN);
+      List<CompressionType> compressors = Collections.nCopies(2, CompressionType.SNAPPY);
+      assertThrows(
+          StatementExecutionException.class,
+          () ->
+              session.createMultiTimeseries(
+                  paths,
+                  types,
+                  encodings,
+                  compressors,
+                  null,
+                  null,
+                  null,
+                  null,
+                  Collections.singletonList(true)));
+      assertThrows(
+          StatementExecutionException.class,
+          () ->
+              session.createMultiTimeseries(
+                  paths,
+                  types,
+                  encodings,
+                  compressors,
+                  null,
+                  null,
+                  null,
+                  null,
+                  Arrays.asList(true, false)));
+      assertThrows(
+          StatementExecutionException.class,
+          () ->
+              session.createMultiTimeseries(
+                  paths,
+                  types,
+                  encodings,
+                  compressors,
+                  null,
+                  null,
+                  null,
+                  Arrays.asList("a.b", null),
+                  Arrays.asList(true, true)));
+      assertThrows(
+          StatementExecutionException.class,
+          () ->
+              session.createMultiTimeseries(
+                  paths,
+                  types,
+                  encodings,
+                  compressors,
+                  Arrays.asList(Collections.singletonMap("invalid_property", "value"), null),
+                  null,
+                  null,
+                  null,
+                  Arrays.asList(false, false)));
+      assertFalse(session.checkTimeseriesExists(paths.get(0)));
+      assertFalse(session.checkTimeseriesExists(paths.get(1)));
     }
   }
 

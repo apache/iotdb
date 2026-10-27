@@ -26,6 +26,7 @@ import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -41,6 +42,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
@@ -217,6 +219,44 @@ public class SessionTest {
   public void testCheckTimeseriesExists()
       throws IoTDBConnectionException, StatementExecutionException {
     session.checkTimeseriesExists("root.sg1.d1.s1");
+  }
+
+  @Test
+  public void testCreateMultiTimeseriesWithAlignment()
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<String> paths = Arrays.asList("root.sg.d1.s1", "root.sg.d2.s1", "root.sg.d1.s2");
+    List<Boolean> aligned = Arrays.asList(true, false, true);
+    Map<String, String> tags = Collections.singletonMap("tag", "value");
+    Map<String, String> props = Collections.singletonMap("max_point_number", "3");
+    session.createMultiTimeseries(
+        paths,
+        Arrays.asList(TSDataType.INT32, TSDataType.DOUBLE, TSDataType.INT64),
+        Collections.nCopies(3, TSEncoding.PLAIN),
+        Collections.nCopies(3, CompressionType.SNAPPY),
+        Arrays.asList(null, props, null),
+        Arrays.asList(tags, null, tags),
+        null,
+        Arrays.asList("alias1", null, "alias2"),
+        aligned);
+
+    ArgumentCaptor<TSCreateMultiTimeseriesReq> captor =
+        ArgumentCaptor.forClass(TSCreateMultiTimeseriesReq.class);
+    Mockito.verify(sessionConnection).createMultiTimeseries(captor.capture(), Mockito.eq(aligned));
+    TSCreateMultiTimeseriesReq request = captor.getValue();
+    assertEquals(paths, request.getPaths());
+    assertEquals(
+        Arrays.asList(
+            TSDataType.INT32.ordinal(), TSDataType.DOUBLE.ordinal(), TSDataType.INT64.ordinal()),
+        request.getDataTypes());
+    assertEquals(Collections.nCopies(3, TSEncoding.PLAIN.ordinal()), request.getEncodings());
+    assertEquals(
+        Collections.nCopies(3, (int) CompressionType.SNAPPY.serialize()), request.getCompressors());
+    assertEquals(Arrays.asList(tags, Collections.emptyMap(), tags), request.getTagsList());
+    assertEquals(Arrays.asList("alias1", "", "alias2"), request.getMeasurementAliasList());
+    assertEquals(
+        Arrays.asList(Collections.emptyMap(), props, Collections.emptyMap()),
+        request.getPropsList());
+    Assert.assertFalse(request.isSetAttributesList());
   }
 
   @Test

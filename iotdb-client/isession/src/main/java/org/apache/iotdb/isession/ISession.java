@@ -159,6 +159,25 @@ public interface ISession extends AutoCloseable {
       List<String> measurementAliasList)
       throws IoTDBConnectionException, StatementExecutionException;
 
+  /**
+   * Creates aligned and non-aligned time series in one batch. Each alignment flag corresponds to a
+   * path, and all paths belonging to the same device must have the same alignment flag. Optional
+   * metadata lists may be null; otherwise, they must have the same size as paths. Properties are
+   * only supported for non-aligned time series.
+   */
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
+  void createMultiTimeseries(
+      List<String> paths,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors,
+      List<Map<String, String>> propsList,
+      List<Map<String, String>> tagsList,
+      List<Map<String, String>> attributesList,
+      List<String> measurementAliasList,
+      List<Boolean> isAlignedList)
+      throws IoTDBConnectionException, StatementExecutionException;
+
   boolean checkTimeseriesExists(String path)
       throws IoTDBConnectionException, StatementExecutionException;
 

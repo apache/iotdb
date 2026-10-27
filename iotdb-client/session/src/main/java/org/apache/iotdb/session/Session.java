@@ -903,6 +903,31 @@ public class Session implements ISession {
     getDefaultSessionConnection().createMultiTimeseries(request);
   }
 
+  @Override
+  public void createMultiTimeseries(
+      List<String> paths,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors,
+      List<Map<String, String>> propsList,
+      List<Map<String, String>> tagsList,
+      List<Map<String, String>> attributesList,
+      List<String> measurementAliasList,
+      List<Boolean> isAlignedList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSCreateMultiTimeseriesReq request =
+        genTSCreateMultiTimeseriesReq(
+            paths,
+            dataTypes,
+            encodings,
+            compressors,
+            replaceNullMaps(propsList),
+            tagsList,
+            attributesList,
+            measurementAliasList);
+    getDefaultSessionConnection().createMultiTimeseries(request, isAlignedList);
+  }
+
   private TSCreateMultiTimeseriesReq genTSCreateMultiTimeseriesReq(
       List<String> paths,
       List<TSDataType> dataTypes,
