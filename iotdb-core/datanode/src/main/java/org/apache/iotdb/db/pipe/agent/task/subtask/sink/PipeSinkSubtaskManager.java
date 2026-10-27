@@ -81,12 +81,13 @@ public class PipeSinkSubtaskManager {
             connectorKey);
 
     final boolean isDataRegionSink = isDataRegionSink(environment.getRegionId());
+    final boolean isLogicalBackupSink = isLogicalBackupSink(connectorKey);
     final int sinkNum = calculateSinkSubtaskNum(pipeSinkParameters, isDataRegionSink, connectorKey);
     boolean realTimeFirst = false;
     final String attributeSortedString =
         generateAttributeSortedString(pipeSinkParameters, environment.getRegionId());
     final String attributeDisplayString = generateAttributeDisplayString(pipeSinkParameters);
-    if (isDataRegionSink) {
+    if (isDataRegionSink && !isLogicalBackupSink) {
       realTimeFirst =
           pipeSinkParameters.getBooleanOrDefault(
               Arrays.asList(
@@ -95,11 +96,16 @@ public class PipeSinkSubtaskManager {
               PipeSinkConstant.CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE);
     }
     final String attributeDisplayStringWithPrefix =
-        isDataRegionSink
-            ? PipeSinkConstant.isSerializeByRegionEnabled(pipeSinkParameters)
-                ? "data_region_" + environment.getRegionId() + "_" + attributeDisplayString
-                : "data_" + attributeDisplayString
-            : "schema_" + attributeDisplayString;
+        isLogicalBackupSink
+            ? (isDataRegionSink ? "data_region_" : "schema_region_")
+                + environment.getRegionId()
+                + "_"
+                + attributeDisplayString
+            : isDataRegionSink
+                ? PipeSinkConstant.isSerializeByRegionEnabled(pipeSinkParameters)
+                    ? "data_region_" + environment.getRegionId() + "_" + attributeDisplayString
+                    : "data_" + attributeDisplayString
+                : "schema_" + attributeDisplayString;
     environment.setAttributeSortedString(attributeDisplayStringWithPrefix);
     final PipeSinkSubtaskKey pipeSinkSubtaskKey =
         new PipeSinkSubtaskKey(
@@ -386,6 +392,13 @@ public class PipeSinkSubtaskManager {
   public static String generateAttributeSortedString(
       final PipeParameters pipeSinkParameters, final int regionId) {
     final String attributeSortedString = generateAttributeSortedString(pipeSinkParameters);
+    if (isLogicalBackupSink(getConnectorKey(pipeSinkParameters))) {
+      // A backup stream belongs to exactly one region and must have one ordered writer.
+      return (isDataRegionSink(regionId) ? "data_region_" : "schema_region_")
+          + regionId
+          + "_"
+          + attributeSortedString;
+    }
     if (isDataRegionSink(regionId)) {
       return PipeSinkConstant.isSerializeByRegionEnabled(pipeSinkParameters)
           ? "data_region_" + regionId + "_" + attributeSortedString
@@ -398,6 +411,11 @@ public class PipeSinkSubtaskManager {
     return PipeSinkConstant.getConnectorOrSinkNameWithDefault(pipeSinkParameters).toLowerCase();
   }
 
+  private static boolean isLogicalBackupSink(final String connectorKey) {
+    return BuiltinPipePlugin.LOGICAL_BACKUP_SINK.getPipePluginName().equals(connectorKey)
+        || BuiltinPipePlugin.LOGICAL_BACKUP_CONNECTOR.getPipePluginName().equals(connectorKey);
+  }
+
   private static boolean isDataRegionSink(final int regionId) {
     return StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
         || PipeRuntimeMeta.isSourceExternal(regionId);
@@ -407,7 +425,7 @@ public class PipeSinkSubtaskManager {
       final PipeParameters pipeSinkParameters,
       final boolean isDataRegionSink,
       final String connectorKey) {
-    if (!isDataRegionSink) {
+    if (!isDataRegionSink || isLogicalBackupSink(connectorKey)) {
       // Do not allow parallel tasks for schema region connectors to avoid the potential disorder of
       // the schema region data transfer.
       return 1;
