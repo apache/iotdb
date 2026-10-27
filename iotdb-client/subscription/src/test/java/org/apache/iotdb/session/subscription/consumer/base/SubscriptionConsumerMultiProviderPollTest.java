@@ -24,6 +24,7 @@ import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConsumerFencedException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionOwnerFencedException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
@@ -927,6 +928,189 @@ public class SubscriptionConsumerMultiProviderPollTest {
       Assert.assertEquals(3, provider.commitBatches.size());
       Assert.assertEquals(Collections.singletonList(unconfirmed), provider.commitBatches.get(2));
     } finally {
+      consumer.close();
+    }
+  }
+
+  @Test
+  public void testSyncCommitPreservesConfirmedBatchesAfterServerErrors() throws Exception {
+    for (final SubscriptionException failure : commitServerFailures()) {
+      assertConfirmedBatchesAfterServerError(failure, "sync");
+    }
+  }
+
+  @Test
+  public void testAsyncCommitPreservesConfirmedBatchesAfterServerErrors() throws Exception {
+    for (final SubscriptionException failure : commitServerFailures()) {
+      assertConfirmedBatchesAfterServerError(failure, "async");
+    }
+  }
+
+  @Test
+  public void testAutoCommitPreservesConfirmedBatchesAfterServerErrors() throws Exception {
+    for (final SubscriptionException failure : commitServerFailures()) {
+      assertConfirmedBatchesAfterServerError(failure, "auto");
+    }
+  }
+
+  @Test
+  public void testCloseCommitPreservesConfirmedBatchesAfterServerErrors() throws Exception {
+    for (final SubscriptionException failure : commitServerFailures()) {
+      assertConfirmedBatchesAfterServerError(failure, "close");
+    }
+  }
+
+  @Test
+  public void testRedirectAckPreservesConfirmedBatchesAfterServerErrors() throws Exception {
+    for (final SubscriptionException failure : commitServerFailures()) {
+      assertConfirmedBatchesAfterServerError(failure, "redirect");
+    }
+  }
+
+  private static List<SubscriptionException> commitServerFailures() {
+    return Arrays.asList(
+        new SubscriptionRuntimeNonCriticalException("commit rejected"),
+        new SubscriptionRuntimeCriticalException("commit failed"),
+        new SubscriptionOwnerFencedException("owner fenced"),
+        new SubscriptionConsumerFencedException("consumer fenced"));
+  }
+
+  private void assertConfirmedBatchesAfterServerError(
+      final SubscriptionException failure, final String operation) throws Exception {
+    final TestPullConsumer consumer =
+        new TestPullConsumer(1, 0, false, false, 3, true) {
+          @Override
+          protected void ack(final Iterable<SubscriptionMessage> messages)
+              throws SubscriptionException {
+            commitSync(messages);
+          }
+        };
+    try {
+      consumer.open();
+      final SubscriptionCommitContext first = batchCommitContext(1L, false);
+      final SubscriptionCommitContext second = batchCommitContext(2L, false);
+      final TestSubscriptionProvider provider = consumer.createdProviders.get(0);
+      enableCommitBatching(provider, first);
+      provider.commitAction =
+          () -> {
+            if (provider.commitBatches.size() > 1) {
+              throw failure;
+            }
+          };
+      final SortedMap<Long, Set<SubscriptionCommitContext>> uncommitted =
+          getUncommittedCommitContexts(consumer);
+      final Set<SubscriptionCommitContext> contexts = ConcurrentHashMap.newKeySet();
+      contexts.addAll(Arrays.asList(first, second));
+      uncommitted.put(0L, contexts);
+      final List<SubscriptionMessage> messages =
+          Arrays.asList(new SubscriptionMessage(first, 1L), new SubscriptionMessage(second, 2L));
+
+      switch (operation) {
+        case "sync":
+          Assert.assertSame(
+              failure,
+              Assert.assertThrows(
+                  SubscriptionException.class, () -> consumer.commitSync(messages)));
+          break;
+        case "async":
+          Assert.assertSame(
+              failure,
+              Assert.assertThrows(
+                      java.util.concurrent.ExecutionException.class,
+                      () -> consumer.commitAsync(messages).get(5, TimeUnit.SECONDS))
+                  .getCause());
+          break;
+        case "auto":
+          final Class<?> worker =
+              Class.forName(AbstractSubscriptionPullConsumer.class.getName() + "$AutoCommitWorker");
+          final java.lang.reflect.Constructor<?> constructor =
+              worker.getDeclaredConstructor(AbstractSubscriptionPullConsumer.class);
+          constructor.setAccessible(true);
+          ((Runnable) constructor.newInstance(consumer)).run();
+          break;
+        case "close":
+          consumer.close();
+          break;
+        case "redirect":
+          getPendingRedirectAcks(consumer).put(TOPIC + '\u0001' + "region1", contexts);
+          final Method flush =
+              AbstractSubscriptionConsumer.class.getDeclaredMethod(
+                  "flushPendingRedirectAcks", List.class);
+          flush.setAccessible(true);
+          flush.invoke(
+              consumer,
+              Collections.singletonList(new SubscriptionMessage(batchCommitContext(1L, true), 1L)));
+          break;
+        default:
+          throw new AssertionError(operation);
+      }
+
+      final SubscriptionCommitContext accepted = provider.commitBatches.get(0).get(0);
+      final SubscriptionCommitContext unconfirmed = provider.commitBatches.get(1).get(0);
+      Assert.assertEquals(Collections.singleton(unconfirmed), contexts);
+      final Field positions =
+          AbstractSubscriptionConsumer.class.getDeclaredField("committedPositionsByTopic");
+      positions.setAccessible(true);
+      Assert.assertEquals(
+          batchProgress(accepted), ((Map<?, ?>) positions.get(consumer)).get(TOPIC));
+      Assert.assertEquals(2, provider.commitBatches.size());
+      Assert.assertEquals(
+          failure instanceof SubscriptionConsumerFencedException, consumer.isFenced());
+    } finally {
+      consumer.close();
+    }
+  }
+
+  @Test(timeout = 20_000)
+  public void testCommitFailureDoesNotOverwriteNewerConcurrentProgress() throws Exception {
+    final TestPullConsumer consumer =
+        new TestPullConsumer(1, 0) {
+          @Override
+          protected void ack(final Iterable<SubscriptionMessage> messages)
+              throws SubscriptionException {
+            commitSync(messages);
+          }
+        };
+    final CountDownLatch firstBatchCompleted = new CountDownLatch(1);
+    final CountDownLatch newerCommitCompleted = new CountDownLatch(1);
+    try {
+      consumer.open();
+      final SubscriptionMessage first = commitMessage();
+      final SubscriptionMessage second =
+          new SubscriptionMessage(
+              new SubscriptionCommitContext(1, 0, TOPIC, CONSUMER_GROUP_ID, 2L), 2L);
+      final TestSubscriptionProvider provider = consumer.createdProviders.get(0);
+      enableCommitBatching(provider, first.getCommitContext());
+      provider.commitAction =
+          () -> {
+            if (provider.commitBatches.size() == 2) {
+              firstBatchCompleted.countDown();
+              await(newerCommitCompleted);
+            }
+          };
+      final CompletableFuture<Void> older = consumer.commitAsync(Arrays.asList(first, second));
+      Assert.assertTrue(firstBatchCompleted.await(5, TimeUnit.SECONDS));
+
+      final Map<WriterId, WriterProgress> writers = new HashMap<>();
+      writers.put(new WriterId("region1", 1), new WriterProgress(1L, 2L));
+      writers.put(new WriterId("region1", 2), new WriterProgress(1L, 3L));
+      final TopicProgress newerProgress =
+          new TopicProgress(Collections.singletonMap("region1", new RegionProgress(writers)));
+      final TestSubscriptionProvider otherProvider = consumer.createdProviders.get(1);
+      otherProvider.committedProgressByTopic = Collections.singletonMap(TOPIC, newerProgress);
+      consumer.commitSync(
+          new SubscriptionMessage(
+              new SubscriptionCommitContext(2, 0, TOPIC, CONSUMER_GROUP_ID, 3L), 3L));
+
+      newerCommitCompleted.countDown();
+      older.get(10, TimeUnit.SECONDS);
+
+      Assert.assertEquals(
+          newerProgress.getRegionProgress().get("region1"),
+          consumer.committedPositions(TOPIC).getRegionProgress().get("region1"));
+      Assert.assertEquals(2, consumer.committedPositions(TOPIC).getRegionProgress().size());
+    } finally {
+      newerCommitCompleted.countDown();
       consumer.close();
     }
   }

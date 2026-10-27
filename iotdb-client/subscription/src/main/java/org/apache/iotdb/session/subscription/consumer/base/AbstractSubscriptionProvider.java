@@ -813,13 +813,13 @@ public abstract class AbstractSubscriptionProvider {
         acceptedCommitContexts.addAll(result.getAcceptedCommitContexts());
         mergeTopicProgress(committedProgressByTopic, result.getCommittedProgressByTopic());
       }
-    } catch (final SubscriptionConnectionException e) {
+    } catch (final SubscriptionException e) {
       if (nack || completedCommitContextCount == 0) {
         throw e;
       }
-      // Preserve every response received before a later batch lost its connection. A retry must
-      // neither replay accepted batches nor hide an earlier server rejection.
-      throw new CommitConnectionException(
+      // Preserve every completed response even if a later batch fails with a server error. The
+      // consumer applies these results before propagating the original failure or retrying.
+      throw new CommitException(
           e,
           completedCommitContextCount,
           new CommitResult(acceptedCommitContexts, committedProgressByTopic));
@@ -910,12 +910,12 @@ public abstract class AbstractSubscriptionProvider {
     TPipeSubscribeResp send(TPipeSubscribeReq req) throws TException;
   }
 
-  static final class CommitConnectionException extends SubscriptionConnectionException {
+  static final class CommitException extends SubscriptionException {
     private final int completedCommitContextCount;
     private final CommitResult completedResult;
 
-    private CommitConnectionException(
-        final SubscriptionConnectionException cause,
+    private CommitException(
+        final SubscriptionException cause,
         final int completedCommitContextCount,
         final CommitResult completedResult) {
       super(cause.getMessage(), cause);
@@ -929,6 +929,10 @@ public abstract class AbstractSubscriptionProvider {
 
     CommitResult getCompletedResult() {
       return completedResult;
+    }
+
+    SubscriptionException getFailure() {
+      return (SubscriptionException) getCause();
     }
   }
 

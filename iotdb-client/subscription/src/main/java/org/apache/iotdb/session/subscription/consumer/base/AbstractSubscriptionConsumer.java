@@ -1589,13 +1589,14 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       AbstractSubscriptionProvider.CommitResult result =
           AbstractSubscriptionProvider.CommitResult.empty();
       SubscriptionConnectionException connectionFailure = null;
+      SubscriptionException failure = null;
       try {
         result = commitInternal(dataNodeId, remainingCommitContexts, nack);
-      } catch (final SubscriptionConnectionException e) {
-        connectionFailure = e;
-        if (e instanceof AbstractSubscriptionProvider.CommitConnectionException) {
-          result =
-              ((AbstractSubscriptionProvider.CommitConnectionException) e).getCompletedResult();
+      } catch (final SubscriptionException e) {
+        failure = getCommitFailure(e);
+        result = getCompletedCommitResult(e);
+        if (failure instanceof SubscriptionConnectionException) {
+          connectionFailure = (SubscriptionConnectionException) failure;
         }
       }
 
@@ -1606,6 +1607,9 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         // could overwrite a concurrent commit; accepted contexts must also leave the buffer now.
         overlayCommittedPositions(result.getCommittedProgressByTopic());
         onAckedCommitContexts(acceptedInAttempt);
+      }
+      if (failure != null && connectionFailure == null) {
+        throw failure;
       }
       remainingCommitContexts.removeAll(new HashSet<>(acceptedInAttempt));
       if (nack
@@ -1640,6 +1644,19 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         return acceptedCommitContexts;
       }
     }
+  }
+
+  private SubscriptionException getCommitFailure(final SubscriptionException e) {
+    return e instanceof AbstractSubscriptionProvider.CommitException
+        ? ((AbstractSubscriptionProvider.CommitException) e).getFailure()
+        : e;
+  }
+
+  private AbstractSubscriptionProvider.CommitResult getCompletedCommitResult(
+      final SubscriptionException e) {
+    return e instanceof AbstractSubscriptionProvider.CommitException
+        ? ((AbstractSubscriptionProvider.CommitException) e).getCompletedResult()
+        : AbstractSubscriptionProvider.CommitResult.empty();
   }
 
   /** Invoked after the server accepts commit contexts from an acknowledgement request. */
@@ -1687,14 +1704,19 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             commitInternal(entry.getKey(), groupedCommitContexts, false);
         overlayCommittedPositions(commitResp.getCommittedProgressByTopic());
         removableCommitContexts.addAll(commitResp.getAcceptedCommitContexts());
-      } catch (final SubscriptionConnectionException e) {
-        Set<SubscriptionCommitContext> acceptedBeforeFailure = Collections.emptySet();
-        if (e instanceof AbstractSubscriptionProvider.CommitConnectionException) {
-          final AbstractSubscriptionProvider.CommitResult completedResult =
-              ((AbstractSubscriptionProvider.CommitConnectionException) e).getCompletedResult();
-          overlayCommittedPositions(completedResult.getCommittedProgressByTopic());
-          acceptedBeforeFailure = new HashSet<>(completedResult.getAcceptedCommitContexts());
-          removableCommitContexts.addAll(acceptedBeforeFailure);
+      } catch (final SubscriptionException e) {
+        final SubscriptionException failure = getCommitFailure(e);
+        final AbstractSubscriptionProvider.CommitResult completedResult =
+            getCompletedCommitResult(e);
+        overlayCommittedPositions(completedResult.getCommittedProgressByTopic());
+        final Set<SubscriptionCommitContext> acceptedBeforeFailure =
+            new HashSet<>(completedResult.getAcceptedCommitContexts());
+        removableCommitContexts.addAll(acceptedBeforeFailure);
+        if (!(failure instanceof SubscriptionConnectionException)) {
+          // The caller cannot receive the removable set when an error propagates. Remove confirmed
+          // contexts from every completed group before leaving the automatic/close-time ACK path.
+          onAckedCommitContexts(removableCommitContexts);
+          throw failure;
         }
         int stagedCount = 0;
         int retainedCount = 0;
@@ -1725,7 +1747,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
               this,
               retainedCount,
               entry.getKey(),
-              e);
+              failure);
         }
       }
     }
@@ -1764,6 +1786,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       final List<SubscriptionCommitContext> subscriptionCommitContexts,
       final boolean nack)
       throws SubscriptionException {
+    checkIfFenced();
     providers.acquireReadLock();
     try {
       final AbstractSubscriptionProvider provider = providers.getProvider(dataNodeId);
@@ -1782,11 +1805,13 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       }
       try {
         return provider.commit(subscriptionCommitContexts, nack);
-      } catch (final SubscriptionConsumerFencedException e) {
-        fence(e);
-        throw e;
-      } catch (final SubscriptionConnectionException e) {
-        providers.syncIfUnavailable(this);
+      } catch (final SubscriptionException e) {
+        final SubscriptionException failure = getCommitFailure(e);
+        if (failure instanceof SubscriptionConsumerFencedException) {
+          fence((SubscriptionConsumerFencedException) failure);
+        } else if (failure instanceof SubscriptionConnectionException) {
+          providers.syncIfUnavailable(this);
+        }
         throw e;
       }
     } finally {
@@ -2182,10 +2207,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       try {
         commitResp = commitInternal(entry.getValue(), contextsToRedirect, false);
       } catch (final SubscriptionException e) {
-        commitResp =
-            e instanceof AbstractSubscriptionProvider.CommitConnectionException
-                ? ((AbstractSubscriptionProvider.CommitConnectionException) e).getCompletedResult()
-                : AbstractSubscriptionProvider.CommitResult.empty();
+        commitResp = getCompletedCommitResult(e);
         LOGGER.warn(
             SubscriptionMessages
                 .LOG_ARG_FAILED_REDIRECT_ARG_PENDING_CONSENSUS_ACK_S_ARG_VIA_E6A10AC5,
@@ -2254,7 +2276,24 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     if (Objects.isNull(progressByTopic) || progressByTopic.isEmpty()) {
       return;
     }
-    progressByTopic.forEach(this::overlayCommittedPositions);
+    // ACK responses from different providers can arrive out of order, including completed batches
+    // carried by a failure. Preserve the newest position for each writer. Explicit seek operations
+    // use the topic-scoped overlay above and can still move a checkpoint backward.
+    for (final Entry<String, TopicProgress> entry : progressByTopic.entrySet()) {
+      if (Objects.isNull(entry.getValue())) {
+        continue;
+      }
+      for (final RegionProgress regionProgress : entry.getValue().getRegionProgress().values()) {
+        if (Objects.nonNull(regionProgress)) {
+          regionProgress
+              .getWriterPositions()
+              .forEach(
+                  (writerId, writerProgress) ->
+                      mergeTopicProgress(
+                          committedPositionsByTopic, entry.getKey(), writerId, writerProgress));
+        }
+      }
+    }
   }
 
   private void overlayTopicProgress(
