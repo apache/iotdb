@@ -234,6 +234,48 @@ public class IoTDBFileReceiverTest {
     Assert.assertFalse(receiver.hasPipeHandshakeCredential());
   }
 
+  @Test
+  public void testHandshakeV2RejectsAnotherUserOnALoggedInConnection() throws Exception {
+    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
+    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
+    try {
+      // The connection is already authenticated as another user. Accepting the credentials of this
+      // handshake would execute the statements of the transfer with the privileges of that user.
+      receiver.setLoggedInSessionUsername("another_user");
+
+      final TPipeTransferResp response = receiver.handshakeV2(buildHandshakeV2Params(true));
+
+      Assert.assertEquals(
+          TSStatusCode.NO_PERMISSION.getStatusCode(), response.getStatus().getCode());
+      // The credentials are not even checked, because the connection can not be rebound anyway.
+      Assert.assertEquals(0, receiver.getLoginCallCount());
+      Assert.assertEquals(0, receiver.getCreateAuditEntityCallCount());
+      Assert.assertFalse(receiver.hasPipeHandshakeCredential());
+      Assert.assertNull(receiver.getUserEntity());
+    } finally {
+      receiver.handleExit();
+    }
+  }
+
+  @Test
+  public void testHandshakeV2AcceptsTheUserOfTheLoggedInConnection() throws Exception {
+    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
+    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
+    try {
+      receiver.setLoggedInSessionUsername("root");
+
+      final TPipeTransferResp response = receiver.handshakeV2(buildHandshakeV2Params(true));
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+      Assert.assertEquals(1, receiver.getLoginCallCount());
+      Assert.assertEquals(1, receiver.getCreateAuditEntityCallCount());
+      Assert.assertNotNull(receiver.getUserEntity());
+    } finally {
+      receiver.handleExit();
+    }
+  }
+
   private Map<String, String> buildHandshakeV2Params(final boolean includeCredentials) {
     final Map<String, String> params = new HashMap<>();
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID, "sender-cluster");
@@ -319,6 +361,7 @@ public class IoTDBFileReceiverTest {
     private TSStatus loadFileV1Status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     private TSStatus loginStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     private int loginCallCount = 0;
+    private String loggedInSessionUsername = null;
     private int createAuditEntityCallCount = 0;
     private String createAuditEntityUsername = null;
     private boolean failFilePieceMemoryAllocation = false;
@@ -438,6 +481,11 @@ public class IoTDBFileReceiverTest {
     }
 
     @Override
+    protected String getLoggedInSessionUsername() {
+      return loggedInSessionUsername;
+    }
+
+    @Override
     protected TSStatus login() {
       loginCallCount++;
       return loginStatus;
@@ -448,6 +496,10 @@ public class IoTDBFileReceiverTest {
       createAuditEntityCallCount++;
       createAuditEntityUsername = username;
       return super.createAuditEntity(username, cliHostname);
+    }
+
+    void setLoggedInSessionUsername(final String loggedInSessionUsername) {
+      this.loggedInSessionUsername = loggedInSessionUsername;
     }
 
     void setLoginStatus(final TSStatus loginStatus) {

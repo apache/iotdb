@@ -1397,6 +1397,12 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
+  protected String getLoggedInSessionUsername() {
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    return clientSession != null && clientSession.isLogin() ? clientSession.getUsername() : null;
+  }
+
+  @Override
   protected IAuditEntity createAuditEntity(final String username, final String cliHostname) {
     // The user id must be resolved from the local permission manager instead of the handshake,
     // because the id supplied by the sender is not authoritative.

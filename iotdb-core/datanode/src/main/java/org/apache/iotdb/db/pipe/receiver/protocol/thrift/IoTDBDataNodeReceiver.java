@@ -1601,22 +1601,29 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
-  protected IAuditEntity createAuditEntity(final String username, final String cliHostname) {
-    // The user id must never be taken from the handshake: some table model authorization paths
-    // treat the super user id as a grant of every privilege, so an id supplied by the sender would
-    // allow any authenticated user to act as the super user.
+  protected String getLoggedInSessionUsername() {
     final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-    if (Objects.nonNull(clientSession) && clientSession.isLogin()) {
-      // The statement is executed with the identity of this session, so authorizing and auditing
-      // it as another user would be inconsistent. The identity of a logged in session is set by
-      // the login flow from the local user manager and can not be chosen by the sender.
-      return new UserEntity(
-          clientSession.getUserId(), clientSession.getUsername(), clientSession.getClientAddress());
-    }
+    return Objects.nonNull(clientSession) && clientSession.isLogin()
+        ? clientSession.getUsername()
+        : null;
+  }
+
+  @Override
+  protected IAuditEntity createAuditEntity(final String username, final String cliHostname) {
+    // The role of the transfer is the one whose credentials were just verified. Its id is resolved
+    // from the local user manager and never taken from the handshake: the id supplied by the sender
+    // is not verified, and some table model authorization paths treat the super user id as a grant
+    // of every privilege.
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    // getLoggedInSessionUsername guarantees that an existing session belongs to this user, so only
+    // the address of the connection is taken from it. The hostname of the handshake is supplied by
+    // the sender as well.
+    final String clientAddress =
+        Objects.nonNull(clientSession) ? clientSession.getClientAddress() : null;
     return new UserEntity(
         Objects.isNull(username) ? -1L : AuthorityChecker.getUserId(username).orElse(-1L),
         username,
-        cliHostname);
+        Objects.nonNull(clientAddress) && !clientAddress.isEmpty() ? clientAddress : cliHostname);
   }
 
   private TSStatus executeStatementForTableModel(

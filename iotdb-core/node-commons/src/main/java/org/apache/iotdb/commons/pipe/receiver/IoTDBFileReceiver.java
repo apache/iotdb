@@ -319,6 +319,24 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
               TSStatusCode.NOT_LOGIN, "Pipe handshake missing username or password."));
     }
 
+    // A connection may only ever stand for one user. If it is already authenticated as somebody
+    // else, the credentials of this handshake must not rebind it: the statements of the transfer
+    // would otherwise be executed with the privileges of the other user.
+    final String loggedInSessionUsername = getLoggedInSessionUsername();
+    if (Objects.nonNull(loggedInSessionUsername)
+        && !loggedInSessionUsername.equals(usernameString)) {
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.NO_PERMISSION,
+              String.format(
+                  PipeMessages
+                      .MESSAGE_THE_PIPE_RECEIVER_CONNECTION_IS_ALREADY_AUTHENTICATED_AS_ANOTHER_USER_AND_CANNOT_BE_USED_TO_TRANSFER_DATA_AS_ARG_FFA5DF78,
+                  usernameString));
+      PipeLogger.log(
+          LOGGER::warn, PipeMessages.RECEIVER_HANDSHAKE_FAILED_WITH_ID, receiverId.get(), status);
+      return new TPipeTransferResp(status);
+    }
+
     username = usernameString;
     password = passwordString;
     userEntity = null;
@@ -448,6 +466,17 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   }
 
   protected abstract TSStatus login();
+
+  /**
+   * Returns the user name of the client session that this connection is authenticated with, or
+   * {@code null} if the connection carries no logged in session.
+   *
+   * <p>A handshake is rejected when it tries to authenticate a connection with another user, so
+   * that the identity of a transfer is always the one whose credentials were verified.
+   */
+  protected String getLoggedInSessionUsername() {
+    return null;
+  }
 
   /**
    * Creates the audit entity of a sender whose credentials have been verified.
