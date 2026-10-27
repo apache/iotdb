@@ -1681,4 +1681,13 @@ public final class StorageEngineMessages {
       "扫描已完成的 LOAD 任务暂存目录失败。";
   public static final String LOG_FAILED_TO_CREATE_SNAPSHOT_FOR_DATABASE_ARG_REGION_ARG_1A7C8DEA =
       "为 database {}、region {} 创建快照失败";
+
+  public static final String EXCEPTION_FAILED_TO_DETERMINE_THE_USER_THAT_LOADS_THE_TSFILE_E47F7207 =
+      "无法确定加载该 TsFile 的用户";
+  public static final String MESSAGE_FAILED_TO_DETERMINE_THE_USER_THAT_LOADS_THE_TSFILE_ARG_THE_FILE_WILL_NOT_BE_LOADED_4FCDC635 =
+      "无法确定加载 TsFile %s 的用户，该文件将不会被加载";
+  public static final String LOG_FAILED_TO_DETERMINE_THE_USER_THAT_LOADS_THE_TSFILE_ARG_THE_FILE_WILL_NOT_BE_LOADED_4FCDC635 =
+      "无法确定加载 TsFile %s 的用户，该文件将不会被加载";
+  public static final String EXCEPTION_FAILED_TO_DETERMINE_THE_USER_FOR_THE_TSFILE_DATA_TYPE_CONVERSION_A221793E =
+      "无法确定执行 TsFile 数据类型转换的用户";
 }

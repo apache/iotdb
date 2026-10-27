@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
@@ -203,8 +202,8 @@ public class LoadTsFileDataTypeConverter {
   /**
    * Creates and registers an internal session for a conversion that is executed outside of the
    * request thread. The session inherits the identity of the load request, so the conversion is
-   * still authorized and audited as that user. A privileged default is used only when the query
-   * context carries no identity at all, which only happens for locally triggered loads.
+   * still authorized and audited as that user. A conversion without any identity is rejected
+   * instead of being executed as a privileged default user.
    */
   private IClientSession createConversionSession(final SqlDialect sqlDialect) {
     final IClientSession session =
@@ -218,12 +217,13 @@ public class LoadTsFileDataTypeConverter {
         Objects.isNull(context) || Objects.isNull(context.getSession())
             ? null
             : context.getSession().getUserEntity();
-    if (Objects.nonNull(userEntity)) {
-      session.setUserId(userEntity.getUserId());
-      session.setUsername(userEntity.getUsername());
-    } else {
-      session.setUsername(AuthorityChecker.SUPER_USER);
+    if (Objects.isNull(userEntity)) {
+      throw new IllegalStateException(
+          StorageEngineMessages
+              .EXCEPTION_FAILED_TO_DETERMINE_THE_USER_FOR_THE_TSFILE_DATA_TYPE_CONVERSION_A221793E);
     }
+    session.setUserId(userEntity.getUserId());
+    session.setUsername(userEntity.getUsername());
     session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
     session.setZoneId(ZoneId.systemDefault());
     session.setSqlDialect(sqlDialect);

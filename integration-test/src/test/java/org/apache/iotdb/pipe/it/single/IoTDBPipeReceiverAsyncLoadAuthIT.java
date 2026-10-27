@@ -57,6 +57,7 @@ import org.junit.runner.RunWith;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
@@ -82,10 +83,13 @@ public class IoTDBPipeReceiverAsyncLoadAuthIT {
   private static final String DEVICE = DATABASE + ".d1";
   private static final String NO_WRITE_MEASUREMENT = "no_write";
   private static final String WRITE_MEASUREMENT = "write";
+  private static final String LOCALLY_DROPPED_MEASUREMENT = "dropped_by_operator";
   private static final IMeasurementSchema NO_WRITE_SCHEMA =
       new MeasurementSchema(NO_WRITE_MEASUREMENT, TSDataType.INT32, TSEncoding.RLE);
   private static final IMeasurementSchema WRITE_SCHEMA =
       new MeasurementSchema(WRITE_MEASUREMENT, TSDataType.INT32, TSEncoding.RLE);
+  private static final IMeasurementSchema LOCALLY_DROPPED_SCHEMA =
+      new MeasurementSchema(LOCALLY_DROPPED_MEASUREMENT, TSDataType.INT32, TSEncoding.RLE);
 
   private static final String NO_WRITE_USER = "pipe_receiver_no_write_user";
   private static final String WRITE_USER = "pipe_receiver_write_user";
@@ -116,6 +120,7 @@ public class IoTDBPipeReceiverAsyncLoadAuthIT {
         .getDataNodeConfig()
         .setLoadActiveListeningCheckIntervalSeconds(1);
     EnvFactory.getEnv().initClusterEnvironment();
+    prepareSchema();
   }
 
   @AfterClass
@@ -126,7 +131,6 @@ public class IoTDBPipeReceiverAsyncLoadAuthIT {
 
   @Test
   public void testAsyncLoadStrategyDoesNotElevatePipeSender() throws Exception {
-    prepareSchema();
     createUser(NO_WRITE_USER, PASSWORD);
     createUser(WRITE_USER, PASSWORD);
     grantUserSeriesPrivilege(WRITE_USER, PrivilegeType.WRITE_DATA, DATABASE + ".**");
@@ -151,6 +155,29 @@ public class IoTDBPipeReceiverAsyncLoadAuthIT {
     assertCount(WRITE_MEASUREMENT, POINT_COUNT);
   }
 
+  @Test
+  public void testTsFileDroppedIntoActiveListeningDirIsStillLoaded() throws Exception {
+    final File tsFile = new File(tmpDir, "3-0-0-0.tsfile");
+    generateTsFile(tsFile, LOCALLY_DROPPED_SCHEMA);
+
+    // An operator may place a TsFile directly into the active listening directory. Such a file has
+    // no user attribute and must still be loaded, with the default user, because writing it to the
+    // DataNode file system is already a privileged operation.
+    final DataNodeWrapper dataNode = EnvFactory.getEnv().getDataNodeWrapper(0);
+    final File pendingDir = getActiveLoadPendingDir(dataNode);
+    Files.createDirectories(pendingDir.toPath());
+    // The staging copy must not end with ".tsfile", otherwise the scanner could pick it up while it
+    // is still being copied.
+    final File staging = new File(pendingDir, "staging-" + tsFile.getName() + ".tmp");
+    Files.copy(tsFile.toPath(), staging.toPath(), StandardCopyOption.REPLACE_EXISTING);
+    Files.move(
+        staging.toPath(),
+        new File(pendingDir, tsFile.getName()).toPath(),
+        StandardCopyOption.ATOMIC_MOVE);
+
+    assertCountEventually(LOCALLY_DROPPED_MEASUREMENT, POINT_COUNT, TimeUnit.SECONDS.toMillis(60));
+  }
+
   private static void prepareSchema() throws Exception {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
@@ -162,6 +189,10 @@ public class IoTDBPipeReceiverAsyncLoadAuthIT {
       statement.execute(
           String.format(
               "create timeseries %s.%s %s", DEVICE, WRITE_MEASUREMENT, WRITE_SCHEMA.getType()));
+      statement.execute(
+          String.format(
+              "create timeseries %s.%s %s",
+              DEVICE, LOCALLY_DROPPED_MEASUREMENT, LOCALLY_DROPPED_SCHEMA.getType()));
     }
   }
 
@@ -328,5 +359,24 @@ public class IoTDBPipeReceiverAsyncLoadAuthIT {
       Assert.assertEquals(
           "Unexpected number of points written to " + measurement, expected, resultSet.getLong(1));
     }
+  }
+
+  private static void assertCountEventually(
+      final String measurement, final long expected, final long timeoutMs) throws Exception {
+    final long deadline = System.currentTimeMillis() + timeoutMs;
+    AssertionError lastError = null;
+    while (System.currentTimeMillis() < deadline) {
+      try {
+        assertCount(measurement, expected);
+        return;
+      } catch (final AssertionError e) {
+        lastError = e;
+      }
+      Thread.sleep(500L);
+    }
+    if (lastError != null) {
+      throw lastError;
+    }
+    Assert.fail("Timed out waiting for " + expected + " points of " + measurement);
   }
 }

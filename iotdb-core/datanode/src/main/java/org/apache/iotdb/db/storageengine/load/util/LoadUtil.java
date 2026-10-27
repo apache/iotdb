@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
@@ -178,18 +177,23 @@ public class LoadUtil {
   }
 
   private static Map<String, String> appendCurrentUserIfAbsent(
-      final Map<String, String> loadAttributes) {
+      final Map<String, String> loadAttributes) throws IOException {
     final Map<String, String> attributes =
         Objects.nonNull(loadAttributes)
             ? new LinkedHashMap<>(loadAttributes)
             : new LinkedHashMap<>();
     if (!attributes.containsKey(ActiveLoadPathHelper.USER_KEY)) {
       final IClientSession session = SessionManager.getInstance().getCurrSession();
-      attributes.put(
-          ActiveLoadPathHelper.USER_KEY,
-          session == null || session.getUsername() == null
-              ? AuthorityChecker.SUPER_USER
-              : session.getUsername());
+      final String username = Objects.isNull(session) ? null : session.getUsername();
+      if (Objects.isNull(username) || username.isEmpty()) {
+        // Never fall back to a privileged default here. The load would be authorized by the active
+        // loader with the identity stored in the attributes, so an unknown user means the load can
+        // not be authorized at all and must not be queued.
+        throw new IOException(
+            StorageEngineMessages
+                .EXCEPTION_FAILED_TO_DETERMINE_THE_USER_THAT_LOADS_THE_TSFILE_E47F7207);
+      }
+      attributes.put(ActiveLoadPathHelper.USER_KEY, username);
     }
     return attributes;
   }
@@ -217,9 +221,6 @@ public class LoadUtil {
       LOGGER.warn(StorageEngineMessages.LOAD_ACTIVE_LISTENING_DIR_NOT_SET);
       return false;
     }
-    final Map<String, String> attributes = appendCurrentUserIfAbsent(loadAttributes);
-    final File targetDir =
-        ActiveLoadPathHelper.resolvePipeTransferTargetDir(targetFilePath, attributes);
 
     final List<File> sourceFiles = new ArrayList<>(files.size());
     for (final String file : files) {
@@ -235,6 +236,12 @@ public class LoadUtil {
                 sourceFile.getAbsolutePath()));
       }
     }
+
+    // Resolved after the file validation so that an invalid file is still reported as such.
+    final Map<String, String> attributes = appendCurrentUserIfAbsent(loadAttributes);
+    final File targetDir =
+        ActiveLoadPathHelper.resolvePipeTransferTargetDir(targetFilePath, attributes);
+
     sourceFiles.sort(Comparator.comparing(LoadUtil::isTsFile));
     transferFilesToActiveDir(
         targetDir,

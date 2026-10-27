@@ -1485,7 +1485,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
 
     final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-
+    if (Objects.isNull(clientSession)) {
+      // Without a session the statement can not be authorized, so fail closed.
+      return getNotLoggedInStatus();
+    }
     // For table model, the authority check is done in inner execution. No need to check here
     if (!isTableModelStatement) {
       final TSStatus permissionCheckStatus =
@@ -1596,6 +1599,12 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TSStatus executeStatementForTableModel(
       final Statement statement, final String databaseName) {
+    // A sender that only performed the pipe handshake has no client session. Statements can not be
+    // authorized without one, so fail closed instead of dereferencing a null session below.
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    if (Objects.isNull(clientSession)) {
+      return getNotLoggedInStatus();
+    }
     try {
       autoCreateDatabaseIfNecessary(databaseName);
 
@@ -1603,10 +1612,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           .executeForTableModel(
               shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
               tableSqlParser,
-              SESSION_MANAGER.getCurrSession(),
+              clientSession,
               SESSION_MANAGER.requestQueryId(),
-              SESSION_MANAGER.getSessionInfoOfPipeReceiver(
-                  SESSION_MANAGER.getCurrSession(), databaseName),
+              SESSION_MANAGER.getSessionInfoOfPipeReceiver(clientSession, databaseName),
               "",
               LocalExecutionPlanner.getInstance().metadata,
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
@@ -1625,10 +1633,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             .executeForTableModel(
                 shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
                 tableSqlParser,
-                SESSION_MANAGER.getCurrSession(),
+                clientSession,
                 SESSION_MANAGER.requestQueryId(),
-                SESSION_MANAGER.getSessionInfoOfPipeReceiver(
-                    SESSION_MANAGER.getCurrSession(), databaseName),
+                SESSION_MANAGER.getSessionInfoOfPipeReceiver(clientSession, databaseName),
                 "",
                 LocalExecutionPlanner.getInstance().metadata,
                 IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
@@ -1752,6 +1759,12 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TSStatus executeStatementForTreeModel(
       final Statement statement, final String databaseName) {
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    if (Objects.isNull(clientSession)) {
+      // Without a session the statement can not be authorized, so fail closed.
+      return getNotLoggedInStatus();
+    }
+
     if (autoCreateTreeDatabaseIfNecessary(databaseName) == TreeDatabaseCreationResult.CONFLICTED) {
       // Continue execution, but let partition analysis infer the receiver-side database.
       clearTreeDatabaseName(statement);
@@ -1761,7 +1774,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         .executeForTreeModel(
             shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
             SESSION_MANAGER.requestQueryId(),
-            SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
+            SESSION_MANAGER.getSessionInfo(clientSession),
             "",
             ClusterPartitionFetcher.getInstance(),
             ClusterSchemaFetcher.getInstance(),
@@ -1827,15 +1840,20 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         return status;
       }
 
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      if (Objects.isNull(clientSession)) {
+        // Without a session the statement can not be authorized, so fail closed.
+        return getNotLoggedInStatus();
+      }
+
       final TSStatus result =
           Coordinator.getInstance()
               .executeForTableModel(
                   shouldMarkAsPipeRequest.get() ? new PipeEnriched(statement) : statement,
                   tableSqlParser,
-                  SESSION_MANAGER.getCurrSession(),
+                  clientSession,
                   SESSION_MANAGER.requestQueryId(),
-                  SESSION_MANAGER.getSessionInfoOfPipeReceiver(
-                      SESSION_MANAGER.getCurrSession(), databaseName),
+                  SESSION_MANAGER.getSessionInfoOfPipeReceiver(clientSession, databaseName),
                   "",
                   LocalExecutionPlanner.getInstance().metadata,
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
