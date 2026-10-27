@@ -312,7 +312,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     return checkTimeSeriesPermission(
         context.setAuditLogOperation(AuditLogOperation.DDL),
         statement::getPaths,
-        PrivilegeType.WRITE_SCHEMA);
+        PrivilegeType.WRITE_SCHEMA,
+        statement::getDevicePathList,
+        Object::toString);
   }
 
   @Override
@@ -321,7 +323,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     return checkTimeSeriesPermission(
         context.setAuditLogOperation(AuditLogOperation.DDL),
         statement::getPaths,
-        PrivilegeType.WRITE_SCHEMA);
+        PrivilegeType.WRITE_SCHEMA,
+        () -> statement.getDeviceMap().keySet(),
+        Object::toString);
   }
 
   private TSStatus checkTemplateShowRelated(
@@ -1422,10 +1426,20 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       Supplier<List<? extends PartialPath>> checkedPathsSupplier,
       PrivilegeType permission,
       Function<List<? extends PartialPath>, String> auditObjectFormatter) {
+    return checkTimeSeriesPermission(
+        context, checkedPathsSupplier, permission, checkedPathsSupplier, auditObjectFormatter);
+  }
+
+  private static TSStatus checkTimeSeriesPermission(
+      IAuditEntity context,
+      Supplier<List<? extends PartialPath>> checkedPathsSupplier,
+      PrivilegeType permission,
+      Supplier<? extends Collection<? extends PartialPath>> systemDatabaseCheckPathsSupplier,
+      Function<List<? extends PartialPath>, String> auditObjectFormatter) {
     context.setPrivilegeType(permission);
     if (permission == PrivilegeType.WRITE_SCHEMA || permission == PrivilegeType.WRITE_DATA) {
       final TSStatus systemDatabaseStatus =
-          checkSystemDatabaseWrite(context, checkedPathsSupplier.get());
+          checkSystemDatabaseWrite(context, systemDatabaseCheckPathsSupplier.get());
       if (systemDatabaseStatus != null) {
         return systemDatabaseStatus;
       }

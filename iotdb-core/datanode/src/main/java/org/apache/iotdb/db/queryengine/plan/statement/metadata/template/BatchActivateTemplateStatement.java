@@ -30,7 +30,6 @@ import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class BatchActivateTemplateStatement extends Statement {
 
@@ -45,18 +44,18 @@ public class BatchActivateTemplateStatement extends Statement {
   @Override
   public List<PartialPath> getPaths() {
     ClusterTemplateManager clusterTemplateManager = ClusterTemplateManager.getInstance();
-    List<String> templatePaths = new ArrayList<>();
-    for (PartialPath path : devicePathList) {
+    List<PartialPath> paths = new ArrayList<>();
+    for (PartialPath devicePath : devicePathList) {
       Pair<Template, PartialPath> templateSetInfo =
-          clusterTemplateManager.checkTemplateSetInfo(path);
+          clusterTemplateManager.checkTemplateSetInfo(devicePath);
       if (templateSetInfo == null) {
         continue;
       }
-      templatePaths.addAll(templateSetInfo.left.getSchemaMap().keySet());
+      for (String measurement : templateSetInfo.left.getSchemaMap().keySet()) {
+        paths.add(devicePath.concatAsMeasurementPath(measurement));
+      }
     }
-    return devicePathList.stream()
-        .flatMap(path -> templatePaths.stream().map(path::concatAsMeasurementPath))
-        .collect(Collectors.toList());
+    return paths;
   }
 
   public List<PartialPath> getDevicePathList() {
