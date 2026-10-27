@@ -24,8 +24,12 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -157,6 +161,31 @@ public final class LoadTsFileSnapshot {
 
     // 3. Catch up staged files if progress logs advanced during file copy
     catchUpStagedFiles(taskDir, targetDir);
+
+    // A piece is applied only after its chunk records are appended. Without any records, the
+    // restoring manager cannot resume this staged file; leave replay free to create it again.
+    discardUnrecordedStagedFiles(targetDir);
+  }
+
+  private static void discardUnrecordedStagedFiles(final File snapshotTaskDir) throws IOException {
+    for (final File stagedFile : listFiles(snapshotTaskDir)) {
+      if (!stagedFile.isFile() || !stagedFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+        continue;
+      }
+
+      final File progressFile = LoadTsFileProgress.progressFileFor(stagedFile);
+      if (progressFile.isFile()
+          && !new LoadTsFileProgress(stagedFile).readAllRecordsRepairingTornTail().isEmpty()) {
+        continue;
+      }
+
+      Files.deleteIfExists(stagedFile.toPath());
+      Files.deleteIfExists(
+          new File(stagedFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+      Files.deleteIfExists(ModificationFile.getExclusiveMods(stagedFile).toPath());
+      Files.deleteIfExists(
+          new File(stagedFile.getPath() + ModificationFileV1.FILE_SUFFIX).toPath());
+    }
   }
 
   /**

@@ -221,11 +221,18 @@ public class LoadTsFileSnapshotTest {
         new File(
             new File(new File(snapshotDir, LoadTsFileSnapshot.SNAPSHOT_SUBDIR_NAME), loadId),
             staged.getName());
+    if (incompleteHeader) {
+      assertFalse(copiedStaged.exists());
+    }
     assertEquals(
         incompleteHeader ? 0L : completeLog.length,
         LoadTsFileProgress.progressFileFor(copiedStaged).length());
     assertEquals(
         incompleteHeader ? 0 : 1, new LoadTsFileProgress(copiedStaged).readAllRecords().size());
+    if (incompleteHeader) {
+      assertPieceCanBeReplayedAfterRestore(
+          snapshotDir, loadId, Files.readAllBytes(staged.toPath()));
+    }
   }
 
   @Test
@@ -446,6 +453,65 @@ public class LoadTsFileSnapshotTest {
     assertEquals(staged.length(), lengthOfTheStagedFile(snapshotDir));
   }
 
+  @Test
+  public void testSnapshotDropsAStagedFileWithoutAProgressLog() throws Exception {
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    final String loadId = "staged-without-progress";
+    final LoadTsFileConsensusNode piece = stagedPiece(loadId, laidOutChunk());
+    manager.writePiece(piece);
+    final File staged = new File(tempDir, piece.getPieceRefs().get(0).getRelativePath());
+    final byte[] stagedBytes = Files.readAllBytes(staged.toPath());
+    final byte[] progressBytes =
+        Files.readAllBytes(LoadTsFileProgress.progressFileFor(staged).toPath());
+    // The first piece has created its data file, but no progress log is visible to either scan yet.
+    final File taskDir =
+        new File(staged.getParent()) {
+          @Override
+          public File[] listFiles() {
+            return new File[] {staged};
+          }
+        };
+    final LoadTsFileManager snapshotManager = Mockito.mock(LoadTsFileManager.class);
+    Mockito.when(snapshotManager.getActiveTaskDirs())
+        .thenReturn(Collections.singletonList(taskDir));
+    Mockito.when(dataRegion.getLoadTsFileManagerIfPresent())
+        .thenReturn(Optional.of(snapshotManager));
+    final File snapshotDir = new File(tempDir, "snapshot-without-progress");
+
+    assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir));
+
+    final File copiedStaged =
+        new File(
+            new File(
+                new File(snapshotDir, LoadTsFileSnapshot.SNAPSHOT_SUBDIR_NAME),
+                staged.getParentFile().getName()),
+            staged.getName());
+    assertFalse(copiedStaged.exists());
+    assertArrayEquals(stagedBytes, Files.readAllBytes(staged.toPath()));
+    assertArrayEquals(
+        progressBytes, Files.readAllBytes(LoadTsFileProgress.progressFileFor(staged).toPath()));
+    assertPieceCanBeReplayedAfterRestore(snapshotDir, loadId, stagedBytes);
+  }
+
+  private void assertPieceCanBeReplayedAfterRestore(
+      final File snapshotDir, final String loadId, final byte[] expectedStagedBytes)
+      throws Exception {
+    final File restoredRoot = new File(tempDir, "restored-load-root");
+    setLoadRoots(restoredRoot);
+    LoadTsFileSnapshot.restore(DATABASE_NAME, REGION_ID, snapshotDir);
+    final LoadTsFileManager recovered = new LoadTsFileManager(dataRegion);
+    try {
+      final LoadTsFileConsensusNode replayed = stagedPiece(loadId, laidOutChunk());
+      recovered.writePiece(replayed);
+      final File restoredStaged =
+          new File(restoredRoot, replayed.getPieceRefs().get(0).getRelativePath());
+      assertArrayEquals(expectedStagedBytes, Files.readAllBytes(restoredStaged.toPath()));
+      assertEquals(1, new LoadTsFileProgress(restoredStaged).readAllRecords().size());
+    } finally {
+      recovered.stop();
+    }
+  }
+
   /**
    * A snapshot taken while pieces are still being applied has to be restorable: every range a
    * copied progress log describes has to be inside the bytes that were copied with it.
@@ -555,13 +621,19 @@ public class LoadTsFileSnapshotTest {
                 file.getName()
                     .substring(
                         0, file.getName().length() - LoadTsFileProgress.PROGRESS_SUFFIX.length()));
-        assertTrue(
-            "a copied log has no staged file next to it: " + file.getName(), staged.isFile());
         final LoadTsFileProgress progress = new LoadTsFileProgress(staged);
         // Reading a copied log repairs the fragment of an entry that was caught half appended,
         // exactly as the node that restores this snapshot does.
-        for (final LoadTsFileProgress.ChunkRangeRecord record :
-            progress.readAllRecordsRepairingTornTail()) {
+        final List<LoadTsFileProgress.ChunkRangeRecord> records =
+            progress.readAllRecordsRepairingTornTail();
+        if (records.isEmpty()) {
+          assertFalse(
+              "an unrecorded staged file blocks replay: " + staged.getName(), staged.exists());
+          continue;
+        }
+        assertTrue(
+            "a copied log has no staged file next to it: " + file.getName(), staged.isFile());
+        for (final LoadTsFileProgress.ChunkRangeRecord record : records) {
           assertTrue(
               "a copied log describes bytes the copied file does not hold: "
                   + record.physicalEnd()
