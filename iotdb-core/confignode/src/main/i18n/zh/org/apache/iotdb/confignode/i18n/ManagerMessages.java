@@ -700,6 +700,6 @@ public final class ManagerMessages {
   public static final String MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_NODE_STATUS_PERSISTENCE_8CA96809 =
       "ConfigNode leader 正在等待节点状态持久化。";
 
-  public static final String LOG_FAILED_TO_RESOLVE_THE_USER_ID_OF_THE_PIPE_SENDER_ARG_THE_AUDIT_RECORDS_OF_THIS_TRANSFER_WILL_NOT_CONTAIN_A_USER_ID_07B646FE =
-      "无法解析管道发送端 %s 的用户 ID，本次传输的审计记录将不包含用户 ID。";
+  public static final String LOG_FAILED_TO_RESOLVE_THE_USER_ID_OF_THE_PIPE_SENDER_ARG_THE_AUDIT_RECORDS_OF_THIS_TRANSFER_WILL_NOT_CONTAIN_A_USER_ID_0F8C4256 =
+      "无法解析管道发送端 {} 的用户 ID，本次传输的审计记录将不包含用户 ID。";
 }

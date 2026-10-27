@@ -299,7 +299,7 @@ public class ActiveLoadTsFileLoader {
         PipeTsFileConversionTaskManager.markFailed(conversionTaskId, status);
         LOGGER.warn(
             StorageEngineMessages
-                .LOG_FAILED_TO_DETERMINE_THE_USER_THAT_LOADS_THE_TSFILE_ARG_THE_FILE_WILL_NOT_BE_LOADED_4FCDC635,
+                .LOG_FAILED_TO_DETERMINE_THE_USER_THAT_LOADS_THE_TSFILE_ARG_THE_FILE_WILL_NOT_BE_LOADED_E24E08CD,
             tsFile.getAbsolutePath());
         removeFileAndResourceAndModsToFailDir(tsFile.getAbsolutePath());
         return status;
@@ -342,11 +342,13 @@ public class ActiveLoadTsFileLoader {
    * Resolves the user that executes the load of the given file.
    *
    * <p>Files handed over by the pipe receiver or by an asynchronous {@code LOAD} always carry the
-   * authenticated user in their path. A file without any attribute directory may only be executed
-   * with the default user when it was placed directly into the active listening directory, which is
-   * a local operation that already requires filesystem privileges on the DataNode. Anything else
-   * must not be loaded, otherwise a sender could drop the user attribute and be loaded as a
-   * privileged default.
+   * authenticated user in their path, because the receiver never hands over a file without a user
+   * attribute directory. A file without any attribute directory can therefore only have been placed
+   * into the active listening directory by a local operator, either directly or into a sub
+   * directory that names the database of a table model file. Such a load is a local operation that
+   * already requires filesystem privileges on the DataNode, so it is executed with the default
+   * user. Anything else must not be loaded, otherwise a sender could drop the user attribute and be
+   * loaded as a privileged default.
    *
    * @return the user that executes the load, or {@code null} if it can not be determined
    */
@@ -356,13 +358,24 @@ public class ActiveLoadTsFileLoader {
     if (Objects.nonNull(userName) && !userName.isEmpty()) {
       return userName;
     }
-    return isPlacedDirectlyInListeningDir(tsFile, pendingDir) ? AuthorityChecker.SUPER_USER : null;
+    return attributes.isEmpty() && isInsideListeningDir(tsFile, pendingDir)
+        ? AuthorityChecker.SUPER_USER
+        : null;
   }
 
-  private static boolean isPlacedDirectlyInListeningDir(final File tsFile, final File pendingDir) {
-    return Objects.nonNull(pendingDir)
-        && Objects.nonNull(tsFile.getParentFile())
-        && tsFile.getParentFile().getAbsoluteFile().equals(pendingDir.getAbsoluteFile());
+  private static boolean isInsideListeningDir(final File tsFile, final File pendingDir) {
+    if (Objects.isNull(pendingDir)) {
+      return false;
+    }
+    final File normalizedPendingDir = pendingDir.getAbsoluteFile();
+    for (File current = tsFile.getAbsoluteFile().getParentFile();
+        Objects.nonNull(current);
+        current = current.getParentFile()) {
+      if (current.equals(normalizedPendingDir)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private TSStatus executeStatement(final Statement statement, final IClientSession session) {

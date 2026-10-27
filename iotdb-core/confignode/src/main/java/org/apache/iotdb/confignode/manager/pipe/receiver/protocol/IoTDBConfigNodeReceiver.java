@@ -1416,7 +1416,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       } catch (final Exception e) {
         LOGGER.warn(
             ManagerMessages
-                .LOG_FAILED_TO_RESOLVE_THE_USER_ID_OF_THE_PIPE_SENDER_ARG_THE_AUDIT_RECORDS_OF_THIS_TRANSFER_WILL_NOT_CONTAIN_A_USER_ID_07B646FE,
+                .LOG_FAILED_TO_RESOLVE_THE_USER_ID_OF_THE_PIPE_SENDER_ARG_THE_AUDIT_RECORDS_OF_THIS_TRANSFER_WILL_NOT_CONTAIN_A_USER_ID_0F8C4256,
             username,
             e);
       }

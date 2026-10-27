@@ -610,8 +610,22 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
 
     final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-    final String sessionUsername = clientSession == null ? null : clientSession.getUsername();
+    if (!isLoggedInSession(clientSession)) {
+      return null;
+    }
+    final String sessionUsername = clientSession.getUsername();
     return sessionUsername == null || sessionUsername.isEmpty() ? null : sessionUsername;
+  }
+
+  /**
+   * Returns whether the given session can authorize the statements of the current transfer.
+   *
+   * <p>The session of a pipe connection is not necessarily logged in. A connection that has not
+   * completed a handshake owns a session whose user id still defaults to the id of the super user,
+   * so the presence of a session alone must never be treated as an authenticated identity.
+   */
+  private static boolean isLoggedInSession(final IClientSession clientSession) {
+    return Objects.nonNull(clientSession) && clientSession.isLogin();
   }
 
   private static boolean requiresAuthentication(final PipeRequestType requestType) {
@@ -1488,8 +1502,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
 
     final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-    if (Objects.isNull(clientSession)) {
-      // Without a session the statement can not be authorized, so fail closed.
+    if (!isLoggedInSession(clientSession)) {
+      // Without a logged in session the statement can not be authorized, so fail closed.
       return getNotLoggedInStatus();
     }
     // For table model, the authority check is done in inner execution. No need to check here
@@ -1615,9 +1629,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     // is not verified, and some table model authorization paths treat the super user id as a grant
     // of every privilege.
     final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-    // getLoggedInSessionUsername guarantees that an existing session belongs to this user, so only
-    // the address of the connection is taken from it. The hostname of the handshake is supplied by
-    // the sender as well.
+    // Only the address of the connection is taken from the session. The identity comes from the
+    // handshake and its id is resolved locally, because both the hostname and the id of the
+    // handshake are supplied by the sender.
     final String clientAddress =
         Objects.nonNull(clientSession) ? clientSession.getClientAddress() : null;
     return new UserEntity(
@@ -1628,10 +1642,12 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TSStatus executeStatementForTableModel(
       final Statement statement, final String databaseName) {
-    // A sender that only performed the pipe handshake has no client session. Statements can not be
-    // authorized without one, so fail closed instead of dereferencing a null session below.
+    // The transfer runs on the thread of its connection, so the session here is the one that the
+    // handshake logged in. A statement can only be authorized by a logged in session: a session of
+    // a connection without a completed handshake still carries the id of the super user, so it must
+    // not be treated as authenticated, and statements can not be authorized without any session.
     final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-    if (Objects.isNull(clientSession)) {
+    if (!isLoggedInSession(clientSession)) {
       return getNotLoggedInStatus();
     }
     try {
@@ -1789,8 +1805,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TSStatus executeStatementForTreeModel(
       final Statement statement, final String databaseName) {
     final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-    if (Objects.isNull(clientSession)) {
-      // Without a session the statement can not be authorized, so fail closed.
+    if (!isLoggedInSession(clientSession)) {
+      // Without a logged in session the statement can not be authorized, so fail closed.
       return getNotLoggedInStatus();
     }
 
@@ -1870,8 +1886,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       }
 
       final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-      if (Objects.isNull(clientSession)) {
-        // Without a session the statement can not be authorized, so fail closed.
+      if (!isLoggedInSession(clientSession)) {
+        // Without a logged in session the statement can not be authorized, so fail closed.
         return getNotLoggedInStatus();
       }
 

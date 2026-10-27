@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
@@ -217,12 +218,24 @@ public class LoadTsFileDataTypeConverter {
         Objects.isNull(context) || Objects.isNull(context.getSession())
             ? null
             : context.getSession().getUserEntity();
-    if (Objects.isNull(userEntity)) {
+    if (Objects.isNull(userEntity)
+        || Objects.isNull(userEntity.getUsername())
+        || userEntity.getUsername().isEmpty()) {
       throw new IllegalStateException(
           StorageEngineMessages
               .EXCEPTION_FAILED_TO_DETERMINE_THE_USER_FOR_THE_TSFILE_DATA_TYPE_CONVERSION_A221793E);
     }
-    session.setUserId(userEntity.getUserId());
+    // The user id carried by the session is not trusted: a session that only carries a user name
+    // keeps the default user id 0, which is the id of the super user. Resolve the id from the user
+    // name again, so that the conversion can never run as a privileged default user.
+    final long userId =
+        AuthorityChecker.getUserId(userEntity.getUsername())
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        StorageEngineMessages
+                            .EXCEPTION_FAILED_TO_DETERMINE_THE_USER_FOR_THE_TSFILE_DATA_TYPE_CONVERSION_A221793E));
+    session.setUserId(userId);
     session.setUsername(userEntity.getUsername());
     session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
     session.setZoneId(ZoneId.systemDefault());

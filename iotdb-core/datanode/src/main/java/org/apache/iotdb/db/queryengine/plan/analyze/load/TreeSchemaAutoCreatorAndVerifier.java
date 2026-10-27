@@ -254,15 +254,32 @@ public class TreeSchemaAutoCreatorAndVerifier {
   }
 
   /**
-   * Returns the user that loads the TsFile, or {@code null} if the query context does not carry
-   * one. The caller must treat a missing user as a denial.
+   * Returns the user that loads the TsFile, with its user id resolved on this DataNode, or {@code
+   * null} if the query context does not carry a known user. The caller must treat a missing user as
+   * a denial.
+   *
+   * <p>The user id of the session is not trusted: a session that only carries a user name keeps the
+   * default user id 0, which is the id of the super user. The id is therefore resolved from the
+   * user name again, so that a load can never be authorized as the super user by accident.
    */
   private UserEntity getLoadUserEntity() {
     if (loadTsFileAnalyzer == null || loadTsFileAnalyzer.context == null) {
       return null;
     }
     final SessionInfo sessionInfo = loadTsFileAnalyzer.context.getSession();
-    return sessionInfo == null ? null : sessionInfo.getUserEntity();
+    if (sessionInfo == null) {
+      return null;
+    }
+    final UserEntity userEntity = sessionInfo.getUserEntity();
+    if (userEntity == null
+        || userEntity.getUsername() == null
+        || userEntity.getUsername().isEmpty()) {
+      return null;
+    }
+    return AuthorityChecker.getUserId(userEntity.getUsername())
+        .map(
+            userId -> new UserEntity(userId, userEntity.getUsername(), userEntity.getCliHostname()))
+        .orElse(null);
   }
 
   /**
