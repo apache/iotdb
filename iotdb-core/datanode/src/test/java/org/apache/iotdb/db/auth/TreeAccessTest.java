@@ -23,12 +23,21 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountLevelTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.SetSchemaTemplateStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -236,6 +245,99 @@ public class TreeAccessTest {
         TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         treeAccessCheckVisitor.checkUnsupportedAuditDatabaseWriteStatus(
             new TreeAccessCheckContext(10000L, "user1", ""), new PartialPath("root.sg")));
+  }
+
+  @Test
+  public void testSystemDatabaseWriteRequiresInternalCaller() throws Exception {
+    final TreeAccessCheckVisitor visitor = new TreeAccessCheckVisitor();
+    final TreeAccessCheckContext externalCaller =
+        new TreeAccessCheckContext(AuthorityChecker.SUPER_USER_ID, AuthorityChecker.SUPER_USER, "");
+    final TreeAccessCheckContext internalCaller =
+        new TreeAccessCheckContext(AuthorityChecker.SUPER_USER_ID, AuthorityChecker.SUPER_USER, "")
+            .setInternal(true);
+
+    final InsertStatement systemInsert = new InsertStatement();
+    systemInsert.setDevice(new PartialPath("root.__system.d"));
+    systemInsert.setMeasurementList(new String[] {"s"});
+    Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        visitor.visitInsert(systemInsert, externalCaller).getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        visitor.visitInsert(systemInsert, internalCaller).getCode());
+
+    final CreateTimeSeriesStatement systemCreate = new CreateTimeSeriesStatement();
+    systemCreate.setPath(new MeasurementPath("root.__system.d.s"));
+    Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        visitor.visitCreateTimeseries(systemCreate, externalCaller).getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        visitor.visitCreateTimeseries(systemCreate, internalCaller).getCode());
+
+    final DeleteTimeSeriesStatement deleteTimeSeries =
+        new DeleteTimeSeriesStatement(
+            Collections.singletonList(new PartialPath("root.__system.**")));
+    Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        visitor.visitDeleteTimeSeries(deleteTimeSeries, externalCaller).getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        visitor.visitDeleteTimeSeries(deleteTimeSeries, internalCaller).getCode());
+
+    final AlterTimeSeriesStatement alterTimeSeries = new AlterTimeSeriesStatement();
+    alterTimeSeries.setPath(new MeasurementPath("root.__system.d.s"));
+    Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        visitor.visitAlterTimeSeries(alterTimeSeries, externalCaller).getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        visitor.visitAlterTimeSeries(alterTimeSeries, internalCaller).getCode());
+
+    final ActivateTemplateStatement activateTemplate =
+        new ActivateTemplateStatement(new PartialPath("root.__system.d"));
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        visitor.visitActivateTemplate(activateTemplate, internalCaller).getCode());
+
+    final SetSchemaTemplateStatement setSchemaTemplate =
+        new SetSchemaTemplateStatement("t", new PartialPath("root.__system"));
+    Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        visitor.visitSetSchemaTemplate(setSchemaTemplate, externalCaller).getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        visitor.visitSetSchemaTemplate(setSchemaTemplate, internalCaller).getCode());
+
+    final CreateLogicalViewStatement systemView = new CreateLogicalViewStatement();
+    systemView.setTargetFullPaths(Collections.singletonList(new PartialPath("root.sg.v.s")));
+    systemView.setSourceFullPaths(Collections.singletonList(new PartialPath("root.__system.d.s")));
+    Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        visitor.visitCreateLogicalView(systemView, externalCaller).getCode());
+
+    // The system database cannot be created through SQL.
+    final DatabaseSchemaStatement systemDatabaseCreate =
+        new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
+    systemDatabaseCreate.setDatabasePath(new PartialPath("root.__system"));
+    Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        visitor.visitSetDatabase(systemDatabaseCreate, externalCaller).getCode());
+
+    final DatabaseSchemaStatement systemCaseVariantCreate =
+        new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
+    systemCaseVariantCreate.setDatabasePath(new PartialPath("root.__System"));
+    Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        visitor.visitSetDatabase(systemCaseVariantCreate, externalCaller).getCode());
+
+    // Writes to a normal database are unaffected.
+    final InsertStatement normalInsert = new InsertStatement();
+    normalInsert.setDevice(new PartialPath("root.sg.d"));
+    normalInsert.setMeasurementList(new String[] {"s"});
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        visitor.visitInsert(normalInsert, externalCaller).getCode());
   }
 
   @Test
