@@ -1580,17 +1580,16 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       throws SubscriptionException {
     final List<SubscriptionCommitContext> remainingCommitContexts = new ArrayList<>(commitContexts);
     final List<SubscriptionCommitContext> acceptedCommitContexts = new ArrayList<>();
-    final Map<String, TopicProgress> committedProgressByTopic = new HashMap<>();
     for (int retries = 0; ; retries++) {
       checkIfFenced();
       try {
         final AbstractSubscriptionProvider.CommitResult result =
             commitInternal(dataNodeId, remainingCommitContexts, nack);
         acceptedCommitContexts.addAll(result.getAcceptedCommitContexts());
-        AbstractSubscriptionProvider.mergeTopicProgress(
-            committedProgressByTopic, result.getCommittedProgressByTopic());
+        // Completed attempts were already applied below. Reapplying their older progress here
+        // could overwrite a concurrent commit that completed while this request was retrying.
         return new AbstractSubscriptionProvider.CommitResult(
-            acceptedCommitContexts, committedProgressByTopic);
+            acceptedCommitContexts, result.getCommittedProgressByTopic());
       } catch (final SubscriptionConnectionException e) {
         if (e instanceof AbstractSubscriptionProvider.CommitConnectionException) {
           final AbstractSubscriptionProvider.CommitConnectionException failure =
@@ -1605,8 +1604,6 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             throw e;
           }
           acceptedCommitContexts.addAll(completedResult.getAcceptedCommitContexts());
-          AbstractSubscriptionProvider.mergeTopicProgress(
-              committedProgressByTopic, completedResult.getCommittedProgressByTopic());
           remainingCommitContexts.subList(0, failure.getCompletedCommitContextCount()).clear();
         }
         if (nack

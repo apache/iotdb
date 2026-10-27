@@ -59,6 +59,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -594,6 +595,66 @@ public class SubscriptionConsumerMultiProviderPollTest {
     assertCommitBatchRetry(true);
   }
 
+  @Test(timeout = 20_000)
+  public void testAsyncCommitRetryDoesNotOverwriteNewerCommittedProgress() throws Exception {
+    final TestPullConsumer consumer =
+        new TestPullConsumer(1, 0) {
+          @Override
+          protected void ack(final Iterable<SubscriptionMessage> messages)
+              throws SubscriptionException {
+            commitSync(messages);
+          }
+        };
+    final CountDownLatch retryStarted = new CountDownLatch(1);
+    final CountDownLatch newerCommitCompleted = new CountDownLatch(1);
+    try {
+      consumer.open();
+      final TestSubscriptionProvider provider = consumer.createdProviders.get(0);
+      final SubscriptionMessage first = commitMessage();
+      final SubscriptionMessage second =
+          new SubscriptionMessage(
+              new SubscriptionCommitContext(1, 0, TOPIC, CONSUMER_GROUP_ID, 2L), 2L);
+      enableCommitBatching(provider, first.getCommitContext());
+      provider.commitAction =
+          () -> {
+            if (provider.commitBatches.size() == 3) {
+              retryStarted.countDown();
+              await(newerCommitCompleted);
+            }
+          };
+
+      final CompletableFuture<Void> retry = consumer.commitAsync(Arrays.asList(first, second));
+      Assert.assertTrue(retryStarted.await(10, TimeUnit.SECONDS));
+      Assert.assertEquals(
+          batchProgress(first.getCommitContext()), consumer.committedPositions(TOPIC));
+
+      final TopicProgress newerProgress =
+          new TopicProgress(
+              Collections.singletonMap(
+                  "region1",
+                  new RegionProgress(
+                      Collections.singletonMap(
+                          new WriterId("region1", 1), new WriterProgress(1L, 2L)))));
+      final TestSubscriptionProvider otherProvider = consumer.createdProviders.get(1);
+      otherProvider.committedProgressByTopic = Collections.singletonMap(TOPIC, newerProgress);
+      consumer.commitSync(
+          new SubscriptionMessage(
+              new SubscriptionCommitContext(2, 0, TOPIC, CONSUMER_GROUP_ID, 3L), 3L));
+      Assert.assertEquals(newerProgress, consumer.committedPositions(TOPIC));
+
+      newerCommitCompleted.countDown();
+      retry.get(5, TimeUnit.SECONDS);
+
+      Assert.assertEquals(
+          newerProgress.getRegionProgress().get("region1"),
+          consumer.committedPositions(TOPIC).getRegionProgress().get("region1"));
+      Assert.assertEquals(2, consumer.committedPositions(TOPIC).getRegionProgress().size());
+    } finally {
+      newerCommitCompleted.countDown();
+      consumer.close();
+    }
+  }
+
   private void assertCommitBatchRetry(final boolean exhaustRetries) throws Exception {
     final TestPullConsumer consumer = new TestPullConsumer(1, 0, false, false, 3, true);
     try {
@@ -863,6 +924,7 @@ public class SubscriptionConsumerMultiProviderPollTest {
     private Runnable commitAction = () -> {};
     private boolean rejectCommits;
     private List<SubscriptionCommitContext> committed = Collections.emptyList();
+    private Map<String, TopicProgress> committedProgressByTopic = Collections.emptyMap();
     private boolean batchCommits;
     private boolean failAllRemainingBatches;
     private boolean rejectFirstBatch;
@@ -1049,12 +1111,13 @@ public class SubscriptionConsumerMultiProviderPollTest {
         return CommitResult.empty();
       }
       committed = new ArrayList<>(contexts);
-      return new CommitResult(contexts, Collections.emptyMap());
+      return new CommitResult(contexts, committedProgressByTopic);
     }
 
     @Override
     CommitResult commitOnce(final List<SubscriptionCommitContext> contexts, final boolean nack) {
       commitBatches.add(new ArrayList<>(contexts));
+      commitAction.run();
       if (commitBatches.size() == 2 || (failAllRemainingBatches && commitBatches.size() > 1)) {
         throw new SubscriptionConnectionException("read timed out", new SocketTimeoutException());
       }
