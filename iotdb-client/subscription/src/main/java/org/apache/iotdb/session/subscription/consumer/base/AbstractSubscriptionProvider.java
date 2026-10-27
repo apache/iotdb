@@ -804,20 +804,32 @@ public abstract class AbstractSubscriptionProvider {
 
     final List<SubscriptionCommitContext> acceptedCommitContexts = new ArrayList<>();
     final Map<String, TopicProgress> committedProgressByTopic = new LinkedHashMap<>();
+    int completedCommitContextCount = 0;
     rpcLock.lock();
     try {
       for (final List<SubscriptionCommitContext> batch : batches) {
         final CommitResult result = commitOnce(batch, nack);
+        completedCommitContextCount += batch.size();
         acceptedCommitContexts.addAll(result.getAcceptedCommitContexts());
         mergeTopicProgress(committedProgressByTopic, result.getCommittedProgressByTopic());
       }
+    } catch (final SubscriptionException e) {
+      if (nack || completedCommitContextCount == 0) {
+        throw e;
+      }
+      // Preserve every completed response even if a later batch fails with a server error. The
+      // consumer applies these results before propagating the original failure or retrying.
+      throw new CommitException(
+          e,
+          completedCommitContextCount,
+          new CommitResult(acceptedCommitContexts, committedProgressByTopic));
     } finally {
       rpcLock.unlock();
     }
     return new CommitResult(acceptedCommitContexts, committedProgressByTopic);
   }
 
-  private CommitResult commitOnce(
+  CommitResult commitOnce(
       final List<SubscriptionCommitContext> subscriptionCommitContexts, final boolean nack)
       throws SubscriptionException {
     final PipeSubscribeCommitReq req;
@@ -896,6 +908,32 @@ public abstract class AbstractSubscriptionProvider {
   @FunctionalInterface
   interface PipeSubscribeRequestSender {
     TPipeSubscribeResp send(TPipeSubscribeReq req) throws TException;
+  }
+
+  static final class CommitException extends SubscriptionException {
+    private final int completedCommitContextCount;
+    private final CommitResult completedResult;
+
+    private CommitException(
+        final SubscriptionException cause,
+        final int completedCommitContextCount,
+        final CommitResult completedResult) {
+      super(cause.getMessage(), cause);
+      this.completedCommitContextCount = completedCommitContextCount;
+      this.completedResult = completedResult;
+    }
+
+    int getCompletedCommitContextCount() {
+      return completedCommitContextCount;
+    }
+
+    CommitResult getCompletedResult() {
+      return completedResult;
+    }
+
+    SubscriptionException getFailure() {
+      return (SubscriptionException) getCause();
+    }
   }
 
   static final class CommitResult {
