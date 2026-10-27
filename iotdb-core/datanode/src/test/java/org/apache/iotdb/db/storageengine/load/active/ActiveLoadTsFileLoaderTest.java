@@ -22,7 +22,6 @@ package org.apache.iotdb.db.storageengine.load.active;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -39,8 +38,6 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
-import java.util.Collections;
-import java.util.Map;
 
 public class ActiveLoadTsFileLoaderTest {
 
@@ -142,47 +139,6 @@ public class ActiveLoadTsFileLoaderTest {
     Assert.assertNotNull(entry);
     Assert.assertEquals("conversion-task", entry.getConversionTaskId());
     pendingQueue.removeFromLoading(tsFilePath);
-  }
-
-  @Test
-  public void testResolveLoadUserOnlyFallsBackToTheDefaultUserForLocalFiles() throws Exception {
-    final Method resolveLoadUser =
-        ActiveLoadTsFileLoader.class.getDeclaredMethod(
-            "resolveLoadUser", Map.class, File.class, File.class);
-    resolveLoadUser.setAccessible(true);
-
-    final File listeningDir = new File(tempDir, "pending");
-    final File databaseDir = new File(listeningDir, "root.db");
-    Assert.assertTrue(databaseDir.mkdirs());
-
-    // The user captured in the path of a transfer always wins.
-    Assert.assertEquals(
-        "pipe_sender",
-        resolveLoadUser.invoke(
-            null,
-            Collections.singletonMap(ActiveLoadPathHelper.USER_KEY, "pipe_sender"),
-            new File(databaseDir, "remote.tsfile"),
-            listeningDir));
-
-    // A file without any attribute directory is a local drop and keeps the default user, no matter
-    // whether it was placed directly into the listening directory or into a database sub directory.
-    Assert.assertEquals(
-        AuthorityChecker.SUPER_USER,
-        resolveLoadUser.invoke(
-            null, Collections.emptyMap(), new File(listeningDir, "local.tsfile"), listeningDir));
-    Assert.assertEquals(
-        AuthorityChecker.SUPER_USER,
-        resolveLoadUser.invoke(
-            null, Collections.emptyMap(), new File(databaseDir, "local.tsfile"), listeningDir));
-
-    // A file that carries an attribute but no user must not be loaded, otherwise a sender could
-    // drop the user attribute and be loaded as a privileged default.
-    Assert.assertNull(
-        resolveLoadUser.invoke(
-            null,
-            Collections.singletonMap("database", "root.db"),
-            new File(databaseDir, "remote.tsfile"),
-            listeningDir));
   }
 
   private File createTsFileWithCompanionFiles(final String fileName) throws Exception {

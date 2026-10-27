@@ -1765,10 +1765,6 @@ public final class StorageEngineMessages {
 
   public static final String EXCEPTION_FAILED_TO_DETERMINE_THE_USER_THAT_LOADS_THE_TSFILE_E47F7207 =
       "Failed to determine the user that loads the TsFile";
-  public static final String MESSAGE_FAILED_TO_DETERMINE_THE_USER_THAT_LOADS_THE_TSFILE_ARG_THE_FILE_WILL_NOT_BE_LOADED_4FCDC635 =
-      "Failed to determine the user that loads the TsFile %s, the file will not be loaded";
-  public static final String LOG_FAILED_TO_DETERMINE_THE_USER_THAT_LOADS_THE_TSFILE_ARG_THE_FILE_WILL_NOT_BE_LOADED_E24E08CD =
-      "Failed to determine the user that loads the TsFile {}, the file will not be loaded";
   public static final String EXCEPTION_FAILED_TO_DETERMINE_THE_USER_FOR_THE_TSFILE_DATA_TYPE_CONVERSION_A221793E =
       "Failed to determine the user for the TsFile data type conversion";
 }

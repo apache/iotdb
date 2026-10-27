@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
@@ -43,7 +42,6 @@ import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
-import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -233,15 +231,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
       throws AuthException {
     final long startTime = System.nanoTime();
     try {
-      final UserEntity userEntity = getLoadUserEntity();
-      if (userEntity == null) {
-        // A load without a resolved user must fail closed instead of being authorized as a
-        // privileged default.
-        throw new AuthException(
-            TSStatusCode.NO_PERMISSION,
-            StorageEngineMessages
-                .EXCEPTION_FAILED_TO_DETERMINE_THE_USER_THAT_LOADS_THE_TSFILE_E47F7207);
-      }
+      UserEntity userEntity = loadTsFileAnalyzer.context.getSession().getUserEntity();
       TSStatus status =
           AuthorityChecker.getAccessControl()
               .checkFullPathWriteDataPermission(userEntity, device, measurementId);
@@ -251,35 +241,6 @@ public class TreeSchemaAutoCreatorAndVerifier {
     } finally {
       PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
     }
-  }
-
-  /**
-   * Returns the user that loads the TsFile, with its user id resolved on this DataNode, or {@code
-   * null} if the query context does not carry a known user. The caller must treat a missing user as
-   * a denial.
-   *
-   * <p>The user id of the session is not trusted: a session that only carries a user name keeps the
-   * default user id 0, which is the id of the super user. The id is therefore resolved from the
-   * user name again, so that a load can never be authorized as the super user by accident.
-   */
-  private UserEntity getLoadUserEntity() {
-    if (loadTsFileAnalyzer == null || loadTsFileAnalyzer.context == null) {
-      return null;
-    }
-    final SessionInfo sessionInfo = loadTsFileAnalyzer.context.getSession();
-    if (sessionInfo == null) {
-      return null;
-    }
-    final UserEntity userEntity = sessionInfo.getUserEntity();
-    if (userEntity == null
-        || userEntity.getUsername() == null
-        || userEntity.getUsername().isEmpty()) {
-      return null;
-    }
-    return AuthorityChecker.getUserId(userEntity.getUsername())
-        .map(
-            userId -> new UserEntity(userId, userEntity.getUsername(), userEntity.getCliHostname()))
-        .orElse(null);
   }
 
   /**
