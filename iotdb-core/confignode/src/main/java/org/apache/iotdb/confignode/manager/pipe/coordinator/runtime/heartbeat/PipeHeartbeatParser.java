@@ -192,7 +192,8 @@ public class PipeHeartbeatParser {
       if (isFiniteInternalPipe
           && hasReliableDataRegionReport
           && temporaryMeta.getCompletedDataRegionIds().containsAll(requiredDataRegionIds)
-          && !isRetainedSubscriptionPipe(staticMeta)) {
+          // A pipe with no matching DataRegions has no queue that can report its completion.
+          && (requiredDataRegionIds.isEmpty() || !isRetainedSubscriptionPipe(staticMeta))) {
         PipeLogger.log(
             LOGGER::info,
             ManagerMessages.ALL_DATANODES_REPORTED_HISTORICAL_PIPE_COMPLETED,

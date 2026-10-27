@@ -690,6 +690,42 @@ public class PipeHeartbeatParserTest {
     }
   }
 
+  @Test
+  public void testParseHeartbeatCompletesRetainedSnapshotSubscriptionPipeWithoutDataRegions()
+      throws Exception {
+    CommonDescriptor.getInstance().getConfig().setSeperatedPipeHeartbeatEnabled(false);
+
+    final String topicName = "snapshot_topic_without_data_regions";
+    final String groupId = "snapshot_group_without_data_regions";
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put("source.mode", "snapshot");
+    sourceAttributes.put("source.realtime.enable", Boolean.FALSE.toString());
+    final Map<String, String> sinkAttributes = new HashMap<>();
+    sinkAttributes.put(PipeSinkConstant.SINK_TOPIC_KEY, topicName);
+    sinkAttributes.put(PipeSinkConstant.SINK_CONSUMER_GROUP_KEY, groupId);
+    final PipeMeta pipeMeta =
+        new PipeMeta(
+            new PipeStaticMeta(
+                PipeStaticMeta.generateSubscriptionPipeName(topicName, groupId),
+                1L,
+                sourceAttributes,
+                Collections.emptyMap(),
+                sinkAttributes),
+            new PipeRuntimeMeta());
+    final PipeTaskInfo pipeTaskInfo = new PipeTaskInfo();
+    pipeTaskInfo.createPipe(
+        new CreatePipePlanV2(pipeMeta.getStaticMeta(), pipeMeta.getRuntimeMeta()));
+    final ParserTestContext context = createParserTestContext(1, pipeTaskInfo);
+    when(context.subscriptionInfo.shouldRetainSubscriptionPipe(groupId, topicName, false))
+        .thenReturn(true);
+
+    context.parser.parseHeartbeat(
+        1, createPipeHeartbeatWithCompletedRegions(pipeMeta, false, Collections.emptyList()));
+
+    Assert.assertNull(pipeTaskInfo.getPipeMetaByPipeName(pipeMeta.getStaticMeta().getPipeName()));
+    verify(context.procedureManager).pipeHandleMetaChange(true, true);
+  }
+
   private ParserTestContext createParserTestContext(final int registeredDataNodeCount) {
     return createParserTestContext(registeredDataNodeCount, new PipeTaskInfo());
   }
