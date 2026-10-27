@@ -269,6 +269,12 @@ public class LoadTsFileDataTypeConverter {
     }
 
     try {
+      final TSStatus permissionStatus =
+          AuthorityChecker.checkAuthority(
+              statement, SESSION_MANAGER.getSessionInfoOfTreeModel(session).getUserEntity());
+      if (permissionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return permissionStatus;
+      }
       return Coordinator.getInstance()
           .executeForTreeModel(
               isGeneratedByPipe ? new PipeEnrichedStatement(statement) : statement,
