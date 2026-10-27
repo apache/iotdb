@@ -2709,6 +2709,11 @@ public class IoTDBDescriptor {
                 "load_active_listening_verify_enable",
                 Boolean.toString(conf.isLoadActiveListeningVerifyEnable()))));
 
+    conf.setLoadRequireUserIdentity(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "load_require_user_identity", Boolean.toString(conf.isLoadRequireUserIdentity()))));
+
     conf.setPipeReceiverRequireUserIdentity(
         Boolean.parseBoolean(
             properties.getProperty(

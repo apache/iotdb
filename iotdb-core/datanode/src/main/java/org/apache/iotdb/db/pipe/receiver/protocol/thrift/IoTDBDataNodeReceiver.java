@@ -796,13 +796,18 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final boolean shouldWaitForSchemaBeforeLoad,
       final String conversionTaskId)
       throws IOException {
-    // The active load runs on another thread, so capture the identity here. A missing identity
-    // falls back to the default user unless the receiver requires one.
+    // The active load runs on another thread, so capture the identity here. Without a resolvable
+    // identity, fall back to the default user unless the receiver requires authentication.
     String authenticatedUser = getAuthenticatedUser();
-    if (authenticatedUser == null) {
-      if (IoTDBDescriptor.getInstance().getConfig().isPipeReceiverRequireUserIdentity()) {
+    if (IoTDBDescriptor.getInstance().getConfig().isPipeReceiverRequireUserIdentity()) {
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      if (Objects.isNull(authenticatedUser)
+          || Objects.isNull(clientSession)
+          || !clientSession.isLogin()
+          || !authenticatedUser.equals(clientSession.getUsername())) {
         return getNotLoggedInStatus();
       }
+    } else if (Objects.isNull(authenticatedUser)) {
       authenticatedUser = AuthorityChecker.SUPER_USER;
     }
 
