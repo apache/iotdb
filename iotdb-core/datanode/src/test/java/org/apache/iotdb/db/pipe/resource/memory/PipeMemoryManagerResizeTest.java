@@ -259,7 +259,9 @@ public class PipeMemoryManagerResizeTest {
           Assert.assertThrows(
               PipeRuntimeOutOfMemoryCriticalException.class,
               () -> manager.forceAllocateForTsFileParserWithRetry(40));
-      Assert.assertTrue(allocationException.getMessage().contains("usedTsFiles=1100 bytes"));
+      Assert.assertTrue(
+          allocationException.getMessage(),
+          allocationException.getMessage().contains("usedTsFiles=1100 bytes"));
       Assert.assertTrue(allocationException.getMessage().contains("tabletLimit=900 bytes"));
       Assert.assertTrue(
           allocationException.getMessage().contains("tabletAndTsFileLimit=1200 bytes"));

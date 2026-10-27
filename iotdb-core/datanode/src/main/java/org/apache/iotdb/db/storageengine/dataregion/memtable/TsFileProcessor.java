@@ -1475,7 +1475,8 @@ public class TsFileProcessor {
               break;
             }
             // The asynchronous submitter needs the region write lock held by this insertion.
-            // Submit other already-selected MemTables here so they can release memory while we wait.
+            // Submit other already-selected MemTables here so they can release memory while we
+            // wait.
             submitOtherSelectedMemTablesToFlush();
             try {
               TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());

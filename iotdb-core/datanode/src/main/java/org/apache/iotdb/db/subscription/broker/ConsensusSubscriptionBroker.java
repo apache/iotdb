@@ -792,7 +792,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
         topicOwnershipSnapshots.remove(topicName);
       }
     }
-    queuesToClose.forEach(queue -> queue.closeAsync(false, false));
+    queuesToClose.forEach(queue -> queue.closeAsync(false));
   }
 
   public void wakeUpPrefetchingQueues(final String topicName, final boolean isTableModel) {
