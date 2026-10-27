@@ -1113,6 +1113,7 @@ struct TSubscriptionProgressInfo {
     17: required i64 lastPollTimeMs
     18: required string lastConsumerId
     19: required i64 seekGeneration
+    20: optional list<i32> readyOnDns
 }
 
 struct TDropSubscriptionReq {
