@@ -50,7 +50,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -71,9 +74,6 @@ public class LoadTsFileSnapshotTest {
   private static final String DATABASE_NAME = "root.snapshot_test";
   private static final String REGION_ID = "0";
   private static final String REGION_DIR_NAME = DATABASE_NAME + "-" + REGION_ID;
-
-  /** Bounds the loop that snapshots a task while its pieces are being applied. */
-  private static final int MAX_SNAPSHOTS = 500;
 
   private File tempDir;
   private String[] originalLoadBaseDirs;
@@ -331,6 +331,40 @@ public class LoadTsFileSnapshotTest {
     assertFalse(new File(new File(tempDir, REGION_DIR_NAME), "finished-task").exists());
   }
 
+  @Test
+  public void testSnapshotCopiesAStagedFileThatAppearsBetweenDirectoryScans() throws Exception {
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    final LoadTsFileConsensusNode piece = stagedPiece("new-staged-file", laidOutChunk());
+    manager.writePiece(piece);
+    final File staged = new File(tempDir, piece.getPieceRefs().get(0).getRelativePath());
+    // The task is initially empty. Its staged file and progress log appear before the second
+    // directory scan, so the data-file pass misses the file that the log now describes.
+    final File taskDir =
+        new File(staged.getParent()) {
+          private boolean firstScan = true;
+
+          @Override
+          public File[] listFiles() {
+            if (firstScan) {
+              firstScan = false;
+              return new File[0];
+            }
+            return super.listFiles();
+          }
+        };
+    final LoadTsFileManager snapshotManager = Mockito.mock(LoadTsFileManager.class);
+    Mockito.when(snapshotManager.getActiveTaskDirs())
+        .thenReturn(Collections.singletonList(taskDir));
+    Mockito.when(dataRegion.getLoadTsFileManagerIfPresent())
+        .thenReturn(Optional.of(snapshotManager));
+    final File snapshotDir = new File(tempDir, "snapshot-new-file");
+
+    assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir));
+
+    assertEveryCopiedLogFitsItsCopiedFile(snapshotDir);
+    assertEquals(staged.length(), lengthOfTheStagedFile(snapshotDir));
+  }
+
   /**
    * A snapshot taken while pieces are still being applied has to be restorable: every range a
    * copied progress log describes has to be inside the bytes that were copied with it.
@@ -360,38 +394,32 @@ public class LoadTsFileSnapshotTest {
     }
 
     final Set<Long> stagedLengths = new HashSet<>();
-    final AtomicBoolean writing = new AtomicBoolean(true);
-    final Thread writer =
-        new Thread(
-            () -> {
-              try {
-                for (final NonAlignedChunkData chunk : chunks) {
-                  manager.writePiece(loadId, Collections.singletonList(chunk));
-                  Thread.sleep(5L);
-                }
-              } catch (final Exception e) {
-                // Whatever was staged is what the snapshots below are checked against.
-              } finally {
-                writing.set(false);
-              }
-            });
-    writer.start();
+    final ExecutorService writer = Executors.newSingleThreadExecutor();
     try {
-      // Snapshot the task while the pieces of the writer thread are still being applied.
-      int snapshots = 0;
-      while (writing.get() && snapshots < MAX_SNAPSHOTS) {
-        final File snapshotDir = new File(tempDir, "snapshot-" + snapshots);
+      for (int i = 0; i < chunks.size(); i++) {
+        final NonAlignedChunkData chunk = chunks.get(i);
+        final Future<?> applied =
+            writer.submit(
+                () -> {
+                  manager.writePiece(loadId, Collections.singletonList(chunk));
+                  return null;
+                });
+        final File snapshotDir = new File(tempDir, "snapshot-concurrent-" + i);
         assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir));
         assertEveryCopiedLogFitsItsCopiedFile(snapshotDir);
-        stagedLengths.add(lengthOfTheStagedFile(snapshotDir));
-        snapshots++;
-        Thread.sleep(1L);
+
+        // Propagate writer failures and capture every completed piece before allowing the next
+        // append. Growth is then observed regardless of how the two threads are scheduled.
+        applied.get(30, TimeUnit.SECONDS);
+        final File completedSnapshotDir = new File(tempDir, "snapshot-completed-" + i);
+        assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, completedSnapshotDir));
+        assertEveryCopiedLogFitsItsCopiedFile(completedSnapshotDir);
+        stagedLengths.add(lengthOfTheStagedFile(completedSnapshotDir));
       }
-      assertTrue("the snapshots have to have been taken while the task was staged", snapshots > 0);
     } finally {
-      writer.join();
+      writer.shutdownNow();
+      assertTrue("the writer has to have finished", writer.awaitTermination(30, TimeUnit.SECONDS));
     }
-    assertFalse("the writer has to have finished by now", writing.get());
     assertTrue(
         "the snapshots have to have caught the staged file while it was still growing",
         stagedLengths.size() > 1);

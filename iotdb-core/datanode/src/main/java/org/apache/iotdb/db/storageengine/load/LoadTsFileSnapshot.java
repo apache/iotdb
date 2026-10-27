@@ -176,8 +176,13 @@ public final class LoadTsFileSnapshot {
       final File snapshotStagedFile = new File(snapshotTaskDir, baseName);
       final File sourceStagedFile = new File(sourceTaskDir, baseName);
 
-      if (!snapshotStagedFile.isFile() || !sourceStagedFile.isFile()) {
+      if (!sourceStagedFile.isFile()) {
         continue;
+      }
+      // A new staged file may appear between the data-file and progress-log directory scans.
+      // Its log was copied by the second pass, so the snapshot must also contain its data.
+      if (!snapshotStagedFile.isFile()) {
+        publishAtomicCopy(sourceStagedFile, snapshotStagedFile);
       }
 
       long expectedLength = recordedLengthOf(snapshotStagedFile);
