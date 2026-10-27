@@ -1281,10 +1281,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   private void nackAfterPollFailure(final SubscriptionMessage message, final Exception pollFailure)
       throws SubscriptionException {
     try {
-      nack(Collections.singletonList(message), true);
+      nack(Collections.singletonList(message));
     } catch (final SubscriptionConnectionException nackFailure) {
-      // Recovery was scheduled by commitInternal. If all cleanup retries fail, keep the original
-      // poll failure as the outcome; the server can recycle the unacked event.
+      // Recovery was scheduled by commitInternal. A NACK replay can increment the server's poison
+      // message counter again. Preserve the poll failure and let the server recycle the event.
       if (nackFailure != pollFailure) {
         pollFailure.addSuppressed(nackFailure);
       }
@@ -1539,14 +1539,6 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
   private void commit(final Iterable<SubscriptionCommitContext> commitContexts, final boolean nack)
       throws SubscriptionException {
-    commit(commitContexts, nack, false);
-  }
-
-  private void commit(
-      final Iterable<SubscriptionCommitContext> commitContexts,
-      final boolean nack,
-      final boolean retryNackConnection)
-      throws SubscriptionException {
     checkIfFenced();
     final Map<Integer, List<SubscriptionCommitContext>> dataNodeIdToSubscriptionCommitContexts =
         new HashMap<>();
@@ -1562,15 +1554,9 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         dataNodeIdToSubscriptionCommitContexts.entrySet()) {
       final List<SubscriptionCommitContext> groupedCommitContexts = entry.getValue();
       requestedCount += groupedCommitContexts.size();
-      final AbstractSubscriptionProvider.CommitResult commitResp =
-          commitWithRetry(entry.getKey(), groupedCommitContexts, nack, retryNackConnection);
       final List<SubscriptionCommitContext> acceptedCommitContexts =
-          commitResp.getAcceptedCommitContexts();
+          commitWithRetry(entry.getKey(), groupedCommitContexts, nack);
       acceptedCount += acceptedCommitContexts.size();
-      if (!nack) {
-        overlayCommittedPositions(commitResp.getCommittedProgressByTopic());
-        onAckedCommitContexts(acceptedCommitContexts);
-      }
       if (acceptedCommitContexts.size() != groupedCommitContexts.size()) {
         final List<SubscriptionCommitContext> failedInGroup =
             new ArrayList<>(groupedCommitContexts);
@@ -1591,60 +1577,67 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  private AbstractSubscriptionProvider.CommitResult commitWithRetry(
+  private List<SubscriptionCommitContext> commitWithRetry(
       final int dataNodeId,
       final List<SubscriptionCommitContext> commitContexts,
-      final boolean nack,
-      final boolean retryNackConnection)
+      final boolean nack)
       throws SubscriptionException {
     final List<SubscriptionCommitContext> remainingCommitContexts = new ArrayList<>(commitContexts);
     final List<SubscriptionCommitContext> acceptedCommitContexts = new ArrayList<>();
     for (int retries = 0; ; retries++) {
       checkIfFenced();
+      AbstractSubscriptionProvider.CommitResult result =
+          AbstractSubscriptionProvider.CommitResult.empty();
+      SubscriptionConnectionException connectionFailure = null;
       try {
-        final AbstractSubscriptionProvider.CommitResult result =
-            commitInternal(dataNodeId, remainingCommitContexts, nack);
-        acceptedCommitContexts.addAll(result.getAcceptedCommitContexts());
-        // Completed attempts were already applied below. Reapplying their older progress here
-        // could overwrite a concurrent commit that completed while this request was retrying.
-        return new AbstractSubscriptionProvider.CommitResult(
-            acceptedCommitContexts, result.getCommittedProgressByTopic());
+        result = commitInternal(dataNodeId, remainingCommitContexts, nack);
       } catch (final SubscriptionConnectionException e) {
+        connectionFailure = e;
         if (e instanceof AbstractSubscriptionProvider.CommitConnectionException) {
-          final AbstractSubscriptionProvider.CommitConnectionException failure =
-              (AbstractSubscriptionProvider.CommitConnectionException) e;
-          final AbstractSubscriptionProvider.CommitResult completedResult =
-              failure.getCompletedResult();
-          overlayCommittedPositions(completedResult.getCommittedProgressByTopic());
-          onAckedCommitContexts(completedResult.getAcceptedCommitContexts());
-          // A completed batch's rejected contexts must keep failing, even if a later RPC times out.
-          if (failure.getCompletedCommitContextCount()
-              != completedResult.getAcceptedCommitContexts().size()) {
-            throw e;
-          }
-          acceptedCommitContexts.addAll(completedResult.getAcceptedCommitContexts());
-          remainingCommitContexts.subList(0, failure.getCompletedCommitContextCount()).clear();
+          result =
+              ((AbstractSubscriptionProvider.CommitConnectionException) e).getCompletedResult();
         }
-        if ((!retryNackConnection && nack)
-            || retries >= MAX_COMMIT_RETRIES
-            || isClosed()
-            || Thread.currentThread().isInterrupted()) {
-          throw e;
+      }
+
+      final List<SubscriptionCommitContext> acceptedInAttempt = result.getAcceptedCommitContexts();
+      acceptedCommitContexts.addAll(acceptedInAttempt);
+      if (!nack) {
+        // Apply each response once, before waiting. Reapplying older progress at retry completion
+        // could overwrite a concurrent commit; accepted contexts must also leave the buffer now.
+        overlayCommittedPositions(result.getCommittedProgressByTopic());
+        onAckedCommitContexts(acceptedInAttempt);
+      }
+      remainingCommitContexts.removeAll(new HashSet<>(acceptedInAttempt));
+      if (nack
+          || remainingCommitContexts.isEmpty()
+          || retries >= MAX_COMMIT_RETRIES
+          || isClosed()
+          || Thread.currentThread().isInterrupted()) {
+        if (connectionFailure != null) {
+          throw connectionFailure;
         }
-        checkIfFenced();
-        // commitInternal schedules provider recovery. Release its read lock before waiting, and
-        // allow another recovery round even when the first reconnect attempt fails.
-        try {
-          Thread.sleep(COMMIT_RETRY_INTERVAL_MS);
-        } catch (final InterruptedException interruptedException) {
-          Thread.currentThread().interrupt();
-          e.addSuppressed(interruptedException);
-          throw e;
+        return acceptedCommitContexts;
+      }
+      checkIfFenced();
+      // A partial response has no permanent-rejection reason. Retry only its rejected contexts
+      // and any batches whose response was lost, using the same budget as connection recovery.
+      // commitInternal has released the provider read lock before we wait for recovery.
+      try {
+        Thread.sleep(COMMIT_RETRY_INTERVAL_MS);
+      } catch (final InterruptedException interruptedException) {
+        Thread.currentThread().interrupt();
+        if (connectionFailure != null) {
+          connectionFailure.addSuppressed(interruptedException);
+          throw connectionFailure;
         }
-        checkIfFenced();
-        if (isClosed()) {
-          throw e;
+        return acceptedCommitContexts;
+      }
+      checkIfFenced();
+      if (isClosed()) {
+        if (connectionFailure != null) {
+          throw connectionFailure;
         }
+        return acceptedCommitContexts;
       }
     }
   }
@@ -1695,9 +1688,20 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         overlayCommittedPositions(commitResp.getCommittedProgressByTopic());
         removableCommitContexts.addAll(commitResp.getAcceptedCommitContexts());
       } catch (final SubscriptionConnectionException e) {
+        Set<SubscriptionCommitContext> acceptedBeforeFailure = Collections.emptySet();
+        if (e instanceof AbstractSubscriptionProvider.CommitConnectionException) {
+          final AbstractSubscriptionProvider.CommitResult completedResult =
+              ((AbstractSubscriptionProvider.CommitConnectionException) e).getCompletedResult();
+          overlayCommittedPositions(completedResult.getCommittedProgressByTopic());
+          acceptedBeforeFailure = new HashSet<>(completedResult.getAcceptedCommitContexts());
+          removableCommitContexts.addAll(acceptedBeforeFailure);
+        }
         int stagedCount = 0;
         int retainedCount = 0;
         for (final SubscriptionCommitContext commitContext : groupedCommitContexts) {
+          if (acceptedBeforeFailure.contains(commitContext)) {
+            continue;
+          }
           if (isConsensusCommitContext(commitContext)) {
             stagePendingRedirectAck(commitContext);
             removableCommitContexts.add(commitContext);
@@ -1729,11 +1733,6 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   }
 
   protected void nack(final Iterable<SubscriptionMessage> messages) throws SubscriptionException {
-    nack(messages, false);
-  }
-
-  private void nack(final Iterable<SubscriptionMessage> messages, final boolean retryNackConnection)
-      throws SubscriptionException {
     final List<SubscriptionCommitContext> commitContexts = new ArrayList<>();
     for (final SubscriptionMessage message : messages) {
       // make every effort to delete stale intermediate file
@@ -1748,7 +1747,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       }
       commitContexts.add(message.getCommitContext());
     }
-    commit(commitContexts, true, retryNackConnection);
+    commit(commitContexts, true);
   }
 
   private void nack(final List<SubscriptionPollResponse> responses) throws SubscriptionException {
@@ -2179,15 +2178,14 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       }
 
       final List<SubscriptionCommitContext> contextsToRedirect = new ArrayList<>(pendingContexts);
+      AbstractSubscriptionProvider.CommitResult commitResp;
       try {
-        final AbstractSubscriptionProvider.CommitResult commitResp =
-            commitInternal(entry.getValue(), contextsToRedirect, false);
-        overlayCommittedPositions(commitResp.getCommittedProgressByTopic());
-        commitResp.getAcceptedCommitContexts().forEach(pendingContexts::remove);
-        if (pendingContexts.isEmpty()) {
-          pendingRedirectAcksByTopicRegion.remove(entry.getKey(), pendingContexts);
-        }
+        commitResp = commitInternal(entry.getValue(), contextsToRedirect, false);
       } catch (final SubscriptionException e) {
+        commitResp =
+            e instanceof AbstractSubscriptionProvider.CommitConnectionException
+                ? ((AbstractSubscriptionProvider.CommitConnectionException) e).getCompletedResult()
+                : AbstractSubscriptionProvider.CommitResult.empty();
         LOGGER.warn(
             SubscriptionMessages
                 .LOG_ARG_FAILED_REDIRECT_ARG_PENDING_CONSENSUS_ACK_S_ARG_VIA_E6A10AC5,
@@ -2196,6 +2194,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             entry.getKey(),
             entry.getValue(),
             e);
+      }
+      overlayCommittedPositions(commitResp.getCommittedProgressByTopic());
+      commitResp.getAcceptedCommitContexts().forEach(pendingContexts::remove);
+      if (pendingContexts.isEmpty()) {
+        pendingRedirectAcksByTopicRegion.remove(entry.getKey(), pendingContexts);
       }
     }
   }

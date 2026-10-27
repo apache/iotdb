@@ -74,6 +74,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 
 public class SubscriptionConsumerMultiProviderPollTest {
 
@@ -473,7 +474,7 @@ public class SubscriptionConsumerMultiProviderPollTest {
   }
 
   @Test
-  public void testSyncCommitDoesNotRetryServerErrorsOrPartialAcceptance() throws Exception {
+  public void testSyncCommitDoesNotRetryServerErrors() throws Exception {
     for (final SubscriptionException failure :
         new SubscriptionException[] {
           new SubscriptionRuntimeNonCriticalException("commit rejected"),
@@ -500,17 +501,73 @@ public class SubscriptionConsumerMultiProviderPollTest {
         consumer.close();
       }
     }
+  }
 
-    final TestPullConsumer consumer = new TestPullConsumer(1, 0);
+  @Test(timeout = 20_000)
+  public void testSyncCommitRetriesOnlyRejectedContexts() throws Exception {
+    assertPartialCommitRetry(false);
+  }
+
+  @Test(timeout = 25_000)
+  public void testSyncCommitRetainsAcceptedContextsAfterPartialRetryExhaustion() throws Exception {
+    assertPartialCommitRetry(true);
+  }
+
+  private void assertPartialCommitRetry(final boolean exhaustRetries) throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer(1, 0, false, false, 3, true);
     try {
       consumer.open();
+      final List<SubscriptionMessage> messages = new ArrayList<>();
+      final List<SubscriptionCommitContext> contexts = new ArrayList<>();
+      for (int id = 1; id <= 10; id++) {
+        final SubscriptionCommitContext context =
+            new SubscriptionCommitContext(1, 0, TOPIC, CONSUMER_GROUP_ID, id);
+        contexts.add(context);
+        messages.add(new SubscriptionMessage(context, (long) id));
+      }
+      // Accepted contexts need not form a prefix of the request.
+      final List<SubscriptionCommitContext> rejected =
+          Arrays.asList(contexts.get(2), contexts.get(6));
+      final List<SubscriptionCommitContext> accepted = new ArrayList<>(contexts);
+      accepted.removeAll(rejected);
+      final SortedMap<Long, Set<SubscriptionCommitContext>> uncommitted =
+          getUncommittedCommitContexts(consumer);
+      uncommitted.put(0L, ConcurrentHashMap.newKeySet());
+      uncommitted.get(0L).addAll(contexts);
+      final List<List<SubscriptionCommitContext>> requests = new ArrayList<>();
       final TestSubscriptionProvider provider = consumer.createdProviders.get(0);
-      provider.rejectCommits = true;
+      provider.commitResponse =
+          requested -> {
+            requests.add(new ArrayList<>(requested));
+            if (requests.size() == 1) {
+              return new AbstractSubscriptionProvider.CommitResult(
+                  accepted, Collections.singletonMap(TOPIC, batchProgress(contexts.get(0))));
+            }
+            Assert.assertEquals(2, uncommitted.get(0L).size());
+            Assert.assertTrue(uncommitted.get(0L).containsAll(rejected));
+            if (!exhaustRetries && requests.size() == 2) {
+              throw new SubscriptionConnectionException("retry read timed out");
+            }
+            return new AbstractSubscriptionProvider.CommitResult(
+                exhaustRetries ? Collections.emptyList() : new ArrayList<>(requested),
+                Collections.emptyMap());
+          };
 
-      Assert.assertThrows(
-          SubscriptionRuntimeNonCriticalException.class,
-          () -> consumer.commitSync(commitMessage()));
-      Assert.assertEquals(1, provider.commitCount.get());
+      if (exhaustRetries) {
+        Assert.assertThrows(
+            SubscriptionRuntimeNonCriticalException.class, () -> consumer.commitSync(messages));
+        Assert.assertEquals(2, uncommitted.get(0L).size());
+        Assert.assertTrue(uncommitted.get(0L).containsAll(rejected));
+      } else {
+        consumer.commitSync(messages);
+        Assert.assertTrue(uncommitted.isEmpty());
+      }
+      Assert.assertEquals(exhaustRetries ? 4 : 3, requests.size());
+      Assert.assertEquals(contexts, requests.get(0));
+      for (int i = 1; i < requests.size(); i++) {
+        Assert.assertEquals(rejected, requests.get(i));
+      }
+      Assert.assertEquals(batchProgress(contexts.get(0)), consumer.committedPositions(TOPIC));
     } finally {
       consumer.close();
     }
@@ -599,7 +656,6 @@ public class SubscriptionConsumerMultiProviderPollTest {
           new SubscriptionRuntimeNonCriticalException("continuation poll failed");
       final SubscriptionConnectionException nackFailure =
           new SubscriptionConnectionException("NACK read timed out");
-      final AtomicInteger nackAttempts = new AtomicInteger();
       try {
         consumer.open();
         final TestSubscriptionProvider provider = consumer.createdProviders.get(0);
@@ -609,17 +665,15 @@ public class SubscriptionConsumerMultiProviderPollTest {
             };
         provider.commitAction =
             () -> {
-              if (nackAttempts.getAndIncrement() == 0) {
-                throw nackFailure;
-              }
+              throw nackFailure;
             };
 
         final Throwable failure = invokeFailingContinuationPoll(consumer, filePoll);
 
         Assert.assertTrue(failure instanceof SubscriptionRuntimeNonCriticalException);
         Assert.assertSame(pollFailure, failure.getCause());
-        Assert.assertEquals(0, pollFailure.getSuppressed().length);
-        Assert.assertEquals(2, provider.commitCount.get());
+        Assert.assertArrayEquals(new Throwable[] {nackFailure}, pollFailure.getSuppressed());
+        Assert.assertEquals(1, provider.commitCount.get());
         Assert.assertFalse(consumer.isFenced());
       } finally {
         consumer.close();
@@ -802,9 +856,97 @@ public class SubscriptionConsumerMultiProviderPollTest {
     }
   }
 
+  @Test
+  public void testAutoCommitPreservesConfirmedBatchesAfterConnectionFailure() throws Exception {
+    for (final boolean consensus : new boolean[] {false, true}) {
+      final TestPullConsumer consumer = new TestPullConsumer(1, 0);
+      try {
+        consumer.open();
+        final TestSubscriptionProvider provider = consumer.createdProviders.get(0);
+        final SubscriptionCommitContext first = batchCommitContext(1L, consensus);
+        final SubscriptionCommitContext second = batchCommitContext(2L, consensus);
+        enableCommitBatching(provider, first);
+
+        final Set<SubscriptionCommitContext> removable =
+            consumer.ackCommitContextsWithPartialProgress(Arrays.asList(first, second));
+
+        Assert.assertTrue(removable.contains(first));
+        Assert.assertEquals(consensus, removable.contains(second));
+        Assert.assertEquals(consensus ? 2 : 1, removable.size());
+        Assert.assertEquals(batchProgress(first), consumer.committedPositions(TOPIC));
+        final Map<String, Set<SubscriptionCommitContext>> pending =
+            getPendingRedirectAcks(consumer);
+        if (consensus) {
+          Assert.assertEquals(1, pending.size());
+          Assert.assertEquals(
+              Collections.singleton(second), pending.get(TOPIC + '\u0001' + "region1"));
+        } else {
+          Assert.assertTrue(pending.isEmpty());
+          Assert.assertEquals(
+              Collections.singleton(second),
+              consumer.ackCommitContextsWithPartialProgress(Collections.singletonList(second)));
+          Assert.assertEquals(Collections.singletonList(second), provider.commitBatches.get(2));
+        }
+      } finally {
+        consumer.close();
+      }
+    }
+  }
+
+  @Test
+  public void testRedirectAckRetriesOnlyUnconfirmedBatches() throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer(1, 0);
+    try {
+      consumer.open();
+      final TestSubscriptionProvider provider = consumer.createdProviders.get(0);
+      final SubscriptionCommitContext first = batchCommitContext(1L, true);
+      final SubscriptionCommitContext second = batchCommitContext(2L, true);
+      enableCommitBatching(provider, first);
+      final Map<String, Set<SubscriptionCommitContext>> pending = getPendingRedirectAcks(consumer);
+      final Set<SubscriptionCommitContext> contexts = ConcurrentHashMap.newKeySet();
+      contexts.add(first);
+      contexts.add(second);
+      pending.put(TOPIC + '\u0001' + "region1", contexts);
+      final Method flush =
+          AbstractSubscriptionConsumer.class.getDeclaredMethod(
+              "flushPendingRedirectAcks", List.class);
+      flush.setAccessible(true);
+      final List<SubscriptionMessage> currentMessages =
+          Collections.singletonList(new SubscriptionMessage(first, 1L));
+
+      flush.invoke(consumer, currentMessages);
+
+      final SubscriptionCommitContext accepted = provider.commitBatches.get(0).get(0);
+      final SubscriptionCommitContext unconfirmed = provider.commitBatches.get(1).get(0);
+      Assert.assertEquals(Collections.singleton(unconfirmed), contexts);
+      Assert.assertEquals(batchProgress(accepted), consumer.committedPositions(TOPIC));
+
+      flush.invoke(consumer, currentMessages);
+
+      Assert.assertTrue(pending.isEmpty());
+      Assert.assertEquals(3, provider.commitBatches.size());
+      Assert.assertEquals(Collections.singletonList(unconfirmed), provider.commitBatches.get(2));
+    } finally {
+      consumer.close();
+    }
+  }
+
+  private static SubscriptionCommitContext batchCommitContext(
+      final long commitId, final boolean consensus) {
+    return consensus
+        ? new SubscriptionCommitContext(
+            1,
+            0,
+            TOPIC,
+            CONSUMER_GROUP_ID,
+            1L,
+            new WriterId("region1", 1),
+            new WriterProgress(1L, commitId))
+        : new SubscriptionCommitContext(1, 0, TOPIC, CONSUMER_GROUP_ID, commitId);
+  }
+
   @Test(timeout = 20_000)
-  public void testSyncCommitDoesNotReplayRejectedBatchAfterLaterConnectionFailure()
-      throws Exception {
+  public void testSyncCommitRetriesRejectedBatchAfterLaterConnectionFailure() throws Exception {
     final TestPullConsumer consumer = new TestPullConsumer(1, 0);
     try {
       consumer.open();
@@ -816,11 +958,16 @@ public class SubscriptionConsumerMultiProviderPollTest {
       enableCommitBatching(provider, first.getCommitContext());
       provider.rejectFirstBatch = true;
 
-      Assert.assertThrows(
-          SubscriptionConnectionException.class,
-          () -> consumer.commitSync(Arrays.asList(first, second)));
+      consumer.commitSync(Arrays.asList(first, second));
 
-      Assert.assertEquals(2, provider.commitBatches.size());
+      Assert.assertEquals(4, provider.commitBatches.size());
+      Assert.assertEquals(
+          Arrays.asList(
+              Collections.singletonList(first.getCommitContext()),
+              Collections.singletonList(second.getCommitContext()),
+              Collections.singletonList(first.getCommitContext()),
+              Collections.singletonList(second.getCommitContext())),
+          provider.commitBatches);
     } finally {
       consumer.close();
     }
@@ -858,6 +1005,15 @@ public class SubscriptionConsumerMultiProviderPollTest {
         AbstractSubscriptionPullConsumer.class.getDeclaredField("uncommittedCommitContexts");
     field.setAccessible(true);
     return (SortedMap<Long, Set<SubscriptionCommitContext>>) field.get(consumer);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Set<SubscriptionCommitContext>> getPendingRedirectAcks(
+      final TestPullConsumer consumer) throws Exception {
+    final Field field =
+        AbstractSubscriptionConsumer.class.getDeclaredField("pendingRedirectAcksByTopicRegion");
+    field.setAccessible(true);
+    return (Map<String, Set<SubscriptionCommitContext>>) field.get(consumer);
   }
 
   private static AbstractSubscriptionProviders getProviders(
@@ -1025,7 +1181,7 @@ public class SubscriptionConsumerMultiProviderPollTest {
     private boolean failContinuation;
     private Runnable continuationAction = () -> {};
     private Runnable commitAction = () -> {};
-    private boolean rejectCommits;
+    private Function<List<SubscriptionCommitContext>, CommitResult> commitResponse;
     private List<SubscriptionCommitContext> committed = Collections.emptyList();
     private Map<String, TopicProgress> committedProgressByTopic = Collections.emptyMap();
     private boolean batchCommits;
@@ -1212,8 +1368,8 @@ public class SubscriptionConsumerMultiProviderPollTest {
       }
       commitAction.run();
       failContinuationIfRequested();
-      if (rejectCommits) {
-        return CommitResult.empty();
+      if (commitResponse != null) {
+        return commitResponse.apply(contexts);
       }
       committed = new ArrayList<>(contexts);
       return new CommitResult(contexts, committedProgressByTopic);
