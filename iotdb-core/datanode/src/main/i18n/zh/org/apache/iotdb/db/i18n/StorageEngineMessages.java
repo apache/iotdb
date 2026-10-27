@@ -1682,8 +1682,6 @@ public final class StorageEngineMessages {
   public static final String LOG_FAILED_TO_CREATE_SNAPSHOT_FOR_DATABASE_ARG_REGION_ARG_1A7C8DEA =
       "为 database {}、region {} 创建快照失败";
 
-  public static final String EXCEPTION_FAILED_TO_DETERMINE_THE_USER_THAT_LOADS_THE_TSFILE_E47F7207 =
-      "无法确定加载该 TsFile 的用户";
   public static final String EXCEPTION_FAILED_TO_DETERMINE_THE_USER_FOR_THE_TSFILE_DATA_TYPE_CONVERSION_A221793E =
       "无法确定执行 TsFile 数据类型转换的用户";
 }

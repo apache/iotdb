@@ -19,11 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.load.util;
 
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
-import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -40,18 +38,14 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 public class LoadUtilTest {
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private String[] originalListeningDirs;
-  private boolean originalRequireUserIdentity;
   private File tempDir;
   private File sourceDir;
   private File targetDir;
@@ -64,7 +58,6 @@ public class LoadUtilTest {
     Assert.assertTrue(sourceDir.mkdirs());
     Assert.assertTrue(targetDir.mkdirs());
     originalListeningDirs = config.getLoadActiveListeningDirs();
-    originalRequireUserIdentity = config.isLoadRequireUserIdentity();
     config.setLoadActiveListeningDirs(new String[] {targetDir.getAbsolutePath()});
     LoadUtil.updateLoadDiskSelector();
   }
@@ -72,7 +65,6 @@ public class LoadUtilTest {
   @After
   public void tearDown() {
     config.setLoadActiveListeningDirs(originalListeningDirs);
-    config.setLoadRequireUserIdentity(originalRequireUserIdentity);
     LoadUtil.updateLoadDiskSelector();
     deleteRecursively(tempDir);
   }
@@ -300,72 +292,6 @@ public class LoadUtilTest {
       Files.write(sourceFile.toPath(), sourceFile.getName().getBytes(StandardCharsets.UTF_8));
     }
     return sourceFiles;
-  }
-
-  @Test
-  public void testLoadToActiveDirUsesTheUserFromAttributes() throws Exception {
-    final File tsFile = createCompletedTsFile("with-user.tsfile");
-    final Map<String, String> attributes = new HashMap<>();
-    attributes.put(ActiveLoadPathHelper.USER_KEY, "load_sender");
-
-    Assert.assertTrue(
-        LoadUtil.loadFilesToActiveDir(
-            attributes, Collections.singletonList(tsFile.getAbsolutePath()), false));
-  }
-
-  @Test
-  public void testLoadToActiveDirRejectsMissingUser() throws Exception {
-    config.setLoadRequireUserIdentity(true);
-    final File tsFile = createCompletedTsFile("without-user.tsfile");
-
-    try {
-      LoadUtil.loadFilesToActiveDir(
-          new HashMap<>(), Collections.singletonList(tsFile.getAbsolutePath()), false);
-      Assert.fail("The load must be rejected when the user can not be determined");
-    } catch (final IOException e) {
-      Assert.assertEquals(
-          StorageEngineMessages
-              .EXCEPTION_FAILED_TO_DETERMINE_THE_USER_THAT_LOADS_THE_TSFILE_E47F7207,
-          e.getMessage());
-    }
-
-    Assert.assertTrue("The source must be kept", tsFile.isFile());
-    Assert.assertEquals(0, targetDir.listFiles().length);
-  }
-
-  @Test
-  public void testLoadToActiveDirUsesTheDefaultUserWhenIdentityIsNotRequired() throws Exception {
-    config.setLoadRequireUserIdentity(false);
-    final File tsFile = createCompletedTsFile("default-user.tsfile");
-
-    Assert.assertTrue(
-        LoadUtil.loadFilesToActiveDir(
-            new HashMap<>(), Collections.singletonList(tsFile.getAbsolutePath()), false));
-
-    final File loadedTsFile = findTsFile(targetDir);
-    Assert.assertNotNull(loadedTsFile);
-    Assert.assertEquals(
-        AuthorityChecker.SUPER_USER,
-        ActiveLoadPathHelper.parseAttributes(loadedTsFile, targetDir)
-            .get(ActiveLoadPathHelper.USER_KEY));
-  }
-
-  private static File findTsFile(final File dir) {
-    final File[] files = dir.listFiles();
-    if (files == null) {
-      return null;
-    }
-    for (final File file : files) {
-      if (file.isDirectory()) {
-        final File nested = findTsFile(file);
-        if (nested != null) {
-          return nested;
-        }
-      } else if (file.getName().endsWith(".tsfile")) {
-        return file;
-      }
-    }
-    return null;
   }
 
   private File createCompletedTsFile(final String fileName) throws Exception {

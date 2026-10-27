@@ -178,25 +178,18 @@ public class LoadUtil {
   }
 
   private static Map<String, String> appendCurrentUserIfAbsent(
-      final Map<String, String> loadAttributes) throws IOException {
+      final Map<String, String> loadAttributes) {
     final Map<String, String> attributes =
         Objects.nonNull(loadAttributes)
             ? new LinkedHashMap<>(loadAttributes)
             : new LinkedHashMap<>();
     if (!attributes.containsKey(ActiveLoadPathHelper.USER_KEY)) {
       final IClientSession session = SessionManager.getInstance().getCurrSession();
-      final String username = Objects.isNull(session) ? null : session.getUsername();
-      if (Objects.isNull(username) || username.isEmpty()) {
-        if (IoTDBDescriptor.getInstance().getConfig().isLoadRequireUserIdentity()) {
-          throw new IOException(
-              StorageEngineMessages
-                  .EXCEPTION_FAILED_TO_DETERMINE_THE_USER_THAT_LOADS_THE_TSFILE_E47F7207);
-        }
-        // Legacy behavior: queue the load with the default user.
-        attributes.put(ActiveLoadPathHelper.USER_KEY, AuthorityChecker.SUPER_USER);
-      } else {
-        attributes.put(ActiveLoadPathHelper.USER_KEY, username);
-      }
+      attributes.put(
+          ActiveLoadPathHelper.USER_KEY,
+          session == null || session.getUsername() == null
+              ? AuthorityChecker.SUPER_USER
+              : session.getUsername());
     }
     return attributes;
   }
@@ -224,6 +217,9 @@ public class LoadUtil {
       LOGGER.warn(StorageEngineMessages.LOAD_ACTIVE_LISTENING_DIR_NOT_SET);
       return false;
     }
+    final Map<String, String> attributes = appendCurrentUserIfAbsent(loadAttributes);
+    final File targetDir =
+        ActiveLoadPathHelper.resolvePipeTransferTargetDir(targetFilePath, attributes);
 
     final List<File> sourceFiles = new ArrayList<>(files.size());
     for (final String file : files) {
@@ -239,12 +235,6 @@ public class LoadUtil {
                 sourceFile.getAbsolutePath()));
       }
     }
-
-    // Resolved after the file validation so that an invalid file is still reported as such.
-    final Map<String, String> attributes = appendCurrentUserIfAbsent(loadAttributes);
-    final File targetDir =
-        ActiveLoadPathHelper.resolvePipeTransferTargetDir(targetFilePath, attributes);
-
     sourceFiles.sort(Comparator.comparing(LoadUtil::isTsFile));
     transferFilesToActiveDir(
         targetDir,
