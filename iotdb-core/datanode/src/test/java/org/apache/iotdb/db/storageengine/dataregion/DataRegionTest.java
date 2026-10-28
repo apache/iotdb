@@ -61,6 +61,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairDataFileScanUtil;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant.InnerSequenceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant.InnerUnsequenceCompactionSelector;
@@ -104,6 +105,7 @@ import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.read.reader.IPointReader;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
@@ -120,6 +122,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -2761,5 +2764,65 @@ public class DataRegionTest {
         syncCloseTask.get(10, TimeUnit.SECONDS);
       }
     }
+  }
+
+  /**
+   * The rows of a tablet are expected to be sorted by the client. When they are not, an older row
+   * that follows a newer one must still be written into the unsequence space: classifying it as
+   * sequence would write data older than the device's last flushed time into a new sequence file,
+   * which then overlaps the existing sequence file of the same device.
+   */
+  @Test
+  public void testOutOfOrderTabletKeepsSequenceSpaceNonOverlapped()
+      throws QueryProcessException, WriteProcessException {
+    long[] orderedTimes = new long[30];
+    for (int i = 0; i < orderedTimes.length; i++) {
+      orderedTimes[i] = 10 + i;
+    }
+    dataRegion.insertTablet(genTabletWithTimes(orderedTimes));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    // the first row is newer than the device's last flush time, the second one is older
+    dataRegion.insertTablet(genTabletWithTimes(100L, 15L));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    List<TsFileResource> seqFiles = dataRegion.getTsFileManager().getTsFileList(true);
+    List<TsFileResource> unseqFiles = dataRegion.getTsFileManager().getTsFileList(false);
+    List<TsFileResource> overlappedSeqFiles =
+        RepairDataFileScanUtil.checkTimePartitionHasOverlap(seqFiles, false);
+    Assert.assertTrue(
+        "sequence files should not overlap, but got " + overlappedSeqFiles,
+        overlappedSeqFiles.isEmpty());
+    // the older row must be written into the unsequence space
+    Assert.assertEquals(1, unseqFiles.size());
+    Assert.assertEquals(2, seqFiles.size());
+  }
+
+  private static RelationalInsertTabletNode genTabletWithTimes(long... times) {
+    return new RelationalInsertTabletNode(
+        new PlanNodeId("tablet-" + times[0] + "-" + times.length),
+        new PartialPath(new String[] {StatementTestUtils.tableName()}),
+        true,
+        StatementTestUtils.genColumnNames(),
+        StatementTestUtils.genDataTypes(),
+        StatementTestUtils.genMeasurementSchemas(),
+        times,
+        null,
+        genSingleDeviceColumns(times.length),
+        times.length,
+        StatementTestUtils.genColumnCategories());
+  }
+
+  /** All rows belong to the same device, so that their times are classified together. */
+  private static Object[] genSingleDeviceColumns(int rowCnt) {
+    Binary[] ids = new Binary[rowCnt];
+    Binary[] attributes = new Binary[rowCnt];
+    double[] values = new double[rowCnt];
+    for (int i = 0; i < rowCnt; i++) {
+      ids[i] = new Binary("id:0".getBytes(StandardCharsets.UTF_8));
+      attributes[i] = new Binary("attr:0".getBytes(StandardCharsets.UTF_8));
+      values[i] = i;
+    }
+    return new Object[] {ids, attributes, values};
   }
 }
