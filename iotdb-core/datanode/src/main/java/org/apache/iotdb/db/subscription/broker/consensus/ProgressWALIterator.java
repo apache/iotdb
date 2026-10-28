@@ -321,7 +321,10 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
       return;
     }
 
-    final int firstFileToSkip = Math.max(0, currentFileIndex);
+    // Without a reader (including a deferred one), currentFileIndex is the predecessor already
+    // passed by replay or a previous fast-forward. It may have been reclaimed in the meantime.
+    final int firstFileToSkip =
+        Math.max(0, currentReaderVersionId < 0 ? currentFileIndex + 1 : currentFileIndex);
     try {
       for (int fileIndex = firstFileToSkip; fileIndex < targetFileIndex; fileIndex++) {
         if (!isWalFileCovered(fileIndex, writerProgressCoverage)) {
@@ -351,10 +354,11 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
   }
 
   private int locateTargetFile(final long targetSearchIndex) {
-    if (walFiles.length == 0
-        || (liveWalNode != null && targetSearchIndex > liveWalNode.getCurrentSearchIndex())) {
+    if (walFiles.length == 0) {
       return -1;
     }
+    // Pending delivery may have advanced one past the live tail. Still realign to its file after
+    // verifying coverage of the sealed prefix, before committed history can be reclaimed.
     return WALFileUtils.binarySearchFileBySearchIndex(walFiles, targetSearchIndex);
   }
 
