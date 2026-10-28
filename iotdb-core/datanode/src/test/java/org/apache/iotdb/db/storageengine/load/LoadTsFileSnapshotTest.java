@@ -52,6 +52,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -524,52 +525,122 @@ public class LoadTsFileSnapshotTest {
    */
   @Test
   public void testSnapshotTakenWhilePiecesAreAppliedStaysRestorable() throws Exception {
-    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
-    Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.of(manager));
-    final String loadId = "concurrent-snapshot";
-
-    // Ten chunks of one partition, laid out one after the other, so every piece appends to the same
-    // staged file and its log.
-    final ChunkOffsetCalculator calculator = new ChunkOffsetCalculator();
-    final List<NonAlignedChunkData> chunks = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      final NonAlignedChunkData chunk =
-          createNonAlignedChunkData(
-              new StringArrayDeviceID("root", "snapshot_test", "d" + i), "s" + i, i * 100, 10);
-      calculator.assign(chunk);
-      chunks.add(chunk);
-    }
-
-    final Set<Long> stagedLengths = new HashSet<>();
-    final ExecutorService writer = Executors.newSingleThreadExecutor();
+    final int originalWriteBufferSize = config.getLoadTsFileWriteBufferSize();
+    config.setLoadTsFileWriteBufferSize(1024);
     try {
-      for (int i = 0; i < chunks.size(); i++) {
-        final NonAlignedChunkData chunk = chunks.get(i);
-        final Future<?> applied =
-            writer.submit(
-                () -> {
-                  manager.writePiece(loadId, Collections.singletonList(chunk));
-                  return null;
-                });
-        final File snapshotDir = new File(tempDir, "snapshot-concurrent-" + i);
-        assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir));
-        assertEveryCopiedLogFitsItsCopiedFile(snapshotDir);
+      final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+      try {
+        Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.of(manager));
+        final String loadId = "concurrent-snapshot";
 
-        // Propagate writer failures and capture every completed piece before allowing the next
-        // append. Growth is then observed regardless of how the two threads are scheduled.
-        applied.get(30, TimeUnit.SECONDS);
-        final File completedSnapshotDir = new File(tempDir, "snapshot-completed-" + i);
-        assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, completedSnapshotDir));
-        assertEveryCopiedLogFitsItsCopiedFile(completedSnapshotDir);
-        stagedLengths.add(lengthOfTheStagedFile(completedSnapshotDir));
+        // Keep a live writer open on one staged file while later pieces append to it.
+        final ChunkOffsetCalculator calculator = new ChunkOffsetCalculator();
+        final NonAlignedChunkData firstChunk =
+            createNonAlignedChunkData(
+                new StringArrayDeviceID("root", "snapshot_test", "d0"), "s0", 0, 1000);
+        calculator.assign(firstChunk);
+        manager.writePiece(loadId, Collections.singletonList(firstChunk));
+        final File stagedFile =
+            new File(tempDir, firstChunk.getChunkPayloadRefs().get(0).getFilePath());
+        final long firstPieceLength = stagedFile.length();
+
+        final List<NonAlignedChunkData> chunks = new ArrayList<>();
+        for (int i = 1; i <= 50; i++) {
+          final NonAlignedChunkData chunk =
+              i == 1
+                  ? blockingChunk(
+                      new StringArrayDeviceID("root", "snapshot_test", "d" + i),
+                      "s" + i,
+                      i * 1000,
+                      1000)
+                  : createNonAlignedChunkData(
+                      new StringArrayDeviceID("root", "snapshot_test", "d" + i),
+                      "s" + i,
+                      i * 1000,
+                      1000);
+          calculator.assign(chunk);
+          chunks.add(chunk);
+        }
+
+        final Set<Long> stagedLengths = new HashSet<>();
+        final ExecutorService writer = Executors.newSingleThreadExecutor();
+        final BlockingNonAlignedChunkData blockingChunk =
+            (BlockingNonAlignedChunkData) chunks.get(0);
+        File overlappedSnapshotDir = null;
+        try {
+          for (int i = 0; i < chunks.size(); i++) {
+            final NonAlignedChunkData chunk = chunks.get(i);
+            final Future<?> applied =
+                writer.submit(
+                    () -> {
+                      manager.writePiece(loadId, Collections.singletonList(chunk));
+                      return null;
+                    });
+            final File snapshotDir = new File(tempDir, "snapshot-concurrent-" + i);
+            if (i == 0) {
+              assertTrue(
+                  "the writer has to have appended bytes before the snapshot starts",
+                  blockingChunk.awaitBytesWritten());
+              assertTrue(
+                  "the in-flight piece has to be visible in the staged file",
+                  stagedFile.length() > firstPieceLength);
+              overlappedSnapshotDir = snapshotDir;
+            }
+            try {
+              assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir));
+              assertEveryCopiedLogFitsItsCopiedFile(snapshotDir);
+            } finally {
+              if (i == 0) {
+                blockingChunk.releaseWrite();
+              }
+            }
+
+            // Propagate writer failures and capture each completed piece before allowing the next
+            // one.
+            applied.get(30, TimeUnit.SECONDS);
+            final File completedSnapshotDir = new File(tempDir, "snapshot-completed-" + i);
+            assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, completedSnapshotDir));
+            assertEveryCopiedLogFitsItsCopiedFile(completedSnapshotDir);
+            stagedLengths.add(lengthOfTheStagedFile(completedSnapshotDir));
+          }
+        } finally {
+          blockingChunk.releaseWrite();
+          writer.shutdownNow();
+          assertTrue(
+              "the writer has to have finished", writer.awaitTermination(30, TimeUnit.SECONDS));
+        }
+        assertTrue(
+            "the snapshots have to have caught the staged file while it was still growing",
+            stagedLengths.size() > 1);
+
+        manager.stop();
+        setLoadRoots(tempDir);
+        LoadTsFileSnapshot.clear(DATABASE_NAME, REGION_ID);
+        LoadTsFileSnapshot.restore(DATABASE_NAME, REGION_ID, overlappedSnapshotDir);
+
+        final LoadTsFileManager recovered = new LoadTsFileManager(dataRegion);
+        try {
+          // The overlapped snapshot has the first completed piece, but not the paused piece's
+          // record.
+          // Recreate the paused piece with its original layout. Reusing the original object would
+          // retain source file references populated by the first writer.
+          final NonAlignedChunkData resumedChunk =
+              createNonAlignedChunkData(
+                  new StringArrayDeviceID("root", "snapshot_test", "d1"), "s1", 1000, 1000);
+          resumedChunk.setChunkLayout(chunks.get(0).getChunkLayout());
+          assertTrue(stagedFile.isFile());
+          assertEquals(1, new LoadTsFileProgress(stagedFile).readAllRecords().size());
+          recovered.writePiece(loadId, Collections.singletonList(resumedChunk));
+          assertEquals(2, new LoadTsFileProgress(stagedFile).readAllRecords().size());
+        } finally {
+          recovered.stop();
+        }
+      } finally {
+        manager.stop();
       }
     } finally {
-      writer.shutdownNow();
-      assertTrue("the writer has to have finished", writer.awaitTermination(30, TimeUnit.SECONDS));
+      config.setLoadTsFileWriteBufferSize(originalWriteBufferSize);
     }
-    assertTrue(
-        "the snapshots have to have caught the staged file while it was still growing",
-        stagedLengths.size() > 1);
   }
 
   /** The length of the staged file a snapshot holds, or -1 when it holds none yet. */
@@ -706,6 +777,64 @@ public class LoadTsFileSnapshotTest {
     chunkData.writeDecodePage(times, values, pointCount);
     chunkData.endChunk();
     return chunkData;
+  }
+
+  private static BlockingNonAlignedChunkData blockingChunk(
+      final IDeviceID device, final String measurement, final int valueBase, final int pointCount) {
+    final BlockingNonAlignedChunkData chunkData =
+        new BlockingNonAlignedChunkData(
+            device,
+            new ChunkHeader(
+                measurement,
+                0,
+                TSDataType.INT32,
+                CompressionType.UNCOMPRESSED,
+                TSEncoding.PLAIN,
+                0),
+            new TTimePartitionSlot(0L));
+    final long[] times = new long[pointCount];
+    final Object[] values = new Object[pointCount];
+    for (int i = 0; i < pointCount; i++) {
+      times[i] = i + 1L;
+      values[i] = valueBase + i;
+    }
+    chunkData.writeDecodePage(times, values, pointCount);
+    chunkData.endChunk();
+    return chunkData;
+  }
+
+  private static final class BlockingNonAlignedChunkData extends NonAlignedChunkData {
+    private final CountDownLatch bytesWritten = new CountDownLatch(1);
+    private final CountDownLatch release = new CountDownLatch(1);
+
+    private BlockingNonAlignedChunkData(
+        final IDeviceID device,
+        final ChunkHeader chunkHeader,
+        final TTimePartitionSlot timePartitionSlot) {
+      super(device, chunkHeader, timePartitionSlot);
+    }
+
+    @Override
+    public void setChunkPayloadRefs(final List<ChunkPayloadRef> chunkPayloadRefs) {
+      super.setChunkPayloadRefs(chunkPayloadRefs);
+      bytesWritten.countDown();
+      try {
+        if (!release.await(30, TimeUnit.SECONDS)) {
+          throw new AssertionError("the snapshot test did not release the writer");
+        }
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new AssertionError("the snapshot test writer was interrupted", e);
+      }
+    }
+
+    private boolean awaitBytesWritten() throws InterruptedException {
+      return bytesWritten.await(30, TimeUnit.SECONDS);
+    }
+
+    private void releaseWrite() {
+      release.countDown();
+    }
   }
 
   private static void deleteRecursively(final File file) {
