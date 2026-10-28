@@ -771,7 +771,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             validateTsFile.get(),
             shouldMarkAsPipeRequest.get(),
             shouldWaitForSchemaBeforeLoad,
-            conversionTaskId);
+            conversionTaskId,
+            username);
 
     if (!LoadUtil.loadFilesToActiveDir(loadAttributes, absolutePaths, true)) {
       throw new PipeException(DataNodePipeMessages.LOAD_ACTIVE_LISTENING_PIPE_DIR_IS_NOT);
@@ -835,6 +836,24 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final boolean shouldMarkAsPipeRequest,
       final boolean shouldWaitForSchemaBeforeLoad,
       final String conversionTaskId) {
+    return buildLoadTsFileAttributesForAsync(
+        dataBaseName,
+        shouldConvertDataTypeOnTypeMismatch,
+        validateTsFile,
+        shouldMarkAsPipeRequest,
+        shouldWaitForSchemaBeforeLoad,
+        conversionTaskId,
+        null);
+  }
+
+  static Map<String, String> buildLoadTsFileAttributesForAsync(
+      final String dataBaseName,
+      final boolean shouldConvertDataTypeOnTypeMismatch,
+      final boolean validateTsFile,
+      final boolean shouldMarkAsPipeRequest,
+      final boolean shouldWaitForSchemaBeforeLoad,
+      final String conversionTaskId,
+      final String userName) {
     return ActiveLoadPathHelper.buildAttributes(
         dataBaseName,
         LoadTsFileStatement.getDatabaseLevelByTreeDatabase(dataBaseName),
@@ -843,7 +862,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         !shouldWaitForSchemaBeforeLoad,
         null,
         shouldMarkAsPipeRequest,
-        AuthorityChecker.SUPER_USER,
+        userName,
         conversionTaskId);
   }
 

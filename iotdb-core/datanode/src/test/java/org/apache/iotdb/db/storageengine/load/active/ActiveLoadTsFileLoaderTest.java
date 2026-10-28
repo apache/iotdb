@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -139,6 +140,27 @@ public class ActiveLoadTsFileLoaderTest {
     Assert.assertNotNull(entry);
     Assert.assertEquals("conversion-task", entry.getConversionTaskId());
     pendingQueue.removeFromLoading(tsFilePath);
+  }
+
+  @Test
+  public void testPipeLoadWithoutUserFailsClosed() throws Exception {
+    final ActiveLoadTsFileLoader loader = new ActiveLoadTsFileLoader();
+    final File tsFile = new File(tempDir, "missing-user.tsfile");
+    Assert.assertTrue(tsFile.createNewFile());
+    final ActiveLoadPendingQueue.ActiveLoadEntry entry =
+        new ActiveLoadPendingQueue.ActiveLoadEntry(
+            tsFile.getAbsolutePath(), tempDir.getAbsolutePath(), true, false);
+    final Method method =
+        ActiveLoadTsFileLoader.class.getDeclaredMethod(
+            "loadTsFile",
+            ActiveLoadPendingQueue.ActiveLoadEntry.class,
+            org.apache.iotdb.db.protocol.session.IClientSession.class);
+    method.setAccessible(true);
+
+    final TSStatus result =
+        (TSStatus) method.invoke(loader, entry, new InternalClientSession("active-load-test"));
+
+    Assert.assertEquals(TSStatusCode.NOT_LOGIN.getStatusCode(), result.getCode());
   }
 
   private File createTsFileWithCompanionFiles(final String fileName) throws Exception {

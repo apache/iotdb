@@ -204,7 +204,6 @@ public class ActiveLoadTsFileLoader {
             String.format(
                 "%s_%s",
                 ActiveLoadTsFileLoader.class.getSimpleName(), Thread.currentThread().getName()));
-    session.setUsername(AuthorityChecker.SUPER_USER);
     session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
     session.setZoneId(ZoneId.systemDefault());
 
@@ -288,9 +287,15 @@ public class ActiveLoadTsFileLoader {
     PipeTsFileConversionTaskManager.enter(conversionTaskId);
     try {
       ActiveLoadPathHelper.applyAttributesToStatement(attributes, statement, isVerify);
-      final String userName =
-          attributes.getOrDefault(ActiveLoadPathHelper.USER_KEY, AuthorityChecker.SUPER_USER);
-      final Optional<Long> userId = AuthorityChecker.getUserId(userName);
+      final String userName = attributes.get(ActiveLoadPathHelper.USER_KEY);
+      if (userName == null && entry.isGeneratedByPipe()) {
+        PipeTsFileConversionTaskManager.markFailed(
+            conversionTaskId, new TSStatus(TSStatusCode.NOT_LOGIN.getStatusCode()));
+        return new TSStatus(TSStatusCode.NOT_LOGIN.getStatusCode())
+            .setMessage(StorageEngineMessages.USER_IN_ACTIVE_LOAD_PATH_DOES_NOT_EXIST);
+      }
+      final String effectiveUserName = userName == null ? AuthorityChecker.SUPER_USER : userName;
+      final Optional<Long> userId = AuthorityChecker.getUserId(effectiveUserName);
       if (!userId.isPresent()) {
         PipeTsFileConversionTaskManager.markFailed(
             conversionTaskId, new TSStatus(TSStatusCode.USER_NOT_EXIST.getStatusCode()));
@@ -298,7 +303,7 @@ public class ActiveLoadTsFileLoader {
             .setMessage(StorageEngineMessages.USER_IN_ACTIVE_LOAD_PATH_DOES_NOT_EXIST);
       }
       session.setUserId(userId.get());
-      session.setUsername(userName);
+      session.setUsername(effectiveUserName);
 
       final File parentFile;
       if (statement.getDatabase() == null && entry.isTableModel()) {

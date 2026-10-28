@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -49,7 +49,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.ZoneId;
 import java.util.Optional;
 import java.util.concurrent.Semaphore;
 
@@ -199,23 +198,15 @@ public class LoadTsFileDataTypeConverter {
   }
 
   private TSStatus executeForTableModel(final Statement statement, final String databaseName) {
-    final IClientSession session;
-    final boolean needToCreateSession = SESSION_MANAGER.getCurrSession() == null;
+    final IClientSession currentSession = SESSION_MANAGER.getCurrSession();
+    final boolean needToCreateSession = currentSession == null;
+    final IClientSession session =
+        needToCreateSession ? createInternalSession(SqlDialect.TABLE) : currentSession;
+    if (session == null) {
+      return new TSStatus(TSStatusCode.NOT_LOGIN.getStatusCode());
+    }
     if (needToCreateSession) {
-      session =
-          new InternalClientSession(
-              String.format(
-                  "%s_%s",
-                  LoadTsFileDataTypeConverter.class.getSimpleName(),
-                  Thread.currentThread().getName()));
-      session.setUsername(AuthorityChecker.SUPER_USER);
-      session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
-      session.setZoneId(ZoneId.systemDefault());
-      session.setSqlDialect(SqlDialect.TABLE);
-
       SESSION_MANAGER.registerSession(session);
-    } else {
-      session = SESSION_MANAGER.getCurrSession();
     }
     try {
       return Coordinator.getInstance()
@@ -266,26 +257,24 @@ public class LoadTsFileDataTypeConverter {
   }
 
   private TSStatus executeForTreeModel(final Statement statement) {
-    final IClientSession session;
-    final boolean needToCreateSession = SESSION_MANAGER.getCurrSession() == null;
+    final IClientSession currentSession = SESSION_MANAGER.getCurrSession();
+    final boolean needToCreateSession = currentSession == null;
+    final IClientSession session =
+        needToCreateSession ? createInternalSession(SqlDialect.TREE) : currentSession;
+    if (session == null) {
+      return new TSStatus(TSStatusCode.NOT_LOGIN.getStatusCode());
+    }
     if (needToCreateSession) {
-      session =
-          new InternalClientSession(
-              String.format(
-                  "%s_%s",
-                  LoadTsFileDataTypeConverter.class.getSimpleName(),
-                  Thread.currentThread().getName()));
-      session.setUsername(AuthorityChecker.SUPER_USER);
-      session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
-      session.setZoneId(ZoneId.systemDefault());
-      session.setSqlDialect(SqlDialect.TREE);
-
       SESSION_MANAGER.registerSession(session);
-    } else {
-      session = SESSION_MANAGER.getCurrSession();
     }
 
     try {
+      final TSStatus permissionStatus =
+          AuthorityChecker.checkAuthority(
+              statement, SESSION_MANAGER.getSessionInfoOfTreeModel(session).getUserEntity());
+      if (permissionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return permissionStatus;
+      }
       return Coordinator.getInstance()
           .executeForTreeModel(
               isGeneratedByPipe ? new PipeEnrichedStatement(statement) : statement,
@@ -303,6 +292,30 @@ public class LoadTsFileDataTypeConverter {
         SESSION_MANAGER.removeCurrSession();
       }
     }
+  }
+
+  private IClientSession createInternalSession(final SqlDialect sqlDialect) {
+    final SessionInfo sessionInfo = context == null ? null : context.getSession();
+    if (sessionInfo == null || sessionInfo.getUserName() == null) {
+      return null;
+    }
+    final Optional<Long> userId = AuthorityChecker.getUserId(sessionInfo.getUserName());
+    if (!userId.isPresent()) {
+      return null;
+    }
+
+    final InternalClientSession session =
+        new InternalClientSession(
+            String.format(
+                "%s_%s",
+                LoadTsFileDataTypeConverter.class.getSimpleName(),
+                Thread.currentThread().getName()));
+    session.setUserId(userId.get());
+    session.setUsername(sessionInfo.getUserName());
+    session.setClientVersion(sessionInfo.getVersion());
+    session.setZoneId(sessionInfo.getZoneId());
+    session.setSqlDialect(sqlDialect);
+    return session;
   }
 
   public boolean isSuccessful(final TSStatus status) {

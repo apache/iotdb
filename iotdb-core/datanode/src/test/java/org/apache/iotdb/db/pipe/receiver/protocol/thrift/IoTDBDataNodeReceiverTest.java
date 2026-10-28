@@ -171,6 +171,15 @@ public class IoTDBDataNodeReceiverTest {
   }
 
   @Test
+  public void testLoadTsFileAsyncAttributesRetainAuthenticatedUser() {
+    final Map<String, String> attributes =
+        IoTDBDataNodeReceiver.buildLoadTsFileAttributesForAsync(
+            "root.test.sg_0", false, true, true, false, null, "pipe_user");
+
+    Assert.assertEquals("pipe_user", attributes.get(ActiveLoadPathHelper.USER_KEY));
+  }
+
+  @Test
   public void testLoadTsFileWaitsForSchemaInSyncAndAsyncModes() throws Exception {
     final Path tsFile = Files.createTempFile("pipe-load-wait-for-schema", ".tsfile");
     try {
