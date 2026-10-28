@@ -29,8 +29,9 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -39,8 +40,10 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @RunWith(IoTDBTestRunner.class)
@@ -55,8 +58,8 @@ public class IoTDBDatabaseMaxRegionGroupNumIT {
   private static final String TABLE_NAME = "table1";
   private static final BKDRHashExecutor PARTITION_EXECUTOR = new BKDRHashExecutor(SERIES_SLOT_NUM);
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUpCluster() throws Exception {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -70,9 +73,29 @@ public class IoTDBDatabaseMaxRegionGroupNumIT {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDownCluster() {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @After
+  public void tearDown() throws SQLException {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      final List<String> databases = new ArrayList<>();
+      try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
+        while (resultSet.next()) {
+          final String database = resultSet.getString(1);
+          if (!"information_schema".equals(database)) {
+            databases.add(database);
+          }
+        }
+      }
+      for (final String database : databases) {
+        TestUtils.dropDatabaseWithRetry(statement, "\"" + database.replace("\"", "\"\"") + "\"");
+      }
+    }
   }
 
   @Test
