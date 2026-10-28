@@ -27,7 +27,6 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.external.commons.io.FileUtils;
@@ -373,7 +372,7 @@ public final class LoadTsFileSnapshot {
     try {
       // Staged files and their progress logs remain writable, including after restore. A hard
       // link would let appends or torn-tail repairs change both the source and its snapshot.
-      LoadUtil.transferFile(source, tempTarget, false);
+      copyPrefixBytes(source, tempTarget, source.length());
       atomicMoveOrFallback(tempTarget, target);
     } catch (final IOException e) {
       Files.deleteIfExists(tempTarget.toPath());
@@ -388,10 +387,22 @@ public final class LoadTsFileSnapshot {
     final File tempTarget =
         new File(parent, target.getName() + TEMP_FILE_SUFFIX + UUID.randomUUID());
 
+    try {
+      copyPrefixBytes(source, tempTarget, length);
+      atomicMoveOrFallback(tempTarget, target);
+    } catch (final IOException e) {
+      Files.deleteIfExists(tempTarget.toPath());
+      throw e;
+    }
+  }
+
+  /** Copies through a shared-read channel so a live writer can keep appending on Windows. */
+  private static void copyPrefixBytes(final File source, final File target, final long length)
+      throws IOException {
     try (final FileChannel srcChannel = FileChannel.open(source.toPath(), StandardOpenOption.READ);
         final FileChannel dstChannel =
             FileChannel.open(
-                tempTarget.toPath(),
+                target.toPath(),
                 StandardOpenOption.CREATE,
                 StandardOpenOption.WRITE,
                 StandardOpenOption.TRUNCATE_EXISTING)) {
@@ -404,10 +415,6 @@ public final class LoadTsFileSnapshot {
         }
         position += transferred;
       }
-      atomicMoveOrFallback(tempTarget, target);
-    } catch (final IOException e) {
-      Files.deleteIfExists(tempTarget.toPath());
-      throw e;
     }
   }
 
