@@ -1026,13 +1026,13 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
-  private boolean initPrefetch(final RegionProgress regionProgress) {
+  private boolean initPrefetch(final RegionProgress ignoredRegionProgress) {
     synchronized (prefetchInitializationLock) {
-      return initPrefetchUnderInitializationLock(regionProgress);
+      return initPrefetchUnderInitializationLock();
     }
   }
 
-  private boolean initPrefetchUnderInitializationLock(final RegionProgress regionProgress) {
+  private boolean initPrefetchUnderInitializationLock() {
     if (prefetchInitialized) {
       return true; // double-check under synchronization
     }
@@ -1047,23 +1047,12 @@ public class ConsensusPrefetchingQueue {
     final boolean hasPersistedState =
         commitManager.hasPersistedState(consumerGroupId, topicName, consensusGroupId);
     final RegionProgress committedRegionProgress = resolveCommittedRegionProgressForInit();
-    final boolean useConsumerHint =
-        !configNodeProgressAvailable
-            && shouldUseConsumerRegionProgressHint(regionProgress, committedRegionProgress);
-    final RegionProgress recoveryRegionProgress =
-        useConsumerHint
-            ? mergeRecoveryRegionProgress(committedRegionProgress, regionProgress)
-            : committedRegionProgress;
-    final String progressSource =
-        useConsumerHint
-            ? Objects.nonNull(committedRegionProgress)
-                    && !committedRegionProgress.getWriterPositions().isEmpty()
-                ? "merged committed region progress with consumer topic progress hint"
-                : "consumer topic progress hint"
-            : "committed region progress fallback";
+    // Poll progress advances when a message is observed, before it is ACKed. It cannot be used to
+    // initialize a queue after reset because it may move past an uncommitted event.
+    final String progressSource = "committed region progress fallback";
     final ReplayLocateDecision resolvedStart =
         resolveInitReplayStartDecision(
-            recoveryRegionProgress,
+            committedRegionProgress,
             progressSource,
             configNodeProgressAvailable || hasPersistedState);
     if (resolvedStart.getStatus() == ReplayLocateStatus.RETRY_LATER) {
@@ -1149,68 +1138,6 @@ public class ConsensusPrefetchingQueue {
                 recoveryRegionProgress,
                 replayTarget.getDetail()));
     }
-  }
-
-  private boolean shouldUseConsumerRegionProgressHint(
-      final RegionProgress regionProgress, final RegionProgress committedRegionProgress) {
-    if (Objects.isNull(regionProgress) || regionProgress.getWriterPositions().isEmpty()) {
-      return false;
-    }
-    if (Objects.isNull(committedRegionProgress)
-        || committedRegionProgress.getWriterPositions().isEmpty()) {
-      return true;
-    }
-    for (final Map.Entry<WriterId, WriterProgress> entry :
-        regionProgress.getWriterPositions().entrySet()) {
-      if (Objects.isNull(entry.getKey()) || Objects.isNull(entry.getValue())) {
-        continue;
-      }
-      final WriterProgress committedWriterProgress =
-          committedRegionProgress.getWriterPositions().get(entry.getKey());
-      if (Objects.isNull(committedWriterProgress)
-          || compareWriterProgress(entry.getValue(), committedWriterProgress) > 0) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private RegionProgress mergeRecoveryRegionProgress(
-      final RegionProgress committedRegionProgress, final RegionProgress consumerRegionProgress) {
-    if (Objects.isNull(committedRegionProgress)
-        || committedRegionProgress.getWriterPositions().isEmpty()) {
-      return consumerRegionProgress;
-    }
-    if (Objects.isNull(consumerRegionProgress)
-        || consumerRegionProgress.getWriterPositions().isEmpty()) {
-      return committedRegionProgress;
-    }
-
-    final Map<WriterId, WriterProgress> mergedWriterProgress = new LinkedHashMap<>();
-    committedRegionProgress
-        .getWriterPositions()
-        .forEach(
-            (writerId, writerProgress) -> {
-              if (Objects.nonNull(writerId) && Objects.nonNull(writerProgress)) {
-                mergedWriterProgress.put(writerId, writerProgress);
-              }
-            });
-    consumerRegionProgress
-        .getWriterPositions()
-        .forEach(
-            (writerId, writerProgress) -> {
-              if (Objects.isNull(writerId) || Objects.isNull(writerProgress)) {
-                return;
-              }
-              mergedWriterProgress.merge(
-                  writerId,
-                  writerProgress,
-                  (committedWriterProgress, consumerWriterProgress) ->
-                      compareWriterProgress(consumerWriterProgress, committedWriterProgress) > 0
-                          ? consumerWriterProgress
-                          : committedWriterProgress);
-            });
-    return new RegionProgress(mergedWriterProgress);
   }
 
   protected RegionProgress resolveCommittedRegionProgressForInit() {

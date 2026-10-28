@@ -366,6 +366,36 @@ public class ConsensusPrefetchingQueueDeliveryTest {
   }
 
   @Test
+  public void testDeactivationReplaysUncommittedEventInsteadOfUsingPollProgress() throws Exception {
+    writeWal(1, true);
+    final ConsensusPrefetchingQueue queue = newQueue();
+    assertNull(queue.poll(CONSUMER));
+    queue.drivePrefetchOnce();
+
+    final SubscriptionEvent event = queue.poll(CONSUMER);
+    assertNotNull(event);
+    assertEquals(Collections.singletonList(1001L), timestamps(deliver(event)));
+    final RegionProgress pollProgress =
+        new RegionProgress(
+            Collections.singletonMap(
+                event.getCommitContext().getWriterId(),
+                event.getCommitContext().getWriterProgress()));
+    assertTrue(committedProgress().getWriterPositions().isEmpty());
+
+    queue.setActive(false);
+    queue.setActive(true);
+    assertNull(queue.poll(CONSUMER, pollProgress));
+    for (int round = 0; round < 20 && queue.getPrefetchedEventCount() == 0; round++) {
+      queue.drivePrefetchOnce();
+    }
+
+    final SubscriptionEvent replayedEvent = queue.poll(CONSUMER, pollProgress);
+    assertNotNull(replayedEvent);
+    assertEquals(Collections.singletonList(1001L), timestamps(deliver(replayedEvent)));
+    assertTrue(queue.ack(CONSUMER, replayedEvent.getCommitContext()));
+  }
+
+  @Test
   public void testIncompleteOrNotYetVisibleWalRetriesRedeliveryWithoutRetainingPayload()
       throws Exception {
     currentSearchIndex.set(1);
