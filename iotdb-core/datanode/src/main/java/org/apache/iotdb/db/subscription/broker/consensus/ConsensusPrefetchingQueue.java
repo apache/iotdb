@@ -311,10 +311,10 @@ public class ConsensusPrefetchingQueue {
   private volatile ConsensusSubscriptionPrefetchExecutor prefetchExecutor;
 
   /**
-   * Whether the prefetch runtime has been initialized. Starts as false (dormant). Set to true on
-   * the first poll with a region progress hint or when a seek installs a pending reset. This keeps
-   * queue creation cheap: realtime entries can be buffered immediately while WAL replay state is
-   * only built once the queue is actually activated.
+   * Whether the prefetch runtime has been initialized. Starts as false (dormant). Set to true once
+   * the first poll successfully initializes replay from committed progress (or its fallback), or
+   * when a seek installs a pending reset. This keeps queue creation cheap: realtime entries can be
+   * buffered immediately while WAL replay state is only built once the queue is actually activated.
    */
   private volatile boolean prefetchInitialized = false;
 
