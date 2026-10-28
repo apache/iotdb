@@ -168,6 +168,48 @@ public class IoTDBInsertQueryIT {
   }
 
   @Test
+  public void testInsertIntoQueryWithOutOfOrderTabletDoesNotOverlapSequenceFiles()
+      throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      statement.execute("CREATE TABLE overlap_dst(id STRING TAG, s INT32 FIELD)");
+      statement.execute("CREATE TABLE overlap_src(id STRING TAG, s INT32 FIELD)");
+
+      for (int time = 10; time <= 39; time++) {
+        statement.execute(
+            String.format("INSERT INTO overlap_dst(time,id,s) VALUES(%d,'x',%d)", time, time));
+      }
+      statement.execute("FLUSH");
+
+      statement.execute("INSERT INTO overlap_src(time,id,s) VALUES(100,'x',1),(15,'x',2)");
+      statement.execute(
+          "INSERT INTO overlap_dst (SELECT b.time, b.id, b.s FROM overlap_src a, overlap_src b "
+              + "WHERE a.id='x' AND b.id='x' AND a.time<>b.time)");
+      statement.execute("FLUSH");
+
+      List<Long> expectedTimes = new ArrayList<>();
+      for (long time = 10; time <= 39; time++) {
+        expectedTimes.add(time);
+      }
+      expectedTimes.add(100L);
+
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT time,s FROM overlap_dst WHERE id='x'")) {
+        List<Long> actualTimes = new ArrayList<>();
+        while (resultSet.next()) {
+          long time = resultSet.getLong(1);
+          actualTimes.add(time);
+          if (time == 15) {
+            Assert.assertEquals(2, resultSet.getInt(2));
+          }
+        }
+        Assert.assertEquals(expectedTimes, actualTimes);
+      }
+    }
+  }
+
+  @Test
   public void testInsertIntoSourceTable() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
