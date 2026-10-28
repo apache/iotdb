@@ -86,6 +86,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.PriorityQueue;
@@ -694,6 +695,32 @@ public class SeriesScanUtil implements Accountable {
     }
   }
 
+  /**
+   * Keeps {@code seqPageReaders} ordered in scan order. Pages of overlapping seq files are unpacked
+   * in file order, which is not the page order once the files overlap, while both the overlap check
+   * and the page selection assume the head of the list is the next page in scan order.
+   */
+  private void addSeqPageReader(IVersionPageReader pageReader) {
+    ListIterator<IVersionPageReader> iterator = seqPageReaders.listIterator(seqPageReaders.size());
+    while (iterator.hasPrevious()) {
+      if (!isBeforeInScanOrder(pageReader, iterator.previous())) {
+        iterator.next();
+        break;
+      }
+    }
+    iterator.add(pageReader);
+  }
+
+  private boolean isBeforeInScanOrder(
+      IVersionPageReader leftPageReader, IVersionPageReader rightPageReader) {
+    if (orderUtils.getAscending()) {
+      return leftPageReader.getStatistics().getStartTime()
+          < rightPageReader.getStatistics().getStartTime();
+    }
+    return leftPageReader.getStatistics().getEndTime()
+        > rightPageReader.getStatistics().getEndTime();
+  }
+
   private void unpackOneChunkMetaData(IChunkMetadata chunkMetaData) throws IOException {
     long timestampInFileName = FileLoaderUtils.getTimestampInFileName(chunkMetaData);
 
@@ -722,7 +749,7 @@ public class SeriesScanUtil implements Accountable {
     if (chunkMetaData.isSeq()) {
       if (orderUtils.getAscending()) {
         for (IPageReader iPageReader : pageReaderList) {
-          seqPageReaders.add(
+          addSeqPageReader(
               new VersionPageReader(
                   context,
                   timestampInFileName,
@@ -734,7 +761,7 @@ public class SeriesScanUtil implements Accountable {
         }
       } else {
         for (int i = pageReaderList.size() - 1; i >= 0; i--) {
-          seqPageReaders.add(
+          addSeqPageReader(
               new VersionPageReader(
                   context,
                   timestampInFileName,
@@ -799,7 +826,7 @@ public class SeriesScanUtil implements Accountable {
                 memPointIterator,
                 chunkMetaData.isSeq());
         if (chunkMetaData.isSeq()) {
-          seqPageReaders.add(versionPageReader);
+          addSeqPageReader(versionPageReader);
         } else {
           unSeqPageReaders.add(versionPageReader);
         }
@@ -822,7 +849,7 @@ public class SeriesScanUtil implements Accountable {
                 memPointIterator,
                 chunkMetaData.isSeq());
         if (chunkMetaData.isSeq()) {
-          seqPageReaders.add(versionPageReader);
+          addSeqPageReader(versionPageReader);
         } else {
           unSeqPageReaders.add(versionPageReader);
         }
