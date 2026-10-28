@@ -84,12 +84,16 @@ public class IoTDBPipeReceiverAsyncLoadAuthIT {
   private static final String NO_WRITE_MEASUREMENT = "no_write";
   private static final String WRITE_MEASUREMENT = "write";
   private static final String LOCALLY_DROPPED_MEASUREMENT = "dropped_by_operator";
+  private static final String LOCALLY_DROPPED_WITH_OPTIONS_MEASUREMENT = "dropped_with_options";
   private static final IMeasurementSchema NO_WRITE_SCHEMA =
       new MeasurementSchema(NO_WRITE_MEASUREMENT, TSDataType.INT32, TSEncoding.RLE);
   private static final IMeasurementSchema WRITE_SCHEMA =
       new MeasurementSchema(WRITE_MEASUREMENT, TSDataType.INT32, TSEncoding.RLE);
   private static final IMeasurementSchema LOCALLY_DROPPED_SCHEMA =
       new MeasurementSchema(LOCALLY_DROPPED_MEASUREMENT, TSDataType.INT32, TSEncoding.RLE);
+  private static final IMeasurementSchema LOCALLY_DROPPED_WITH_OPTIONS_SCHEMA =
+      new MeasurementSchema(
+          LOCALLY_DROPPED_WITH_OPTIONS_MEASUREMENT, TSDataType.INT32, TSEncoding.RLE);
 
   private static final String NO_WRITE_USER = "pipe_receiver_no_write_user";
   private static final String WRITE_USER = "pipe_receiver_write_user";
@@ -178,6 +182,27 @@ public class IoTDBPipeReceiverAsyncLoadAuthIT {
     assertCountEventually(LOCALLY_DROPPED_MEASUREMENT, POINT_COUNT, TimeUnit.SECONDS.toMillis(60));
   }
 
+  @Test
+  public void testTsFileDroppedIntoAttributeDirectoryWithoutUserIsStillLoaded() throws Exception {
+    final File tsFile = new File(tmpDir, "4-0-0-0.tsfile");
+    generateTsFile(tsFile, LOCALLY_DROPPED_WITH_OPTIONS_SCHEMA);
+
+    // A locally dropped file may carry recognized LOAD options, e.g. verify=false, without a user
+    // attribute. It is not a receiver handoff, so it must still be loaded with the default user.
+    final DataNodeWrapper dataNode = EnvFactory.getEnv().getDataNodeWrapper(0);
+    final File attributeDir = new File(getActiveLoadPendingDir(dataNode), "verify-false");
+    Files.createDirectories(attributeDir.toPath());
+    final File staging = new File(attributeDir, "staging-" + tsFile.getName() + ".tmp");
+    Files.copy(tsFile.toPath(), staging.toPath(), StandardCopyOption.REPLACE_EXISTING);
+    Files.move(
+        staging.toPath(),
+        new File(attributeDir, tsFile.getName()).toPath(),
+        StandardCopyOption.ATOMIC_MOVE);
+
+    assertCountEventually(
+        LOCALLY_DROPPED_WITH_OPTIONS_MEASUREMENT, POINT_COUNT, TimeUnit.SECONDS.toMillis(60));
+  }
+
   private static void prepareSchema() throws Exception {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
@@ -193,6 +218,12 @@ public class IoTDBPipeReceiverAsyncLoadAuthIT {
           String.format(
               "create timeseries %s.%s %s",
               DEVICE, LOCALLY_DROPPED_MEASUREMENT, LOCALLY_DROPPED_SCHEMA.getType()));
+      statement.execute(
+          String.format(
+              "create timeseries %s.%s %s",
+              DEVICE,
+              LOCALLY_DROPPED_WITH_OPTIONS_MEASUREMENT,
+              LOCALLY_DROPPED_WITH_OPTIONS_SCHEMA.getType()));
     }
   }
 

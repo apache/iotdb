@@ -452,7 +452,9 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
             && receiverDataNodeId == getInt(resultSet, "ReceiverNodeId", "receiver_node_id")
             && "thrift".equals(getString(resultSet, "Protocol", "protocol"))
             && "Unknown".equals(getString(resultSet, "SenderClusterId", "sender_cluster_id"))
-            && SessionConfig.DEFAULT_USER.equals(getString(resultSet, "UserName", "user_name"))
+            // A V1 handshake carries no credentials, so the receiver reports no user instead of
+            // the privileged default user.
+            && "Unknown".equals(getString(resultSet, "UserName", "user_name"))
             && getString(resultSet, "SenderAddress", "sender_address") != null
             && getString(resultSet, "SenderPorts", "sender_ports") != null
             && getInt(resultSet, "ConnectionCount", "connection_count") >= 1
