@@ -189,7 +189,7 @@ public class QueryExecution implements IQueryExecution {
             DataNodeQueryMessages.IGNORE_EXCEPTION_AFTER_QUERY_DONE,
             context.getQueryId(),
             stateMachine.getState(),
-            e);
+            e.getMessage());
         return;
       }
       throw e;
