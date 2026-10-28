@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -30,6 +29,12 @@ import org.apache.iotdb.jdbc.Config;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.TsFileReader;
+import org.apache.tsfile.read.common.Field;
+import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.expression.QueryExpression;
+import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.awaitility.Awaitility;
@@ -59,6 +64,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
@@ -99,8 +106,7 @@ public class IoTDBLoadTsFileClusterIT {
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(REPLICATION_FACTOR)
         .setDataReplicationFactor(REPLICATION_FACTOR);
-    // The restart case compares the on-disk size of the replicas, so keep compaction from changing
-    // those sizes while the test waits for the restarted DataNode to catch up.
+    // Keep the loaded files stable while the restart case reads the local replicas directly.
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -306,99 +312,107 @@ public class IoTDBLoadTsFileClusterIT {
       awaitPointCount(statement, expectedPointCount);
     }
 
+    final Map<String, Map<Long, Long>> expectedPoints =
+        readTsFiles(
+            Arrays.asList(
+                new File(tmpDir, "sync-first.tsfile"), new File(tmpDir, "sync-second.tsfile")));
+    Assert.assertEquals(
+        expectedPointCount, expectedPoints.values().stream().mapToLong(Map::size).sum());
+
     restartedDataNode.start();
     Assert.assertTrue(restartedDataNode.isAlive());
 
-    // A pinned connection may still read from another replica, so check the restarted node's own
-    // replicas before letting it answer the query.
-    awaitRestartedLocalReplicasHaveTheLoadedFile(restartedDataNode);
+    // A pinned connection may still read from another replica. Check the restarted node's local
+    // points against both input files, independently of file layout or duplicate LOAD replays.
+    awaitRestartedLocalReplicasHaveTheLoadedFile(restartedDataNode, expectedPoints);
     awaitPointCount(restartedDataNode, expectedPointCount);
   }
 
   /**
-   * Waits until every data region replica on the given DataNode has the same on-disk size as the
-   * other replicas of that region. A node that did not replay the LOAD keeps its pre-LOAD size.
+   * Waits until the local replicas contain every loaded timestamp and value. LOAD replay can leave
+   * different numbers of physical copies on different replicas, so disk size is not a data oracle.
    */
   private static void awaitRestartedLocalReplicasHaveTheLoadedFile(
-      final DataNodeWrapper restartedDataNode) {
+      final DataNodeWrapper restartedDataNode, final Map<String, Map<Long, Long>> expectedPoints) {
     Awaitility.await()
         .atMost(5, TimeUnit.MINUTES)
         .pollInterval(1, TimeUnit.SECONDS)
         .ignoreExceptions()
         .untilAsserted(
             () -> {
-              final Map<Integer, Map<Integer, String>> regionSizes = dataRegionSizes();
-              Assert.assertFalse(
-                  "the loaded database must have data regions", regionSizes.isEmpty());
-
-              int restartedDataNodeId;
-              try (final Connection connection = EnvFactory.getEnv().getConnection();
-                  final Statement statement = connection.createStatement()) {
-                restartedDataNodeId = dataNodeId(statement, restartedDataNode);
-              }
-
-              for (final Map.Entry<Integer, Map<Integer, String>> region : regionSizes.entrySet()) {
-                final Map<Integer, String> replicaSizes = region.getValue();
-                // A region without data on any replica has nothing to catch up with.
-                if (replicaSizes.values().stream().noneMatch(IoTDBLoadTsFileClusterIT::hasData)) {
+              final List<File> files = new ArrayList<>();
+              for (final String space : Arrays.asList("sequence", "unsequence")) {
+                final File databaseDir =
+                    new File(new File(restartedDataNode.getDataPath(), space), DATABASE);
+                if (!databaseDir.exists()) {
                   continue;
                 }
-                final String restartedSize = replicaSizes.get(restartedDataNodeId);
-                Assert.assertTrue(
-                    "region " + region.getKey() + " has no data on the restarted DataNode",
-                    hasData(restartedSize));
-                replicaSizes.forEach(
-                    (dataNodeId, size) -> {
-                      if (dataNodeId != restartedDataNodeId) {
-                        Assert.assertEquals(
-                            "region " + region.getKey() + " differs on DataNode " + dataNodeId,
-                            size,
-                            restartedSize);
-                      }
-                    });
+                try (final Stream<java.nio.file.Path> paths = Files.walk(databaseDir.toPath())) {
+                  files.addAll(
+                      paths
+                          .filter(Files::isRegularFile)
+                          .map(java.nio.file.Path::toFile)
+                          .filter(file -> file.getName().endsWith(".tsfile"))
+                          .collect(Collectors.toList()));
+                }
+              }
+              final Map<String, Map<Long, Long>> actualPoints = readTsFiles(files);
+              Assert.assertEquals(
+                  "loaded timeseries", expectedPoints.keySet(), actualPoints.keySet());
+              for (final Map.Entry<String, Map<Long, Long>> series : expectedPoints.entrySet()) {
+                final Map<Long, Long> actualSeries = actualPoints.get(series.getKey());
+                Assert.assertEquals(
+                    "point count in " + series.getKey(),
+                    series.getValue().size(),
+                    actualSeries.size());
+                for (final Map.Entry<Long, Long> point : series.getValue().entrySet()) {
+                  Assert.assertEquals(
+                      series.getKey() + " at " + point.getKey(),
+                      point.getValue(),
+                      actualSeries.get(point.getKey()));
+                }
               }
             });
   }
 
-  /** Whether a `show regions` size means the replica holds data. */
-  private static boolean hasData(final String size) {
-    return size != null && !"Unknown".equals(size) && !"0 B".equals(size);
-  }
-
-  /** The DataRegion rows of `show regions`, mapped to each replica's on-disk size. */
-  private static Map<Integer, Map<Integer, String>> dataRegionSizes() throws Exception {
-    final Map<Integer, Map<Integer, String>> regionSizes = new HashMap<>();
-    try (final Connection connection = EnvFactory.getEnv().getConnection();
-        final Statement statement = connection.createStatement();
-        final ResultSet resultSet = statement.executeQuery("show regions")) {
-      while (resultSet.next()) {
-        if (!"DataRegion".equals(resultSet.getString(ColumnHeaderConstant.TYPE))
-            || !DATABASE.equals(resultSet.getString(ColumnHeaderConstant.DATABASE))) {
-          continue;
+  /** Reads logical INT64 points, checking that repeated physical copies agree. */
+  private static Map<String, Map<Long, Long>> readTsFiles(final List<File> files) throws Exception {
+    final List<String> devices = new ArrayList<>(DEVICES);
+    devices.addAll(ALIGNED_DEVICES);
+    final Map<String, Map<Long, Long>> points = new HashMap<>();
+    for (final File file : files) {
+      try (final TsFileReader reader = new TsFileReader(file)) {
+        // Readers may update their selected paths, so build a fresh query for every file.
+        final List<Path> paths = new ArrayList<>();
+        for (final String device : devices) {
+          for (final String measurement : MEASUREMENTS) {
+            paths.add(new Path(device, measurement, true));
+          }
         }
-        regionSizes
-            .computeIfAbsent(
-                resultSet.getInt(ColumnHeaderConstant.REGION_ID), id -> new HashMap<>())
-            .put(
-                resultSet.getInt(ColumnHeaderConstant.DATA_NODE_ID),
-                resultSet.getString(ColumnHeaderConstant.TSFILE_SIZE));
+        final QueryDataSet dataSet = reader.query(QueryExpression.create(paths, null));
+        while (dataSet.hasNext()) {
+          final RowRecord row = dataSet.next();
+          for (int index = 0; index < row.getFields().size(); index++) {
+            final Field field = row.getField(index);
+            if (field == null || field.getDataType() == null) {
+              continue;
+            }
+            final String series = dataSet.getPaths().get(index).getFullPath();
+            final Long previous =
+                points
+                    .computeIfAbsent(series, key -> new HashMap<>())
+                    .put(row.getTimestamp(), field.getLongV());
+            if (previous != null) {
+              Assert.assertEquals(
+                  "conflicting copies of " + series + " at " + row.getTimestamp(),
+                  previous.longValue(),
+                  field.getLongV());
+            }
+          }
+        }
       }
     }
-    return regionSizes;
-  }
-
-  /** The cluster id of the given DataNode, matched by its client RPC endpoint. */
-  private static int dataNodeId(final Statement statement, final DataNodeWrapper dataNode)
-      throws SQLException {
-    try (final ResultSet resultSet = statement.executeQuery("show datanodes")) {
-      while (resultSet.next()) {
-        if (dataNode.getIp().equals(resultSet.getString(ColumnHeaderConstant.RPC_ADDRESS))
-            && dataNode.getPort() == resultSet.getInt(ColumnHeaderConstant.RPC_PORT)) {
-          return resultSet.getInt(ColumnHeaderConstant.NODE_ID);
-        }
-      }
-    }
-    throw new AssertionError("cannot find " + dataNode.getIpAndPortString() + " in show datanodes");
+    return points;
   }
 
   /** Waits until the given statement sees the expected number of imported points. */
