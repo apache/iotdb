@@ -1247,10 +1247,10 @@ public class IoTDBConfig implements DefaultEncodingProvider {
   private boolean loadRequireUserIdentity = false;
 
   /**
-   * Whether the pipe receiver rejects an asynchronous LOAD without an authenticated sender.
-   * Disabled by default to keep the legacy fallback.
+   * Whether the pipe receiver rejects an asynchronous LOAD without an authenticated sender. Enabled
+   * by default; set to false to fall back to the default user.
    */
-  private boolean pipeReceiverRequireUserIdentity = false;
+  private boolean pipeReceiverRequireUserIdentity = true;
 
   private String loadDiskSelectStrategy = LoadDiskSelectorType.MIN_IO_FIRST.getValue();
 
