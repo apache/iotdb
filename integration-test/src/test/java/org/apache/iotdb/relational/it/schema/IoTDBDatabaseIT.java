@@ -159,7 +159,7 @@ public class IoTDBDatabaseIT {
               () -> {
                 try (final ResultSet resultSet = statement.executeQuery("SHOW PIPES")) {
                   while (resultSet.next()) {
-                    assertFalse(resultSet.getString("ID").startsWith("__consensus"));
+                    assertTrue(resultSet.getString("ID").startsWith("__consensus"));
                   }
                 }
               });
