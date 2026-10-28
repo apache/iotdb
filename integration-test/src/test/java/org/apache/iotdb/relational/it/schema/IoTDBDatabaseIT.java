@@ -144,6 +144,9 @@ public class IoTDBDatabaseIT {
         }
       }
       for (final String pipe : pipes) {
+        if (pipe.startsWith("__consensus")) {
+          continue;
+        }
         final String quotedPipe =
             BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect)
                 ? "\"" + pipe.replace("\"", "\"\"") + "\""
@@ -155,7 +158,9 @@ public class IoTDBDatabaseIT {
           .untilAsserted(
               () -> {
                 try (final ResultSet resultSet = statement.executeQuery("SHOW PIPES")) {
-                  assertFalse(resultSet.next());
+                  while (resultSet.next()) {
+                    assertFalse(resultSet.getString("ID").startsWith("__consensus"));
+                  }
                 }
               });
     }

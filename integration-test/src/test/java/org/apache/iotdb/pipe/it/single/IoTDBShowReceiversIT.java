@@ -101,6 +101,9 @@ public class IoTDBShowReceiversIT {
         }
       }
       for (final String pipe : pipes) {
+        if (pipe.startsWith("__consensus")) {
+          continue;
+        }
         statement.execute("DROP PIPE " + pipe);
       }
       final List<String> databases = new ArrayList<>();
