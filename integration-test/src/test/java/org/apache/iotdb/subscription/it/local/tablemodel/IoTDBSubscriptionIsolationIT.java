@@ -31,10 +31,12 @@ import org.apache.iotdb.session.subscription.consumer.ISubscriptionTablePullCons
 import org.apache.iotdb.session.subscription.consumer.ISubscriptionTreePullConsumer;
 import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePullConsumerBuilder;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumerBuilder;
-import org.apache.iotdb.subscription.it.local.AbstractSubscriptionLocalIT;
+import org.apache.iotdb.subscription.it.AbstractSubscriptionIT;
 
+import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -43,12 +45,31 @@ import java.util.Properties;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
-public class IoTDBSubscriptionIsolationIT extends AbstractSubscriptionLocalIT {
+public class IoTDBSubscriptionIsolationIT extends AbstractSubscriptionIT {
+
+  @BeforeClass
+  public static void setUpCluster() {
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
+    EnvFactory.getEnv().initClusterEnvironment();
+  }
+
+  @AfterClass
+  public static void tearDownCluster() {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+  }
 
   @Override
-  @Before
-  public void setUp() throws Exception {
-    super.setUp();
+  @After
+  public void tearDown() throws Exception {
+    try {
+      clearSubscriptionState(EnvFactory.getEnv());
+    } finally {
+      super.tearDown();
+    }
   }
 
   @Test

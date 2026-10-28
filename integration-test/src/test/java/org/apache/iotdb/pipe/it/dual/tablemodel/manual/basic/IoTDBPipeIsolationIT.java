@@ -34,7 +34,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
-import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
+import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualSharedIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -55,7 +55,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualBasic.class})
-public class IoTDBPipeIsolationIT extends AbstractPipeTableModelDualManualIT {
+public class IoTDBPipeIsolationIT extends AbstractPipeTableModelDualManualSharedIT {
 
   @Override
   @Before

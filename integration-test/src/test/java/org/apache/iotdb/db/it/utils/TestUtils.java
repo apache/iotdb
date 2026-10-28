@@ -1102,6 +1102,68 @@ public class TestUtils {
     }
   }
 
+  /** Clears both data models between methods sharing a cluster. */
+  public static void clearAllDatabases(final BaseEnv env) throws SQLException {
+    for (final String dialect : Arrays.asList(TREE_SQL_DIALECT, TABLE_SQL_DIALECT)) {
+      try (final Connection connection = env.getConnection(dialect);
+          final Statement statement = connection.createStatement()) {
+        final List<String> databases = new ArrayList<>();
+        try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
+          while (resultSet.next()) {
+            final String database = resultSet.getString(1);
+            if (!"information_schema".equals(database)) {
+              databases.add(database);
+            }
+          }
+        }
+        for (final String database : databases) {
+          if (TREE_SQL_DIALECT.equals(dialect)) {
+            statement.execute("DELETE DATABASE " + database);
+          } else {
+            dropDatabaseWithRetry(statement, "\"" + database.replace("\"", "\"\"") + "\"");
+          }
+        }
+      }
+    }
+  }
+
+  public static void clearAllSchemaTemplates(final BaseEnv env) throws SQLException {
+    try (final Connection connection = env.getConnection();
+        final Statement statement = connection.createStatement()) {
+      final List<String> templates = new ArrayList<>();
+      try (final ResultSet resultSet = statement.executeQuery("SHOW DEVICE TEMPLATES")) {
+        while (resultSet.next()) {
+          templates.add(resultSet.getString(1));
+        }
+      }
+      for (final String template : templates) {
+        statement.execute("DROP DEVICE TEMPLATE `" + template.replace("`", "``") + "`");
+      }
+    }
+  }
+
+  /** Stops replication before deleting data in a reused pair of clusters. */
+  public static void dropAllPipes(final BaseEnv env) throws SQLException {
+    for (final String dialect : Arrays.asList(TREE_SQL_DIALECT, TABLE_SQL_DIALECT)) {
+      try (final Connection connection = env.getConnection(dialect);
+          final Statement statement = connection.createStatement()) {
+        final List<String> pipes = new ArrayList<>();
+        try (final ResultSet resultSet = statement.executeQuery("SHOW PIPES")) {
+          while (resultSet.next()) {
+            pipes.add(resultSet.getString("ID"));
+          }
+        }
+        final String quote = TREE_SQL_DIALECT.equals(dialect) ? "`" : "\"";
+        for (final String pipe : pipes) {
+          if (pipe.startsWith("__consensus")) {
+            continue;
+          }
+          statement.execute("DROP PIPE " + quote + pipe.replace(quote, quote + quote) + quote);
+        }
+      }
+    }
+  }
+
   public static void dropDatabaseWithRetry(final Statement statement, final String database)
       throws SQLException {
     // Asynchronous DROP TABLE may still be running when a test starts database cleanup.
