@@ -92,20 +92,9 @@ public class IoTDBShowReceiversIT {
       setUpCluster();
       return;
     }
+    TestUtils.dropAllPipes(env);
     try (final Connection connection = env.getConnection();
         final Statement statement = connection.createStatement()) {
-      final List<String> pipes = new ArrayList<>();
-      try (final ResultSet resultSet = statement.executeQuery("SHOW PIPES")) {
-        while (resultSet.next()) {
-          pipes.add(resultSet.getString("ID"));
-        }
-      }
-      for (final String pipe : pipes) {
-        if (pipe.startsWith("__consensus")) {
-          continue;
-        }
-        statement.execute("DROP PIPE " + pipe);
-      }
       final List<String> databases = new ArrayList<>();
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
         while (resultSet.next()) {

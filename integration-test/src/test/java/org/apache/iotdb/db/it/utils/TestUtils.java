@@ -1160,6 +1160,17 @@ public class TestUtils {
           }
           statement.execute("DROP PIPE " + quote + pipe.replace(quote, quote + quote) + quote);
         }
+        await()
+            .pollInSameThread()
+            .atMost(60, TimeUnit.SECONDS)
+            .untilAsserted(
+                () -> {
+                  try (final ResultSet resultSet = statement.executeQuery("SHOW PIPES")) {
+                    while (resultSet.next()) {
+                      assertTrue(resultSet.getString("ID").startsWith("__consensus"));
+                    }
+                  }
+                });
       }
     }
   }
