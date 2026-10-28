@@ -327,6 +327,12 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
     }
   }
 
+  /** Rewinds an interrupted delivery without counting it as a poison-message retry. */
+  public synchronized void resetForRedelivery() {
+    response.nack();
+    lastPolledTimestamp.set(INVALID_TIMESTAMP);
+  }
+
   /** Makes this event pollable again without treating local response-size control as a nack. */
   public void resetLastPolledTimestamp() {
     lastPolledTimestamp.set(INVALID_TIMESTAMP);
