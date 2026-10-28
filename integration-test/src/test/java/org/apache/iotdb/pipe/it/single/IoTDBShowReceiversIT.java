@@ -62,6 +62,7 @@ import java.util.concurrent.TimeUnit;
 public class IoTDBShowReceiversIT {
 
   private static BaseEnv env;
+  private boolean resetClusterAfterTest;
 
   @BeforeClass
   public static void setUpCluster() {
@@ -84,14 +85,12 @@ public class IoTDBShowReceiversIT {
 
   @After
   public void tearDown() throws Exception {
-    // Restore nodes even if a failure interrupts a stopped-node or restart assertion.
-    for (int i = 0; i < env.getDataNodeWrapperList().size(); i++) {
-      final DataNodeWrapper dataNode = env.getDataNodeWrapper(i);
-      if (!dataNode.isAlive()) {
-        env.startDataNode(i);
-      }
-      env.ensureNodeStatus(
-          Collections.singletonList(dataNode), Collections.singletonList(NodeStatus.Running));
+    if (resetClusterAfterTest) {
+      // A restarted node can leave stale internal clients in the surviving nodes. Isolate lifecycle
+      // tests so that the next method does not inherit their topology or broken connections.
+      env.cleanClusterEnvironment();
+      setUpCluster();
+      return;
     }
     try (final Connection connection = env.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -726,6 +725,7 @@ public class IoTDBShowReceiversIT {
   }
 
   private void ensureDataNodeCount(final int dataNodeCount) {
+    resetClusterAfterTest = true;
     while (env.getDataNodeWrapperList().size() < dataNodeCount) {
       env.registerNewDataNode(true);
     }
