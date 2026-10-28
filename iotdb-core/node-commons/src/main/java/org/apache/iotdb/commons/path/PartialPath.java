@@ -941,6 +941,16 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return true;
   }
 
+  /** Returns whether the given nodes are a prefix of this path, including equality. */
+  public boolean startsWithOrEqual(String[] otherNodes) {
+    for (int i = 0; i < otherNodes.length; i++) {
+      if ((i >= nodes.length) || !nodes[i].equals(otherNodes[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   public boolean startsWith(String prefix) {
     return getFullPath().startsWith(prefix);
   }
