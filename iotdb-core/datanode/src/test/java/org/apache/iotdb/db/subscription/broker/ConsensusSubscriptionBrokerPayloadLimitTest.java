@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusPrefetchingQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.session.subscription.util.PollTimer;
 
 import org.junit.Test;
 
@@ -34,6 +35,9 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -58,8 +62,8 @@ public class ConsensusSubscriptionBrokerPayloadLimitTest {
 
     when(firstQueue.getConsensusGroupId()).thenReturn(new DataRegionId(1));
     when(secondQueue.getConsensusGroupId()).thenReturn(new DataRegionId(2));
-    when(firstQueue.poll(CONSUMER_ID, null)).thenReturn(firstEvent);
-    when(secondQueue.poll(CONSUMER_ID, null)).thenReturn(secondEvent);
+    when(firstQueue.poll(eq(CONSUMER_ID), isNull(), any(PollTimer.class))).thenReturn(firstEvent);
+    when(secondQueue.poll(eq(CONSUMER_ID), isNull(), any(PollTimer.class))).thenReturn(secondEvent);
     when(firstEvent.getCurrentResponseSize()).thenReturn(40);
     when(secondEvent.getCurrentResponseSize()).thenReturn(30);
     when(firstEvent.getCommitContext()).thenReturn(firstCommitContext);
@@ -85,7 +89,8 @@ public class ConsensusSubscriptionBrokerPayloadLimitTest {
     when(fallbackQueue.getConsensusGroupId()).thenReturn(new DataRegionId(1));
     when(assignedQueue.getConsensusGroupId()).thenReturn(new DataRegionId(2));
     when(fallbackQueue.getPrefetchedEventCount()).thenReturn(1);
-    when(fallbackQueue.poll(CONSUMER_ID, null)).thenReturn(fallbackEvent);
+    when(fallbackQueue.poll(eq(CONSUMER_ID), isNull(), any(PollTimer.class)))
+        .thenReturn(fallbackEvent);
     when(fallbackEvent.getCurrentResponseSize()).thenReturn(30);
     bindQueues(broker, Arrays.asList(fallbackQueue, assignedQueue));
 
@@ -97,8 +102,8 @@ public class ConsensusSubscriptionBrokerPayloadLimitTest {
 
     assertEquals(1, events.size());
     assertSame(fallbackEvent, events.get(0));
-    verify(assignedQueue).poll(CONSUMER_ID, null);
-    verify(fallbackQueue).poll(CONSUMER_ID, null);
+    verify(assignedQueue).poll(eq(CONSUMER_ID), isNull(), any(PollTimer.class));
+    verify(fallbackQueue).poll(eq(CONSUMER_ID), isNull(), any(PollTimer.class));
   }
 
   @Test
@@ -112,8 +117,10 @@ public class ConsensusSubscriptionBrokerPayloadLimitTest {
     when(fallbackQueue.getConsensusGroupId()).thenReturn(new DataRegionId(1));
     when(assignedQueue.getConsensusGroupId()).thenReturn(new DataRegionId(2));
     when(fallbackQueue.getPrefetchedEventCount()).thenReturn(1);
-    when(fallbackQueue.poll(CONSUMER_ID, null)).thenReturn(fallbackEvent);
-    when(assignedQueue.poll(CONSUMER_ID, null)).thenReturn(assignedEvent);
+    when(fallbackQueue.poll(eq(CONSUMER_ID), isNull(), any(PollTimer.class)))
+        .thenReturn(fallbackEvent);
+    when(assignedQueue.poll(eq(CONSUMER_ID), isNull(), any(PollTimer.class)))
+        .thenReturn(assignedEvent);
     when(assignedEvent.getCurrentResponseSize()).thenReturn(30);
     bindQueues(broker, Arrays.asList(fallbackQueue, assignedQueue));
 
@@ -123,7 +130,7 @@ public class ConsensusSubscriptionBrokerPayloadLimitTest {
 
     assertEquals(1, events.size());
     assertSame(assignedEvent, events.get(0));
-    verify(fallbackQueue, never()).poll(CONSUMER_ID, null);
+    verify(fallbackQueue, never()).poll(eq(CONSUMER_ID), isNull(), any(PollTimer.class));
   }
 
   @Test
