@@ -71,4 +71,5 @@ jobs:
           restore-keys: ${{ runner.os }}-m2-
       - name: Compile with ZH locale
         shell: bash
-        run: mvn clean test-compile -P with-zh-locale -DskipTests
+        # Build the module ZIPs required by distribution in the same reactor.
+        run: mvn clean package -P with-zh-locale -DskipTests
