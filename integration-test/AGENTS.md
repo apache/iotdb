@@ -36,6 +36,15 @@ These instructions apply to `integration-test/` and supplement the repository-le
   while a manually constructed discovery client silently uses different ones.
 - Explicit credentials are appropriate for users created by the test and for authentication or
   invalid-password scenarios. Make that intent clear, and clean up users created by the test.
+- When a test creates users or roles with explicit credentials, make each password 12-32
+  characters long with no spaces, drawn from the supported credential charset (letters,
+  digits, `_ - ! @ # $ % ^ & * ( ) + =`), containing at least one lowercase letter, one
+  uppercase letter, one digit, and one special character, and different from the username;
+  usernames use the same charset and a 4-32 character length (for example `newuser` with
+  `IoTDB!Test2024`). Trivial placeholders such as `123456` or `password` pass on a default
+  local cluster yet are exactly what stricter password policies reject, and they encourage
+  weak secrets to spread into real configurations through copied test code. Reserve weak or
+  illegal credentials for scenarios that deliberately test them.
 - Obtain node addresses and allocated ports from the test environment or node wrappers. Configure
   required consensus protocols, replication factors, and other non-default settings before
   initializing the cluster.
