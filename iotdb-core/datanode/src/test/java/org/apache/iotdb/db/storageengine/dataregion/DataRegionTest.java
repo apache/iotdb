@@ -2822,6 +2822,50 @@ public class DataRegionTest {
     Assert.assertEquals(2, seqFiles.size());
   }
 
+  /**
+   * Once a descending step is seen, every following row is classified on its own, so a row that is
+   * newer than the device's last flush time after the inversion goes back to the sequence space
+   * without creating an overlapping sequence file.
+   */
+  @Test
+  public void testOutOfOrderTabletWithMultipleInversionsKeepsSequenceSpaceNonOverlapped()
+      throws QueryProcessException, WriteProcessException, IOException {
+    long[] orderedTimes = new long[30];
+    for (int i = 0; i < orderedTimes.length; i++) {
+      orderedTimes[i] = 10 + i;
+    }
+    dataRegion.insertTablet(genTabletWithTimes(orderedTimes));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    // sequence, then unsequence, then sequence again
+    dataRegion.insertTablet(genTabletWithTimes(100L, 15L, 200L));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    List<TsFileResource> seqFiles = dataRegion.getTsFileManager().getTsFileList(true);
+    List<TsFileResource> unseqFiles = dataRegion.getTsFileManager().getTsFileList(false);
+    List<TsFileResource> overlappedSeqFiles =
+        RepairDataFileScanUtil.checkTimePartitionHasOverlap(seqFiles, false);
+    Assert.assertTrue(
+        "sequence files should not overlap, but got " + overlappedSeqFiles,
+        overlappedSeqFiles.isEmpty());
+    List<long[]> seqStatistics = new ArrayList<>();
+    for (TsFileResource seqFile : seqFiles) {
+      seqStatistics.add(readFieldStatistics(seqFile));
+    }
+    Assert.assertTrue(
+        "expected a sequence file with 10..39 and one with 100..200, but got "
+            + formatStatistics(seqStatistics),
+        seqStatistics.stream().anyMatch(statistics -> statisticsIs(statistics, 10, 39, 30))
+            && seqStatistics.stream()
+                .anyMatch(statistics -> statisticsIs(statistics, 100, 200, 2)));
+    // only the inverted row goes to the unsequence space
+    Assert.assertEquals(1, unseqFiles.size());
+    Assert.assertTrue(
+        "the unsequence file should hold only time 15, but got "
+            + formatStatistics(Collections.singletonList(readFieldStatistics(unseqFiles.get(0)))),
+        statisticsIs(readFieldStatistics(unseqFiles.get(0)), 15, 15, 1));
+  }
+
   private static boolean statisticsIs(long[] statistics, long startTime, long endTime, long count) {
     return statistics[0] == startTime && statistics[1] == endTime && statistics[2] == count;
   }

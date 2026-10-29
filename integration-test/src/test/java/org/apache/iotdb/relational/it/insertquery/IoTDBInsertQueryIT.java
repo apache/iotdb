@@ -87,7 +87,11 @@ public class IoTDBInsertQueryIT {
         .getConfig()
         .getCommonConfig()
         .setPartitionInterval(1000)
-        .setMemtableSizeThreshold(10000);
+        .setMemtableSizeThreshold(10000)
+        // The out-of-order tablet test needs a sequence file with several pages: when the earlier
+        // file only has one page, the read side merges the overlapping page before the earlier
+        // pages are emitted and the wrong order is masked.
+        .setMaxNumberOfPointsInPage(10);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -180,6 +184,10 @@ public class IoTDBInsertQueryIT {
    * leaves the engine) and {@code
    * DataRegionTest#testOutOfOrderTabletKeepsSequenceSpaceNonOverlapped} (the storage-layer
    * classification of an unsorted tablet).
+   *
+   * <p>The first sequence file also has to hold several pages (see {@code
+   * max_number_of_points_in_page} in {@link #setUpClass()}): with a single page the overlapping
+   * page is merged before the earlier pages are emitted, which hides the wrong order as well.
    */
   @Test
   public void testInsertIntoQueryWithOutOfOrderTabletDoesNotOverlapSequenceFiles()
@@ -219,6 +227,21 @@ public class IoTDBInsertQueryIT {
           }
         }
         Assert.assertEquals(expectedTimes, actualTimes);
+      }
+
+      List<Long> expectedDescTimes = new ArrayList<>();
+      for (long time = 100; time >= 10; time--) {
+        expectedDescTimes.add(time);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT time,s FROM overlap_dst WHERE id='x' ORDER BY time DESC")) {
+        List<Long> actualTimes = new ArrayList<>();
+        while (resultSet.next()) {
+          actualTimes.add(resultSet.getLong(1));
+        }
+        Assert.assertEquals(expectedDescTimes, actualTimes);
       }
     }
   }

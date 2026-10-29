@@ -20,9 +20,12 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.series;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanUtil;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -42,9 +45,12 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.page.PageWriter;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -56,10 +62,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.createChunkWriter;
+import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.writeAlignedChunk;
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.writeNonAlignedChunk;
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.writeNonAlignedPoint;
 
@@ -81,9 +89,10 @@ import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFi
 public class OverlappingSeqChunkScanTest {
 
   private static final String DATABASE = "root.sg_overlap_seq";
+  private static final String MEASUREMENT = "s1";
   private static final IDeviceID DEVICE =
       IDeviceID.Factory.DEFAULT_FACTORY.create(DATABASE + ".d1");
-  private static final String SERIES_PATH = DEVICE + ".s1";
+  private static final String SERIES_PATH = DEVICE + "." + MEASUREMENT;
 
   private final List<TsFileResource> seqResources = new ArrayList<>();
 
@@ -167,6 +176,42 @@ public class OverlappingSeqChunkScanTest {
     Assert.assertEquals(reverseRange(10, 29), scanAllTimestamps(Ordering.DESC));
   }
 
+  /**
+   * The later file has several pages, so its pages are reordered into the page list more than once
+   * while the earlier file is still being scanned.
+   *
+   * <pre>
+   *   f1 : [10,19] [20,29] [30,39]
+   *   f2 : [12,14]        [25,27]        [35,37]
+   * </pre>
+   */
+  @Test
+  public void testLaterFileWithSeveralOverlappingPagesIsMergedInOrder() throws Exception {
+    writeSeqFileFromRanges(101, pageRange(10, 19, 20, 29, 30, 39), 10, 39);
+    writeSeqFileFromRanges(102, pageRange(12, 14, 25, 27, 35, 37), 12, 37);
+
+    Assert.assertEquals(range(10, 39), scanAllTimestamps(Ordering.ASC));
+    Assert.assertEquals(reverseRange(10, 39), scanAllTimestamps(Ordering.DESC));
+  }
+
+  /**
+   * The page ordering is done in {@link SeriesScanUtil} for aligned series as well, so an aligned
+   * sequence file with a nested overlapping page must return the same ordered result.
+   *
+   * <pre>
+   *   f1 : [10,19] [20,29] [30,39]
+   *   f2 :              [25,27]
+   * </pre>
+   */
+  @Test
+  public void testOverlapNestedInsideEarlierPageAligned() throws Exception {
+    writeAlignedSeqFileFromRanges(101, pageRange(10, 19, 20, 29, 30, 39), 10, 39);
+    writeAlignedSeqFileFromRanges(102, pageRange(25, 27), 25, 27);
+
+    Assert.assertEquals(range(10, 39), scanAllTimestampsAligned(Ordering.ASC));
+    Assert.assertEquals(reverseRange(10, 39), scanAllTimestampsAligned(Ordering.DESC));
+  }
+
   private List<Long> scanAllTimestamps(Ordering ordering) throws Exception {
     MeasurementPath scanPath = new MeasurementPath(SERIES_PATH, TSDataType.INT32);
     SeriesScanOptions.Builder builder = new SeriesScanOptions.Builder();
@@ -177,6 +222,22 @@ public class OverlappingSeqChunkScanTest {
             ordering,
             builder.build(),
             EnvironmentUtils.TEST_QUERY_FI_CONTEXT);
+    return scanAllTimestamps(scanUtil);
+  }
+
+  private List<Long> scanAllTimestampsAligned(Ordering ordering) throws Exception {
+    List<IMeasurementSchema> schemas = alignedSchemas();
+    AlignedFullPath scanPath =
+        new AlignedFullPath(DEVICE, Collections.singletonList(MEASUREMENT), schemas);
+    SeriesScanOptions.Builder builder = new SeriesScanOptions.Builder();
+    builder.withAllSensors(new HashSet<>(scanPath.getMeasurementList()));
+    AlignedSeriesScanUtil scanUtil =
+        new AlignedSeriesScanUtil(
+            scanPath, ordering, builder.build(), EnvironmentUtils.TEST_QUERY_FI_CONTEXT);
+    return scanAllTimestamps(scanUtil);
+  }
+
+  private List<Long> scanAllTimestamps(SeriesScanUtil scanUtil) throws Exception {
     scanUtil.initQueryDataSource(
         new QueryDataSource(new ArrayList<>(seqResources), Collections.emptyList()));
 
@@ -267,6 +328,41 @@ public class OverlappingSeqChunkScanTest {
 
   private interface ChunkBody {
     void write(List<IChunkWriter> chunkWriters, TsFileIOWriter fileWriter) throws IOException;
+  }
+
+  private void writeAlignedSeqFileFromRanges(
+      int fileIndex, List<TimeRange> pages, long startTime, long endTime)
+      throws IOException, IllegalPathException {
+    File file = new File(TestConstant.getTestTsFilePath(DATABASE, 0, 0, fileIndex));
+    TsFileResource resource = new TsFileResource(file);
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
+    try (TsFileIOWriter writer = new TsFileIOWriter(resource.getTsFile())) {
+      writer.startChunkGroup(DEVICE);
+      AlignedPath alignedPath =
+          new AlignedPath(DEVICE, Collections.singletonList(MEASUREMENT), alignedSchemas());
+      List<IChunkWriter> chunkWriters =
+          createChunkWriter(
+              Collections.singletonList(alignedPath),
+              Collections.singletonList(TSDataType.INT32),
+              Collections.singletonList(TSEncoding.PLAIN),
+              Collections.singletonList(CompressionType.UNCOMPRESSED),
+              true);
+      for (IChunkWriter chunkWriter : chunkWriters) {
+        writeAlignedChunk((AlignedChunkWriterImpl) chunkWriter, writer, pages, true);
+      }
+      writer.endChunkGroup();
+      resource.updateStartTime(DEVICE, startTime);
+      resource.updateEndTime(DEVICE, endTime);
+      writer.endFile();
+    }
+    resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+    seqResources.add(resource);
+  }
+
+  private static List<IMeasurementSchema> alignedSchemas() {
+    return Collections.singletonList(new MeasurementSchema(MEASUREMENT, TSDataType.INT32));
   }
 
   private void writeSeqFile(int fileIndex, ChunkBody body, long startTime, long endTime)

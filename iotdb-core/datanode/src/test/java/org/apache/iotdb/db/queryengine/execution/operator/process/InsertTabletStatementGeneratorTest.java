@@ -253,6 +253,49 @@ public class InsertTabletStatementGeneratorTest {
     Assert.assertArrayEquals(new int[] {150, 200}, (int[]) secondStatement.getColumns()[0]);
   }
 
+  /**
+   * Rows sharing a timestamp keep their relative order, so the last one still wins when the storage
+   * layer resolves the duplicate.
+   */
+  @Test
+  public void testDuplicateTimestampsKeepTheirRelativeOrder() throws IllegalPathException {
+    TreeInsertTabletStatementGenerator generator = createGenerator();
+
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
+    append(builder, 100, 1);
+    append(builder, 15, 2);
+    append(builder, 15, 3);
+    generator.processTsBlock(builder.build(), 0);
+
+    InsertTabletStatement statement = generator.constructInsertTabletStatement();
+
+    Assert.assertArrayEquals(new long[] {15, 15, 100}, statement.getTimes());
+    Assert.assertArrayEquals(new int[] {2, 3, 1}, (int[]) statement.getColumns()[0]);
+  }
+
+  @Test
+  public void testAlignedTabletRowsAreSorted() throws IllegalPathException {
+    TreeInsertTabletStatementGenerator generator =
+        new TreeInsertTabletStatementGenerator(
+            new PartialPath("root.sg.d1"),
+            Collections.singletonMap("s1", new InputLocation(0, 0)),
+            Collections.singletonMap("s1", TSDataType.INT32),
+            Collections.singletonList(TSDataType.INT32),
+            true,
+            10);
+
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
+    append(builder, 100, 100);
+    append(builder, 15, 15);
+    generator.processTsBlock(builder.build(), 0);
+
+    InsertTabletStatement statement = generator.constructInsertTabletStatement();
+
+    Assert.assertTrue(statement.isAligned());
+    Assert.assertArrayEquals(new long[] {15, 100}, statement.getTimes());
+    Assert.assertArrayEquals(new int[] {15, 100}, (int[]) statement.getColumns()[0]);
+  }
+
   private TreeInsertTabletStatementGenerator createGenerator() throws IllegalPathException {
     return new TreeInsertTabletStatementGenerator(
         new PartialPath("root.sg.d1"),
