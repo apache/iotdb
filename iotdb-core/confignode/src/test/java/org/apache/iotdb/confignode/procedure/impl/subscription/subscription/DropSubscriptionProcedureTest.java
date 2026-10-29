@@ -144,6 +144,7 @@ public class DropSubscriptionProcedureTest {
 
     procedure.executeFromOperateOnDataNodes(env);
 
+    Mockito.verify(env, Mockito.never()).pushMultiPipeMetaToDataNodes(Mockito.anyList());
     Mockito.verify(env, Mockito.never()).dropMultiPipeOnDataNodes(Mockito.anyList());
     Mockito.verify(alterConsumerGroupProcedure).executeFromOperateOnDataNodes(env);
   }
