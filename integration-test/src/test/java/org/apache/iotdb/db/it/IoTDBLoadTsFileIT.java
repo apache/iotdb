@@ -216,19 +216,7 @@ public class IoTDBLoadTsFileIT {
   }
 
   private void deleteDatabases() throws SQLException {
-    try (final Connection connection = EnvFactory.getEnv().getConnection();
-        final Statement statement = connection.createStatement()) {
-      // LOAD without an explicit database level may also create root.sg.
-      final List<String> databases = new ArrayList<>();
-      try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
-        while (resultSet.next()) {
-          databases.add(resultSet.getString(1));
-        }
-      }
-      for (final String database : databases) {
-        statement.execute("DELETE DATABASE " + database);
-      }
-    }
+    TestUtils.clearAllDatabases(EnvFactory.getEnv());
   }
 
   @Test

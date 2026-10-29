@@ -92,21 +92,10 @@ public class IoTDBDatabaseIT {
   public void tearDown() throws SQLException {
     dropAllPipes(BaseEnv.TABLE_SQL_DIALECT);
     dropAllPipes(BaseEnv.TREE_SQL_DIALECT);
+    TestUtils.clearAllDatabases(EnvFactory.getEnv());
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      final List<String> databases = new ArrayList<>();
-      try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
-        while (resultSet.next()) {
-          final String database = resultSet.getString(1);
-          if (!"information_schema".equals(database)) {
-            databases.add(database);
-          }
-        }
-      }
-      for (final String database : databases) {
-        TestUtils.dropDatabaseWithRetry(statement, "\"" + database.replace("\"", "\"\"") + "\"");
-      }
       final List<String> users = new ArrayList<>();
       try (final ResultSet resultSet = statement.executeQuery("LIST USER")) {
         while (resultSet.next()) {
@@ -118,18 +107,6 @@ public class IoTDBDatabaseIT {
       }
       for (final String user : users) {
         statement.execute("DROP USER \"" + user.replace("\"", "\"\"") + "\"");
-      }
-    }
-    try (final Connection connection = EnvFactory.getEnv().getConnection();
-        final Statement statement = connection.createStatement()) {
-      final List<String> databases = new ArrayList<>();
-      try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
-        while (resultSet.next()) {
-          databases.add(resultSet.getString(1));
-        }
-      }
-      for (final String database : databases) {
-        statement.execute("DELETE DATABASE " + database);
       }
     }
   }

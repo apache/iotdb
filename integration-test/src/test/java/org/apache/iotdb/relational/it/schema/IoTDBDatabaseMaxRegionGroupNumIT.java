@@ -40,10 +40,8 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 @RunWith(IoTDBTestRunner.class)
@@ -80,22 +78,7 @@ public class IoTDBDatabaseMaxRegionGroupNumIT {
 
   @After
   public void tearDown() throws SQLException {
-    try (final Connection connection =
-            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
-      final List<String> databases = new ArrayList<>();
-      try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
-        while (resultSet.next()) {
-          final String database = resultSet.getString(1);
-          if (!"information_schema".equals(database)) {
-            databases.add(database);
-          }
-        }
-      }
-      for (final String database : databases) {
-        TestUtils.dropDatabaseWithRetry(statement, "\"" + database.replace("\"", "\"\"") + "\"");
-      }
-    }
+    TestUtils.clearAllDatabases(EnvFactory.getEnv());
   }
 
   @Test
