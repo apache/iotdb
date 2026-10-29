@@ -68,7 +68,9 @@ final class PipeTransferFaultInjector implements AutoCloseable {
   private final DataNodeWrapper receiver;
   private final TServerSocket socket;
   private final TThreadPoolServer server;
-  private final ExecutorService executor = Executors.newFixedThreadPool(16);
+  // TThreadPoolServer retains a worker for each open connection, including idle sink clients.
+  // A fixed pool can leave new connections waiting forever behind those idle connections.
+  private final ExecutorService executor = Executors.newCachedThreadPool();
   private final Map<TTransport, IoTDBSyncClient> clients = new ConcurrentHashMap<>();
   private final Set<TTransport> senderTransports = ConcurrentHashMap.newKeySet();
   private final AtomicInteger pausedRequests = new AtomicInteger();
