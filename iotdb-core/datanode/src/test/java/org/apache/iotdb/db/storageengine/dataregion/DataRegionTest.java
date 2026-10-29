@@ -94,8 +94,10 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -121,6 +123,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -2771,10 +2774,15 @@ public class DataRegionTest {
    * that follows a newer one must still be written into the unsequence space: classifying it as
    * sequence would write data older than the device's last flushed time into a new sequence file,
    * which then overlaps the existing sequence file of the same device.
+   *
+   * <p>The written rows are asserted through the chunk statistics of each file, not only through
+   * the device time index: the index is updated from the first and last row of every inserted range
+   * ({@code TsFileProcessor#insertTablet}), so a range that physically contains an older row can
+   * still be indexed as if it did not, and a resource-index based overlap check would miss it.
    */
   @Test
   public void testOutOfOrderTabletKeepsSequenceSpaceNonOverlapped()
-      throws QueryProcessException, WriteProcessException {
+      throws QueryProcessException, WriteProcessException, IOException {
     long[] orderedTimes = new long[30];
     for (int i = 0; i < orderedTimes.length; i++) {
       orderedTimes[i] = 10 + i;
@@ -2793,9 +2801,70 @@ public class DataRegionTest {
     Assert.assertTrue(
         "sequence files should not overlap, but got " + overlappedSeqFiles,
         overlappedSeqFiles.isEmpty());
+    // the written rows themselves: the sequence space keeps 10..39 in the first file and only 100
+    // in the second one, while the older row 15 landed in the unsequence file
+    List<long[]> seqStatistics = new ArrayList<>();
+    for (TsFileResource seqFile : seqFiles) {
+      seqStatistics.add(readFieldStatistics(seqFile));
+    }
+    Assert.assertTrue(
+        "expected a sequence file with 10..39 and one with 100 only, but got "
+            + formatStatistics(seqStatistics),
+        seqStatistics.stream().anyMatch(statistics -> statisticsIs(statistics, 10, 39, 30))
+            && seqStatistics.stream()
+                .anyMatch(statistics -> statisticsIs(statistics, 100, 100, 1)));
     // the older row must be written into the unsequence space
     Assert.assertEquals(1, unseqFiles.size());
+    Assert.assertTrue(
+        "the unsequence file should hold only time 15, but got "
+            + formatStatistics(Collections.singletonList(readFieldStatistics(unseqFiles.get(0)))),
+        statisticsIs(readFieldStatistics(unseqFiles.get(0)), 15, 15, 1));
     Assert.assertEquals(2, seqFiles.size());
+  }
+
+  private static boolean statisticsIs(long[] statistics, long startTime, long endTime, long count) {
+    return statistics[0] == startTime && statistics[1] == endTime && statistics[2] == count;
+  }
+
+  private static String formatStatistics(List<long[]> statisticsList) {
+    StringBuilder builder = new StringBuilder("[");
+    for (int i = 0; i < statisticsList.size(); i++) {
+      if (i > 0) {
+        builder.append(", ");
+      }
+      builder
+          .append("startTime=")
+          .append(statisticsList.get(i)[0])
+          .append(", endTime=")
+          .append(statisticsList.get(i)[1])
+          .append(", count=")
+          .append(statisticsList.get(i)[2]);
+    }
+    return builder.append("]").toString();
+  }
+
+  /**
+   * Returns {startTime, endTime, pointCount} of measurement {@code m1} as recorded by the chunk
+   * statistics of the file, i.e. derived from the data written into it instead of from the device
+   * time index.
+   */
+  private static long[] readFieldStatistics(TsFileResource resource) throws IOException {
+    long startTime = Long.MAX_VALUE;
+    long endTime = Long.MIN_VALUE;
+    long count = 0;
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(resource.getTsFilePath())) {
+      for (IDeviceID device : resource.getDevices()) {
+        TimeseriesMetadata metadata = reader.readDeviceMetadata(device).get("m1");
+        if (metadata == null || metadata.getStatistics() == null) {
+          continue;
+        }
+        Statistics<? extends Serializable> statistics = metadata.getStatistics();
+        startTime = Math.min(startTime, statistics.getStartTime());
+        endTime = Math.max(endTime, statistics.getEndTime());
+        count += statistics.getCount();
+      }
+    }
+    return new long[] {startTime, endTime, count};
   }
 
   private static RelationalInsertTabletNode genTabletWithTimes(long... times) {

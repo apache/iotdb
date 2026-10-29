@@ -167,6 +167,20 @@ public class IoTDBInsertQueryIT {
     }
   }
 
+  /**
+   * End-to-end check for an {@code INSERT INTO ... SELECT} whose source tablet is not in ascending
+   * time order. The destination device is flushed at time 39, then the query feeds it another
+   * tablet: on the unfixed code the row at time 15 is classified as sequence data, a sequence
+   * TsFile overlapping [10,39] is created, and the query returns 15 after 39 (or twice).
+   *
+   * <p>The out-of-order input depends on the nested-loop cross join emitting the rows in probe
+   * order, i.e. {@code [100, 15]}. If the optimizer ever emits those rows in time order this test
+   * no longer reproduces the situation and would pass trivially; the guards that do not depend on
+   * the plan shape are {@code InsertTabletStatementGeneratorTest} (the tablet is sorted before it
+   * leaves the engine) and {@code
+   * DataRegionTest#testOutOfOrderTabletKeepsSequenceSpaceNonOverlapped} (the storage-layer
+   * classification of an unsorted tablet).
+   */
   @Test
   public void testInsertIntoQueryWithOutOfOrderTabletDoesNotOverlapSequenceFiles()
       throws SQLException {

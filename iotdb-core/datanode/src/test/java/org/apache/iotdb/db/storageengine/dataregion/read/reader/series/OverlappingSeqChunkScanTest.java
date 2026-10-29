@@ -164,6 +164,7 @@ public class OverlappingSeqChunkScanTest {
         102, Collections.singletonList(Arrays.asList(12L, 13L, 14L)), 12, 14);
 
     Assert.assertEquals(range(10, 29), scanAllTimestamps(Ordering.ASC));
+    Assert.assertEquals(reverseRange(10, 29), scanAllTimestamps(Ordering.DESC));
   }
 
   private List<Long> scanAllTimestamps(Ordering ordering) throws Exception {
