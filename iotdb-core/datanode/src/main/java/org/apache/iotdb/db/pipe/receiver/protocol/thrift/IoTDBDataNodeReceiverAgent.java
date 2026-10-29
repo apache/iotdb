@@ -41,25 +41,25 @@ public class IoTDBDataNodeReceiverAgent extends IoTDBReceiverAgent {
   }
 
   @Override
-  protected IoTDBReceiver getReceiverWithSpecifiedClient(final String ignore) {
-    return ignore == null ? receiverThreadLocal.get() : receiverMap.get(ignore);
+  protected IoTDBReceiver getReceiverWithSpecifiedClient(final String key) {
+    return key == null ? receiverThreadLocal.get() : receiverMap.get(key);
   }
 
   @Override
-  protected void setReceiverWithSpecifiedClient(final String ignore, final IoTDBReceiver receiver) {
-    if (ignore == null) {
+  protected void setReceiverWithSpecifiedClient(final String key, final IoTDBReceiver receiver) {
+    if (key == null) {
       receiverThreadLocal.set(receiver);
     } else {
-      receiverMap.put(ignore, receiver);
+      receiverMap.put(key, receiver);
     }
   }
 
   @Override
-  protected void removeReceiverWithSpecifiedClient(final String ignore) {
-    if (ignore == null) {
+  protected void removeReceiverWithSpecifiedClient(final String key) {
+    if (key == null) {
       receiverThreadLocal.remove();
     } else {
-      receiverMap.remove(ignore);
+      receiverMap.remove(key);
     }
   }
 }

@@ -39,14 +39,12 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import org.apache.tsfile.utils.BytesUtils;
-import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -94,6 +92,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
 
   private static final int UDP_ENVELOPE_SIZE = 2 * Integer.BYTES + Long.BYTES;
   private static final int UDP_REQUEST_ID_SIZE = Long.BYTES;
+  private static final int UDP_ACK_SIZE = UDP_REQUEST_ID_SIZE + 1;
   private static final int UDP_SLICE_REQUEST_SERIALIZATION_RESERVED_SIZE = 64;
 
   protected static class AirGapSocket extends Socket {
@@ -479,34 +478,55 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
   }
 
   private boolean sendBytesByUdp(final AirGapSocket socket, final byte[] bytes) throws IOException {
-    for (final byte[] requestBytes : sliceIfNeededForUdp(bytes)) {
-      if (!sendOneDatagram(socket, requestBytes)) {
+    for (final TPipeTransferReq request : sliceIfNeededForUdp(bytes)) {
+      if (!sendOneDatagram(socket, request)) {
         return false;
       }
     }
     return true;
   }
 
-  private boolean sendOneDatagram(final AirGapSocket socket, final byte[] requestBytes)
+  private boolean sendOneDatagram(final AirGapSocket socket, final TPipeTransferReq request)
       throws IOException {
     final long requestId = udpRequestIdGenerator.incrementAndGet();
-    final byte[] framedRequestBytes =
+    final ByteBuffer body = request.body.duplicate();
+    final int requestSize = Byte.BYTES + Short.BYTES + body.remaining();
+    final int eLanguageSize =
         eLanguageEnable
-            ? enrichWithELanguage(enrichWithLengthAndChecksum(requestBytes))
-            : enrichWithLengthAndChecksum(requestBytes);
-    final byte[] datagramBytes =
-        ByteBuffer.allocate(UDP_REQUEST_ID_SIZE + framedRequestBytes.length)
-            .putLong(requestId)
-            .put(framedRequestBytes)
-            .array();
-    if (datagramBytes.length > udpPacketSizeInBytes) {
+            ? AirGapELanguageConstant.E_LANGUAGE_PREFIX.length
+                + AirGapELanguageConstant.E_LANGUAGE_SUFFIX.length
+            : 0;
+    final int datagramSize = UDP_REQUEST_ID_SIZE + UDP_ENVELOPE_SIZE + requestSize + eLanguageSize;
+    if (datagramSize > udpPacketSizeInBytes) {
       throw new IOException(
           String.format(
               PipeMessages
                   .EXCEPTION_AIR_GAP_UDP_DATAGRAM_SIZE_ARG_EXCEEDS_CONFIGURED_PACKET_SIZE_ARG_559D0654,
-              datagramBytes.length,
+              datagramSize,
               udpPacketSizeInBytes));
     }
+
+    final CRC32 crc32 = new CRC32();
+    crc32.update(request.version);
+    crc32.update((request.type >>> Byte.SIZE) & 0xFF);
+    crc32.update(request.type & 0xFF);
+    crc32.update(body.duplicate());
+
+    final ByteBuffer datagramBuffer = ByteBuffer.allocate(datagramSize).putLong(requestId);
+    if (eLanguageEnable) {
+      datagramBuffer.put(AirGapELanguageConstant.E_LANGUAGE_PREFIX);
+    }
+    datagramBuffer
+        .putInt(requestSize + Long.BYTES)
+        .putInt(requestSize + Long.BYTES)
+        .putLong(crc32.getValue())
+        .put(request.version)
+        .putShort(request.type)
+        .put(body);
+    if (eLanguageEnable) {
+      datagramBuffer.put(AirGapELanguageConstant.E_LANGUAGE_SUFFIX);
+    }
+    final byte[] datagramBytes = datagramBuffer.array();
 
     final DatagramSocket datagramSocket = socket.getDatagramSocket();
     datagramSocket.send(
@@ -521,7 +541,8 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
         originalTimeoutMs == 0
             ? Long.MAX_VALUE
             : System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(originalTimeoutMs);
-    final byte[] response = new byte[UDP_REQUEST_ID_SIZE + 1];
+    // One extra byte lets us detect datagrams that receive() would otherwise silently truncate.
+    final byte[] response = new byte[UDP_ACK_SIZE + 1];
     final DatagramPacket responsePacket = new DatagramPacket(response, response.length);
     try {
       while (true) {
@@ -537,7 +558,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
 
         responsePacket.setLength(response.length);
         datagramSocket.receive(responsePacket);
-        if (responsePacket.getLength() != UDP_REQUEST_ID_SIZE + 1) {
+        if (responsePacket.getLength() != UDP_ACK_SIZE) {
           continue;
         }
 
@@ -545,14 +566,15 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
         if (responseBuffer.getLong() != requestId) {
           continue;
         }
-        return Arrays.equals(AirGapOneByteResponse.OK, new byte[] {responseBuffer.get()});
+        return responseBuffer.get() == AirGapOneByteResponse.OK[0];
       }
     } finally {
       datagramSocket.setSoTimeout(originalTimeoutMs);
     }
   }
 
-  private List<byte[]> sliceIfNeededForUdp(final byte[] requestBytes) throws IOException {
+  private List<TPipeTransferReq> sliceIfNeededForUdp(final byte[] requestBytes) throws IOException {
+    final TPipeTransferReq request = toTPipeTransferReq(requestBytes);
     final int rawPayloadSizeLimit =
         udpPacketSizeInBytes
             - UDP_ENVELOPE_SIZE
@@ -561,8 +583,8 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
                 ? AirGapELanguageConstant.E_LANGUAGE_PREFIX.length
                     + AirGapELanguageConstant.E_LANGUAGE_SUFFIX.length
                 : 0);
-    if (requestBytes.length <= rawPayloadSizeLimit) {
-      return Arrays.asList(requestBytes);
+    if (Byte.BYTES + Short.BYTES + request.body.remaining() <= rawPayloadSizeLimit) {
+      return Arrays.asList(request);
     }
 
     final int sliceBodySizeLimit =
@@ -575,18 +597,16 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
               udpPacketSizeInBytes));
     }
 
-    final TPipeTransferReq request = toTPipeTransferReq(requestBytes);
     final int sliceOrderId = PipeTransferSliceReqBuilder.nextSliceOrderId();
     final int sliceCount = PipeTransferSliceReqBuilder.getSliceCount(request, sliceBodySizeLimit);
 
-    final List<byte[]> slicedRequestBytes = new ArrayList<>(sliceCount);
+    final List<TPipeTransferReq> slicedRequests = new ArrayList<>(sliceCount);
     for (int i = 0; i < sliceCount; i++) {
-      slicedRequestBytes.add(
-          toTPipeTransferBytes(
-              PipeTransferSliceReqBuilder.buildSliceReq(
-                  request, sliceOrderId, i, sliceCount, sliceBodySizeLimit)));
+      slicedRequests.add(
+          PipeTransferSliceReqBuilder.buildSliceReq(
+              request, sliceOrderId, i, sliceCount, sliceBodySizeLimit));
     }
-    return slicedRequestBytes;
+    return slicedRequests;
   }
 
   private TPipeTransferReq toTPipeTransferReq(final byte[] requestBytes) {
@@ -596,21 +616,6 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
     request.type = ReadWriteIOUtils.readShort(byteBuffer);
     request.body = byteBuffer.slice();
     return request;
-  }
-
-  private byte[] toTPipeTransferBytes(final TPipeTransferReq request) throws IOException {
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(request.version, outputStream);
-      ReadWriteIOUtils.write(request.type, outputStream);
-
-      final ByteBuffer bodyBuffer = request.body.duplicate();
-      final byte[] body = new byte[bodyBuffer.remaining()];
-      bodyBuffer.get(body);
-      outputStream.write(body);
-
-      return Arrays.copyOf(byteArrayOutputStream.getBuf(), byteArrayOutputStream.size());
-    }
   }
 
   protected boolean send(final AirGapSocket socket, final byte[] bytes) throws IOException {

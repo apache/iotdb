@@ -164,6 +164,7 @@ public class IoTDBDataRegionAirGapSinkTest {
           new PipeTaskRuntimeConfiguration(new PipeTaskSinkRuntimeEnvironment("pipe", 1L, 1)));
 
       final List<TPipeTransferReq> receivedRequests = new ArrayList<>();
+      final List<Integer> receivedPacketSizes = new ArrayList<>();
       final AtomicBoolean senderFinished = new AtomicBoolean(false);
       final AtomicReference<Throwable> receiverException = new AtomicReference<>();
       final Thread receiverThread =
@@ -176,6 +177,7 @@ public class IoTDBDataRegionAirGapSinkTest {
                     final DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
                     try {
                       receiverSocket.receive(packet);
+                      receivedPacketSizes.add(packet.getLength());
                       receivedRequests.add(decodeAirGapDatagram(buffer, packet.getLength()));
                       final ByteBuffer responseBuffer =
                           ByteBuffer.allocate(Long.BYTES + AirGapOneByteResponse.OK.length)
@@ -213,10 +215,69 @@ public class IoTDBDataRegionAirGapSinkTest {
       Assert.assertFalse(receiverThread.isAlive());
       Assert.assertNull(receiverException.get());
       Assert.assertTrue(receivedRequests.size() > 1);
+      for (final int packetSize : receivedPacketSizes) {
+        Assert.assertTrue(packetSize <= 1024);
+      }
       for (final TPipeTransferReq receivedRequest : receivedRequests) {
         Assert.assertEquals(PipeRequestType.TRANSFER_SLICE.getType(), receivedRequest.type);
         Assert.assertTrue(receivedRequest.body.remaining() < 1024);
       }
+    }
+  }
+
+  @Test
+  public void testUdpAirGapRejectsOversizedAcknowledgement() throws Exception {
+    try (final DatagramSocket receiverSocket = new DatagramSocket(0);
+        final UdpTestingIoTDBDataRegionAirGapSink sink =
+            new UdpTestingIoTDBDataRegionAirGapSink()) {
+      final PipeParameters parameters = new PipeParameters(buildParameterAttributes(false));
+      parameters.getAttribute().put(PipeSinkConstant.CONNECTOR_AIR_GAP_TRANSPORT_KEY, "udp");
+      sink.validate(new PipeParameterValidator(parameters));
+      sink.customize(
+          parameters,
+          new PipeTaskRuntimeConfiguration(new PipeTaskSinkRuntimeEnvironment("pipe", 1L, 1)));
+
+      final AtomicBoolean oversizedAcknowledgementSent = new AtomicBoolean(false);
+      final AtomicReference<Throwable> receiverException = new AtomicReference<>();
+      final Thread receiverThread =
+          new Thread(
+              () -> {
+                try {
+                  final byte[] buffer = new byte[2048];
+                  final DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                  receiverSocket.receive(packet);
+                  final long requestId = ByteBuffer.wrap(buffer, 0, Long.BYTES).getLong();
+                  final byte[] oversizedAck =
+                      ByteBuffer.allocate(Long.BYTES + AirGapOneByteResponse.OK.length + 1)
+                          .putLong(requestId)
+                          .put(AirGapOneByteResponse.OK)
+                          .put((byte) 1)
+                          .array();
+                  receiverSocket.send(
+                      new DatagramPacket(
+                          oversizedAck,
+                          oversizedAck.length,
+                          packet.getAddress(),
+                          packet.getPort()));
+                  oversizedAcknowledgementSent.set(true);
+                } catch (final Throwable t) {
+                  receiverException.set(t);
+                }
+              });
+      receiverThread.start();
+
+      try {
+        Assert.assertThrows(
+            SocketTimeoutException.class,
+            () -> sink.sendUdp(receiverSocket.getLocalPort(), new byte[] {1, 0, 1}));
+      } finally {
+        receiverSocket.close();
+      }
+
+      receiverThread.join(5000);
+      Assert.assertFalse(receiverThread.isAlive());
+      Assert.assertNull(receiverException.get());
+      Assert.assertTrue(oversizedAcknowledgementSent.get());
     }
   }
 
