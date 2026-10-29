@@ -22,6 +22,7 @@ package org.apache.iotdb.db.it;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.ClusterConstant;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.it.utils.TsFileGenerator;
@@ -30,6 +31,13 @@ import org.apache.iotdb.jdbc.Config;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.TsFileReader;
+import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.common.Field;
+import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.expression.QueryExpression;
+import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.awaitility.Awaitility;
@@ -43,7 +51,9 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -52,9 +62,12 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -80,6 +93,16 @@ public class IoTDBLoadTsFileClusterIT {
   /** Bounds the load of a cluster that cannot reach consensus, so the test cannot hang forever. */
   private static final int DEGRADED_LOAD_TIMEOUT_SECONDS = 300;
 
+  /** The directories a DataRegion keeps its TsFiles in, below `<datanode>/data`. */
+  private static final List<String> TSFILE_DIRECTORIES = Arrays.asList("sequence", "unsequence");
+
+  private static final String TSFILE_SUFFIX = ".tsfile";
+
+  /**
+   * The prefix of the temporary directories that hold the hard-linked TsFiles of the restart case.
+   */
+  private static final String TSFILE_SNAPSHOT_PREFIX = "load-cluster-tsfile";
+
   private File tmpDir;
 
   @BeforeClass
@@ -99,8 +122,9 @@ public class IoTDBLoadTsFileClusterIT {
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(REPLICATION_FACTOR)
         .setDataReplicationFactor(REPLICATION_FACTOR);
-    // The restart case compares the on-disk size of the replicas, so keep compaction from changing
-    // those sizes while the test waits for the restarted DataNode to catch up.
+    // Keep every kind of merge off for this class: the restart case hard-links the replicas'
+    // TsFiles out of the DataNode directory and compares their points while the restarted DataNode
+    // catches up, so compaction must not rewrite those files in the meantime.
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -112,6 +136,17 @@ public class IoTDBLoadTsFileClusterIT {
 
   @AfterClass
   public static void tearDownClass() {
+    // Every waiting attempt deletes its own snapshot directory; this also removes what a JVM that
+    // died in the middle of an attempt left behind next to the DataNode directories.
+    final File targetDir =
+        new File(System.getProperty(ClusterConstant.USER_DIR), ClusterConstant.TARGET);
+    final File[] snapshotDirs =
+        targetDir.listFiles((dir, name) -> name.startsWith(TSFILE_SNAPSHOT_PREFIX));
+    if (snapshotDirs != null) {
+      for (final File snapshotDir : snapshotDirs) {
+        deleteRecursively(snapshotDir);
+      }
+    }
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -316,58 +351,70 @@ public class IoTDBLoadTsFileClusterIT {
   }
 
   /**
-   * Waits until every data region replica on the given DataNode has the same on-disk size as the
-   * other replicas of that region. A node that did not replay the LOAD keeps its pre-LOAD size.
+   * Waits until every data region replica on the given DataNode holds as many points as the other
+   * replicas of that region.
+   *
+   * <p>A replica that did not replay the LOAD keeps its pre-LOAD data, but the replicas that stayed
+   * up may keep the same points in more physical TsFiles than the restarted one, so on-disk sizes
+   * are not comparable. Every replica's TsFiles are hard-linked into a temporary directory and read
+   * back point by point instead.
    */
   private static void awaitRestartedLocalReplicasHaveTheLoadedFile(
       final DataNodeWrapper restartedDataNode) {
     Awaitility.await()
         .atMost(5, TimeUnit.MINUTES)
-        .pollInterval(1, TimeUnit.SECONDS)
+        .pollInterval(5, TimeUnit.SECONDS)
         .ignoreExceptions()
         .untilAsserted(
             () -> {
-              final Map<Integer, Map<Integer, String>> regionSizes = dataRegionSizes();
+              final Map<Integer, Set<Integer>> regionReplicas = dataRegionReplicas();
               Assert.assertFalse(
-                  "the loaded database must have data regions", regionSizes.isEmpty());
+                  "the loaded database must have data regions", regionReplicas.isEmpty());
 
-              int restartedDataNodeId;
+              final Map<Integer, DataNodeWrapper> dataNodesById = new HashMap<>();
               try (final Connection connection = EnvFactory.getEnv().getConnection();
                   final Statement statement = connection.createStatement()) {
-                restartedDataNodeId = dataNodeId(statement, restartedDataNode);
+                for (int dataNodeIndex = 0; dataNodeIndex < DATA_NODE_NUM; dataNodeIndex++) {
+                  final DataNodeWrapper dataNode =
+                      EnvFactory.getEnv().getDataNodeWrapper(dataNodeIndex);
+                  dataNodesById.put(dataNodeId(statement, dataNode), dataNode);
+                }
               }
 
-              for (final Map.Entry<Integer, Map<Integer, String>> region : regionSizes.entrySet()) {
-                final Map<Integer, String> replicaSizes = region.getValue();
-                // A region without data on any replica has nothing to catch up with.
-                if (replicaSizes.values().stream().noneMatch(IoTDBLoadTsFileClusterIT::hasData)) {
-                  continue;
+              // Create the snapshots beside the DataNode directories, so that the hard links stay
+              // on the file system of the TsFiles they point at.
+              final File snapshotRoot =
+                  Files.createTempDirectory(
+                          new File(restartedDataNode.getNodePath()).getParentFile().toPath(),
+                          TSFILE_SNAPSHOT_PREFIX)
+                      .toFile();
+              try {
+                for (final Map.Entry<Integer, Set<Integer>> region : regionReplicas.entrySet()) {
+                  final Map<Integer, Integer> pointCounts = new TreeMap<>();
+                  for (final int dataNodeId : region.getValue()) {
+                    final DataNodeWrapper dataNode = dataNodesById.get(dataNodeId);
+                    Assert.assertNotNull(
+                        "region "
+                            + region.getKey()
+                            + " is hosted by an unknown DataNode "
+                            + dataNodeId,
+                        dataNode);
+                    pointCounts.put(
+                        dataNodeId,
+                        readLocalReplicaPointCount(dataNode, region.getKey(), snapshotRoot));
+                  }
+                  assertSamePointCounts(region.getKey(), pointCounts);
                 }
-                final String restartedSize = replicaSizes.get(restartedDataNodeId);
+              } finally {
                 Assert.assertTrue(
-                    "region " + region.getKey() + " has no data on the restarted DataNode",
-                    hasData(restartedSize));
-                replicaSizes.forEach(
-                    (dataNodeId, size) -> {
-                      if (dataNodeId != restartedDataNodeId) {
-                        Assert.assertEquals(
-                            "region " + region.getKey() + " differs on DataNode " + dataNodeId,
-                            size,
-                            restartedSize);
-                      }
-                    });
+                    "cannot delete the TsFile snapshots", deleteRecursively(snapshotRoot));
               }
             });
   }
 
-  /** Whether a `show regions` size means the replica holds data. */
-  private static boolean hasData(final String size) {
-    return size != null && !"Unknown".equals(size) && !"0 B".equals(size);
-  }
-
-  /** The DataRegion rows of `show regions`, mapped to each replica's on-disk size. */
-  private static Map<Integer, Map<Integer, String>> dataRegionSizes() throws Exception {
-    final Map<Integer, Map<Integer, String>> regionSizes = new HashMap<>();
+  /** The DataRegion rows of `show regions`, mapped to the DataNodes that hold a replica. */
+  private static Map<Integer, Set<Integer>> dataRegionReplicas() throws SQLException {
+    final Map<Integer, Set<Integer>> regionReplicas = new HashMap<>();
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement();
         final ResultSet resultSet = statement.executeQuery("show regions")) {
@@ -376,15 +423,124 @@ public class IoTDBLoadTsFileClusterIT {
             || !DATABASE.equals(resultSet.getString(ColumnHeaderConstant.DATABASE))) {
           continue;
         }
-        regionSizes
+        regionReplicas
             .computeIfAbsent(
-                resultSet.getInt(ColumnHeaderConstant.REGION_ID), id -> new HashMap<>())
-            .put(
-                resultSet.getInt(ColumnHeaderConstant.DATA_NODE_ID),
-                resultSet.getString(ColumnHeaderConstant.TSFILE_SIZE));
+                resultSet.getInt(ColumnHeaderConstant.REGION_ID), id -> new HashSet<>())
+            .add(resultSet.getInt(ColumnHeaderConstant.DATA_NODE_ID));
       }
     }
-    return regionSizes;
+    return regionReplicas;
+  }
+
+  /**
+   * Counts the points of one local replica, after hard-linking the replica's TsFiles into
+   * `<snapshotRoot>/<region>/<node>` so that a concurrent flush cannot change them while they are
+   * read.
+   */
+  private static int readLocalReplicaPointCount(
+      final DataNodeWrapper dataNode, final int regionId, final File snapshotRoot)
+      throws IOException {
+    final File replicaDir =
+        new File(new File(snapshotRoot, String.valueOf(regionId)), dataNode.getId());
+    final File dataRoot = new File(dataNode.getDataNodeDir(), "data");
+    final List<File> tsFiles = new ArrayList<>();
+    for (final String directory : TSFILE_DIRECTORIES) {
+      final File regionDir =
+          new File(new File(dataRoot, directory), DATABASE + File.separator + regionId);
+      tsFiles.addAll(snapshotTsFiles(regionDir, new File(replicaDir, directory)));
+    }
+    final Set<String> points = new HashSet<>();
+    for (final File tsFile : tsFiles) {
+      readPoints(tsFile, points);
+    }
+    return points.size();
+  }
+
+  /** Hard-links the TsFiles below a replica directory into the snapshot directory. */
+  private static List<File> snapshotTsFiles(final File regionDir, final File snapshotDir)
+      throws IOException {
+    final List<File> tsFiles = new ArrayList<>();
+    collectTsFiles(regionDir, tsFiles);
+    if (tsFiles.isEmpty()) {
+      return tsFiles;
+    }
+    Files.createDirectories(snapshotDir.toPath());
+    final List<File> snapshots = new ArrayList<>();
+    for (final File tsFile : tsFiles) {
+      // The time partition directory keeps the names unique inside one replica.
+      final File snapshot =
+          new File(snapshotDir, tsFile.getParentFile().getName() + "-" + tsFile.getName());
+      try {
+        Files.createLink(snapshot.toPath(), tsFile.toPath());
+      } catch (final IOException | UnsupportedOperationException e) {
+        // A hard link needs the same file system; copy if the snapshots land on another one.
+        Files.copy(tsFile.toPath(), snapshot.toPath(), StandardCopyOption.REPLACE_EXISTING);
+      }
+      snapshots.add(snapshot);
+    }
+    return snapshots;
+  }
+
+  private static void collectTsFiles(final File directory, final List<File> tsFiles) {
+    final File[] children = directory.listFiles();
+    if (children == null) {
+      return;
+    }
+    for (final File child : children) {
+      if (child.isDirectory()) {
+        collectTsFiles(child, tsFiles);
+      } else if (child.getName().endsWith(TSFILE_SUFFIX)) {
+        tsFiles.add(child);
+      }
+    }
+  }
+
+  /** Adds every non-null point of the given TsFile to the point set. */
+  private static void readPoints(final File tsFile, final Set<String> points) throws IOException {
+    try (final TsFileSequenceReader sequenceReader = new TsFileSequenceReader(tsFile.getPath());
+        final TsFileReader reader = new TsFileReader(sequenceReader)) {
+      final List<Path> queryPaths = new ArrayList<>();
+      for (final String device : allDevices()) {
+        for (final String measurement : MEASUREMENTS) {
+          queryPaths.add(new Path(device, measurement, false));
+        }
+      }
+      final QueryDataSet dataSet = reader.query(QueryExpression.create(queryPaths, null));
+      // The data set keeps only the series this TsFile actually holds, in the query order.
+      final List<Path> storedPaths = dataSet.getPaths();
+      while (dataSet.hasNext()) {
+        final RowRecord row = dataSet.next();
+        final List<Field> fields = row.getFields();
+        for (int column = 0; column < storedPaths.size() && column < fields.size(); column++) {
+          final Field field = fields.get(column);
+          if (field == null || field.getDataType() == null) {
+            continue;
+          }
+          points.add(
+              storedPaths.get(column).getFullPath()
+                  + "@"
+                  + row.getTimestamp()
+                  + "="
+                  + field.getObjectValue(field.getDataType()));
+        }
+      }
+    }
+  }
+
+  /**
+   * Asserts that every replica of the region holds the same number of points. A replica that did
+   * not replay the LOAD keeps its pre-LOAD data and stays behind.
+   */
+  private static void assertSamePointCounts(
+      final int regionId, final Map<Integer, Integer> pointCounts) {
+    if (new HashSet<>(pointCounts.values()).size() <= 1) {
+      return;
+    }
+    Assert.fail(
+        "region "
+            + regionId
+            + " holds a different number of points on its replicas: "
+            + pointCounts);
   }
 
   /** The cluster id of the given DataNode, matched by its client RPC endpoint. */
@@ -533,9 +689,7 @@ public class IoTDBLoadTsFileClusterIT {
 
   private static long queryPointCount(final Statement statement) throws Exception {
     long actualPointCount = 0;
-    final List<String> allDevices = new ArrayList<>(DEVICES);
-    allDevices.addAll(ALIGNED_DEVICES);
-    for (final String device : allDevices) {
+    for (final String device : allDevices()) {
       for (final String measurement : MEASUREMENTS) {
         try (final ResultSet resultSet =
             statement.executeQuery("select count(" + measurement + ") from " + device)) {
@@ -545,5 +699,12 @@ public class IoTDBLoadTsFileClusterIT {
       }
     }
     return actualPointCount;
+  }
+
+  /** Every device the loaded files hold. */
+  private static List<String> allDevices() {
+    final List<String> devices = new ArrayList<>(DEVICES);
+    devices.addAll(ALIGNED_DEVICES);
+    return devices;
   }
 }
