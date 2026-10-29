@@ -131,6 +131,24 @@ public class DropSubscriptionProcedureTest {
   }
 
   @Test
+  public void executeFromOperateOnDataNodesShouldSkipEmptyPipeMetaSync() throws Exception {
+    final DropSubscriptionProcedure procedure =
+        new DropSubscriptionProcedure(
+            new TUnsubscribeReq("old_consumer", "test_consumer_group", Collections.emptySet()));
+    final AlterConsumerGroupProcedure alterConsumerGroupProcedure =
+        Mockito.mock(AlterConsumerGroupProcedure.class);
+    procedure.setAlterConsumerGroupProcedure(alterConsumerGroupProcedure);
+    procedure.setDropPipeProcedures(Collections.emptyList());
+
+    final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);
+
+    procedure.executeFromOperateOnDataNodes(env);
+
+    Mockito.verify(env, Mockito.never()).dropMultiPipeOnDataNodes(Mockito.anyList());
+    Mockito.verify(alterConsumerGroupProcedure).executeFromOperateOnDataNodes(env);
+  }
+
+  @Test
   public void executeFromValidateShouldResetDropPipeProceduresOnRetry() throws Exception {
     final Map<String, String> consumerAttributes = new HashMap<>();
     consumerAttributes.put("username", "user");
