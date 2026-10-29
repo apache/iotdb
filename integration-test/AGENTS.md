@@ -36,6 +36,15 @@ These instructions apply to `integration-test/` and supplement the repository-le
   while a manually constructed discovery client silently uses different ones.
 - Explicit credentials are appropriate for users created by the test and for authentication or
   invalid-password scenarios. Make that intent clear, and clean up users created by the test.
+- When a test creates users or roles with explicit credentials, make each password 12-32
+  characters long with no spaces, drawn from the supported credential charset (letters,
+  digits, `_ - ! @ # $ % ^ & * ( ) + =`), containing at least one lowercase letter, one
+  uppercase letter, one digit, and one special character, and different from the username;
+  usernames use the same charset and a 4-32 character length (for example `newuser` with
+  `IoTDB!Test2024`). Trivial placeholders such as `123456` or `password` pass on a default
+  local cluster yet are exactly what stricter password policies reject, and they encourage
+  weak secrets to spread into real configurations through copied test code. Reserve weak or
+  illegal credentials for scenarios that deliberately test them.
 - Obtain node addresses and allocated ports from the test environment or node wrappers. Configure
   required consensus protocols, replication factors, and other non-default settings before
   initializing the cluster.
@@ -61,6 +70,13 @@ These instructions apply to `integration-test/` and supplement the repository-le
 
 ## Isolation and assertions
 
+- Reuse existing test classes and fixtures, and share cluster startup and teardown across
+  compatible cases within a class or suite whenever possible. Avoid starting and stopping a
+  cluster for each test method or creating an extra cluster when an existing test cluster can
+  cover the scenario. Use a separate cluster or restart only when required by the tested lifecycle,
+  topology, configuration, or isolation.
+- Keep tests that share a cluster independent of execution order: isolate their data and restore
+  changed state or configuration using the repository's test helpers.
 - Follow the neighboring tests' runner, category, and environment lifecycle conventions. Select
   the category matching the data model and topology required by the scenario.
 - Close sessions, pools, and result sets; shut down test-owned executors and clean the cluster

@@ -37,6 +37,7 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -134,6 +135,12 @@ public class ShowSubscriptionsTask implements IConfigTask {
       builder.getColumnBuilder(17).writeLong(progressInfo.getLastPollTimeMs());
       writeText(builder, 18, progressInfo.getLastConsumerId());
       builder.getColumnBuilder(19).writeLong(progressInfo.getSeekGeneration());
+      writeText(
+          builder,
+          20,
+          progressInfo.isSetReadyOnDns()
+              ? progressInfo.getReadyOnDns().toString()
+              : Collections.emptyList().toString());
       builder.declarePosition();
     }
 

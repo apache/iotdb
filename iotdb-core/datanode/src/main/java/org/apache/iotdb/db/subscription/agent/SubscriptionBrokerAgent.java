@@ -1088,6 +1088,14 @@ public class SubscriptionBrokerAgent {
     prefetchingQueueCount.invalidate();
   }
 
+  public void resetAndRequeuePipeInFlightEvents(
+      final String consumerGroupId, final String topicName) {
+    final SubscriptionBroker broker = getPipeBroker(consumerGroupId);
+    if (Objects.nonNull(broker)) {
+      broker.resetAndRequeueInFlightEvents(topicName);
+    }
+  }
+
   public boolean executePrefetch(final String consumerGroupId, final String topicName) {
     final ISubscriptionBroker broker = getBrokerForTopic(consumerGroupId, topicName);
     if (Objects.isNull(broker)) {

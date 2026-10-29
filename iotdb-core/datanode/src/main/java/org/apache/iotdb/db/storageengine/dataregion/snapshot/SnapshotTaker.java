@@ -265,7 +265,11 @@ public class SnapshotTaker {
       }
       return true;
     } catch (IOException e) {
-      LOGGER.error(StorageEngineMessages.CATCH_IO_EXCEPTION_CREATING_SNAPSHOT, e);
+      LOGGER.error(
+          StorageEngineMessages.LOG_FAILED_TO_CREATE_SNAPSHOT_FOR_DATABASE_ARG_REGION_ARG_1A7C8DEA,
+          dataRegion.getDatabaseName(),
+          dataRegion.getDataRegionIdString(),
+          e);
       return false;
     }
   }
@@ -278,7 +282,7 @@ public class SnapshotTaker {
       return;
     }
     Files.deleteIfExists(target.toPath());
-    Files.createLink(target.toPath(), source.toPath());
+    SnapshotFileUtils.createLinkOrCopy(target.toPath(), source.toPath());
     snapshotLogger.logFile(source);
   }
 

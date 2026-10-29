@@ -417,7 +417,11 @@ public class IoTConsensusServerImpl {
       }
       if (!stateMachine.takeSnapshot(snapshotDir)) {
         throw new ConsensusGroupModifyPeerException(
-            IoTConsensusMessages.UNKNOWN_ERROR_TAKING_SNAPSHOT);
+            String.format(
+                IoTConsensusMessages
+                    .EXCEPTION_FAILED_TO_TAKE_SNAPSHOT_FOR_CONSENSUS_GROUP_ARG_IN_ARG_CHECK_STATE_MACHINE_LOGS_FOR_THE_UNDERLYING_CAUSE_74663D2D,
+                thisNode.getGroupId(),
+                snapshotDir));
       }
       clearOldSnapshot();
     } catch (IOException e) {

@@ -101,14 +101,21 @@ public class SubscriptionConsumerAgent {
 
     if (metaFromCoordinator.isEmpty()) {
       if (Objects.nonNull(metaInAgent)) {
-        cleanupConsumerGroupSubscriptions(consumerGroupId, metaInAgent, true);
+        cleanupConsumerGroupSubscriptions(
+            consumerGroupId, metaInAgent, true, metaFromCoordinator.getRetainedTopicNames());
       }
       final boolean retainProgress =
           ConsensusSubscriptionSetupHandler.retainConfiguredProgressForConsumerGroup(
               consumerGroupId, metaFromCoordinator.visibleUnder(true));
-      dropConsumerGroupBroker(consumerGroupId);
-      if (retainProgress) {
+      final boolean retainTopicProgress = !metaFromCoordinator.getRetainedTopicNames().isEmpty();
+      if (retainTopicProgress) {
+        SubscriptionAgent.broker().createPipeBrokerIfNotExist(consumerGroupId);
+      } else {
+        dropConsumerGroupBroker(consumerGroupId);
+      }
+      if (retainProgress || retainTopicProgress) {
         replaceConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
+        requeueRetainedEvents(consumerGroupId, metaInAgent, metaFromCoordinator);
       } else {
         removeConsumerGroupMeta(consumerGroupId);
       }
@@ -150,12 +157,20 @@ public class SubscriptionConsumerAgent {
     // remove prefetching queues for topics unsubscribed by the consumer group
     final Set<String> topicsUnsubByGroup =
         ConsumerGroupMeta.getTopicsUnsubByGroup(metaInAgent, metaFromCoordinator);
+    final Set<String> removedRetainedTopics =
+        new LinkedHashSet<>(metaInAgent.getRetainedTopicNames());
+    removedRetainedTopics.removeAll(metaFromCoordinator.getRetainedTopicNames());
+    removedRetainedTopics.removeAll(metaFromCoordinator.getSubscribedTopicNames());
+    topicsUnsubByGroup.addAll(removedRetainedTopics);
     final Set<String> pipeTopicsUnsubByGroup = new LinkedHashSet<>();
     final Set<String> consensusTopicsUnsubByGroup = new LinkedHashSet<>();
     for (final String topicName : topicsUnsubByGroup) {
       if (ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
           topicName, metaFromCoordinator.visibleUnder(true))) {
         consensusTopicsUnsubByGroup.add(topicName);
+        continue;
+      }
+      if (metaFromCoordinator.getRetainedTopicNames().contains(topicName)) {
         continue;
       }
       pipeTopicsUnsubByGroup.add(topicName);
@@ -186,6 +201,7 @@ public class SubscriptionConsumerAgent {
           // TODO: Currently we fully replace the entire ConsumerGroupMeta without carefully
           // checking the changes in its fields.
           replaceConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
+          requeueRetainedEvents(consumerGroupId, metaInAgent, metaFromCoordinator);
         });
   }
 
@@ -196,6 +212,20 @@ public class SubscriptionConsumerAgent {
     setupNewTopics.run();
     teardownRemovedTopics.run();
     publishMeta.run();
+  }
+
+  private void requeueRetainedEvents(
+      final String consumerGroupId,
+      final ConsumerGroupMeta existingMeta,
+      final ConsumerGroupMeta updatedMeta) {
+    if (Objects.isNull(existingMeta)) {
+      return;
+    }
+    for (final String topicName : updatedMeta.getRetainedTopicNames()) {
+      // No consumers remain subscribed to this topic. Include deliveries owned by consumers that
+      // left earlier, and rewind multipart responses so the next subscriber can read them in full.
+      SubscriptionAgent.broker().resetAndRequeuePipeInFlightEvents(consumerGroupId, topicName);
+    }
   }
 
   public TPushConsumerGroupMetaRespExceptionMessage handleConsumerGroupMetaChanges(
@@ -379,8 +409,22 @@ public class SubscriptionConsumerAgent {
       final String consumerGroupId,
       final ConsumerGroupMeta consumerGroupMeta,
       final boolean retainConfiguredProgress) {
+    cleanupConsumerGroupSubscriptions(
+        consumerGroupId, consumerGroupMeta, retainConfiguredProgress, Collections.emptySet());
+  }
+
+  private void cleanupConsumerGroupSubscriptions(
+      final String consumerGroupId,
+      final ConsumerGroupMeta consumerGroupMeta,
+      final boolean retainConfiguredProgress,
+      final Set<String> retainedTopicNames) {
     final Set<String> consensusTopics = new LinkedHashSet<>();
-    for (final String topicName : consumerGroupMeta.getSubscribedTopicNames()) {
+    final Set<String> topicNames = new LinkedHashSet<>(consumerGroupMeta.getSubscribedTopicNames());
+    topicNames.addAll(consumerGroupMeta.getRetainedTopicNames());
+    for (final String topicName : topicNames) {
+      if (retainedTopicNames.contains(topicName)) {
+        continue;
+      }
       if (ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
           topicName, consumerGroupMeta.visibleUnder(true))) {
         consensusTopics.add(topicName);

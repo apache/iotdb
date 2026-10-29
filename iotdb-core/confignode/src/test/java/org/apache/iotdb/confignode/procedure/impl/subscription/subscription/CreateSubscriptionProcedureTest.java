@@ -20,10 +20,16 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.PermissionManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
@@ -40,6 +46,8 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -88,6 +96,7 @@ public class CreateSubscriptionProcedureTest {
         new ConsumerGroupMeta(
             "test_consumer_group", 1, new ConsumerMeta("old_consumer", 1, consumerAttributes));
     newConsumerGroupMeta.addSubscription("old_consumer", subscribeTopics);
+    newConsumerGroupMeta.retainTopic("retained_topic");
     AlterConsumerGroupProcedure alterConsumerGroupProcedure =
         new AlterConsumerGroupProcedure(newConsumerGroupMeta);
 
@@ -184,6 +193,111 @@ public class CreateSubscriptionProcedureTest {
 
     proc.executeFromValidate(env);
     Assert.assertEquals(1, proc.getCreatePipeProcedures().size());
+  }
+
+  @Test
+  public void executeFromValidateShouldReuseRetainedSnapshotAndInitialPipe() throws Exception {
+    for (final String mode :
+        new String[] {TopicConstant.MODE_INITIAL_VALUE, TopicConstant.MODE_SNAPSHOT_VALUE}) {
+      final Map<String, String> consumerAttributes = new HashMap<>();
+      consumerAttributes.put("username", "user");
+      consumerAttributes.put("password", "password");
+
+      final ConsumerGroupMeta consumerGroupMeta =
+          new ConsumerGroupMeta(
+              "test_consumer_group", 1, new ConsumerMeta("old_consumer", 1, consumerAttributes));
+      consumerGroupMeta.retainTopic("test_topic");
+
+      final Map<String, String> topicAttributes = new HashMap<>();
+      topicAttributes.put(TopicConstant.MODE_KEY, mode);
+      topicAttributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "true");
+      final TopicMeta topicMeta = new TopicMeta("test_topic", 1, topicAttributes);
+
+      final SubscriptionInfo subscriptionInfo = Mockito.mock(SubscriptionInfo.class);
+      Mockito.when(subscriptionInfo.getConsumerGroupMeta("test_consumer_group"))
+          .thenReturn(consumerGroupMeta);
+      Mockito.when(subscriptionInfo.deepCopyConsumerGroupMeta("test_consumer_group"))
+          .thenAnswer(invocation -> consumerGroupMeta.deepCopy());
+      Mockito.when(subscriptionInfo.deepCopyTopicMeta("test_topic", false)).thenReturn(topicMeta);
+
+      final PipeTaskInfo pipeTaskInfo = Mockito.mock(PipeTaskInfo.class);
+      Mockito.when(
+              pipeTaskInfo.isPipeExisted(
+                  PipeStaticMeta.generateSubscriptionPipeName("test_topic", "test_consumer_group"),
+                  false))
+          .thenReturn(true);
+
+      final CreateSubscriptionProcedure proc =
+          new CreateSubscriptionProcedure(
+              new TSubscribeReq(
+                  "old_consumer", "test_consumer_group", Collections.singleton("test_topic")));
+      setField(proc, "subscriptionInfo", new AtomicReference<>(subscriptionInfo));
+      setField(proc, "pipeTaskInfo", new AtomicReference<>(pipeTaskInfo));
+
+      proc.executeFromValidate(mockCreateSubscriptionValidationEnv());
+
+      Assert.assertTrue(proc.getCreatePipeProcedures().isEmpty());
+      Mockito.verify(pipeTaskInfo, Mockito.never())
+          .checkBeforeCreatePipe(Mockito.any(TCreatePipeReq.class));
+    }
+  }
+
+  @Test
+  public void testResubscribeReusesRecoveredCompletedEmptySnapshot() throws Exception {
+    for (final boolean tableModel : new boolean[] {false, true}) {
+      final String dialect = tableModel ? "table" : "tree";
+      final TopicMeta topic =
+          new TopicMeta(
+              "topic",
+              1L,
+              Map.of(
+                  SystemConstant.SQL_DIALECT_KEY,
+                  dialect,
+                  TopicConstant.MODE_KEY,
+                  TopicConstant.MODE_SNAPSHOT_VALUE,
+                  TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY,
+                  "true"));
+      final ConsumerGroupMeta group =
+          new ConsumerGroupMeta(
+              "group",
+              1L,
+              new ConsumerMeta("consumer", 1L, Map.of(ConsumerConstant.SQL_DIALECT_KEY, dialect)));
+      group.retainTopic("topic");
+      final SubscriptionInfo subscriptions = new SubscriptionInfo();
+      subscriptions.createTopic(new CreateTopicPlan(topic));
+      subscriptions.alterConsumerGroup(
+          new AlterConsumerGroupPlan(ConsumerGroupMeta.deserialize(group.serialize())));
+
+      final Map<String, String> source = new HashMap<>(topic.generateExtractorAttributes("root"));
+      source.put(SystemConstant.SUBSCRIPTION_EMPTY_SNAPSHOT_COMPLETED_KEY, "true");
+      final PipeMeta original =
+          new PipeMeta(
+              new PipeStaticMeta(
+                  PipeStaticMeta.generateSubscriptionPipeName("topic", "group"),
+                  42L,
+                  source,
+                  Collections.emptyMap(),
+                  topic.generateConnectorAttributes("group")),
+              new PipeRuntimeMeta());
+      final PipeMeta recovered = PipeMeta.deserialize4Coordinator(original.serialize());
+      final PipeTaskInfo pipes = new PipeTaskInfo();
+      pipes.createPipe(new CreatePipePlanV2(recovered.getStaticMeta(), recovered.getRuntimeMeta()));
+      final CreateSubscriptionProcedure procedure =
+          new CreateSubscriptionProcedure(
+              new TSubscribeReq("consumer", "group", Collections.singleton("topic"))
+                  .setIsTableModel(tableModel));
+      setField(procedure, "subscriptionInfo", new AtomicReference<>(subscriptions));
+      setField(procedure, "pipeTaskInfo", new AtomicReference<>(pipes));
+
+      procedure.executeFromValidate(mockCreateSubscriptionValidationEnv());
+
+      Assert.assertTrue(procedure.getCreatePipeProcedures().isEmpty());
+      Assert.assertEquals(
+          original.getStaticMeta(),
+          pipes
+              .getPipeMetaByPipeName(original.getStaticMeta().getPipeName(), tableModel)
+              .getStaticMeta());
+    }
   }
 
   @Test

@@ -19,12 +19,23 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
-import org.junit.Test;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.db.subscription.broker.ISubscriptionBroker;
+import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
+import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
+import org.junit.Test;
+import org.mockito.Mockito;
+
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -33,12 +44,141 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class SubscriptionConsumerAgentTest {
 
   private static final long TEST_TIMEOUT_SECONDS = 5L;
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testRetainedTopicQueueSurvivesUnsubscribeAndConsumerClose() throws Exception {
+    final SubscriptionConsumerAgent agent = SubscriptionAgent.consumer();
+    final SubscriptionBrokerAgent brokers = SubscriptionAgent.broker();
+    try {
+      for (final String mode :
+          new String[] {TopicConstant.MODE_INITIAL_VALUE, TopicConstant.MODE_SNAPSHOT_VALUE}) {
+        final String topicName = "topic_" + mode;
+        assertNull(
+            SubscriptionAgent.topic()
+                .handleSingleTopicMetaChanges(
+                    new TopicMeta(
+                        topicName,
+                        1L,
+                        Map.of(
+                            TopicConstant.MODE_KEY,
+                            mode,
+                            TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY,
+                            "true"))));
+        for (final boolean closeConsumer : new boolean[] {false, true}) {
+          final String groupId = "retained_" + mode + "_" + closeConsumer;
+          final ConsumerGroupMeta subscribed =
+              new ConsumerGroupMeta(
+                  groupId, 1L, new ConsumerMeta("consumer", 1L, Collections.emptyMap()));
+          subscribed.addSubscription("consumer", Collections.singleton(topicName));
+          try {
+            assertNull(agent.handleSingleConsumerGroupMetaChanges(subscribed));
+            final Field brokersField =
+                SubscriptionBrokerAgent.class.getDeclaredField("consumerGroupIdToBrokers");
+            brokersField.setAccessible(true);
+            final Map<String, List<ISubscriptionBroker>> brokerMap =
+                (Map<String, List<ISubscriptionBroker>>) brokersField.get(brokers);
+            final SubscriptionBroker broker = (SubscriptionBroker) brokerMap.get(groupId).get(0);
+            final Field queuesField =
+                SubscriptionBroker.class.getDeclaredField("topicNameToPrefetchingQueue");
+            queuesField.setAccessible(true);
+            final Map<String, SubscriptionPrefetchingQueue> queues =
+                (Map<String, SubscriptionPrefetchingQueue>) queuesField.get(broker);
+            final SubscriptionPrefetchingQueue queue =
+                Mockito.mock(SubscriptionPrefetchingQueue.class);
+            Mockito.when(queue.getPrefetchingQueueId()).thenReturn(groupId + "_" + topicName);
+            queues.put(topicName, queue);
+
+            final ConsumerGroupMeta detached = subscribed.deepCopy();
+            detached.removeSubscription("consumer", Collections.singleton(topicName));
+            detached.retainTopic(topicName);
+            if (closeConsumer) {
+              detached.removeConsumer("consumer");
+            }
+            assertNull(agent.handleSingleConsumerGroupMetaChanges(detached));
+            assertTrue(brokers.isBrokerExist(groupId));
+            assertTrue(broker.hasQueue(topicName));
+            Mockito.verify(queue).resetAndRequeueInFlightEvents();
+            Mockito.verify(queue, Mockito.never()).cleanUp();
+
+            final ConsumerGroupMeta rejoined = detached.deepCopy();
+            if (closeConsumer) {
+              rejoined.addConsumer(new ConsumerMeta("consumer", 2L, Collections.emptyMap()));
+            }
+            rejoined.addSubscription("consumer", Collections.singleton(topicName));
+            rejoined.removeRetainedTopic(topicName);
+            assertNull(agent.handleSingleConsumerGroupMetaChanges(rejoined));
+            assertTrue(broker.hasQueue(topicName));
+            Mockito.verify(queue, Mockito.never()).cleanUp();
+
+            final ConsumerGroupMeta cleared = detached.deepCopy();
+            cleared.removeRetainedTopic(topicName);
+            assertNull(agent.handleSingleConsumerGroupMetaChanges(cleared));
+            assertFalse(broker.hasQueue(topicName));
+            Mockito.verify(queue).cleanUp();
+          } finally {
+            assertNull(agent.handleDropConsumerGroup(groupId));
+          }
+        }
+        assertNull(SubscriptionAgent.topic().handleDropTopic(topicName, false));
+      }
+    } finally {
+      for (final String mode :
+          new String[] {TopicConstant.MODE_INITIAL_VALUE, TopicConstant.MODE_SNAPSHOT_VALUE}) {
+        assertNull(SubscriptionAgent.topic().handleDropTopic("topic_" + mode, false));
+      }
+    }
+  }
+
+  @Test
+  public void testRetainedTopicBrokerIsRecreatedAfterDataNodeRecoveryWithoutDataRegions() {
+    final SubscriptionConsumerAgent agent = SubscriptionAgent.consumer();
+    final SubscriptionBrokerAgent brokers = SubscriptionAgent.broker();
+    final String topicName = "retained_recovery_without_data_region";
+    final String groupId = "retained_recovery_without_data_region_group";
+    try {
+      assertNull(
+          SubscriptionAgent.topic()
+              .handleSingleTopicMetaChanges(
+                  new TopicMeta(
+                      topicName,
+                      1L,
+                      Map.of(
+                          TopicConstant.MODE_KEY,
+                          TopicConstant.MODE_INITIAL_VALUE,
+                          TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY,
+                          "true"))));
+
+      final ConsumerGroupMeta subscribed =
+          new ConsumerGroupMeta(
+              groupId, 1L, new ConsumerMeta("consumer", 1L, Collections.emptyMap()));
+      subscribed.addSubscription("consumer", Collections.singleton(topicName));
+      assertNull(agent.handleSingleConsumerGroupMetaChanges(subscribed));
+
+      final ConsumerGroupMeta detached = subscribed.deepCopy();
+      detached.removeSubscription("consumer", Collections.singleton(topicName));
+      detached.removeConsumer("consumer");
+      detached.retainTopic(topicName);
+      assertNull(agent.handleSingleConsumerGroupMetaChanges(detached));
+      assertTrue(brokers.isBrokerExist(groupId));
+
+      assertTrue(brokers.dropBroker(groupId));
+      assertFalse(brokers.isBrokerExist(groupId));
+
+      assertNull(agent.handleSingleConsumerGroupMetaChanges(detached.deepCopy()));
+      assertTrue(brokers.isBrokerExist(groupId));
+    } finally {
+      assertNull(agent.handleDropConsumerGroup(groupId));
+      assertNull(SubscriptionAgent.topic().handleDropTopic(topicName, false));
+    }
+  }
 
   @Test
   public void testTopicDiffSetsUpBeforeTeardownAndMetaPublication() {
