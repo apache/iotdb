@@ -112,6 +112,38 @@ public class PipeDataNodeTaskAgentTest {
   }
 
   @Test
+  public void testPartialStaleDropDoesNotRemoveNewerPipe() throws Exception {
+    final PipeDataNodeTaskAgent agent = newActiveTaskAgent();
+    final PipeMetaKeeper keeper = getField(agent, "pipeMetaKeeper");
+    final PipeMeta current = newEmptyPipeMeta("existing", 3L);
+    addEmptyPipe(agent, current);
+    final PipeMeta staleDropped = newEmptyPipeMeta("existing", 1L);
+    staleDropped.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
+
+    Assert.assertEquals(
+        Collections.emptyList(),
+        agent.handleMultiPipeMetaChanges(Collections.singletonList(staleDropped)));
+
+    Assert.assertSame(current, keeper.getPipeMeta(current.getStaticMeta()));
+  }
+
+  @Test
+  public void testPartialPreDeleteDoesNotRemoveExistingPipe() throws Exception {
+    final PipeDataNodeTaskAgent agent = newActiveTaskAgent();
+    final PipeMetaKeeper keeper = getField(agent, "pipeMetaKeeper");
+    final PipeMeta current = newEmptyPipeMeta("existing", 3L);
+    addEmptyPipe(agent, current);
+    final PipeMeta preDelete = newEmptyPipeMeta("existing", 4L);
+    preDelete.getRuntimeMeta().getStatus().set(PipeStatus.PRE_DELETE);
+
+    Assert.assertEquals(
+        Collections.emptyList(),
+        agent.handleMultiPipeMetaChanges(Collections.singletonList(preDelete)));
+
+    Assert.assertSame(current, keeper.getPipeMeta(current.getStaticMeta()));
+  }
+
+  @Test
   public void testPartialAlterKeepsReplacementAndUnrelatedPipe() throws Exception {
     final PipeDataNodeTaskAgent agent = newActiveTaskAgent();
     final PipeMetaKeeper keeper = getField(agent, "pipeMetaKeeper");

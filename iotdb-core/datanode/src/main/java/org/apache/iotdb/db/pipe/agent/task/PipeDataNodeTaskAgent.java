@@ -215,7 +215,18 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       // of existing pipes. Preserve the incoming old-DROPPED/new pair used by alter procedures.
       final Set<PipeStaticMeta> replacedLocalMetas =
           pipeMetaListFromCoordinator.stream()
-              .map(meta -> pipeMetaKeeper.getPipeMeta(meta.getStaticMeta()))
+              .map(
+                  meta -> {
+                    final PipeStaticMeta staticMeta = meta.getStaticMeta();
+                    final PipeStatus status = meta.getRuntimeMeta().getStatus().get();
+                    if (status == PipeStatus.DROPPED) {
+                      return pipeMetaKeeper.getPipeMeta(
+                          staticMeta.getPipeName(), staticMeta.getCreationTime());
+                    }
+                    return status == PipeStatus.PRE_DELETE
+                        ? null
+                        : pipeMetaKeeper.getPipeMeta(staticMeta);
+                  })
               .filter(Objects::nonNull)
               .map(PipeMeta::getStaticMeta)
               .collect(Collectors.toSet());
