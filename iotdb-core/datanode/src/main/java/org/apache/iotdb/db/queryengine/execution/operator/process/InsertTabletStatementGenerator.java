@@ -33,7 +33,9 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.lang.reflect.Array;
 import java.util.Arrays;
+import java.util.Comparator;
 
 public abstract class InsertTabletStatementGenerator implements Accountable {
   protected final int rowLimit;
@@ -112,6 +114,8 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
       }
     }
 
+    sortRowsByTimeIfNeeded();
+
     insertTabletStatement.setTimes(times);
     insertTabletStatement.setBitMaps(bitMaps);
     insertTabletStatement.setColumns(columns);
@@ -155,6 +159,64 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
     TypeServices.StorageEngine.SOURCE_COLUMN_TO_TABLET_VALUE_WRITER_SERVICE
         .call(Type.fromTsDataType(dataType))
         .write(sourceTypeConvertor, valueColumn, rowIndex, columns, rowCount);
+  }
+
+  /**
+   * The storage layer assumes the rows of a tablet are sorted by time: the sequence/unsequence
+   * classification, the time boundaries of the tsfile resource, the ttl check, the time partition
+   * routing and the last value composition all rely on it. The child operator of an {@code INSERT
+   * INTO ... SELECT} does not guarantee that order, so restore it before the tablet leaves the
+   * engine.
+   */
+  private void sortRowsByTimeIfNeeded() {
+    boolean sorted = true;
+    for (int i = 1; i < rowCount; i++) {
+      if (times[i] < times[i - 1]) {
+        sorted = false;
+        break;
+      }
+    }
+    if (sorted) {
+      return;
+    }
+
+    Integer[] order = new Integer[rowCount];
+    for (int i = 0; i < rowCount; i++) {
+      order[i] = i;
+    }
+    // stable, so rows sharing a timestamp keep their relative order
+    Arrays.sort(order, Comparator.comparingLong(index -> times[index]));
+
+    int[] permutation = new int[rowCount];
+    long[] sortedTimes = new long[rowCount];
+    for (int i = 0; i < rowCount; i++) {
+      permutation[i] = order[i];
+      sortedTimes[i] = times[order[i]];
+    }
+    times = sortedTimes;
+    for (int i = 0; i < columns.length; i++) {
+      columns[i] = permuteColumn(columns[i], permutation);
+      bitMaps[i] = permuteBitMap(bitMaps[i], permutation);
+    }
+  }
+
+  private Object permuteColumn(Object column, int[] permutation) {
+    int length = Array.getLength(column);
+    Object sortedColumn = Array.newInstance(column.getClass().getComponentType(), length);
+    for (int i = 0; i < length; i++) {
+      Array.set(sortedColumn, i, Array.get(column, permutation[i]));
+    }
+    return sortedColumn;
+  }
+
+  private BitMap permuteBitMap(BitMap bitMap, int[] permutation) {
+    BitMap sortedBitMap = new BitMap(rowCount);
+    for (int i = 0; i < rowCount; i++) {
+      if (bitMap.isMarked(permutation[i])) {
+        sortedBitMap.mark(i);
+      }
+    }
+    return sortedBitMap;
   }
 
   protected long sizeOf(Object[] arr, Class<?> clazz) {
