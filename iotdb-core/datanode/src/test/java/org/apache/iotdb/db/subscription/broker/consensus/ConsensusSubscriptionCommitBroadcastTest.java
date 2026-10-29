@@ -41,8 +41,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -159,10 +159,12 @@ public class ConsensusSubscriptionCommitBroadcastTest {
     final CountDownLatch broadcastStarted = new CountDownLatch(1);
     final CountDownLatch releaseBroadcast = new CountDownLatch(1);
     final CountDownLatch removeStarted = new CountDownLatch(1);
+    final AtomicReference<Throwable> broadcastFailure = new AtomicReference<>();
+    final AtomicReference<Throwable> removeFailure = new AtomicReference<>();
     doAnswer(
             invocation -> {
               broadcastStarted.countDown();
-              assertTrue(releaseBroadcast.await(5L, TimeUnit.SECONDS));
+              assertTrue(releaseBroadcast.await(30L, TimeUnit.SECONDS));
               return null;
             })
         .when(manager)
@@ -178,27 +180,71 @@ public class ConsensusSubscriptionCommitBroadcastTest {
     commit(WRITER, 1L);
     final ArgumentCaptor<Runnable> tasks = ArgumentCaptor.forClass(Runnable.class);
     verify(executor).schedule(tasks.capture(), eq(0L), eq(TimeUnit.MILLISECONDS));
-    final Thread broadcastThread = new Thread(tasks.getValue(), "broadcast-test");
-    broadcastThread.start();
-    assertTrue(broadcastStarted.await(5L, TimeUnit.SECONDS));
-
+    final Thread broadcastThread =
+        new Thread(
+            () -> {
+              try {
+                tasks.getValue().run();
+              } catch (final Throwable t) {
+                broadcastFailure.set(t);
+              }
+            },
+            "broadcast-test");
     final CountDownLatch removeFinished = new CountDownLatch(1);
     final Thread removeThread =
         new Thread(
             () -> {
-              manager.removeState("group", "topic", REGION);
-              removeFinished.countDown();
+              try {
+                manager.removeState("group", "topic", REGION);
+              } catch (final Throwable t) {
+                removeFailure.set(t);
+              } finally {
+                removeFinished.countDown();
+              }
             },
             "remove-state-test");
-    removeThread.start();
-    assertTrue(removeStarted.await(5L, TimeUnit.SECONDS));
-    assertFalse(removeFinished.await(200L, TimeUnit.MILLISECONDS));
-
-    releaseBroadcast.countDown();
+    try {
+      broadcastThread.start();
+      assertTrue(broadcastStarted.await(5L, TimeUnit.SECONDS));
+      removeThread.start();
+      assertTrue(removeStarted.await(5L, TimeUnit.SECONDS));
+      assertTrue(
+          waitForThreadBlockedInMethod(
+              removeThread,
+              ConsensusSubscriptionCommitManager.class.getName(),
+              "removeCommitState",
+              5L,
+              TimeUnit.SECONDS));
+    } finally {
+      releaseBroadcast.countDown();
+    }
     assertTrue(removeFinished.await(5L, TimeUnit.SECONDS));
     broadcastThread.join(5_000L);
     removeThread.join(5_000L);
+    assertNull(broadcastFailure.get());
+    assertNull(removeFailure.get());
     verify(manager).doBroadcast("group", "topic", REGION, progress(1L), WRITER);
+  }
+
+  private static boolean waitForThreadBlockedInMethod(
+      final Thread thread,
+      final String className,
+      final String methodName,
+      final long timeout,
+      final TimeUnit unit)
+      throws InterruptedException {
+    final long deadline = System.nanoTime() + unit.toNanos(timeout);
+    while (System.nanoTime() < deadline) {
+      if (thread.getState() == Thread.State.BLOCKED) {
+        for (final StackTraceElement frame : thread.getStackTrace()) {
+          if (className.equals(frame.getClassName()) && methodName.equals(frame.getMethodName())) {
+            return true;
+          }
+        }
+      }
+      Thread.sleep(1L);
+    }
+    return false;
   }
 
   @Test
