@@ -30,6 +30,11 @@ on:
       - "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/**" #queryengine
   # allow manually run the action:
   workflow_dispatch:
+    inputs:
+      pipe_p0_only:
+        description: Run only the six Pipe P0 recovery integration tests
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -41,7 +46,74 @@ env:
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
 jobs:
+  pipe-p0:
+    if: github.event_name == 'workflow_dispatch' && inputs.pipe_p0_only
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      MAVEN_OPTS: -Xmx2g -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: corretto
+          java-version: '17'
+          cache: maven
+      - name: Run Pipe P0 recovery tests
+        shell: bash
+        run: |
+          mvn -B -ntp -T 2 clean verify \
+            -Pwith-integration-tests -PMultiClusterIT2DualTreeAutoEnhanced \
+            -pl integration-test -am \
+            -DskipUTs -Dtest=NoSuchSurefireTest \
+            -Dsurefire.failIfNoSpecifiedTests=false \
+            -Dit.test=IoTDBPipeRecoveryIT \
+            -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false \
+            -DintegrationTest.clusterReadyRetryCount=90 \
+            -DintegrationTest.forkCount=1 \
+            -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 \
+            -DDataNodeMaxDirectMemorySize=768 \
+            -DClusterConfigurations=HighPerformanceMode,HighPerformanceMode
+      - name: Verify all six tests ran successfully
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          report = Path('integration-test/target/failsafe-reports/TEST-org.apache.iotdb.pipe.it.dual.treemodel.auto.enhanced.IoTDBPipeRecoveryIT.xml')
+          expected = {
+              'testAllReceiverDataNodesDownRetainAndDrainBacklogWithoutNewWrites',
+              'testHistoryRealtimeHandoffSurvivesReceiverRestart',
+              'testMultipleDataRegionsAndWritersDrainAfterLeaderTransfer',
+              'testRequestNotDeliveredRetriesWithoutStarvingAnotherPipe',
+              'testCommittedWriteWithLostResponseRetriesIdempotently',
+              'testRuntimeQueueBackpressureDrainsAndReleasesMemory',
+          }
+          cases = list(ET.parse(report).getroot().iter('testcase'))
+          actual = {case.attrib['name'] for case in cases}
+          if len(cases) != 6 or actual != expected:
+              raise SystemExit(f'Expected all six P0 cases; got {sorted(actual)}')
+          for case in cases:
+              if any(child.tag in {'failure', 'error', 'skipped'} for child in case):
+                  raise SystemExit(f"P0 case did not pass: {case.attrib['name']}")
+          print('All six Pipe P0 recovery integration tests passed')
+          PY
+      - name: Upload Pipe P0 reports and cluster logs
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: pipe-p0-recovery-reports
+          path: |
+            integration-test/target/failsafe-reports
+            integration-test/target/cluster-logs
+          retention-days: 14
   single:
+    if: github.event_name != 'workflow_dispatch' || !inputs.pipe_p0_only
     strategy:
       fail-fast: false
       max-parallel: 15
@@ -131,6 +203,7 @@ jobs:
   # 12 IT classes split across 3 parallel shards to cut the historical ~42 min
   # wall clock to ~14 min. See cluster-it-1c1d.yml for the shard pattern.
   dual-tree-auto-basic:
+    if: github.event_name != 'workflow_dispatch' || !inputs.pipe_p0_only
     strategy:
       fail-fast: false
       max-parallel: 15
@@ -238,6 +311,7 @@ jobs:
   # 9 IT classes split across 3 parallel shards to cut the historical ~51 min
   # wall clock to ~17 min. See cluster-it-1c1d.yml for the shard pattern.
   dual-tree-auto-enhanced:
+    if: github.event_name != 'workflow_dispatch' || !inputs.pipe_p0_only
     strategy:
       fail-fast: false
       max-parallel: 15
@@ -346,6 +420,7 @@ jobs:
   # 11 IT classes split across 3 parallel shards to cut the historical ~27 min
   # wall clock to ~9 min. See cluster-it-1c1d.yml for the shard pattern.
   dual-tree-manual:
+    if: github.event_name != 'workflow_dispatch' || !inputs.pipe_p0_only
     strategy:
       fail-fast: false
       max-parallel: 15
@@ -452,6 +527,7 @@ jobs:
           path: integration-test/target/cluster-logs
           retention-days: 30
   dual-table-manual-basic:
+    if: github.event_name != 'workflow_dispatch' || !inputs.pipe_p0_only
     strategy:
       fail-fast: false
       max-parallel: 15
@@ -559,6 +635,7 @@ jobs:
   # 11 IT classes split across 3 parallel shards to cut the historical ~62 min
   # wall clock to ~22 min. See cluster-it-1c1d.yml for the shard pattern.
   dual-table-manual-enhanced:
+    if: github.event_name != 'workflow_dispatch' || !inputs.pipe_p0_only
     strategy:
       fail-fast: false
       max-parallel: 15
@@ -664,6 +741,7 @@ jobs:
           path: integration-test/target/cluster-logs
           retention-days: 30
   triple:
+    if: github.event_name != 'workflow_dispatch' || !inputs.pipe_p0_only
     strategy:
       fail-fast: false
       max-parallel: 1
