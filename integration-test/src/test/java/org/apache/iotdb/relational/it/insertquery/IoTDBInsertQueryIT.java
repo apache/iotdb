@@ -229,8 +229,10 @@ public class IoTDBInsertQueryIT {
         Assert.assertEquals(expectedTimes, actualTimes);
       }
 
+      // descending: the latest row 100 first, then 39 down to 10
       List<Long> expectedDescTimes = new ArrayList<>();
-      for (long time = 100; time >= 10; time--) {
+      expectedDescTimes.add(100L);
+      for (long time = 39; time >= 10; time--) {
         expectedDescTimes.add(time);
       }
 
