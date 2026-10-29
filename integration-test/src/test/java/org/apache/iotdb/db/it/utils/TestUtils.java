@@ -62,6 +62,8 @@ import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATABASE;
+import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
 import static org.apache.iotdb.itbase.constant.TestConstant.DELTA;
 import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
@@ -1105,13 +1107,16 @@ public class TestUtils {
   /** Clears both data models between methods sharing a cluster. */
   public static void clearAllDatabases(final BaseEnv env) throws SQLException {
     for (final String dialect : Arrays.asList(TREE_SQL_DIALECT, TABLE_SQL_DIALECT)) {
+      final String auditDatabase =
+          TREE_SQL_DIALECT.equals(dialect) ? TREE_MODEL_AUDIT_DATABASE : TABLE_MODEL_AUDIT_DATABASE;
       try (final Connection connection = env.getConnection(dialect);
           final Statement statement = connection.createStatement()) {
         final List<String> databases = new ArrayList<>();
         try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
           while (resultSet.next()) {
             final String database = resultSet.getString(1);
-            if (!"information_schema".equals(database)) {
+            if (!"information_schema".equals(database)
+                && !auditDatabase.equalsIgnoreCase(database)) {
               databases.add(database);
             }
           }

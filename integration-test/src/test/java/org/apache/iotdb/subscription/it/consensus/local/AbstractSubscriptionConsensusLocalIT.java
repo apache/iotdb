@@ -23,19 +23,12 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.itbase.env.BaseNodeWrapper;
-import org.apache.iotdb.session.subscription.ISubscriptionTableSession;
-import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
-import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
-import org.apache.iotdb.session.subscription.model.Topic;
 import org.apache.iotdb.subscription.it.AbstractSubscriptionIT;
 
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -82,53 +75,6 @@ public abstract class AbstractSubscriptionConsensusLocalIT extends AbstractSubsc
     }
     env.ensureNodeStatus(dataNodes, Collections.nCopies(dataNodes.size(), NodeStatus.Running));
 
-    // The test bodies close their consumers in finally blocks. Do not let a best-effort cleanup
-    // leave topics or data for a later method, especially one subscribing to all databases.
-    try (final SubscriptionTreeSession session =
-        new SubscriptionTreeSession(
-            EnvFactory.getEnv().getIP(), Integer.parseInt(EnvFactory.getEnv().getPort()))) {
-      session.open();
-      for (final Topic topic : session.getTopics()) {
-        session.dropTopic(topic.getTopicName());
-      }
-    }
-    try (final ISubscriptionTableSession session =
-        new SubscriptionTableSessionBuilder()
-            .host(EnvFactory.getEnv().getIP())
-            .port(Integer.parseInt(EnvFactory.getEnv().getPort()))
-            .build()) {
-      session.open();
-      for (final Topic topic : session.getTopics()) {
-        session.dropTopic(topic.getTopicName());
-      }
-    }
-    try (final Connection connection = EnvFactory.getEnv().getConnection();
-        final Statement statement = connection.createStatement()) {
-      final List<String> databases = new ArrayList<>();
-      try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
-        while (resultSet.next()) {
-          databases.add(resultSet.getString(1));
-        }
-      }
-      for (final String database : databases) {
-        statement.execute("DELETE DATABASE " + database);
-      }
-    }
-    try (final Connection connection =
-            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
-      final List<String> databases = new ArrayList<>();
-      try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
-        while (resultSet.next()) {
-          final String database = resultSet.getString(1);
-          if (!"information_schema".equals(database)) {
-            databases.add(database);
-          }
-        }
-      }
-      for (final String database : databases) {
-        statement.execute("DROP DATABASE " + database);
-      }
-    }
+    clearSubscriptionState(env);
   }
 }
