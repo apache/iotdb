@@ -103,9 +103,11 @@ public class TransformOperator implements ProcessOperator {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
     this.keepNull = keepNull;
-    // use DriverTaskID().getFullId() to ensure that udtfQueryId for each TransformOperator is
-    // unique
-    this.udtfQueryId = operatorContext.getDriverContext().getDriverTaskID().getFullId();
+    // One driver can contain multiple TransformOperators, each owning its UDF resources.
+    this.udtfQueryId =
+        operatorContext.getDriverContext().getDriverTaskID().getFullId()
+            + "_"
+            + operatorContext.getOperatorId();
 
     initInputLayer(inputDataTypes);
     initUdtfContext(outputExpressions, zoneId);
