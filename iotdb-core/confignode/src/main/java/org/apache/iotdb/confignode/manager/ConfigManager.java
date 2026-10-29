@@ -2808,6 +2808,19 @@ public class ConfigManager implements IManager {
                 }
               });
     }
+    final boolean tableModel = req.isSetIsTableModel() && req.isIsTableModel();
+    final Set<Integer> registeredDataNodeIds =
+        nodeManager.getRegisteredDataNodeLocations().keySet();
+    for (final TSubscriptionProgressInfo progressInfo : progressInfoList) {
+      progressInfo.setReadyOnDns(
+          subscriptionManager
+              .getSubscriptionReadyDataNodeTracker()
+              .getReadyDataNodeIds(
+                  progressInfo.getTopicName(),
+                  progressInfo.getConsumerGroupId(),
+                  tableModel,
+                  registeredDataNodeIds));
+    }
     progressInfoList.sort(
         Comparator.comparing(TSubscriptionProgressInfo::getTopicName)
             .thenComparing(TSubscriptionProgressInfo::getConsumerGroupId)
