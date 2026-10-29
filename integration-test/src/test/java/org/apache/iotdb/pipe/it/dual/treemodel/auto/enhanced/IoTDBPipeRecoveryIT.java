@@ -432,7 +432,7 @@ public class IoTDBPipeRecoveryIT {
       final double floatingMemoryBeforeDrop = floatingMemory(pipe);
       final int failuresBeforeDrop = relay.getRejectedRequests();
       relay.setMode(Mode.REJECT_BEFORE_FORWARD);
-      data.write(0, 57, 65, senderEnv.getDataNodeWrapper(0));
+      data.write(0, 57, 105, senderEnv.getDataNodeWrapper(0));
       await()
           .atMost(60, TimeUnit.SECONDS)
           .until(() -> relay.getRejectedRequests() > failuresBeforeDrop);
