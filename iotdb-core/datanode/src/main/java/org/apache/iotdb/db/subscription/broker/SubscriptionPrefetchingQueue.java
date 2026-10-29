@@ -109,6 +109,9 @@ public abstract class SubscriptionPrefetchingQueue {
 
   private final SubscriptionPrefetchingQueueStates states;
 
+  // Keep the in-flight limit check and event claim atomic across concurrent polls.
+  private final Object pollLock = new Object();
+
   private long lastStateReportTimestamp = System.currentTimeMillis();
 
   private volatile boolean isCompleted = false;
@@ -230,7 +233,9 @@ public abstract class SubscriptionPrefetchingQueue {
   public SubscriptionEvent poll(final String consumerId) {
     acquireReadLock();
     try {
-      return isClosed() ? null : pollInternal(consumerId);
+      synchronized (pollLock) {
+        return isClosed() ? null : pollInternal(consumerId);
+      }
     } finally {
       releaseReadLock();
     }
@@ -238,6 +243,10 @@ public abstract class SubscriptionPrefetchingQueue {
 
   private SubscriptionEvent pollInternal(final String consumerId) {
     states.markPollRequest();
+
+    if (shouldThrottlePollByInFlightEvents()) {
+      return null;
+    }
 
     if (prefetchingQueue.isEmpty()) {
       states.markMissingPrefetch();
@@ -271,6 +280,15 @@ public abstract class SubscriptionPrefetchingQueue {
     return null;
   }
 
+  private boolean shouldThrottlePollByInFlightEvents() {
+    if (!states.shouldThrottlePoll()) {
+      return false;
+    }
+
+    remapInFlightEventsSnapshot(committedCleaner, pollableNacker);
+    return states.shouldThrottlePoll();
+  }
+
   public SubscriptionEvent pollV2(final String consumerId, final PollTimer timer) {
     states.markPollRequest();
 
@@ -286,9 +304,15 @@ public abstract class SubscriptionPrefetchingQueue {
           return null;
         }
 
-        final SubscriptionEvent event = pollInternalV2(consumerId);
-        if (Objects.nonNull(event)) {
-          return event;
+        synchronized (pollLock) {
+          if (shouldThrottlePollByInFlightEvents()) {
+            return null;
+          }
+
+          final SubscriptionEvent event = pollInternalV2(consumerId);
+          if (Objects.nonNull(event)) {
+            return event;
+          }
         }
       } finally {
         releaseReadLock();
@@ -1152,6 +1176,10 @@ public abstract class SubscriptionPrefetchingQueue {
     return inFlightEvents.size();
   }
 
+  public long getSubscriptionRetainedEventCount() {
+    return prefetchingQueue.size() + inFlightEvents.size();
+  }
+
   public long getCurrentCommitId() {
     return commitIdGenerator.get();
   }
@@ -1199,6 +1227,7 @@ public abstract class SubscriptionPrefetchingQueue {
     result.put("size of inputPendingQueue", String.valueOf(inputPendingQueue.size()));
     result.put("size of prefetchingQueue", String.valueOf(prefetchingQueue.size()));
     result.put("size of inFlightEvents", String.valueOf(inFlightEvents.size()));
+    result.put("size of retainedEvents", String.valueOf(getSubscriptionRetainedEventCount()));
     result.put("commitIdGenerator", commitIdGenerator.toString());
     result.put("states", states.toString());
     result.put("isCompleted", String.valueOf(isCompleted));
