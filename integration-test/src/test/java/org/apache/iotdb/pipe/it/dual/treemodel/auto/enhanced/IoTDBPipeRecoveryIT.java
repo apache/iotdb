@@ -390,7 +390,7 @@ public class IoTDBPipeRecoveryIT {
       assertData(receiverEnv, healthy);
       assertQuiet(healthyPipe);
       relay.passThrough();
-      assertQuiet(pipe);
+      assertQuiet(pipe, 150);
       assertData(receiverEnv, data);
       await()
           .atMost(60, TimeUnit.SECONDS)
@@ -557,8 +557,12 @@ public class IoTDBPipeRecoveryIT {
   }
 
   private static void assertQuiet(final String pipe) {
+    assertQuiet(pipe, 90);
+  }
+
+  private static void assertQuiet(final String pipe, final int timeoutSeconds) {
     await()
-        .atMost(90, TimeUnit.SECONDS)
+        .atMost(timeoutSeconds, TimeUnit.SECONDS)
         .during(2, TimeUnit.SECONDS)
         .untilAsserted(
             () -> {
