@@ -401,7 +401,7 @@ public class IoTDBInsertTableIT {
       statement.execute(
           "CREATE TABLE rejected_custom_time_expression "
               + "(device_id STRING TAG, event_time TIMESTAMP TIME, value INT64 FIELD)");
-      String[] expressions = {"1735660800000 + 1000", "?", "1.5", "true", "abs(1)"};
+      String[] expressions = {"?", "1.5", "true", "abs(1)"};
       for (String expression : expressions) {
         for (String columns : new String[] {" (time, device_id, value)", ""}) {
           assertUnsupportedInsertExpression(
@@ -453,7 +453,10 @@ public class IoTDBInsertTableIT {
     SQLException exception = assertThrows(SQLException.class, () -> statement.execute(sql));
     assertEquals(sql, TSStatusCode.SEMANTIC_ERROR.getStatusCode(), exception.getErrorCode());
     String message = exception.getMessage();
-    assertTrue(message, message.contains("Unsupported expression:"));
+    assertTrue(
+        message,
+        message.contains("Unsupported expression:")
+            || message.contains("Insert expression must be constant after constant folding:"));
     assertFalse(message, message.contains("ClassCastException"));
     assertFalse(message, message.contains("cannot be cast"));
     assertFalse(message, message.contains("org.apache.iotdb"));
@@ -467,7 +470,12 @@ public class IoTDBInsertTableIT {
       statement.execute(
           "CREATE TABLE supported_time_expression (device_id STRING TAG, value INT64 FIELD)");
       String[] expressions = {
-        "1735660800000", "'2025-01-01T00:00:00+08:00'", "NOW()", "NOW() + 1d", "NOW() - 1d"
+        "1735660800000",
+        "'2025-01-01T00:00:00+08:00'",
+        "1735660799000 + 1000",
+        "NOW()",
+        "NOW() + 1d",
+        "NOW() - 1d"
       };
       for (boolean explicitColumns : new boolean[] {true, false}) {
         for (int i = 0; i < expressions.length; i++) {
@@ -491,15 +499,53 @@ public class IoTDBInsertTableIT {
                       + "'")) {
             assertTrue(resultSet.next());
             long timestamp = resultSet.getLong(1);
-            if (i < 2) {
+            if (i < 3) {
               assertEquals(1735660800000L, timestamp);
             } else {
-              long offset = i == 3 ? 86400000L : i == 4 ? -86400000L : 0;
+              long offset = i == 4 ? 86400000L : i == 5 ? -86400000L : 0;
               // Allow clock skew between the test client and cluster nodes.
               assertTrue(timestamp >= before + offset - 10000);
               assertTrue(timestamp <= after + offset + 10000);
             }
             assertEquals(i, resultSet.getLong(2));
+            assertFalse(resultSet.next());
+          }
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testInsertFoldedPredicates() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      statement.execute("CREATE TABLE folded_predicates (device_id STRING TAG, value INT32 FIELD)");
+      String[] predicates = {
+        "1 + 1 IN (2, 3)",
+        "2 IN (1 + 1, 3)",
+        "1 + 1 IN (2.0, 3.0)",
+        "1.0 < (0.0 / 0.0)",
+        "(0.0 / 0.0) >= 1.0",
+        "(0.0 / 0.0) = (0.0 / 0.0)",
+        "(0.0 / 0.0) <> 1.0"
+      };
+      for (boolean explicitColumns : new boolean[] {true, false}) {
+        for (int i = 0; i < predicates.length; i++) {
+          String deviceId = "d" + explicitColumns + i;
+          statement.execute(
+              "INSERT INTO folded_predicates"
+                  + (explicitColumns ? " (time, device_id, value)" : "")
+                  + " VALUES (1, '"
+                  + deviceId
+                  + "', if("
+                  + predicates[i]
+                  + ", 11, 22))");
+          try (ResultSet resultSet =
+              statement.executeQuery(
+                  "SELECT value FROM folded_predicates WHERE device_id = '" + deviceId + "'")) {
+            assertTrue(resultSet.next());
+            assertEquals(predicates[i], i < 3 ? 11 : 22, resultSet.getInt(1));
             assertFalse(resultSet.next());
           }
         }
