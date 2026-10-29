@@ -121,6 +121,10 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
           continue;
         }
 
+        if (topicMeta.getConfig().isProgressRetainedAfterUnsubscribe()) {
+          continue;
+        }
+
         // Topic will be subscribed by no consumers in this group
         dropPipeProcedures.add(
             new DropPipeProcedureV2(

@@ -179,7 +179,21 @@ public class QueryExecution implements IQueryExecution {
   public void start() {
     try {
       startInternal();
-    } catch (RuntimeException | Error e) {
+    } catch (RuntimeException e) {
+      finishAnalysisAttemptForCurrentState();
+      if (stateMachine.getState().isDone()) {
+        // The query has already reached a terminal state (e.g. killed by others), and the status
+        // recorded by the state machine is the authoritative result. An exception thrown here is
+        // usually caused by resources being released concurrently, so it must not override it.
+        LOGGER.warn(
+            DataNodeQueryMessages.IGNORE_EXCEPTION_AFTER_QUERY_DONE,
+            context.getQueryId(),
+            stateMachine.getState(),
+            e.getMessage());
+        return;
+      }
+      throw e;
+    } catch (Error e) {
       finishAnalysisAttemptForCurrentState();
       throw e;
     }
