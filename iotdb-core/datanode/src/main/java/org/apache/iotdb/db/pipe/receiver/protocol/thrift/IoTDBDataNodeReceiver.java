@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -237,6 +238,13 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         final TPipeTransferResp authResp = checkPipeTransferAuthenticated(requestType);
         if (Objects.nonNull(authResp)) {
           return authResp;
+        }
+        if (!PipeDataNodeAgent.isPipeFeatureEnabled()) {
+          return new TPipeTransferResp(
+              RpcUtils.getStatus(
+                  TSStatusCode.UNSUPPORTED_OPERATION,
+                  PipeMessages
+                      .MESSAGE_PIPE_AND_SUBSCRIPTION_ARE_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_3D8EAE6E));
         }
         switch (requestType) {
           case HANDSHAKE_DATANODE_V1:

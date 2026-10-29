@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.subscriber.ConsensusGroupStatisticsChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
+import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat.PipeHeartbeat;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat.PipeHeartbeatScheduler;
 
@@ -67,17 +68,23 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
   }
 
   public synchronized void onConfigRegionGroupLeaderChanged() {
-    pipeLeaderChangeHandler.onConfigRegionGroupLeaderChanged();
+    if (PipeConfigNodeAgent.isPipeFeatureEnabled()) {
+      pipeLeaderChangeHandler.onConfigRegionGroupLeaderChanged();
+    }
   }
 
   @Override
   public synchronized void onConsensusGroupStatisticsChanged(
       final ConsensusGroupStatisticsChangeEvent event) {
-    pipeLeaderChangeHandler.onConsensusGroupStatisticsChanged(event);
+    if (PipeConfigNodeAgent.isPipeFeatureEnabled()) {
+      pipeLeaderChangeHandler.onConsensusGroupStatisticsChanged(event);
+    }
   }
 
   public void startPipeMetaSync() {
-    pipeMetaSyncer.start();
+    if (PipeConfigNodeAgent.isPipeFeatureEnabled()) {
+      pipeMetaSyncer.start();
+    }
   }
 
   public void stopPipeMetaSync() {
@@ -85,7 +92,9 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
   }
 
   public void startPipeHeartbeat() {
-    pipeHeartbeatScheduler.start();
+    if (PipeConfigNodeAgent.isPipeFeatureEnabled()) {
+      pipeHeartbeatScheduler.start();
+    }
   }
 
   public void stopPipeHeartbeat() {
@@ -101,15 +110,17 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
       /* @Nullable */ final List<Integer> pipeDegradedStatusListFromAgent,
       /* @Nullable */ final List<Map<String, Long>> pipeRecentFailureListFromAgent,
       /* @Nullable */ final List<TPipeCompletedDataRegion> pipeCompletedDataRegionListFromAgent) {
-    pipeHeartbeatScheduler.parseHeartbeat(
-        dataNodeId,
-        new PipeHeartbeat(
-            pipeMetaByteBufferListFromDataNode,
-            pipeCompletedListFromAgent,
-            pipeRemainingEventCountListFromAgent,
-            pipeRemainingTimeListFromAgent,
-            pipeDegradedStatusListFromAgent,
-            pipeRecentFailureListFromAgent,
-            pipeCompletedDataRegionListFromAgent));
+    if (PipeConfigNodeAgent.isPipeFeatureEnabled()) {
+      pipeHeartbeatScheduler.parseHeartbeat(
+          dataNodeId,
+          new PipeHeartbeat(
+              pipeMetaByteBufferListFromDataNode,
+              pipeCompletedListFromAgent,
+              pipeRemainingEventCountListFromAgent,
+              pipeRemainingTimeListFromAgent,
+              pipeDegradedStatusListFromAgent,
+              pipeRecentFailureListFromAgent,
+              pipeCompletedDataRegionListFromAgent));
+    }
   }
 }

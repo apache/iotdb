@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternTreeUtils;
@@ -53,7 +54,6 @@ import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.audit.CNAuditLogger;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
@@ -97,6 +97,7 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTrigger
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.metric.receiver.PipeConfigNodeReceiverMetrics;
 import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysicalPlanExceptionVisitor;
@@ -196,6 +197,13 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         final TPipeTransferResp authResp = checkPipeTransferAuthenticated(type);
         if (Objects.nonNull(authResp)) {
           return authResp;
+        }
+        if (!PipeConfigNodeAgent.isPipeFeatureEnabled()) {
+          return new TPipeTransferResp(
+              RpcUtils.getStatus(
+                  TSStatusCode.UNSUPPORTED_OPERATION,
+                  PipeMessages
+                      .MESSAGE_PIPE_AND_SUBSCRIPTION_ARE_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_3D8EAE6E));
         }
         TPipeTransferResp resp;
         final long startTime = System.nanoTime();

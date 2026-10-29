@@ -38,6 +38,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
@@ -1138,7 +1139,8 @@ public class ConsensusSubscriptionSetupHandler {
 
   public static void applyRuntimeState(
       final TConsensusGroupId groupId, final ConsensusRegionRuntimeState runtimeState) {
-    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()
+        || !PipeDataNodeAgent.isPipeFeatureEnabled()) {
       return;
     }
 
@@ -1173,7 +1175,8 @@ public class ConsensusSubscriptionSetupHandler {
 
   public static void onRegionRouteChanged(
       final Map<TConsensusGroupId, TRegionReplicaSet> newMap, final long routingTimestamp) {
-    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()
+        || !PipeDataNodeAgent.isPipeFeatureEnabled()) {
       return;
     }
 

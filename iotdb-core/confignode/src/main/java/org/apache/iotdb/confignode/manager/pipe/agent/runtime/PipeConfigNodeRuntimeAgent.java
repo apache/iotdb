@@ -59,6 +59,11 @@ public class PipeConfigNodeRuntimeAgent implements IService {
 
   @Override
   public synchronized void start() {
+    if (!PipeConfigNodeAgent.isPipeFeatureEnabled()) {
+      isShutdown.set(true);
+      return;
+    }
+
     PipeConfig.getInstance().printAllConfigs();
     initLoggerPeriodicalLogReducer();
 

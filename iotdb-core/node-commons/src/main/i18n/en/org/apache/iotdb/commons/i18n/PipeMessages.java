@@ -21,6 +21,9 @@ package org.apache.iotdb.commons.i18n;
 
 public final class PipeMessages {
 
+  public static final String MESSAGE_PIPE_AND_SUBSCRIPTION_ARE_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_3D8EAE6E =
+      "Pipe and Subscription are disabled when data region consensus protocol is Ratis.";
+
   // ===================== Common / Shared =====================
 
   public static final String UTILITY_CLASS = "Utility class";

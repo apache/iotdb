@@ -62,7 +62,7 @@ class PipeAgentLauncher {
 
   public static synchronized void launchPipePluginAgent(
       ResourcesInformationHolder resourcesInformationHolder) throws StartupException {
-    initPipePluginRelatedInstances();
+    initializePipePluginRelatedInstances();
 
     if (resourcesInformationHolder.getPipePluginMetaList() == null
         || resourcesInformationHolder.getPipePluginMetaList().isEmpty()) {
@@ -106,7 +106,7 @@ class PipeAgentLauncher {
     }
   }
 
-  private static void initPipePluginRelatedInstances() throws StartupException {
+  static void initializePipePluginRelatedInstances() throws StartupException {
     try {
       PipePluginExecutableManager.setupAndGetInstance(
           IOTDB_CONFIG.getPipeTemporaryLibDir(), IOTDB_CONFIG.getPipeLibDir());

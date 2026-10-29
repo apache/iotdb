@@ -31,7 +31,6 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInAgent;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeConfigNodeRemainingTimeMetrics;
@@ -66,6 +65,11 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
   @Override
   protected boolean isShutdown() {
     return PipeConfigNodeAgent.runtime().isShutdown();
+  }
+
+  @Override
+  protected boolean isPipeFeatureEnabled() {
+    return PipeConfigNodeAgent.isPipeFeatureEnabled();
   }
 
   @Override

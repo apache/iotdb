@@ -42,7 +42,6 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.pipe.IoTConsensusV2;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
@@ -920,14 +919,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
   private boolean isProgressIndexNotCoveredByStartIndex(
       PersistentResource resource, ProgressIndex progressIndex) {
-    // Ratis writes do not carry Pipe progress indexes. Minimum therefore means unknown here,
-    // rather than an empty file already covered by the initial checkpoint. Replay conservatively
-    // after a leader change, or successful writes can disappear from the subscription backlog.
-    if (progressIndex instanceof MinimumProgressIndex
-        && ConsensusFactory.RATIS_CONSENSUS.equals(
-            IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass())) {
-      return true;
-    }
     final ProgressIndex innerStartIndex = getInnerProgressIndex(startIndex);
     if (innerStartIndex.isEqualOrAfter(progressIndex)
         || isProgressIndexCoveredByTimePartitionProgressIndex(
