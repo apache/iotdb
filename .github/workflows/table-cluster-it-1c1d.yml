@@ -110,19 +110,7 @@ jobs:
           netsh int ipv6 set dynamicport udp start=32768 num=32768
       - name: Build IT shard list
         shell: bash
-        # See cluster-it-1c1d.yml for the shard-list pattern.
-        run: |
-          set -euo pipefail
-          SHARD=${{ matrix.shard }}
-          TOTAL=3
-          # Write outside the repo so Apache RAT (license check) doesn't flag the file.
-          find integration-test/src/test/java -type f \( -name 'IT*.java' -o -name '*IT.java' -o -name '*ITCase.java' \) \
-            | sed 's|^integration-test/src/test/java/||; s|\.java$||; s|/|.|g' \
-            | LC_ALL=C sort \
-            | awk -v s=$SHARD -v t=$TOTAL 'NR%t==s' \
-            > "$RUNNER_TEMP/it-shard.txt"
-          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") candidate classes"
-          head -5 "$RUNNER_TEMP/it-shard.txt"
+        run: bash .github/scripts/build-it-shard-list.sh ${{ matrix.shard }} 3 "$RUNNER_TEMP/it-shard.txt"
       - name: IT/UT Test
         shell: bash
         run: |
