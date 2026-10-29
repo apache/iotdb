@@ -21,18 +21,28 @@ package org.apache.iotdb.commons.utils.KillPoint;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.i18n.UtilMessages;
+import org.apache.iotdb.commons.utils.TestOnly;
 
 import com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Collectors;
 
 public class KillPoint {
   private static final Logger LOGGER = LoggerFactory.getLogger(KillPoint.class);
+
+  /** Set only by the integration-test node launcher; gates belong to one test-owned node. */
+  public static final String TEST_GATE_DIR = "iotdb.test.killpoint.dir";
 
   public static String addKillPointPrefix(String name) {
     return "[KILL POINT] " + name;
@@ -61,6 +71,7 @@ public class KillPoint {
   public static <T extends Enum<T>> void setKillPoint(T x) {
     if (CommonDescriptor.getInstance().getConfig().isIntegrationTest()) {
       String breakPointName = enumToString(x);
+      testOnlyVisitGate(breakPointName);
       if (CommonDescriptor.getInstance()
           .getConfig()
           .getEnabledKillPoints()
@@ -72,6 +83,32 @@ public class KillPoint {
           Thread.currentThread().interrupt();
         }
       }
+    }
+  }
+
+  @TestOnly
+  private static void testOnlyVisitGate(String name) {
+    final String directory = System.getProperty(TEST_GATE_DIR);
+    if (directory == null) {
+      return;
+    }
+    final Path pause = Paths.get(directory, name + ".pause");
+    final Path watch = Paths.get(directory, name + ".watch");
+    if (!Files.exists(pause) && !Files.exists(watch)) {
+      return;
+    }
+    try {
+      Files.write(Paths.get(directory, name + ".reached"), new byte[0]);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+    // A bounded, explicitly armed barrier lets ITs observe a real state boundary, perform a
+    // failure or a concurrent operation, and release it. Never wait indefinitely after a failed IT.
+    final long deadline = System.nanoTime() + TimeUnit.MINUTES.toNanos(2);
+    while (Files.exists(pause)
+        && !Thread.currentThread().isInterrupted()
+        && System.nanoTime() < deadline) {
+      LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(10));
     }
   }
 

@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -100,6 +101,8 @@ public class DeactivateTemplateProcedure
       throws InterruptedException {
     long startTime = System.currentTimeMillis();
     try {
+      // On re-entry this state, including its blacklist, has already been persisted.
+      KillPoint.setKillPoint(state);
       switch (state) {
         case CONSTRUCT_BLACK_LIST:
           LOGGER.info(ProcedureMessages.CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE, requestMessage);
