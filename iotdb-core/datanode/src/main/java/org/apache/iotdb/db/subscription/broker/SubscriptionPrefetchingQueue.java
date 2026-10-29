@@ -919,6 +919,39 @@ public abstract class SubscriptionPrefetchingQueue {
     return requeuedCount;
   }
 
+  /** Replays every uncommitted delivery when the last subscriber leaves a retained topic. */
+  public void resetAndRequeueInFlightEvents() {
+    acquireWriteLock();
+    try {
+      if (isClosed()) {
+        return;
+      }
+      // Receiver disconnects and takeovers can release deliveries before the last unsubscribe.
+      // Rewind those too, but leave never-delivered events (including batch continuations) alone.
+      for (final SubscriptionEvent event : prefetchingQueue) {
+        if (!event.isCommitted() && Objects.nonNull(event.getLastPolledConsumerId())) {
+          event.resetForRedelivery();
+        }
+      }
+      for (final Pair<String, SubscriptionCommitContext> key :
+          ImmutableSet.copyOf(inFlightEvents.keySet())) {
+        inFlightEvents.computeIfPresent(
+            key,
+            (ignored, event) -> {
+              if (event.isCommitted()) {
+                event.cleanUp(false);
+              } else {
+                event.resetForRedelivery();
+                prefetchEvent(event);
+              }
+              return null;
+            });
+      }
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
   /**
    * @return {@code true} if ack successfully
    */

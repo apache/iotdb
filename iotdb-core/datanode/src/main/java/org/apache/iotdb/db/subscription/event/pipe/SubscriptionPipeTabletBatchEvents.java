@@ -54,8 +54,13 @@ public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents
   @Override
   public void cleanUp(final boolean force) {
     batch.cleanUp(force);
+    cleanUpIterationSnapshot();
+  }
+
+  public void cleanUpIterationSnapshot() {
     if (Objects.nonNull(iterationSnapshot)) {
       iterationSnapshot.cleanUp();
+      iterationSnapshot = null;
     }
   }
 

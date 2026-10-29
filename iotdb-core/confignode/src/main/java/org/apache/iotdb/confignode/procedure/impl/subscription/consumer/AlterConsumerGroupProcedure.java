@@ -81,6 +81,9 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
     LOGGER.info(ProcedureMessages.ALTERCONSUMERGROUPPROCEDURE_EXECUTEFROMVALIDATE_TRY_TO_VALIDATE);
 
     validateAndGetOldAndNewMeta(env);
+    subscriptionInfo
+        .get()
+        .retainSubscriptionProgress(existingConsumerGroupMeta, updatedConsumerGroupMeta);
     return true;
   }
 
