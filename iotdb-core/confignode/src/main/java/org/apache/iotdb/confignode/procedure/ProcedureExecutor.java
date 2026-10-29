@@ -72,9 +72,8 @@ public class ProcedureExecutor<Env> {
   private final ThreadGroup threadGroup =
       new ThreadGroup(ThreadName.CONFIG_NODE_PROCEDURE_WORKER.getName());
 
-  // Metrics may be scraped before init() and concurrently with initialization during a ConfigNode
-  // leader transition.
-  private volatile CopyOnWriteArrayList<WorkerThread> workerThreads;
+  // leader transition, so keep an always-present thread-safe list.
+  private final CopyOnWriteArrayList<WorkerThread> workerThreads = new CopyOnWriteArrayList<>();
   private volatile CopyOnWriteArrayList<WorkerThread> dropTableWorkerThreads;
 
   private TimeoutExecutorThread<Env> timeoutExecutor;
@@ -140,7 +139,7 @@ public class ProcedureExecutor<Env> {
         new TimeoutExecutorThread<>(
             this, threadGroup, ThreadName.CONFIG_NODE_WORKER_THREAD_MONITOR.getName());
     workId.set(0);
-    workerThreads = new CopyOnWriteArrayList<>();
+    workerThreads.clear();
     for (int i = 0; i < corePoolSize; i++) {
       workerThreads.add(new WorkerThread(threadGroup, scheduler));
     }
@@ -1181,8 +1180,7 @@ public class ProcedureExecutor<Env> {
   }
 
   public int getWorkerThreadCount() {
-    final CopyOnWriteArrayList<WorkerThread> workers = workerThreads;
-    return workers == null ? 0 : workers.size();
+    return workerThreads.size();
   }
 
   @TestOnly
@@ -1192,10 +1190,7 @@ public class ProcedureExecutor<Env> {
   }
 
   public long getActiveWorkerThreadCount() {
-    final CopyOnWriteArrayList<WorkerThread> workers = workerThreads;
-    return workers == null
-        ? 0
-        : workers.stream().filter(worker -> worker.activeProcedure.get() != null).count();
+    return workerThreads.stream().filter(worker -> worker.activeProcedure.get() != null).count();
   }
 
   public boolean isRunning() {
