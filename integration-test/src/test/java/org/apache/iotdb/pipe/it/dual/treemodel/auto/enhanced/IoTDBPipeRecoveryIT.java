@@ -435,7 +435,14 @@ public class IoTDBPipeRecoveryIT {
       data.write(0, 57, 105, senderEnv.getDataNodeWrapper(0));
       await()
           .atMost(60, TimeUnit.SECONDS)
-          .until(() -> relay.getRejectedRequests() > failuresBeforeDrop);
+          .untilAsserted(
+              () -> {
+                Assert.assertTrue(relay.getRejectedRequests() > failuresBeforeDrop);
+                Assert.assertTrue(
+                    metric(pipe, "pipe_async_connector_retry_event_queue_size", true)
+                        >= RETRY_QUEUE_THRESHOLD);
+                Assert.assertTrue(floatingMemory(pipe) > floatingMemoryBeforeDrop);
+              });
       assertBacklog(pipe);
       Assert.assertTrue(
           "No retained floating pipe memory before DROP",
