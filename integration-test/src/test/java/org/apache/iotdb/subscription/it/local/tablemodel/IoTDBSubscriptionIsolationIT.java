@@ -162,66 +162,63 @@ public class IoTDBSubscriptionIsolationIT extends AbstractSubscriptionIT {
       session.createTopic(topicName);
     }
 
-    final ISubscriptionTreePullConsumer treeConsumer =
-        new SubscriptionTreePullConsumerBuilder()
-            .host(host)
-            .port(port)
-            .consumerId("tree_consumer")
-            .consumerGroupId("tree_consumer_group")
-            .build();
-    treeConsumer.open();
-    treeConsumer.subscribe(topicName);
+    try (final ISubscriptionTreePullConsumer treeConsumer =
+            new SubscriptionTreePullConsumerBuilder()
+                .host(host)
+                .port(port)
+                .consumerId("tree_consumer")
+                .consumerGroupId("tree_consumer_group")
+                .build();
+        final ISubscriptionTablePullConsumer tableConsumer =
+            new SubscriptionTablePullConsumerBuilder()
+                .host(host)
+                .port(port)
+                .consumerId("table_consumer")
+                .consumerGroupId("table_consumer_group")
+                .build()) {
+      treeConsumer.open();
+      treeConsumer.subscribe(topicName);
+      tableConsumer.open();
+      tableConsumer.subscribe(topicName);
 
-    final ISubscriptionTablePullConsumer tableConsumer =
-        new SubscriptionTablePullConsumerBuilder()
-            .host(host)
-            .port(port)
-            .consumerId("table_consumer")
-            .consumerGroupId("table_consumer_group")
-            .build();
-    tableConsumer.open();
-    tableConsumer.subscribe(topicName);
+      // show subscription on tree session
+      try (final ISubscriptionTreeSession session =
+          new SubscriptionTreeSessionBuilder().host(host).port(port).build()) {
+        session.open();
+        Assert.assertEquals(1, session.getSubscriptions().size());
+        Assert.assertEquals(1, session.getSubscriptions(topicName).size());
+        Assert.assertEquals(
+            "tree_consumer_group",
+            session.getSubscriptions(topicName).iterator().next().getConsumerGroupId());
+      }
 
-    // show subscription on tree session
-    try (final ISubscriptionTreeSession session =
-        new SubscriptionTreeSessionBuilder().host(host).port(port).build()) {
-      session.open();
-      Assert.assertEquals(1, session.getSubscriptions().size());
-      Assert.assertEquals(1, session.getSubscriptions(topicName).size());
-      Assert.assertEquals(
-          "tree_consumer_group",
-          session.getSubscriptions(topicName).iterator().next().getConsumerGroupId());
+      // show subscription on table session
+      try (final ISubscriptionTableSession session =
+          new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
+        Assert.assertEquals(1, session.getSubscriptions().size());
+        Assert.assertEquals(1, session.getSubscriptions(topicName).size());
+        Assert.assertEquals(
+            "table_consumer_group",
+            session.getSubscriptions(topicName).iterator().next().getConsumerGroupId());
+      }
+
+      // Unsubscribing the tree-model topic must not affect the same-named table-model subscription.
+      treeConsumer.unsubscribe(topicName);
+      try (final ISubscriptionTreeSession session =
+          new SubscriptionTreeSessionBuilder().host(host).port(port).build()) {
+        session.open();
+        Assert.assertEquals(0, session.getSubscriptions(topicName).size());
+      }
+      try (final ISubscriptionTableSession session =
+          new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
+        Assert.assertEquals(1, session.getSubscriptions(topicName).size());
+      }
+
+      tableConsumer.unsubscribe(topicName);
+      try (final ISubscriptionTableSession session =
+          new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
+        Assert.assertEquals(0, session.getSubscriptions(topicName).size());
+      }
     }
-
-    // show subscription on table session
-    try (final ISubscriptionTableSession session =
-        new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
-      Assert.assertEquals(1, session.getSubscriptions().size());
-      Assert.assertEquals(1, session.getSubscriptions(topicName).size());
-      Assert.assertEquals(
-          "table_consumer_group",
-          session.getSubscriptions(topicName).iterator().next().getConsumerGroupId());
-    }
-
-    // Unsubscribing the tree-model topic must not affect the same-named table-model subscription.
-    treeConsumer.unsubscribe(topicName);
-    try (final ISubscriptionTreeSession session =
-        new SubscriptionTreeSessionBuilder().host(host).port(port).build()) {
-      session.open();
-      Assert.assertEquals(0, session.getSubscriptions(topicName).size());
-    }
-    try (final ISubscriptionTableSession session =
-        new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
-      Assert.assertEquals(1, session.getSubscriptions(topicName).size());
-    }
-
-    tableConsumer.unsubscribe(topicName);
-    try (final ISubscriptionTableSession session =
-        new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
-      Assert.assertEquals(0, session.getSubscriptions(topicName).size());
-    }
-
-    treeConsumer.close();
-    tableConsumer.close();
   }
 }
