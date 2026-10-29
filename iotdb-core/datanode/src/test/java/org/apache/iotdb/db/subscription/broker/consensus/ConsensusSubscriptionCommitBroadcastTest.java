@@ -33,14 +33,21 @@ import org.junit.rules.TemporaryFolder;
 import org.mockito.ArgumentCaptor;
 
 import java.util.Collections;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -128,6 +135,99 @@ public class ConsensusSubscriptionCommitBroadcastTest {
     oldTask.run();
     verify(manager, never()).doBroadcast("group", "topic", REGION, progress(1L), WRITER);
     tasks.getValue().run();
+    verify(manager).doBroadcast("group", "topic", REGION, progress(2L), WRITER);
+  }
+
+  @Test
+  public void testResubscribedStateDoesNotInheritBroadcastThrottle() {
+    commit(WRITER, 1L);
+    final ArgumentCaptor<Runnable> tasks = ArgumentCaptor.forClass(Runnable.class);
+    verify(executor).schedule(tasks.capture(), eq(0L), eq(TimeUnit.MILLISECONDS));
+    tasks.getValue().run();
+
+    now.addAndGet(100L);
+    manager.removeState("group", "topic", REGION);
+    commit(WRITER, 2L);
+
+    verify(executor, times(2)).schedule(tasks.capture(), eq(0L), eq(TimeUnit.MILLISECONDS));
+    tasks.getValue().run();
+    verify(manager).doBroadcast("group", "topic", REGION, progress(2L), WRITER);
+  }
+
+  @Test
+  public void testRemovingStateWaitsForBroadcastAlreadyInProgress() throws Exception {
+    final CountDownLatch broadcastStarted = new CountDownLatch(1);
+    final CountDownLatch releaseBroadcast = new CountDownLatch(1);
+    final CountDownLatch removeStarted = new CountDownLatch(1);
+    doAnswer(
+            invocation -> {
+              broadcastStarted.countDown();
+              assertTrue(releaseBroadcast.await(5L, TimeUnit.SECONDS));
+              return null;
+            })
+        .when(manager)
+        .doBroadcast(eq("group"), eq("topic"), eq(REGION), any(), eq(WRITER));
+    doAnswer(
+            invocation -> {
+              removeStarted.countDown();
+              return invocation.callRealMethod();
+            })
+        .when(manager)
+        .removeState("group", "topic", REGION);
+
+    commit(WRITER, 1L);
+    final ArgumentCaptor<Runnable> tasks = ArgumentCaptor.forClass(Runnable.class);
+    verify(executor).schedule(tasks.capture(), eq(0L), eq(TimeUnit.MILLISECONDS));
+    final Thread broadcastThread = new Thread(tasks.getValue(), "broadcast-test");
+    broadcastThread.start();
+    assertTrue(broadcastStarted.await(5L, TimeUnit.SECONDS));
+
+    final CountDownLatch removeFinished = new CountDownLatch(1);
+    final Thread removeThread =
+        new Thread(
+            () -> {
+              manager.removeState("group", "topic", REGION);
+              removeFinished.countDown();
+            },
+            "remove-state-test");
+    removeThread.start();
+    assertTrue(removeStarted.await(5L, TimeUnit.SECONDS));
+    assertFalse(removeFinished.await(200L, TimeUnit.MILLISECONDS));
+
+    releaseBroadcast.countDown();
+    assertTrue(removeFinished.await(5L, TimeUnit.SECONDS));
+    broadcastThread.join(5_000L);
+    removeThread.join(5_000L);
+    verify(manager).doBroadcast("group", "topic", REGION, progress(1L), WRITER);
+  }
+
+  @Test
+  public void testRejectedScheduleDoesNotSuppressLaterBroadcast() {
+    final AtomicBoolean rejectFirstSchedule = new AtomicBoolean(true);
+    final AtomicReference<Runnable> scheduledTask = new AtomicReference<>();
+    doAnswer(
+            invocation -> {
+              if (rejectFirstSchedule.getAndSet(false)) {
+                throw new RejectedExecutionException();
+              }
+              scheduledTask.set(invocation.getArgument(0));
+              return null;
+            })
+        .when(executor)
+        .schedule(any(Runnable.class), anyLong(), eq(TimeUnit.MILLISECONDS));
+
+    try {
+      commit(WRITER, 1L);
+      throw new AssertionError("Expected the first scheduled broadcast to be rejected");
+    } catch (final RejectedExecutionException expected) {
+      // The executor can reject during shutdown; later attempts must not remain marked pending.
+    }
+
+    commit(WRITER, 2L);
+    assertNotNull(scheduledTask.get());
+    scheduledTask.get().run();
+
+    verify(executor, times(2)).schedule(any(Runnable.class), anyLong(), eq(TimeUnit.MILLISECONDS));
     verify(manager).doBroadcast("group", "topic", REGION, progress(2L), WRITER);
   }
 

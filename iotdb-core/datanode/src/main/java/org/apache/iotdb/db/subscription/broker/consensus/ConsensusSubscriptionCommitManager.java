@@ -324,7 +324,7 @@ public class ConsensusSubscriptionCommitManager {
           final CommitStateKey stateKey =
               getCommitStateKey(setupSnapshot.consumerGroupId, topicName, entry.getKey());
           final StateSetupSnapshot stateSnapshot = entry.getValue();
-          commitStates.put(
+          replaceCommitState(
               stateKey.encodedStateKey,
               new ConsensusSubscriptionCommitState(
                   stateKey.regionIdStr,
@@ -380,7 +380,7 @@ public class ConsensusSubscriptionCommitManager {
           || preservedRegionIds.contains(entry.getValue().regionIdStr)) {
         continue;
       }
-      commitStates.remove(entry.getKey());
+      removeCommitState(entry.getKey());
       pendingInitialProgressKeys.remove(entry.getKey());
       pendingNewRegionProgressKeys.remove(entry.getKey());
       configNodeProgressAvailableKeys.remove(entry.getKey());
@@ -726,7 +726,7 @@ public class ConsensusSubscriptionCommitManager {
     final CommitStateKey stateKey =
         getCommitStateKey(consumerGroupId, topicName, regionId.toString());
     recoverTopicStatesIfNeeded(stateKey);
-    commitStates.remove(stateKey.encodedStateKey);
+    removeCommitState(stateKey.encodedStateKey);
     commitStateKeys.remove(stateKey.encodedStateKey);
     pendingInitialProgressKeys.remove(stateKey.encodedStateKey);
     pendingNewRegionProgressKeys.remove(stateKey.encodedStateKey);
@@ -749,7 +749,7 @@ public class ConsensusSubscriptionCommitManager {
     while (keyIterator.hasNext()) {
       final Map.Entry<String, CommitStateKey> entry = keyIterator.next();
       if (entry.getValue().sameTopic(consumerGroupId, topicName)) {
-        commitStates.remove(entry.getKey());
+        removeCommitState(entry.getKey());
         pendingInitialProgressKeys.remove(entry.getKey());
         pendingNewRegionProgressKeys.remove(entry.getKey());
         configNodeProgressAvailableKeys.remove(entry.getKey());
@@ -890,6 +890,9 @@ public class ConsensusSubscriptionCommitManager {
       return;
     }
     synchronized (lastBroadcastTime) {
+      if (commitStates.get(key) != state) {
+        return;
+      }
       if (pendingBroadcasts.get(broadcastKey) == state) {
         return;
       }
@@ -899,25 +902,81 @@ public class ConsensusSubscriptionCommitManager {
               ? 0L
               : Math.max(0L, MIN_BROADCAST_INTERVAL_MS - (broadcastClock.getAsLong() - last));
       pendingBroadcasts.put(broadcastKey, state);
-      broadcastExecutor.schedule(
-          () -> {
-            final WriterProgress latestProgress;
-            synchronized (lastBroadcastTime) {
-              if (!pendingBroadcasts.remove(broadcastKey, state)
-                  || commitStates.get(key) != state) {
-                return;
+      try {
+        broadcastExecutor.schedule(
+            () -> {
+              synchronized (state.broadcastLifecycleLock) {
+                final WriterProgress latestProgress;
+                synchronized (lastBroadcastTime) {
+                  if (!pendingBroadcasts.remove(broadcastKey, state)
+                      || commitStates.get(key) != state) {
+                    return;
+                  }
+                  lastBroadcastTime.put(broadcastKey, broadcastClock.getAsLong());
+                  latestProgress =
+                      state
+                          .getCommittedRegionProgress()
+                          .getWriterPositions()
+                          .get(committedWriterId);
+                }
+                if (Objects.nonNull(latestProgress)) {
+                  doBroadcast(
+                      consumerGroupId, topicName, regionId, latestProgress, committedWriterId);
+                }
               }
-              lastBroadcastTime.put(broadcastKey, broadcastClock.getAsLong());
-              latestProgress =
-                  state.getCommittedRegionProgress().getWriterPositions().get(committedWriterId);
-            }
-            if (Objects.nonNull(latestProgress)) {
-              doBroadcast(consumerGroupId, topicName, regionId, latestProgress, committedWriterId);
-            }
-          },
-          delay,
-          TimeUnit.MILLISECONDS);
+            },
+            delay,
+            TimeUnit.MILLISECONDS);
+      } catch (final RuntimeException e) {
+        pendingBroadcasts.remove(broadcastKey, state);
+        throw e;
+      }
     }
+  }
+
+  private void removeCommitState(final String stateKey) {
+    while (true) {
+      final ConsensusSubscriptionCommitState state = commitStates.get(stateKey);
+      if (Objects.isNull(state)) {
+        return;
+      }
+      synchronized (state.broadcastLifecycleLock) {
+        synchronized (lastBroadcastTime) {
+          if (commitStates.remove(stateKey, state)) {
+            clearBroadcastStateUnderLock(stateKey);
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  private void replaceCommitState(
+      final String stateKey, final ConsensusSubscriptionCommitState replacement) {
+    while (true) {
+      final ConsensusSubscriptionCommitState state = commitStates.get(stateKey);
+      if (Objects.isNull(state)) {
+        if (Objects.isNull(commitStates.putIfAbsent(stateKey, replacement))) {
+          return;
+        }
+        continue;
+      }
+      synchronized (state.broadcastLifecycleLock) {
+        synchronized (lastBroadcastTime) {
+          if (commitStates.replace(stateKey, state, replacement)) {
+            clearBroadcastStateUnderLock(stateKey);
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  /** Clears scheduled work and throttle history for one subscription state generation. */
+  private void clearBroadcastStateUnderLock(final String stateKey) {
+    final String broadcastKeyPrefix = stateKey + KEY_SEPARATOR;
+    pendingBroadcasts.keySet().removeIf(key -> key.startsWith(broadcastKeyPrefix));
+    lastBroadcastTime.keySet().removeIf(key -> key.startsWith(broadcastKeyPrefix));
   }
 
   /**
@@ -1734,6 +1793,8 @@ public class ConsensusSubscriptionCommitManager {
    * tracked as ProgressKey objects rather than raw searchIndex values.
    */
   public static class ConsensusSubscriptionCommitState {
+
+    private final Object broadcastLifecycleLock = new Object();
 
     private final String regionId;
 
