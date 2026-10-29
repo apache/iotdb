@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOpera
 import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.AbstractOperateSubscriptionAndPipeProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
@@ -217,7 +218,9 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionAndPipeProced
     }
     for (final ConsumerGroupMeta consumerGroupMeta : getUpdatedRetainedConsumerGroupMetas()) {
       final List<TSStatus> consumerGroupStatuses =
-          env.pushSingleConsumerGroupOnDataNode(consumerGroupMeta.serialize());
+          env.pushSingleConsumerGroupOnDataNode(consumerGroupMeta.serialize()).values().stream()
+              .map(TPushConsumerGroupMetaResp::getStatus)
+              .toList();
       if (RpcUtils.squashResponseStatusList(consumerGroupStatuses).getCode()
           != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new SubscriptionException(consumerGroupStatuses.toString());
@@ -284,7 +287,9 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionAndPipeProced
     if (Objects.nonNull(existedTopicMeta)) {
       for (final ConsumerGroupMeta consumerGroupMeta : retainedConsumerGroupMetas) {
         final List<TSStatus> statuses =
-            env.pushSingleConsumerGroupOnDataNode(consumerGroupMeta.serialize());
+            env.pushSingleConsumerGroupOnDataNode(consumerGroupMeta.serialize()).values().stream()
+                .map(TPushConsumerGroupMetaResp::getStatus)
+                .toList();
         if (RpcUtils.squashResponseStatusList(statuses).getCode()
             != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           throw new SubscriptionException(statuses.toString());
