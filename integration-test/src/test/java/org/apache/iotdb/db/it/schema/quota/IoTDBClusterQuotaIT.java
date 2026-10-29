@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.it.schema.quota;
 
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.isession.ITableSession;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -60,8 +61,24 @@ public abstract class IoTDBClusterQuotaIT extends AbstractSchemaIT {
    * therefore takes up to two heartbeat rounds to take effect. Nothing exposes the remaining quota,
    * so wait for one more round as a margin.
    */
-  protected static void waitForSchemaQuotaUpdate() throws InterruptedException {
-    Thread.sleep(3 * ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs());
+  protected static void waitForSchemaQuotaUpdate() throws Exception {
+    Thread.sleep(3 * getHeartbeatIntervalInMs());
+  }
+
+  /** Returns the heartbeat interval that the cluster's seed ConfigNode (node 0) applies. */
+  private static long getHeartbeatIntervalInMs() throws Exception {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection();
+        SessionDataSet dataSet = session.executeQueryStatement("SHOW ALL CONFIGURATION ON 0")) {
+      SessionDataSet.DataIterator iterator = dataSet.iterator();
+      while (iterator.next()) {
+        if ("heartbeat_interval_in_ms".equals(iterator.getString(1))) {
+          // The value is null unless the node's configuration file sets it.
+          return Long.parseLong(iterator.isNull(2) ? iterator.getString(3) : iterator.getString(2));
+        }
+      }
+    }
+    throw new AssertionError(
+        "SHOW ALL CONFIGURATION ON 0 does not report heartbeat_interval_in_ms");
   }
 
   /** Prepare time series: 2 databases, 3 devices, 6 time series */
