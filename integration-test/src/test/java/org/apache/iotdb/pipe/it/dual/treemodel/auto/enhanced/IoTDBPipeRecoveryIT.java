@@ -370,7 +370,7 @@ public class IoTDBPipeRecoveryIT {
       assertQuiet(pipe);
       final double baselineFloatingMemory = floatingMemory(pipe);
       relay.setMode(Mode.REJECT_BEFORE_FORWARD);
-      data.write(0, 1, 49, senderEnv.getDataNodeWrapper(0));
+      data.write(0, 1, 13, senderEnv.getDataNodeWrapper(0));
       await()
           .atMost(60, TimeUnit.SECONDS)
           .untilAsserted(
@@ -390,7 +390,7 @@ public class IoTDBPipeRecoveryIT {
       assertData(receiverEnv, healthy);
       assertQuiet(healthyPipe);
       relay.passThrough();
-      assertQuiet(pipe, 150);
+      assertQuiet(pipe);
       assertData(receiverEnv, data);
       await()
           .atMost(60, TimeUnit.SECONDS)
@@ -413,7 +413,7 @@ public class IoTDBPipeRecoveryIT {
       // STOP must preserve this suffix for a later START, without another business write.
       final int failuresBeforeStop = relay.getRejectedRequests();
       relay.setMode(Mode.REJECT_BEFORE_FORWARD);
-      data.write(0, 49, 57, senderEnv.getDataNodeWrapper(0));
+      data.write(0, 13, 21, senderEnv.getDataNodeWrapper(0));
       await()
           .atMost(60, TimeUnit.SECONDS)
           .until(() -> relay.getRejectedRequests() > failuresBeforeStop);
@@ -432,7 +432,7 @@ public class IoTDBPipeRecoveryIT {
       final double floatingMemoryBeforeDrop = floatingMemory(pipe);
       final int failuresBeforeDrop = relay.getRejectedRequests();
       relay.setMode(Mode.REJECT_BEFORE_FORWARD);
-      data.write(0, 57, 65, senderEnv.getDataNodeWrapper(0));
+      data.write(0, 21, 29, senderEnv.getDataNodeWrapper(0));
       await()
           .atMost(60, TimeUnit.SECONDS)
           .until(() -> relay.getRejectedRequests() > failuresBeforeDrop);
@@ -557,12 +557,8 @@ public class IoTDBPipeRecoveryIT {
   }
 
   private static void assertQuiet(final String pipe) {
-    assertQuiet(pipe, 90);
-  }
-
-  private static void assertQuiet(final String pipe, final int timeoutSeconds) {
     await()
-        .atMost(timeoutSeconds, TimeUnit.SECONDS)
+        .atMost(90, TimeUnit.SECONDS)
         .during(2, TimeUnit.SECONDS)
         .untilAsserted(
             () -> {
