@@ -24,6 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.datastructure.interval.IntervalManager;
+import org.apache.iotdb.commons.pipe.datastructure.interval.PlainInterval;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClientManager;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFilePieceReq;
@@ -239,6 +241,7 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
             loadTsFileStrategy,
             loadTsFileValidation,
             shouldMarkAsPipeRequest,
+            candidatePorts,
             skipIfNoPrivileges);
     clientManager.setPipeInfo(pipeName, creationTime);
   }
@@ -260,6 +263,7 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
       final String loadTsFileStrategy,
       final boolean validateTsFile,
       final boolean shouldMarkAsPipeRequest,
+      final IntervalManager<PlainInterval> candidatePorts,
       final boolean skipIfNoPrivileges);
 
   @Override

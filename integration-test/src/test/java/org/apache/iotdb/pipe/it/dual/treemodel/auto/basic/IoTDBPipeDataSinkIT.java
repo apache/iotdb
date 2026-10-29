@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoBasic;
@@ -39,9 +40,11 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.io.File;
 import java.nio.charset.Charset;
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
@@ -474,8 +477,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      // Do not fail if the failure has nothing to do with pipe
-      // Because the failures will randomly generate due to resource limitation
       TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
@@ -514,6 +515,115 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
           "select * from root.vehicle.**",
           "Time,root.vehicle.d0.s1,",
           Collections.unmodifiableSet(new HashSet<>(Arrays.asList("1,1.0,", "2,1.0,"))));
+    }
+  }
+
+  @Test
+  public void testSinkPortBinder() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      assertInvalidSendPorts(
+          statement,
+          receiverIp,
+          receiverPort,
+          "22220,22221-2220",
+          "1107: The port 22221-2220 is invalid, the min value shall be smaller than the max value in the port range");
+      assertInvalidSendPorts(
+          statement,
+          receiverIp,
+          receiverPort,
+          "xxx",
+          "1107: The port xxx is invalid, the port must be an integer");
+      assertInvalidSendPorts(
+          statement,
+          receiverIp,
+          receiverPort,
+          "10-20-30",
+          "1107: The port 10-20-30 is invalid, a port shall either be 'port' or 'minPort-maxPort'.");
+      assertInvalidSendPorts(
+          statement,
+          receiverIp,
+          receiverPort,
+          "10, ,30",
+          "1107: The port  is invalid, the port must be an integer");
+      assertInvalidSendPorts(
+          statement,
+          receiverIp,
+          receiverPort,
+          "100000",
+          "1107: The port 100000 is invalid, the port must be >= 0 and <= 65535");
+      assertInvalidSendPorts(
+          statement,
+          receiverIp,
+          receiverPort,
+          "10-",
+          "1107: The port 10- is invalid, a port shall either be 'port' or 'minPort-maxPort'.");
+      assertInvalidSendPorts(
+          statement,
+          receiverIp,
+          receiverPort,
+          "10,",
+          "1107: The port  is invalid, the port must be an integer");
+
+      TestUtils.executeNonQueries(
+          senderEnv,
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"),
+          null);
+
+      final int[] firstPorts = EnvUtils.searchAvailablePorts();
+      final int[] secondPorts = EnvUtils.searchAvailablePorts();
+
+      try {
+        statement.execute(
+            String.format(
+                "create pipe testPipe ('ip'='%s', 'port'='%s', 'send-ports'='%s,%s-%s,%s-%s')",
+                receiverIp,
+                receiverPort,
+                firstPorts[0],
+                firstPorts[0],
+                firstPorts[firstPorts.length - 1],
+                secondPorts[0],
+                secondPorts[secondPorts.length - 1]));
+
+        TestUtils.assertDataEventuallyOnEnv(
+            receiverEnv,
+            "select * from root.vehicle.**",
+            "Time,root.vehicle.d0.s1,",
+            Collections.singleton("1,1.0,"));
+      } finally {
+        String lockPath = EnvUtils.getLockFilePath(firstPorts[0]);
+        if (!new File(lockPath).delete()) {
+          System.out.printf("Delete lock file %s failed%n", lockPath);
+        }
+
+        lockPath = EnvUtils.getLockFilePath(secondPorts[0]);
+        if (!new File(lockPath).delete()) {
+          System.out.printf("Delete lock file %s failed%n", lockPath);
+        }
+      }
+    }
+  }
+
+  private static void assertInvalidSendPorts(
+      final Statement statement,
+      final String receiverIp,
+      final int receiverPort,
+      final String sendPorts,
+      final String expectedMessage)
+      throws SQLException {
+    try {
+      statement.execute(
+          String.format(
+              "create pipe testPipe ('ip'='%s', 'port'='%s', 'send-ports'='%s')",
+              receiverIp, receiverPort, sendPorts));
+      Assert.fail("Invalid send-ports value was accepted: " + sendPorts);
+    } catch (final SQLException e) {
+      Assert.assertEquals(expectedMessage, e.getMessage());
     }
   }
 

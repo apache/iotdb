@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.datastructure.interval.IntervalManager;
+import org.apache.iotdb.commons.pipe.datastructure.interval.PlainInterval;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressor;
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressorConfig;
@@ -100,6 +102,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PORT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SEND_PORTS_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SEND_PORTS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
@@ -141,6 +145,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_NODE_URLS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_PORT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SEND_PORTS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USER_ID;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USER_KEY;
@@ -168,6 +173,8 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
   protected String cliHostname = "";
   protected UserEntity userEntity;
   protected String password = CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
+
+  protected IntervalManager<PlainInterval> candidatePorts;
 
   protected String loadBalanceStrategy;
 
@@ -280,6 +287,12 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
         parameters.getStringOrDefault(
             Arrays.asList(CONNECTOR_IOTDB_PASSWORD_KEY, SINK_IOTDB_PASSWORD_KEY),
             CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE);
+
+    this.candidatePorts =
+        parsePorts(
+            parameters.getStringOrDefault(
+                Arrays.asList(CONNECTOR_IOTDB_SEND_PORTS_KEY, SINK_IOTDB_SEND_PORTS_KEY),
+                CONNECTOR_IOTDB_SEND_PORTS_DEFAULT_VALUE));
 
     loadBalanceStrategy =
         parameters
@@ -605,6 +618,58 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
         throw new PipeParameterNotValidException(PARSE_URL_ERROR_MESSAGE);
       }
     }
+  }
+
+  private static IntervalManager<PlainInterval> parsePorts(final String ports)
+      throws PipeParameterNotValidException {
+    final IntervalManager<PlainInterval> result = new IntervalManager<>();
+    if (ports == null || ports.trim().isEmpty()) {
+      return result;
+    }
+    String[] range;
+    for (String port : ports.split(",", -1)) {
+      range = port.trim().split("-", -1);
+      if (range.length > 2
+          || range.length == 0
+          || (range.length == 2 && (range[0].isEmpty() || range[1].isEmpty()))) {
+        throw new PipeParameterNotValidException(
+            String.format(
+                PipeMessages
+                    .EXCEPTION_THE_PORT_ARG_IS_INVALID_A_PORT_SHALL_EITHER_BE_PORT_OR_MINPORT_MAXPORT_011EDA95,
+                port));
+      }
+      for (final String singlePort : range) {
+        final long portNum;
+        try {
+          portNum = Long.parseLong(singlePort);
+        } catch (final Exception e) {
+          throw new PipeParameterNotValidException(
+              String.format(
+                  PipeMessages
+                      .EXCEPTION_THE_PORT_ARG_IS_INVALID_THE_PORT_MUST_BE_AN_INTEGER_42E9013A,
+                  singlePort));
+        }
+        if (portNum < 0 || portNum > 65535) {
+          throw new PipeParameterNotValidException(
+              String.format(
+                  PipeMessages
+                      .EXCEPTION_THE_PORT_ARG_IS_INVALID_THE_PORT_MUST_BE_0_AND_65535_3F3581C0,
+                  singlePort));
+        }
+      }
+      final long min = Long.parseLong(range[0]);
+      final long max = range.length > 1 ? Long.parseLong(range[1]) : min;
+      if (min > max) {
+        throw new PipeParameterNotValidException(
+            String.format(
+                PipeMessages
+                    .EXCEPTION_THE_PORT_ARG_ARG_IS_INVALID_THE_MIN_VALUE_SHALL_BE_SMALLER_THAN_THE_MAX_VALUE_IN_THE_PORT_RANGE_27AA8C92,
+                min,
+                max));
+      }
+      result.addInterval(new PlainInterval(min, max));
+    }
+    return result;
   }
 
   @Override

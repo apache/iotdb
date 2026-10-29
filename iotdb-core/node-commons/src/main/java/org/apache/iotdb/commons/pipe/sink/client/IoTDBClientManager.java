@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.i18n.ClientMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.datastructure.interval.IntervalManager;
+import org.apache.iotdb.commons.pipe.datastructure.interval.PlainInterval;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
 
 import org.slf4j.Logger;
@@ -61,6 +63,8 @@ public abstract class IoTDBClientManager {
   // it is a DataNode receiver. The flag is useless for configNode receiver.
   protected boolean supportModsIfIsDataNodeReceiver = true;
 
+  protected IntervalManager<PlainInterval> candidatePorts;
+
   private static final int MAX_CONNECTION_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 1 day
   private static final int FIRST_ADJUSTMENT_TIMEOUT_MS = 6 * 60 * 60 * 1000; // 6 hours
   protected static final AtomicInteger CONNECTION_TIMEOUT_MS =
@@ -77,6 +81,7 @@ public abstract class IoTDBClientManager {
       final String loadTsFileStrategy,
       final boolean validateTsFile,
       final boolean shouldMarkAsPipeRequest,
+      final IntervalManager<PlainInterval> candidatePorts,
       final boolean skipIfNoPrivileges) {
     this.endPointList = endPointList;
 
@@ -88,6 +93,8 @@ public abstract class IoTDBClientManager {
     this.loadTsFileStrategy = loadTsFileStrategy;
     this.validateTsFile = validateTsFile;
     this.shouldMarkAsPipeRequest = shouldMarkAsPipeRequest;
+
+    this.candidatePorts = candidatePorts;
     this.skipIfNoPrivileges = skipIfNoPrivileges;
   }
 

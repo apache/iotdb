@@ -22,6 +22,8 @@ package org.apache.iotdb.confignode.manager.pipe.sink.protocol;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.pipe.datastructure.interval.IntervalManager;
+import org.apache.iotdb.commons.pipe.datastructure.interval.PlainInterval;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClientManager;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFilePieceReq;
@@ -80,6 +82,7 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
       final String loadTsFileStrategy,
       final boolean validateTsFile,
       final boolean shouldMarkAsPipeRequest,
+      final IntervalManager<PlainInterval> candidatePorts,
       final boolean skipIfNoPrivileges) {
     return new IoTDBConfigNodeSyncClientManager(
         nodeUrls,
@@ -95,6 +98,7 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
         loadTsFileStrategy,
         validateTsFile,
         shouldMarkAsPipeRequest,
+        candidatePorts,
         skipIfNoPrivileges);
   }
 

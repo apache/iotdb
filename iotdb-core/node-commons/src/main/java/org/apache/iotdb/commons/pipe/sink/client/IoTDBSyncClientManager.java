@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.datastructure.interval.IntervalManager;
+import org.apache.iotdb.commons.pipe.datastructure.interval.PlainInterval;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferHandshakeV1Req;
@@ -70,22 +72,23 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
   private final LoadBalancer loadBalancer;
 
   protected IoTDBSyncClientManager(
-      List<TEndPoint> endPoints,
-      boolean useSSL,
-      String trustStorePath,
-      String trustStorePwd,
-      String keyStorePath,
-      String keyStorePwd,
+      final List<TEndPoint> endPoints,
+      final boolean useSSL,
+      final String trustStorePath,
+      final String trustStorePwd,
+      final String keyStorePath,
+      final String keyStorePwd,
       /* The following parameters are used locally. */
-      boolean useLeaderCache,
-      String loadBalanceStrategy,
+      final boolean useLeaderCache,
+      final String loadBalanceStrategy,
       /* The following parameters are used to handshake with the receiver. */
-      UserEntity userEntity,
-      String password,
-      boolean shouldReceiverConvertOnTypeMismatch,
-      String loadTsFileStrategy,
-      boolean validateTsFile,
-      boolean shouldMarkAsPipeRequest,
+      final UserEntity userEntity,
+      final String password,
+      final boolean shouldReceiverConvertOnTypeMismatch,
+      final String loadTsFileStrategy,
+      final boolean validateTsFile,
+      final boolean shouldMarkAsPipeRequest,
+      final IntervalManager<PlainInterval> candidatePorts,
       final boolean skipIfNoPrivileges) {
     super(
         endPoints,
@@ -96,6 +99,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         loadTsFileStrategy,
         validateTsFile,
         shouldMarkAsPipeRequest,
+        candidatePorts,
         skipIfNoPrivileges);
 
     this.useSSL = useSSL;
@@ -219,7 +223,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
               trustStorePath,
               trustStorePwd,
               keyStorePath,
-              keyStorePwd));
+              keyStorePwd,
+              candidatePorts));
       return true;
     } catch (Exception e) {
       endPoint2HandshakeErrorMessage.put(endPoint, e.getMessage());

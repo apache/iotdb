@@ -29,6 +29,8 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.datastructure.interval.IntervalManager;
+import org.apache.iotdb.commons.pipe.datastructure.interval.PlainInterval;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBClientManager;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
@@ -106,6 +108,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       final boolean validateTsFile,
       final boolean shouldMarkAsPipeRequest,
       final boolean isTSFileUsed,
+      final IntervalManager<PlainInterval> candidatePorts,
       final boolean skipIfNoPrivileges) {
     super(
         endPoints,
@@ -116,13 +119,14 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
         loadTsFileStrategy,
         validateTsFile,
         shouldMarkAsPipeRequest,
+        candidatePorts,
         skipIfNoPrivileges);
 
     endPointSet = new HashSet<>(endPoints);
 
     receiverAttributes =
         String.format(
-            "%s-%s-%s-%s-%s-%s-%s",
+            "%s-%s-%s-%s-%s-%s-%s-%s",
             Base64.getEncoder()
                 .encodeToString((userEntity.getUsername() + ":" + password).getBytes()),
             shouldReceiverConvertOnTypeMismatch,
@@ -130,6 +134,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
             validateTsFile,
             shouldMarkAsPipeRequest,
             isTSFileUsed,
+            candidatePorts,
             skipIfNoPrivileges);
     clientResourceKey = generateClientResourceKey(receiverAttributes, endPoints);
     synchronized (IoTDBDataNodeAsyncClientManager.class) {
@@ -139,9 +144,10 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
             new IClientManager.Factory<TEndPoint, AsyncPipeDataTransferServiceClient>()
                 .createClientManager(
                     isTSFileUsed
-                        ? new ClientPoolFactory
-                            .AsyncPipeTsFileDataTransferServiceClientPoolFactory()
-                        : new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory()));
+                        ? new ClientPoolFactory.AsyncPipeTsFileDataTransferServiceClientPoolFactory(
+                            candidatePorts)
+                        : new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory(
+                            candidatePorts)));
       }
       endPoint2Client = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get(clientResourceKey);
 

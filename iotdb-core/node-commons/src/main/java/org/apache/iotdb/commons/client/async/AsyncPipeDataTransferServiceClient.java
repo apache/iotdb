@@ -25,6 +25,9 @@ import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.i18n.ClientMessages;
+import org.apache.iotdb.commons.pipe.datastructure.interval.IntervalManager;
+import org.apache.iotdb.commons.pipe.datastructure.interval.PlainInterval;
+import org.apache.iotdb.commons.pipe.sink.client.port.IoTDBSinkPortBinder;
 import org.apache.iotdb.rpc.TNonblockingTransportWrapper;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
@@ -37,6 +40,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.channels.SocketChannel;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -63,13 +68,19 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
       final ThriftClientProperty property,
       final TEndPoint endpoint,
       final TAsyncClientManager tClientManager,
-      final ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager)
+      final ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager,
+      final IntervalManager<PlainInterval> candidatePorts)
       throws IOException {
     super(
         property.getProtocolFactory(),
         tClientManager,
         TNonblockingTransportWrapper.wrap(
             endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
+    final SocketChannel socketChannel = ((TNonblockingSocket) ___transport).getSocketChannel();
+    if (!___transport.isOpen()) {
+      IoTDBSinkPortBinder.bindPort(
+          candidatePorts, (sendPort) -> socketChannel.bind(new InetSocketAddress(sendPort)));
+    }
     setTimeout(property.getConnectionTimeoutMs());
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
@@ -212,12 +223,15 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
 
   public static class Factory
       extends AsyncThriftClientFactory<TEndPoint, AsyncPipeDataTransferServiceClient> {
+    final IntervalManager<PlainInterval> candidatePorts;
 
     public Factory(
         final ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager,
         final ThriftClientProperty thriftClientProperty,
-        final String threadName) {
+        final String threadName,
+        final IntervalManager<PlainInterval> candidatePorts) {
       super(clientManager, thriftClientProperty, threadName);
+      this.candidatePorts = candidatePorts;
     }
 
     @Override
@@ -235,7 +249,8 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
               thriftClientProperty,
               endPoint,
               tManagers[Math.floorMod(clientCnt.incrementAndGet(), tManagers.length)],
-              clientManager));
+              clientManager,
+              this.candidatePorts));
     }
 
     @Override

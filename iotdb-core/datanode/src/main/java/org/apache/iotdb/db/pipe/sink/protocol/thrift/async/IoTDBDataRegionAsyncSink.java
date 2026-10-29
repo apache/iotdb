@@ -227,6 +227,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
             loadTsFileValidation,
             shouldMarkAsPipeRequest,
             false,
+            candidatePorts,
             skipIfNoPrivileges);
     clientManager.setPipeInfo(pipeName, creationTime);
 
@@ -244,6 +245,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
             loadTsFileValidation,
             shouldMarkAsPipeRequest,
             isSplitTSFileBatchModeEnabled,
+            candidatePorts,
             skipIfNoPrivileges);
     transferTsFileClientManager.setPipeInfo(pipeName, creationTime);
 

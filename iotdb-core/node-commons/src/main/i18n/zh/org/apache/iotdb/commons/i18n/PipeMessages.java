@@ -932,4 +932,9 @@ public final class PipeMessages {
   public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_FAILED_D85CD23A = "DataPartitionTable 生成失败：";
   public static final String MESSAGE_UNKNOWN_TASK_STATUS_E05D98F0 = "未知任务状态：";
 
+  public static final String EXCEPTION_FAILED_TO_FIND_AN_AVAILABLE_SENDING_PORTS_IN_ARG_25FA5CA4 = "无法在 %s 中找到可用的发送端口。";
+  public static final String EXCEPTION_THE_PORT_ARG_IS_INVALID_A_PORT_SHALL_EITHER_BE_PORT_OR_MINPORT_MAXPORT_011EDA95 = "端口 %s 无效，端口应为 'port' 或 'minPort-maxPort'。";
+  public static final String EXCEPTION_THE_PORT_ARG_IS_INVALID_THE_PORT_MUST_BE_AN_INTEGER_42E9013A = "端口 %s 无效，端口必须为整数";
+  public static final String EXCEPTION_THE_PORT_ARG_IS_INVALID_THE_PORT_MUST_BE_0_AND_65535_3F3581C0 = "端口 %s 无效，端口必须 >= 0 且 <= 65535";
+  public static final String EXCEPTION_THE_PORT_ARG_ARG_IS_INVALID_THE_MIN_VALUE_SHALL_BE_SMALLER_THAN_THE_MAX_VALUE_IN_THE_PORT_RANGE_27AA8C92 = "端口 %s-%s 无效，端口范围中的最小值应小于最大值";
 }

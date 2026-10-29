@@ -966,4 +966,9 @@ public final class PipeMessages {
   public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_FAILED_D85CD23A = "DataPartitionTable generation failed: ";
   public static final String MESSAGE_UNKNOWN_TASK_STATUS_E05D98F0 = "Unknown task status: ";
 
+  public static final String EXCEPTION_FAILED_TO_FIND_AN_AVAILABLE_SENDING_PORTS_IN_ARG_25FA5CA4 = "Failed to find an available sending ports in %s.";
+  public static final String EXCEPTION_THE_PORT_ARG_IS_INVALID_A_PORT_SHALL_EITHER_BE_PORT_OR_MINPORT_MAXPORT_011EDA95 = "The port %s is invalid, a port shall either be 'port' or 'minPort-maxPort'.";
+  public static final String EXCEPTION_THE_PORT_ARG_IS_INVALID_THE_PORT_MUST_BE_AN_INTEGER_42E9013A = "The port %s is invalid, the port must be an integer";
+  public static final String EXCEPTION_THE_PORT_ARG_IS_INVALID_THE_PORT_MUST_BE_0_AND_65535_3F3581C0 = "The port %s is invalid, the port must be >= 0 and <= 65535";
+  public static final String EXCEPTION_THE_PORT_ARG_ARG_IS_INVALID_THE_MIN_VALUE_SHALL_BE_SMALLER_THAN_THE_MAX_VALUE_IN_THE_PORT_RANGE_27AA8C92 = "The port %s-%s is invalid, the min value shall be smaller than the max value in the port range";
 }

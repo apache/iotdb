@@ -22,6 +22,8 @@ package org.apache.iotdb.db.pipe.sink.client;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.datastructure.interval.IntervalManager;
+import org.apache.iotdb.commons.pipe.datastructure.interval.PlainInterval;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClientManager;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferHandshakeV2Req;
@@ -62,6 +64,7 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
       final String loadTsFileStrategy,
       final boolean validateTsFile,
       final boolean shouldMarkAsPipeRequest,
+      final IntervalManager<PlainInterval> candidatePorts,
       final boolean skipIfNoPrivileges) {
     super(
         endPoints,
@@ -78,6 +81,7 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
         loadTsFileStrategy,
         validateTsFile,
         shouldMarkAsPipeRequest,
+        candidatePorts,
         skipIfNoPrivileges);
   }
 

@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.sink;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.pipe.datastructure.interval.IntervalManager;
+import org.apache.iotdb.commons.pipe.datastructure.interval.PlainInterval;
 import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeAsyncClientManager;
 import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeCacheLeaderClientManager;
 import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeSyncClientManager;
@@ -54,6 +56,7 @@ public class IoTDBDataNodeAsyncClientManagerTest {
             true,
             true,
             false,
+            new IntervalManager<>(),
             true);
     final IoTDBDataNodeAsyncClientManager managerWithoutSkipIf =
         new IoTDBDataNodeAsyncClientManager(
@@ -67,6 +70,7 @@ public class IoTDBDataNodeAsyncClientManagerTest {
             true,
             true,
             false,
+            new IntervalManager<>(),
             false);
 
     try {
@@ -94,6 +98,7 @@ public class IoTDBDataNodeAsyncClientManagerTest {
             true,
             true,
             true,
+            new IntervalManager<>(),
             true);
     final IoTDBDataNodeAsyncClientManager secondManager =
         new IoTDBDataNodeAsyncClientManager(
@@ -107,6 +112,7 @@ public class IoTDBDataNodeAsyncClientManagerTest {
             true,
             true,
             true,
+            new IntervalManager<>(),
             true);
 
     try {
@@ -116,6 +122,27 @@ public class IoTDBDataNodeAsyncClientManagerTest {
           getClientResourceKey(firstManager), getClientResourceKey(secondManager));
       Assert.assertNotSame(getEndPoint2Client(firstManager), getEndPoint2Client(secondManager));
       Assert.assertNotSame(getExecutor(firstManager), getExecutor(secondManager));
+    } finally {
+      firstManager.close();
+      secondManager.close();
+    }
+  }
+
+  @Test
+  public void testClientResourcesShouldDifferentiateSendPorts() throws Exception {
+    final List<TEndPoint> endPoints = Collections.singletonList(new TEndPoint("127.0.0.1", 6667));
+    final IntervalManager<PlainInterval> firstPorts = new IntervalManager<>();
+    firstPorts.addInterval(new PlainInterval(31000, 31000));
+    final IntervalManager<PlainInterval> secondPorts = new IntervalManager<>();
+    secondPorts.addInterval(new PlainInterval(31001, 31001));
+    final IoTDBDataNodeAsyncClientManager firstManager = createAsyncManager(endPoints, firstPorts);
+    final IoTDBDataNodeAsyncClientManager secondManager =
+        createAsyncManager(endPoints, secondPorts);
+
+    try {
+      Assert.assertNotEquals(
+          getClientResourceKey(firstManager), getClientResourceKey(secondManager));
+      Assert.assertNotSame(getEndPoint2Client(firstManager), getEndPoint2Client(secondManager));
     } finally {
       firstManager.close();
       secondManager.close();
@@ -187,6 +214,11 @@ public class IoTDBDataNodeAsyncClientManagerTest {
 
   private static IoTDBDataNodeAsyncClientManager createAsyncManager(
       final List<TEndPoint> endPoints) {
+    return createAsyncManager(endPoints, new IntervalManager<>());
+  }
+
+  private static IoTDBDataNodeAsyncClientManager createAsyncManager(
+      final List<TEndPoint> endPoints, final IntervalManager<PlainInterval> candidatePorts) {
     return new IoTDBDataNodeAsyncClientManager(
         endPoints,
         true,
@@ -198,6 +230,7 @@ public class IoTDBDataNodeAsyncClientManagerTest {
         true,
         true,
         false,
+        candidatePorts,
         true);
   }
 
@@ -250,6 +283,7 @@ public class IoTDBDataNodeAsyncClientManagerTest {
           "sync",
           true,
           true,
+          new IntervalManager<>(),
           true);
     }
 

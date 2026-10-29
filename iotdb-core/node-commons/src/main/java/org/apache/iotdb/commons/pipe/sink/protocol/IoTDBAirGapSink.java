@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
+import org.apache.iotdb.commons.pipe.sink.client.port.IoTDBSinkPortBinder;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
@@ -177,12 +178,23 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
         }
       }
 
-      final AirGapSocket socket = new AirGapSocket(ip, port);
-
       try {
-        socket.connect(new InetSocketAddress(ip, port), handshakeTimeoutMs);
-        socket.setKeepAlive(true);
-        sockets.set(i, socket);
+        final int finalI = i;
+        IoTDBSinkPortBinder.bindPort(
+            candidatePorts,
+            (sendPort) -> {
+              final AirGapSocket socket = new AirGapSocket(ip, port);
+              try {
+                socket.bind(new InetSocketAddress(sendPort));
+                socket.connect(new InetSocketAddress(ip, port), handshakeTimeoutMs);
+                socket.setKeepAlive(true);
+                sockets.set(finalI, socket);
+              } catch (final Exception e) {
+                socket.close();
+                throw e;
+              }
+            });
+
         LOGGER.debug(PipeMessages.CONNECTED_TO_TARGET_SERVER, ip, port);
         failLogTimes.remove(nodeUrls.get(i));
       } catch (final Exception e) {
@@ -197,7 +209,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
       }
 
       try {
-        sendHandshakeReq(socket);
+        sendHandshakeReq(sockets.get(i));
         isSocketAlive.set(i, true);
       } catch (Exception e) {
         PipeLogger.log(
