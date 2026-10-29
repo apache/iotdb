@@ -109,22 +109,22 @@ jobs:
           netsh int ipv6 set dynamicport udp start=32768 num=32768
       - name: Build IT shard list
         shell: bash
-        # Distribute LocalStandaloneIT test classes across 3 shards using hash-mod assignment.
-        # The list is written to a file so failsafe.includesFile can read it without command-line length limits.
+        # Distribute every IT class that failsafe would pick up by default (IT*, *IT, *ITCase) across
+        # 3 shards. The profile's category filter (groups) then selects the classes to run, including
+        # classes that only inherit their @Category, and the POM excludes still apply. Fully qualified
+        # names keep same-named classes in different packages apart. The list is written to a file so
+        # failsafe.includesFile can read it without command-line length limits.
         run: |
           set -euo pipefail
           SHARD=${{ matrix.shard }}
           TOTAL=3
           # Write outside the repo so Apache RAT (license check) doesn't flag the file.
-          # Using a single grep -rl call instead of `find | xargs grep`: on Windows Git Bash,
-          # ARG_MAX is small so xargs batches the file list, and any batch with no matches
-          # makes grep exit 1, which makes xargs exit 123 and trips `set -o pipefail`.
-          grep -rlE --include='*IT.java' '\bLocalStandaloneIT\b' integration-test/src/test/java \
-            | awk -F'/' '{print $NF}' | sed 's/\.java$//' \
-            | sort \
+          find integration-test/src/test/java -type f \( -name 'IT*.java' -o -name '*IT.java' -o -name '*ITCase.java' \) \
+            | sed 's|^integration-test/src/test/java/||; s|\.java$||; s|/|.|g' \
+            | LC_ALL=C sort \
             | awk -v s=$SHARD -v t=$TOTAL 'NR%t==s' \
             > "$RUNNER_TEMP/it-shard.txt"
-          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") test classes"
+          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") candidate classes"
           head -5 "$RUNNER_TEMP/it-shard.txt"
       - name: IT/UT Test
         shell: bash

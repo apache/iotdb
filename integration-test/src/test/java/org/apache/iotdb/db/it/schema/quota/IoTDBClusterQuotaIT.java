@@ -19,18 +19,23 @@
 
 package org.apache.iotdb.db.it.schema.quota;
 
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.util.AbstractSchemaIT;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public abstract class IoTDBClusterQuotaIT extends AbstractSchemaIT {
   public IoTDBClusterQuotaIT(SchemaTestMode schemaTestMode) {
     super(schemaTestMode);
@@ -39,12 +44,24 @@ public abstract class IoTDBClusterQuotaIT extends AbstractSchemaIT {
   @Before
   public void setUp() throws Exception {
     prepareTimeSeries();
-    Thread.sleep(2000); // wait heartbeat
+    waitForSchemaQuotaUpdate();
   }
 
   @After
   public void tearDown() throws Exception {
     clearSchema();
+    // The next test method reuses the cluster.
+    waitForSchemaQuotaUpdate();
+  }
+
+  /**
+   * DataNodes enforce the remaining quota that the ConfigNode sends with each heartbeat, and the
+   * ConfigNode computes it from the usage reported in earlier heartbeat responses. A schema change
+   * therefore takes up to two heartbeat rounds to take effect. Nothing exposes the remaining quota,
+   * so wait for one more round as a margin.
+   */
+  protected static void waitForSchemaQuotaUpdate() throws InterruptedException {
+    Thread.sleep(3 * ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs());
   }
 
   /** Prepare time series: 2 databases, 3 devices, 6 time series */
@@ -90,13 +107,13 @@ public abstract class IoTDBClusterQuotaIT extends AbstractSchemaIT {
       // delete some timeseries and database
       statement.execute("delete database root.sg2;");
       statement.execute("delete timeseries root.sg1.d0.s0;");
-      Thread.sleep(2000); // wait heartbeat
+      waitForSchemaQuotaUpdate();
       // now we can create 3 new timeseries or 1 new device
       statement.execute("SET DEVICE TEMPLATE t1 TO root.sg1.d4");
       statement.execute("create timeseries of device template on root.sg1.d4");
       statement.execute(
           "create timeseries root.sg1.d1.s3 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
-      Thread.sleep(2000); // wait heartbeat
+      waitForSchemaQuotaUpdate();
       try {
         statement.execute(
             "create timeseries root.sg1.d3.s0 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");

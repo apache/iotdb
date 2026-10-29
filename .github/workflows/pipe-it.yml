@@ -167,12 +167,12 @@ jobs:
           set -euo pipefail
           SHARD=${{ matrix.shard }}
           TOTAL=3
-          grep -rlE --include='*IT.java' '\bMultiClusterIT2DualTreeAutoBasic\b' integration-test/src/test/java \
-            | awk -F'/' '{print $NF}' | sed 's/\.java$//' \
-            | sort \
+          find integration-test/src/test/java -type f \( -name 'IT*.java' -o -name '*IT.java' -o -name '*ITCase.java' \) \
+            | sed 's|^integration-test/src/test/java/||; s|\.java$||; s|/|.|g' \
+            | LC_ALL=C sort \
             | awk -v s=$SHARD -v t=$TOTAL 'NR%t==s' \
             > "$RUNNER_TEMP/it-shard.txt"
-          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") test classes"
+          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") candidate classes"
           head -5 "$RUNNER_TEMP/it-shard.txt"
       - name: IT Test
         shell: bash
@@ -275,12 +275,12 @@ jobs:
           set -euo pipefail
           SHARD=${{ matrix.shard }}
           TOTAL=3
-          grep -rlE --include='*IT.java' '\bMultiClusterIT2DualTreeAutoEnhanced\b' integration-test/src/test/java \
-            | awk -F'/' '{print $NF}' | sed 's/\.java$//' \
-            | sort \
+          find integration-test/src/test/java -type f \( -name 'IT*.java' -o -name '*IT.java' -o -name '*ITCase.java' \) \
+            | sed 's|^integration-test/src/test/java/||; s|\.java$||; s|/|.|g' \
+            | LC_ALL=C sort \
             | awk -v s=$SHARD -v t=$TOTAL 'NR%t==s' \
             > "$RUNNER_TEMP/it-shard.txt"
-          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") test classes"
+          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") candidate classes"
           head -5 "$RUNNER_TEMP/it-shard.txt"
       - name: IT Test
         shell: bash
@@ -383,12 +383,12 @@ jobs:
           set -euo pipefail
           SHARD=${{ matrix.shard }}
           TOTAL=3
-          grep -rlE --include='*IT.java' '\bMultiClusterIT2DualTreeManual\b' integration-test/src/test/java \
-            | awk -F'/' '{print $NF}' | sed 's/\.java$//' \
-            | sort \
+          find integration-test/src/test/java -type f \( -name 'IT*.java' -o -name '*IT.java' -o -name '*ITCase.java' \) \
+            | sed 's|^integration-test/src/test/java/||; s|\.java$||; s|/|.|g' \
+            | LC_ALL=C sort \
             | awk -v s=$SHARD -v t=$TOTAL 'NR%t==s' \
             > "$RUNNER_TEMP/it-shard.txt"
-          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") test classes"
+          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") candidate classes"
           head -5 "$RUNNER_TEMP/it-shard.txt"
       - name: IT Test
         shell: bash
@@ -488,12 +488,12 @@ jobs:
           set -euo pipefail
           SHARD=${{ matrix.shard }}
           TOTAL=3
-          grep -rlE --include='*IT.java' '\bMultiClusterIT2DualTableManualBasic\b' integration-test/src/test/java \
-            | awk -F'/' '{print $NF}' | sed 's/\.java$//' \
-            | sort \
+          find integration-test/src/test/java -type f \( -name 'IT*.java' -o -name '*IT.java' -o -name '*ITCase.java' \) \
+            | sed 's|^integration-test/src/test/java/||; s|\.java$||; s|/|.|g' \
+            | LC_ALL=C sort \
             | awk -v s=$SHARD -v t=$TOTAL 'NR%t==s' \
             > "$RUNNER_TEMP/it-shard.txt"
-          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") test classes"
+          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") candidate classes"
           head -5 "$RUNNER_TEMP/it-shard.txt"
       - name: IT Test
         shell: bash
@@ -595,12 +595,12 @@ jobs:
           set -euo pipefail
           SHARD=${{ matrix.shard }}
           TOTAL=3
-          grep -rlE --include='*IT.java' '\bMultiClusterIT2DualTableManualEnhanced\b' integration-test/src/test/java \
-            | awk -F'/' '{print $NF}' | sed 's/\.java$//' \
-            | sort \
+          find integration-test/src/test/java -type f \( -name 'IT*.java' -o -name '*IT.java' -o -name '*ITCase.java' \) \
+            | sed 's|^integration-test/src/test/java/||; s|\.java$||; s|/|.|g' \
+            | LC_ALL=C sort \
             | awk -v s=$SHARD -v t=$TOTAL 'NR%t==s' \
             > "$RUNNER_TEMP/it-shard.txt"
-          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") test classes"
+          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") candidate classes"
           head -5 "$RUNNER_TEMP/it-shard.txt"
       - name: IT Test
         shell: bash
