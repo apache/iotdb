@@ -99,10 +99,11 @@ public class IoTDBPipeRecoveryIT {
     MultiEnvFactory.createEnv(2);
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
+    senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
+    receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(false);
     for (final BaseEnv env : Arrays.asList(senderEnv, receiverEnv)) {
       env.getConfig()
           .getCommonConfig()
-          .setAutoCreateSchemaEnabled(true)
           .setEnforceStrongPassword(false)
           .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
           .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
@@ -367,7 +368,7 @@ public class IoTDBPipeRecoveryIT {
       data.write(0, 0, 1, senderEnv.getDataNodeWrapper(0));
       assertData(receiverEnv, data);
       assertQuiet(pipe);
-      final long baselineMemory = ownedMemory(pipe);
+      final double baselineFloatingMemory = floatingMemory(pipe);
       relay.setMode(Mode.REJECT_BEFORE_FORWARD);
       data.write(0, 1, 49, senderEnv.getDataNodeWrapper(0));
       await()
@@ -379,7 +380,9 @@ public class IoTDBPipeRecoveryIT {
                     "Async retry queue did not reach its configured forced-retry threshold",
                     metric(pipe, "pipe_async_connector_retry_event_queue_size", true)
                         >= RETRY_QUEUE_THRESHOLD);
-                Assert.assertTrue("No retained pipe memory", ownedMemory(pipe) > 0);
+                Assert.assertTrue(
+                    "No retained floating pipe memory",
+                    floatingMemory(pipe) > baselineFloatingMemory);
               });
       assertBacklog(pipe);
       healthy.write(0, 0, 12, senderEnv.getDataNodeWrapper(1));
@@ -399,13 +402,13 @@ public class IoTDBPipeRecoveryIT {
           .atMost(60, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
-                final long memory = ownedMemory(pipe);
+                final double memory = floatingMemory(pipe);
                 Assert.assertTrue(
-                    "Pipe memory did not return to its idle bound: "
+                    "Floating pipe memory did not return to its idle bound: "
                         + memory
                         + " > "
-                        + baselineMemory,
-                    memory <= baselineMemory);
+                        + baselineFloatingMemory,
+                    memory <= baselineFloatingMemory);
               });
       // STOP must preserve this suffix for a later START, without another business write.
       final int failuresBeforeStop = relay.getRejectedRequests();
@@ -426,6 +429,7 @@ public class IoTDBPipeRecoveryIT {
 
       // DROP also releases a running sink with retained events. These rows are deliberately
       // abandoned only after verifying complete delivery of the earlier ranges above.
+      final double floatingMemoryBeforeDrop = floatingMemory(pipe);
       final int failuresBeforeDrop = relay.getRejectedRequests();
       relay.setMode(Mode.REJECT_BEFORE_FORWARD);
       data.write(0, 57, 65, senderEnv.getDataNodeWrapper(0));
@@ -433,7 +437,17 @@ public class IoTDBPipeRecoveryIT {
           .atMost(60, TimeUnit.SECONDS)
           .until(() -> relay.getRejectedRequests() > failuresBeforeDrop);
       assertBacklog(pipe);
+      Assert.assertTrue(
+          "No retained floating pipe memory before DROP",
+          floatingMemory(pipe) > floatingMemoryBeforeDrop);
       dropPipe(pipe);
+      await()
+          .atMost(60, TimeUnit.SECONDS)
+          .untilAsserted(
+              () ->
+                  Assert.assertTrue(
+                      "DROP did not release floating pipe memory",
+                      floatingMemory(pipe) <= floatingMemoryBeforeDrop));
       healthy.write(0, 12, 16, senderEnv.getDataNodeWrapper(2));
       assertData(receiverEnv, healthy);
       assertQuiet(healthyPipe);
@@ -711,6 +725,23 @@ public class IoTDBPipeRecoveryIT {
               usage += result.getLong("memory_usage_in_bytes");
             }
           }
+        }
+      }
+    }
+    return usage;
+  }
+
+  private static double floatingMemory(final String pipe) {
+    double usage = 0;
+    for (final DataNodeWrapper node : senderEnv.getDataNodeWrapperList()) {
+      final String content =
+          senderEnv.getUrlContent(
+              "http://" + node.getIp() + ":" + node.getMetricPort() + "/metrics", null);
+      Assert.assertNotNull("Cannot read metrics from " + node.getIpAndPortString(), content);
+      for (final String line : content.split("\\R")) {
+        if (line.startsWith("pipe_floating_memory_usage{")
+            && line.contains("name=\"" + pipe + "\"")) {
+          usage += Double.parseDouble(line.substring(line.lastIndexOf(' ') + 1));
         }
       }
     }
