@@ -61,6 +61,13 @@ These instructions apply to `integration-test/` and supplement the repository-le
 
 ## Isolation and assertions
 
+- Reuse existing test classes and fixtures, and share cluster startup and teardown across
+  compatible cases within a class or suite whenever possible. Avoid starting and stopping a
+  cluster for each test method or creating an extra cluster when an existing test cluster can
+  cover the scenario. Use a separate cluster or restart only when required by the tested lifecycle,
+  topology, configuration, or isolation.
+- Keep tests that share a cluster independent of execution order: isolate their data and restore
+  changed state or configuration using the repository's test helpers.
 - Follow the neighboring tests' runner, category, and environment lifecycle conventions. Select
   the category matching the data model and topology required by the scenario.
 - Close sessions, pools, and result sets; shut down test-owned executors and clean the cluster
