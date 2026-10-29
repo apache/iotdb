@@ -44,6 +44,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+      - name: Check that CI runs every IT
+        run: python3 .github/scripts/check-it-selection.py
       - name: Set up JDK
         uses: actions/setup-java@v5
         with:
