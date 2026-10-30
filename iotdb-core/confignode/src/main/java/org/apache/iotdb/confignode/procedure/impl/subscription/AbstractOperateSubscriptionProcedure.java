@@ -54,7 +54,7 @@ public abstract class AbstractOperateSubscriptionProcedure
       LoggerFactory.getLogger(AbstractOperateSubscriptionProcedure.class);
 
   private static final String SKIP_SUBSCRIPTION_PROCEDURE_MESSAGE =
-      "Skip subscription-related operations and do nothing";
+      ProcedureMessages.MESSAGE_SKIP_SUBSCRIPTION_RELATED_OPERATIONS_AND_DO_NOTHING_4EDC76FE;
 
   private static final int RETRY_THRESHOLD = 1;
 

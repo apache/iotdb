@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.processor.aggregate.window.processor;
 
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.TimeSeriesWindow;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowOutput;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowState;
@@ -53,7 +54,9 @@ public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProce
     final PipeParameters parameters = validator.getParameters();
     validator.validate(
         args -> (long) args > 0,
-        String.format("The parameter %s must be greater than 0", PROCESSOR_SLIDING_SECONDS_KEY),
+        String.format(
+            DataNodePipeMessages.EXCEPTION_THE_PARAMETER_ARG_MUST_BE_GREATER_THAN_0_B9F6C794,
+            PROCESSOR_SLIDING_SECONDS_KEY),
         parameters.getLongOrDefault(
             PROCESSOR_SLIDING_SECONDS_KEY, PROCESSOR_SLIDING_SECONDS_DEFAULT_VALUE));
   }

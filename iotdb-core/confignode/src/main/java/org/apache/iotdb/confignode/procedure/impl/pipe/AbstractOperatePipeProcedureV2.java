@@ -115,7 +115,8 @@ public abstract class AbstractOperatePipeProcedureV2
   private volatile Set<Integer> pendingDataNodeIds = Collections.emptySet();
 
   private static final String SKIP_PIPE_PROCEDURE_MESSAGE =
-      "Try to start a RUNNING pipe or stop a STOPPED pipe, do nothing.";
+      ProcedureMessages
+          .MESSAGE_TRY_TO_START_A_RUNNING_PIPE_OR_STOP_A_STOPPED_PIPE_DO_NOTHING_EB6A38D3;
 
   protected AtomicReference<PipeTaskInfo> acquireLockInternal(
       ConfigNodeProcedureEnv configNodeProcedureEnv) {
@@ -650,7 +651,8 @@ public abstract class AbstractOperatePipeProcedureV2
 
       if (resp.getStatus().getCode()
           == TSStatusCode.PIPE_PUSH_META_NOT_ENOUGH_MEMORY.getStatusCode()) {
-        exceptionMessageBuilder.append(String.format("DataNodeId: %s,", dataNodeId));
+        exceptionMessageBuilder.append(
+            String.format(ProcedureMessages.EXCEPTION_DATANODEID_ARG_1D548B40, dataNodeId));
         resp.getExceptionMessages()
             .forEach(
                 message -> {
@@ -658,11 +660,13 @@ public abstract class AbstractOperatePipeProcedureV2
                   if (pipeName == null) {
                     enoughMemoryMessageBuilder.append(
                         String.format(
-                            "PipeName: %s, Message: %s",
-                            message.getPipeName(), message.getMessage()));
+                            ProcedureMessages.MESSAGE_PIPENAME_ARG_MESSAGE_ARG_6E450D29,
+                            message.getPipeName(),
+                            message.getMessage()));
                   } else if (pipeName.equals(message.getPipeName())) {
                     enoughMemoryMessageBuilder.append(
-                        String.format("Message: %s", message.getMessage()));
+                        String.format(
+                            ProcedureMessages.MESSAGE_MESSAGE_ARG_5EECEF40, message.getMessage()));
                   }
                 });
         enoughMemoryMessageBuilder.append(".");
@@ -672,7 +676,8 @@ public abstract class AbstractOperatePipeProcedureV2
       if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_TIMEOUT.getStatusCode()) {
         exceptionMessageBuilder.append(
             String.format(
-                "DataNodeId: %s, Message: Timeout to wait for lock while processing pushPipeMeta on dataNodes.",
+                ProcedureMessages
+                    .EXCEPTION_DATANODEID_ARG_MESSAGE_TIMEOUT_TO_WAIT_FOR_LOCK_WHILE_PROCESSING_PUSHPIPEMETA_ON_DATANODES_C9A7107B,
                 dataNodeId));
         continue;
       }
@@ -682,8 +687,10 @@ public abstract class AbstractOperatePipeProcedureV2
           final String statusMessage = resp.getStatus().getMessage();
           exceptionMessageBuilder.append(
               String.format(
-                  "DataNodeId: %s, Message: Internal error while processing pushPipeMeta on dataNodes.%s",
-                  dataNodeId, statusMessage == null ? "" : " " + statusMessage));
+                  ProcedureMessages
+                      .EXCEPTION_DATANODEID_ARG_MESSAGE_INTERNAL_ERROR_WHILE_PROCESSING_PUSHPIPEMETA_ON_DATANODES_ARG_A5AC599F,
+                  dataNodeId,
+                  statusMessage == null ? "" : " " + statusMessage));
           continue;
         }
 
@@ -697,18 +704,21 @@ public abstract class AbstractOperatePipeProcedureV2
                     hasException.set(true);
                     exceptionMessageBuilder.append(
                         String.format(
-                            "PipeName: %s, Message: %s",
-                            message.getPipeName(), message.getMessage()));
+                            ProcedureMessages.MESSAGE_PIPENAME_ARG_MESSAGE_ARG_6E450D29,
+                            message.getPipeName(),
+                            message.getMessage()));
                   } else if (pipeName.equals(message.getPipeName())) {
                     hasException.set(true);
                     exceptionMessageBuilder.append(
-                        String.format("Message: %s", message.getMessage()));
+                        String.format(
+                            ProcedureMessages.MESSAGE_MESSAGE_ARG_5EECEF40, message.getMessage()));
                   }
                 });
 
         if (hasException.get()) {
           // Only print dataNodeId if the given pipe meets exception on that node
-          exceptionMessageBuilder.insert(0, String.format("DataNodeId: %s, ", dataNodeId));
+          exceptionMessageBuilder.insert(
+              0, String.format(ProcedureMessages.EXCEPTION_DATANODEID_ARG_14BB8DE3, dataNodeId));
           exceptionMessageBuilder.append(". ");
         }
       }

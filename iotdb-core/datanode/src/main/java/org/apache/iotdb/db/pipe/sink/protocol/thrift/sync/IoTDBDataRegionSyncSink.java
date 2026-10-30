@@ -275,8 +275,9 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
       receiverStatusHandler.handle(
           status,
           String.format(
-              "Transfer deletion %s error, result status %s.",
-              pipeDeleteDataNodeEvent.getDeleteDataNode().getType(), status),
+              DataNodePipeMessages.MESSAGE_TRANSFER_DELETION_ARG_ERROR_RESULT_STATUS_ARG_EA5C7560,
+              pipeDeleteDataNodeEvent.getDeleteDataNode().getType(),
+              status),
           pipeDeleteDataNodeEvent.getDeleteDataNode().toString(),
           true);
     }
@@ -348,7 +349,10 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
         && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
       receiverStatusHandler.handle(
           resp.getStatus(),
-          String.format("Transfer PipeTransferTabletBatchReq error, result status %s", resp.status),
+          String.format(
+              DataNodePipeMessages
+                  .MESSAGE_TRANSFER_PIPETRANSFERTABLETBATCHREQ_ERROR_RESULT_STATUS_ARG_5F084FBA,
+              resp.status),
           batchToTransfer.deepCopyEvents().toString());
     }
 
@@ -445,8 +449,10 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
       receiverStatusHandler.handle(
           status,
           String.format(
-              "Transfer PipeInsertNodeTabletInsertionEvent %s error, result status %s",
-              pipeInsertNodeTabletInsertionEvent.coreReportMessage(), status),
+              DataNodePipeMessages
+                  .MESSAGE_TRANSFER_PIPEINSERTNODETABLETINSERTIONEVENT_ARG_ERROR_RESULT_STATUS_ARG_91AFC115,
+              pipeInsertNodeTabletInsertionEvent.coreReportMessage(),
+              status),
           pipeInsertNodeTabletInsertionEvent.toString());
     }
     if (status.isSetRedirectNode()) {
@@ -513,8 +519,10 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
       receiverStatusHandler.handle(
           status,
           String.format(
-              "Transfer PipeRawTabletInsertionEvent %s error, result status %s",
-              pipeRawTabletInsertionEvent.coreReportMessage(), status),
+              DataNodePipeMessages
+                  .MESSAGE_TRANSFER_PIPERAWTABLETINSERTIONEVENT_ARG_ERROR_RESULT_STATUS_ARG_6B130B80,
+              pipeRawTabletInsertionEvent.coreReportMessage(),
+              status),
           pipeRawTabletInsertionEvent.toString());
     }
     if (status.isSetRedirectNode()) {
@@ -650,7 +658,10 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
         && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
       receiverStatusHandler.handle(
           resp.getStatus(),
-          String.format("Seal file %s error, result status %s.", tsFile, resp.getStatus()),
+          String.format(
+              DataNodePipeMessages.MESSAGE_SEAL_FILE_ARG_ERROR_RESULT_STATUS_ARG_FE3B82AC,
+              tsFile,
+              resp.getStatus()),
           tsFile.getName());
     }
 

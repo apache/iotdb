@@ -451,7 +451,9 @@ class LoadTreeTsFileTabletIterator
     }
     return e instanceof RuntimeException
         ? (RuntimeException) e
-        : new IllegalStateException("Failed to iterate tablets while loading TsFile.", e);
+        : new IllegalStateException(
+            StorageEngineMessages.EXCEPTION_FAILED_TO_ITERATE_TABLETS_WHILE_LOADING_TSFILE_4E6289F3,
+            e);
   }
 
   private void closeScanParser() {

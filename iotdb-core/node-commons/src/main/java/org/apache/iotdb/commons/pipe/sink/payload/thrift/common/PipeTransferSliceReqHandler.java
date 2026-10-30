@@ -116,7 +116,7 @@ public class PipeTransferSliceReqHandler {
 
     if (receivedBodySize + req.getSliceBody().length > originBodySize) {
       LOGGER.warn(
-          "Received slice body size {} exceeds origin body size {}",
+          PipeMessages.LOG_RECEIVED_SLICE_BODY_SIZE_ARG_EXCEEDS_ORIGIN_BODY_SIZE_ARG_12E71952,
           receivedBodySize + req.getSliceBody().length,
           originBodySize);
       clear();
@@ -128,7 +128,8 @@ public class PipeTransferSliceReqHandler {
 
     if (sliceBodies.size() == sliceCount && receivedBodySize != originBodySize) {
       LOGGER.warn(
-          "Received slice body size {} is not equal to origin body size {}",
+          PipeMessages
+              .LOG_RECEIVED_SLICE_BODY_SIZE_ARG_IS_NOT_EQUAL_TO_ORIGIN_BODY_SIZE_ARG_EBE1BB1E,
           receivedBodySize,
           originBodySize);
       clear();

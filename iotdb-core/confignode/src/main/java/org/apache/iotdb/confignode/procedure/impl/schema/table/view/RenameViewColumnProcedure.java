@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
@@ -42,7 +43,7 @@ public class RenameViewColumnProcedure extends RenameTableColumnProcedure {
 
   @Override
   protected String getActionMessage() {
-    return "rename view column";
+    return ProcedureMessages.MESSAGE_RENAME_VIEW_COLUMN_66B7933E;
   }
 
   @Override

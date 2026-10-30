@@ -151,7 +151,7 @@ public class DeactivateTemplateProcedure
     DeactivateTemplateRegionTaskExecutor<TConstructSchemaBlackListWithTemplateReq>
         constructBlackListTask =
             new DeactivateTemplateRegionTaskExecutor<TConstructSchemaBlackListWithTemplateReq>(
-                "construct schema black list",
+                ProcedureMessages.MESSAGE_CONSTRUCT_SCHEMA_BLACK_LIST_514776EF,
                 env,
                 targetSchemaRegionGroup,
                 CnToDnAsyncRequestType.CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
@@ -218,7 +218,7 @@ public class DeactivateTemplateProcedure
     if (!relatedDataRegionGroup.isEmpty() && !timeSeriesPatternTree.isEmpty()) {
       final DeactivateTemplateRegionTaskExecutor<TDeleteDataForDeleteSchemaReq> deleteDataTask =
           new DeactivateTemplateRegionTaskExecutor<>(
-              "delete data",
+              ProcedureMessages.MESSAGE_DELETE_DATA_1896591B,
               env,
               relatedDataRegionGroup,
               false,
@@ -234,7 +234,7 @@ public class DeactivateTemplateProcedure
   private void deactivateTemplate(ConfigNodeProcedureEnv env) {
     DeactivateTemplateRegionTaskExecutor<TDeactivateTemplateReq> deleteTimeSeriesTask =
         new DeactivateTemplateRegionTaskExecutor<>(
-            "deactivate template schema",
+            ProcedureMessages.MESSAGE_DEACTIVATE_TEMPLATE_SCHEMA_F8DEF172,
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(timeSeriesPatternTree),
             CnToDnAsyncRequestType.DEACTIVATE_TEMPLATE,
@@ -272,7 +272,7 @@ public class DeactivateTemplateProcedure
       DeactivateTemplateRegionTaskExecutor<TRollbackSchemaBlackListWithTemplateReq>
           rollbackStateTask =
               new DeactivateTemplateRegionTaskExecutor<>(
-                  "roll back schema black list",
+                  ProcedureMessages.MESSAGE_ROLL_BACK_SCHEMA_BLACK_LIST_5F1CB6A2,
                   env,
                   env.getConfigManager().getRelatedSchemaRegionGroup(timeSeriesPatternTree),
                   CnToDnAsyncRequestType.ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE,

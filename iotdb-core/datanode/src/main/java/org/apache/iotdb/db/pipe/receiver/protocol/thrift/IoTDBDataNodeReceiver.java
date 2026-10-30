@@ -261,7 +261,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                   return new TPipeTransferResp(
                       RpcUtils.getStatus(
                           TSStatusCode.PIPE_HANDSHAKE_ERROR.getStatusCode(),
-                          "The receiver memory is not enough to handle the handshake request from datanode."));
+                          DataNodePipeMessages
+                              .MESSAGE_THE_RECEIVER_MEMORY_IS_NOT_ENOUGH_TO_HANDLE_THE_HANDSHAKE_REQUEST_FROM_DATANODE_0A182782));
                 }
                 return recordDataNodeHandshakeIfSuccess(
                     handleTransferHandshakeV2(
@@ -483,7 +484,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
                 return new TPipeTransferResp(
                     getReceiverTemporaryUnavailableStatus(
-                        "decompressing pipe transfer request", requestedMemorySizeInBytes, e));
+                        DataNodePipeMessages.MESSAGE_DECOMPRESSING_PIPE_TRANSFER_REQUEST_F09C8FD2,
+                        requestedMemorySizeInBytes,
+                        e));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferCompressedTimer(System.nanoTime() - startTime);
@@ -1101,7 +1104,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TPipeTransferResp handleTransferSlice(final PipeTransferSliceReq pipeTransferSliceReq) {
     final long sliceBodySizeInBytes = getSliceBodySizeInBytes(pipeTransferSliceReq);
     long requestedMemorySizeInBytes = sliceBodySizeInBytes;
-    String memoryAction = "buffering sliced pipe transfer request";
+    String memoryAction =
+        DataNodePipeMessages.MESSAGE_BUFFERING_SLICED_PIPE_TRANSFER_REQUEST_5BB9367A;
     PipeMemoryBlock sliceMemoryBlock = null;
     try {
       sliceMemoryBlock = tryAllocateReceiverMemory(sliceBodySizeInBytes);
@@ -1113,7 +1117,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         return new TPipeTransferResp(
             RpcUtils.getStatus(
                 TSStatusCode.PIPE_TRANSFER_SLICE_OUT_OF_ORDER,
-                "Slice request is out of order, please check the request sequence."));
+                DataNodePipeMessages
+                    .MESSAGE_SLICE_REQUEST_IS_OUT_OF_ORDER_PLEASE_CHECK_THE_REQUEST_SEQUENCE_32958FCC));
       }
 
       allocatedSliceMemoryBlocks.add(sliceMemoryBlock);
@@ -1123,10 +1128,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         return new TPipeTransferResp(
             RpcUtils.getStatus(
                 TSStatusCode.SUCCESS_STATUS,
-                "Slice received, waiting for more slices to complete the request."));
+                DataNodePipeMessages
+                    .MESSAGE_SLICE_RECEIVED_WAITING_FOR_MORE_SLICES_TO_COMPLETE_THE_REQUEST_EDB0B3EA));
       }
 
-      memoryAction = "assembling sliced pipe transfer request";
+      memoryAction = DataNodePipeMessages.MESSAGE_ASSEMBLING_SLICED_PIPE_TRANSFER_REQUEST_EA6180BA;
       requestedMemorySizeInBytes = pipeTransferSliceReq.getOriginBodySize();
       try (final PipeMemoryBlock ignored = tryAllocateReceiverMemory(requestedMemorySizeInBytes)) {
         final Optional<TPipeTransferReq> req = sliceReqHandler.makeReqIfComplete();
@@ -1134,7 +1140,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           return new TPipeTransferResp(
               RpcUtils.getStatus(
                   TSStatusCode.SUCCESS_STATUS,
-                  "Slice received, waiting for more slices to complete the request."));
+                  DataNodePipeMessages
+                      .MESSAGE_SLICE_RECEIVED_WAITING_FOR_MORE_SLICES_TO_COMPLETE_THE_REQUEST_EDB0B3EA));
         }
         clearSliceReqHandler();
         return receive(req.get());
@@ -1390,8 +1397,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             if (i == tryCount - 1) {
               final String message =
                   String.format(
-                      "Temporarily out of memory when executing statement %s, Requested memory: %s, "
-                          + "used memory: %s, free memory: %s, total non-floating memory: %s",
+                      DataNodePipeMessages
+                          .MESSAGE_TEMPORARILY_OUT_OF_MEMORY_WHEN_EXECUTING_STATEMENT_ARG_REQUESTED_MEMORY_ARG_USED_MEMORY_ARG_FREE_MEMORY_ARG_TOTAL_NON_FLOATING_MEMORY_ARG_2B46F2A6,
                       statement,
                       estimatedMemory * pipeReceiverActualToEstimatedMemoryRatio,
                       PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes(),
@@ -1474,7 +1481,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final Statement statement) {
     if (statement == null) {
       return RpcUtils.getStatus(
-          TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR, "Execute null statement.");
+          TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR,
+          DataNodePipeMessages.MESSAGE_EXECUTE_NULL_STATEMENT_2FC4F8E2);
     }
 
     // Judge which model the statement belongs to

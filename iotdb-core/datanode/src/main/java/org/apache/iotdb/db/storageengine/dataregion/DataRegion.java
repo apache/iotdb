@@ -73,6 +73,7 @@ import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.exception.runtime.TableLostRuntimeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource.Status;
@@ -1691,7 +1692,7 @@ public class DataRegion implements IDataRegionForQuery {
         logger.debug(
             StorageEngineMessages.STORAGE_LOG_WON_T_INSERT_TABLET_BECAUSE_C2DC8032,
             insertTabletNode.getSearchIndex(),
-            "insertTabletNode allMeasurementFailed");
+            StorageEngineMessages.MESSAGE_INSERTTABLETNODE_ALLMEASUREMENTFAILED_A147C989);
       }
       return true;
     }
@@ -5166,7 +5167,7 @@ public class DataRegion implements IDataRegionForQuery {
                   RpcUtils.getStatus(
                       TSStatusCode.OUT_OF_TTL.getStatusCode(),
                       String.format(
-                          "Insertion time [%s] is less than ttl time bound [%s]",
+                          DataNodeQueryMessages.OUT_OF_TTL_FMT,
                           DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
                           DateTimeUtils.convertLongToDate(CommonUtils.getTTLLowerBound(ttl)))));
           continue;
@@ -5284,7 +5285,7 @@ public class DataRegion implements IDataRegionForQuery {
                   RpcUtils.getStatus(
                       TSStatusCode.OUT_OF_TTL.getStatusCode(),
                       String.format(
-                          "Insertion time [%s] is less than ttl time bound [%s]",
+                          DataNodeQueryMessages.OUT_OF_TTL_FMT,
                           DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
                           DateTimeUtils.convertLongToDate(CommonUtils.getTTLLowerBound(ttl)))));
           insertRowNode.setFailedMeasurementNumber(

@@ -127,7 +127,9 @@ public class TabletStatementConverter {
 
     // deserialize schemas
     final int schemaSize =
-        readBooleanByte(byteBuffer, "schema existence") ? ReadWriteIOUtils.readInt(byteBuffer) : 0;
+        readBooleanByte(byteBuffer, DataNodePipeMessages.MESSAGE_SCHEMA_EXISTENCE_A42C4027)
+            ? ReadWriteIOUtils.readInt(byteBuffer)
+            : 0;
     if (schemaSize < 0) {
       throw new IllegalArgumentException(
           String.format(
@@ -135,7 +137,10 @@ public class TabletStatementConverter {
                   .EXCEPTION_INVALID_SCHEMA_SIZE_ARG_IN_TABLET_FORMAT_DESERIALIZATION_838C5359,
               schemaSize));
     }
-    ensureRemaining(byteBuffer, schemaSize, "measurement schema existence flags");
+    ensureRemaining(
+        byteBuffer,
+        schemaSize,
+        DataNodePipeMessages.MESSAGE_MEASUREMENT_SCHEMA_EXISTENCE_FLAGS_9F9CA352);
     final String[] measurement = new String[schemaSize];
     final TsTableColumnCategory[] columnCategories = new TsTableColumnCategory[schemaSize];
     final TSDataType[] dataTypes = new TSDataType[schemaSize];
@@ -162,7 +167,9 @@ public class TabletStatementConverter {
 
     // Deserialize and calculate memory in the same loop
     for (int i = 0; i < schemaSize; i++) {
-      final boolean hasSchema = readBooleanByte(byteBuffer, "measurement schema existence");
+      final boolean hasSchema =
+          readBooleanByte(
+              byteBuffer, DataNodePipeMessages.MESSAGE_MEASUREMENT_SCHEMA_EXISTENCE_EB269FD7);
       if (hasSchema) {
         final Pair<String, TSDataType> pair = readMeasurement(byteBuffer, tabletStringInternPool);
         measurement[i] = pair.getLeft();
@@ -205,7 +212,9 @@ public class TabletStatementConverter {
     memorySize += measurementMemorySize;
     memorySize += dataTypesMemorySize;
 
-    final boolean isTimesNotNull = readBooleanByte(byteBuffer, "timestamp column existence");
+    final boolean isTimesNotNull =
+        readBooleanByte(
+            byteBuffer, DataNodePipeMessages.MESSAGE_TIMESTAMP_COLUMN_EXISTENCE_E6CFC193);
     if (rowSize > 0 && !isTimesNotNull) {
       throw new IllegalArgumentException(
           DataNodePipeMessages
@@ -235,7 +244,8 @@ public class TabletStatementConverter {
     final BitMap[] bitMaps;
     final long bitMapsMemorySize;
 
-    final boolean isBitMapsNotNull = readBooleanByte(byteBuffer, "bitmap column existence");
+    final boolean isBitMapsNotNull =
+        readBooleanByte(byteBuffer, DataNodePipeMessages.MESSAGE_BITMAP_COLUMN_EXISTENCE_FCAEE601);
     if (isBitMapsNotNull) {
       // Use the method that returns both BitMap array and memory size
       final Pair<BitMap[], Long> bitMapsAndMemory =
@@ -254,7 +264,8 @@ public class TabletStatementConverter {
     final Object[] values;
     final long valuesMemorySize;
 
-    final boolean isValuesNotNull = readBooleanByte(byteBuffer, "value column existence");
+    final boolean isValuesNotNull =
+        readBooleanByte(byteBuffer, DataNodePipeMessages.MESSAGE_VALUE_COLUMN_EXISTENCE_D90DD8C4);
     if (rowSize > 0 && schemaSize > 0 && !isValuesNotNull) {
       throw new IllegalArgumentException(
           DataNodePipeMessages
@@ -439,7 +450,8 @@ public class TabletStatementConverter {
     boolean hasMarkedBitMap = false;
 
     for (int i = 0; i < columns; i++) {
-      final boolean hasBitMap = readBooleanByte(byteBuffer, "bitmap existence");
+      final boolean hasBitMap =
+          readBooleanByte(byteBuffer, DataNodePipeMessages.MESSAGE_BITMAP_EXISTENCE_48DE6555);
       if (hasBitMap) {
         final int size = ReadWriteIOUtils.readInt(byteBuffer);
         if (size < 0) {
@@ -498,7 +510,8 @@ public class TabletStatementConverter {
             NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * columns);
 
     for (int i = 0; i < columns; i++) {
-      final boolean isValueColumnsNotNull = readBooleanByte(byteBuffer, "value column existence");
+      final boolean isValueColumnsNotNull =
+          readBooleanByte(byteBuffer, DataNodePipeMessages.MESSAGE_VALUE_COLUMN_EXISTENCE_D90DD8C4);
       if (types[i] == null) {
         continue;
       }

@@ -1198,6 +1198,97 @@ public final class ProcedureMessages {
   public static final String FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE =
       "Failed in the write API executing the consensus layer due to: ";
 
+  public static final String EXCEPTION_DATANODEID_ARG_14BB8DE3 = "DataNodeId: %s, ";
+  public static final String EXCEPTION_DATANODEID_ARG_1D548B40 = "DataNodeId: %s,";
+  public static final String
+      EXCEPTION_DATANODEID_ARG_MESSAGE_INTERNAL_ERROR_WHILE_PROCESSING_PUSHPIPEMETA_ON_DATANODES_ARG_A5AC599F =
+          "DataNodeId: %s, Message: Internal error while processing pushPipeMeta on dataNodes.%s";
+  public static final String
+      EXCEPTION_DATANODEID_ARG_MESSAGE_TIMEOUT_TO_WAIT_FOR_LOCK_WHILE_PROCESSING_PUSHPIPEMETA_ON_DATANODES_C9A7107B =
+          "DataNodeId: %s, Message: Timeout to wait for lock while processing pushPipeMeta on"
+              + " dataNodes.";
+  public static final String EXCEPTION_ROLL_BACK_TABLE_DEVICE_BLACK_LIST_DFE5A8CB =
+      "roll back table device black list";
+  public static final String MESSAGE_ADD_TABLE_COLUMN_DE7718D1 = "add table column";
+  public static final String MESSAGE_ADD_VIEW_COLUMN_69FF810F = "add view column";
+  public static final String MESSAGE_ALTER_CONSUMER_GROUP_91CA211B = "alter consumer group";
+  public static final String MESSAGE_ALTER_TABLE_COLUMN_DATA_TYPE_CE3B07A5 =
+      "Alter table column data type";
+  public static final String MESSAGE_ALTER_TOPIC_9A77D5DF = "alter topic";
+  public static final String MESSAGE_ALTER_VIEW_0A6CD249 = "Alter view";
+  public static final String MESSAGE_CONSTRUCT_SCHEMA_BLACK_LIST_514776EF =
+      "construct schema black list";
+  public static final String MESSAGE_CONSTRUCT_SCHEMA_ENGINE_BLACK_LIST_FCE4CBE0 =
+      "construct schema engine black list";
+  public static final String MESSAGE_CONSTRUCT_VIEW_SCHEMA_ENGINE_BLACK_LIST_780F07B3 =
+      "construct view schema engine black list";
+  public static final String MESSAGE_CREATE_CONSUMER_6E8AB994 = "create consumer";
+  public static final String MESSAGE_CREATE_SUBSCRIPTION_2230F05D = "create subscription";
+  public static final String MESSAGE_CREATE_TOPIC_1E58E34B = "create topic";
+  public static final String
+      MESSAGE_DATANODE_ARG_MISSING_SUBSCRIPTION_RUNTIME_PUSH_RESPONSE_FD3DEE6E =
+          "DataNode %s: missing subscription runtime push response; ";
+  public static final String
+      MESSAGE_DATAPARTITIONINTEGRITY_ERROR_CHECKING_DATAPARTITIONTABLE_STATUS_DUE_TO_THREAD_INTERRUPTION_4291648D =
+          "[DataPartitionIntegrity] Error checking DataPartitionTable status due to thread"
+              + " interruption.";
+  public static final String
+      MESSAGE_DATAPARTITIONINTEGRITY_ERROR_WAITING_FOR_DATANODE_STARTUP_DUE_TO_THREAD_INTERRUPTION_6427FBB0 =
+          "[DataPartitionIntegrity] Error waiting for DataNode startup due to thread interruption.";
+  public static final String
+      MESSAGE_DATAPARTITIONINTEGRITY_ERROR_WAITING_FOR_ROLL_BACK_THE_ARG_STATE_DUE_TO_THREAD_INTERRUPTION_C34DD7A4 =
+          "[DataPartitionIntegrity] Error waiting for roll back the %s state due to thread"
+              + " interruption.";
+  public static final String MESSAGE_DATAPARTITIONTABLE_INTEGRITY_CHECK_PROGRESS_1F_88FF4383 =
+      "DataPartitionTable integrity check progress: %.1f%%";
+  public static final String MESSAGE_DEACTIVATE_TEMPLATE_SCHEMA_F8DEF172 =
+      "deactivate template schema";
+  public static final String MESSAGE_DELETE_DATA_1896591B = "delete data";
+  public static final String MESSAGE_DELETE_DATA_FOR_DROP_TABLE_A678391E =
+      "delete data for drop table";
+  public static final String MESSAGE_DELETE_DATA_FOR_TABLE_DEVICE_0FA6C84A =
+      "delete data for table device";
+  public static final String MESSAGE_DELETE_DEVICES_FOR_DROP_TABLE_A4F6E84E =
+      "delete devices for drop table";
+  public static final String MESSAGE_DELETE_TABLE_DEVICE_IN_BLACK_LIST_B93F1C9F =
+      "delete table device in black list";
+  public static final String MESSAGE_DELETE_TIME_SERIES_IN_SCHEMA_ENGINE_9B3DA44A =
+      "delete time series in schema engine";
+  public static final String MESSAGE_DELETE_VIEW_IN_SCHEMA_ENGINE_4468ABF7 =
+      "delete view in schema engine";
+  public static final String MESSAGE_DROP_CONSUMER_22F524DC = "drop consumer";
+  public static final String MESSAGE_DROP_SUBSCRIPTION_43CE36A6 = "drop subscription";
+  public static final String MESSAGE_DROP_TABLE_COLUMN_6FA1DB5F = "drop table column";
+  public static final String MESSAGE_DROP_TABLE_F5849AD7 = "drop table";
+  public static final String MESSAGE_DROP_TOPIC_DE9EC653 = "drop topic";
+  public static final String MESSAGE_DROP_VIEW_COLUMN_0BFC4728 = "drop view column";
+  public static final String MESSAGE_HANDLE_LEADER_CHANGE_206848AB = "handle leader change";
+  public static final String MESSAGE_MESSAGE_ARG_5EECEF40 = "Message: %s";
+  public static final String MESSAGE_PIPENAME_ARG_MESSAGE_ARG_6E450D29 =
+      "PipeName: %s, Message: %s";
+  public static final String MESSAGE_RENAME_TABLE_COLUMN_AA1E6913 = "rename table column";
+  public static final String MESSAGE_RENAME_TABLE_D9C28057 = "rename table";
+  public static final String MESSAGE_RENAME_VIEW_2A0DD1B0 = "rename view";
+  public static final String MESSAGE_RENAME_VIEW_COLUMN_66B7933E = "rename view column";
+  public static final String MESSAGE_ROLL_BACK_SCHEMA_BLACK_LIST_5F1CB6A2 =
+      "roll back schema black list";
+  public static final String MESSAGE_ROLL_BACK_SCHEMA_ENGINE_BLACK_LIST_39BA8E03 =
+      "roll back schema engine black list";
+  public static final String MESSAGE_ROLL_BACK_VIEW_SCHEMA_ENGINE_BLACK_LIST_0408EBAE =
+      "roll back view schema engine black list";
+  public static final String MESSAGE_SET_TABLE_COLUMN_PROPERTIES_F16B8274 =
+      "set table column properties";
+  public static final String MESSAGE_SET_TABLE_PROPERTIES_27E66D04 = "set table properties";
+  public static final String MESSAGE_SET_VIEW_PROPERTIES_DB957EE0 = "set view properties";
+  public static final String MESSAGE_SKIP_SUBSCRIPTION_RELATED_OPERATIONS_AND_DO_NOTHING_4EDC76FE =
+      "Skip subscription-related operations and do nothing";
+  public static final String MESSAGE_SYNC_COMMIT_PROGRESS_72F4012C = "sync commit progress";
+  public static final String MESSAGE_SYNC_CONSUMER_GROUP_META_5EBCB050 = "sync consumer group meta";
+  public static final String MESSAGE_SYNC_TOPIC_META_C7ECFD37 = "sync topic meta";
+  public static final String
+      MESSAGE_TRY_TO_START_A_RUNNING_PIPE_OR_STOP_A_STOPPED_PIPE_DO_NOTHING_EB6A38D3 =
+          "Try to start a RUNNING pipe or stop a STOPPED pipe, do nothing.";
+
   private ProcedureMessages() {}
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages

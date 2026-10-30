@@ -2935,6 +2935,53 @@ public final class DataNodeQueryMessages {
   public static final String RULE_S_BEFORE_S_AFTER_S =
       "Rule: {}\nBefore:\n{}\nAfter:\n{}";
 
+  public static final String
+      EXCEPTION_AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR_WHEN_EXECUTING_STATEMENT_ARG_DETAIL_ARG_B6C9E02E =
+          "Auto create or verify schema error when executing statement %s. Detail: %s.";
+  public static final String EXCEPTION_CANNOT_USE_ARG_FOR_SUBSCRIPT_OF_ARG_15A147BC =
+      "Cannot use %s for subscript of %s";
+  public static final String EXCEPTION_EXPECTED_DATA_END_4C374AB5 = "expected data end";
+  public static final String EXCEPTION_LOADING_FILE_ARG_FAILED_DETAIL_ARG_C161A17F =
+      "Loading file %s failed. Detail: %s";
+  public static final String EXCEPTION_PROGRESS_INDEX_1C50FE57 = "progress index";
+  public static final String
+      LOG_FAILED_TO_GET_NEED_LAST_CACHE_INFO_FOR_DATABASE_ARG_WILL_PUT_CACHE_ANYWAY_EXCEPTION_ARG_D5D80E96 =
+          "Failed to get need_last_cache info for database {}, will put cache anyway, exception:"
+              + " {}";
+  public static final String MESSAGE_CANNOT_APPLY_OPERATOR_ARG_ARG_ARG_CCA56AA9 =
+      "Cannot apply operator: %s %s %s";
+  public static final String MESSAGE_CANNOT_CHECK_IF_ARG_IS_DISTINCT_FROM_ARG_E9974593 =
+      "Cannot check if %s is distinct from %s";
+  public static final String MESSAGE_CANNOT_NEGATE_ARG_FCF0C22A = "Cannot negate %s";
+  public static final String
+      MESSAGE_CONTINUOUSSAMESEARCHINDEXSEPARATORNODE_NOT_SUPPORT_THIS_OPERATION_CC9BC84B =
+          "ContinuousSameSearchIndexSeparatorNode not support this operation";
+  public static final String MESSAGE_CREATE_DEVICE_OR_UPDATE_DEVICE_ATTRIBUTE_FOR_INSERT_BFA7C2DA =
+      "Create device or update device attribute for insert";
+  public static final String
+      MESSAGE_DATAPARTITIONMAP_IS_EMPTY_AFTER_PROCESSING_RESOURCE_FILE_21869447 =
+          "DataPartitionMap is empty after processing resource file";
+  public static final String
+      MESSAGE_DATA_TYPE_MISMATCH_FOR_COLUMN_ARG_IN_TABLE_ARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_ECAD0C63 =
+          "Data type mismatch for column %s in table %s, type in TsFile: %s, type in IoTDB: %s";
+  public static final String MESSAGE_FAILED_TO_PROCESS_DATA_REGION_ARG_507E9689 =
+      "Failed to process data region: %s";
+  public static final String MESSAGE_FETCH_DEVICE_FOR_INSERT_E0AF591F = "Fetch Device for insert";
+  public static final String MESSAGE_FETCH_DEVICE_FOR_QUERY_ARG_ARG_160027C4 =
+      "fetch device for query %s : %s";
+  public static final String MESSAGE_FETCH_SCHEMA_FOR_ARG_76B28DC3 = "Fetch Schema for %s";
+  public static final String MESSAGE_GENERATION_FAILED_ARG_E37A62C5 = "Generation failed: %s";
+  public static final String MESSAGE_OPERATOR_ARG_ARG_CANNOT_BE_APPLIED_TO_ARG_FE836F93 =
+      "Operator '%s'%s cannot be applied to %s";
+  public static final String MESSAGE_PIECE_REFERENCE_CA095411 = "piece reference";
+  public static final String MESSAGE_PROGRESS_INDEX_PAYLOAD_F5596925 = "progress index payload";
+  public static final String MESSAGE_PROGRESS_INDEX_PAYLOAD_LENGTH_0C4465A8 =
+      "progress index payload length";
+  public static final String MESSAGE_STAGED_DATA_28A8A2A9 = "staged data";
+  public static final String
+      MESSAGE_TSFILE_ENCRYPTION_IS_ENABLED_AND_THE_LOAD_TSFILE_FUNCTION_IS_DISABLED_7CB357EE =
+          "TsFile encryption is enabled, and the Load TsFile function is disabled";
+
   private DataNodeQueryMessages() {}
   // ---------------------------------------------------------------------------
   // Additional exception messages

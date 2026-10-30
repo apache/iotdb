@@ -98,6 +98,7 @@ import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.persistence.schema.ConfigMTree.TableSchemaDetails;
 import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigTableNode;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -165,7 +166,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   private static final String TREE_SNAPSHOT_FILENAME = "cluster_schema.bin";
   private static final String TABLE_SNAPSHOT_FILENAME = "table_cluster_schema.bin";
-  private static final String ERROR_NAME = "Error Database name";
+  private static final String ERROR_NAME = ManagerMessages.MESSAGE_ERROR_DATABASE_NAME_35C4F124;
 
   private final TemplateTable templateTable;
 

@@ -312,7 +312,11 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       } else {
         LOGGER.info(
             DataNodePipeMessages.EXCEPTION_IN_PIPE_EVENT_PROCESSING_IGNORED_BECAUSE,
-            e.getMessage() != null ? " Message: " + e.getMessage() : "");
+            e.getMessage() != null
+                ? String.format(
+                    DataNodePipeMessages.MESSAGE_MESSAGE_ARG_F49E6C85,
+                    String.valueOf(e.getMessage()))
+                : "");
         clearReferenceCountAndReleaseLastEvent(event);
       }
     } finally {

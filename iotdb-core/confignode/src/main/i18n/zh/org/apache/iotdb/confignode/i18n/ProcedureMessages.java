@@ -1126,6 +1126,79 @@ public final class ProcedureMessages {
   public static final String FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE =
       "在共识层执行写入 API 失败，原因：";
 
+  public static final String EXCEPTION_DATANODEID_ARG_14BB8DE3 = "DataNodeId：%s， ";
+  public static final String EXCEPTION_DATANODEID_ARG_1D548B40 = "DataNodeId：%s，";
+  public static final String
+      EXCEPTION_DATANODEID_ARG_MESSAGE_INTERNAL_ERROR_WHILE_PROCESSING_PUSHPIPEMETA_ON_DATANODES_ARG_A5AC599F =
+          "DataNodeId：%s，消息：在 DataNode 上处理 pushPipeMeta 时发生内部错误。%s";
+  public static final String
+      EXCEPTION_DATANODEID_ARG_MESSAGE_TIMEOUT_TO_WAIT_FOR_LOCK_WHILE_PROCESSING_PUSHPIPEMETA_ON_DATANODES_C9A7107B =
+          "DataNodeId：%s，消息：在 DataNode 上处理 pushPipeMeta 时等待锁超时。";
+  public static final String EXCEPTION_ROLL_BACK_TABLE_DEVICE_BLACK_LIST_DFE5A8CB = "回滚表设备黑名单";
+  public static final String MESSAGE_ADD_TABLE_COLUMN_DE7718D1 = "添加表列";
+  public static final String MESSAGE_ADD_VIEW_COLUMN_69FF810F = "添加视图列";
+  public static final String MESSAGE_ALTER_CONSUMER_GROUP_91CA211B = "修改消费者组";
+  public static final String MESSAGE_ALTER_TABLE_COLUMN_DATA_TYPE_CE3B07A5 = "修改表列数据类型";
+  public static final String MESSAGE_ALTER_TOPIC_9A77D5DF = "修改主题";
+  public static final String MESSAGE_ALTER_VIEW_0A6CD249 = "修改视图";
+  public static final String MESSAGE_CONSTRUCT_SCHEMA_BLACK_LIST_514776EF = "构建元数据黑名单";
+  public static final String MESSAGE_CONSTRUCT_SCHEMA_ENGINE_BLACK_LIST_FCE4CBE0 = "构建元数据引擎黑名单";
+  public static final String MESSAGE_CONSTRUCT_VIEW_SCHEMA_ENGINE_BLACK_LIST_780F07B3 =
+      "构建视图元数据引擎黑名单";
+  public static final String MESSAGE_CREATE_CONSUMER_6E8AB994 = "创建消费者";
+  public static final String MESSAGE_CREATE_SUBSCRIPTION_2230F05D = "创建订阅";
+  public static final String MESSAGE_CREATE_TOPIC_1E58E34B = "创建主题";
+  public static final String
+      MESSAGE_DATANODE_ARG_MISSING_SUBSCRIPTION_RUNTIME_PUSH_RESPONSE_FD3DEE6E =
+          "DataNode %s：缺少订阅运行时推送响应； ";
+  public static final String
+      MESSAGE_DATAPARTITIONINTEGRITY_ERROR_CHECKING_DATAPARTITIONTABLE_STATUS_DUE_TO_THREAD_INTERRUPTION_4291648D =
+          "[DataPartitionIntegrity] 检查 DataPartitionTable 状态时因线程中断而出错。";
+  public static final String
+      MESSAGE_DATAPARTITIONINTEGRITY_ERROR_WAITING_FOR_DATANODE_STARTUP_DUE_TO_THREAD_INTERRUPTION_6427FBB0 =
+          "[DataPartitionIntegrity] 等待 DataNode 启动时因线程中断而出错。";
+  public static final String
+      MESSAGE_DATAPARTITIONINTEGRITY_ERROR_WAITING_FOR_ROLL_BACK_THE_ARG_STATE_DUE_TO_THREAD_INTERRUPTION_C34DD7A4 =
+          "[DataPartitionIntegrity] 等待回滚 %s 状态时因线程中断而出错。";
+  public static final String MESSAGE_DATAPARTITIONTABLE_INTEGRITY_CHECK_PROGRESS_1F_88FF4383 =
+      "DataPartitionTable 完整性检查进度：%.1f%%";
+  public static final String MESSAGE_DEACTIVATE_TEMPLATE_SCHEMA_F8DEF172 = "停用模板元数据";
+  public static final String MESSAGE_DELETE_DATA_1896591B = "删除数据";
+  public static final String MESSAGE_DELETE_DATA_FOR_DROP_TABLE_A678391E = "删除表的数据";
+  public static final String MESSAGE_DELETE_DATA_FOR_TABLE_DEVICE_0FA6C84A = "删除表设备的数据";
+  public static final String MESSAGE_DELETE_DEVICES_FOR_DROP_TABLE_A4F6E84E = "删除表的设备";
+  public static final String MESSAGE_DELETE_TABLE_DEVICE_IN_BLACK_LIST_B93F1C9F = "删除黑名单中的表设备";
+  public static final String MESSAGE_DELETE_TIME_SERIES_IN_SCHEMA_ENGINE_9B3DA44A = "在元数据引擎中删除时间序列";
+  public static final String MESSAGE_DELETE_VIEW_IN_SCHEMA_ENGINE_4468ABF7 = "在元数据引擎中删除视图";
+  public static final String MESSAGE_DROP_CONSUMER_22F524DC = "删除消费者";
+  public static final String MESSAGE_DROP_SUBSCRIPTION_43CE36A6 = "删除订阅";
+  public static final String MESSAGE_DROP_TABLE_COLUMN_6FA1DB5F = "删除表列";
+  public static final String MESSAGE_DROP_TABLE_F5849AD7 = "删除表";
+  public static final String MESSAGE_DROP_TOPIC_DE9EC653 = "删除主题";
+  public static final String MESSAGE_DROP_VIEW_COLUMN_0BFC4728 = "删除视图列";
+  public static final String MESSAGE_HANDLE_LEADER_CHANGE_206848AB = "处理 leader 变更";
+  public static final String MESSAGE_MESSAGE_ARG_5EECEF40 = "消息：%s";
+  public static final String MESSAGE_PIPENAME_ARG_MESSAGE_ARG_6E450D29 = "PipeName：%s，消息：%s";
+  public static final String MESSAGE_RENAME_TABLE_COLUMN_AA1E6913 = "重命名表列";
+  public static final String MESSAGE_RENAME_TABLE_D9C28057 = "重命名表";
+  public static final String MESSAGE_RENAME_VIEW_2A0DD1B0 = "重命名视图";
+  public static final String MESSAGE_RENAME_VIEW_COLUMN_66B7933E = "重命名视图列";
+  public static final String MESSAGE_ROLL_BACK_SCHEMA_BLACK_LIST_5F1CB6A2 = "回滚元数据黑名单";
+  public static final String MESSAGE_ROLL_BACK_SCHEMA_ENGINE_BLACK_LIST_39BA8E03 = "回滚元数据引擎黑名单";
+  public static final String MESSAGE_ROLL_BACK_VIEW_SCHEMA_ENGINE_BLACK_LIST_0408EBAE =
+      "回滚视图元数据引擎黑名单";
+  public static final String MESSAGE_SET_TABLE_COLUMN_PROPERTIES_F16B8274 = "设置表列属性";
+  public static final String MESSAGE_SET_TABLE_PROPERTIES_27E66D04 = "设置表属性";
+  public static final String MESSAGE_SET_VIEW_PROPERTIES_DB957EE0 = "设置视图属性";
+  public static final String MESSAGE_SKIP_SUBSCRIPTION_RELATED_OPERATIONS_AND_DO_NOTHING_4EDC76FE =
+      "跳过订阅相关操作，无需处理";
+  public static final String MESSAGE_SYNC_COMMIT_PROGRESS_72F4012C = "同步提交进度";
+  public static final String MESSAGE_SYNC_CONSUMER_GROUP_META_5EBCB050 = "同步消费者组元数据";
+  public static final String MESSAGE_SYNC_TOPIC_META_C7ECFD37 = "同步主题元数据";
+  public static final String
+      MESSAGE_TRY_TO_START_A_RUNNING_PIPE_OR_STOP_A_STOPPED_PIPE_DO_NOTHING_EB6A38D3 =
+          "尝试启动 RUNNING 状态的 pipe 或停止 STOPPED 状态的 pipe，无需操作。";
+
   private ProcedureMessages() {}
 
   // ---------------------------------------------------------------------------

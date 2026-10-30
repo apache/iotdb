@@ -563,6 +563,167 @@ public final class ManagerMessages {
   public static final String LOG_COULD_NOT_CONFIRM_A_CONFIGNODE_LEADER_OTHER_THAN_ARG_AFTER_ATTEMPTING_TO_TRANSFER_LEADERSHIP_TO_ARG_TRYING_ANOTHER_CANDIDATE_91EF68C1 = "无法确认存在除 ConfigNode {} 以外的 leader；此前尝试的转移目标为 {}，将尝试其他候选节点。";
   public static final String LOG_STOPPED_RETRYING_CONFIGNODE_LEADER_TRANSFER_BECAUSE_THE_REMAINING_RPC_TIMEOUT_IS_INSUFFICIENT_6429A49C = "剩余 RPC 超时时间不足，停止重试 ConfigNode leader 转移。";
 
+  public static final String
+      EXCEPTION_FAILED_TO_ALTER_CONSUMER_GROUP_BECAUSE_THE_CONSUMER_GROUP_ARG_DOES_NOT_EXIST_AEB27705 =
+          "修改消费者组失败，消费者组 %s 不存在";
+  public static final String EXCEPTION_FAILED_TO_ALTER_PIPE_ARG_ARG_D38CC9FA = "修改 pipe %s 失败，%s";
+  public static final String
+      EXCEPTION_FAILED_TO_ALTER_TOPIC_ARG_CHANGING_ARG_IS_NOT_SUPPORTED_BECAUSE_EXISTING_CONSENSUS_QUEUES_DO_NOT_HOT_REFRESH_RETENTION_STATE_B84442B9 =
+          "修改主题 %s 失败，不支持更改 %s，因为现有 Consensus 队列不会动态刷新保留状态";
+  public static final String
+      EXCEPTION_FAILED_TO_ALTER_TOPIC_ARG_CHANGING_ARG_IS_NOT_SUPPORTED_BECAUSE_EXISTING_SUBSCRIPTION_RUNTIMES_DO_NOT_HOT_REFRESH_SOURCE_MODE_F27410E6 =
+          "修改主题 %s 失败，不支持更改 %s，因为现有订阅运行时不会动态刷新 source 模式";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_PIPE_THE_PIPE_ARG_PLUGIN_ARG_FAILED_TO_LOAD_ARG_EBEB74CC =
+          "创建或修改 pipe 失败，pipe %s 插件 %s 加载失败：%s";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_PIPE_THE_PIPE_CONNECTOR_PLUGIN_ARG_DOES_NOT_EXIST_4FC620C9 =
+          "创建或修改 pipe 失败，pipe connector 插件 %s 不存在";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_PIPE_THE_PIPE_EXTRACTOR_PLUGIN_ARG_DOES_NOT_EXIST_70C3F187 =
+          "创建或修改 pipe 失败，pipe extractor 插件 %s 不存在";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_PIPE_THE_PIPE_PROCESSOR_PLUGIN_ARG_DOES_NOT_EXIST_6C22D67D =
+          "创建或修改 pipe 失败，pipe processor 插件 %s 不存在";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_ARG_IS_ONLY_SUPPORTED_WHEN_ARG_ARG_BUT_CURRENT_VALUE_IS_ARG_7C765172 =
+          "创建或修改主题失败，%s=%s 仅在 %s=%s 时支持，但当前值为 %s";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_ARG_ONLY_SUPPORTS_ARG_ARG_93A39567 =
+          "创建或修改主题失败，%s=%s 仅支持 %s=%s";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ILLEGAL_ARG_ARG_EXPECTED_A_LONG_VALUE_BFF2A1CF =
+          "创建或修改主题失败，%s=%s 不合法，预期为 long 值";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_UNSUPPORTED_ARG_ARG_EXPECTED_ONE_OF_ARG_ARG_ARG_9016126E =
+          "创建或修改主题失败，不支持 %s=%s，预期为 [%s, %s, %s] 之一";
+  public static final String EXCEPTION_FAILED_TO_CREATE_PIPE_ARG_ARG_405A2E6F = "创建 pipe %s 失败，%s";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_PIPE_CONSUMER_ARG_IN_CONSUMER_GROUP_ARG_THE_CONSUMER_WITH_THE_SAME_NAME_HAS_BEEN_CREATED_40DD2127 =
+          "创建 pipe 消费者 %s 失败，消费者组为 %s，同名消费者已存在";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_TOPIC_ARG_THE_TOPIC_WITH_THE_SAME_NAME_HAS_BEEN_CREATED_E20FE8BF =
+          "创建主题 %s 失败，同名主题已存在";
+  public static final String
+      EXCEPTION_FAILED_TO_DROP_PIPE_CONSUMER_ARG_IN_CONSUMER_GROUP_ARG_THE_CONSUMER_DOES_NOT_EXIST_5C5F241B =
+          "删除 pipe 消费者 %s 失败，消费者组为 %s，该消费者不存在";
+  public static final String
+      EXCEPTION_FAILED_TO_DROP_TOPIC_ARG_THE_TOPIC_IS_SUBSCRIBED_BY_SOME_CONSUMERS_94D34E76 =
+          "删除主题 %s 失败，该主题已被消费者订阅";
+  public static final String
+      EXCEPTION_FAILED_TO_SUBSCRIBE_BECAUSE_THE_CONSUMER_ARG_IN_CONSUMER_GROUP_ARG_DOES_NOT_EXIST_FA5503BB =
+          "订阅失败，消费者 %s 在消费者组 %s 中不存在";
+  public static final String
+      EXCEPTION_FAILED_TO_SUBSCRIBE_BECAUSE_THE_TOPIC_ARG_DOES_NOT_EXIST_557114A7 =
+          "订阅失败，主题 %s 不存在";
+  public static final String
+      EXCEPTION_FAILED_TO_UNSUBSCRIBE_BECAUSE_THE_CONSUMER_ARG_IN_CONSUMER_GROUP_ARG_DOES_NOT_EXIST_C4E1530D =
+          "取消订阅失败，消费者 %s 在消费者组 %s 中不存在";
+  public static final String
+      EXCEPTION_FAILED_TO_UNSUBSCRIBE_BECAUSE_THE_TOPIC_ARG_DOES_NOT_EXIST_DA0E75DD =
+          "取消订阅失败，主题 %s 不存在";
+  public static final String EXCEPTION_INVALID_TABLE_STATUS_ARG_172413CC = "无效的表状态 %s";
+  public static final String
+      EXCEPTION_PIPEPLUGIN_ARG_IS_ALREADY_USED_BY_PIPE_ARG_AS_A_PROCESSOR_FA9F027E =
+          "PipePlugin '%s' 已被 Pipe '%s' 用作 processor。";
+  public static final String
+      EXCEPTION_PIPEPLUGIN_ARG_IS_ALREADY_USED_BY_PIPE_ARG_AS_A_SINK_A438625C =
+          "PipePlugin '%s' 已被 Pipe '%s' 用作 sink。";
+  public static final String
+      EXCEPTION_PIPEPLUGIN_ARG_IS_ALREADY_USED_BY_PIPE_ARG_AS_A_SOURCE_BA47AEF4 =
+          "PipePlugin '%s' 已被 Pipe '%s' 用作 source。";
+  public static final String
+      EXCEPTION_PIPEPLUGIN_ARG_IS_ALREADY_USED_BY_TOPIC_ARG_AS_A_PROCESSOR_02306DD3 =
+          "PipePlugin '%s' 已被主题 '%s' 用作 processor。";
+  public static final String LOG_FAILED_TO_GET_DEVICE_VIEW_FIELD_TYPE_ON_REGION_ARG_317F545F =
+      "获取 Region {} 上的设备视图字段类型失败。";
+  public static final String
+      LOG_FAILED_TO_INVALIDATE_LAST_CACHE_OF_DATABASE_ARG_ON_DATANODE_ARG_STATUS_ARG_E0B53CBD =
+          "使数据库 {} 在 DataNode {} 上的 last cache 失效失败，状态：{}";
+  public static final String
+      MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_DEFAULT_ARGREGIONGROUPNUM_ARG_4C00E92C =
+          "%s 应大于或等于默认的 %sRegionGroupNum：%d。";
+  public static final String MESSAGE_COLUMN_ARG_ALREADY_EXIST_92F91B6A = "列 '%s' 已存在";
+  public static final String MESSAGE_COLUMN_ARG_DOES_NOT_EXIST_FF67AE82 = "列 '%s' 不存在";
+  public static final String
+      MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_CLUSTER_HEARTBEAT_SAMPLING_EDB0331F =
+          "ConfigNode leader 正在等待集群心跳采样。";
+  public static final String
+      MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_FIRST_HEARTBEAT_FROM_REGISTERED_CONFIGNODES_DATANODES_ARG_2FD3F6FA =
+          "ConfigNode leader 正在等待已注册的 ConfigNode/DataNode 的首次心跳：%s";
+  public static final String MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_ARE_NOT_STARTED_1C75DB82 =
+      "ConfigNode leader 的负载服务尚未启动。";
+  public static final String
+      MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_ARE_READY_AFTER_WAITING_ARGMS_FOR_FIRST_HEARTBEAT_MISSING_HEARTBEATS_ARG_F8B81CAB =
+          "等待首次心跳 %s 毫秒后，ConfigNode leader 的负载服务已就绪。缺失的心跳：%s";
+  public static final String MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_ARE_READY_CC9C90E7 =
+      "ConfigNode leader 的负载服务已就绪。";
+  public static final String MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_ARE_STOPPED_5884BB0F =
+      "ConfigNode leader 的负载服务已停止。";
+  public static final String MESSAGE_ERROR_DATABASE_NAME_35C4F124 = "数据库名称错误";
+  public static final String MESSAGE_FAILED_TO_ALTER_PIPE_ARG_FAILURES_ARG_DOES_NOT_EXIST_169BDB85 =
+      "修改 pipe %s 失败。原因：%s 不存在。";
+  public static final String
+      MESSAGE_FAILED_TO_ARG_DATABASE_THE_ARG_CAN_ONLY_BE_SET_WHEN_ARG_REGION_GROUP_EXTENSION_POLICY_IS_CUSTOM_F90B15BA =
+          "%s 数据库失败。%s 仅可在 %s_region_group_extension_policy 为 CUSTOM 时设置。";
+  public static final String MESSAGE_FAILED_TO_DROP_PIPE_ARG_FAILURES_ARG_DOES_NOT_EXIST_19C2ECB1 =
+      "删除 pipe %s 失败。原因：%s 不存在。";
+  public static final String
+      MESSAGE_FAILED_TO_DROP_PIPE_PLUGIN_ARG_FAILURES_ARG_DOES_NOT_EXIST_E7932165 =
+          "删除 pipe 插件 %s 失败。原因：%s 不存在。";
+  public static final String
+      MESSAGE_FAILED_TO_DROP_SUBSCRIPTION_ARG_FAILURES_ARG_DOES_NOT_EXIST_5F1F04CF =
+          "删除订阅 %s 失败。原因：%s 不存在。";
+  public static final String MESSAGE_FAILED_TO_DROP_TOPIC_ARG_FAILURES_ARG_DOES_NOT_EXIST_BE8DCA00 =
+      "删除主题 %s 失败。原因：%s 不存在。";
+  public static final String
+      MESSAGE_FAILED_TO_EXECUTE_CREATEPIPEPLUGIN_ARG_ON_CONFIG_NODES_BECAUSE_OF_ARG_BD0C8727 =
+          "在 ConfigNode 上执行 createPipePlugin(%s) 失败，原因是 %s";
+  public static final String
+      MESSAGE_FAILED_TO_EXECUTE_DROPPIPEPLUGIN_ARG_ON_CONFIG_NODES_BECAUSE_OF_ARG_21A255A2 =
+          "在 ConfigNode 上执行 dropPipePlugin(%s) 失败，原因是 %s";
+  public static final String
+      MESSAGE_FAILED_TO_RECOVER_CONFIGNODE_BECAUSE_THERE_EXISTS_DATA_FROM_AN_OLDER_INCOMPATIBLE_VERSION_WILL_SHUTDOWN_SOON_PLEASE_DELETE_ALL_DATA_AND_THEN_RESTART_AGAIN_42C9C4F7 =
+          "恢复 ConfigNode 失败，存在来自较旧且不兼容版本的数据，即将关闭。请删除所有数据后重新启动。";
+  public static final String MESSAGE_FAILED_TO_START_PIPE_ARG_FAILURES_ARG_DOES_NOT_EXIST_F13A63EE =
+      "启动 pipe %s 失败。原因：%s 不存在。";
+  public static final String MESSAGE_FAILED_TO_STOP_PIPE_ARG_FAILURES_ARG_DOES_NOT_EXIST_8FB85886 =
+      "停止 pipe %s 失败。原因：%s 不存在。";
+  public static final String
+      MESSAGE_FAILED_TO_SYNC_TEMPLATE_ARG_EXTENSION_INFO_TO_DATANODE_ARG_66326847 =
+          "同步模板 %s 的扩展信息到 DataNode %s 失败";
+  public static final String
+      MESSAGE_MEASUREMENT_ARG_ALREADY_EXIST_IN_SCHEMAENGINE_TEMPLATE_ARG_26339B5F =
+          "测点 %s 已存在于 schemaengine 模板 %s 中";
+  public static final String MESSAGE_NO_TEMPLATE_ON_ARG_C7AA69D1 = "%s 上未设置模板";
+  public static final String MESSAGE_SEAL_CONFIG_REGION_SNAPSHOT_ARG_ERROR_SOCKET_ARG_42098622 =
+      "封装 ConfigRegion 快照 %s 出错。Socket：%s。";
+  public static final String
+      MESSAGE_SEAL_CONFIG_REGION_SNAPSHOT_FILE_ARG_ERROR_RESULT_STATUS_ARG_D89B8A5A =
+          "封装 ConfigRegion 快照文件 %s 出错，结果状态：%s。";
+  public static final String MESSAGE_SOME_OTHER_TASK_IS_DELETING_DATABASE_ARG_7BDB2C0F =
+      "其他任务正在删除数据库 %s";
+  public static final String MESSAGE_TABLE_ARG_ARG_DOES_NOT_EXIST_8D6D421C = "表 '%s.%s' 不存在";
+  public static final String
+      MESSAGE_TABLE_ARG_ARG_IS_A_BASE_TABLE_DOES_NOT_SUPPORT_ALTER_VIEW_75E0E7D2 =
+          "表 '%s.%s' 是基表，不支持 alter view";
+  public static final String
+      MESSAGE_TABLE_ARG_ARG_IS_A_TREE_VIEW_TABLE_DOES_NOT_SUPPORT_ALTER_TABLE_931AAA09 =
+          "表 '%s.%s' 是树模型视图表，不支持 alter table";
+  public static final String
+      MESSAGE_TEMPLATE_ARG_HAS_BEEN_SET_ON_MTREE_CANNOT_BE_DROPPED_NOW_B8AC5437 =
+          "模板 [%s] 已设置到 MTree 上，目前无法删除。";
+  public static final String MESSAGE_THE_NEW_COLUMN_NAME_ARG_ALREADY_EXISTS_726B75C0 = "新列名 %s 已存在";
+  public static final String MESSAGE_THE_RENAMING_FOR_TIME_COLUMN_IS_NOT_SUPPORTED_409B946E =
+      "不支持重命名时间列。";
+  public static final String
+      MESSAGE_TRANSFER_CONFIG_REGION_WRITE_PLAN_ARG_ERROR_RESULT_STATUS_ARG_E5CA3333 =
+          "传输 ConfigRegion 写入计划 %s 出错，结果状态：%s。";
+  public static final String
+      MESSAGE_TRANSFER_CONFIG_REGION_WRITE_PLAN_ARG_ERROR_SOCKET_ARG_543F8727 =
+          "传输 ConfigRegion 写入计划 %s 出错。Socket：%s。";
+  public static final String MESSAGE_UNDEFINED_TEMPLATE_NAME_ARG_35357209 = "未定义的模板名：%s";
+
   private ManagerMessages() {}
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages

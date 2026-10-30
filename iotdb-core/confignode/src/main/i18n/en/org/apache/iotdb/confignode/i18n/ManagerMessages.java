@@ -568,6 +568,183 @@ public final class ManagerMessages {
   public static final String LOG_COULD_NOT_CONFIRM_A_CONFIGNODE_LEADER_OTHER_THAN_ARG_AFTER_ATTEMPTING_TO_TRANSFER_LEADERSHIP_TO_ARG_TRYING_ANOTHER_CANDIDATE_91EF68C1 = "Could not confirm a ConfigNode leader other than {} after attempting to transfer leadership to {}, trying another candidate.";
   public static final String LOG_STOPPED_RETRYING_CONFIGNODE_LEADER_TRANSFER_BECAUSE_THE_REMAINING_RPC_TIMEOUT_IS_INSUFFICIENT_6429A49C = "Stopped retrying ConfigNode leader transfer because the remaining RPC timeout is insufficient.";
 
+  public static final String
+      EXCEPTION_FAILED_TO_ALTER_CONSUMER_GROUP_BECAUSE_THE_CONSUMER_GROUP_ARG_DOES_NOT_EXIST_AEB27705 =
+          "Failed to alter consumer group because the consumer group %s does not exist";
+  public static final String EXCEPTION_FAILED_TO_ALTER_PIPE_ARG_ARG_D38CC9FA =
+      "Failed to alter pipe %s, %s";
+  public static final String
+      EXCEPTION_FAILED_TO_ALTER_TOPIC_ARG_CHANGING_ARG_IS_NOT_SUPPORTED_BECAUSE_EXISTING_CONSENSUS_QUEUES_DO_NOT_HOT_REFRESH_RETENTION_STATE_B84442B9 =
+          "Failed to alter topic %s, changing %s is not supported because existing consensus queues"
+              + " do not hot-refresh retention state";
+  public static final String
+      EXCEPTION_FAILED_TO_ALTER_TOPIC_ARG_CHANGING_ARG_IS_NOT_SUPPORTED_BECAUSE_EXISTING_SUBSCRIPTION_RUNTIMES_DO_NOT_HOT_REFRESH_SOURCE_MODE_F27410E6 =
+          "Failed to alter topic %s, changing %s is not supported because existing subscription"
+              + " runtimes do not hot-refresh source mode";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_PIPE_THE_PIPE_ARG_PLUGIN_ARG_FAILED_TO_LOAD_ARG_EBEB74CC =
+          "Failed to create or alter pipe, the pipe %s plugin %s failed to load: %s";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_PIPE_THE_PIPE_CONNECTOR_PLUGIN_ARG_DOES_NOT_EXIST_4FC620C9 =
+          "Failed to create or alter pipe, the pipe connector plugin %s does not exist";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_PIPE_THE_PIPE_EXTRACTOR_PLUGIN_ARG_DOES_NOT_EXIST_70C3F187 =
+          "Failed to create or alter pipe, the pipe extractor plugin %s does not exist";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_PIPE_THE_PIPE_PROCESSOR_PLUGIN_ARG_DOES_NOT_EXIST_6C22D67D =
+          "Failed to create or alter pipe, the pipe processor plugin %s does not exist";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_ARG_IS_ONLY_SUPPORTED_WHEN_ARG_ARG_BUT_CURRENT_VALUE_IS_ARG_7C765172 =
+          "Failed to create or alter topic, %s=%s is only supported when %s=%s, but current value"
+              + " is %s";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_ARG_ONLY_SUPPORTS_ARG_ARG_93A39567 =
+          "Failed to create or alter topic, %s=%s only supports %s=%s";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ILLEGAL_ARG_ARG_EXPECTED_A_LONG_VALUE_BFF2A1CF =
+          "Failed to create or alter topic, illegal %s=%s, expected a long value";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_UNSUPPORTED_ARG_ARG_EXPECTED_ONE_OF_ARG_ARG_ARG_9016126E =
+          "Failed to create or alter topic, unsupported %s=%s, expected one of [%s, %s, %s]";
+  public static final String EXCEPTION_FAILED_TO_CREATE_PIPE_ARG_ARG_405A2E6F =
+      "Failed to create pipe %s, %s";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_PIPE_CONSUMER_ARG_IN_CONSUMER_GROUP_ARG_THE_CONSUMER_WITH_THE_SAME_NAME_HAS_BEEN_CREATED_40DD2127 =
+          "Failed to create pipe consumer %s in consumer group %s, the consumer with the same name"
+              + " has been created";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_TOPIC_ARG_THE_TOPIC_WITH_THE_SAME_NAME_HAS_BEEN_CREATED_E20FE8BF =
+          "Failed to create topic %s, the topic with the same name has been created";
+  public static final String
+      EXCEPTION_FAILED_TO_DROP_PIPE_CONSUMER_ARG_IN_CONSUMER_GROUP_ARG_THE_CONSUMER_DOES_NOT_EXIST_5C5F241B =
+          "Failed to drop pipe consumer %s in consumer group %s, the consumer does not exist";
+  public static final String
+      EXCEPTION_FAILED_TO_DROP_TOPIC_ARG_THE_TOPIC_IS_SUBSCRIBED_BY_SOME_CONSUMERS_94D34E76 =
+          "Failed to drop topic %s, the topic is subscribed by some consumers";
+  public static final String
+      EXCEPTION_FAILED_TO_SUBSCRIBE_BECAUSE_THE_CONSUMER_ARG_IN_CONSUMER_GROUP_ARG_DOES_NOT_EXIST_FA5503BB =
+          "Failed to subscribe because the consumer %s in consumer group %s does not exist";
+  public static final String
+      EXCEPTION_FAILED_TO_SUBSCRIBE_BECAUSE_THE_TOPIC_ARG_DOES_NOT_EXIST_557114A7 =
+          "Failed to subscribe because the topic %s does not exist";
+  public static final String
+      EXCEPTION_FAILED_TO_UNSUBSCRIBE_BECAUSE_THE_CONSUMER_ARG_IN_CONSUMER_GROUP_ARG_DOES_NOT_EXIST_C4E1530D =
+          "Failed to unsubscribe because the consumer %s in consumer group %s does not exist";
+  public static final String
+      EXCEPTION_FAILED_TO_UNSUBSCRIBE_BECAUSE_THE_TOPIC_ARG_DOES_NOT_EXIST_DA0E75DD =
+          "Failed to unsubscribe because the topic %s does not exist";
+  public static final String EXCEPTION_INVALID_TABLE_STATUS_ARG_172413CC =
+      "Invalid table status %s";
+  public static final String
+      EXCEPTION_PIPEPLUGIN_ARG_IS_ALREADY_USED_BY_PIPE_ARG_AS_A_PROCESSOR_FA9F027E =
+          "PipePlugin '%s' is already used by Pipe '%s' as a processor.";
+  public static final String
+      EXCEPTION_PIPEPLUGIN_ARG_IS_ALREADY_USED_BY_PIPE_ARG_AS_A_SINK_A438625C =
+          "PipePlugin '%s' is already used by Pipe '%s' as a sink.";
+  public static final String
+      EXCEPTION_PIPEPLUGIN_ARG_IS_ALREADY_USED_BY_PIPE_ARG_AS_A_SOURCE_BA47AEF4 =
+          "PipePlugin '%s' is already used by Pipe '%s' as a source.";
+  public static final String
+      EXCEPTION_PIPEPLUGIN_ARG_IS_ALREADY_USED_BY_TOPIC_ARG_AS_A_PROCESSOR_02306DD3 =
+          "PipePlugin '%s' is already used by Topic '%s' as a processor.";
+  public static final String LOG_FAILED_TO_GET_DEVICE_VIEW_FIELD_TYPE_ON_REGION_ARG_317F545F =
+      "Failed to get device view field type on region {}.";
+  public static final String
+      LOG_FAILED_TO_INVALIDATE_LAST_CACHE_OF_DATABASE_ARG_ON_DATANODE_ARG_STATUS_ARG_E0B53CBD =
+          "Failed to invalidate last cache of database {} on DataNode {}, status: {}";
+  public static final String
+      MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_DEFAULT_ARGREGIONGROUPNUM_ARG_4C00E92C =
+          "%s should be greater than or equal to default %sRegionGroupNum: %d.";
+  public static final String MESSAGE_COLUMN_ARG_ALREADY_EXIST_92F91B6A =
+      "Column '%s' already exist";
+  public static final String MESSAGE_COLUMN_ARG_DOES_NOT_EXIST_FF67AE82 =
+      "Column '%s' does not exist";
+  public static final String
+      MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_CLUSTER_HEARTBEAT_SAMPLING_EDB0331F =
+          "ConfigNode leader is waiting for cluster heartbeat sampling.";
+  public static final String
+      MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_FIRST_HEARTBEAT_FROM_REGISTERED_CONFIGNODES_DATANODES_ARG_2FD3F6FA =
+          "ConfigNode leader is waiting for first heartbeat from registered ConfigNodes/DataNodes:"
+              + " %s";
+  public static final String MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_ARE_NOT_STARTED_1C75DB82 =
+      "ConfigNode leader load services are not started.";
+  public static final String
+      MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_ARE_READY_AFTER_WAITING_ARGMS_FOR_FIRST_HEARTBEAT_MISSING_HEARTBEATS_ARG_F8B81CAB =
+          "ConfigNode leader load services are ready after waiting %sms for first heartbeat."
+              + " Missing heartbeats: %s";
+  public static final String MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_ARE_READY_CC9C90E7 =
+      "ConfigNode leader load services are ready.";
+  public static final String MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_ARE_STOPPED_5884BB0F =
+      "ConfigNode leader load services are stopped.";
+  public static final String MESSAGE_ERROR_DATABASE_NAME_35C4F124 = "Error Database name";
+  public static final String MESSAGE_FAILED_TO_ALTER_PIPE_ARG_FAILURES_ARG_DOES_NOT_EXIST_169BDB85 =
+      "Failed to alter pipe %s. Failures: %s does not exist.";
+  public static final String
+      MESSAGE_FAILED_TO_ARG_DATABASE_THE_ARG_CAN_ONLY_BE_SET_WHEN_ARG_REGION_GROUP_EXTENSION_POLICY_IS_CUSTOM_F90B15BA =
+          "Failed to %s database. The %s can only be set when %s_region_group_extension_policy is"
+              + " CUSTOM.";
+  public static final String MESSAGE_FAILED_TO_DROP_PIPE_ARG_FAILURES_ARG_DOES_NOT_EXIST_19C2ECB1 =
+      "Failed to drop pipe %s. Failures: %s does not exist.";
+  public static final String
+      MESSAGE_FAILED_TO_DROP_PIPE_PLUGIN_ARG_FAILURES_ARG_DOES_NOT_EXIST_E7932165 =
+          "Failed to drop pipe plugin %s. Failures: %s does not exist.";
+  public static final String
+      MESSAGE_FAILED_TO_DROP_SUBSCRIPTION_ARG_FAILURES_ARG_DOES_NOT_EXIST_5F1F04CF =
+          "Failed to drop subscription %s. Failures: %s does not exist.";
+  public static final String MESSAGE_FAILED_TO_DROP_TOPIC_ARG_FAILURES_ARG_DOES_NOT_EXIST_BE8DCA00 =
+      "Failed to drop topic %s. Failures: %s does not exist.";
+  public static final String
+      MESSAGE_FAILED_TO_EXECUTE_CREATEPIPEPLUGIN_ARG_ON_CONFIG_NODES_BECAUSE_OF_ARG_BD0C8727 =
+          "Failed to execute createPipePlugin(%s) on config nodes, because of %s";
+  public static final String
+      MESSAGE_FAILED_TO_EXECUTE_DROPPIPEPLUGIN_ARG_ON_CONFIG_NODES_BECAUSE_OF_ARG_21A255A2 =
+          "Failed to execute dropPipePlugin(%s) on config nodes, because of %s";
+  public static final String
+      MESSAGE_FAILED_TO_RECOVER_CONFIGNODE_BECAUSE_THERE_EXISTS_DATA_FROM_AN_OLDER_INCOMPATIBLE_VERSION_WILL_SHUTDOWN_SOON_PLEASE_DELETE_ALL_DATA_AND_THEN_RESTART_AGAIN_42C9C4F7 =
+          "Failed to recover configNode, because there exists data from an older incompatible"
+              + " version, will shutdown soon. Please delete all data, and then restart again.";
+  public static final String MESSAGE_FAILED_TO_START_PIPE_ARG_FAILURES_ARG_DOES_NOT_EXIST_F13A63EE =
+      "Failed to start pipe %s. Failures: %s does not exist.";
+  public static final String MESSAGE_FAILED_TO_STOP_PIPE_ARG_FAILURES_ARG_DOES_NOT_EXIST_8FB85886 =
+      "Failed to stop pipe %s. Failures: %s does not exist.";
+  public static final String
+      MESSAGE_FAILED_TO_SYNC_TEMPLATE_ARG_EXTENSION_INFO_TO_DATANODE_ARG_66326847 =
+          "Failed to sync template %s extension info to DataNode %s";
+  public static final String
+      MESSAGE_MEASUREMENT_ARG_ALREADY_EXIST_IN_SCHEMAENGINE_TEMPLATE_ARG_26339B5F =
+          "Measurement %s already exist in schemaengine template %s";
+  public static final String MESSAGE_NO_TEMPLATE_ON_ARG_C7AA69D1 = "No template on %s";
+  public static final String MESSAGE_SEAL_CONFIG_REGION_SNAPSHOT_ARG_ERROR_SOCKET_ARG_42098622 =
+      "Seal config region snapshot %s error. Socket %s.";
+  public static final String
+      MESSAGE_SEAL_CONFIG_REGION_SNAPSHOT_FILE_ARG_ERROR_RESULT_STATUS_ARG_D89B8A5A =
+          "Seal config region snapshot file %s error, result status %s.";
+  public static final String MESSAGE_SOME_OTHER_TASK_IS_DELETING_DATABASE_ARG_7BDB2C0F =
+      "Some other task is deleting database %s";
+  public static final String MESSAGE_TABLE_ARG_ARG_DOES_NOT_EXIST_8D6D421C =
+      "Table '%s.%s' does not exist";
+  public static final String
+      MESSAGE_TABLE_ARG_ARG_IS_A_BASE_TABLE_DOES_NOT_SUPPORT_ALTER_VIEW_75E0E7D2 =
+          "Table '%s.%s' is a base table, does not support alter view";
+  public static final String
+      MESSAGE_TABLE_ARG_ARG_IS_A_TREE_VIEW_TABLE_DOES_NOT_SUPPORT_ALTER_TABLE_931AAA09 =
+          "Table '%s.%s' is a tree view table, does not support alter table";
+  public static final String
+      MESSAGE_TEMPLATE_ARG_HAS_BEEN_SET_ON_MTREE_CANNOT_BE_DROPPED_NOW_B8AC5437 =
+          "Template [%s] has been set on MTree, cannot be dropped now.";
+  public static final String MESSAGE_THE_NEW_COLUMN_NAME_ARG_ALREADY_EXISTS_726B75C0 =
+      "The new column name %s already exists";
+  public static final String MESSAGE_THE_RENAMING_FOR_TIME_COLUMN_IS_NOT_SUPPORTED_409B946E =
+      "The renaming for time column is not supported.";
+  public static final String
+      MESSAGE_TRANSFER_CONFIG_REGION_WRITE_PLAN_ARG_ERROR_RESULT_STATUS_ARG_E5CA3333 =
+          "Transfer config region write plan %s error, result status %s.";
+  public static final String
+      MESSAGE_TRANSFER_CONFIG_REGION_WRITE_PLAN_ARG_ERROR_SOCKET_ARG_543F8727 =
+          "Transfer config region write plan %s error. Socket: %s.";
+  public static final String MESSAGE_UNDEFINED_TEMPLATE_NAME_ARG_35357209 =
+      "Undefined template name: %s";
+
   private ManagerMessages() {}
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages

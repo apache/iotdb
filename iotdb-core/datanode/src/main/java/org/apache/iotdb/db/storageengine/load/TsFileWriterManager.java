@@ -304,9 +304,10 @@ final class TsFileWriterManager {
       throw new IOException(
           String.format(
               StorageEngineMessages
-                  .EXCEPTION_LOAD_PIECE_OF_THE_TASK_ARG_ARRIVED_WITHOUT_ITS_CHUNK_PAYLOAD_ARG_04664404,
+                  .EXCEPTION_FAILED_TO_WRITE_A_PIECE_OF_THE_LOAD_TASK_ARG_BECAUSE_THE_PAYLOAD_OF_ITS_CHUNK_IS_ONLY_REFERENCED_AT_ARG_OF_ARG_AND_HAS_NOT_BEEN_READ_BACK_5AE8586E,
               taskDir,
-              incomingRefs.size() + " of " + chunks.size()));
+              incomingRefs.size(),
+              chunks.size()));
     }
 
     final List<ChunkPayloadRef> chunkPayloadRefs = new ArrayList<>(chunks.size());

@@ -373,7 +373,10 @@ public class SubscriptionCoordinator {
           : RpcUtils.getStatus(
               TSStatusCode.TOPIC_NOT_EXIST_ERROR,
               String.format(
-                  "Failed to drop topic %s. Failures: %s does not exist.", topicName, topicName));
+                  ManagerMessages
+                      .MESSAGE_FAILED_TO_DROP_TOPIC_ARG_FAILURES_ARG_DOES_NOT_EXIST_BE8DCA00,
+                  topicName,
+                  topicName));
     }
     return configManager.getProcedureManager().dropTopic(topicName, req.isTableModel);
   }
@@ -467,8 +470,10 @@ public class SubscriptionCoordinator {
           : RpcUtils.getStatus(
               TSStatusCode.TOPIC_NOT_EXIST_ERROR,
               String.format(
-                  "Failed to drop subscription %s. Failures: %s does not exist.",
-                  subscriptionId, subscriptionId));
+                  ManagerMessages
+                      .MESSAGE_FAILED_TO_DROP_SUBSCRIPTION_ARG_FAILURES_ARG_DOES_NOT_EXIST_5F1F04CF,
+                  subscriptionId,
+                  subscriptionId));
     }
     return configManager
         .getProcedureManager()

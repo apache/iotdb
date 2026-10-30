@@ -67,6 +67,23 @@ public final class SchemaMessages {
   // TTL 相关消息
   public static final String NOT_TTL_RULE_SET_FOR = "未设置 TTL 规则：%s";
 
+  public static final String
+      MESSAGE_ILLEGAL_PARAMETERS_DURING_FUNCTIONEXPRESSION_CONSTRUCTION_ARRAY_LENGTH_MISMATCH_1089726C =
+          "构建 FunctionExpression 时参数不合法，数组长度不匹配。";
+  public static final String
+      MESSAGE_THE_DATABASE_NAME_ARG_IS_RESERVED_PLEASE_USE_ANOTHER_VALID_DATABASE_NAME_ECC25B4E =
+          "数据库名 \"%s\" 为保留名称，请使用其他合法的数据库名。";
+  public static final String MESSAGE_THE_LAST_NODE_MUST_BE_5EB138C7 = "最后一个节点必须为 '**'";
+  public static final String
+      MESSAGE_THE_TREE_VIEW_DOES_NOT_SUPPORT_NEED_LAST_CACHE_PROPERTY_F42719A1 =
+          "树模型视图不支持 need_last_cache 属性。";
+  public static final String
+      MESSAGE_THE_WILDCARD_IS_NOT_PERMITTED_TO_SET_BEFORE_THE_LAST_NODE_D7BCF29C =
+          "不允许在最后一个节点之前设置通配符";
+  public static final String
+      MESSAGE_WHEN_THERE_ARE_OBJECT_FIELDS_THE_ARG_ARG_SHALL_NOT_BE_OR_CONTAIN_BBFCE31D =
+          "存在 object 字段时，%s %s 不能为 '.'、'..' 或包含 './'、'.\\'。";
+
   private SchemaMessages() {}
 
   public static final String PATH_DUPLICATED = "路径重复：";

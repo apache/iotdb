@@ -90,13 +90,12 @@ public abstract class AbstractSubscriptionProvider {
   // A commit response echoes accepted contexts and may also carry committed progress.
   private static final int COMMIT_RESPONSE_HEADROOM_FACTOR = 3;
 
-  private static final String STATUS_FORMATTER = "Status code is [%s], status message is [%s].";
   private static final String INTERNAL_ERROR_FORMATTER =
-      "Internal error occurred. " + STATUS_FORMATTER;
+      SubscriptionMessages
+          .EXCEPTION_INTERNAL_ERROR_OCCURRED_STATUS_CODE_IS_ARG_STATUS_MESSAGE_IS_ARG_D35048C4;
   private static final String SUBSCRIPTION_PIPE_TIMEOUT_FORMATTER =
-      "A timeout has occurred in procedures related to the pipe within the subscription procedure. "
-          + "Please manually check the subscription correctness later. "
-          + STATUS_FORMATTER;
+      SubscriptionMessages
+          .EXCEPTION_A_TIMEOUT_HAS_OCCURRED_IN_PROCEDURES_RELATED_TO_THE_PIPE_WITHIN_THE_SUBSCRIPTION_PROCEDURE_PLEASE_MANUALLY_CHECK_THE_SUBSCRIPTION_CORRECTNESS_LATER_STATUS_CODE_IS_ARG_STATUS_MESSAGE_IS_ARG_68B6AC95;
 
   private final SubscriptionSessionWrapper session;
 

@@ -390,7 +390,10 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
       } else {
         LOGGER.info(
             PipeMessages.EXCEPTION_IN_PIPE_TRANSFER_IGNORED,
-            e.getMessage() != null ? " Message: " + e.getMessage() : "");
+            e.getMessage() != null
+                ? String.format(
+                    PipeMessages.MESSAGE_MESSAGE_ARG_F49E6C85, String.valueOf(e.getMessage()))
+                : "");
         clearReferenceCountAndReleaseLastEvent(event);
       }
     }
@@ -404,7 +407,10 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
       LOGGER.info(
           PipeMessages.PIPE_EXCEPTION_IGNORED,
           e.getClass().getSimpleName(),
-          e.getMessage() != null ? " Message: " + e.getMessage() : "");
+          e.getMessage() != null
+              ? String.format(
+                  PipeMessages.MESSAGE_MESSAGE_ARG_F49E6C85, String.valueOf(e.getMessage()))
+              : "");
       clearReferenceCountAndReleaseLastEvent(event);
     }
   }

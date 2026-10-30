@@ -209,7 +209,8 @@ public class IoTDBDataRegionSource extends IoTDBSource {
             Boolean.FALSE.toString())
         .validate(
             args -> (boolean) args[0] || (boolean) args[1],
-            "Should not set both history.enable and realtime.enable to false.",
+            DataNodePipeMessages
+                .EXCEPTION_SHOULD_NOT_SET_BOTH_HISTORY_ENABLE_AND_REALTIME_ENABLE_TO_FALSE_33C36714,
             validator
                 .getParameters()
                 .getBooleanOrDefault(
@@ -552,7 +553,9 @@ public class IoTDBDataRegionSource extends IoTDBSource {
                   dataRegionIdObject,
                   (dataRegion -> {
                     dataRegion.writeLock(
-                        String.format("Pipe: starting %s", IoTDBDataRegionSource.class.getName()));
+                        String.format(
+                            DataNodePipeMessages.MESSAGE_PIPE_STARTING_ARG_A09517B7,
+                            IoTDBDataRegionSource.class.getName()));
                     try {
                       startHistoricalExtractorAndRealtimeExtractor(exceptionHolder);
                     } finally {

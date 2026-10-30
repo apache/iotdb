@@ -79,7 +79,10 @@ public class ImportSchemaTree extends AbstractImportSchema {
     sessionPool.setEnableQueryRedirection(false);
     final File file = new File(targetPath);
     if (!file.isFile() && !file.isDirectory()) {
-      ioTPrinter.println(String.format("Source file or directory %s does not exist", targetPath));
+      ioTPrinter.println(
+          String.format(
+              CliMessages.MESSAGE_SOURCE_FILE_OR_DIRECTORY_ARG_DOES_NOT_EXIST_0299DF95,
+              targetPath));
       System.exit(Constants.CODE_ERROR);
     }
     ImportDataScanTool.setSourceFullPath(targetPath);
@@ -103,7 +106,9 @@ public class ImportSchemaTree extends AbstractImportSchema {
       List<String> headerNames = csvRecords.getHeaderNames();
       Stream<CSVRecord> records = csvRecords.stream();
       if (headerNames.isEmpty()) {
-        ioTPrinter.println(file.getName() + " : Empty file!");
+        ioTPrinter.println(
+            String.format(
+                CliMessages.MESSAGE_ARG_EMPTY_FILE_4366EB0C, String.valueOf(file.getName())));
         return;
       }
       if (!checkHeader(headerNames)) {
@@ -118,7 +123,11 @@ public class ImportSchemaTree extends AbstractImportSchema {
       writeScheme(file.getName(), headerNames, records, failedFilePath);
       processSuccessFile();
     } catch (IOException | IllegalPathException e) {
-      ioTPrinter.println(file.getName() + " : CSV file read exception because: " + e.getMessage());
+      ioTPrinter.println(
+          String.format(
+              CliMessages.EXCEPTION_ARG_CSV_FILE_READ_EXCEPTION_BECAUSE_ARG_4F31CBC1,
+              String.valueOf(file.getName()),
+              String.valueOf(e.getMessage())));
     }
   }
 
@@ -142,7 +151,8 @@ public class ImportSchemaTree extends AbstractImportSchema {
               .collect(Collectors.toList());
       if (CollectionUtils.isNotEmpty(strangers)) {
         ioTPrinter.println(
-            "The header of the CSV file to be imported is illegal. The correct format is \"Timeseries, Alibaba, DataType, Encoding, Compression\"!");
+            CliMessages
+                .MESSAGE_THE_HEADER_OF_THE_CSV_FILE_TO_BE_IMPORTED_IS_ILLEGAL_THE_CORRECT_FORMAT_IS_TIMESERIES_ALIBABA_DATATYPE_ENCODING_COMPRESSION_C429E7C6);
         return false;
       }
     }
@@ -225,29 +235,37 @@ public class ImportSchemaTree extends AbstractImportSchema {
               || path.trim().startsWith(AUDIT_DATABASE)) {
             ioTPrinter.println(
                 String.format(
-                    "Line '%s', column '%s': illegal path %s",
-                    recordObj.getRecordNumber(), headerNames, path));
+                    CliMessages.MESSAGE_LINE_ARG_COLUMN_ARG_ILLEGAL_PATH_ARG_D5C1EBD6,
+                    recordObj.getRecordNumber(),
+                    headerNames,
+                    path));
             failedRecords.add(recordObj.stream().collect(Collectors.toList()));
             failed = true;
           } else if (ObjectUtils.isEmpty(dataType)) {
             ioTPrinter.println(
                 String.format(
-                    "Line '%s', column '%s': '%s' unknown dataType %n",
-                    recordObj.getRecordNumber(), path, dataTypeRaw));
+                    CliMessages.MESSAGE_LINE_ARG_COLUMN_ARG_ARG_UNKNOWN_DATATYPE_N_81E56571,
+                    recordObj.getRecordNumber(),
+                    path,
+                    dataTypeRaw));
             failedRecords.add(recordObj.stream().collect(Collectors.toList()));
             failed = true;
           } else if (ObjectUtils.isEmpty(encodingType)) {
             ioTPrinter.println(
                 String.format(
-                    "Line '%s', column '%s': '%s' unknown encodingType %n",
-                    recordObj.getRecordNumber(), path, encodingTypeRaw));
+                    CliMessages.MESSAGE_LINE_ARG_COLUMN_ARG_ARG_UNKNOWN_ENCODINGTYPE_N_066E2D0D,
+                    recordObj.getRecordNumber(),
+                    path,
+                    encodingTypeRaw));
             failedRecords.add(recordObj.stream().collect(Collectors.toList()));
             failed = true;
           } else if (ObjectUtils.isEmpty(compressionType)) {
             ioTPrinter.println(
                 String.format(
-                    "Line '%s', column '%s': '%s' unknown compressionType %n",
-                    recordObj.getRecordNumber(), path, compressionTypeRaw));
+                    CliMessages.MESSAGE_LINE_ARG_COLUMN_ARG_ARG_UNKNOWN_COMPRESSIONTYPE_N_8E111BB4,
+                    recordObj.getRecordNumber(),
+                    path,
+                    compressionTypeRaw));
             failedRecords.add(recordObj.stream().collect(Collectors.toList()));
             failed = true;
           } else {
@@ -301,12 +319,18 @@ public class ImportSchemaTree extends AbstractImportSchema {
     }
     if (Boolean.TRUE.equals(hasStarted.get())) {
       if (!failedRecords.isEmpty()) {
-        ioTPrinter.println(fileName + " : Import completely fail!");
+        ioTPrinter.println(
+            String.format(
+                CliMessages.MESSAGE_ARG_IMPORT_COMPLETELY_FAIL_9B6F42FD, String.valueOf(fileName)));
       } else {
-        ioTPrinter.println(fileName + " : Import completely successful!");
+        ioTPrinter.println(
+            String.format(
+                CliMessages.MESSAGE_ARG_IMPORT_COMPLETELY_SUCCESSFUL_BB17250E,
+                String.valueOf(fileName)));
       }
     } else {
-      ioTPrinter.println(fileName + " : No records!");
+      ioTPrinter.println(
+          String.format(CliMessages.MESSAGE_ARG_NO_RECORDS_5672039C, String.valueOf(fileName)));
     }
   }
 

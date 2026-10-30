@@ -81,11 +81,16 @@ import java.util.stream.Collectors;
 public class IoTConsensusV2SyncSink extends IoTDBSink {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTConsensusV2SyncSink.class);
   private static final String IOT_CONSENSUS_V2_SYNC_CONNECTION_FAILED_FORMAT =
-      "IoTConsensusV2: syncClient connection to %s:%s failed when %s, because: %s";
-  private static final String TABLET_INSERTION_NODE_SCENARIO = "transfer insertionNode tablet";
-  private static final String TSFILE_SCENARIO = "transfer tsfile";
-  private static final String TABLET_BATCH_SCENARIO = "transfer tablet batch";
-  private static final String DELETION_SCENARIO = "transfer deletion";
+      DataNodePipeMessages
+          .MESSAGE_IOTCONSENSUSV2_SYNCCLIENT_CONNECTION_TO_ARG_ARG_FAILED_WHEN_ARG_BECAUSE_ARG_CE442C2C;
+  private static final String TABLET_INSERTION_NODE_SCENARIO =
+      DataNodePipeMessages.MESSAGE_TRANSFER_INSERTIONNODE_TABLET_EBBF5B0E;
+  private static final String TSFILE_SCENARIO =
+      DataNodePipeMessages.MESSAGE_TRANSFER_TSFILE_17B7453E;
+  private static final String TABLET_BATCH_SCENARIO =
+      DataNodePipeMessages.MESSAGE_TRANSFER_TABLET_BATCH_25EF4F79;
+  private static final String DELETION_SCENARIO =
+      DataNodePipeMessages.MESSAGE_TRANSFER_DELETION_F84E5C8D;
   private final IClientManager<TEndPoint, SyncIoTConsensusV2ServiceClient> syncRetryClientManager;
   private final List<TEndPoint> peers;
   private final int thisDataNodeId;
@@ -316,8 +321,10 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
       receiverStatusHandler.handle(
           status,
           String.format(
-              "IoTConsensusV2 transfer DeletionEvent %s error, result status %s.",
-              pipeDeleteDataNodeEvent.getDeletionResource(), status),
+              DataNodePipeMessages
+                  .MESSAGE_IOTCONSENSUSV2_TRANSFER_DELETIONEVENT_ARG_ERROR_RESULT_STATUS_ARG_DDABBD17,
+              pipeDeleteDataNodeEvent.getDeletionResource(),
+              status),
           pipeDeleteDataNodeEvent.getDeleteDataNode().toString());
     }
 
@@ -395,8 +402,10 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
       receiverStatusHandler.handle(
           status,
           String.format(
-              "IoTConsensusV2 transfer PipeInsertNodeTabletInsertionEvent %s error, result status %s",
-              pipeInsertNodeTabletInsertionEvent, status),
+              DataNodePipeMessages
+                  .MESSAGE_IOTCONSENSUSV2_TRANSFER_PIPEINSERTNODETABLETINSERTIONEVENT_ARG_ERROR_RESULT_STATUS_ARG_1B888854,
+              pipeInsertNodeTabletInsertionEvent,
+              status),
           pipeInsertNodeTabletInsertionEvent.toString());
     }
   }
@@ -469,7 +478,10 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
         && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
       receiverStatusHandler.handle(
           resp.getStatus(),
-          String.format("Seal file %s error, result status %s.", tsFile, resp.getStatus()),
+          String.format(
+              DataNodePipeMessages.MESSAGE_SEAL_FILE_ARG_ERROR_RESULT_STATUS_ARG_FE3B82AC,
+              tsFile,
+              resp.getStatus()),
           tsFile.getName());
     }
 
@@ -564,7 +576,10 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
             && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
           receiverStatusHandler.handle(
               resp.getStatus(),
-              String.format("Transfer file %s error, result status %s.", file, resp.getStatus()),
+              String.format(
+                  DataNodePipeMessages.MESSAGE_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD,
+                  file,
+                  resp.getStatus()),
               file.getName());
         }
       }

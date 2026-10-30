@@ -91,6 +91,59 @@ public final class CliMessages {
       MESSAGE_MULTIPLE_CSV_HEADERS_RESOLVE_TO_THE_SAME_TARGET_COLUMN_99189563 =
           "多个 CSV 表头映射到同一目标列。";
 
+  public static final String EXCEPTION_ARGS_ARGS_ARG_C39A089A = "参数：%s";
+  public static final String EXCEPTION_ARGS_ERROR_ARG_E49DCA27 = "参数错误：%s";
+  public static final String EXCEPTION_ARG_CSV_FILE_READ_EXCEPTION_BECAUSE_ARG_4F31CBC1 =
+      "%s : 读取 CSV 文件异常，原因是：%s";
+  public static final String EXCEPTION_CANNOT_DUMP_FAIL_RESULT_BECAUSE_ARG_5C6E82E0 =
+      "无法导出失败记录，原因是：%s";
+  public static final String EXCEPTION_CANNOT_DUMP_RESULT_BECAUSE_ARG_F78D917B = "无法导出结果，原因是：%s";
+  public static final String EXCEPTION_ENCOUNTER_AN_ERROR_BECAUSE_ARG_484F4B80 = "发生错误，原因是 %s";
+  public static final String EXCEPTION_ENCOUNTER_AN_ERROR_BECAUSE_ARG_49284363 = "发生错误，原因是：%s";
+  public static final String EXCEPTION_IMPORTDATA_THREAD_JOIN_INTERRUPTED_ARG_B94FC04B =
+      "等待 ImportData 线程结束时被中断：%s";
+  public static final String EXCEPTION_PARSE_ERROR_ARG_DA103556 = "解析错误：%s";
+  public static final String EXCEPTION_SQL_FILE_READ_EXCEPTION_BECAUSE_ARG_1626B867 =
+      "读取 SQL 文件异常，原因是：%s";
+  public static final String EXCEPTION_UNEXPECTED_ERROR_OCCURRED_ARG_402FA331 = "发生意外错误：%s";
+  public static final String MESSAGE_ARG_EMPTY_FILE_4366EB0C = "%s : 空文件！";
+  public static final String MESSAGE_ARG_IMPORT_COMPLETELY_FAIL_9B6F42FD = "%s : 导入全部失败！";
+  public static final String MESSAGE_ARG_IMPORT_COMPLETELY_SUCCESSFUL_BB17250E = "%s : 导入全部成功！";
+  public static final String MESSAGE_ARG_NO_RECORDS_5672039C = "%s : 没有记录！";
+  public static final String MESSAGE_ARG_PLEASE_INPUT_PATH_PATTERN_D784AEFD = "%s> 请输入路径模式： ";
+  public static final String
+      MESSAGE_ARG_THE_FILE_NAME_MUST_END_WITH_CSV_WHEN_SQL_DIALECT_TREE_OR_SQL_WHEN_SQL_DIALECT_TABLE_7A2FD49A =
+          "%s : sql_dialect 为 tree 时文件名必须以 \"csv\" 结尾，为 table 时必须以 \"sql\" 结尾！";
+  public static final String MESSAGE_DOES_NOT_SUPPORT_EXPORTING_SYSTEM_DATABASES_ARG_D86F9100 =
+      "不支持导出系统数据库 %s";
+  public static final String MESSAGE_EXPORT_SCHEMA_FAIL_ARG_75FE5946 = "导出元数据失败：%s";
+  public static final String MESSAGE_IMPORT_SCHEMA_FAIL_ARG_609A6D30 = "导入元数据失败：%s";
+  public static final String MESSAGE_LINE_ARG_COLUMN_ARG_ARG_UNKNOWN_COMPRESSIONTYPE_N_8E111BB4 =
+      "行 '%s'，列 '%s'：未知的 compressionType '%s' %n";
+  public static final String MESSAGE_LINE_ARG_COLUMN_ARG_ARG_UNKNOWN_DATATYPE_N_81E56571 =
+      "行 '%s'，列 '%s'：未知的 dataType '%s' %n";
+  public static final String MESSAGE_LINE_ARG_COLUMN_ARG_ARG_UNKNOWN_ENCODINGTYPE_N_066E2D0D =
+      "行 '%s'，列 '%s'：未知的 encodingType '%s' %n";
+  public static final String MESSAGE_LINE_ARG_COLUMN_ARG_ILLEGAL_PATH_ARG_D5C1EBD6 =
+      "行 '%s'，列 '%s'：路径 %s 不合法";
+  public static final String MESSAGE_PLEASE_INPUT_YOUR_KEY_STORE_F2FBBF40 = "请输入 key_store：";
+  public static final String MESSAGE_PLEASE_INPUT_YOUR_KEY_STORE_PWD_D18797A4 =
+      "请输入 key_store_pwd：";
+  public static final String MESSAGE_PLEASE_INPUT_YOUR_PASSWORD_72B23434 = "请输入密码：";
+  public static final String MESSAGE_PLEASE_INPUT_YOUR_TRUST_STORE_387CF139 = "请输入 trust_store：";
+  public static final String MESSAGE_PLEASE_INPUT_YOUR_TRUST_STORE_PWD_F402D8D9 =
+      "请输入 trust_store_pwd：";
+  public static final String MESSAGE_REQUIRED_VALUES_FOR_OPTION_ARG_NOT_PROVIDED_86467CA2 =
+      "未提供选项 '%s' 所需的值";
+  public static final String MESSAGE_SOURCE_FILE_OR_DIRECTORY_ARG_DOES_NOT_EXIST_0299DF95 =
+      "源文件或目录 %s 不存在";
+  public static final String
+      MESSAGE_THE_DATABASE_PARAM_IS_REQUIRED_WHEN_SQL_DIALECT_IS_TABLE_1EFE6DAF =
+          "sql_dialect 为 table 时必须提供 database 参数 ";
+  public static final String
+      MESSAGE_THE_HEADER_OF_THE_CSV_FILE_TO_BE_IMPORTED_IS_ILLEGAL_THE_CORRECT_FORMAT_IS_TIMESERIES_ALIBABA_DATATYPE_ENCODING_COMPRESSION_C429E7C6 =
+          "待导入的 CSV 文件表头不合法，正确格式为 \"Timeseries, Alibaba, DataType, Encoding, Compression\"！";
+
   private CliMessages() {}
 
   // ---------------------------------------------------------------------------

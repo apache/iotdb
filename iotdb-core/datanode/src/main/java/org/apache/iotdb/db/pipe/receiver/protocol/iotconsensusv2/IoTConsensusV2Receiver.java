@@ -209,7 +209,9 @@ public class IoTConsensusV2Receiver {
     final TSStatus status =
         RpcUtils.getStatus(
             TSStatusCode.PIPE_TYPE_ERROR,
-            String.format("IoTConsensusV2 Unknown PipeRequestType %s.", rawRequestType));
+            String.format(
+                DataNodePipeMessages.MESSAGE_IOTCONSENSUSV2_UNKNOWN_PIPEREQUESTTYPE_ARG_47DDDEA7,
+                rawRequestType));
     if (LOGGER.isWarnEnabled()) {
       LOGGER.warn(
           DataNodePipeMessages.IOTCONSENSUSV2_UNKNOWN_PIPEREQUESTTYPE_RESPONSE_STATUS, status);
@@ -225,8 +227,10 @@ public class IoTConsensusV2Receiver {
     if (impl == null) {
       String message =
           String.format(
-              "IoTConsensusV2-PipeName-%s: unexpected consensusGroupId %s",
-              consensusPipeName, groupId);
+              DataNodePipeMessages
+                  .MESSAGE_IOTCONSENSUSV2_PIPENAME_ARG_UNEXPECTED_CONSENSUSGROUPID_ARG_35141E13,
+              consensusPipeName,
+              groupId);
       if (LOGGER.isErrorEnabled()) {
         LOGGER.error(message);
       }
@@ -236,7 +240,8 @@ public class IoTConsensusV2Receiver {
     if (impl.isReadOnly()) {
       String message =
           String.format(
-              "IoTConsensusV2-PipeName-%s: fail to receive because system is read-only.",
+              DataNodePipeMessages
+                  .MESSAGE_IOTCONSENSUSV2_PIPENAME_ARG_FAIL_TO_RECEIVE_BECAUSE_SYSTEM_IS_READ_ONLY_B8647AA5,
               consensusPipeName);
       if (LOGGER.isErrorEnabled()) {
         LOGGER.error(message);
@@ -290,14 +295,19 @@ public class IoTConsensusV2Receiver {
       final TSStatus status =
           RpcUtils.getStatus(
               TSStatusCode.IOT_CONSENSUS_V2_TYPE_ERROR,
-              String.format("Unknown IoTConsensusV2RequestType %s.", rawRequestType));
+              String.format(
+                  DataNodePipeMessages.MESSAGE_UNKNOWN_IOTCONSENSUSV2REQUESTTYPE_ARG_0588B50C,
+                  rawRequestType));
       LOGGER.warn(
           DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_UNKNOWN_PIPEREQUESTTYPE_RESPONSE_STATUS,
           consensusPipeName,
           status);
       return new TIoTConsensusV2TransferResp(status);
     } catch (Exception e) {
-      final String error = String.format("Serialization error during pipe receiving, %s", e);
+      final String error =
+          String.format(
+              DataNodePipeMessages.MESSAGE_SERIALIZATION_ERROR_DURING_PIPE_RECEIVING_ARG_FED63B76,
+              e);
       LOGGER.warn(DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME, consensusPipeName, error, e);
       return new TIoTConsensusV2TransferResp(RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, error));
     }
@@ -374,8 +384,10 @@ public class IoTConsensusV2Receiver {
               RpcUtils.getStatus(
                   TSStatusCode.IOT_CONSENSUS_V2_TRANSFER_FILE_OFFSET_RESET,
                   String.format(
-                      "Request sender to reset file reader's offset from %s to %s.",
-                      req.getStartWritingOffset(), writingFileWriter.length()));
+                      DataNodePipeMessages
+                          .MESSAGE_REQUEST_SENDER_TO_RESET_FILE_READER_S_OFFSET_FROM_ARG_TO_ARG_9E97C709,
+                      req.getStartWritingOffset(),
+                      writingFileWriter.length()));
           LOGGER.warn(
               DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FILE_OFFSET_RESET_REQUESTED_BY,
               consensusPipeName,
@@ -401,7 +413,9 @@ public class IoTConsensusV2Receiver {
         final TSStatus status =
             RpcUtils.getStatus(
                 TSStatusCode.IOT_CONSENSUS_V2_TRANSFER_FILE_ERROR,
-                String.format("Failed to write file piece, because %s", e.getMessage()));
+                String.format(
+                    DataNodePipeMessages.MESSAGE_FAILED_TO_WRITE_FILE_PIECE_BECAUSE_ARG_8932B268,
+                    e.getMessage()));
         try {
           return IoTConsensusV2TransferFilePieceResp.toTIoTConsensusV2TransferResp(
               status, PipeTransferFilePieceResp.ERROR_END_OFFSET);
@@ -439,7 +453,9 @@ public class IoTConsensusV2Receiver {
             RpcUtils.getStatus(
                 TSStatusCode.IOT_CONSENSUS_V2_TRANSFER_FILE_ERROR,
                 String.format(
-                    "Failed to seal file, because writing file %s is not available.", writingFile));
+                    DataNodePipeMessages
+                        .MESSAGE_FAILED_TO_SEAL_FILE_BECAUSE_WRITING_FILE_ARG_IS_NOT_AVAILABLE_ED0C7EC3,
+                    writingFile));
         LOGGER.warn(status.getMessage());
         return new TIoTConsensusV2TransferResp(status);
       }
@@ -494,7 +510,10 @@ public class IoTConsensusV2Receiver {
       return new TIoTConsensusV2TransferResp(
           RpcUtils.getStatus(
               TSStatusCode.IOT_CONSENSUS_V2_TRANSFER_FILE_ERROR,
-              String.format("Failed to seal file %s because %s", writingFile, e.getMessage())));
+              String.format(
+                  DataNodePipeMessages.MESSAGE_FAILED_TO_SEAL_FILE_ARG_BECAUSE_ARG_0005D0C7,
+                  writingFile,
+                  e.getMessage())));
     } catch (LoadFileException e) {
       LOGGER.warn(
           DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_LOAD_FILE_FROM,
@@ -505,7 +524,10 @@ public class IoTConsensusV2Receiver {
       return new TIoTConsensusV2TransferResp(
           RpcUtils.getStatus(
               TSStatusCode.LOAD_FILE_ERROR,
-              String.format("Failed to seal file %s because %s", writingFile, e.getMessage())));
+              String.format(
+                  DataNodePipeMessages.MESSAGE_FAILED_TO_SEAL_FILE_ARG_BECAUSE_ARG_0005D0C7,
+                  writingFile,
+                  e.getMessage())));
     } finally {
       // If the writing file is not sealed successfully, the writing file will be deleted.
       // All pieces of the writing file and its mod (if exists) should be retransmitted by the
@@ -547,8 +569,10 @@ public class IoTConsensusV2Receiver {
             RpcUtils.getStatus(
                 TSStatusCode.IOT_CONSENSUS_V2_TRANSFER_FILE_ERROR,
                 String.format(
-                    "Failed to seal file %s, because writing file %s is not available.",
-                    req.getFileNames(), writingFile));
+                    DataNodePipeMessages
+                        .MESSAGE_FAILED_TO_SEAL_FILE_ARG_BECAUSE_WRITING_FILE_ARG_IS_NOT_AVAILABLE_D07F8563,
+                    req.getFileNames(),
+                    writingFile));
         LOGGER.warn(status.getMessage());
         return new TIoTConsensusV2TransferResp(status);
       }
@@ -575,7 +599,8 @@ public class IoTConsensusV2Receiver {
             RpcUtils.getStatus(
                 TSStatusCode.IOT_CONSENSUS_V2_TRANSFER_FILE_ERROR,
                 String.format(
-                    "Failed to seal file %s, because the number of files is less than 2.",
+                    DataNodePipeMessages
+                        .MESSAGE_FAILED_TO_SEAL_FILE_ARG_BECAUSE_THE_NUMBER_OF_FILES_IS_LESS_THAN_2_33A78E9A,
                     req.getFileNames())));
       }
 
@@ -627,7 +652,7 @@ public class IoTConsensusV2Receiver {
           RpcUtils.getStatus(
               TSStatusCode.IOT_CONSENSUS_V2_TRANSFER_FILE_ERROR,
               String.format(
-                  "Failed to seal file %s because %s",
+                  DataNodePipeMessages.MESSAGE_FAILED_TO_SEAL_FILE_ARG_BECAUSE_ARG_0005D0C7,
                   req.getFileNames(),
                   rootCause == null ? e.getMessage() : rootCause.getMessage())));
     } finally {
@@ -653,7 +678,10 @@ public class IoTConsensusV2Receiver {
       final TSStatus status =
           RpcUtils.getStatus(
               TSStatusCode.IOT_CONSENSUS_V2_TRANSFER_FILE_ERROR,
-              String.format("Failed to seal file %s, the file does not exist.", fileName));
+              String.format(
+                  DataNodePipeMessages
+                      .MESSAGE_FAILED_TO_SEAL_FILE_ARG_THE_FILE_DOES_NOT_EXIST_8ABC8D19,
+                  fileName));
       LOGGER.warn(
           DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_SEAL_FILE_BECAUSE,
           consensusPipeName,
@@ -666,9 +694,11 @@ public class IoTConsensusV2Receiver {
           RpcUtils.getStatus(
               TSStatusCode.IOT_CONSENSUS_V2_TRANSFER_FILE_ERROR,
               String.format(
-                  "Failed to seal file %s, because the length of file is not correct. "
-                      + "The original file has length %s, but receiver file has length %s.",
-                  fileName, fileLength, writingFileWriter.length()));
+                  DataNodePipeMessages
+                      .MESSAGE_FAILED_TO_SEAL_FILE_ARG_BECAUSE_THE_LENGTH_OF_FILE_IS_NOT_CORRECT_THE_ORIGINAL_FILE_HAS_LENGTH_ARG_BUT_RECEIVER_FILE_HAS_LENGTH_ARG_5384E25F,
+                  fileName,
+                  fileLength,
+                  writingFileWriter.length()));
       LOGGER.warn(
           DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_SEAL_FILE_WHEN_1,
           consensusPipeName,
@@ -792,7 +822,10 @@ public class IoTConsensusV2Receiver {
           RpcUtils.getStatus(
               TSStatusCode.IOT_CONSENSUS_V2_TRANSFER_FILE_ERROR,
               String.format(
-                  "Failed to seal file %s, because writing file is %s.", fileName, writingFile));
+                  DataNodePipeMessages
+                      .MESSAGE_FAILED_TO_SEAL_FILE_ARG_BECAUSE_WRITING_FILE_IS_ARG_E5256BEC,
+                  fileName,
+                  writingFile));
       LOGGER.warn(
           DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_SEAL_FILE_BECAUSE_1,
           consensusPipeName,
@@ -806,9 +839,11 @@ public class IoTConsensusV2Receiver {
           RpcUtils.getStatus(
               TSStatusCode.IOT_CONSENSUS_V2_TRANSFER_FILE_ERROR,
               String.format(
-                  "Failed to seal file %s, because the length of file is not correct. "
-                      + "The original file has length %s, but receiver file has length %s.",
-                  fileName, fileLength, writingFileWriter.length()));
+                  DataNodePipeMessages
+                      .MESSAGE_FAILED_TO_SEAL_FILE_ARG_BECAUSE_THE_LENGTH_OF_FILE_IS_NOT_CORRECT_THE_ORIGINAL_FILE_HAS_LENGTH_ARG_BUT_RECEIVER_FILE_HAS_LENGTH_ARG_5384E25F,
+                  fileName,
+                  fileLength,
+                  writingFileWriter.length()));
       LOGGER.warn(
           DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_SEAL_FILE_WHEN,
           consensusPipeName,
@@ -882,7 +917,8 @@ public class IoTConsensusV2Receiver {
       deleteFileOrDirectoryIfExists(
           tsFileWriter.getWritingFile(),
           false,
-          String.format("Update TsFileWriter-%s", tsFileWriter.index));
+          String.format(
+              DataNodePipeMessages.MESSAGE_UPDATE_TSFILEWRITER_ARG_B0877308, tsFileWriter.index));
     }
 
     // Make sure receiver file dir exists
@@ -947,7 +983,9 @@ public class IoTConsensusV2Receiver {
       }
       // Remove exists dir
       deleteFileOrDirectoryIfExists(
-          newReceiverDir, true, "Initial Receiver: delete origin receive dir");
+          newReceiverDir,
+          true,
+          DataNodePipeMessages.LOG_INITIAL_RECEIVER_DELETE_ORIGIN_RECEIVE_DIR_118B3A8A);
 
       if (!newReceiverDir.mkdirs()) {
         LOGGER.warn(
@@ -969,7 +1007,8 @@ public class IoTConsensusV2Receiver {
     // Clear the original receiver file dir if exists
     for (String receiverFileBaseDir : receiveDirs) {
       File receiverDir = new File(receiverFileBaseDir);
-      deleteFileOrDirectoryIfExists(receiverDir, true, "Clear receive dir manually");
+      deleteFileOrDirectoryIfExists(
+          receiverDir, true, DataNodePipeMessages.MESSAGE_CLEAR_RECEIVE_DIR_MANUALLY_9BE91A01);
     }
   }
 
@@ -1081,7 +1120,8 @@ public class IoTConsensusV2Receiver {
         Thread.currentThread().interrupt();
         final String errorStr =
             String.format(
-                "IoTConsensusV2%s: receiver thread get interrupted when waiting for borrowing tsFileWriter.",
+                DataNodePipeMessages
+                    .MESSAGE_IOTCONSENSUSV2ARG_RECEIVER_THREAD_GET_INTERRUPTED_WHEN_WAITING_FOR_BORROWING_TSFILEWRITER_60D5855E,
                 consensusPipeName);
         LOGGER.warn(errorStr);
         throw new RuntimeException(errorStr);
@@ -1172,7 +1212,9 @@ public class IoTConsensusV2Receiver {
                     writingDir,
                     true,
                     String.format(
-                        "TsFileWriter-%s roll to new dir and delete last writing dir", index));
+                        DataNodePipeMessages
+                            .MESSAGE_TSFILEWRITER_ARG_ROLL_TO_NEW_DIR_AND_DELETE_LAST_WRITING_DIR_F4320934,
+                        index));
 
                 if (writingDir.mkdirs()) {
                   LOGGER.info(
@@ -1374,7 +1416,8 @@ public class IoTConsensusV2Receiver {
     deleteFileOrDirectoryIfExists(
         tsFileWriter.getLocalWritingDir(),
         false,
-        String.format("Release TsFileWriter-%s", tsFileWriter.index));
+        String.format(
+            DataNodePipeMessages.MESSAGE_RELEASE_TSFILEWRITER_ARG_B6AA2548, tsFileWriter.index));
     tsFileWriter.setWritingFile(null);
     try {
       tsFileWriter.returnSelf(consensusPipeName);
@@ -1393,10 +1436,11 @@ public class IoTConsensusV2Receiver {
    */
   private class RequestExecutor {
     private static final String MSG_NODE_RESTART_INDEX_STALE =
-        "sender dn restarts before this event was sent here";
+        DataNodePipeMessages.MESSAGE_SENDER_DN_RESTARTS_BEFORE_THIS_EVENT_WAS_SENT_HERE_7B94841A;
     private static final String MSG_PIPE_RESTART_INDEX_STALE =
-        "pipe task restarts before this event was sent here";
-    private static final String MSG_STALE_REPLICATE_INDEX = "replicate index is out dated";
+        DataNodePipeMessages.MESSAGE_PIPE_TASK_RESTARTS_BEFORE_THIS_EVENT_WAS_SENT_HERE_1672EDEB;
+    private static final String MSG_STALE_REPLICATE_INDEX =
+        DataNodePipeMessages.MESSAGE_REPLICATE_INDEX_IS_OUT_DATED_C76CF4A7;
 
     // An ordered set that buffers transfer requests' TCommitId, whose length is not larger than
     // IOT_CONSENSUS_V2_PIPELINE_SIZE.
@@ -1576,7 +1620,9 @@ public class IoTConsensusV2Receiver {
               if (!reqExecutionOrderBuffer.contains(requestMeta)) {
                 return deprecatedResp(
                     String.format(
-                        "%s or %s", MSG_NODE_RESTART_INDEX_STALE, MSG_PIPE_RESTART_INDEX_STALE),
+                        DataNodePipeMessages.MESSAGE_ARG_OR_ARG_6E068B23,
+                        MSG_NODE_RESTART_INDEX_STALE,
+                        MSG_PIPE_RESTART_INDEX_STALE),
                     tCommitId);
               }
               // After waiting timeout, we suppose that the sender will not send any more events at
@@ -1610,7 +1656,8 @@ public class IoTConsensusV2Receiver {
                       new TSStatus(
                           RpcUtils.getStatus(
                               TSStatusCode.IOT_CONSENSUS_V2_WAIT_ORDER_TIMEOUT,
-                              "Waiting for the previous event times out, returns an error to let the sender retry and continue scheduling."));
+                              DataNodePipeMessages
+                                  .LOG_WAITING_FOR_THE_PREVIOUS_EVENT_TIMES_OUT_RETURNS_AN_ERROR_TO_LET_THE_SENDER_RETRY_AND_CONTINUE_SCHEDULING_997EF0B5));
                   // TODO: Turn it to debug after GA
                   LOGGER.info(
                       DataNodePipeMessages.IOTCONSENSUSV2_WAITING_FOR_THE_PREVIOUS_EVENT_TIMES,
@@ -1632,7 +1679,8 @@ public class IoTConsensusV2Receiver {
               return new TIoTConsensusV2TransferResp(
                   RpcUtils.getStatus(
                       TSStatusCode.SHUT_DOWN_ERROR,
-                      "RPC processor is interrupted by shutdown hook when wait on condition!"));
+                      DataNodePipeMessages
+                          .MESSAGE_RPC_PROCESSOR_IS_INTERRUPTED_BY_SHUTDOWN_HOOK_WHEN_WAIT_ON_CONDITION_BD788468));
             }
           }
         }
@@ -1727,7 +1775,8 @@ public class IoTConsensusV2Receiver {
               RpcUtils.getStatus(
                   TSStatusCode.IOT_CONSENSUS_V2_DEPRECATED_REQUEST,
                   String.format(
-                      "IoTConsensusV2 receiver received a deprecated request, which may because %s. Consider to discard it.",
+                      DataNodePipeMessages
+                          .MESSAGE_IOTCONSENSUSV2_RECEIVER_RECEIVED_A_DEPRECATED_REQUEST_WHICH_MAY_BECAUSE_ARG_CONSIDER_TO_DISCARD_IT_6378E4D7,
                       msg)));
       LOGGER.info(
           DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_RECEIVED_A_DEPRECATED_REQUEST_WHICH,

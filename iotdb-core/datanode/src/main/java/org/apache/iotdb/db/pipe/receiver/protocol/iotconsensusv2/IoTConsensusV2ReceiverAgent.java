@@ -100,7 +100,8 @@ public class IoTConsensusV2ReceiverAgent implements ConsensusPipeReceiver {
         new TSStatus(
             RpcUtils.getStatus(
                 TSStatusCode.IOT_CONSENSUS_V2_CLOSE_ERROR,
-                "IoTConsensusV2 receiver received a request after it was closed."));
+                DataNodePipeMessages
+                    .LOG_IOTCONSENSUSV2_RECEIVER_RECEIVED_A_REQUEST_AFTER_IT_WAS_CLOSED_1DD1DE9D));
     LOGGER.info(
         DataNodePipeMessages.IOTCONSENSUSV2_RECEIVE_ON_THE_FLY_NO_EVENT, consensusInfo, tCommitId);
     return new TIoTConsensusV2TransferResp(status);
@@ -123,7 +124,9 @@ public class IoTConsensusV2ReceiverAgent implements ConsensusPipeReceiver {
       final TSStatus status =
           RpcUtils.getStatus(
               TSStatusCode.IOT_CONSENSUS_V2_VERSION_ERROR,
-              String.format("Unknown IoTConsensusV2RequestVersion %s.", reqVersion));
+              String.format(
+                  DataNodePipeMessages.MESSAGE_UNKNOWN_IOTCONSENSUSV2REQUESTVERSION_ARG_24529AC4,
+                  reqVersion));
       LOGGER.warn(
           DataNodePipeMessages.IOTCONSENSUSV2_UNKNOWN_IOTCONSENSUSV2REQUESTVERSION_RESPONSE_STATUS,
           status);

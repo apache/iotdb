@@ -137,7 +137,7 @@ public class DeleteLogicalViewProcedure
     }
     DeleteLogicalViewRegionTaskExecutor<TConstructViewSchemaBlackListReq> constructBlackListTask =
         new DeleteLogicalViewRegionTaskExecutor<TConstructViewSchemaBlackListReq>(
-            "construct view schema engine black list",
+            ProcedureMessages.MESSAGE_CONSTRUCT_VIEW_SCHEMA_ENGINE_BLACK_LIST_780F07B3,
             env,
             targetSchemaRegionGroup,
             CnToDnAsyncRequestType.CONSTRUCT_VIEW_SCHEMA_BLACK_LIST,
@@ -181,7 +181,7 @@ public class DeleteLogicalViewProcedure
   private void deleteViewSchema(final ConfigNodeProcedureEnv env) {
     final DeleteLogicalViewRegionTaskExecutor<TDeleteViewSchemaReq> deleteTimeSeriesTask =
         new DeleteLogicalViewRegionTaskExecutor<>(
-            "delete view in schema engine",
+            ProcedureMessages.MESSAGE_DELETE_VIEW_IN_SCHEMA_ENGINE_4468ABF7,
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
             CnToDnAsyncRequestType.DELETE_VIEW,
@@ -217,7 +217,7 @@ public class DeleteLogicalViewProcedure
       throws IOException, InterruptedException, ProcedureException {
     DeleteLogicalViewRegionTaskExecutor<TRollbackViewSchemaBlackListReq> rollbackStateTask =
         new DeleteLogicalViewRegionTaskExecutor<>(
-            "roll back view schema engine black list",
+            ProcedureMessages.MESSAGE_ROLL_BACK_VIEW_SCHEMA_ENGINE_BLACK_LIST_0408EBAE,
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
             CnToDnAsyncRequestType.ROLLBACK_VIEW_SCHEMA_BLACK_LIST,

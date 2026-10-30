@@ -194,7 +194,9 @@ public class SubscriptionReceiverAgent {
       final TSStatus status =
           RpcUtils.getStatus(
               TSStatusCode.SUBSCRIPTION_VERSION_ERROR,
-              String.format("Unknown PipeSubscribeRequestVersion %s.", reqVersion));
+              String.format(
+                  DataNodePipeMessages.MESSAGE_UNKNOWN_PIPESUBSCRIBEREQUESTVERSION_ARG_CA584E58,
+                  reqVersion));
       LOGGER.warn(
           DataNodePipeMessages
               .PIPE_LOG_SUBSCRIPTION_UNKNOWN_PIPESUBSCRIBEREQUESTVERSION_RESPONSE_56E5D93F,
