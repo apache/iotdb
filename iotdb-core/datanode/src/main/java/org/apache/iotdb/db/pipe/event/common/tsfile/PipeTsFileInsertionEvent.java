@@ -189,7 +189,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     this.tsFile = Objects.isNull(tsFile) ? resource.getTsFile() : tsFile;
 
     final ModificationFile modFile = resource.getModFile();
-    this.isWithMod = isWithMod && modFile.exists();
+    // Historical files and their mods have already been pinned. Compaction may have removed
+    // the original resource before this event is created, so inspect the pinned mods later.
+    this.isWithMod = isWithMod && (isGeneratedByHistoricalExtractor || modFile.exists());
     this.modFile = this.isWithMod ? new File(modFile.getFilePath()) : null;
 
     this.isLoaded = isLoaded;
@@ -364,9 +366,22 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
         PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, creationTime);
     final File originalTsFile = tsFile;
     final File originalModFile = modFile;
+    final boolean originalIsWithMod = isWithMod;
     File increasedTsFile = null;
     boolean increased = false;
     try {
+      if (isGeneratedByHistoricalExtractor) {
+        tsFile =
+            PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+                tsFile, pipeTsFileResourcePipeName);
+        if (isWithMod) {
+          modFile = new File(tsFile + ModificationFile.FILE_SUFFIX);
+          isWithMod = modFile.exists();
+          if (!isWithMod) {
+            modFile = null;
+          }
+        }
+      }
       increasedTsFile =
           PipeDataNodeResourceManager.tsfile()
               .increaseFileReference(tsFile, true, pipeTsFileResourcePipeName);
@@ -389,6 +404,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       }
       tsFile = originalTsFile;
       modFile = originalModFile;
+      isWithMod = originalIsWithMod;
       LOGGER.warn(
           String.format(
               "Increase reference count for TsFile %s or modFile %s error. Holder Message: %s",
