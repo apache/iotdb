@@ -273,7 +273,7 @@ public class ConsensusSubscriptionCommitBroadcastTest {
     assertNotNull(scheduledTask.get());
     scheduledTask.get().run();
 
-    verify(executor, times(2)).schedule(any(Runnable.class), anyLong(), eq(TimeUnit.MILLISECONDS));
+    verify(executor, times(2)).schedule(any(Runnable.class), eq(0L), eq(TimeUnit.MILLISECONDS));
     verify(manager).doBroadcast("group", "topic", REGION, progress(2L), WRITER);
   }
 
