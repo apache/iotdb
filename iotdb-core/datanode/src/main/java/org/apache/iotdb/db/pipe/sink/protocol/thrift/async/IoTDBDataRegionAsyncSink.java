@@ -248,7 +248,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
     transferTsFileClientManager.setPipeInfo(pipeName, creationTime);
 
     if (isTabletBatchModeEnabled) {
-      tabletBatchBuilder = new PipeTransferBatchReqBuilder(parameters);
+      tabletBatchBuilder =
+          new PipeTransferBatchReqBuilder(parameters, clientManager::getLeaderEndPoint);
     }
 
     enableSendTsFileLimit =
