@@ -61,6 +61,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairDataFileScanUtil;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant.InnerSequenceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant.InnerUnsequenceCompactionSelector;
@@ -93,8 +94,10 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -104,6 +107,7 @@ import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.read.reader.IPointReader;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
@@ -119,7 +123,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -2761,5 +2767,175 @@ public class DataRegionTest {
         syncCloseTask.get(10, TimeUnit.SECONDS);
       }
     }
+  }
+
+  /**
+   * The rows of a tablet are expected to be sorted by the client. When they are not, an older row
+   * that follows a newer one must still be written into the unsequence space: classifying it as
+   * sequence would write data older than the device's last flushed time into a new sequence file,
+   * which then overlaps the existing sequence file of the same device.
+   *
+   * <p>The written rows are asserted through the chunk statistics of each file, not only through
+   * the device time index: the index is updated from the first and last row of every inserted range
+   * ({@code TsFileProcessor#insertTablet}), so a range that physically contains an older row can
+   * still be indexed as if it did not, and a resource-index based overlap check would miss it.
+   */
+  @Test
+  public void testOutOfOrderTabletKeepsSequenceSpaceNonOverlapped()
+      throws QueryProcessException, WriteProcessException, IOException {
+    long[] orderedTimes = new long[30];
+    for (int i = 0; i < orderedTimes.length; i++) {
+      orderedTimes[i] = 10 + i;
+    }
+    dataRegion.insertTablet(genTabletWithTimes(orderedTimes));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    // the first row is newer than the device's last flush time, the second one is older
+    dataRegion.insertTablet(genTabletWithTimes(100L, 15L));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    List<TsFileResource> seqFiles = dataRegion.getTsFileManager().getTsFileList(true);
+    List<TsFileResource> unseqFiles = dataRegion.getTsFileManager().getTsFileList(false);
+    List<TsFileResource> overlappedSeqFiles =
+        RepairDataFileScanUtil.checkTimePartitionHasOverlap(seqFiles, false);
+    Assert.assertTrue(
+        "sequence files should not overlap, but got " + overlappedSeqFiles,
+        overlappedSeqFiles.isEmpty());
+    // the written rows themselves: the sequence space keeps 10..39 in the first file and only 100
+    // in the second one, while the older row 15 landed in the unsequence file
+    List<long[]> seqStatistics = new ArrayList<>();
+    for (TsFileResource seqFile : seqFiles) {
+      seqStatistics.add(readFieldStatistics(seqFile));
+    }
+    Assert.assertTrue(
+        "expected a sequence file with 10..39 and one with 100 only, but got "
+            + formatStatistics(seqStatistics),
+        seqStatistics.stream().anyMatch(statistics -> statisticsIs(statistics, 10, 39, 30))
+            && seqStatistics.stream()
+                .anyMatch(statistics -> statisticsIs(statistics, 100, 100, 1)));
+    // the older row must be written into the unsequence space
+    Assert.assertEquals(1, unseqFiles.size());
+    Assert.assertTrue(
+        "the unsequence file should hold only time 15, but got "
+            + formatStatistics(Collections.singletonList(readFieldStatistics(unseqFiles.get(0)))),
+        statisticsIs(readFieldStatistics(unseqFiles.get(0)), 15, 15, 1));
+    Assert.assertEquals(2, seqFiles.size());
+  }
+
+  /**
+   * Once a descending step is seen, every following row is classified on its own, so a row that is
+   * newer than the device's last flush time after the inversion goes back to the sequence space
+   * without creating an overlapping sequence file.
+   */
+  @Test
+  public void testOutOfOrderTabletWithMultipleInversionsKeepsSequenceSpaceNonOverlapped()
+      throws QueryProcessException, WriteProcessException, IOException {
+    long[] orderedTimes = new long[30];
+    for (int i = 0; i < orderedTimes.length; i++) {
+      orderedTimes[i] = 10 + i;
+    }
+    dataRegion.insertTablet(genTabletWithTimes(orderedTimes));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    // sequence, then unsequence, then sequence again
+    dataRegion.insertTablet(genTabletWithTimes(100L, 15L, 200L));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    List<TsFileResource> seqFiles = dataRegion.getTsFileManager().getTsFileList(true);
+    List<TsFileResource> unseqFiles = dataRegion.getTsFileManager().getTsFileList(false);
+    List<TsFileResource> overlappedSeqFiles =
+        RepairDataFileScanUtil.checkTimePartitionHasOverlap(seqFiles, false);
+    Assert.assertTrue(
+        "sequence files should not overlap, but got " + overlappedSeqFiles,
+        overlappedSeqFiles.isEmpty());
+    List<long[]> seqStatistics = new ArrayList<>();
+    for (TsFileResource seqFile : seqFiles) {
+      seqStatistics.add(readFieldStatistics(seqFile));
+    }
+    Assert.assertTrue(
+        "expected a sequence file with 10..39 and one with 100..200, but got "
+            + formatStatistics(seqStatistics),
+        seqStatistics.stream().anyMatch(statistics -> statisticsIs(statistics, 10, 39, 30))
+            && seqStatistics.stream()
+                .anyMatch(statistics -> statisticsIs(statistics, 100, 200, 2)));
+    // only the inverted row goes to the unsequence space
+    Assert.assertEquals(1, unseqFiles.size());
+    Assert.assertTrue(
+        "the unsequence file should hold only time 15, but got "
+            + formatStatistics(Collections.singletonList(readFieldStatistics(unseqFiles.get(0)))),
+        statisticsIs(readFieldStatistics(unseqFiles.get(0)), 15, 15, 1));
+  }
+
+  private static boolean statisticsIs(long[] statistics, long startTime, long endTime, long count) {
+    return statistics[0] == startTime && statistics[1] == endTime && statistics[2] == count;
+  }
+
+  private static String formatStatistics(List<long[]> statisticsList) {
+    StringBuilder builder = new StringBuilder("[");
+    for (int i = 0; i < statisticsList.size(); i++) {
+      if (i > 0) {
+        builder.append(", ");
+      }
+      builder
+          .append("startTime=")
+          .append(statisticsList.get(i)[0])
+          .append(", endTime=")
+          .append(statisticsList.get(i)[1])
+          .append(", count=")
+          .append(statisticsList.get(i)[2]);
+    }
+    return builder.append("]").toString();
+  }
+
+  /**
+   * Returns {startTime, endTime, pointCount} of measurement {@code m1} as recorded by the chunk
+   * statistics of the file, i.e. derived from the data written into it instead of from the device
+   * time index.
+   */
+  private static long[] readFieldStatistics(TsFileResource resource) throws IOException {
+    long startTime = Long.MAX_VALUE;
+    long endTime = Long.MIN_VALUE;
+    long count = 0;
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(resource.getTsFilePath())) {
+      for (IDeviceID device : resource.getDevices()) {
+        TimeseriesMetadata metadata = reader.readDeviceMetadata(device).get("m1");
+        if (metadata == null || metadata.getStatistics() == null) {
+          continue;
+        }
+        Statistics<? extends Serializable> statistics = metadata.getStatistics();
+        startTime = Math.min(startTime, statistics.getStartTime());
+        endTime = Math.max(endTime, statistics.getEndTime());
+        count += statistics.getCount();
+      }
+    }
+    return new long[] {startTime, endTime, count};
+  }
+
+  private static RelationalInsertTabletNode genTabletWithTimes(long... times) {
+    return new RelationalInsertTabletNode(
+        new PlanNodeId("tablet-" + times[0] + "-" + times.length),
+        new PartialPath(new String[] {StatementTestUtils.tableName()}),
+        true,
+        StatementTestUtils.genColumnNames(),
+        StatementTestUtils.genDataTypes(),
+        StatementTestUtils.genMeasurementSchemas(),
+        times,
+        null,
+        genSingleDeviceColumns(times.length),
+        times.length,
+        StatementTestUtils.genColumnCategories());
+  }
+
+  /** All rows belong to the same device, so that their times are classified together. */
+  private static Object[] genSingleDeviceColumns(int rowCnt) {
+    Binary[] ids = new Binary[rowCnt];
+    Binary[] attributes = new Binary[rowCnt];
+    double[] values = new double[rowCnt];
+    for (int i = 0; i < rowCnt; i++) {
+      ids[i] = new Binary("id:0".getBytes(StandardCharsets.UTF_8));
+      attributes[i] = new Binary("attr:0".getBytes(StandardCharsets.UTF_8));
+      values[i] = i;
+    }
+    return new Object[] {ids, attributes, values};
   }
 }

@@ -1355,9 +1355,20 @@ public class DataRegion implements IDataRegionForQuery {
 
     // if is sequence
     boolean isSequence = false;
+    // Rows of a device are expected to arrive in ascending time order. Only then does "all rows
+    // after the first sequence row are sequence rows" hold. If the order is broken, an older row
+    // placed after a newer one must still be written into the unsequence space: classifying it as
+    // sequence would write data older than the device's last flushed time into a new sequence
+    // file, which then overlaps the existing sequence files.
+    boolean timeOrdered = true;
+    long previousTime = Long.MIN_VALUE;
     while (loc < endOffset) {
       long time = insertTabletNode.getTimes()[loc];
       final long timePartitionId = TimePartitionUtils.getTimePartitionId(time);
+      if (time < previousTime) {
+        timeOrdered = false;
+      }
+      previousTime = time;
 
       long lastFlushTime;
       // judge if we should insert sequence
@@ -1368,17 +1379,17 @@ public class DataRegion implements IDataRegionForQuery {
         before = loc;
         beforeTimePartition = timePartitionId;
         isSequence = time > lastFlushTime;
-      } else if (!isSequence) {
+      } else if (!isSequence || !timeOrdered) {
         lastFlushTime = getLastFlushTime(timePartitionId, insertTabletNode.getDeviceID(loc));
-        if (time > lastFlushTime) {
-          // the same partition and switch to sequence data
-          // insert previous range into unsequence
-          updateSplitInfo(splitInfo, beforeTimePartition, false, new int[] {before, loc});
+        boolean rowIsSequence = time > lastFlushTime;
+        if (rowIsSequence != isSequence) {
+          // the same partition and the sequence flag of this row changes
+          updateSplitInfo(splitInfo, beforeTimePartition, isSequence, new int[] {before, loc});
           before = loc;
-          isSequence = true;
+          isSequence = rowIsSequence;
         }
       }
-      // else: the same partition and isSequence not changed, just move the cursor forward
+      // else: the same partition, the rows are in time order and isSequence not changed
       loc++;
     }
 

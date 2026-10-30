@@ -87,7 +87,11 @@ public class IoTDBInsertQueryIT {
         .getConfig()
         .getCommonConfig()
         .setPartitionInterval(1000)
-        .setMemtableSizeThreshold(10000);
+        .setMemtableSizeThreshold(10000)
+        // The out-of-order tablet test needs a sequence file with several pages: when the earlier
+        // file only has one page, the read side merges the overlapping page before the earlier
+        // pages are emitted and the wrong order is masked.
+        .setMaxNumberOfPointsInPage(10);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -163,6 +167,83 @@ public class IoTDBInsertQueryIT {
       // drop tables
       for (int tableId = 1; tableId <= 3; tableId++) {
         statement.execute(String.format(dropTableTemplate, tableId));
+      }
+    }
+  }
+
+  /**
+   * End-to-end check for an {@code INSERT INTO ... SELECT} whose source tablet is not in ascending
+   * time order. The destination device is flushed at time 39, then the query feeds it another
+   * tablet: on the unfixed code the row at time 15 is classified as sequence data, a sequence
+   * TsFile overlapping [10,39] is created, and the query returns 15 after 39 (or twice).
+   *
+   * <p>The out-of-order input depends on the nested-loop cross join emitting the rows in probe
+   * order, i.e. {@code [100, 15]}. If the optimizer ever emits those rows in time order this test
+   * no longer reproduces the situation and would pass trivially; the guards that do not depend on
+   * the plan shape are {@code InsertTabletStatementGeneratorTest} (the tablet is sorted before it
+   * leaves the engine) and {@code
+   * DataRegionTest#testOutOfOrderTabletKeepsSequenceSpaceNonOverlapped} (the storage-layer
+   * classification of an unsorted tablet).
+   *
+   * <p>The first sequence file also has to hold several pages (see {@code
+   * max_number_of_points_in_page} in {@link #setUpClass()}): with a single page the overlapping
+   * page is merged before the earlier pages are emitted, which hides the wrong order as well.
+   */
+  @Test
+  public void testInsertIntoQueryWithOutOfOrderTabletDoesNotOverlapSequenceFiles()
+      throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      statement.execute("CREATE TABLE overlap_dst(id STRING TAG, s INT32 FIELD)");
+      statement.execute("CREATE TABLE overlap_src(id STRING TAG, s INT32 FIELD)");
+
+      for (int time = 10; time <= 39; time++) {
+        statement.execute(
+            String.format("INSERT INTO overlap_dst(time,id,s) VALUES(%d,'x',%d)", time, time));
+      }
+      statement.execute("FLUSH");
+
+      statement.execute("INSERT INTO overlap_src(time,id,s) VALUES(100,'x',1),(15,'x',2)");
+      statement.execute(
+          "INSERT INTO overlap_dst (SELECT b.time, b.id, b.s FROM overlap_src a, overlap_src b "
+              + "WHERE a.id='x' AND b.id='x' AND a.time<>b.time)");
+      statement.execute("FLUSH");
+
+      List<Long> expectedTimes = new ArrayList<>();
+      for (long time = 10; time <= 39; time++) {
+        expectedTimes.add(time);
+      }
+      expectedTimes.add(100L);
+
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT time,s FROM overlap_dst WHERE id='x'")) {
+        List<Long> actualTimes = new ArrayList<>();
+        while (resultSet.next()) {
+          long time = resultSet.getLong(1);
+          actualTimes.add(time);
+          if (time == 15) {
+            Assert.assertEquals(2, resultSet.getInt(2));
+          }
+        }
+        Assert.assertEquals(expectedTimes, actualTimes);
+      }
+
+      // descending: the latest row 100 first, then 39 down to 10
+      List<Long> expectedDescTimes = new ArrayList<>();
+      expectedDescTimes.add(100L);
+      for (long time = 39; time >= 10; time--) {
+        expectedDescTimes.add(time);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT time,s FROM overlap_dst WHERE id='x' ORDER BY time DESC")) {
+        List<Long> actualTimes = new ArrayList<>();
+        while (resultSet.next()) {
+          actualTimes.add(resultSet.getLong(1));
+        }
+        Assert.assertEquals(expectedDescTimes, actualTimes);
       }
     }
   }
