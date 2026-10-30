@@ -42,6 +42,7 @@ import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -2240,6 +2241,23 @@ public class DataRegionTest {
     } catch (final IllegalStateException e) {
       Assert.assertTrue(e.getMessage().contains("is deleted"));
     }
+  }
+
+  @Test
+  public void testDeletedRegionClearsItsPipeProgressIndexes() throws Exception {
+    final TsFileResource resource =
+        new TsFileResource(new File(systemDir, "pipe-progress-index.tsfile"));
+    PipeTsFileEpochProgressIndexKeeper.getInstance()
+        .registerProgressIndex(0, "task-scope", resource);
+    Assert.assertTrue(
+        PipeTsFileEpochProgressIndexKeeper.getInstance()
+            .containsTsFile(0, "task-scope", resource.getTsFilePath()));
+
+    StorageEngine.getInstance().deleteDataRegion(new DataRegionId(0));
+
+    Assert.assertFalse(
+        PipeTsFileEpochProgressIndexKeeper.getInstance()
+            .containsTsFile(0, "task-scope", resource.getTsFilePath()));
   }
 
   public static class DummyDataRegion extends DataRegion {

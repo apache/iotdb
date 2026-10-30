@@ -194,6 +194,8 @@ public final class StorageEngineMessages {
   public static final String REMOVING_DATA_REGION = "正在移除 DataRegion {}";
   public static final String FAILED_TO_DELETE_SNAPSHOT_DIR = "删除快照目录 {} 失败";
   public static final String REMOVED_DATA_REGION = "已移除 DataRegion {}";
+  public static final String LOG_CLEARED_PIPE_PROGRESS_INDEXES_OF_THE_DELETED_DATA_REGION_ARG_DC6E6D9F =
+      "已清理被删除的 DataRegion {} 的 Pipe 进度索引";
   public static final String EXECUTE_LOAD_COMMAND_ERROR = "执行加载命令 {} 出错。";
   public static final String START_REBOOTING_ALL_TIMED_SERVICE = "开始重启所有定时服务。";
   public static final String STOP_ALL_TIMED_SERVICE_AND_RESTART = "所有定时服务已成功停止，正在重启。";

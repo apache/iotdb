@@ -58,6 +58,7 @@ import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeDataRegionAssigner.CompletionToken;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
@@ -882,6 +883,11 @@ public class StorageEngine implements IService {
     if (region != null) {
       LOGGER.info(StorageEngineMessages.REMOVING_DATA_REGION, regionId);
       region.markDeleted();
+      PipeTsFileEpochProgressIndexKeeper.getInstance().clearProgressIndex(regionId.getId());
+      LOGGER.info(
+          StorageEngineMessages
+              .LOG_CLEARED_PIPE_PROGRESS_INDEXES_OF_THE_DELETED_DATA_REGION_ARG_DC6E6D9F,
+          regionId.getId());
       try {
         region.abortCompaction();
         region.syncDeleteDataFiles();

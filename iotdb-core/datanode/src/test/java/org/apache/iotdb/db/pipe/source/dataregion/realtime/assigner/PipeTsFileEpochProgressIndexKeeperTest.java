@@ -135,6 +135,22 @@ public class PipeTsFileEpochProgressIndexKeeperTest {
         keeper.containsTsFile(DATA_REGION_ID, TASK_SCOPE_B, scopeBResource.getTsFilePath()));
   }
 
+  @Test
+  public void testClearProgressIndexRemovesAllTaskScopesOfDataRegion() throws IOException {
+    final TsFileResource scopeAResource = createTsFileResource("clear-a.tsfile", 1L);
+    final TsFileResource scopeBResource = createTsFileResource("clear-b.tsfile", 1L);
+
+    keeper.registerProgressIndex(DATA_REGION_ID, TASK_SCOPE_A, scopeAResource);
+    keeper.registerProgressIndex(DATA_REGION_ID, TASK_SCOPE_B, scopeBResource);
+
+    keeper.clearProgressIndex(DATA_REGION_ID);
+
+    Assert.assertFalse(
+        keeper.containsTsFile(DATA_REGION_ID, TASK_SCOPE_A, scopeAResource.getTsFilePath()));
+    Assert.assertFalse(
+        keeper.containsTsFile(DATA_REGION_ID, TASK_SCOPE_B, scopeBResource.getTsFilePath()));
+  }
+
   private TsFileResource createTsFileResource(final String fileName, final long flushOrderId)
       throws IOException {
     return createTsFileResource(fileName, new SimpleProgressIndex(1, flushOrderId));

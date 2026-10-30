@@ -80,6 +80,10 @@ public class PipeTsFileEpochProgressIndexKeeper {
     }
   }
 
+  public synchronized void clearProgressIndex(final int dataRegionId) {
+    progressIndexKeeper.remove(dataRegionId);
+  }
+
   public synchronized boolean containsTsFile(
       final int dataRegionId, final @Nonnull String taskScopeID, final String tsFilePath) {
     final Map<String, Map<String, TsFileResource>> scopeProgressIndexKeeper =
