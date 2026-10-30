@@ -198,6 +198,12 @@ public class PipeSinkConstant {
               Arrays.asList(
                   CONNECTOR_AIR_GAP_TRANSPORT_TCP_VALUE, CONNECTOR_AIR_GAP_TRANSPORT_UDP_VALUE)));
 
+  public static final String CONNECTOR_AIR_GAP_STRICT_UNIDIRECTIONAL_KEY =
+      "connector.air-gap.strict-unidirectional";
+  public static final String SINK_AIR_GAP_STRICT_UNIDIRECTIONAL_KEY =
+      "sink.air-gap.strict-unidirectional";
+  public static final boolean CONNECTOR_AIR_GAP_STRICT_UNIDIRECTIONAL_DEFAULT_VALUE = false;
+
   public static final String CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_KEY =
       "connector.air-gap.udp.packet-size-bytes";
   public static final String SINK_AIR_GAP_UDP_PACKET_SIZE_KEY =

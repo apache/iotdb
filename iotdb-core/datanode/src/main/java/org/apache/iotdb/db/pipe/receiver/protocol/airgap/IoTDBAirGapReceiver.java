@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapUdpProtocol;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiverAgent;
@@ -296,7 +297,8 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
 
   private void respond(final byte[] response) throws IOException {
     if (currentDatagramSocket != null && currentRemoteSocketAddress != null) {
-      if (currentDatagramRequestId == null) {
+      if (currentDatagramRequestId == null
+          || (currentDatagramRequestId & AirGapUdpProtocol.NO_ACK_REQUEST_ID_MASK) != 0) {
         return;
       }
       final byte[] responseBytes =
