@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.path.AlignedFullPath;
@@ -3512,6 +3513,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
         return getNotLoggedInPipeSubscribeResp();
       }
+      if (!PipeDataNodeAgent.isSubscriptionFeatureEnabled()) {
+        return new TPipeSubscribeResp(
+            RpcUtils.getStatus(
+                TSStatusCode.UNSUPPORTED_OPERATION,
+                PipeMessages
+                    .MESSAGE_SUBSCRIPTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_194CE431),
+            PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+            PipeSubscribeResponseType.ACK.getType());
+      }
 
       return SubscriptionAgent.receiver().handle(req, clientSession.getUsername());
     } finally {
@@ -3663,7 +3673,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
     PipeDataNodeAgent.receiver().thrift().handleClientExit();
     PipeDataNodeAgent.receiver().legacy().handleClientExit();
-    if (COMMON_CONFIG.getSubscriptionEnabled()) {
+    if (COMMON_CONFIG.getSubscriptionEnabled()
+        && PipeDataNodeAgent.isSubscriptionFeatureEnabled()) {
       SubscriptionAgent.receiver().handleClientExit();
     }
   }

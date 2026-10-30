@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiver;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -53,6 +55,34 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 public class SubscriptionReceiverAgentTest {
+
+  @Test
+  public void testRatisRejectsSubscriptionBeforeCreatingReceiver() throws IOException {
+    final String originalConsensus =
+        IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass();
+    try {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+      final SubscriptionReceiverAgent agent =
+          new SubscriptionReceiverAgent(
+              () -> {
+                throw new AssertionError("Receiver must not be created when Ratis is enabled");
+              },
+              false,
+              () -> {
+                throw new AssertionError("Subscription supplier must not be called");
+              });
+
+      Assert.assertEquals(
+          TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
+          agent.handle(createHandshakeRequest("group", "consumer"), "root").getStatus().getCode());
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(originalConsensus);
+    }
+  }
 
   @Test
   public void testDisabledSubscriptionRejectsRequest() throws IOException {

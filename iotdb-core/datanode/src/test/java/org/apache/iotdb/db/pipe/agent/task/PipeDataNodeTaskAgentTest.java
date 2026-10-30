@@ -33,9 +33,15 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.awaitility.Awaitility;
@@ -47,6 +53,7 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -56,6 +63,94 @@ public class PipeDataNodeTaskAgentTest {
 
   private static final int LOCAL_NODE_ID = 1;
   private static final int REGION_ID = 7;
+
+  @Test
+  public void testRatisDetectsPipeDataInsertionOption() throws Exception {
+    final String originalConsensus =
+        IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass();
+    try {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+
+      Assert.assertTrue(
+          PipeDataNodeAgent.isPipeDataInsertionEnabled(
+              Map.of(PipeSourceConstant.EXTRACTOR_INCLUSION_KEY, "schema")));
+      Assert.assertTrue(
+          PipeDataNodeAgent.isPipeDataInsertionEnabled(
+              Map.of(PipeSourceConstant.EXTRACTOR_INCLUSION_KEY, "data.delete")));
+      Assert.assertFalse(
+          PipeDataNodeAgent.isPipeDataInsertionEnabled(
+              Map.of(PipeSourceConstant.EXTRACTOR_INCLUSION_KEY, "data.insert")));
+      Assert.assertFalse(
+          PipeDataNodeAgent.isPipeDataInsertionEnabled(
+              Map.of(PipeSourceConstant.EXTRACTOR_INCLUSION_KEY, "data.insert,data.delete")));
+      for (final Map<String, String> attributes :
+          List.of(
+              Map.<String, String>of(),
+              Map.of("inclusion", "schema"),
+              Map.of("inclusion", "data.delete"),
+              Map.of("source.inclusion", "data.insert.extra"),
+              Map.of("inclusion", "all", "inclusion.exclusion", "data.insert.extra"))) {
+        Assert.assertEquals(
+            attributes.toString(),
+            !DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
+                    new PipeParameters(attributes))
+                .getLeft(),
+            PipeDataNodeAgent.isPipeDataInsertionEnabled(attributes));
+      }
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(originalConsensus);
+    }
+  }
+
+  @Test
+  public void testRatisDoesNotRestoreCompletedSubscriptionBroker() {
+    final String originalConsensus =
+        IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass();
+    final String group = "ratis-completed-snapshot";
+    final PipeDataNodeTaskAgent taskAgent =
+        new PipeDataNodeTaskAgent() {
+          @Override
+          protected boolean isShutdown() {
+            return false;
+          }
+        };
+    try {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+      Assert.assertFalse(SubscriptionAgent.broker().isBrokerExist(group));
+      final PipeMeta meta =
+          new PipeMeta(
+              new PipeStaticMeta(
+                  PipeStaticMeta.SUBSCRIPTION_PIPE_PREFIX + "topic." + group,
+                  1L,
+                  new HashMap<>(
+                      Map.of(SystemConstant.SUBSCRIPTION_EMPTY_SNAPSHOT_COMPLETED_KEY, "true")),
+                  new HashMap<>(),
+                  new HashMap<>(
+                      Map.of(
+                          PipeSinkConstant.SINK_CONSUMER_GROUP_KEY,
+                          group,
+                          PipeSinkConstant.SINK_TOPIC_KEY,
+                          "topic"))),
+              new PipeRuntimeMeta());
+      meta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+
+      Assert.assertNull(taskAgent.handleSinglePipeMetaChanges(meta));
+      Assert.assertFalse(SubscriptionAgent.broker().isBrokerExist(group));
+      Assert.assertTrue(taskAgent.handlePipeMetaChanges(Collections.singletonList(meta)).isEmpty());
+      Assert.assertFalse(SubscriptionAgent.broker().isBrokerExist(group));
+    } finally {
+      SubscriptionAgent.broker().dropBroker(group);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(originalConsensus);
+    }
+  }
 
   @Test
   public void testEmptyPartialMetadataKeepsExistingPipe() throws Exception {

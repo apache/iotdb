@@ -20,10 +20,16 @@
 package org.apache.iotdb.db.pipe.receiver.protocol.legacy;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.i18n.PipeMessages;
+import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.sink.payload.legacy.TsFilePipeData;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
@@ -31,17 +37,21 @@ import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.ZoneId;
 
 public class IoTDBLegacyPipeReceiverAgentTest {
 
@@ -77,6 +87,68 @@ public class IoTDBLegacyPipeReceiverAgentTest {
     CommonDescriptor.getInstance().getConfig().setSyncDir(originalSyncDir);
     if (syncDir != null) {
       org.apache.tsfile.external.commons.io.FileUtils.deleteDirectory(syncDir.toFile());
+    }
+  }
+
+  @Test
+  public void testRatisRejectsFileTransfersButAllowsDeletion() throws Exception {
+    final String originalConsensus =
+        IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass();
+    final NodeStatus originalStatus = CommonDescriptor.getInstance().getConfig().getNodeStatus();
+    final String fileName = "ratis.tsfile";
+    try {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          agent
+              .handshake(
+                  new TSyncIdentityInfo(PIPE_NAME, CREATE_TIME, "UNKNOWN", ""),
+                  REMOTE_ADDRESS,
+                  null,
+                  null)
+              .getCode());
+      final ByteBuffer bytes = ByteBuffer.wrap(new byte[] {1, 2, 3});
+      Assert.assertEquals(
+          TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
+          agent.transportFile(new TSyncTransportMetaInfo(fileName, 0), bytes).getCode());
+      Assert.assertEquals(0, bytes.position());
+      Assert.assertFalse(Files.exists(getFileDataDir().resolve(fileName + ".patch")));
+
+      final Path patch = getFileDataDir().resolve(fileName + ".patch");
+      Files.write(patch, new byte[] {4, 5, 6});
+      Assert.assertEquals(
+          TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
+          agent
+              .transportPipeData(ByteBuffer.wrap(new TsFilePipeData("", fileName, 1).serialize()))
+              .getCode());
+      Assert.assertTrue(Files.exists(patch));
+      Assert.assertFalse(Files.exists(getFileDataDir().resolve(fileName)));
+
+      final ByteArrayOutputStream deletionBytes = new ByteArrayOutputStream();
+      try (final DataOutputStream output = new DataOutputStream(deletionBytes)) {
+        output.writeByte(1);
+        output.writeLong(2L);
+        ReadWriteIOUtils.write("root.sg", output);
+        new Deletion(new MeasurementPath("root.sg.d.s"), 0, 0, 1)
+            .serializeWithoutFileOffset(output);
+      }
+      // The real deletion loader must still be reached under Ratis. Read-only mode gives it a
+      // deterministic error without requiring a running cluster or executing an actual deletion.
+      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+      final TSStatus deletionStatus =
+          agent.transportPipeData(
+              ByteBuffer.wrap(deletionBytes.toByteArray()),
+              new SessionInfo(1L, "root", ZoneId.systemDefault()));
+      Assert.assertEquals(TSStatusCode.PIPESERVER_ERROR.getStatusCode(), deletionStatus.getCode());
+      Assert.assertTrue(
+          deletionStatus.getMessage().contains(DataNodePipeMessages.STORAGE_ENGINE_READONLY));
+    } finally {
+      CommonDescriptor.getInstance().getConfig().setNodeStatus(originalStatus);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(originalConsensus);
     }
   }
 

@@ -19,14 +19,48 @@
 
 package org.apache.iotdb.confignode.manager.pipe.agent;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.pipe.agent.plugin.PipeConfigNodePluginAgent;
 import org.apache.iotdb.confignode.manager.pipe.agent.receiver.IoTDBConfigNodeReceiverAgent;
 import org.apache.iotdb.confignode.manager.pipe.agent.runtime.PipeConfigNodeRuntimeAgent;
 import org.apache.iotdb.confignode.manager.pipe.agent.task.PipeConfigNodeTaskAgent;
 import org.apache.iotdb.confignode.service.ConfigNode;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+
+import java.util.Collections;
+import java.util.Map;
 
 /** {@link PipeConfigNodeAgent} is the entry point of the pipe module in {@link ConfigNode}. */
 public class PipeConfigNodeAgent {
+
+  public static boolean isRatisConsensus() {
+    return ConsensusFactory.RATIS_CONSENSUS.equals(
+        ConfigNodeDescriptor.getInstance().getConf().getDataRegionConsensusProtocolClass());
+  }
+
+  public static boolean isSubscriptionFeatureEnabled() {
+    return !isRatisConsensus();
+  }
+
+  public static boolean isPipeDataInsertionEnabled(final Map<String, String> sourceAttributes) {
+    return isPipeDataInsertionEnabled(
+        new PipeParameters(sourceAttributes == null ? Collections.emptyMap() : sourceAttributes));
+  }
+
+  public static boolean isPipeDataInsertionEnabled(final PipeParameters sourceParameters) {
+    if (!isRatisConsensus()) {
+      return true;
+    }
+    try {
+      return !PipeInclusionOptions.isDataInsertionIncluded(sourceParameters);
+    } catch (final IllegalPathException e) {
+      // Let the normal pipe parameter validation report malformed inclusion options.
+      return true;
+    }
+  }
 
   private final PipeConfigNodeTaskAgent pipeConfigNodeTaskAgent;
   private final PipeConfigNodePluginAgent pipeConfigNodePluginAgent;

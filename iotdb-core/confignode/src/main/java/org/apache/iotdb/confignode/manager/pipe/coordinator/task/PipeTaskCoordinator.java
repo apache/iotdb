@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.coordinator.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.i18n.PipeMessages;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
@@ -31,6 +32,7 @@ import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
@@ -106,6 +108,11 @@ public class PipeTaskCoordinator {
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus createPipe(TCreatePipeReq req) {
+    if (!req.getPipeName().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)
+        && !PipeConfigNodeAgent.isPipeDataInsertionEnabled(req.getExtractorAttributes())) {
+      return pipeDataInsertionDisabledStatus();
+    }
+
     final TSStatus status;
     if (req.getPipeName().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
       status = configManager.getProcedureManager().createConsensusPipe(req);
@@ -235,13 +242,19 @@ public class PipeTaskCoordinator {
                   .EXCEPTION_FAILED_TO_ALTER_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_919F1E2B,
               pipeName));
     }
-    if (!pipeTaskInfo.isPipeExisted(pipeName, isTableModel)) {
+    final PipeMeta currentPipeMeta = pipeTaskInfo.getPipeMetaByPipeName(pipeName, isTableModel);
+    if (currentPipeMeta == null) {
       return isSetIfExistsCondition
           ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
           : RpcUtils.getStatus(
               TSStatusCode.PIPE_NOT_EXIST_ERROR,
               String.format(
                   "Failed to alter pipe %s. Failures: %s does not exist.", pipeName, pipeName));
+    }
+    if (!pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)
+        && !PipeConfigNodeAgent.isPipeDataInsertionEnabled(
+            getUpdatedSourceParameters(req, currentPipeMeta))) {
+      return pipeDataInsertionDisabledStatus();
     }
     req.setIsTableModel(isTableModel);
     final TSStatus status = configManager.getProcedureManager().alterPipe(req);
@@ -282,13 +295,45 @@ public class PipeTaskCoordinator {
                   .EXCEPTION_FAILED_TO_START_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_B41F4638,
               pipeName));
     }
-    if (!pipeTaskInfo.isPipeExisted(pipeName, isTableModel)) {
+    final PipeMeta pipeMeta = pipeTaskInfo.getPipeMetaByPipeName(pipeName, isTableModel);
+    if (pipeMeta == null) {
       return RpcUtils.getStatus(
           TSStatusCode.PIPE_NOT_EXIST_ERROR,
           String.format(
               "Failed to start pipe %s. Failures: %s does not exist.", pipeName, pipeName));
     }
+    if (!pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)
+        && !PipeConfigNodeAgent.isPipeDataInsertionEnabled(
+            pipeMeta.getStaticMeta().getSourceParameters())) {
+      return pipeDataInsertionDisabledStatus();
+    }
     return startPipe(pipeName, isTableModel);
+  }
+
+  private PipeParameters getUpdatedSourceParameters(
+      final TAlterPipeReq req, final PipeMeta currentPipeMeta) {
+    if (req.isReplaceAllExtractorAttributes) {
+      return new PipeParameters(
+          req.getExtractorAttributes() == null
+              ? Collections.emptyMap()
+              : req.getExtractorAttributes());
+    }
+
+    final PipeParameters sourceParameters =
+        new PipeParameters(
+            new HashMap<>(currentPipeMeta.getStaticMeta().getSourceParameters().getAttribute()));
+    if (req.getExtractorAttributes() != null && !req.getExtractorAttributes().isEmpty()) {
+      sourceParameters.addOrReplaceEquivalentAttributes(
+          new PipeParameters(req.getExtractorAttributes()));
+    }
+    return sourceParameters;
+  }
+
+  private TSStatus pipeDataInsertionDisabledStatus() {
+    return RpcUtils.getStatus(
+        TSStatusCode.UNSUPPORTED_OPERATION,
+        PipeMessages
+            .MESSAGE_PIPE_DATA_INSERTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_7D669ECC);
   }
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
