@@ -29,6 +29,9 @@
     <artifactId>iotdb-thrift-confignode</artifactId>
     <name>IoTDB: Protocol: Thrift Config Node</name>
     <description>RPC (Thrift) framework among ConfigNodes.</description>
+    <properties>
+        <thrift.source>confignode.thrift</thrift.source>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -44,26 +47,4 @@
             <version>2.0.11-SNAPSHOT</version>
         </dependency>
     </dependencies>
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>build-helper-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>add-source</id>
-                        <goals>
-                            <goal>add-source</goal>
-                        </goals>
-                        <phase>generate-sources</phase>
-                        <configuration>
-                            <sources>
-                                <source>${project.build.directory}/generated-sources/thrift</source>
-                            </sources>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
 </project>
