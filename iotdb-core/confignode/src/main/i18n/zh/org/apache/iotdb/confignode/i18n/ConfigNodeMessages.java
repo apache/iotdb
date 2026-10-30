@@ -290,6 +290,7 @@ public final class ConfigNodeMessages {
   public static final String FAILED_TO_ON_DATANODE = "在 DataNode {} 上执行 {} 失败，{}";
   public static final String FAILED_TO_ON_DATANODE_EXCEPTION = "在 DataNode: {} 上执行 {} 失败，异常：{}";
   public static final String FAILED_TO_ON_DATANODE_RESPONSE = "在 DataNode: {} 上执行 {} 失败，响应：{}";
+  public static final String FAILED_TO_ON_DATANODE_WITH_STATUS = "执行 {} 失败（DataNode: {}），状态码：{}，信息：{}";
   public static final String FAILED_TO_OPERATE_PIPE = "操作 pipe 失败";
   public static final String FAILED_TO_SET_PIPE_STATUS = "设置 pipe 状态失败";
   public static final String FAILED_TO_SET_PIPE_STATUS_WITH_STOPPED_BY_RUNTIME_EXCEPTION =

@@ -312,6 +312,8 @@ public final class ConfigNodeMessages {
       "Failed to {} on DataNode: {}, exception: {}";
   public static final String FAILED_TO_ON_DATANODE_RESPONSE =
       "Failed to {} on DataNode: {}, response: {}";
+  public static final String FAILED_TO_ON_DATANODE_WITH_STATUS =
+      "Failed to {} on DataNode: {}, code: {}, message: {}";
   public static final String FAILED_TO_OPERATE_PIPE = "Failed to operate pipe";
   public static final String FAILED_TO_SET_PIPE_STATUS = "Failed to set pipe status";
   public static final String FAILED_TO_SET_PIPE_STATUS_WITH_STOPPED_BY_RUNTIME_EXCEPTION =
