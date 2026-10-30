@@ -2686,6 +2686,7 @@ public class ConsensusPrefetchingQueueTest {
         // A slow retention read must not keep the event-map bucket locked by ACK and stall
         // a shared prefetch worker trying to recycle that event.
         executor.submit(() -> recycle.invoke(activeQueue)).get(5, TimeUnit.SECONDS);
+        assertTrue(event.isCommitted());
         assertEquals(0L, activeQueue.getSubscriptionUncommittedEventCount());
         assertEquals(0L, activeQueue.getRetainedTabletBytes());
         assertFalse(ack.isDone());

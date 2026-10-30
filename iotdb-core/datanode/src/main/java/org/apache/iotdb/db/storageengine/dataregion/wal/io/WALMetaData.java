@@ -83,12 +83,17 @@ public class WALMetaData implements SerializedSize {
   }
 
   public WALMetaData(long firstSearchIndex, List<Integer> buffersSize, Set<Long> memTablesId) {
+    this(firstSearchIndex, buffersSize, memTablesId, 0);
+  }
+
+  private WALMetaData(
+      long firstSearchIndex, List<Integer> buffersSize, Set<Long> memTablesId, int entriesNum) {
     this.firstSearchIndex = firstSearchIndex;
     this.buffersSize = buffersSize;
     this.memTablesId = memTablesId;
-    this.physicalTimes = new ArrayList<>();
-    this.nodeIds = new ArrayList<>();
-    this.localSeqs = new ArrayList<>();
+    this.physicalTimes = new ArrayList<>(entriesNum);
+    this.nodeIds = new ArrayList<>(entriesNum);
+    this.localSeqs = new ArrayList<>(entriesNum);
   }
 
   /** Adds an entry without explicit writer progress metadata. */
@@ -249,7 +254,12 @@ public class WALMetaData implements SerializedSize {
         memTablesId.add(buffer.getLong());
       }
     }
-    WALMetaData result = new WALMetaData(firstSearchIndex, buffersSize, memTablesId);
+    WALMetaData result =
+        new WALMetaData(
+            firstSearchIndex,
+            buffersSize,
+            memTablesId,
+            version == WALFileVersion.V3 ? entriesNum : 0);
     // V3 extension: file-level timestamp range + per-entry writer progress metadata
     if (version == WALFileVersion.V3 && buffer.hasRemaining()) {
       result.minDataTs = buffer.getLong();
