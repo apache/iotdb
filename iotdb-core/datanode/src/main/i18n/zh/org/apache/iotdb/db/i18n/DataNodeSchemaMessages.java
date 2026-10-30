@@ -612,6 +612,32 @@ public final class DataNodeSchemaMessages {
   public static final String UPDATED_METADATA_LEASE_FENCE_THRESHOLD =
       "元数据租约隔离阈值已更新为 {} 毫秒";
 
+  public static final String LOG_ARG_TIMESERIES_ARG_IS_REMOVED_FROM_TAG_INVERTED_INDEX_01BC0CE1 =
+      "%s：时间序列 %s 已从 tag 倒排索引中移除， ";
+  public static final String
+      LOG_ARG_TIMESERIES_ARG_S_TAG_INFO_HAS_BEEN_REMOVED_FROM_TAG_INVERTED_INDEX_C6DAD2DF =
+          "%s：时间序列 %s 的 tag 信息已从 tag 倒排索引中移除 ";
+  public static final String
+      LOG_BEFORE_DELETING_IT_TAG_KEY_IS_ARG_TAG_VALUE_IS_ARG_TLOG_OFFSET_IS_ARG_CONTAINS_KEY_B_BE8C6CBC =
+          "删除前，tag 键为 %s，tag 值为 %s，tlog 偏移量为 %d，是否包含键 %b";
+  public static final String LOG_TAG_KEY_IS_ARG_TAG_VALUE_IS_ARG_TLOG_OFFSET_IS_ARG_C1DB5214 =
+      "tag 键为 %s，tag 值为 %s，tlog 偏移量为 %d";
+  public static final String MESSAGE_COULD_SPECIFY_THE_OUTPUT_FILE_AFTER_PARSE_OPTIONAL_9907C287 =
+      "可指定解析后的输出文件（可选）";
+  public static final String MESSAGE_DISPLAY_HELP_INFORMATION_3BBD4899 = "显示帮助信息";
+  public static final String MESSAGE_MLOG_FILE_47096EDD = "mlog 文件";
+  public static final String MESSAGE_NEED_TO_SPECIFY_A_BINARY_MLOG_FILE_TO_PARSE_REQUIRED_2F43690B =
+      "需要指定待解析的二进制 mlog 文件（必填）";
+  public static final String MESSAGE_NEED_TO_SPECIFY_A_PBTREE_FILE_TO_SKETCH_REQUIRED_D40FA676 =
+      "需要指定待查看结构的 pbtree 文件（必填）";
+  public static final String MESSAGE_OUTPUT_TXT_FILE_261FEB25 = "输出 txt 文件";
+  public static final String MESSAGE_PBTREE_FILE_493CA5AD = "pbtree 文件";
+  public static final String MESSAGE_REQUIRED_VALUES_FOR_OPTION_ARG_NOT_PROVIDED_86467CA2 =
+      "未提供选项 '%s' 所需的值";
+  public static final String
+      MESSAGE_TAG_ATTRIBUTE_EXCEEDS_THE_MAX_LENGTH_LIMIT_PLEASE_ENLARGE_TAG_ATTRIBUTE_TOTAL_SIZE_IN_IOTDB_SYSTEM_PROPERTIES_996EA890 =
+          "Tag/Attribute 超过最大长度限制，请增大 iotdb-system.properties 中的 tag_attribute_total_size";
+
   private DataNodeSchemaMessages() {}
   // ---------------------------------------------------------------------------
   // 补充日志消息

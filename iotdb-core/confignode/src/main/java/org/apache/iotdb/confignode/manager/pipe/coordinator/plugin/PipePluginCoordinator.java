@@ -95,8 +95,10 @@ public class PipePluginCoordinator {
           : RpcUtils.getStatus(
               TSStatusCode.DROP_PIPE_PLUGIN_ERROR,
               String.format(
-                  "Failed to drop pipe plugin %s. Failures: %s does not exist.",
-                  pluginName, pluginName));
+                  ManagerMessages
+                      .MESSAGE_FAILED_TO_DROP_PIPE_PLUGIN_ARG_FAILURES_ARG_DOES_NOT_EXIST_E7932165,
+                  pluginName,
+                  pluginName));
     }
     return configManager.getProcedureManager().dropPipePlugin(req);
   }

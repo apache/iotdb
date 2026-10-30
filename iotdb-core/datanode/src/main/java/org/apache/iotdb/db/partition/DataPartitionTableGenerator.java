@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -173,7 +174,9 @@ public class DataPartitionTableGenerator {
                     if (dataPartitionMap.isEmpty()) {
                       LOG.error(DataNodeMiscMessages.FAILED_GENERATE_DATA_PARTITION_TABLE);
                       status = TaskStatus.FAILED;
-                      errorMessage = "DataPartitionMap is empty after processing resource file";
+                      errorMessage =
+                          DataNodeQueryMessages
+                              .MESSAGE_DATAPARTITIONMAP_IS_EMPTY_AFTER_PROCESSING_RESOURCE_FILE_21869447;
                       return;
                     }
 
@@ -195,7 +198,11 @@ public class DataPartitionTableGenerator {
                         dataRegion.getDatabaseName(),
                         e);
                     failedTimePartitions.incrementAndGet();
-                    errorMessage = "Failed to process data region: " + e.getMessage();
+                    errorMessage =
+                        String.format(
+                            DataNodeQueryMessages
+                                .MESSAGE_FAILED_TO_PROCESS_DATA_REGION_ARG_507E9689,
+                            String.valueOf(e.getMessage()));
                   }
                 },
                 executor);
@@ -213,7 +220,10 @@ public class DataPartitionTableGenerator {
     } catch (Exception e) {
       LOG.error(DataNodeMiscMessages.FAILED_GENERATE_DATA_PARTITION_TABLE, e);
       status = TaskStatus.FAILED;
-      errorMessage = "Generation failed: " + e.getMessage();
+      errorMessage =
+          String.format(
+              DataNodeQueryMessages.MESSAGE_GENERATION_FAILED_ARG_E37A62C5,
+              String.valueOf(e.getMessage()));
     }
   }
 

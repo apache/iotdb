@@ -567,6 +567,12 @@ public final class ConfigNodeMessages {
 
   public static final String AUTHENTICATION_FAILED = "认证失败。";
 
+  public static final String
+      EXCEPTION_COUNT_PATHS_USING_TEMPLATE_ERROR_ON_DATANODE_ID_ARG_INTERNALENDPOINT_ARG_ARG_E05E0F5B =
+          "在 DataNode 上统计使用模板的路径数量时出错：{id=%s, internalEndPoint=%s}%s";
+  public static final String EXCEPTION_FAILED_TO_ARG_ON_DATANODE_ARG_EXCEPTION_ARG_87B8946D =
+      "执行 %s 失败，DataNode：%s，异常：%s";
+
   private ConfigNodeMessages() {}
 
   // ---------------------------------------------------------------------------

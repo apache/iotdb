@@ -76,7 +76,10 @@ public class ExportSchemaTree extends AbstractExportSchema {
       sessionDataSet.closeOperationHandle();
       ioTPrinter.println(Constants.EXPORT_COMPLETELY);
     } catch (StatementExecutionException | IoTDBConnectionException | IOException e) {
-      ioTPrinter.println("Cannot dump result because: " + e.getMessage());
+      ioTPrinter.println(
+          String.format(
+              CliMessages.EXCEPTION_CANNOT_DUMP_RESULT_BECAUSE_ARG_F78D917B,
+              String.valueOf(e.getMessage())));
     }
   }
 

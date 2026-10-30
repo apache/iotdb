@@ -60,6 +60,80 @@ public final class StorageEngineMessages {
     public static final String IS_NOT_SUPPORTED =
       " is not supported";
 
+  public static final String EXCEPTION_FAILED_TO_ITERATE_TABLETS_WHILE_LOADING_TSFILE_4E6289F3 =
+      "Failed to iterate tablets while loading TsFile.";
+  public static final String EXCEPTION_USAGE_WALPRINTTOOL_FILE_11D2FB79 =
+      "Usage: WALPrintTool <file>";
+  public static final String MESSAGE_ARG_ARG_GET_FLUSHQUERYLOCK_WRITE_LOCK_687C85BC =
+      "{}: {} get flushQueryLock write lock";
+  public static final String MESSAGE_ARG_ARG_GET_FLUSHQUERYLOCK_WRITE_LOCK_RELEASED_AA87CEE1 =
+      "{}: {} get flushQueryLock write lock released";
+  public static final String MESSAGE_ASYNC_RECOVER_TSFILE_RESOURCE_MEETS_ERROR_EE1393F9 =
+      "async recover tsfile resource meets error.";
+  public static final String MESSAGE_COMPACTION_IN_SEQ_SPACE_IS_NOT_ENABLED_045A20C5 =
+      "Compaction in Seq Space is not enabled";
+  public static final String MESSAGE_COMPACTION_IN_THIS_DATAREGION_IS_NOT_ALLOWED_0549D4A4 =
+      "Compaction in this DataRegion is not allowed.";
+  public static final String MESSAGE_COMPACTION_IN_UNSEQ_SPACE_IS_NOT_ENABLED_952F1A1E =
+      "Compaction in Unseq Space is not enabled";
+  public static final String MESSAGE_DATABASE_ARG_DOES_NOT_EXIST_ON_LOCAL_CC032648 =
+      "Database %s does not exist on local";
+  public static final String
+      MESSAGE_DATABASE_NAME_IS_UNEXPECTEDLY_NULL_FOR_LOADTSFILESTATEMENT_ARG_SKIP_DATA_TYPE_CONVERSION_8D13DC68 =
+          "Database name is unexpectedly null for LoadTsFileStatement: %s. Skip data type"
+              + " conversion.";
+  public static final String MESSAGE_DATAREGION_NOT_EXIST_34C4A229 = "DataRegion not exist";
+  public static final String MESSAGE_DATAREGION_OF_FILES_IS_NOT_CONSISTENT_CFBDEDC4 =
+      "DataRegion of files is not consistent.";
+  public static final String
+      MESSAGE_EVERY_SELECTED_TSFILE_DOES_NOT_CONTAINS_THE_MODS_FILE_EB7EDC38 =
+          "Every selected TsFile does not contains the mods file.";
+  public static final String MESSAGE_FAILED_TO_CLOSE_DATABASE_PROCESSOR_BCBC9A66 =
+      "Failed to close database processor.";
+  public static final String MESSAGE_FAILED_TO_FORCE_CLOSE_PROCESSOR_E380BB3C =
+      "Failed to force close processor.";
+  public static final String MESSAGE_FAILED_TO_SYNC_CLOSE_PROCESSOR_3816A67C =
+      "Failed to sync close processor.";
+  public static final String MESSAGE_INSERTTABLETNODE_ALLMEASUREMENTFAILED_A147C989 =
+      "insertTabletNode allMeasurementFailed";
+  public static final String MESSAGE_LEVEL_OF_FILES_IS_NOT_CONSISTENT_84F11E20 =
+      "Level of files is not consistent.";
+  public static final String MESSAGE_MEET_ERROR_WHEN_SUBMIT_SETTLE_TASK_2F356FA4 =
+      "meet error when submit settle task.";
+  public static final String MESSAGE_NO_MODIFICATION_HAS_BEEN_WRITTEN_TO_THIS_FILE_ARG_21972815 =
+      "No modification has been written to this file[{}]";
+  public static final String MESSAGE_SELECTED_TSFILES_ARE_NOT_CONTINUOUS_853F6027 =
+      "Selected TsFiles are not continuous.";
+  public static final String MESSAGE_SETTLE_BY_CROSS_COMPACTION_IS_NOT_ALLOWED_FD1312E6 =
+      "Settle by cross compaction is not allowed.";
+  public static final String MESSAGE_STORAGEGROUP_OF_FILES_IS_NOT_CONSISTENT_2EA6791C =
+      "StorageGroup of files is not consistent.";
+  public static final String MESSAGE_THE_FILES_TO_SETTLE_IS_NOT_OFFERED_95C7CC1E =
+      "The files to settle is not offered.";
+  public static final String MESSAGE_THE_FILE_NAME_OF_THE_TSFILE_IS_NOT_VALID_ARG_67195C7D =
+      "The File Name of the TsFile is not valid: %s";
+  public static final String MESSAGE_THE_INITIAL_FILE_DOES_NOT_EXIST_AD547B8D =
+      "The initial file does not exist";
+  public static final String MESSAGE_THE_SPECIFIED_FILE_DOES_NOT_EXIST_IN_ARG_EEFC638B =
+      "The specified file does not exist in %s";
+  public static final String MESSAGE_THE_TSFILE_IS_NOT_VALID_ARG_5B5DC96E =
+      "The TsFile is not valid: %s";
+  public static final String MESSAGE_TIMEPARTITION_OF_FILES_IS_NOT_CONSISTENT_AB12799B =
+      "TimePartition of files is not consistent.";
+  public static final String
+      MESSAGE_TOO_MANY_FILES_OFFERED_THE_LIMITED_COUNT_OF_SYSTEM_CONFIG_IS_ARG_THE_INPUT_FILE_COUNT_IS_ARG_85D07B55 =
+          "Too many files offered, the limited count of system config is %s, the input file count"
+              + " is %s";
+  public static final String
+      MESSAGE_UNABLE_TO_FIND_THE_CONFIGURATION_FILE_SOME_MODIFICATIONS_ARE_MADE_ONLY_IN_MEMORY_70BB69F5 =
+          "Unable to find the configuration file. Some modifications are made only in memory.";
+  public static final String MESSAGE_VALIDATE_FAILED_BABCDFC5 = "validate failed,";
+
+  public static final String
+      EXCEPTION_FAILED_TO_WRITE_A_PIECE_OF_THE_LOAD_TASK_ARG_BECAUSE_THE_PAYLOAD_OF_ITS_CHUNK_IS_ONLY_REFERENCED_AT_ARG_OF_ARG_AND_HAS_NOT_BEEN_READ_BACK_5AE8586E =
+          "Failed to write a piece of the LOAD task %s because the payload of its chunk is only"
+              + " referenced at %s of %s and has not been read back.";
+
   private StorageEngineMessages() {}
 
   // ======================== StorageEngine ========================

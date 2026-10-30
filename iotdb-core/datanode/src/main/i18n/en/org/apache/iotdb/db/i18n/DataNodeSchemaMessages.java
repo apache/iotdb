@@ -621,6 +621,33 @@ public final class DataNodeSchemaMessages {
 
   public static final String ILLEGAL_PATH_LOG = "illegal path {}";
 
+  public static final String LOG_ARG_TIMESERIES_ARG_IS_REMOVED_FROM_TAG_INVERTED_INDEX_01BC0CE1 =
+      "%s : TimeSeries %s is removed from tag inverted index, ";
+  public static final String
+      LOG_ARG_TIMESERIES_ARG_S_TAG_INFO_HAS_BEEN_REMOVED_FROM_TAG_INVERTED_INDEX_C6DAD2DF =
+          "%s: TimeSeries %s's tag info has been removed from tag inverted index ";
+  public static final String
+      LOG_BEFORE_DELETING_IT_TAG_KEY_IS_ARG_TAG_VALUE_IS_ARG_TLOG_OFFSET_IS_ARG_CONTAINS_KEY_B_BE8C6CBC =
+          "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b";
+  public static final String LOG_TAG_KEY_IS_ARG_TAG_VALUE_IS_ARG_TLOG_OFFSET_IS_ARG_C1DB5214 =
+      "tag key is %s, tag value is %s, tlog offset is %d";
+  public static final String MESSAGE_COULD_SPECIFY_THE_OUTPUT_FILE_AFTER_PARSE_OPTIONAL_9907C287 =
+      "Could specify the output file after parse (optional)";
+  public static final String MESSAGE_DISPLAY_HELP_INFORMATION_3BBD4899 = "Display help information";
+  public static final String MESSAGE_MLOG_FILE_47096EDD = "mlog file";
+  public static final String MESSAGE_NEED_TO_SPECIFY_A_BINARY_MLOG_FILE_TO_PARSE_REQUIRED_2F43690B =
+      "Need to specify a binary mlog file to parse (required)";
+  public static final String MESSAGE_NEED_TO_SPECIFY_A_PBTREE_FILE_TO_SKETCH_REQUIRED_D40FA676 =
+      "Need to specify a pbtree file to sketch (required)";
+  public static final String MESSAGE_OUTPUT_TXT_FILE_261FEB25 = "output txt file";
+  public static final String MESSAGE_PBTREE_FILE_493CA5AD = "pbtree file";
+  public static final String MESSAGE_REQUIRED_VALUES_FOR_OPTION_ARG_NOT_PROVIDED_86467CA2 =
+      "Required values for option '%s' not provided";
+  public static final String
+      MESSAGE_TAG_ATTRIBUTE_EXCEEDS_THE_MAX_LENGTH_LIMIT_PLEASE_ENLARGE_TAG_ATTRIBUTE_TOTAL_SIZE_IN_IOTDB_SYSTEM_PROPERTIES_996EA890 =
+          "Tag/Attribute exceeds the max length limit. Please enlarge tag_attribute_total_size in"
+              + " iotdb-system.properties";
+
   private DataNodeSchemaMessages() {}
   // ---------------------------------------------------------------------------
   // Additional log messages

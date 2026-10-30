@@ -129,9 +129,10 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataRegionAsyncSink.class);
 
   private static final String THRIFT_ERROR_FORMATTER_WITHOUT_ENDPOINT =
-      "Failed to borrow client from client pool when sending to receiver.";
+      DataNodePipeMessages
+          .MESSAGE_FAILED_TO_BORROW_CLIENT_FROM_CLIENT_POOL_WHEN_SENDING_TO_RECEIVER_99167DD0;
   private static final String THRIFT_ERROR_FORMATTER_WITH_ENDPOINT =
-      "Exception occurred while sending to receiver %s:%s.";
+      DataNodePipeMessages.MESSAGE_EXCEPTION_OCCURRED_WHILE_SENDING_TO_RECEIVER_ARG_ARG_4085B890;
 
   private static final boolean isSplitTSFileBatchModeEnabled = true;
   private static final int MAX_FILE_NOT_FOUND_RETRY_TIMES = 5;
@@ -193,7 +194,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
                 || (boolean) args[2]
                 || (boolean) args[3]
                 || (boolean) args[4]),
-        "Only 'iotdb-thrift-ssl-sink' supports SSL transmission currently.",
+        DataNodePipeMessages
+            .MESSAGE_ONLY_IOTDB_THRIFT_SSL_SINK_SUPPORTS_SSL_TRANSMISSION_CURRENTLY_DFA6F0AD,
         parameters.getBooleanOrDefault(
             Arrays.asList(CONNECTOR_IOTDB_SSL_ENABLE_KEY, SINK_IOTDB_SSL_ENABLE_KEY), false),
         parameters.hasAnyAttributes(

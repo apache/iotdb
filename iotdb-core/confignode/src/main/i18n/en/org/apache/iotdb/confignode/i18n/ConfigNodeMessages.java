@@ -600,6 +600,12 @@ public final class ConfigNodeMessages {
   public static final String ALL_RETRY_FAILED_DUE_TO = "All retry failed due to: ";
 
   public static final String AUTHENTICATION_FAILED = "Authentication failed.";
+  public static final String
+      EXCEPTION_COUNT_PATHS_USING_TEMPLATE_ERROR_ON_DATANODE_ID_ARG_INTERNALENDPOINT_ARG_ARG_E05E0F5B =
+          "Count paths using template error on DataNode: {id=%s, internalEndPoint=%s}%s";
+  public static final String EXCEPTION_FAILED_TO_ARG_ON_DATANODE_ARG_EXCEPTION_ARG_87B8946D =
+      "Failed to %s on DataNode: %s, exception: %s";
+
   private ConfigNodeMessages() {}
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages

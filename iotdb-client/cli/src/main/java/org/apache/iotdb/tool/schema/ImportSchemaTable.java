@@ -66,7 +66,10 @@ public class ImportSchemaTable extends AbstractImportSchema {
     sessionPool = tableSessionPoolBuilder.build();
     final File file = new File(targetPath);
     if (!file.isFile() && !file.isDirectory()) {
-      ioTPrinter.println(String.format("Source file or directory %s does not exist", targetPath));
+      ioTPrinter.println(
+          String.format(
+              CliMessages.MESSAGE_SOURCE_FILE_OR_DIRECTORY_ARG_DOES_NOT_EXIST_0299DF95,
+              targetPath));
       System.exit(Constants.CODE_ERROR);
     }
     SessionDataSet sessionDataSet = null;
@@ -162,7 +165,10 @@ public class ImportSchemaTable extends AbstractImportSchema {
       }
       processSuccessFile();
     } catch (IOException e) {
-      ioTPrinter.println("SQL file read exception because: " + e.getMessage());
+      ioTPrinter.println(
+          String.format(
+              CliMessages.EXCEPTION_SQL_FILE_READ_EXCEPTION_BECAUSE_ARG_1626B867,
+              String.valueOf(e.getMessage())));
     }
     if (!failedRecords.isEmpty()) {
       FileWriter writer = null;
@@ -172,7 +178,10 @@ public class ImportSchemaTable extends AbstractImportSchema {
           writer.write(failedRecord.get(0).toString() + ";\n");
         }
       } catch (IOException e) {
-        ioTPrinter.println("Cannot dump fail result because: " + e.getMessage());
+        ioTPrinter.println(
+            String.format(
+                CliMessages.EXCEPTION_CANNOT_DUMP_FAIL_RESULT_BECAUSE_ARG_5C6E82E0,
+                String.valueOf(e.getMessage())));
       } finally {
         if (ObjectUtils.isNotEmpty(writer)) {
           try {

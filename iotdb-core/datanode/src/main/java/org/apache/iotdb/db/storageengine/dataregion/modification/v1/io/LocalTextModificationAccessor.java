@@ -58,7 +58,7 @@ public class LocalTextModificationAccessor
   private static final Logger logger = LoggerFactory.getLogger(LocalTextModificationAccessor.class);
   private static final String SEPARATOR = ",";
   private static final String NO_MODIFICATION_MSG =
-      "No modification has been written to this file[{}]";
+      StorageEngineMessages.MESSAGE_NO_MODIFICATION_HAS_BEEN_WRITTEN_TO_THIS_FILE_ARG_21972815;
 
   private final String filePath;
   private FileOutputStream fos;

@@ -250,7 +250,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       }
       final String exceptionMessage =
           String.format(
-              "Auto create or verify schema error when executing statement %s. Detail: %s.",
+              DataNodeQueryMessages
+                  .EXCEPTION_AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR_WHEN_EXECUTING_STATEMENT_ARG_DETAIL_ARG_B6C9E02E,
               getStatementString(),
               e.getMessage() == null ? e.getClass().getName() : e.getMessage());
       LOGGER.warn(exceptionMessage, e);
@@ -287,7 +288,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.LOAD_FILE_ERROR,
-              "TsFile encryption is enabled, and the Load TsFile function is disabled"));
+              DataNodeQueryMessages
+                  .MESSAGE_TSFILE_ENCRYPTION_IS_ENABLED_AND_THE_LOAD_TSFILE_FUNCTION_IS_DISABLED_7CB357EE));
       return false;
     }
 
@@ -380,8 +382,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         }
         final String exceptionMessage =
             String.format(
-                "Loading file %s failed. Detail: %s",
-                tsFile.getPath(), e.getMessage() == null ? e.getClass().getName() : e.getMessage());
+                DataNodeQueryMessages.EXCEPTION_LOADING_FILE_ARG_FAILED_DETAIL_ARG_C161A17F,
+                tsFile.getPath(),
+                e.getMessage() == null ? e.getClass().getName() : e.getMessage());
         LOGGER.warn(exceptionMessage, e);
         analysis.setFinishQueryAfterAnalyze(true);
         analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));

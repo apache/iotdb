@@ -563,7 +563,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
     final long startHistoricalExtractionTime = System.currentTimeMillis();
     dataRegion.writeLock(
-        "Pipe: start to extract historical TsFile and Deletion(if uses iotConsensusV2)");
+        DataNodePipeMessages
+            .MESSAGE_PIPE_START_TO_EXTRACT_HISTORICAL_TSFILE_AND_DELETION_IF_USES_IOTCONSENSUSV2_C1603968);
     try {
       List<PersistentResource> originalResourceList = new ArrayList<>();
 

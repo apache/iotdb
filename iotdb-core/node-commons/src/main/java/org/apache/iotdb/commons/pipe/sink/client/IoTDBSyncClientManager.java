@@ -158,17 +158,14 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
     final StringBuilder errorMessage =
         new StringBuilder(
             String.format(
-                "All target servers %s are not available.", endPoint2ClientAndStatus.keySet()));
+                PipeMessages.ALL_TARGET_SERVERS_NOT_AVAILABLE, endPoint2ClientAndStatus.keySet()));
     for (final Map.Entry<TEndPoint, String> entry : endPoint2HandshakeErrorMessage.entrySet()) {
-      errorMessage
-          .append(" (")
-          .append("host: ")
-          .append(entry.getKey().getIp())
-          .append(", port: ")
-          .append(entry.getKey().getPort())
-          .append(", because: ")
-          .append(entry.getValue())
-          .append(")");
+      errorMessage.append(
+          String.format(
+              PipeMessages.EXCEPTION_HOST_ARG_PORT_ARG_BECAUSE_ARG_E9F2BDE7,
+              entry.getKey().getIp(),
+              entry.getKey().getPort(),
+              entry.getValue()));
     }
     throw new PipeConnectionException(errorMessage.toString());
   }
@@ -295,8 +292,9 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         endPoint2HandshakeErrorMessage.put(
             client.getEndPoint(),
             String.format(
-                "code: %d, message: %s",
-                resp.getStatus().getCode(), resp.getStatus().getMessage()));
+                PipeMessages.MESSAGE_CODE_ARG_MESSAGE_ARG_5265299D,
+                resp.getStatus().getCode(),
+                resp.getStatus().getMessage()));
       } else {
         clientAndStatus.setRight(true);
         client.setTimeout(CONNECTION_TIMEOUT_MS.get());
@@ -398,7 +396,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
               pipeName, pipeCreationTime);
     } catch (final IOException e) {
       LOGGER.warn(
-          "Failed to build pipe receiver runtime info cleanup request for pipe {}@{}.",
+          PipeMessages
+              .LOG_FAILED_TO_BUILD_PIPE_RECEIVER_RUNTIME_INFO_CLEANUP_REQUEST_FOR_PIPE_ARG_ARG_982EAA59,
           pipeName,
           pipeCreationTime,
           e);
@@ -419,7 +418,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         final TPipeTransferResp resp = clientAndStatus.getLeft().pipeTransfer(req);
         if (resp == null || resp.getStatus() == null) {
           LOGGER.warn(
-              "Failed to cleanup pipe receiver runtime info for pipe {}@{} on target {}:{}, response is null.",
+              PipeMessages
+                  .LOG_FAILED_TO_CLEANUP_PIPE_RECEIVER_RUNTIME_INFO_FOR_PIPE_ARG_ARG_ON_TARGET_ARG_ARG_RESPONSE_IS_NULL_BDD53753,
               pipeName,
               pipeCreationTime,
               entry.getKey().getIp(),
@@ -427,7 +427,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         } else if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && resp.getStatus().getCode() != TSStatusCode.PIPE_TYPE_ERROR.getStatusCode()) {
           LOGGER.warn(
-              "Failed to cleanup pipe receiver runtime info for pipe {}@{} on target {}:{}, response status: {}.",
+              PipeMessages
+                  .LOG_FAILED_TO_CLEANUP_PIPE_RECEIVER_RUNTIME_INFO_FOR_PIPE_ARG_ARG_ON_TARGET_ARG_ARG_RESPONSE_STATUS_ARG_2AFF0D91,
               pipeName,
               pipeCreationTime,
               entry.getKey().getIp(),
@@ -437,7 +438,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       } catch (final Exception e) {
         clientAndStatus.setRight(false);
         LOGGER.warn(
-            "Failed to cleanup pipe receiver runtime info for pipe {}@{} on target {}:{}.",
+            PipeMessages
+                .LOG_FAILED_TO_CLEANUP_PIPE_RECEIVER_RUNTIME_INFO_FOR_PIPE_ARG_ARG_ON_TARGET_ARG_ARG_ACF5450E,
             pipeName,
             pipeCreationTime,
             entry.getKey().getIp(),

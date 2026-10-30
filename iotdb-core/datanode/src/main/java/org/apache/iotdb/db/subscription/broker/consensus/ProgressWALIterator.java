@@ -570,9 +570,10 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
       return lastError.getMessage();
     }
     if (!skippedBrokenWalVersionIds.isEmpty()) {
-      return "encountered broken retained WAL files during replay scan";
+      return DataNodePipeMessages
+          .MESSAGE_ENCOUNTERED_BROKEN_RETAINED_WAL_FILES_DURING_REPLAY_SCAN_D967E7A5;
     }
-    return "replay scan did not complete";
+    return DataNodePipeMessages.MESSAGE_REPLAY_SCAN_DID_NOT_COMPLETE_8896B727;
   }
 
   @Override

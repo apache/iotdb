@@ -94,13 +94,14 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeSink {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTConsensusV2AsyncSink.class);
   private static final String ENQUEUE_EXCEPTION_MSG =
-      "Timeout: IoTConsensusV2Connector offers an event into transferBuffer failed, because transferBuffer is full.";
+      DataNodePipeMessages
+          .MESSAGE_TIMEOUT_IOTCONSENSUSV2CONNECTOR_OFFERS_AN_EVENT_INTO_TRANSFERBUFFER_FAILED_BECAUSE_TRANSFERBUFFER_IS_FULL_1FB1135B;
   private static final String THRIFT_ERROR_FORMATTER_WITHOUT_ENDPOINT =
-      "Failed to borrow client from client pool or exception occurred "
-          + "when sending to receiver.";
+      DataNodePipeMessages
+          .MESSAGE_FAILED_TO_BORROW_CLIENT_FROM_CLIENT_POOL_OR_EXCEPTION_OCCURRED_WHEN_SENDING_TO_RECEIVER_3069AD54;
   private static final String THRIFT_ERROR_FORMATTER_WITH_ENDPOINT =
-      "Failed to borrow client from client pool or exception occurred "
-          + "when sending to receiver %s:%s.";
+      DataNodePipeMessages
+          .MESSAGE_FAILED_TO_BORROW_CLIENT_FROM_CLIENT_POOL_OR_EXCEPTION_OCCURRED_WHEN_SENDING_TO_RECEIVER_ARG_ARG_6DC79166;
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final long IOT_CONSENSUS_V2_EVENT_ENQUEUE_TIMEOUT_IN_MS =
       IOTDB_CONFIG.getConnectionTimeoutInMS() / 6;
@@ -133,8 +134,10 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
     validator.validate(
         args -> (boolean) args[0] || (boolean) args[1],
         String.format(
-            "One of %s, %s must be specified in consensus pipe",
-            CONNECTOR_CONSENSUS_GROUP_ID_KEY, CONNECTOR_CONSENSUS_PIPE_NAME),
+            DataNodePipeMessages
+                .EXCEPTION_ONE_OF_ARG_ARG_MUST_BE_SPECIFIED_IN_CONSENSUS_PIPE_DE0285C1,
+            CONNECTOR_CONSENSUS_GROUP_ID_KEY,
+            CONNECTOR_CONSENSUS_PIPE_NAME),
         parameters.hasAttribute(CONNECTOR_CONSENSUS_GROUP_ID_KEY),
         parameters.hasAttribute(CONNECTOR_CONSENSUS_PIPE_NAME));
   }

@@ -78,8 +78,8 @@ public abstract class PipePluginConstructor {
     if (information == null) {
       String errorMessage =
           String.format(
-              "Failed to reflect PipePlugin instance, because "
-                  + "PipePlugin %s has not been registered.",
+              PipeMessages
+                  .MESSAGE_FAILED_TO_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PIPEPLUGIN_ARG_HAS_NOT_BEEN_REGISTERED_34B1267F,
               pluginName.toUpperCase());
       LOGGER.warn(errorMessage);
       throw new PipeException(errorMessage);
@@ -87,8 +87,10 @@ public abstract class PipePluginConstructor {
     if (information.getPluginLoadingExceptionMessage() != null) {
       final String errorMessage =
           String.format(
-              "Failed to reflect PipePlugin instance, because PipePlugin %s failed to load: %s",
-              pluginName.toUpperCase(), information.getPluginLoadingExceptionMessage());
+              PipeMessages
+                  .MESSAGE_FAILED_TO_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PIPEPLUGIN_ARG_FAILED_TO_LOAD_ARG_81A13C60,
+              pluginName.toUpperCase(),
+              information.getPluginLoadingExceptionMessage());
       LOGGER.warn(errorMessage);
       throw new PipeException(errorMessage);
     }
@@ -109,8 +111,11 @@ public abstract class PipePluginConstructor {
         | ClassNotFoundException e) {
       String errorMessage =
           String.format(
-              "Failed to reflect PipePlugin %s(%s) instance, because %s",
-              pluginName, information.getClassName(), e);
+              PipeMessages
+                  .MESSAGE_FAILED_TO_REFLECT_PIPEPLUGIN_ARG_ARG_INSTANCE_BECAUSE_ARG_1F0896A9,
+              pluginName,
+              information.getClassName(),
+              e);
       LOGGER.warn(errorMessage, e);
       throw new PipeException(errorMessage);
     }

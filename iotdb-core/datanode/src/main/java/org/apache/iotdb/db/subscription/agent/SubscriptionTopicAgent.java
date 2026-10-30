@@ -105,8 +105,10 @@ public class SubscriptionTopicAgent {
           e);
       final String exceptionMessage =
           String.format(
-              "Subscription: Failed to handle single topic meta changes for topic %s, because %s",
-              topicName, e);
+              DataNodePipeMessages
+                  .EXCEPTION_SUBSCRIPTION_FAILED_TO_HANDLE_SINGLE_TOPIC_META_CHANGES_FOR_TOPIC_ARG_BECAUSE_ARG_5244F7D4,
+              topicName,
+              e);
       return new TPushTopicMetaRespExceptionMessage(
           topicName, exceptionMessage, System.currentTimeMillis());
     } finally {
@@ -251,8 +253,10 @@ public class SubscriptionTopicAgent {
               e);
           final String exceptionMessage =
               String.format(
-                  "Subscription: Failed to handle single topic meta changes for topic %s, because %s",
-                  topicName, e);
+                  DataNodePipeMessages
+                      .EXCEPTION_SUBSCRIPTION_FAILED_TO_HANDLE_SINGLE_TOPIC_META_CHANGES_FOR_TOPIC_ARG_BECAUSE_ARG_5244F7D4,
+                  topicName,
+                  e);
           return new TPushTopicMetaRespExceptionMessage(
               topicName, exceptionMessage, System.currentTimeMillis());
         }
@@ -290,7 +294,11 @@ public class SubscriptionTopicAgent {
     } catch (final Exception e) {
       LOGGER.warn(DataNodeMiscMessages.EXCEPTION_DROPPING_TOPIC, topicName, e);
       final String exceptionMessage =
-          String.format("Subscription: Failed to drop topic %s, because %s", topicName, e);
+          String.format(
+              DataNodePipeMessages
+                  .EXCEPTION_SUBSCRIPTION_FAILED_TO_DROP_TOPIC_ARG_BECAUSE_ARG_F48512CF,
+              topicName,
+              e);
       return new TPushTopicMetaRespExceptionMessage(
           topicName, exceptionMessage, System.currentTimeMillis());
     } finally {
@@ -427,8 +435,10 @@ public class SubscriptionTopicAgent {
         return RpcUtils.getStatus(
             TSStatusCode.SUBSCRIPTION_OWNER_REQUIRED,
             String.format(
-                "Subscription: topic %s enables owner fencing, but consumer %s does not carry owner-id.",
-                topicName, consumerConfig));
+                DataNodePipeMessages
+                    .MESSAGE_SUBSCRIPTION_TOPIC_ARG_ENABLES_OWNER_FENCING_BUT_CONSUMER_ARG_DOES_NOT_CARRY_OWNER_ID_6662E002,
+                topicName,
+                consumerConfig));
       }
 
       final Long requestOwnerEpoch = consumerConfig.getOwnerEpoch();
@@ -436,8 +446,10 @@ public class SubscriptionTopicAgent {
         return RpcUtils.getStatus(
             TSStatusCode.SUBSCRIPTION_OWNER_EPOCH_REQUIRED,
             String.format(
-                "Subscription: topic %s enables owner fencing, but consumer %s does not carry owner-epoch.",
-                topicName, consumerConfig));
+                DataNodePipeMessages
+                    .MESSAGE_SUBSCRIPTION_TOPIC_ARG_ENABLES_OWNER_FENCING_BUT_CONSUMER_ARG_DOES_NOT_CARRY_OWNER_EPOCH_199193C0,
+                topicName,
+                consumerConfig));
       }
 
       if (Objects.nonNull(topicMeta.getOwnerLeaseExpireTimeMs())
@@ -445,16 +457,19 @@ public class SubscriptionTopicAgent {
         return RpcUtils.getStatus(
             TSStatusCode.SUBSCRIPTION_OWNER_LEASE_EXPIRED,
             String.format(
-                "Subscription: owner lease for topic %s has expired, owner-id: %s, owner-epoch: %s.",
-                topicName, topicMeta.getOwnerId(), topicMeta.getOwnerEpoch()));
+                DataNodePipeMessages
+                    .MESSAGE_SUBSCRIPTION_OWNER_LEASE_FOR_TOPIC_ARG_HAS_EXPIRED_OWNER_ID_ARG_OWNER_EPOCH_ARG_B9D7A369,
+                topicName,
+                topicMeta.getOwnerId(),
+                topicMeta.getOwnerEpoch()));
       }
 
       if (!topicMeta.matchesOwner(requestOwnerId, requestOwnerEpoch)) {
         return RpcUtils.getStatus(
             TSStatusCode.SUBSCRIPTION_OWNER_FENCED,
             String.format(
-                "Subscription: consumer owner is fenced for topic %s, request owner-id: %s,"
-                    + " request owner-epoch: %s, current owner-id: %s, current owner-epoch: %s.",
+                DataNodePipeMessages
+                    .MESSAGE_SUBSCRIPTION_CONSUMER_OWNER_IS_FENCED_FOR_TOPIC_ARG_REQUEST_OWNER_ID_ARG_REQUEST_OWNER_EPOCH_ARG_CURRENT_OWNER_ID_ARG_CURRENT_OWNER_EPOCH_ARG_7C442275,
                 topicName,
                 requestOwnerId,
                 requestOwnerEpoch,

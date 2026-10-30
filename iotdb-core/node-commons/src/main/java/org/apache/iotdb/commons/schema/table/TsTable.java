@@ -73,7 +73,8 @@ public class TsTable {
       Collections.unmodifiableSet(
           new HashSet<>(Arrays.asList(TTL_PROPERTY, NEED_LAST_CACHE_PROPERTY)));
   private static final String OBJECT_STRING_ERROR =
-      "When there are object fields, the %s %s shall not be '.', '..' or contain './', '.\\'.";
+      SchemaMessages
+          .MESSAGE_WHEN_THERE_ARE_OBJECT_FIELDS_THE_ARG_ARG_SHALL_NOT_BE_OR_CONTAIN_BBFCE31D;
   protected String tableName;
 
   private final Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();

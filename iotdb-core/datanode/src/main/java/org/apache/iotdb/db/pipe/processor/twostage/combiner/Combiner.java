@@ -64,7 +64,9 @@ public class Combiner {
 
     if (finalExpectedRegionIdSet.isEmpty()) {
       return RpcUtils.getStatus(
-          TSStatusCode.PIPE_ERROR, "Expected region id set is empty. Sender should try again.");
+          TSStatusCode.PIPE_ERROR,
+          DataNodePipeMessages
+              .MESSAGE_EXPECTED_REGION_ID_SET_IS_EMPTY_SENDER_SHOULD_TRY_AGAIN_B6AB06BA);
     }
 
     receivedRegionIdSet.add(regionId);

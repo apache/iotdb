@@ -295,16 +295,20 @@ public class SubscriptionBroker implements ISubscriptionBroker {
     if (Objects.isNull(prefetchingQueue)) {
       final String errorMessage =
           String.format(
-              "Subscription: prefetching queue bound to topic [%s] for consumer group [%s] does not exist",
-              topicName, brokerId);
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_ARG_FOR_CONSUMER_GROUP_ARG_DOES_NOT_EXIST_2F5EE988,
+              topicName,
+              brokerId);
       LOGGER.warn(errorMessage);
       throw new SubscriptionException(errorMessage);
     }
     if (!(prefetchingQueue instanceof SubscriptionPrefetchingTsFileQueue)) {
       final String errorMessage =
           String.format(
-              "Subscription: prefetching queue bound to topic [%s] for consumer group [%s] is invalid",
-              topicName, brokerId);
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_ARG_FOR_CONSUMER_GROUP_ARG_IS_INVALID_5F6FB774,
+              topicName,
+              brokerId);
       LOGGER.warn(errorMessage);
       throw new SubscriptionException(errorMessage);
     }
@@ -335,16 +339,20 @@ public class SubscriptionBroker implements ISubscriptionBroker {
     if (Objects.isNull(prefetchingQueue)) {
       final String errorMessage =
           String.format(
-              "Subscription: prefetching queue bound to topic [%s] for consumer group [%s] does not exist",
-              topicName, brokerId);
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_ARG_FOR_CONSUMER_GROUP_ARG_DOES_NOT_EXIST_2F5EE988,
+              topicName,
+              brokerId);
       LOGGER.warn(errorMessage);
       throw new SubscriptionException(errorMessage);
     }
     if (!(prefetchingQueue instanceof SubscriptionPrefetchingTabletQueue)) {
       final String errorMessage =
           String.format(
-              "Subscription: prefetching queue bound to topic [%s] for consumer group [%s] is invalid",
-              topicName, brokerId);
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_ARG_FOR_CONSUMER_GROUP_ARG_IS_INVALID_5F6FB774,
+              topicName,
+              brokerId);
       LOGGER.warn(errorMessage);
       throw new SubscriptionException(errorMessage);
     }

@@ -60,6 +60,67 @@ public final class StorageEngineMessages {
     public static final String IS_NOT_SUPPORTED =
       " 不受支持";
 
+  public static final String EXCEPTION_FAILED_TO_ITERATE_TABLETS_WHILE_LOADING_TSFILE_4E6289F3 =
+      "加载 TsFile 时迭代 tablet 失败。";
+  public static final String EXCEPTION_USAGE_WALPRINTTOOL_FILE_11D2FB79 = "用法：WALPrintTool <file>";
+  public static final String MESSAGE_ARG_ARG_GET_FLUSHQUERYLOCK_WRITE_LOCK_687C85BC =
+      "{}：{} 获取 flushQueryLock 写锁";
+  public static final String MESSAGE_ARG_ARG_GET_FLUSHQUERYLOCK_WRITE_LOCK_RELEASED_AA87CEE1 =
+      "{}：{} 释放 flushQueryLock 写锁";
+  public static final String MESSAGE_ASYNC_RECOVER_TSFILE_RESOURCE_MEETS_ERROR_EE1393F9 =
+      "异步恢复 TsFile resource 时出错。";
+  public static final String MESSAGE_COMPACTION_IN_SEQ_SPACE_IS_NOT_ENABLED_045A20C5 = "顺序空间合并未启用";
+  public static final String MESSAGE_COMPACTION_IN_THIS_DATAREGION_IS_NOT_ALLOWED_0549D4A4 =
+      "不允许在此 DataRegion 中进行合并。";
+  public static final String MESSAGE_COMPACTION_IN_UNSEQ_SPACE_IS_NOT_ENABLED_952F1A1E =
+      "乱序空间合并未启用";
+  public static final String MESSAGE_DATABASE_ARG_DOES_NOT_EXIST_ON_LOCAL_CC032648 =
+      "数据库 %s 在本地不存在";
+  public static final String
+      MESSAGE_DATABASE_NAME_IS_UNEXPECTEDLY_NULL_FOR_LOADTSFILESTATEMENT_ARG_SKIP_DATA_TYPE_CONVERSION_8D13DC68 =
+          "LoadTsFileStatement 的数据库名意外为 null：%s。跳过数据类型转换。";
+  public static final String MESSAGE_DATAREGION_NOT_EXIST_34C4A229 = "DataRegion 不存在";
+  public static final String MESSAGE_DATAREGION_OF_FILES_IS_NOT_CONSISTENT_CFBDEDC4 =
+      "文件所属的 DataRegion 不一致。";
+  public static final String
+      MESSAGE_EVERY_SELECTED_TSFILE_DOES_NOT_CONTAINS_THE_MODS_FILE_EB7EDC38 =
+          "所有选中的 TsFile 均不包含 mods 文件。";
+  public static final String MESSAGE_FAILED_TO_CLOSE_DATABASE_PROCESSOR_BCBC9A66 = "关闭数据库处理器失败。";
+  public static final String MESSAGE_FAILED_TO_FORCE_CLOSE_PROCESSOR_E380BB3C = "强制关闭处理器失败。";
+  public static final String MESSAGE_FAILED_TO_SYNC_CLOSE_PROCESSOR_3816A67C = "同步关闭处理器失败。";
+  public static final String MESSAGE_INSERTTABLETNODE_ALLMEASUREMENTFAILED_A147C989 =
+      "insertTabletNode 的所有测点均失败";
+  public static final String MESSAGE_LEVEL_OF_FILES_IS_NOT_CONSISTENT_84F11E20 = "文件的层级不一致。";
+  public static final String MESSAGE_MEET_ERROR_WHEN_SUBMIT_SETTLE_TASK_2F356FA4 = "提交清理任务时出错。";
+  public static final String MESSAGE_NO_MODIFICATION_HAS_BEEN_WRITTEN_TO_THIS_FILE_ARG_21972815 =
+      "尚未向此文件[{}]写入任何修改";
+  public static final String MESSAGE_SELECTED_TSFILES_ARE_NOT_CONTINUOUS_853F6027 =
+      "选中的 TsFile 不连续。";
+  public static final String MESSAGE_SETTLE_BY_CROSS_COMPACTION_IS_NOT_ALLOWED_FD1312E6 =
+      "不允许通过跨空间合并进行清理。";
+  public static final String MESSAGE_STORAGEGROUP_OF_FILES_IS_NOT_CONSISTENT_2EA6791C =
+      "文件所属的 StorageGroup 不一致。";
+  public static final String MESSAGE_THE_FILES_TO_SETTLE_IS_NOT_OFFERED_95C7CC1E = "未提供需要清理的文件。";
+  public static final String MESSAGE_THE_FILE_NAME_OF_THE_TSFILE_IS_NOT_VALID_ARG_67195C7D =
+      "TsFile 文件名不合法：%s";
+  public static final String MESSAGE_THE_INITIAL_FILE_DOES_NOT_EXIST_AD547B8D = "初始文件不存在";
+  public static final String MESSAGE_THE_SPECIFIED_FILE_DOES_NOT_EXIST_IN_ARG_EEFC638B =
+      "指定的文件不存在于 %s";
+  public static final String MESSAGE_THE_TSFILE_IS_NOT_VALID_ARG_5B5DC96E = "TsFile 不合法：%s";
+  public static final String MESSAGE_TIMEPARTITION_OF_FILES_IS_NOT_CONSISTENT_AB12799B =
+      "文件所属的 TimePartition 不一致。";
+  public static final String
+      MESSAGE_TOO_MANY_FILES_OFFERED_THE_LIMITED_COUNT_OF_SYSTEM_CONFIG_IS_ARG_THE_INPUT_FILE_COUNT_IS_ARG_85D07B55 =
+          "提供的文件过多，系统配置限制为 %s，输入文件数为 %s";
+  public static final String
+      MESSAGE_UNABLE_TO_FIND_THE_CONFIGURATION_FILE_SOME_MODIFICATIONS_ARE_MADE_ONLY_IN_MEMORY_70BB69F5 =
+          "找不到配置文件，部分修改仅在内存中生效。";
+  public static final String MESSAGE_VALIDATE_FAILED_BABCDFC5 = "验证失败，";
+
+  public static final String
+      EXCEPTION_FAILED_TO_WRITE_A_PIECE_OF_THE_LOAD_TASK_ARG_BECAUSE_THE_PAYLOAD_OF_ITS_CHUNK_IS_ONLY_REFERENCED_AT_ARG_OF_ARG_AND_HAS_NOT_BEEN_READ_BACK_5AE8586E =
+          "写入 LOAD 任务 %s 的 piece 失败：其 chunk 载荷仅有 %s 个引用，共 %s 个 chunk，尚未读回。";
+
   private StorageEngineMessages() {}
 
   // ======================== StorageEngine ========================

@@ -589,7 +589,7 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
     final long pieceIndex = ReadWriteIOUtils.readLong(stream);
     final long checksum = ReadWriteIOUtils.readLong(stream);
     final long dataSize = ReadWriteIOUtils.readLong(stream);
-    final int refCount = readCount(stream, "piece reference");
+    final int refCount = readCount(stream, DataNodeQueryMessages.MESSAGE_PIECE_REFERENCE_CA095411);
     final List<PieceRef> pieceRefs = new ArrayList<>(refCount);
     for (int i = 0; i < refCount; i++) {
       final String refPath = ReadWriteIOUtils.readString(stream);
@@ -597,7 +597,7 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
       final long refSize = ReadWriteIOUtils.readLong(stream);
       pieceRefs.add(new PieceRef(refPath, refOffset, refSize));
     }
-    final int dataCount = readCount(stream, "staged data");
+    final int dataCount = readCount(stream, DataNodeQueryMessages.MESSAGE_STAGED_DATA_28A8A2A9);
     final List<TsFileData> tsFileDataList = new ArrayList<>(dataCount);
     for (int i = 0; i < dataCount; i++) {
       tsFileDataList.add(TsFileData.deserialize(stream));
@@ -655,12 +655,14 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
 
   private static Map<TTimePartitionSlot, byte[]> readProgressIndexes(final InputStream stream)
       throws IOException {
-    final int progressCount = readCount(stream, "progress index");
+    final int progressCount =
+        readCount(stream, DataNodeQueryMessages.EXCEPTION_PROGRESS_INDEX_1C50FE57);
     final Map<TTimePartitionSlot, byte[]> timePartition2ProgressIndex =
         new HashMap<>(progressCount);
     for (int i = 0; i < progressCount; i++) {
       final long startTime = ReadWriteIOUtils.readLong(stream);
-      final int len = readCount(stream, "progress index payload length");
+      final int len =
+          readCount(stream, DataNodeQueryMessages.MESSAGE_PROGRESS_INDEX_PAYLOAD_LENGTH_0C4465A8);
       final byte[] bytes = new byte[len];
       int offset = 0;
       while (offset < len) {
@@ -670,7 +672,7 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
               String.format(
                   DataNodeQueryMessages
                       .EXCEPTION_LOAD_CONSENSUS_ENTRY_ENDED_WHILE_READING_ARG_ARG_OF_ARG_BYTES_WERE_AVAILABLE_D927147B,
-                  "progress index payload",
+                  DataNodeQueryMessages.MESSAGE_PROGRESS_INDEX_PAYLOAD_F5596925,
                   offset,
                   len));
         }
@@ -683,7 +685,7 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
 
   private static Map<TTimePartitionSlot, Long> readExpectedDataEnds(final InputStream stream)
       throws IOException {
-    final int count = readCount(stream, "expected data end");
+    final int count = readCount(stream, DataNodeQueryMessages.EXCEPTION_EXPECTED_DATA_END_4C374AB5);
     final Map<TTimePartitionSlot, Long> timePartition2ExpectedDataEnd = new HashMap<>(count);
     for (int i = 0; i < count; i++) {
       timePartition2ExpectedDataEnd.put(

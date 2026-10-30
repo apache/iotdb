@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
@@ -41,7 +42,7 @@ public class DropViewColumnProcedure extends DropTableColumnProcedure {
 
   @Override
   protected String getActionMessage() {
-    return "drop view column";
+    return ProcedureMessages.MESSAGE_DROP_VIEW_COLUMN_0BFC4728;
   }
 
   @Override

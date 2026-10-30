@@ -68,7 +68,7 @@ public class AlterTableColumnDataTypeProcedure
 
   @Override
   protected String getActionMessage() {
-    return "Alter table column data type";
+    return ProcedureMessages.MESSAGE_ALTER_TABLE_COLUMN_DATA_TYPE_CE3B07A5;
   }
 
   @Override

@@ -3438,6 +3438,50 @@ public final class DataNodeQueryMessages {
 
       "规则：{}\n之前：\n{}\n之后：\n{}";
 
+  public static final String
+      EXCEPTION_AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR_WHEN_EXECUTING_STATEMENT_ARG_DETAIL_ARG_B6C9E02E =
+          "执行语句 %s 时自动创建或验证元数据出错。详情：%s。";
+  public static final String EXCEPTION_CANNOT_USE_ARG_FOR_SUBSCRIPT_OF_ARG_15A147BC =
+      "无法将 %s 用作 %s 的下标";
+  public static final String EXCEPTION_EXPECTED_DATA_END_4C374AB5 = "预期数据结束位置";
+  public static final String EXCEPTION_LOADING_FILE_ARG_FAILED_DETAIL_ARG_C161A17F =
+      "加载文件 %s 失败。详情：%s";
+  public static final String EXCEPTION_PROGRESS_INDEX_1C50FE57 = "进度索引";
+  public static final String
+      LOG_FAILED_TO_GET_NEED_LAST_CACHE_INFO_FOR_DATABASE_ARG_WILL_PUT_CACHE_ANYWAY_EXCEPTION_ARG_D5D80E96 =
+          "获取数据库 {} 的 need_last_cache 信息失败，仍将放入缓存，异常：{}";
+  public static final String MESSAGE_CANNOT_APPLY_OPERATOR_ARG_ARG_ARG_CCA56AA9 =
+      "无法应用运算符：%s %s %s";
+  public static final String MESSAGE_CANNOT_CHECK_IF_ARG_IS_DISTINCT_FROM_ARG_E9974593 =
+      "无法检查 %s 是否与 %s 不同";
+  public static final String MESSAGE_CANNOT_NEGATE_ARG_FCF0C22A = "无法对 %s 取负";
+  public static final String
+      MESSAGE_CONTINUOUSSAMESEARCHINDEXSEPARATORNODE_NOT_SUPPORT_THIS_OPERATION_CC9BC84B =
+          "ContinuousSameSearchIndexSeparatorNode 不支持此操作";
+  public static final String MESSAGE_CREATE_DEVICE_OR_UPDATE_DEVICE_ATTRIBUTE_FOR_INSERT_BFA7C2DA =
+      "为插入创建设备或更新设备属性";
+  public static final String
+      MESSAGE_DATAPARTITIONMAP_IS_EMPTY_AFTER_PROCESSING_RESOURCE_FILE_21869447 =
+          "处理 resource 文件后 DataPartitionMap 为空";
+  public static final String
+      MESSAGE_DATA_TYPE_MISMATCH_FOR_COLUMN_ARG_IN_TABLE_ARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_ECAD0C63 =
+          "列 %s 在表 %s 中的数据类型不匹配，TsFile 中的类型：%s，IoTDB 中的类型：%s";
+  public static final String MESSAGE_FAILED_TO_PROCESS_DATA_REGION_ARG_507E9689 =
+      "处理 DataRegion 失败：%s";
+  public static final String MESSAGE_FETCH_DEVICE_FOR_INSERT_E0AF591F = "为插入获取设备";
+  public static final String MESSAGE_FETCH_DEVICE_FOR_QUERY_ARG_ARG_160027C4 = "为查询 %s 获取设备：%s";
+  public static final String MESSAGE_FETCH_SCHEMA_FOR_ARG_76B28DC3 = "为 %s 获取元数据";
+  public static final String MESSAGE_GENERATION_FAILED_ARG_E37A62C5 = "生成失败：%s";
+  public static final String MESSAGE_OPERATOR_ARG_ARG_CANNOT_BE_APPLIED_TO_ARG_FE836F93 =
+      "运算符 '%s'%s 无法应用于 %s";
+  public static final String MESSAGE_PIECE_REFERENCE_CA095411 = "分片引用";
+  public static final String MESSAGE_PROGRESS_INDEX_PAYLOAD_F5596925 = "进度索引载荷";
+  public static final String MESSAGE_PROGRESS_INDEX_PAYLOAD_LENGTH_0C4465A8 = "进度索引载荷长度";
+  public static final String MESSAGE_STAGED_DATA_28A8A2A9 = "暂存数据";
+  public static final String
+      MESSAGE_TSFILE_ENCRYPTION_IS_ENABLED_AND_THE_LOAD_TSFILE_FUNCTION_IS_DISABLED_7CB357EE =
+          "已启用 TsFile 加密，Load TsFile 功能不可用";
+
   private DataNodeQueryMessages() {}
   // ---------------------------------------------------------------------------
   // 补充异常消息

@@ -91,6 +91,71 @@ public final class CliMessages {
       MESSAGE_MULTIPLE_CSV_HEADERS_RESOLVE_TO_THE_SAME_TARGET_COLUMN_99189563 =
           "Multiple CSV headers resolve to the same target column.";
 
+  public static final String EXCEPTION_ARGS_ARGS_ARG_C39A089A = "Args args: %s";
+  public static final String EXCEPTION_ARGS_ERROR_ARG_E49DCA27 = "Args error: %s";
+  public static final String EXCEPTION_ARG_CSV_FILE_READ_EXCEPTION_BECAUSE_ARG_4F31CBC1 =
+      "%s : CSV file read exception because: %s";
+  public static final String EXCEPTION_CANNOT_DUMP_FAIL_RESULT_BECAUSE_ARG_5C6E82E0 =
+      "Cannot dump fail result because: %s";
+  public static final String EXCEPTION_CANNOT_DUMP_RESULT_BECAUSE_ARG_F78D917B =
+      "Cannot dump result because: %s";
+  public static final String EXCEPTION_ENCOUNTER_AN_ERROR_BECAUSE_ARG_484F4B80 =
+      "Encounter an error, because %s";
+  public static final String EXCEPTION_ENCOUNTER_AN_ERROR_BECAUSE_ARG_49284363 =
+      "Encounter an error, because: %s";
+  public static final String EXCEPTION_IMPORTDATA_THREAD_JOIN_INTERRUPTED_ARG_B94FC04B =
+      "ImportData thread join interrupted: %s";
+  public static final String EXCEPTION_PARSE_ERROR_ARG_DA103556 = "Parse error: %s";
+  public static final String EXCEPTION_SQL_FILE_READ_EXCEPTION_BECAUSE_ARG_1626B867 =
+      "SQL file read exception because: %s";
+  public static final String EXCEPTION_UNEXPECTED_ERROR_OCCURRED_ARG_402FA331 =
+      "Unexpected error occurred: %s";
+  public static final String MESSAGE_ARG_EMPTY_FILE_4366EB0C = "%s : Empty file!";
+  public static final String MESSAGE_ARG_IMPORT_COMPLETELY_FAIL_9B6F42FD =
+      "%s : Import completely fail!";
+  public static final String MESSAGE_ARG_IMPORT_COMPLETELY_SUCCESSFUL_BB17250E =
+      "%s : Import completely successful!";
+  public static final String MESSAGE_ARG_NO_RECORDS_5672039C = "%s : No records!";
+  public static final String MESSAGE_ARG_PLEASE_INPUT_PATH_PATTERN_D784AEFD =
+      "%s> please input path pattern: ";
+  public static final String
+      MESSAGE_ARG_THE_FILE_NAME_MUST_END_WITH_CSV_WHEN_SQL_DIALECT_TREE_OR_SQL_WHEN_SQL_DIALECT_TABLE_7A2FD49A =
+          "%s : The file name must end with \"csv\" when sql_dialect tree or \"sql\" when"
+              + " sql_dialect table!";
+  public static final String MESSAGE_DOES_NOT_SUPPORT_EXPORTING_SYSTEM_DATABASES_ARG_D86F9100 =
+      "Does not support exporting system databases %s";
+  public static final String MESSAGE_EXPORT_SCHEMA_FAIL_ARG_75FE5946 = "Export schema fail: %s";
+  public static final String MESSAGE_IMPORT_SCHEMA_FAIL_ARG_609A6D30 = "Import schema fail: %s";
+  public static final String MESSAGE_LINE_ARG_COLUMN_ARG_ARG_UNKNOWN_COMPRESSIONTYPE_N_8E111BB4 =
+      "Line '%s', column '%s': '%s' unknown compressionType %n";
+  public static final String MESSAGE_LINE_ARG_COLUMN_ARG_ARG_UNKNOWN_DATATYPE_N_81E56571 =
+      "Line '%s', column '%s': '%s' unknown dataType %n";
+  public static final String MESSAGE_LINE_ARG_COLUMN_ARG_ARG_UNKNOWN_ENCODINGTYPE_N_066E2D0D =
+      "Line '%s', column '%s': '%s' unknown encodingType %n";
+  public static final String MESSAGE_LINE_ARG_COLUMN_ARG_ILLEGAL_PATH_ARG_D5C1EBD6 =
+      "Line '%s', column '%s': illegal path %s";
+  public static final String MESSAGE_PLEASE_INPUT_YOUR_KEY_STORE_F2FBBF40 =
+      "please input your key_store:";
+  public static final String MESSAGE_PLEASE_INPUT_YOUR_KEY_STORE_PWD_D18797A4 =
+      "please input your key_store_pwd:";
+  public static final String MESSAGE_PLEASE_INPUT_YOUR_PASSWORD_72B23434 =
+      "please input your password:";
+  public static final String MESSAGE_PLEASE_INPUT_YOUR_TRUST_STORE_387CF139 =
+      "please input your trust_store:";
+  public static final String MESSAGE_PLEASE_INPUT_YOUR_TRUST_STORE_PWD_F402D8D9 =
+      "please input your trust_store_pwd:";
+  public static final String MESSAGE_REQUIRED_VALUES_FOR_OPTION_ARG_NOT_PROVIDED_86467CA2 =
+      "Required values for option '%s' not provided";
+  public static final String MESSAGE_SOURCE_FILE_OR_DIRECTORY_ARG_DOES_NOT_EXIST_0299DF95 =
+      "Source file or directory %s does not exist";
+  public static final String
+      MESSAGE_THE_DATABASE_PARAM_IS_REQUIRED_WHEN_SQL_DIALECT_IS_TABLE_1EFE6DAF =
+          "The database param is required when sql_dialect is table ";
+  public static final String
+      MESSAGE_THE_HEADER_OF_THE_CSV_FILE_TO_BE_IMPORTED_IS_ILLEGAL_THE_CORRECT_FORMAT_IS_TIMESERIES_ALIBABA_DATATYPE_ENCODING_COMPRESSION_C429E7C6 =
+          "The header of the CSV file to be imported is illegal. The correct format is"
+              + " \"Timeseries, Alibaba, DataType, Encoding, Compression\"!";
+
   private CliMessages() {}
 
   // ---------------------------------------------------------------------------

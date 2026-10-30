@@ -45,6 +45,7 @@ import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.factory.ConfigMNodeFactory;
@@ -108,7 +109,8 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
 public class ConfigMTree {
 
   private static final String TABLE_ERROR_MSG =
-      "Failed to recover configNode, because there exists data from an older incompatible version, will shutdown soon. Please delete all data, and then restart again.";
+      ManagerMessages
+          .MESSAGE_FAILED_TO_RECOVER_CONFIGNODE_BECAUSE_THERE_EXISTS_DATA_FROM_AN_OLDER_INCOMPATIBLE_VERSION_WILL_SHUTDOWN_SOON_PLEASE_DELETE_ALL_DATA_AND_THEN_RESTART_AGAIN_42C9C4F7;
 
   private static final int MARKER_HAVE_PREALTERED_COLUMNS = Integer.MIN_VALUE;
 
@@ -914,7 +916,10 @@ public class ConfigMTree {
       throws MetadataException {
     if (TableNodeStatus.PRE_CREATE != tableNodeStatus
         && TableNodeStatus.PRE_DELETE != tableNodeStatus) {
-      throw new SemanticException("Invalid table status " + tableNodeStatus);
+      throw new SemanticException(
+          String.format(
+              ManagerMessages.EXCEPTION_INVALID_TABLE_STATUS_ARG_172413CC,
+              String.valueOf(tableNodeStatus)));
     }
     final Map<String, List<TsTable>> result = new HashMap<>();
     final List<PartialPath> databaseList = getAllDatabasePaths(true);

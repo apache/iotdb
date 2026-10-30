@@ -51,8 +51,9 @@ import java.util.concurrent.atomic.AtomicReference;
 public class PipeReceiverStatusHandler {
 
   private static Logger LOGGER = LoggerFactory.getLogger(PipeReceiverStatusHandler.class);
-  private static final String NO_PERMISSION = "No permission";
-  private static final String UNCLASSIFIED_EXCEPTION = "Unclassified exception";
+  private static final String NO_PERMISSION = PipeMessages.MESSAGE_NO_PERMISSION_7EA2F5F6;
+  private static final String UNCLASSIFIED_EXCEPTION =
+      PipeMessages.MESSAGE_UNCLASSIFIED_EXCEPTION_783F6E1F;
   private static final String NO_PERMISSION_STR = "No permissions for this operation";
   private static final int MAX_RECORD_MESSAGE_LENGTH_IN_LOG = 2048;
 
@@ -160,9 +161,12 @@ public class PipeReceiverStatusHandler {
         if (!isRetryAllowedWhenConflictOccurs) {
           LOGGER.warn(
               PipeMessages.USER_CONFLICT_NOT_ALLOWED,
-              shouldRecordIgnoredDataWhenConflictOccurs ? recordMessage : "not recorded",
+              shouldRecordIgnoredDataWhenConflictOccurs
+                  ? recordMessage
+                  : PipeMessages.MESSAGE_NOT_RECORDED_06D234C1,
               status);
-          logDiscardedUserConflictData("retry is not allowed", recordMessage, status);
+          logDiscardedUserConflictData(
+              PipeMessages.MESSAGE_RETRY_IS_NOT_ALLOWED_84FB8FBC, recordMessage, status);
           return;
         }
 
@@ -174,9 +178,12 @@ public class PipeReceiverStatusHandler {
                   > retryMaxMillisWhenConflictOccurs) {
             LOGGER.warn(
                 PipeMessages.USER_CONFLICT_RETRY_TIMEOUT,
-                shouldRecordIgnoredDataWhenConflictOccurs ? recordMessage : "not recorded",
+                shouldRecordIgnoredDataWhenConflictOccurs
+                    ? recordMessage
+                    : PipeMessages.MESSAGE_NOT_RECORDED_06D234C1,
                 status);
-            logDiscardedUserConflictData("retry timeout", recordMessage, status);
+            logDiscardedUserConflictData(
+                PipeMessages.MESSAGE_RETRY_TIMEOUT_5FCC0622, recordMessage, status);
             resetExceptionStatus();
             return;
           }
@@ -207,7 +214,9 @@ public class PipeReceiverStatusHandler {
             LOGGER.warn(
                 PipeMessages.USER_CONFLICT_IGNORED,
                 getNoPermission(true),
-                shouldRecordIgnoredDataWhenOtherExceptionsOccur ? recordMessage : "not recorded",
+                shouldRecordIgnoredDataWhenOtherExceptionsOccur
+                    ? recordMessage
+                    : PipeMessages.MESSAGE_NOT_RECORDED_06D234C1,
                 status);
           }
           return;
@@ -223,7 +232,9 @@ public class PipeReceiverStatusHandler {
               LOGGER.warn(
                   PipeMessages.USER_CONFLICT_IGNORED,
                   getNoPermission(true),
-                  shouldRecordIgnoredDataWhenOtherExceptionsOccur ? recordMessage : "not recorded",
+                  shouldRecordIgnoredDataWhenOtherExceptionsOccur
+                      ? recordMessage
+                      : PipeMessages.MESSAGE_NOT_RECORDED_06D234C1,
                   status);
             }
             return;
@@ -459,7 +470,9 @@ public class PipeReceiverStatusHandler {
       LOGGER.warn(
           PipeMessages.OTHER_EXCEPTION_RETRY_TIMEOUT,
           getNoPermission(noPermission),
-          shouldRecordIgnoredDataWhenOtherExceptionsOccur ? recordMessage : "not recorded",
+          shouldRecordIgnoredDataWhenOtherExceptionsOccur
+              ? recordMessage
+              : PipeMessages.MESSAGE_NOT_RECORDED_06D234C1,
           status);
       resetExceptionStatus();
       return;

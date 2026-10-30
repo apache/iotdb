@@ -316,7 +316,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     checkIfFenced();
     if (isReleased.get()) {
       final String errorMessage =
-          String.format("%s has ever been closed, unsupported operation after closing.", this);
+          String.format(
+              SubscriptionMessages
+                  .MESSAGE_ARG_HAS_EVER_BEEN_CLOSED_UNSUPPORTED_OPERATION_AFTER_CLOSING_7B7F7FFB,
+              this);
       LOGGER.error(errorMessage);
       throw new SubscriptionException(errorMessage);
     }
@@ -326,7 +329,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     checkIfFenced();
     if (isClosed.get()) {
       final String errorMessage =
-          String.format("%s is not yet open, please open the subscription consumer first.", this);
+          String.format(
+              SubscriptionMessages
+                  .MESSAGE_ARG_IS_NOT_YET_OPEN_PLEASE_OPEN_THE_SUBSCRIPTION_CONSUMER_FIRST_8AD8C37A,
+              this);
       LOGGER.error(errorMessage);
       throw new SubscriptionException(errorMessage);
     }
@@ -1092,8 +1098,12 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         inFlightFilesCommitContextSet.add(commitContext);
         final String message =
             String.format(
-                "Timeout occurred when SubscriptionConsumer %s polling file %s with commit context %s, record writing offset %s for subsequent poll",
-                this, file.getAbsolutePath(), commitContext, writingOffset);
+                SubscriptionMessages
+                    .MESSAGE_TIMEOUT_OCCURRED_WHEN_SUBSCRIPTIONCONSUMER_ARG_POLLING_FILE_ARG_WITH_COMMIT_CONTEXT_ARG_RECORD_WRITING_OFFSET_ARG_FOR_SUBSEQUENT_POLL_58D40345,
+                this,
+                file.getAbsolutePath(),
+                commitContext,
+                writingOffset);
         LOGGER.info(message);
         throw new SubscriptionRuntimeNonCriticalException(message);
       }
@@ -1112,7 +1122,9 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       final SubscriptionPollPayload payload = response.getPayload();
       final short responseType = response.getResponseType();
       if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
-        final String errorMessage = String.format("unexpected response type: %s", responseType);
+        final String errorMessage =
+            String.format(
+                SubscriptionMessages.MESSAGE_UNEXPECTED_RESPONSE_TYPE_ARG_EF03AB8B, responseType);
         LOGGER.warn(errorMessage);
         throw new SubscriptionRuntimeNonCriticalException(errorMessage);
       }
@@ -1126,8 +1138,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
                 || !Objects.equals(commitContext, incomingCommitContext)) {
               final String errorMessage =
                   String.format(
-                      "inconsistent commit context, current is %s, incoming is %s, consumer: %s",
-                      commitContext, incomingCommitContext, this);
+                      SubscriptionMessages
+                          .MESSAGE_INCONSISTENT_COMMIT_CONTEXT_CURRENT_IS_ARG_INCOMING_IS_ARG_CONSUMER_ARG_115134DB,
+                      commitContext,
+                      incomingCommitContext,
+                      this);
               LOGGER.warn(errorMessage);
               throw new SubscriptionRuntimeNonCriticalException(errorMessage);
             }
@@ -1136,8 +1151,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             if (!Objects.equals(rawFileName, ((FilePiecePayload) payload).getFileName())) {
               final String errorMessage =
                   String.format(
-                      "inconsistent file name, current is %s, incoming is %s, consumer: %s",
-                      rawFileName, ((FilePiecePayload) payload).getFileName(), this);
+                      SubscriptionMessages
+                          .MESSAGE_INCONSISTENT_FILE_NAME_CURRENT_IS_ARG_INCOMING_IS_ARG_CONSUMER_ARG_2700F4BA,
+                      rawFileName,
+                      ((FilePiecePayload) payload).getFileName(),
+                      this);
               LOGGER.warn(errorMessage);
               throw new SubscriptionRuntimeNonCriticalException(errorMessage);
             }
@@ -1153,7 +1171,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
                 fileWriter.length(), ((FilePiecePayload) payload).getNextWritingOffset())) {
               final String errorMessage =
                   String.format(
-                      "inconsistent file offset, current is %s, incoming is %s, consumer: %s",
+                      SubscriptionMessages
+                          .MESSAGE_INCONSISTENT_FILE_OFFSET_CURRENT_IS_ARG_INCOMING_IS_ARG_CONSUMER_ARG_B96B6D69,
                       fileWriter.length(),
                       ((FilePiecePayload) payload).getNextWritingOffset(),
                       this);
@@ -1173,8 +1192,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
                 || !Objects.equals(commitContext, incomingCommitContext)) {
               final String errorMessage =
                   String.format(
-                      "inconsistent commit context, current is %s, incoming is %s, consumer: %s",
-                      commitContext, incomingCommitContext, this);
+                      SubscriptionMessages
+                          .MESSAGE_INCONSISTENT_COMMIT_CONTEXT_CURRENT_IS_ARG_INCOMING_IS_ARG_CONSUMER_ARG_115134DB,
+                      commitContext,
+                      incomingCommitContext,
+                      this);
               LOGGER.warn(errorMessage);
               throw new SubscriptionRuntimeNonCriticalException(errorMessage);
             }
@@ -1183,8 +1205,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             if (!Objects.equals(rawFileName, ((FileSealPayload) payload).getFileName())) {
               final String errorMessage =
                   String.format(
-                      "inconsistent file name, current is %s, incoming is %s, consumer: %s",
-                      rawFileName, ((FileSealPayload) payload).getFileName(), this);
+                      SubscriptionMessages
+                          .MESSAGE_INCONSISTENT_FILE_NAME_CURRENT_IS_ARG_INCOMING_IS_ARG_CONSUMER_ARG_2700F4BA,
+                      rawFileName,
+                      ((FileSealPayload) payload).getFileName(),
+                      this);
               LOGGER.warn(errorMessage);
               throw new SubscriptionRuntimeNonCriticalException(errorMessage);
             }
@@ -1193,8 +1218,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             if (fileWriter.length() != ((FileSealPayload) payload).getFileLength()) {
               final String errorMessage =
                   String.format(
-                      "inconsistent file length, current is %s, incoming is %s, consumer: %s",
-                      fileWriter.length(), ((FileSealPayload) payload).getFileLength(), this);
+                      SubscriptionMessages
+                          .MESSAGE_INCONSISTENT_FILE_LENGTH_CURRENT_IS_ARG_INCOMING_IS_ARG_CONSUMER_ARG_4C3AD74E,
+                      fileWriter.length(),
+                      ((FileSealPayload) payload).getFileLength(),
+                      this);
               LOGGER.warn(errorMessage);
               throw new SubscriptionRuntimeNonCriticalException(errorMessage);
             }
@@ -1234,8 +1262,12 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
               inFlightFilesCommitContextSet.add(commitContext);
               final String message =
                   String.format(
-                      "Timeout occurred when SubscriptionConsumer %s polling file %s with commit context %s, record writing offset %s for subsequent poll",
-                      this, file.getAbsolutePath(), commitContext, writingOffset);
+                      SubscriptionMessages
+                          .MESSAGE_TIMEOUT_OCCURRED_WHEN_SUBSCRIPTIONCONSUMER_ARG_POLLING_FILE_ARG_WITH_COMMIT_CONTEXT_ARG_RECORD_WRITING_OFFSET_ARG_FOR_SUBSEQUENT_POLL_58D40345,
+                      this,
+                      file.getAbsolutePath(),
+                      commitContext,
+                      writingOffset);
               LOGGER.info(message);
               throw new SubscriptionPollTimeoutException(message);
             } else {
@@ -1255,7 +1287,9 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             }
           }
         default:
-          final String errorMessage = String.format("unexpected response type: %s", responseType);
+          final String errorMessage =
+              String.format(
+                  SubscriptionMessages.MESSAGE_UNEXPECTED_RESPONSE_TYPE_ARG_EF03AB8B, responseType);
           LOGGER.warn(errorMessage);
           throw new SubscriptionRuntimeNonCriticalException(errorMessage);
       }
@@ -1308,8 +1342,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         if (!Objects.equals(tabletsSize, -nextOffset)) {
           final String errorMessage =
               String.format(
-                  "inconsistent tablet size, current is %s, incoming is %s, consumer: %s",
-                  tabletsSize, -nextOffset, this);
+                  SubscriptionMessages
+                      .MESSAGE_INCONSISTENT_TABLET_SIZE_CURRENT_IS_ARG_INCOMING_IS_ARG_CONSUMER_ARG_DB4A9BBB,
+                  tabletsSize,
+                  -nextOffset,
+                  this);
           LOGGER.warn(errorMessage);
           throw new SubscriptionRuntimeNonCriticalException(errorMessage);
         }
@@ -1325,8 +1362,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       if (timer.isExpired(TIMER_DELTA_MS)) {
         final String errorMessage =
             String.format(
-                "timeout while poll tablets with commit context: %s, consumer: %s",
-                commitContext, this);
+                SubscriptionMessages
+                    .MESSAGE_TIMEOUT_WHILE_POLL_TABLETS_WITH_COMMIT_CONTEXT_ARG_CONSUMER_ARG_11B58727,
+                commitContext,
+                this);
         LOGGER.warn(errorMessage);
         throw new SubscriptionRuntimeNonCriticalException(errorMessage);
       }
@@ -1345,7 +1384,9 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       final SubscriptionPollPayload payload = response.getPayload();
       final short responseType = response.getResponseType();
       if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
-        final String errorMessage = String.format("unexpected response type: %s", responseType);
+        final String errorMessage =
+            String.format(
+                SubscriptionMessages.MESSAGE_UNEXPECTED_RESPONSE_TYPE_ARG_EF03AB8B, responseType);
         LOGGER.warn(errorMessage);
         throw new SubscriptionRuntimeNonCriticalException(errorMessage);
       }
@@ -1359,8 +1400,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
                 || !Objects.equals(commitContext, incomingCommitContext)) {
               final String errorMessage =
                   String.format(
-                      "inconsistent commit context, current is %s, incoming is %s, consumer: %s",
-                      commitContext, incomingCommitContext, this);
+                      SubscriptionMessages
+                          .MESSAGE_INCONSISTENT_COMMIT_CONTEXT_CURRENT_IS_ARG_INCOMING_IS_ARG_CONSUMER_ARG_115134DB,
+                      commitContext,
+                      incomingCommitContext,
+                      this);
               LOGGER.warn(errorMessage);
               throw new SubscriptionRuntimeNonCriticalException(errorMessage);
             }
@@ -1403,7 +1447,9 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             }
           }
         default:
-          final String errorMessage = String.format("unexpected response type: %s", responseType);
+          final String errorMessage =
+              String.format(
+                  SubscriptionMessages.MESSAGE_UNEXPECTED_RESPONSE_TYPE_ARG_EF03AB8B, responseType);
           LOGGER.warn(errorMessage);
           throw new SubscriptionRuntimeNonCriticalException(errorMessage);
       }
@@ -1567,8 +1613,13 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     if (!failedCommitContexts.isEmpty()) {
       final String errorMessage =
           String.format(
-              "%s commit (nack: %s) partially accepted, requested=%d, accepted=%d, failed=%d",
-              this, nack, requestedCount, acceptedCount, failedCommitContexts.size());
+              SubscriptionMessages
+                  .MESSAGE_ARG_COMMIT_NACK_ARG_PARTIALLY_ACCEPTED_REQUESTED_ARG_ACCEPTED_ARG_FAILED_ARG_BEA40307,
+              this,
+              nack,
+              requestedCount,
+              acceptedCount,
+              failedCommitContexts.size());
       LOGGER.warn(
           SubscriptionMessages.LOG_ARG_FAILED_COMMIT_CONTEXTS_ARG_CF224D1E,
           errorMessage,
@@ -1949,8 +2000,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     }
     final String errorMessage =
         String.format(
-            "%s failed to subscribe topics %s from all available subscription providers %s",
-            this, topicNames, providers);
+            SubscriptionMessages
+                .MESSAGE_ARG_FAILED_TO_SUBSCRIBE_TOPICS_ARG_FROM_ALL_AVAILABLE_SUBSCRIPTION_PROVIDERS_ARG_FF729C26,
+            this,
+            topicNames,
+            providers);
     LOGGER.warn(errorMessage);
     throw new SubscriptionRuntimeCriticalException(errorMessage);
   }
@@ -1991,8 +2045,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     }
     final String errorMessage =
         String.format(
-            "%s failed to unsubscribe topics %s from all available subscription providers %s",
-            this, topicNames, providers);
+            SubscriptionMessages
+                .MESSAGE_ARG_FAILED_TO_UNSUBSCRIBE_TOPICS_ARG_FROM_ALL_AVAILABLE_SUBSCRIPTION_PROVIDERS_ARG_43E08B57,
+            this,
+            topicNames,
+            providers);
     LOGGER.warn(errorMessage);
     throw new SubscriptionRuntimeCriticalException(errorMessage);
   }
@@ -2040,8 +2097,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     if (!failedProviders.isEmpty()) {
       final String errorMessage =
           String.format(
-              "%s failed to seek topic %s on subscription providers %s; seek requires every available provider to succeed",
-              this, topicName, failedProviders);
+              SubscriptionMessages
+                  .MESSAGE_ARG_FAILED_TO_SEEK_TOPIC_ARG_ON_SUBSCRIPTION_PROVIDERS_ARG_SEEK_REQUIRES_EVERY_AVAILABLE_PROVIDER_TO_SUCCEED_0B6CAC68,
+              this,
+              topicName,
+              failedProviders);
       LOGGER.warn(errorMessage);
       throw new SubscriptionRuntimeCriticalException(errorMessage, firstFailure);
     }
@@ -2086,8 +2146,12 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     if (!failedProviders.isEmpty()) {
       final String errorMessage =
           String.format(
-              "%s failed to seek topic %s to topicProgress(regionCount=%d) on subscription providers %s; seek requires every available provider to succeed",
-              this, topicName, topicProgress.getRegionProgress().size(), failedProviders);
+              SubscriptionMessages
+                  .MESSAGE_ARG_FAILED_TO_SEEK_TOPIC_ARG_TO_TOPICPROGRESS_REGIONCOUNT_ARG_ON_SUBSCRIPTION_PROVIDERS_ARG_SEEK_REQUIRES_EVERY_AVAILABLE_PROVIDER_TO_SUCCEED_61972EC7,
+              this,
+              topicName,
+              topicProgress.getRegionProgress().size(),
+              failedProviders);
       LOGGER.warn(errorMessage);
       throw new SubscriptionRuntimeCriticalException(errorMessage, firstFailure);
     }
@@ -2132,8 +2196,12 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     if (!failedProviders.isEmpty()) {
       final String errorMessage =
           String.format(
-              "%s failed to seekAfter topic %s to topicProgress(regionCount=%d) on subscription providers %s; seek requires every available provider to succeed",
-              this, topicName, topicProgress.getRegionProgress().size(), failedProviders);
+              SubscriptionMessages
+                  .MESSAGE_ARG_FAILED_TO_SEEKAFTER_TOPIC_ARG_TO_TOPICPROGRESS_REGIONCOUNT_ARG_ON_SUBSCRIPTION_PROVIDERS_ARG_SEEK_REQUIRES_EVERY_AVAILABLE_PROVIDER_TO_SUCCEED_BF2AA1F1,
+              this,
+              topicName,
+              topicProgress.getRegionProgress().size(),
+              failedProviders);
       LOGGER.warn(errorMessage);
       throw new SubscriptionRuntimeCriticalException(errorMessage, firstFailure);
     }
@@ -2417,8 +2485,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     }
     final String errorMessage =
         String.format(
-            "%s failed to fetch all endpoints from all available subscription providers %s",
-            this, providers);
+            SubscriptionMessages
+                .MESSAGE_ARG_FAILED_TO_FETCH_ALL_ENDPOINTS_FROM_ALL_AVAILABLE_SUBSCRIPTION_PROVIDERS_ARG_FAF8E639,
+            this,
+            providers);
     LOGGER.warn(errorMessage);
     throw new SubscriptionRuntimeCriticalException(errorMessage);
   }
