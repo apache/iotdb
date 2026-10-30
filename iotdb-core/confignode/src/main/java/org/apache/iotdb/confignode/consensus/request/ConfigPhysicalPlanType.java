@@ -88,6 +88,7 @@ public enum ConfigPhysicalPlanType {
   /** Procedure. */
   UpdateProcedure((short) 500),
   DeleteProcedure((short) 501),
+  UpdateProcedures((short) 502),
 
   /** Authority. */
   Author((short) 600),

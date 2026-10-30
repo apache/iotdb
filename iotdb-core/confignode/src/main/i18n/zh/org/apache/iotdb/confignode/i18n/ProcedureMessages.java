@@ -1537,4 +1537,5 @@ public final class ProcedureMessages {
   public static final String LOG_FINISH_PROCEDURE_WITHOUT_ROLLBACK_41F7A354 = "结束流程（不回滚）";
   public static final String LOG_DELETE_CHILD_PROCEDURES_WITHOUT_ROLLBACK_6E62D1C1 =
       "删除子流程（不回滚）";
+  public static final String LOG_PERSIST_PARENT_AND_CHILD_PROCEDURES_54E2D0D2 = "持久化父流程和子流程";
 }

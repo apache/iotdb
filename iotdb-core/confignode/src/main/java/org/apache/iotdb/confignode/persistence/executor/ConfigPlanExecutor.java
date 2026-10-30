@@ -110,6 +110,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStat
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusWithStoppedByRuntimeExceptionPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProceduresPlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
@@ -451,6 +452,8 @@ public class ConfigPlanExecutor {
         return partitionInfo.createDataPartition((CreateDataPartitionPlan) physicalPlan);
       case AutoCleanPartitionTable:
         return partitionInfo.autoCleanPartitionTable((AutoCleanPartitionTablePlan) physicalPlan);
+      case UpdateProcedures:
+        return procedureInfo.updateProcedures((UpdateProceduresPlan) physicalPlan);
       case UpdateProcedure:
         return procedureInfo.updateProcedure((UpdateProcedurePlan) physicalPlan);
       case DeleteProcedure:
