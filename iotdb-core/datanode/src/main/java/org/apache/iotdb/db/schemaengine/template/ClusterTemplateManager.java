@@ -296,7 +296,7 @@ public class ClusterTemplateManager implements ITemplateManager {
     readWriteLock.readLock().lock();
     try {
       for (PartialPath templateSetPath : pathSetTemplateMap.keySet()) {
-        if (devicePath.startsWithOrPrefixOf(templateSetPath.getNodes())) {
+        if (devicePath.startsWithOrEqual(templateSetPath.getNodes())) {
           return new Pair<>(
               templateIdMap.get(pathSetTemplateMap.get(templateSetPath)), templateSetPath);
         }
