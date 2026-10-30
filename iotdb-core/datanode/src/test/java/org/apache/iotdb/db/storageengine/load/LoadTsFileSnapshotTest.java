@@ -43,14 +43,20 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.io.File;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -71,9 +77,6 @@ public class LoadTsFileSnapshotTest {
   private static final String DATABASE_NAME = "root.snapshot_test";
   private static final String REGION_ID = "0";
   private static final String REGION_DIR_NAME = DATABASE_NAME + "-" + REGION_ID;
-
-  /** Bounds the loop that snapshots a task while its pieces are being applied. */
-  private static final int MAX_SNAPSHOTS = 500;
 
   private File tempDir;
   private String[] originalLoadBaseDirs;
@@ -145,6 +148,92 @@ public class LoadTsFileSnapshotTest {
     assertTrue(
         "the snapshot has to record the staging root of its tasks",
         collected.contains("load/roots"));
+  }
+
+  @Test
+  public void testSnapshotDoesNotChangeWhenMorePiecesAreApplied() throws Exception {
+    final String loadId = "snapshot-before-append";
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.of(manager));
+    final NonAlignedChunkData first = laidOutChunk();
+    final NonAlignedChunkData second =
+        createNonAlignedChunkData(
+            new StringArrayDeviceID("root", "snapshot_test", "d1"), "s1", 100, 10);
+    final ChunkOffsetCalculator calculator = new ChunkOffsetCalculator();
+    calculator.assign(first);
+    calculator.assign(second);
+    final LoadTsFileConsensusNode firstPiece = stagedPiece(loadId, first);
+    manager.writePiece(firstPiece);
+    final File staged = new File(tempDir, firstPiece.getPieceRefs().get(0).getRelativePath());
+    final File snapshotDir = new File(tempDir, "snapshot-before-append");
+    assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir));
+    final File copiedStaged =
+        new File(
+            new File(new File(snapshotDir, LoadTsFileSnapshot.SNAPSHOT_SUBDIR_NAME), loadId),
+            staged.getName());
+    final File copiedProgress = LoadTsFileProgress.progressFileFor(copiedStaged);
+    final byte[] copiedData = Files.readAllBytes(copiedStaged.toPath());
+    final byte[] copiedLog = Files.readAllBytes(copiedProgress.toPath());
+
+    manager.writePiece(stagedPiece(loadId, second));
+
+    assertTrue(staged.length() > copiedData.length);
+    assertEquals(2, new LoadTsFileProgress(staged).readAllRecords().size());
+    assertArrayEquals(copiedData, Files.readAllBytes(copiedStaged.toPath()));
+    assertArrayEquals(copiedLog, Files.readAllBytes(copiedProgress.toPath()));
+    assertEquals(1, new LoadTsFileProgress(copiedStaged).readAllRecords().size());
+  }
+
+  @Test
+  public void testSnapshotRepairsIncompleteHeaderWithoutChangingSource() throws Exception {
+    assertSnapshotRepairsProgressWithoutChangingSource(true);
+  }
+
+  @Test
+  public void testSnapshotRepairsTornEntryWithoutChangingSource() throws Exception {
+    assertSnapshotRepairsProgressWithoutChangingSource(false);
+  }
+
+  private void assertSnapshotRepairsProgressWithoutChangingSource(final boolean incompleteHeader)
+      throws Exception {
+    final String loadId = "snapshot-torn-progress";
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.of(manager));
+    final LoadTsFileConsensusNode piece = stagedPiece(loadId, laidOutChunk());
+    manager.writePiece(piece);
+    final File staged = new File(tempDir, piece.getPieceRefs().get(0).getRelativePath());
+    final File progressFile = LoadTsFileProgress.progressFileFor(staged);
+    final byte[] completeLog = Files.readAllBytes(progressFile.toPath());
+    final byte[] tornLog;
+    if (incompleteHeader) {
+      tornLog = Arrays.copyOf(completeLog, Integer.BYTES - 1);
+    } else {
+      tornLog = Arrays.copyOf(completeLog, completeLog.length + Integer.BYTES + 1);
+      ByteBuffer.wrap(tornLog, completeLog.length, Integer.BYTES).putInt(32);
+    }
+    Files.write(progressFile.toPath(), tornLog);
+    final File snapshotDir = new File(tempDir, "snapshot-torn-progress");
+
+    assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir));
+
+    // Repair only the copied log. The live log may still be in the middle of an append.
+    assertArrayEquals(tornLog, Files.readAllBytes(progressFile.toPath()));
+    final File copiedStaged =
+        new File(
+            new File(new File(snapshotDir, LoadTsFileSnapshot.SNAPSHOT_SUBDIR_NAME), loadId),
+            staged.getName());
+    if (incompleteHeader) {
+      assertFalse(copiedStaged.exists());
+    }
+    assertEquals(
+        incompleteHeader ? 0L : completeLog.length,
+        LoadTsFileProgress.progressFileFor(copiedStaged).length());
+    assertEquals(
+        incompleteHeader ? 0 : 1, new LoadTsFileProgress(copiedStaged).readAllRecords().size());
+    if (incompleteHeader) {
+      assertPieceCanBeReplayedAfterRestore(
+          snapshotDir, loadId, Files.readAllBytes(staged.toPath()));
+    }
   }
 
   @Test
@@ -331,6 +420,99 @@ public class LoadTsFileSnapshotTest {
     assertFalse(new File(new File(tempDir, REGION_DIR_NAME), "finished-task").exists());
   }
 
+  @Test
+  public void testSnapshotCopiesAStagedFileThatAppearsBetweenDirectoryScans() throws Exception {
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    final LoadTsFileConsensusNode piece = stagedPiece("new-staged-file", laidOutChunk());
+    manager.writePiece(piece);
+    final File staged = new File(tempDir, piece.getPieceRefs().get(0).getRelativePath());
+    // The task is initially empty. Its staged file and progress log appear before the second
+    // directory scan, so the data-file pass misses the file that the log now describes.
+    final File taskDir =
+        new File(staged.getParent()) {
+          private boolean firstScan = true;
+
+          @Override
+          public File[] listFiles() {
+            if (firstScan) {
+              firstScan = false;
+              return new File[0];
+            }
+            return super.listFiles();
+          }
+        };
+    final LoadTsFileManager snapshotManager = Mockito.mock(LoadTsFileManager.class);
+    Mockito.when(snapshotManager.getActiveTaskDirs())
+        .thenReturn(Collections.singletonList(taskDir));
+    Mockito.when(dataRegion.getLoadTsFileManagerIfPresent())
+        .thenReturn(Optional.of(snapshotManager));
+    final File snapshotDir = new File(tempDir, "snapshot-new-file");
+
+    assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir));
+
+    assertEveryCopiedLogFitsItsCopiedFile(snapshotDir);
+    assertEquals(staged.length(), lengthOfTheStagedFile(snapshotDir));
+  }
+
+  @Test
+  public void testSnapshotDropsAStagedFileWithoutAProgressLog() throws Exception {
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    final String loadId = "staged-without-progress";
+    final LoadTsFileConsensusNode piece = stagedPiece(loadId, laidOutChunk());
+    manager.writePiece(piece);
+    final File staged = new File(tempDir, piece.getPieceRefs().get(0).getRelativePath());
+    final byte[] stagedBytes = Files.readAllBytes(staged.toPath());
+    final byte[] progressBytes =
+        Files.readAllBytes(LoadTsFileProgress.progressFileFor(staged).toPath());
+    // The first piece has created its data file, but no progress log is visible to either scan yet.
+    final File taskDir =
+        new File(staged.getParent()) {
+          @Override
+          public File[] listFiles() {
+            return new File[] {staged};
+          }
+        };
+    final LoadTsFileManager snapshotManager = Mockito.mock(LoadTsFileManager.class);
+    Mockito.when(snapshotManager.getActiveTaskDirs())
+        .thenReturn(Collections.singletonList(taskDir));
+    Mockito.when(dataRegion.getLoadTsFileManagerIfPresent())
+        .thenReturn(Optional.of(snapshotManager));
+    final File snapshotDir = new File(tempDir, "snapshot-without-progress");
+
+    assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir));
+
+    final File copiedStaged =
+        new File(
+            new File(
+                new File(snapshotDir, LoadTsFileSnapshot.SNAPSHOT_SUBDIR_NAME),
+                staged.getParentFile().getName()),
+            staged.getName());
+    assertFalse(copiedStaged.exists());
+    assertArrayEquals(stagedBytes, Files.readAllBytes(staged.toPath()));
+    assertArrayEquals(
+        progressBytes, Files.readAllBytes(LoadTsFileProgress.progressFileFor(staged).toPath()));
+    assertPieceCanBeReplayedAfterRestore(snapshotDir, loadId, stagedBytes);
+  }
+
+  private void assertPieceCanBeReplayedAfterRestore(
+      final File snapshotDir, final String loadId, final byte[] expectedStagedBytes)
+      throws Exception {
+    final File restoredRoot = new File(tempDir, "restored-load-root");
+    setLoadRoots(restoredRoot);
+    LoadTsFileSnapshot.restore(DATABASE_NAME, REGION_ID, snapshotDir);
+    final LoadTsFileManager recovered = new LoadTsFileManager(dataRegion);
+    try {
+      final LoadTsFileConsensusNode replayed = stagedPiece(loadId, laidOutChunk());
+      recovered.writePiece(replayed);
+      final File restoredStaged =
+          new File(restoredRoot, replayed.getPieceRefs().get(0).getRelativePath());
+      assertArrayEquals(expectedStagedBytes, Files.readAllBytes(restoredStaged.toPath()));
+      assertEquals(1, new LoadTsFileProgress(restoredStaged).readAllRecords().size());
+    } finally {
+      recovered.stop();
+    }
+  }
+
   /**
    * A snapshot taken while pieces are still being applied has to be restorable: every range a
    * copied progress log describes has to be inside the bytes that were copied with it.
@@ -343,58 +525,122 @@ public class LoadTsFileSnapshotTest {
    */
   @Test
   public void testSnapshotTakenWhilePiecesAreAppliedStaysRestorable() throws Exception {
-    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
-    Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.of(manager));
-    final String loadId = "concurrent-snapshot";
-
-    // Ten chunks of one partition, laid out one after the other, so every piece appends to the same
-    // staged file and its log.
-    final ChunkOffsetCalculator calculator = new ChunkOffsetCalculator();
-    final List<NonAlignedChunkData> chunks = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      final NonAlignedChunkData chunk =
-          createNonAlignedChunkData(
-              new StringArrayDeviceID("root", "snapshot_test", "d" + i), "s" + i, i * 100, 10);
-      calculator.assign(chunk);
-      chunks.add(chunk);
-    }
-
-    final Set<Long> stagedLengths = new HashSet<>();
-    final AtomicBoolean writing = new AtomicBoolean(true);
-    final Thread writer =
-        new Thread(
-            () -> {
-              try {
-                for (final NonAlignedChunkData chunk : chunks) {
-                  manager.writePiece(loadId, Collections.singletonList(chunk));
-                  Thread.sleep(5L);
-                }
-              } catch (final Exception e) {
-                // Whatever was staged is what the snapshots below are checked against.
-              } finally {
-                writing.set(false);
-              }
-            });
-    writer.start();
+    final int originalWriteBufferSize = config.getLoadTsFileWriteBufferSize();
+    config.setLoadTsFileWriteBufferSize(1024);
     try {
-      // Snapshot the task while the pieces of the writer thread are still being applied.
-      int snapshots = 0;
-      while (writing.get() && snapshots < MAX_SNAPSHOTS) {
-        final File snapshotDir = new File(tempDir, "snapshot-" + snapshots);
-        assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir));
-        assertEveryCopiedLogFitsItsCopiedFile(snapshotDir);
-        stagedLengths.add(lengthOfTheStagedFile(snapshotDir));
-        snapshots++;
-        Thread.sleep(1L);
+      final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+      try {
+        Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.of(manager));
+        final String loadId = "concurrent-snapshot";
+
+        // Keep a live writer open on one staged file while later pieces append to it.
+        final ChunkOffsetCalculator calculator = new ChunkOffsetCalculator();
+        final NonAlignedChunkData firstChunk =
+            createNonAlignedChunkData(
+                new StringArrayDeviceID("root", "snapshot_test", "d0"), "s0", 0, 1000);
+        calculator.assign(firstChunk);
+        manager.writePiece(loadId, Collections.singletonList(firstChunk));
+        final File stagedFile =
+            new File(tempDir, firstChunk.getChunkPayloadRefs().get(0).getFilePath());
+        final long firstPieceLength = stagedFile.length();
+
+        final List<NonAlignedChunkData> chunks = new ArrayList<>();
+        for (int i = 1; i <= 50; i++) {
+          final NonAlignedChunkData chunk =
+              i == 1
+                  ? blockingChunk(
+                      new StringArrayDeviceID("root", "snapshot_test", "d" + i),
+                      "s" + i,
+                      i * 1000,
+                      1000)
+                  : createNonAlignedChunkData(
+                      new StringArrayDeviceID("root", "snapshot_test", "d" + i),
+                      "s" + i,
+                      i * 1000,
+                      1000);
+          calculator.assign(chunk);
+          chunks.add(chunk);
+        }
+
+        final Set<Long> stagedLengths = new HashSet<>();
+        final ExecutorService writer = Executors.newSingleThreadExecutor();
+        final BlockingNonAlignedChunkData blockingChunk =
+            (BlockingNonAlignedChunkData) chunks.get(0);
+        File overlappedSnapshotDir = null;
+        try {
+          for (int i = 0; i < chunks.size(); i++) {
+            final NonAlignedChunkData chunk = chunks.get(i);
+            final Future<?> applied =
+                writer.submit(
+                    () -> {
+                      manager.writePiece(loadId, Collections.singletonList(chunk));
+                      return null;
+                    });
+            final File snapshotDir = new File(tempDir, "snapshot-concurrent-" + i);
+            if (i == 0) {
+              assertTrue(
+                  "the writer has to have appended bytes before the snapshot starts",
+                  blockingChunk.awaitBytesWritten());
+              assertTrue(
+                  "the in-flight piece has to be visible in the staged file",
+                  stagedFile.length() > firstPieceLength);
+              overlappedSnapshotDir = snapshotDir;
+            }
+            try {
+              assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir));
+              assertEveryCopiedLogFitsItsCopiedFile(snapshotDir);
+            } finally {
+              if (i == 0) {
+                blockingChunk.releaseWrite();
+              }
+            }
+
+            // Propagate writer failures and capture each completed piece before allowing the next
+            // one.
+            applied.get(30, TimeUnit.SECONDS);
+            final File completedSnapshotDir = new File(tempDir, "snapshot-completed-" + i);
+            assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, completedSnapshotDir));
+            assertEveryCopiedLogFitsItsCopiedFile(completedSnapshotDir);
+            stagedLengths.add(lengthOfTheStagedFile(completedSnapshotDir));
+          }
+        } finally {
+          blockingChunk.releaseWrite();
+          writer.shutdownNow();
+          assertTrue(
+              "the writer has to have finished", writer.awaitTermination(30, TimeUnit.SECONDS));
+        }
+        assertTrue(
+            "the snapshots have to have caught the staged file while it was still growing",
+            stagedLengths.size() > 1);
+
+        manager.stop();
+        setLoadRoots(tempDir);
+        LoadTsFileSnapshot.clear(DATABASE_NAME, REGION_ID);
+        LoadTsFileSnapshot.restore(DATABASE_NAME, REGION_ID, overlappedSnapshotDir);
+
+        final LoadTsFileManager recovered = new LoadTsFileManager(dataRegion);
+        try {
+          // The overlapped snapshot has the first completed piece, but not the paused piece's
+          // record.
+          // Recreate the paused piece with its original layout. Reusing the original object would
+          // retain source file references populated by the first writer.
+          final NonAlignedChunkData resumedChunk =
+              createNonAlignedChunkData(
+                  new StringArrayDeviceID("root", "snapshot_test", "d1"), "s1", 1000, 1000);
+          resumedChunk.setChunkLayout(chunks.get(0).getChunkLayout());
+          assertTrue(stagedFile.isFile());
+          assertEquals(1, new LoadTsFileProgress(stagedFile).readAllRecords().size());
+          recovered.writePiece(loadId, Collections.singletonList(resumedChunk));
+          assertEquals(2, new LoadTsFileProgress(stagedFile).readAllRecords().size());
+        } finally {
+          recovered.stop();
+        }
+      } finally {
+        manager.stop();
       }
-      assertTrue("the snapshots have to have been taken while the task was staged", snapshots > 0);
     } finally {
-      writer.join();
+      config.setLoadTsFileWriteBufferSize(originalWriteBufferSize);
     }
-    assertFalse("the writer has to have finished by now", writing.get());
-    assertTrue(
-        "the snapshots have to have caught the staged file while it was still growing",
-        stagedLengths.size() > 1);
   }
 
   /** The length of the staged file a snapshot holds, or -1 when it holds none yet. */
@@ -446,13 +692,19 @@ public class LoadTsFileSnapshotTest {
                 file.getName()
                     .substring(
                         0, file.getName().length() - LoadTsFileProgress.PROGRESS_SUFFIX.length()));
-        assertTrue(
-            "a copied log has no staged file next to it: " + file.getName(), staged.isFile());
         final LoadTsFileProgress progress = new LoadTsFileProgress(staged);
         // Reading a copied log repairs the fragment of an entry that was caught half appended,
         // exactly as the node that restores this snapshot does.
-        for (final LoadTsFileProgress.ChunkRangeRecord record :
-            progress.readAllRecordsRepairingTornTail()) {
+        final List<LoadTsFileProgress.ChunkRangeRecord> records =
+            progress.readAllRecordsRepairingTornTail();
+        if (records.isEmpty()) {
+          assertFalse(
+              "an unrecorded staged file blocks replay: " + staged.getName(), staged.exists());
+          continue;
+        }
+        assertTrue(
+            "a copied log has no staged file next to it: " + file.getName(), staged.isFile());
+        for (final LoadTsFileProgress.ChunkRangeRecord record : records) {
           assertTrue(
               "a copied log describes bytes the copied file does not hold: "
                   + record.physicalEnd()
@@ -525,6 +777,64 @@ public class LoadTsFileSnapshotTest {
     chunkData.writeDecodePage(times, values, pointCount);
     chunkData.endChunk();
     return chunkData;
+  }
+
+  private static BlockingNonAlignedChunkData blockingChunk(
+      final IDeviceID device, final String measurement, final int valueBase, final int pointCount) {
+    final BlockingNonAlignedChunkData chunkData =
+        new BlockingNonAlignedChunkData(
+            device,
+            new ChunkHeader(
+                measurement,
+                0,
+                TSDataType.INT32,
+                CompressionType.UNCOMPRESSED,
+                TSEncoding.PLAIN,
+                0),
+            new TTimePartitionSlot(0L));
+    final long[] times = new long[pointCount];
+    final Object[] values = new Object[pointCount];
+    for (int i = 0; i < pointCount; i++) {
+      times[i] = i + 1L;
+      values[i] = valueBase + i;
+    }
+    chunkData.writeDecodePage(times, values, pointCount);
+    chunkData.endChunk();
+    return chunkData;
+  }
+
+  private static final class BlockingNonAlignedChunkData extends NonAlignedChunkData {
+    private final CountDownLatch bytesWritten = new CountDownLatch(1);
+    private final CountDownLatch release = new CountDownLatch(1);
+
+    private BlockingNonAlignedChunkData(
+        final IDeviceID device,
+        final ChunkHeader chunkHeader,
+        final TTimePartitionSlot timePartitionSlot) {
+      super(device, chunkHeader, timePartitionSlot);
+    }
+
+    @Override
+    public void setChunkPayloadRefs(final List<ChunkPayloadRef> chunkPayloadRefs) {
+      super.setChunkPayloadRefs(chunkPayloadRefs);
+      bytesWritten.countDown();
+      try {
+        if (!release.await(30, TimeUnit.SECONDS)) {
+          throw new AssertionError("the snapshot test did not release the writer");
+        }
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new AssertionError("the snapshot test writer was interrupted", e);
+      }
+    }
+
+    private boolean awaitBytesWritten() throws InterruptedException {
+      return bytesWritten.await(30, TimeUnit.SECONDS);
+    }
+
+    private void releaseWrite() {
+      release.countDown();
+    }
   }
 
   private static void deleteRecursively(final File file) {

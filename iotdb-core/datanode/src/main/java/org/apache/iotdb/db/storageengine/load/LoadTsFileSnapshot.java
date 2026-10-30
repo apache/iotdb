@@ -24,8 +24,11 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -157,6 +160,31 @@ public final class LoadTsFileSnapshot {
 
     // 3. Catch up staged files if progress logs advanced during file copy
     catchUpStagedFiles(taskDir, targetDir);
+
+    // A piece is applied only after its chunk records are appended. Without any records, the
+    // restoring manager cannot resume this staged file; leave replay free to create it again.
+    discardUnrecordedStagedFiles(targetDir);
+  }
+
+  private static void discardUnrecordedStagedFiles(final File snapshotTaskDir) throws IOException {
+    for (final File stagedFile : listFiles(snapshotTaskDir)) {
+      if (!stagedFile.isFile() || !stagedFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+        continue;
+      }
+
+      final File progressFile = LoadTsFileProgress.progressFileFor(stagedFile);
+      if (progressFile.isFile()
+          && !new LoadTsFileProgress(stagedFile).readAllRecordsRepairingTornTail().isEmpty()) {
+        continue;
+      }
+
+      Files.deleteIfExists(stagedFile.toPath());
+      Files.deleteIfExists(
+          new File(stagedFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+      Files.deleteIfExists(ModificationFile.getExclusiveMods(stagedFile).toPath());
+      Files.deleteIfExists(
+          new File(stagedFile.getPath() + ModificationFileV1.FILE_SUFFIX).toPath());
+    }
   }
 
   /**
@@ -176,8 +204,13 @@ public final class LoadTsFileSnapshot {
       final File snapshotStagedFile = new File(snapshotTaskDir, baseName);
       final File sourceStagedFile = new File(sourceTaskDir, baseName);
 
-      if (!snapshotStagedFile.isFile() || !sourceStagedFile.isFile()) {
+      if (!sourceStagedFile.isFile()) {
         continue;
+      }
+      // A new staged file may appear between the data-file and progress-log directory scans.
+      // Its log was copied by the second pass, so the snapshot must also contain its data.
+      if (!snapshotStagedFile.isFile()) {
+        publishAtomicCopy(sourceStagedFile, snapshotStagedFile);
       }
 
       long expectedLength = recordedLengthOf(snapshotStagedFile);
@@ -337,7 +370,9 @@ public final class LoadTsFileSnapshot {
     final File tempTarget =
         new File(parent, target.getName() + TEMP_FILE_SUFFIX + UUID.randomUUID());
     try {
-      LoadUtil.transferFile(source, tempTarget, true);
+      // Staged files and their progress logs remain writable, including after restore. A hard
+      // link would let appends or torn-tail repairs change both the source and its snapshot.
+      copyPrefixBytes(source, tempTarget, source.length());
       atomicMoveOrFallback(tempTarget, target);
     } catch (final IOException e) {
       Files.deleteIfExists(tempTarget.toPath());
@@ -352,10 +387,22 @@ public final class LoadTsFileSnapshot {
     final File tempTarget =
         new File(parent, target.getName() + TEMP_FILE_SUFFIX + UUID.randomUUID());
 
+    try {
+      copyPrefixBytes(source, tempTarget, length);
+      atomicMoveOrFallback(tempTarget, target);
+    } catch (final IOException e) {
+      Files.deleteIfExists(tempTarget.toPath());
+      throw e;
+    }
+  }
+
+  /** Copies through a shared-read channel so a live writer can keep appending on Windows. */
+  private static void copyPrefixBytes(final File source, final File target, final long length)
+      throws IOException {
     try (final FileChannel srcChannel = FileChannel.open(source.toPath(), StandardOpenOption.READ);
         final FileChannel dstChannel =
             FileChannel.open(
-                tempTarget.toPath(),
+                target.toPath(),
                 StandardOpenOption.CREATE,
                 StandardOpenOption.WRITE,
                 StandardOpenOption.TRUNCATE_EXISTING)) {
@@ -368,10 +415,6 @@ public final class LoadTsFileSnapshot {
         }
         position += transferred;
       }
-      atomicMoveOrFallback(tempTarget, target);
-    } catch (final IOException e) {
-      Files.deleteIfExists(tempTarget.toPath());
-      throw e;
     }
   }
 
