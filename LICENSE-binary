@@ -259,7 +259,7 @@ io.netty:netty-transport-native-epoll:4.1.137.Final:linux-x86_64
 io.netty:netty-transport-native-unix-common:4.1.137.Final
 org.jspecify:jspecify:1.0.0
 org.jctools:jctools-core:4.0.5
-org.xerial.snappy:snappy-java:1.1.10.5
+org.xerial.snappy:snappy-java:1.1.10.9
 io.airlift.airline:0.9
 
 
