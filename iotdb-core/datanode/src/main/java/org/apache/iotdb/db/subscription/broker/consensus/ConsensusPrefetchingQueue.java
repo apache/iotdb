@@ -4791,6 +4791,16 @@ public class ConsensusPrefetchingQueue {
         commitManager.getCommittedRegionProgress(consumerGroupId, topicName, consensusGroupId);
 
     synchronized (committedRetentionLock) {
+      // Unchanged ACK progress can reuse a live boundary, but a roll must recheck the sealed file.
+      if (Objects.equals(lastCommittedProgressForRetention, committedRegionProgress)
+          && consensusReqReader instanceof WALNode
+          && committedRetainedMinVersionId
+              == ((WALNode) consensusReqReader).getCurrentWALFileVersion()
+          && Objects.nonNull(lastRetainedWalFileForRetention)
+          && lastRetainedWalFileForRetention.exists()) {
+        return false;
+      }
+
       // The previous boundary still applies while its sealed requirement is uncovered, or while
       // it is the current live WAL file. Recheck even unchanged progress: a roll may have sealed
       // the formerly live file after its last ACK, making that file reclaimable without new writes.

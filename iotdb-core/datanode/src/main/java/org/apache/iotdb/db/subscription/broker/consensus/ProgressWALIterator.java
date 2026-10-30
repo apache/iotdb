@@ -359,6 +359,9 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
     }
     // Pending delivery may have advanced one past the live tail. Still realign to its file after
     // verifying coverage of the sealed prefix, before committed history can be reclaimed.
+    if (liveWalNode != null && targetSearchIndex > liveWalNode.getCurrentSearchIndex()) {
+      return walFiles.length - 1;
+    }
     return WALFileUtils.binarySearchFileBySearchIndex(walFiles, targetSearchIndex);
   }
 
