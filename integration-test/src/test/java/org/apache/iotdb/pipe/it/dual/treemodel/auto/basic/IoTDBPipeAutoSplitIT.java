@@ -99,7 +99,7 @@ public class IoTDBPipeAutoSplitIT extends AbstractPipeDualTreeModelAutoIT {
                 + "'forwarding-pipe-requests'='false',"
                 + "'history.enable'='true','realtime.enable'='true') "
                 + "with sink ('sink'='write-back-sink','sink.database'='root.writeback_target',"
-                + "'user'='root')"),
+                + "'user'='root','password'='root')"),
         null);
 
     TestUtils.assertDataEventuallyOnEnv(
