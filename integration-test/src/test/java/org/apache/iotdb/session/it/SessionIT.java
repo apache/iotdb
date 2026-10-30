@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.session.it;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -40,8 +41,9 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -60,14 +62,19 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class SessionIT {
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUpCluster() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
+  }
+
+  @AfterClass
+  public static void tearDownCluster() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    TestUtils.clearAllDatabases(EnvFactory.getEnv());
   }
 
   @Test

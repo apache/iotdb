@@ -38,13 +38,15 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -54,15 +56,32 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE_BIN
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBDatabaseSetAndDeleteIT {
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUpCluster() throws Exception {
     // Init 1C1D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
   }
 
-  @After
-  public void tearDown() {
+  @AfterClass
+  public static void tearDownCluster() {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      final TDatabaseSchemaResp response =
+          client.getMatchedDatabaseSchemas(
+              new TGetDatabaseReq(Arrays.asList("root", "sg*"), ALL_MATCH_SCOPE_BINARY));
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+      for (final String database : response.getDatabaseSchemaMap().keySet()) {
+        final TSStatus status =
+            client.deleteDatabases(new TDeleteDatabasesReq(Collections.singletonList(database)));
+        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      }
+    }
   }
 
   @Test

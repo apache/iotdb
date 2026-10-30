@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.session.it;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -33,7 +34,8 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -53,15 +55,20 @@ public class IoTDBSessionAlignedInsertIT {
   private static final String ROOT_SG1_D2 = "root.sg_1.d2";
   private static final double DELTA_DOUBLE = 1e-7d;
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUpCluster() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setMaxDegreeOfIndexNode(3);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
+  @AfterClass
+  public static void tearDownCluster() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    TestUtils.clearAllDatabases(EnvFactory.getEnv());
   }
 
   @Test

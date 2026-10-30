@@ -25,7 +25,9 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -50,15 +52,31 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBInsertWithQueryIT {
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUpCluster() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimestampPrecisionCheckEnabled(false);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDownCluster() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Before
+  public void setUp() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.fans");
+    }
+  }
+
+  @After
+  public void tearDown() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("DELETE DATABASE root.fans");
+    }
   }
 
   @Test

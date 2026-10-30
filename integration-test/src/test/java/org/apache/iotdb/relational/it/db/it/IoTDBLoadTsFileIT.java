@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.relational.it.db.it;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.it.utils.TsFileTableGenerator;
@@ -35,8 +36,10 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -66,9 +69,8 @@ public class IoTDBLoadTsFileIT {
 
   private File tmpDir;
 
-  @Before
-  public void setUp() throws Exception {
-    tmpDir = new File(Files.createTempDirectory("load").toUri());
+  @BeforeClass
+  public static void setUpCluster() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(PARTITION_INTERVAL);
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().getConfig().getCommonConfig().setDatanodeMemoryProportion("3:3:1:1:1:0");
@@ -80,12 +82,37 @@ public class IoTDBLoadTsFileIT {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
+  @AfterClass
+  public static void tearDownCluster() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Before
+  public void setUp() throws Exception {
+    tmpDir = new File(Files.createTempDirectory("load").toUri());
+  }
+
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-
-    if (!deleteDir()) {
-      LOGGER.error("Can not delete tmp dir for loading tsfile.");
+    try {
+      TestUtils.clearAllDatabases(EnvFactory.getEnv());
+      try (final Connection connection =
+              EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+          final Statement statement = connection.createStatement()) {
+        boolean testUserExists = false;
+        try (final ResultSet resultSet = statement.executeQuery("LIST USER")) {
+          while (resultSet.next()) {
+            testUserExists |= "test".equals(resultSet.getString("User"));
+          }
+        }
+        if (testUserExists) {
+          statement.execute("DROP USER test");
+        }
+      }
+    } finally {
+      if (!deleteDir()) {
+        LOGGER.error("Can not delete tmp dir for loading tsfile.");
+      }
     }
   }
 

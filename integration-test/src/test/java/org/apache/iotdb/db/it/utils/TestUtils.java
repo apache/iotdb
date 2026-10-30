@@ -62,6 +62,8 @@ import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATABASE;
+import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
 import static org.apache.iotdb.itbase.constant.TestConstant.DELTA;
 import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
@@ -1099,6 +1101,82 @@ public class TestUtils {
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  /** Clears both data models between methods sharing a cluster. */
+  public static void clearAllDatabases(final BaseEnv env) throws SQLException {
+    for (final String dialect : Arrays.asList(TREE_SQL_DIALECT, TABLE_SQL_DIALECT)) {
+      final String auditDatabase =
+          TREE_SQL_DIALECT.equals(dialect) ? TREE_MODEL_AUDIT_DATABASE : TABLE_MODEL_AUDIT_DATABASE;
+      try (final Connection connection = env.getConnection(dialect);
+          final Statement statement = connection.createStatement()) {
+        final List<String> databases = new ArrayList<>();
+        try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
+          while (resultSet.next()) {
+            final String database = resultSet.getString(1);
+            if (!"information_schema".equals(database)
+                && !auditDatabase.equalsIgnoreCase(database)) {
+              databases.add(database);
+            }
+          }
+        }
+        for (final String database : databases) {
+          if (TREE_SQL_DIALECT.equals(dialect)) {
+            statement.execute("DELETE DATABASE " + database);
+          } else {
+            dropDatabaseWithRetry(statement, "\"" + database.replace("\"", "\"\"") + "\"");
+          }
+        }
+      }
+    }
+  }
+
+  public static void clearAllSchemaTemplates(final BaseEnv env) throws SQLException {
+    try (final Connection connection = env.getConnection();
+        final Statement statement = connection.createStatement()) {
+      final List<String> templates = new ArrayList<>();
+      try (final ResultSet resultSet = statement.executeQuery("SHOW DEVICE TEMPLATES")) {
+        while (resultSet.next()) {
+          templates.add(resultSet.getString(1));
+        }
+      }
+      for (final String template : templates) {
+        statement.execute("DROP DEVICE TEMPLATE `" + template.replace("`", "``") + "`");
+      }
+    }
+  }
+
+  /** Stops replication before deleting data in a reused pair of clusters. */
+  public static void dropAllPipes(final BaseEnv env) throws SQLException {
+    for (final String dialect : Arrays.asList(TREE_SQL_DIALECT, TABLE_SQL_DIALECT)) {
+      try (final Connection connection = env.getConnection(dialect);
+          final Statement statement = connection.createStatement()) {
+        final List<String> pipes = new ArrayList<>();
+        try (final ResultSet resultSet = statement.executeQuery("SHOW PIPES")) {
+          while (resultSet.next()) {
+            pipes.add(resultSet.getString("ID"));
+          }
+        }
+        final String quote = TREE_SQL_DIALECT.equals(dialect) ? "`" : "\"";
+        for (final String pipe : pipes) {
+          if (pipe.startsWith("__consensus")) {
+            continue;
+          }
+          statement.execute("DROP PIPE " + quote + pipe.replace(quote, quote + quote) + quote);
+        }
+        await()
+            .pollInSameThread()
+            .atMost(60, TimeUnit.SECONDS)
+            .untilAsserted(
+                () -> {
+                  try (final ResultSet resultSet = statement.executeQuery("SHOW PIPES")) {
+                    while (resultSet.next()) {
+                      assertTrue(resultSet.getString("ID").startsWith("__consensus"));
+                    }
+                  }
+                });
+      }
     }
   }
 

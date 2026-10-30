@@ -32,8 +32,9 @@ import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePul
 import org.apache.iotdb.subscription.it.AbstractSubscriptionIT;
 
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -50,10 +51,8 @@ public class IoTDBConsensusSubscriptionColumnFilterClusterIT extends AbstractSub
 
   private static final long OWNER_LEASE_DURATION_MS = 60_000L;
 
-  @Override
-  @Before
-  public void setUp() throws Exception {
-    super.setUp();
+  @BeforeClass
+  public static void setUpCluster() throws Exception {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -69,11 +68,19 @@ public class IoTDBConsensusSubscriptionColumnFilterClusterIT extends AbstractSub
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
   }
 
+  @AfterClass
+  public static void tearDownCluster() {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
   @Override
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-    super.tearDown();
+    try {
+      clearSubscriptionState(EnvFactory.getEnv());
+    } finally {
+      super.tearDown();
+    }
   }
 
   @Test

@@ -27,6 +27,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFil
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -36,14 +37,17 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -84,10 +88,10 @@ public class IoTDBLoadTsFileIT {
   private static final long loadTsFileAnalyzeSchemaMemorySizeInBytes = 10 * 1024L;
 
   private File tmpDir;
+  private boolean asyncLoadSubmitted;
 
-  @Before
-  public void setUp() throws Exception {
-    tmpDir = new File(Files.createTempDirectory("load").toUri());
+  @BeforeClass
+  public static void setUpCluster() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(PARTITION_INTERVAL);
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().getConfig().getCommonConfig().setPipeMemoryManagementEnabled(false);
@@ -101,13 +105,57 @@ public class IoTDBLoadTsFileIT {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
+  @AfterClass
+  public static void tearDownCluster() {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Before
+  public void setUp() throws Exception {
+    tmpDir = new File(Files.createTempDirectory("load").toUri());
+    asyncLoadSubmitted = false;
+  }
+
   @After
   public void tearDown() throws Exception {
-    deleteSG();
-    EnvFactory.getEnv().cleanClusterEnvironment();
-
-    if (!deleteDir()) {
-      LOGGER.error("Can not delete tmp dir for loading tsfile.");
+    try {
+      if (asyncLoadSubmitted) {
+        // The expected rows can be visible before the asynchronous load has finished. Restart the
+        // cluster before deleting its input files so that no worker from this test can affect the
+        // next one.
+        EnvFactory.getEnv().cleanClusterEnvironment();
+        setUpCluster();
+      } else {
+        deleteDatabases();
+        try (final Connection connection = EnvFactory.getEnv().getConnection();
+            final Statement statement = connection.createStatement()) {
+          final List<String> templates = new ArrayList<>();
+          try (final ResultSet resultSet = statement.executeQuery("SHOW DEVICE TEMPLATES")) {
+            while (resultSet.next()) {
+              templates.add(resultSet.getString(ColumnHeaderConstant.TEMPLATE_NAME));
+            }
+          }
+          for (final String template : templates) {
+            statement.execute("DROP DEVICE TEMPLATE " + template);
+          }
+          final List<String> users = new ArrayList<>();
+          try (final ResultSet resultSet = statement.executeQuery("LIST USER")) {
+            while (resultSet.next()) {
+              final String user = resultSet.getString(ColumnHeaderConstant.USER);
+              if (!SessionConfig.DEFAULT_USER.equals(user)) {
+                users.add(user);
+              }
+            }
+          }
+          for (final String user : users) {
+            statement.execute("DROP USER " + user);
+          }
+        }
+      }
+    } finally {
+      if (tmpDir != null) {
+        FileUtils.deleteDirectory(tmpDir);
+      }
     }
   }
 
@@ -167,23 +215,8 @@ public class IoTDBLoadTsFileIT {
     return sql;
   }
 
-  private void deleteSG() throws SQLException {
-    try (final Connection connection = EnvFactory.getEnv().getConnection();
-        final Statement statement = connection.createStatement()) {
-
-      statement.execute(String.format("delete database %s", SchemaConfig.DATABASE_0));
-      statement.execute(String.format("delete database %s", SchemaConfig.DATABASE_1));
-    } catch (final IoTDBSQLException ignored) {
-    }
-  }
-
-  private boolean deleteDir() {
-    for (final File file : tmpDir.listFiles()) {
-      if (!file.delete()) {
-        return false;
-      }
-    }
-    return tmpDir.delete();
+  private void deleteDatabases() throws SQLException {
+    TestUtils.clearAllDatabases(EnvFactory.getEnv());
   }
 
   @Test
@@ -1071,6 +1104,7 @@ public class IoTDBLoadTsFileIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
+      asyncLoadSubmitted = true;
       statement.execute(
           String.format(
               "load \"%s\" with ('async'='true','database-level'='2','on-success'='delete')",

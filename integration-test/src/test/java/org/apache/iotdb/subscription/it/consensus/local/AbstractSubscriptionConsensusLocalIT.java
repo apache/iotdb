@@ -19,21 +19,26 @@
 
 package org.apache.iotdb.subscription.it.consensus.local;
 
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.itbase.env.BaseNodeWrapper;
 import org.apache.iotdb.subscription.it.AbstractSubscriptionIT;
 
 import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE;
 
 public abstract class AbstractSubscriptionConsensusLocalIT extends AbstractSubscriptionIT {
 
-  @Override
-  @Before
-  public void setUp() throws Exception {
-    super.setUp();
-
+  @BeforeClass
+  public static void setUpCluster() throws Exception {
     FORCE_SCALABLE_SINGLE_NODE_MODE.accept(EnvFactory.getEnv());
     EnvFactory.getEnv()
         .getConfig()
@@ -45,11 +50,31 @@ public abstract class AbstractSubscriptionConsensusLocalIT extends AbstractSubsc
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
+  @AfterClass
+  public static void tearDownCluster() {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
   @Override
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    final BaseEnv env = EnvFactory.getEnv();
+    final List<BaseNodeWrapper> configNodes = new ArrayList<>(env.getConfigNodeWrapperList());
+    for (int i = 0; i < configNodes.size(); i++) {
+      if (!configNodes.get(i).isAlive()) {
+        env.startConfigNode(i);
+      }
+    }
+    env.ensureNodeStatus(configNodes, Collections.nCopies(configNodes.size(), NodeStatus.Running));
 
-    super.tearDown();
+    final List<BaseNodeWrapper> dataNodes = new ArrayList<>(env.getDataNodeWrapperList());
+    for (int i = 0; i < dataNodes.size(); i++) {
+      if (!dataNodes.get(i).isAlive()) {
+        env.startDataNode(i);
+      }
+    }
+    env.ensureNodeStatus(dataNodes, Collections.nCopies(dataNodes.size(), NodeStatus.Running));
+
+    clearSubscriptionState(env);
   }
 }
