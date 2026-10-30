@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.schemaengine.rescon;
 
 import org.apache.iotdb.commons.schema.ClusterSchemaQuotaLevel;
-import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
-import org.apache.iotdb.commons.utils.KillPoint.MetadataTestKillPoints;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 
 import java.util.concurrent.atomic.AtomicLong;
@@ -51,9 +49,6 @@ public class DataNodeSchemaQuotaManager {
     } else {
       this.deviceLimit = true;
       this.deviceRemain.set(deviceRemain);
-    }
-    if (measurementRemain == 0 && deviceRemain == 0) {
-      KillPoint.setKillPoint(MetadataTestKillPoints.SCHEMA_QUOTA_EXHAUSTED);
     }
   }
 

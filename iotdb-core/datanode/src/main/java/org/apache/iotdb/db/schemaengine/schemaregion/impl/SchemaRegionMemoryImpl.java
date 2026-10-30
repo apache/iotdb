@@ -44,8 +44,6 @@ import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
-import org.apache.iotdb.commons.utils.KillPoint.MetadataTestKillPoints;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -342,7 +340,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private void initMLog() throws IOException {
     initFromLog();
-    KillPoint.setKillPoint(MetadataTestKillPoints.AFTER_SCHEMA_LOG_RECOVERY);
 
     logWriter =
         new SchemaLogWriter<>(

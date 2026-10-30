@@ -20,29 +20,20 @@
 package org.apache.iotdb.util;
 
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
-import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.config.MppBaseConfig;
-import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.awaitility.Awaitility;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Properties;
-import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils.generatePatternTreeBuffer;
 import static org.junit.Assert.assertEquals;
@@ -92,42 +83,6 @@ public final class MetadataRecoveryTestUtils {
       final var slots = result.getSchemaPartitionTable().get(database);
       assertEquals("Expected exactly one partition for " + path, 1, slots.size());
       return slots.values().iterator().next().getId();
-    }
-  }
-
-  /** A file barrier in one child JVM; closing it releases workers even after an assertion fails. */
-  public static final class Gate implements AutoCloseable {
-    private final Path pause;
-    private final Path watch;
-    private final Path reached;
-
-    public Gate(AbstractNodeWrapper node, Enum<?> point, boolean block) throws IOException {
-      Path directory = Paths.get(node.getNodePath(), "killpoints");
-      Files.createDirectories(directory);
-      String name = KillPoint.enumToString(point);
-      pause = directory.resolve(name + ".pause");
-      watch = directory.resolve(name + ".watch");
-      reached = directory.resolve(name + ".reached");
-      Files.deleteIfExists(reached);
-      Files.write(block ? pause : watch, new byte[0]);
-    }
-
-    public void await() {
-      Awaitility.await()
-          .pollInterval(20, TimeUnit.MILLISECONDS)
-          .atMost(60, TimeUnit.SECONDS)
-          .until(() -> Files.exists(reached));
-    }
-
-    public void release() throws IOException {
-      Files.deleteIfExists(pause);
-    }
-
-    @Override
-    public void close() throws IOException {
-      release();
-      Files.deleteIfExists(watch);
-      Files.deleteIfExists(reached);
     }
   }
 }

@@ -28,8 +28,6 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.request.IConsensusRequest;
-import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
-import org.apache.iotdb.commons.utils.KillPoint.MetadataTestKillPoints;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -276,7 +274,6 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     if (!loadSucceeded) {
       return false;
     }
-    KillPoint.setKillPoint(MetadataTestKillPoints.AFTER_CONFIG_SNAPSHOT_LOAD);
 
     try {
       // We recompute the snapshot for pipe listener when loading snapshot

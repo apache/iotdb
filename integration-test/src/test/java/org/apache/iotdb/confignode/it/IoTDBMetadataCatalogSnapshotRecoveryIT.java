@@ -21,8 +21,8 @@ package org.apache.iotdb.confignode.it;
 
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
-import org.apache.iotdb.commons.utils.KillPoint.MetadataTestKillPoints;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
@@ -32,13 +32,14 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
-import org.apache.iotdb.util.MetadataRecoveryTestUtils.Gate;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.client.RaftClient;
 import org.apache.ratis.client.RaftClientConfigKeys;
 import org.apache.ratis.conf.RaftProperties;
 import org.apache.ratis.protocol.RaftGroup;
 import org.apache.ratis.protocol.RaftPeerId;
+import org.apache.ratis.protocol.exceptions.RaftRetryFailureException;
 import org.apache.ratis.retry.RetryPolicies;
 import org.apache.ratis.util.TimeDuration;
 import org.awaitility.Awaitility;
@@ -49,6 +50,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -59,6 +61,7 @@ import static org.apache.iotdb.util.MetadataRecoveryTestUtils.property;
 import static org.apache.iotdb.util.MetadataRecoveryTestUtils.schemaRegion;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 /** P1-8: restore an in-use catalog snapshot and its later DDL, beyond partition-only snapshots. */
@@ -153,25 +156,35 @@ public class IoTDBMetadataCatalogSnapshotRecoveryIT {
         execute(
             table,
             "ALTER TABLE catalog_table ADD COLUMN after_snapshot DOUBLE FIELD",
-            "ALTER TABLE catalog_table RENAME COLUMN owner TO owner_after",
             "ALTER TABLE catalog_table DROP COLUMN removed",
             "ALTER TABLE catalog_table SET PROPERTIES ttl=86400000",
-            "INSERT INTO catalog_table(time,device,owner_after,value,after_snapshot) VALUES("
+            "INSERT INTO catalog_table(time,device,owner,value,after_snapshot) VALUES("
                 + (time + 1)
                 + ",'d2','after',2,2.5)",
             "ALTER VIEW catalog_view RENAME TO current_view",
             "DROP VIEW deleted_view",
             "DROP TABLE deleted_table");
-        try (Gate loaded =
-            new Gate(recovering, MetadataTestKillPoints.AFTER_CONFIG_SNAPSHOT_LOAD, false)) {
-          recovering.start();
-          loaded.await();
-          EnvFactory.getAbstractEnv().checkClusterStatusWithoutUnknown();
-        }
-        // Keep the other two peers alive for quorum while this particular recovered peer takes
-        // over.
+        SQLException renameFailure =
+            assertThrows(
+                SQLException.class,
+                () ->
+                    execute(table, "ALTER TABLE catalog_table RENAME COLUMN owner TO owner_after"));
+        assertEquals(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), renameFailure.getErrorCode());
+        // The peer is stopped, so clearing its log excludes evidence from any earlier startup.
+        recovering.clearLogContent();
+        recovering.start();
+        String snapshotLoaded =
+            ConfigNodeMessages.CONFIGNODESNAPSHOT_LOAD_SNAPSHOT_SUCCESS_LATESTSNAPSHOTROOTDIR
+                .replace("{}", "");
         Awaitility.await()
             .atMost(60, TimeUnit.SECONDS)
+            .until(() -> recovering.logContains(snapshotLoaded));
+        EnvFactory.getAbstractEnv().checkClusterStatusWithoutUnknown();
+        // Keep the other two peers alive for quorum while this particular recovered peer takes
+        // over. The client may first contact its cached old leader before learning the new one.
+        Awaitility.await()
+            .atMost(60, TimeUnit.SECONDS)
+            .ignoreException(RaftRetryFailureException.class)
             .untilAsserted(
                 () ->
                     assertTrue(raft.admin().transferLeadership(recoveredPeer, 10000).isSuccess()));
@@ -201,7 +214,8 @@ public class IoTDBMetadataCatalogSnapshotRecoveryIT {
               "SHOW PATHS USING DEVICE TEMPLATE p1_catalog_template",
               "Paths,",
               DATABASE + ".templ.d,");
-          assertRows(readTree, "SHOW TTL ON " + DATABASE, "Path,TTL(ms),", DATABASE + ",86400000,");
+          assertRows(
+              readTree, "SHOW TTL ON " + DATABASE, "Device,TTL(ms),", DATABASE + ",86400000,");
           assertRows(
               readTree,
               "SELECT s,extra FROM " + DATABASE + ".templ.d",
@@ -215,7 +229,7 @@ public class IoTDBMetadataCatalogSnapshotRecoveryIT {
               "ColumnName,DataType,Category,",
               "time,TIMESTAMP,TIME,",
               "device,STRING,TAG,",
-              "owner_after,STRING,ATTRIBUTE,",
+              "owner,STRING,ATTRIBUTE,",
               "value,INT32,FIELD,",
               "after_snapshot,DOUBLE,FIELD,");
           assertRows(
@@ -226,8 +240,8 @@ public class IoTDBMetadataCatalogSnapshotRecoveryIT {
               "current_view,INF,");
           assertRows(
               readTable,
-              "SELECT CAST(time AS INT64) AS ts,device,owner_after,value,after_snapshot FROM catalog_table",
-              "ts,device,owner_after,value,after_snapshot,",
+              "SELECT CAST(time AS INT64) AS ts,device,owner,value,after_snapshot FROM catalog_table",
+              "ts,device,owner,value,after_snapshot,",
               time + ",d1,before,1,null,",
               (time + 1) + ",d2,after,2,2.5,");
           assertRows(

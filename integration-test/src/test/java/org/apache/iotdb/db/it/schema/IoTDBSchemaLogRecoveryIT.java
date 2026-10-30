@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.it.schema;
 
-import org.apache.iotdb.commons.utils.KillPoint.MetadataTestKillPoints;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -27,7 +26,6 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.util.AbstractSchemaIT;
-import org.apache.iotdb.util.MetadataRecoveryTestUtils.Gate;
 
 import org.junit.After;
 import org.junit.Test;
@@ -144,9 +142,8 @@ public class IoTDBSchemaLogRecoveryIT extends AbstractSchemaIT {
           "FLUSH");
       assertTagState(control, database);
     }
-    // This case deliberately tests the mlog path in both modes, rather than claiming that a
-    // small PBTree budget alone proves eviction. A nonempty log and the child-JVM recovery hook
-    // establish that the acknowledged mutations went through schema-log recovery.
+    // Memory mode with SimpleConsensus rebuilds its schema from mlog on startup. Check the
+    // durable log before killing the only replica, then verify every mutation after recovery.
     try (Stream<Path> files = Files.walk(Paths.get(node().getNodePath()))) {
       assertTrue(
           files.anyMatch(
@@ -156,12 +153,8 @@ public class IoTDBSchemaLogRecoveryIT extends AbstractSchemaIT {
                       && path.toFile().length() > 0));
     }
     node().stopForcibly();
-    try (Gate recovery =
-        new Gate(node(), MetadataTestKillPoints.AFTER_SCHEMA_LOG_RECOVERY, false)) {
-      node().start();
-      recovery.await();
-      EnvFactory.getAbstractEnv().checkClusterStatusWithoutUnknown();
-    }
+    node().start();
+    EnvFactory.getAbstractEnv().checkClusterStatusWithoutUnknown();
     try (Connection recovered = connection(node(), BaseEnv.TREE_SQL_DIALECT)) {
       assertTagState(recovered, database);
       execute(

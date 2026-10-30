@@ -32,8 +32,6 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
-import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
-import org.apache.iotdb.commons.utils.KillPoint.MetadataTestKillPoints;
 import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -338,7 +336,6 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   private void initMLog() throws IOException {
     initFromLog();
-    KillPoint.setKillPoint(MetadataTestKillPoints.AFTER_SCHEMA_LOG_RECOVERY);
 
     logWriter =
         new SchemaLogWriter<>(

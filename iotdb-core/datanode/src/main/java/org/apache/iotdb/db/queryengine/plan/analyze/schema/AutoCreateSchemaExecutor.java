@@ -28,8 +28,6 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
-import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
-import org.apache.iotdb.commons.utils.KillPoint.MetadataTestKillPoints;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -512,7 +510,6 @@ class AutoCreateSchemaExecutor {
       throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
     }
 
-    KillPoint.setKillPoint(MetadataTestKillPoints.BEFORE_AUTO_CREATE_TIMESERIES);
     ExecutionResult executionResult = executeStatement(statement, context);
 
     final int statusCode = executionResult.status.getCode();
