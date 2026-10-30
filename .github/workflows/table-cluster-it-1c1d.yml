@@ -110,23 +110,7 @@ jobs:
           netsh int ipv6 set dynamicport udp start=32768 num=32768
       - name: Build IT shard list
         shell: bash
-        # Distribute TableLocalStandaloneIT test classes across 3 shards using hash-mod assignment.
-        # The list is written to a file so failsafe.includesFile can read it without command-line length limits.
-        run: |
-          set -euo pipefail
-          SHARD=${{ matrix.shard }}
-          TOTAL=3
-          # Write outside the repo so Apache RAT (license check) doesn't flag the file.
-          # Using a single grep -rl call instead of `find | xargs grep`: on Windows Git Bash,
-          # ARG_MAX is small so xargs batches the file list, and any batch with no matches
-          # makes grep exit 1, which makes xargs exit 123 and trips `set -o pipefail`.
-          grep -rl --include='*IT.java' 'TableLocalStandaloneIT' integration-test/src/test/java \
-            | awk -F'/' '{print $NF}' | sed 's/\.java$//' \
-            | sort \
-            | awk -v s=$SHARD -v t=$TOTAL 'NR%t==s' \
-            > "$RUNNER_TEMP/it-shard.txt"
-          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") test classes"
-          head -5 "$RUNNER_TEMP/it-shard.txt"
+        run: bash .github/scripts/build-it-shard-list.sh ${{ matrix.shard }} 3 "$RUNNER_TEMP/it-shard.txt"
       - name: IT/UT Test
         shell: bash
         run: |
