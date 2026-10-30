@@ -62,6 +62,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -244,12 +245,12 @@ public class SeriesScanUtilCancellationTest {
     assertEquals(2, loadedFiles);
   }
 
-  @Test(timeout = 15000)
+  @Test
   public void testTimeoutUnblocksDriverResourceCleanup() throws Exception {
     assertFailureUnblocksDriverResourceCleanup(new QueryTimeoutException());
   }
 
-  @Test(timeout = 15000)
+  @Test
   public void testSemanticFailureUnblocksDriverResourceCleanup() throws Exception {
     assertFailureUnblocksDriverResourceCleanup(
         new SemanticException("Scalar sub-query has returned multiple rows."));
@@ -258,6 +259,7 @@ public class SeriesScanUtilCancellationTest {
   private void assertFailureUnblocksDriverResourceCleanup(RuntimeException failure)
       throws Exception {
     ExecutorService notifications = Executors.newSingleThreadExecutor();
+    ExecutorService worker = Executors.newSingleThreadExecutor();
     FragmentInstanceContext context = newContext(notifications);
     context.initializeNumOfDrivers(1);
     try {
@@ -314,10 +316,13 @@ public class SeriesScanUtilCancellationTest {
           false,
           exchangeManager);
 
-      assertSame(
-          failure,
-          assertThrows(
-              RuntimeException.class, () -> driver.processFor(new Duration(1, TimeUnit.SECONDS))));
+      // Bound driver execution separately so cold scanner and Mockito initialization do not
+      // consume the time allowed for the cleanup interaction.
+      Future<?> execution =
+          worker.submit(() -> driver.processFor(new Duration(1, TimeUnit.SECONDS)));
+      ExecutionException exception =
+          assertThrows(ExecutionException.class, () -> execution.get(5, TimeUnit.SECONDS));
+      assertSame(failure, exception.getCause());
       // This can complete only after the preceding cleanup callback gets past allDriversClosed.
       notifications.submit(() -> {}).get(5, TimeUnit.SECONDS);
       assertEquals(2, loadedFiles);
@@ -327,9 +332,11 @@ public class SeriesScanUtilCancellationTest {
           .deRegisterFragmentInstanceFromMemoryPool(
               context.getId().getQueryId().getId(), context.getId().getFragmentInstanceId(), true);
     } finally {
+      worker.shutdownNow();
       // Ensure a failed assertion cannot leave the notification thread waiting on the latch.
       context.decrementNumOfUnClosedDriver();
-      notifications.shutdownNow();
+      notifications.shutdown();
+      assertTrue(worker.awaitTermination(5, TimeUnit.SECONDS));
       assertTrue(notifications.awaitTermination(5, TimeUnit.SECONDS));
     }
   }
