@@ -414,6 +414,9 @@ public final class ConfigNodeMessages {
   public static final String SUCCESSFULLY_ON_DATANODE = "在 DataNode: {} 上成功执行 {}";
   public static final String SUCCESSFULLY_REMOVE_CONFIGNODE_CURRENT_CONFIGNODEGROUP =
       "成功移除 ConfigNode: {}。当前 ConfigNodeGroup: {}";
+  public static final String
+      LOG_NORMALIZE_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_FROM_ARG_TO_ARG_FOR_COMPATIBILITY_6E662489 =
+          "为兼容性将 data_region_consensus_protocol_class 从 {} 规范化为 {}。";
   public static final String SUCCESSFULLY_SETUP_INTERNAL_SERVICES = "成功初始化内部服务。";
   public static final String SUCCESSFULLY_UPDATE_NODE_S_VERSION = "成功更新 Node {} 的版本。";
   public static final String SYSTEMPROPERTIES_NORMALIZE_FROM_TO_FOR_COMPATIBILITY =
