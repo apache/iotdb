@@ -21,6 +21,12 @@ package org.apache.iotdb.commons.i18n;
 
 public final class PipeMessages {
 
+  public static final String MESSAGE_SUBSCRIPTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_194CE431 =
+      "当数据区域共识协议为 Ratis 时，Subscription 功能不可用。";
+
+  public static final String MESSAGE_PIPE_DATA_INSERTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_7D669ECC =
+      "当数据区域共识协议为 Ratis 时，包含 data.insert 的 Pipe 同步不可用。";
+
   // ===================== Common / Shared =====================
 
   public static final String UTILITY_CLASS = "工具类";

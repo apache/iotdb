@@ -209,6 +209,10 @@ public abstract class PipeTaskAgent {
 
   protected abstract boolean isShutdown();
 
+  protected boolean isPipeDataInsertionEnabled(final PipeStaticMeta pipeStaticMeta) {
+    return true;
+  }
+
   private void executeSinglePipeMetaChanges(final PipeMeta metaFromCoordinator)
       throws IllegalPathException {
     final String pipeName = metaFromCoordinator.getStaticMeta().getPipeName();
@@ -228,6 +232,14 @@ public abstract class PipeTaskAgent {
 
     if (metaFromCoordinator.getRuntimeMeta().getStatus().get() == PipeStatus.DROPPED) {
       dropPipe(pipeName, creationTime);
+      return;
+    }
+
+    if (!isPipeDataInsertionEnabled(metaFromCoordinator.getStaticMeta())) {
+      final PipeMeta metaInAgent = pipeMetaKeeper.getPipeMeta(metaFromCoordinator.getStaticMeta());
+      if (metaInAgent != null) {
+        dropPipe(pipeName, metaInAgent.getStaticMeta().getCreationTime());
+      }
       return;
     }
 

@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -54,6 +55,34 @@ public class PipeDataNodeTaskAgentTest {
 
   private static final int LOCAL_NODE_ID = 1;
   private static final int REGION_ID = 7;
+
+  @Test
+  public void testRatisDetectsPipeDataInsertionOption() {
+    final String originalConsensus =
+        IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass();
+    try {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+
+      Assert.assertTrue(
+          PipeDataNodeAgent.isPipeDataInsertionEnabled(
+              Map.of(PipeSourceConstant.EXTRACTOR_INCLUSION_KEY, "schema")));
+      Assert.assertTrue(
+          PipeDataNodeAgent.isPipeDataInsertionEnabled(
+              Map.of(PipeSourceConstant.EXTRACTOR_INCLUSION_KEY, "data.delete")));
+      Assert.assertFalse(
+          PipeDataNodeAgent.isPipeDataInsertionEnabled(
+              Map.of(PipeSourceConstant.EXTRACTOR_INCLUSION_KEY, "data.insert")));
+      Assert.assertFalse(
+          PipeDataNodeAgent.isPipeDataInsertionEnabled(
+              Map.of(PipeSourceConstant.EXTRACTOR_INCLUSION_KEY, "data.insert,data.delete")));
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(originalConsensus);
+    }
+  }
 
   @Test
   public void testGetPipeTaskProgressIndexReportsMissingTaskMeta() throws Exception {

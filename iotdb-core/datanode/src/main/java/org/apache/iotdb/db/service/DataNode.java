@@ -301,7 +301,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       // TierManager need DataNodeId to do some operations so the reset method need to be invoked
       // after DataNode adding
       TierManager.getInstance().resetFolders();
-      if (SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      if (SubscriptionConfig.getInstance().getSubscriptionEnabled()
+          && PipeDataNodeAgent.isSubscriptionFeatureEnabled()) {
         ConsensusSubscriptionSetupHandler.ensureNewRegionListenerRegistered();
       }
       // Active DataNode
@@ -942,7 +943,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     registerInternalRPCService();
 
     // Register subscription agent before pipe agent
-    if (SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+    if (SubscriptionConfig.getInstance().getSubscriptionEnabled()
+        && PipeDataNodeAgent.isSubscriptionFeatureEnabled()) {
       registerManager.register(SubscriptionAgent.runtime());
     }
     registerManager.register(PipeDataNodeAgent.runtime());
