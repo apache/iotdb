@@ -50,6 +50,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -69,16 +70,16 @@ class DiskGuardian {
    */
   static final class RaftLogSummary {
 
-    /** Whether the path denotes an open segment under active writing progress */
-    private static final Predicate<Path> isOpenSegment =
-        p -> p.toFile().getName().startsWith("log_inprogress");
+    /** Open and closed log segment names, following Ratis' naming convention. */
+    private static final Pattern LOG_SEGMENT_PATTERN =
+        Pattern.compile("log_(?:\\d+-\\d+|inprogress_\\d+(?:\\..*)?)");
 
     private final RaftGroupId gid;
     private final File raftLogStorageRoot;
     private long totalSize;
     private Set<Path> logFiles;
 
-    private RaftLogSummary(RaftGroupId gid, File raftLogStorageRoot) {
+    RaftLogSummary(RaftGroupId gid, File raftLogStorageRoot) {
       this.gid = gid;
       this.raftLogStorageRoot = raftLogStorageRoot;
       this.totalSize = 0;
@@ -91,23 +92,17 @@ class DiskGuardian {
 
     void updateNow() {
       try (final Stream<Path> files = Files.list(raftLogStorageRoot.toPath())) {
-        final Set<Path> latest = files.filter(isOpenSegment).collect(Collectors.toSet());
-        this.totalSize += diff(logFiles, latest);
+        final Set<Path> latest =
+            files
+                .filter(p -> LOG_SEGMENT_PATTERN.matcher(p.getFileName().toString()).matches())
+                .collect(Collectors.toSet());
+        // An open segment can grow or be recreated under the same path between scans.
+        this.totalSize = latest.stream().mapToLong(p -> p.toFile().length()).sum();
         this.logFiles = latest;
       } catch (IOException e) {
         // keep the files unchanged
         logger.warn(RatisMessages.ERROR_LISTING_FILES, this, gid, e);
       }
-    }
-
-    private static long diff(Set<Path> old, Set<Path> latest) {
-      final long incremental = totalSize(latest.stream().filter(p -> !old.contains(p)));
-      final long decremental = totalSize(old.stream().filter(p -> !latest.contains(p)));
-      return incremental - decremental;
-    }
-
-    private static long totalSize(Stream<Path> files) {
-      return files.mapToLong(p -> p.toFile().length()).sum();
     }
 
     @Override
