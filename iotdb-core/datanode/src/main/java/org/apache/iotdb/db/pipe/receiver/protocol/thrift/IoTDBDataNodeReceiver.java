@@ -1001,6 +1001,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final DatabaseSchemaStatement statement =
         new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
     statement.setDatabasePath(databasePath);
+    statement.setEnablePrintExceptionLog(false);
 
     final TSStatus status = executeStatementAndClassifyExceptions(statement);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

@@ -201,6 +201,7 @@ public class IoTDBCustomizedClusterIT {
    * submitted by the ShutdownHook cannot be executed. This test ensures that this blocking is
    * fixed.
    */
+  @Category(DailyIT.class)
   @Test
   public void testWalThrottleStuck()
       throws SQLException,
@@ -293,6 +294,7 @@ public class IoTDBCustomizedClusterIT {
     }
   }
 
+  @Category(DailyIT.class)
   @Test
   public void testStartWithWrongConfig() throws InterruptedException {
     SimpleEnv simpleEnv = new SimpleEnv();
@@ -306,8 +308,9 @@ public class IoTDBCustomizedClusterIT {
       // ignore
     }
     simpleEnv.getDataNodeWrapper(0).getInstance().waitFor(20, TimeUnit.SECONDS);
+    // POSIX systems keep only the low 8 bits of an exit status.
     assertEquals(
-        TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(),
-        simpleEnv.getDataNodeWrapper(0).getInstance().exitValue());
+        TSStatusCode.ILLEGAL_PARAMETER.getStatusCode() & 0xFF,
+        simpleEnv.getDataNodeWrapper(0).getInstance().exitValue() & 0xFF);
   }
 }

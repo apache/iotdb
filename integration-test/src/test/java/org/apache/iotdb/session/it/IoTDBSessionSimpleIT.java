@@ -2112,6 +2112,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void testWriteRestartAndDeleteDB()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
@@ -2206,6 +2207,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void testInsertWrongTypeRecord() throws IoTDBConnectionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       assertThrows(
@@ -2221,6 +2223,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void testAlterDefaultCompression()
       throws IoTDBConnectionException, StatementExecutionException {
     // auto-create

@@ -339,4 +339,7 @@ public final class IoTConsensusMessages {
       LOG_FAILED_TO_RECORD_A_USER_DATA_TRANSFER_AUDIT_EVENT_CONSENSUS_REPLICATION_WILL_CONTINUE_F215E222 =
           "记录用户数据传送审计事件失败；Consensus 复制将继续。";
 
+  public static final String
+      EXCEPTION_FAILED_TO_TAKE_SNAPSHOT_FOR_CONSENSUS_GROUP_ARG_IN_ARG_CHECK_STATE_MACHINE_LOGS_FOR_THE_UNDERLYING_CAUSE_74663D2D =
+          "为共识组 %s 在 %s 创建快照失败；请检查状态机日志以获取底层原因";
 }

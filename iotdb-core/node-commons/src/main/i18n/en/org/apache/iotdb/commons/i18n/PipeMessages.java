@@ -508,6 +508,14 @@ public final class PipeMessages {
       "IoTDBAirGapConnector is customized with handshakeTimeoutMs: {}.";
   public static final String AIR_GAP_CUSTOMIZED_E_LANGUAGE =
       "IoTDBAirGapConnector is customized with eLanguageEnable: {}.";
+  public static final String
+      EXCEPTION_AIR_GAP_UDP_DATAGRAM_SIZE_ARG_EXCEEDS_CONFIGURED_PACKET_SIZE_ARG_559D0654 =
+          "Air gap UDP datagram size %d exceeds configured packet size %d.";
+  public static final String EXCEPTION_TIMED_OUT_WAITING_FOR_THE_MATCHING_AIR_GAP_ACK_DD2F3706 =
+      "Timed out waiting for the matching air-gap ACK.";
+  public static final String
+      EXCEPTION_AIR_GAP_UDP_PACKET_SIZE_ARG_IS_TOO_SMALL_TO_TRANSFER_SLICED_REQUESTS_722B32AB =
+          "Air gap UDP packet size %d is too small to transfer sliced requests.";
   public static final String CONNECTED_TO_TARGET_SERVER =
       "Successfully connected to target server ip: {}, port: {}.";
   public static final String FAILED_TO_CLOSE_SOCKET =

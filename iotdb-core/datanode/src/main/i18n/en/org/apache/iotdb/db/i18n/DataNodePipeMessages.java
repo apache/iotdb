@@ -1323,6 +1323,10 @@ public final class DataNodePipeMessages {
       "Pipe air gap receiver {} started. Socket: {}";
   public static final String PIPE_AIR_GAP_RECEIVER_TEMPORARY_UNAVAILABLE_RETRY =
       "Pipe air gap receiver {}: Temporary unavailable retry timed out, returning FAIL to sender.";
+  public static final String EXCEPTION_AIR_GAP_UDP_PACKET_IS_MISSING_ITS_REQUEST_ID_C4228CC8 =
+      "Air-gap UDP packet is missing its request ID.";
+  public static final String EXCEPTION_AIR_GAP_UDP_PACKET_CONTAINS_TRAILING_BYTES_2D34D418 =
+      "Air-gap UDP packet contains trailing bytes.";
   public static final String PIPE_DATA_TRANSPORT_ERROR = "Pipe data transport error, {}";
   public static final String PIPE_INSERTING_ROW_CASTING_TYPE_FROM =
       "Pipe: Inserting row. Casting type from {} to {}.";

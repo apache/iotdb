@@ -486,6 +486,14 @@ public final class PipeMessages {
 
   public static final String AIR_GAP_CUSTOMIZED_HANDSHAKE_TIMEOUT =
       "IoTDBAirGapConnector 自定义握手超时时间：{}。";
+  public static final String
+      EXCEPTION_AIR_GAP_UDP_DATAGRAM_SIZE_ARG_EXCEEDS_CONFIGURED_PACKET_SIZE_ARG_559D0654 =
+          "Air gap UDP 数据报大小 %d 超过配置的包大小 %d。";
+  public static final String EXCEPTION_TIMED_OUT_WAITING_FOR_THE_MATCHING_AIR_GAP_ACK_DD2F3706 =
+      "等待匹配的 air-gap ACK 超时。";
+  public static final String
+      EXCEPTION_AIR_GAP_UDP_PACKET_SIZE_ARG_IS_TOO_SMALL_TO_TRANSFER_SLICED_REQUESTS_722B32AB =
+          "Air gap UDP 包大小 %d 太小，无法传输切片请求。";
   public static final String AIR_GAP_CUSTOMIZED_E_LANGUAGE =
       "IoTDBAirGapConnector 自定义 eLanguageEnable：{}。";
   public static final String CONNECTED_TO_TARGET_SERVER =

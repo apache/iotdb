@@ -1679,4 +1679,6 @@ public final class StorageEngineMessages {
 
   public static final String LOG_LOAD_CONSENSUS_CLEANER_SWEEP_FAILED_7C3E2E6D =
       "扫描已完成的 LOAD 任务暂存目录失败。";
+  public static final String LOG_FAILED_TO_CREATE_SNAPSHOT_FOR_DATABASE_ARG_REGION_ARG_1A7C8DEA =
+      "为 database {}、region {} 创建快照失败";
 }

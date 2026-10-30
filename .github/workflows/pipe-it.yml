@@ -161,19 +161,7 @@ jobs:
           sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
       - name: Build IT shard list
         shell: bash
-        # See cluster-it-1c1d.yml for the shard-list pattern. Write under
-        # $RUNNER_TEMP (outside the repo) so Apache RAT doesn't flag the file.
-        run: |
-          set -euo pipefail
-          SHARD=${{ matrix.shard }}
-          TOTAL=3
-          grep -rlE --include='*IT.java' '\bMultiClusterIT2DualTreeAutoBasic\b' integration-test/src/test/java \
-            | awk -F'/' '{print $NF}' | sed 's/\.java$//' \
-            | sort \
-            | awk -v s=$SHARD -v t=$TOTAL 'NR%t==s' \
-            > "$RUNNER_TEMP/it-shard.txt"
-          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") test classes"
-          head -5 "$RUNNER_TEMP/it-shard.txt"
+        run: bash .github/scripts/build-it-shard-list.sh ${{ matrix.shard }} 3 "$RUNNER_TEMP/it-shard.txt"
       - name: IT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
@@ -269,19 +257,7 @@ jobs:
           sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
       - name: Build IT shard list
         shell: bash
-        # See cluster-it-1c1d.yml for the shard-list pattern. Write under
-        # $RUNNER_TEMP (outside the repo) so Apache RAT doesn't flag the file.
-        run: |
-          set -euo pipefail
-          SHARD=${{ matrix.shard }}
-          TOTAL=3
-          grep -rlE --include='*IT.java' '\bMultiClusterIT2DualTreeAutoEnhanced\b' integration-test/src/test/java \
-            | awk -F'/' '{print $NF}' | sed 's/\.java$//' \
-            | sort \
-            | awk -v s=$SHARD -v t=$TOTAL 'NR%t==s' \
-            > "$RUNNER_TEMP/it-shard.txt"
-          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") test classes"
-          head -5 "$RUNNER_TEMP/it-shard.txt"
+        run: bash .github/scripts/build-it-shard-list.sh ${{ matrix.shard }} 3 "$RUNNER_TEMP/it-shard.txt"
       - name: IT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
@@ -377,19 +353,7 @@ jobs:
           sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
       - name: Build IT shard list
         shell: bash
-        # See cluster-it-1c1d.yml for the shard-list pattern. Write under
-        # $RUNNER_TEMP (outside the repo) so Apache RAT doesn't flag the file.
-        run: |
-          set -euo pipefail
-          SHARD=${{ matrix.shard }}
-          TOTAL=3
-          grep -rlE --include='*IT.java' '\bMultiClusterIT2DualTreeManual\b' integration-test/src/test/java \
-            | awk -F'/' '{print $NF}' | sed 's/\.java$//' \
-            | sort \
-            | awk -v s=$SHARD -v t=$TOTAL 'NR%t==s' \
-            > "$RUNNER_TEMP/it-shard.txt"
-          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") test classes"
-          head -5 "$RUNNER_TEMP/it-shard.txt"
+        run: bash .github/scripts/build-it-shard-list.sh ${{ matrix.shard }} 3 "$RUNNER_TEMP/it-shard.txt"
       - name: IT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
@@ -482,19 +446,7 @@ jobs:
           sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
       - name: Build IT shard list
         shell: bash
-        # See cluster-it-1c1d.yml for the shard-list pattern. Write under
-        # $RUNNER_TEMP (outside the repo) so Apache RAT doesn't flag the file.
-        run: |
-          set -euo pipefail
-          SHARD=${{ matrix.shard }}
-          TOTAL=3
-          grep -rlE --include='*IT.java' '\bMultiClusterIT2DualTableManualBasic\b' integration-test/src/test/java \
-            | awk -F'/' '{print $NF}' | sed 's/\.java$//' \
-            | sort \
-            | awk -v s=$SHARD -v t=$TOTAL 'NR%t==s' \
-            > "$RUNNER_TEMP/it-shard.txt"
-          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") test classes"
-          head -5 "$RUNNER_TEMP/it-shard.txt"
+        run: bash .github/scripts/build-it-shard-list.sh ${{ matrix.shard }} 3 "$RUNNER_TEMP/it-shard.txt"
       - name: IT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
@@ -589,19 +541,7 @@ jobs:
           sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
       - name: Build IT shard list
         shell: bash
-        # See cluster-it-1c1d.yml for the shard-list pattern. Write under
-        # $RUNNER_TEMP (outside the repo) so Apache RAT doesn't flag the file.
-        run: |
-          set -euo pipefail
-          SHARD=${{ matrix.shard }}
-          TOTAL=3
-          grep -rlE --include='*IT.java' '\bMultiClusterIT2DualTableManualEnhanced\b' integration-test/src/test/java \
-            | awk -F'/' '{print $NF}' | sed 's/\.java$//' \
-            | sort \
-            | awk -v s=$SHARD -v t=$TOTAL 'NR%t==s' \
-            > "$RUNNER_TEMP/it-shard.txt"
-          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") test classes"
-          head -5 "$RUNNER_TEMP/it-shard.txt"
+        run: bash .github/scripts/build-it-shard-list.sh ${{ matrix.shard }} 3 "$RUNNER_TEMP/it-shard.txt"
       - name: IT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
