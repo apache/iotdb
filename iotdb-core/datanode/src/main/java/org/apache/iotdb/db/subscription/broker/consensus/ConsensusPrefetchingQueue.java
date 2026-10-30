@@ -49,6 +49,9 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
+import org.apache.iotdb.db.subscription.broker.consensus.DeliveryLedger.DeliveryBatchRecord;
+import org.apache.iotdb.db.subscription.broker.consensus.DeliveryLedger.InFlightAckResult;
+import org.apache.iotdb.db.subscription.broker.consensus.DeliveryLedger.ReplayEntryPosition;
 import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.metric.ConsensusSubscriptionPrefetchingQueueMetrics;
@@ -77,7 +80,6 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -92,7 +94,6 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -191,29 +192,8 @@ public class ConsensusPrefetchingQueue {
 
   private final PriorityBlockingQueue<SubscriptionEvent> prefetchingQueue;
 
-  private final Map<InFlightEventKey, SubscriptionEvent> inFlightEvents;
-
-  /** Tablet memory retained by queued and in-flight events, keyed by event identity. */
-  private final Map<SubscriptionEvent, Long> retainedBytesByEvent = new ConcurrentHashMap<>();
-
-  /** Materialized data events indexed across both queued and in-flight lifecycle stages. */
-  private final Map<SubscriptionCommitContext, SubscriptionEvent> outstandingEventsByCommitContext =
-      new ConcurrentHashMap<>();
-
-  /**
-   * Compact batch boundaries and source positions; no Tablet or serialized response is retained.
-   */
-  private final Map<SubscriptionEvent, DeliveryBatchRecord> deliveryBatches =
-      new ConcurrentHashMap<>();
-
-  /**
-   * Key: earliest local search index needed to replay a live delivery batch, or Long.MIN_VALUE for
-   * batches containing replicated entries without a local index. Value: number of live batches
-   * sharing that replay start. The first key pins the WAL deletion boundary until cleanup removes
-   * the last batch using it.
-   */
-  private final ConcurrentSkipListMap<Long, Integer> deliveryStartIndices =
-      new ConcurrentSkipListMap<>();
+  /** Lifecycle indexes for materialized deliveries and their replay descriptors. */
+  private final DeliveryLedger deliveryLedger;
 
   /** Tablet memory retained by this queue across all materialized lifecycle stages. */
   private final AtomicLong retainedTabletBytes = new AtomicLong(0L);
@@ -430,12 +410,6 @@ public class ConsensusPrefetchingQueue {
     WAL_GAP,
     WAL_SCAN_YIELDED,
     STALE
-  }
-
-  private enum InFlightAckResult {
-    ACKED,
-    REJECTED,
-    MISSING
   }
 
   protected static final class ReplayLocateDecision {
@@ -718,7 +692,8 @@ public class ConsensusPrefetchingQueue {
     this.nextExpectedSearchIndex = new AtomicLong(tailStartSearchIndex);
 
     this.prefetchingQueue = new PriorityBlockingQueue<>();
-    this.inFlightEvents = new ConcurrentHashMap<>();
+    this.deliveryLedger =
+        new DeliveryLedger(this, prefetchingQueue::add, this::releaseTabletMemory);
     this.observedSeekGeneration = seekGeneration.get();
 
     // Register pending queue early so we don't miss real-time writes
@@ -965,7 +940,7 @@ public class ConsensusPrefetchingQueue {
         || !orderedWriterReplay.isEmpty()
         || hasHistoricalWalLag()
         || !lingerBatch.isEmpty()
-        || !inFlightEvents.isEmpty()
+        || deliveryLedger.hasInFlightEvents()
         || computeWatermarkDelayMs() > 0L;
   }
 
@@ -1583,14 +1558,14 @@ public class ConsensusPrefetchingQueue {
           // ACK may have removed a recycled event while it was being claimed from the queue.
           if (event.isCommitted()
               || (event.getCommitContext().hasWriterProgress()
-                  && outstandingEventsByCommitContext.get(event.getCommitContext()) != event)) {
+                  && !deliveryLedger.isOutstanding(event.getCommitContext(), event))) {
             continue;
           }
           if (!restorePayloadForDelivery(event)) {
             prefetchingQueue.add(event);
             continue;
           }
-          final DeliveryBatchRecord batchRecord = deliveryBatches.get(event);
+          final DeliveryBatchRecord batchRecord = deliveryLedger.getDeliveryBatch(event);
           if (Objects.nonNull(batchRecord)) {
             // A fresh response identity fences a late delivery callback from an earlier poll.
             event.restorePayload(event.getCurrentResponse().getPayload());
@@ -1602,7 +1577,7 @@ public class ConsensusPrefetchingQueue {
         timeTracker.recordDelivery();
         lastPollTimeMs = System.currentTimeMillis();
         lastConsumerId = consumerId;
-        inFlightEvents.put(new InFlightEventKey(consumerId, event.getCommitContext()), event);
+        deliveryLedger.claim(consumerId, event.getCommitContext(), event);
         event.recordLastPolledConsumerId(consumerId);
         return event;
       }
@@ -1625,8 +1600,7 @@ public class ConsensusPrefetchingQueue {
       if (isClosed || closeRequested || pendingSeekRequest != null) {
         return null;
       }
-      final SubscriptionEvent event =
-          inFlightEvents.get(new InFlightEventKey(consumerId, commitContext));
+      final SubscriptionEvent event = deliveryLedger.getInFlight(consumerId, commitContext);
       if (Objects.isNull(event)) {
         if (isCommitContextOutdated(commitContext)) {
           return generateOutdatedErrorResponse();
@@ -1715,7 +1689,7 @@ public class ConsensusPrefetchingQueue {
             closeRequested || isClosed,
             pendingEntries.size(),
             prefetchingQueue.size(),
-            inFlightEvents.size(),
+            deliveryLedger.inFlightSize(),
             startReadSearchIndex);
       }
       result = drivePrefetchOnceInternal();
@@ -1738,7 +1712,7 @@ public class ConsensusPrefetchingQueue {
             walPathAcceptedEntries.get() - startWalAccepted,
             pendingEntries.size(),
             prefetchingQueue.size(),
-            inFlightEvents.size(),
+            deliveryLedger.inFlightSize(),
             memoryBlockReason,
             realtimeAdmissionBlockReason);
       }
@@ -2373,7 +2347,7 @@ public class ConsensusPrefetchingQueue {
         walGapSkippedEntries.get(),
         pendingEntries.size(),
         prefetchingQueue.size(),
-        inFlightEvents.size(),
+        deliveryLedger.inFlightSize(),
         realtimeEntriesByWriter.size(),
         Objects.nonNull(subscriptionWALIterator) && subscriptionWALIterator.hasBufferedNext(),
         isActive,
@@ -2590,7 +2564,7 @@ public class ConsensusPrefetchingQueue {
       delayMs = Math.min(delayMs, watermarkDelayMs);
     }
 
-    if (!inFlightEvents.isEmpty()) {
+    if (deliveryLedger.hasInFlightEvents()) {
       final long recycleIntervalMs = getRecycleUncommittedEventIntervalMs();
       if (recycleIntervalMs > 0L) {
         delayMs = Math.min(delayMs, recycleIntervalMs);
@@ -3341,10 +3315,8 @@ public class ConsensusPrefetchingQueue {
             getTimeSelectedByTable(converter.getDatabaseName(), tablets));
 
     // Install the ownership record before exposing the event to concurrent poll/ack threads.
-    retainEventMemory(event, retainedBytes);
+    deliveryLedger.register(event, retainedBytes, batchRecord);
     if (Objects.nonNull(batchRecord)) {
-      deliveryBatches.put(event, batchRecord);
-      deliveryStartIndices.merge(batchRecord.minimumSearchIndex, 1, Integer::sum);
       event.setResponseDeliveryListener(response -> onResponseDelivered(event, response));
     }
     prefetchingQueue.add(event);
@@ -3511,37 +3483,13 @@ public class ConsensusPrefetchingQueue {
     releaseTabletMemory(retainedTabletBytes.get());
   }
 
-  private void retainEventMemory(final SubscriptionEvent event, final long bytes) {
-    outstandingEventsByCommitContext.put(event.getCommitContext(), event);
-    if (bytes > 0L) {
-      retainedBytesByEvent.put(event, bytes);
-    }
-  }
-
   private void onResponseDelivered(
       final SubscriptionEvent event, final SubscriptionPollResponse response) {
     acquireReadLock();
     try {
-      synchronized (event) {
-        final DeliveryBatchRecord record = deliveryBatches.get(event);
-        if (isClosed
-            || closeRequested
-            || pendingSeekRequest != null
-            || Objects.isNull(record)
-            || event.isCommitted()
-            || event.getCurrentResponse() != response
-            || outstandingEventsByCommitContext.get(event.getCommitContext()) != event) {
-          return;
-        }
-        // Delivery records protect the WAL needed for replay. Release the serialized payload
-        // without a validation scan; if pending WAL is not readable yet, redelivery retries it
-        // without advancing committed progress.
-        if (event.detachCurrentPayload(response)) {
-          final Long retainedBytes = retainedBytesByEvent.remove(event);
-          if (Objects.nonNull(retainedBytes)) {
-            releaseTabletMemory(retainedBytes);
-          }
-        }
+      if (!deliveryLedger.releaseDeliveredPayload(
+          event, response, () -> isClosed || closeRequested || pendingSeekRequest != null)) {
+        return;
       }
     } finally {
       releaseReadLock();
@@ -3553,7 +3501,7 @@ public class ConsensusPrefetchingQueue {
     if (!event.isPayloadDetached()) {
       return true;
     }
-    final DeliveryBatchRecord record = deliveryBatches.get(event);
+    final DeliveryBatchRecord record = deliveryLedger.getDeliveryBatch(event);
     if (Objects.isNull(record) || !tryReserveTabletMemory(record.estimatedBytes)) {
       return false;
     }
@@ -3568,7 +3516,7 @@ public class ConsensusPrefetchingQueue {
       event.restorePayload(
           new TabletsPayload(
               Collections.singletonMap(record.databaseName, tablets), -record.tabletCount));
-      retainedBytesByEvent.put(event, record.estimatedBytes);
+      deliveryLedger.retainPayload(event, record.estimatedBytes);
       restored = true;
       return true;
     } finally {
@@ -3639,30 +3587,7 @@ public class ConsensusPrefetchingQueue {
   }
 
   private void cleanUpEvent(final SubscriptionEvent event, final boolean force) {
-    synchronized (event) {
-      final boolean indexed =
-          outstandingEventsByCommitContext.remove(event.getCommitContext(), event);
-      final Long retainedBytes = retainedBytesByEvent.remove(event);
-      final DeliveryBatchRecord batchRecord = deliveryBatches.remove(event);
-      if (Objects.nonNull(batchRecord)) {
-        deliveryStartIndices.computeIfPresent(
-            batchRecord.minimumSearchIndex, (index, count) -> count == 1 ? null : count - 1);
-      }
-      // A materialized data event can be observed by a regular ACK and a late ACK concurrently.
-      // Only the thread that still owns either lifecycle index may clean and release it.
-      if (!indexed
-          && Objects.isNull(retainedBytes)
-          && event.getCommitContext().hasWriterProgress()) {
-        return;
-      }
-      try {
-        event.cleanUp(force);
-      } finally {
-        if (Objects.nonNull(retainedBytes)) {
-          releaseTabletMemory(retainedBytes);
-        }
-      }
-    }
+    deliveryLedger.cleanUp(event, force);
   }
 
   private boolean ackMissingInFlightEvent(
@@ -3676,7 +3601,7 @@ public class ConsensusPrefetchingQueue {
         return false;
       }
 
-      final SubscriptionEvent event = outstandingEventsByCommitContext.get(commitContext);
+      final SubscriptionEvent event = deliveryLedger.getOutstanding(commitContext);
       // A recycled event may already have been claimed by another consumer. Only an event that is
       // still queued can be committed by the previous consumer's late ACK.
       if (Objects.nonNull(event) && !prefetchingQueue.remove(event)) {
@@ -3692,7 +3617,7 @@ public class ConsensusPrefetchingQueue {
       } finally {
         if (!committed
             && Objects.nonNull(event)
-            && outstandingEventsByCommitContext.get(commitContext) == event
+            && deliveryLedger.isOutstanding(commitContext, event)
             && !event.isCommitted()) {
           prefetchingQueue.add(event);
         }
@@ -3737,15 +3662,7 @@ public class ConsensusPrefetchingQueue {
   }
 
   private void discardRetainedEventMemory() {
-    long retainedBytes = 0L;
-    for (final Long eventRetainedBytes : retainedBytesByEvent.values()) {
-      retainedBytes += eventRetainedBytes;
-    }
-    retainedBytesByEvent.clear();
-    outstandingEventsByCommitContext.clear();
-    deliveryBatches.clear();
-    deliveryStartIndices.clear();
-    releaseTabletMemory(retainedBytes);
+    deliveryLedger.discardRetainedEventMemory();
   }
 
   private boolean appendPreparedEntryViaRealtimeWriter(
@@ -3942,30 +3859,10 @@ public class ConsensusPrefetchingQueue {
     acquireReadLock();
     try {
       return canAcceptCommitContext(commitContext, "refresh lease", true)
-          && refreshInFlightEventLeaseInternal(consumerId, commitContext);
+          && deliveryLedger.refreshLease(consumerId, commitContext);
     } finally {
       releaseReadLock();
     }
-  }
-
-  private boolean refreshInFlightEventLeaseInternal(
-      final String consumerId, final SubscriptionCommitContext commitContext) {
-    final AtomicBoolean refreshed = new AtomicBoolean(false);
-    inFlightEvents.compute(
-        new InFlightEventKey(consumerId, commitContext),
-        (key, ev) -> {
-          if (Objects.isNull(ev)) {
-            return null;
-          }
-          if (ev.isCommitted()) {
-            cleanUpEvent(ev, false);
-            return null;
-          }
-          ev.recordLastPolledTimestamp();
-          refreshed.set(true);
-          return ev;
-        });
-    return refreshed.get();
   }
 
   /**
@@ -3984,36 +3881,14 @@ public class ConsensusPrefetchingQueue {
           || isCommitContextOutdated(commitContext)) {
         return false;
       }
-      final AtomicBoolean requeued = new AtomicBoolean(false);
-      inFlightEvents.compute(
-          new InFlightEventKey(consumerId, commitContext),
-          (key, ev) -> {
-            if (Objects.isNull(ev)) {
-              return null;
-            }
-            if (ev.isCommitted()) {
-              cleanUpEvent(ev, false);
-              return null;
-            }
-            ev.resetLastPolledTimestamp();
-            prefetchingQueue.add(ev);
-            requeued.set(true);
-            return null;
-          });
-      return requeued.get();
+      return deliveryLedger.requeue(consumerId, commitContext);
     } finally {
       releaseReadLock();
     }
   }
 
   public int requeueInFlightEvents(final String consumerId) {
-    int requeuedCount = 0;
-    for (final InFlightEventKey key : new ArrayList<>(inFlightEvents.keySet())) {
-      if (Objects.equals(consumerId, key.consumerId) && requeue(consumerId, key.commitContext)) {
-        requeuedCount++;
-      }
-    }
-    return requeuedCount;
+    return deliveryLedger.requeueInFlightEvents(consumerId, this::requeue);
   }
 
   private boolean canAcceptCommitContext(
@@ -4093,62 +3968,26 @@ public class ConsensusPrefetchingQueue {
       final boolean silent) {
     final WriterId commitWriterId = extractCommitWriterId(commitContext);
     final WriterProgress commitWriterProgress = extractCommitWriterProgress(commitContext);
-    final AtomicBoolean found = new AtomicBoolean(false);
-    final AtomicBoolean acked = new AtomicBoolean(false);
-    inFlightEvents.compute(
-        new InFlightEventKey(consumerId, commitContext),
-        (key, ev) -> {
-          if (Objects.isNull(ev)) {
-            return null;
-          }
-          found.set(true);
-
-          if (ev.isCommitted()) {
-            if (!silent) {
-              LOGGER.warn(
-                  DataNodePipeMessages
-                      .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_EVENT_ALREADY_COMMITTED_AC34E829,
-                  this,
-                  commitContext);
-            }
-            cleanUpEvent(ev, false);
-            return null;
-          }
-
-          final boolean committed = commitWriterProgress(commitWriterId, commitWriterProgress);
-          if (!committed) {
-            if (!silent) {
-              LOGGER.warn(
-                  DataNodePipeMessages
-                      .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_ADVANCE_COMMIT_FRONTIER_56E606C0,
-                  this,
-                  commitContext);
-            }
-            return ev;
-          }
-
-          ev.ack();
-          ev.recordCommittedTimestamp();
-          acked.set(true);
-          cleanUpEvent(ev, false);
-          return null;
-        });
-    if (acked.get()) {
+    final InFlightAckResult result =
+        deliveryLedger.ack(
+            consumerId,
+            commitContext,
+            silent,
+            () -> commitWriterProgress(commitWriterId, commitWriterProgress));
+    if (result == InFlightAckResult.ACKED) {
       // Retention refresh can read metadata from every newly relevant WAL file. Keep that I/O out
       // of ConcurrentHashMap.compute so recycling and requeueing other in-flight events can
       // proceed while an ACK advances committed progress.
       refreshCommittedWalRetentionBoundAndNotify();
     }
-    return !found.get()
-        ? InFlightAckResult.MISSING
-        : acked.get() ? InFlightAckResult.ACKED : InFlightAckResult.REJECTED;
+    return result;
   }
 
   public boolean nack(final String consumerId, final SubscriptionCommitContext commitContext) {
     acquireReadLock();
     try {
       return canAcceptCommitContext(commitContext, "nack", false)
-          && nackInternal(consumerId, commitContext);
+          && deliveryLedger.nack(consumerId, commitContext);
     } finally {
       releaseReadLock();
     }
@@ -4201,112 +4040,17 @@ public class ConsensusPrefetchingQueue {
       if (!canAcceptCommitContext(commitContext, "nack", true)) {
         return false;
       }
-      final AtomicBoolean nacked = new AtomicBoolean(false);
-      inFlightEvents.compute(
-          new InFlightEventKey(consumerId, commitContext),
-          (key, ev) -> {
-            if (Objects.isNull(ev)) {
-              return null;
-            }
-            ev.nack();
-            nacked.set(true);
-            if (ev.isPoisoned()) {
-              LOGGER.error(
-                  DataNodePipeMessages
-                      .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_POISON_MESSAGE_DETECTED_NACKCOUNT_3A9255FB,
-                  this,
-                  ev.getNackCount(),
-                  ev);
-              ev.ack();
-              ev.recordCommittedTimestamp();
-              cleanUpEvent(ev, false);
-              return null;
-            }
-            prefetchingQueue.add(ev);
-            return null;
-          });
-      return nacked.get();
+      return deliveryLedger.nackSilent(consumerId, commitContext);
     } finally {
       releaseReadLock();
     }
-  }
-
-  private boolean nackInternal(
-      final String consumerId, final SubscriptionCommitContext commitContext) {
-    final AtomicBoolean nacked = new AtomicBoolean(false);
-    inFlightEvents.compute(
-        new InFlightEventKey(consumerId, commitContext),
-        (key, ev) -> {
-          if (Objects.isNull(ev)) {
-            LOGGER.warn(
-                DataNodePipeMessages
-                    .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_COMMIT_CONTEXT_DOES_NOT_EXIST_05F6C6E0,
-                this,
-                commitContext);
-            return null;
-          }
-
-          ev.nack();
-          nacked.set(true);
-          if (ev.isPoisoned()) {
-            LOGGER.error(
-                DataNodePipeMessages
-                    .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_POISON_MESSAGE_DETECTED_NACKCOUNT_3A9255FB,
-                this,
-                ev.getNackCount(),
-                ev);
-            ev.ack();
-            ev.recordCommittedTimestamp();
-            cleanUpEvent(ev, false);
-            return null;
-          }
-          prefetchingQueue.add(ev);
-          return null;
-        });
-
-    return nacked.get();
   }
 
   // ======================== Recycle ========================
 
   /** Recycles in-flight events that are pollable (timed out) back to the prefetching queue. */
   private void recycleInFlightEvents() {
-    for (final InFlightEventKey key : new ArrayList<>(inFlightEvents.keySet())) {
-      inFlightEvents.compute(
-          key,
-          (k, ev) -> {
-            if (Objects.isNull(ev)) {
-              return null;
-            }
-            if (ev.isCommitted()) {
-              cleanUpEvent(ev, false);
-              return null;
-            }
-            if (ev.pollable(getRecycleUncommittedEventIntervalMs())) {
-              ev.nack();
-              if (ev.isPoisoned()) {
-                LOGGER.error(
-                    DataNodePipeMessages
-                        .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_POISON_MESSAGE_DETECTED_DURING_23159F02,
-                    this,
-                    ev.getNackCount(),
-                    ev);
-                ev.ack();
-                ev.recordCommittedTimestamp();
-                cleanUpEvent(ev, false);
-                return null;
-              }
-              prefetchingQueue.add(ev);
-              LOGGER.debug(
-                  DataNodePipeMessages
-                      .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_RECYCLED_TIMED_OUT_EVENT_BACK_5E58639C,
-                  this,
-                  ev);
-              return null;
-            }
-            return ev;
-          });
-    }
+    deliveryLedger.recycleInFlightEvents(this::getRecycleUncommittedEventIntervalMs);
   }
 
   // ======================== Cleanup ========================
@@ -4318,8 +4062,7 @@ public class ConsensusPrefetchingQueue {
       prefetchingQueue.forEach(event -> cleanUpEvent(event, true));
       prefetchingQueue.clear();
 
-      inFlightEvents.values().forEach(event -> cleanUpEvent(event, true));
-      inFlightEvents.clear();
+      deliveryLedger.cleanUpInFlightEvents();
       discardRetainedEventMemory();
 
       discardRealtimeEntries();
@@ -4607,8 +4350,7 @@ public class ConsensusPrefetchingQueue {
     // 1. Clean up all queued and in-flight events
     prefetchingQueue.forEach(event -> cleanUpEvent(event, true));
     prefetchingQueue.clear();
-    inFlightEvents.values().forEach(event -> cleanUpEvent(event, true));
-    inFlightEvents.clear();
+    deliveryLedger.cleanUpInFlightEvents();
     discardRetainedEventMemory();
 
     // 2. Discard stale pending entries from in-memory queue
@@ -4698,12 +4440,11 @@ public class ConsensusPrefetchingQueue {
     // A replica's committed frontier may advance independently. Local delivery records remain
     // replayable until their lifecycle is cleaned, even after another replica reports progress.
     if (consensusReqReader instanceof WALNode) {
-      final Map.Entry<Long, Integer> firstDelivery = deliveryStartIndices.firstEntry();
+      final Long firstDelivery = deliveryLedger.firstDeliveryStartIndex();
       if (Objects.nonNull(firstDelivery)) {
         final File[] walFiles = ((WALNode) consensusReqReader).getSortedWalFilesSnapshot();
         requiredVersion =
-            Math.min(
-                requiredVersion, findReplayRetainedMinVersionId(walFiles, firstDelivery.getKey()));
+            Math.min(requiredVersion, findReplayRetainedMinVersionId(walFiles, firstDelivery));
       }
     }
     return requiredVersion;
@@ -5504,8 +5245,7 @@ public class ConsensusPrefetchingQueue {
 
           prefetchingQueue.forEach(event -> cleanUpEvent(event, true));
           prefetchingQueue.clear();
-          inFlightEvents.values().forEach(event -> cleanUpEvent(event, true));
-          inFlightEvents.clear();
+          deliveryLedger.cleanUpInFlightEvents();
           discardRetainedEventMemory();
 
           pendingEntries.clear();
@@ -5573,7 +5313,7 @@ public class ConsensusPrefetchingQueue {
   public long getRemainingEventCount() {
     return 0L
         + prefetchingQueue.size()
-        + inFlightEvents.size()
+        + deliveryLedger.inFlightSize()
         + pendingEntries.size()
         + getRealtimeBufferedEntryCount()
         + lingerBatch.getEntryCount();
@@ -5664,7 +5404,7 @@ public class ConsensusPrefetchingQueue {
         getRawWalGap(),
         getLag(),
         prefetchingQueue.size(),
-        inFlightEvents.size(),
+        deliveryLedger.inFlightSize(),
         pendingEntries.size(),
         getRealtimeBufferedEntryCount(),
         lingerBatch.getEntryCount(),
@@ -5855,7 +5595,7 @@ public class ConsensusPrefetchingQueue {
   }
 
   public long getSubscriptionUncommittedEventCount() {
-    return inFlightEvents.size();
+    return deliveryLedger.inFlightSize();
   }
 
   public long getRetainedTabletBytes() {
@@ -5955,7 +5695,7 @@ public class ConsensusPrefetchingQueue {
   public long getLag() {
     final long materializedLag =
         (long) prefetchingQueue.size()
-            + inFlightEvents.size()
+            + deliveryLedger.inFlightSize()
             + getRealtimeBufferedEntryCount()
             + lingerBatch.getEntryCount();
     final long unmaterializedLag = Math.max((long) pendingEntries.size(), getRawWalGap());
@@ -5971,7 +5711,7 @@ public class ConsensusPrefetchingQueue {
     result.put("consensusGroupId", consensusGroupId.toString());
     result.put("currentReadSearchIndex", String.valueOf(nextExpectedSearchIndex.get()));
     result.put("prefetchingQueueSize", String.valueOf(prefetchingQueue.size()));
-    result.put("inFlightEventsSize", String.valueOf(inFlightEvents.size()));
+    result.put("inFlightEventsSize", String.valueOf(deliveryLedger.inFlightSize()));
     result.put("pendingEntriesSize", String.valueOf(pendingEntries.size()));
     result.put("retainedRequestBytes", String.valueOf(getRetainedRequestBytes()));
     result.put("retainedTabletBytes", String.valueOf(retainedTabletBytes.get()));
@@ -6035,35 +5775,6 @@ public class ConsensusPrefetchingQueue {
   }
 
   // ======================== Inner Classes ========================
-
-  private static final class InFlightEventKey {
-    private final String consumerId;
-    private final SubscriptionCommitContext commitContext;
-
-    private InFlightEventKey(
-        final String consumerId, final SubscriptionCommitContext commitContext) {
-      this.consumerId = consumerId;
-      this.commitContext = commitContext;
-    }
-
-    @Override
-    public boolean equals(final Object obj) {
-      if (this == obj) {
-        return true;
-      }
-      if (!(obj instanceof InFlightEventKey)) {
-        return false;
-      }
-      final InFlightEventKey that = (InFlightEventKey) obj;
-      return Objects.equals(consumerId, that.consumerId)
-          && Objects.equals(commitContext, that.commitContext);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(consumerId, commitContext);
-    }
-  }
 
   private interface WriterBufferedEntry {
     List<Tablet> getTablets();
@@ -6187,84 +5898,6 @@ public class ConsensusPrefetchingQueue {
       lastLocalSeq = -1L;
       writerNodeId = -1;
       entryCount = 0;
-    }
-  }
-
-  private static final class ReplayEntryPosition {
-    private final long searchIndex;
-    private final long physicalTime;
-    private final long localSeq;
-
-    private ReplayEntryPosition(
-        final long searchIndex, final long physicalTime, final long localSeq) {
-      this.searchIndex = searchIndex;
-      this.physicalTime = physicalTime;
-      this.localSeq = localSeq;
-    }
-  }
-
-  private static final class DeliveryBatchRecord {
-    // Delta + zigzag varints keep contiguous indices/sequences and timestamp deltas compact.
-    // Positions are decoded only while materializing one memory-bounded batch for redelivery.
-    private final byte[] positions;
-    private final int entryCount;
-    private final long minimumSearchIndex;
-    private final int tabletCount;
-    private final long estimatedBytes;
-    private final String databaseName;
-    private final ConsensusLogToTabletConverter converter;
-
-    private DeliveryBatchRecord(
-        final byte[] positions,
-        final int entryCount,
-        final long minimumSearchIndex,
-        final int tabletCount,
-        final long estimatedBytes,
-        final String databaseName,
-        final ConsensusLogToTabletConverter converter) {
-      this.positions = positions;
-      this.entryCount = entryCount;
-      this.minimumSearchIndex = minimumSearchIndex;
-      this.tabletCount = tabletCount;
-      this.estimatedBytes = estimatedBytes;
-      this.databaseName = databaseName;
-      this.converter = converter;
-    }
-
-    private List<ReplayEntryPosition> decodePositions() {
-      final ByteBuffer buffer = ByteBuffer.wrap(positions);
-      final List<ReplayEntryPosition> result = new ArrayList<>(entryCount);
-      long searchIndex = 0L;
-      long physicalTime = 0L;
-      long localSeq = 0L;
-      for (int index = 0; index < entryCount; index++) {
-        searchIndex += readDelta(buffer);
-        physicalTime += readDelta(buffer);
-        localSeq += readDelta(buffer);
-        result.add(new ReplayEntryPosition(searchIndex, physicalTime, localSeq));
-      }
-      return result;
-    }
-
-    private static void writeDelta(final ByteArrayOutputStream stream, final long delta) {
-      long encoded = (delta << 1) ^ (delta >> 63);
-      while ((encoded & ~0x7FL) != 0L) {
-        stream.write((int) (encoded & 0x7F) | 0x80);
-        encoded >>>= 7;
-      }
-      stream.write((int) encoded);
-    }
-
-    private static long readDelta(final ByteBuffer buffer) {
-      long encoded = 0L;
-      int shift = 0;
-      byte value;
-      do {
-        value = buffer.get();
-        encoded |= (long) (value & 0x7F) << shift;
-        shift += 7;
-      } while (value < 0);
-      return (encoded >>> 1) ^ -(encoded & 1L);
     }
   }
 
