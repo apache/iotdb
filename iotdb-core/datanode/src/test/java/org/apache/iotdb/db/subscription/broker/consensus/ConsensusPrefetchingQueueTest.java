@@ -973,9 +973,8 @@ public class ConsensusPrefetchingQueueTest {
           new File(
               walDirectory,
               WALFileUtils.getLogFileName(3L, 4L, WALFileStatus.CONTAINS_SEARCH_INDEX));
-      try (WALWriter ignored = new WALWriter(nextLiveWal, WALFileVersion.V3)) {
-        // Rolling v2 makes its previously live metadata a sealed retention requirement.
-      }
+      writeWalMetadata(nextLiveWal, 4L, 8L, 1008L, 7);
+      // Rolling v2 makes its previously live metadata a sealed retention requirement.
       currentWalVersion.set(3L);
       committedProgress.set(
           new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(1006L, 6L))));
@@ -990,9 +989,27 @@ public class ConsensusPrefetchingQueueTest {
       assertEquals(3L, committedBound.getLong(queue));
 
       committedProgress.set(
-          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(1001L, 1L))));
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(1008L, 8L))));
+      assertFalse((Boolean) refreshRetentionBound.invoke(queue));
+      assertEquals(3, progressWalReaderOpenCount.get());
+      final File finalLiveWal =
+          new File(
+              walDirectory,
+              WALFileUtils.getLogFileName(4L, 5L, WALFileStatus.CONTAINS_SEARCH_INDEX));
+      try (WALWriter ignored = new WALWriter(finalLiveWal, WALFileVersion.V3)) {
+        // No new ACK follows this roll: the same committed progress must release sealed v3.
+      }
+      currentWalVersion.set(4L);
       assertTrue((Boolean) refreshRetentionBound.invoke(queue));
       assertEquals(4, progressWalReaderOpenCount.get());
+      assertEquals(4L, committedBound.getLong(queue));
+      assertFalse((Boolean) refreshRetentionBound.invoke(queue));
+      assertEquals(4, progressWalReaderOpenCount.get());
+
+      committedProgress.set(
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(1001L, 1L))));
+      assertTrue((Boolean) refreshRetentionBound.invoke(queue));
+      assertEquals(5, progressWalReaderOpenCount.get());
       assertEquals(0L, committedBound.getLong(queue));
       assertEquals(0L, retentionSupplier.get().getAsLong());
     } finally {
