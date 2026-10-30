@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -50,6 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDevice
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
@@ -98,6 +100,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -620,6 +623,119 @@ public class StatementGeneratorTest {
     DeleteDatabaseStatement statement =
         StatementGenerator.createStatement(Collections.singletonList("root.db"));
     assertEquals(Collections.singletonList("root.db"), statement.getPrefixPath());
+  }
+
+  @Test
+  public void testCreateMultiTimeSeriesWithAlignment() throws IllegalPathException {
+    TSCreateMultiTimeseriesReq req = mixedCreateTimeseriesRequest();
+    req.setMeasurementAliasList(Arrays.asList("a1", "a2", "a3"));
+    req.setTagsList(
+        Arrays.asList(
+            Collections.singletonMap("tag", "first"),
+            null,
+            Collections.singletonMap("tag", "last")));
+    req.setAttributesList(Arrays.asList(null, Collections.singletonMap("attr", "value"), null));
+    req.setPropsList(Arrays.asList(null, Collections.singletonMap("loss", "sdt"), null));
+    InternalCreateMultiTimeSeriesStatement statement =
+        StatementGenerator.createStatement(req, Arrays.asList(true, false, true));
+    assertEquals(2, statement.getDeviceMap().size());
+    assertEquals(
+        new HashSet<>(req.getPaths()),
+        statement.getPaths().stream().map(PartialPath::getFullPath).collect(Collectors.toSet()));
+    assertTrue(statement.getDeviceMap().get(new PartialPath("root.db.d1")).left);
+    assertFalse(statement.getDeviceMap().get(new PartialPath("root.db.d2")).left);
+    MeasurementGroup aligned = statement.getDeviceMap().get(new PartialPath("root.db.d1")).right;
+    assertEquals(Arrays.asList("s1", "s2"), aligned.getMeasurements());
+    assertEquals(Arrays.asList(TSDataType.INT64, TSDataType.DOUBLE), aligned.getDataTypes());
+    assertEquals(Arrays.asList(TSEncoding.PLAIN, TSEncoding.RLE), aligned.getEncodings());
+    assertEquals(Collections.nCopies(2, SNAPPY), aligned.getCompressors());
+    assertEquals(Arrays.asList("a1", "a3"), aligned.getAliasList());
+    assertEquals(
+        Arrays.asList(req.getTagsList().get(0), req.getTagsList().get(2)), aligned.getTagsList());
+    assertEquals(Arrays.asList(null, null), aligned.getAttributesList());
+    MeasurementGroup nonAligned = statement.getDeviceMap().get(new PartialPath("root.db.d2")).right;
+    assertEquals(Collections.singletonList("s1"), nonAligned.getMeasurements());
+    assertEquals(Collections.singletonList(TSDataType.INT32), nonAligned.getDataTypes());
+    assertEquals(Collections.singletonList("a2"), nonAligned.getAliasList());
+    assertEquals(Collections.singletonList(req.getPropsList().get(1)), nonAligned.getPropsList());
+    assertEquals(
+        Collections.singletonList(req.getAttributesList().get(1)), nonAligned.getAttributesList());
+  }
+
+  @Test
+  public void testCreateMultiTimeSeriesWithAlignmentWithoutMetadata() throws IllegalPathException {
+    InternalCreateMultiTimeSeriesStatement statement =
+        StatementGenerator.createStatement(
+            mixedCreateTimeseriesRequest(), Arrays.asList(true, false, true));
+    for (Pair<Boolean, MeasurementGroup> device : statement.getDeviceMap().values()) {
+      assertNull(device.right.getAliasList());
+      assertNull(device.right.getPropsList());
+      assertNull(device.right.getTagsList());
+      assertNull(device.right.getAttributesList());
+    }
+  }
+
+  @Test
+  public void testCreateMultiTimeSeriesWithAlignmentRejectsInvalidLists() {
+    for (TSCreateMultiTimeseriesReq._Fields field :
+        Arrays.asList(
+            TSCreateMultiTimeseriesReq._Fields.DATA_TYPES,
+            TSCreateMultiTimeseriesReq._Fields.ENCODINGS,
+            TSCreateMultiTimeseriesReq._Fields.COMPRESSORS,
+            TSCreateMultiTimeseriesReq._Fields.PROPS_LIST,
+            TSCreateMultiTimeseriesReq._Fields.TAGS_LIST,
+            TSCreateMultiTimeseriesReq._Fields.ATTRIBUTES_LIST,
+            TSCreateMultiTimeseriesReq._Fields.MEASUREMENT_ALIAS_LIST)) {
+      TSCreateMultiTimeseriesReq req = mixedCreateTimeseriesRequest();
+      req.setFieldValue(field, Collections.emptyList());
+      assertThrows(
+          SemanticException.class,
+          () -> StatementGenerator.createStatement(req, Arrays.asList(true, false, true)));
+    }
+    TSCreateMultiTimeseriesReq req = mixedCreateTimeseriesRequest();
+    assertThrows(SemanticException.class, () -> StatementGenerator.createStatement(req, null));
+    assertThrows(
+        SemanticException.class,
+        () -> StatementGenerator.createStatement(req, Collections.singletonList(true)));
+    assertThrows(
+        SemanticException.class,
+        () -> StatementGenerator.createStatement(req, Arrays.asList(true, null, true)));
+    req.setPaths(Collections.emptyList());
+    assertThrows(
+        SemanticException.class,
+        () -> StatementGenerator.createStatement(req, Collections.emptyList()));
+  }
+
+  @Test
+  public void testCreateMultiTimeSeriesWithAlignmentRejectsConflicts() {
+    TSCreateMultiTimeseriesReq req = mixedCreateTimeseriesRequest();
+    assertThrows(
+        SemanticException.class,
+        () -> StatementGenerator.createStatement(req, Arrays.asList(true, false, false)));
+    req.setPropsList(Arrays.asList(Collections.singletonMap("loss", "sdt"), null, null));
+    assertThrows(
+        SemanticException.class,
+        () -> StatementGenerator.createStatement(req, Arrays.asList(true, false, true)));
+    req.unsetPropsList();
+    req.setPaths(Arrays.asList("root.db.d1.s1", "root.db.d2.s1", "root.db.d1.s1"));
+    assertThrows(
+        SemanticException.class,
+        () -> StatementGenerator.createStatement(req, Arrays.asList(true, false, true)));
+    req.setPaths(Arrays.asList("root.s1", "root.db.d2.s1", "root.db.d1.s1"));
+    assertThrows(
+        IllegalPathException.class,
+        () -> StatementGenerator.createStatement(req, Arrays.asList(true, false, true)));
+  }
+
+  private TSCreateMultiTimeseriesReq mixedCreateTimeseriesRequest() {
+    return new TSCreateMultiTimeseriesReq(
+        1L,
+        Arrays.asList("root.db.d1.s1", "root.db.d2.s1", "root.db.d1.s2"),
+        Arrays.asList(
+            TSDataType.INT64.ordinal(), TSDataType.INT32.ordinal(), TSDataType.DOUBLE.ordinal()),
+        Arrays.asList(
+            TSEncoding.PLAIN.ordinal(), TSEncoding.RLE.ordinal(), TSEncoding.RLE.ordinal()),
+        Collections.nCopies(3, (int) SNAPPY.serialize()));
   }
 
   @Test

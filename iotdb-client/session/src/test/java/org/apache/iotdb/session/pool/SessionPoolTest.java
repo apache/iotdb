@@ -984,6 +984,37 @@ public class SessionPoolTest {
   }
 
   @Test
+  public void testCreateMultiTimeseriesWithAlignment()
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<String> paths = Arrays.asList("root.sg.d1.s1", "root.sg.d2.s1");
+    List<TSDataType> dataTypes = Arrays.asList(TSDataType.FLOAT, TSDataType.INT32);
+    List<TSEncoding> encodings = Arrays.asList(TSEncoding.RLE, TSEncoding.RLE);
+    List<CompressionType> compressors = Collections.nCopies(2, CompressionType.SNAPPY);
+    List<Boolean> aligned = Arrays.asList(true, false);
+    sessionPool.createMultiTimeseries(
+        paths, dataTypes, encodings, compressors, null, null, null, null, aligned);
+    Mockito.verify(session)
+        .createMultiTimeseries(
+            paths, dataTypes, encodings, compressors, null, null, null, null, aligned);
+    assertEquals(
+        1,
+        ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
+
+    doThrow(new StatementExecutionException("denied"))
+        .when(session)
+        .createMultiTimeseries(
+            paths, dataTypes, encodings, compressors, null, null, null, null, aligned);
+    Assert.assertThrows(
+        StatementExecutionException.class,
+        () ->
+            sessionPool.createMultiTimeseries(
+                paths, dataTypes, encodings, compressors, null, null, null, null, aligned));
+    assertEquals(
+        1,
+        ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
+  }
+
+  @Test
   public void testCreateSchemaTemplate()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     Template templateShareTime = new Template("template1", true);

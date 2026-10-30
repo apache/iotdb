@@ -4851,4 +4851,18 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_PLAN_NODE_ARG_IS_ALREADY_REGISTERED_ON_MEMORY_SIDE_ARG_NOT_ARG_4C1BB625 = "PlanNode %s 已注册到内存侧 %s，不能注册到 %s";
   public static final String EXCEPTION_MEMORY_RESERVATION_IS_NOT_REGISTERED_FOR_QUERY_ARG_FRAGMENT_ARG_PLAN_NODE_ARG_67A4B81F = "查询 %s、Fragment %s、PlanNode %s 尚未注册内存账目";
   public static final String LOG_SHARED_EXCHANGE_BUDGET_FOR_FI_ARG_INPUT_ARG_OUTPUT_ARG_98AE1109 = "FI {} 的共享 exchange 预算：INPUT={}，OUTPUT={}";
+  public static final String EXCEPTION_THE_PATHS_LIST_MUST_NOT_BE_EMPTY_950C8343 =
+      "paths 列表不能为空。";
+  public static final String EXCEPTION_THE_ARG_LIST_MUST_CONTAIN_ARG_ENTRIES_8545AC0F =
+      "%s 列表必须包含 %d 个元素。";
+  public static final String EXCEPTION_ALIGNMENT_FLAGS_MUST_NOT_BE_NULL_5FAC3B71 =
+      "对齐标记不能为 null。";
+  public static final String
+      EXCEPTION_TIME_SERIES_UNDER_DEVICE_ARG_MUST_USE_THE_SAME_ALIGNMENT_64142589 =
+          "设备 %s 下的时间序列必须使用相同的对齐标记。";
+  public static final String EXCEPTION_DUPLICATE_TIME_SERIES_IN_BATCH_ARG_C81567AE =
+      "批次中包含重复的时间序列：%s。";
+  public static final String
+      EXCEPTION_PROPERTIES_ARE_NOT_SUPPORTED_FOR_ALIGNED_TIME_SERIES_ARG_695D2CD7 =
+          "对齐时间序列不支持 properties：%s。";
 }

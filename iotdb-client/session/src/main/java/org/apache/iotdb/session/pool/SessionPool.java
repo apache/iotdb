@@ -2465,6 +2465,47 @@ public class SessionPool implements ISessionPool {
   }
 
   @Override
+  public void createMultiTimeseries(
+      List<String> paths,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors,
+      List<Map<String, String>> propsList,
+      List<Map<String, String>> tagsList,
+      List<Map<String, String>> attributesList,
+      List<String> measurementAliasList,
+      List<Boolean> isAlignedList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      ISession session = getSession();
+      try {
+        session.createMultiTimeseries(
+            paths,
+            dataTypes,
+            encodings,
+            compressors,
+            propsList,
+            tagsList,
+            attributesList,
+            measurementAliasList,
+            isAlignedList);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        LOGGER.warn(SessionMessages.CREATE_MULTI_TIMESERIES_FAILED, e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      } catch (Throwable e) {
+        LOGGER.error(SessionMessages.UNEXPECTED_ERROR_IN_CREATE_MULTI_TIMESERIES, e);
+        putBack(session);
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
+  @Override
   public boolean checkTimeseriesExists(String path)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {

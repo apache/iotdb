@@ -625,6 +625,8 @@ service IClientRPCService {
 
   common.TSStatus createMultiTimeseries(1:TSCreateMultiTimeseriesReq req);
 
+  common.TSStatus createMultiTimeseriesWithAlignment(1:TSCreateMultiTimeseriesReq req, 2:list<bool> isAlignedList);
+
   common.TSStatus deleteTimeseries(1:i64 sessionId, 2:list<string> path)
 
   common.TSStatus deleteStorageGroups(1:i64 sessionId, 2:list<string> storageGroup);
