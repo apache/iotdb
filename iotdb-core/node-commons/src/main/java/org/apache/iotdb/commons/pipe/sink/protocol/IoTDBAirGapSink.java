@@ -497,6 +497,10 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
     return socketIndex;
   }
 
+  protected int nextSocketIndex(final boolean shouldRefreshReceiverSession) throws IOException {
+    return shouldRefreshReceiverSession ? nextSocketIndex() : loadBalancer.nextSocketIndex();
+  }
+
   protected boolean send(
       final String pipeName, final long creationTime, final AirGapSocket socket, byte[] bytes)
       throws IOException {

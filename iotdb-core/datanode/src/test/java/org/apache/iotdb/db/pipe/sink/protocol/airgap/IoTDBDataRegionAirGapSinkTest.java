@@ -170,6 +170,44 @@ public class IoTDBDataRegionAirGapSinkTest {
   }
 
   @Test
+  public void testStrictUnidirectionalDoesNotRefreshSessionForEmptyHeartbeat() throws Exception {
+    try (final DatagramSocket receiverSocket = new DatagramSocket(0);
+        final UdpTestingIoTDBDataRegionAirGapSink sink =
+            new UdpTestingIoTDBDataRegionAirGapSink()) {
+      final PipeParameters parameters = buildParameters(false);
+      parameters.getAttribute().put(PipeSinkConstant.CONNECTOR_AIR_GAP_TRANSPORT_KEY, "udp");
+      parameters
+          .getAttribute()
+          .put(PipeSinkConstant.SINK_AIR_GAP_STRICT_UNIDIRECTIONAL_KEY, "true");
+      parameters
+          .getAttribute()
+          .put(
+              PipeSinkConstant.CONNECTOR_IOTDB_NODE_URLS_KEY,
+              "127.0.0.1:" + receiverSocket.getLocalPort());
+      sink.validate(new PipeParameterValidator(parameters));
+      sink.customize(
+          parameters,
+          new PipeTaskRuntimeConfiguration(new PipeTaskSinkRuntimeEnvironment("pipe", 1L, 1)));
+      sink.handshake();
+
+      receiverSocket.setSoTimeout(1000);
+      final byte[] buffer = new byte[65_507];
+      final DatagramPacket handshakePacket = new DatagramPacket(buffer, buffer.length);
+      receiverSocket.receive(handshakePacket);
+      Assert.assertEquals(
+          PipeRequestType.HANDSHAKE_DATANODE_V2.getType(),
+          decodeAirGapDatagram(buffer, handshakePacket.getLength()).type);
+
+      sink.transfer(new PipeHeartbeatEvent(-1, false));
+
+      receiverSocket.setSoTimeout(200);
+      Assert.assertThrows(
+          SocketTimeoutException.class,
+          () -> receiverSocket.receive(new DatagramPacket(new byte[65_507], 65_507)));
+    }
+  }
+
+  @Test
   public void testUdpDefaultAndExplicitFalseRequireAcknowledgement() throws Exception {
     for (final String strictValue : Arrays.asList(null, "false")) {
       try (final DatagramSocket receiverSocket = new DatagramSocket(0);
