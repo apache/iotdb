@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapOneByteResponse;
+import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapUdpProtocol;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferSliceReqBuilder;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
@@ -69,6 +70,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_STRICT_UNIDIRECTIONAL_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_STRICT_UNIDIRECTIONAL_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_TRANSPORT_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_TRANSPORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_TRANSPORT_SET;
@@ -82,6 +85,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_AIR_GAP_E_LANGUAGE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_AIR_GAP_STRICT_UNIDIRECTIONAL_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_AIR_GAP_TRANSPORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_AIR_GAP_UDP_PACKET_SIZE_KEY;
 import static org.apache.iotdb.commons.utils.BasicStructureSerDeUtil.LONG_LEN;
@@ -182,6 +186,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
 
   private boolean eLanguageEnable;
   private boolean useUdpTransport;
+  private boolean strictUnidirectional;
   private int udpPacketSizeInBytes;
 
   // The air gap connector does not use clientManager thus we put handshake type here
@@ -208,6 +213,21 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
             "Air gap transport should be one of %s, but got %s.",
             CONNECTOR_AIR_GAP_TRANSPORT_SET, airGapTransport),
         airGapTransport);
+
+    validator
+        .validateAttributeValueRange(
+            CONNECTOR_AIR_GAP_STRICT_UNIDIRECTIONAL_KEY, true, "true", "false")
+        .validateAttributeValueRange(SINK_AIR_GAP_STRICT_UNIDIRECTIONAL_KEY, true, "true", "false")
+        .validate(
+            arg ->
+                !parameters.getBooleanOrDefault(
+                        Arrays.asList(
+                            CONNECTOR_AIR_GAP_STRICT_UNIDIRECTIONAL_KEY,
+                            SINK_AIR_GAP_STRICT_UNIDIRECTIONAL_KEY),
+                        CONNECTOR_AIR_GAP_STRICT_UNIDIRECTIONAL_DEFAULT_VALUE)
+                    || CONNECTOR_AIR_GAP_TRANSPORT_UDP_VALUE.equals(airGapTransport),
+            PipeMessages.EXCEPTION_STRICTLY_UNIDIRECTIONAL_AIR_GAP_TRANSPORT_REQUIRES_UDP_78921AF9,
+            airGapTransport);
 
     final int packetSize =
         parameters.getIntOrDefault(
@@ -273,6 +293,17 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
                     CONNECTOR_AIR_GAP_TRANSPORT_DEFAULT_VALUE)
                 .trim()
                 .toLowerCase());
+    strictUnidirectional =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(
+                CONNECTOR_AIR_GAP_STRICT_UNIDIRECTIONAL_KEY,
+                SINK_AIR_GAP_STRICT_UNIDIRECTIONAL_KEY),
+            CONNECTOR_AIR_GAP_STRICT_UNIDIRECTIONAL_DEFAULT_VALUE);
+    if (strictUnidirectional) {
+      LOGGER.warn(
+          PipeMessages
+              .LOG_STRICTLY_UNIDIRECTIONAL_UDP_TRANSPORT_IS_ENABLED_REQUESTS_ARE_SENT_WITHOUT_ACKNOWLEDGEMENTS_DELIVERY_AND_RECEIVER_ERRORS_CANNOT_BE_CONFIRMED_0A2F4382);
+    }
     udpPacketSizeInBytes =
         parameters.getIntOrDefault(
             Arrays.asList(CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_KEY, SINK_AIR_GAP_UDP_PACKET_SIZE_KEY),
@@ -370,7 +401,14 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
       supportModsIfIsDataNodeReceiver = true;
     }
     socket.setSoTimeout(PIPE_CONFIG.getPipeSinkTransferTimeoutMs());
-    LOGGER.info(PipeMessages.HANDSHAKE_SUCCESS_SOCKET, socket);
+    if (strictUnidirectional) {
+      LOGGER.debug(
+          PipeMessages
+              .LOG_AIR_GAP_HANDSHAKE_REQUEST_SENT_ON_SOCKET_ARG_WITHOUT_WAITING_FOR_ACKNOWLEDGEMENT_E1ECD582,
+          socket);
+    } else {
+      LOGGER.info(PipeMessages.HANDSHAKE_SUCCESS_SOCKET, socket);
+    }
   }
 
   protected abstract byte[] generateHandShakeV1Payload() throws IOException;
@@ -444,8 +482,23 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
   protected abstract byte[] getTransferMultiFilePieceBytes(
       final String fileName, final long position, final byte[] payLoad) throws IOException;
 
-  protected int nextSocketIndex() {
-    return loadBalancer.nextSocketIndex();
+  protected int nextSocketIndex() throws IOException {
+    final int socketIndex = loadBalancer.nextSocketIndex();
+    if (strictUnidirectional) {
+      // There is no feedback when a receiver restarts or its idle session expires. Re-establish
+      // the session before each event, never between the pieces/slices of the same file/request.
+      try {
+        sendHandshakeReq(sockets.get(socketIndex));
+      } catch (final IOException e) {
+        isSocketAlive.set(socketIndex, false);
+        throw e;
+      }
+    }
+    return socketIndex;
+  }
+
+  protected int nextSocketIndex(final boolean shouldRefreshReceiverSession) throws IOException {
+    return shouldRefreshReceiverSession ? nextSocketIndex() : loadBalancer.nextSocketIndex();
   }
 
   protected boolean send(
@@ -488,7 +541,9 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
 
   private boolean sendOneDatagram(final AirGapSocket socket, final TPipeTransferReq request)
       throws IOException {
-    final long requestId = udpRequestIdGenerator.incrementAndGet();
+    final long requestId =
+        (udpRequestIdGenerator.incrementAndGet() & Long.MAX_VALUE)
+            | (strictUnidirectional ? AirGapUdpProtocol.NO_ACK_REQUEST_ID_MASK : 0);
     final ByteBuffer body = request.body.duplicate();
     final int requestSize = Byte.BYTES + Short.BYTES + body.remaining();
     final int eLanguageSize =
@@ -535,6 +590,11 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
             datagramBytes.length,
             socket.getDatagramAddress(),
             socket.getEndPoint().getPort()));
+
+    if (strictUnidirectional) {
+      // This only confirms a local send. A one-way link cannot report delivery or remote errors.
+      return true;
+    }
 
     final int originalTimeoutMs = datagramSocket.getSoTimeout();
     final long deadlineNanos =

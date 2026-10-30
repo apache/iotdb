@@ -20,6 +20,12 @@
 package org.apache.iotdb.commons.i18n;
 
 public final class PipeMessages {
+  public static final String EXCEPTION_STRICTLY_UNIDIRECTIONAL_AIR_GAP_TRANSPORT_REQUIRES_UDP_78921AF9 =
+      "严格单向的 air-gap 传输必须使用 UDP。";
+  public static final String LOG_STRICTLY_UNIDIRECTIONAL_UDP_TRANSPORT_IS_ENABLED_REQUESTS_ARE_SENT_WITHOUT_ACKNOWLEDGEMENTS_DELIVERY_AND_RECEIVER_ERRORS_CANNOT_BE_CONFIRMED_0A2F4382 =
+      "已启用严格单向 UDP 传输。请求发送后不等待确认；无法确认送达情况和接收端错误。";
+  public static final String LOG_AIR_GAP_HANDSHAKE_REQUEST_SENT_ON_SOCKET_ARG_WITHOUT_WAITING_FOR_ACKNOWLEDGEMENT_E1ECD582 =
+      "已通过 socket {} 发送 air-gap 握手请求，不等待确认。";
 
   // ===================== Common / Shared =====================
 
