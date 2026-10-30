@@ -73,7 +73,11 @@ public class IoTDBSchemaMetadataRecoveryIT extends AbstractSchemaIT {
 
   @Parameterized.BeforeParam
   public static void before() throws Exception {
-    setUpEnvironment();
+    if (setUpEnvironment() == SchemaTestMode.PBTree) {
+      // Replicated recovery needs enough memory for multiple pinned Region roots.
+      // Snapshot installation is forced explicitly, independently of cache eviction.
+      allocateMemoryForSchemaRegion(1024 * 1024);
+    }
     MetadataFaultTestUtils.configureCluster();
     EnvFactory.getEnv().initClusterEnvironment(3, 3);
   }
@@ -343,6 +347,8 @@ public class IoTDBSchemaMetadataRecoveryIT extends AbstractSchemaIT {
   public void testTreeSchemaSnapshotRestoresRichMetadataAndTail() throws Exception {
     final String template = "p0_tree_template";
     MetadataFaultTestUtils.createSingleSchemaRegionDatabase(DB_SNAPSHOT, TREE_SQL_DIALECT);
+    // Extend the ConfigNode template catalog with all peers online. Tail writes use that
+    // definition.
     execute(
         0,
         TREE_SQL_DIALECT,
@@ -362,7 +368,10 @@ public class IoTDBSchemaMetadataRecoveryIT extends AbstractSchemaIT {
         "create timeseries using device template on " + DB_SNAPSHOT + ".templ",
         "insert into " + DB_SNAPSHOT + ".templ(time,ts) values(1,31)",
         "alter device template " + template + " add (ext DOUBLE ENCODING=RLE COMPRESSOR=SNAPPY)",
-        "insert into " + DB_SNAPSHOT + ".templ(time,ext) values(1,3.1)");
+        "insert into " + DB_SNAPSHOT + ".templ(time,ext) values(1,3.1)",
+        "alter device template "
+            + template
+            + " add (tail BOOLEAN ENCODING=PLAIN COMPRESSOR=SNAPPY)");
     final var mapping =
         MetadataFaultTestUtils.partitions(
             DB_SNAPSHOT,
@@ -399,9 +408,6 @@ public class IoTDBSchemaMetadataRecoveryIT extends AbstractSchemaIT {
                 "alter timeseries "
                     + DB_SNAPSHOT
                     + ".n.s1 upsert alias=tail_alias tags('kind'='tail')",
-                "alter device template "
-                    + template
-                    + " add (tail BOOLEAN ENCODING=PLAIN COMPRESSOR=SNAPPY)",
                 "insert into " + DB_SNAPSHOT + ".templ(time,tail) values(2,true)",
                 "delete timeseries " + DB_SNAPSHOT + ".n.extra0",
                 "create timeseries " + DB_SNAPSHOT + ".tail.s INT64"),
@@ -431,7 +437,7 @@ public class IoTDBSchemaMetadataRecoveryIT extends AbstractSchemaIT {
     assertAllRows(
         TREE_SQL_DIALECT,
         "select tail_alias from " + DB_SNAPSHOT + ".n",
-        "Time," + DB_SNAPSHOT + ".n.s1,",
+        "Time," + DB_SNAPSHOT + ".n.tail_alias,",
         "1,10,");
     assertAllRows(
         TREE_SQL_DIALECT,

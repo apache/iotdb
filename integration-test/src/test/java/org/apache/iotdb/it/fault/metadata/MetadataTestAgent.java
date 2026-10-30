@@ -56,6 +56,7 @@ public final class MetadataTestAgent {
       "org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure";
   private static final String SCHEMA_STATE_MACHINE =
       "org.apache.iotdb.db.consensus.statemachine.schemaregion.SchemaRegionStateMachine";
+  private static final String RATIS_CONSENSUS = "org.apache.iotdb.consensus.ratis.RatisConsensus";
   private static final String CONFIG_CLIENT =
       "org.apache.iotdb.db.protocol.client.ConfigNodeClient";
   private static final String ABSTRACT_CONFIG_CLIENT =
@@ -68,6 +69,7 @@ public final class MetadataTestAgent {
           Arrays.asList(
               STATE_MACHINE,
               SCHEMA_STATE_MACHINE,
+              RATIS_CONSENSUS,
               CONFIG_CLIENT,
               ABSTRACT_CONFIG_CLIENT,
               INTERNAL_RPC));
@@ -169,6 +171,14 @@ public final class MetadataTestAgent {
             break;
           case SCHEMA_STATE_MACHINE:
             snapshotBoundaries(type);
+            break;
+          case RATIS_CONSENSUS:
+            // The production default needs 1024 entries before purging. Keep the real purge and
+            // snapshot-install paths, with a small threshold only in these child test JVMs.
+            type.getDeclaredConstructors()[0].insertAfter(
+                "{ if ($1.getConsensusGroupType() == "
+                    + "org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.SchemaRegion) "
+                    + "org.apache.ratis.server.RaftServerConfigKeys$Log.setPurgeGap(properties, 1); }");
             break;
           case CONFIG_CLIENT:
             failRpc(type, "reloadCacheAfterLeaseRecovery", MetadataTestHooks.LEASE_RECOVERY);

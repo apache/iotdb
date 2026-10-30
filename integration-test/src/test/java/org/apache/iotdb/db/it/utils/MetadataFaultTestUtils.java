@@ -35,6 +35,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.iot.thrift.IoTConsensusIService;
+import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteReq;
+import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteRes;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -48,9 +51,14 @@ import org.apache.iotdb.it.fault.metadata.MetadataTestHooks;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
+import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
+import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.io.IOException;
@@ -220,6 +228,51 @@ public final class MetadataFaultTestUtils {
     }
   }
 
+  /** Wait for acknowledged fixture writes to reach every actual IoTConsensus data replica. */
+  public static void awaitDataReplication(final String database) throws Exception {
+    final List<TRegionInfo> replicas;
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      replicas =
+          client.showRegion(new TShowRegionReq().setIsTableModel(true)).getRegionInfoList().stream()
+              .filter(
+                  info ->
+                      info.getConsensusGroupId().getType() == TConsensusGroupType.DataRegion
+                          && info.getDatabase().equals(database))
+              .collect(Collectors.toList());
+    }
+    assertFalse("No actual data replicas for " + database, replicas.isEmpty());
+    await()
+        .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .ignoreException(TException.class)
+        .untilAsserted(
+            () -> {
+              long localWrites = 0;
+              for (TRegionInfo replica : replicas) {
+                final DataNodeWrapper node =
+                    EnvFactory.getEnv()
+                        .dataNodeIdToWrapper(replica.getDataNodeId())
+                        .orElseThrow(AssertionError::new);
+                try (TTransport transport =
+                    DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+                        new TSocket(
+                            TConfigurationConst.defaultTConfiguration,
+                            node.getIp(),
+                            node.getDataRegionConsensusPort(),
+                            2_000))) {
+                  transport.open();
+                  final TWaitSyncLogCompleteRes progress =
+                      new IoTConsensusIService.Client(new TBinaryProtocol(transport))
+                          .waitSyncLogComplete(
+                              new TWaitSyncLogCompleteReq(replica.getConsensusGroupId()));
+                  assertTrue(progress.toString(), progress.isComplete());
+                  localWrites += progress.getSearchIndex();
+                }
+              }
+              assertTrue("No fixture writes observed by data consensus", localWrites > 0);
+            });
+  }
+
   public static Map<TSeriesPartitionSlot, TConsensusGroupId> partitions(
       final String database, final List<IDeviceID> devices) throws Exception {
     try (SyncConfigNodeIServiceClient client =
@@ -300,9 +353,9 @@ public final class MetadataFaultTestUtils {
               () -> {
                 final DataNodeWrapper current = schemaLeader(database, regionId);
                 if (current != target) {
+                  // The RPC is handled by the intended new leader, as in RouteBalancer.
                   try (SyncDataNodeInternalServiceClient client =
-                      manager.borrowClient(
-                          new TEndPoint(current.getIp(), current.getInternalPort()))) {
+                      manager.borrowClient(location.getInternalEndPoint())) {
                     assertEquals(
                         TSStatusCode.SUCCESS_STATUS.getStatusCode(),
                         client
@@ -333,9 +386,17 @@ public final class MetadataFaultTestUtils {
       final SqlOperation assertRecoveredState)
       throws Exception {
     final DataNodeWrapper leader = schemaLeader(database, regionId);
+    // Both manifests use physical JDBC connections to node 0, so keep that coordinator running.
+    final DataNodeWrapper coordinator = EnvFactory.getEnv().getDataNodeWrapper(0);
     final DataNodeWrapper follower =
-        EnvFactory.getEnv().getDataNodeWrapperList().stream()
-            .filter(node -> node != leader)
+        schemaRegions(database).stream()
+            .filter(info -> info.getConsensusGroupId().getId() == regionId)
+            .map(
+                info ->
+                    EnvFactory.getEnv()
+                        .dataNodeIdToWrapper(info.getDataNodeId())
+                        .orElseThrow(AssertionError::new))
+            .filter(node -> node != leader && node != coordinator)
             .findFirst()
             .orElseThrow(AssertionError::new);
     final String group =
@@ -357,6 +418,13 @@ public final class MetadataFaultTestUtils {
               .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
               .until(() -> latestCompletedSnapshot(created, previousIndex), Objects::nonNull);
       final long snapshotIndex = snapshotIndex(completedSnapshot.getFileName().toString());
+      await()
+          .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+          .untilAsserted(
+              () ->
+                  assertTrue(
+                      "SchemaRegion logs were not purged past the old snapshot",
+                      firstRetainedLogIndex(leader, group) > previousIndex));
       // Keep post-snapshot changes in the Raft log. A later snapshot must not absorb this manifest.
       for (DataNodeWrapper node : EnvFactory.getEnv().getDataNodeWrapperList()) {
         preventNewSnapshots.add(new Fault(node, "snapshot-create." + regionId).arm("fail"));
@@ -429,6 +497,24 @@ public final class MetadataFaultTestUtils {
           .filter(path -> path.toString().contains(group))
           .mapToLong(path -> snapshotIndex(path.getFileName().toString()))
           .max()
+          .orElse(0);
+    }
+  }
+
+  private static long firstRetainedLogIndex(final DataNodeWrapper node, final String group)
+      throws IOException {
+    try (Stream<Path> paths = Files.walk(Paths.get(node.getNodePath()))) {
+      return paths
+          .filter(path -> path.toString().contains(group))
+          .map(path -> path.getFileName().toString())
+          .filter(name -> name.matches("log_([0-9]+-[0-9]+|inprogress_[0-9]+)"))
+          .mapToLong(
+              name ->
+                  Long.parseLong(
+                      name.startsWith("log_inprogress_")
+                          ? name.substring("log_inprogress_".length())
+                          : name.substring("log_".length(), name.indexOf('-'))))
+          .min()
           .orElse(0);
     }
   }
@@ -669,6 +755,20 @@ public final class MetadataFaultTestUtils {
         assertTrue(
             "DDL executor did not stop",
             executor.awaitTermination(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+        // A shared-cluster successor may immediately broadcast configuration to every ConfigNode.
+        // Starting the old process alone does not establish that its Thrift endpoint is ready.
+        await()
+            .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .ignoreException(IOException.class)
+            .ignoreException(TException.class)
+            .untilAsserted(
+                () -> {
+                  try (SyncConfigNodeIServiceClient client =
+                      (SyncConfigNodeIServiceClient)
+                          EnvFactory.getEnv().getConfigNodeConnection(oldIndex)) {
+                    client.showCluster();
+                  }
+                });
       }
     }
   }

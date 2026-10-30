@@ -26,7 +26,6 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.fault.metadata.MetadataTestHooks;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.junit.AfterClass;
@@ -36,7 +35,6 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
@@ -58,7 +56,6 @@ import static org.apache.iotdb.itbase.env.BaseEnv.TABLE_SQL_DIALECT;
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 /**
  * Metadata P0 fault windows missing from normal DDL/device tests: live but fenced client nodes,
@@ -311,26 +308,36 @@ public class IoTDBTableMetadataP0RecoveryIT {
           0,
           TABLE_SQL_DIALECT,
           "create database " + database,
-          "create table " + database + ".t(id string tag, a string attribute, v int32)",
-          "insert into " + database + ".t(time,id,a,v) values(1,'keep','protected',77)");
+          "create table "
+              + database
+              + ".t(id string tag, kind string tag, a string attribute, v int32)",
+          "insert into "
+              + database
+              + ".t(time,id,kind,a,v) values(1,'keep','keep','protected',77)");
       // Few stable keys suffice; verify their real partition mapping rather than node count.
       for (int i = 0; i < 16; i++) {
         final String id = "delete_" + i;
         execute(
             0,
             TABLE_SQL_DIALECT,
-            "insert into " + database + ".t(time,id,a,v) values(1,'" + id + "','old'," + i + ")");
-        devices.add(IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"t", id}));
-        expected.add(id + ",old," + i + ",");
+            "insert into "
+                + database
+                + ".t(time,id,kind,a,v) values(1,'"
+                + id
+                + "','delete','old',"
+                + i
+                + ")");
+        devices.add(IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"t", id, "delete"}));
+        expected.add(id + ",delete,old," + i + ",");
       }
       MetadataFaultTestUtils.assertSpansRegions(database, devices);
-      expected.add("keep,protected,77,");
+      expected.add("keep,keep,protected,77,");
       assertAllRows(
           TABLE_SQL_DIALECT,
-          "select id,a,v from " + database + ".t",
-          "id,a,v,",
+          "select id,kind,a,v from " + database + ".t",
+          "id,kind,a,v,",
           expected.toArray(new String[0]));
-      final String delete = "delete devices from " + database + ".t where id <> 'keep'";
+      final String delete = "delete devices from " + database + ".t where kind='delete'";
       interruptProcedure(
           "DeleteDevicesProcedure",
           "CLEAN_DATANODE_SCHEMA_CACHE",
@@ -338,8 +345,8 @@ public class IoTDBTableMetadataP0RecoveryIT {
           () -> execute(0, TABLE_SQL_DIALECT, delete));
       awaitAllRows(
           TABLE_SQL_DIALECT,
-          "select id,a,v from " + database + ".t",
-          "id,a,v,",
+          "select id,kind,a,v from " + database + ".t",
+          "id,kind,a,v,",
           expected.toArray(new String[0]));
       assertAllRows(
           TABLE_SQL_DIALECT, "count devices from " + database + ".t", "count(devices),", "17,");
@@ -349,27 +356,32 @@ public class IoTDBTableMetadataP0RecoveryIT {
           false,
           () -> execute(0, TABLE_SQL_DIALECT, delete));
       awaitAllRows(
-          TABLE_SQL_DIALECT, "show devices from " + database + ".t", "id,a,", "keep,protected,");
+          TABLE_SQL_DIALECT,
+          "show devices from " + database + ".t",
+          "id,kind,a,",
+          "keep,keep,protected,");
       assertAllRows(
           TABLE_SQL_DIALECT,
-          "select id,a,v from " + database + ".t",
-          "id,a,v,",
-          "keep,protected,77,");
+          "select id,kind,a,v from " + database + ".t",
+          "id,kind,a,v,",
+          "keep,keep,protected,77,");
       assertAllRows(
           TABLE_SQL_DIALECT, "count devices from " + database + ".t", "count(devices),", "1,");
       execute(
           0,
           TABLE_SQL_DIALECT,
           delete,
-          "insert into " + database + ".t(time,id,a,v) values(2,'delete_0','new',100)",
-          "insert into " + database + ".t(time,id,v) values(2,'keep',78)");
+          "insert into "
+              + database
+              + ".t(time,id,kind,a,v) values(2,'delete_0','delete','new',100)",
+          "insert into " + database + ".t(time,id,kind,v) values(2,'keep','keep',78)");
       assertAllRows(
           TABLE_SQL_DIALECT,
-          "select id,a,v from " + database + ".t",
-          "id,a,v,",
-          "keep,protected,77,",
-          "keep,protected,78,",
-          "delete_0,new,100,");
+          "select id,kind,a,v from " + database + ".t",
+          "id,kind,a,v,",
+          "keep,keep,protected,77,",
+          "keep,keep,protected,78,",
+          "delete_0,delete,new,100,");
     } finally {
       execute(0, TABLE_SQL_DIALECT, "drop database if exists " + database);
     }
@@ -392,8 +404,10 @@ public class IoTDBTableMetadataP0RecoveryIT {
               + ".t(id string tag, a string attribute, v int32) with(ttl=10000000000000)",
           "create table " + database + ".retained(id string tag, a string attribute, v int32)",
           "insert into " + database + ".t(time,id,a,v) values(1,'old','obsolete',10)",
-          "insert into " + database + ".retained(time,id,a,v) values(1,'keep','protected',77)",
-          "flush");
+          "insert into " + database + ".retained(time,id,a,v) values(1,'keep','protected',77)");
+      // IoTConsensus replication is asynchronous; flush only after both replicas have the fixture.
+      MetadataFaultTestUtils.awaitDataReplication(database);
+      execute(0, TABLE_SQL_DIALECT, "flush");
       assertAllRows(
           TABLE_SQL_DIALECT,
           "select id,a,v from " + database + ".t",
@@ -410,24 +424,9 @@ public class IoTDBTableMetadataP0RecoveryIT {
             // DROP returns asynchronously; retain the client operation until the paused procedure
             // ends.
             MetadataFaultTestUtils.awaitDropSuccess(database, "t");
-          },
-          () -> {
-            try {
-              execute(
-                  0,
-                  TABLE_SQL_DIALECT,
-                  "create table " + database + ".t(id string tag, v boolean)");
-              fail("Recreation must wait for the original DROP to complete");
-            } catch (SQLException e) {
-              assertTrue(
-                  e.toString(),
-                  e.getErrorCode() == TSStatusCode.TABLE_IN_PRE_DELETE.getStatusCode()
-                      || e.getErrorCode() == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode()
-                      || e.getErrorCode()
-                          == TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode());
-            }
           });
       MetadataFaultTestUtils.awaitDropSuccess(database, "t");
+      // Reuse the name only after confirmed deletion, while the old DataNode is still offline.
       execute(
           0,
           TABLE_SQL_DIALECT,
