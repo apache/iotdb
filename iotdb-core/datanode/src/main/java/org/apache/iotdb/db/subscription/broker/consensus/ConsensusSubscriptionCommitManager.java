@@ -79,7 +79,9 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.function.LongSupplier;
 
 /**
  * Manages committed progress for consensus-based subscriptions.
@@ -128,10 +130,12 @@ public class ConsensusSubscriptionCommitManager {
   /** Rate-limiting: last broadcast timestamp per key. */
   private final Map<String, Long> lastBroadcastTime = new ConcurrentHashMap<>();
 
-  /** Single-threaded executor for fire-and-forget broadcasts. */
-  private final ExecutorService broadcastExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadExecutor(
-          ThreadName.SUBSCRIPTION_CONSENSUS_PROGRESS_BROADCASTER.getName());
+  /** At most one scheduled broadcast per writer and commit-state generation. */
+  private final Map<String, ConsensusSubscriptionCommitState> pendingBroadcasts =
+      new ConcurrentHashMap<>();
+
+  private final ScheduledExecutorService broadcastExecutor;
+  private final LongSupplier broadcastClock;
 
   /** Key: versioned, encoded (consumerGroupId, topicName, regionId) -> progress tracking state. */
   private final Map<String, ConsensusSubscriptionCommitState> commitStates =
@@ -174,6 +178,19 @@ public class ConsensusSubscriptionCommitManager {
   }
 
   ConsensusSubscriptionCommitManager(final ConfigNodeProgressFetcher configNodeProgressFetcher) {
+    this(
+        configNodeProgressFetcher,
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            ThreadName.SUBSCRIPTION_CONSENSUS_PROGRESS_BROADCASTER.getName()),
+        System::currentTimeMillis);
+  }
+
+  ConsensusSubscriptionCommitManager(
+      final ConfigNodeProgressFetcher configNodeProgressFetcher,
+      final ScheduledExecutorService broadcastExecutor,
+      final LongSupplier broadcastClock) {
+    this.broadcastExecutor = broadcastExecutor;
+    this.broadcastClock = broadcastClock;
     this.configNodeProgressFetcher =
         Objects.nonNull(configNodeProgressFetcher)
             ? configNodeProgressFetcher
@@ -307,7 +324,7 @@ public class ConsensusSubscriptionCommitManager {
           final CommitStateKey stateKey =
               getCommitStateKey(setupSnapshot.consumerGroupId, topicName, entry.getKey());
           final StateSetupSnapshot stateSnapshot = entry.getValue();
-          commitStates.put(
+          replaceCommitState(
               stateKey.encodedStateKey,
               new ConsensusSubscriptionCommitState(
                   stateKey.regionIdStr,
@@ -363,7 +380,7 @@ public class ConsensusSubscriptionCommitManager {
           || preservedRegionIds.contains(entry.getValue().regionIdStr)) {
         continue;
       }
-      commitStates.remove(entry.getKey());
+      removeCommitState(entry.getKey());
       pendingInitialProgressKeys.remove(entry.getKey());
       pendingNewRegionProgressKeys.remove(entry.getKey());
       configNodeProgressAvailableKeys.remove(entry.getKey());
@@ -709,7 +726,7 @@ public class ConsensusSubscriptionCommitManager {
     final CommitStateKey stateKey =
         getCommitStateKey(consumerGroupId, topicName, regionId.toString());
     recoverTopicStatesIfNeeded(stateKey);
-    commitStates.remove(stateKey.encodedStateKey);
+    removeCommitState(stateKey.encodedStateKey);
     commitStateKeys.remove(stateKey.encodedStateKey);
     pendingInitialProgressKeys.remove(stateKey.encodedStateKey);
     pendingNewRegionProgressKeys.remove(stateKey.encodedStateKey);
@@ -732,7 +749,7 @@ public class ConsensusSubscriptionCommitManager {
     while (keyIterator.hasNext()) {
       final Map.Entry<String, CommitStateKey> entry = keyIterator.next();
       if (entry.getValue().sameTopic(consumerGroupId, topicName)) {
-        commitStates.remove(entry.getKey());
+        removeCommitState(entry.getKey());
         pendingInitialProgressKeys.remove(entry.getKey());
         pendingNewRegionProgressKeys.remove(entry.getKey());
         configNodeProgressAvailableKeys.remove(entry.getKey());
@@ -854,8 +871,8 @@ public class ConsensusSubscriptionCommitManager {
   // ======================== Progress Broadcast (Leader → Follower) ========================
 
   /**
-   * Broadcasts committed progress to followers if enough time has elapsed since the last broadcast
-   * for this key. The broadcast is async and fire-and-forget.
+   * Coalesces committed progress while throttling broadcasts. The latest ACK is sent even when no
+   * further writes or ACKs arrive after the throttle window.
    */
   private void maybeBroadcast(
       final String key,
@@ -868,23 +885,105 @@ public class ConsensusSubscriptionCommitManager {
       return;
     }
     final String broadcastKey = buildBroadcastKey(key, committedWriterId);
-    final long now = System.currentTimeMillis();
-    final Long last = lastBroadcastTime.get(broadcastKey);
-    if (last != null && now - last < MIN_BROADCAST_INTERVAL_MS) {
+    final ConsensusSubscriptionCommitState state = commitStates.get(key);
+    if (Objects.isNull(state)) {
       return;
     }
-    lastBroadcastTime.put(broadcastKey, now);
-    broadcastExecutor.submit(
-        () ->
-            doBroadcast(
-                consumerGroupId, topicName, regionId, committedWriterProgress, committedWriterId));
+    synchronized (lastBroadcastTime) {
+      if (commitStates.get(key) != state) {
+        return;
+      }
+      if (pendingBroadcasts.get(broadcastKey) == state) {
+        return;
+      }
+      final Long last = lastBroadcastTime.get(broadcastKey);
+      final long delay =
+          Objects.isNull(last)
+              ? 0L
+              : Math.max(0L, MIN_BROADCAST_INTERVAL_MS - (broadcastClock.getAsLong() - last));
+      pendingBroadcasts.put(broadcastKey, state);
+      try {
+        broadcastExecutor.schedule(
+            () -> {
+              synchronized (state.broadcastLifecycleLock) {
+                final WriterProgress latestProgress;
+                synchronized (lastBroadcastTime) {
+                  if (!pendingBroadcasts.remove(broadcastKey, state)
+                      || commitStates.get(key) != state) {
+                    return;
+                  }
+                  lastBroadcastTime.put(broadcastKey, broadcastClock.getAsLong());
+                  latestProgress =
+                      state
+                          .getCommittedRegionProgress()
+                          .getWriterPositions()
+                          .get(committedWriterId);
+                }
+                if (Objects.nonNull(latestProgress)) {
+                  doBroadcast(
+                      consumerGroupId, topicName, regionId, latestProgress, committedWriterId);
+                }
+              }
+            },
+            delay,
+            TimeUnit.MILLISECONDS);
+      } catch (final RuntimeException e) {
+        pendingBroadcasts.remove(broadcastKey, state);
+        throw e;
+      }
+    }
+  }
+
+  private void removeCommitState(final String stateKey) {
+    while (true) {
+      final ConsensusSubscriptionCommitState state = commitStates.get(stateKey);
+      if (Objects.isNull(state)) {
+        return;
+      }
+      synchronized (state.broadcastLifecycleLock) {
+        synchronized (lastBroadcastTime) {
+          if (commitStates.remove(stateKey, state)) {
+            clearBroadcastStateUnderLock(stateKey);
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  private void replaceCommitState(
+      final String stateKey, final ConsensusSubscriptionCommitState replacement) {
+    while (true) {
+      final ConsensusSubscriptionCommitState state = commitStates.get(stateKey);
+      if (Objects.isNull(state)) {
+        if (Objects.isNull(commitStates.putIfAbsent(stateKey, replacement))) {
+          return;
+        }
+        continue;
+      }
+      synchronized (state.broadcastLifecycleLock) {
+        synchronized (lastBroadcastTime) {
+          if (commitStates.replace(stateKey, state, replacement)) {
+            clearBroadcastStateUnderLock(stateKey);
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  /** Clears scheduled work and throttle history for one subscription state generation. */
+  private void clearBroadcastStateUnderLock(final String stateKey) {
+    final String broadcastKeyPrefix = stateKey + KEY_SEPARATOR;
+    pendingBroadcasts.keySet().removeIf(key -> key.startsWith(broadcastKeyPrefix));
+    lastBroadcastTime.keySet().removeIf(key -> key.startsWith(broadcastKeyPrefix));
   }
 
   /**
    * Sends committed progress to all follower replicas of the given region. Uses the partition cache
    * to discover replica endpoints and skips the local DataNode.
    */
-  private void doBroadcast(
+  void doBroadcast(
       final String consumerGroupId,
       final String topicName,
       final ConsensusGroupId regionId,
@@ -1694,6 +1793,8 @@ public class ConsensusSubscriptionCommitManager {
    * tracked as ProgressKey objects rather than raw searchIndex values.
    */
   public static class ConsensusSubscriptionCommitState {
+
+    private final Object broadcastLifecycleLock = new Object();
 
     private final String regionId;
 
