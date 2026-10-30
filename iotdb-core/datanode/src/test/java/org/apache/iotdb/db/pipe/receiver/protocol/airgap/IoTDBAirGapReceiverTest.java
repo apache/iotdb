@@ -222,6 +222,8 @@ public class IoTDBAirGapReceiverTest {
             new StubReceiver(new TSStatus(status.getStatusCode())) {
               @Override
               public TPipeTransferResp receive(final TPipeTransferReq req) {
+                Assert.assertTrue(
+                    ((AirGapPseudoTPipeTransferRequest) req).isStrictUnidirectional());
                 receivedRequests.incrementAndGet();
                 return super.receive(req);
               }

@@ -233,6 +233,9 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     // Pseudo request, to reuse logic in IoTDBThriftReceiverAgent
     return (AirGapPseudoTPipeTransferRequest)
         new AirGapPseudoTPipeTransferRequest()
+            .setStrictUnidirectional(
+                currentDatagramRequestId != null
+                    && (currentDatagramRequestId & AirGapUdpProtocol.NO_ACK_REQUEST_ID_MASK) != 0)
             .setVersion(ReadWriteIOUtils.readByte(byteBuffer))
             .setType(ReadWriteIOUtils.readShort(byteBuffer))
             .setBody(byteBuffer.slice());
@@ -282,6 +285,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       final AirGapPseudoTPipeTransferRequest req) {
     return (AirGapPseudoTPipeTransferRequest)
         new AirGapPseudoTPipeTransferRequest()
+            .setStrictUnidirectional(req.isStrictUnidirectional())
             .setVersion(req.getVersion())
             .setType(req.getType())
             .setBody(req.body.duplicate());

@@ -196,6 +196,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private final PipeTransferSliceReqHandler sliceReqHandler = new PipeTransferSliceReqHandler();
 
+  private TPipeTransferReq lastSuccessfulUnidirectionalHandshake;
+  private TPipeTransferResp lastSuccessfulUnidirectionalHandshakeResp;
+
   private final SqlParser tableSqlParser = new SqlParser();
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
@@ -227,6 +230,40 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   @Override
   public synchronized TPipeTransferResp receive(final TPipeTransferReq req) {
+    final boolean isUnidirectionalHandshake =
+        req instanceof AirGapPseudoTPipeTransferRequest
+            && ((AirGapPseudoTPipeTransferRequest) req).isStrictUnidirectional()
+            && req.getType() == PipeRequestType.HANDSHAKE_DATANODE_V2.getType();
+    // Snapshot before decoding, which consumes the request body. Repeated no-ACK handshakes
+    // refresh a live session without discarding its partially received file or request slices.
+    final TPipeTransferReq handshake = isUnidirectionalHandshake ? req.deepCopy() : null;
+    if (isUnidirectionalHandshake
+        && hasPipeHandshakeCredential
+        && handshake.equals(lastSuccessfulUnidirectionalHandshake)) {
+      final TSStatus status = login();
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return lastSuccessfulUnidirectionalHandshakeResp.deepCopy();
+      }
+      hasPipeHandshakeCredential = false;
+      lastSuccessfulUnidirectionalHandshake = null;
+      lastSuccessfulUnidirectionalHandshakeResp = null;
+      return new TPipeTransferResp(status);
+    }
+    if (req.getType() == PipeRequestType.HANDSHAKE_DATANODE_V1.getType()
+        || req.getType() == PipeRequestType.HANDSHAKE_DATANODE_V2.getType()) {
+      lastSuccessfulUnidirectionalHandshake = null;
+      lastSuccessfulUnidirectionalHandshakeResp = null;
+    }
+    final TPipeTransferResp resp = receiveInternal(req);
+    if (isUnidirectionalHandshake
+        && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      lastSuccessfulUnidirectionalHandshake = handshake;
+      lastSuccessfulUnidirectionalHandshakeResp = resp.deepCopy();
+    }
+    return resp;
+  }
+
+  private TPipeTransferResp receiveInternal(final TPipeTransferReq req) {
     try {
       final long startTime = System.nanoTime();
       final short rawRequestType = req.getType();
@@ -1938,6 +1975,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   @Override
   public synchronized void handleExit() {
+    lastSuccessfulUnidirectionalHandshake = null;
+    lastSuccessfulUnidirectionalHandshakeResp = null;
     PipeReceiverRuntimeRegistry.getInstance()
         .deregister(configPipeReceiverRuntimeSessionKey.getAndSet(null));
     clearSliceReqHandler();
