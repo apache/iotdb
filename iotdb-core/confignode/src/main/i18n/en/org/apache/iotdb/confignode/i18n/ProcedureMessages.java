@@ -873,9 +873,10 @@ public final class ProcedureMessages {
       "Retrievable error trying to drop pipe plugin [{}], state: {}";
   public static final String RETRIEVABLE_ERROR_TRYING_TO_REMOVE_AINODE_STATE =
       "Retrievable error trying to remove AINode [{}], state [{}]";
+  public static final String ROLLBACK_ADDTABLECOLUMN_COSTS_MS =
+      "Rollback AddTableColumn-{} costs {}ms.";
   public static final String ROLLBACK_CREATETABLE_COSTS_MS = "Rollback CreateTable-{} costs {}ms.";
   public static final String ROLLBACK_CREATE_TABLE_FAILED = "Rollback create table failed";
-  public static final String ROLLBACK_DROPTABLE_COSTS_MS = "Rollback DropTable-{} costs {}ms.";
   public static final String ROLLBACK_PRE_DELETE_TABLE_FAILED =
       "Rollback pre-delete table %s.%s failed, please manually drop the table by entering sql";
   public static final String ROLLBACK_PRE_RELEASE = "Rollback pre-release ";
