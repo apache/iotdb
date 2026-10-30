@@ -117,6 +117,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -3808,6 +3809,177 @@ public class ConsensusPrefetchingQueueTest {
       if (queue != null) {
         queue.close();
       }
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
+  public void testNackPoisonedEventAdvancesCommittedProgress() throws Exception {
+    assertPoisonedEventProgress(false, false, false);
+  }
+
+  @Test
+  public void testSilentNackPoisonedEventAdvancesCommittedProgress() throws Exception {
+    assertPoisonedEventProgress(true, false, false);
+  }
+
+  @Test
+  public void testRecycledPoisonedEventAdvancesCommittedProgress() throws Exception {
+    assertPoisonedEventProgress(false, true, false);
+  }
+
+  @Test
+  public void testPoisonedEventCommitFailureRetainsEvent() throws Exception {
+    assertPoisonedEventProgress(false, false, true);
+  }
+
+  private void assertPoisonedEventProgress(
+      final boolean silent, final boolean recycle, final boolean failCommit) throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final int originalRecycleInterval =
+        CommonDescriptor.getInstance()
+            .getConfig()
+            .getSubscriptionRecycleUncommittedEventIntervalMs();
+    final int originalBatchMaxTablets =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxTabletCount();
+    final int originalBatchMaxDelay =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionConsensusBatchMaxDelayInMs();
+    final File systemDir = temporaryFolder.newFolder("system-poisoned-event-progress");
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      CommonDescriptor.getInstance().getConfig().setSubscriptionConsensusBatchMaxTabletCount(1);
+      CommonDescriptor.getInstance().getConfig().setSubscriptionConsensusBatchMaxDelayInMs(0);
+      if (recycle) {
+        CommonDescriptor.getInstance()
+            .getConfig()
+            .setSubscriptionRecycleUncommittedEventIntervalMs(-1);
+      }
+      final DataRegionId regionId = new DataRegionId(1);
+      final FakeConsensusReqReader reader = new FakeConsensusReqReader();
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(reader);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+
+      final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
+      when(converter.convert(any()))
+          .thenReturn(
+              Collections.singletonList(createTablet()),
+              Collections.emptyList(),
+              Collections.singletonList(createTablet()));
+      when(converter.getDatabaseName()).thenReturn("db");
+      final ConsensusSubscriptionCommitManager manager =
+          spy(
+              newCommitManager(
+                  systemDir,
+                  (consumerGroupId, topicName, id) ->
+                      ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.available(
+                          new RegionProgress(Collections.emptyMap()))));
+
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              regionId,
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              converter,
+              manager,
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true);
+      queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(1024L * 1024L));
+
+      // The second request is filtered out, so its automatic commit waits behind the first event.
+      reader.currentSearchIndex = 2L;
+      assertTrue(pendingEntries(queue).offer(createRequest(1L)));
+      assertTrue(pendingEntries(queue).offer(createRequest(2L)));
+      assertNull(queue.poll("consumer"));
+      queue.drivePrefetchOnce();
+      final SubscriptionEvent event = queue.poll("consumer");
+      assertNotNull(event);
+      final long retainedBytes = queue.getRetainedTabletBytes();
+      assertTrue(retainedBytes > 0L);
+
+      if (failCommit) {
+        final AtomicBoolean rejectFirstCommit = new AtomicBoolean(true);
+        doAnswer(
+                invocation ->
+                    rejectFirstCommit.getAndSet(false) ? false : invocation.callRealMethod())
+            .when(manager)
+            .commit(
+                eq("consumerGroup"),
+                eq("topic"),
+                eq(regionId),
+                eq(event.getCommitContext().getWriterId()),
+                eq(event.getCommitContext().getWriterProgress()));
+      }
+
+      for (int retry = 1; retry <= 10; retry++) {
+        if (recycle) {
+          queue.drivePrefetchOnce();
+        } else if (silent) {
+          assertTrue(queue.nackSilent("consumer", event.getCommitContext()));
+        } else {
+          assertTrue(queue.nack("consumer", event.getCommitContext()));
+        }
+        assertEquals(retry, event.getNackCount());
+        assertEquals(0L, queue.getSubscriptionUncommittedEventCount());
+        if (retry < 10) {
+          assertFalse(event.isCommitted());
+          assertEquals(retainedBytes, queue.getRetainedTabletBytes());
+          assertSame(event, queue.poll("consumer"));
+        }
+      }
+
+      if (failCommit) {
+        // A failed forced commit must leave the event and its memory available for a later ACK.
+        assertFalse(event.isCommitted());
+        assertEquals(retainedBytes, queue.getRetainedTabletBytes());
+        assertSame(event, queue.poll("consumer"));
+        assertTrue(queue.ack("consumer", event.getCommitContext()));
+      }
+      assertTrue(event.isCommitted());
+      assertEquals(0, queue.getPrefetchedEventCount());
+      assertEquals(0L, queue.getRetainedTabletBytes());
+      assertEquals(
+          new WriterProgress(1002L, 2L),
+          manager
+              .getCommittedRegionProgress("consumerGroup", "topic", regionId)
+              .getWriterPositions()
+              .get(event.getCommitContext().getWriterId()));
+
+      // A later data event must remain committable after the poisoned event has been discarded.
+      reader.currentSearchIndex = 3L;
+      serverImpl.getWriterSafeFrontierTracker().recordAppliedProgress(1003L, 7, 3L);
+      assertTrue(pendingEntries(queue).offer(createRequest(3L)));
+      queue.drivePrefetchOnce();
+      final SubscriptionEvent nextEvent = queue.poll("consumer");
+      assertNotNull(nextEvent);
+      assertTrue(queue.ack("consumer", nextEvent.getCommitContext()));
+      assertEquals(
+          new WriterProgress(1003L, 3L),
+          manager
+              .getCommittedRegionProgress("consumerGroup", "topic", regionId)
+              .getWriterPositions()
+              .get(nextEvent.getCommitContext().getWriterId()));
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionRecycleUncommittedEventIntervalMs(originalRecycleInterval);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusBatchMaxTabletCount(originalBatchMaxTablets);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setSubscriptionConsensusBatchMaxDelayInMs(originalBatchMaxDelay);
       IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
     }
   }
