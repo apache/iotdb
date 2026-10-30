@@ -194,7 +194,7 @@ public class AddTableColumnProcedure
       }
     } finally {
       LOGGER.info(
-          ProcedureMessages.ROLLBACK_DROPTABLE_COSTS_MS,
+          ProcedureMessages.ROLLBACK_ADDTABLECOLUMN_COSTS_MS,
           state,
           (System.currentTimeMillis() - startTime));
     }

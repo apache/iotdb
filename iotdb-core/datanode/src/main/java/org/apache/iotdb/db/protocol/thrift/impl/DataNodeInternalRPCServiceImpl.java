@@ -1451,7 +1451,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               final List<TPushPipeMetaRespExceptionMessage> exceptionMessages) {
             final List<TPushPipeMetaRespExceptionMessage> exceptionMessagesFromAgent =
                 PipeDataNodeAgent.task()
-                    .handlePipeMetaChanges(
+                    .handleMultiPipeMetaChanges(
                         pipeMetas.stream()
                             .map(PipeMeta::deserialize4TaskAgent)
                             .collect(Collectors.toList()));

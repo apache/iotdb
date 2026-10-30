@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.receiver.protocol.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.disk.FolderManager;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
@@ -629,6 +630,37 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return new TPipeTransferResp(getNotLoggedInStatus());
   }
 
+  /**
+   * Returns the name of the user that has been authenticated for the current transfer, either by
+   * the handshake or by the login of the underlying session, or {@code null} if no user can be
+   * determined. Callers must not substitute a privileged default for the missing user.
+   */
+  private String getAuthenticatedUser() {
+    // A name that was not produced by a completed handshake is not an authenticated identity, no
+    // matter whether it was left over by a failed handshake or by a default value.
+    if (hasPipeHandshakeCredential && username != null && !username.isEmpty()) {
+      return username;
+    }
+
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    if (!isLoggedInSession(clientSession)) {
+      return null;
+    }
+    final String sessionUsername = clientSession.getUsername();
+    return sessionUsername == null || sessionUsername.isEmpty() ? null : sessionUsername;
+  }
+
+  /**
+   * Returns whether the given session can authorize the statements of the current transfer.
+   *
+   * <p>The session of a pipe connection is not necessarily logged in. A connection that has not
+   * completed a handshake owns a session whose user id still defaults to the id of the super user,
+   * so the presence of a session alone must never be treated as an authenticated identity.
+   */
+  private static boolean isLoggedInSession(final IClientSession clientSession) {
+    return Objects.nonNull(clientSession) && clientSession.isLogin();
+  }
+
   private static boolean requiresAuthentication(final PipeRequestType requestType) {
     switch (requestType) {
       case TRANSFER_TABLET_INSERT_NODE:
@@ -797,6 +829,21 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final boolean shouldWaitForSchemaBeforeLoad,
       final String conversionTaskId)
       throws IOException {
+    // The active load runs on another thread, so capture the identity here. Without a resolvable
+    // identity, fall back to the default user unless the receiver requires authentication.
+    String authenticatedUser = getAuthenticatedUser();
+    if (IoTDBDescriptor.getInstance().getConfig().isPipeReceiverRequireUserIdentity()) {
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      if (Objects.isNull(authenticatedUser)
+          || Objects.isNull(clientSession)
+          || !clientSession.isLogin()
+          || !authenticatedUser.equals(clientSession.getUsername())) {
+        return getNotLoggedInStatus();
+      }
+    } else if (Objects.isNull(authenticatedUser)) {
+      authenticatedUser = AuthorityChecker.SUPER_USER;
+    }
+
     final Map<String, String> loadAttributes =
         buildLoadTsFileAttributesForAsync(
             dataBaseName,
@@ -804,7 +851,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             validateTsFile.get(),
             shouldMarkAsPipeRequest.get(),
             shouldWaitForSchemaBeforeLoad,
-            conversionTaskId);
+            conversionTaskId,
+            authenticatedUser);
 
     if (!LoadUtil.loadFilesToActiveDir(loadAttributes, absolutePaths, true)) {
       throw new PipeException(DataNodePipeMessages.LOAD_ACTIVE_LISTENING_PIPE_DIR_IS_NOT);
@@ -836,38 +884,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final String dataBaseName,
       final boolean shouldConvertDataTypeOnTypeMismatch,
       final boolean validateTsFile,
-      final boolean shouldMarkAsPipeRequest) {
-    return buildLoadTsFileAttributesForAsync(
-        dataBaseName,
-        shouldConvertDataTypeOnTypeMismatch,
-        validateTsFile,
-        shouldMarkAsPipeRequest,
-        false,
-        null);
-  }
-
-  static Map<String, String> buildLoadTsFileAttributesForAsync(
-      final String dataBaseName,
-      final boolean shouldConvertDataTypeOnTypeMismatch,
-      final boolean validateTsFile,
-      final boolean shouldMarkAsPipeRequest,
-      final boolean shouldWaitForSchemaBeforeLoad) {
-    return buildLoadTsFileAttributesForAsync(
-        dataBaseName,
-        shouldConvertDataTypeOnTypeMismatch,
-        validateTsFile,
-        shouldMarkAsPipeRequest,
-        shouldWaitForSchemaBeforeLoad,
-        null);
-  }
-
-  static Map<String, String> buildLoadTsFileAttributesForAsync(
-      final String dataBaseName,
-      final boolean shouldConvertDataTypeOnTypeMismatch,
-      final boolean validateTsFile,
       final boolean shouldMarkAsPipeRequest,
       final boolean shouldWaitForSchemaBeforeLoad,
-      final String conversionTaskId) {
+      final String conversionTaskId,
+      final String userName) {
     return ActiveLoadPathHelper.buildAttributes(
         dataBaseName,
         LoadTsFileStatement.getDatabaseLevelByTreeDatabase(dataBaseName),
@@ -876,7 +896,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         !shouldWaitForSchemaBeforeLoad,
         null,
         shouldMarkAsPipeRequest,
-        AuthorityChecker.SUPER_USER,
+        // The user executing the asynchronous load. It must always be the authenticated sender: a
+        // privileged default here would let any authenticated account load data as that user.
+        userName,
         conversionTaskId);
   }
 
@@ -1522,7 +1544,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
 
     final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-
+    if (!isLoggedInSession(clientSession)) {
+      // Without a logged in session the statement can not be authorized, so fail closed.
+      return getNotLoggedInStatus();
+    }
     // For table model, the authority check is done in inner execution. No need to check here
     if (!isTableModelStatement) {
       final TSStatus permissionCheckStatus =
@@ -1631,8 +1656,42 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return AuthorityChecker.checkUser(username, password);
   }
 
+  @Override
+  protected String getLoggedInSessionUsername() {
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    return Objects.nonNull(clientSession) && clientSession.isLogin()
+        ? clientSession.getUsername()
+        : null;
+  }
+
+  @Override
+  protected IAuditEntity createAuditEntity(final String username, final String cliHostname) {
+    // The role of the transfer is the one whose credentials were just verified. Its id is resolved
+    // from the local user manager and never taken from the handshake: the id supplied by the sender
+    // is not verified, and some table model authorization paths treat the super user id as a grant
+    // of every privilege.
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    // Only the address of the connection is taken from the session. The identity comes from the
+    // handshake and its id is resolved locally, because both the hostname and the id of the
+    // handshake are supplied by the sender.
+    final String clientAddress =
+        Objects.nonNull(clientSession) ? clientSession.getClientAddress() : null;
+    return new UserEntity(
+        Objects.isNull(username) ? -1L : AuthorityChecker.getUserId(username).orElse(-1L),
+        username,
+        Objects.nonNull(clientAddress) && !clientAddress.isEmpty() ? clientAddress : cliHostname);
+  }
+
   private TSStatus executeStatementForTableModel(
       final Statement statement, final String databaseName) {
+    // The transfer runs on the thread of its connection, so the session here is the one that the
+    // handshake logged in. A statement can only be authorized by a logged in session: a session of
+    // a connection without a completed handshake still carries the id of the super user, so it must
+    // not be treated as authenticated, and statements can not be authorized without any session.
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    if (!isLoggedInSession(clientSession)) {
+      return getNotLoggedInStatus();
+    }
     try {
       autoCreateDatabaseIfNecessary(databaseName);
 
@@ -1640,10 +1699,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           .executeForTableModel(
               shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
               tableSqlParser,
-              SESSION_MANAGER.getCurrSession(),
+              clientSession,
               SESSION_MANAGER.requestQueryId(),
-              SESSION_MANAGER.getSessionInfoOfPipeReceiver(
-                  SESSION_MANAGER.getCurrSession(), databaseName),
+              SESSION_MANAGER.getSessionInfoOfPipeReceiver(clientSession, databaseName),
               "",
               LocalExecutionPlanner.getInstance().metadata,
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
@@ -1662,10 +1720,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             .executeForTableModel(
                 shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
                 tableSqlParser,
-                SESSION_MANAGER.getCurrSession(),
+                clientSession,
                 SESSION_MANAGER.requestQueryId(),
-                SESSION_MANAGER.getSessionInfoOfPipeReceiver(
-                    SESSION_MANAGER.getCurrSession(), databaseName),
+                SESSION_MANAGER.getSessionInfoOfPipeReceiver(clientSession, databaseName),
                 "",
                 LocalExecutionPlanner.getInstance().metadata,
                 IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
@@ -1789,6 +1846,12 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TSStatus executeStatementForTreeModel(
       final Statement statement, final String databaseName) {
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    if (!isLoggedInSession(clientSession)) {
+      // Without a logged in session the statement can not be authorized, so fail closed.
+      return getNotLoggedInStatus();
+    }
+
     if (autoCreateTreeDatabaseIfNecessary(databaseName) == TreeDatabaseCreationResult.CONFLICTED) {
       // Continue execution, but let partition analysis infer the receiver-side database.
       clearTreeDatabaseName(statement);
@@ -1798,7 +1861,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         .executeForTreeModel(
             shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
             SESSION_MANAGER.requestQueryId(),
-            SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
+            SESSION_MANAGER.getSessionInfo(clientSession),
             "",
             ClusterPartitionFetcher.getInstance(),
             ClusterSchemaFetcher.getInstance(),
@@ -1864,15 +1927,20 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         return status;
       }
 
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      if (!isLoggedInSession(clientSession)) {
+        // Without a logged in session the statement can not be authorized, so fail closed.
+        return getNotLoggedInStatus();
+      }
+
       final TSStatus result =
           Coordinator.getInstance()
               .executeForTableModel(
                   shouldMarkAsPipeRequest.get() ? new PipeEnriched(statement) : statement,
                   tableSqlParser,
-                  SESSION_MANAGER.getCurrSession(),
+                  clientSession,
                   SESSION_MANAGER.requestQueryId(),
-                  SESSION_MANAGER.getSessionInfoOfPipeReceiver(
-                      SESSION_MANAGER.getCurrSession(), databaseName),
+                  SESSION_MANAGER.getSessionInfoOfPipeReceiver(clientSession, databaseName),
                   "",
                   LocalExecutionPlanner.getInstance().metadata,
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),

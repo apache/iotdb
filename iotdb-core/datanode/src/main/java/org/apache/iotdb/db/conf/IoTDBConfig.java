@@ -1240,6 +1240,18 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   private boolean loadActiveListeningVerifyEnable = true;
 
+  /**
+   * Whether a LOAD requires a logged in session with a user name instead of falling back to the
+   * default user. Disabled by default to keep the legacy fallback.
+   */
+  private boolean loadRequireUserIdentity = false;
+
+  /**
+   * Whether the pipe receiver rejects an asynchronous LOAD without an authenticated sender. Enabled
+   * by default; set to false to fall back to the default user.
+   */
+  private boolean pipeReceiverRequireUserIdentity = true;
+
   private String loadDiskSelectStrategy = LoadDiskSelectorType.MIN_IO_FIRST.getValue();
 
   private String loadDiskSelectStrategyForIoTV2AndPipe =
@@ -4363,6 +4375,22 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   public void setLoadActiveListeningVerifyEnable(boolean loadActiveListeningVerifyEnable) {
     this.loadActiveListeningVerifyEnable = loadActiveListeningVerifyEnable;
+  }
+
+  public boolean isLoadRequireUserIdentity() {
+    return loadRequireUserIdentity;
+  }
+
+  public void setLoadRequireUserIdentity(boolean loadRequireUserIdentity) {
+    this.loadRequireUserIdentity = loadRequireUserIdentity;
+  }
+
+  public boolean isPipeReceiverRequireUserIdentity() {
+    return pipeReceiverRequireUserIdentity;
+  }
+
+  public void setPipeReceiverRequireUserIdentity(boolean pipeReceiverRequireUserIdentity) {
+    this.pipeReceiverRequireUserIdentity = pipeReceiverRequireUserIdentity;
   }
 
   public String getLoadDiskSelectStrategy() {

@@ -1730,14 +1730,12 @@ public class ClusterSchemaManager {
     columnSchemaList.removeIf(
         columnSchema -> {
           if (existingColumnNames.contains(columnSchema.getColumnName())) {
-            // todo log
             return true;
           }
 
           // The original time series can only be referenced once.
           final String originalName = TreeViewSchema.getSourceName(columnSchema);
           if (originalNames.contains(originalName)) {
-            // todo log
             return true;
           }
 

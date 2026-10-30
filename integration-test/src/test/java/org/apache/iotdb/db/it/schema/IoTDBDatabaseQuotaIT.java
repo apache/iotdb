@@ -20,15 +20,19 @@
 package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.util.AbstractSchemaIT;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runners.Parameterized;
 
 import java.sql.Connection;
 import java.sql.Statement;
 
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBDatabaseQuotaIT extends AbstractSchemaIT {
   public IoTDBDatabaseQuotaIT(SchemaTestMode schemaTestMode) {
     super(schemaTestMode);

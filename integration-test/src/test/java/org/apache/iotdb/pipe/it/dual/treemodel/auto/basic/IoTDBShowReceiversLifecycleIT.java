@@ -247,11 +247,13 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
 
   private void assertShowReceiversDoesNotContainPipe(
       final String sql, final String sqlDialect, final String pipeName) {
+    // Pipe connections close asynchronously, so DataNodes may observe different snapshots.
     Awaitility.await()
         .pollInSameThread()
         .pollDelay(1L, TimeUnit.SECONDS)
         .pollInterval(1L, TimeUnit.SECONDS)
         .atMost(60L, TimeUnit.SECONDS)
+        .ignoreExceptionsMatching(e -> e instanceof InconsistentDataException)
         .untilAsserted(() -> Assert.assertFalse(containsPipe(sql, sqlDialect, pipeName)));
   }
 
@@ -279,6 +281,7 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
         .pollDelay(1L, TimeUnit.SECONDS)
         .pollInterval(1L, TimeUnit.SECONDS)
         .atMost(60L, TimeUnit.SECONDS)
+        .ignoreExceptionsMatching(e -> e instanceof InconsistentDataException)
         .untilAsserted(
             () -> Assert.assertTrue(hasDataNodeAndConfigNodeReceivers(sql, sqlDialect, pipeName)));
   }
@@ -317,6 +320,7 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
         .pollDelay(1L, TimeUnit.SECONDS)
         .pollInterval(1L, TimeUnit.SECONDS)
         .atMost(60L, TimeUnit.SECONDS)
+        .ignoreExceptionsMatching(e -> e instanceof InconsistentDataException)
         .untilAsserted(
             () ->
                 Assert.assertTrue(

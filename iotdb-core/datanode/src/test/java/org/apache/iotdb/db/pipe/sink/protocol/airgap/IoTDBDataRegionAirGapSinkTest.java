@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -42,13 +43,20 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.zip.CRC32;
 
 public class IoTDBDataRegionAirGapSinkTest {
 
@@ -140,7 +148,196 @@ public class IoTDBDataRegionAirGapSinkTest {
     }
   }
 
+  @Test
+  public void testUdpAirGapSlicing() throws Exception {
+    try (final DatagramSocket receiverSocket = new DatagramSocket(0);
+        final UdpTestingIoTDBDataRegionAirGapSink sink =
+            new UdpTestingIoTDBDataRegionAirGapSink()) {
+      final Map<String, String> attributes = buildParameterAttributes(false);
+      attributes.put(PipeSinkConstant.CONNECTOR_AIR_GAP_TRANSPORT_KEY, "udp");
+      attributes.put(PipeSinkConstant.CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_KEY, "1024");
+
+      final PipeParameters parameters = new PipeParameters(attributes);
+      sink.validate(new PipeParameterValidator(parameters));
+      sink.customize(
+          parameters,
+          new PipeTaskRuntimeConfiguration(new PipeTaskSinkRuntimeEnvironment("pipe", 1L, 1)));
+
+      final List<TPipeTransferReq> receivedRequests = new ArrayList<>();
+      final List<Integer> receivedPacketSizes = new ArrayList<>();
+      final AtomicBoolean senderFinished = new AtomicBoolean(false);
+      final AtomicReference<Throwable> receiverException = new AtomicReference<>();
+      final Thread receiverThread =
+          new Thread(
+              () -> {
+                try {
+                  receiverSocket.setSoTimeout(100);
+                  while (!senderFinished.get()) {
+                    final byte[] buffer = new byte[2048];
+                    final DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                    try {
+                      receiverSocket.receive(packet);
+                      receivedPacketSizes.add(packet.getLength());
+                      receivedRequests.add(decodeAirGapDatagram(buffer, packet.getLength()));
+                      final ByteBuffer responseBuffer =
+                          ByteBuffer.allocate(Long.BYTES + AirGapOneByteResponse.OK.length)
+                              .putLong(ByteBuffer.wrap(buffer, 0, Long.BYTES).getLong())
+                              .put(AirGapOneByteResponse.OK);
+                      receiverSocket.send(
+                          new DatagramPacket(
+                              responseBuffer.array(),
+                              responseBuffer.array().length,
+                              packet.getAddress(),
+                              packet.getPort()));
+                    } catch (final SocketTimeoutException ignored) {
+                      // Poll until the sender has finished all datagrams.
+                    }
+                  }
+                } catch (final Throwable ignored) {
+                  receiverException.set(ignored);
+                }
+              });
+      receiverThread.start();
+
+      final byte[] request = new byte[2500];
+      request[0] = 1;
+      final byte[] type = org.apache.tsfile.utils.BytesUtils.shortToBytes((short) 11);
+      request[1] = type[0];
+      request[2] = type[1];
+
+      try {
+        Assert.assertTrue(sink.sendUdp(receiverSocket.getLocalPort(), request));
+      } finally {
+        senderFinished.set(true);
+      }
+
+      receiverThread.join(5000);
+      Assert.assertFalse(receiverThread.isAlive());
+      Assert.assertNull(receiverException.get());
+      Assert.assertTrue(receivedRequests.size() > 1);
+      for (final int packetSize : receivedPacketSizes) {
+        Assert.assertTrue(packetSize <= 1024);
+      }
+      for (final TPipeTransferReq receivedRequest : receivedRequests) {
+        Assert.assertEquals(PipeRequestType.TRANSFER_SLICE.getType(), receivedRequest.type);
+        Assert.assertTrue(receivedRequest.body.remaining() < 1024);
+      }
+    }
+  }
+
+  @Test
+  public void testUdpAirGapRejectsOversizedAcknowledgement() throws Exception {
+    try (final DatagramSocket receiverSocket = new DatagramSocket(0);
+        final UdpTestingIoTDBDataRegionAirGapSink sink =
+            new UdpTestingIoTDBDataRegionAirGapSink()) {
+      final PipeParameters parameters = new PipeParameters(buildParameterAttributes(false));
+      parameters.getAttribute().put(PipeSinkConstant.CONNECTOR_AIR_GAP_TRANSPORT_KEY, "udp");
+      sink.validate(new PipeParameterValidator(parameters));
+      sink.customize(
+          parameters,
+          new PipeTaskRuntimeConfiguration(new PipeTaskSinkRuntimeEnvironment("pipe", 1L, 1)));
+
+      final AtomicBoolean oversizedAcknowledgementSent = new AtomicBoolean(false);
+      final AtomicReference<Throwable> receiverException = new AtomicReference<>();
+      final Thread receiverThread =
+          new Thread(
+              () -> {
+                try {
+                  final byte[] buffer = new byte[2048];
+                  final DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                  receiverSocket.receive(packet);
+                  final long requestId = ByteBuffer.wrap(buffer, 0, Long.BYTES).getLong();
+                  final byte[] oversizedAck =
+                      ByteBuffer.allocate(Long.BYTES + AirGapOneByteResponse.OK.length + 1)
+                          .putLong(requestId)
+                          .put(AirGapOneByteResponse.OK)
+                          .put((byte) 1)
+                          .array();
+                  receiverSocket.send(
+                      new DatagramPacket(
+                          oversizedAck,
+                          oversizedAck.length,
+                          packet.getAddress(),
+                          packet.getPort()));
+                  oversizedAcknowledgementSent.set(true);
+                } catch (final Throwable t) {
+                  receiverException.set(t);
+                }
+              });
+      receiverThread.start();
+
+      try {
+        Assert.assertThrows(
+            SocketTimeoutException.class,
+            () -> sink.sendUdp(receiverSocket.getLocalPort(), new byte[] {1, 0, 1}));
+      } finally {
+        receiverSocket.close();
+      }
+
+      receiverThread.join(5000);
+      Assert.assertFalse(receiverThread.isAlive());
+      Assert.assertNull(receiverException.get());
+      Assert.assertTrue(oversizedAcknowledgementSent.get());
+    }
+  }
+
+  @Test
+  public void testUdpAirGapIgnoresStaleAcknowledgement() throws Exception {
+    try (final DatagramSocket receiverSocket = new DatagramSocket(0);
+        final UdpTestingIoTDBDataRegionAirGapSink sink =
+            new UdpTestingIoTDBDataRegionAirGapSink()) {
+      final PipeParameters parameters = new PipeParameters(buildParameterAttributes(false));
+      parameters.getAttribute().put(PipeSinkConstant.CONNECTOR_AIR_GAP_TRANSPORT_KEY, "udp");
+      parameters.getAttribute().put(PipeSinkConstant.CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_KEY, "1024");
+      sink.validate(new PipeParameterValidator(parameters));
+      sink.customize(
+          parameters,
+          new PipeTaskRuntimeConfiguration(new PipeTaskSinkRuntimeEnvironment("pipe", 1L, 1)));
+
+      final AtomicBoolean secondPacketReceived = new AtomicBoolean(false);
+      final AtomicReference<Throwable> receiverException = new AtomicReference<>();
+      final Thread receiverThread =
+          new Thread(
+              () -> {
+                try {
+                  final byte[] buffer = new byte[2048];
+                  final DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                  receiverSocket.receive(packet);
+                  final long requestId = ByteBuffer.wrap(buffer, 0, Long.BYTES).getLong();
+                  sendUdpAck(receiverSocket, packet, requestId);
+                  receiverSocket.receive(packet);
+                  sendUdpAck(receiverSocket, packet, requestId);
+                  secondPacketReceived.set(true);
+                } catch (final Throwable t) {
+                  receiverException.set(t);
+                }
+              });
+      receiverThread.start();
+
+      try {
+        final byte[] request = new byte[2500];
+        request[0] = 1;
+        request[1] = 0;
+        request[2] = 1;
+        Assert.assertThrows(
+            SocketTimeoutException.class,
+            () -> sink.sendUdp(receiverSocket.getLocalPort(), request));
+      } finally {
+        receiverSocket.close();
+      }
+
+      receiverThread.join(5000);
+      Assert.assertFalse(receiverThread.isAlive());
+      Assert.assertNull(receiverException.get());
+      Assert.assertTrue(secondPacketReceived.get());
+    }
+  }
+
   private PipeParameters buildParameters(final boolean useTsFileBatch) {
+    return new PipeParameters(buildParameterAttributes(useTsFileBatch));
+  }
+
+  private Map<String, String> buildParameterAttributes(final boolean useTsFileBatch) {
     final Map<String, String> attributes = new HashMap<>();
     attributes.put(
         PipeSinkConstant.CONNECTOR_KEY,
@@ -151,7 +348,7 @@ public class IoTDBDataRegionAirGapSinkTest {
     if (useTsFileBatch) {
       attributes.put(PipeSinkConstant.CONNECTOR_FORMAT_KEY, "tsfile");
     }
-    return new PipeParameters(attributes);
+    return attributes;
   }
 
   private PipeRawTabletInsertionEvent createPipeRawTabletInsertionEvent(
@@ -183,6 +380,34 @@ public class IoTDBDataRegionAirGapSinkTest {
     req.type = ReadWriteIOUtils.readShort(buffer);
     req.body = buffer.slice();
     return req;
+  }
+
+  private static TPipeTransferReq decodeAirGapDatagram(final byte[] datagram, final int length) {
+    final ByteBuffer buffer = ByteBuffer.wrap(datagram, Long.BYTES, length - Long.BYTES);
+    final int payloadLength = ReadWriteIOUtils.readInt(buffer);
+    Assert.assertEquals(payloadLength, ReadWriteIOUtils.readInt(buffer));
+    Assert.assertEquals(length - Long.BYTES - 2 * Integer.BYTES, payloadLength);
+
+    final long expectedChecksum = ReadWriteIOUtils.readLong(buffer);
+    final byte[] payload = new byte[payloadLength - Long.BYTES];
+    buffer.get(payload);
+
+    final CRC32 crc32 = new CRC32();
+    crc32.update(payload, 0, payload.length);
+    Assert.assertEquals(expectedChecksum, crc32.getValue());
+    return toTPipeTransferReq(payload);
+  }
+
+  private static void sendUdpAck(
+      final DatagramSocket socket, final DatagramPacket requestPacket, final long requestId)
+      throws IOException {
+    final byte[] ack =
+        ByteBuffer.allocate(Long.BYTES + AirGapOneByteResponse.OK.length)
+            .putLong(requestId)
+            .put(AirGapOneByteResponse.OK)
+            .array();
+    socket.send(
+        new DatagramPacket(ack, ack.length, requestPacket.getAddress(), requestPacket.getPort()));
   }
 
   private static class RecordingIoTDBDataRegionAirGapSink extends IoTDBDataRegionAirGapSink {
@@ -224,6 +449,17 @@ public class IoTDBDataRegionAirGapSinkTest {
       @Override
       public synchronized void setSoTimeout(final int timeout) {
         // No-op for unit test.
+      }
+    }
+  }
+
+  private static class UdpTestingIoTDBDataRegionAirGapSink extends IoTDBDataRegionAirGapSink {
+
+    private boolean sendUdp(final int port, final byte[] request) throws Exception {
+      final AirGapSocket socket = new AirGapSocket("127.0.0.1", port);
+      try (final Socket ignored = socket) {
+        socket.connectUdp(1000);
+        return sendBytes(socket, request);
       }
     }
   }

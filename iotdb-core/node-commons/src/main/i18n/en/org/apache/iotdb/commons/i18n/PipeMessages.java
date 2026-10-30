@@ -514,6 +514,14 @@ public final class PipeMessages {
       "IoTDBAirGapConnector is customized with handshakeTimeoutMs: {}.";
   public static final String AIR_GAP_CUSTOMIZED_E_LANGUAGE =
       "IoTDBAirGapConnector is customized with eLanguageEnable: {}.";
+  public static final String
+      EXCEPTION_AIR_GAP_UDP_DATAGRAM_SIZE_ARG_EXCEEDS_CONFIGURED_PACKET_SIZE_ARG_559D0654 =
+          "Air gap UDP datagram size %d exceeds configured packet size %d.";
+  public static final String EXCEPTION_TIMED_OUT_WAITING_FOR_THE_MATCHING_AIR_GAP_ACK_DD2F3706 =
+      "Timed out waiting for the matching air-gap ACK.";
+  public static final String
+      EXCEPTION_AIR_GAP_UDP_PACKET_SIZE_ARG_IS_TOO_SMALL_TO_TRANSFER_SLICED_REQUESTS_722B32AB =
+          "Air gap UDP packet size %d is too small to transfer sliced requests.";
   public static final String CONNECTED_TO_TARGET_SERVER =
       "Successfully connected to target server ip: {}, port: {}.";
   public static final String FAILED_TO_CLOSE_SOCKET =
@@ -613,6 +621,8 @@ public final class PipeMessages {
       "Receiver id = %s: Handshake failed, response status = %s.";
   public static final String RECEIVER_HANDSHAKE_FAILED_LOGIN =
       "Receiver id = %s: Handshake failed because login failed, response status = %s.";
+  public static final String MESSAGE_THE_PIPE_RECEIVER_CONNECTION_IS_ALREADY_AUTHENTICATED_AS_ANOTHER_USER_AND_CANNOT_BE_USED_TO_TRANSFER_DATA_AS_ARG_FFA5DF78 =
+      "The pipe receiver connection is already authenticated as another user and cannot be used to transfer data as %s.";
   public static final String RECEIVER_TEMPORARILY_OUT_OF_MEMORY_FORMAT =
       "Temporarily out of memory when %s. Requested memory: %d bytes. Root cause: %s";
   public static final String RECEIVER_USER_LOGIN_SUCCESS =

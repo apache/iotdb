@@ -830,9 +830,10 @@ public final class ProcedureMessages {
       "尝试删除 pipe plugin [{}] 时发生可重试错误，状态：{}";
   public static final String RETRIEVABLE_ERROR_TRYING_TO_REMOVE_AINODE_STATE =
       "尝试移除 AINode [{}] 时发生可重试错误，状态 [{}]";
+  public static final String ROLLBACK_ADDTABLECOLUMN_COSTS_MS =
+      "Rollback AddTableColumn-{} costs {}ms.";
   public static final String ROLLBACK_CREATETABLE_COSTS_MS = "Rollback CreateTable-{} costs {}ms.";
   public static final String ROLLBACK_CREATE_TABLE_FAILED = "回滚创建表失败";
-  public static final String ROLLBACK_DROPTABLE_COSTS_MS = "Rollback DropTable-{} costs {}ms.";
   public static final String ROLLBACK_PRE_RELEASE = "回滚预释放 ";
   public static final String ROLLBACK_PRE_DELETE_TABLE_FAILED = "回滚预删除表 %s.%s 操作失败, 请手动输入sql删除";
   public static final String ROLLBACK_PRE_RELEASE_TEMPLATE_FAILED = "回滚预释放模板失败";
