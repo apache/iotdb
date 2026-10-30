@@ -1201,6 +1201,10 @@ public class TsFileProcessor {
         if (!SystemInfo.getInstance().reportStorageGroupStatus(dataRegionInfo, this)) {
           long startTime = System.currentTimeMillis();
           while (SystemInfo.getInstance().isRejected()) {
+            // The asynchronous submitter needs the region write lock held by this insertion.
+            // Submit other selected MemTables before checking whether this processor was selected
+            // too, so they can release memory even when this insertion can now proceed.
+            submitOtherSelectedMemTablesToFlush();
             if (workMemTable.shouldFlush()) {
               break;
             }
@@ -1225,6 +1229,19 @@ public class TsFileProcessor {
     }
     workMemTable.addTVListRamCost(memTableIncrement);
     workMemTable.addTextDataSize(textDataIncrement);
+  }
+
+  private void submitOtherSelectedMemTablesToFlush() {
+    for (TsFileProcessor processor : dataRegionInfo.getAllReportedTsp()) {
+      // This processor still owns the pending write and its memory reservations.
+      if (processor == this) {
+        continue;
+      }
+      IMemTable memTable = processor.getWorkMemTable();
+      if (memTable != null && memTable.shouldFlush()) {
+        processor.submitAFlushTask();
+      }
+    }
   }
 
   private void rollbackMemoryInfo(long[] memIncrements) {
