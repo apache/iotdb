@@ -615,6 +615,8 @@ public final class PipeMessages {
       "Receiver id = %s: Handshake failed, response status = %s.";
   public static final String RECEIVER_HANDSHAKE_FAILED_LOGIN =
       "Receiver id = %s: Handshake failed because login failed, response status = %s.";
+  public static final String MESSAGE_THE_PIPE_RECEIVER_CONNECTION_IS_ALREADY_AUTHENTICATED_AS_ANOTHER_USER_AND_CANNOT_BE_USED_TO_TRANSFER_DATA_AS_ARG_FFA5DF78 =
+      "The pipe receiver connection is already authenticated as another user and cannot be used to transfer data as %s.";
   public static final String RECEIVER_TEMPORARILY_OUT_OF_MEMORY_FORMAT =
       "Temporarily out of memory when %s. Requested memory: %d bytes. Root cause: %s";
   public static final String RECEIVER_USER_LOGIN_SUCCESS =

@@ -52,6 +52,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class IoTDBDataNodeReceiverTest {
 
+  private static final String ASYNC_LOAD_SENDER = "pipe_async_load_sender";
+
   private final PipeReceiverRuntimeRegistry registry = PipeReceiverRuntimeRegistry.getInstance();
 
   @Before
@@ -153,11 +155,12 @@ public class IoTDBDataNodeReceiverTest {
     try {
       final Map<String, String> attributes =
           IoTDBDataNodeReceiver.buildLoadTsFileAttributesForAsync(
-              "root.test.sg_0", true, false, true);
+              "root.test.sg_0", true, false, true, false, null, ASYNC_LOAD_SENDER);
 
       Assert.assertEquals(
           "root.test.sg_0", attributes.get(LoadTsFileConfigurator.DATABASE_NAME_KEY));
       Assert.assertEquals("2", attributes.get(LoadTsFileConfigurator.DATABASE_LEVEL_KEY));
+      Assert.assertEquals(ASYNC_LOAD_SENDER, attributes.get(ActiveLoadPathHelper.USER_KEY));
 
       final LoadTsFileStatement statement = LoadTsFileStatement.createUnchecked(tsFile.toString());
       ActiveLoadPathHelper.applyAttributesToStatement(attributes, statement, false);
@@ -168,6 +171,19 @@ public class IoTDBDataNodeReceiverTest {
     } finally {
       Files.deleteIfExists(tsFile);
     }
+  }
+
+  @Test
+  public void testLoadTsFileAsyncAttributesCarryAuthenticatedSenderInsteadOfRoot() {
+    // The asynchronous load is executed by the active loader in another thread. The attributes must
+    // carry the authenticated sender so that the load is authorized as that user. Falling back to
+    // the super user here lets any authenticated account load data as root.
+    final Map<String, String> attributes =
+        IoTDBDataNodeReceiver.buildLoadTsFileAttributesForAsync(
+            "root.test.sg_0", false, true, true, false, "conversion-task-id", ASYNC_LOAD_SENDER);
+
+    Assert.assertEquals(ASYNC_LOAD_SENDER, attributes.get(ActiveLoadPathHelper.USER_KEY));
+    Assert.assertNotEquals("root", attributes.get(ActiveLoadPathHelper.USER_KEY));
   }
 
   @Test
@@ -182,7 +198,7 @@ public class IoTDBDataNodeReceiverTest {
 
       final Map<String, String> asyncAttributes =
           IoTDBDataNodeReceiver.buildLoadTsFileAttributesForAsync(
-              "root.test.sg_0", false, false, true, true);
+              "root.test.sg_0", false, false, true, true, null, ASYNC_LOAD_SENDER);
       Assert.assertEquals(
           Boolean.TRUE.toString(), asyncAttributes.get(LoadTsFileConfigurator.VERIFY_KEY));
       Assert.assertEquals(
