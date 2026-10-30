@@ -19,21 +19,14 @@
 
 package org.apache.iotdb.confignode.manager.pipe.agent;
 
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.pipe.agent.plugin.PipeConfigNodePluginAgent;
 import org.apache.iotdb.confignode.manager.pipe.agent.receiver.IoTDBConfigNodeReceiverAgent;
 import org.apache.iotdb.confignode.manager.pipe.agent.runtime.PipeConfigNodeRuntimeAgent;
 import org.apache.iotdb.confignode.manager.pipe.agent.task.PipeConfigNodeTaskAgent;
 import org.apache.iotdb.confignode.service.ConfigNode;
-import org.apache.iotdb.consensus.ConsensusFactory;
 
 /** {@link PipeConfigNodeAgent} is the entry point of the pipe module in {@link ConfigNode}. */
 public class PipeConfigNodeAgent {
-
-  public static boolean isPipeFeatureEnabled() {
-    return !ConsensusFactory.RATIS_CONSENSUS.equals(
-        ConfigNodeDescriptor.getInstance().getConf().getDataRegionConsensusProtocolClass());
-  }
 
   private final PipeConfigNodeTaskAgent pipeConfigNodeTaskAgent;
   private final PipeConfigNodePluginAgent pipeConfigNodePluginAgent;

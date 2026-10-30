@@ -435,8 +435,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   private static final SettableFuture<ConfigTaskResult> SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE;
-  private static final SettableFuture<ConfigTaskResult>
-      PIPE_AND_SUBSCRIPTION_DISABLED_BY_RATIS_ERROR_FUTURE;
 
   static {
     SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE = SettableFuture.create();
@@ -444,13 +442,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         new IoTDBException(
             DataNodeQueryMessages.QUERY_EXCEPTION_SUBSCRIPTION_IS_NOT_ENABLED_7F43DCBB,
             TSStatusCode.SUBSCRIPTION_NOT_ENABLED_ERROR.getStatusCode()));
-
-    PIPE_AND_SUBSCRIPTION_DISABLED_BY_RATIS_ERROR_FUTURE = SettableFuture.create();
-    PIPE_AND_SUBSCRIPTION_DISABLED_BY_RATIS_ERROR_FUTURE.setException(
-        new IoTDBException(
-            PipeMessages
-                .MESSAGE_PIPE_AND_SUBSCRIPTION_ARE_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_3D8EAE6E,
-            TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode()));
   }
 
   public static ClusterConfigTaskExecutor getInstance() {
@@ -1029,10 +1020,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> createPipePlugin(
       final CreatePipePluginStatement createPipePluginStatement) {
-    if (!PipeDataNodeAgent.isPipeFeatureEnabled()) {
-      return PIPE_AND_SUBSCRIPTION_DISABLED_BY_RATIS_ERROR_FUTURE;
-    }
-
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     final String pluginName = createPipePluginStatement.getPluginName();
     final String className = createPipePluginStatement.getClassName();
@@ -2258,10 +2245,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> createPipe(
       final CreatePipeStatement createPipeStatement) {
-    if (!PipeDataNodeAgent.isPipeFeatureEnabled()) {
-      return PIPE_AND_SUBSCRIPTION_DISABLED_BY_RATIS_ERROR_FUTURE;
-    }
-
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     // Verify that Pipe is disabled if TSFile encryption is enabled
@@ -2597,10 +2580,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> alterPipe(final AlterPipeStatement alterPipeStatement) {
-    if (!PipeDataNodeAgent.isPipeFeatureEnabled()) {
-      return PIPE_AND_SUBSCRIPTION_DISABLED_BY_RATIS_ERROR_FUTURE;
-    }
-
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     // Validate pipe name
@@ -2912,10 +2891,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> startPipe(final StartPipeStatement startPipeStatement) {
-    if (!PipeDataNodeAgent.isPipeFeatureEnabled()) {
-      return PIPE_AND_SUBSCRIPTION_DISABLED_BY_RATIS_ERROR_FUTURE;
-    }
-
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     // Validate pipe name
@@ -3188,9 +3163,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
       return SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE;
     }
-    if (!PipeDataNodeAgent.isPipeFeatureEnabled()) {
-      return PIPE_AND_SUBSCRIPTION_DISABLED_BY_RATIS_ERROR_FUTURE;
-    }
 
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
@@ -3264,9 +3236,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final AlterTopicStatement alterTopicStatement) {
     if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
       return SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE;
-    }
-    if (!PipeDataNodeAgent.isPipeFeatureEnabled()) {
-      return PIPE_AND_SUBSCRIPTION_DISABLED_BY_RATIS_ERROR_FUTURE;
     }
 
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();

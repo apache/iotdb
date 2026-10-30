@@ -209,10 +209,6 @@ public abstract class PipeTaskAgent {
 
   protected abstract boolean isShutdown();
 
-  protected boolean isPipeFeatureEnabled() {
-    return true;
-  }
-
   private void executeSinglePipeMetaChanges(final PipeMeta metaFromCoordinator)
       throws IllegalPathException {
     final String pipeName = metaFromCoordinator.getStaticMeta().getPipeName();
@@ -227,14 +223,6 @@ public abstract class PipeTaskAgent {
     // PRE_DELETE is a coordinator-only marker. The drop procedure will push DROPPED explicitly
     // after the marker is persisted, so task agents should retain their current runtime state here.
     if (metaFromCoordinator.getRuntimeMeta().getStatus().get() == PipeStatus.PRE_DELETE) {
-      return;
-    }
-
-    if (!isPipeFeatureEnabled()) {
-      // Ignore active metadata while disabled, but still process drops to clean up stale tasks.
-      if (metaFromCoordinator.getRuntimeMeta().getStatus().get() == PipeStatus.DROPPED) {
-        dropPipe(pipeName, creationTime);
-      }
       return;
     }
 

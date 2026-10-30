@@ -69,11 +69,6 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
   }
 
   @Override
-  protected boolean isPipeFeatureEnabled() {
-    return PipeConfigNodeAgent.isPipeFeatureEnabled();
-  }
-
-  @Override
   protected void thawRate(final String pipeName, final long creationTime) {
     PipeConfigNodeRemainingTimeMetrics.getInstance().thawRate(pipeName + "_" + creationTime);
   }

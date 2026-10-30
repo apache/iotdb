@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.pipe.agent;
 
-import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.plugin.PipeDataNodePluginAgent;
 import org.apache.iotdb.db.pipe.agent.receiver.PipeDataNodeReceiverAgent;
 import org.apache.iotdb.db.pipe.agent.runtime.PipeDataNodeRuntimeAgent;
@@ -29,11 +27,6 @@ import org.apache.iotdb.db.service.DataNode;
 
 /** {@link PipeDataNodeAgent} is the entry point of the pipe module in {@link DataNode}. */
 public class PipeDataNodeAgent {
-
-  public static boolean isPipeFeatureEnabled() {
-    return !ConsensusFactory.RATIS_CONSENSUS.equals(
-        IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass());
-  }
 
   private final PipeDataNodePluginAgent pipeDataNodePluginAgent;
   private final PipeDataNodeTaskAgent pipeDataNodeTaskAgent;

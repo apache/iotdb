@@ -85,18 +85,13 @@ public class PipeDataNodeRuntimeAgent implements IService {
 
   public synchronized void preparePipeResources(
       final ResourcesInformationHolder resourcesInformationHolder) throws StartupException {
-    if (PipeDataNodeAgent.isPipeFeatureEnabled()) {
-      // Clean sender (connector) hardlink file dir and snapshot dir
-      PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner.clean(this::registerPeriodicalJob);
+    // Clean sender (connector) hardlink file dir and snapshot dir
+    PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner.clean(this::registerPeriodicalJob);
 
-      // Clean receiver file dir
-      PipeDataNodeAgent.receiver().cleanPipeReceiverDirs();
+    // Clean receiver file dir
+    PipeDataNodeAgent.receiver().cleanPipeReceiverDirs();
 
-      PipeAgentLauncher.launchPipePluginAgent(resourcesInformationHolder);
-    } else {
-      PipeAgentLauncher.initializePipePluginRelatedInstances();
-    }
-
+    PipeAgentLauncher.launchPipePluginAgent(resourcesInformationHolder);
     simpleProgressIndexAssigner.start();
 
     IoTDBTreePattern.setDevicePathGetter(PipeDataNodeRuntimeAgent::getPath);
@@ -138,11 +133,6 @@ public class PipeDataNodeRuntimeAgent implements IService {
 
   @Override
   public synchronized void start() throws StartupException {
-    if (!PipeDataNodeAgent.isPipeFeatureEnabled()) {
-      isShutdown.set(true);
-      return;
-    }
-
     PipeConfig.getInstance().printAllConfigs();
     pipePeriodicalJobExecutor.start();
     pipePeriodicalJobExecutor.runDirectly(PipeAgentLauncher::launchPipeTaskAgent);

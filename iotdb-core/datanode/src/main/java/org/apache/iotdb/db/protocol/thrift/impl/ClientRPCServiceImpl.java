@@ -36,7 +36,6 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.path.AlignedFullPath;
@@ -3496,20 +3495,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     if (!SESSION_MANAGER.checkLogin(clientSession)) {
       return getNotLoggedInStatus();
     }
-    final TSStatus permissionStatus =
-        AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(
-                clientSession.getUsername(), PrivilegeType.USE_PIPE),
-            PrivilegeType.USE_PIPE);
-    if (permissionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return permissionStatus;
-    }
-    return PipeDataNodeAgent.isPipeFeatureEnabled()
-        ? permissionStatus
-        : RpcUtils.getStatus(
-            TSStatusCode.UNSUPPORTED_OPERATION,
-            PipeMessages
-                .MESSAGE_PIPE_AND_SUBSCRIPTION_ARE_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_3D8EAE6E);
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(clientSession.getUsername(), PrivilegeType.USE_PIPE),
+        PrivilegeType.USE_PIPE);
   }
 
   @Override
@@ -3523,15 +3511,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
         return getNotLoggedInPipeSubscribeResp();
-      }
-      if (!PipeDataNodeAgent.isPipeFeatureEnabled()) {
-        return new TPipeSubscribeResp(
-            RpcUtils.getStatus(
-                TSStatusCode.UNSUPPORTED_OPERATION,
-                PipeMessages
-                    .MESSAGE_PIPE_AND_SUBSCRIPTION_ARE_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_3D8EAE6E),
-            PipeSubscribeResponseVersion.VERSION_1.getVersion(),
-            PipeSubscribeResponseType.ACK.getType());
       }
 
       return SubscriptionAgent.receiver().handle(req, clientSession.getUsername());
@@ -3684,7 +3663,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
     PipeDataNodeAgent.receiver().thrift().handleClientExit();
     PipeDataNodeAgent.receiver().legacy().handleClientExit();
-    if (COMMON_CONFIG.getSubscriptionEnabled() && PipeDataNodeAgent.isPipeFeatureEnabled()) {
+    if (COMMON_CONFIG.getSubscriptionEnabled()) {
       SubscriptionAgent.receiver().handleClientExit();
     }
   }

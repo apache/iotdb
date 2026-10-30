@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.manager.subscription.runtime;
 import org.apache.iotdb.confignode.manager.load.subscriber.ConsensusGroupStatisticsChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.NodeStatisticsChangeEvent;
-import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 
 public class SubscriptionLeaderChangeHandler implements IClusterStatusSubscriber {
 
@@ -34,15 +33,11 @@ public class SubscriptionLeaderChangeHandler implements IClusterStatusSubscriber
 
   @Override
   public void onNodeStatisticsChanged(final NodeStatisticsChangeEvent event) {
-    if (PipeConfigNodeAgent.isPipeFeatureEnabled()) {
-      runtimeCoordinator.handleNodeStatisticsChange(event);
-    }
+    runtimeCoordinator.handleNodeStatisticsChange(event);
   }
 
   @Override
   public void onConsensusGroupStatisticsChanged(final ConsensusGroupStatisticsChangeEvent event) {
-    if (PipeConfigNodeAgent.isPipeFeatureEnabled()) {
-      runtimeCoordinator.handleLeaderChangeEvent(event);
-    }
+    runtimeCoordinator.handleLeaderChangeEvent(event);
   }
 }

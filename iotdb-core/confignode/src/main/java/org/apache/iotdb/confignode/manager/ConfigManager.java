@@ -51,7 +51,6 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.enums.RepairDataPartitionTableProgressState;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
@@ -1732,7 +1731,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus createPipePlugin(TCreatePipePluginReq req) {
-    TSStatus status = confirmPipeAndSubscriptionFeatureAvailability();
+    TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? pipeManager.getPipePluginCoordinator().createPipePlugin(req)
         : status;
@@ -1768,18 +1767,6 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? pipeManager.getPipePluginCoordinator().getPipePluginJar(req)
         : new TGetJarInListResp(status, Collections.emptyList());
-  }
-
-  private TSStatus confirmPipeAndSubscriptionFeatureAvailability() {
-    final TSStatus status = confirmLeader();
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        || PipeConfigNodeAgent.isPipeFeatureEnabled()) {
-      return status;
-    }
-    return RpcUtils.getStatus(
-        TSStatusCode.UNSUPPORTED_OPERATION,
-        PipeMessages
-            .MESSAGE_PIPE_AND_SUBSCRIPTION_ARE_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_3D8EAE6E);
   }
 
   @Override
@@ -2585,7 +2572,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus createPipe(TCreatePipeReq req) {
-    TSStatus status = confirmPipeAndSubscriptionFeatureAvailability();
+    TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? pipeManager.getPipeTaskCoordinator().createPipe(req)
         : status;
@@ -2593,7 +2580,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus alterPipe(TAlterPipeReq req) {
-    TSStatus status = confirmPipeAndSubscriptionFeatureAvailability();
+    TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? pipeManager.getPipeTaskCoordinator().alterPipe(req)
         : status;
@@ -2601,7 +2588,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus startPipe(TStartPipeReq req) {
-    TSStatus status = confirmPipeAndSubscriptionFeatureAvailability();
+    TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? pipeManager.getPipeTaskCoordinator().startPipe(req)
         : status;
@@ -2641,7 +2628,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus createTopic(TCreateTopicReq req) {
-    TSStatus status = confirmPipeAndSubscriptionFeatureAvailability();
+    TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? subscriptionManager.getSubscriptionCoordinator().createTopic(req)
         : status;
@@ -2649,7 +2636,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus alterTopic(TAlterTopicReq req) {
-    TSStatus status = confirmPipeAndSubscriptionFeatureAvailability();
+    TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? subscriptionManager.getSubscriptionCoordinator().alterTopic(req)
         : status;
@@ -2681,7 +2668,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus createConsumer(TCreateConsumerReq req) {
-    TSStatus status = confirmPipeAndSubscriptionFeatureAvailability();
+    TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? subscriptionManager.getSubscriptionCoordinator().createConsumer(req)
         : status;
@@ -2697,7 +2684,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus createSubscription(TSubscribeReq req) {
-    TSStatus status = confirmPipeAndSubscriptionFeatureAvailability();
+    TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? subscriptionManager.getSubscriptionCoordinator().createSubscription(req)
         : status;

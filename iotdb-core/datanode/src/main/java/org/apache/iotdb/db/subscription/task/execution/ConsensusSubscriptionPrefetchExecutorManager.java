@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.subscription.task.execution;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
-import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 
 public class ConsensusSubscriptionPrefetchExecutorManager {
 
@@ -32,8 +31,7 @@ public class ConsensusSubscriptionPrefetchExecutorManager {
   }
 
   public synchronized void start() {
-    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()
-        || !PipeDataNodeAgent.isPipeFeatureEnabled()) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
       started = false;
       return;
     }
@@ -44,9 +42,7 @@ public class ConsensusSubscriptionPrefetchExecutorManager {
   }
 
   public synchronized ConsensusSubscriptionPrefetchExecutor getExecutor() {
-    if (!started
-        || !SubscriptionConfig.getInstance().getSubscriptionEnabled()
-        || !PipeDataNodeAgent.isPipeFeatureEnabled()) {
+    if (!started || !SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
       return null;
     }
     if (executor == null || executor.isShutdown()) {
