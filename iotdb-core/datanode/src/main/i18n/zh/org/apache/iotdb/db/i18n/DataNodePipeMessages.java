@@ -1242,6 +1242,10 @@ public final class DataNodePipeMessages {
       "Pipe air gap receiver {}：监听数据时 socket {} 关闭。原因：{}";
   public static final String PIPE_AIR_GAP_RECEIVER_STARTED_SOCKET =
       "Pipe air gap receiver {} 已启动。Socket：{}";
+  public static final String EXCEPTION_AIR_GAP_UDP_PACKET_IS_MISSING_ITS_REQUEST_ID_C4228CC8 =
+      "Air-gap UDP 数据包缺少 request ID。";
+  public static final String EXCEPTION_AIR_GAP_UDP_PACKET_CONTAINS_TRAILING_BYTES_2D34D418 =
+      "Air-gap UDP 数据包包含多余字节。";
   public static final String PIPE_AIR_GAP_RECEIVER_TEMPORARY_UNAVAILABLE_RETRY =
       "Pipe air gap receiver {}：临时不可用重试超时，向 sender 返回 FAIL。";
   public static final String PIPE_DATA_TRANSPORT_ERROR = "Pipe 数据传输错误，{}";
