@@ -242,7 +242,8 @@ public class PipeTaskCoordinator {
                   .EXCEPTION_FAILED_TO_ALTER_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_919F1E2B,
               pipeName));
     }
-    if (!pipeTaskInfo.isPipeExisted(pipeName, isTableModel)) {
+    final PipeMeta currentPipeMeta = pipeTaskInfo.getPipeMetaByPipeName(pipeName, isTableModel);
+    if (currentPipeMeta == null) {
       return isSetIfExistsCondition
           ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
           : RpcUtils.getStatus(
@@ -250,7 +251,6 @@ public class PipeTaskCoordinator {
               String.format(
                   "Failed to alter pipe %s. Failures: %s does not exist.", pipeName, pipeName));
     }
-    final PipeMeta currentPipeMeta = pipeTaskInfo.getPipeMetaByPipeName(pipeName, isTableModel);
     if (!pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)
         && !PipeConfigNodeAgent.isPipeDataInsertionEnabled(
             getUpdatedSourceParameters(req, currentPipeMeta))) {
@@ -295,13 +295,13 @@ public class PipeTaskCoordinator {
                   .EXCEPTION_FAILED_TO_START_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_B41F4638,
               pipeName));
     }
-    if (!pipeTaskInfo.isPipeExisted(pipeName, isTableModel)) {
+    final PipeMeta pipeMeta = pipeTaskInfo.getPipeMetaByPipeName(pipeName, isTableModel);
+    if (pipeMeta == null) {
       return RpcUtils.getStatus(
           TSStatusCode.PIPE_NOT_EXIST_ERROR,
           String.format(
               "Failed to start pipe %s. Failures: %s does not exist.", pipeName, pipeName));
     }
-    final PipeMeta pipeMeta = pipeTaskInfo.getPipeMetaByPipeName(pipeName, isTableModel);
     if (!pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)
         && !PipeConfigNodeAgent.isPipeDataInsertionEnabled(
             pipeMeta.getStaticMeta().getSourceParameters())) {

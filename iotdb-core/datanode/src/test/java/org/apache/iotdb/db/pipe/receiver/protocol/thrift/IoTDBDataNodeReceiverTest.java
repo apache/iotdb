@@ -21,11 +21,28 @@ package org.apache.iotdb.db.pipe.receiver.protocol.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistry;
 import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeSnapshot;
+import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressor;
+import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressorFactory;
+import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferCompressedReq;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferSliceReq;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
@@ -35,13 +52,18 @@ import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.storageengine.load.converter.PipeTsFileConversionTaskManager;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -62,6 +84,186 @@ public class IoTDBDataNodeReceiverTest {
   @After
   public void tearDown() {
     registry.clear();
+  }
+
+  @Test
+  public void testRatisRejectsInsertionInPlanNodeRequests() throws Exception {
+    final String originalProtocol =
+        IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass();
+    try {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+      for (final PlanNode node : insertionPlans()) {
+        assertPlanRequestEnvelopes(node, true);
+      }
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(originalProtocol);
+    }
+  }
+
+  @Test
+  public void testRatisAllowsMetadataAndDeletionPlanNodeRequests() throws Exception {
+    final String originalProtocol =
+        IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass();
+    try {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+      assertPlanRequestEnvelopes(
+          new DeleteDataNode(
+              new PlanNodeId("delete"),
+              Collections.singletonList(new MeasurementPath("root.sg.d.s")),
+              0,
+              1),
+          false);
+      assertPlanRequestEnvelopes(
+          new CreateTimeSeriesNode(
+              new PlanNodeId("schema"),
+              new MeasurementPath("root.sg.d.s"),
+              TSDataType.INT32,
+              TSEncoding.PLAIN,
+              CompressionType.UNCOMPRESSED,
+              null,
+              null,
+              null,
+              null),
+          false);
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(originalProtocol);
+    }
+  }
+
+  @Test
+  public void testNonRatisAllowsInsertionPlanNodeRequests() throws Exception {
+    final String originalProtocol =
+        IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass();
+    try {
+      for (final String protocol :
+          new String[] {
+            ConsensusFactory.IOT_CONSENSUS,
+            ConsensusFactory.IOT_CONSENSUS_V2,
+            ConsensusFactory.SIMPLE_CONSENSUS
+          }) {
+        IoTDBDescriptor.getInstance().getConfig().setDataRegionConsensusProtocolClass(protocol);
+        for (final PlanNode node : insertionPlans()) {
+          assertPlanRequestEnvelopes(node, false);
+        }
+      }
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(originalProtocol);
+    }
+  }
+
+  private List<PlanNode> insertionPlans() throws Exception {
+    final InsertRowNode row =
+        new InsertRowNode(
+            new PlanNodeId("row"),
+            new PartialPath("root.sg.d"),
+            false,
+            new String[] {"s"},
+            new TSDataType[] {TSDataType.INT32},
+            1L,
+            new Object[] {1},
+            false);
+    return Arrays.asList(
+        row,
+        new InsertRowsNode(
+            new PlanNodeId("rows"), Collections.singletonList(0), Collections.singletonList(row)),
+        new InsertTabletNode(
+            new PlanNodeId("tablet"),
+            new PartialPath("root.sg.d"),
+            false,
+            new String[] {"s"},
+            new TSDataType[] {TSDataType.INT32},
+            new long[] {1},
+            null,
+            new Object[] {new int[] {1}},
+            1),
+        new RelationalInsertTabletNode(
+            new PlanNodeId("table"),
+            new PartialPath("t"),
+            false,
+            new String[] {"s"},
+            new TSDataType[] {TSDataType.INT32},
+            new long[] {1},
+            null,
+            new Object[] {new int[] {1}},
+            1,
+            new TsTableColumnCategory[] {TsTableColumnCategory.FIELD}));
+  }
+
+  private void assertPlanRequestEnvelopes(final PlanNode node, final boolean rejected)
+      throws Exception {
+    final AdmissionTestReceiver receiver = new AdmissionTestReceiver();
+    final int expectedCode =
+        rejected
+            ? TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode()
+            : TSStatusCode.PIPE_HANDSHAKE_ERROR.getStatusCode();
+    Assert.assertEquals(
+        expectedCode,
+        receiver.receive(PipeTransferPlanNodeReq.toTPipeTransferReq(node)).getStatus().getCode());
+
+    final TPipeTransferReq plain = PipeTransferPlanNodeReq.toTPipeTransferReq(node);
+    final TPipeTransferReq airGap =
+        new AirGapPseudoTPipeTransferRequest()
+            .setVersion(plain.getVersion())
+            .setType(plain.getType())
+            .setBody(plain.body.duplicate());
+    Assert.assertEquals(expectedCode, receiver.receive(airGap).getStatus().getCode());
+    Assert.assertEquals(
+        expectedCode,
+        receiver
+            .receive(
+                PipeTransferCompressedReq.toTPipeTransferReq(
+                    PipeTransferPlanNodeReq.toTPipeTransferReq(node),
+                    Collections.singletonList(
+                        PipeCompressorFactory.getCompressor(
+                            PipeCompressor.PipeCompressionType.GZIP.getIndex()))))
+            .getStatus()
+            .getCode());
+
+    final TPipeTransferReq sliced = PipeTransferPlanNodeReq.toTPipeTransferReq(node);
+    final ByteBuffer body = sliced.body.duplicate();
+    final int midpoint = body.limit() / 2;
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        receiver
+            .receive(
+                PipeTransferSliceReq.toTPipeTransferReq(
+                    1, sliced.getType(), 0, 2, body, 0, midpoint))
+            .getStatus()
+            .getCode());
+    Assert.assertEquals(
+        expectedCode,
+        receiver
+            .receive(
+                PipeTransferSliceReq.toTPipeTransferReq(
+                    1, sliced.getType(), 1, 2, body, midpoint, body.limit()))
+            .getStatus()
+            .getCode());
+    Assert.assertEquals(rejected ? 0 : 4, receiver.executionAttempts);
+  }
+
+  private static class AdmissionTestReceiver extends IoTDBDataNodeReceiver {
+    private int executionAttempts;
+
+    private AdmissionTestReceiver() {
+      hasPipeHandshakeCredential = true;
+    }
+
+    @Override
+    protected TSStatus loginIfNecessary() {
+      // Record arrival at statement execution without starting a cluster or writing data.
+      executionAttempts++;
+      return new TSStatus(TSStatusCode.PIPE_HANDSHAKE_ERROR.getStatusCode());
+    }
   }
 
   @Test
