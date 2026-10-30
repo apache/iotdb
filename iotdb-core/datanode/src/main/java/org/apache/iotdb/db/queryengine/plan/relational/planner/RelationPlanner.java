@@ -1681,6 +1681,10 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
 
   private static void stayConsistent(
       String[] measurements, MeasurementSchema[] measurementSchemas) {
+    if (measurementSchemas == null) {
+      // Partial insert may reject every FIELD before any measurement schema is allocated.
+      return;
+    }
     int minLength = Math.min(measurements.length, measurementSchemas.length);
     for (int j = 0; j < minLength; j++) {
       if (measurements[j] == null || measurementSchemas[j] == null) {
