@@ -200,6 +200,8 @@ public final class StorageEngineMessages {
   public static final String REMOVING_DATA_REGION = "Removing data region {}";
   public static final String FAILED_TO_DELETE_SNAPSHOT_DIR = "Failed to delete snapshot dir {}";
   public static final String REMOVED_DATA_REGION = "Removed data region {}";
+  public static final String LOG_CLEARED_PIPE_PROGRESS_INDEXES_OF_THE_DELETED_DATA_REGION_ARG_DC6E6D9F =
+      "Cleared pipe progress indexes of the deleted data region {}";
   public static final String EXECUTE_LOAD_COMMAND_ERROR = "Execute load command {} error.";
   public static final String START_REBOOTING_ALL_TIMED_SERVICE = "Start rebooting all timed service.";
   public static final String STOP_ALL_TIMED_SERVICE_AND_RESTART = "Stop all timed service successfully, and now restart them.";
