@@ -72,4 +72,18 @@ public class PipeInclusionOptionsTest {
     Assert.assertFalse(
         PipeInclusionOptions.areOptionsEnabled(new PipeParameters(attributes), "data.insert"));
   }
+
+  @Test
+  public void testDataInsertionUsesListeningPrefixSemantics() throws Exception {
+    Assert.assertTrue(PipeInclusionOptions.optionsAreAllLegal("data.insert.extra", true, true));
+    Assert.assertTrue(
+        PipeInclusionOptions.isDataInsertionIncluded(
+            new PipeParameters(Map.of("source.inclusion", "data.insert.extra"))));
+    Assert.assertFalse(
+        PipeInclusionOptions.isDataInsertionIncluded(
+            new PipeParameters(
+                Map.of(
+                    "source.inclusion", "all",
+                    "source.inclusion.exclusion", "data.insert.extra"))));
+  }
 }

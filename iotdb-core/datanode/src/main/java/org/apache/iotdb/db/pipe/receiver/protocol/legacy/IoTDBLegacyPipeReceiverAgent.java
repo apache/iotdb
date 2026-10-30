@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.sink.payload.legacy.PipeData;
 import org.apache.iotdb.db.pipe.sink.payload.legacy.TsFilePipeData;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -116,6 +117,13 @@ public class IoTDBLegacyPipeReceiverAgent {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
   }
 
+  private TSStatus pipeDataInsertionDisabledStatus() {
+    return RpcUtils.getStatus(
+        TSStatusCode.UNSUPPORTED_OPERATION,
+        PipeMessages
+            .MESSAGE_PIPE_DATA_INSERTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_7D669ECC);
+  }
+
   private boolean validatePipeName(final TSyncIdentityInfo info) {
     return info.isSetPipeName()
         && Objects.isNull(FileUtils.getIllegalError4Directory(info.getPipeName()));
@@ -159,6 +167,9 @@ public class IoTDBLegacyPipeReceiverAgent {
       buff.get(byteArray);
       pipeData = PipeData.createPipeData(byteArray);
       if (pipeData instanceof TsFilePipeData) {
+        if (PipeDataNodeAgent.isRatisConsensus()) {
+          return pipeDataInsertionDisabledStatus();
+        }
         TsFilePipeData tsFilePipeData = (TsFilePipeData) pipeData;
         tsFilePipeData.setDatabase(identityInfo.getDatabase());
         handleTsFilePipeData(tsFilePipeData, fileDir);
@@ -264,6 +275,9 @@ public class IoTDBLegacyPipeReceiverAgent {
     final SyncIdentityInfo identityInfo = getCurrentSyncIdentityInfo();
     if (identityInfo == null) {
       throw new TException(DataNodePipeMessages.THRIFT_CONNECTION_IS_NOT_ALIVE);
+    }
+    if (PipeDataNodeAgent.isRatisConsensus()) {
+      return pipeDataInsertionDisabledStatus();
     }
     LOGGER.debug(
         DataNodePipeMessages.INVOKE_TRANSPORTDATA_METHOD_FROM_CLIENT_IP,

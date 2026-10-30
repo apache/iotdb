@@ -270,6 +270,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
     if (isShutdown()
         || !SubscriptionConfig.getInstance().getSubscriptionEnabled()
+        || !PipeDataNodeAgent.isSubscriptionFeatureEnabled()
         || pipeMeta.getRuntimeMeta().getStatus().get() != PipeStatus.RUNNING
         || !PipeStaticMeta.isSubscriptionPipe(staticMeta.getPipeName())
         || !staticMeta

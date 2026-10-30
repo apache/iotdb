@@ -69,6 +69,12 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
   }
 
   @Override
+  protected boolean isPipeDataInsertionEnabled(final PipeStaticMeta pipeStaticMeta) {
+    return pipeStaticMeta.getPipeName().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)
+        || PipeConfigNodeAgent.isPipeDataInsertionEnabled(pipeStaticMeta.getSourceParameters());
+  }
+
+  @Override
   protected void thawRate(final String pipeName, final long creationTime) {
     PipeConfigNodeRemainingTimeMetrics.getInstance().thawRate(pipeName + "_" + creationTime);
   }

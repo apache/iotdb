@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.manager.pipe.agent;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.pipe.agent.plugin.PipeConfigNodePluginAgent;
@@ -56,8 +55,7 @@ public class PipeConfigNodeAgent {
       return true;
     }
     try {
-      return !PipeInclusionOptions.areOptionsEnabled(
-          sourceParameters, PipeSourceConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE);
+      return !PipeInclusionOptions.isDataInsertionIncluded(sourceParameters);
     } catch (final IllegalPathException e) {
       // Let the normal pipe parameter validation report malformed inclusion options.
       return true;
