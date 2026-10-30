@@ -412,6 +412,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     final String pipeName = createPipeRequest.getPipeName();
     LOGGER.info(ProcedureMessages.CREATEPIPEPROCEDUREV2_EXECUTEFROMOPERATEONDATANODES, pipeName);
 
+    persistPendingPipeMetaExceptions(env);
+
     final Map<Integer, TPushPipeMetaResp> respMap =
         pushSinglePipeMetaToDataNodes(pipeStaticMeta, env);
     if (pipeTaskInfo.get().recordDataNodePushPipeMetaExceptions(respMap, pipeStaticMeta)) {

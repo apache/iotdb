@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
@@ -127,11 +128,24 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         isTableModelSet
             ? pipeTaskInfo.get().isStoppedByRuntimeException(pipeName, isTableModel)
             : pipeTaskInfo.get().isStoppedByRuntimeException(pipeName);
-    final PipeStaticMeta pipeStaticMeta =
-        (isTableModelSet
-                ? pipeTaskInfo.get().getPipeMetaByPipeName(pipeName, isTableModel)
-                : pipeTaskInfo.get().getPipeMetaByPipeName(pipeName))
-            .getStaticMeta();
+    final boolean hadPendingPipeMetaExceptions =
+        pipeTaskInfo.get().hasPendingPipeMetaExceptionPersistence();
+    if (hadPendingPipeMetaExceptions) {
+      persistPendingPipeMetaExceptions(env);
+    }
+    final PipeMeta pipeMeta =
+        isTableModelSet
+            ? pipeTaskInfo.get().getPipeMetaByPipeName(pipeName, isTableModel)
+            : pipeTaskInfo.get().getPipeMetaByPipeName(pipeName);
+    // A previous attempt may already have recorded a runtime stop before a failed consensus write
+    // or procedure recovery. Persist that state without treating a STOPPED meta push as a start.
+    if (pipeMeta.getRuntimeMeta().getStatus().get() != PipeStatus.RUNNING) {
+      if (!hadPendingPipeMetaExceptions) {
+        writePipeMetaChangesToConfigNodeConsensus(env);
+      }
+      return;
+    }
+    final PipeStaticMeta pipeStaticMeta = pipeMeta.getStaticMeta();
     final Map<Integer, TPushPipeMetaResp> respMap =
         pushSinglePipeMetaToDataNodes(pipeStaticMeta, env);
     if (pipeTaskInfo.get().recordDataNodePushPipeMetaExceptions(respMap, pipeStaticMeta)) {

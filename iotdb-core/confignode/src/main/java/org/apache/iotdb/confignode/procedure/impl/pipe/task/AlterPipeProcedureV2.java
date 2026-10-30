@@ -377,6 +377,8 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     final String pipeName = alterPipeRequest.getPipeName();
     LOGGER.info(ProcedureMessages.ALTERPIPEPROCEDUREV2_EXECUTEFROMOPERATEONDATANODES, pipeName);
 
+    persistPendingPipeMetaExceptions(env);
+
     final Map<Integer, TPushPipeMetaResp> respMap = pushAlteredPipeMetaToDataNodes(env);
     if (pipeTaskInfo.get().recordDataNodePushPipeMetaExceptions(respMap, updatedPipeStaticMeta)) {
       writePipeMetaChangesToConfigNodeConsensus(env);

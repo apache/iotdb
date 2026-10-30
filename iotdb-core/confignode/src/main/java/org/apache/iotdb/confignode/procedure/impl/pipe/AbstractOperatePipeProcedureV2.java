@@ -776,6 +776,13 @@ public abstract class AbstractOperatePipeProcedureV2
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(response.getMessage());
     }
+    pipeTaskInfo.get().markPipeMetaExceptionsPersisted();
+  }
+
+  protected void persistPendingPipeMetaExceptions(final ConfigNodeProcedureEnv env) {
+    if (pipeTaskInfo.get().hasPendingPipeMetaExceptionPersistence()) {
+      writePipeMetaChangesToConfigNodeConsensus(env);
+    }
   }
 
   protected void pushPipeMetaToDataNodesBestEffort(ConfigNodeProcedureEnv env) {

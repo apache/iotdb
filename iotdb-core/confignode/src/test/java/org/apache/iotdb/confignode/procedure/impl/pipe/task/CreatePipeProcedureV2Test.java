@@ -89,6 +89,65 @@ public class CreatePipeProcedureV2Test {
     assertPipeMetaChangeWasWritten(consensusManager, request.getPipeName(), error);
   }
 
+  @Test
+  public void testRetriesFailurePersistenceBeforeSuccessfulMetaPush() throws Exception {
+    final String pipeName = "failedHistoryPipePersistenceRetry";
+    final TCreatePipeReq request = createPipeRequest(pipeName);
+    final PipeTaskInfo taskInfo = new PipeTaskInfo();
+    final CreatePipeProcedureV2 procedure =
+        new CreatePipeProcedureV2(request, new AtomicReference<>(taskInfo));
+    procedure.executeFromCalculateInfoForTask(Mockito.mock(ConfigNodeProcedureEnv.class));
+    taskInfo.createPipe(procedure.constructPlan());
+
+    final String error = "DataNode failed before returning pipe-specific details";
+    final TPushPipeMetaRespExceptionMessage exceptionMessage =
+        new TPushPipeMetaRespExceptionMessage(request.getPipeName(), error, 1L)
+            .setCreationTime(procedure.getPipeStaticMeta().getCreationTime());
+    final Map<Integer, TPushPipeMetaResp> responses = new HashMap<>();
+    responses.put(
+        1,
+        new TPushPipeMetaResp(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
+            .setExceptionMessages(Collections.singletonList(exceptionMessage)));
+
+    final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);
+    final ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    final ConsensusManager consensusManager = Mockito.mock(ConsensusManager.class);
+    Mockito.when(env.getConfigManager()).thenReturn(configManager);
+    Mockito.when(configManager.getConsensusManager()).thenReturn(consensusManager);
+    Mockito.when(consensusManager.write(Mockito.any(ConfigPhysicalPlan.class)))
+        .thenReturn(new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()))
+        .thenReturn(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    Mockito.when(env.pushSinglePipeMetaToDataNodes(Mockito.any(ByteBuffer.class), Mockito.any()))
+        .thenReturn(responses);
+
+    try {
+      procedure.executeFromOperateOnDataNodes(env);
+      fail("Expected the first attempt to fail its ConfigNode consensus write");
+    } catch (final org.apache.iotdb.pipe.api.exception.PipeException expected) {
+      // The procedure retries this state after the persistence failure.
+    }
+
+    responses.put(
+        1, new TPushPipeMetaResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
+    procedure.executeFromOperateOnDataNodes(env);
+
+    final ArgumentCaptor<ConfigPhysicalPlan> planCaptor =
+        ArgumentCaptor.forClass(ConfigPhysicalPlan.class);
+    Mockito.verify(consensusManager, Mockito.times(2)).write(planCaptor.capture());
+    assertTrue(planCaptor.getAllValues().get(1) instanceof PipeHandleMetaChangePlan);
+    final PipeRuntimeMeta persistedRuntimeMeta =
+        ((PipeHandleMetaChangePlan) planCaptor.getAllValues().get(1))
+            .getPipeMetaList().stream()
+                .filter(meta -> request.getPipeName().equals(meta.getStaticMeta().getPipeName()))
+                .findFirst()
+                .orElseThrow(AssertionError::new)
+                .getRuntimeMeta();
+    assertEquals(PipeStatus.STOPPED, persistedRuntimeMeta.getStatus().get());
+    assertTrue(persistedRuntimeMeta.getIsStoppedByRuntimeException());
+    assertEquals(
+        error, persistedRuntimeMeta.getNodeId2PipeRuntimeExceptionMap().get(1).getMessage());
+  }
+
   private static ConsensusManager mockSuccessfulConsensusWrite(final ConfigNodeProcedureEnv env)
       throws Exception {
     final ConfigManager configManager = Mockito.mock(ConfigManager.class);
