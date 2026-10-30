@@ -154,7 +154,9 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 
 @TreeModel
 @TableModel
-public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEventDiscard {
+@SuppressWarnings("java:S100")
+public abstract class IoTDBSink
+    implements PipeConnector, PipeBatchMetricsSettable, PipeConnectorWithEventDiscard {
 
   private static final String PARSE_URL_ERROR_FORMATTER = PipeMessages.PARSE_URL_ERROR;
   private static final String PARSE_URL_ERROR_MESSAGE = PipeMessages.PARSE_URL_ERROR_MESSAGE;
@@ -714,6 +716,7 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
     return sinkTaskId;
   }
 
+  @Override
   public void setTabletBatchSizeHistogram(Histogram tabletBatchSizeHistogram) {
     // do nothing by default
   }
@@ -722,10 +725,12 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
     // do nothing by default
   }
 
+  @Override
   public void setTsFileBatchSizeHistogram(Histogram tsFileBatchSizeHistogram) {
     // do nothing by default
   }
 
+  @Override
   public void setTabletBatchTimeIntervalHistogram(Histogram tabletBatchTimeIntervalHistogram) {
     // do nothing by default
   }
@@ -734,11 +739,13 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
     // do nothing by default
   }
 
+  @Override
   public void setTsFileBatchTimeIntervalHistogram(Histogram tsFileBatchTimeIntervalHistogram) {
     // do nothing by default
   }
 
-  public void setBatchEventSizeHistogram(Histogram tsFileBatchTimeIntervalHistogram) {
+  @Override
+  public void setBatchEventSizeHistogram(Histogram eventSizeHistogram) {
     // do nothing by default
   }
 }

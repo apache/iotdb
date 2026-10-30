@@ -991,10 +991,14 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                             statement, databasePath.getNodes()[1])));
       }
     }
+    flushSchemaSnapshotStatementBatches(results);
+    return PipeReceiverStatusHandler.getPriorStatus(results);
+  }
+
+  private void flushSchemaSnapshotStatementBatches(final List<TSStatus> results) {
     batchVisitor.getRemainBatches().stream()
         .filter(Optional::isPresent)
         .forEach(statement -> results.add(executeStatementAndClassifyExceptions(statement.get())));
-    return PipeReceiverStatusHandler.getPriorStatus(results);
   }
 
   static boolean shouldLoadTreeSchemaSnapshotDatabase(
