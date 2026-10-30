@@ -34,4 +34,8 @@ public final class DataNodePipeMessages {
   public static final String
       MESSAGE_FAILED_TO_APPEND_LEGACY_PIPE_RECEIVER_FILE_ARG_AT_OFFSET_ARG_WITH_ARG_BYTES_ARG_57428A06 =
           "Failed to append legacy pipe receiver file %s at offset %d with %d bytes: %s";
+
+  public static final String
+      LOG_THIS_CONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTABLETINSERTIONEVENT_IGNORE_ARG_9D8780C0 =
+          "This Connector only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. Ignore {}.";
 }

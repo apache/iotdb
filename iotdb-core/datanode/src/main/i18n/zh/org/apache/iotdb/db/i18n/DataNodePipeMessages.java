@@ -33,4 +33,8 @@ public final class DataNodePipeMessages {
   public static final String
       MESSAGE_FAILED_TO_APPEND_LEGACY_PIPE_RECEIVER_FILE_ARG_AT_OFFSET_ARG_WITH_ARG_BYTES_ARG_57428A06 =
           "追加 legacy pipe receiver 文件 %s 失败，偏移量 %d，写入 %d 字节：%s";
+
+  public static final String
+      LOG_THIS_CONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTABLETINSERTIONEVENT_IGNORE_ARG_9D8780C0 =
+          "此 Connector 仅支持 PipeInsertNodeTabletInsertionEvent 和 PipeRawTabletInsertionEvent。忽略 {}。";
 }
