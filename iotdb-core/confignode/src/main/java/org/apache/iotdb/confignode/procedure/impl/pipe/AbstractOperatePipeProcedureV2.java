@@ -21,9 +21,12 @@ package org.apache.iotdb.confignode.procedure.impl.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeProcedureMetrics;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
@@ -36,6 +39,7 @@ import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.pipe.task.OperatePipeTaskState;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.service.ConfigNode;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -655,14 +659,16 @@ public abstract class AbstractOperatePipeProcedureV2
             .forEach(
                 message -> {
                   // Ignore the timeStamp for simplicity
-                  if (pipeName == null) {
-                    enoughMemoryMessageBuilder.append(
-                        String.format(
-                            "PipeName: %s, Message: %s",
-                            message.getPipeName(), message.getMessage()));
-                  } else if (pipeName.equals(message.getPipeName())) {
-                    enoughMemoryMessageBuilder.append(
-                        String.format("Message: %s", message.getMessage()));
+                  if (isPipeMetaExceptionForPipe(pipeName, message.getPipeName())) {
+                    if (pipeName == null) {
+                      enoughMemoryMessageBuilder.append(
+                          String.format(
+                              "PipeName: %s, Message: %s",
+                              message.getPipeName(), message.getMessage()));
+                    } else {
+                      enoughMemoryMessageBuilder.append(
+                          String.format("Message: %s", message.getMessage()));
+                    }
                   }
                 });
         enoughMemoryMessageBuilder.append(".");
@@ -678,7 +684,7 @@ public abstract class AbstractOperatePipeProcedureV2
       }
 
       if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()) {
-        if (!resp.isSetExceptionMessages()) {
+        if (!resp.isSetExceptionMessages() || resp.getExceptionMessages().isEmpty()) {
           final String statusMessage = resp.getStatus().getMessage();
           exceptionMessageBuilder.append(
               String.format(
@@ -693,16 +699,17 @@ public abstract class AbstractOperatePipeProcedureV2
             .forEach(
                 message -> {
                   // Ignore the timeStamp for simplicity
-                  if (pipeName == null) {
+                  if (isPipeMetaExceptionForPipe(pipeName, message.getPipeName())) {
                     hasException.set(true);
-                    exceptionMessageBuilder.append(
-                        String.format(
-                            "PipeName: %s, Message: %s",
-                            message.getPipeName(), message.getMessage()));
-                  } else if (pipeName.equals(message.getPipeName())) {
-                    hasException.set(true);
-                    exceptionMessageBuilder.append(
-                        String.format("Message: %s", message.getMessage()));
+                    if (pipeName == null) {
+                      exceptionMessageBuilder.append(
+                          String.format(
+                              "PipeName: %s, Message: %s",
+                              message.getPipeName(), message.getMessage()));
+                    } else {
+                      exceptionMessageBuilder.append(
+                          String.format("Message: %s", message.getMessage()));
+                    }
                   }
                 });
 
@@ -722,6 +729,14 @@ public abstract class AbstractOperatePipeProcedureV2
     return exceptionMessageBuilder.toString();
   }
 
+  private static boolean isPipeMetaExceptionForPipe(
+      final String pipeName, final String exceptionPipeName) {
+    return pipeName == null
+        || exceptionPipeName == null
+        || exceptionPipeName.isEmpty()
+        || pipeName.equals(exceptionPipeName);
+  }
+
   protected void pushPipeMetaToDataNodesIgnoreException(ConfigNodeProcedureEnv env) {
     try {
       // Ignore the exceptions reported
@@ -739,6 +754,28 @@ public abstract class AbstractOperatePipeProcedureV2
     }
     return env.pushAllPipeMetaToDataNodesBestEffort(
         pipeMetaBinaryList, this::setPendingDataNodeIds);
+  }
+
+  protected void writePipeMetaChangesToConfigNodeConsensus(final ConfigNodeProcedureEnv env) {
+    final List<PipeMeta> pipeMetaList = new ArrayList<>();
+    for (final PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
+      pipeMetaList.add(pipeMeta);
+    }
+
+    TSStatus response;
+    try {
+      response =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(new PipeHandleMetaChangePlan(pipeMetaList));
+    } catch (final ConsensusException e) {
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
+      response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      response.setMessage(e.getMessage());
+    }
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(response.getMessage());
+    }
   }
 
   protected void pushPipeMetaToDataNodesBestEffort(ConfigNodeProcedureEnv env) {

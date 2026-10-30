@@ -213,6 +213,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
     Map<Integer, TPushPipeMetaResp> respMap = pushPipeMetaToDataNodesBestEffortAndGetResponse(env);
     if (pipeTaskInfo.get().recordDataNodePushPipeMetaExceptions(respMap)) {
+      writePipeMetaChangesToConfigNodeConsensus(env);
       throw new PipeException(
           String.format(
               ProcedureMessages.FAILED_TO_PUSH_PIPE_META_TO_DATANODES_DETAILS,

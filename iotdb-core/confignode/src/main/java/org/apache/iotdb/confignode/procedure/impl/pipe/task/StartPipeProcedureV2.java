@@ -20,10 +20,8 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
@@ -32,6 +30,7 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProced
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -42,8 +41,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
@@ -134,9 +132,12 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                 ? pipeTaskInfo.get().getPipeMetaByPipeName(pipeName, isTableModel)
                 : pipeTaskInfo.get().getPipeMetaByPipeName(pipeName))
             .getStaticMeta();
-    final String exceptionMessage =
-        parsePushPipeMetaExceptionForPipe(
-            pipeName, pushSinglePipeMetaToDataNodes(pipeStaticMeta, env));
+    final Map<Integer, TPushPipeMetaResp> respMap =
+        pushSinglePipeMetaToDataNodes(pipeStaticMeta, env);
+    if (pipeTaskInfo.get().recordDataNodePushPipeMetaExceptions(respMap, pipeStaticMeta)) {
+      writePipeMetaChangesToConfigNodeConsensus(env);
+    }
+    final String exceptionMessage = parsePushPipeMetaExceptionForPipe(pipeName, respMap);
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
           ProcedureMessages.FAILED_TO_START_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED_LATER,
@@ -160,28 +161,6 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
     if (isStoppedByRuntimeException) {
       writePipeMetaChangesToConfigNodeConsensus(env);
-    }
-  }
-
-  private void writePipeMetaChangesToConfigNodeConsensus(final ConfigNodeProcedureEnv env) {
-    final List<PipeMeta> pipeMetaList = new ArrayList<>();
-    for (final PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
-      pipeMetaList.add(pipeMeta);
-    }
-
-    TSStatus response;
-    try {
-      response =
-          env.getConfigManager()
-              .getConsensusManager()
-              .write(new PipeHandleMetaChangePlan(pipeMetaList));
-    } catch (ConsensusException e) {
-      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
-      response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      response.setMessage(e.getMessage());
-    }
-    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(response.getMessage());
     }
   }
 

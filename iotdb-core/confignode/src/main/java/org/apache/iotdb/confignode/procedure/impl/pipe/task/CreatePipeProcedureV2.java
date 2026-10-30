@@ -51,6 +51,7 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -411,9 +412,12 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     final String pipeName = createPipeRequest.getPipeName();
     LOGGER.info(ProcedureMessages.CREATEPIPEPROCEDUREV2_EXECUTEFROMOPERATEONDATANODES, pipeName);
 
-    final String exceptionMessage =
-        parsePushPipeMetaExceptionForPipe(
-            pipeName, pushSinglePipeMetaToDataNodes(pipeStaticMeta, env));
+    final Map<Integer, TPushPipeMetaResp> respMap =
+        pushSinglePipeMetaToDataNodes(pipeStaticMeta, env);
+    if (pipeTaskInfo.get().recordDataNodePushPipeMetaExceptions(respMap, pipeStaticMeta)) {
+      writePipeMetaChangesToConfigNodeConsensus(env);
+    }
+    final String exceptionMessage = parsePushPipeMetaExceptionForPipe(pipeName, respMap);
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
           ProcedureMessages.FAILED_TO_CREATE_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED_LATER,
