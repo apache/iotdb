@@ -19,11 +19,15 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusPrefetchingQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
@@ -34,6 +38,7 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -45,6 +50,20 @@ public class ConsensusSubscriptionBrokerPayloadLimitTest {
   private static final String CONSUMER_ID = "consumer";
   private static final String OTHER_CONSUMER_ID = "otherConsumer";
   private static final String TOPIC_NAME = "topic";
+
+  private final CommonConfig config = CommonDescriptor.getInstance().getConfig();
+  private boolean originalFallbackPollingEnabled;
+
+  @Before
+  public void setUp() {
+    originalFallbackPollingEnabled = config.isSubscriptionConsensusFallbackPollingEnabled();
+    config.setSubscriptionConsensusFallbackPollingEnabled(true);
+  }
+
+  @After
+  public void tearDown() {
+    config.setSubscriptionConsensusFallbackPollingEnabled(originalFallbackPollingEnabled);
+  }
 
   @Test
   public void testPollRequeuesEventThatWouldExceedPayloadLimit() throws Exception {
@@ -124,6 +143,55 @@ public class ConsensusSubscriptionBrokerPayloadLimitTest {
     assertEquals(1, events.size());
     assertSame(assignedEvent, events.get(0));
     verify(fallbackQueue, never()).poll(CONSUMER_ID, null);
+  }
+
+  @Test
+  public void testPollDoesNotBorrowReadyEventWhenFallbackDisabled() throws Exception {
+    config.setSubscriptionConsensusFallbackPollingEnabled(false);
+    final ConsensusSubscriptionBroker broker = new ConsensusSubscriptionBroker(CONSUMER_GROUP_ID);
+    final ConsensusPrefetchingQueue fallbackQueue = mock(ConsensusPrefetchingQueue.class);
+    final ConsensusPrefetchingQueue assignedQueue = mock(ConsensusPrefetchingQueue.class);
+    final SubscriptionEvent fallbackEvent = mock(SubscriptionEvent.class);
+
+    when(fallbackQueue.getConsensusGroupId()).thenReturn(new DataRegionId(1));
+    when(assignedQueue.getConsensusGroupId()).thenReturn(new DataRegionId(2));
+    when(fallbackQueue.getPrefetchedEventCount()).thenReturn(1);
+    when(fallbackQueue.poll(CONSUMER_ID, null)).thenReturn(fallbackEvent);
+    when(fallbackEvent.getCurrentResponseSize()).thenReturn(30);
+    bindQueues(broker, Arrays.asList(fallbackQueue, assignedQueue));
+
+    broker.poll(OTHER_CONSUMER_ID, Collections.singleton(TOPIC_NAME), 60L);
+    final List<SubscriptionEvent> events =
+        broker.poll(CONSUMER_ID, Collections.singleton(TOPIC_NAME), 60L);
+
+    assertTrue(events.isEmpty());
+    verify(assignedQueue).poll(CONSUMER_ID, null);
+    verify(fallbackQueue, never()).poll(CONSUMER_ID, null);
+
+    // The ready event remains available to the region's owner.
+    when(fallbackQueue.poll(OTHER_CONSUMER_ID, null)).thenReturn(fallbackEvent);
+    final List<SubscriptionEvent> ownerEvents =
+        broker.poll(OTHER_CONSUMER_ID, Collections.singleton(TOPIC_NAME), 60L);
+    assertEquals(1, ownerEvents.size());
+    assertSame(fallbackEvent, ownerEvents.get(0));
+  }
+
+  @Test
+  public void testPollWithoutAssignedRegionDoesNotBorrowWhenFallbackDisabled() throws Exception {
+    config.setSubscriptionConsensusFallbackPollingEnabled(false);
+    final ConsensusSubscriptionBroker broker = new ConsensusSubscriptionBroker(CONSUMER_GROUP_ID);
+    final ConsensusPrefetchingQueue queue = mock(ConsensusPrefetchingQueue.class);
+    final SubscriptionEvent event = mock(SubscriptionEvent.class);
+
+    when(queue.getConsensusGroupId()).thenReturn(new DataRegionId(1));
+    when(queue.getPrefetchedEventCount()).thenReturn(1);
+    when(queue.poll(CONSUMER_ID, null)).thenReturn(event);
+    bindQueues(broker, Collections.singletonList(queue));
+
+    broker.poll(OTHER_CONSUMER_ID, Collections.singleton(TOPIC_NAME), 60L);
+    assertTrue(broker.poll(CONSUMER_ID, Collections.singleton(TOPIC_NAME), 60L).isEmpty());
+
+    verify(queue, never()).poll(CONSUMER_ID, null);
   }
 
   @Test
