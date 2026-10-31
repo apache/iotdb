@@ -41,6 +41,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runners.Parameterized;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -63,20 +64,33 @@ public class IoTDBSessionSchemaTemplateIT extends AbstractSchemaIT {
     super(schemaTestMode);
   }
 
+  // Keep one cluster per schema engine mode, and clear its schema between test methods.
+  @Parameterized.BeforeParam
+  public static void before() throws Exception {
+    setUpEnvironment();
+    EnvFactory.getEnv().initClusterEnvironment();
+  }
+
+  @Parameterized.AfterParam
+  public static void after() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    tearDownEnvironment();
+  }
+
   @Before
   public void setUp() throws Exception {
-    setUpEnvironmentBeforeMethod();
-    EnvFactory.getEnv().initClusterEnvironment();
     session = EnvFactory.getEnv().getSessionConnection();
   }
 
   @After
   public void tearDown() throws Exception {
-    if (session != null) {
-      session.close();
+    try {
+      if (session != null) {
+        session.close();
+      }
+    } finally {
+      clearSchema();
     }
-    EnvFactory.getEnv().cleanClusterEnvironment();
-    tearDownEnvironment();
   }
 
   @Test
