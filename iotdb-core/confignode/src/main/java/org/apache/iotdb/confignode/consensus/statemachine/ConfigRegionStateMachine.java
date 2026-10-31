@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -33,6 +32,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
@@ -55,16 +55,15 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /** {@link IStateMachine} for ConfigRegion. */
 public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.EventApi {
@@ -83,17 +82,18 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   private File simpleLogFile;
   private int startIndex;
   private int endIndex;
+  private boolean simpleConsensusWritesDisabled;
 
   private static final String CURRENT_FILE_DIR =
       ConsensusManager.getConfigRegionDir() + File.separator + "current";
   private static final String PROGRESS_FILE_PATH =
       CURRENT_FILE_DIR + File.separator + "log_inprogress_";
   private static final String FILE_PATH = CURRENT_FILE_DIR + File.separator + "log_";
+  private static final String LOG_INPROGRESS_FILE_PREFIX = "log_inprogress_";
+  private static final String LOG_FILE_PREFIX = "log_";
   private static final long LOG_FILE_MAX_SIZE =
       CONF.getConfigNodeSimpleConsensusLogSegmentSizeMax();
   private final TEndPoint currentNodeTEndPoint;
-  private static Pattern LOG_INPROGRESS_PATTERN = Pattern.compile("\\d+");
-  private static Pattern LOG_PATTERN = Pattern.compile("(?<=_)(\\d+)$");
 
   public ConfigRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
     this.executor = executor;
@@ -121,16 +121,32 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   /** Transmit {@link ConfigPhysicalPlan} to {@link ConfigPlanExecutor} */
   protected TSStatus write(ConfigPhysicalPlan plan) {
+    SimpleConsensusPersistResult persistResult = null;
+    if (ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
+      persistResult = persistPlanForSimpleConsensus(plan);
+      final TSStatus persistStatus = persistResult.status;
+      if (persistStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return persistStatus;
+      }
+    }
+
     TSStatus result;
     try {
       result = executor.executeNonQueryPlan(plan);
-    } catch (UnknownPhysicalPlanTypeException e) {
-      LOGGER.error("Execute non-query plan failed", e);
+    } catch (UnknownPhysicalPlanTypeException | RuntimeException e) {
+      LOGGER.error(ConfigNodeMessages.EXECUTE_NON_QUERY_PLAN_FAILED, e);
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
 
-    if (ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
-      writeLogForSimpleConsensus(plan);
+    if (persistResult != null
+        && result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && !rollbackFailedPlanForSimpleConsensus(plan, persistResult)) {
+      final String rollbackFailureMessage =
+          ConfigNodeMessages.FAILED_TO_ROLLBACK_PERSISTED_CONFIGNODE_SIMPLECONSENSUS_LOG;
+      result.setMessage(
+          Optional.ofNullable(result.getMessage())
+              .map(message -> message + " " + rollbackFailureMessage)
+              .orElse(rollbackFailureMessage));
     }
 
     if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -197,7 +213,6 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         PipeConfigNodeAgent.runtime()
             .listener()
             .tryListenToSnapshots(ConfignodeSnapshotParser.getSnapshots());
-        return true;
       } catch (IOException e) {
         if (PipeConfigNodeAgent.runtime().listener().isOpened()) {
           LOGGER.warn(
@@ -205,6 +220,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
               e);
         }
       }
+      return true;
     }
     return false;
   }
@@ -343,6 +359,9 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   @Override
   public void stop() {
+    if (ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
+      closeSimpleLogWriter();
+    }
     // Shutdown leader related service for config pipe
     PipeConfigNodeAgent.runtime().notifyLeaderUnavailable();
   }
@@ -352,56 +371,126 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     return CommonDescriptor.getInstance().getConfig().isReadOnly();
   }
 
-  private void writeLogForSimpleConsensus(ConfigPhysicalPlan plan) {
-    if (simpleLogFile.length() > LOG_FILE_MAX_SIZE) {
-      try {
-        simpleLogWriter.force();
-        File completedFilePath = new File(FILE_PATH + startIndex + "_" + endIndex);
-        Files.move(
-            simpleLogFile.toPath(), completedFilePath.toPath(), StandardCopyOption.ATOMIC_MOVE);
-      } catch (IOException e) {
-        LOGGER.error("Can't force logWriter for ConfigNode SimpleConsensus mode", e);
-      }
-      for (int retry = 0; retry < 5; retry++) {
-        try {
-          simpleLogWriter.close();
-        } catch (IOException e) {
-          LOGGER.warn(
-              "Can't close StandAloneLog for ConfigNode SimpleConsensus mode, "
-                  + "filePath: {}, retry: {}",
-              simpleLogFile.getAbsolutePath(),
-              retry);
-          try {
-            // Sleep 1s and retry
-            TimeUnit.SECONDS.sleep(1);
-          } catch (InterruptedException e2) {
-            Thread.currentThread().interrupt();
-            LOGGER.warn("Unexpected interruption during the close method of logWriter");
-          }
-          continue;
-        }
-        break;
-      }
-      startIndex = endIndex + 1;
-      createLogFile(startIndex);
-    }
-
+  private SimpleConsensusPersistResult persistPlanForSimpleConsensus(ConfigPhysicalPlan plan) {
+    File persistedLogFile = null;
+    long logFileSizeBeforeWrite = 0;
+    int endIndexBeforeWrite = endIndex;
     try {
+      if (simpleConsensusWritesDisabled) {
+        throw new IOException(
+            ConfigNodeMessages
+                .EXCEPTION_CONFIGNODE_SIMPLECONSENSUS_WRITES_ARE_DISABLED_AFTER_A_WAL_CLEANUP_FAILURE_RESTART_IS_REQUIRED_D52F0107);
+      }
+      if (simpleLogWriter == null || simpleLogFile == null) {
+        throw new IOException(ConfigNodeMessages.SIMPLECONSENSUS_LOG_WRITER_IS_NOT_INITIALIZED);
+      }
+
+      if (simpleLogFile.length() > LOG_FILE_MAX_SIZE) {
+        rollSimpleConsensusLogFile();
+      }
+
+      persistedLogFile = simpleLogFile;
+      logFileSizeBeforeWrite = persistedLogFile.length();
+      endIndexBeforeWrite = endIndex;
+
       ByteBuffer buffer = plan.serializeToByteBuffer();
       buffer.position(buffer.limit());
       simpleLogWriter.write(buffer);
+      simpleLogWriter.force();
 
       endIndex = endIndex + 1;
     } catch (Exception e) {
       LOGGER.error(
-          "Can't serialize current ConfigPhysicalPlan for ConfigNode SimpleConsensus mode", e);
+          ConfigNodeMessages
+              .PERSIST_CURRENT_CONFIGPHYSICALPLAN_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE_FAILED,
+          e);
+      TSStatus status =
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage(
+                  String.format(
+                      ConfigNodeMessages.PERSIST_CONFIGNODE_SIMPLECONSENSUS_LOG_FAILED,
+                      e.getMessage()));
+      // A failed append or force may still leave a complete or partial record in the WAL.
+      if (persistedLogFile != null
+          && !rollbackFailedPlanForSimpleConsensus(
+              plan,
+              SimpleConsensusPersistResult.success(
+                  persistedLogFile, logFileSizeBeforeWrite, endIndexBeforeWrite))) {
+        status.setMessage(
+            status.getMessage()
+                + " "
+                + ConfigNodeMessages.FAILED_TO_ROLLBACK_PERSISTED_CONFIGNODE_SIMPLECONSENSUS_LOG);
+      }
+      return SimpleConsensusPersistResult.failure(status);
     }
+    return SimpleConsensusPersistResult.success(
+        persistedLogFile, logFileSizeBeforeWrite, endIndexBeforeWrite);
+  }
+
+  private boolean rollbackFailedPlanForSimpleConsensus(
+      ConfigPhysicalPlan plan, SimpleConsensusPersistResult persistResult) {
+    try {
+      if (!closeSimpleLogWriter()) {
+        throw new IOException(
+            ConfigNodeMessages
+                .EXCEPTION_FAILED_TO_CLOSE_THE_CONFIGNODE_SIMPLECONSENSUS_LOG_WRITER_BC0F417C);
+      }
+      try (FileChannel channel =
+          FileChannel.open(persistResult.logFile.toPath(), StandardOpenOption.WRITE)) {
+        channel.truncate(persistResult.logFileSizeBeforeWrite);
+        channel.force(true);
+      }
+      simpleLogFile = persistResult.logFile;
+      simpleLogWriter = new LogWriter(simpleLogFile, false);
+      endIndex = persistResult.endIndexBeforeWrite;
+      return true;
+    } catch (IOException e) {
+      // Never append past an entry whose removal could not be made durable.
+      simpleConsensusWritesDisabled = true;
+      LOGGER.error(
+          ConfigNodeMessages
+              .ROLLBACK_FAILED_CONFIGPHYSICALPLAN_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE_FAILED,
+          plan.getType(),
+          persistResult.logFile,
+          persistResult.logFileSizeBeforeWrite,
+          persistResult.endIndexBeforeWrite,
+          e);
+      return false;
+    }
+  }
+
+  private void rollSimpleConsensusLogFile() throws IOException {
+    simpleLogWriter.force();
+    if (!closeSimpleLogWriter()) {
+      simpleConsensusWritesDisabled = true;
+      throw new IOException(
+          ConfigNodeMessages
+              .EXCEPTION_FAILED_TO_CLOSE_THE_CONFIGNODE_SIMPLECONSENSUS_LOG_WRITER_BC0F417C);
+    }
+    try {
+      Files.move(
+          simpleLogFile.toPath(),
+          simpleLogFile.toPath().resolveSibling(LOG_FILE_PREFIX + startIndex + "_" + endIndex),
+          StandardCopyOption.ATOMIC_MOVE);
+    } catch (IOException e) {
+      // The source file and indexes are unchanged when renaming fails. Reopen it for retries.
+      try {
+        simpleLogWriter = new LogWriter(simpleLogFile, false);
+      } catch (IOException reopenException) {
+        simpleConsensusWritesDisabled = true;
+        e.addSuppressed(reopenException);
+      }
+      throw e;
+    }
+    startIndex = endIndex + 1;
+    createLogFile(startIndex);
   }
 
   private void initStandAloneConfigNode() {
     File dir = new File(CURRENT_FILE_DIR);
     dir.mkdirs();
     String[] list = new File(CURRENT_FILE_DIR).list();
+    endIndex = 0;
     if (list != null && list.length != 0) {
       Arrays.sort(list, new FileComparator());
       for (String logFileName : list) {
@@ -418,7 +507,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
           continue;
         }
 
-        startIndex = endIndex;
+        final int recoveredStartIndex = parseStartIndex(logFileName);
         while (logReader.hasNext()) {
           endIndex++;
           // Read and re-serialize the PhysicalPlan
@@ -436,33 +525,13 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
           }
         }
         logReader.close();
-      }
-    } else {
-      startIndex = 0;
-      endIndex = 0;
-    }
-    startIndex = startIndex + 1;
-    createLogFile(endIndex);
-
-    ScheduledExecutorService simpleConsensusThread =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            ThreadName.CONFIG_NODE_SIMPLE_CONSENSUS_WAL_FLUSH.getName());
-    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-        simpleConsensusThread,
-        this::flushWALForSimpleConsensus,
-        0,
-        CONF.getForceWalPeriodForConfigNodeSimpleInMs(),
-        TimeUnit.MILLISECONDS);
-  }
-
-  private void flushWALForSimpleConsensus() {
-    if (simpleLogWriter != null) {
-      try {
-        simpleLogWriter.force();
-      } catch (IOException e) {
-        LOGGER.error("Can't force logWriter for ConfigNode flushWALForSimpleConsensus", e);
+        if (isInProgressLogFile(logFileName)) {
+          sealRecoveredInProgressLogFile(logFile, recoveredStartIndex, endIndex);
+        }
       }
     }
+    startIndex = endIndex + 1;
+    createLogFile(startIndex);
   }
 
   private void createLogFile(int startIndex) {
@@ -493,18 +562,127 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     }
   }
 
-  static long parseEndIndex(String filename) {
-    if (filename.startsWith("log_inprogress_")) {
-      Matcher matcher = LOG_INPROGRESS_PATTERN.matcher(filename);
-      if (matcher.find()) {
-        return Long.parseLong(matcher.group());
+  private void sealRecoveredInProgressLogFile(
+      File logFile, int recoveredStartIndex, int recoveredEndIndex) {
+    try {
+      if (recoveredStartIndex > recoveredEndIndex) {
+        Files.deleteIfExists(logFile.toPath());
+        return;
       }
-    } else {
-      Matcher matcher = LOG_PATTERN.matcher(filename);
-      if (matcher.find()) {
-        return Long.parseLong(matcher.group());
+      Files.move(
+          logFile.toPath(),
+          new File(FILE_PATH + recoveredStartIndex + "_" + recoveredEndIndex).toPath(),
+          StandardCopyOption.ATOMIC_MOVE);
+    } catch (IOException e) {
+      LOGGER.warn(
+          ConfigNodeMessages.SEAL_RECOVERED_CONFIGNODE_SIMPLECONSENSUS_LOG_FAILED, logFile, e);
+    }
+  }
+
+  private boolean isInProgressLogFile(String filename) {
+    return filename.startsWith(LOG_INPROGRESS_FILE_PREFIX);
+  }
+
+  private boolean closeSimpleLogWriter() {
+    if (simpleLogWriter == null) {
+      return true;
+    }
+    for (int retry = 0; retry < 5; retry++) {
+      try {
+        simpleLogWriter.close();
+        simpleLogWriter = null;
+        return true;
+      } catch (IOException e) {
+        LOGGER.warn(
+            ConfigNodeMessages
+                .LOG_CONFIGREGION_UPDATE_FAILED_TO_CLOSE_THE_CONFIGNODE_SIMPLECONSENSUS_LOG_FILEPATH_ARG_RETRY_ARG_188A702E,
+            simpleLogFile == null ? null : simpleLogFile.getAbsolutePath(),
+            retry);
+        try {
+          TimeUnit.SECONDS.sleep(1);
+        } catch (InterruptedException e2) {
+          Thread.currentThread().interrupt();
+          LOGGER.warn(
+              ConfigNodeMessages.UNEXPECTED_INTERRUPTION_DURING_THE_CLOSE_METHOD_OF_LOGWRITER);
+          break;
+        }
       }
     }
-    return 0;
+    return false;
+  }
+
+  static long parseEndIndex(String filename) {
+    final String endIndexString;
+    if (filename.startsWith(LOG_INPROGRESS_FILE_PREFIX)) {
+      endIndexString = filename.substring(LOG_INPROGRESS_FILE_PREFIX.length());
+    } else if (filename.startsWith(LOG_FILE_PREFIX)) {
+      final int lastSeparatorIndex = filename.lastIndexOf('_');
+      if (lastSeparatorIndex < LOG_FILE_PREFIX.length()) {
+        return 0;
+      }
+      endIndexString = filename.substring(lastSeparatorIndex + 1);
+    } else {
+      return 0;
+    }
+
+    return isDigits(endIndexString) ? Long.parseLong(endIndexString) : 0;
+  }
+
+  static int parseStartIndex(String filename) {
+    final String startIndexString;
+    if (filename.startsWith(LOG_INPROGRESS_FILE_PREFIX)) {
+      startIndexString = filename.substring(LOG_INPROGRESS_FILE_PREFIX.length());
+    } else if (filename.startsWith(LOG_FILE_PREFIX)) {
+      final int lastSeparatorIndex = filename.lastIndexOf('_');
+      if (lastSeparatorIndex <= LOG_FILE_PREFIX.length()) {
+        return 0;
+      }
+      startIndexString = filename.substring(LOG_FILE_PREFIX.length(), lastSeparatorIndex);
+    } else {
+      return 0;
+    }
+
+    return isDigits(startIndexString) ? Integer.parseInt(startIndexString) : 0;
+  }
+
+  private static boolean isDigits(String value) {
+    if (value.isEmpty()) {
+      return false;
+    }
+    for (int i = 0; i < value.length(); i++) {
+      if (!Character.isDigit(value.charAt(i))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static class SimpleConsensusPersistResult {
+
+    private final TSStatus status;
+    private final File logFile;
+    private final long logFileSizeBeforeWrite;
+    private final int endIndexBeforeWrite;
+
+    private SimpleConsensusPersistResult(
+        TSStatus status, File logFile, long logFileSizeBeforeWrite, int endIndexBeforeWrite) {
+      this.status = status;
+      this.logFile = logFile;
+      this.logFileSizeBeforeWrite = logFileSizeBeforeWrite;
+      this.endIndexBeforeWrite = endIndexBeforeWrite;
+    }
+
+    private static SimpleConsensusPersistResult success(
+        File logFile, long logFileSizeBeforeWrite, int endIndexBeforeWrite) {
+      return new SimpleConsensusPersistResult(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          logFile,
+          logFileSizeBeforeWrite,
+          endIndexBeforeWrite);
+    }
+
+    private static SimpleConsensusPersistResult failure(TSStatus status) {
+      return new SimpleConsensusPersistResult(status, null, 0, 0);
+    }
   }
 }
