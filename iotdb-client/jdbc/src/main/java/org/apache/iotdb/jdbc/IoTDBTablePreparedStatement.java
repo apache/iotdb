@@ -92,6 +92,18 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       ZoneId zoneId,
       Charset charset)
       throws SQLException {
+    this(connection, client, sessionId, requireNonNullSql(sql), zoneId, charset, true);
+  }
+
+  private IoTDBTablePreparedStatement(
+      IoTDBConnection connection,
+      Iface client,
+      Long sessionId,
+      String sql,
+      ZoneId zoneId,
+      Charset charset,
+      boolean validated)
+      throws SQLException {
     super(connection, client, sessionId, zoneId, charset);
     this.sql = sql;
     this.preparedStatementName = generateStatementName();
@@ -116,12 +128,19 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
           parameterTypes[i] = Types.NULL;
         }
       } catch (TException | StatementExecutionException e) {
-        throw new SQLException(JdbcMessages.FAILED_TO_PREPARE_STATEMENT + e.getMessage(), e);
+        SQLException prepareException =
+            new SQLException(JdbcMessages.FAILED_TO_PREPARE_STATEMENT + e.getMessage(), e);
+        try {
+          closeClientOperation();
+        } catch (SQLException closeException) {
+          prepareException.addSuppressed(closeException);
+        }
+        throw prepareException;
       }
     } else {
       // For non-query statements, only keep text parameters for client-side substitution.
       this.serverSidePrepared = false;
-      this.parameterCount = 0;
+      this.parameterCount = splitSqlStatement(sql).size() - 1;
       this.parameterValues = null;
       this.parameterTypes = null;
     }
@@ -134,6 +153,13 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     this(connection, client, sessionId, sql, zoneId, TSFileConfig.STRING_CHARSET);
   }
 
+  private static String requireNonNullSql(String sql) throws SQLException {
+    if (sql == null) {
+      throw new SQLException(JdbcMessages.EXCEPTION_SQL_STATEMENT_CANNOT_BE_NULL_163667FF);
+    }
+    return sql;
+  }
+
   private String generateStatementName() {
     // StatementId is unique in directly connected DataNode
     return "jdbc_ps_" + getStmtId();
@@ -141,11 +167,13 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public void addBatch() throws SQLException {
+    checkConnection("addBatch");
     super.addBatch(createCompleteSql(sql, parameters));
   }
 
   @Override
-  public void clearParameters() {
+  public void clearParameters() throws SQLException {
+    checkConnection("clearParameters");
     this.parameters.clear();
     if (serverSidePrepared) {
       for (int i = 0; i < parameterCount; i++) {
@@ -157,10 +185,11 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public boolean execute() throws SQLException {
+    checkConnection("execute");
     if (isQueryStatement(sql)) {
-      TSExecuteStatementResp resp = executeInternal();
-      return resp.isSetQueryDataSet() || resp.isSetQueryResult();
+      return processQueryResult(executeInternal()) != null;
     } else {
+      closeCurrentResultSet();
       return super.execute(createCompleteSql(sql, parameters));
     }
   }
@@ -175,16 +204,20 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public ResultSet executeQuery() throws SQLException {
+    checkConnection("executeQuery");
     TSExecuteStatementResp resp = executeInternal();
     return processQueryResult(resp);
   }
 
   @Override
   public int executeUpdate() throws SQLException {
+    checkConnection("executeUpdate");
+    closeCurrentResultSet();
     return super.executeUpdate(createCompleteSql(sql, parameters));
   }
 
   private TSExecuteStatementResp executeInternal() throws SQLException {
+    closeCurrentResultSet();
     // Validate all parameters are set
     for (int i = 0; i < parameterCount; i++) {
       if (parameterTypes[i] == Types.NULL
@@ -217,31 +250,51 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   }
 
   private ResultSet processQueryResult(TSExecuteStatementResp resp) throws SQLException {
+    long queryId = resp.isSetQueryId() ? resp.getQueryId() : -1;
     if (resp.isSetQueryDataSet() || resp.isSetQueryResult()) {
-      this.resultSet =
-          new IoTDBJDBCResultSet(
-              this,
-              resp.getColumns(),
-              resp.getDataTypeList(),
-              resp.columnNameIndexMap,
-              resp.ignoreTimeStamp,
-              client,
-              sql,
-              resp.queryId,
-              sessionId,
-              resp.queryResult,
-              resp.tracingInfo,
-              (long) queryTimeout * 1000,
-              resp.isSetMoreData() && resp.isMoreData(),
-              zoneId);
+      setQueryId(queryId);
+      if (resp.queryResult == null) {
+        SQLException exception = new SQLException(JdbcMessages.QUERY_RESULT_SHOULD_NOT_BE_NULL);
+        throw closeQueryOperationOnResultSetCreationFailure(queryId, exception);
+      }
+      try {
+        this.resultSet =
+            new IoTDBJDBCResultSet(
+                this,
+                resp.getColumns(),
+                resp.getDataTypeList(),
+                resp.columnNameIndexMap,
+                resp.ignoreTimeStamp,
+                client,
+                sql,
+                queryId,
+                sessionId,
+                resp.queryResult,
+                resp.tracingInfo,
+                (long) queryTimeout * 1000,
+                resp.isSetMoreData() && resp.isMoreData(),
+                zoneId);
+      } catch (SQLException | RuntimeException e) {
+        throw closeQueryOperationOnResultSetCreationFailure(queryId, e);
+      }
       return resultSet;
+    }
+    if (queryId != -1) {
+      setQueryId(queryId);
+      closeQueryOperation(queryId);
     }
     return null;
   }
 
   @Override
   public void close() throws SQLException {
+    SQLException closeException = null;
     if (!isClosed() && serverSidePrepared) {
+      try {
+        closeCurrentResultSet();
+      } catch (SQLException e) {
+        closeException = mergeSQLException(closeException, e);
+      }
       // Deallocate prepared statement on server only if it was prepared server-side
       TSDeallocatePreparedReq req = new TSDeallocatePreparedReq();
       req.setSessionId(sessionId);
@@ -256,11 +309,19 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
         logger.warn(JdbcMessages.ERROR_DEALLOCATING_PREPARED_STATEMENT, e);
       }
     }
-    super.close();
+    try {
+      super.close();
+    } catch (SQLException e) {
+      closeException = mergeSQLException(closeException, e);
+    }
+    if (closeException != null) {
+      throw closeException;
+    }
   }
 
   @Override
   public ResultSetMetaData getMetaData() throws SQLException {
+    checkConnection("getMetaData");
     if (resultSet != null) {
       return resultSet.getMetaData();
     }
@@ -268,20 +329,24 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   }
 
   @Override
-  public ParameterMetaData getParameterMetaData() {
+  public ParameterMetaData getParameterMetaData() throws SQLException {
+    checkConnection("getParameterMetaData");
     return new ParameterMetaData() {
       @Override
-      public int getParameterCount() {
+      public int getParameterCount() throws SQLException {
+        checkConnection("getParameterMetaData");
         return parameterCount;
       }
 
       @Override
-      public int isNullable(int param) {
+      public int isNullable(int param) throws SQLException {
+        checkParameterMetadataIndex(param);
         return ParameterMetaData.parameterNullableUnknown;
       }
 
       @Override
-      public boolean isSigned(int param) {
+      public boolean isSigned(int param) throws SQLException {
+        checkParameterMetadataIndex(param);
         if (!serverSidePrepared) {
           return false;
         }
@@ -293,17 +358,20 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       }
 
       @Override
-      public int getPrecision(int param) {
+      public int getPrecision(int param) throws SQLException {
+        checkParameterMetadataIndex(param);
         return 0;
       }
 
       @Override
-      public int getScale(int param) {
+      public int getScale(int param) throws SQLException {
+        checkParameterMetadataIndex(param);
         return 0;
       }
 
       @Override
-      public int getParameterType(int param) {
+      public int getParameterType(int param) throws SQLException {
+        checkParameterMetadataIndex(param);
         if (!serverSidePrepared) {
           return Types.NULL;
         }
@@ -311,28 +379,33 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       }
 
       @Override
-      public String getParameterTypeName(int param) {
+      public String getParameterTypeName(int param) throws SQLException {
+        checkParameterMetadataIndex(param);
         return null;
       }
 
       @Override
-      public String getParameterClassName(int param) {
+      public String getParameterClassName(int param) throws SQLException {
+        checkParameterMetadataIndex(param);
         return null;
       }
 
       @Override
-      public int getParameterMode(int param) {
+      public int getParameterMode(int param) throws SQLException {
+        checkParameterMetadataIndex(param);
         return ParameterMetaData.parameterModeIn;
       }
 
       @Override
-      public <T> T unwrap(Class<T> iface) {
-        return null;
+      public <T> T unwrap(Class<T> iface) throws SQLException {
+        checkConnection("getParameterMetaData");
+        return JdbcWrapperUtils.unwrap(this, iface);
       }
 
       @Override
-      public boolean isWrapperFor(Class<?> iface) {
-        return false;
+      public boolean isWrapperFor(Class<?> iface) throws SQLException {
+        checkConnection("getParameterMetaData");
+        return JdbcWrapperUtils.isWrapperFor(this, iface);
       }
     };
   }
@@ -415,6 +488,10 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public void setBytes(int parameterIndex, byte[] x) throws SQLException {
+    if (x == null) {
+      setNull(parameterIndex, Types.BINARY);
+      return;
+    }
     checkParameterIndex(parameterIndex);
     setPreparedParameterValue(parameterIndex, x, Types.BINARY);
     // Format as hexadecimal string literal for SQL: X'0A0B0C'
@@ -423,6 +500,10 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public void setDate(int parameterIndex, Date x) throws SQLException {
+    if (x == null) {
+      setNull(parameterIndex, Types.DATE);
+      return;
+    }
     setLocalDate(parameterIndex, x.toLocalDate());
   }
 
@@ -441,6 +522,10 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public void setTime(int parameterIndex, Time x) throws SQLException {
+    if (x == null) {
+      setNull(parameterIndex, Types.TIME);
+      return;
+    }
     checkParameterIndex(parameterIndex);
     try {
       long time = x.getTime();
@@ -471,6 +556,10 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public void setTimestamp(int parameterIndex, Timestamp x) throws SQLException {
+    if (x == null) {
+      setNull(parameterIndex, Types.TIMESTAMP);
+      return;
+    }
     checkParameterIndex(parameterIndex);
     // The server reads time values in its own precision (ms, us or ns)
     long time = toServerTime(x);
@@ -507,6 +596,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public void setObject(int parameterIndex, Object x) throws SQLException {
+    checkConnection(JdbcMessages.MESSAGE_SET_PARAMETER_CFE301D0);
     if (x == null) {
       setNull(parameterIndex, Types.NULL);
     } else if (x instanceof String) {
@@ -552,16 +642,28 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   }
 
   private void checkParameterIndex(int index) throws SQLException {
-    if (!serverSidePrepared) {
-      return;
-    }
+    checkConnection(JdbcMessages.MESSAGE_SET_PARAMETER_CFE301D0);
+    checkParameterIndexRange(index);
+  }
+
+  private SQLException unsupportedParameterOperation(int index, String message)
+      throws SQLException {
+    checkConnection(JdbcMessages.MESSAGE_SET_PARAMETER_CFE301D0);
+    return new SQLException(message);
+  }
+
+  private void checkParameterMetadataIndex(int index) throws SQLException {
+    checkConnection("getParameterMetaData");
+    checkParameterIndexRange(index);
+  }
+
+  private void checkParameterIndexRange(int index) throws SQLException {
     if (index < 1 || index > parameterCount) {
       throw new SQLException(
-          JdbcMessages.EXCEPTION_PARAMETER_INDEX_OUT_RANGE_3DD066E0
-              + index
-              + JdbcMessages.EXCEPTION_EXPECTED_1_3F4E8D6E
-              + parameterCount
-              + JdbcMessages.RIGHT_PARENTHESIS);
+          String.format(
+              JdbcMessages.EXCEPTION_PARAMETER_INDEX_OUT_OF_RANGE_ARG_EXPECTED_1_ARG_65BF83C6,
+              index,
+              parameterCount));
     }
   }
 
@@ -579,36 +681,44 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public void setArray(int parameterIndex, Array x) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setAsciiStream(int parameterIndex, InputStream x) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setAsciiStream(int parameterIndex, InputStream x, int length) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setAsciiStream(int parameterIndex, InputStream x, long length) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setBigDecimal(int parameterIndex, BigDecimal x) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setBinaryStream(int parameterIndex, InputStream x) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setBinaryStream(int parameterIndex, InputStream x, int length) throws SQLException {
+    checkParameterIndex(parameterIndex);
+    if (length < 0) {
+      throw new SQLException(JdbcMessages.EXCEPTION_LENGTH_MUST_BE_0_53AF26C8);
+    }
+    if (x == null) {
+      setNull(parameterIndex, Types.BINARY);
+      return;
+    }
     try {
       byte[] bytes = ReadWriteIOUtils.readBytes(x, length);
       setBytes(parameterIndex, bytes);
@@ -619,106 +729,106 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public void setBinaryStream(int parameterIndex, InputStream x, long length) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setBlob(int parameterIndex, Blob x) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setBlob(int parameterIndex, InputStream inputStream) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setBlob(int parameterIndex, InputStream inputStream, long length)
       throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setByte(int parameterIndex, byte x) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setCharacterStream(int parameterIndex, Reader reader) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setCharacterStream(int parameterIndex, Reader reader, int length)
       throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setCharacterStream(int parameterIndex, Reader reader, long length)
       throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setClob(int parameterIndex, Clob x) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setClob(int parameterIndex, Reader reader) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setClob(int parameterIndex, Reader reader, long length) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setNCharacterStream(int parameterIndex, Reader value) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setNCharacterStream(int parameterIndex, Reader value, long length)
       throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setNClob(int parameterIndex, NClob value) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setNClob(int parameterIndex, Reader reader) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setNClob(int parameterIndex, Reader reader, long length) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setNString(int parameterIndex, String value) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setRef(int parameterIndex, Ref x) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setRowId(int parameterIndex, RowId x) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    throw unsupportedParameterOperation(parameterIndex, METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public void setSQLXML(int parameterIndex, SQLXML xmlObject) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    throw unsupportedParameterOperation(parameterIndex, METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
@@ -728,12 +838,12 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public void setURL(int parameterIndex, URL x) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setUnicodeStream(int parameterIndex, InputStream x, int length) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    throw unsupportedParameterOperation(parameterIndex, Constant.PARAMETER_SUPPORTED);
   }
 
   // ================== Helper Methods for Backward Compatibility ==================
@@ -747,7 +857,8 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       if (!parameters.containsKey(i)) {
         throw new SQLException(String.format(JdbcMessages.PARAMETER_UNSET, i));
       }
-      newSql.append(parameters.get(i));
+      String parameter = parameters.get(i);
+      newSql.append(parameter == null ? "NULL" : parameter);
       newSql.append(parts.get(i));
     }
     return newSql.toString();

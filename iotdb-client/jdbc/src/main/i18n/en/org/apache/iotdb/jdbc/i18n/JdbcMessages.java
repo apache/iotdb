@@ -23,7 +23,7 @@ public final class JdbcMessages {
 
   // IoTDBDriver
   public static final String REGISTER_DRIVER_ERROR =
-      "Error occurs when registering TsFile driver";
+      "Error occurs when registering IoTDB driver";
   public static final String METHOD_NOT_SUPPORTED = "Method not supported";
 
   // StringUtils
@@ -179,6 +179,65 @@ public final class JdbcMessages {
   public static final String RECONNECT_INTERRUPTED = "reconnect is interrupted.";
   public static final String SINGLE_QUOTE = "'";
   public static final String RIGHT_PARENTHESIS = ")";
+
+  public static final String EXCEPTION_SCHEMA_CANNOT_BE_NULL_E93264A3 =
+      "schema cannot be null";
+  public static final String EXCEPTION_TIMEOUT_MUST_BE_0_80BF04B8 =
+      "timeout must be >= 0";
+  public static final String EXCEPTION_SQL_STATEMENT_CANNOT_BE_NULL_163667FF =
+      "SQL statement cannot be null";
+  public static final String EXCEPTION_INVALID_TIME_ZONE_ARG_625F2BE2 =
+      "Invalid time_zone: %s";
+  public static final String EXCEPTION_PORT_MUST_BE_BETWEEN_0_AND_65535_F641E74D =
+      "port must be between 0 and 65535";
+  public static final String EXCEPTION_LOGINTIMEOUT_MUST_BE_0_A213D684 =
+      "loginTimeout must be >= 0";
+  public static final String EXCEPTION_CONNECTION_ERROR_PLEASE_CHECK_WHETHER_THE_NETWORK_IS_AVAILABLE_OR_THE_SERVER_HAS_STARTED_64F1DA01 =
+      "Connection Error, please check whether the network is available or the server has started.";
+  public static final String EXCEPTION_RESULTSET_HAS_BEEN_CLOSED_45F3BF52 =
+      "ResultSet has been closed";
+  public static final String EXCEPTION_PARAMETER_INDEX_OUT_OF_RANGE_ARG_EXPECTED_1_ARG_65BF83C6 =
+      "Parameter index out of range: %d (expected 1-%d)";
+  public static final String EXCEPTION_LENGTH_MUST_BE_0_53AF26C8 =
+      "length must be >= 0";
+  public static final String EXCEPTION_CANNOT_ARG_AFTER_STATEMENT_HAS_BEEN_CLOSED_A35AD40C =
+      "Cannot %s after statement has been closed!";
+  public static final String EXCEPTION_INVALID_VALUE_FOR_JDBC_CONNECTION_PROPERTY_ARG_ARG_2193D0EE =
+      "Invalid value for JDBC connection property %s: %s";
+  public static final String MESSAGE_SET_PARAMETER_CFE301D0 =
+      "set parameter";
+  public static final String MESSAGE_USER_NAME_FOR_AUTHENTICATION_77DCB7F1 =
+      "User name for authentication.";
+  public static final String MESSAGE_PASSWORD_FOR_AUTHENTICATION_4D6EDD1E =
+      "Password for authentication.";
+  public static final String MESSAGE_THRIFT_DEFAULT_BUFFER_CAPACITY_IN_BYTES_58ED1E5F =
+      "Thrift default buffer capacity in bytes.";
+  public static final String MESSAGE_THRIFT_MAX_FRAME_SIZE_IN_BYTES_158D5D1C =
+      "Thrift max frame size in bytes.";
+  public static final String MESSAGE_CLIENT_COMPATIBILITY_VERSION_9EE5FB89 =
+      "Client compatibility version.";
+  public static final String MESSAGE_NETWORK_TIMEOUT_IN_MILLISECONDS_2443578F =
+      "Network timeout in milliseconds.";
+  public static final String MESSAGE_CONNECTION_TIME_ZONE_9B0E092D =
+      "Connection time zone.";
+  public static final String MESSAGE_CONNECTION_CHARSET_F72FB844 =
+      "Connection charset.";
+  public static final String MESSAGE_WHETHER_TO_ENABLE_SSL_F2608B05 =
+      "Whether to enable SSL.";
+  public static final String MESSAGE_WHETHER_TO_ENABLE_RPC_THRIFT_COMPRESSION_C65D1138 =
+      "Whether to enable RPC thrift compression.";
+  public static final String MESSAGE_SSL_TRUST_STORE_PATH_1D832EA9 =
+      "SSL trust store path.";
+  public static final String MESSAGE_SSL_TRUST_STORE_PASSWORD_CDFFB811 =
+      "SSL trust store password.";
+  public static final String MESSAGE_SSL_KEY_STORE_PATH_24E4E925 =
+      "SSL key store path.";
+  public static final String MESSAGE_SSL_KEY_STORE_PASSWORD_8D36E9E7 =
+      "SSL key store password.";
+  public static final String MESSAGE_SSL_PROTOCOL_7ED42B2B =
+      "SSL protocol.";
+  public static final String MESSAGE_SQL_DIALECT_FOR_THE_CONNECTION_35A5F380 =
+      "SQL dialect for the connection.";
 
   private JdbcMessages() {}
   // ---------------------------------------------------------------------------

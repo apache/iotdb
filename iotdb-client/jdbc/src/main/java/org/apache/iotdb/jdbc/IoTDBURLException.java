@@ -28,4 +28,8 @@ public class IoTDBURLException extends SQLException {
   public IoTDBURLException(String reason) {
     super(reason);
   }
+
+  public IoTDBURLException(String reason, Throwable cause) {
+    super(reason, cause);
+  }
 }

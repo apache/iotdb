@@ -51,11 +51,6 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDatabaseMetadata.class);
 
-  private static final String DATABASE_VERSION =
-      IoTDBDatabaseMetadata.class.getPackage().getImplementationVersion() != null
-          ? IoTDBDatabaseMetadata.class.getPackage().getImplementationVersion()
-          : "UNKNOWN";
-
   private static final String[] allIotdbSQLKeywords = {
     "ALTER",
     "ADD",
@@ -252,7 +247,7 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
 
   @Override
   public String getDriverVersion() throws SQLException {
-    return DATABASE_VERSION;
+    return Config.DRIVER_VERSION;
   }
 
   @Override
@@ -663,8 +658,11 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
   @Override
   public String toString() {
     try {
+      checkConnectionOpen();
       return getMetadataInJsonFunc();
     } catch (IoTDBSQLException e) {
+      LOGGER.error(JdbcMessages.FAILED_TO_FETCH_METADATA_JSON, e);
+    } catch (SQLException e) {
       LOGGER.error(JdbcMessages.FAILED_TO_FETCH_METADATA_JSON, e);
     } catch (TException e) {
       boolean flag = connection.reconnect();
@@ -694,6 +692,7 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
    * recommend using getMetadataInJson() instead of toString()
    */
   public String getMetadataInJson() throws SQLException {
+    checkConnectionOpen();
     try {
       return getMetadataInJsonFunc();
     } catch (TException e) {
