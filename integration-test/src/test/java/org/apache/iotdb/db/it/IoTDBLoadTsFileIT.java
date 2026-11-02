@@ -815,7 +815,7 @@ public class IoTDBLoadTsFileIT {
         long failedMarkerOffset = -1;
         for (int i = 0; i < sources.length; i++) {
           final long groupMarkerOffset =
-              writeFallbackSource(sources[i], devicePrefix + ".d" + i, i == 1, i == 2);
+              writeFallbackSource(sources[i], devicePrefix + ".d" + i, i == 1, i > 0);
           if (i == 1) {
             recoverableMarkerOffset = groupMarkerOffset;
           } else if (i == 2) {
@@ -840,15 +840,19 @@ public class IoTDBLoadTsFileIT {
           Assert.assertFalse(
               failure.getMessage(), failure.getMessage().contains(recoverable.getName()));
           assertFallbackRows(statement, devicePrefix + ".d0");
-          assertFallbackRows(statement, devicePrefix + ".d1");
-          Assert.assertTrue(
-              EnvFactory.getEnv().getDataNodeWrapperList().stream()
-                  .anyMatch(
-                      dataNodeWrapper ->
-                          dataNodeWrapper.logContains(
-                              "Load: Successfully converted TsFile "
-                                  + recoverable.getAbsolutePath()
-                                  + " into tablets and inserted.")));
+          assertFallbackRows(statement, devicePrefix + ".d1", fallbackPartitionTimestamps());
+          boolean foundConversionLog = false;
+          for (final DataNodeWrapper dataNodeWrapper :
+              EnvFactory.getEnv().getDataNodeWrapperList()) {
+            if (dataNodeWrapper.logContains(
+                "Load: Successfully converted TsFile "
+                    + recoverable.getAbsolutePath()
+                    + " into tablets and inserted.")) {
+              foundConversionLog = true;
+              break;
+            }
+          }
+          Assert.assertTrue(foundConversionLog);
           assertFallbackSourceExists(normal, !delete);
           assertFallbackSourceExists(recoverable, !delete);
           assertFallbackSourceExists(failed, true);
@@ -858,7 +862,7 @@ public class IoTDBLoadTsFileIT {
           statement.execute(fallbackLoadSql(failed, delete));
           assertFallbackRows(statement, devicePrefix + ".d2", fallbackPartitionTimestamps());
           assertFallbackRows(statement, devicePrefix + ".d0");
-          assertFallbackRows(statement, devicePrefix + ".d1");
+          assertFallbackRows(statement, devicePrefix + ".d1", fallbackPartitionTimestamps());
           assertFallbackSourceExists(failed, !delete);
         }
       } finally {
