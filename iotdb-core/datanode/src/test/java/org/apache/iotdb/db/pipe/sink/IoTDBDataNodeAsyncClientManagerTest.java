@@ -20,16 +20,89 @@
 package org.apache.iotdb.db.pipe.sink;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeAsyncClientManager;
+import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeSyncClientManager;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 public class IoTDBDataNodeAsyncClientManagerTest {
+
+  @Test
+  public void testAsyncBorrowDoesNotUseLeaderFromAnotherReceiver() throws Exception {
+    final TEndPoint firstReceiver = new TEndPoint("127.0.0.1", 10667);
+    final TEndPoint secondReceiver = new TEndPoint("127.0.0.1", 11667);
+    final TEndPoint firstLeader = new TEndPoint("127.0.0.1", 10668);
+    final IoTDBDataNodeAsyncClientManager firstManager =
+        createAsyncManager(new ArrayList<>(Collections.singletonList(firstReceiver)));
+    final IoTDBDataNodeAsyncClientManager secondManager =
+        createAsyncManager(new ArrayList<>(Collections.singletonList(secondReceiver)));
+
+    final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clients =
+        Mockito.mock(IClientManager.class);
+    final AsyncPipeDataTransferServiceClient client =
+        Mockito.mock(AsyncPipeDataTransferServiceClient.class);
+    Mockito.when(clients.borrowClient(Mockito.any())).thenReturn(client);
+    Mockito.when(client.isHandshakeFinished()).thenReturn(true);
+    final Field clientManagerField =
+        IoTDBDataNodeAsyncClientManager.class.getDeclaredField("endPoint2Client");
+    clientManagerField.setAccessible(true);
+    clientManagerField.set(secondManager, clients);
+
+    try {
+      firstManager.updateLeaderCache("root.test.shared", firstLeader);
+      Assert.assertSame(client, secondManager.borrowClient("root.test.shared"));
+      Mockito.verify(clients).borrowClient(secondReceiver);
+      Mockito.verify(clients, Mockito.never()).borrowClient(firstLeader);
+    } finally {
+      firstManager.close();
+      secondManager.close();
+    }
+  }
+
+  @Test
+  public void testLeaderCacheIsScopedToConfiguredReceiverEndPoints() {
+    final TEndPoint firstReceiver = new TEndPoint("127.0.0.1", 12667);
+    final TEndPoint secondReceiver = new TEndPoint("127.0.0.1", 12668);
+    final TEndPoint otherReceiver = new TEndPoint("::1", 13667);
+    final TEndPoint firstLeader = new TEndPoint("127.0.0.1", 12669);
+    final TEndPoint otherLeader = new TEndPoint("::1", 13668);
+    final String device = "root.test.scoped";
+    final IoTDBDataNodeAsyncClientManager asyncManager =
+        createAsyncManager(new ArrayList<>(Arrays.asList(firstReceiver, secondReceiver)));
+    final TestIoTDBDataNodeSyncClientManager sameReceiverManager =
+        new TestIoTDBDataNodeSyncClientManager(
+            new ArrayList<>(Arrays.asList(secondReceiver, firstReceiver, firstReceiver)));
+    final TestIoTDBDataNodeSyncClientManager otherManager =
+        new TestIoTDBDataNodeSyncClientManager(
+            new ArrayList<>(Collections.singletonList(otherReceiver)));
+
+    try {
+      asyncManager.updateLeaderCache(device, firstLeader);
+      Assert.assertEquals(firstLeader, asyncManager.getLeaderEndPoint(device));
+      Assert.assertEquals(firstLeader, sameReceiverManager.getLeaderEndPoint(device));
+      Assert.assertNull(otherManager.getLeaderEndPoint(device));
+
+      otherManager.updateLeaderCache(device, otherLeader);
+      Assert.assertEquals(otherLeader, otherManager.getLeaderEndPoint(device));
+      Assert.assertEquals(firstLeader, asyncManager.getLeaderEndPoint(device));
+      Assert.assertEquals(firstLeader, sameReceiverManager.getLeaderEndPoint(device));
+    } finally {
+      asyncManager.close();
+      sameReceiverManager.close();
+      otherManager.close();
+    }
+  }
 
   @Test
   public void testClientResourcesShouldDifferentiateEndPoints() throws Exception {
@@ -71,6 +144,12 @@ public class IoTDBDataNodeAsyncClientManagerTest {
     }
   }
 
+  private static IoTDBDataNodeAsyncClientManager createAsyncManager(
+      final List<TEndPoint> endPoints) {
+    return new IoTDBDataNodeAsyncClientManager(
+        endPoints, true, "round-robin", "user", "password", true, "sync", true, true, false);
+  }
+
   private static String getReceiverAttributes(final IoTDBDataNodeAsyncClientManager manager)
       throws Exception {
     final Field field =
@@ -98,5 +177,29 @@ public class IoTDBDataNodeAsyncClientManagerTest {
     final Field field = IoTDBDataNodeAsyncClientManager.class.getDeclaredField("executor");
     field.setAccessible(true);
     return (ExecutorService) field.get(manager);
+  }
+
+  private static class TestIoTDBDataNodeSyncClientManager extends IoTDBDataNodeSyncClientManager {
+
+    private TestIoTDBDataNodeSyncClientManager(final List<TEndPoint> endPoints) {
+      super(
+          endPoints,
+          "user",
+          "password",
+          false,
+          null,
+          null,
+          true,
+          "round-robin",
+          true,
+          "sync",
+          true,
+          true);
+    }
+
+    @Override
+    protected void reconstructClient(final TEndPoint endPoint) {
+      // No client connection is needed to verify receiver-key isolation.
+    }
   }
 }

@@ -208,7 +208,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
             isSplitTSFileBatchModeEnabled);
 
     if (isTabletBatchModeEnabled) {
-      tabletBatchBuilder = new PipeTransferBatchReqBuilder(parameters);
+      tabletBatchBuilder =
+          new PipeTransferBatchReqBuilder(parameters, clientManager::getLeaderEndPoint);
     }
 
     enableSendTsFileLimit =
