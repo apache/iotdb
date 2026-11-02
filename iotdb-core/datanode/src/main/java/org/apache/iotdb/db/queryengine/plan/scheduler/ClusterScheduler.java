@@ -65,6 +65,8 @@ public class ClusterScheduler implements IScheduler {
   private final IFragInstanceDispatcher dispatcher;
   private IFragInstanceStateTracker stateTracker;
   private IQueryTerminator queryTerminator;
+  // Set when the dispatch of the fragment instances failed (see start()).
+  private volatile boolean dispatchFailed = false;
 
   private static final QueryExecutionMetricSet QUERY_EXECUTION_METRICS =
       QueryExecutionMetricSet.getInstance();
@@ -122,6 +124,7 @@ public class ClusterScheduler implements IScheduler {
     try {
       FragInstanceDispatchResult result = dispatchResultFuture.get();
       if (!result.isSuccessful()) {
+        dispatchFailed = true;
         if (needRetry(result.getFailureStatus())) {
           stateMachine.transitionToPendingRetry(result.getFailureStatus());
         } else {
@@ -132,6 +135,7 @@ public class ClusterScheduler implements IScheduler {
       }
     } catch (InterruptedException | ExecutionException e) {
       // If the dispatch request cannot be sent or TException is caught, we will retry this query.
+      dispatchFailed = true;
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
@@ -162,7 +166,13 @@ public class ClusterScheduler implements IScheduler {
       stateTracker.abort();
     }
     if (queryTerminator != null) {
-      queryTerminator.terminate(t);
+      if (dispatchFailed) {
+        // The FragmentInstances dispatched before the failure can't finish on their own and hold
+        // operator memory until they are cancelled, so don't wait for the grace period.
+        queryTerminator.terminateImmediately(t);
+      } else {
+        queryTerminator.terminate(t);
+      }
     }
   }
 
