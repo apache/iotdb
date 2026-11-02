@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -42,8 +43,10 @@ public class ShowCreateDatabase extends Statement {
   private final String database;
 
   public ShowCreateDatabase(final NodeLocation location, final String database) {
-    super(requireNonNull(location, "location is null"));
-    this.database = requireNonNull(database, "database is null").toLowerCase(Locale.ENGLISH);
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.database =
+        requireNonNull(database, DataNodeQueryMessages.EXCEPTION_DATABASE_IS_NULL_8B50DF60)
+            .toLowerCase(Locale.ENGLISH);
   }
 
   public String getDatabase() {

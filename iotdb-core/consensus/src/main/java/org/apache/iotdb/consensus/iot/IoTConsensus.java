@@ -82,6 +82,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -104,6 +105,7 @@ public class IoTConsensus implements IConsensus {
   private final IStateMachine.Registry registry;
   private final Map<ConsensusGroupId, IoTConsensusServerImpl> stateMachineMap =
       new ConcurrentHashMap<>();
+  private final Set<ConsensusGroupId> pendingPeerCreatedCallbacks = ConcurrentHashMap.newKeySet();
   private final IoTConsensusRPCService service;
   private final RegisterManager registerManager = new RegisterManager();
   private final UserDataTransferAuditHandler userDataTransferAuditHandler;
@@ -223,6 +225,7 @@ public class IoTConsensus implements IConsensus {
                   config,
                   userDataTransferAuditHandler,
                   userDataTransferAuditClassifier);
+          pendingPeerCreatedCallbacks.add(consensusGroupId);
           stateMachineMap.put(consensusGroupId, consensus);
         }
       } catch (DiskSpaceInsufficientException e) {
@@ -253,15 +256,19 @@ public class IoTConsensus implements IConsensus {
     }
     stateMachineMap.forEach(
         (consensusGroupId, consensus) -> {
-          final BiConsumer<ConsensusGroupId, IoTConsensusServerImpl> callback = onPeerRecovering;
-          if (callback != null) {
-            callback.accept(consensusGroupId, consensus);
+          try {
+            final BiConsumer<ConsensusGroupId, IoTConsensusServerImpl> callback = onPeerRecovering;
+            if (callback != null) {
+              callback.accept(consensusGroupId, consensus);
+            }
+            consensus.start();
+            // Subscription metadata may have been loaded before any local consensus peers existed.
+            // Recovered peers must trigger the same binding as newly created peers, after startup
+            // has restored their indices and installed the pre-start WAL-retention guards.
+            notifyPeerCreated(consensusGroupId, consensus);
+          } finally {
+            pendingPeerCreatedCallbacks.remove(consensusGroupId);
           }
-          consensus.start();
-          // Subscription metadata may have been loaded before any local consensus peers existed.
-          // Recovered peers must trigger the same binding as newly created peers, after startup
-          // has restored their indices and installed the pre-start WAL-retention guards.
-          notifyPeerCreated(consensusGroupId, consensus);
         });
   }
 
@@ -355,6 +362,7 @@ public class IoTConsensus implements IConsensus {
                     throw new RuntimeException(e);
                   }
                   impl.start();
+                  pendingPeerCreatedCallbacks.add(groupId);
                   return impl;
                 }))
         .orElseThrow(
@@ -367,7 +375,16 @@ public class IoTConsensus implements IConsensus {
       throw new ConsensusGroupAlreadyExistException(groupId);
     }
 
-    notifyPeerCreated(groupId, stateMachineMap.get(groupId));
+    try {
+      notifyPeerCreated(groupId, stateMachineMap.get(groupId));
+    } finally {
+      pendingPeerCreatedCallbacks.remove(groupId);
+    }
+  }
+
+  /** Returns whether a new or recovered local peer is still waiting for its creation callback. */
+  public boolean isPeerCreationCallbackPending(final ConsensusGroupId groupId) {
+    return pendingPeerCreatedCallbacks.contains(groupId);
   }
 
   private void notifyPeerCreated(
@@ -412,6 +429,7 @@ public class IoTConsensus implements IConsensus {
     if (!exist.get()) {
       throw new ConsensusGroupNotExistException(groupId);
     }
+    pendingPeerCreatedCallbacks.remove(groupId);
     FileUtils.deleteFileOrDirectoryWithRateLimiter(
         new File(buildPeerDir(storageDir, groupId)),
         RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);

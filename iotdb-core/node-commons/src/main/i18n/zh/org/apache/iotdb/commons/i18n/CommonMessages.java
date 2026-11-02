@@ -247,4 +247,84 @@ public final class CommonMessages {
   public static final String
       EXCEPTION_COLUMN_ARG_IN_TABLE_ARG_ARG_IS_BEING_ALTERED_PLEASE_WAIT_FOR_ALTERATION_TO_FINISH_OR_RETRY_ALTERING_THE_COLUMN_IF_IT_IS_STUCK_11155B55 =
           "列 '%s'（位于表 '%s.%s'）正在修改中。请等待修改完成；如果修改一直未完成，请重试修改该列。";
+
+  public static final String
+      EXCEPTION_UNTRUSTED_URI_ARG_CURRENT_TRUSTED_URI_PATTERN_IS_ARG_9C06C271 =
+          "不受信任的 URI %s，当前 trusted_uri_pattern 为 %s";
+
+  public static final String LOG_AN_ERROR_OCCURRED_WHILE_RUNNING_THE_COMMAND_ARG_ABA3D641 =
+      "运行命令时发生错误：%s";
+
+  public static final String EXCEPTION_CONDITION_WAS_NOT_MET_WITHIN_ARG_MS_60098C77 =
+      "在 %d ms 内未满足条件";
+
+  public static final String
+      EXCEPTION_K_HAS_TO_BE_GREATER_THAN_0_AND_LESS_THAN_OR_EQUAL_TO_1000_AFD17B03 =
+          "k 必须大于 0 且小于或等于 1000。";
+
+  public static final String EXCEPTION_PARAMETER_OMEGA_SHOULD_BE_NON_NEGATIVE_6154A6D7 =
+      "参数 omega 应为非负数。";
+
+  public static final String EXCEPTION_PARAMETER_ETA_SHOULD_BE_LARGER_THAN_0_022CA22F =
+      "参数 eta 应大于 0。";
+
+  public static final String EXCEPTION_PARAMETER_K_SHOULD_BE_A_POSITIVE_INTEGER_62AC8458 =
+      "参数 k 应为正整数。";
+
+  public static final String
+      EXCEPTION_PARAMETER_OUTPUT_COLUMN_SHOULD_BE_A_POSITIVE_INTEGER_A58CE07F =
+          "参数 output_column 应为正整数。";
+
+  public static final String EXCEPTION_UPPER_CAN_NOT_BE_SMALLER_THAN_LOWER_9041B33A =
+      "Upper 不能小于 lower。";
+
+  public static final String
+      EXCEPTION_ILLEGAL_SAMPLE_PROPORTION_PROPORTION_0_AND_PROPORTION_1_E96EE649 =
+          "采样比例无效，应满足 proportion > 0 且 proportion <= 1";
+
+  public static final String EXCEPTION_ILLEGAL_NUMBER_NUMBER_SHOULD_BE_GREATER_THAN_0_17FCD676 =
+      "数量无效，应大于 0。";
+
+  public static final String EXCEPTION_MAX_CAN_NOT_BE_SMALLER_THAN_MIN_D6EA3271 = "max 不能小于 min。";
+
+  public static final String EXCEPTION_MIN_CAN_NOT_BE_SMALLER_THAN_ARG_CBF3792E = "min 不能小于 %s。";
+
+  public static final String EXCEPTION_THE_GIVEN_VALUE_TYPE_IS_NOT_SUPPORTED_C2D711C3 =
+      "不支持给定的值类型。";
+
+  public static final String EXCEPTION_TARGET_SHOULD_NOT_BE_EMPTY_1B2C02C6 = "target 不应为空";
+
+  public static final String
+      EXCEPTION_LISTITERATORWRAPPER_DOES_NOT_SUPPORT_OPTIONAL_OPERATIONS_OF_LISTITERATOR_A5C61A70 =
+          "ListIteratorWrapper 不支持 ListIterator 的可选操作。";
+
+  public static final String EXCEPTION_CANNOT_REMOVE_ELEMENT_AT_INDEX_0_42A1988F =
+      "无法移除索引 {0} 处的元素。";
+
+  public static final String EXCEPTION_START_A_NEW_NODE_98ED9767 = "启动新节点";
+
+  public static final String
+      EXCEPTION_REMOVE_NODE_WITH_THE_GIVEN_NODEIDS_OR_THE_NODE_STARTED_ON_THE_CURRENT_MACHINE_IF_OMITTED_NOTE_THAT_THE_DATANODE_ALLOWS_FOR_THE_REMOVAL_OF_MULTIPLE_NODES_AT_ONCE_THE_CONFIGNODE_CAN_ONLY_REMOVE_ONE_NODE_AT_A_TIME_B784A43C =
+          "移除节点（指定 nodeId，省略时移除当前机器启动的节点）。DataNode 允许一次移除多个节点，ConfigNode 一次只能移除一个节点。";
+
+  public static final String EXCEPTION_NEW_FIXED_THREAD_POOL_ARG_THREAD_NUMBER_ARG_465A36AF =
+      "新建固定大小线程池：{}，线程数：{}";
+
+  public static final String EXCEPTION_NEW_SINGLE_THREAD_POOL_ARG_CB233F2A = "新建单线程池：{}";
+
+  public static final String EXCEPTION_NEW_CACHED_THREAD_POOL_ARG_3169566A = "新建缓存线程池：{}";
+
+  public static final String EXCEPTION_NEW_SINGLE_SCHEDULED_THREAD_POOL_ARG_4B7C159F =
+      "新建单线程调度线程池：{}";
+
+  public static final String EXCEPTION_NEW_SCHEDULED_THREAD_POOL_ARG_37283992 = "新建调度线程池：{}";
+
+  public static final String EXCEPTION_NEW_SYNCHRONOUSQUEUE_THREAD_POOL_ARG_F3261435 =
+      "新建 SynchronousQueue 线程池：{}";
+
+  public static final String EXCEPTION_NEW_THREAD_POOL_ARG_E17F65A1 = "新建线程池：{}";
+
+  public static final String
+      EXCEPTION_USER_ARG_ID_ARG_REQUESTS_AUTHORITY_ON_OBJECT_ARG_WITH_RESULT_ARG_F0A4B9C0 =
+          "用户 %s（ID=%d）请求对象 %s 的权限，结果为 %s";
 }

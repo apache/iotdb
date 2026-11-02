@@ -48,7 +48,8 @@ public class ClusterNodeStartUtils {
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
-  private static final String POSSIBLE_SOLUTIONS = " Possible solutions are as follows:\r\n";
+  private static final String POSSIBLE_SOLUTIONS =
+      ManagerMessages.EXCEPTION_POSSIBLE_SOLUTIONS_ARE_AS_FOLLOWS_C72CA4F1;
 
   public static final TSStatus ACCEPT_NODE_REGISTRATION =
       new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())

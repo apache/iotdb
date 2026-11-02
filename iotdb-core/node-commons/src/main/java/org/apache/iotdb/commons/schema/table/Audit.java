@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.schema.table;
 
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.path.PartialPath;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -29,7 +30,8 @@ public class Audit {
   public static final String TREE_MODEL_AUDIT_DATABASE =
       String.format("%s.%s", ROOT, TABLE_MODEL_AUDIT_DATABASE);
   public static final String RESERVED_DATABASE_NAME_ERROR_MSG =
-      "The database name \"%s\" is reserved, please use another valid database name.";
+      SchemaMessages
+          .MESSAGE_THE_DATABASE_NAME_ARG_IS_RESERVED_PLEASE_USE_ANOTHER_VALID_DATABASE_NAME_ECC25B4E;
   public static final PartialPath TREE_MODEL_AUDIT_DATABASE_PATH =
       new PartialPath(new String[] {"root", TABLE_MODEL_AUDIT_DATABASE});
   public static final PartialPath TREE_MODEL_AUDIT_DATABASE_PATH_PATTERN =

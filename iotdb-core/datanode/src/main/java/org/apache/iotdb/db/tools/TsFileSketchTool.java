@@ -59,6 +59,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.TreeMap;
 
 public class TsFileSketchTool {
@@ -76,8 +77,12 @@ public class TsFileSketchTool {
     Pair<String, String> fileNames = checkArgs(args);
     String filename = fileNames.left;
     String outFile = fileNames.right;
-    System.out.println("TsFile path:" + filename);
-    System.out.println("Sketch save path:" + outFile);
+    System.out.println(
+        String.format(
+            DataNodeMiscMessages.LOG_TSFILE_PATH_ARG_5BCB5137, Objects.toString(filename)));
+    System.out.println(
+        String.format(
+            DataNodeMiscMessages.LOG_SKETCH_SAVE_PATH_ARG_9586FA20, Objects.toString(outFile)));
     new TsFileSketchTool(filename, outFile).run();
   }
 
@@ -117,10 +122,15 @@ public class TsFileSketchTool {
   /** entry of tool */
   public void run() throws IOException {
     long length = FSFactoryProducer.getFSFactory().getFile(filename).length();
+    printlnBoth(pw, DataNodeMiscMessages.EXCEPTION_TSFILE_SKETCH_1EC1BE8B);
     printlnBoth(
-        pw, "-------------------------------- TsFile Sketch --------------------------------");
-    printlnBoth(pw, "file path: " + filename);
-    printlnBoth(pw, "file length: " + length);
+        pw,
+        String.format(
+            DataNodeMiscMessages.EXCEPTION_FILE_PATH_ARG_24A369C1, Objects.toString(filename)));
+    printlnBoth(
+        pw,
+        String.format(
+            DataNodeMiscMessages.EXCEPTION_FILE_LENGTH_ARG_D908AA1C, Objects.toString(length)));
 
     // print file information
     printFileInfo();
@@ -168,17 +178,17 @@ public class TsFileSketchTool {
     // print TsFile Metadata
     printTsFileMetadata(tsFileMetaData);
 
-    printlnBoth(pw, String.format("%20s", length) + "|\tEND of TsFile");
     printlnBoth(
         pw,
-        "---------------------------- IndexOfTimerseriesIndex Tree -----------------------------");
+        String.format(
+            DataNodeMiscMessages.EXCEPTION_ARG_END_OF_TSFILE_119E234F,
+            Objects.toString(String.format("%20s", length))));
+    printlnBoth(pw, DataNodeMiscMessages.EXCEPTION_INDEXOFTIMERSERIESINDEX_TREE_D0E6F25B);
     // print index tree
     for (String str : treeOutputStringBuffer) {
       printlnBoth(pw, str);
     }
-    printlnBoth(
-        pw,
-        "---------------------------------- TsFile Sketch End ----------------------------------");
+    printlnBoth(pw, DataNodeMiscMessages.EXCEPTION_TSFILE_SKETCH_END_8C796669);
     reader.close();
     pw.close();
   }
@@ -202,20 +212,23 @@ public class TsFileSketchTool {
 
       // metaOffset
       printlnBoth(
-          pw, String.format("%20s", "") + "|\t[meta offset] " + tsFileMetaData.getMetaOffset());
+          pw,
+          String.format(
+              DataNodeMiscMessages.EXCEPTION_ARG_META_OFFSET_ARG_4D94DFFD,
+              Objects.toString(String.format("%20s", "")),
+              Objects.toString(tsFileMetaData.getMetaOffset())));
 
       // bloom filter
       BloomFilter bloomFilter = tsFileMetaData.getBloomFilter();
       printlnBoth(
           pw,
-          String.format("%20s", "")
-              + "|\t[bloom filter] "
-              + "bit vector byte array length="
-              + bloomFilter.serialize().length
-              + ", filterSize="
-              + bloomFilter.getSize()
-              + ", hashFunctionSize="
-              + bloomFilter.getHashFunctionSize());
+          String.format(
+              DataNodeMiscMessages
+                  .EXCEPTION_ARG_BLOOM_FILTER_BIT_VECTOR_BYTE_ARRAY_LENGTH_ARG_FILTERSIZE_ARG_HASHFUNCTIONSIZE_ARG_9F9959F5,
+              Objects.toString(String.format("%20s", "")),
+              Objects.toString(bloomFilter.serialize().length),
+              Objects.toString(bloomFilter.getSize()),
+              Objects.toString(bloomFilter.getHashFunctionSize())));
       printlnBoth(pw, splitStr + " [TsFileMetadata] ends");
 
       printlnBoth(
@@ -226,9 +239,12 @@ public class TsFileSketchTool {
 
       printlnBoth(
           pw,
-          String.format("%20s", reader.getFileMetadataPos() + reader.getTsFileMetadataSize() + 4)
-              + "|\t[magic tail] "
-              + reader.readTailMagic());
+          String.format(
+              DataNodeMiscMessages.EXCEPTION_ARG_MAGIC_TAIL_ARG_5A49658F,
+              Objects.toString(
+                  String.format(
+                      "%20s", reader.getFileMetadataPos() + reader.getTsFileMetadataSize() + 4)),
+              Objects.toString(reader.readTailMagic())));
     } catch (IOException e) {
       LOGGER.warn(DataNodeMiscMessages.FAIL_PARSE_TSFILE_METADATA, filename, e);
     }
@@ -238,9 +254,10 @@ public class TsFileSketchTool {
     for (Map.Entry<Long, MetadataIndexNode> entry : metadataIndexNodeMap.entrySet()) {
       printlnBoth(
           pw,
-          String.format("%20s", entry.getKey())
-              + "|\t[IndexOfTimerseriesIndex Node] type="
-              + entry.getValue().getNodeType());
+          String.format(
+              DataNodeMiscMessages.EXCEPTION_ARG_INDEXOFTIMERSERIESINDEX_NODE_TYPE_ARG_D0FE344F,
+              Objects.toString(String.format("%20s", entry.getKey())),
+              Objects.toString(entry.getValue().getNodeType())));
       for (IMetadataIndexEntry metadataIndexEntry : entry.getValue().getChildren()) {
         printlnBoth(
             pw,
@@ -260,9 +277,10 @@ public class TsFileSketchTool {
   private void printIndexOfTimerseriesIndex(long pos, MetadataIndexNode metadataIndexNode) {
     printlnBoth(
         pw,
-        String.format("%20s", pos)
-            + "|\t[IndexOfTimerseriesIndex Node] type="
-            + metadataIndexNode.getNodeType());
+        String.format(
+            DataNodeMiscMessages.EXCEPTION_ARG_INDEXOFTIMERSERIESINDEX_NODE_TYPE_ARG_D0FE344F,
+            Objects.toString(String.format("%20s", pos)),
+            Objects.toString(metadataIndexNode.getNodeType())));
     for (IMetadataIndexEntry metadataIndexEntry : metadataIndexNode.getChildren()) {
       printlnBoth(
           pw,
@@ -306,12 +324,18 @@ public class TsFileSketchTool {
       printlnBoth(pw, "");
       printlnBoth(pw, String.format("%20s", "POSITION") + "|\tCONTENT");
       printlnBoth(pw, String.format("%20s", "--------") + " \t-------");
-      printlnBoth(pw, String.format("%20d", 0) + "|\t[magic head] " + reader.readHeadMagic());
       printlnBoth(
           pw,
-          String.format("%20d", TSFileConfig.MAGIC_STRING.getBytes().length)
-              + "|\t[version number] "
-              + reader.readVersionNumber());
+          String.format(
+              DataNodeMiscMessages.EXCEPTION_ARG_MAGIC_HEAD_ARG_BD711EBD,
+              Objects.toString(String.format("%20d", 0)),
+              Objects.toString(reader.readHeadMagic())));
+      printlnBoth(
+          pw,
+          String.format(
+              DataNodeMiscMessages.EXCEPTION_ARG_VERSION_NUMBER_ARG_0FBD10B6,
+              Objects.toString(String.format("%20d", TSFileConfig.MAGIC_STRING.getBytes().length)),
+              Objects.toString(reader.readVersionNumber())));
     } catch (IOException e) {
       LOGGER.warn(DataNodeMiscMessages.FAIL_PRINT_FILE_INFO, filename, e);
     }
@@ -326,13 +350,17 @@ public class TsFileSketchTool {
       for (ChunkGroupMetadata chunkGroupMetadata : allChunkGroupMetadata) {
         printlnBoth(
             pw,
-            splitStr
-                + " [Chunk Group] of "
-                + chunkGroupMetadata.getDevice()
-                + ", num of Chunks:"
-                + chunkGroupMetadata.getChunkMetadataList().size());
+            String.format(
+                DataNodeMiscMessages.EXCEPTION_ARG_CHUNK_GROUP_OF_ARG_NUM_OF_CHUNKS_ARG_52E5BE1A,
+                Objects.toString(splitStr),
+                Objects.toString(chunkGroupMetadata.getDevice()),
+                Objects.toString(chunkGroupMetadata.getChunkMetadataList().size())));
         // chunkGroupHeader begins
-        printlnBoth(pw, String.format("%20s", nextChunkGroupHeaderPos) + "|\t[Chunk Group Header]");
+        printlnBoth(
+            pw,
+            String.format(
+                DataNodeMiscMessages.EXCEPTION_ARG_CHUNK_GROUP_HEADER_7D173A5C,
+                Objects.toString(String.format("%20s", nextChunkGroupHeaderPos))));
         ChunkGroupHeader chunkGroupHeader =
             reader.readChunkGroupHeader(nextChunkGroupHeaderPos, false);
         printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 0");
@@ -354,20 +382,16 @@ public class TsFileSketchTool {
                   + chunkMetadata.getStatistics());
           printlnBoth(
               pw,
-              String.format("%20s", "")
-                  + "|\t\t[chunk header] "
-                  + "marker="
-                  + chunk.getHeader().getChunkType()
-                  + ", measurementID="
-                  + chunk.getHeader().getMeasurementID()
-                  + ", dataSize="
-                  + chunk.getHeader().getDataSize()
-                  + ", dataType="
-                  + chunk.getHeader().getDataType()
-                  + ", compressionType="
-                  + chunk.getHeader().getCompressionType()
-                  + ", encodingType="
-                  + chunk.getHeader().getEncodingType());
+              String.format(
+                  DataNodeMiscMessages
+                      .EXCEPTION_ARG_CHUNK_HEADER_MARKER_ARG_MEASUREMENTID_ARG_DATASIZE_ARG_DATATYPE_ARG_COMPRESSIONTYPE_ARG_ENCODINGTYPE_ARG_5831221F,
+                  Objects.toString(String.format("%20s", "")),
+                  Objects.toString(chunk.getHeader().getChunkType()),
+                  Objects.toString(chunk.getHeader().getMeasurementID()),
+                  Objects.toString(chunk.getHeader().getDataSize()),
+                  Objects.toString(chunk.getHeader().getDataType()),
+                  Objects.toString(chunk.getHeader().getCompressionType()),
+                  Objects.toString(chunk.getHeader().getEncodingType())));
           PageHeader pageHeader;
           if (((byte) (chunk.getHeader().getChunkType() & 0x3F))
               == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
@@ -420,7 +444,12 @@ public class TsFileSketchTool {
             break;
         }
 
-        printlnBoth(pw, splitStr + " [Chunk Group] of " + chunkGroupMetadata.getDevice() + " ends");
+        printlnBoth(
+            pw,
+            String.format(
+                DataNodeMiscMessages.EXCEPTION_ARG_CHUNK_GROUP_OF_ARG_ENDS_F5B5A51D,
+                Objects.toString(splitStr),
+                Objects.toString(chunkGroupMetadata.getDevice())));
       }
     } catch (IOException e) {
       LOGGER.warn(DataNodeMiscMessages.FAIL_PARSE_CHUNK, filename, e);

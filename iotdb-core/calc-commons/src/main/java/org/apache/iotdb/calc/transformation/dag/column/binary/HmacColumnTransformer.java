@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.binary;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.binary.strategies.HmacStrategy;
 import org.apache.iotdb.commons.exception.SemanticException;
@@ -64,8 +65,10 @@ public class HmacColumnTransformer extends BinaryColumnTransformer {
         } catch (IllegalArgumentException e) {
           String errorMessage =
               String.format(
-                  "Failed to execute function '%s' due to an invalid input format. the value '%s' corresponding to a empty key, the empty key is not allowed in HMAC operation.",
-                  functionName, generateOriginalValue(data, inputType));
+                  CalcMessages
+                      .EXCEPTION_FAILED_TO_EXECUTE_FUNCTION_ARG_DUE_TO_AN_INVALID_INPUT_FORMAT_THE_VALUE_ARG_CORRESPONDING_TO_A_EMPTY_KEY_THE_EMPTY_KEY_IS_NOT_ALLOWED_IN_HMAC_OPERATION_9F75FE9B,
+                  functionName,
+                  generateOriginalValue(data, inputType));
           throw new SemanticException(errorMessage);
         }
         builder.writeBinary(new Binary(hmacBytes));
@@ -92,8 +95,10 @@ public class HmacColumnTransformer extends BinaryColumnTransformer {
         } catch (IllegalArgumentException e) {
           String errorMessage =
               String.format(
-                  "Failed to execute function '%s' due to an invalid input format. the value '%s' corresponding to a empty key, the empty key is not allowed in HMAC operation.",
-                  functionName, generateOriginalValue(data, inputType));
+                  CalcMessages
+                      .EXCEPTION_FAILED_TO_EXECUTE_FUNCTION_ARG_DUE_TO_AN_INVALID_INPUT_FORMAT_THE_VALUE_ARG_CORRESPONDING_TO_A_EMPTY_KEY_THE_EMPTY_KEY_IS_NOT_ALLOWED_IN_HMAC_OPERATION_9F75FE9B,
+                  functionName,
+                  generateOriginalValue(data, inputType));
           throw new SemanticException(errorMessage);
         }
         builder.writeBinary(new Binary(hmacBytes));

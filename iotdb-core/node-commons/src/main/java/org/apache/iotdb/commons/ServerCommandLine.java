@@ -19,6 +19,7 @@
 package org.apache.iotdb.commons;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -31,17 +32,22 @@ import org.apache.commons.cli.ParseException;
 
 import java.io.PrintWriter;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 public abstract class ServerCommandLine {
 
   private static final Option OPTION_START =
-      Option.builder("s").longOpt("start").desc("start a new node").build();
+      Option.builder("s")
+          .longOpt("start")
+          .desc(CommonMessages.EXCEPTION_START_A_NEW_NODE_98ED9767)
+          .build();
   private static final Option OPTION_REMOVE =
       Option.builder("r")
           .longOpt("remove")
           .desc(
-              "Remove node(with the given nodeIds or the node started on the current machine, if omitted). Note that the DataNode allows for the removal of multiple nodes at once, the ConfigNode can only remove one node at a time.")
+              CommonMessages
+                  .EXCEPTION_REMOVE_NODE_WITH_THE_GIVEN_NODEIDS_OR_THE_NODE_STARTED_ON_THE_CURRENT_MACHINE_IF_OMITTED_NOTE_THAT_THE_DATANODE_ALLOWS_FOR_THE_REMOVAL_OF_MULTIPLE_NODES_AT_ONCE_THE_CONFIGNODE_CAN_ONLY_REMOVE_ONE_NODE_AT_A_TIME_B784A43C)
           .hasArgs()
           .type(Number.class)
           .argName("nodeIds")
@@ -110,7 +116,10 @@ public abstract class ServerCommandLine {
       // Forward a generic error code to the calling process
       return 1;
     } catch (IoTDBException e) {
-      output.println("An error occurred while running the command: " + e.getMessage());
+      output.println(
+          String.format(
+              CommonMessages.LOG_AN_ERROR_OCCURRED_WHILE_RUNNING_THE_COMMAND_ARG_ABA3D641,
+              Objects.toString(e.getMessage())));
       // Forward the exit code from the exception to the calling process
       return e.getErrorCode();
     } finally {

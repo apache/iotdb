@@ -409,6 +409,25 @@ public class PartialPathTest {
   }
 
   @Test
+  public void testStartsWithOrEqual() throws IllegalPathException {
+    PartialPath setPath = new PartialPath("root.db1.sg01.plant01");
+    String[] setNodes = setPath.getNodes();
+
+    Assert.assertTrue(setPath.startsWithOrEqual(setNodes));
+    Assert.assertTrue(new PartialPath("root.db1.sg01.plant01.d1").startsWithOrEqual(setNodes));
+    Assert.assertFalse(new PartialPath("root.db1.sg01").startsWithOrEqual(setNodes));
+    Assert.assertFalse(new PartialPath("root").startsWithOrEqual(setNodes));
+    Assert.assertFalse(new PartialPath("root.db1.sg01.plant02").startsWithOrEqual(setNodes));
+    Assert.assertFalse(new PartialPath("root.db1.sg01.plant01_extra").startsWithOrEqual(setNodes));
+    Assert.assertFalse(new PartialPath("root.db2.sg01.plant01.d1").startsWithOrEqual(setNodes));
+    Assert.assertFalse(new PartialPath("root.db1.sg01.*").startsWithOrEqual(setNodes));
+    Assert.assertTrue(setPath.startsWithOrEqual(new String[0]));
+
+    // The bidirectional check is still needed for path-conflict detection.
+    Assert.assertTrue(new PartialPath("root.db1.sg01").startsWithOrPrefixOf(setNodes));
+  }
+
+  @Test
   public void testAlterPrefixPath() throws IllegalPathException {
     // Plain path.
     PartialPath p = new PartialPath("root.a.b.c");

@@ -321,7 +321,10 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
       return;
     }
 
-    final int firstFileToSkip = Math.max(0, currentFileIndex);
+    // Without a reader (including a deferred one), currentFileIndex is the predecessor already
+    // passed by replay or a previous fast-forward. It may have been reclaimed in the meantime.
+    final int firstFileToSkip =
+        Math.max(0, currentReaderVersionId < 0 ? currentFileIndex + 1 : currentFileIndex);
     try {
       for (int fileIndex = firstFileToSkip; fileIndex < targetFileIndex; fileIndex++) {
         if (!isWalFileCovered(fileIndex, writerProgressCoverage)) {
@@ -351,9 +354,13 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
   }
 
   private int locateTargetFile(final long targetSearchIndex) {
-    if (walFiles.length == 0
-        || (liveWalNode != null && targetSearchIndex > liveWalNode.getCurrentSearchIndex())) {
+    if (walFiles.length == 0) {
       return -1;
+    }
+    // Pending delivery may have advanced one past the live tail. Still realign to its file after
+    // verifying coverage of the sealed prefix, before committed history can be reclaimed.
+    if (liveWalNode != null && targetSearchIndex > liveWalNode.getCurrentSearchIndex()) {
+      return walFiles.length - 1;
     }
     return WALFileUtils.binarySearchFileBySearchIndex(walFiles, targetSearchIndex);
   }
@@ -570,9 +577,10 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
       return lastError.getMessage();
     }
     if (!skippedBrokenWalVersionIds.isEmpty()) {
-      return "encountered broken retained WAL files during replay scan";
+      return DataNodePipeMessages
+          .MESSAGE_ENCOUNTERED_BROKEN_RETAINED_WAL_FILES_DURING_REPLAY_SCAN_D967E7A5;
     }
-    return "replay scan did not complete";
+    return DataNodePipeMessages.MESSAGE_REPLAY_SCAN_DID_NOT_COMPLETE_8896B727;
   }
 
   @Override

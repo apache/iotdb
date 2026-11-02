@@ -79,7 +79,7 @@ public class DropTableColumnProcedure
 
   @Override
   protected String getActionMessage() {
-    return "drop table column";
+    return ProcedureMessages.MESSAGE_DROP_TABLE_COLUMN_6FA1DB5F;
   }
 
   @Override
@@ -203,7 +203,7 @@ public class DropTableColumnProcedure
 
     if (!relatedRegionGroup.isEmpty()) {
       new TableRegionTaskExecutor<>(
-              "delete data for drop table",
+              ProcedureMessages.MESSAGE_DELETE_DATA_FOR_DROP_TABLE_A678391E,
               env,
               relatedRegionGroup,
               CnToDnAsyncRequestType.DELETE_COLUMN_DATA,

@@ -128,4 +128,25 @@ public final class UdfApiMessages {
           "the data type of the input series (index: %d) is not valid. expected: %s. actual: %s.";
 
   private UdfApiMessages() {}
+
+  public static final String EXCEPTION_RETURNEDTYPE_IS_NULL_98FA07AD = "returnedType is null";
+
+  public static final String EXCEPTION_TABLEFUNCTIONHANDLE_IS_NULL_7A2E991C =
+      "TableFunctionHandle is null";
+
+  public static final String EXCEPTION_FIELDNAMES_IS_NULL_AD6E57B6 = "fieldNames is null";
+
+  public static final String EXCEPTION_FIELDTYPES_IS_NULL_08BA6A6B = "fieldTypes is null";
+
+  public static final String EXCEPTION_PARTITIONBY_IS_NULL_82C1E068 = "partitionBy is null";
+
+  public static final String EXCEPTION_ORDERBY_IS_NULL_26D8DCDD = "orderBy is null";
+
+  public static final String EXCEPTION_FIELDS_IS_NULL_04C032C9 = "fields is null";
+
+  public static final String EXCEPTION_SHOULD_BE_A_POSITIVE_VALUE_081C5357 =
+      "should be a positive value";
+
+  public static final String EXCEPTION_SHOULD_BE_A_NON_NEGATIVE_VALUE_D7F8F4F0 =
+      "should be a non-negative value";
 }

@@ -45,6 +45,7 @@ import java.util.Deque;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -269,7 +270,8 @@ public class ProcedureExecutor<Env> {
   private void releaseLock(Procedure<Env> procedure, boolean force) {
     if (force || !procedure.holdLock(this.environment) || procedure.isFinished()) {
       RetryUtils.executeWithEndlessBackoffRetry(
-          () -> procedure.doReleaseLock(this.environment, store), "procedure release lock");
+          () -> procedure.doReleaseLock(this.environment, store),
+          ProcedureMessages.EXCEPTION_PROCEDURE_RELEASE_LOCK_AD22A19B);
     }
   }
 
@@ -573,7 +575,8 @@ public class ProcedureExecutor<Env> {
       // Must endless retry here, since this step is not idempotent and can not be re-execute
       // correctly in new CN leader.
       RetryUtils.executeWithEndlessBackoffRetry(
-          () -> store.update(parent), "count down children procedure");
+          () -> store.update(parent),
+          ProcedureMessages.EXCEPTION_COUNT_DOWN_CHILDREN_PROCEDURE_C7306F56);
       // do not add this procedure when exception occurred
       getScheduler(parent).addFront(parent);
       LOG.info(
@@ -651,7 +654,10 @@ public class ProcedureExecutor<Env> {
     for (int i = 0; i < subprocs.length; i++) {
       Procedure<Env> subproc = subprocs[i];
       if (subproc == null) {
-        String errMsg = "subproc[" + i + "] is null, aborting procedure";
+        String errMsg =
+            String.format(
+                ProcedureMessages.EXCEPTION_SUBPROC_ARG_IS_NULL_ABORTING_PROCEDURE_CDFB42EC,
+                Objects.toString(i));
         proc.setFailure(new ProcedureException((errMsg), new IllegalArgumentException(errMsg)));
         return null;
       }
@@ -699,7 +705,8 @@ public class ProcedureExecutor<Env> {
       rootProcedure.setFailure(exception);
       // Endless retry since this step is not idempotent.
       RetryUtils.executeWithEndlessBackoffRetry(
-          () -> store.update(rootProcedure), "root procedure rollback");
+          () -> store.update(rootProcedure),
+          ProcedureMessages.EXCEPTION_ROOT_PROCEDURE_ROLLBACK_068C01D9);
     }
     List<Procedure<Env>> subprocStack = procedureStack.getSubproceduresStack();
     // Decide which procedures must keep the states they have executed before anything is rolled

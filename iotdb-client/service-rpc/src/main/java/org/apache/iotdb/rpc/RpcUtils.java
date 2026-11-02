@@ -176,7 +176,8 @@ public class RpcUtils {
     TSStatus status = new TSStatus(TSStatusCode.MULTIPLE_ERROR.getStatusCode());
     status.setSubStatus(statusList);
     if (LOGGER.isDebugEnabled()) {
-      StringBuilder errMsg = new StringBuilder().append("Multiple error occur, messages: ");
+      StringBuilder errMsg =
+          new StringBuilder().append(RpcMessages.EXCEPTION_MULTIPLE_ERROR_OCCUR_MESSAGES_75A34A00);
       Set<TSStatus> msgSet = new HashSet<>();
       for (TSStatus subStatus : statusList) {
         if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()

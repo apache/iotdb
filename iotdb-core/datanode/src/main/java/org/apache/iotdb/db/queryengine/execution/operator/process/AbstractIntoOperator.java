@@ -180,7 +180,8 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
           && executionStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         String message =
             String.format(
-                "Error occurred while inserting tablets in SELECT INTO: %s",
+                DataNodeQueryMessages
+                    .EXCEPTION_ERROR_OCCURRED_WHILE_INSERTING_TABLETS_IN_SELECT_INTO_ARG_7238E6B9,
                 executionStatus.getMessage());
         throw new IntoProcessException(message, executionStatus.getCode());
       }
