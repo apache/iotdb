@@ -659,6 +659,8 @@ public class TsFilePlanRedoerTest {
     assertDeletion(deletions, DEVICE2_NAME, "s1", 4);
     assertDeletion(deletions, nestedDevice, "s1", 1);
     assertNull(findDeletion(deletions, DEVICE1_NAME, "s2"));
+    assertNull(findDeletion(deletions, DEVICE2_NAME, "s2"));
+    assertNull(findDeletion(deletions, nestedDevice, "s2"));
     assertNull(findDeletion(deletions, DEVICE3_NAME, "s1"));
     assertNull(findDeletion(deletions, DEVICE3_NAME, "s2"));
 
