@@ -100,8 +100,13 @@ public final class RpcSslUtils {
     try {
       if (requiresProtocolRestriction(sslProtocol)) {
         // A version-specific SSLContext does not restrict the server's enabled protocol versions.
-        ((SSLServerSocket) serverSocket.getServerSocket())
-            .setEnabledProtocols(new String[] {sslProtocol});
+        SSLServerSocket sslServerSocket = (SSLServerSocket) serverSocket.getServerSocket();
+        String enabledProtocol =
+            Stream.of(sslServerSocket.getSupportedProtocols())
+                .filter(sslProtocol::equalsIgnoreCase)
+                .findFirst()
+                .orElse(sslProtocol);
+        sslServerSocket.setEnabledProtocols(new String[] {enabledProtocol});
       }
       return serverSocket;
     } catch (IllegalArgumentException e) {

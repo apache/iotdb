@@ -140,8 +140,23 @@ public class RpcUtilsTest {
     keyStore.store(keyStoreBytes, new char[0]);
 
     String originalProtocol = RpcSslUtils.getProtocol();
+    String[][] cases = {
+      {"TLSv1.2", "TLSv1.2"},
+      {"tlsv1.2", "TLSv1.2"},
+      {"TlsV1.2", "TLSv1.2"},
+      {" TLSV1.2 ", "TLSv1.2"},
+      {"TLSv1.3", "TLSv1.3"},
+      {"tlsv1.3", "TLSv1.3"},
+      {"TLSV1.3", "TLSv1.3"},
+      {" tLsV1.3 ", "TLSv1.3"},
+      {"TLS", null},
+      {"SSL", null},
+      {"tls", null},
+      {"ssl", null}
+    };
     try {
-      for (String sslProtocol : Arrays.asList("TLSv1.2", "TLSv1.3", "TLS", "SSL")) {
+      for (String[] testCase : cases) {
+        String sslProtocol = testCase[0];
         RpcSslUtils.configure(sslProtocol);
         TSSLTransportFactory.TSSLTransportParameters params =
             RpcSslUtils.createTSSLTransportParameters();
@@ -153,7 +168,7 @@ public class RpcUtilsTest {
         try (TServerSocket transport =
             RpcSslUtils.createServerSocket(0, 0, InetAddress.getLoopbackAddress(), params)) {
           SSLServerSocket serverSocket = (SSLServerSocket) transport.getServerSocket();
-          if ("TLS".equals(sslProtocol) || "SSL".equals(sslProtocol)) {
+          if (testCase[1] == null) {
             SSLContext context = SSLContext.getInstance(sslProtocol);
             context.init(null, null, null);
             try (SSLServerSocket defaultSocket =
@@ -165,7 +180,7 @@ public class RpcUtilsTest {
             }
           } else {
             Assert.assertArrayEquals(
-                sslProtocol, new String[] {sslProtocol}, serverSocket.getEnabledProtocols());
+                sslProtocol, new String[] {testCase[1]}, serverSocket.getEnabledProtocols());
           }
         }
       }

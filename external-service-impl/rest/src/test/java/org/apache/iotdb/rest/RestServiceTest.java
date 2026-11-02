@@ -30,13 +30,24 @@ public class RestServiceTest {
 
   @Test
   public void testVersionSpecificSslProtocols() throws Exception {
-    for (String protocol : new String[] {"TLSv1.2", "TLSv1.3"}) {
+    String[][] cases = {
+      {"TLSv1.2", "TLSv1.2"},
+      {"tlsv1.2", "TLSv1.2"},
+      {"TlsV1.2", "TLSv1.2"},
+      {" TLSV1.2 ", "TLSv1.2"},
+      {"TLSv1.3", "TLSv1.3"},
+      {"tlsv1.3", "TLSv1.3"},
+      {"TLSV1.3", "TLSv1.3"},
+      {" tLsV1.3 ", "TLSv1.3"}
+    };
+    for (String[] testCase : cases) {
+      String protocol = testCase[0];
       SslContextFactory.Server factory = new SslContextFactory.Server();
       new RestService().configureSSL(factory, protocol);
       try {
         factory.start();
         assertArrayEquals(
-            protocol, new String[] {protocol}, factory.newSSLEngine().getEnabledProtocols());
+            protocol, new String[] {testCase[1]}, factory.newSSLEngine().getEnabledProtocols());
       } finally {
         factory.stop();
       }
@@ -44,11 +55,20 @@ public class RestServiceTest {
   }
 
   @Test
+  public void testSslProtocolNameIsMatchedLiterally() {
+    SslContextFactory.Server factory = new SslContextFactory.Server();
+    new RestService().configureSSL(factory, "tlsv1.2");
+    String[] supportedProtocols = {"TLSv1.2", "TLSv1X2", "TLSv1.3"};
+    factory.selectProtocols(supportedProtocols, supportedProtocols);
+    assertArrayEquals(new String[] {"TLSv1.2"}, factory.getSelectedProtocols());
+  }
+
+  @Test
   public void testGenericSslProtocolsKeepDefaults() throws Exception {
     SslContextFactory.Server defaults = new SslContextFactory.Server();
     try {
       defaults.start();
-      for (String protocol : new String[] {"TLS", "SSL", null, " "}) {
+      for (String protocol : new String[] {"TLS", "tls", "SSL", "ssl", null, " "}) {
         SslContextFactory.Server factory = new SslContextFactory.Server();
         new RestService().configureSSL(factory, protocol);
         try {
