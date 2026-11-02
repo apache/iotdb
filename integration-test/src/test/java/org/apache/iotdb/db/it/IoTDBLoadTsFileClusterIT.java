@@ -19,14 +19,20 @@
 
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.it.utils.TestUtils;
@@ -44,6 +50,7 @@ import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.ClusterConstant;
+import org.apache.iotdb.it.env.cluster.config.MppCommonConfig;
 import org.apache.iotdb.it.env.cluster.config.MppDataNodeConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -52,6 +59,7 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.runtime.ClusterTestResultSet;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.UrlUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -89,9 +97,15 @@ import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
@@ -180,8 +194,12 @@ public class IoTDBLoadTsFileClusterIT {
     EnvFactory.getEnv()
         .getConfig()
         .getDataNodeConfig()
-        .setMetricReporterType(Collections.singletonList("JMX"))
+        .setMetricReporterType(Arrays.asList("JMX", "PROMETHEUS"))
         .setDeleteWalFilesPeriodInMs(500);
+    final Properties metrics = new Properties();
+    metrics.setProperty("prometheus_reporter_async_update", "false");
+    ((MppCommonConfig) EnvFactory.getEnv().getConfig().getDataNodeCommonConfig())
+        .updateProperties(metrics);
     final Properties retentionProperties = new Properties();
     retentionProperties.setProperty("dn_metric_level", "IMPORTANT");
     retentionProperties.setProperty("load_clean_up_task_execution_delay_time_seconds", "1");
@@ -1432,11 +1450,23 @@ public class IoTDBLoadTsFileClusterIT {
   public void testConcurrentQueryFallbackFailureRetainsSourceForRetry() throws Exception {
     final File good = new File(tmpDir, "301-0-0-0.tsfile");
     final File bad = new File(tmpDir, "302-0-0-0.tsfile");
-    final String device = DATABASE + ".concurrent";
-    writeFallbackSource(good, device + ".good", false);
-    writeFallbackSource(bad, device + ".bad", false);
+    final String device = DATABASE + ".concurrent.d";
+    writeFallbackSource(good, device, false, 1);
+    writeFallbackSource(bad, device, false, 101);
     final long compressionOffset = firstChunkCompressionOffset(bad);
     final int originalCompression = replaceByte(bad, compressionOffset, 0x7f);
+    // One device and partition guarantee identical routing without changing the class's Region
+    // allocation policy. Disjoint timestamps expose a failed load borrowing the healthy data.
+    final int sharedRegion;
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database " + DATABASE);
+      // Match the aligned source and avoid racing automatic schema creation in the two LOADs.
+      statement.execute(
+          "create aligned timeseries " + device + "(region_marker INT64,s1 INT64,s2 INT64)");
+      statement.execute("insert into " + device + "(time,region_marker) aligned values(0,0)");
+      sharedRegion = assertSharedDataRegion(device);
+    }
     final ExecutorService loaders = Executors.newFixedThreadPool(2);
     final CountDownLatch ready = new CountDownLatch(2);
     final CountDownLatch start = new CountDownLatch(1);
@@ -1446,7 +1476,10 @@ public class IoTDBLoadTsFileClusterIT {
         loads.add(
             loaders.submit(
                 () -> {
-                  try (final Connection connection = EnvFactory.getEnv().getConnection();
+                  try (final Connection connection =
+                          EnvFactory.getEnv()
+                              .getConnectionWithSpecifiedDataNode(
+                                  EnvFactory.getEnv().getDataNodeWrapper(0));
                       final Statement statement = connection.createStatement()) {
                     ready.countDown();
                     Assert.assertTrue(start.await(30, TimeUnit.SECONDS));
@@ -1470,19 +1503,157 @@ public class IoTDBLoadTsFileClusterIT {
       }
       assertFallbackSourceExists(good, false);
       assertFallbackSourceExists(bad, true);
+      assertLoadsOverlapped(good, bad);
+      // Check the failed attempt before a new LOAD can hide or release leaked state.
+      Awaitility.await()
+          .atMost(30, TimeUnit.SECONDS)
+          .untilAsserted(() -> assertLoadMemoryReleased());
       try (final Connection connection = EnvFactory.getEnv().getConnection();
           final Statement statement = connection.createStatement()) {
-        assertFallbackRows(statement, device + ".good");
+        assertFallbackRows(statement, device);
         replaceByte(bad, compressionOffset, originalCompression);
+        // This is an explicitly new submission after source repair, not restoration of the
+        // original failed task.
         statement.execute(fallbackLoadSql(bad, true));
-        assertFallbackRows(statement, device + ".bad");
-        assertFallbackRows(statement, device + ".good");
+        assertFallbackRows(statement, device, 1, 101);
+        Assert.assertEquals(sharedRegion, assertSharedDataRegion(device));
       }
       assertFallbackSourceExists(bad, false);
+      Awaitility.await()
+          .atMost(30, TimeUnit.SECONDS)
+          .untilAsserted(() -> assertLoadMemoryReleased());
     } finally {
       start.countDown();
       loaders.shutdownNow();
       Assert.assertTrue(loaders.awaitTermination(30, TimeUnit.SECONDS));
+    }
+  }
+
+  private static int assertSharedDataRegion(final String device) throws Exception {
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      final ByteArrayOutputStream serializedDevice = new ByteArrayOutputStream();
+      IDeviceID.Factory.DEFAULT_FACTORY.create(device).serialize(serializedDevice);
+      final TGetRegionIdResp response =
+          client.getRegionId(
+              new TGetRegionIdReq(TConsensusGroupType.DataRegion)
+                  .setDatabase(DATABASE)
+                  .setDevice(serializedDevice.toByteArray())
+                  .setStartTimeSlot(new TTimePartitionSlot(0))
+                  .setEndTimeSlot(new TTimePartitionSlot(0)));
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+      Assert.assertEquals(1, response.getDataRegionIdListSize());
+      final TConsensusGroupId region = response.getDataRegionIdList().get(0);
+      final TRegionRouteMapResp routes = client.getLatestRegionRouteMap();
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), routes.getStatus().getCode());
+      final List<Integer> replicas = new ArrayList<>();
+      routes
+          .getRegionRouteMap()
+          .get(region)
+          .getDataNodeLocations()
+          .forEach(node -> replicas.add(node.getClientRpcEndPoint().getPort()));
+      final List<Integer> expected = new ArrayList<>();
+      for (final DataNodeWrapper node : EnvFactory.getEnv().getDataNodeWrapperList()) {
+        expected.add(node.getPort());
+      }
+      Collections.sort(replicas);
+      Collections.sort(expected);
+      Assert.assertEquals(REPLICATION_FACTOR, replicas.size());
+      Assert.assertEquals(expected, replicas);
+      return region.getId();
+    }
+  }
+
+  private static void assertLoadsOverlapped(final File good, final File bad) throws IOException {
+    final DataNodeWrapper coordinator = EnvFactory.getEnv().getDataNodeWrapper(0);
+    final List<String> lines =
+        Files.readAllLines(
+            new File(coordinator.getLogDirPath(), coordinator.getId() + ".log").toPath(),
+            StandardCharsets.UTF_8);
+    final int goodStart =
+        findLogLine(
+            lines,
+            DataNodeQueryMessages.TSFILE_ARG_IS_A_ARG_MODEL_FILE,
+            good.getAbsolutePath(),
+            "tree");
+    final int badStart =
+        findLogLine(
+            lines,
+            DataNodeQueryMessages.TSFILE_ARG_IS_A_ARG_MODEL_FILE,
+            bad.getAbsolutePath(),
+            "tree");
+    final int goodEnd =
+        findLogLine(
+            lines,
+            DataNodeQueryMessages.LOAD_TSFILE_ARG_SUCCESSFULLY_LOAD_PROCESS_ARG_ARG,
+            good.getAbsolutePath(),
+            1,
+            1);
+    final int badSplitEnd =
+        findLogLine(
+            lines,
+            DataNodeQueryMessages
+                .LOAD_TSFILE_S_FAILED_WILL_TRY_TO_CONVERT_TO_TABLETS_AND_INSERT_FAILED_TSFILES_ARG,
+            bad.getAbsolutePath());
+    Assert.assertTrue(
+        "Both LOADs must reach the server before either initial load finishes",
+        Math.max(goodStart, badStart) < Math.min(goodEnd, badSplitEnd));
+  }
+
+  private static int findLogLine(
+      final List<String> lines, final String template, final Object... arguments) {
+    final String message = String.format(template.replace("{}", "%s"), arguments);
+    for (int line = 0; line < lines.size(); line++) {
+      if (lines.get(line).contains(message)) {
+        return line;
+      }
+    }
+    throw new AssertionError("Missing LOAD log: " + message);
+  }
+
+  private static void assertLoadMemoryReleased() throws Exception {
+    // Only DataNodes own LOAD memory. Bound each HTTP request and the outer eventual check.
+    for (final DataNodeWrapper node : EnvFactory.getEnv().getDataNodeWrapperList()) {
+      final HttpURLConnection metrics =
+          (HttpURLConnection)
+              new URL(
+                      "http://"
+                          + UrlUtils.formatTEndPointIpv4AndIpv6Url(
+                              node.getIp(), node.getMetricPort())
+                          + "/metrics")
+                  .openConnection();
+      metrics.setConnectTimeout(5000);
+      metrics.setReadTimeout(5000);
+      try {
+        Assert.assertEquals(HttpURLConnection.HTTP_OK, metrics.getResponseCode());
+        final Set<String> gauges = new HashSet<>();
+        try (final BufferedReader lines =
+            new BufferedReader(
+                new InputStreamReader(metrics.getInputStream(), StandardCharsets.UTF_8))) {
+          String line;
+          while ((line = lines.readLine()) != null) {
+            for (final String name :
+                Arrays.asList(
+                    "LoadTsFileUsedMemory", "LoadTsFileDataCacheMemory", "LoadTsFileOtherMemory")) {
+              if (line.startsWith("load_mem{") && line.contains("name=\"" + name + "\"")) {
+                Assert.assertEquals(
+                    line, 0.0, Double.parseDouble(line.substring(line.lastIndexOf(' ') + 1)), 0.0);
+                Assert.assertTrue("Duplicate gauge: " + line, gauges.add(name));
+              }
+            }
+          }
+        }
+        Assert.assertEquals(
+            node.getIpAndPortString(),
+            new HashSet<>(
+                Arrays.asList(
+                    "LoadTsFileUsedMemory", "LoadTsFileDataCacheMemory", "LoadTsFileOtherMemory")),
+            gauges);
+      } finally {
+        metrics.disconnect();
+      }
     }
   }
 
@@ -1500,6 +1671,12 @@ public class IoTDBLoadTsFileClusterIT {
 
   private static long writeFallbackSource(
       final File file, final String device, final boolean includeAnchor) throws Exception {
+    return writeFallbackSource(file, device, includeAnchor, 1);
+  }
+
+  private static long writeFallbackSource(
+      final File file, final String device, final boolean includeAnchor, final long startTimestamp)
+      throws Exception {
     final List<IMeasurementSchema> schemas =
         Arrays.asList(
             new MeasurementSchema(
@@ -1524,7 +1701,7 @@ public class IoTDBLoadTsFileClusterIT {
       writer.registerAlignedTimeseries(device, schemas);
       final Tablet tablet = new Tablet(device, schemas);
       for (int i = 0; i < 4; i++) {
-        tablet.addTimestamp(i, i + 1);
+        tablet.addTimestamp(i, i + startTimestamp);
         tablet.addValue(i, 0, (long) i);
         tablet.addValue(i, 1, (long) i * 10);
       }
@@ -1532,8 +1709,8 @@ public class IoTDBLoadTsFileClusterIT {
     }
     final TsFileResource resource = new TsFileResource(file);
     final IDeviceID deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create(device);
-    resource.updateStartTime(deviceId, 1);
-    resource.updateEndTime(deviceId, 4);
+    resource.updateStartTime(deviceId, startTimestamp);
+    resource.updateEndTime(deviceId, startTimestamp + 3);
     if (includeAnchor) {
       final IDeviceID anchorId = IDeviceID.Factory.DEFAULT_FACTORY.create(anchor);
       resource.updateStartTime(anchorId, 0);
@@ -1541,7 +1718,9 @@ public class IoTDBLoadTsFileClusterIT {
     }
     resource.serialize();
     try (final ModificationFile mods = resource.getExclusiveModFile()) {
-      mods.write(new TreeDeletionEntry(new MeasurementPath(device + ".s1"), 2, 2));
+      mods.write(
+          new TreeDeletionEntry(
+              new MeasurementPath(device + ".s1"), startTimestamp + 1, startTimestamp + 1));
     }
     return groupMarkerOffset;
   }
@@ -1578,16 +1757,24 @@ public class IoTDBLoadTsFileClusterIT {
 
   private static void assertFallbackRows(final Statement statement, final String device)
       throws SQLException {
+    assertFallbackRows(statement, device, 1);
+  }
+
+  private static void assertFallbackRows(
+      final Statement statement, final String device, final long... startTimestamps)
+      throws SQLException {
     try (final ResultSet rows = statement.executeQuery("select s1,s2 from " + device)) {
-      for (int i = 0; i < 4; i++) {
-        Assert.assertTrue(device, rows.next());
-        Assert.assertEquals(i + 1, rows.getLong(1));
-        if (i == 1) {
-          Assert.assertNull(rows.getObject(2));
-        } else {
-          Assert.assertEquals(i, rows.getLong(2));
+      for (final long startTimestamp : startTimestamps) {
+        for (int i = 0; i < 4; i++) {
+          Assert.assertTrue(device, rows.next());
+          Assert.assertEquals(i + startTimestamp, rows.getLong(1));
+          if (i == 1) {
+            Assert.assertNull(rows.getObject(2));
+          } else {
+            Assert.assertEquals((long) i, rows.getObject(2));
+          }
+          Assert.assertEquals(i * 10L, rows.getObject(3));
         }
-        Assert.assertEquals(i * 10, rows.getLong(3));
       }
       Assert.assertFalse(device, rows.next());
     }
