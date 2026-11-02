@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALReader;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.config.MppCommonConfig;
@@ -38,15 +41,25 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
@@ -82,6 +95,10 @@ public class IoTDBWriteMemoryLifecycleIT {
     properties.setProperty("enable_timed_flush_seq_memtable", "false");
     properties.setProperty("enable_timed_flush_unseq_memtable", "false");
     properties.setProperty("wal_entry_size_limit_in_byte", "16384");
+    properties.setProperty("wal_file_size_threshold_in_byte", "1024");
+    properties.setProperty("enable_wal_compression", "false");
+    // Retain the rolled segments until the crash instead of snapshotting/deleting them.
+    properties.setProperty("delete_wal_files_period_in_ms", "3600000");
     // Read live accounting, not the reporter's 15-second cached snapshot.
     properties.setProperty("prometheus_reporter_async_update", "false");
     ((MppCommonConfig) EnvFactory.getEnv().getConfig().getDataNodeCommonConfig())
@@ -213,31 +230,172 @@ public class IoTDBWriteMemoryLifecycleIT {
   }
 
   @Test
-  public void testCrashRecoveryThenWriteAndRelease() throws Exception {
+  public void testMultiWalSegmentMixedFlushCrashRecovery() throws Exception {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       insert(session, 0, 129);
+      flushAndAssertReleased(session);
+      writeRecoveryTable(0);
+      session.executeNonQueryStatement("FLUSH");
+      assertRecoveryTable(0);
+      assertTrue("The baseline must have a sealed TsFile", sealedFileCount() > 0);
+      long sealedBaseline = sealedFileCount();
+
+      // Two time partitions, both aligned/non-aligned processors, and updates to disk keys.
+      insert(session, 935, 129);
+      insert(session, 1064, 129);
+      overwrite(session, 0, "before-crash");
+      writeRecoveryTable(1);
       assertTrue(memoryUsage() > 0);
+      assertTrue(memoryUsage("wal_recovery_table") > 0);
+      assertEquals(
+          "The acknowledged tail must remain unflushed", sealedBaseline, sealedFileCount());
+      assertRolledRecoveryWal();
+      assertData();
+      assertRecoveryTable(1);
     }
     // No FLUSH and no graceful shutdown: acknowledged data must come back through WAL recovery.
     TestUtils.stopForciblyAndRestartDataNodes();
     assertData();
+    assertRecoveryTable(1);
     // Recovery flushes the replayed memtable and seals its TsFile before accepting requests.
     assertEquals("Recovery must leave no live write memory", 0, memoryUsage());
+    assertEquals(0, memoryUsage("wal_recovery_table"));
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       insert(session, 129, 129);
       overwrite(session, 0, "after-recovery");
+      writeRecoveryTable(2);
       assertTrue("New writes after recovery must be charged", memoryUsage() > 0);
       assertData();
       flushAndAssertReleased(session);
     }
     TestUtils.stopForciblyAndRestartDataNodes();
     assertData();
+    assertRecoveryTable(2);
     assertEquals("Closed files must not retain write memory after restart", 0, memoryUsage());
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       insert(session, 258, 65);
       assertTrue(memoryUsage() > 0);
       flushAndAssertReleased(session);
       assertData();
+    }
+  }
+
+  private static long sealedFileCount() throws Exception {
+    try (Stream<Path> files =
+        Files.walk(Paths.get(EnvFactory.getEnv().getDataNodeWrapper(0).getDataNodeDir()))) {
+      return files.filter(path -> path.toString().endsWith(".tsfile.resource")).count();
+    }
+  }
+
+  private static void assertRolledRecoveryWal() throws Exception {
+    Map<Path, List<Path>> walNodes;
+    try (Stream<Path> files =
+        Files.walk(Paths.get(EnvFactory.getEnv().getDataNodeWrapper(0).getWalDir()))) {
+      walNodes =
+          files
+              .filter(path -> path.toString().endsWith(".wal"))
+              .collect(Collectors.groupingBy(Path::getParent));
+    }
+    Set<String> rolledDevices = new HashSet<>();
+    for (List<Path> segments : walNodes.values()) {
+      segments.sort(
+          Comparator.comparingLong(
+              path -> WALFileUtils.parseVersionId(path.getFileName().toString())));
+      Map<String, Integer> tailSegments = new HashMap<>();
+      // The newest segment may still be active. Read only sealed predecessors, and count
+      // segments containing the unflushed business tail, excluding the flushed baseline/audit.
+      for (int index = 0; index + 1 < segments.size(); index++) {
+        Set<String> devicesInSegment = new HashSet<>();
+        try (WALReader reader = new WALReader(segments.get(index).toFile())) {
+          while (reader.hasNext()) {
+            Object value = reader.next().getValue();
+            if (value instanceof InsertTabletNode) {
+              InsertTabletNode tablet = (InsertTabletNode) value;
+              String device = tablet.getTargetPath().getFullPath();
+              if (Arrays.asList(DEVICES).contains(device)
+                  && tablet.getRowCount() > 0
+                  && tablet.getTimes()[0] >= 935) {
+                devicesInSegment.add(device);
+              }
+            }
+          }
+          assertFalse(
+              "Malformed sealed recovery WAL: " + segments.get(index), reader.isFileCorrupted());
+        }
+        devicesInSegment.forEach(device -> tailSegments.merge(device, 1, Integer::sum));
+      }
+      tailSegments.forEach(
+          (device, count) -> {
+            if (count >= 2) {
+              rolledDevices.add(device);
+            }
+          });
+    }
+    assertEquals(
+        "Each device's unflushed tail must span sealed segments within one WAL node",
+        new HashSet<>(Arrays.asList(DEVICES)),
+        rolledDevices);
+  }
+
+  private static void writeRecoveryTable(int phase) throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      if (phase == 0) {
+        statement.execute("CREATE DATABASE wal_recovery_table");
+        statement.execute("USE wal_recovery_table");
+        statement.execute(
+            "CREATE TABLE readings(site STRING TAG, device STRING TAG, n INT64 FIELD, t STRING FIELD)");
+      } else {
+        statement.execute("USE wal_recovery_table");
+      }
+      // Same device tag at different sites must stay distinct through WAL replay.
+      for (int site = 0; site < 2; site++) {
+        for (int row = 0; row < 8; row++) {
+          long time = row < 4 ? row : 1000 + row;
+          if (phase != 0 && row == 0) {
+            time = 2000 + phase;
+          }
+          statement.execute(
+              "INSERT INTO readings(time,site,device,n,t) VALUES("
+                  + time
+                  + ",'s"
+                  + site
+                  + "','d',"
+                  + (phase * 1000 + site * 100 + row)
+                  + ","
+                  + (row % 3 == 0 ? "null" : "'p" + phase + "-s" + site + "-r" + row + "'")
+                  + ")");
+        }
+      }
+    }
+  }
+
+  private static void assertRecoveryTable(int phase) throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE wal_recovery_table");
+      try (ResultSet result =
+          statement.executeQuery(
+              "SELECT time,site,device,n,t FROM readings ORDER BY site,time,device")) {
+        for (int site = 0; site < 2; site++) {
+          for (int row = 0; row < 8 + phase; row++) {
+            assertTrue(result.next());
+            boolean appended = row >= 8;
+            int writtenPhase = row == 0 ? 0 : appended ? row - 7 : phase;
+            int originalRow = appended ? 0 : row;
+            long time = appended ? 2000 + writtenPhase : row < 4 ? row : 1000 + row;
+            assertEquals(time, result.getLong(1));
+            assertEquals("s" + site, result.getString(2));
+            assertEquals("d", result.getString(3));
+            assertEquals(writtenPhase * 1000 + site * 100 + originalRow, result.getLong(4));
+            assertFalse(result.wasNull());
+            assertEquals(
+                originalRow % 3 == 0 ? null : "p" + writtenPhase + "-s" + site + "-r" + originalRow,
+                result.getString(5));
+          }
+        }
+        assertFalse("Unexpected TAG combination or extra recovery row", result.next());
+      }
     }
   }
 
@@ -317,8 +475,9 @@ public class IoTDBWriteMemoryLifecycleIT {
     for (int row = 0; row < count; row++) {
       int time = start + row;
       tablet.addTimestamp(row, time);
-      tablet.addValue("n", row, (long) time);
-      tablet.addValue("t", row, override == null ? text(time) : override);
+      tablet.addValue("n", row, time + (DEVICES[1].equals(device) ? 100_000L : 0));
+      String value = override == null ? text(time) : override;
+      tablet.addValue("t", row, value == null ? null : device + ":" + value);
     }
     return tablet;
   }
@@ -333,13 +492,13 @@ public class IoTDBWriteMemoryLifecycleIT {
         time,
         Collections.singletonList("t"),
         Collections.singletonList(TSDataType.TEXT),
-        Collections.singletonList(value));
+        Collections.singletonList(DEVICES[0] + ":" + value));
     session.insertAlignedRecord(
         DEVICES[1],
         time,
         Collections.singletonList("t"),
         Collections.singletonList(TSDataType.TEXT),
-        Collections.singletonList(value));
+        Collections.singletonList(DEVICES[1] + ":" + value));
     expected.put(time, value);
   }
 
@@ -351,9 +510,11 @@ public class IoTDBWriteMemoryLifecycleIT {
           for (Map.Entry<Long, String> row : expected.entrySet()) {
             assertTrue("Missing timestamp " + row.getKey() + " in " + device, result.next());
             assertEquals((long) row.getKey(), result.getLong(1));
-            assertEquals((long) row.getKey(), result.getLong(2));
+            assertEquals(
+                row.getKey() + (DEVICES[1].equals(device) ? 100_000L : 0), result.getLong(2));
             assertFalse(result.wasNull());
-            assertEquals(row.getValue(), result.getString(3));
+            assertEquals(
+                row.getValue() == null ? null : device + ":" + row.getValue(), result.getString(3));
           }
           assertFalse("Unexpected extra row in " + device, result.next());
         }

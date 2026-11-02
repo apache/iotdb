@@ -36,6 +36,10 @@ import org.apache.iotdb.session.NodesSupplier;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.pool.SessionPool;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
@@ -44,13 +48,19 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.lang.reflect.Field;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -73,6 +83,9 @@ public class SessionSeedNodeFallbackIT {
         .getCommonConfig()
         .setSchemaReplicationFactor(3)
         .setDataReplicationFactor(3)
+        .setDataRegionGroupExtensionPolicy("CUSTOM")
+        .setDefaultDataRegionGroupNumPerDatabase(1)
+        .setTimePartitionInterval(1000)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
@@ -81,6 +94,260 @@ public class SessionSeedNodeFallbackIT {
   @After
   public void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Test
+  public void testOriginalWriteClientsRecoverCachedRoutesAfterLeaderCrash() throws Exception {
+    String[] devices = {"root.route_first.d", "root.route_second.d"};
+    Map<String, Map<Long, String>> expected = new HashMap<>();
+    for (String device : devices) {
+      expected.put(device, new TreeMap<>());
+    }
+    // Create Regions before choosing the business seed so its address cannot accidentally be
+    // the leader whose cached write connection we need to break.
+    try (Session setup =
+        new Session.Builder()
+            .host(endpoint(2).getIp())
+            .port(endpoint(2).getPort())
+            .maxRetryCount(0)
+            .build()) {
+      setup.open(false, RECOVERY_CONNECTION_TIMEOUT_MS);
+      for (String device : devices) {
+        setup.executeNonQueryStatement(
+            "CREATE DATABASE " + device.substring(0, device.lastIndexOf('.')));
+        setup.executeNonQueryStatement("CREATE TIMESERIES " + device + ".n INT64");
+        setup.executeNonQueryStatement("CREATE TIMESERIES " + device + ".t TEXT");
+        setup.executeNonQueryStatement(
+            "INSERT INTO "
+                + device
+                + "(time,n,t) VALUES(0,"
+                + routeNumber(device, 0, devices)
+                + ",'"
+                + device
+                + "-0')");
+        expected.get(device).put(0L, device + "-0");
+      }
+    }
+    Map<String, TEndPoint> initialLeaders = awaitWriteLeaders(devices, null, 2);
+    int seedIndex = initialLeaders.get(devices[0]).equals(endpoint(0)) ? 1 : 0;
+    TEndPoint seed = endpoint(seedIndex);
+    // The seed stays alive; the test specifically crashes a cached write leader.
+    SessionPool pool =
+        new SessionPool.Builder()
+            .host(seed.getIp())
+            .port(seed.getPort())
+            .maxSize(1)
+            .connectionTimeoutInMs(RECOVERY_CONNECTION_TIMEOUT_MS)
+            .waitToGetSessionTimeoutInMs(RECOVERY_CONNECTION_TIMEOUT_MS)
+            .maxRetryCount(0)
+            .build();
+    try (Session session =
+        new Session.Builder().host(seed.getIp()).port(seed.getPort()).maxRetryCount(0).build()) {
+      session.open(false, RECOVERY_CONNECTION_TIMEOUT_MS);
+      writeRoutePhase(session, pool, devices, 0, expected);
+      // Repeat identical keys to ensure both clients have received the routing recommendations.
+      writeRoutePhase(session, pool, devices, 0, expected);
+      Map<String, TEndPoint> leaders = awaitWriteLeaders(devices, null, seedIndex);
+      Map<String, TEndPoint> sessionRoutes = writeRoutes(session);
+      Map<String, TEndPoint> poolRoutes = writeRoutes(pool);
+      TEndPoint victim =
+          Arrays.stream(devices)
+              .map(device -> sessionRoutes.get(device))
+              .filter(route -> route != null && !route.equals(seed))
+              .filter(
+                  route ->
+                      Arrays.stream(devices)
+                          .anyMatch(
+                              device ->
+                                  route.equals(leaders.get(device))
+                                      && route.equals(poolRoutes.get(device))))
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new AssertionError(
+                          "No shared cached leader: session="
+                              + sessionRoutes
+                              + ", pool="
+                              + poolRoutes
+                              + ", leaders="
+                              + leaders));
+      int victimIndex = -1;
+      for (int index = 0; index < 3; index++) {
+        if (endpoint(index).equals(victim)) {
+          victimIndex = index;
+        }
+      }
+      assertTrue(victimIndex >= 0);
+      EnvFactory.getEnv().getDataNodeWrapper(victimIndex).stopForcibly();
+      try {
+        awaitStatus(victimIndex, NodeStatus.Unknown);
+        awaitWriteLeaders(devices, victim, seedIndex);
+        // Fixed keys make an outer retry after a transport failure safe; only returned success
+        // enters the ledger. The same Session and size-one pool must recover their old routes.
+        writeRoutePhase(session, pool, devices, 1, expected);
+        assertRouteData(devices, expected, session);
+        assertEquals(0, pool.currentOccupiedSize());
+        assertEquals(1, pool.currentAvailableSize());
+      } finally {
+        EnvFactory.getEnv().startDataNode(victimIndex);
+      }
+      awaitStatus(victimIndex, NodeStatus.Running);
+      awaitWriteLeaders(devices, null, seedIndex);
+      writeRoutePhase(session, pool, devices, 2, expected);
+      session.executeNonQueryStatement("FLUSH");
+      assertRouteData(devices, expected, session);
+      assertEquals(0, pool.currentOccupiedSize());
+      // The environment checks every DataNode, including the recovered old leader.
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        for (String device : devices) {
+          try (ResultSet result = statement.executeQuery("SELECT n,t FROM " + device)) {
+            for (Map.Entry<Long, String> row : expected.get(device).entrySet()) {
+              assertTrue(result.next());
+              assertEquals((long) row.getKey(), result.getLong(1));
+              assertEquals(routeNumber(device, row.getKey(), devices), result.getLong(2));
+              assertEquals(row.getValue(), result.getString(3));
+            }
+            assertFalse(result.next());
+          }
+        }
+      }
+    } finally {
+      pool.close();
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<String, TEndPoint> writeRoutes(Object client) throws Exception {
+    Field field = client.getClass().getDeclaredField("deviceIdToEndpoint");
+    field.setAccessible(true);
+    return new HashMap<>((Map<String, TEndPoint>) field.get(client));
+  }
+
+  private Map<String, TEndPoint> awaitWriteLeaders(
+      String[] devices, TEndPoint excluded, int probeIndex) {
+    Map<String, TEndPoint> leaders = new HashMap<>();
+    Awaitility.await()
+        .atMost(90, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              leaders.clear();
+              Map<String, Integer> runningReplicas = new HashMap<>();
+              Map<String, Integer> regionIds = new HashMap<>();
+              try (Session probe =
+                  new Session.Builder()
+                      .host(endpoint(probeIndex).getIp())
+                      .port(endpoint(probeIndex).getPort())
+                      .maxRetryCount(0)
+                      .build()) {
+                probe.open(false, RECOVERY_CONNECTION_TIMEOUT_MS);
+                try (SessionDataSet result = probe.executeQueryStatement("SHOW REGIONS")) {
+                  SessionDataSet.DataIterator rows = result.iterator();
+                  while (rows.next()) {
+                    String device = rows.getString("Database") + ".d";
+                    if (!Arrays.asList(devices).contains(device)
+                        || !"DataRegion".equals(rows.getString("Type"))) {
+                      continue;
+                    }
+                    int id = rows.getInt("RegionId");
+                    Integer previous = regionIds.put(device, id);
+                    assertTrue(
+                        "Expected one DataRegion per database", previous == null || previous == id);
+                    TEndPoint replica =
+                        new TEndPoint(rows.getString("RpcAddress"), rows.getInt("RpcPort"));
+                    if ("Running".equals(rows.getString("Status")) && !replica.equals(excluded)) {
+                      runningReplicas.merge(device, 1, Integer::sum);
+                      if ("Leader".equals(rows.getString("Role"))) {
+                        leaders.put(device, replica);
+                      }
+                    }
+                  }
+                }
+              }
+              assertEquals(2, new HashSet<>(regionIds.values()).size());
+              assertEquals(2, leaders.size());
+              for (String device : devices) {
+                assertEquals(
+                    excluded == null ? 3 : 2, (int) runningReplicas.getOrDefault(device, 0));
+              }
+            });
+    return new HashMap<>(leaders);
+  }
+
+  private void writeRoutePhase(
+      Session session,
+      SessionPool pool,
+      String[] devices,
+      int phase,
+      Map<String, Map<Long, String>> expected)
+      throws Exception {
+    for (int writer = 0; writer < 2; writer++) {
+      final int client = writer;
+      Awaitility.await()
+          .atMost(90, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                Map<String, Tablet> batch = new HashMap<>();
+                for (String device : devices) {
+                  Tablet tablet =
+                      new Tablet(
+                          device,
+                          Arrays.asList(
+                              new MeasurementSchema("n", TSDataType.INT64),
+                              new MeasurementSchema("t", TSDataType.TEXT)),
+                          2);
+                  for (int row = 0; row < 2; row++) {
+                    long time = phase * 3000L + client * 100L + (row == 0 ? 1001 : 1);
+                    tablet.addTimestamp(row, time);
+                    tablet.addValue("n", row, routeNumber(device, time, devices));
+                    tablet.addValue("t", row, row == 0 ? device + "-" + time : null);
+                  }
+                  batch.put(device, tablet);
+                }
+                try {
+                  if (client == 0) {
+                    session.insertTablets(batch);
+                  } else {
+                    pool.insertTablets(batch);
+                  }
+                } catch (IoTDBConnectionException | StatementExecutionException e) {
+                  // Leader/Running heartbeats can precede write readiness. Both transport and
+                  // server-side failures must retry these same idempotent keys until success.
+                  throw new AssertionError("Original writer has not recovered its cached route", e);
+                }
+              });
+      for (String device : devices) {
+        for (int row = 0; row < 2; row++) {
+          long time = phase * 3000L + writer * 100L + (row == 0 ? 1001 : 1);
+          expected.get(device).put(time, row == 0 ? device + "-" + time : null);
+        }
+      }
+    }
+  }
+
+  private static long routeNumber(String device, long time, String[] devices) {
+    return (device.equals(devices[0]) ? 0 : 100_000L) + time;
+  }
+
+  private void assertRouteData(
+      String[] devices, Map<String, Map<Long, String>> expected, Session session) throws Exception {
+    for (String device : devices) {
+      try (SessionDataSet result = session.executeQueryStatement("SELECT n,t FROM " + device)) {
+        for (Map.Entry<Long, String> row : expected.get(device).entrySet()) {
+          assertTrue(result.hasNext());
+          RowRecord actual = result.next();
+          assertEquals((long) row.getKey(), actual.getTimestamp());
+          assertEquals(
+              routeNumber(device, row.getKey(), devices), actual.getFields().get(0).getLongV());
+          assertEquals(
+              row.getValue(),
+              actual.getFields().get(1).getDataType() == null
+                  ? null
+                  : actual.getFields().get(1).getStringValue());
+        }
+        assertFalse(result.hasNext());
+      }
+    }
   }
 
   @Test

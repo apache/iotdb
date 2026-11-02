@@ -21,13 +21,20 @@ package org.apache.iotdb.relational.it.db.it;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.ITableSession;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.apache.tsfile.enums.ColumnCategory;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.write.record.Tablet;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -41,11 +48,15 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -72,6 +83,112 @@ public class IoTDBRestartTableIT {
         .getConfig()
         .getCommonConfig()
         .setSchemaRegionConsensusProtocolClass("org.apache.iotdb.consensus.simple.SimpleConsensus");
+  }
+
+  @Test
+  public void testPartialAndRejectedFieldsSurviveCrash() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE partial_recovery");
+      statement.execute("USE partial_recovery");
+      statement.execute(
+          "CREATE TABLE accepted(site STRING TAG, device STRING TAG, n INT64 FIELD, v INT64 FIELD)");
+      statement.execute("CREATE TABLE rejected(device STRING TAG, n INT64 FIELD)");
+      SQLException partial =
+          assertThrows(
+              SQLException.class,
+              () ->
+                  statement.execute(
+                      "INSERT INTO accepted(time,site,device,n,v) VALUES(1,'s','d',true,42)"));
+      assertEquals(507, partial.getErrorCode());
+      assertTrue(partial.getMessage(), partial.getMessage().contains("[n]"));
+      // Explicit NULL fields produce a real row; rejected fields must not produce one.
+      statement.execute("INSERT INTO accepted(time,site,device,n,v) VALUES(2,'s','d',null,null)");
+    }
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE partial_recovery");
+      for (boolean withTag : new boolean[] {true, false}) {
+        Tablet tablet =
+            new Tablet(
+                "rejected",
+                withTag ? Arrays.asList("device", "n") : Arrays.asList("n"),
+                withTag
+                    ? Arrays.asList(TSDataType.STRING, TSDataType.BOOLEAN)
+                    : Arrays.asList(TSDataType.BOOLEAN),
+                withTag
+                    ? Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD)
+                    : Arrays.asList(ColumnCategory.FIELD),
+                1);
+        tablet.addTimestamp(0, withTag ? 1 : 2);
+        if (withTag) {
+          tablet.addValue("device", 0, "rejected-device");
+        }
+        tablet.addValue("n", 0, true);
+        StatementExecutionException rejected =
+            assertThrows(StatementExecutionException.class, () -> session.insert(tablet));
+        assertEquals(507, rejected.getStatusCode());
+        assertTrue(
+            rejected.getMessage(),
+            rejected
+                .getMessage()
+                .contains(DataNodeQueryMessages.NO_COLUMN_OTHER_THAN_TIME_PRESENT_PLEASE_CHECK));
+      }
+    }
+    assertPartialRecoveryData(false);
+    TestUtils.stopForciblyAndRestartDataNodes();
+    assertPartialRecoveryData(false);
+
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE partial_recovery");
+      session.executeNonQueryStatement(
+          "INSERT INTO accepted(time,site,device,n) VALUES(1,'s','d',7)");
+      session.executeNonQueryStatement(
+          "INSERT INTO rejected(time,device,n) VALUES(1,'rejected-device',8)");
+      session.executeNonQueryStatement("INSERT INTO rejected(time,n) VALUES(2,9)");
+      session.executeNonQueryStatement("FLUSH");
+    }
+    assertPartialRecoveryData(true);
+  }
+
+  private static void assertPartialRecoveryData(boolean repaired) throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE partial_recovery");
+      try (ResultSet result =
+          statement.executeQuery("SELECT time,site,device,n,v FROM accepted ORDER BY time")) {
+        for (int time = 1; time <= 2; time++) {
+          assertTrue(result.next());
+          assertEquals(time, result.getLong(1));
+          assertEquals("s", result.getString(2));
+          assertEquals("d", result.getString(3));
+          assertEquals(repaired && time == 1 ? Long.valueOf(7) : null, result.getObject(4));
+          assertEquals(time == 1 ? Long.valueOf(42) : null, result.getObject(5));
+        }
+        assertFalse(result.next());
+      }
+      try (ResultSet result =
+          statement.executeQuery("SELECT time,device,n FROM rejected ORDER BY time")) {
+        if (repaired) {
+          assertTrue(result.next());
+          assertEquals(1, result.getLong(1));
+          assertEquals("rejected-device", result.getString(2));
+          assertEquals(8, result.getLong(3));
+          assertTrue(result.next());
+          assertEquals(2, result.getLong(1));
+          assertNull(result.getString(2));
+          assertEquals(9, result.getLong(3));
+        }
+        assertFalse(result.next());
+      }
+    }
+    if (!repaired) {
+      try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+        session.executeNonQueryStatement("USE partial_recovery");
+        try (SessionDataSet devices = session.executeQueryStatement("SHOW DEVICES FROM rejected")) {
+          assertFalse("Rejected FIELDs must not create a phantom device", devices.hasNext());
+        }
+      }
+    }
   }
 
   @Test
