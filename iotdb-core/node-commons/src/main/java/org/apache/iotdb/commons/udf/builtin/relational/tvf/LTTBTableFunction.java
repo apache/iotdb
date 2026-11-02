@@ -1468,9 +1468,28 @@ public class LTTBTableFunction implements TableFunction {
     /** Moves the windows that ended before {@code position} into the pending queue. */
     protected final void emitClosedWindows(long position, List<ColumnBuilder> builders) {
       while (!activeWindows.isEmpty() && activeWindows.peekFirst().endExclusive <= position) {
-        pendingWindows.addLast(activeWindows.removeFirst());
+        W window = activeWindows.removeFirst();
+        if (canEmitAnyRow(window)) {
+          pendingWindows.addLast(window);
+        } else {
+          // A closed window that holds no bucket and reports no F can never emit a row, and L is
+          // never its own row because L was collected into every bucket that contains it. Queueing
+          // it would let it hold a place in front of later windows — and its buffers — until the
+          // partition ends, so release it now.
+          releaseWindow(window);
+        }
       }
       emitReadyWindows(builders);
+    }
+
+    /** Whether {@code window} can still contribute at least one output row. */
+    private boolean canEmitAnyRow(W window) {
+      for (int i = 0; i < participantColumns.length; i++) {
+        if (window == firstEligibleWindows[i] || !window.buffers[i].isEmpty()) {
+          return true;
+        }
+      }
+      return false;
     }
 
     @Override

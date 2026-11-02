@@ -167,6 +167,40 @@ public class LTTBWindowMemoryTest {
   }
 
   @Test
+  public void testWindowsAfterTheLastValueDoNotStallEmission() {
+    // Two eligible points followed by a long NULL tail. The window holding the second point is the
+    // one that may report L, so it must wait for the end of the partition; every window after it is
+    // empty and emittable by nobody. Queuing those empty windows would block the head of the queue
+    // and keep their buffers alive until finish, which exhausts the budget on a sparse partition.
+    for (boolean timeWindow : new boolean[] {false, true}) {
+      TableFunctionDataProcessor processor = processor(timeWindow, 1, 1, Type.DOUBLE);
+      List<ColumnBuilder> builders = builders(timeWindow);
+      try {
+        for (int row = 0; row < 80_000; row++) {
+          Double value = null;
+          if (row == 0) {
+            value = 1.0;
+          } else if (row == 1) {
+            value = 5.0;
+          }
+          processor.process(record(row, value), builders, null);
+        }
+        processor.finish(builders, null);
+        ColumnBuilder times = builders.get(timeWindow ? 2 : 1);
+        ColumnBuilder valuesBuilder = builders.get(timeWindow ? 3 : 2);
+        // Window 0 reports F(t0), window 1 reports L(t1); the NULL tail emits nothing.
+        assertEquals(2, times.getPositionCount());
+        assertEquals(0, times.build().getLong(0));
+        assertEquals(1, times.build().getLong(1));
+        assertEquals(1.0, valuesBuilder.build().getDouble(0), 0.0);
+        assertEquals(5.0, valuesBuilder.build().getDouble(1), 0.0);
+      } finally {
+        processor.beforeDestroy();
+      }
+    }
+  }
+
+  @Test
   public void testWindowResultsArePreserved() {
     for (boolean timeWindow : new boolean[] {false, true}) {
       TableFunctionDataProcessor processor = processor(timeWindow, 2, 2, Type.DOUBLE);
