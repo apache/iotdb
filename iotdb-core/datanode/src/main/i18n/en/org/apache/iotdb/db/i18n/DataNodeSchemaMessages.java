@@ -744,8 +744,8 @@ public final class DataNodeSchemaMessages {
   public static final String EXCEPTION_COMMA_50AD1C01 = ", ";
   public static final String MESSAGE_SKIP_ROLLBACK_RENAMING_OLD_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_664F2456 = "Skip rollback renaming old table {}.{} because it has been handled.";
   public static final String MESSAGE_SKIP_COMMIT_UPDATE_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_31362A1C = "Skip commit-update table {}.{} because it has been handled.";
-  public static final String LOG_ADD_VIEW_COLUMN_CN_FAILED_FE4F10AC = "Failed to add columns to the tree to table views for operation {}, ConfigNode returned {}.";
   public static final String LOG_ADD_VIEW_COLUMN_FAILED_FOR_VIEW_B3EB8144 = "Failed to add a column to the view {}.{} for operation {}, ConfigNode returned {}.";
+  public static final String LOG_ADD_VIEW_COLUMN_ALREADY_EXISTS_FOR_VIEW_EDFF86E8 = "The columns to be added to the view {}.{} for operation {} already exist and are skipped, ConfigNode returned {}.";
   public static final String LOG_ADD_VIEW_COLUMN_EMPTY_RESPONSE_B9502E26 = "Failed to add columns to the tree to table views for operation {}, ConfigNode returned an empty response.";
   public static final String LOG_ADD_VIEW_COLUMN_CN_UNREACHABLE_E9BC7652 = "Failed to add columns to the tree to table views for operation {}, because ConfigNode is not reachable.";
   public static final String LOG_TRIGGER_ADD_VIEW_COLUMN_FAILED_B909817F = "Failed to trigger the view column addition of the tree to table views for plan node {}, the schema write is not affected.";

@@ -341,4 +341,7 @@ public final class IoTConsensusMessages {
       LOG_FAILED_TO_RECORD_A_USER_DATA_TRANSFER_AUDIT_EVENT_CONSENSUS_REPLICATION_WILL_CONTINUE_F215E222 =
           "Failed to record a user-data transfer audit event; consensus replication will continue.";
 
+  public static final String
+      EXCEPTION_FAILED_TO_TAKE_SNAPSHOT_FOR_CONSENSUS_GROUP_ARG_IN_ARG_CHECK_STATE_MACHINE_LOGS_FOR_THE_UNDERLYING_CAUSE_74663D2D =
+          "Failed to take snapshot for consensus group %s in %s; check state machine logs for the underlying cause";
 }

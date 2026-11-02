@@ -200,6 +200,49 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         .put(consensusGroupId, pipeTaskMeta);
   }
 
+  /** Applies a partial metadata batch without dropping pipes omitted from the request. */
+  public List<TPushPipeMetaRespExceptionMessage> handleMultiPipeMetaChanges(
+      final List<PipeMeta> pipeMetaListFromCoordinator) {
+    if (pipeMetaListFromCoordinator.isEmpty()) {
+      return Collections.emptyList();
+    }
+    if (!tryWriteLockWithTimeOutInMs(
+        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
+      return null;
+    }
+    try {
+      // Reconciliation and alter-progress reuse need one complete view under the same write lock.
+      // Resolve replacements using the keeper's name/visibility identity, including new versions
+      // of existing pipes. Preserve the incoming old-DROPPED/new pair used by alter procedures.
+      final Set<PipeStaticMeta> replacedLocalMetas =
+          pipeMetaListFromCoordinator.stream()
+              .map(
+                  meta -> {
+                    final PipeStaticMeta staticMeta = meta.getStaticMeta();
+                    final PipeStatus status = meta.getRuntimeMeta().getStatus().get();
+                    if (status == PipeStatus.DROPPED) {
+                      return pipeMetaKeeper.getPipeMeta(
+                          staticMeta.getPipeName(), staticMeta.getCreationTime());
+                    }
+                    return status == PipeStatus.PRE_DELETE
+                        ? null
+                        : pipeMetaKeeper.getPipeMeta(staticMeta);
+                  })
+              .filter(Objects::nonNull)
+              .map(PipeMeta::getStaticMeta)
+              .collect(Collectors.toSet());
+      final List<PipeMeta> fullPipeMetaList = new ArrayList<>(pipeMetaListFromCoordinator);
+      for (final PipeMeta localMeta : pipeMetaKeeper.getPipeMetaList()) {
+        if (!replacedLocalMetas.contains(localMeta.getStaticMeta())) {
+          fullPipeMetaList.add(localMeta);
+        }
+      }
+      return handlePipeMetaChangesInternal(fullPipeMetaList);
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
   @Override
   protected TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChangesInternal(
       final PipeMeta pipeMetaFromCoordinator) {

@@ -454,6 +454,8 @@ public final class ProcedureMessages {
       "Failed to push pipe meta list to data nodes, will retry later.";
   public static final String FAILED_TO_PUSH_PIPE_META_TO_DATANODES_DETAILS =
       "Failed to push pipe meta to dataNodes, details: %s";
+  public static final String EXCEPTION_INTERNAL_ERROR_WHILE_PROCESSING_PUSHPIPEMETA_ON_DATANODE_5983BD5F =
+      "Internal error while processing pushPipeMeta on DataNode.";
   public static final String FAILED_TO_PUSH_TOPIC_META_TO_DATANODES_DETAILS =
       "Failed to push topic meta to dataNodes, details: %s";
   public static final String FAILED_TO_REMOVE_DATA_NODE_BECAUSE_IT_IS_NOT_IN =
@@ -873,9 +875,10 @@ public final class ProcedureMessages {
       "Retrievable error trying to drop pipe plugin [{}], state: {}";
   public static final String RETRIEVABLE_ERROR_TRYING_TO_REMOVE_AINODE_STATE =
       "Retrievable error trying to remove AINode [{}], state [{}]";
+  public static final String ROLLBACK_ADDTABLECOLUMN_COSTS_MS =
+      "Rollback AddTableColumn-{} costs {}ms.";
   public static final String ROLLBACK_CREATETABLE_COSTS_MS = "Rollback CreateTable-{} costs {}ms.";
   public static final String ROLLBACK_CREATE_TABLE_FAILED = "Rollback create table failed";
-  public static final String ROLLBACK_DROPTABLE_COSTS_MS = "Rollback DropTable-{} costs {}ms.";
   public static final String ROLLBACK_PRE_DELETE_TABLE_FAILED =
       "Rollback pre-delete table %s.%s failed, please manually drop the table by entering sql";
   public static final String ROLLBACK_PRE_RELEASE = "Rollback pre-release ";

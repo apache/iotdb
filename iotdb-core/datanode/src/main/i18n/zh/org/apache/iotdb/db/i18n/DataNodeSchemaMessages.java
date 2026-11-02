@@ -732,8 +732,8 @@ public final class DataNodeSchemaMessages {
   public static final String EXCEPTION_COMMA_50AD1C01 = ", ";
   public static final String MESSAGE_SKIP_ROLLBACK_RENAMING_OLD_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_664F2456 = "跳过回滚重命名旧表 {}.{}，因为该操作已被处理。";
   public static final String MESSAGE_SKIP_COMMIT_UPDATE_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_31362A1C = "跳过提交更新表 {}.{}，因为该操作已被处理。";
-  public static final String LOG_ADD_VIEW_COLUMN_CN_FAILED_FE4F10AC = "为操作 {} 的树转表视图加列失败，ConfigNode 返回 {}。";
   public static final String LOG_ADD_VIEW_COLUMN_FAILED_FOR_VIEW_B3EB8144 = "为视图 {}.{} 加列失败（操作 {}），ConfigNode 返回 {}。";
+  public static final String LOG_ADD_VIEW_COLUMN_ALREADY_EXISTS_FOR_VIEW_EDFF86E8 = "为视图 {}.{} 加列时（操作 {}），待新增的列均已存在，已跳过，ConfigNode 返回 {}。";
   public static final String LOG_ADD_VIEW_COLUMN_EMPTY_RESPONSE_B9502E26 = "为操作 {} 的树转表视图加列失败，ConfigNode 返回了空响应。";
   public static final String LOG_ADD_VIEW_COLUMN_CN_UNREACHABLE_E9BC7652 = "为操作 {} 的树转表视图加列失败，因为无法访问 ConfigNode。";
   public static final String LOG_TRIGGER_ADD_VIEW_COLUMN_FAILED_B909817F = "计划节点 {} 触发树转表视图加列失败，本次 schema 写入不受影响。";

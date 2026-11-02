@@ -327,7 +327,10 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
     }
   }
 
-  /** Rewinds a delivery after unsubscribe without counting it as a poison-message retry. */
+  /**
+   * Rewinds a delivery after interruption or unsubscribe without counting it as a poison-message
+   * retry.
+   */
   public synchronized void resetForRedelivery() {
     response.nack();
     lastPolledTimestamp.set(INVALID_TIMESTAMP);
