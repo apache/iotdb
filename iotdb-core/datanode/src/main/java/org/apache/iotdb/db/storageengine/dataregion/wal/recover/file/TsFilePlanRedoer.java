@@ -82,6 +82,9 @@ public class TsFilePlanRedoer {
 
   private List<Deletion> deletionsForFlushedData(
       PartialPath pathPattern, long deleteStartTime, long deleteEndTime) throws IOException {
+    // WAL inserts are replayed into memory and flushed after all deletions have been replayed.
+    // A file-wide deletion would also hide later inserts. The resource still describes only the
+    // data already on disk, and redoInsert skips that data using each device's end time.
     List<Deletion> deletions = new ArrayList<>();
     for (IDeviceID deviceID : tsFileResource.getDevices()) {
       Optional<Long> startTime = tsFileResource.getStartTime(deviceID);

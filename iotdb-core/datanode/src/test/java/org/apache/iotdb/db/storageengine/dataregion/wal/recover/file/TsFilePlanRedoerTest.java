@@ -629,7 +629,7 @@ public class TsFilePlanRedoerTest {
             Long.MIN_VALUE,
             Long.MAX_VALUE));
 
-    assertFalse(ModificationFile.getExclusiveMods(file).exists());
+    assertFalse(ModificationFile.getNormalMods(tsFileResource).exists());
   }
 
   @Test
