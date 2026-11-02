@@ -34,10 +34,13 @@ import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.IMetadataIndexEntry;
 import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Path;
@@ -52,6 +55,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -153,6 +157,66 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
       assertMeasurementLoadedCompletely(pointCountByTimeseries, device, 1);
     }
     Assert.assertFalse("A fully recovered load can delete its source", tsFile.exists());
+  }
+
+  @Test
+  public void testFallbackRetainsSourceWhenFirstDeviceMetadataIsUnreadable() throws Exception {
+    assertFallbackRetainsSourceWhenMetadataIsUnreadable(DEVICE_0);
+  }
+
+  @Test
+  public void testFallbackRetainsSourceWhenLaterDeviceMetadataIsUnreadable() throws Exception {
+    assertFallbackRetainsSourceWhenMetadataIsUnreadable(DEVICE_1);
+  }
+
+  private void assertFallbackRetainsSourceWhenMetadataIsUnreadable(final String corruptedDevice)
+      throws Exception {
+    tsFile = File.createTempFile("load-tree-unreadable-metadata-", ".tsfile");
+    final long groupMarkerOffset = writeTsFile(tsFile);
+    final IDeviceID deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create(corruptedDevice);
+    final long measurementIndexEndOffsetPosition;
+    try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+      final MetadataIndexNode deviceIndex =
+          reader.readFileMetadata().getTableMetadataIndexNode(deviceId.getTableName());
+      Assert.assertEquals(MetadataIndexNodeType.LEAF_DEVICE, deviceIndex.getNodeType());
+      final Pair<IMetadataIndexEntry, Long> deviceEntry =
+          deviceIndex.getChildIndexEntry(deviceId, true);
+      Assert.assertNotNull(deviceEntry);
+      final MetadataIndexNode measurementIndex =
+          reader.readMetadataIndexNode(deviceEntry.left.getOffset(), deviceEntry.right, false);
+      Assert.assertEquals(MetadataIndexNodeType.LEAF_MEASUREMENT, measurementIndex.getNodeType());
+      measurementIndexEndOffsetPosition = deviceEntry.right - Long.BYTES - Byte.BYTES;
+    }
+    // Preserve the footer and device index, but make the measurement metadata read reach EOF.
+    try (final RandomAccessFile bytes = new RandomAccessFile(tsFile, "rw")) {
+      bytes.seek(measurementIndexEndOffsetPosition);
+      bytes.writeLong(bytes.length() + 1);
+    }
+    try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+      Assert.assertThrows(
+          IOException.class,
+          () -> reader.getDeviceTimeseriesMetadataWithoutChunkMetadata(deviceId));
+    }
+    corruptGroupMarker(tsFile, groupMarkerOffset);
+    Assert.assertTrue("Expected scan parser to fail after corruption.", scanParserFails(tsFile));
+
+    final Map<String, Integer> points = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPointsByTimeseries(statement, points);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.get().getCode());
+    Assert.assertTrue("Unreadable metadata must retain the source", tsFile.exists());
+    assertMeasurementLoadedCompletely(points, DEVICE_0, 0);
+    assertMeasurementLoadedCompletely(points, DEVICE_0, 1);
   }
 
   @Test

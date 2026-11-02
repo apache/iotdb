@@ -272,16 +272,14 @@ class LoadTreeTsFileTabletIterator
       throws IOException {
     final LinkedHashMap<IDeviceID, List<String>> deviceMeasurementsMap = new LinkedHashMap<>();
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath())) {
-      final Iterator<Pair<IDeviceID, List<TimeseriesMetadata>>> metadataIterator =
-          reader.iterAllTimeseriesMetadata(false, false);
-      while (metadataIterator.hasNext()) {
-        final Pair<IDeviceID, List<TimeseriesMetadata>> deviceMetadata = metadataIterator.next();
+      // iterAllTimeseriesMetadata treats an IOException as the end of iteration. Use throwing
+      // reads so an incomplete metadata index cannot turn a partial load into a success.
+      for (final IDeviceID device : reader.getAllDevices()) {
         final Map<String, Long> emittedTimestamps =
-            lastEmittedTimestampsByDevice.getOrDefault(
-                deviceMetadata.getLeft(), Collections.emptyMap());
+            lastEmittedTimestampsByDevice.getOrDefault(device, Collections.emptyMap());
         deviceMeasurementsMap.put(
-            deviceMetadata.getLeft(),
-            deviceMetadata.getRight().stream()
+            device,
+            reader.getDeviceTimeseriesMetadataWithoutChunkMetadata(device).stream()
                 .filter(
                     metadata -> {
                       final Long emittedTimestamp =
