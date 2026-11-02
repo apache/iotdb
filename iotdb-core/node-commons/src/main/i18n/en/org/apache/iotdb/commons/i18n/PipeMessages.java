@@ -20,6 +20,12 @@
 package org.apache.iotdb.commons.i18n;
 
 public final class PipeMessages {
+  public static final String EXCEPTION_STRICTLY_UNIDIRECTIONAL_AIR_GAP_TRANSPORT_REQUIRES_UDP_78921AF9 =
+      "Strictly unidirectional air-gap transport requires UDP.";
+  public static final String LOG_STRICTLY_UNIDIRECTIONAL_UDP_TRANSPORT_IS_ENABLED_REQUESTS_ARE_SENT_WITHOUT_ACKNOWLEDGEMENTS_DELIVERY_AND_RECEIVER_ERRORS_CANNOT_BE_CONFIRMED_0A2F4382 =
+      "Strictly unidirectional UDP transport is enabled. Requests are sent without acknowledgements; delivery and receiver errors cannot be confirmed.";
+  public static final String LOG_AIR_GAP_HANDSHAKE_REQUEST_SENT_ON_SOCKET_ARG_WITHOUT_WAITING_FOR_ACKNOWLEDGEMENT_E1ECD582 =
+      "Air gap handshake request sent on socket {} without waiting for acknowledgement.";
 
   // ===================== Common / Shared =====================
 
@@ -1101,4 +1107,6 @@ public final class PipeMessages {
   public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_FAILED_D85CD23A = "DataPartitionTable generation failed: ";
   public static final String MESSAGE_UNKNOWN_TASK_STATUS_E05D98F0 = "Unknown task status: ";
 
+  public static final String EXCEPTION_UDP_SEND_INTERVAL_MUST_BE_NON_NEGATIVE_BUT_GOT_ARG_36D41687 =
+      "UDP send interval must be non-negative, but got %d.";
 }

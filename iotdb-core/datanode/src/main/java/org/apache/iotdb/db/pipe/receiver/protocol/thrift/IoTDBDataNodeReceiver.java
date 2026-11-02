@@ -196,6 +196,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private final PipeTransferSliceReqHandler sliceReqHandler = new PipeTransferSliceReqHandler();
 
+  private TPipeTransferReq lastSuccessfulUnidirectionalHandshake;
+  private TPipeTransferResp lastSuccessfulUnidirectionalHandshakeResp;
+
   private final SqlParser tableSqlParser = new SqlParser();
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
@@ -227,12 +230,48 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   @Override
   public synchronized TPipeTransferResp receive(final TPipeTransferReq req) {
+    final boolean isUnidirectionalHandshake =
+        req instanceof AirGapPseudoTPipeTransferRequest
+            && ((AirGapPseudoTPipeTransferRequest) req).isStrictUnidirectional()
+            && req.getType() == PipeRequestType.HANDSHAKE_DATANODE_V2.getType();
+    // Snapshot before decoding, which consumes the request body. Repeated no-ACK handshakes
+    // refresh a live session without discarding its partially received file or request slices.
+    final TPipeTransferReq handshake = isUnidirectionalHandshake ? req.deepCopy() : null;
+    if (isUnidirectionalHandshake
+        && hasPipeHandshakeCredential
+        && handshake.equals(lastSuccessfulUnidirectionalHandshake)) {
+      final TSStatus status = login();
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return lastSuccessfulUnidirectionalHandshakeResp.deepCopy();
+      }
+      hasPipeHandshakeCredential = false;
+      lastSuccessfulUnidirectionalHandshake = null;
+      lastSuccessfulUnidirectionalHandshakeResp = null;
+      return new TPipeTransferResp(status);
+    }
+    if (req.getType() == PipeRequestType.HANDSHAKE_DATANODE_V1.getType()
+        || req.getType() == PipeRequestType.HANDSHAKE_DATANODE_V2.getType()) {
+      lastSuccessfulUnidirectionalHandshake = null;
+      lastSuccessfulUnidirectionalHandshakeResp = null;
+    }
+    final TPipeTransferResp resp = receiveInternal(req);
+    if (isUnidirectionalHandshake
+        && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      lastSuccessfulUnidirectionalHandshake = handshake;
+      lastSuccessfulUnidirectionalHandshakeResp = resp.deepCopy();
+    }
+    return resp;
+  }
+
+  private TPipeTransferResp receiveInternal(final TPipeTransferReq req) {
     try {
       final long startTime = System.nanoTime();
       final short rawRequestType = req.getType();
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
         final PipeRequestType requestType = PipeRequestType.valueOf(rawRequestType);
-        if (requestType != PipeRequestType.TRANSFER_SLICE) {
+        if (requestType != PipeRequestType.TRANSFER_SLICE
+            && !(isStrictUnidirectionalRequest(req)
+                && requestType == PipeRequestType.TRANSFER_COMPRESSED)) {
           clearSliceReqHandler();
         }
         final TPipeTransferResp authResp = checkPipeTransferAuthenticated(requestType);
@@ -465,7 +504,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_SLICE:
             {
               try {
-                return handleTransferSlice(PipeTransferSliceReq.fromTPipeTransferReq(req));
+                return handleTransferSlice(
+                    PipeTransferSliceReq.fromTPipeTransferReq(req),
+                    isStrictUnidirectionalRequest(req));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferSliceTimer(System.nanoTime() - startTime);
@@ -479,7 +520,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                     PipeTransferCompressedReq.getMaxAdditionalDecompressedLengthInBytes(req);
                 try (final PipeMemoryBlock ignored =
                     tryAllocateReceiverMemory(requestedMemorySizeInBytes)) {
-                  return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
+                  return receiveNestedRequest(
+                      PipeTransferCompressedReq.fromTPipeTransferReq(req),
+                      isStrictUnidirectionalRequest(req));
                 }
               } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
                 return new TPipeTransferResp(
@@ -1101,7 +1144,25 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return configReceiverId.get();
   }
 
-  private TPipeTransferResp handleTransferSlice(final PipeTransferSliceReq pipeTransferSliceReq) {
+  private boolean isStrictUnidirectionalRequest(final TPipeTransferReq req) {
+    return req instanceof AirGapPseudoTPipeTransferRequest
+        && ((AirGapPseudoTPipeTransferRequest) req).isStrictUnidirectional();
+  }
+
+  private TPipeTransferResp receiveNestedRequest(
+      final TPipeTransferReq req, final boolean strictUnidirectional) {
+    return receive(
+        strictUnidirectional
+            ? new AirGapPseudoTPipeTransferRequest()
+                .setStrictUnidirectional(true)
+                .setVersion(req.version)
+                .setType(req.type)
+                .setBody(req.body)
+            : req);
+  }
+
+  private TPipeTransferResp handleTransferSlice(
+      final PipeTransferSliceReq pipeTransferSliceReq, final boolean strictUnidirectional) {
     final long sliceBodySizeInBytes = getSliceBodySizeInBytes(pipeTransferSliceReq);
     long requestedMemorySizeInBytes = sliceBodySizeInBytes;
     String memoryAction =
@@ -1144,7 +1205,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                       .MESSAGE_SLICE_RECEIVED_WAITING_FOR_MORE_SLICES_TO_COMPLETE_THE_REQUEST_EDB0B3EA));
         }
         clearSliceReqHandler();
-        return receive(req.get());
+        return receiveNestedRequest(req.get(), strictUnidirectional);
       }
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
       closeMemoryBlock(sliceMemoryBlock);
@@ -1946,6 +2007,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   @Override
   public synchronized void handleExit() {
+    lastSuccessfulUnidirectionalHandshake = null;
+    lastSuccessfulUnidirectionalHandshakeResp = null;
     PipeReceiverRuntimeRegistry.getInstance()
         .deregister(configPipeReceiverRuntimeSessionKey.getAndSet(null));
     clearSliceReqHandler();

@@ -83,7 +83,14 @@ public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
 
   @Override
   public void transfer(final Event event) throws Exception {
-    final int socketIndex = nextSocketIndex();
+    final boolean hasBatchToTransfer =
+        isTabletBatchModeEnabled
+            && Objects.nonNull(schemaRegionWritePlanEventBatch)
+            && !schemaRegionWritePlanEventBatch.isEmpty();
+    final boolean shouldRefreshReceiverSession =
+        !(event instanceof PipeHeartbeatEvent) || hasBatchToTransfer;
+    final int socketIndex =
+        shouldRefreshReceiverSession ? nextSocketIndex() : nextSocketIndex(false);
     final AirGapSocket socket = sockets.get(socketIndex);
 
     try {

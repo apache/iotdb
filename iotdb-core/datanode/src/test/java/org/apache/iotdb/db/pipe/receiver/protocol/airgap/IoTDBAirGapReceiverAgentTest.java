@@ -39,11 +39,104 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class IoTDBAirGapReceiverAgentTest {
+
+  @Test(timeout = 30_000)
+  public void testUdpSocketIsDrainedWhileRequestHandlingIsBlocked() throws Exception {
+    verifyUdpQueue(false);
+  }
+
+  @Test(timeout = 30_000)
+  public void testStoppingUdpReceiverReleasesQueuedPackets() throws Exception {
+    verifyUdpQueue(true);
+  }
+
+  private void verifyUdpQueue(final boolean stopWithPendingPackets) throws Exception {
+    final CountDownLatch handlingStarted = new CountDownLatch(1);
+    final CountDownLatch resumeHandling = new CountDownLatch(1);
+    final CountDownLatch handled = new CountDownLatch(17);
+    final List<Integer> order = Collections.synchronizedList(new ArrayList<>());
+    final IoTDBAirGapReceiverAgent agent =
+        new IoTDBAirGapReceiverAgent() {
+          @Override
+          void handleUdpPacket(final DatagramPacket packet) {
+            handlingStarted.countDown();
+            try {
+              resumeHandling.await();
+            } catch (final InterruptedException e) {
+              Thread.currentThread().interrupt();
+              return;
+            }
+            order.add((int) packet.getData()[0]);
+            handled.countDown();
+          }
+        };
+    try (final DatagramSocket receiver = new DatagramSocket(0, InetAddress.getLoopbackAddress());
+        final DatagramSocket sender = new DatagramSocket()) {
+      setAgentField(agent, "datagramSocket", receiver);
+      ((AtomicBoolean) getAgentField(agent, "allowSubmitListen")).set(true);
+      final ExecutorService executor = (ExecutorService) getAgentField(agent, "listenExecutor");
+      @SuppressWarnings("unchecked")
+      final BlockingQueue<DatagramPacket> queue =
+          (BlockingQueue<DatagramPacket>) getAgentField(agent, "udpRequests");
+      final Semaphore bytes = (Semaphore) getAgentField(agent, "udpRequestBytes");
+      final int initialPermits = bytes.availablePermits();
+      executor.submit(agent::listenUdp);
+      executor.submit(agent::processUdpRequests);
+      try {
+        final byte[] data = new byte[60 * 1024];
+        sender.send(new DatagramPacket(data, data.length, receiver.getLocalSocketAddress()));
+        Assert.assertTrue(handlingStarted.await(5, TimeUnit.SECONDS));
+        for (int i = 1; i <= 16; i++) {
+          data[0] = (byte) i;
+          sender.send(new DatagramPacket(data, data.length, receiver.getLocalSocketAddress()));
+          final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+          while (queue.size() < i && System.nanoTime() < deadline) {
+            Thread.sleep(1);
+          }
+          Assert.assertEquals(i, queue.size());
+        }
+        Assert.assertEquals(initialPermits - 17 * data.length, bytes.availablePermits());
+        if (!stopWithPendingPackets) {
+          resumeHandling.countDown();
+          Assert.assertTrue(handled.await(5, TimeUnit.SECONDS));
+          for (int i = 0; i < 17; i++) {
+            Assert.assertEquals(i, order.get(i).intValue());
+          }
+        }
+      } finally {
+        agent.stop();
+        resumeHandling.countDown();
+        Assert.assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+      }
+      Assert.assertTrue(queue.isEmpty());
+      Assert.assertEquals(initialPermits, bytes.availablePermits());
+    }
+  }
+
+  private static Object getAgentField(final Object target, final String name) throws Exception {
+    final Field field = IoTDBAirGapReceiverAgent.class.getDeclaredField(name);
+    field.setAccessible(true);
+    return field.get(target);
+  }
+
+  private static void setAgentField(final Object target, final String name, final Object value)
+      throws Exception {
+    final Field field = IoTDBAirGapReceiverAgent.class.getDeclaredField(name);
+    field.setAccessible(true);
+    field.set(target, value);
+  }
 
   @Test
   public void testExpiredUdpClientSessionIsRemoved() throws Exception {

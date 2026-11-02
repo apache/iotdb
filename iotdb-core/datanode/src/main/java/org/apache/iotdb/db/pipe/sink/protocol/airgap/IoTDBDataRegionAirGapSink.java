@@ -224,7 +224,12 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       return;
     }
 
-    final int socketIndex = nextSocketIndex();
+    final boolean hasBatchToTransfer = isTabletBatchModeEnabled && !tabletBatchBuilder.isEmpty();
+    final boolean shouldRefreshReceiverSession =
+        !(event instanceof PipeHeartbeatEvent || event instanceof PipeTerminateEvent)
+            || hasBatchToTransfer;
+    final int socketIndex =
+        shouldRefreshReceiverSession ? nextSocketIndex() : nextSocketIndex(false);
     final AirGapSocket socket = sockets.get(socketIndex);
 
     try {
