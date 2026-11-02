@@ -143,7 +143,9 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
       final List<ConsensusPrefetchingQueue> pollQueues =
           new ArrayList<>(buildPollOrderForAssignedQueues(assignedQueues, topicName));
       final int assignedQueueCount = pollQueues.size();
-      pollQueues.addAll(buildFallbackPollOrder(queues, assignedQueues));
+      if (SubscriptionConfig.getInstance().isSubscriptionConsensusFallbackPollingEnabled()) {
+        pollQueues.addAll(buildFallbackPollOrder(queues, assignedQueues));
+      }
       if (pollQueues.isEmpty()) {
         continue;
       }
