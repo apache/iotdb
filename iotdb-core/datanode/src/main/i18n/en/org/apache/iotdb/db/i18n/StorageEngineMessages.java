@@ -1841,4 +1841,67 @@ public final class StorageEngineMessages {
       "Failed to determine the user that loads the TsFile";
   public static final String EXCEPTION_FAILED_TO_DETERMINE_THE_USER_FOR_THE_TSFILE_DATA_TYPE_CONVERSION_A221793E =
       "Failed to determine the user for the TsFile data type conversion";
+
+  public static final String
+      LOG_WORKER_ARG_TIME_COST_ARG_2FS_SEQUENCE_SPACE_COST_ARG_2FS_BUILD_UNSEQUENCE_SPACE_COST_ARG_2FS_11CD533E =
+          "Worker%s Time cost: %%.2fs, Sequence space cost: %%.2fs, Build unsequence space cost:"
+              + " %%.2fs.\n";
+
+  public static final String LOG_ARG_DATA_TABLE_D6B1FAB8 = "%sData Table:";
+
+  public static final String
+      LOG_PROGRESS_ARG_SEQUENCE_FILE_PROGRESS_ARG_ARG_PARTITION_PROGRESS_ARG_ARG_ARG_F63A0CC5 =
+          "Progress: %s\nSequence File progress: %d/%d\nPartition progress: %d/%d %s";
+
+  public static final String LOG_OVERLAP_TABLE_25E74227 = "Overlap Table:";
+
+  public static final String LOG_TOTAL_TIME_COST_ARG_S_62F6AC82 = "Total time cost: %.2fs\n";
+
+  public static final String
+      LOG_ARG_IS_NOT_EXIST_THE_TSFILE_IS_SKIPPED_BECAUSE_IT_IS_NOT_CLOSED_33F73043 =
+          "%s is not exist, the tsfile is skipped because it is not closed.";
+
+  public static final String EXCEPTION_GLOBAL_MEMORY_TABLE_INFO_D31FC987 =
+      "global memory table info";
+
+  public static final String EXCEPTION_CREATE_MEMORY_TABLE_C9A458F5 = "create memory table";
+
+  public static final String EXCEPTION_FLUSH_MEMORY_TABLE_F5383277 = "flush memory table";
+
+  public static final String EXCEPTION_FILE_NUMBER_BDF776A4 = "File Number";
+
+  public static final String EXCEPTION_FILE_SIZE_MB_F383DFA7 = "File Size(MB)";
+
+  public static final String EXCEPTION_SEQUENCE_FILE_96DAC97E = "Sequence File";
+
+  public static final String EXCEPTION_CHUNKGROUP_IN_SEQUENCE_FILE_AA750F6F =
+      "ChunkGroup In Sequence File";
+
+  public static final String EXCEPTION_CHUNK_IN_SEQUENCE_FILE_3F4FFEF6 = "Chunk In Sequence File";
+
+  public static final String EXCEPTION_CONCURRENT_TIME_PARTITION_NUM_DEFAULT_10_A7769F3C =
+      "Concurrent time partition num(default: 10)";
+
+  public static final String
+      EXCEPTION_CONCURRENT_FILE_NUM_IN_ONE_TIME_PARTITION_DEFAULT_10_092CF549 =
+          "Concurrent file num in one time partition(default: 10)";
+
+  public static final String EXCEPTION_DATA_DIRS_REQUIRED_5C28A151 = "Data dirs(Required)";
+
+  public static final String EXCEPTION_ALL_EXECUTED_40CD1D65 = "All EXECUTED";
+
+  public static final String EXCEPTION_TASK_DOES_NOT_STARTED_B7A8C59D = "task does not started";
+
+  public static final String EXCEPTION_TASK_HAS_STARTED_8F884490 = "task has started";
+
+  public static final String EXCEPTION_TARGET_FILE_HAS_BEEN_GENERATED_COMPLETELY_DBDCCC37 =
+      "target file has been generated completely";
+
+  public static final String EXCEPTION_TARGET_FILE_HAS_BEEN_REPLACED_IN_TSFILEMANAGER_9456BDD6 =
+      "target file has been replaced in TsFileManager";
+
+  public static final String EXCEPTION_SOURCE_FILES_ARE_CLEANED_UP_83638D68 =
+      "source files are cleaned up";
+
+  public static final String EXCEPTION_TASK_FINISHED_A075ACB1 = "task finished";
 }

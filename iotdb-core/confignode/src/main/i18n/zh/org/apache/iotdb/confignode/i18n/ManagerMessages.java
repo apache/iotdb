@@ -863,4 +863,145 @@ public final class ManagerMessages {
 
   public static final String LOG_FAILED_TO_RESOLVE_THE_USER_ID_OF_THE_PIPE_SENDER_ARG_THE_AUDIT_RECORDS_OF_THIS_TRANSFER_WILL_NOT_CONTAIN_A_USER_ID_0F8C4256 =
       "无法解析管道发送端 {} 的用户 ID，本次传输的审计记录将不包含用户 ID。";
+
+  public static final String MESSAGE_CREATE_76EA0BEB = "创建";
+
+  public static final String MESSAGE_ALTER_5667DA2F = "修改";
+
+  public static final String
+      EXCEPTION_SOME_OTHER_TASK_IS_OPERATING_TABLE_UNDER_THE_DATABASE_ARG_PLEASE_RETRY_AFTER_THE_PROCEDURE_FINISHES_7347FB95 =
+          "其他任务正在操作数据库 %s 下的表，请在流程结束后重试。";
+
+  public static final String
+      EXCEPTION_SUBMIT_REMOVEDATANODESPROCEDURE_FAILED_BECAUSE_ANOTHER_REMOVEDATANODESPROCEDURE_ARG_IS_ALREADY_IN_PROCESSING_IOTDB_IS_ABLE_TO_HAVE_AT_MOST_1_REMOVEDATANODESPROCEDURE_AT_THE_SAME_TIME_FOR_FURTHER_INFORMATION_PLEASE_SEARCH_PID_ARG_IN_LOG_2CF436E9 =
+          "提交 RemoveDataNodesProcedure 失败，因为另一个 RemoveDataNodesProcedure %s 正在处理中。IoTDB 同时最多只能运行 1"
+              + " 个 RemoveDataNodesProcedure。更多信息请在日志中搜索 [pid%d]。 ";
+
+  public static final String
+      EXCEPTION_SUBMIT_REMOVEDATANODESPROCEDURE_FAILED_BECAUSE_ANOTHER_REGIONMIGRATEPROCEDURE_ARG_IS_ALREADY_IN_PROCESSING_WHICH_CONFLICTS_WITH_THIS_REMOVEDATANODESPROCEDURE_THE_REGIONMIGRATEPROCEDURE_IS_MIGRATING_THE_REGION_ARG_TO_THE_DATANODE_ARG_FOR_FURTHER_INFORMATION_PLEASE_SEARCH_PID_ARG_IN_LOG_4417FBB5 =
+          "提交 RemoveDataNodesProcedure 失败，因为另一个 RegionMigrateProcedure %s 正在处理中，与此"
+              + " RemoveDataNodesProcedure 冲突。该 RegionMigrateProcedure 正在将 Region %s 迁移到 DataNode"
+              + " %s。更多信息请在日志中搜索 [pid%d]。 ";
+
+  public static final String
+      EXCEPTION_SUBMIT_REMOVEDATANODESPROCEDURE_FAILED_BECAUSE_THE_REGIONMIGRATEPROCEDURE_GENERATED_BY_THIS_REMOVEDATANODESPROCEDURE_CONFLICTS_WITH_EACH_OTHER_ONLY_ONE_REPLICA_OF_THE_SAME_CONSENSUS_GROUP_IS_ALLOWED_TO_BE_MIGRATED_AT_THE_SAME_TIME_THE_CONFLICT_REGION_ID_IS_ARG_7B427300 =
+          "提交 RemoveDataNodesProcedure 失败，因为该流程生成的 RegionMigrateProcedure 相互冲突。同一共识组同时只允许迁移一个副本。冲突的"
+              + " Region ID 为 %s。 ";
+
+  public static final String
+      EXCEPTION_SUBMIT_REGIONMIGRATEPROCEDURE_FAILED_BECAUSE_THE_ORIGINAL_DATANODE_ARG_DOESN_T_CONTAIN_REGION_ARG_E0013C8F =
+          "提交 RegionMigrateProcedure 失败，因为原 DataNode %s 不包含 Region %s";
+
+  public static final String
+      EXCEPTION_SUBMIT_REGIONMIGRATEPROCEDURE_FAILED_BECAUSE_THE_TARGET_DATANODE_ARG_ALREADY_CONTAINS_REGION_ARG_9BC561F5 =
+          "提交 RegionMigrateProcedure 失败，因为目标 DataNode %s 已包含 Region %s";
+
+  public static final String EXCEPTION_ARG_ONLY_HAS_1_REPLICA_IT_CANNOT_BE_RECONSTRUCTED_988920D7 =
+      "%s 只有 1 个副本，无法重建";
+
+  public static final String
+      EXCEPTION_SUBMIT_RECONSTRUCTREGIONPROCEDURE_FAILED_BECAUSE_THE_TARGET_DATANODE_ARG_DOESN_T_CONTAIN_REGION_ARG_FE53A85F =
+          "提交 ReconstructRegionProcedure 失败，因为目标 DataNode %s 不包含 Region %s";
+
+  public static final String EXCEPTION_TARGET_DATANODE_ARG_ALREADY_CONTAINS_REGION_ARG_04CEE3BB =
+      "目标 DataNode %s 已包含 Region %s";
+
+  public static final String EXCEPTION_ARG_ONLY_HAS_1_REPLICA_IT_CANNOT_BE_REMOVED_8B9BBE04 =
+      "%s 只有 1 个副本，无法移除";
+
+  public static final String EXCEPTION_TARGET_DATANODE_ARG_DOESN_T_CONTAIN_REGION_ARG_ABAF6E86 =
+      "目标 DataNode %s 不包含 Region %s";
+
+  public static final String EXCEPTION_CANNOT_FIND_ARG_D2C34365 = "找不到 %s";
+
+  public static final String EXCEPTION_TARGET_DATANODE_ARG_IS_NOT_IN_RUNNING_STATUS_2A2180BA =
+      "目标 DataNode %s 未处于 Running 状态。";
+
+  public static final String
+      EXCEPTION_ANOTHER_REMOVEDATANODESPROCEDURE_ARG_IS_ALREADY_IN_PROCESSING_WHICH_CONFLICTS_WITH_THIS_PROCEDURE_THE_REMOVEDATANODESPROCEDURE_IS_REMOVING_THE_DATANODES_ARG_WHICH_CONTAINS_THE_REGION_ARG_FOR_FURTHER_INFORMATION_PLEASE_SEARCH_PID_ARG_IN_LOG_7FAF09DA =
+          "另一个 RemoveDataNodesProcedure %s 正在处理中，与此流程冲突。该 RemoveDataNodesProcedure 正在移除 DataNode"
+              + " %s，其中包含 Region %s。更多信息请在日志中搜索 [pid%d]。 ";
+
+  public static final String
+      EXCEPTION_ANOTHER_REMOVEDATANODESPROCEDURE_ARG_IS_ALREADY_IN_PROCESSING_WHICH_CONFLICTS_WITH_THIS_PROCEDURE_THE_REMOVEDATANODESPROCEDURE_IS_REMOVING_THE_TARGET_DATANODE_ARG_FOR_FURTHER_INFORMATION_PLEASE_SEARCH_PID_ARG_IN_LOG_06E88C1C =
+          "另一个 RemoveDataNodesProcedure %s 正在处理中，与此流程冲突。该 RemoveDataNodesProcedure 正在移除目标 DataNode"
+              + " %s。更多信息请在日志中搜索 [pid%d]。 ";
+
+  public static final String
+      EXCEPTION_ARG_HAS_SOME_OTHER_REGION_OPERATION_PROCEDURES_IN_PROGRESS_THEIR_PROCEDURE_ID_IS_ARG_F64BEEC1 =
+          "%s 上有其他 Region 操作流程正在进行，流程 ID 为：%s";
+
+  public static final String
+      EXCEPTION_THE_REGION_S_DATABASE_ARG_IS_BELONG_TO_ARG_MODEL_BUT_THE_MODEL_YOU_ARE_OPERATING_IS_ARG_2A0C563A =
+          "Region 所属的数据库 %s 属于 %s 模型，但当前操作的模型为 %s";
+
+  public static final String
+      LOG_SKIP_INJECTING_TREE_VIEW_SOURCE_ATTRIBUTES_FOR_TOPIC_TABLE_ARG_ARG_BECAUSE_SCHEMA_LOOKUP_FAILED_9816904F =
+          "跳过为主题表 {}.{} 注入树视图源属性，因为查询元数据失败";
+
+  public static final String
+      EXCEPTION_EXTERNALSERVICE_ARG_HAS_ALREADY_BEEN_CREATED_ON_DATANODE_ARG_CEB6658C =
+          "ExternalService %s 已在 DataNode %s 上创建。";
+
+  public static final String EXCEPTION_PATH_ARG_DOES_NOT_EXIST_3B3B812E = "路径 %s 不存在";
+
+  public static final String
+      EXCEPTION_DEVICE_TEMPLATE_ARG_IS_NOT_SET_ON_ANY_PREFIX_PATH_OF_ARG_C20091F6 =
+          "设备模板 %s 未设置在 %s 的任何前缀路径上";
+
+  public static final String
+      EXCEPTION_TIMED_OUT_TO_WAIT_FOR_PROCEDURE_RETURN_THE_PROCEDURE_IS_STILL_RUNNING_AF871578 =
+          "等待流程返回超时，流程仍在运行中。";
+
+  public static final String EXCEPTION_SOME_OTHER_TASK_IS_DELETING_SOME_TARGET_TIMESERIES_2D824DD9 =
+      "其他任务正在删除部分目标时间序列。";
+
+  public static final String EXCEPTION_SOME_OTHER_TASK_IS_DELETING_SOME_TARGET_VIEWS_445DE100 =
+      "其他任务正在删除部分目标视图。";
+
+  public static final String
+      EXCEPTION_SOME_OTHER_TASK_IS_DEACTIVATING_SOME_TARGET_TEMPLATE_FROM_TARGET_PATH_8E1EE9E6 =
+          "其他任务正在从目标路径解除部分目标模板。";
+
+  public static final String EXCEPTION_ORIGINAL_DATANODE_E1F76128 = "原 DataNode";
+
+  public static final String EXCEPTION_DESTINATION_DATANODE_ABA20AFE = "目标 DataNode";
+
+  public static final String EXCEPTION_COORDINATOR_FOR_ADD_PEER_92999E70 = "添加副本的协调节点";
+
+  public static final String EXCEPTION_TARGET_DATANODE_78D8241E = "目标 DataNode";
+
+  public static final String EXCEPTION_SIMPLECONSENSUS_NOT_SUPPORTS_REGION_OPERATION_9E4F9731 =
+      "SimpleConsensus 不支持 Region 操作。";
+
+  public static final String EXCEPTION_SOME_OTHER_TASK_IS_OPERATING_TABLE_WITH_SAME_NAME_2959424C =
+      "其他任务正在操作同名表。";
+
+  public static final String EXCEPTION_EXTERNALSERVICE_ARG_IS_NOT_EXISTED_ON_DATANODE_ARG_E941E787 =
+      "ExternalService %s 在 DataNode %s 上不存在。";
+
+  public static final String
+      EXCEPTION_UNABLE_TO_FIND_THE_CONFIGURATION_FILE_SOME_MODIFICATIONS_ARE_MADE_ONLY_IN_MEMORY_70BB69F5 =
+          "无法找到配置文件，部分修改仅在内存中生效。";
+
+  public static final String
+      EXCEPTION_THE_INTERNAL_CONFIGURATION_APPLICATION_TARGET_IS_INVALID_669ED6B7 = "内部配置应用目标无效。";
+
+  public static final String
+      EXCEPTION_THE_PARAMETER_ARG_MUST_BE_CONSISTENT_ACROSS_THE_ENTIRE_CLUSTER_AND_CANNOT_BE_SET_ON_A_SPECIFIC_NODE_43EBC6E3 =
+          "参数 '%s' 必须在整个集群中保持一致，不能在特定节点上设置。";
+
+  public static final String
+      EXCEPTION_THE_USED_QUOTA_EXCEEDS_THE_PRESET_QUOTA_PLEASE_SET_A_LARGER_VALUE_2AAE5636 =
+          "已使用配额超过预设配额，请设置更大的值。";
+
+  public static final String EXCEPTION_CONFIGNODE_LEADER_CANNOT_CONNECT_TO_THE_SENDER_ARG_3A20DE7B =
+      "ConfigNode Leader 无法连接到发送方：%s";
+
+  public static final String EXCEPTION_POSSIBLE_SOLUTIONS_ARE_AS_FOLLOWS_C72CA4F1 =
+      " 可行的解决方法如下：\r\n";
+
+  public static final String
+      EXCEPTION_REJECT_REGISTER_PLEASE_ENSURE_THAT_THE_PARAMETER_ARG_IS_CONSISTENT_WITH_THE_SEED_CONFIGNODE_C072CE7C =
+          "拒绝注册，请确保参数 %s 与 Seed-ConfigNode 一致。";
 }

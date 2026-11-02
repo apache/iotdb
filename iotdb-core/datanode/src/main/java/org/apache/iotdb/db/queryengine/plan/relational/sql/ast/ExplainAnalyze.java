@@ -54,9 +54,11 @@ public class ExplainAnalyze extends Statement {
 
   public ExplainAnalyze(Statement statement, boolean verbose, ExplainOutputFormat outputFormat) {
     super(null);
-    this.statement = requireNonNull(statement, "statement is null");
+    this.statement =
+        requireNonNull(statement, DataNodeQueryMessages.EXCEPTION_STATEMENT_IS_NULL_693A0622);
     this.verbose = verbose;
-    this.outputFormat = requireNonNull(outputFormat, "outputFormat is null");
+    this.outputFormat =
+        requireNonNull(outputFormat, DataNodeQueryMessages.EXCEPTION_OUTPUTFORMAT_IS_NULL_7D93060B);
   }
 
   public ExplainAnalyze(NodeLocation location, boolean verbose, Statement statement) {
@@ -72,10 +74,12 @@ public class ExplainAnalyze extends Statement {
       boolean verbose,
       Statement statement,
       ExplainOutputFormat outputFormat) {
-    super(requireNonNull(location, "location is null"));
-    this.statement = requireNonNull(statement, "statement is null");
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.statement =
+        requireNonNull(statement, DataNodeQueryMessages.EXCEPTION_STATEMENT_IS_NULL_693A0622);
     this.verbose = verbose;
-    this.outputFormat = requireNonNull(outputFormat, "outputFormat is null");
+    this.outputFormat =
+        requireNonNull(outputFormat, DataNodeQueryMessages.EXCEPTION_OUTPUTFORMAT_IS_NULL_7D93060B);
   }
 
   public Statement getStatement() {

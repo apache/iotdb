@@ -1029,7 +1029,9 @@ public class ClusterSchemaManager {
               String.format(
                   ManagerMessages
                       .MESSAGE_FAILED_TO_ARG_DATABASE_THE_ARG_CAN_ONLY_BE_SET_WHEN_ARG_REGION_GROUP_EXTENSION_POLICY_IS_CUSTOM_F90B15BA,
-                  isCreate ? "create" : "alter",
+                  isCreate
+                      ? ManagerMessages.MESSAGE_CREATE_76EA0BEB
+                      : ManagerMessages.MESSAGE_ALTER_5667DA2F,
                   configKey,
                   isSchemaRegion ? "schema" : "data"));
     }

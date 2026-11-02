@@ -115,14 +115,19 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
     try {
       schemaRegion.createTimeSeries(node, -1);
     } catch (final MetadataException e) {
-      logMetaDataException(String.format("%s: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME), e);
+      logMetaDataException(
+          String.format(
+              DataNodeMiscMessages.EXCEPTION_ARG_METADATA_ERROR_69A34C2E,
+              IoTDBConstant.GLOBAL_DB_NAME),
+          e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
     final MeasurementPath path = node.getPath();
     final Map<PartialPath, List<Pair<String, TSDataType>>> createdMeasurement =
         toSingleMeasurement(path.getDevicePath(), path.getMeasurement(), node.getDataType());
     syncViewColumns(node, createdMeasurement);
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
+    return RpcUtils.getStatus(
+        TSStatusCode.SUCCESS_STATUS, DataNodeMiscMessages.EXCEPTION_EXECUTE_SUCCESSFULLY_BF983B59);
   }
 
   @Override
@@ -146,7 +151,11 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
         schemaRegion.createAlignedTimeSeries(node);
       }
     } catch (final MetadataException e) {
-      logMetaDataException(String.format("%s: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME), e);
+      logMetaDataException(
+          String.format(
+              DataNodeMiscMessages.EXCEPTION_ARG_METADATA_ERROR_69A34C2E,
+              IoTDBConstant.GLOBAL_DB_NAME),
+          e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
 
@@ -154,7 +163,8 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
         Collections.singletonMap(
             node.getDevicePath(), toMeasurements(node.getMeasurements(), node.getDataTypes()));
     syncViewColumns(node, createdMeasurements);
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
+    return RpcUtils.getStatus(
+        TSStatusCode.SUCCESS_STATUS, DataNodeMiscMessages.EXCEPTION_EXECUTE_SUCCESSFULLY_BF983B59);
   }
 
   @Override
@@ -184,7 +194,10 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
               measurementGroup.getDataTypes().get(i));
         } catch (final MetadataException e) {
           logMetaDataException(
-              String.format("%s: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME), e);
+              String.format(
+                  DataNodeMiscMessages.EXCEPTION_ARG_METADATA_ERROR_69A34C2E,
+                  IoTDBConstant.GLOBAL_DB_NAME),
+              e);
           failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
         }
       }
@@ -197,7 +210,8 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
     if (!failingStatus.isEmpty()) {
       return RpcUtils.getStatus(failingStatus);
     }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
+    return RpcUtils.getStatus(
+        TSStatusCode.SUCCESS_STATUS, DataNodeMiscMessages.EXCEPTION_EXECUTE_SUCCESSFULLY_BF983B59);
   }
 
   private ICreateTimeSeriesPlan transformToCreateTimeSeriesPlan(
@@ -258,7 +272,8 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
       return RpcUtils.getStatus(existingTimeSeriesAndAlignmentMismatch);
     }
 
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
+    return RpcUtils.getStatus(
+        TSStatusCode.SUCCESS_STATUS, DataNodeMiscMessages.EXCEPTION_EXECUTE_SUCCESSFULLY_BF983B59);
   }
 
   @Override
@@ -307,7 +322,8 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
       return RpcUtils.getStatus(existingTimeSeriesAndAlignmentMismatch);
     }
 
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
+    return RpcUtils.getStatus(
+        TSStatusCode.SUCCESS_STATUS, DataNodeMiscMessages.EXCEPTION_EXECUTE_SUCCESSFULLY_BF983B59);
   }
 
   private void executeInternalCreateTimeSeries(
@@ -350,7 +366,10 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
             RpcUtils.getStatus(
                 e.getErrorCode(), PartialPath.transformDataToString(e.getMeasurementPath())));
       } catch (final MetadataException e) {
-        logMetaDataException(String.format("%s: MetaData error: ", e.getMessage()), e);
+        logMetaDataException(
+            String.format(
+                DataNodeMiscMessages.EXCEPTION_ARG_METADATA_ERROR_69A34C2E, e.getMessage()),
+            e);
         failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
     }
@@ -586,13 +605,18 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
           break;
       }
     } catch (MetadataException e) {
-      logMetaDataException(String.format("%s: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME), e);
+      logMetaDataException(
+          String.format(
+              DataNodeMiscMessages.EXCEPTION_ARG_METADATA_ERROR_69A34C2E,
+              IoTDBConstant.GLOBAL_DB_NAME),
+          e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (IOException e) {
       logger.error(DataNodeMiscMessages.IO_ERROR, IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
+    return RpcUtils.getStatus(
+        TSStatusCode.SUCCESS_STATUS, DataNodeMiscMessages.EXCEPTION_EXECUTE_SUCCESSFULLY_BF983B59);
   }
 
   @Override
@@ -846,7 +870,8 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
     if (!failingStatus.isEmpty()) {
       return RpcUtils.getStatus(failingStatus);
     }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
+    return RpcUtils.getStatus(
+        TSStatusCode.SUCCESS_STATUS, DataNodeMiscMessages.EXCEPTION_EXECUTE_SUCCESSFULLY_BF983B59);
   }
 
   @Override
@@ -866,7 +891,8 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
     if (!failingStatus.isEmpty()) {
       return RpcUtils.getStatus(failingStatus);
     }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
+    return RpcUtils.getStatus(
+        TSStatusCode.SUCCESS_STATUS, DataNodeMiscMessages.EXCEPTION_EXECUTE_SUCCESSFULLY_BF983B59);
   }
 
   @Override

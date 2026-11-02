@@ -305,9 +305,8 @@ public class IoTConsensusServerImpl {
             return RpcUtils.getStatus(
                 TSStatusCode.WRITE_PROCESS_REJECT,
                 String.format(
-                    "The write is rejected because the wal directory size has reached the "
-                        + "threshold %d bytes. You may need to adjust the flush policy of the "
-                        + "storage storageengine or the IoTConsensus synchronization parameter",
+                    IoTConsensusMessages
+                        .EXCEPTION_THE_WRITE_IS_REJECTED_BECAUSE_THE_WAL_DIRECTORY_SIZE_HAS_REACHED_THE_THRESHOLD_ARG_BYTES_YOU_MAY_NEED_TO_ADJUST_THE_FLUSH_POLICY_OF_THE_STORAGE_STORAGEENGINE_OR_THE_IOTCONSENSUS_SYNCHRONIZATION_PARAMETER_49AB1306,
                     config.getReplication().getWalThrottleThreshold()));
           }
         } catch (InterruptedException e) {

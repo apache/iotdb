@@ -1547,4 +1547,38 @@ public final class ProcedureMessages {
       "finish procedure without rollback";
   public static final String LOG_DELETE_CHILD_PROCEDURES_WITHOUT_ROLLBACK_6E62D1C1 =
       "delete child procedures without rollback";
+
+  public static final String
+      MESSAGE_FAILED_TO_PERSIST_REGIONGROUP_ALLOCATION_IN_THE_CONSENSUS_LAYER_ARG_E9C4A532 =
+          "Failed to persist RegionGroup allocation in the consensus layer: %s";
+
+  public static final String
+      MESSAGE_FAILED_TO_ARG_ON_DATANODE_ARG_BEFORE_METADATA_REQUEST_TIMEOUT_ARG_MS_88BC27CA =
+          "Failed to %s on DataNode %s before metadata request timeout %sms";
+
+  public static final String EXCEPTION_ARG_RESULT_IS_ARG_03198AFB = "%s result is %s";
+
+  public static final String EXCEPTION_STATUS_ARG_IS_UNSUPPORTED_1E9E19B7 =
+      "status %s is unsupported";
+
+  public static final String EXCEPTION_PROCEDURE_RELEASE_LOCK_AD22A19B = "procedure release lock";
+
+  public static final String EXCEPTION_COUNT_DOWN_CHILDREN_PROCEDURE_C7306F56 =
+      "count down children procedure";
+
+  public static final String EXCEPTION_SUBPROC_ARG_IS_NULL_ABORTING_PROCEDURE_CDFB42EC =
+      "subproc[%s] is null, aborting procedure";
+
+  public static final String EXCEPTION_ROOT_PROCEDURE_ROLLBACK_068C01D9 = "root procedure rollback";
+
+  public static final String
+      EXCEPTION_BUT_YOU_MAY_NEED_TO_RESTART_THE_RELATED_DATANODE_TO_MAKE_SURE_EVERYTHING_IS_CLEANED_UP_12A12383 =
+          "but you may need to restart the related DataNode to make sure everything is cleaned up."
+              + " ";
+
+  public static final String EXCEPTION_CREATE_NEW_REGION_PEER_FAIL_2FE4FBAA =
+      "CREATE_NEW_REGION_PEER fail";
+
+  public static final String EXCEPTION_SUBMIT_DO_ADD_REGION_PEER_TASK_FAIL_53930422 =
+      "submit DO_ADD_REGION_PEER task fail";
 }

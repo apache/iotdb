@@ -2929,4 +2929,8 @@ public final class DataNodePipeMessages {
   public static final String
       MESSAGE_FAILED_TO_APPEND_LEGACY_PIPE_RECEIVER_FILE_ARG_AT_OFFSET_ARG_WITH_ARG_BYTES_ARG_57428A06 =
           "追加 legacy pipe receiver 文件 %s 失败，偏移量 %d，写入 %d 字节：%s";
+
+  public static final String
+      EXCEPTION_HISTORICAL_SUMMARY_EXTRACTEDTSFILECOUNT_ARG_SKIPPEDTSFILECOUNT_ARG_SPLITTSFILECOUNT_ARG_UNSPLITTSFILECOUNT_ARG_DELETIONCOUNT_ARG_C8BF3247 =
+          "历史数据概览：提取的 TsFile 数=%s，跳过的 TsFile 数=%s，拆分的 TsFile 数=%s，未拆分的 TsFile 数=%s，删除数=%s";
 }

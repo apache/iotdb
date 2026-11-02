@@ -126,4 +126,17 @@ public final class MetricsMessages {
   public static final String LOG_DETECTED_ERROR_TAKING_METRIC_TIMER_SNAPSHOT_WILL_DISCARD_METRIC_B7154169 = "获取 metric timer 快照时检测到错误，将丢弃该 metric";
   public static final String LOG_PROMETHEUSREPORTER_FAILED_TO_UPDATE_METRICS_SNAPSHOT_ASYNCHRONOUSLY_F19FE4E3 = "PrometheusReporter 异步更新监控项快照失败";
 
+  public static final String
+      EXCEPTION_FAILED_TO_COLLECT_WINDOWS_DISK_METRICS_POWERSHELL_EXIT_CODE_ARG_E9F65DC2 =
+          "收集 Windows 磁盘指标失败，PowerShell 退出码：%s";
+
+  public static final String EXCEPTION_FAILED_TO_STATISTIC_THE_SIZE_OF_ARG_BECAUSE_DC9B94FB =
+      "统计 {} 的大小失败，原因：";
+
+  public static final String
+      EXCEPTION_ACCESS_DENIED_WHILE_COLLECTING_WINDOWS_DISK_METRICS_THROUGH_POWERSHELL_CIM_DBA4F845 =
+          "通过 PowerShell/CIM 收集 Windows 磁盘指标时访问被拒绝";
+
+  public static final String EXCEPTION_IS_ALREADY_USED_FOR_A_DIFFERENT_TYPE_OF_NAME_BBAF0FFC =
+      " 已被其他类型的名称使用";
 }

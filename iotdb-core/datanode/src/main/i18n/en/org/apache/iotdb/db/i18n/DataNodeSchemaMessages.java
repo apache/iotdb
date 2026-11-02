@@ -792,4 +792,33 @@ public final class DataNodeSchemaMessages {
       LOG_THE_METADATA_LEASE_IS_FENCED_WHILE_ADDING_VIEW_COLUMNS_GIVING_UP_THIS_ROUND_THE_MEASUREMENTS_ARE_ARG_5D1B2D44 =
           "The metadata lease is fenced while adding view columns, giving up this round; the measurements are {}";
 
+  public static final String
+      EXCEPTION_PBTREE_FILE_SKETCH_TOOL_NOTICE_INTERNAL_ENTITY_PRESENTS_AS_NAME_IS_ALIGNED_CHILD_SEGMENT_ADDRESS_MEASUREMENT_PRESENTS_AS_NAME_DATA_TYPE_ENCODING_COMPRESSOR_ALIAS_IF_EXIST_BELONG_TO_STORAGEGROUP_ARG_SEGMENT_OF_SG_ARG_TOTAL_PAGES_ARG_006AFD00 =
+          "=============================\n"
+              + "== PBTree File Sketch Tool ==\n"
+              + "=============================\n"
+              + "== Notice: \n"
+              + "==  Internal/Entity presents as (name, is_aligned, child_segment_address)\n"
+              + "==  Measurement presents as (name, data_type, encoding, compressor,"
+              + " alias_if_exist)\n"
+              + "=============================\n"
+              + "Belong to StorageGroup: [%s], segment of SG:%s, total pages:%d\n";
+
+  public static final String EXCEPTION_ALIAS_ARG_EA404C75 = "alias: %s, ";
+
+  public static final String EXCEPTION_TYPE_ARG_EBFECBD8 = "type: %s, ";
+
+  public static final String EXCEPTION_ENCODING_ARG_C3BBB084 = "encoding: %s, ";
+
+  public static final String EXCEPTION_COMPRESSOR_ARG_313D1482 = "compressor: %s]";
+
+  public static final String EXCEPTION_NOT_SPECIFIED_022755C1 = "NOT SPECIFIED";
+
+  public static final String EXCEPTION_ALIGNED_IS_NULL_1EFBFBEC = "aligned is null, ";
+
+  public static final String EXCEPTION_NOT_ALIGNED_EED2E48F = "not aligned, ";
+
+  public static final String EXCEPTION_USING_TEMPLATE_07534BF6 = "using template.]";
+
+  public static final String EXCEPTION_NOT_USING_TEMPLATE_9E135BEE = "not using template.]";
 }

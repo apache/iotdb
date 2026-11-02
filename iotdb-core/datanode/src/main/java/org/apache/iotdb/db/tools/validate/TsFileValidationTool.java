@@ -85,7 +85,7 @@ public class TsFileValidationTool {
       validationScan.setPrintWriter(pw);
     }
     if (printDetails) {
-      printBoth("Start checking seq files ...");
+      printBoth(DataNodeMiscMessages.EXCEPTION_START_CHECKING_SEQ_FILES_8AE84FCD);
       validationScan.setPrintDetails(printDetails);
     }
     validationScan.setIgnoreFileOverlap(ignoreFileOverlap);
@@ -115,7 +115,10 @@ public class TsFileValidationTool {
           continue;
         }
         if (printDetails) {
-          printBoth("- Check files in database: " + sgDir.getAbsolutePath());
+          printBoth(
+              String.format(
+                  DataNodeMiscMessages.EXCEPTION_CHECK_FILES_IN_DATABASE_ARG_34C82099,
+                  Objects.toString(sgDir.getAbsolutePath())));
         }
         // get data region dirs
         File[] dataRegionDirs = sgDir.listFiles();
@@ -163,7 +166,11 @@ public class TsFileValidationTool {
       }
     }
     if (printDetails) {
-      printBoth("Finish checking successfully, totally find " + getBadFileNum() + " bad files.");
+      printBoth(
+          String.format(
+              DataNodeMiscMessages
+                  .EXCEPTION_FINISH_CHECKING_SUCCESSFULLY_TOTALLY_FIND_ARG_BAD_FILES_70EE9E55,
+              Objects.toString(getBadFileNum())));
     }
     if (printToFile) {
       pw.close();
@@ -183,7 +190,8 @@ public class TsFileValidationTool {
   private static boolean checkArgs(String[] args) {
     if (args.length < 1) {
       System.out.println(
-          "Please input correct param, which is [path of data dir] [-pd = print details or not] [-f = path of outFile]. Eg: xxx/iotdb/data/data -pd=true -f=xxx/TsFile_validation_view.txt");
+          DataNodeMiscMessages
+              .LOG_PLEASE_INPUT_CORRECT_PARAM_WHICH_IS_PATH_OF_DATA_DIR_PD_PRINT_DETAILS_OR_NOT_F_PATH_OF_OUTFILE_EG_XXX_IOTDB_DATA_DATA_PD_TRUE_F_XXX_TSFILE_VALIDATION_VIEW_TXT_19739CB5);
       return false;
     } else {
       for (String arg : args) {
@@ -208,14 +216,19 @@ public class TsFileValidationTool {
           } else if (arg.endsWith(TSFILE_SUFFIX) && f.isFile()) {
             fileList.add(f);
           } else {
-            System.out.println(arg + " is not a correct data directory or tsfile of IOTDB.");
+            System.out.println(
+                String.format(
+                    DataNodeMiscMessages
+                        .LOG_ARG_IS_NOT_A_CORRECT_DATA_DIRECTORY_OR_TSFILE_OF_IOTDB_CD028542,
+                    Objects.toString(arg)));
             return false;
           }
         }
       }
       if (seqDataDirList.isEmpty() && fileList.isEmpty()) {
         System.out.println(
-            "Please input correct param, which is [path of data dir] [-pd = print details or not] [-f = path of outFile]. Eg: xxx/iotdb/data/data -pd=true -f=xxx/TsFile_validation_view.txt");
+            DataNodeMiscMessages
+                .LOG_PLEASE_INPUT_CORRECT_PARAM_WHICH_IS_PATH_OF_DATA_DIR_PD_PRINT_DETAILS_OR_NOT_F_PATH_OF_OUTFILE_EG_XXX_IOTDB_DATA_DATA_PD_TRUE_F_XXX_TSFILE_VALIDATION_VIEW_TXT_19739CB5);
         return false;
       }
       return true;

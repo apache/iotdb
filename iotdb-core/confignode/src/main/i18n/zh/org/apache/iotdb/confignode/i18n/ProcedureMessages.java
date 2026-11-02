@@ -1612,4 +1612,35 @@ public final class ProcedureMessages {
   public static final String LOG_FINISH_PROCEDURE_WITHOUT_ROLLBACK_41F7A354 = "结束流程（不回滚）";
   public static final String LOG_DELETE_CHILD_PROCEDURES_WITHOUT_ROLLBACK_6E62D1C1 =
       "删除子流程（不回滚）";
+
+  public static final String
+      MESSAGE_FAILED_TO_PERSIST_REGIONGROUP_ALLOCATION_IN_THE_CONSENSUS_LAYER_ARG_E9C4A532 =
+          "在共识层持久化 RegionGroup 分配结果失败：%s";
+
+  public static final String
+      MESSAGE_FAILED_TO_ARG_ON_DATANODE_ARG_BEFORE_METADATA_REQUEST_TIMEOUT_ARG_MS_88BC27CA =
+          "执行 %s 失败，DataNode：%s，元数据请求超时：%sms";
+
+  public static final String EXCEPTION_ARG_RESULT_IS_ARG_03198AFB = "%s 的结果为 %s";
+
+  public static final String EXCEPTION_STATUS_ARG_IS_UNSUPPORTED_1E9E19B7 = "不支持状态 %s";
+
+  public static final String EXCEPTION_PROCEDURE_RELEASE_LOCK_AD22A19B = "流程释放锁";
+
+  public static final String EXCEPTION_COUNT_DOWN_CHILDREN_PROCEDURE_C7306F56 = "递减子流程计数";
+
+  public static final String EXCEPTION_SUBPROC_ARG_IS_NULL_ABORTING_PROCEDURE_CDFB42EC =
+      "子流程 [%s] 为空，中止流程";
+
+  public static final String EXCEPTION_ROOT_PROCEDURE_ROLLBACK_068C01D9 = "根流程回滚";
+
+  public static final String
+      EXCEPTION_BUT_YOU_MAY_NEED_TO_RESTART_THE_RELATED_DATANODE_TO_MAKE_SURE_EVERYTHING_IS_CLEANED_UP_12A12383 =
+          "但可能需要重启相关 DataNode，以确保清理完成。 ";
+
+  public static final String EXCEPTION_CREATE_NEW_REGION_PEER_FAIL_2FE4FBAA =
+      "CREATE_NEW_REGION_PEER 失败";
+
+  public static final String EXCEPTION_SUBMIT_DO_ADD_REGION_PEER_TASK_FAIL_53930422 =
+      "提交 DO_ADD_REGION_PEER 任务失败";
 }

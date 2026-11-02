@@ -20,6 +20,7 @@
 package org.apache.iotdb.library.frequency;
 
 import org.apache.iotdb.library.frequency.util.DWTUtil;
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -55,11 +56,12 @@ public class UDTFDWT implements UDTF {
                     || ((String) x).equalsIgnoreCase("DB6")
                     || ((String) x).equalsIgnoreCase("DB8")
                     || ((String) x).equalsIgnoreCase(""),
-            "Method not supported, please input coefficient and leave method blank.",
+            LibraryUdfMessages
+                .EXCEPTION_METHOD_NOT_SUPPORTED_PLEASE_INPUT_COEFFICIENT_AND_LEAVE_METHOD_BLANK_2D687DFE,
             validator.getParameters().getStringOrDefault("method", ""))
         .validate(
             x -> (int) x > 0,
-            "layer has to be a positive integer.",
+            LibraryUdfMessages.EXCEPTION_LAYER_HAS_TO_BE_A_POSITIVE_INTEGER_43638533,
             validator.getParameters().getIntOrDefault("layer", 1));
   }
 

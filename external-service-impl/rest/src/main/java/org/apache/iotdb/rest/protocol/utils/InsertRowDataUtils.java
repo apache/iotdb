@@ -17,6 +17,7 @@
 
 package org.apache.iotdb.rest.protocol.utils;
 
+import org.apache.iotdb.rest.i18n.RestMessages;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.NoValidValueException;
 
@@ -85,7 +86,8 @@ public class InsertRowDataUtils {
                 };
           };
 
-  private static final String ALL_INSERT_DATA_IS_NULL = "All inserted data is null.";
+  private static final String ALL_INSERT_DATA_IS_NULL =
+      RestMessages.EXCEPTION_ALL_INSERTED_DATA_IS_NULL_6B1A58B6;
 
   public static void filterNullValueAndMeasurement(
       List<String> deviceIds,

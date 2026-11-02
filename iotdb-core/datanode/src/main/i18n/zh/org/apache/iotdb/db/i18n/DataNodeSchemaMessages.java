@@ -779,4 +779,32 @@ public final class DataNodeSchemaMessages {
       LOG_THE_METADATA_LEASE_IS_FENCED_WHILE_ADDING_VIEW_COLUMNS_GIVING_UP_THIS_ROUND_THE_MEASUREMENTS_ARE_ARG_5D1B2D44 =
           "自动扩列时元数据租约已隔离，本次放弃；涉及的测点为 {}";
 
+  public static final String
+      EXCEPTION_PBTREE_FILE_SKETCH_TOOL_NOTICE_INTERNAL_ENTITY_PRESENTS_AS_NAME_IS_ALIGNED_CHILD_SEGMENT_ADDRESS_MEASUREMENT_PRESENTS_AS_NAME_DATA_TYPE_ENCODING_COMPRESSOR_ALIAS_IF_EXIST_BELONG_TO_STORAGEGROUP_ARG_SEGMENT_OF_SG_ARG_TOTAL_PAGES_ARG_006AFD00 =
+          "=============================\n"
+              + "== PBTree 文件概览工具 ==\n"
+              + "=============================\n"
+              + "== 说明：\n"
+              + "==  Internal/Entity 表示为 (name, is_aligned, child_segment_address)\n"
+              + "==  Measurement 表示为 (name, data_type, encoding, compressor, alias_if_exist)\n"
+              + "=============================\n"
+              + "所属 StorageGroup：[%s]，SG 的段：%s，总页数：%d\n";
+
+  public static final String EXCEPTION_ALIAS_ARG_EA404C75 = "别名：%s，";
+
+  public static final String EXCEPTION_TYPE_ARG_EBFECBD8 = "类型：%s，";
+
+  public static final String EXCEPTION_ENCODING_ARG_C3BBB084 = "编码：%s，";
+
+  public static final String EXCEPTION_COMPRESSOR_ARG_313D1482 = "压缩器：%s]";
+
+  public static final String EXCEPTION_NOT_SPECIFIED_022755C1 = "未指定";
+
+  public static final String EXCEPTION_ALIGNED_IS_NULL_1EFBFBEC = "对齐属性为空，";
+
+  public static final String EXCEPTION_NOT_ALIGNED_EED2E48F = "非对齐，";
+
+  public static final String EXCEPTION_USING_TEMPLATE_07534BF6 = "使用模板。]";
+
+  public static final String EXCEPTION_NOT_USING_TEMPLATE_9E135BEE = "未使用模板。]";
 }

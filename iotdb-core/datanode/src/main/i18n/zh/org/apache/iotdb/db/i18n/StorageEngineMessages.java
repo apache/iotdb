@@ -1747,4 +1747,63 @@ public final class StorageEngineMessages {
       "无法确定加载该 TsFile 的用户";
   public static final String EXCEPTION_FAILED_TO_DETERMINE_THE_USER_FOR_THE_TSFILE_DATA_TYPE_CONVERSION_A221793E =
       "无法确定执行 TsFile 数据类型转换的用户";
+
+  public static final String
+      LOG_WORKER_ARG_TIME_COST_ARG_2FS_SEQUENCE_SPACE_COST_ARG_2FS_BUILD_UNSEQUENCE_SPACE_COST_ARG_2FS_11CD533E =
+          "工作线程 %s 耗时：%%.2fs，顺序空间耗时：%%.2fs，构建乱序空间耗时：%%.2fs。\n";
+
+  public static final String LOG_ARG_DATA_TABLE_D6B1FAB8 = "%s数据表：";
+
+  public static final String
+      LOG_PROGRESS_ARG_SEQUENCE_FILE_PROGRESS_ARG_ARG_PARTITION_PROGRESS_ARG_ARG_ARG_F63A0CC5 =
+          "进度：%s\n顺序文件进度：%d/%d\n分区进度：%d/%d %s";
+
+  public static final String LOG_OVERLAP_TABLE_25E74227 = "重叠统计表：";
+
+  public static final String LOG_TOTAL_TIME_COST_ARG_S_62F6AC82 = "总耗时：%.2fs\n";
+
+  public static final String
+      LOG_ARG_IS_NOT_EXIST_THE_TSFILE_IS_SKIPPED_BECAUSE_IT_IS_NOT_CLOSED_33F73043 =
+          "%s 不存在，因 TsFile 尚未关闭而将其跳过。";
+
+  public static final String EXCEPTION_GLOBAL_MEMORY_TABLE_INFO_D31FC987 = "全局内存表信息";
+
+  public static final String EXCEPTION_CREATE_MEMORY_TABLE_C9A458F5 = "创建内存表";
+
+  public static final String EXCEPTION_FLUSH_MEMORY_TABLE_F5383277 = "刷写内存表";
+
+  public static final String EXCEPTION_FILE_NUMBER_BDF776A4 = "文件数量";
+
+  public static final String EXCEPTION_FILE_SIZE_MB_F383DFA7 = "文件大小（MB）";
+
+  public static final String EXCEPTION_SEQUENCE_FILE_96DAC97E = "顺序文件";
+
+  public static final String EXCEPTION_CHUNKGROUP_IN_SEQUENCE_FILE_AA750F6F = "顺序文件中的 ChunkGroup";
+
+  public static final String EXCEPTION_CHUNK_IN_SEQUENCE_FILE_3F4FFEF6 = "顺序文件中的 Chunk";
+
+  public static final String EXCEPTION_CONCURRENT_TIME_PARTITION_NUM_DEFAULT_10_A7769F3C =
+      "并发时间分区数（默认：10）";
+
+  public static final String
+      EXCEPTION_CONCURRENT_FILE_NUM_IN_ONE_TIME_PARTITION_DEFAULT_10_092CF549 =
+          "单个时间分区内的并发文件数（默认：10）";
+
+  public static final String EXCEPTION_DATA_DIRS_REQUIRED_5C28A151 = "数据目录（必需）";
+
+  public static final String EXCEPTION_ALL_EXECUTED_40CD1D65 = "全部执行完成";
+
+  public static final String EXCEPTION_TASK_DOES_NOT_STARTED_B7A8C59D = "任务尚未启动";
+
+  public static final String EXCEPTION_TASK_HAS_STARTED_8F884490 = "任务已启动";
+
+  public static final String EXCEPTION_TARGET_FILE_HAS_BEEN_GENERATED_COMPLETELY_DBDCCC37 =
+      "目标文件已完整生成";
+
+  public static final String EXCEPTION_TARGET_FILE_HAS_BEEN_REPLACED_IN_TSFILEMANAGER_9456BDD6 =
+      "目标文件已在 TsFileManager 中替换";
+
+  public static final String EXCEPTION_SOURCE_FILES_ARE_CLEANED_UP_83638D68 = "源文件已清理";
+
+  public static final String EXCEPTION_TASK_FINISHED_A075ACB1 = "任务已完成";
 }

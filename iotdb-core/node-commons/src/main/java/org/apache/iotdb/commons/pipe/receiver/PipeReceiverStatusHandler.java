@@ -55,6 +55,8 @@ public class PipeReceiverStatusHandler {
   private static final String UNCLASSIFIED_EXCEPTION =
       PipeMessages.MESSAGE_UNCLASSIFIED_EXCEPTION_783F6E1F;
   private static final String NO_PERMISSION_STR = "No permissions for this operation";
+  // Receivers may use either locale, independently of the sender's build locale.
+  private static final String NO_PERMISSION_ZH_STR = "无权执行此操作";
   private static final int MAX_RECORD_MESSAGE_LENGTH_IN_LOG = 2048;
 
   private final boolean isRetryAllowedWhenConflictOccurs;
@@ -226,7 +228,8 @@ public class PipeReceiverStatusHandler {
       default:
         // Some auth error may be wrapped in other codes
         if (Objects.nonNull(effectiveExceptionMessage)
-            && effectiveExceptionMessage.contains(NO_PERMISSION_STR)) {
+            && (effectiveExceptionMessage.contains(NO_PERMISSION_STR)
+                || effectiveExceptionMessage.contains(NO_PERMISSION_ZH_STR))) {
           if (skipIfNoPrivileges) {
             if (log4NoPrivileges && LOGGER.isWarnEnabled()) {
               LOGGER.warn(

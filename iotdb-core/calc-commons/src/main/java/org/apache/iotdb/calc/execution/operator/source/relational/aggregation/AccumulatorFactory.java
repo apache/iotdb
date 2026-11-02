@@ -357,7 +357,8 @@ public class AccumulatorFactory {
       List<TSDataType> inputDataTypes,
       Map<String, String> inputAttributes,
       IoTDBLocal ioTDBLocal) {
-    checkArgument(ioTDBLocal != null, "IoTDBLocal must not be null for UDAF");
+    checkArgument(
+        ioTDBLocal != null, CalcMessages.EXCEPTION_IOTDBLOCAL_MUST_NOT_BE_NULL_FOR_UDAF_CF7EF593);
     AggregateFunction aggregateFunction = TableUDFUtils.getAggregateFunction(functionName);
     FunctionArguments functionArguments =
         new FunctionArguments(
@@ -375,7 +376,8 @@ public class AccumulatorFactory {
       List<TSDataType> inputDataTypes,
       Map<String, String> inputAttributes,
       IoTDBLocal ioTDBLocal) {
-    checkArgument(ioTDBLocal != null, "IoTDBLocal must not be null for UDAF");
+    checkArgument(
+        ioTDBLocal != null, CalcMessages.EXCEPTION_IOTDBLOCAL_MUST_NOT_BE_NULL_FOR_UDAF_CF7EF593);
     AggregateFunction aggregateFunction = TableUDFUtils.getAggregateFunction(functionName);
     FunctionArguments functionArguments =
         new FunctionArguments(

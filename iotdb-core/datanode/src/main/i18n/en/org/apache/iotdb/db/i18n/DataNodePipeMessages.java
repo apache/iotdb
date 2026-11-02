@@ -3153,4 +3153,9 @@ public final class DataNodePipeMessages {
   public static final String
       MESSAGE_FAILED_TO_APPEND_LEGACY_PIPE_RECEIVER_FILE_ARG_AT_OFFSET_ARG_WITH_ARG_BYTES_ARG_57428A06 =
           "Failed to append legacy pipe receiver file %s at offset %d with %d bytes: %s";
+
+  public static final String
+      EXCEPTION_HISTORICAL_SUMMARY_EXTRACTEDTSFILECOUNT_ARG_SKIPPEDTSFILECOUNT_ARG_SPLITTSFILECOUNT_ARG_UNSPLITTSFILECOUNT_ARG_DELETIONCOUNT_ARG_C8BF3247 =
+          "historical summary: extractedTsFileCount=%s, skippedTsFileCount=%s, splitTsFileCount=%s,"
+              + " unsplitTsFileCount=%s, deletionCount=%s";
 }
