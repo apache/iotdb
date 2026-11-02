@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -811,17 +812,21 @@ public class IoTDBLoadTsFileIT {
       final File[] sources = {normal, recoverable, failed};
       try {
         long recoverableMarkerOffset = -1;
+        long failedMarkerOffset = -1;
         for (int i = 0; i < sources.length; i++) {
           final long groupMarkerOffset =
-              writeFallbackSource(sources[i], devicePrefix + ".d" + i, i == 1);
+              writeFallbackSource(sources[i], devicePrefix + ".d" + i, i == 1, i == 2);
           if (i == 1) {
             recoverableMarkerOffset = groupMarkerOffset;
+          } else if (i == 2) {
+            failedMarkerOffset = groupMarkerOffset;
           }
         }
         // All footer metadata stays valid, so LOAD must reach scheduling and query fallback.
         replaceByte(recoverable, recoverableMarkerOffset, 0x7f);
         final long compressionOffset = firstChunkCompressionOffset(failed);
         final int originalCompression = replaceByte(failed, compressionOffset, 0x7f);
+        final int originalFailedMarker = replaceByte(failed, failedMarkerOffset, 0x7f);
 
         try (final Connection connection =
                 EnvFactory.getEnv()
@@ -848,8 +853,9 @@ public class IoTDBLoadTsFileIT {
           assertFallbackSourceExists(failed, true);
 
           replaceByte(failed, compressionOffset, originalCompression);
+          replaceByte(failed, failedMarkerOffset, originalFailedMarker);
           statement.execute(fallbackLoadSql(failed, delete));
-          assertFallbackRows(statement, devicePrefix + ".d2");
+          assertFallbackRows(statement, devicePrefix + ".d2", fallbackPartitionTimestamps());
           assertFallbackRows(statement, devicePrefix + ".d0");
           assertFallbackRows(statement, devicePrefix + ".d1");
           assertFallbackSourceExists(failed, !delete);
@@ -865,8 +871,8 @@ public class IoTDBLoadTsFileIT {
     final File good = new File(tmpDir, "301-0-0-0.tsfile");
     final File bad = new File(tmpDir, "302-0-0-0.tsfile");
     final String device = SchemaConfig.STORAGE_GROUP_0 + ".concurrent";
-    writeFallbackSource(good, device + ".good", false);
-    writeFallbackSource(bad, device + ".bad", false);
+    writeFallbackSource(good, device + ".good", false, false);
+    writeFallbackSource(bad, device + ".bad", false, true);
     final long compressionOffset = firstChunkCompressionOffset(bad);
     final int originalCompression = replaceByte(bad, compressionOffset, 0x7f);
     final ExecutorService loaders = Executors.newFixedThreadPool(2);
@@ -907,7 +913,7 @@ public class IoTDBLoadTsFileIT {
         assertFallbackRows(statement, device + ".good");
         replaceByte(bad, compressionOffset, originalCompression);
         statement.execute(fallbackLoadSql(bad, true));
-        assertFallbackRows(statement, device + ".bad");
+        assertFallbackRows(statement, device + ".bad", fallbackPartitionTimestamps());
         assertFallbackRows(statement, device + ".good");
       }
       assertFallbackSourceExists(bad, false);
@@ -931,7 +937,11 @@ public class IoTDBLoadTsFileIT {
   }
 
   private static long writeFallbackSource(
-      final File file, final String device, final boolean includeAnchor) throws Exception {
+      final File file,
+      final String device,
+      final boolean includeAnchor,
+      final boolean spanTimePartitions)
+      throws Exception {
     final List<MeasurementSchema> schemas =
         Arrays.asList(
             new MeasurementSchema(
@@ -957,7 +967,11 @@ public class IoTDBLoadTsFileIT {
       writer.registerAlignedTimeseries(new Path(device), schemas);
       final Tablet tablet = new Tablet(device, schemas);
       for (int i = 0; i < 4; i++) {
-        tablet.addTimestamp(i, i + 1);
+        final long timestamp =
+            spanTimePartitions && i >= 2
+                ? CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() + i - 1
+                : i + 1;
+        tablet.addTimestamp(i, timestamp);
         tablet.addValue("s1", i, (long) i);
         tablet.addValue("s2", i, (long) i * 10);
       }
@@ -967,7 +981,11 @@ public class IoTDBLoadTsFileIT {
     final TsFileResource resource = new TsFileResource(file);
     final IDeviceID deviceId = new PlainDeviceID(device);
     resource.updateStartTime(deviceId, 1);
-    resource.updateEndTime(deviceId, 4);
+    resource.updateEndTime(
+        deviceId,
+        spanTimePartitions
+            ? CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() + 2
+            : 4);
     if (includeAnchor) {
       final IDeviceID anchorId = new PlainDeviceID(anchor);
       resource.updateStartTime(anchorId, 0);
@@ -1012,10 +1030,21 @@ public class IoTDBLoadTsFileIT {
 
   private static void assertFallbackRows(final Statement statement, final String device)
       throws SQLException {
+    assertFallbackRows(statement, device, new long[] {1, 2, 3, 4});
+  }
+
+  private static long[] fallbackPartitionTimestamps() {
+    final long timePartitionInterval =
+        CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
+    return new long[] {1, 2, timePartitionInterval + 1, timePartitionInterval + 2};
+  }
+
+  private static void assertFallbackRows(
+      final Statement statement, final String device, final long[] timestamps) throws SQLException {
     try (final ResultSet rows = statement.executeQuery("select s1,s2 from " + device)) {
       for (int i = 0; i < 4; i++) {
         Assert.assertTrue(device, rows.next());
-        Assert.assertEquals(i + 1, rows.getLong(1));
+        Assert.assertEquals(timestamps[i], rows.getLong(1));
         if (i == 1) {
           Assert.assertNull(rows.getObject(2));
         } else {
