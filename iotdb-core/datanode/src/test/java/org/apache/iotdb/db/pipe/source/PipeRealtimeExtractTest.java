@@ -1360,13 +1360,16 @@ public class PipeRealtimeExtractTest {
           PipeRealtimeEventFactory.createCompletionBarrierEvent(dataRegion1);
       Assert.assertTrue(completionBarrier.increaseReferenceCount(TEST_REFERENCE_HOLDER));
       extractor.extract(completionBarrier);
+
+      // Drain the pending queue before adding another heartbeat so heartbeat coalescing does not
+      // discard it behind the completion barrier.
+      Assert.assertSame(firstEvent.getEvent(), extractor.supply());
       final PipeRealtimeEvent heartbeatAfterCompletionBarrier =
           PipeRealtimeEventFactory.createRealtimeEvent(dataRegion1, false);
       Assert.assertTrue(
           heartbeatAfterCompletionBarrier.increaseReferenceCount(TEST_REFERENCE_HOLDER));
       extractor.extract(heartbeatAfterCompletionBarrier);
 
-      Assert.assertSame(firstEvent.getEvent(), extractor.supply());
       Assert.assertSame(heartbeat.getEvent(), extractor.supply());
       Assert.assertNull(extractor.supply());
       Assert.assertFalse(secondEvent.getEvent().isReleased());
