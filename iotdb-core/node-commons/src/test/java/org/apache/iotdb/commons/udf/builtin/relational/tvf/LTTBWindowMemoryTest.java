@@ -36,6 +36,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -136,6 +137,32 @@ public class LTTBWindowMemoryTest {
       assertEquals(42.0, builders.get(2).build().getDouble(0), 0.0);
     } finally {
       processor.beforeDestroy();
+    }
+  }
+
+  @Test
+  public void testColumnWithASingleEligiblePointDoesNotStallEmission() {
+    // Only the first row has a value, so hasLastEligible stays false and lastEligiblePositions
+    // keeps its default 0. Admission must not treat that sentinel as a real last position: the
+    // window holding it would then never become ready and the whole partition would be buffered.
+    for (boolean timeWindow : new boolean[] {false, true}) {
+      TableFunctionDataProcessor processor = processor(timeWindow, 1, 1, Type.DOUBLE);
+      List<ColumnBuilder> builders = builders(timeWindow);
+      long emittedBeforeFinish = 0;
+      try {
+        for (int row = 0; row < 80_000; row++) {
+          processor.process(record(row, row == 0 ? 42.0 : null), builders, null);
+          if (row % 512 == 511) {
+            emittedBeforeFinish += builders.get(0).getPositionCount();
+            builders = builders(timeWindow);
+          }
+        }
+        // Windows must stream out while the partition is still being read.
+        assertTrue(emittedBeforeFinish > 0);
+        processor.finish(builders, null);
+      } finally {
+        processor.beforeDestroy();
+      }
     }
   }
 

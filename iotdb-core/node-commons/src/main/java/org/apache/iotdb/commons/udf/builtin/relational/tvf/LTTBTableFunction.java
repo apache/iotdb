@@ -1534,13 +1534,18 @@ public class LTTBTableFunction implements TableFunction {
      * Whether the first pending window can be emitted. A window that contains {@code L} must wait
      * for the end of the partition, and so must a window whose {@code C} would come from a bucket
      * that can still lose {@code L}.
+     *
+     * <p>A column with fewer than two eligible points has no {@code L}: the only point is {@code F}
+     * and was never collected into a bucket. {@link #lastEligiblePositions} still holds its default
+     * value then, so it must not be consulted — position {@code 0} would otherwise match the first
+     * window and stall every later window until the partition ends.
      */
     private boolean isReady(W window) {
       if (finishing) {
         return true;
       }
       for (int i = 0; i < participantColumns.length; i++) {
-        if (containsPosition(window, lastEligiblePositions[i])) {
+        if (hasLastEligible[i] && containsPosition(window, lastEligiblePositions[i])) {
           return false;
         }
         PointBuffer bucket = window.buffers[i];
@@ -1548,7 +1553,8 @@ public class LTTBTableFunction implements TableFunction {
           continue;
         }
         WindowState lookahead = findLookahead(window, i);
-        if (lookahead == null || containsPosition(lookahead, lastEligiblePositions[i])) {
+        if (lookahead == null
+            || (hasLastEligible[i] && containsPosition(lookahead, lastEligiblePositions[i]))) {
           return false;
         }
       }
