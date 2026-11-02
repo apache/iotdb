@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
+import java.util.Iterator;
 import java.util.PriorityQueue;
 import java.util.Queue;
 
@@ -175,7 +176,7 @@ public class PipeRealtimeDataRegionTsFileSource extends PipeRealtimeDataRegionSo
   public Event supply() {
     if (isRegionLevelDowngradingEnabled) {
       synchronized (tsFileOrderingLock) {
-        if (isClosed.get() || inFlightTsFileEpoch != null) {
+        if (isClosed.get()) {
           return null;
         }
 
@@ -189,21 +190,37 @@ public class PipeRealtimeDataRegionTsFileSource extends PipeRealtimeDataRegionSo
             bufferedEvents.offerLast(pendingEvent);
           }
         }
-        return supplyInternal();
+        // A heartbeat may trigger retry of the in-flight TsFile at the sink. Keep files and other
+        // events ordered behind it, but do not block those retries while waiting for its commit.
+        return supplyInternal(inFlightTsFileEpoch != null);
       }
     }
-    return supplyInternal();
+    return supplyInternal(false);
   }
 
-  private PipeRealtimeEvent pollNextEvent() {
+  private PipeRealtimeEvent pollNextEvent(final boolean heartbeatOnly) {
     if (!isRegionLevelDowngradingEnabled) {
       return (PipeRealtimeEvent) pendingQueue.directPoll();
+    }
+    if (heartbeatOnly) {
+      final Iterator<PipeRealtimeEvent> iterator = bufferedEvents.iterator();
+      while (iterator.hasNext()) {
+        final PipeRealtimeEvent event = iterator.next();
+        if (event.getEvent() instanceof PipeHeartbeatEvent) {
+          if (((PipeHeartbeatEvent) event.getEvent()).isCompletionBarrier()) {
+            return null;
+          }
+          iterator.remove();
+          return event;
+        }
+      }
+      return null;
     }
     return orderedTsFileEvents.isEmpty() ? bufferedEvents.pollFirst() : orderedTsFileEvents.poll();
   }
 
-  private Event supplyInternal() {
-    PipeRealtimeEvent realtimeEvent = pollNextEvent();
+  private Event supplyInternal(final boolean heartbeatOnly) {
+    PipeRealtimeEvent realtimeEvent = pollNextEvent(heartbeatOnly);
 
     while (realtimeEvent != null) {
       Event suppliedEvent = null;
@@ -252,7 +269,7 @@ public class PipeRealtimeDataRegionTsFileSource extends PipeRealtimeDataRegionSo
         return suppliedEvent;
       }
 
-      realtimeEvent = pollNextEvent();
+      realtimeEvent = pollNextEvent(heartbeatOnly);
     }
 
     // means the pending queue is empty.
