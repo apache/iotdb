@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.relational.it.db.it;
 
+import org.apache.iotdb.db.it.utils.DeletionTestUtils;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -35,6 +36,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.write.record.Tablet;
@@ -119,6 +121,9 @@ public class IoTDBDeletionTableIT {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
+        .setDataRegionConsensusProtocolClass("org.apache.iotdb.consensus.simple.SimpleConsensus")
+        .setDataReplicationFactor(1)
+        .setEnableLastCache(true)
         .setPartitionInterval(1000)
         .setMemtableSizeThreshold(10000);
     // Adjust MemTable threshold size to make it flush automatically
@@ -451,6 +456,119 @@ public class IoTDBDeletionTableIT {
       }
       assertEquals(
           List.of("d1,1,11", "d1,4,14", "d2,1,21", "d2,2,22", "d3,2,32", "d4,3,43"), actual);
+    }
+  }
+
+  @Test
+  public void testAttributeDeleteScopeDoesNotDriftAfterAttributeUpdate() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      connection.setClientInfo("time_zone", "+00:00");
+      statement.execute("use test");
+      statement.execute(
+          "CREATE TABLE delete_attr_stable(device_id STRING TAG, site STRING TAG, "
+              + "color STRING ATTRIBUTE, value INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_attr_stable(time,device_id,site,color,value) VALUES "
+              + "(1,'d1','north','red',101),(2,'d1','north','red',102),"
+              + "(1,'d1','south','red',201),(2,'d1','south','red',202),"
+              + "(1,'d2','north','blue',301),(2,'d2','north','blue',302),"
+              + "(1,'d3','','blue',501),(2,'d3','','blue',502)");
+      statement.execute(
+          "INSERT INTO delete_attr_stable(time,device_id,site,value) "
+              + "VALUES (1,'d3',null,401),(2,'d3',null,402)");
+      statement.execute(
+          "CREATE TABLE delete_attr_keep(device_id STRING TAG, site STRING TAG, "
+              + "color STRING ATTRIBUTE, value INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_attr_keep(time,device_id,site,color,value) "
+              + "VALUES (1,'d1','north','red',901),(2,'d1','north','red',902)");
+      statement.execute("FLUSH");
+      DeletionTestUtils.assertSharedTsFile(
+          "test",
+          IDeviceID.Factory.DEFAULT_FACTORY.create(
+              new String[] {"delete_attr_stable", "d1", "north"}));
+      List<Path> flushedSequenceFiles = DeletionTestUtils.getClosedTsFiles("test", true);
+      List<Path> flushedUnsequenceFiles = DeletionTestUtils.getClosedTsFiles("test", false);
+      statement.execute(
+          "INSERT INTO delete_attr_stable(time,device_id,site,value) VALUES "
+              + "(3,'d1','north',103),(3,'d1','south',203),(3,'d2','north',303),"
+              + "(3,'d3',null,403),(3,'d3','',503)");
+      assertEquals(flushedSequenceFiles, DeletionTestUtils.getClosedTsFiles("test", true));
+      assertEquals(flushedUnsequenceFiles, DeletionTestUtils.getClosedTsFiles("test", false));
+
+      statement.execute(
+          "DELETE FROM delete_attr_stable WHERE color='red' AND site='north' AND time <= 2");
+      assertAttributeDeleteRows(statement, false, false);
+
+      // Change both sides of the original predicate after DELETE has completed. The original
+      // matching devices remain fixed, while previously unmatched devices keep their old rows.
+      statement.execute(
+          "UPDATE delete_attr_stable SET color='blue' WHERE device_id='d1' AND site='north'");
+      statement.execute(
+          "UPDATE delete_attr_stable SET color='red' WHERE device_id='d2' AND site='north'");
+      statement.execute(
+          "UPDATE delete_attr_stable SET color='red' WHERE device_id='d3' AND site IS NULL");
+      assertAttributeDeleteRows(statement, true, false);
+      statement.execute(
+          "INSERT INTO delete_attr_stable(time,device_id,site,color,value) "
+              + "VALUES (2,'d1','north','blue',1202)");
+      statement.execute("FLUSH");
+      assertAttributeDeleteRows(statement, true, true);
+    }
+  }
+
+  private static void assertAttributeDeleteRows(
+      Statement statement, boolean attributesUpdated, boolean rewritten) throws SQLException {
+    List<String> expected = new ArrayList<>();
+    if (rewritten) {
+      expected.add("1970-01-01T00:00:00.002Z,d1,north,blue,1202,");
+    }
+    expected.add(
+        "1970-01-01T00:00:00.003Z,d1,north," + (attributesUpdated ? "blue" : "red") + ",103,");
+    for (int time = 1; time <= 3; time++) {
+      expected.add("1970-01-01T00:00:00.00" + time + "Z,d1,south,red," + (200 + time) + ",");
+    }
+    for (int time = 1; time <= 3; time++) {
+      expected.add(
+          "1970-01-01T00:00:00.00"
+              + time
+              + "Z,d2,north,"
+              + (attributesUpdated ? "red" : "blue")
+              + ","
+              + (300 + time)
+              + ",");
+    }
+    for (int time = 1; time <= 3; time++) {
+      expected.add(
+          "1970-01-01T00:00:00.00"
+              + time
+              + "Z,d3,null,"
+              + (attributesUpdated ? "red" : "null")
+              + ","
+              + (400 + time)
+              + ",");
+    }
+    for (int time = 1; time <= 3; time++) {
+      expected.add("1970-01-01T00:00:00.00" + time + "Z,d3,,blue," + (500 + time) + ",");
+    }
+    try (ResultSet rows =
+        statement.executeQuery(
+            "SELECT time,device_id,site,color,value FROM delete_attr_stable "
+                + "ORDER BY device_id,site NULLS FIRST,time")) {
+      TestUtils.assertResultSetEqual(
+          rows, "time,device_id,site,color,value,", expected.toArray(new String[0]));
+    }
+    try (ResultSet rows =
+        statement.executeQuery(
+            "SELECT time,device_id,site,color,value FROM delete_attr_keep ORDER BY time")) {
+      TestUtils.assertResultSetEqual(
+          rows,
+          "time,device_id,site,color,value,",
+          new String[] {
+            "1970-01-01T00:00:00.001Z,d1,north,red,901,",
+            "1970-01-01T00:00:00.002Z,d1,north,red,902,"
+          });
     }
   }
 
