@@ -21,9 +21,19 @@ package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 
+import org.apache.thrift.transport.TSSLTransportFactory;
+import org.apache.thrift.transport.TServerSocket;
 import org.junit.Assert;
 import org.junit.Test;
 
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLServerSocket;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.net.InetAddress;
+import java.security.KeyStore;
 import java.sql.Timestamp;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -119,6 +129,48 @@ public class RpcUtilsTest {
       Assert.assertEquals("ExplicitProtocol", RpcSslUtils.resolveProtocol(" ExplicitProtocol "));
     } finally {
       RpcSslUtils.configure(originProtocol);
+    }
+  }
+
+  @Test
+  public void testSslServerSocketEnabledProtocols() throws Exception {
+    KeyStore keyStore = KeyStore.getInstance("JKS");
+    keyStore.load(null, null);
+    ByteArrayOutputStream keyStoreBytes = new ByteArrayOutputStream();
+    keyStore.store(keyStoreBytes, new char[0]);
+
+    String originalProtocol = RpcSslUtils.getProtocol();
+    try {
+      for (String sslProtocol : Arrays.asList("TLSv1.2", "TLSv1.3", "TLS", "SSL")) {
+        RpcSslUtils.configure(sslProtocol);
+        TSSLTransportFactory.TSSLTransportParameters params =
+            RpcSslUtils.createTSSLTransportParameters();
+        params.setKeyStore(
+            new ByteArrayInputStream(keyStoreBytes.toByteArray()),
+            "",
+            KeyManagerFactory.getDefaultAlgorithm(),
+            "JKS");
+        try (TServerSocket transport =
+            RpcSslUtils.createServerSocket(0, 0, InetAddress.getLoopbackAddress(), params)) {
+          SSLServerSocket serverSocket = (SSLServerSocket) transport.getServerSocket();
+          if ("TLS".equals(sslProtocol) || "SSL".equals(sslProtocol)) {
+            SSLContext context = SSLContext.getInstance(sslProtocol);
+            context.init(null, null, null);
+            try (SSLServerSocket defaultSocket =
+                (SSLServerSocket) context.getServerSocketFactory().createServerSocket()) {
+              Assert.assertArrayEquals(
+                  sslProtocol,
+                  defaultSocket.getEnabledProtocols(),
+                  serverSocket.getEnabledProtocols());
+            }
+          } else {
+            Assert.assertArrayEquals(
+                sslProtocol, new String[] {sslProtocol}, serverSocket.getEnabledProtocols());
+          }
+        }
+      }
+    } finally {
+      RpcSslUtils.configure(originalProtocol);
     }
   }
 

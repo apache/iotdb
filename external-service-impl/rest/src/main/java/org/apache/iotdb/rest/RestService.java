@@ -151,8 +151,11 @@ public class RestService implements IExternalService {
     }
   }
 
-  private void configureSSL(SslContextFactory.Server sslContextFactory, String sslProtocol) {
+  void configureSSL(SslContextFactory.Server sslContextFactory, String sslProtocol) {
     String protocol = RpcSslUtils.normalizeProtocol(sslProtocol);
     sslContextFactory.setProtocol(protocol);
+    if (RpcSslUtils.requiresProtocolRestriction(protocol)) {
+      sslContextFactory.setIncludeProtocols(protocol);
+    }
   }
 }
