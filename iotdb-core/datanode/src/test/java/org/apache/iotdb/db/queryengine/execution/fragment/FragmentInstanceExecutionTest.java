@@ -68,6 +68,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.queryengine.common.QueryId.MOCK_QUERY_ID;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
@@ -133,7 +134,7 @@ public class FragmentInstanceExecutionTest {
   }
 
   @Test
-  public void testTVListOwnerTransfer() throws InterruptedException {
+  public void testTVListOwnerTransfer() throws Exception {
     // Capture System.err to check for warning messages
     PrintStream systemOut = System.out;
     ByteArrayOutputStream logPrint = new ByteArrayOutputStream();
@@ -171,16 +172,17 @@ public class FragmentInstanceExecutionTest {
         fragmentInstanceContext2.decrementNumOfUnClosedDriver();
 
         fragmentInstanceContext1.getStateMachine().finished();
-        Thread.sleep(100);
+        instanceNotificationExecutor.submit(() -> {}).get(10, TimeUnit.SECONDS);
         fragmentInstanceContext2.getStateMachine().finished();
+        instanceNotificationExecutor.submit(() -> {}).get(10, TimeUnit.SECONDS);
 
         assertTrue(execution1.getInstanceState().isDone());
         assertTrue(execution2.getInstanceState().isDone());
-        Thread.sleep(100);
       } catch (CpuNotEnoughException | MemoryNotEnoughException | IllegalArgumentException e) {
         fail(e.getMessage());
       } finally {
         instanceNotificationExecutor.shutdown();
+        assertTrue(instanceNotificationExecutor.awaitTermination(10, TimeUnit.SECONDS));
       }
     } finally {
       // Restore original System.out
