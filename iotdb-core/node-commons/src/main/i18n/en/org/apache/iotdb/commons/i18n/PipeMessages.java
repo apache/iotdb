@@ -982,4 +982,6 @@ public final class PipeMessages {
   public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_FAILED_D85CD23A = "DataPartitionTable generation failed: ";
   public static final String MESSAGE_UNKNOWN_TASK_STATUS_E05D98F0 = "Unknown task status: ";
 
+  public static final String EXCEPTION_UDP_SEND_INTERVAL_MUST_BE_NON_NEGATIVE_BUT_GOT_ARG_36D41687 =
+      "UDP send interval must be non-negative, but got %d.";
 }

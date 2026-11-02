@@ -61,6 +61,48 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.CRC32;
 
 public class IoTDBDataRegionAirGapSinkTest {
+  @Test
+  public void testStrictUdpSendIntervalIsValidatedAndAppliedToEverySlice() throws Exception {
+    for (final String key :
+        Arrays.asList(
+            PipeSinkConstant.CONNECTOR_AIR_GAP_UDP_SEND_INTERVAL_MS_KEY,
+            PipeSinkConstant.SINK_AIR_GAP_UDP_SEND_INTERVAL_MS_KEY)) {
+      try (final DatagramSocket receiverSocket = new DatagramSocket(0);
+          final UdpTestingIoTDBDataRegionAirGapSink sink =
+              new UdpTestingIoTDBDataRegionAirGapSink()) {
+        final PipeParameters parameters = buildParameters(false);
+        parameters.getAttribute().put(PipeSinkConstant.CONNECTOR_AIR_GAP_TRANSPORT_KEY, "udp");
+        parameters
+            .getAttribute()
+            .put(PipeSinkConstant.SINK_AIR_GAP_STRICT_UNIDIRECTIONAL_KEY, "true");
+        parameters
+            .getAttribute()
+            .put(PipeSinkConstant.CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_KEY, "1024");
+        parameters.getAttribute().put(key, "-1");
+        Assert.assertThrows(
+            PipeParameterNotValidException.class,
+            () -> sink.validate(new PipeParameterValidator(parameters)));
+        parameters.getAttribute().put(key, "20");
+        sink.validate(new PipeParameterValidator(parameters));
+        sink.customize(
+            parameters,
+            new PipeTaskRuntimeConfiguration(new PipeTaskSinkRuntimeEnvironment("pipe", 1L, 1)));
+        final byte[] request = new byte[2500];
+        request[0] = 1;
+        request[2] = (byte) 13;
+        final long start = System.nanoTime();
+        Assert.assertTrue(sink.sendUdp(receiverSocket.getLocalPort(), request));
+        Assert.assertTrue(
+            System.nanoTime() - start >= java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(40));
+        receiverSocket.setSoTimeout(1000);
+        for (int i = 0; i < 3; i++) {
+          final byte[] buffer = new byte[1024];
+          final DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+          receiverSocket.receive(packet);
+        }
+      }
+    }
+  }
 
   @Test
   public void testStrictUnidirectionalRequiresUdpAndBooleanValue() throws Exception {

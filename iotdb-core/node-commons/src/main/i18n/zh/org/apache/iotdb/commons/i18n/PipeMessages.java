@@ -948,4 +948,6 @@ public final class PipeMessages {
   public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_FAILED_D85CD23A = "DataPartitionTable 生成失败：";
   public static final String MESSAGE_UNKNOWN_TASK_STATUS_E05D98F0 = "未知任务状态：";
 
+  public static final String EXCEPTION_UDP_SEND_INTERVAL_MUST_BE_NON_NEGATIVE_BUT_GOT_ARG_36D41687 =
+      "UDP 发送间隔必须为非负数，实际为 %d。";
 }

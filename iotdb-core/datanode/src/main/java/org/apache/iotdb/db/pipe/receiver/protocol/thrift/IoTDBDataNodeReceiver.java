@@ -269,7 +269,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final short rawRequestType = req.getType();
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
         final PipeRequestType requestType = PipeRequestType.valueOf(rawRequestType);
-        if (requestType != PipeRequestType.TRANSFER_SLICE) {
+        if (requestType != PipeRequestType.TRANSFER_SLICE
+            && !(isStrictUnidirectionalRequest(req)
+                && requestType == PipeRequestType.TRANSFER_COMPRESSED)) {
           clearSliceReqHandler();
         }
         final TPipeTransferResp authResp = checkPipeTransferAuthenticated(requestType);
@@ -501,7 +503,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_SLICE:
             {
               try {
-                return handleTransferSlice(PipeTransferSliceReq.fromTPipeTransferReq(req));
+                return handleTransferSlice(
+                    PipeTransferSliceReq.fromTPipeTransferReq(req),
+                    isStrictUnidirectionalRequest(req));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferSliceTimer(System.nanoTime() - startTime);
@@ -515,7 +519,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                     PipeTransferCompressedReq.getMaxAdditionalDecompressedLengthInBytes(req);
                 try (final PipeMemoryBlock ignored =
                     tryAllocateReceiverMemory(requestedMemorySizeInBytes)) {
-                  return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
+                  return receiveNestedRequest(
+                      PipeTransferCompressedReq.fromTPipeTransferReq(req),
+                      isStrictUnidirectionalRequest(req));
                 }
               } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
                 return new TPipeTransferResp(
@@ -1135,7 +1141,25 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return configReceiverId.get();
   }
 
-  private TPipeTransferResp handleTransferSlice(final PipeTransferSliceReq pipeTransferSliceReq) {
+  private boolean isStrictUnidirectionalRequest(final TPipeTransferReq req) {
+    return req instanceof AirGapPseudoTPipeTransferRequest
+        && ((AirGapPseudoTPipeTransferRequest) req).isStrictUnidirectional();
+  }
+
+  private TPipeTransferResp receiveNestedRequest(
+      final TPipeTransferReq req, final boolean strictUnidirectional) {
+    return receive(
+        strictUnidirectional
+            ? new AirGapPseudoTPipeTransferRequest()
+                .setStrictUnidirectional(true)
+                .setVersion(req.version)
+                .setType(req.type)
+                .setBody(req.body)
+            : req);
+  }
+
+  private TPipeTransferResp handleTransferSlice(
+      final PipeTransferSliceReq pipeTransferSliceReq, final boolean strictUnidirectional) {
     final long sliceBodySizeInBytes = getSliceBodySizeInBytes(pipeTransferSliceReq);
     long requestedMemorySizeInBytes = sliceBodySizeInBytes;
     String memoryAction = "buffering sliced pipe transfer request";
@@ -1174,7 +1198,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                   "Slice received, waiting for more slices to complete the request."));
         }
         clearSliceReqHandler();
-        return receive(req.get());
+        return receiveNestedRequest(req.get(), strictUnidirectional);
       }
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
       closeMemoryBlock(sliceMemoryBlock);

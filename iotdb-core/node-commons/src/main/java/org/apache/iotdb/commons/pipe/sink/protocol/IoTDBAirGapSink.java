@@ -48,6 +48,7 @@ import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.io.RandomAccessFile;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -80,6 +81,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_MAX_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_MIN_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_UDP_SEND_INTERVAL_MS_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_UDP_SEND_INTERVAL_MS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_LOAD_BALANCE_PRIORITY_STRATEGY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_LOAD_BALANCE_RANDOM_STRATEGY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY;
@@ -88,6 +91,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_AIR_GAP_STRICT_UNIDIRECTIONAL_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_AIR_GAP_TRANSPORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_AIR_GAP_UDP_PACKET_SIZE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_AIR_GAP_UDP_SEND_INTERVAL_MS_KEY;
 import static org.apache.iotdb.commons.utils.BasicStructureSerDeUtil.LONG_LEN;
 
 @TreeModel
@@ -105,6 +109,8 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
     private DatagramSocket datagramSocket;
     private InetAddress datagramAddress;
     private boolean isUdp;
+    private long lastStrictUdpSendNanos;
+    private boolean hasSentStrictUdpDatagram;
 
     public AirGapSocket(final String ip, final int port) {
       this.endPoint = new TEndPoint(ip, port);
@@ -188,6 +194,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
   private boolean useUdpTransport;
   private boolean strictUnidirectional;
   private int udpPacketSizeInBytes;
+  private long strictUdpSendIntervalNanos;
 
   // The air gap connector does not use clientManager thus we put handshake type here
   protected boolean supportModsIfIsDataNodeReceiver = true;
@@ -243,6 +250,17 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
             CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_MAX_VALUE,
             packetSize),
         packetSize);
+    final int sendIntervalMs =
+        parameters.getIntOrDefault(
+            Arrays.asList(
+                CONNECTOR_AIR_GAP_UDP_SEND_INTERVAL_MS_KEY, SINK_AIR_GAP_UDP_SEND_INTERVAL_MS_KEY),
+            CONNECTOR_AIR_GAP_UDP_SEND_INTERVAL_MS_DEFAULT_VALUE);
+    validator.validate(
+        arg -> sendIntervalMs >= 0,
+        String.format(
+            PipeMessages.EXCEPTION_UDP_SEND_INTERVAL_MUST_BE_NON_NEGATIVE_BUT_GOT_ARG_36D41687,
+            sendIntervalMs),
+        sendIntervalMs);
   }
 
   @Override
@@ -308,6 +326,13 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
         parameters.getIntOrDefault(
             Arrays.asList(CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_KEY, SINK_AIR_GAP_UDP_PACKET_SIZE_KEY),
             CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_DEFAULT_VALUE);
+    strictUdpSendIntervalNanos =
+        TimeUnit.MILLISECONDS.toNanos(
+            parameters.getIntOrDefault(
+                Arrays.asList(
+                    CONNECTOR_AIR_GAP_UDP_SEND_INTERVAL_MS_KEY,
+                    SINK_AIR_GAP_UDP_SEND_INTERVAL_MS_KEY),
+                CONNECTOR_AIR_GAP_UDP_SEND_INTERVAL_MS_DEFAULT_VALUE));
     LOGGER.info(
         "Air gap transport is {}, udp packet size is {} bytes.",
         useUdpTransport ? "udp" : "tcp",
@@ -584,6 +609,28 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
     final byte[] datagramBytes = datagramBuffer.array();
 
     final DatagramSocket datagramSocket = socket.getDatagramSocket();
+    if (strictUnidirectional && strictUdpSendIntervalNanos > 0) {
+      // No ACK supplies backpressure on a one-way link. Space all datagrams, including
+      // consecutive slices of a large request, so a single event cannot flood the socket.
+      if (socket.hasSentStrictUdpDatagram) {
+        long remainingNanos =
+            strictUdpSendIntervalNanos - (System.nanoTime() - socket.lastStrictUdpSendNanos);
+        while (remainingNanos > 0) {
+          try {
+            TimeUnit.NANOSECONDS.sleep(remainingNanos);
+          } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            final InterruptedIOException exception = new InterruptedIOException(e.getMessage());
+            exception.initCause(e);
+            throw exception;
+          }
+          remainingNanos =
+              strictUdpSendIntervalNanos - (System.nanoTime() - socket.lastStrictUdpSendNanos);
+        }
+      }
+      socket.lastStrictUdpSendNanos = System.nanoTime();
+      socket.hasSentStrictUdpDatagram = true;
+    }
     datagramSocket.send(
         new DatagramPacket(
             datagramBytes,

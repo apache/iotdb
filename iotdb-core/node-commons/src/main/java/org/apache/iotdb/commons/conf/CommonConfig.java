@@ -345,6 +345,7 @@ public class CommonConfig {
       Math.min(
           64 * 1024 * 1024,
           (int) Math.min(Runtime.getRuntime().maxMemory() / 64, Integer.MAX_VALUE));
+  private int pipeAirGapReceiverUdpSocketBufferSizeInBytes = 32 * 1024 * 1024;
   private boolean pipeReceiverLoadConversionEnabled = false;
   private volatile long loggerPeriodicalLogMinIntervalSeconds = 60;
   private volatile long loggerCacheMaxSizeInBytes = 64 * MB;
@@ -2025,6 +2026,18 @@ public class CommonConfig {
 
   public int getPipeAirGapReceiverMaxPayloadSizeInBytes() {
     return pipeAirGapReceiverMaxPayloadSizeInBytes;
+  }
+
+  public int getPipeAirGapReceiverUdpSocketBufferSizeInBytes() {
+    return pipeAirGapReceiverUdpSocketBufferSizeInBytes;
+  }
+
+  public void setPipeAirGapReceiverUdpSocketBufferSizeInBytes(
+      int pipeAirGapReceiverUdpSocketBufferSizeInBytes) {
+    if (pipeAirGapReceiverUdpSocketBufferSizeInBytes > 0) {
+      this.pipeAirGapReceiverUdpSocketBufferSizeInBytes =
+          pipeAirGapReceiverUdpSocketBufferSizeInBytes;
+    }
   }
 
   public double getPipeMetaReportMaxLogNumPerRound() {

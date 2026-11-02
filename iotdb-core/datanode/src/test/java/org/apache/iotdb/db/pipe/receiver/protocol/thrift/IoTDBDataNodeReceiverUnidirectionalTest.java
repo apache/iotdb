@@ -21,8 +21,11 @@ package org.apache.iotdb.db.pipe.receiver.protocol.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressor;
+import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressorFactory;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferHandshakeV2Req;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferSliceReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
@@ -40,6 +43,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -47,10 +51,20 @@ public class IoTDBDataNodeReceiverUnidirectionalTest {
 
   @Test
   public void testRepeatedHandshakePreservesFileAndPendingSlices() throws Exception {
+    verifyRepeatedHandshakePreservesFileAndPendingSlices(false);
+  }
+
+  @Test
+  public void testCompressedHandshakePreservesFileAndPendingSlices() throws Exception {
+    verifyRepeatedHandshakePreservesFileAndPendingSlices(true);
+  }
+
+  private void verifyRepeatedHandshakePreservesFileAndPendingSlices(final boolean compressed)
+      throws Exception {
     final Path baseDir = Files.createTempDirectory("unidirectional-receiver");
     final TestReceiver receiver = new TestReceiver(baseDir);
     try {
-      assertSuccess(receiver.receive(handshake(true, true)));
+      assertSuccess(receiver.receive(handshakeForTransfer(compressed)));
       assertSuccess(
           receiver.receive(
               PipeTransferTsFilePieceReq.toTPipeTransferReq(
@@ -61,7 +75,7 @@ public class IoTDBDataNodeReceiverUnidirectionalTest {
       final int split = piece.body.remaining() / 2;
       assertSuccess(receiver.receive(slice(piece, 0, 0, split)));
 
-      assertSuccess(receiver.receive(handshake(true, true)));
+      assertSuccess(receiver.receive(handshakeForTransfer(compressed)));
 
       Assert.assertEquals(receiverDir, receiver.getReceiverDir());
       Assert.assertTrue(receiverDir.exists());
@@ -144,6 +158,25 @@ public class IoTDBDataNodeReceiverUnidirectionalTest {
     final TPipeTransferReq req = PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params);
     return new AirGapPseudoTPipeTransferRequest()
         .setStrictUnidirectional(unidirectional)
+        .setVersion(req.version)
+        .setType(req.type)
+        .setBody(req.body);
+  }
+
+  private static TPipeTransferReq handshakeForTransfer(final boolean compressed)
+      throws IOException {
+    final TPipeTransferReq handshake = handshake(true, true);
+    if (!compressed) {
+      return handshake;
+    }
+    final TPipeTransferReq req =
+        PipeTransferCompressedReq.toTPipeTransferReq(
+            handshake,
+            Collections.singletonList(
+                PipeCompressorFactory.getCompressor(
+                    PipeCompressor.PipeCompressionType.GZIP.getIndex())));
+    return new AirGapPseudoTPipeTransferRequest()
+        .setStrictUnidirectional(true)
         .setVersion(req.version)
         .setType(req.type)
         .setBody(req.body);
