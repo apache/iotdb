@@ -541,6 +541,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_consensus_lag_based_priority",
                 String.valueOf(config.isSubscriptionConsensusLagBasedPriority()))));
+    config.setSubscriptionConsensusFallbackPollingEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "subscription_consensus_fallback_polling_enabled",
+                String.valueOf(config.isSubscriptionConsensusFallbackPollingEnabled()))));
     config.setSubscriptionConsensusPrefetchingQueueCapacity(
         Integer.parseInt(
             properties.getProperty(

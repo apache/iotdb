@@ -106,7 +106,8 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
 
     // tablet batch mode configuration
     if (isTabletBatchModeEnabled) {
-      tabletBatchBuilder = new PipeTransferBatchReqBuilder(parameters);
+      tabletBatchBuilder =
+          new PipeTransferBatchReqBuilder(parameters, clientManager::getLeaderEndPoint);
     }
 
     enableSendTsFileLimit =
