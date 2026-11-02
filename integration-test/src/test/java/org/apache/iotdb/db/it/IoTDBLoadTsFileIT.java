@@ -842,12 +842,13 @@ public class IoTDBLoadTsFileIT {
           assertFallbackRows(statement, devicePrefix + ".d0");
           assertFallbackRows(statement, devicePrefix + ".d1");
           Assert.assertTrue(
-              EnvFactory.getEnv()
-                  .getDataNodeWrapper(0)
-                  .logContains(
-                      "Load: Successfully converted TsFile "
-                          + recoverable.getAbsolutePath()
-                          + " into tablets and inserted."));
+              EnvFactory.getEnv().getDataNodeWrapperList().stream()
+                  .anyMatch(
+                      dataNodeWrapper ->
+                          dataNodeWrapper.logContains(
+                              "Load: Successfully converted TsFile "
+                                  + recoverable.getAbsolutePath()
+                                  + " into tablets and inserted.")));
           assertFallbackSourceExists(normal, !delete);
           assertFallbackSourceExists(recoverable, !delete);
           assertFallbackSourceExists(failed, true);
