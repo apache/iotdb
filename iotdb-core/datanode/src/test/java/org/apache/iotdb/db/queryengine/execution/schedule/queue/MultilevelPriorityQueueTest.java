@@ -51,7 +51,10 @@ public class MultilevelPriorityQueueTest {
     try {
       await()
           .atMost(10, TimeUnit.SECONDS)
-          .untilAsserted(() -> Assert.assertEquals(Thread.State.WAITING, t1.getState()));
+          .until(() -> result.isDone() || t1.getState() == Thread.State.WAITING);
+      if (result.isDone()) {
+        Assert.fail("poll completed before an element was pushed: " + result.get());
+      }
       DriverTask e2 = mockDriverTask(mockDriverTaskId(), false);
       queue.push(e2);
       Assert.assertSame(e2, result.get(10, TimeUnit.SECONDS));

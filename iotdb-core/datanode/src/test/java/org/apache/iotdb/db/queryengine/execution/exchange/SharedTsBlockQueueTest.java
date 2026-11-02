@@ -34,6 +34,8 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -144,39 +146,41 @@ public class SharedTsBlockQueueTest {
     TsBlock block = Utils.createMockTsBlock(mockTsBlockSize);
     int blockCount = 1000;
     ExecutorService executor = Executors.newFixedThreadPool(2);
+    CompletionService<Void> completedTasks = new ExecutorCompletionService<>(executor);
     try {
-      Future<?> sender =
-          executor.submit(
-              () -> {
-                for (int i = 0; i < blockCount; i++) {
-                  ListenableFuture<Void> blocked;
-                  synchronized (queue) {
-                    blocked = queue.add(block);
-                  }
-                  blocked.get(10, TimeUnit.SECONDS);
-                }
-                synchronized (queue) {
-                  queue.setNoMoreTsBlocks(true);
-                }
-                return null;
-              });
-      Future<?> receiver =
-          executor.submit(
-              () -> {
-                for (int i = 0; i < blockCount; i++) {
-                  ListenableFuture<Void> blocked;
-                  synchronized (queue) {
-                    blocked = queue.isBlocked();
-                  }
-                  blocked.get(10, TimeUnit.SECONDS);
-                  synchronized (queue) {
-                    Assert.assertSame(block, queue.remove());
-                  }
-                }
-                return null;
-              });
-      sender.get(10, TimeUnit.SECONDS);
-      receiver.get(10, TimeUnit.SECONDS);
+      completedTasks.submit(
+          () -> {
+            for (int i = 0; i < blockCount; i++) {
+              ListenableFuture<Void> blocked;
+              synchronized (queue) {
+                blocked = queue.add(block);
+              }
+              blocked.get(10, TimeUnit.SECONDS);
+            }
+            synchronized (queue) {
+              queue.setNoMoreTsBlocks(true);
+            }
+            return null;
+          });
+      completedTasks.submit(
+          () -> {
+            for (int i = 0; i < blockCount; i++) {
+              ListenableFuture<Void> blocked;
+              synchronized (queue) {
+                blocked = queue.isBlocked();
+              }
+              blocked.get(10, TimeUnit.SECONDS);
+              synchronized (queue) {
+                Assert.assertSame(block, queue.remove());
+              }
+            }
+            return null;
+          });
+      for (int i = 0; i < 2; i++) {
+        Future<Void> completed = completedTasks.poll(10, TimeUnit.SECONDS);
+        Assert.assertNotNull(completed);
+        completed.get();
+      }
       Assert.assertTrue(queue.hasNoMoreTsBlocks());
       Assert.assertTrue(queue.isEmpty());
       Assert.assertEquals(0, spyMemoryPool.getReservedBytes());

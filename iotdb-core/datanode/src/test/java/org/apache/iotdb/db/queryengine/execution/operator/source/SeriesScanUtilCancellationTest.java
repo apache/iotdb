@@ -443,12 +443,19 @@ public class SeriesScanUtilCancellationTest {
       resumeScan.countDown();
       allowNotifications.countDown();
       worker.shutdownNow();
-      assertTrue(worker.awaitTermination(5, TimeUnit.SECONDS));
-      driver.close();
-      context.decrementNumOfUnClosedDriver();
-      // Let FI cleanup finish after opening its latch, without interrupting its driver-close wait.
-      notifications.shutdown();
-      assertTrue(notifications.awaitTermination(5, TimeUnit.SECONDS));
+      try {
+        assertTrue(worker.awaitTermination(5, TimeUnit.SECONDS));
+      } finally {
+        try {
+          driver.close();
+        } finally {
+          context.decrementNumOfUnClosedDriver();
+          // Let FI cleanup finish after opening its latch, without interrupting its driver-close
+          // wait.
+          notifications.shutdown();
+          assertTrue(notifications.awaitTermination(5, TimeUnit.SECONDS));
+        }
+      }
     }
   }
 

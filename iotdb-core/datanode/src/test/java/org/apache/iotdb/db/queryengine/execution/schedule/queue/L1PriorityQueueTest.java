@@ -48,7 +48,10 @@ public class L1PriorityQueueTest {
     try {
       await()
           .atMost(10, TimeUnit.SECONDS)
-          .untilAsserted(() -> Assert.assertEquals(Thread.State.WAITING, t1.getState()));
+          .until(() -> result.isDone() || t1.getState() == Thread.State.WAITING);
+      if (result.isDone()) {
+        Assert.fail("poll completed before an element was pushed: " + result.get());
+      }
       QueueElement e2 = new QueueElement(new QueueElement.QueueElementID(1), 1);
       queue.push(e2);
       Assert.assertSame(e2, result.get(10, TimeUnit.SECONDS));
