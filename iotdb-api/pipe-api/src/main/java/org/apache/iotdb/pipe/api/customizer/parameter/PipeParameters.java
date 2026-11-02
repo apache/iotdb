@@ -355,7 +355,7 @@ public class PipeParameters {
     return new PipeParameters(thisMap);
   }
 
-  private static class KeyReducer {
+  static class KeyReducer {
     private static final Set<String> FIRST_PREFIXES = new HashSet<>();
     private static final Set<String> SECOND_PREFIXES = new HashSet<>();
 
