@@ -1114,6 +1114,63 @@ public class SessionPool implements ISessionPool {
   }
 
   /**
+   * Inserts several tablets in one request; several tablets may belong to the same device.
+   *
+   * @param tablets data batch, possibly several tablets per device
+   * @see Session#insertTablets(List)
+   */
+  @SuppressWarnings({"squid:S112"}) // ignore Generic exceptions should never be thrown
+  @Override
+  public void insertTablets(List<Tablet> tablets)
+      throws IoTDBConnectionException, StatementExecutionException {
+    ISession session = getSession();
+    try {
+      session.insertTablets(tablets);
+      putBack(session);
+    } catch (IoTDBConnectionException e) {
+      // TException means the connection is broken, remove it and get a new one.
+      LOGGER.warn(SessionMessages.INSERT_TABLETS_FAILED, e);
+      cleanSessionAndMayThrowConnectionException(session, FINAL_RETRY, e);
+    } catch (StatementExecutionException | RuntimeException e) {
+      putBack(session);
+      throw e;
+    } catch (Throwable e) {
+      LOGGER.error(SessionMessages.UNEXPECTED_ERROR_IN_INSERT_TABLETS, e);
+      putBack(session);
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * Inserts several tablets of aligned devices in one request; several tablets may belong to the
+   * same device.
+   *
+   * @param tablets data batch, possibly several tablets per device
+   * @see Session#insertAlignedTablets(List)
+   */
+  @SuppressWarnings({"squid:S112"}) // ignore Generic exceptions should never be thrown
+  @Override
+  public void insertAlignedTablets(List<Tablet> tablets)
+      throws IoTDBConnectionException, StatementExecutionException {
+    ISession session = getSession();
+    try {
+      session.insertAlignedTablets(tablets);
+      putBack(session);
+    } catch (IoTDBConnectionException e) {
+      // TException means the connection is broken, remove it and get a new one.
+      LOGGER.warn(SessionMessages.INSERT_ALIGNED_TABLETS_FAILED, e);
+      cleanSessionAndMayThrowConnectionException(session, FINAL_RETRY, e);
+    } catch (StatementExecutionException | RuntimeException e) {
+      putBack(session);
+      throw e;
+    } catch (Throwable e) {
+      LOGGER.error(SessionMessages.UNEXPECTED_ERROR_IN_INSERT_ALIGNED_TABLETS, e);
+      putBack(session);
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
    * Insert data in batch format, which can reduce the overhead of network. This method is just like
    * jdbc batch insert, we pack some insert request in batch and send them to server If you want
    * improve your performance, please see insertTablet method
