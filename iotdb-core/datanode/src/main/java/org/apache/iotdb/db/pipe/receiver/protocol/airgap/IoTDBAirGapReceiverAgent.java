@@ -262,10 +262,22 @@ public class IoTDBAirGapReceiverAgent implements IService {
     try {
       serverSocket = new ServerSocket(PipeConfig.getInstance().getPipeAirGapReceiverPort());
       datagramSocket = new DatagramSocket(PipeConfig.getInstance().getPipeAirGapReceiverPort());
-      datagramSocket.setReceiveBufferSize(
-          PipeConfig.getInstance().getPipeAirGapReceiverUdpSocketBufferSizeInBytes());
+      final int requestedBufferSize =
+          PipeConfig.getInstance().getPipeAirGapReceiverUdpSocketBufferSizeInBytes();
+      datagramSocket.setReceiveBufferSize(requestedBufferSize);
+      final int actualBufferSize = datagramSocket.getReceiveBufferSize();
+      if (actualBufferSize < requestedBufferSize) {
+        LOGGER.warn(
+            DataNodePipeMessages
+                .LOG_AIR_GAP_UDP_RECEIVE_BUFFER_IS_ARG_BYTES_BELOW_THE_REQUESTED_ARG_BYTES_INCREASE_THE_OPERATING_SYSTEM_RECEIVE_BUFFER_LIMIT_AND_RESTART_THE_DATANODE_TO_REDUCE_PACKET_LOSS_89B20AFC,
+            actualBufferSize,
+            requestedBufferSize);
+      }
       datagramSocket.setSoTimeout(UDP_SESSION_CLEANUP_INTERVAL_MS);
     } catch (final IOException e) {
+      if (Objects.nonNull(datagramSocket)) {
+        datagramSocket.close();
+      }
       if (Objects.nonNull(serverSocket)) {
         try {
           serverSocket.close();
