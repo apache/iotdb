@@ -747,6 +747,120 @@ public final class PipeMessages {
   public static final String OTHER_EXCEPTION_RETRY_SECONDS =
       "{}：将至少重试 {} 秒。状态：{}";
 
+  public static final String EXCEPTION_CATEGORY_SHOULD_NOT_BE_NULL_78602159 = "category 不能为 null";
+  public static final String EXCEPTION_COLUMNNAME_SHOULD_NOT_BE_NULL_695366FD =
+      "columnName 不能为 null";
+  public static final String EXCEPTION_DATABASE_SHOULD_NOT_BE_NULL_3CF2693B = "database 不能为 null";
+  public static final String EXCEPTION_DATATYPE_SHOULD_NOT_BE_NULL_58A47BB3 = "datatype 不能为 null";
+  public static final String EXCEPTION_HOST_ARG_PORT_ARG_BECAUSE_ARG_E9F2BDE7 =
+      "（主机：%s，端口：%s，原因：%s）";
+  public static final String EXCEPTION_TABLENAME_SHOULD_NOT_BE_NULL_FFA95ABE = "tableName 不能为 null";
+  public static final String
+      EXCEPTION_THE_INCLUSION_EXCLUSION_STRING_CONTAINS_ILLEGAL_PATH_1BC64146 =
+          "'inclusion.exclusion' 字符串包含不合法的路径。";
+  public static final String EXCEPTION_THE_INCLUSION_STRING_CONTAINS_ILLEGAL_PATH_B97B3F90 =
+      "'inclusion' 字符串包含不合法的路径。";
+  public static final String
+      EXCEPTION_THE_NUMBER_OF_COMPRESSORS_SHOULD_BE_LESS_THAN_OR_EQUAL_TO_ARG_BUT_GOT_ARG_128D372F =
+          "压缩器数量应小于或等于 %d，但得到 %d。";
+  public static final String
+      EXCEPTION_THE_VALUE_OF_KEY_ARG_OR_ARG_MUST_BE_EITHER_RETRY_OR_IGNORE_783FDB2B =
+          "键 %s 或 %s 的值必须为 'retry' 或 'ignore'。";
+  public static final String LOG_AIR_GAP_TRANSPORT_IS_ARG_UDP_PACKET_SIZE_IS_ARG_BYTES_61CDFC29 =
+      "隔离网闸传输方式为 {}，UDP 数据包大小为 {} 字节。";
+  public static final String
+      LOG_FAILED_TO_BUILD_PIPE_RECEIVER_RUNTIME_INFO_CLEANUP_REQUEST_FOR_PIPE_ARG_ARG_982EAA59 =
+          "为 pipe {}@{} 构建接收端运行时信息清理请求失败。";
+  public static final String
+      LOG_FAILED_TO_CLEANUP_PIPE_RECEIVER_RUNTIME_INFO_FOR_PIPE_ARG_ARG_ON_TARGET_ARG_ARG_ACF5450E =
+          "清理 pipe {}@{} 在目标 {}:{} 上的接收端运行时信息失败。";
+  public static final String
+      LOG_FAILED_TO_CLEANUP_PIPE_RECEIVER_RUNTIME_INFO_FOR_PIPE_ARG_ARG_ON_TARGET_ARG_ARG_RESPONSE_IS_NULL_BDD53753 =
+          "清理 pipe {}@{} 在目标 {}:{} 上的接收端运行时信息失败，响应为 null。";
+  public static final String
+      LOG_FAILED_TO_CLEANUP_PIPE_RECEIVER_RUNTIME_INFO_FOR_PIPE_ARG_ARG_ON_TARGET_ARG_ARG_RESPONSE_STATUS_ARG_2AFF0D91 =
+          "清理 pipe {}@{} 在目标 {}:{} 上的接收端运行时信息失败，响应状态：{}。";
+  public static final String
+      LOG_RECEIVED_SLICE_BODY_SIZE_ARG_EXCEEDS_ORIGIN_BODY_SIZE_ARG_12E71952 =
+          "收到的分片体大小 {} 超过原始请求体大小 {}";
+  public static final String
+      LOG_RECEIVED_SLICE_BODY_SIZE_ARG_IS_NOT_EQUAL_TO_ORIGIN_BODY_SIZE_ARG_EBE1BB1E =
+          "收到的分片体大小 {} 与原始请求体大小 {} 不一致";
+  public static final String LOG_RECEIVING_PIPE_FILE_PIECE_6162A697 = "接收 pipe 文件分片";
+  public static final String MESSAGE_AIR_GAP_TRANSPORT_SHOULD_BE_ONE_OF_ARG_BUT_GOT_ARG_A32FE833 =
+      "隔离网闸传输方式应为 %s 之一，但得到 %s。";
+  public static final String MESSAGE_ARG_MUST_BE_0_BUT_GOT_ARG_B2A3D4A2 = "%s 必须 > 0，但得到 %s";
+  public static final String MESSAGE_CODE_ARG_MESSAGE_ARG_5265299D = "状态码：%d，消息：%s";
+  public static final String MESSAGE_COMPRESSOR_SHOULD_BE_ONE_OF_ARG_BUT_GOT_ARG_A1E39742 =
+      "压缩器应为 %s 之一，但得到 %s。";
+  public static final String
+      MESSAGE_FAILED_TO_REFLECT_PIPEPLUGIN_ARG_ARG_INSTANCE_BECAUSE_ARG_1F0896A9 =
+          "反射创建 PipePlugin %s(%s) 实例失败，原因是 %s";
+  public static final String
+      MESSAGE_FAILED_TO_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PIPEPLUGIN_ARG_FAILED_TO_LOAD_ARG_81A13C60 =
+          "反射创建 PipePlugin 实例失败，PipePlugin %s 加载失败：%s";
+  public static final String
+      MESSAGE_FAILED_TO_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PIPEPLUGIN_ARG_HAS_NOT_BEEN_REGISTERED_34B1267F =
+          "反射创建 PipePlugin 实例失败，PipePlugin %s 尚未注册。";
+  public static final String
+      MESSAGE_INCOMPATIBLE_VISIBILITY_DETECTED_PARENT_CLASS_ARG_VISIBILITY_ARG_CHILD_CLASS_ARG_VISIBILITY_ARG_FCDC2616 =
+          "检测到不兼容的可见性：\n父类：%s，可见性：%s\n子类：%s，可见性：%s";
+  public static final String
+      MESSAGE_LOAD_BALANCE_STRATEGY_SHOULD_BE_ONE_OF_ARG_BUT_GOT_ARG_9247DA78 =
+          "负载均衡策略应为 %s 之一，但得到 %s。";
+  public static final String
+      MESSAGE_LOAD_TSFILE_STRATEGY_SHOULD_BE_ONE_OF_ARG_BUT_GOT_ARG_FF567B85 =
+          "加载 TsFile 的策略应为 %s 之一，但得到 %s。";
+  public static final String
+      MESSAGE_LOG_IN_FAILED_EITHER_YOU_ARE_NOT_AUTHORIZED_OR_THE_SESSION_HAS_TIMED_OUT_A2078D30 =
+          "登录失败，未获授权或会话已超时。";
+  public static final String MESSAGE_MESSAGE_ARG_F49E6C85 = " 消息：%s";
+  public static final String MESSAGE_NOT_RECORDED_06D234C1 = "未记录";
+  public static final String MESSAGE_NO_PERMISSION_7EA2F5F6 = "无权限";
+  public static final String MESSAGE_ONE_OF_ARG_ARG_ARG_ARG_ARG_ARG_MUST_BE_SPECIFIED_A41C7BCE =
+      "必须指定 %s、%s:%s、%s、%s:%s 中的一个";
+  public static final String MESSAGE_PIPE_HANDSHAKE_MISSING_USERNAME_OR_PASSWORD_BDC2F19E =
+      "Pipe 握手缺少用户名或密码。";
+  public static final String
+      MESSAGE_PIPE_HANDSHAKE_V1_IS_NO_LONGER_SUPPORTED_PLEASE_USE_HANDSHAKE_V2_WITH_USERNAME_AND_PASSWORD_85FE0371 =
+          "不再支持 Pipe 握手 V1，请使用携带用户名和密码的握手 V2。";
+  public static final String MESSAGE_RATE_LIMIT_SHOULD_BE_IN_THE_RANGE_0_F_BUT_GOT_F_A84E09CD =
+      "速率限制应在 (0, %f] 范围内，但得到 %f。";
+  public static final String MESSAGE_RETRY_IS_NOT_ALLOWED_84FB8FBC = "不允许重试";
+  public static final String MESSAGE_RETRY_TIMEOUT_5FCC0622 = "重试超时";
+  public static final String MESSAGE_THE_PIPETASKSTAGE_HAS_BEEN_DROPPED_900F76E5 =
+      "PipeTaskStage 已删除";
+  public static final String MESSAGE_THE_PIPETASKSTAGE_HAS_BEEN_EXTERNALLY_STOPPED_E79BC421 =
+      "PipeTaskStage 已被外部停止";
+  public static final String MESSAGE_THE_PIPETASKSTAGE_HAS_BEEN_STARTED_D1041DE5 =
+      "PipeTaskStage 已启动";
+  public static final String MESSAGE_THE_PIPETASKSTAGE_HAS_NOT_BEEN_CREATED_DCBE2DDD =
+      "PipeTaskStage 尚未创建";
+  public static final String MESSAGE_THE_PIPE_DOES_NOT_EXIST_91EBC1F4 = "pipe 不存在";
+  public static final String MESSAGE_THE_PIPE_INCLUSION_CONTENT_CAN_T_BE_EMPTY_80945D2A =
+      "pipe 包含的内容不能为空。";
+  public static final String MESSAGE_THE_PIPE_WITH_THE_SAME_NAME_HAS_BEEN_CREATED_6D246B19 =
+      "同名 pipe 已存在";
+  public static final String MESSAGE_THIS_CLASS_IS_A_PLACEHOLDER_AND_SHOULD_NOT_BE_USED_A72EDAFA =
+      "此类为占位类，不应使用。";
+  public static final String
+      MESSAGE_TIMED_OUT_TO_WAIT_FOR_THE_PIPE_TASK_AGENT_WRITE_LOCK_WHEN_DROPPING_PIPE_ARG_53CC5A3B =
+          "删除 pipe %s 时，等待 pipe 任务代理写锁超时。";
+  public static final String
+      MESSAGE_TIMED_OUT_TO_WAIT_FOR_THE_PIPE_TASK_AGENT_WRITE_LOCK_WHEN_HANDLING_SINGLE_PIPE_META_CHANGES_FOR_PIPE_ARG_BB90A99C =
+          "处理 pipe %s 的单个 pipe 元数据变更时，等待 pipe 任务代理写锁超时。";
+  public static final String MESSAGE_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD =
+      "传输文件 %s 出错，结果状态：%s。";
+  public static final String MESSAGE_TRANSFER_FILE_ARG_ERROR_SOCKET_ARG_E5731EE7 =
+      "传输文件 %s 出错。Socket：%s。";
+  public static final String
+      MESSAGE_UDP_PACKET_SIZE_SHOULD_BE_IN_THE_RANGE_ARG_ARG_BUT_GOT_ARG_8FE01537 =
+          "UDP 数据包大小应在 [%d, %d] 范围内，但得到 %d。";
+  public static final String MESSAGE_UNCLASSIFIED_EXCEPTION_783F6E1F = "未分类异常";
+  public static final String
+      MESSAGE_ZSTD_COMPRESSION_LEVEL_SHOULD_BE_IN_THE_RANGE_ARG_ARG_BUT_GOT_ARG_E5A3079B =
+          "Zstd 压缩级别应在 [%d, %d] 范围内，但得到 %d。";
+
   private PipeMessages() {}
 
   public static final String THROWING_EXCEPTION_IN_VALIDATE = "在 validate 中抛出异常";

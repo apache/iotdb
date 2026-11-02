@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool.schema;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.type.ExitType;
 import org.apache.iotdb.cli.utils.CliContext;
 import org.apache.iotdb.cli.utils.IoTPrinter;
@@ -119,7 +120,9 @@ public abstract class AbstractSchemaTool {
       if (StringUtils.isNotBlank(defaultValue)) {
         return defaultValue;
       }
-      String msg = String.format("Required values for option '%s' not provided", name);
+      String msg =
+          String.format(
+              CliMessages.MESSAGE_REQUIRED_VALUES_FOR_OPTION_ARG_NOT_PROVIDED_86467CA2, name);
       throw new ArgsErrorException(msg);
     }
     return str;
@@ -150,20 +153,32 @@ public abstract class AbstractSchemaTool {
       if (givenTS != null) {
         trustStore = givenTS;
       } else {
-        trustStore = cliCtx.getLineReader().readLine("please input your trust_store:", '\0');
+        trustStore =
+            cliCtx
+                .getLineReader()
+                .readLine(CliMessages.MESSAGE_PLEASE_INPUT_YOUR_TRUST_STORE_387CF139, '\0');
       }
       String givenTPW = commandLine.getOptionValue(Constants.TRUST_STORE_PWD_ARGS);
       if (givenTPW != null) {
         trustStorePwd = givenTPW;
       } else {
-        trustStorePwd = cliCtx.getLineReader().readLine("please input your trust_store_pwd:", '\0');
+        trustStorePwd =
+            cliCtx
+                .getLineReader()
+                .readLine(CliMessages.MESSAGE_PLEASE_INPUT_YOUR_TRUST_STORE_PWD_F402D8D9, '\0');
       }
       keyStore = commandLine.getOptionValue(Constants.KEY_STORE_ARGS);
       keyStorePwd = commandLine.getOptionValue(Constants.KEY_STORE_PWD_ARGS);
       if (keyStore != null && keyStorePwd == null) {
-        keyStorePwd = cliCtx.getLineReader().readLine("please input your key_store_pwd:", '\0');
+        keyStorePwd =
+            cliCtx
+                .getLineReader()
+                .readLine(CliMessages.MESSAGE_PLEASE_INPUT_YOUR_KEY_STORE_PWD_D18797A4, '\0');
       } else if (keyStore == null && keyStorePwd != null) {
-        keyStore = cliCtx.getLineReader().readLine("please input your key_store:", '\0');
+        keyStore =
+            cliCtx
+                .getLineReader()
+                .readLine(CliMessages.MESSAGE_PLEASE_INPUT_YOUR_KEY_STORE_F2FBBF40, '\0');
       }
     }
     boolean hasPw = commandLine.hasOption(Constants.PW_ARGS);
@@ -172,7 +187,10 @@ public abstract class AbstractSchemaTool {
       if (inputPassword != null) {
         password = inputPassword;
       } else {
-        password = cliCtx.getLineReader().readLine("please input your password:", '\0');
+        password =
+            cliCtx
+                .getLineReader()
+                .readLine(CliMessages.MESSAGE_PLEASE_INPUT_YOUR_PASSWORD_72B23434, '\0');
       }
     } else {
       password = Constants.PW_DEFAULT_VALUE;

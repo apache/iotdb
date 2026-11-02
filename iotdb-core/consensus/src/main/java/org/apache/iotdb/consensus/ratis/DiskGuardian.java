@@ -108,7 +108,10 @@ class DiskGuardian {
     @Override
     public String toString() {
       return String.format(
-          "[Raft Log Summary]: group=%s, total size=%d, files=%s", gid, totalSize, logFiles);
+          RatisMessages.EXCEPTION_RAFT_LOG_SUMMARY_GROUP_ARG_TOTAL_SIZE_ARG_FILES_ARG_FB26547E,
+          gid,
+          totalSize,
+          logFiles);
     }
   }
 

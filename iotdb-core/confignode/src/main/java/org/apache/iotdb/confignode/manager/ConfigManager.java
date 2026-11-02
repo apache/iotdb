@@ -834,7 +834,9 @@ public class ConfigManager implements IManager {
       if (deleteDatabaseSchemaMap.isEmpty()) {
         return RpcUtils.getStatus(
             TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
-            String.format("Path %s does not exist", Arrays.toString(deletedPaths.toArray())));
+            String.format(
+                ManagerMessages.EXCEPTION_PATH_ARG_DOES_NOT_EXIST_3B3B812E,
+                Arrays.toString(deletedPaths.toArray())));
       }
 
       return procedureManager.deleteDatabases(
@@ -1502,8 +1504,6 @@ public class ConfigManager implements IManager {
   }
 
   public TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req) {
-    final String errorPrefix = "Reject register, please ensure that the parameter ";
-    final String errorSuffix = " is consistent with the Seed-ConfigNode.";
     TSStatus errorStatus = new TSStatus(TSStatusCode.CONFIGURATION_ERROR.getStatusCode());
     TClusterParameters clusterParameters = req.getClusterParameters();
 
@@ -1511,94 +1511,132 @@ public class ConfigManager implements IManager {
         .getConfigNodeConsensusProtocolClass()
         .equals(CONF.getConfigNodeConsensusProtocolClass())) {
       return errorStatus.setMessage(
-          errorPrefix
-              + ManagerMessages.MESSAGE_CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS_D0F437AF
-              + errorSuffix);
+          String.format(
+              ManagerMessages
+                  .EXCEPTION_REJECT_REGISTER_PLEASE_ENSURE_THAT_THE_PARAMETER_ARG_IS_CONSISTENT_WITH_THE_SEED_CONFIGNODE_C072CE7C,
+              ManagerMessages.MESSAGE_CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS_D0F437AF));
     }
     if (!clusterParameters
         .getDataRegionConsensusProtocolClass()
         .equals(CONF.getDataRegionConsensusProtocolClass())) {
       return errorStatus.setMessage(
-          errorPrefix
-              + ManagerMessages.MESSAGE_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_AB025B20
-              + errorSuffix);
+          String.format(
+              ManagerMessages
+                  .EXCEPTION_REJECT_REGISTER_PLEASE_ENSURE_THAT_THE_PARAMETER_ARG_IS_CONSISTENT_WITH_THE_SEED_CONFIGNODE_C072CE7C,
+              ManagerMessages.MESSAGE_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_AB025B20));
     }
     if (!clusterParameters
         .getSchemaRegionConsensusProtocolClass()
         .equals(CONF.getSchemaRegionConsensusProtocolClass())) {
       return errorStatus.setMessage(
-          errorPrefix
-              + ManagerMessages.MESSAGE_SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS_480645EF
-              + errorSuffix);
+          String.format(
+              ManagerMessages
+                  .EXCEPTION_REJECT_REGISTER_PLEASE_ENSURE_THAT_THE_PARAMETER_ARG_IS_CONSISTENT_WITH_THE_SEED_CONFIGNODE_C072CE7C,
+              ManagerMessages.MESSAGE_SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS_480645EF));
     }
 
     if (clusterParameters.getSeriesPartitionSlotNum() != CONF.getSeriesSlotNum()) {
       return errorStatus.setMessage(
-          errorPrefix + ManagerMessages.MESSAGE_SERIES_SLOT_NUM_115D9BE0 + errorSuffix);
+          String.format(
+              ManagerMessages
+                  .EXCEPTION_REJECT_REGISTER_PLEASE_ENSURE_THAT_THE_PARAMETER_ARG_IS_CONSISTENT_WITH_THE_SEED_CONFIGNODE_C072CE7C,
+              ManagerMessages.MESSAGE_SERIES_SLOT_NUM_115D9BE0));
     }
     if (!clusterParameters
         .getSeriesPartitionExecutorClass()
         .equals(CONF.getSeriesPartitionExecutorClass())) {
       return errorStatus.setMessage(
-          errorPrefix
-              + ManagerMessages.MESSAGE_SERIES_PARTITION_EXECUTOR_CLASS_AD1B5C24
-              + errorSuffix);
+          String.format(
+              ManagerMessages
+                  .EXCEPTION_REJECT_REGISTER_PLEASE_ENSURE_THAT_THE_PARAMETER_ARG_IS_CONSISTENT_WITH_THE_SEED_CONFIGNODE_C072CE7C,
+              ManagerMessages.MESSAGE_SERIES_PARTITION_EXECUTOR_CLASS_AD1B5C24));
     }
 
     if (clusterParameters.getTimePartitionInterval() != COMMON_CONF.getTimePartitionInterval()) {
       return errorStatus.setMessage(
-          errorPrefix + ManagerMessages.MESSAGE_TIME_PARTITION_INTERVAL_CE476507 + errorSuffix);
+          String.format(
+              ManagerMessages
+                  .EXCEPTION_REJECT_REGISTER_PLEASE_ENSURE_THAT_THE_PARAMETER_ARG_IS_CONSISTENT_WITH_THE_SEED_CONFIGNODE_C072CE7C,
+              ManagerMessages.MESSAGE_TIME_PARTITION_INTERVAL_CE476507));
     }
 
     if (clusterParameters.getSchemaReplicationFactor() != CONF.getSchemaReplicationFactor()) {
       return errorStatus.setMessage(
-          errorPrefix + ManagerMessages.MESSAGE_SCHEMA_REPLICATION_FACTOR_11DB65B5 + errorSuffix);
+          String.format(
+              ManagerMessages
+                  .EXCEPTION_REJECT_REGISTER_PLEASE_ENSURE_THAT_THE_PARAMETER_ARG_IS_CONSISTENT_WITH_THE_SEED_CONFIGNODE_C072CE7C,
+              ManagerMessages.MESSAGE_SCHEMA_REPLICATION_FACTOR_11DB65B5));
     }
     if (clusterParameters.getDataReplicationFactor() != CONF.getDataReplicationFactor()) {
       return errorStatus.setMessage(
-          errorPrefix + ManagerMessages.MESSAGE_DATA_REPLICATION_FACTOR_22465D3B + errorSuffix);
+          String.format(
+              ManagerMessages
+                  .EXCEPTION_REJECT_REGISTER_PLEASE_ENSURE_THAT_THE_PARAMETER_ARG_IS_CONSISTENT_WITH_THE_SEED_CONFIGNODE_C072CE7C,
+              ManagerMessages.MESSAGE_DATA_REPLICATION_FACTOR_22465D3B));
     }
 
     if (clusterParameters.getSchemaRegionPerDataNode() != CONF.getSchemaRegionPerDataNode()) {
       return errorStatus.setMessage(
-          errorPrefix + ManagerMessages.MESSAGE_SCHEMA_REGION_PER_DATA_NODE_555F29BC + errorSuffix);
+          String.format(
+              ManagerMessages
+                  .EXCEPTION_REJECT_REGISTER_PLEASE_ENSURE_THAT_THE_PARAMETER_ARG_IS_CONSISTENT_WITH_THE_SEED_CONFIGNODE_C072CE7C,
+              ManagerMessages.MESSAGE_SCHEMA_REGION_PER_DATA_NODE_555F29BC));
     }
     if (clusterParameters.getDataRegionPerDataNode() != CONF.getDataRegionPerDataNode()) {
       return errorStatus.setMessage(
-          errorPrefix + ManagerMessages.MESSAGE_DATA_REGION_PER_DATA_NODE_C183AAD5 + errorSuffix);
+          String.format(
+              ManagerMessages
+                  .EXCEPTION_REJECT_REGISTER_PLEASE_ENSURE_THAT_THE_PARAMETER_ARG_IS_CONSISTENT_WITH_THE_SEED_CONFIGNODE_C072CE7C,
+              ManagerMessages.MESSAGE_DATA_REGION_PER_DATA_NODE_C183AAD5));
     }
 
     if (!clusterParameters.getReadConsistencyLevel().equals(CONF.getReadConsistencyLevel())) {
       return errorStatus.setMessage(
-          errorPrefix + ManagerMessages.MESSAGE_READ_CONSISTENCY_LEVEL_B12D8D95 + errorSuffix);
+          String.format(
+              ManagerMessages
+                  .EXCEPTION_REJECT_REGISTER_PLEASE_ENSURE_THAT_THE_PARAMETER_ARG_IS_CONSISTENT_WITH_THE_SEED_CONFIGNODE_C072CE7C,
+              ManagerMessages.MESSAGE_READ_CONSISTENCY_LEVEL_B12D8D95));
     }
 
     if (clusterParameters.getDiskSpaceWarningThreshold()
         != COMMON_CONF.getDiskSpaceWarningThreshold()) {
       return errorStatus.setMessage(
-          errorPrefix
-              + ManagerMessages.MESSAGE_DISK_SPACE_WARNING_THRESHOLD_19635ACA
-              + errorSuffix);
+          String.format(
+              ManagerMessages
+                  .EXCEPTION_REJECT_REGISTER_PLEASE_ENSURE_THAT_THE_PARAMETER_ARG_IS_CONSISTENT_WITH_THE_SEED_CONFIGNODE_C072CE7C,
+              ManagerMessages.MESSAGE_DISK_SPACE_WARNING_THRESHOLD_19635ACA));
     }
 
     if (!clusterParameters.getTimestampPrecision().equals(COMMON_CONF.getTimestampPrecision())) {
       return errorStatus.setMessage(
-          errorPrefix + ManagerMessages.MESSAGE_TIMESTAMP_PRECISION_9591C9C9 + errorSuffix);
+          String.format(
+              ManagerMessages
+                  .EXCEPTION_REJECT_REGISTER_PLEASE_ENSURE_THAT_THE_PARAMETER_ARG_IS_CONSISTENT_WITH_THE_SEED_CONFIGNODE_C072CE7C,
+              ManagerMessages.MESSAGE_TIMESTAMP_PRECISION_9591C9C9));
     }
 
     if (!clusterParameters.getSchemaEngineMode().equals(COMMON_CONF.getSchemaEngineMode())) {
       return errorStatus.setMessage(
-          errorPrefix + ManagerMessages.MESSAGE_SCHEMA_ENGINE_MODE_E37ED98C + errorSuffix);
+          String.format(
+              ManagerMessages
+                  .EXCEPTION_REJECT_REGISTER_PLEASE_ENSURE_THAT_THE_PARAMETER_ARG_IS_CONSISTENT_WITH_THE_SEED_CONFIGNODE_C072CE7C,
+              ManagerMessages.MESSAGE_SCHEMA_ENGINE_MODE_E37ED98C));
     }
 
     if (clusterParameters.getTagAttributeTotalSize() != COMMON_CONF.getTagAttributeTotalSize()) {
       return errorStatus.setMessage(
-          errorPrefix + ManagerMessages.MESSAGE_TAG_ATTRIBUTE_TOTAL_SIZE_AF658CFE + errorSuffix);
+          String.format(
+              ManagerMessages
+                  .EXCEPTION_REJECT_REGISTER_PLEASE_ENSURE_THAT_THE_PARAMETER_ARG_IS_CONSISTENT_WITH_THE_SEED_CONFIGNODE_C072CE7C,
+              ManagerMessages.MESSAGE_TAG_ATTRIBUTE_TOTAL_SIZE_AF658CFE));
     }
 
     if (clusterParameters.getDatabaseLimitThreshold() != COMMON_CONF.getDatabaseLimitThreshold()) {
       return errorStatus.setMessage(
-          errorPrefix + ManagerMessages.MESSAGE_DATABASE_LIMIT_THRESHOLD_45C23274 + errorSuffix);
+          String.format(
+              ManagerMessages
+                  .EXCEPTION_REJECT_REGISTER_PLEASE_ENSURE_THAT_THE_PARAMETER_ARG_IS_CONSISTENT_WITH_THE_SEED_CONFIGNODE_C072CE7C,
+              ManagerMessages.MESSAGE_DATABASE_LIMIT_THRESHOLD_45C23274));
     }
 
     return null;
@@ -1860,7 +1898,8 @@ public class ConfigManager implements IManager {
         }
       } else {
         String msg =
-            "Unable to find the configuration file. Some modifications are made only in memory.";
+            ManagerMessages
+                .EXCEPTION_UNABLE_TO_FIND_THE_CONFIGURATION_FILE_SOME_MODIFICATIONS_ARE_MADE_ONLY_IN_MEMORY_70BB69F5;
         try {
           ConfigNodeDescriptor.getInstance().loadHotModifiedProps(properties);
           tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, msg);
@@ -1899,7 +1938,8 @@ public class ConfigManager implements IManager {
       }
       return RpcUtils.getStatus(
           TSStatusCode.EXECUTE_STATEMENT_ERROR,
-          "The internal configuration application target is invalid.");
+          ManagerMessages
+              .EXCEPTION_THE_INTERNAL_CONFIGURATION_APPLICATION_TARGET_IS_INVALID_669ED6B7);
     }
     if (req.getNodeId() < 0) {
       return null;
@@ -1908,9 +1948,10 @@ public class ConfigManager implements IManager {
       if (ConfigurationFileUtils.parameterNeedKeepConsistentInCluster(configKey)) {
         return RpcUtils.getStatus(
             TSStatusCode.EXECUTE_STATEMENT_ERROR,
-            "The parameter '"
-                + configKey
-                + "' must be consistent across the entire cluster and cannot be set on a specific node.");
+            String.format(
+                ManagerMessages
+                    .EXCEPTION_THE_PARAMETER_ARG_MUST_BE_CONSISTENT_ACROSS_THE_ENTIRE_CLUSTER_AND_CANNOT_BE_SET_ON_A_SPECIFIC_NODE_43EBC6E3,
+                Objects.toString(configKey)));
       }
     }
     return null;
@@ -2339,8 +2380,10 @@ public class ConfigManager implements IManager {
       return RpcUtils.getStatus(
           TSStatusCode.TEMPLATE_NOT_SET,
           String.format(
-              "Device Template %s is not set on any prefix path of %s",
-              req.getTemplateName(), patternList));
+              ManagerMessages
+                  .EXCEPTION_DEVICE_TEMPLATE_ARG_IS_NOT_SET_ON_ANY_PREFIX_PATH_OF_ARG_C20091F6,
+              req.getTemplateName(),
+              patternList));
     }
 
     if (!req.getTemplateName().equals(ONE_LEVEL_PATH_WILDCARD)) {
@@ -2358,8 +2401,10 @@ public class ConfigManager implements IManager {
         return RpcUtils.getStatus(
             TSStatusCode.TEMPLATE_NOT_SET,
             String.format(
-                "Device Template %s is not set on any prefix path of %s",
-                req.getTemplateName(), patternList));
+                ManagerMessages
+                    .EXCEPTION_DEVICE_TEMPLATE_ARG_IS_NOT_SET_ON_ANY_PREFIX_PATH_OF_ARG_C20091F6,
+                req.getTemplateName(),
+                patternList));
       }
 
       templateSetInfo = filteredTemplateSetInfo;

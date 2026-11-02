@@ -231,4 +231,62 @@ public final class JdbcMessages {
   public static final String EXCEPTION_UNKNOWN_COLUMN_NAME_ARG_F8369278 = "Unknown column name: %s";
   public static final String EXCEPTION_CANNOT_BIND_ARG_IOTDB_SQL_HAS_NO_LITERAL_INFINITE_FLOATING_4068FF32 = "Cannot bind %s: IoTDB SQL has no literal for an infinite floating-point value";
 
+  public static final String EXCEPTION_NOT_SUPPORT_EXECUTE_24A68DC9 = "Not support execute";
+
+  public static final String EXCEPTION_NOT_SUPPORT_EXECUTEUPDATE_157D0E87 =
+      "Not support executeUpdate";
+
+  public static final String EXCEPTION_FOR_SQL_86DB3FB4 = " for SQL: \"";
+
+  public static final String EXCEPTION_EXECUTE_QUERY_F033E009 = "execute query";
+
+  public static final String EXCEPTION_EXECUTE_UPDATE_0E5C5873 = "execute update";
+
+  public static final String EXCEPTION_OBJECT_TYPE_ONLY_SUPPORT_GETSTRING_B4BD14B4 =
+      "OBJECT Type only support getString";
+
+  public static final String EXCEPTION_DOES_NOT_SUPPORT_PREPARECALL_2E958060 =
+      "Does not support prepareCall";
+
+  public static final String EXCEPTION_DOES_NOT_SUPPORT_PREPARESTATEMENT_93B9FAF1 =
+      "Does not support prepareStatement";
+
+  public static final String EXCEPTION_YOUR_PASSWORD_WILL_EXPIRE_AT_49098220 =
+      "Your password will expire at ";
+
+  public static final String EXCEPTION_REQUIRED_FIELD_CLIENT_PROTOCOL_WAS_NOT_PRESENT_2059BC1E =
+      "Required field 'client_protocol' was not present!";
+
+  public static final String EXCEPTION_CONVERT_TSBLOCK_ERROR_ARG_D9D4A78D =
+      "Convert tsBlock error: {}";
+
+  public static final String EXCEPTION_THE_PARAMETER_CANNOT_BE_NULL_6CD5B7DE =
+      "The parameter cannot be null";
+
+  public static final String
+      EXCEPTION_PARAMETER_ONLY_SUPPORTS_BOOLEAN_INT32_INT64_FLOAT_DOUBLE_TEXT_DATA_TYPE_58CD5656 =
+          "Parameter only supports BOOLEAN,INT32,INT64,FLOAT,DOUBLE,TEXT data type";
+
+  public static final String EXCEPTION_NUM_OF_SERIES_PATHS_ARG_5AAACC65 =
+      "* Num of series paths: %d";
+
+  public static final String EXCEPTION_NUM_OF_SEQUENCE_FILES_READ_ARG_002C1609 =
+      "* Num of sequence files read: %d";
+
+  public static final String EXCEPTION_NUM_OF_UNSEQUENCE_FILES_READ_ARG_686A2478 =
+      "* Num of unsequence files read: %d";
+
+  public static final String EXCEPTION_NUM_OF_SEQUENCE_CHUNKS_ARG_AVG_POINTS_ARG_B119F7E6 =
+      "* Num of sequence chunks: %d, avg points: %.1f";
+
+  public static final String EXCEPTION_NUM_OF_UNSEQUENCE_CHUNKS_ARG_AVG_POINTS_ARG_723DCD8F =
+      "* Num of unsequence chunks: %d, avg points: %.1f";
+
+  public static final String EXCEPTION_NUM_OF_PAGES_ARG_OVERLAPPED_PAGES_ARG_ARG_ARG_9F985997 =
+      "* Num of Pages: %d, overlapped pages: %d (%.1f%%)";
+
+  public static final String EXCEPTION_LINES_OF_RESULT_ARG_26F474C0 = "* Lines of result: %d";
+
+  public static final String EXCEPTION_NUM_OF_RPC_ARG_AVG_COST_ARG_MS_435D62C7 =
+      "* Num of RPC: %d, avg cost: %d ms";
 }

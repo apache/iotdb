@@ -21,6 +21,7 @@ package org.apache.iotdb.metrics;
 
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.i18n.MetricsMessages;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.reporter.JmxReporter;
 import org.apache.iotdb.metrics.type.AutoGauge;
@@ -49,7 +50,8 @@ import java.util.function.ToDoubleFunction;
 public abstract class AbstractMetricManager {
   protected static final MetricConfig METRIC_CONFIG =
       MetricConfigDescriptor.getInstance().getMetricConfig();
-  private static final String ALREADY_EXISTS = " is already used for a different type of name";
+  private static final String ALREADY_EXISTS =
+      MetricsMessages.EXCEPTION_IS_ALREADY_USED_FOR_A_DIFFERENT_TYPE_OF_NAME_BBAF0FFC;
 
   /** The map from metric name to metric metaInfo. */
   protected volatile Map<String, MetricInfo.MetaInfo> nameToMetaInfo;

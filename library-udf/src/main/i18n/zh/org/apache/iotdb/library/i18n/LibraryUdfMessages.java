@@ -154,4 +154,177 @@ public final class LibraryUdfMessages {
       "获取该行数据类型失败，行时间戳为 ";
 
   private LibraryUdfMessages() {}
+
+  public static final String EXCEPTION_CAN_T_OBTAIN_MAX_AREA_TRIANGLE_8BE13344 = "无法获取面积最大的三角形";
+
+  public static final String EXCEPTION_THE_VALUE_OF_THE_INPUT_TIME_SERIES_IS_NOT_NUMERIC_02437974 =
+      "输入时间序列的值不是数值。\n";
+
+  public static final String EXCEPTION_TARGET_SHOULD_NOT_BE_EMPTY_1B2C02C6 = "target 不应为空";
+
+  public static final String
+      EXCEPTION_LIMIT_HAS_TO_BE_1_FOR_REPLACING_ALL_MATCHES_OR_NON_NEGATIVE_INTEGERS_FOR_LIMITED_TIMES_30768594 =
+          "limit 必须为 -1（替换所有匹配项）或非负整数（限制替换次数）。";
+
+  public static final String
+      EXCEPTION_OFFSET_HAS_TO_BE_NON_NEGATIVE_TO_SKIP_FIRST_SEVERAL_MATCHES_2284C622 =
+          "offset 必须为非负数，以跳过前几个匹配项。";
+
+  public static final String EXCEPTION_REGEXP_HAS_TO_BE_A_VALID_REGULAR_EXPRESSION_FA012C63 =
+      "regexp 必须为有效的正则表达式。";
+
+  public static final String
+      EXCEPTION_INDEX_MUST_A_NON_NEGATIVE_INTEGER_TO_FETCH_SPLIT_RESULTS_OR_1_TO_GET_LENGTH_ABAF4445 =
+          "index 必须为非负整数（获取拆分结果）或 -1（获取长度）。";
+
+  public static final String EXCEPTION_REGEX_SHOULD_NOT_BE_EMPTY_AED1BC73 = "regex 不应为空";
+
+  public static final String EXCEPTION_GROUP_INDEX_HAS_TO_BE_A_NON_NEGATIVE_INTEGER_A1B9B0F2 =
+      "分组索引必须为非负整数。";
+
+  public static final String EXCEPTION_GAP_SHOULD_BE_A_TIME_PERIOD_WHOSE_UNIT_IS_MS_S_M_H_EDAA139C =
+      "gap 应为时间间隔，单位为 ms、s、m、h。";
+
+  public static final String
+      EXCEPTION_LENGTH_SHOULD_BE_A_TIME_PERIOD_WHOSE_UNIT_IS_MS_S_M_H_BE421588 =
+          "length 应为时间间隔，单位为 ms、s、m、h。";
+
+  public static final String
+      EXCEPTION_PARAMETER_COMPUTE_IS_ILLEGAL_PLEASE_USE_BATCH_FOR_DEFAULT_OR_STREAM_C46DD729 =
+          "参数 \"compute\" 无效。请使用 \"batch\"（默认）或 \"stream\"。";
+
+  public static final String EXCEPTION_PARAMETER_SD_IS_ILLEGAL_IT_SHOULD_BE_LARGER_THAN_0_61264233 =
+      "参数 \"sd\" 无效，应大于 0。";
+
+  public static final String EXCEPTION_WINDOW_SIZE_SHOULD_BE_A_POSITIVE_INTEGER_AF4CCC06 =
+      "窗口大小应为正整数。";
+
+  public static final String EXCEPTION_ERROR_BOUND_SHOULD_BE_NO_LESS_THAN_0_1C260253 =
+      "误差界限应不小于 0。";
+
+  public static final String EXCEPTION_METHOD_IS_ILLEGAL_4B26E375 = "方法无效。";
+
+  public static final String EXCEPTION_OUTPUT_TYPE_IS_INVALID_75CA99CF = "输出类型无效。";
+
+  public static final String EXCEPTION_K_SHOULD_BE_A_POSITIVE_INTEGER_8B9C3E96 = "k 应为正整数。";
+
+  public static final String EXCEPTION_ILLEGAL_SAMPLING_METHOD_4E8BB494 = "采样方法无效。";
+
+  public static final String
+      EXCEPTION_GAP_SHOULD_BE_A_TIME_PERIOD_WHOSE_UNIT_IS_MS_S_M_H_D_0B4CA46A =
+          "gap 应为时间间隔，单位为 ms、s、m、h、d。";
+
+  public static final String EXCEPTION_AGGR_SHOULD_BE_MIN_MAX_MEAN_MEDIAN_FIRST_LAST_3588D6DE =
+      "aggr 应为 min、max、mean、median、first、last。";
+
+  public static final String
+      EXCEPTION_START_SHOULD_CONFORM_TO_THE_FORMAT_YYYY_MM_DD_HH_MM_SS_3FAAA2A2 =
+          "start 应符合格式 yyyy-MM-dd HH:mm:ss。";
+
+  public static final String
+      EXCEPTION_END_SHOULD_CONFORM_TO_THE_FORMAT_YYYY_MM_DD_HH_MM_SS_F7135FE6 =
+          "end 应符合格式 yyyy-MM-dd HH:mm:ss。";
+
+  public static final String
+      EXCEPTION_PARAMETER_LAG_SHOULD_BE_AN_POSITIVE_INTEGER_OR_0_FOR_DEFAULT_VALUE_2401EAB3 =
+          "参数 $lag$ 应为正整数，或使用 '0' 表示默认值。";
+
+  public static final String EXCEPTION_WINDOW_SIZE_SHOULD_BE_LARGER_THAN_0_F4C2184C = "窗口大小应大于 0。";
+
+  public static final String EXCEPTION_PARAMETER_MIN_SHOULD_BE_SMALLER_THAN_MAX_91D250E1 =
+      "参数 $min$ 应小于 $max$。";
+
+  public static final String EXCEPTION_PARAMETER_COUNT_SHOULD_BE_LARGER_THAN_0_8E8FFF68 =
+      "参数 $count$ 应大于 0";
+
+  public static final String
+      EXCEPTION_PARAMETER_END_SHOULD_BE_LARGER_THAN_OR_EQUAL_TO_START_FBDBED0B =
+          "参数 $end$ 应大于或等于 $start$";
+
+  public static final String
+      EXCEPTION_ERROR_HAS_TO_BE_GREATER_THAN_OR_EQUAL_TO_0_AND_LESS_THAN_1_2A840865 =
+          "error 必须大于或等于 0 且小于 1。";
+
+  public static final String
+      EXCEPTION_UNKNOWN_TIME_UNIT_INPUT_SUPPORTED_UNITS_ARE_NS_US_MS_S_M_H_D_69C56AE2 =
+          "输入的时间单位未知。支持的单位为 ns、us、ms、s、m、h、d。";
+
+  public static final String EXCEPTION_ILLEGAL_PARAMETER_TIMEPATTERN_SIZE_MUST_LARGER_1_35FEDD60 =
+      "参数无效，timePattern 的大小必须大于 1。";
+
+  public static final String
+      EXCEPTION_ILLEGAL_PARAMETER_TIMEPATTERN_VALUE_MUST_BE_IN_ASCENDING_ORDER_C07440BB =
+          "参数无效，timePattern 的值必须按升序排列。";
+
+  public static final String
+      EXCEPTION_ILLEGAL_PARAMETER_TIMEPATTERN_SIZE_MUST_EQUALS_VALUEPATTERN_SIZE_00A547B1 =
+          "参数无效，timePattern 与 valuePattern 的大小必须相等。";
+
+  public static final String EXCEPTION_WINDOW_HAS_TO_BE_A_POSITIVE_INTEGER_4A4AC181 =
+      "window 必须为正整数。";
+
+  public static final String EXCEPTION_THRESHOLD_HAS_TO_BE_NON_NEGATIVE_4A7BED9A =
+      "threshold 必须为非负数。";
+
+  public static final String EXCEPTION_WPASS_SHOULD_BE_WITHIN_0_1_24771828 = "Wpass 应在 (0,1) 范围内。";
+
+  public static final String
+      EXCEPTION_INTERVAL_SHOULD_BE_A_TIME_PERIOD_WHOSE_UNIT_IS_MS_S_M_H_D_AF16953B =
+          "interval 应为时间间隔，单位为 ms、s、m、h、d。";
+
+  public static final String
+      EXCEPTION_METHOD_NOT_SUPPORTED_PLEASE_INPUT_COEFFICIENT_AND_LEAVE_METHOD_BLANK_2D687DFE =
+          "不支持此方法，请输入 coefficient 并将 method 留空。";
+
+  public static final String EXCEPTION_LAYER_HAS_TO_BE_A_POSITIVE_INTEGER_43638533 =
+      "layer 必须为正整数。";
+
+  public static final String EXCEPTION_TYPE_SHOULD_BE_UNIFORM_OR_NONUNIFORM_DC4A47B1 =
+      "Type 应为 'uniform' 或 'nonuniform'。";
+
+  public static final String EXCEPTION_RESULT_SHOULD_BE_REAL_IMAG_ABS_OR_ANGLE_F16F02C8 =
+      "Result 应为 'real'、'imag'、'abs' 或 'angle'。";
+
+  public static final String EXCEPTION_COMPRESS_SHOULD_BE_WITHIN_0_1_263845C8 =
+      "Compress 应在 (0,1] 范围内。";
+
+  public static final String EXCEPTION_RESULT_SHOULD_BE_QUOTIENT_OR_REMAINDER_ABBEA7C4 =
+      "Result 应为 'quotient' 或 'remainder'。";
+
+  public static final String EXCEPTION_PARAMETER_SIGMA_SHOULD_BE_LARGER_THAN_0_48732F14 =
+      "参数 $sigma$ 应大于 0。";
+
+  public static final String EXCEPTION_PARAMETER_MINSPEED_SHOULD_BE_SMALLER_THAN_MAXSPEED_31BD6787 =
+      "参数 $minSpeed$ 应小于 $maxSpeed$。";
+
+  public static final String
+      EXCEPTION_INVALID_TIME_UNIT_INPUT_SUPPORTED_UNITS_ARE_NS_US_MS_S_M_H_D_15CD3A00 =
+          "输入的时间单位无效。支持的单位为 ns、us、ms、s、m、h、d。";
+
+  public static final String EXCEPTION_PARAMETER_L_MUST_BE_A_POSITIVE_INTEGER_1DBBDE06 =
+      "参数 l 必须为正整数。";
+
+  public static final String EXCEPTION_PARAMETER_K_MUST_BE_AT_LEAST_2_D6C929C3 = "参数 k 必须至少为 2。";
+
+  public static final String
+      EXCEPTION_PARAMETER_METHOD_MUST_BE_ONE_OF_KMEANS_KSHAPE_MEDOIDSHAPE_1015186E =
+          "参数 method 必须为 kmeans、kshape、medoidshape 之一。";
+
+  public static final String EXCEPTION_PARAMETER_MAXITER_MUST_BE_A_POSITIVE_INTEGER_D64DD725 =
+      "参数 maxiter 必须为正整数。";
+
+  public static final String EXCEPTION_PARAMETER_OUTPUT_MUST_BE_LABEL_OR_CENTROID_153DFB81 =
+      "参数 output 必须为 label 或 centroid。";
+
+  public static final String EXCEPTION_PARAMETER_SAMPLE_RATE_MUST_BE_IN_0_1_79A35554 =
+      "参数 sample_rate 必须在 (0, 1] 范围内。";
+
+  public static final String
+      EXCEPTION_MINLEN_SHOULD_BE_AN_INTEGER_GREATER_THAN_OR_EQUAL_TO_10_D160A79D =
+          "minlen 应为大于或等于 10 的整数。";
+
+  public static final String EXCEPTION_PARAMETER_K_SHOULD_BE_LARGER_THAN_0_9F12BFC9 = "参数 k 应大于 0。";
+
+  public static final String EXCEPTION_PARAMETER_Q1_SHOULD_BE_SMALLER_THAN_Q3_74CEA186 =
+      "参数 $q1$ 应小于 $q3$";
 }

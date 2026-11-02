@@ -43,17 +43,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 @SuppressWarnings("java:S2175")
 public class TsFileValidationScan extends TsFileSequenceScan {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileValidationScan.class);
-  private static final String STR_FIND_BAD_FILE = "-- Find the bad file ";
-  private static final String STR_OVERLAP_LATTER_FILE = ", overlap with latter files.";
-  private static final String STR_OVERLAP_BETWEEN_FILE =
-      " overlap between files, with previous file ";
-  private static final String STR_TIMESERIES = "-------- Timeseries ";
   private static final String FILE_NON_EXIST = "";
   private static final IDeviceID EMPTY_DEVICE_ID = new PlainDeviceID("");
 
@@ -157,11 +153,11 @@ public class TsFileValidationScan extends TsFileSequenceScan {
     if (!Boolean.TRUE.equals(isBadFileMap.get(badFileName))) {
       if (printDetails) {
         previousBadFileMsgs.add(
-            STR_FIND_BAD_FILE
-                + file.getParentFile().getAbsolutePath()
-                + File.separator
-                + deviceEndTime.get(currDeviceID).lastFileName
-                + STR_OVERLAP_LATTER_FILE);
+            String.format(
+                DataNodeMiscMessages.LOG_FIND_THE_BAD_FILE_ARG_OVERLAP_WITH_LATTER_FILES_ECF50A14,
+                file.getParentFile().getAbsolutePath()
+                    + File.separator
+                    + deviceEndTime.get(currDeviceID).lastFileName));
       } else {
         previousBadFileMsgs.add(
             file.getParentFile().getAbsolutePath()
@@ -174,7 +170,9 @@ public class TsFileValidationScan extends TsFileSequenceScan {
     // print current file
     if (!Boolean.TRUE.equals(isBadFileMap.get(file.getName()))) {
       if (printDetails) {
-        printBoth(STR_FIND_BAD_FILE + file.getAbsolutePath());
+        printBoth(
+            String.format(
+                DataNodeMiscMessages.LOG_FIND_THE_BAD_FILE_ARG_4251BC8D, file.getAbsolutePath()));
       } else {
         printBoth(file.getAbsolutePath());
       }
@@ -183,10 +181,11 @@ public class TsFileValidationScan extends TsFileSequenceScan {
     }
     if (printDetails) {
       printBoth(
-          "---- Device "
-              + currDeviceID
-              + STR_OVERLAP_BETWEEN_FILE
-              + deviceEndTime.get(currDeviceID).lastFileName);
+          String.format(
+              DataNodeMiscMessages
+                  .LOG_DEVICE_ARG_OVERLAP_BETWEEN_FILES_WITH_PREVIOUS_FILE_ARG_781B1DA1,
+              Objects.toString(currDeviceID),
+              deviceEndTime.get(currDeviceID).lastFileName));
     }
   }
 
@@ -211,7 +210,9 @@ public class TsFileValidationScan extends TsFileSequenceScan {
   protected void markInFileOverlap() {
     if (!Boolean.TRUE.equals(isBadFileMap.get(file.getName()))) {
       if (printDetails) {
-        printBoth(STR_FIND_BAD_FILE + file.getAbsolutePath());
+        printBoth(
+            String.format(
+                DataNodeMiscMessages.LOG_FIND_THE_BAD_FILE_ARG_4251BC8D, file.getAbsolutePath()));
       } else {
         printBoth(file.getAbsolutePath());
       }
@@ -225,11 +226,9 @@ public class TsFileValidationScan extends TsFileSequenceScan {
     if (!Boolean.TRUE.equals(isBadFileMap.getOrDefault(overLapFile, false))) {
       if (printDetails) {
         previousBadFileMsgs.add(
-            STR_FIND_BAD_FILE
-                + file.getParentFile().getAbsolutePath()
-                + File.separator
-                + overLapFile
-                + STR_OVERLAP_LATTER_FILE);
+            String.format(
+                DataNodeMiscMessages.LOG_FIND_THE_BAD_FILE_ARG_OVERLAP_WITH_LATTER_FILES_ECF50A14,
+                file.getParentFile().getAbsolutePath() + File.separator + overLapFile));
       } else {
         previousBadFileMsgs.add(
             file.getParentFile().getAbsolutePath() + File.separator + overLapFile);
@@ -246,25 +245,35 @@ public class TsFileValidationScan extends TsFileSequenceScan {
     if (timestamp <= seriesLastTime.endTimeInLastFile) {
       if (!seriesOverlapPrintInfo.betweenFileOverlapPrinted) {
         printBoth(
-            STR_TIMESERIES
-                + currTimeseriesID
-                + STR_OVERLAP_BETWEEN_FILE
-                + seriesLastTime.lastFileName);
+            String.format(
+                DataNodeMiscMessages
+                    .LOG_TIMESERIES_ARG_OVERLAP_BETWEEN_FILES_WITH_PREVIOUS_FILE_ARG_6DF56DE2,
+                Objects.toString(currTimeseriesID),
+                seriesLastTime.lastFileName));
         seriesOverlapPrintInfo.betweenFileOverlapPrinted = true;
       }
     } else if (timestamp <= lashChunkEndTime.getOrDefault(currTimeseriesID, Long.MIN_VALUE)) {
       if (!seriesOverlapPrintInfo.chunkOverlapPrinted) {
-        printBoth(STR_TIMESERIES + currTimeseriesID + " overlap between chunks");
+        printBoth(
+            String.format(
+                DataNodeMiscMessages.LOG_TIMESERIES_ARG_OVERLAP_BETWEEN_CHUNKS_99A2EA3F,
+                Objects.toString(currTimeseriesID)));
         seriesOverlapPrintInfo.chunkOverlapPrinted = true;
       }
     } else if (timestamp <= lastPageEndTime) {
       if (!seriesOverlapPrintInfo.crossPageOverlapPrinted) {
-        printBoth(STR_TIMESERIES + currTimeseriesID + " overlap between pages");
+        printBoth(
+            String.format(
+                DataNodeMiscMessages.LOG_TIMESERIES_ARG_OVERLAP_BETWEEN_PAGES_E7D98B39,
+                Objects.toString(currTimeseriesID)));
         seriesOverlapPrintInfo.crossPageOverlapPrinted = true;
       }
     } else {
       if (!seriesOverlapPrintInfo.inPagePOverlapPrinted) {
-        printBoth(STR_TIMESERIES + currTimeseriesID + " overlap within one page");
+        printBoth(
+            String.format(
+                DataNodeMiscMessages.LOG_TIMESERIES_ARG_OVERLAP_WITHIN_ONE_PAGE_A712F779,
+                Objects.toString(currTimeseriesID)));
         seriesOverlapPrintInfo.inPagePOverlapPrinted = true;
       }
     }
@@ -340,9 +349,10 @@ public class TsFileValidationScan extends TsFileSequenceScan {
     if (!Boolean.TRUE.equals(isBadFileMap.get(file.getName()))) {
       if (printDetails) {
         printBoth(
-            "-- Meet errors in reading file "
-                + file.getAbsolutePath()
-                + ", tsfile may be corrupted.");
+            String.format(
+                DataNodeMiscMessages
+                    .EXCEPTION_MEET_ERRORS_IN_READING_FILE_ARG_TSFILE_MAY_BE_CORRUPTED_35B0E30A,
+                Objects.toString(file.getAbsolutePath())));
       } else {
         printBoth(file.getAbsolutePath());
       }

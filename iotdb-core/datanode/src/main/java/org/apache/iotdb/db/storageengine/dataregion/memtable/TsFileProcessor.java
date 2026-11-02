@@ -207,9 +207,10 @@ public class TsFileProcessor {
 
   private final AtomicBoolean isTotallyGeneratedByPipe = new AtomicBoolean(true);
 
-  private static final String FLUSH_QUERY_WRITE_LOCKED = "{}: {} get flushQueryLock write lock";
+  private static final String FLUSH_QUERY_WRITE_LOCKED =
+      StorageEngineMessages.MESSAGE_ARG_ARG_GET_FLUSHQUERYLOCK_WRITE_LOCK_687C85BC;
   private static final String FLUSH_QUERY_WRITE_RELEASE =
-      "{}: {} get flushQueryLock write lock released";
+      StorageEngineMessages.MESSAGE_ARG_ARG_GET_FLUSHQUERYLOCK_WRITE_LOCK_RELEASED_AA87CEE1;
 
   /** Close file listener. */
   private final List<CloseFileListener> closeFileListeners = new CopyOnWriteArrayList<>();

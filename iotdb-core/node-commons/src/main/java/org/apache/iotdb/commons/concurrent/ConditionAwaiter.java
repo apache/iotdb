@@ -97,7 +97,9 @@ public class ConditionAwaiter {
       }
 
       if (!forever && System.currentTimeMillis() - startTime >= timeoutMs) {
-        String message = String.format("Condition was not met within %d ms", timeoutMs);
+        String message =
+            String.format(
+                CommonMessages.EXCEPTION_CONDITION_WAS_NOT_MET_WITHIN_ARG_MS_60098C77, timeoutMs);
         if (lastException != null) {
           throw new AwaitTimeoutException(message, lastException);
         }

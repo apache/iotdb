@@ -1058,9 +1058,10 @@ public class ConsensusPrefetchingQueue {
         useConsumerHint
             ? Objects.nonNull(committedRegionProgress)
                     && !committedRegionProgress.getWriterPositions().isEmpty()
-                ? "merged committed region progress with consumer topic progress hint"
-                : "consumer topic progress hint"
-            : "committed region progress fallback";
+                ? DataNodePipeMessages
+                    .MESSAGE_MERGED_COMMITTED_REGION_PROGRESS_WITH_CONSUMER_TOPIC_PROGRESS_HINT_55C07BE8
+                : DataNodePipeMessages.MESSAGE_CONSUMER_TOPIC_PROGRESS_HINT_BC1EAE8F
+            : DataNodePipeMessages.MESSAGE_COMMITTED_REGION_PROGRESS_FALLBACK_237C42FD;
     final ReplayLocateDecision resolvedStart =
         resolveInitReplayStartDecision(
             recoveryRegionProgress,
@@ -1112,7 +1113,9 @@ public class ConsensusPrefetchingQueue {
       return ReplayLocateDecision.found(
           startFromBeginningWhenEmpty ? FIRST_CONSENSUS_SEARCH_INDEX : fallbackTailSearchIndex,
           new RegionProgress(Collections.emptyMap()),
-          progressSource + " (tail start without progress)");
+          String.format(
+              DataNodePipeMessages.MESSAGE_ARG_TAIL_START_WITHOUT_PROGRESS_F2F00AE5,
+              String.valueOf(progressSource)));
     }
     if (!(consensusReqReader instanceof WALNode)) {
       throw new IllegalStateException(
@@ -1350,12 +1353,13 @@ public class ConsensusPrefetchingQueue {
       return ReplayLocateDecision.found(
           firstUncoveredLocalSearchIndex,
           effectiveRecoveryRegionProgress,
-          "resolved first uncovered replayable WAL record");
+          DataNodePipeMessages.MESSAGE_RESOLVED_FIRST_UNCOVERED_REPLAYABLE_WAL_RECORD_CC3A4597);
     }
     return ReplayLocateDecision.atEnd(
         nextSearchIndexAfterCurrent(),
         effectiveRecoveryRegionProgress,
-        "all locally replayable WAL records are already covered");
+        DataNodePipeMessages
+            .MESSAGE_ALL_LOCALLY_REPLAYABLE_WAL_RECORDS_ARE_ALREADY_COVERED_49CD4AF6);
   }
 
   private long nextSearchIndexAfterCurrent() {
@@ -1368,7 +1372,9 @@ public class ConsensusPrefetchingQueue {
       final RegionProgress regionProgress, final boolean seekAfter) {
     if (!(consensusReqReader instanceof WALNode)) {
       return ReplayLocateDecision.locateMiss(
-          regionProgress, "WAL access is unavailable for region-level replay lookup");
+          regionProgress,
+          DataNodePipeMessages
+              .MESSAGE_WAL_ACCESS_IS_UNAVAILABLE_FOR_REGION_LEVEL_REPLAY_LOOKUP_678CB492);
     }
 
     final WALNode walNode = (WALNode) consensusReqReader;
@@ -1377,7 +1383,9 @@ public class ConsensusPrefetchingQueue {
           scanReplayStartForRequests(iterator, regionProgress, seekAfter);
       if (iterator.hasIncompleteScan()) {
         final String detail =
-            "replay lookup did not complete: " + iterator.getIncompleteScanDetail();
+            String.format(
+                DataNodePipeMessages.MESSAGE_REPLAY_LOOKUP_DID_NOT_COMPLETE_ARG_4D644439,
+                String.valueOf(iterator.getIncompleteScanDetail()));
         // Retry only a deferred read. Confirmed corruption encountered earlier in the scan must
         // still surface as a lookup failure, even if a later file is temporarily unreadable.
         return iterator.isWaitingForReadableWal() && !iterator.hasSkippedBrokenWalFiles()
@@ -1387,7 +1395,10 @@ public class ConsensusPrefetchingQueue {
       return decision;
     } catch (final IOException e) {
       return ReplayLocateDecision.locateMiss(
-          regionProgress, "failed to close replay lookup iterator: " + e.getMessage());
+          regionProgress,
+          String.format(
+              DataNodePipeMessages.EXCEPTION_FAILED_TO_CLOSE_REPLAY_LOOKUP_ITERATOR_ARG_3B390069,
+              String.valueOf(e.getMessage())));
     }
   }
 
@@ -1633,8 +1644,11 @@ public class ConsensusPrefetchingQueue {
         }
         return generateErrorResponse(
             String.format(
-                "ConsensusPrefetchingQueue %s: no in-flight event for consumer %s, commit context %s",
-                this, consumerId, commitContext));
+                DataNodePipeMessages
+                    .MESSAGE_CONSENSUSPREFETCHINGQUEUE_ARG_NO_IN_FLIGHT_EVENT_FOR_CONSUMER_ARG_COMMIT_CONTEXT_ARG_E6816AC1,
+                this,
+                consumerId,
+                commitContext));
       }
       if (Objects.isNull(event.getCurrentResponse())
           || event.getCurrentResponse().getResponseType()
@@ -1656,22 +1670,33 @@ public class ConsensusPrefetchingQueue {
       if (payload.getNextOffset() <= 0) {
         return generateErrorResponse(
             String.format(
-                "ConsensusPrefetchingQueue %s: no remaining tablet chunk for consumer %s, "
-                    + "commit context %s, requested offset %s, current nextOffset %s",
-                this, consumerId, commitContext, offset, payload.getNextOffset()));
+                DataNodePipeMessages
+                    .MESSAGE_CONSENSUSPREFETCHINGQUEUE_ARG_NO_REMAINING_TABLET_CHUNK_FOR_CONSUMER_ARG_COMMIT_CONTEXT_ARG_REQUESTED_OFFSET_ARG_CURRENT_NEXTOFFSET_ARG_A8323BFC,
+                this,
+                consumerId,
+                commitContext,
+                offset,
+                payload.getNextOffset()));
       }
       if (offset != payload.getNextOffset()) {
         return generateErrorResponse(
             String.format(
-                "ConsensusPrefetchingQueue %s: inconsistent tablet offset for consumer %s, "
-                    + "commit context %s, requested offset %s, current nextOffset %s",
-                this, consumerId, commitContext, offset, payload.getNextOffset()));
+                DataNodePipeMessages
+                    .MESSAGE_CONSENSUSPREFETCHINGQUEUE_ARG_INCONSISTENT_TABLET_OFFSET_FOR_CONSUMER_ARG_COMMIT_CONTEXT_ARG_REQUESTED_OFFSET_ARG_CURRENT_NEXTOFFSET_ARG_B5502990,
+                this,
+                consumerId,
+                commitContext,
+                offset,
+                payload.getNextOffset()));
       }
       return generateErrorResponse(
           String.format(
-              "ConsensusPrefetchingQueue %s: offset-based tablet continuation is not supported "
-                  + "for consensus subscription, consumer %s, commit context %s, offset %s",
-              this, consumerId, commitContext, offset));
+              DataNodePipeMessages
+                  .MESSAGE_CONSENSUSPREFETCHINGQUEUE_ARG_OFFSET_BASED_TABLET_CONTINUATION_IS_NOT_SUPPORTED_FOR_CONSENSUS_SUBSCRIPTION_CONSUMER_ARG_COMMIT_CONTEXT_ARG_OFFSET_ARG_3245CD9B,
+              this,
+              consumerId,
+              commitContext,
+              offset));
     } finally {
       releaseReadLock();
     }
@@ -3941,7 +3966,8 @@ public class ConsensusPrefetchingQueue {
       final String consumerId, final SubscriptionCommitContext commitContext) {
     acquireReadLock();
     try {
-      return canAcceptCommitContext(commitContext, "refresh lease", true)
+      return canAcceptCommitContext(
+              commitContext, DataNodePipeMessages.MESSAGE_REFRESH_LEASE_763C9DE1, true)
           && refreshInFlightEventLeaseInternal(consumerId, commitContext);
     } finally {
       releaseReadLock();

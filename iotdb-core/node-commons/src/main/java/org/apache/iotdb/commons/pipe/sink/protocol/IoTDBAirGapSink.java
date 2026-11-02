@@ -205,8 +205,9 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
     validator.validate(
         arg -> CONNECTOR_AIR_GAP_TRANSPORT_SET.contains(airGapTransport),
         String.format(
-            "Air gap transport should be one of %s, but got %s.",
-            CONNECTOR_AIR_GAP_TRANSPORT_SET, airGapTransport),
+            PipeMessages.MESSAGE_AIR_GAP_TRANSPORT_SHOULD_BE_ONE_OF_ARG_BUT_GOT_ARG_A32FE833,
+            CONNECTOR_AIR_GAP_TRANSPORT_SET,
+            airGapTransport),
         airGapTransport);
 
     final int packetSize =
@@ -218,7 +219,8 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
             packetSize >= CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_MIN_VALUE
                 && packetSize <= CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_MAX_VALUE,
         String.format(
-            "UDP packet size should be in the range [%d, %d], but got %d.",
+            PipeMessages
+                .MESSAGE_UDP_PACKET_SIZE_SHOULD_BE_IN_THE_RANGE_ARG_ARG_BUT_GOT_ARG_8FE01537,
             CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_MIN_VALUE,
             CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_MAX_VALUE,
             packetSize),
@@ -278,7 +280,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
             Arrays.asList(CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_KEY, SINK_AIR_GAP_UDP_PACKET_SIZE_KEY),
             CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_DEFAULT_VALUE);
     LOGGER.info(
-        "Air gap transport is {}, udp packet size is {} bytes.",
+        PipeMessages.LOG_AIR_GAP_TRANSPORT_IS_ARG_UDP_PACKET_SIZE_IS_ARG_BYTES_61CDFC29,
         useUdpTransport ? "udp" : "tcp",
         udpPacketSizeInBytes);
   }
@@ -416,7 +418,8 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
                 ? getTransferMultiFilePieceBytes(file.getName(), position, payload)
                 : getTransferSingleFilePieceBytes(file.getName(), position, payload))) {
           final String errorMessage =
-              String.format("Transfer file %s error. Socket %s.", file, socket);
+              String.format(
+                  PipeMessages.MESSAGE_TRANSFER_FILE_ARG_ERROR_SOCKET_ARG_E5731EE7, file, socket);
           if (mayNeedHandshakeWhenFail()) {
             // Send handshake because we don't know whether the receiver side configNode
             // has set up a new one

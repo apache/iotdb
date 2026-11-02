@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.frequency;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -53,7 +54,8 @@ public class UDTFIFFT implements UDTF {
         .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
         .validate(
             x -> (long) x > 0,
-            "interval should be a time period whose unit is ms, s, m, h, d.",
+            LibraryUdfMessages
+                .EXCEPTION_INTERVAL_SHOULD_BE_A_TIME_PERIOD_WHOSE_UNIT_IS_MS_S_M_H_D_AF16953B,
             Util.parseTime(
                 validator.getParameters().getStringOrDefault("interval", "1s"),
                 validator.getParameters()));
@@ -61,7 +63,8 @@ public class UDTFIFFT implements UDTF {
     if (validator.getParameters().hasAttribute(START_PARAM)) {
       validator.validate(
           x -> (long) x > 0,
-          "start should conform to the format yyyy-MM-dd HH:mm:ss.",
+          LibraryUdfMessages
+              .EXCEPTION_START_SHOULD_CONFORM_TO_THE_FORMAT_YYYY_MM_DD_HH_MM_SS_3FAAA2A2,
           format.parse(validator.getParameters().getString(START_PARAM)).getTime());
     }
   }

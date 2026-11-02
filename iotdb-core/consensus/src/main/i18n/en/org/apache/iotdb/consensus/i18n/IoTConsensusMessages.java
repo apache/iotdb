@@ -344,4 +344,14 @@ public final class IoTConsensusMessages {
   public static final String
       EXCEPTION_FAILED_TO_TAKE_SNAPSHOT_FOR_CONSENSUS_GROUP_ARG_IN_ARG_CHECK_STATE_MACHINE_LOGS_FOR_THE_UNDERLYING_CAUSE_74663D2D =
           "Failed to take snapshot for consensus group %s in %s; check state machine logs for the underlying cause";
+
+  public static final String
+      EXCEPTION_THE_WRITE_IS_REJECTED_BECAUSE_THE_WAL_DIRECTORY_SIZE_HAS_REACHED_THE_THRESHOLD_ARG_BYTES_YOU_MAY_NEED_TO_ADJUST_THE_FLUSH_POLICY_OF_THE_STORAGE_STORAGEENGINE_OR_THE_IOTCONSENSUS_SYNCHRONIZATION_PARAMETER_49AB1306 =
+          "The write is rejected because the wal directory size has reached the threshold %d bytes."
+              + " You may need to adjust the flush policy of the storage storageengine or the"
+              + " IoTConsensus synchronization parameter";
+
+  public static final String
+      EXCEPTION_FAILED_TO_LOAD_SNAPSHOT_ARG_FOR_CONSENSUS_GROUP_ARG_F876AE5C =
+          "Failed to load snapshot %s for consensus group %s";
 }

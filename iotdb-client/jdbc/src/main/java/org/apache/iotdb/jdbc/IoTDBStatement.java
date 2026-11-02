@@ -71,8 +71,10 @@ public class IoTDBStatement implements Statement {
 
   protected IClientRPCService.Iface client;
   private List<String> batchSQLList;
-  private static final String NOT_SUPPORT_EXECUTE = "Not support execute";
-  private static final String NOT_SUPPORT_EXECUTE_UPDATE = "Not support executeUpdate";
+  private static final String NOT_SUPPORT_EXECUTE =
+      JdbcMessages.EXCEPTION_NOT_SUPPORT_EXECUTE_24A68DC9;
+  private static final String NOT_SUPPORT_EXECUTE_UPDATE =
+      JdbcMessages.EXCEPTION_NOT_SUPPORT_EXECUTEUPDATE_157D0E87;
 
   /** Keep state so we can fail certain calls made after close(). */
   private boolean isClosed = false;
@@ -455,7 +457,7 @@ public class IoTDBStatement implements Statement {
           allSuccess = false;
           message
               .append(execResp.getSubStatus().get(i).message)
-              .append(" for SQL: \"")
+              .append(JdbcMessages.EXCEPTION_FOR_SQL_86DB3FB4)
               .append(batchSQLList.get(i))
               .append("\"")
               .append(System.lineSeparator());
@@ -490,7 +492,7 @@ public class IoTDBStatement implements Statement {
   }
 
   public ResultSet executeQuery(String sql, long timeoutInMS) throws SQLException {
-    checkConnection("execute query");
+    checkConnection(JdbcMessages.EXCEPTION_EXECUTE_QUERY_F033E009);
     isClosed = false;
     try {
       return executeQuerySQL(sql, timeoutInMS);
@@ -562,7 +564,7 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public int executeUpdate(String sql) throws SQLException {
-    checkConnection("execute update");
+    checkConnection(JdbcMessages.EXCEPTION_EXECUTE_UPDATE_0E5C5873);
     isClosed = false;
     try {
       return executeUpdateSQL(sql);

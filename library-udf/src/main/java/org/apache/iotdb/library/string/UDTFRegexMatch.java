@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.string;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -48,11 +49,11 @@ public class UDTFRegexMatch implements UDTF {
         .validateInputSeriesDataType(0, Type.TEXT)
         .validate(
             regex -> ((String) regex).length() > 0,
-            "regexp has to be a valid regular expression.",
+            LibraryUdfMessages.EXCEPTION_REGEXP_HAS_TO_BE_A_VALID_REGULAR_EXPRESSION_FA012C63,
             validator.getParameters().getStringOrDefault("regex", ""))
         .validate(
             group -> (int) group >= 0,
-            "group index has to be a non-negative integer.",
+            LibraryUdfMessages.EXCEPTION_GROUP_INDEX_HAS_TO_BE_A_NON_NEGATIVE_INTEGER_A1B9B0F2,
             validator.getParameters().getIntOrDefault("group", 0));
   }
 

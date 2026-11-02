@@ -109,4 +109,5 @@ public final class ClientMessages {
   public static final String EXCEPTION_FAILED_TRANSFER_SLICE_ORIGIN_REQ_ARG_ARG_SLICE_INDEX_ARG_7219936C = "无法传输 slice。Origin req: %s-%s，slice index: %d，slice count: %d。原因：%s";
   public static final String MESSAGE_FAILED_TO_HANDLE_ASYNC_REQUEST_ERROR_FOR_REQUEST_TYPE_ARG_ON_NODE_ARG_ARG_3AE293F7 = "处理节点 {} 上请求类型 {} 的异步请求错误失败：{}";
 
+  public static final String EXCEPTION_CLIENT_HAS_AN_ERROR_50E34F89 = "客户端发生错误！";
 }

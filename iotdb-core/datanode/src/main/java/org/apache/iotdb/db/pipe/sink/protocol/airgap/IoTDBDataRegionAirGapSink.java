@@ -276,7 +276,10 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
         toTPipeTransferBytes(batchToTransfer.toTPipeTransferReq()),
         batchToTransfer.getPipe2BytesAccumulated())) {
       final String errorMessage =
-          String.format("Transfer PipeTransferTabletBatchReq error. Socket: %s.", socket);
+          String.format(
+              DataNodePipeMessages
+                  .MESSAGE_TRANSFER_PIPETRANSFERTABLETBATCHREQ_ERROR_SOCKET_ARG_1AFDAB57,
+              socket);
       receiverStatusHandler.handle(
           new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
               .setMessage(errorMessage),
@@ -348,8 +351,9 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
             pipeDeleteDataNodeEvent.getDeleteDataNode()))) {
       final String errorMessage =
           String.format(
-              "Transfer deletion %s error. Socket: %s.",
-              pipeDeleteDataNodeEvent.getDeleteDataNode().getType(), socket);
+              DataNodePipeMessages.MESSAGE_TRANSFER_DELETION_ARG_ERROR_SOCKET_ARG_A64BC982,
+              pipeDeleteDataNodeEvent.getDeleteDataNode().getType(),
+              socket);
       receiverStatusHandler.handle(
           new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
               .setMessage(errorMessage),
@@ -394,8 +398,10 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
         bytes)) {
       final String errorMessage =
           String.format(
-              "Transfer PipeInsertNodeTabletInsertionEvent %s error. Socket: %s",
-              pipeInsertNodeTabletInsertionEvent, socket);
+              DataNodePipeMessages
+                  .MESSAGE_TRANSFER_PIPEINSERTNODETABLETINSERTIONEVENT_ARG_ERROR_SOCKET_ARG_62185FF1,
+              pipeInsertNodeTabletInsertionEvent,
+              socket);
       receiverStatusHandler.handle(
           new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
               .setMessage(errorMessage),
@@ -435,8 +441,10 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
                 : pipeRawTabletInsertionEvent.getTreeModelDatabaseName()))) {
       final String errorMessage =
           String.format(
-              "Transfer PipeRawTabletInsertionEvent %s error. Socket: %s.",
-              pipeRawTabletInsertionEvent, socket);
+              DataNodePipeMessages
+                  .MESSAGE_TRANSFER_PIPERAWTABLETINSERTIONEVENT_ARG_ERROR_SOCKET_ARG_42F2BAD5,
+              pipeRawTabletInsertionEvent,
+              socket);
       receiverStatusHandler.handle(
           new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
               .setMessage(errorMessage),
@@ -492,7 +500,9 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       final Iterable<? extends EnrichedEvent> events,
       final int outputIndex)
       throws PipeException, IOException {
-    final String errorMessage = String.format("Seal file %s error. Socket %s.", tsFile, socket);
+    final String errorMessage =
+        String.format(
+            DataNodePipeMessages.MESSAGE_SEAL_FILE_ARG_ERROR_SOCKET_ARG_A442249B, tsFile, socket);
     final String conversionTaskId =
         shouldAsyncLoadTsFileOnTypeMismatch
             ? PipeTransferTsFileSealWithModReq.generateConversionTaskId(
@@ -580,7 +590,10 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
                 : getTransferSingleFilePieceBytes(file.getName(), position, payload),
             pipe2WeightMap)) {
           final String errorMessage =
-              String.format("Transfer file %s error. Socket %s.", file, socket);
+              String.format(
+                  DataNodePipeMessages.MESSAGE_TRANSFER_FILE_ARG_ERROR_SOCKET_ARG_E5731EE7,
+                  file,
+                  socket);
           receiverStatusHandler.handle(
               new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
                   .setMessage(errorMessage),

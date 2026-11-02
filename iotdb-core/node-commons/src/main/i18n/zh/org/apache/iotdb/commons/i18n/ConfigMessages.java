@@ -181,4 +181,5 @@ public final class ConfigMessages {
   public static final String LOG_PIPEEVENTREFERENCETRACKINGENABLED_SET_ARG_98E9A640 = "pipeEventReferenceTrackingEnabled 已设置为 {}";
   public static final String LOG_PIPEEVENTREFERENCEELIMINATEINTERVALSECONDS_SET_ARG_62542387 = "pipeEventReferenceEliminateIntervalSeconds 已设置为 {}";
 
+  public static final String LOG_GET_GIT_PROPERTIES_ERROR_ARG_2EF68070 = "读取 git.properties 出错：%s";
 }

@@ -1517,7 +1517,9 @@ public class IoTDBConfig implements DefaultEncodingProvider {
     // format data directories
     formulateDataDirs(newTierDataDirs);
     if (newTierDataDirs.length < this.tierDataDirs.length) {
-      String msg = "some data dirs are removed from data_dirs parameter, please add them back.";
+      String msg =
+          DataNodeMiscMessages
+              .EXCEPTION_SOME_DATA_DIRS_ARE_REMOVED_FROM_DATA_DIRS_PARAMETER_PLEASE_ADD_THEM_BACK_7BF4DBFE;
       logger.error(msg);
       throw new LoadConfigurationException(msg);
     }
@@ -1796,8 +1798,10 @@ public class IoTDBConfig implements DefaultEncodingProvider {
       } catch (final IOException e) {
         return new CanonicalPaths(
             String.format(
-                "Failed to resolve canonical path for Load TsFile allowed directory %s: %s",
-                dirs[i], e.getMessage()));
+                DataNodeMiscMessages
+                    .EXCEPTION_FAILED_TO_RESOLVE_CANONICAL_PATH_FOR_LOAD_TSFILE_ALLOWED_DIRECTORY_ARG_ARG_9BD3ABDA,
+                dirs[i],
+                e.getMessage()));
       }
     }
     return new CanonicalPaths(paths);
@@ -1978,8 +1982,10 @@ public class IoTDBConfig implements DefaultEncodingProvider {
     }
     String msg =
         String.format(
-            "Cannot set multi_dir_strategy to %s, because cluster mode only allows %s.",
-            multiDirStrategyClassName, Arrays.toString(CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES));
+            DataNodeMiscMessages
+                .EXCEPTION_CANNOT_SET_MULTI_DIR_STRATEGY_TO_ARG_BECAUSE_CLUSTER_MODE_ONLY_ALLOWS_ARG_B0E64F6D,
+            multiDirStrategyClassName,
+            Arrays.toString(CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES));
     logger.error(msg);
     throw new RuntimeException(msg);
   }

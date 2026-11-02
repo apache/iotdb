@@ -235,7 +235,9 @@ public class IoTConsensusV2TsFileInsertionEventHandler
               .handle(
                   status,
                   String.format(
-                      "Seal file %s error, result status %s.", tsFile, response.getStatus()),
+                      DataNodePipeMessages.MESSAGE_SEAL_FILE_ARG_ERROR_RESULT_STATUS_ARG_FE3B82AC,
+                      tsFile,
+                      response.getStatus()),
                   tsFile.getName());
         }
 

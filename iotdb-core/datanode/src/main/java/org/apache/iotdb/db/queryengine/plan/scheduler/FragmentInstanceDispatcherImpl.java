@@ -107,7 +107,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
   private static final String DISPATCH_FAILED = "[DispatchFailed]";
 
-  private static final String UNEXPECTED_ERRORS = "Unexpected errors: ";
+  private static final String UNEXPECTED_ERRORS =
+      DataNodeQueryMessages.EXCEPTION_UNEXPECTED_ERRORS_E69A798F;
 
   private final long maxRetryDurationInNs;
 
@@ -176,7 +177,10 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       return immediateFuture(
           new FragInstanceDispatchResult(
               RpcUtils.getStatus(
-                  TSStatusCode.INTERNAL_SERVER_ERROR, "Interrupted errors: " + e.getMessage())));
+                  TSStatusCode.INTERNAL_SERVER_ERROR,
+                  String.format(
+                      DataNodeQueryMessages.MESSAGE_INTERRUPTED_ERRORS_ARG_876F1B4B,
+                      Objects.toString(e.getMessage())))));
     } catch (Throwable t) {
       LOGGER.warn(DISPATCH_FAILED, t);
       return immediateFuture(

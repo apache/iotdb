@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+
+  public static final String EXCEPTION_UNSUPPORTED_JOIN_CRETERIA_ARG_AFTER_PREDICATE_PUSH_DOWN_92BDB23B =
+      "Unsupported Join creteria [%s] after predicate push down";
   public static final String EXCEPTION_QUERY_CHUNK_RESOURCES_ARE_ALREADY_CLOSED_CA6A0559 =
       "Query chunk resources are already closed";
   public static final String LOG_FAILED_TO_RELEASE_QUERY_CHUNK_RESOURCES_91573FE5 =
@@ -2935,6 +2938,53 @@ public final class DataNodeQueryMessages {
   public static final String RULE_S_BEFORE_S_AFTER_S =
       "Rule: {}\nBefore:\n{}\nAfter:\n{}";
 
+  public static final String
+      EXCEPTION_AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR_WHEN_EXECUTING_STATEMENT_ARG_DETAIL_ARG_B6C9E02E =
+          "Auto create or verify schema error when executing statement %s. Detail: %s.";
+  public static final String EXCEPTION_CANNOT_USE_ARG_FOR_SUBSCRIPT_OF_ARG_15A147BC =
+      "Cannot use %s for subscript of %s";
+  public static final String EXCEPTION_EXPECTED_DATA_END_4C374AB5 = "expected data end";
+  public static final String EXCEPTION_LOADING_FILE_ARG_FAILED_DETAIL_ARG_C161A17F =
+      "Loading file %s failed. Detail: %s";
+  public static final String EXCEPTION_PROGRESS_INDEX_1C50FE57 = "progress index";
+  public static final String
+      LOG_FAILED_TO_GET_NEED_LAST_CACHE_INFO_FOR_DATABASE_ARG_WILL_PUT_CACHE_ANYWAY_EXCEPTION_ARG_D5D80E96 =
+          "Failed to get need_last_cache info for database {}, will put cache anyway, exception:"
+              + " {}";
+  public static final String MESSAGE_CANNOT_APPLY_OPERATOR_ARG_ARG_ARG_CCA56AA9 =
+      "Cannot apply operator: %s %s %s";
+  public static final String MESSAGE_CANNOT_CHECK_IF_ARG_IS_DISTINCT_FROM_ARG_E9974593 =
+      "Cannot check if %s is distinct from %s";
+  public static final String MESSAGE_CANNOT_NEGATE_ARG_FCF0C22A = "Cannot negate %s";
+  public static final String
+      MESSAGE_CONTINUOUSSAMESEARCHINDEXSEPARATORNODE_NOT_SUPPORT_THIS_OPERATION_CC9BC84B =
+          "ContinuousSameSearchIndexSeparatorNode not support this operation";
+  public static final String MESSAGE_CREATE_DEVICE_OR_UPDATE_DEVICE_ATTRIBUTE_FOR_INSERT_BFA7C2DA =
+      "Create device or update device attribute for insert";
+  public static final String
+      MESSAGE_DATAPARTITIONMAP_IS_EMPTY_AFTER_PROCESSING_RESOURCE_FILE_21869447 =
+          "DataPartitionMap is empty after processing resource file";
+  public static final String
+      MESSAGE_DATA_TYPE_MISMATCH_FOR_COLUMN_ARG_IN_TABLE_ARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_ECAD0C63 =
+          "Data type mismatch for column %s in table %s, type in TsFile: %s, type in IoTDB: %s";
+  public static final String MESSAGE_FAILED_TO_PROCESS_DATA_REGION_ARG_507E9689 =
+      "Failed to process data region: %s";
+  public static final String MESSAGE_FETCH_DEVICE_FOR_INSERT_E0AF591F = "Fetch Device for insert";
+  public static final String MESSAGE_FETCH_DEVICE_FOR_QUERY_ARG_ARG_160027C4 =
+      "fetch device for query %s : %s";
+  public static final String MESSAGE_FETCH_SCHEMA_FOR_ARG_76B28DC3 = "Fetch Schema for %s";
+  public static final String MESSAGE_GENERATION_FAILED_ARG_E37A62C5 = "Generation failed: %s";
+  public static final String MESSAGE_OPERATOR_ARG_ARG_CANNOT_BE_APPLIED_TO_ARG_FE836F93 =
+      "Operator '%s'%s cannot be applied to %s";
+  public static final String MESSAGE_PIECE_REFERENCE_CA095411 = "piece reference";
+  public static final String MESSAGE_PROGRESS_INDEX_PAYLOAD_F5596925 = "progress index payload";
+  public static final String MESSAGE_PROGRESS_INDEX_PAYLOAD_LENGTH_0C4465A8 =
+      "progress index payload length";
+  public static final String MESSAGE_STAGED_DATA_28A8A2A9 = "staged data";
+  public static final String
+      MESSAGE_TSFILE_ENCRYPTION_IS_ENABLED_AND_THE_LOAD_TSFILE_FUNCTION_IS_DISABLED_7CB357EE =
+          "TsFile encryption is enabled, and the Load TsFile function is disabled";
+
   private DataNodeQueryMessages() {}
   // ---------------------------------------------------------------------------
   // Additional exception messages
@@ -4097,4 +4147,776 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_PLAN_NODE_ARG_IS_ALREADY_REGISTERED_ON_MEMORY_SIDE_ARG_NOT_ARG_4C1BB625 = "Plan node %s is already registered on memory side %s, not %s";
   public static final String EXCEPTION_MEMORY_RESERVATION_IS_NOT_REGISTERED_FOR_QUERY_ARG_FRAGMENT_ARG_PLAN_NODE_ARG_67A4B81F = "Memory reservation is not registered for query %s, fragment %s, plan node %s";
   public static final String LOG_SHARED_EXCHANGE_BUDGET_FOR_FI_ARG_INPUT_ARG_OUTPUT_ARG_98AE1109 = "Shared exchange budget for FI {}: INPUT={}, OUTPUT={}";
+
+  public static final String EXCEPTION_ANALYZE_COST_ARG_MS_222A306D = "Analyze Cost: %.3f ms";
+
+  public static final String EXCEPTION_FETCH_PARTITION_COST_ARG_MS_67861DDF =
+      "Fetch Partition Cost: %.3f ms";
+
+  public static final String EXCEPTION_FETCH_SCHEMA_COST_ARG_MS_67816EA5 =
+      "Fetch Schema Cost: %.3f ms";
+
+  public static final String EXCEPTION_DISK_IO_SIZE_ARG_BYTES_CD6872DC = "Disk IO Size: %d bytes";
+
+  public static final String EXCEPTION_DISK_IO_TIME_COST_ARG_MS_36FC3B10 =
+      "Disk IO Time Cost: %.3f ms";
+
+  public static final String EXCEPTION_DEVICEENTRY_COUNT_ARG_3CF4F4B6 = "DeviceEntry Count: %d";
+
+  public static final String EXCEPTION_LOGICAL_PLAN_COST_ARG_MS_1A40B609 =
+      "Logical Plan Cost: %.3f ms";
+
+  public static final String EXCEPTION_LOGICAL_OPTIMIZATION_COST_ARG_MS_1D48CF38 =
+      "Logical Optimization Cost: %.3f ms";
+
+  public static final String EXCEPTION_DISTRIBUTION_PLAN_COST_ARG_MS_EE261BB5 =
+      "Distribution Plan Cost: %.3f ms";
+
+  public static final String EXCEPTION_DISPATCH_COST_ARG_MS_E2A08F90 = "Dispatch Cost: %.3f ms";
+
+  public static final String EXCEPTION_FRAGMENT_INSTANCES_COUNT_ARG_2B7FA76E =
+      "Fragment Instances Count: %s";
+
+  public static final String
+      EXCEPTION_FRAGMENT_INSTANCE_ID_ARG_IP_ARG_DATAREGION_ARG_STATE_ARG_32F467DE =
+          "FRAGMENT-INSTANCE[Id: %s][IP: %s][DataRegion: %s][State: %s]";
+
+  public static final String EXCEPTION_TOTAL_WALL_TIME_ARG_MS_F65FF0B0 = "Total Wall Time: %s ms";
+
+  public static final String EXCEPTION_COST_OF_INITDATAQUERYSOURCE_ARG_MS_55A2E155 =
+      "Cost of initDataQuerySource: %.3f ms";
+
+  public static final String EXCEPTION_RETRY_COUNT_OF_INITDATAQUERYSOURCE_ARG_70E5C772 =
+      "Retry count of initDataQuerySource: %d";
+
+  public static final String EXCEPTION_SEQ_FILE_UNCLOSED_ARG_SEQ_FILE_CLOSED_ARG_CBB3422D =
+      "Seq File(unclosed): %s, Seq File(closed): %s";
+
+  public static final String EXCEPTION_UNSEQ_FILE_UNCLOSED_ARG_UNSEQ_FILE_CLOSED_ARG_61850A9D =
+      "UnSeq File(unclosed): %s, UnSeq File(closed): %s";
+
+  public static final String
+      EXCEPTION_READY_QUEUED_TIME_ARG_MS_BLOCKED_QUEUED_TIME_ARG_MS_24FB1E4C =
+          "ready queued time: %.3f ms, blocked queued time: %.3f ms";
+
+  public static final String EXCEPTION_CPU_TIME_ARG_MS_42555E8C = "CPU Time: %.3f ms";
+
+  public static final String EXCEPTION_OUTPUT_ARG_ROWS_5EE0EF28 = "output: %s rows";
+
+  public static final String EXCEPTION_HASNEXT_CALLED_COUNT_ARG_32D7AEBA =
+      "HasNext() Called Count: %s";
+
+  public static final String EXCEPTION_NEXT_CALLED_COUNT_ARG_1AD71747 = "Next() Called Count: %s";
+
+  public static final String
+      EXCEPTION_TEMPLATE_IS_BEING_UNSETTING_FROM_PATH_ARG_PLEASE_TRY_ACTIVATING_LATER_4E3DABCA =
+          "Template is being unsetting from path %s. Please try activating later.";
+
+  public static final String
+      EXCEPTION_TEMPLATE_IS_BEING_UNSETTING_FROM_PREFIX_PATH_OF_ARG_PLEASE_TRY_ACTIVATING_LATER_165C2E48 =
+          "Template is being unsetting from prefix path of %s. Please try activating later.";
+
+  public static final String
+      EXCEPTION_ERROR_OCCURRED_WHILE_INSERTING_TABLETS_IN_SELECT_INTO_ARG_7238E6B9 =
+          "Error occurred while inserting tablets in SELECT INTO: %s";
+
+  public static final String EXCEPTION_ARG_MATERIALIZATION_TOTAL_COST_ARG_MS_75BFA6DA =
+      "  %s Materialization Total Cost: %.3f ms";
+
+  public static final String EXCEPTION_FAIL_TO_SEND_PLAN_NODE_EXCEPTION_MESSAGE_ARG_011028F9 =
+      "Fail to send plan node, exception message: %s";
+
+  public static final String EXCEPTION_ERROR_OCCURRED_WHILE_EXECUTING_INFERENCE_ARG_14FC21CE =
+      "Error occurred while executing inference:[%s]";
+
+  public static final String
+      EXCEPTION_FAILED_TO_EXECUTE_LOAD_TSFILE_STATEMENT_ARG_DETAIL_ARG_6B99B6D4 =
+          "Failed to execute load tsfile statement %s. Detail: %s";
+
+  public static final String
+      EXCEPTION_THE_NUMBER_OF_TARGET_PATHS_ARG_AND_SOURCES_ARG_ARE_MISS_MATCHED_PLEASE_CHECK_YOUR_SQL_9C58A8AF =
+          "The number of target paths (%d) and sources (%d) are miss matched! Please check your"
+              + " SQL.";
+
+  public static final String EXCEPTION_PATH_ARG_IS_REDUNDANT_IN_TARGET_PATHS_D32B986C =
+      "Path [%s] is redundant in target paths.";
+
+  public static final String EXCEPTION_ARG_IN_ARG_DF5B49C2 = "%s in %s";
+
+  public static final String EXCEPTION_FAIL_TO_INSERT_MEASUREMENTS_ARG_CAUSED_BY_ARG_B9858E6B =
+      "Fail to insert measurements %s caused by %s";
+
+  public static final String EXCEPTION_MISMATCHED_INPUT_ARG_EXPECTING_ARG_CC10F881 =
+      "mismatched input '%s'. Expecting: %s";
+
+  public static final String
+      EXCEPTION_THE_TRIM_FUNCTION_MUST_HAVE_SPECIFICATION_CHAR_OR_BOTH_ARGUMENTS_WHEN_IT_TAKES_FROM_F0E51E3E =
+          "The 'trim' function must have specification, char or both arguments when it takes FROM";
+
+  public static final String EXCEPTION_INVALID_EXTRACT_FIELD_ARG_C1050A03 =
+      "Invalid EXTRACT field: %s";
+
+  public static final String EXCEPTION_INVALID_HEXADECIMAL_DIGIT_ARG_1A042DF1 =
+      "Invalid hexadecimal digit: %s";
+
+  public static final String
+      EXCEPTION_INVALID_ESCAPED_CHARACTER_ARG_ESCAPED_CHARACTER_IS_A_SURROGATE_USE_123456_INSTEAD_AB5CFF96 =
+          "Invalid escaped character: %s. Escaped character is a surrogate. Use '\\+123456'"
+              + " instead.";
+
+  public static final String EXCEPTION_RELEASED_BYTES_HAS_BEEN_LARGER_THAN_RESERVED_69DE5487 =
+      "Released bytes has been larger than reserved!";
+
+  public static final String
+      EXCEPTION_ALL_REPLICAS_FOR_REGION_ARG_ARE_NOT_AVAILABLE_IN_THESE_DATANODES_ARG_598EFEC2 =
+          "All replicas for region[%s] are not available in these DataNodes[%s]";
+
+  public static final String EXCEPTION_TOPICNAME_IS_NULL_F3607D9A = "topicName is null";
+
+  public static final String EXCEPTION_PIPENAME_IS_NULL_FC04F696 = "pipeName is null";
+
+  public static final String EXCEPTION_DATABASE_IS_NULL_8B50DF60 = "database is null";
+
+  public static final String EXCEPTION_OUTPUTFORMAT_IS_NULL_7D93060B = "outputFormat is null";
+
+  public static final String EXCEPTION_TEMPROOT_IS_NULL_2A2A7F06 = "tempRoot is null";
+
+  public static final String EXCEPTION_NO_CHILD_IS_ALLOWED_FOR_SHOWRECEIVERSNODE_CE3D9EE2 =
+      "no child is allowed for ShowReceiversNode";
+
+  public static final String
+      EXCEPTION_ARG_VALUE_MUST_BE_A_BOOLEANLITERAL_BUT_NOW_IS_ARG_VALUE_ARG_25C5FFF0 =
+          "%s value must be a BooleanLiteral, but now is %s, value: %s";
+
+  public static final String EXCEPTION_COLUMN_ALIAS_ARG_IS_AMBIGUOUS_AT_POSITIONS_ARG_F6FF2E93 =
+      "Column alias '%s' is ambiguous at positions %s";
+
+  public static final String
+      EXCEPTION_LATERAL_COLUMN_ALIAS_ARG_CONTAINING_WINDOW_FUNCTION_IS_NOT_SUPPORTED_13F5E6AD =
+          "Lateral column alias '%s' containing window function is not supported";
+
+  public static final String
+      EXCEPTION_LATERAL_COLUMN_ALIAS_IN_WINDOW_FUNCTION_ARGUMENTS_IS_NOT_SUPPORTED_ARG_10EB87DB =
+          "Lateral column alias in window function arguments is not supported: %s";
+
+  public static final String EXCEPTION_WINDOWSPECIFICATION_LOCATION_IS_MISSING_E9CE9D26 =
+      "WindowSpecification location is missing";
+
+  public static final String EXCEPTION_WINDOWFRAME_LOCATION_IS_MISSING_F46D64A5 =
+      "WindowFrame location is missing";
+
+  public static final String EXCEPTION_RESOLVED_GROUPING_EXPRESSION_IS_NULL_19A41A60 =
+      "resolved grouping expression is null";
+
+  public static final String EXCEPTION_MATERIALIZE_QUERY_FOR_CTE_ARG_2D975E4F =
+      "Materialize query for CTE '%s'";
+
+  public static final String EXCEPTION_WHEN_CLAUSE_OPERAND_MUST_BE_BOOLEAN_ARG_16BDCAFD =
+      "When clause operand must be boolean: %s";
+
+  public static final String
+      EXCEPTION_THE_DATANODE_S_TO_BE_REMOVED_ARG_ARE_NOT_IN_THE_CLUSTER_OR_THE_INPUT_FORMAT_IS_INCORRECT_103B72A3 =
+          "The DataNode(s) to be removed %s are not in the cluster, or the input format is"
+              + " incorrect.";
+
+  public static final String EXCEPTION_INVALID_ID_ARG_4E38C37A = "Invalid id %s";
+
+  public static final String EXCEPTION_NO_DETAILED_FAILURE_REASON_IN_QUERYSTATEMACHINE_6CE1C60A =
+      "no detailed failure reason in QueryStateMachine";
+
+  public static final String
+      EXCEPTION_CANNOT_CHECK_FINISHED_STATUS_WHILE_HOLDING_THE_DRIVER_LOCK_E3421709 =
+          "Cannot check finished status while holding the driver lock";
+
+  public static final String EXCEPTION_LOCK_MUST_BE_HELD_TO_CALL_ISFINISHEDINTERNAL_9D600B8D =
+      "Lock must be held to call isFinishedInternal";
+
+  public static final String EXCEPTION_LOCK_CANNOT_BE_REACQUIRED_073CBCAD =
+      "Lock cannot be reacquired";
+
+  public static final String EXCEPTION_LOCK_MUST_BE_HELD_TO_CALL_DESTROYIFNECESSARY_A70D64C2 =
+      "Lock must be held to call destroyIfNecessary";
+
+  public static final String EXCEPTION_ERROR_DESTROYING_DRIVER_FOR_TASK_ARG_D695D81F =
+      "Error destroying driver for task %s";
+
+  public static final String EXCEPTION_ERROR_CLOSING_OPERATOR_ARG_FOR_DRIVER_TASK_ARG_4DE74330 =
+      "Error closing operator {} for driver task {}";
+
+  public static final String EXCEPTION_METADATA_ERROR_ARG_7430F33B = "Metadata error: {}";
+
+  public static final String
+      EXCEPTION_FAILED_TO_GET_THE_LOCK_OF_THE_REGION_BECAUSE_THE_REGION_IS_NOT_EXISTED_91402E28 =
+          "Failed to get the lock of the region because the region is not existed.";
+
+  public static final String
+      EXCEPTION_EXCEPTION_ARG_ENCOUNTERED_DURING_REGION_REMOVAL_WILL_RETRY_MESSAGE_ARG_C52BF990 =
+          "Exception %s encountered during region removal, will retry. Message: %s";
+
+  public static final String
+      EXCEPTION_FAIL_TO_DO_NON_QUERY_OPERATIONS_BECAUSE_SYSTEM_IS_READ_ONLY_10CA1ED2 =
+          "Fail to do non-query operations because system is read-only.";
+
+  public static final String
+      EXCEPTION_FAILED_TO_COMPLETE_THE_INSERTION_BECAUSE_TRIGGER_ERROR_BEFORE_THE_INSERTION_92602240 =
+          "Failed to complete the insertion because trigger error before the insertion.";
+
+  public static final String
+      EXCEPTION_MEET_TRIGGER_ERROR_BEFORE_AFTER_THE_INSERTION_THE_INSERTION_ITSELF_IS_COMPLETED_BC0788FF =
+          "Meet trigger error before/after the insertion, the insertion itself is completed.";
+
+  public static final String EXCEPTION_THE_OBJECT_TYPE_SERIES_ARG_IS_NOT_SUPPORTED_788E0C8E =
+      "The object type series %s is not supported.";
+
+  public static final String EXCEPTION_READRESPONSE_IS_NULL_B51DD7E0 = "ReadResponse is null";
+
+  public static final String EXCEPTION_EXECUTE_FRAGMENTINSTANCE_FAILED_ARG_311B4A77 =
+      "Execute FragmentInstance failed: %s";
+
+  public static final String EXCEPTION_QUERY_STATISTICS_0F0FEAC4 = "Query Statistics:";
+
+  public static final String EXCEPTION_ESTIMATED_MEMORY_SIZE_27D7E3B5 = "Estimated Memory Size";
+
+  public static final String EXCEPTION_INTERMEDIATE_RESULTS_OF_EXPLAIN_ANALYZE_D4A79BC4 =
+      "---------------------Intermediate Results of EXPLAIN ANALYZE---------------------:";
+
+  public static final String EXCEPTION_LOGICAL_PLAN_COST_DB290604 = "Logical Plan Cost:";
+
+  public static final String
+      EXCEPTION_DATABASE_NOT_EXISTS_AND_FAILED_TO_CREATE_AUTOMATICALLY_BECAUSE_ENABLE_AUTO_CREATE_SCHEMA_IS_FALSE_C25F3F18 =
+          "Database not exists and failed to create automatically because enable_auto_create_schema"
+              + " is FALSE.";
+
+  public static final String
+      EXCEPTION_THE_OUTPUT_TYPE_OF_THE_EXPRESSION_IN_WHERE_CLAUSE_SHOULD_BE_BOOLEAN_ACTUAL_DATA_TYPE_ARG_BC9DD72F =
+          "The output type of the expression in WHERE clause should be BOOLEAN, actual data type:"
+              + " %s.";
+
+  public static final String
+      EXCEPTION_COLUMNS_IN_THE_QUERY_STATEMENT_IS_EMPTY_PLEASE_CHECK_YOUR_SQL_A22B2A40 =
+          "Columns in the query statement is empty. Please check your SQL.";
+
+  public static final String
+      EXCEPTION_CAN_NOT_CREATE_A_VIEW_BASED_ON_EXISTING_VIEWS_CHECK_THE_QUERY_IN_YOUR_SQL_23D1E67A =
+          "Can not create a view based on existing views. Check the query in your SQL.";
+
+  public static final String EXCEPTION_THE_PATH_ARG_IS_ILLEGAL_E45C824B = "The path %s is illegal.";
+
+  public static final String
+      EXCEPTION_CAN_NOT_CREATE_A_VIEW_BASED_ON_NON_EXIST_TIME_SERIES_F912A900 =
+          "Can not create a view based on non-exist time series.";
+
+  public static final String
+      EXCEPTION_PATH_ARG_DOES_NOT_EXIST_YOU_CAN_NOT_CREATE_A_VIEW_BASED_ON_NON_EXIST_TIME_SERIES_B6595781 =
+          "Path %s does not exist! You can not create a view based on non-exist time series.";
+
+  public static final String EXCEPTION_CAN_NOT_CREATE_A_VIEW_BASED_ON_EXISTING_VIEWS_A9C5E78F =
+      "Can not create a view based on existing views.";
+
+  public static final String EXCEPTION_CAN_NOT_CREATE_VIEW_UNDER_TEMPLATE_1D975F79 =
+      "Can not create view under template.";
+
+  public static final String
+      EXCEPTION_RAW_DATA_AND_AGGREGATION_RESULT_HYBRID_CALCULATION_IS_NOT_SUPPORTED_BAFD6B9E =
+          "Raw data and aggregation result hybrid calculation is not supported.";
+
+  public static final String EXCEPTION_CONSTANT_COLUMN_IS_NOT_SUPPORTED_95251D13 =
+      "Constant column is not supported.";
+
+  public static final String EXCEPTION_CANNOT_CREATE_USER_HAS_SAME_NAME_WITH_ADMIN_USER_82BA70F7 =
+      "Cannot create user has same name with admin user";
+
+  public static final String EXCEPTION_CANNOT_DROP_ADMIN_USER_OR_YOURSELF_9D34698F =
+      "Cannot drop admin user or yourself";
+
+  public static final String EXCEPTION_CANNOT_CREATE_ROLE_HAS_SAME_NAME_WITH_ADMIN_USER_E48B225D =
+      "Cannot create role has same name with admin user";
+
+  public static final String EXCEPTION_CANNOT_GRANT_REVOKE_PRIVILEGES_OF_ADMIN_USER_E5DE4709 =
+      "Cannot grant/revoke privileges of admin user";
+
+  public static final String EXCEPTION_CANNOT_GRANT_OR_REVOKE_ANY_PRIVILEGES_TO_ARG_60E70A9B =
+      "Cannot grant or revoke any privileges to %s";
+
+  public static final String
+      EXCEPTION_THE_PARAMETER_OF_COUNT_TIME_AGGREGATION_CAN_ONLY_BE_299782B5 =
+          "The parameter of count_time aggregation can only be '*'.";
+
+  public static final String EXCEPTION_DATABASE_IS_NOT_SPECIFIED_616923CA =
+      "database is not specified";
+
+  public static final String
+      EXCEPTION_RAW_DATA_AND_AGGREGATION_HYBRID_QUERY_IS_NOT_SUPPORTED_575B2166 =
+          "Raw data and aggregation hybrid query is not supported.";
+
+  public static final String
+      EXCEPTION_COUNT_TIME_AGGREGATION_FUNCTION_USING_WITH_GROUP_BY_LEVEL_IS_NOT_SUPPORTED_0F498050 =
+          "Count_time aggregation function using with group by level is not supported.";
+
+  public static final String
+      EXCEPTION_COUNT_TIME_AGGREGATION_FUNCTION_USING_WITH_GROUP_BY_TAG_IS_NOT_SUPPORTED_45A91382 =
+          "Count_time aggregation function using with group by tag is not supported.";
+
+  public static final String
+      EXCEPTION_COUNT_TIME_AGGREGATION_CAN_ONLY_EXIST_ALONE_AND_CANNOT_USED_WITH_OTHER_QUERIES_OR_AGGREGATIONS_E6B5D473 =
+          "Count_time aggregation can only exist alone, and cannot used with other queries or"
+              + " aggregations.";
+
+  public static final String
+      EXCEPTION_COUNT_TIME_AGGREGATION_FUNCTION_CAN_NOT_BE_USED_WITH_HAVING_CLAUSE_46FF9CE1 =
+          "Count_time aggregation function can not be used with having clause.";
+
+  public static final String
+      EXCEPTION_SELECT_INTO_THE_CORRESPONDENCE_BETWEEN_THE_PLACEHOLDER_AND_THE_RAW_TIME_SERIES_COULD_NOT_BE_ESTABLISHED_650A8F14 =
+          "select into: the correspondence between the placeholder and the raw time series could"
+              + " not be established.";
+
+  public static final String
+      EXCEPTION_SELECT_INTO_PLACEHOLDERS_CAN_ONLY_BE_USED_IN_RAW_TIME_SERIES_DATA_QUERIES_1C0D9C58 =
+          "select into: placeholders can only be used in raw time series data queries.";
+
+  public static final String
+      EXCEPTION_SELECT_INTO_THE_NUMBER_OF_SOURCE_DEVICES_AND_THE_NUMBER_OF_TARGET_DEVICES_SHOULD_BE_THE_SAME_BC612211 =
+          "select into: the number of source devices and the number of target devices should be the"
+              + " same.";
+
+  public static final String
+      EXCEPTION_SELECT_INTO_THE_NUMBER_OF_SOURCE_COLUMNS_AND_THE_NUMBER_OF_TARGET_PATHS_SHOULD_BE_THE_SAME_57533A57 =
+          "select into: the number of source columns and the number of target paths should be the"
+              + " same.";
+
+  public static final String
+      EXCEPTION_SELECT_INTO_TARGET_PATHS_IN_INTO_CLAUSE_SHOULD_BE_DIFFERENT_A1674412 =
+          "select into: target paths in into clause should be different.";
+
+  public static final String
+      EXCEPTION_SELECT_INTO_ALIGNMENT_PROPERTY_MUST_BE_THE_SAME_FOR_THE_SAME_DEVICE_DCC52B89 =
+          "select into: alignment property must be the same for the same device.";
+
+  public static final String
+      EXCEPTION_IS_ILLEGAL_UNQUOTED_NODE_NAME_CAN_ONLY_CONSIST_OF_DIGITS_CHARACTERS_AND_UNDERSCORE_OR_START_OR_END_WITH_WILDCARD_7239755D =
+          "is illegal, unquoted node name can only consist of digits, characters and underscore, or"
+              + " start or end with wildcard";
+
+  public static final String EXCEPTION_UNEXPECTED_ERRORS_E69A798F = "Unexpected errors: ";
+
+  public static final String
+      EXCEPTION_FOR_DELETE_STATEMENT_WHERE_CLAUSE_CAN_ONLY_CONTAIN_ATOMIC_EXPRESSIONS_LIKE_TIME_XXX_TIME_XXX_OR_TWO_ATOMIC_EXPRESSIONS_CONNECTED_BY_AND_13848FC7 =
+          "For delete statement, where clause can only contain atomic expressions like : time >"
+              + " XXX, time <= XXX, or two atomic expressions connected by 'AND'";
+
+  public static final String
+      EXCEPTION_FOR_DELETE_STATEMENT_WHERE_CLAUSE_CAN_ONLY_CONTAIN_TIME_EXPRESSIONS_VALUE_FILTER_IS_NOT_CURRENTLY_SUPPORTED_CE1E768E =
+          "For delete statement, where clause can only contain time expressions, value filter is"
+              + " not currently supported.";
+
+  public static final String
+      EXCEPTION_ONLY_ONE_OF_GROUP_BY_TIME_OR_GROUP_BY_VARIATION_SERIES_SESSION_CAN_BE_SUPPORTED_AT_A_TIME_8B5E5251 =
+          "Only one of group by time or group by variation/series/session can be supported at a"
+              + " time";
+
+  public static final String
+      EXCEPTION_LIMIT_CONFIGURATION_IS_NOT_ENABLED_PLEASE_ENABLE_IT_FIRST_C9926C20 =
+          "Limit configuration is not enabled, please enable it first.";
+
+  public static final String
+      EXCEPTION_FOR_DELETE_STATEMENT_WHERE_CLAUSE_USE_A_RANGE_COMPARISON_ON_THE_SAME_FIELD_THE_LEFT_VALUE_OF_THE_RANGE_CANNOT_BE_GREATER_THAN_THE_RIGHT_VALUE_OF_THE_RANGE_IT_MUST_BE_WRITTEN_LIKE_THIS_TIME_5_AND_TIME_10_66891DD6 =
+          "For delete statement, where clause use a range comparison on the same field, the left"
+              + " value of the range cannot be greater than the right value of the range, it must"
+              + " be written like this : time > 5 and time < 10";
+
+  public static final String EXCEPTION_UNSUPPORTED_DATATYPE_ARG_42D9A3BC =
+      "Unsupported datatype: %s";
+
+  public static final String EXCEPTION_INCORRECT_DATA_TYPE_B7789C9F = "Incorrect Data type";
+
+  public static final String EXCEPTION_SERVICE_MANAGEMENT_SQLS_ARE_NOT_SUPPORTED_NOW_ADD4A6D4 =
+      "Service management SQLs are not supported now!";
+
+  public static final String EXCEPTION_NOT_ASSIGNED_F5DCFB95 = "Not Assigned";
+
+  public static final String EXCEPTION_TOPN_OPT_D3D72301 = "TOPN OPT";
+
+  public static final String EXCEPTION_PARTITION_BY_ARG_4F7F521F = "Partition by: [%s]";
+
+  public static final String EXCEPTION_ORDER_BY_ARG_D26FF4AA = "Order by: %s";
+
+  public static final String EXCEPTION_NODEREWRITER_RETURNED_NULL_FOR_ARG_702AA2A4 =
+      "nodeRewriter returned null for %s";
+
+  public static final String EXCEPTION_INVALID_NUMBER_OF_ARGUMENTS_FOR_IF_FUNCTION_4FFCACCE =
+      "Invalid number of arguments for 'if' function";
+
+  public static final String EXCEPTION_DISTINCT_NOT_VALID_FOR_IF_FUNCTION_DAABCB19 =
+      "DISTINCT not valid for 'if' function";
+
+  public static final String
+      EXCEPTION_RUNNING_OR_FINAL_SEMANTICS_NOT_VALID_FOR_IF_FUNCTION_53CF9A7E =
+          "Running or final semantics not valid for 'if' function";
+
+  public static final String EXCEPTION_NULL_TREATMENT_CLAUSE_NOT_VALID_FOR_IF_FUNCTION_42DE8DB5 =
+      "Null treatment clause not valid for 'if' function";
+
+  public static final String EXCEPTION_INVALID_NUMBER_OF_ARGUMENTS_FOR_NULLIF_FUNCTION_DAFB26BF =
+      "Invalid number of arguments for 'nullif' function";
+
+  public static final String EXCEPTION_DISTINCT_NOT_VALID_FOR_NULLIF_FUNCTION_BC065363 =
+      "DISTINCT not valid for 'nullif' function";
+
+  public static final String
+      EXCEPTION_RUNNING_OR_FINAL_SEMANTICS_NOT_VALID_FOR_NULLIF_FUNCTION_D2ADE7AD =
+          "Running or final semantics not valid for 'nullif' function";
+
+  public static final String
+      EXCEPTION_NULL_TREATMENT_CLAUSE_NOT_VALID_FOR_NULLIF_FUNCTION_4D3234AA =
+          "Null treatment clause not valid for 'nullif' function";
+
+  public static final String
+      EXCEPTION_THE_COALESCE_FUNCTION_MUST_HAVE_AT_LEAST_TWO_ARGUMENTS_D93EC8BF =
+          "The 'coalesce' function must have at least two arguments";
+
+  public static final String EXCEPTION_DISTINCT_NOT_VALID_FOR_COALESCE_FUNCTION_0473D98C =
+      "DISTINCT not valid for 'coalesce' function";
+
+  public static final String
+      EXCEPTION_RUNNING_OR_FINAL_SEMANTICS_NOT_VALID_FOR_COALESCE_FUNCTION_0D0143A2 =
+          "Running or final semantics not valid for 'coalesce' function";
+
+  public static final String
+      EXCEPTION_NULL_TREATMENT_CLAUSE_NOT_VALID_FOR_COALESCE_FUNCTION_CCF1779B =
+          "Null treatment clause not valid for 'coalesce' function";
+
+  public static final String EXCEPTION_EMPTY_UNICODE_ESCAPE_CHARACTER_2094672A =
+      "Empty Unicode escape character";
+
+  public static final String EXCEPTION_INVALID_UNICODE_ESCAPE_CHARACTER_ARG_C7E374D5 =
+      "Invalid Unicode escape character: %s";
+
+  public static final String EXCEPTION_INCOMPLETE_ESCAPE_SEQUENCE_ARG_9FC5CC3B =
+      "Incomplete escape sequence: %s";
+
+  public static final String EXCEPTION_INVALID_ESCAPED_CHARACTER_ARG_A324BE13 =
+      "Invalid escaped character: %s";
+
+  public static final String EXCEPTION_UNEXPECTED_ESCAPE_SEQUENCE_LENGTH_ARG_2DAD5CAB =
+      "Unexpected escape sequence length: %s";
+
+  public static final String
+      EXCEPTION_THE_WORD_COPARTITION_IS_AMBIGUOUS_IN_THIS_CONTEXT_TO_ALIAS_AN_ARGUMENT_PRECEDE_THE_ALIAS_WITH_AS_TO_SPECIFY_CO_PARTITIONING_CHANGE_THE_ARGUMENT_ORDER_SO_THAT_THE_LAST_ARGUMENT_CANNOT_BE_ALIASED_EC31C71A =
+          "The word \"COPARTITION\" is ambiguous in this context. To alias an argument, precede the"
+              + " alias with \"AS\". To specify co-partitioning, change the argument order so that"
+              + " the last argument cannot be aliased.";
+
+  public static final String EXCEPTION_CANNOT_DROP_ROLE_WITH_ADMIN_NAME_BB13543F =
+      "Cannot drop role with admin name";
+
+  public static final String EXCEPTION_CANNOT_GRANT_ROLE_TO_ADMIN_C98C3A7A =
+      "Cannot grant role to admin";
+
+  public static final String EXCEPTION_CANNOT_REVOKE_ROLE_FROM_ADMIN_249835A2 =
+      "Cannot revoke role from admin";
+
+  public static final String EXCEPTION_CANNOT_GRANT_REVOKE_ALL_PRIVILEGES_OF_ADMIN_USER_85CE7A1D =
+      "Cannot grant/revoke all privileges of admin user";
+
+  public static final String
+      EXCEPTION_CANNOT_GRANT_OR_REVOKE_ANY_PRIVILEGES_TO_INFORMATION_SCHEMA_294F5703 =
+          "Cannot grant or revoke any privileges to information_schema";
+
+  public static final String
+      EXCEPTION_THE_JOIN_EXPRESSION_OF_ASOF_SHOULD_BE_SINGLE_COMPARISON_OR_LOGICAL_AND_02DC061A =
+          "The join expression of ASOF should be single Comparison or Logical 'AND'";
+
+  public static final String
+      EXCEPTION_THE_MAIN_JOIN_EXPRESSION_OF_ASOF_SHOULD_ONLY_BE_COMPARISON_ACTUAL_IS_ARG_9A7F3C7F =
+          "The main join expression of ASOF should only be Comparison '>, >=, <, <=', actual is %s";
+
+  public static final String
+      EXCEPTION_FAILED_TO_MATERIALIZE_CTE_THE_MAIN_QUERY_FALLS_BACK_TO_INLINE_MODE_F03A778C =
+          "!!! Failed to materialize CTE. The main query falls back to INLINE mode !!!";
+
+  public static final String
+      EXCEPTION_USER_ARG_ID_ARG_REQUESTS_AUTHORITY_ON_THE_ARG_OPERATION_72418079 =
+          "User %s (ID=%d) requests authority on the %s operation";
+
+  public static final String
+      EXCEPTION_HAS_NO_PERMISSION_TO_EXECUTE_ARG_PLEASE_ENSURE_YOU_HAVE_THESE_PRIVILEGES_AND_THE_GRANT_OPTION_IS_TRUE_WHEN_GRANTED_6E1AD125 =
+          "Has no permission to execute %s, please ensure you have these privileges and the grant"
+              + " option is TRUE when granted";
+
+  public static final String EXCEPTION_NOT_SUPPORT_RELATION_STATEMENT_IN_TREE_SQL_DIALECT_088C9ADD =
+      "Not support Relation statement in tree sql_dialect";
+
+  public static final String EXCEPTION_ONLY_THE_ADMIN_USER_CAN_PERFORM_THIS_OPERATION_D0C730B6 =
+      "Only the admin user can perform this operation";
+
+  public static final String EXCEPTION_SCALAR_SUB_QUERY_HAS_RETURNED_MULTIPLE_ROWS_0C87D6E6 =
+      "Scalar sub-query has returned multiple rows.";
+
+  public static final String
+      EXCEPTION_ARG_THE_OPTIMIZER_EXHAUSTED_THE_TIME_LIMIT_OF_ARG_D_MS_454EB946 =
+          "%s: The optimizer exhausted the time limit of %%d ms";
+
+  public static final String EXCEPTION_NO_RULES_INVOKED_8E11FD30 = ": no rules invoked";
+
+  public static final String EXCEPTION_TOP_RULES_ARG_31C182D1 = ": Top rules: %s";
+
+  public static final String
+      EXCEPTION_ALL_RESULT_TYPES_AND_DEFAULT_RESULT_TYPE_MUST_BE_THE_SAME_E84986E8 =
+          "All result types and default result type must be the same";
+
+  public static final String
+      EXCEPTION_SUBQUERY_MUST_RETURN_ONLY_ONE_COLUMN_FOR_NOW_ROW_TYPE_IS_NOT_SUPPORTED_FOR_NOW_A2D2C5AC =
+          "Subquery must return only one column for now. Row Type is not supported for now.";
+
+  public static final String EXCEPTION_VALUE_OF_LOGICAL_NOT_EXPRESSION_00F6E838 =
+      "Value of logical NOT expression";
+
+  public static final String EXCEPTION_LOGICAL_EXPRESSION_TERM_C65A7562 = "Logical expression term";
+
+  public static final String EXCEPTION_IF_CONDITION_70B1DBB9 = "IF condition";
+
+  public static final String EXCEPTION_RESULT_TYPES_FOR_IF_MUST_BE_THE_SAME_71714769 =
+      "Result types for IF must be the same";
+
+  public static final String EXCEPTION_CASE_WHEN_CLAUSE_454D7201 = "CASE WHEN clause";
+
+  public static final String EXCEPTION_ALL_CASE_RESULTS_09DB7E1B = "All CASE results";
+
+  public static final String EXCEPTION_ALL_COALESCE_OPERANDS_A5374A6A = "All COALESCE operands";
+
+  public static final String EXCEPTION_IN_VALUE_AND_LIST_ITEMS_5D5CF98A = "IN value and list items";
+
+  public static final String EXCEPTION_CONSTANT_EXPRESSION_CANNOT_CONTAIN_A_SUBQUERY_60319D92 =
+      "Constant expression cannot contain a subquery";
+
+  public static final String
+      EXCEPTION_OPERATOR_OF_UPDATESTATTIME_SHOULD_ONLY_BE_GREATER_THAN_AND_GREATER_THAN_OR_EQUAL_NOW_IS_ARG_25D66791 =
+          "Operator of updateStatTime should only be GREATER_THAN and GREATER_THAN_OR_EQUAL, now is"
+              + " %s";
+
+  public static final String
+      EXCEPTION_OPERATOR_OF_UPDATEENDTIME_SHOULD_ONLY_BE_LESS_THAN_AND_LESS_THAN_OR_EQUAL_NOW_IS_ARG_BF20DCC9 =
+          "Operator of updateEndTime should only be LESS_THAN and LESS_THAN_OR_EQUAL, now is %s";
+
+  public static final String
+      EXCEPTION_COULD_NOT_INFER_STARTTIME_OR_ENDTIME_FROM_WHERE_CLAUSE_9F371997 =
+          "could not infer startTime or endTime from WHERE clause";
+
+  public static final String
+      EXCEPTION_TRY_TO_FETCH_UNCORRELATED_SCALAR_SUBQUERY_RESULT_FOR_PREDICATE_9B832E16 =
+          "Try to Fetch Uncorrelated Scalar Subquery Result for Predicate";
+
+  public static final String EXCEPTION_ORDER_BY_IN_SUBQUERY_MAY_HAVE_NO_EFFECT_8A480B62 =
+      "ORDER BY in subquery may have no effect";
+
+  public static final String EXCEPTION_WHERE_CLAUSE_6F66E904 = "WHERE clause";
+
+  public static final String EXCEPTION_GROUP_BY_CLAUSE_25F779A7 = "GROUP BY clause";
+
+  public static final String EXCEPTION_JOIN_CLAUSE_56FCD2FF = "JOIN clause";
+
+  public static final String EXCEPTION_SERIES_ARG_F5564925 = "Series: %s";
+
+  public static final String EXCEPTION_LIMIT_ARG_C4FECCC2 = "Limit: %s";
+
+  public static final String EXCEPTION_OFFSET_ARG_7D3690BE = "Offset: %s";
+
+  public static final String EXCEPTION_PREDICATE_ARG_5DFE6605 = "Predicate: %s";
+
+  public static final String EXCEPTION_SCANORDER_ARG_AB0CB81A = "ScanOrder: %s";
+
+  public static final String EXCEPTION_SERIES_ARG_ARG_4AD75872 = "Series: %s%s";
+
+  public static final String EXCEPTION_QUERYALLSENSORS_ARG_ADCB5FCA = "QueryAllSensors: %s";
+
+  public static final String EXCEPTION_AGGREGATOR_ARG_ARG_ARG_8C1D8DC9 = "Aggregator-%d: %s, %s";
+
+  public static final String EXCEPTION_DEVICENAME_ARG_59E457FD = "DeviceName: %s";
+
+  public static final String EXCEPTION_DEVICECOUNT_ARG_665654AC = "DeviceCount: %d";
+
+  public static final String EXCEPTION_CHILDRENCOUNT_ARG_08EB5B4D = "ChildrenCount: %d";
+
+  public static final String EXCEPTION_LIMITVALUE_ARG_A0AB58C2 = "LimitValue: %d";
+
+  public static final String EXCEPTION_POLICY_ARG_08266A9A = "Policy: %s";
+
+  public static final String EXCEPTION_TIMEDURATIONTHRESHOLD_ARG_D521A764 =
+      "TimeDurationThreshold: %s";
+
+  public static final String EXCEPTION_OUTPUT_ARG_1B85810F = "  Output: %s";
+
+  public static final String EXCEPTION_INPUT_ARG_C70AA19F = "  Input: %s";
+
+  public static final String EXCEPTION_TAG_KEYS_ARG_DFFA4DCF = "Tag keys: %s";
+
+  public static final String EXCEPTION_BUCKET_ARG_ARG_D52292C8 = "Bucket-%d: %s";
+
+  public static final String EXCEPTION_AGGREGATOR_ARG_NULL_B5E4F862 = "    Aggregator-%d: NULL";
+
+  public static final String EXCEPTION_AGGREGATOR_ARG_ARG_ARG_C65C36A7 =
+      "    Aggregator-%d: %s, %s";
+
+  public static final String EXCEPTION_OUTPUT_ARG_893AC7DA = "      Output: %s";
+
+  public static final String EXCEPTION_INPUT_ARG_F57C6A9B = "      Input: %s";
+
+  public static final String EXCEPTION_VALUE_ARG_CD522509 = "value: %d";
+
+  public static final String EXCEPTION_ORDER_ARG_5AC5D051 = "Order: %s";
+
+  public static final String EXCEPTION_COUNT_ARG_4716A93F = "Count: %d";
+
+  public static final String EXCEPTION_EXP_ARG_ARG_ARG_DA510DF0 = "Exp-%d[%s]: %s";
+
+  public static final String EXCEPTION_OUTPUTCOLUMN_ARG_ARG_E768E3E4 = "OutputColumn-%d: %s";
+
+  public static final String EXCEPTION_ALIGNED_ARG_E48AEDF2 = "Aligned: %s";
+
+  public static final String EXCEPTION_OUTPUTPATHS_ARG_0EC28B1F = "OutputPaths: %s";
+
+  public static final String EXCEPTION_VIEWPATH_ARG_066D73F6 = "ViewPath: %s";
+
+  public static final String EXCEPTION_TARGETINDEX_ARG_38B82D51 = "TargetIndex: %d";
+
+  public static final String EXCEPTION_COLUMNGENERATORPARAMETERTYPE_ARG_74D7D221 =
+      "ColumnGeneratorParameterType: %s";
+
+  public static final String EXCEPTION_OUTPUTSYMBOLS_ARG_2CDA67EC = "OutputSymbols: %s";
+
+  public static final String EXCEPTION_QUALIFIEDTABLENAME_ARG_111FC756 = "QualifiedTableName: %s";
+
+  public static final String EXCEPTION_DEVICENUMBER_ARG_446C345C = "DeviceNumber: %s";
+
+  public static final String EXCEPTION_TIMEPREDICATE_ARG_26915CBF = "TimePredicate: %s";
+
+  public static final String EXCEPTION_TSFILENUMBER_ARG_0D17D680 = "TsFileNumber: %s";
+
+  public static final String EXCEPTION_PUSHDOWNPREDICATE_ARG_196CC2DC = "PushDownPredicate: %s";
+
+  public static final String EXCEPTION_PUSHDOWNOFFSET_ARG_00E1070C = "PushDownOffset: %s";
+
+  public static final String EXCEPTION_PUSHDOWNLIMIT_ARG_E1420251 = "PushDownLimit: %s";
+
+  public static final String EXCEPTION_PUSHDOWNLIMITTOEACHDEVICE_ARG_2DD716F0 =
+      "PushDownLimitToEachDevice: %s";
+
+  public static final String EXCEPTION_TOPN_OPT_ARG_6358B1C6 = "TOPN OPT: %s";
+
+  public static final String EXCEPTION_REGIONID_ARG_190371FB = "RegionId: %s";
+
+  public static final String EXCEPTION_TREEDB_ARG_409FDB70 = "TreeDB: %s";
+
+  public static final String EXCEPTION_MEASUREMENTTOCOLUMNNAME_ARG_E2BC3300 =
+      "MeasurementToColumnName: %s";
+
+  public static final String EXCEPTION_AGGREGATOR_ARG_ARG_B03FFEF0 = "Aggregator-%d: %s";
+
+  public static final String EXCEPTION_MASK_ARG_452DF02A = "  mask: %s";
+
+  public static final String EXCEPTION_GROUPINGKEYS_ARG_4D5DC588 = "GroupingKeys: %s";
+
+  public static final String EXCEPTION_PREGROUPEDSYMBOLS_ARG_93C21065 = "PreGroupedSymbols: %s";
+
+  public static final String EXCEPTION_STEP_ARG_ACB0A043 = "Step: %s";
+
+  public static final String EXCEPTION_PROJECT_EXPRESSIONS_ARG_B86BB5E3 = "Project-Expressions: %s";
+
+  public static final String EXCEPTION_EXPRESSIONS_ARG_7A24068A = "Expressions: %s";
+
+  public static final String EXCEPTION_CHILDPERMITTEDOUTPUTS_ARG_206350BD =
+      "ChildPermittedOutputs: %s";
+
+  public static final String EXCEPTION_STARTTIME_ARG_51654DAE = "StartTime: %s";
+
+  public static final String EXCEPTION_ENDTIME_ARG_BE3FB95D = "EndTime: %s";
+
+  public static final String EXCEPTION_INTERVAL_ARG_MO_73E81203 = "Interval: %smo";
+
+  public static final String EXCEPTION_INTERVAL_ARG_S_ARG_F9714CBA = "Interval: %%s%s";
+
+  public static final String EXCEPTION_GAPFILLCOLUMN_ARG_845A4BA2 = "GapFillColumn: %s";
+
+  public static final String EXCEPTION_GAPFILLGROUPINGKEYS_ARG_DBA19008 = "GapFillGroupingKeys: %s";
+
+  public static final String EXCEPTION_TIME_BOUND_ARG_DA9D4812 = "TIME_BOUND: %s";
+
+  public static final String EXCEPTION_TIME_COLUMN_ARG_3A2B0F89 = "TIME_COLUMN: %s";
+
+  public static final String EXCEPTION_FILL_GROUP_ARG_91675AC6 = "FILL_GROUP: %s";
+
+  public static final String EXCEPTION_FILLEDVALUE_ARG_E9F0E84D = "FilledValue: %s";
+
+  public static final String EXCEPTION_COUNT_ARG_1E0B36E2 = "Count: %s";
+
+  public static final String EXCEPTION_ORDERINGSCHEME_ARG_88E8678A = "OrderingScheme: %s";
+
+  public static final String EXCEPTION_STREAMCOMPAREKEYENDINDEX_ARG_B0B5E239 =
+      "StreamCompareKeyEndIndex: %s";
+
+  public static final String EXCEPTION_ORDERBYALLIDSANDTIME_ARG_55959D0E =
+      "OrderByAllIdsAndTime: %s";
+
+  public static final String EXCEPTION_PARTITIONKEY_ARG_DD8CE0EC = "PartitionKey: %s";
+
+  public static final String EXCEPTION_ORDERKEY_ARG_BAC08FCF = "OrderKey: %s";
+
+  public static final String EXCEPTION_JOINTYPE_ARG_971DC3F9 = "JoinType: %s";
+
+  public static final String EXCEPTION_CORRELATION_ARG_E71B97B0 = "Correlation: %s";
+
+  public static final String EXCEPTION_FILTER_ARG_DC936398 = "Filter: %s";
+
+  public static final String EXCEPTION_ASOF_JOINTYPE_ARG_1F69241C = "ASOF-JoinType: %s";
+
+  public static final String EXCEPTION_ASOF_JOINCRITERIA_ARG_E313FAAD = "ASOF-JoinCriteria: %s";
+
+  public static final String EXCEPTION_JOINCRITERIA_ARG_EE225A01 = "JoinCriteria: %s";
+
+  public static final String EXCEPTION_LEFTOUTPUTSYMBOLS_ARG_D2BE06AE = "LeftOutputSymbols: %s";
+
+  public static final String EXCEPTION_RIGHTOUTPUTSYMBOLS_ARG_90AEAE8B = "RightOutputSymbols: %s";
+
+  public static final String EXCEPTION_SOURCEJOINSYMBOL_ARG_35F54565 = "SourceJoinSymbol: %s";
+
+  public static final String EXCEPTION_FILTERINGSOURCEJOINSYMBOL_ARG_7A864AF7 =
+      "FilteringSourceJoinSymbol: %s";
+
+  public static final String EXCEPTION_PARTITIONBY_ARG_E97DFDCD = "PartitionBy: %s";
+
+  public static final String EXCEPTION_HASHSYMBOL_ARG_CB1619A6 = "HashSymbol: %s";
+
+  public static final String EXCEPTION_ROWSPERMATCH_ARG_CFCB6FAC = "RowsPerMatch: %s";
+
+  public static final String EXCEPTION_SKIPTOLABELS_ARG_27BC57E1 = "SkipToLabels: %s";
+
+  public static final String EXCEPTION_SKIPTOPOSITION_ARG_27FB2E49 = "SkipToPosition: %s";
+
+  public static final String EXCEPTION_PATTERN_ARG_F93B8CF0 = "Pattern: %s";
+
+  public static final String EXCEPTION_IDCOLUMNSYMBOL_ARG_E37ADCC7 = "IdColumnSymbol: %s";
+
+  public static final String EXCEPTION_FUNCTION_ARG_D328EC66 = "Function: %s";
+
+  public static final String EXCEPTION_PROPEROUTPUTS_ARG_D9578E71 = "ProperOutputs: %s";
+
+  public static final String EXCEPTION_REQUIREDSYMBOLS_ARG_111D7FC1 = "RequiredSymbols: %s";
+
+  public static final String EXCEPTION_ROWCOUNT_ARG_25F64C0A = "RowCount: %s";
+
+  public static final String EXCEPTION_ROWNUMBERSYMBOL_ARG_39FD3A50 = "RowNumberSymbol: %s";
+
+  public static final String EXCEPTION_ISORDERINGSENSITIVE_ARG_96687CE9 = "isOrderingSensitive: %s";
+
+  public static final String EXCEPTION_RANKINGTYPE_ARG_48037AC8 = "RankingType: %s";
+
+  public static final String EXCEPTION_RANKINGSYMBOL_ARG_EC2D08FD = "RankingSymbol: %s";
+
+  public static final String EXCEPTION_PARTITION_ARG_975DEE2D = "Partition: %s";
+
+  public static final String EXCEPTION_ISDISTINCT_ARG_8F38F5E3 = "isDistinct: %s";
+
+  public static final String EXCEPTION_ARG_ARG_MS_ARG_INVOCATIONS_ARG_APPLICATIONS_F056BD84 =
+      "%s: %s ms, %s invocations, %s applications";
 }

@@ -769,6 +769,131 @@ public final class PipeMessages {
   public static final String OTHER_EXCEPTION_RETRY_SECONDS =
       "{}: will retry for at least {} seconds. status: {}";
 
+  public static final String EXCEPTION_CATEGORY_SHOULD_NOT_BE_NULL_78602159 =
+      "category should not be null";
+  public static final String EXCEPTION_COLUMNNAME_SHOULD_NOT_BE_NULL_695366FD =
+      "columnName should not be null";
+  public static final String EXCEPTION_DATABASE_SHOULD_NOT_BE_NULL_3CF2693B =
+      "database should not be null";
+  public static final String EXCEPTION_DATATYPE_SHOULD_NOT_BE_NULL_58A47BB3 =
+      "datatype should not be null";
+  public static final String EXCEPTION_HOST_ARG_PORT_ARG_BECAUSE_ARG_E9F2BDE7 =
+      " (host: %s, port: %s, because: %s)";
+  public static final String EXCEPTION_TABLENAME_SHOULD_NOT_BE_NULL_FFA95ABE =
+      "tableName should not be null";
+  public static final String
+      EXCEPTION_THE_INCLUSION_EXCLUSION_STRING_CONTAINS_ILLEGAL_PATH_1BC64146 =
+          "The 'inclusion.exclusion' string contains illegal path.";
+  public static final String EXCEPTION_THE_INCLUSION_STRING_CONTAINS_ILLEGAL_PATH_B97B3F90 =
+      "The 'inclusion' string contains illegal path.";
+  public static final String
+      EXCEPTION_THE_NUMBER_OF_COMPRESSORS_SHOULD_BE_LESS_THAN_OR_EQUAL_TO_ARG_BUT_GOT_ARG_128D372F =
+          "The number of compressors should be less than or equal to %d, but got %d.";
+  public static final String
+      EXCEPTION_THE_VALUE_OF_KEY_ARG_OR_ARG_MUST_BE_EITHER_RETRY_OR_IGNORE_783FDB2B =
+          "The value of key %s or %s must be either 'retry' or 'ignore'.";
+  public static final String LOG_AIR_GAP_TRANSPORT_IS_ARG_UDP_PACKET_SIZE_IS_ARG_BYTES_61CDFC29 =
+      "Air gap transport is {}, udp packet size is {} bytes.";
+  public static final String
+      LOG_FAILED_TO_BUILD_PIPE_RECEIVER_RUNTIME_INFO_CLEANUP_REQUEST_FOR_PIPE_ARG_ARG_982EAA59 =
+          "Failed to build pipe receiver runtime info cleanup request for pipe {}@{}.";
+  public static final String
+      LOG_FAILED_TO_CLEANUP_PIPE_RECEIVER_RUNTIME_INFO_FOR_PIPE_ARG_ARG_ON_TARGET_ARG_ARG_ACF5450E =
+          "Failed to cleanup pipe receiver runtime info for pipe {}@{} on target {}:{}.";
+  public static final String
+      LOG_FAILED_TO_CLEANUP_PIPE_RECEIVER_RUNTIME_INFO_FOR_PIPE_ARG_ARG_ON_TARGET_ARG_ARG_RESPONSE_IS_NULL_BDD53753 =
+          "Failed to cleanup pipe receiver runtime info for pipe {}@{} on target {}:{}, response is"
+              + " null.";
+  public static final String
+      LOG_FAILED_TO_CLEANUP_PIPE_RECEIVER_RUNTIME_INFO_FOR_PIPE_ARG_ARG_ON_TARGET_ARG_ARG_RESPONSE_STATUS_ARG_2AFF0D91 =
+          "Failed to cleanup pipe receiver runtime info for pipe {}@{} on target {}:{}, response"
+              + " status: {}.";
+  public static final String
+      LOG_RECEIVED_SLICE_BODY_SIZE_ARG_EXCEEDS_ORIGIN_BODY_SIZE_ARG_12E71952 =
+          "Received slice body size {} exceeds origin body size {}";
+  public static final String
+      LOG_RECEIVED_SLICE_BODY_SIZE_ARG_IS_NOT_EQUAL_TO_ORIGIN_BODY_SIZE_ARG_EBE1BB1E =
+          "Received slice body size {} is not equal to origin body size {}";
+  public static final String LOG_RECEIVING_PIPE_FILE_PIECE_6162A697 = "receiving pipe file piece";
+  public static final String MESSAGE_AIR_GAP_TRANSPORT_SHOULD_BE_ONE_OF_ARG_BUT_GOT_ARG_A32FE833 =
+      "Air gap transport should be one of %s, but got %s.";
+  public static final String MESSAGE_ARG_MUST_BE_0_BUT_GOT_ARG_B2A3D4A2 =
+      "%s must be > 0, but got %s";
+  public static final String MESSAGE_CODE_ARG_MESSAGE_ARG_5265299D = "code: %d, message: %s";
+  public static final String MESSAGE_COMPRESSOR_SHOULD_BE_ONE_OF_ARG_BUT_GOT_ARG_A1E39742 =
+      "Compressor should be one of %s, but got %s.";
+  public static final String
+      MESSAGE_FAILED_TO_REFLECT_PIPEPLUGIN_ARG_ARG_INSTANCE_BECAUSE_ARG_1F0896A9 =
+          "Failed to reflect PipePlugin %s(%s) instance, because %s";
+  public static final String
+      MESSAGE_FAILED_TO_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PIPEPLUGIN_ARG_FAILED_TO_LOAD_ARG_81A13C60 =
+          "Failed to reflect PipePlugin instance, because PipePlugin %s failed to load: %s";
+  public static final String
+      MESSAGE_FAILED_TO_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PIPEPLUGIN_ARG_HAS_NOT_BEEN_REGISTERED_34B1267F =
+          "Failed to reflect PipePlugin instance, because PipePlugin %s has not been registered.";
+  public static final String
+      MESSAGE_INCOMPATIBLE_VISIBILITY_DETECTED_PARENT_CLASS_ARG_VISIBILITY_ARG_CHILD_CLASS_ARG_VISIBILITY_ARG_FCDC2616 =
+          "Incompatible visibility detected:\n"
+              + "Parent class: %s, Visibility: %s\n"
+              + "Child class: %s, Visibility: %s";
+  public static final String
+      MESSAGE_LOAD_BALANCE_STRATEGY_SHOULD_BE_ONE_OF_ARG_BUT_GOT_ARG_9247DA78 =
+          "Load balance strategy should be one of %s, but got %s.";
+  public static final String
+      MESSAGE_LOAD_TSFILE_STRATEGY_SHOULD_BE_ONE_OF_ARG_BUT_GOT_ARG_FF567B85 =
+          "Load tsfile strategy should be one of %s, but got %s.";
+  public static final String
+      MESSAGE_LOG_IN_FAILED_EITHER_YOU_ARE_NOT_AUTHORIZED_OR_THE_SESSION_HAS_TIMED_OUT_A2078D30 =
+          "Log in failed. Either you are not authorized or the session has timed out.";
+  public static final String MESSAGE_MESSAGE_ARG_F49E6C85 = " Message: %s";
+  public static final String MESSAGE_NOT_RECORDED_06D234C1 = "not recorded";
+  public static final String MESSAGE_NO_PERMISSION_7EA2F5F6 = "No permission";
+  public static final String MESSAGE_ONE_OF_ARG_ARG_ARG_ARG_ARG_ARG_MUST_BE_SPECIFIED_A41C7BCE =
+      "One of %s, %s:%s, %s, %s:%s must be specified";
+  public static final String MESSAGE_PIPE_HANDSHAKE_MISSING_USERNAME_OR_PASSWORD_BDC2F19E =
+      "Pipe handshake missing username or password.";
+  public static final String
+      MESSAGE_PIPE_HANDSHAKE_V1_IS_NO_LONGER_SUPPORTED_PLEASE_USE_HANDSHAKE_V2_WITH_USERNAME_AND_PASSWORD_85FE0371 =
+          "Pipe handshake V1 is no longer supported. Please use handshake V2 with username and"
+              + " password.";
+  public static final String MESSAGE_RATE_LIMIT_SHOULD_BE_IN_THE_RANGE_0_F_BUT_GOT_F_A84E09CD =
+      "Rate limit should be in the range (0, %f], but got %f.";
+  public static final String MESSAGE_RETRY_IS_NOT_ALLOWED_84FB8FBC = "retry is not allowed";
+  public static final String MESSAGE_RETRY_TIMEOUT_5FCC0622 = "retry timeout";
+  public static final String MESSAGE_THE_PIPETASKSTAGE_HAS_BEEN_DROPPED_900F76E5 =
+      "The PipeTaskStage has been dropped";
+  public static final String MESSAGE_THE_PIPETASKSTAGE_HAS_BEEN_EXTERNALLY_STOPPED_E79BC421 =
+      "The PipeTaskStage has been externally stopped";
+  public static final String MESSAGE_THE_PIPETASKSTAGE_HAS_BEEN_STARTED_D1041DE5 =
+      "The PipeTaskStage has been started";
+  public static final String MESSAGE_THE_PIPETASKSTAGE_HAS_NOT_BEEN_CREATED_DCBE2DDD =
+      "The PipeTaskStage has not been created";
+  public static final String MESSAGE_THE_PIPE_DOES_NOT_EXIST_91EBC1F4 = "the pipe does not exist";
+  public static final String MESSAGE_THE_PIPE_INCLUSION_CONTENT_CAN_T_BE_EMPTY_80945D2A =
+      "The pipe inclusion content can't be empty.";
+  public static final String MESSAGE_THE_PIPE_WITH_THE_SAME_NAME_HAS_BEEN_CREATED_6D246B19 =
+      "the pipe with the same name has been created";
+  public static final String MESSAGE_THIS_CLASS_IS_A_PLACEHOLDER_AND_SHOULD_NOT_BE_USED_A72EDAFA =
+      "This class is a placeholder and should not be used.";
+  public static final String
+      MESSAGE_TIMED_OUT_TO_WAIT_FOR_THE_PIPE_TASK_AGENT_WRITE_LOCK_WHEN_DROPPING_PIPE_ARG_53CC5A3B =
+          "Timed out to wait for the pipe task agent write lock when dropping pipe %s.";
+  public static final String
+      MESSAGE_TIMED_OUT_TO_WAIT_FOR_THE_PIPE_TASK_AGENT_WRITE_LOCK_WHEN_HANDLING_SINGLE_PIPE_META_CHANGES_FOR_PIPE_ARG_BB90A99C =
+          "Timed out to wait for the pipe task agent write lock when handling single pipe meta"
+              + " changes for pipe %s.";
+  public static final String MESSAGE_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD =
+      "Transfer file %s error, result status %s.";
+  public static final String MESSAGE_TRANSFER_FILE_ARG_ERROR_SOCKET_ARG_E5731EE7 =
+      "Transfer file %s error. Socket %s.";
+  public static final String
+      MESSAGE_UDP_PACKET_SIZE_SHOULD_BE_IN_THE_RANGE_ARG_ARG_BUT_GOT_ARG_8FE01537 =
+          "UDP packet size should be in the range [%d, %d], but got %d.";
+  public static final String MESSAGE_UNCLASSIFIED_EXCEPTION_783F6E1F = "Unclassified exception";
+  public static final String
+      MESSAGE_ZSTD_COMPRESSION_LEVEL_SHOULD_BE_IN_THE_RANGE_ARG_ARG_BUT_GOT_ARG_E5A3079B =
+          "Zstd compression level should be in the range [%d, %d], but got %d.";
+
   private PipeMessages() {}
 
   public static final String THROWING_EXCEPTION_IN_VALIDATE = "Throwing exception in validate";
