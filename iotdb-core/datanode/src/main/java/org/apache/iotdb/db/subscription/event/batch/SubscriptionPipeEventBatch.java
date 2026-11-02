@@ -114,13 +114,17 @@ public abstract class SubscriptionPipeEventBatch {
 
   /////////////////////////////// utility ///////////////////////////////
 
-  protected abstract void onTabletInsertionEvent(final TabletInsertionEvent event);
+  protected abstract void onTabletInsertionEvent(final TabletInsertionEvent event) throws Exception;
 
   protected abstract void onTsFileInsertionEvent(final TsFileInsertionEvent event);
 
   protected abstract boolean shouldEmit();
 
   protected abstract List<SubscriptionEvent> generateSubscriptionEvents() throws Exception;
+
+  protected boolean isCompatibleWithCurrentTopicConfig() {
+    return true;
+  }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 

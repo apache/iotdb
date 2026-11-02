@@ -24,10 +24,13 @@ import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 public class TreeViewSchema {
   public static final String ORIGINAL_NAME = "__original_name";
@@ -81,6 +84,22 @@ public class TreeViewSchema {
 
   public static void setOriginalName(final TsTableColumnSchema schema, final String name) {
     schema.getProps().put(ORIGINAL_NAME, name);
+  }
+
+  /**
+   * Source measurements already referenced by the view's FIELD columns, so this set decides whether
+   * a column may still be added for one. TAG/TIME/ATTRIBUTE columns do not reference tree
+   * measurements and therefore do not occupy the source-name namespace.
+   */
+  public static Set<String> getSourceNames(final TsTable view) {
+    final Set<String> sourceNames = new HashSet<>();
+    for (final TsTableColumnSchema schema : view.getColumnList()) {
+      if (schema.getColumnCategory() != TsTableColumnCategory.FIELD) {
+        continue;
+      }
+      sourceNames.add(getSourceName(schema));
+    }
+    return sourceNames;
   }
 
   public static boolean isRestrict(final TsTable table) {

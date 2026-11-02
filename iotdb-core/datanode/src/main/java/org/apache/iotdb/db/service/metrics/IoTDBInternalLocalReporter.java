@@ -97,12 +97,13 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
         Executors.newSingleThreadScheduledExecutor(),
         Coordinator.getInstance(),
         new SessionInfo(
-            0,
-            new UserEntity(
-                AuthorityChecker.SUPER_USER_ID,
-                AuthorityChecker.SUPER_USER,
-                IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
-            ZoneId.systemDefault()),
+                0,
+                new UserEntity(
+                    AuthorityChecker.SUPER_USER_ID,
+                    AuthorityChecker.SUPER_USER,
+                    IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
+                ZoneId.systemDefault())
+            .setInternal(true),
         ClusterPartitionFetcher.getInstance(),
         ClusterSchemaFetcher.getInstance());
 

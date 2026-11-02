@@ -20,6 +20,25 @@
 package org.apache.iotdb.db.i18n;
 
 public final class StorageEngineMessages {
+  public static final String EXCEPTION_CANNOT_ENABLE_WAL_NODE_ARG_BECAUSE_ITS_PREVIOUS_RECOVERY_FAILED_RESTART_AFTER_RESOLVING_THE_RECOVERY_FAILURE_56DF9750 =
+      "Cannot enable WAL node %s because its previous recovery failed; restart after resolving the recovery failure.";
+  public static final String LOG_WAL_NODE_RECOVERY_IN_ARG_WAS_INCOMPLETE_RETAINING_WAL_AND_CHECKPOINT_FILES_FOR_RETRY_48C1F7BF =
+      "WAL node recovery in {} was incomplete; retaining WAL and checkpoint files for retry.";
+  public static final String EXCEPTION_FILE_ENCRYPTION_PARAMETER_PROVIDER_RETURNED_NULL_15C41723 =
+      "File encryption parameter provider returned null";
+  public static final String EXCEPTION_PRECALCULATED_CHUNK_STAGING_IS_NOT_SUPPORTED_BY_THE_FILE_ENCRYPTION_POLICY_13DA8C32 =
+      "Precalculated chunk staging is not supported by the file encryption policy";
+  public static final String EXCEPTION_MULTIPLE_FILE_ENCRYPTION_PARAMETER_PROVIDERS_ARE_CONFIGURED_5E7DDA5B =
+      "Multiple file encryption parameter providers are configured";
+  public static final String EXCEPTION_UNSUPPORTED_OR_UNAVAILABLE_WAL_FORMAT_4629CFE4 =
+      "Unsupported or unavailable WAL format";
+  public static final String EXCEPTION_MULTIPLE_WAL_FORMAT_PROVIDERS_ARE_CONFIGURED_DD78877D =
+      "Multiple WAL format providers are configured";
+  public static final String EXCEPTION_INVALID_WAL_LOGICAL_POSITION_8CF34AFE =
+      "Invalid WAL logical position";
+
+  public static final String LOG_REBUILT_UNREADABLE_WAL_FOOTER_FILE_ARG_VERSION_ARG_ORIGINALFILEBYTES_ARG_WRITERPROGRESS_ARG_1DBF836E =
+      "Rebuilt unreadable WAL footer: file={}, version={}, originalFileBytes={}, writerProgress={}.";
 
   public static final String MESSAGE_LOAD_TSFILE_SLICE_BODY_IS_NULL_OR_EMPTY_2A65366C =
       "Load TsFile slice body is null or empty";
@@ -81,8 +100,10 @@ public final class StorageEngineMessages {
       "The LOAD snapshot progress file {} cannot be read back: {}";
   public static final String MESSAGE_LOAD_CONSENSUS_PIECE_CHECKSUM_MISMATCH_CF261675 =
       "LOAD consensus piece checksum mismatch, loadId: %s, pieceIndex: %d";
-  public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_EOF_8743387D =
-      "Unexpected end of file when reading staged piece %s at offset %s.";
+  public static final String
+      EXCEPTION_UNEXPECTED_END_OF_FILE_WHEN_READING_THE_STAGED_PIECE_ARG_ARG_BYTES_WERE_REQUESTED_FROM_OFFSET_ARG_BUT_THE_FILE_ENDED_AT_POSITION_ARG_3F9CA32B =
+          "Unexpected end of file when reading the staged piece %s: %d bytes were requested from "
+              + "offset %d, but the file ended at position %d.";
   public static final String EXCEPTION_STAGED_PIECE_FILE_ARG_IS_MISSING_AND_CANNOT_BE_READ_BACK_4F62F9C6 =
       "Staged piece file %s is missing and cannot be read back.";
   public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_CHUNK_PAYLOAD_REF_PATH_ARG_OFFSET_ARG_SIZE_ARG_6B70A61B =
@@ -1670,6 +1691,15 @@ public final class StorageEngineMessages {
   public static final String MESSAGE_THE_ASSOCIATED_RESOURCE_FILE_OF_ARG_IS_NOT_FOUND_IN_THE_SNAPSHOT_CB9152B5 = "The associated resource file of {} is not found in the snapshot";
   public static final String MESSAGE_EVICTED_NON_EXISTING_EXISTING_SERIES_COUNT_ARG_ARG_ARG_TOTAL_REQUEST_ARG_3026ADBD = "Evicted non-existing/existing series count: {}/{}({}), total request: {}";
 
+  public static final String EXCEPTION_WRITE_MEMORY_BLOCK_ARG_IS_CLOSED_9E2561DF =
+      "Write memory block %s is closed";
+  public static final String EXCEPTION_WRITE_MEMORY_SIZE_MUST_BE_NON_NEGATIVE_ARG_2CBCF358 =
+      "Write memory size must be non-negative: %s";
+  public static final String EXCEPTION_CANNOT_RELEASE_ARG_BYTES_FROM_WRITE_MEMORY_BLOCK_ARG_WITH_ARG_BYTES_3783A614 =
+      "Cannot release %s bytes from write memory block %s with %s bytes";
+  public static final String EXCEPTION_WRITE_MEMORY_BLOCK_ARG_ALREADY_BELONGS_TO_ANOTHER_MANAGER_A05A8229 =
+      "Write memory block %s already belongs to another manager";
+
   public static final String EXCEPTION_CHUNK_LAYOUT_IS_MISSING_E87C71C0 = "Chunk layout is missing";
   public static final String EXCEPTION_CHUNK_HEADER_LIST_IS_EMPTY_5DE68C78 =
       "Chunk header list is empty.";
@@ -1730,4 +1760,11 @@ public final class StorageEngineMessages {
 
   public static final String LOG_LOAD_CONSENSUS_CLEANER_SWEEP_FAILED_7C3E2E6D =
       "Failed to sweep the staged directories of the finished LOAD tasks.";
+  public static final String LOG_FAILED_TO_CREATE_SNAPSHOT_FOR_DATABASE_ARG_REGION_ARG_1A7C8DEA =
+      "Failed to create snapshot for database {}, region {}";
+
+  public static final String EXCEPTION_FAILED_TO_DETERMINE_THE_USER_THAT_LOADS_THE_TSFILE_E47F7207 =
+      "Failed to determine the user that loads the TsFile";
+  public static final String EXCEPTION_FAILED_TO_DETERMINE_THE_USER_FOR_THE_TSFILE_DATA_TYPE_CONVERSION_A221793E =
+      "Failed to determine the user for the TsFile data type conversion";
 }

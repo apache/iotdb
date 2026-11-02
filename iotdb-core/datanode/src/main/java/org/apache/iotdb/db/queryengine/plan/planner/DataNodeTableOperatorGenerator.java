@@ -343,8 +343,7 @@ public class DataNodeTableOperatorGenerator
       Operator child = node.getChildren().get(0).accept(this, context);
       List<Operator> children = new ArrayList<>(1);
       children.add(child);
-      sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
-      context.getDriverContext().setSink(sinkHandle);
+      context.setISink(sinkHandle);
       return new IdentitySinkOperator(
           operatorContext, children, downStreamChannelIndex, sinkHandle);
     } else {
@@ -385,7 +384,6 @@ public class DataNodeTableOperatorGenerator
     if (!isSameNode) {
       context.addExchangeSumNum(1);
     }
-    sourceHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
     ExchangeOperator exchangeOperator =
         new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
     context.addExchangeOperator(exchangeOperator);

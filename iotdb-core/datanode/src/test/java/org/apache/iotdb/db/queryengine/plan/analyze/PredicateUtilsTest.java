@@ -133,6 +133,69 @@ public class PredicateUtilsTest {
   }
 
   @Test
+  public void testMixedNotOrExtractsNegatedTimePredicate() throws IllegalPathException {
+    Expression timePredicate = gt(time(), longValue(1));
+    Expression valuePredicate = gt(timeSeries("root.sg.d.s1"), intValue("1"));
+    BinaryExpression child = or(timePredicate, valuePredicate);
+    LogicNotExpression predicate = not(child);
+
+    GlobalTimePredicateExtractionResult result =
+        PredicateUtils.extractGlobalTimePredicate(predicate);
+
+    // NOT(time > 1 OR s1 > 1) implies time <= 1
+    assertEquals(not(timePredicate), result.getGlobalTimePredicate());
+    assertSame(predicate, result.getResidualPredicate());
+    assertTrue(result.hasValueFilter());
+    assertSame(child, predicate.getExpression());
+  }
+
+  @Test
+  public void testNestedMixedNotOrExtractsAllNegatedTimePredicates() throws IllegalPathException {
+    Expression firstTimePredicate = gt(time(), longValue(1));
+    Expression secondTimePredicate = lt(time(), longValue(10));
+    Expression valuePredicate = gt(timeSeries("root.sg.d.s1"), intValue("1"));
+    Expression predicate = not(or(or(firstTimePredicate, valuePredicate), secondTimePredicate));
+
+    GlobalTimePredicateExtractionResult result =
+        PredicateUtils.extractGlobalTimePredicate(predicate);
+
+    assertEquals(
+        and(not(firstTimePredicate), not(secondTimePredicate)), result.getGlobalTimePredicate());
+    assertSame(predicate, result.getResidualPredicate());
+    assertTrue(result.hasValueFilter());
+  }
+
+  @Test
+  public void testNegatedOrWithoutPureTimeDisjunctDoesNotExtractTimePredicate()
+      throws IllegalPathException {
+    Expression firstValuePredicate = gt(timeSeries("root.sg.d.s1"), intValue("1"));
+    Expression secondValuePredicate = gt(timeSeries("root.sg.d.s2"), intValue("2"));
+    LogicNotExpression predicate = not(or(firstValuePredicate, secondValuePredicate));
+
+    GlobalTimePredicateExtractionResult result =
+        PredicateUtils.extractGlobalTimePredicate(predicate);
+
+    assertNull(result.getGlobalTimePredicate());
+    assertSame(predicate, result.getResidualPredicate());
+    assertTrue(result.hasValueFilter());
+  }
+
+  @Test
+  public void testDoubleNegatedOrDoesNotExtractTimePredicate() throws IllegalPathException {
+    Expression timePredicate = gt(time(), longValue(1));
+    Expression valuePredicate = gt(timeSeries("root.sg.d.s1"), intValue("1"));
+    LogicNotExpression predicate = not(not(or(timePredicate, valuePredicate)));
+
+    GlobalTimePredicateExtractionResult result =
+        PredicateUtils.extractGlobalTimePredicate(predicate);
+
+    // NOT NOT (time > 1 OR s1 > 1) is a disjunction, which does not bound the time range
+    assertNull(result.getGlobalTimePredicate());
+    assertSame(predicate, result.getResidualPredicate());
+    assertTrue(result.hasValueFilter());
+  }
+
+  @Test
   public void testSimplifierUsesCopyOnWriteForUnaryExpression() throws IllegalPathException {
     Expression valuePredicate = gt(timeSeries("root.sg.d.s1"), intValue("1"));
     BinaryExpression reducibleChild = and(ConstantOperand.TRUE, valuePredicate);
@@ -168,5 +231,12 @@ public class PredicateUtilsTest {
     Expression predicate = gt(timeSeries("root.sg.d.s1"), intValue("1"));
 
     assertSame(predicate, PredicateUtils.simplifyPredicate(predicate));
+  }
+
+  @Test
+  public void testLogicNotCannotPushDownToSource() throws IllegalPathException {
+    Expression predicate = not(gt(timeSeries("root.sg.d.s1"), intValue("1")));
+
+    assertFalse(PredicateUtils.predicateCanPushDownToSource(predicate));
   }
 }

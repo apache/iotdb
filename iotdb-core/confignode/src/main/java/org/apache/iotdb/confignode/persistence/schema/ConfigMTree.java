@@ -1027,6 +1027,8 @@ public class ConfigMTree {
       throw new SemanticException(ConfigNodeMessages.DROPPING_TAG_OR_TIME_COLUMN_IS_NOT_SUPPORTED);
     }
 
+    // Dropping the column makes a pending data type change moot.
+    node.removePreAlteredColumn(columnName);
     node.addPreDeletedColumn(columnName);
     return columnSchema.getColumnCategory() == TsTableColumnCategory.ATTRIBUTE;
   }
@@ -1179,6 +1181,15 @@ public class ConfigMTree {
           database.getFullPath().substring(ROOT.length() + 1), tableName);
     }
     return ((ConfigTableNode) databaseNode.getChild(tableName));
+  }
+
+  public Optional<ConfigTableNode> getTableNodeIfExists(
+      final PartialPath database, final String tableName) throws MetadataException {
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (!databaseNode.hasChild(tableName)) {
+      return Optional.empty();
+    }
+    return Optional.of((ConfigTableNode) databaseNode.getChild(tableName));
   }
 
   /**

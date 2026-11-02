@@ -38,6 +38,8 @@ public final class SchemaMessages {
   public static final String CANNOT_REMOVE_TAG_COLUMN = "无法移除 tag 列：%s";
   public static final String UNKNOWN_TABLE_UPDATE_OPERATION_TYPE =
       "未知的 table 更新操作类型%s";
+  public static final String EXCEPTION_UNKNOWN_TREE_TO_TABLE_VIEW_OPERATION_TYPE_ARG_C13CAC3F =
+      "未知的树转表视图操作类型：%s";
 
   // Column 相关消息
   public static final String UNSUPPORTED_COLUMN_TYPE_IN_TSFILE =

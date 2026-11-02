@@ -57,6 +57,7 @@ public class Audit {
         || isDatabaseOrDescendant(databaseName, TREE_MODEL_AUDIT_DATABASE);
   }
 
+  // Audit database names are matched case-insensitively: root.__Audit is also an audit database.
   private static boolean isDatabaseOrDescendant(
       final String databaseName, final String auditDatabaseName) {
     return databaseName != null

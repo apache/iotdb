@@ -28,6 +28,7 @@ import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.apache.iotdb.consensus.iot.WriterSafeFrontierTracker;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
@@ -36,6 +37,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALFileVersion;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRepairWriter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
@@ -46,6 +48,10 @@ import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -54,16 +60,20 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
@@ -114,6 +124,83 @@ public class ConsensusPrefetchingQueueWriterOrderingTest {
     config.setSubscriptionConsensusBatchMaxTabletCount(originalTablets);
     config.setSubscriptionConsensusBatchMaxDelayInMs(originalDelay);
     IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+  }
+
+  @Test
+  public void testRecoveredUnknownWriterLogsActualBlockingBarrier() throws Exception {
+    final Logger logger = (Logger) LoggerFactory.getLogger(ConsensusPrefetchingQueue.class);
+    final Level originalLevel = logger.getLevel();
+    final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    logger.setLevel(Level.WARN);
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      final File directory = writeWal(8);
+      final File data =
+          new File(
+              directory, WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX));
+      try (FileChannel channel = FileChannel.open(data.toPath(), StandardOpenOption.WRITE)) {
+        channel.truncate(channel.size() - 1);
+      }
+      final WALMetaData recovered;
+      try (FileChannel channel = FileChannel.open(data.toPath(), StandardOpenOption.READ)) {
+        recovered = WALMetaData.readFromWALFile(data, channel);
+      }
+      assertTrue(new WALRepairWriter(data).repair(recovered));
+      newQueue(walNode(directory, 8), 1024 * 1024);
+      queue.setActiveWriterNodeIds(Set.of(7));
+      for (int round = 0; round < 5; round++) {
+        queue.drivePrefetchOnce();
+      }
+      assertNull(queue.poll("consumer"));
+      final int readsBefore = walReads.get();
+      final long bytesBefore = queue.getRetainedTabletBytes();
+      final Field iteratorField =
+          ConsensusPrefetchingQueue.class.getDeclaredField("subscriptionWALIterator");
+      iteratorField.setAccessible(true);
+      final ProgressWALIterator iterator = (ProgressWALIterator) iteratorField.get(queue);
+      assertNotNull(iterator);
+      final String scanStateBefore = iterator.getDiagnosticState();
+      final Method report =
+          ConsensusPrefetchingQueue.class.getDeclaredMethod(
+              "reportReplayStallIfNecessary", long.class);
+      report.setAccessible(true);
+      final long nowNanos = System.nanoTime();
+      report.invoke(queue, nowNanos);
+      report.invoke(queue, nowNanos + TimeUnit.SECONDS.toNanos(60));
+      final ILoggingEvent warning =
+          appender.list.stream()
+              .filter(
+                  event ->
+                      event
+                          .getMessage()
+                          .equals(
+                              DataNodePipeMessages
+                                  .LOG_SUBSCRIPTION_REPLAY_STALLED_FOR_ARG_MS_ARG_DIAGNOSTICS_ARG_INSPECT_PREFETCH_WORKER_STACKS_AND_WAL_I_O_CB012F98))
+              .findFirst()
+              .get();
+      final String diagnostic = warning.getFormattedMessage();
+      assertTrue(
+          diagnostic, diagnostic.contains("lastBlockedFrontier=WriterFrontier{writerNodeId=7"));
+      assertTrue(diagnostic, diagnostic.contains("orderingKey=(" + Long.MIN_VALUE + ","));
+      assertTrue(diagnostic, diagnostic.contains("barrier=true"));
+      // The replicated entry also loses its progress and sorts before the local defaults.
+      assertTrue(diagnostic, diagnostic.contains("bufferedHead=(0,-1,-1)"));
+      assertTrue(diagnostic, diagnostic.contains("bufferedSearchIndex=-1"));
+      assertTrue(diagnostic, diagnostic.contains("bufferedEntryCount=9"));
+      assertTrue(diagnostic, diagnostic.contains("admissionBlockReason=WRITER_BACKLOG"));
+      assertTrue(diagnostic, diagnostic.contains("retentionContainsUnsupportedProgress=true"));
+      assertTrue(diagnostic, diagnostic.contains(directory.toString()));
+      // Taking the diagnostic must not consume WAL requests, change ordering, or retain Tablets.
+      assertEquals(readsBefore, walReads.get());
+      assertEquals(scanStateBefore, iterator.getDiagnosticState());
+      assertEquals(bytesBefore, queue.getRetainedTabletBytes());
+      assertNull(queue.poll("consumer"));
+    } finally {
+      logger.detachAppender(appender);
+      logger.setLevel(originalLevel);
+      appender.stop();
+    }
   }
 
   @Test

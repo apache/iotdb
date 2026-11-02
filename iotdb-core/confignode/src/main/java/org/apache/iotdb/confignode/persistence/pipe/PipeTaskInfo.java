@@ -55,6 +55,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStat
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusWithStoppedByRuntimeExceptionPlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
@@ -96,6 +97,9 @@ public class PipeTaskInfo implements SnapshotProcessor {
   private static final String SNAPSHOT_FILE_NAME = "pipe_task_info.bin";
 
   private final PipeMetaKeeper pipeMetaKeeper;
+
+  // Tracks runtime exception changes that have not yet been persisted through consensus.
+  private volatile boolean pipeMetaExceptionPersistencePending;
 
   // Pure in-memory object, not involved in snapshot serialization and deserialization.
   private final PipeTaskInfoVersion pipeTaskInfoVersion;
@@ -1138,22 +1142,43 @@ public class PipeTaskInfo implements SnapshotProcessor {
    *
    * <p>If there are exceptions recorded, the related pipes will be stopped, and the exception
    * messages will then be updated to all the nodes through {@link PipeHandleMetaChangeProcedure}.
+   * Failures without a pipe identity apply to every pipe in the full metadata sync.
    *
    * @param respMap The responseMap after pushing pipe meta
    * @return {@code true} if there are exceptions encountered
    */
   public boolean recordDataNodePushPipeMetaExceptions(
       final Map<Integer, TPushPipeMetaResp> respMap) {
+    return recordDataNodePushPipeMetaExceptions(respMap, null);
+  }
+
+  /**
+   * Record push failures locally, using the given pipe meta when a DataNode cannot identify the
+   * pipe in its response.
+   */
+  public boolean recordDataNodePushPipeMetaExceptions(
+      final Map<Integer, TPushPipeMetaResp> respMap, final PipeStaticMeta fallbackPipeStaticMeta) {
     acquireWriteLock();
     try {
-      return recordDataNodePushPipeMetaExceptionsInternal(respMap);
+      final boolean hasException =
+          recordDataNodePushPipeMetaExceptionsInternal(respMap, fallbackPipeStaticMeta);
+      pipeMetaExceptionPersistencePending |= hasException;
+      return hasException;
     } finally {
       releaseWriteLock();
     }
   }
 
+  public boolean hasPendingPipeMetaExceptionPersistence() {
+    return pipeMetaExceptionPersistencePending;
+  }
+
+  public void markPipeMetaExceptionsPersisted() {
+    pipeMetaExceptionPersistencePending = false;
+  }
+
   private boolean recordDataNodePushPipeMetaExceptionsInternal(
-      final Map<Integer, TPushPipeMetaResp> respMap) {
+      final Map<Integer, TPushPipeMetaResp> respMap, final PipeStaticMeta fallbackPipeStaticMeta) {
     boolean hasException = false;
 
     for (final Map.Entry<Integer, TPushPipeMetaResp> respEntry : respMap.entrySet()) {
@@ -1163,51 +1188,83 @@ public class PipeTaskInfo implements SnapshotProcessor {
       if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()) {
         hasException = true;
 
-        if (!resp.isSetExceptionMessages()) {
-          // The pushPipeMeta process on dataNode encountered internal errors
+        if (!resp.isSetExceptionMessages() || resp.getExceptionMessages().isEmpty()) {
+          final String statusMessage = resp.getStatus().getMessage();
+          recordUnscopedDataNodePushPipeMetaException(
+              fallbackPipeStaticMeta,
+              dataNodeId,
+              statusMessage == null || statusMessage.isEmpty()
+                  ? ProcedureMessages
+                      .EXCEPTION_INTERNAL_ERROR_WHILE_PROCESSING_PUSHPIPEMETA_ON_DATANODE_5983BD5F
+                  : statusMessage,
+              System.currentTimeMillis());
           continue;
         }
 
         for (final TPushPipeMetaRespExceptionMessage message : resp.getExceptionMessages()) {
+          final String messagePipeName = message.getPipeName();
+          if (messagePipeName == null || messagePipeName.isEmpty()) {
+            recordUnscopedDataNodePushPipeMetaException(
+                fallbackPipeStaticMeta, dataNodeId, message.getMessage(), message.getTimeStamp());
+            continue;
+          }
           final PipeMeta pipeMeta =
               message.isSetCreationTime()
-                  ? pipeMetaKeeper.getPipeMeta(message.getPipeName(), message.getCreationTime())
-                  : pipeMetaKeeper.getPipeMeta(message.getPipeName());
+                  ? pipeMetaKeeper.getPipeMeta(messagePipeName, message.getCreationTime())
+                  : pipeMetaKeeper.getPipeMeta(messagePipeName);
           if (pipeMeta == null) {
             continue;
           }
 
-          final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
-
-          if (PipeStatus.PRE_DELETE.equals(runtimeMeta.getStatus().get())) {
-            continue;
-          }
-
-          // Keep user-stopped pipes out of the auto-restart flow. Otherwise, a failed STOPPED meta
-          // sync can turn a manually stopped pipe into a runtime-stopped one and the next
-          // PipeMetaSyncer round will restart it automatically.
-          if (PipeStatus.STOPPED.equals(runtimeMeta.getStatus().get())
-              && !runtimeMeta.getIsStoppedByRuntimeException()) {
-            continue;
-          }
-
-          // Mark the status of the pipe with exception as stopped
-          runtimeMeta.getStatus().set(PipeStatus.STOPPED);
-          runtimeMeta.setIsStoppedByRuntimeException(true);
-
-          final Map<Integer, PipeRuntimeException> exceptionMap =
-              runtimeMeta.getNodeId2PipeRuntimeExceptionMap();
-          if (!exceptionMap.containsKey(dataNodeId)
-              || exceptionMap.get(dataNodeId).getTimeStamp() < message.getTimeStamp()) {
-            exceptionMap.put(
-                dataNodeId,
-                new PipeRuntimeCriticalException(message.getMessage(), message.getTimeStamp()));
-          }
+          recordDataNodePushPipeMetaException(
+              pipeMeta, dataNodeId, message.getMessage(), message.getTimeStamp());
         }
       }
     }
 
     return hasException;
+  }
+
+  private void recordUnscopedDataNodePushPipeMetaException(
+      final PipeStaticMeta fallbackPipeStaticMeta,
+      final int dataNodeId,
+      final String message,
+      final long timeStamp) {
+    if (fallbackPipeStaticMeta == null) {
+      pipeMetaKeeper
+          .getPipeMetaList()
+          .forEach(
+              pipeMeta ->
+                  recordDataNodePushPipeMetaException(pipeMeta, dataNodeId, message, timeStamp));
+    } else {
+      final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(fallbackPipeStaticMeta);
+      if (pipeMeta != null) {
+        recordDataNodePushPipeMetaException(pipeMeta, dataNodeId, message, timeStamp);
+      }
+    }
+  }
+
+  private void recordDataNodePushPipeMetaException(
+      final PipeMeta pipeMeta, final int dataNodeId, final String message, final long timeStamp) {
+    final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+
+    if (PipeStatus.PRE_DELETE.equals(runtimeMeta.getStatus().get())) {
+      return;
+    }
+
+    // Keep user-stopped pipes out of the auto-restart flow, but retain the failure for SHOW PIPES.
+    if (!PipeStatus.STOPPED.equals(runtimeMeta.getStatus().get())
+        || runtimeMeta.getIsStoppedByRuntimeException()) {
+      runtimeMeta.getStatus().set(PipeStatus.STOPPED);
+      runtimeMeta.setIsStoppedByRuntimeException(true);
+    }
+
+    final Map<Integer, PipeRuntimeException> exceptionMap =
+        runtimeMeta.getNodeId2PipeRuntimeExceptionMap();
+    if (!exceptionMap.containsKey(dataNodeId)
+        || exceptionMap.get(dataNodeId).getTimeStamp() < timeStamp) {
+      exceptionMap.put(dataNodeId, new PipeRuntimeCriticalException(message, timeStamp));
+    }
   }
 
   public boolean autoRestart() {

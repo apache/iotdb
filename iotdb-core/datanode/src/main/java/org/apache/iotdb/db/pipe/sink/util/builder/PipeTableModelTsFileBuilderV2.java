@@ -28,7 +28,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -182,7 +184,11 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
     File file = null;
     try {
       file = createFile();
-      try (final RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(file)) {
+      try (final RestorableTsFileIOWriter writer =
+          EncryptDBUtils.createRestorableWriterForNewFile(
+              file, dataBase, EncryptDBUtils.getFirstEncryptParamFromDatabase(null))) {
+        memTable.setEncryptParameter(
+            EncryptUtils.getEncryptParameter(writer.getEncryptParameter()));
         writeTabletsIntoOneFile(dataBase, memTable, writer);
         sealedFiles.add(new Pair<>(dataBase, writer.getFile()));
       }

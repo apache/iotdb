@@ -373,6 +373,12 @@ class RatisConsensus implements IConsensus {
       }
     }
 
+    // A leader-local decision may already be stale after a leadership change. Let the current
+    // leader make its own decision instead of replaying the old leader's request there.
+    if (!request.isForwardable()) {
+      return StatusUtils.getStatus(TSStatusCode.REDIRECTION_RECOMMEND);
+    }
+
     // 2. try raft client
     TSStatus writeResult;
     try (AutoCloseable ignored =

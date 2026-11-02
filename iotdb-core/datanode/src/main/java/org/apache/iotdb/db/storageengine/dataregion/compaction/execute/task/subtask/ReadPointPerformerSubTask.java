@@ -93,10 +93,11 @@ public class ReadPointPerformerSubTask implements Callable<Void> {
       if (dataBlockReader.hasNextBatch()) {
         compactionWriter.startMeasurement(
             measurement,
-            new ChunkWriterImpl(
-                measurementSchemas.get(0),
-                true,
-                EncryptUtils.getEncryptParameter(compactionWriter.getEncryptParameter())),
+            encryptParameter ->
+                new ChunkWriterImpl(
+                    measurementSchemas.get(0),
+                    true,
+                    EncryptUtils.getEncryptParameter(encryptParameter)),
             taskId);
         ReadPointCompactionPerformer.writeWithReader(
             compactionWriter, dataBlockReader, device, taskId, false);

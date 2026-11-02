@@ -321,7 +321,10 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
       return;
     }
 
-    final int firstFileToSkip = Math.max(0, currentFileIndex);
+    // Without a reader (including a deferred one), currentFileIndex is the predecessor already
+    // passed by replay or a previous fast-forward. It may have been reclaimed in the meantime.
+    final int firstFileToSkip =
+        Math.max(0, currentReaderVersionId < 0 ? currentFileIndex + 1 : currentFileIndex);
     try {
       for (int fileIndex = firstFileToSkip; fileIndex < targetFileIndex; fileIndex++) {
         if (!isWalFileCovered(fileIndex, writerProgressCoverage)) {
@@ -351,9 +354,13 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
   }
 
   private int locateTargetFile(final long targetSearchIndex) {
-    if (walFiles.length == 0
-        || (liveWalNode != null && targetSearchIndex > liveWalNode.getCurrentSearchIndex())) {
+    if (walFiles.length == 0) {
       return -1;
+    }
+    // Pending delivery may have advanced one past the live tail. Still realign to its file after
+    // verifying coverage of the sealed prefix, before committed history can be reclaimed.
+    if (liveWalNode != null && targetSearchIndex > liveWalNode.getCurrentSearchIndex()) {
+      return walFiles.length - 1;
     }
     return WALFileUtils.binarySearchFileBySearchIndex(walFiles, targetSearchIndex);
   }
@@ -428,6 +435,11 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
       final long physicalTime = physicalTimes.get(entryIndex);
       final int nodeId = nodeIds.get(entryIndex);
       final long localSeq = localSeqs.get(entryIndex);
+      if (nodeId < 0 && physicalTime == 0L && localSeq < 0L) {
+        // Non-search WAL entries (such as separators) do not participate in subscription
+        // progress and must not prevent a covered historical file from being skipped.
+        continue;
+      }
       if (nodeId < 0
           || physicalTime < 0
           || localSeq < 0
@@ -522,6 +534,28 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
         + "]";
   }
 
+  String getDiagnosticState() {
+    // Called only by the throttled queue stall warning; never read entry bodies or advance here.
+    return this
+        + "[file="
+        + currentReaderFile
+        + ", liveSnapshot="
+        + currentReaderUsesLiveSnapshot
+        + ", metadataRecoveredFromEntries="
+        + (currentReader != null && currentReader.getMetaData().isRecoveredFromEntries())
+        + ", pendingProgress=("
+        + pendingPhysicalTime
+        + ","
+        + pendingNodeId
+        + ","
+        + pendingLocalSeq
+        + "), pendingSearchIndex="
+        + pendingSearchIndex
+        + ", pendingFragments="
+        + pendingRequests.size()
+        + "]";
+  }
+
   String getSkippedBrokenWalFileDetails(final int firstFileIndex) {
     final int firstAvailableIndex =
         getSkippedBrokenWalFileCount() - skippedBrokenWalFileDetails.size();
@@ -560,6 +594,15 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
     incompleteScanDetail = null;
     scanYielded = false;
     resetCurrentFileTracking();
+  }
+
+  /**
+   * Drops segment buffers between prefetch rounds without discarding buffered request fragments.
+   */
+  public void releaseReadBuffers() {
+    if (currentReader != null) {
+      currentReader.releaseReadBuffers();
+    }
   }
 
   private IndexedConsensusRequest advance(final ScanBudget scanBudget) throws IOException {

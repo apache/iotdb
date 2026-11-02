@@ -454,6 +454,8 @@ public final class ProcedureMessages {
       "Failed to push pipe meta list to data nodes, will retry later.";
   public static final String FAILED_TO_PUSH_PIPE_META_TO_DATANODES_DETAILS =
       "Failed to push pipe meta to dataNodes, details: %s";
+  public static final String EXCEPTION_INTERNAL_ERROR_WHILE_PROCESSING_PUSHPIPEMETA_ON_DATANODE_5983BD5F =
+      "Internal error while processing pushPipeMeta on DataNode.";
   public static final String FAILED_TO_PUSH_TOPIC_META_TO_DATANODES_DETAILS =
       "Failed to push topic meta to dataNodes, details: %s";
   public static final String FAILED_TO_REMOVE_DATA_NODE_BECAUSE_IT_IS_NOT_IN =
@@ -490,7 +492,8 @@ public final class ProcedureMessages {
       "Failed to rollback pipe plugin [%s] on data nodes";
   public static final String FAILED_TO_ROLLBACK_PRE_RELEASE_FOR_TABLE_INFO_TO_DATANODE =
       "Failed to rollback pre-release {} for table {}.{} info to DataNode, failure results: {}";
-  public static final String FAILED_TO_PROVE_AN_UNREACHABLE_DN_IS_FENCED = "Failed to prove an unreachable DataNode is fenced";
+  public static final String FAILED_TO_PROVE_AN_UNREACHABLE_DN_IS_FENCED =
+      "Failed to prove an unreachable DataNode is fenced";
   public static final String FAILED_TO_ROLLBACK_PRE_RELEASE_TEMPLATE_INFO_OF_TEMPLATE_SET =
       "Failed to rollback pre release template info of template {} set on path {} on DataNode {}";
   public static final String FAILED_TO_ROLLBACK_PRE_SET_TEMPLATE_ON_PATH_DUE_TO =
@@ -872,9 +875,10 @@ public final class ProcedureMessages {
       "Retrievable error trying to drop pipe plugin [{}], state: {}";
   public static final String RETRIEVABLE_ERROR_TRYING_TO_REMOVE_AINODE_STATE =
       "Retrievable error trying to remove AINode [{}], state [{}]";
+  public static final String ROLLBACK_ADDTABLECOLUMN_COSTS_MS =
+      "Rollback AddTableColumn-{} costs {}ms.";
   public static final String ROLLBACK_CREATETABLE_COSTS_MS = "Rollback CreateTable-{} costs {}ms.";
   public static final String ROLLBACK_CREATE_TABLE_FAILED = "Rollback create table failed";
-  public static final String ROLLBACK_DROPTABLE_COSTS_MS = "Rollback DropTable-{} costs {}ms.";
   public static final String ROLLBACK_PRE_DELETE_TABLE_FAILED =
       "Rollback pre-delete table %s.%s failed, please manually drop the table by entering sql";
   public static final String ROLLBACK_PRE_RELEASE = "Rollback pre-release ";
@@ -1435,10 +1439,16 @@ public final class ProcedureMessages {
       "rolling back after failure: %s.";
   public static final String MESSAGE_ROLLING_BACK_AFTER_AN_EARLIER_FAILURE_850D0AF5 =
       "rolling back after an earlier failure.";
+  public static final String
+      MESSAGE_SOME_OTHER_TASK_IS_SETTING_OR_UNSETTING_A_TEMPLATE_ON_TARGET_PATH_ARG_D4FEE38F =
+          "Some other task is setting or unsetting a template on target path %s.";
   public static final String EXCEPTION_DATANODE_SETSYSTEMSTATUS_RPC_FAILED_ARG_ARG_ARG_7E8E5F9F =
       "DataNode setSystemStatus RPC failed: %s: %s: %s; ";
   public static final String EXCEPTION_CONFIGNODE_TRYSETNODESTATUS_FAILED_ARG_ARG_ARG_C9BA78F4 =
       "ConfigNode trySetNodeStatus failed: %s: %s: %s; ";
+  public static final String
+      LOG_FAILED_TO_DETECT_THE_TREE_SERIES_UNDER_THE_NEW_VIEW_ARG_ARG_ARG_8F20CAE7 =
+          "Failed to detect the tree series under the new view {}.{}: {}";
   public static final String
       LOG_PROCEDURE_ARG_IS_PAST_ITS_COMMIT_POINT_KEEPING_EVERY_STATE_IT_EXECUTED_CA21D7E9 =
           "Procedure {} is past its commit point; keeping every state it executed.";

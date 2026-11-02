@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate;
 
-import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
+import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.EqualToExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterEqualExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterThanExpression;
@@ -30,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.binary.LessThanExpression
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicOrExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.NonEqualExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.other.GroupByTimeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.InExpression;
@@ -38,11 +41,25 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 
+import org.apache.tsfile.enums.TSDataType;
+
+import java.util.function.Function;
+
 public class ReversePredicateVisitor extends PredicateVisitor<Expression, Void> {
+
+  private final Function<Expression, TSDataType> typeProvider;
+
+  public ReversePredicateVisitor() {
+    this(null);
+  }
+
+  public ReversePredicateVisitor(Function<Expression, TSDataType> typeProvider) {
+    this.typeProvider = typeProvider;
+  }
 
   @Override
   public Expression visitExpression(Expression expression, Void context) {
-    throw new UnsupportedOperationException();
+    return new LogicNotExpression(expression);
   }
 
   @Override
@@ -76,7 +93,7 @@ public class ReversePredicateVisitor extends PredicateVisitor<Expression, Void> 
 
   @Override
   public Expression visitLogicNotExpression(LogicNotExpression logicNotExpression, Void context) {
-    return logicNotExpression.getExpression();
+    return PredicateUtils.predicateRemoveNot(logicNotExpression.getExpression(), typeProvider);
   }
 
   @Override
@@ -108,6 +125,9 @@ public class ReversePredicateVisitor extends PredicateVisitor<Expression, Void> 
   @Override
   public Expression visitGreaterThanExpression(
       GreaterThanExpression greaterThanExpression, Void context) {
+    if (!canSafelyInvertOrderedComparison(greaterThanExpression)) {
+      return new LogicNotExpression(greaterThanExpression);
+    }
     return new LessEqualExpression(
         greaterThanExpression.getLeftExpression(), greaterThanExpression.getRightExpression());
   }
@@ -115,12 +135,18 @@ public class ReversePredicateVisitor extends PredicateVisitor<Expression, Void> 
   @Override
   public Expression visitGreaterEqualExpression(
       GreaterEqualExpression greaterEqualExpression, Void context) {
+    if (!canSafelyInvertOrderedComparison(greaterEqualExpression)) {
+      return new LogicNotExpression(greaterEqualExpression);
+    }
     return new LessThanExpression(
         greaterEqualExpression.getLeftExpression(), greaterEqualExpression.getRightExpression());
   }
 
   @Override
   public Expression visitLessThanExpression(LessThanExpression lessThanExpression, Void context) {
+    if (!canSafelyInvertOrderedComparison(lessThanExpression)) {
+      return new LogicNotExpression(lessThanExpression);
+    }
     return new GreaterEqualExpression(
         lessThanExpression.getLeftExpression(), lessThanExpression.getRightExpression());
   }
@@ -128,12 +154,18 @@ public class ReversePredicateVisitor extends PredicateVisitor<Expression, Void> 
   @Override
   public Expression visitLessEqualExpression(
       LessEqualExpression lessEqualExpression, Void context) {
+    if (!canSafelyInvertOrderedComparison(lessEqualExpression)) {
+      return new LogicNotExpression(lessEqualExpression);
+    }
     return new GreaterThanExpression(
         lessEqualExpression.getLeftExpression(), lessEqualExpression.getRightExpression());
   }
 
   @Override
   public Expression visitBetweenExpression(BetweenExpression betweenExpression, Void context) {
+    if (!canSafelyInvertBetween(betweenExpression)) {
+      return new LogicNotExpression(betweenExpression);
+    }
     return new BetweenExpression(
         betweenExpression.getFirstExpression(),
         betweenExpression.getSecondExpression(),
@@ -144,6 +176,48 @@ public class ReversePredicateVisitor extends PredicateVisitor<Expression, Void> 
   @Override
   public Expression visitGroupByTimeExpression(
       GroupByTimeExpression groupByTimeExpression, Void context) {
-    throw new UnsupportedOperationException(DataNodeQueryMessages.GROUP_BY_TIME_CANNOT_BE_REVERSED);
+    return new LogicNotExpression(groupByTimeExpression);
+  }
+
+  private boolean canSafelyInvertOrderedComparison(Expression comparisonExpression) {
+    BinaryExpression binaryExpression = (BinaryExpression) comparisonExpression;
+    TSDataType leftType = getType(binaryExpression.getLeftExpression());
+    TSDataType rightType = getType(binaryExpression.getRightExpression());
+    return leftType != null
+        && rightType != null
+        && !isFloatingPoint(leftType)
+        && !isFloatingPoint(rightType);
+  }
+
+  private boolean canSafelyInvertBetween(BetweenExpression betweenExpression) {
+    TSDataType firstType = getType(betweenExpression.getFirstExpression());
+    TSDataType secondType = getType(betweenExpression.getSecondExpression());
+    TSDataType thirdType = getType(betweenExpression.getThirdExpression());
+    return firstType != null
+        && secondType != null
+        && thirdType != null
+        && !isFloatingPoint(firstType)
+        && !isFloatingPoint(secondType)
+        && !isFloatingPoint(thirdType);
+  }
+
+  private boolean isFloatingPoint(TSDataType type) {
+    return type == TSDataType.FLOAT || type == TSDataType.DOUBLE;
+  }
+
+  private TSDataType getType(Expression expression) {
+    if (typeProvider != null) {
+      TSDataType type = typeProvider.apply(expression);
+      if (type != null) {
+        return type;
+      }
+    }
+    if (expression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
+      return TSDataType.INT64;
+    }
+    if (expression.getExpressionType().equals(ExpressionType.CONSTANT)) {
+      return ((ConstantOperand) expression).getDataType();
+    }
+    return null;
   }
 }

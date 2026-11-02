@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.tool.common;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
+
 import org.apache.tsfile.enums.TSDataType;
 
 import java.text.SimpleDateFormat;
@@ -222,11 +224,36 @@ public class Constants {
   public static final String QUERY_COMMAND_NAME = "query";
   public static final String QUERY_COMMAND_ARGS_NAME = "query_command";
   public static final String QUERY_COMMAND_DESC =
-      "The query command that you want to execute.If sql_dialect is table The 'q' parameter is only applicable to export types of CSV, and is not available for other types.If the '- q' parameter is not empty, then the parameters' creatTime ',' EndTime 'and' table 'are not effective.(optional)";
+      CliMessages
+          .MESSAGE_QUERY_TO_EXPORT_OPTIONAL_TABLE_SQL_TSFILE_STORED_COLUMNS_OF_ONE_TABLE_6D79406B;
 
   public static final String TARGET_FILE_ARGS = "pfn";
   public static final String TARGET_FILE_NAME = "prefix_file_name";
   public static final String TARGET_FILE_DESC = "Export file name .(optional)";
+
+  public static final String MEASUREMENT_FILE_ARGS = "mf";
+  public static final String MEASUREMENT_FILE_NAME = "measurement_file";
+  public static final String MEASUREMENT_FILE_DESC =
+      CliMessages
+          .MESSAGE_UTF_8_IOTDB_PATH_PATTERN_FILE_FOR_TREE_EXPORT_MUTUALLY_EXCLUSIVE_WITH_Q_DD1F2CDA;
+  public static final String EXPORT_DATA_LOG_ARGS = "l";
+  public static final String EXPORT_DATA_LOG_NAME = "export_data_log";
+  public static final String EXPORT_DATA_LOG_DESC =
+      CliMessages
+          .MESSAGE_EXPORT_LOG_FILE_DEFAULT_TARGET_LOG_EXPORT_DATA_YYYYMMDDHHMMSS_LOG_B29FC35F;
+  public static final String EXPORT_START_TIME_DESC =
+      CliMessages
+          .MESSAGE_INCLUSIVE_START_TIME_FOR_MEASUREMENT_FILE_OR_AUTOMATIC_TABLE_EXPORT_69FE75CF;
+  public static final String EXPORT_END_TIME_DESC =
+      CliMessages
+          .MESSAGE_INCLUSIVE_END_TIME_FOR_MEASUREMENT_FILE_OR_AUTOMATIC_TABLE_EXPORT_D9C24D95;
+  public static final String EXPORT_DB_DESC =
+      CliMessages
+          .MESSAGE_DATABASE_TO_EXPORT_REQUIRED_WITHOUT_TABLE_OR_Q_EXPORTS_ALL_ITS_TABLES_704F6B55;
+  public static final String EXPORT_TABLE_DESC =
+      CliMessages.MESSAGE_TABLE_TO_EXPORT_OPTIONAL_IGNORED_WHEN_Q_IS_GIVEN_4F37C0B5;
+  public static final String EXPORT_LINES_PER_FILE_DESC =
+      CliMessages.MESSAGE_MAXIMUM_DATA_ROWS_PER_CSV_OR_SQL_FILE_DEFAULT_10000_000CEFB9;
 
   public static final String RPC_MAX_FRAME_SIZE_ARGS = "mfs";
   public static final String RPC_MAX_FRAME_SIZE_NAME = "rpc_max_frame_size";

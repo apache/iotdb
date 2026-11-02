@@ -30,6 +30,7 @@ import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.session.NodesSupplier;
 import org.apache.iotdb.session.Session;
@@ -63,6 +64,8 @@ import static org.junit.Assert.assertTrue;
 @RunWith(IoTDBTestRunner.class)
 @Category(ClusterIT.class)
 public class SessionSeedNodeFallbackIT {
+  private static final int RECOVERY_CONNECTION_TIMEOUT_MS = 30_000;
+
   @Before
   public void setUp() {
     EnvFactory.getEnv()
@@ -137,32 +140,41 @@ public class SessionSeedNodeFallbackIT {
             return super.scheduleAtFixedRate(command, 1, 1, TimeUnit.DAYS);
           }
         };
-    NodesSupplier business = createSupplier(executor);
-    NodesSupplier background = createSupplier(executor);
-    try (Session session = new Session.Builder().nodeUrls(urls()).enableAutoFetch(false).build()) {
-      Set<TEndPoint> discovered = new HashSet<>(Arrays.asList(endpoint(1), endpoint(2)));
-      awaitSnapshot(business, discovered);
-      awaitSnapshot(background, discovered);
-      session.open(false, 1000, new ConcurrentHashMap<>(), business);
+    // Node 2 keeps a Ratis majority alive for login queries, but is unknown to these clients until
+    // discovery recovers. Initialize a controlled stale snapshot without running discovery first.
+    List<TEndPoint> discovered = Collections.singletonList(endpoint(1));
+    List<TEndPoint> seeds = Arrays.asList(endpoint(0), endpoint(1));
+    NodesSupplier business = createSupplier(executor, discovered, seeds);
+    NodesSupplier background = createSupplier(executor, discovered, seeds);
+    List<String> seedUrls =
+        seeds.stream().map(UrlUtils::convertTEndPointIpv4AndIpv6Url).collect(Collectors.toList());
+    try (Session session =
+        new Session.Builder().nodeUrls(seedUrls).enableAutoFetch(false).build()) {
+      assertEquals(discovered, business.get());
+      assertEquals(discovered, background.get());
+      session.open(false, RECOVERY_CONNECTION_TIMEOUT_MS, new ConcurrentHashMap<>(), business);
+      assertEquals(endpoint(1), connectedEndpoint(session));
 
       EnvFactory.getEnv().startDataNode(0);
       awaitStatus(0, NodeStatus.Running);
+      awaitLogin(0);
       EnvFactory.getEnv().getDataNodeWrapper(1).stopForcibly();
       awaitStatus(1, NodeStatus.Unknown);
-      EnvFactory.getEnv().shutdownDataNode(2);
-      awaitStatus(2, EnvUtils.getNodeStatusAfterLocalStop());
-      assertFalse(business.get().contains(endpoint(0)));
-      assertFalse(background.get().contains(endpoint(0)));
+      assertEquals(discovered, business.get());
+      assertEquals(discovered, background.get());
 
-      // Both discovered endpoints are dead. Only the initial seed omitted by discovery is live.
+      // Every discovered endpoint is dead. Node 0 is the only reachable initial seed.
+      Set<TEndPoint> recoveredNodes = new HashSet<>(Arrays.asList(endpoint(0), endpoint(2)));
       try (SessionDataSet result = session.executeQueryStatement("SHOW AVAILABLE URLS")) {
-        assertEquals(Collections.singleton(endpoint(0)), readEndpoints(result));
+        assertEquals(recoveredNodes, readEndpoints(result));
       }
-      awaitSnapshot(background, Collections.singleton(endpoint(0)));
-      assertEquals(3, background.getSeedNodes().size());
+      assertEquals(endpoint(0), connectedEndpoint(session));
+      awaitSnapshot(background, recoveredNodes);
+      assertEquals(seeds, background.getSeedNodes());
       // Wait for the immediate refresh requested by business reconnection, not a 60-second poll.
-      executor.submit(() -> {}).get(10, TimeUnit.SECONDS);
-      assertEquals(Collections.singletonList(endpoint(0)), business.get());
+      executor.submit(() -> {}).get(60, TimeUnit.SECONDS);
+      assertEquals(recoveredNodes, new HashSet<>(business.get()));
+      assertEquals(seeds, business.getSeedNodes());
     } finally {
       business.close();
       background.close();
@@ -191,9 +203,16 @@ public class SessionSeedNodeFallbackIT {
     return (NodesSupplier) field.get(owner);
   }
 
-  private NodesSupplier createSupplier(ScheduledThreadPoolExecutor executor) {
-    List<TEndPoint> seeds = Arrays.asList(endpoint(0), endpoint(1), endpoint(2));
+  private TEndPoint connectedEndpoint(Session session) throws Exception {
+    Field field = Session.class.getDeclaredField("defaultEndPoint");
+    field.setAccessible(true);
+    return (TEndPoint) field.get(session);
+  }
+
+  private NodesSupplier createSupplier(
+      ScheduledThreadPoolExecutor executor, List<TEndPoint> discovered, List<TEndPoint> seeds) {
     return NodesSupplier.createNodeSupplier(
+        discovered,
         seeds,
         executor,
         SessionConfig.DEFAULT_USER,
@@ -201,7 +220,7 @@ public class SessionSeedNodeFallbackIT {
         ZoneId.of("UTC"),
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        1000,
+        RECOVERY_CONNECTION_TIMEOUT_MS,
         false,
         null,
         null,
@@ -238,6 +257,30 @@ public class SessionSeedNodeFallbackIT {
         .ensureNodeStatus(
             Collections.singletonList(EnvFactory.getEnv().getDataNodeWrapper(index)),
             Collections.singletonList(status));
+  }
+
+  private void awaitLogin(int index) {
+    TEndPoint recovered = endpoint(index);
+    Awaitility.await()
+        .atMost(60, TimeUnit.SECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () -> {
+              // Probe the recovered seed independently so the tested snapshots remain stale.
+              try (Session probe =
+                  new Session.Builder()
+                      .host(recovered.getIp())
+                      .port(recovered.getPort())
+                      .enableAutoFetch(false)
+                      .build()) {
+                probe.open(false, RECOVERY_CONNECTION_TIMEOUT_MS);
+                try (SessionDataSet result = probe.executeQueryStatement("SHOW AVAILABLE URLS")) {
+                  assertTrue(readEndpoints(result).contains(recovered));
+                }
+              } catch (IoTDBConnectionException | StatementExecutionException e) {
+                throw new AssertionError("Seed is not ready for session queries: " + recovered, e);
+              }
+            });
   }
 
   private void awaitSnapshot(NodesSupplier current, Set<TEndPoint> expected) {

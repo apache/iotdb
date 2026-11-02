@@ -81,8 +81,8 @@ public class DataNodeTableCacheLeaseTest {
 
     nowNanos.addAndGet((T_FENCE_MS + 1) * 1_000_000L);
     assertLeaseFenced(() -> tableCache.preUpdateTable("root.db", table, null));
-    assertLeaseFenced(() -> tableCache.rollbackUpdateTable("root.db", "t", null));
-    assertLeaseFenced(() -> tableCache.commitUpdateTable("root.db", "t", null));
+    assertLeaseFenced(() -> tableCache.rollbackUpdateTable("root.db", "t", null, null));
+    assertLeaseFenced(() -> tableCache.commitUpdateTable("root.db", "t", null, null));
   }
 
   @Test

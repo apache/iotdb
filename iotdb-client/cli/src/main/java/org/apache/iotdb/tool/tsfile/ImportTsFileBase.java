@@ -22,12 +22,9 @@ package org.apache.iotdb.tool.tsfile;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.tool.common.ImportTsFileOperation;
 
-import java.io.File;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.Objects;
 import java.util.concurrent.atomic.LongAdder;
 
@@ -101,107 +98,26 @@ public abstract class ImportTsFileBase implements Runnable {
     }
   }
 
-  public static void processingFile(final String filePath, final boolean isSuccess) {
-    final String relativePath =
-        filePath.substring(ImportTsFileScanTool.getSourceFullPathLength() + 1);
-    final Path sourcePath = Paths.get(filePath);
+  public static void processingFile(final String filePath, final boolean isSuccess)
+      throws IOException {
+    final Path target =
+        Paths.get(isSuccess ? successDir : failDir)
+            .resolve(ImportTsFileScanTool.getRelativePath(filePath));
+    final ImportTsFileOperation operation = isSuccess ? successOperation : failOperation;
+    operation.processFileGroup(Paths.get(filePath), target);
+  }
 
-    final String target =
-        isSuccess
-            ? successDir
-            : failDir + File.separator + relativePath.replace(File.separator, "_");
-    final Path targetPath = Paths.get(target);
+  protected static void resetCounters() {
+    loadFileSuccessfulNum.reset();
+    loadFileFailedNum.reset();
+    processingLoadSuccessfulFileSuccessfulNum.reset();
+    processingLoadFailedFileSuccessfulNum.reset();
+  }
 
-    final String RESOURCE = ".resource";
-    Path sourceResourcePath = Paths.get(sourcePath + RESOURCE);
-    sourceResourcePath = Files.exists(sourceResourcePath) ? sourceResourcePath : null;
-    final Path targetResourcePath = Paths.get(target + RESOURCE);
-
-    final String MODS = ".mods";
-    Path sourceModsPath = Paths.get(sourcePath + MODS);
-    sourceModsPath = Files.exists(sourceModsPath) ? sourceModsPath : null;
-    final Path targetModsPath = Paths.get(target + MODS);
-
-    switch (isSuccess ? successOperation : failOperation) {
-      case DELETE:
-        {
-          try {
-            Files.deleteIfExists(sourcePath);
-            if (null != sourceResourcePath) {
-              Files.deleteIfExists(sourceResourcePath);
-            }
-            if (null != sourceModsPath) {
-              Files.deleteIfExists(sourceModsPath);
-            }
-          } catch (final Exception e) {
-            IOT_PRINTER.println(String.format("Failed to delete file: %s", e.getMessage()));
-          }
-          break;
-        }
-      case CP:
-        {
-          try {
-            Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
-            if (null != sourceResourcePath) {
-              Files.copy(
-                  sourceResourcePath, targetResourcePath, StandardCopyOption.REPLACE_EXISTING);
-            }
-            if (null != sourceModsPath) {
-              Files.copy(sourceModsPath, targetModsPath, StandardCopyOption.REPLACE_EXISTING);
-            }
-          } catch (final Exception e) {
-            IOT_PRINTER.println(String.format("Failed to copy file: %s", e.getMessage()));
-          }
-          break;
-        }
-      case HARDLINK:
-        {
-          try {
-            Files.createLink(targetPath, sourcePath);
-          } catch (FileAlreadyExistsException e) {
-            IOT_PRINTER.println("Hardlink already exists: " + e.getMessage());
-          } catch (final Exception e) {
-            try {
-              Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
-            } catch (final Exception copyException) {
-              IOT_PRINTER.println(
-                  String.format("Failed to copy file: %s", copyException.getMessage()));
-            }
-          }
-
-          try {
-            if (null != sourceResourcePath) {
-              Files.copy(
-                  sourceResourcePath, targetResourcePath, StandardCopyOption.REPLACE_EXISTING);
-            }
-            if (null != sourceModsPath) {
-              Files.copy(sourceModsPath, targetModsPath, StandardCopyOption.REPLACE_EXISTING);
-            }
-          } catch (final Exception e) {
-            IOT_PRINTER.println(
-                String.format("Failed to copy resource or mods file: %s", e.getMessage()));
-          }
-          break;
-        }
-      case MV:
-        {
-          try {
-            Files.move(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
-            if (null != sourceResourcePath) {
-              Files.move(
-                  sourceResourcePath, targetResourcePath, StandardCopyOption.REPLACE_EXISTING);
-            }
-            if (null != sourceModsPath) {
-              Files.move(sourceModsPath, targetModsPath, StandardCopyOption.REPLACE_EXISTING);
-            }
-          } catch (final Exception e) {
-            IOT_PRINTER.println(String.format("Failed to move file: %s", e.getMessage()));
-          }
-          break;
-        }
-      default:
-        break;
-    }
+  protected static boolean hasFailures() {
+    return loadFileFailedNum.sum() > 0
+        || loadFileSuccessfulNum.sum() != processingLoadSuccessfulFileSuccessfulNum.sum()
+        || ImportTsFileScanTool.getTsFileQueueSize() > 0;
   }
 
   protected static void printResult(final long startTime) {

@@ -20,6 +20,10 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String EXCEPTION_QUERY_CHUNK_RESOURCES_ARE_ALREADY_CLOSED_CA6A0559 =
+      "Query chunk resources are already closed";
+  public static final String LOG_FAILED_TO_RELEASE_QUERY_CHUNK_RESOURCES_91573FE5 =
+      "Failed to release query chunk resources";
   public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477 =
       "Failed to convert TsFile %s to tablets. Status: %s";
   public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD =
@@ -642,8 +646,6 @@ public final class DataNodeQueryMessages {
       "TIMESTAMP IN-list literal can only be LongLiteral, DoubleLiteral, or GenericLiteral; actual type: %s";
   public static final String IS_NULL_CAN_BE_PUSHED_DOWN =
       "IS NULL can be pushed down";
-  public static final String GROUP_BY_TIME_CANNOT_BE_REVERSED =
-      "GROUP BY TIME cannot be reversed";
 
   // --- Plan / Optimization ---
 
@@ -1680,6 +1682,9 @@ public final class DataNodeQueryMessages {
       "[CleanUpQuery]]";
   public static final String RELEASE_QUERY_RESOURCE_STATE =
       "[ReleaseQueryResource] state is: {}";
+  public static final String IGNORE_EXCEPTION_AFTER_QUERY_DONE =
+      "[IgnoreException] Query {} is already in terminal state {}, the exception caused by "
+          + "concurrent resource cleanup is ignored";
   public static final String SKIP_EXECUTE =
       "[SkipExecute]";
   public static final String SKIP_EXECUTE_AFTER_LOGICAL_PLAN =
@@ -4054,10 +4059,18 @@ public final class DataNodeQueryMessages {
           "No materializer is available to enforce the DeviceEntry memory limit";
   public static final String EXCEPTION_NO_MORE_DEVICEENTRY_RECORDS_ARE_AVAILABLE_8D51C199 =
       "No more DeviceEntry records are available";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_DUPLICATE_ARG_ATTRIBUTES_ARE_NOT_ALLOWED_27315578 =
+          "Failed to create or alter topic, duplicate %s attributes are not allowed";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_IS_ONLY_SUPPORTED_FOR_TABLE_TOPICS_A5126607 =
+          "Failed to create or alter topic, %s is only supported for table topics";
   public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
       "Only InMemoryDeviceEntryDataSet supports get inline device entries";
   public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_PIECE_REF_F3498507 =
       "Invalid LOAD consensus piece ref: path %s, offset %d, size %d";
+  public static final String EXCEPTION_AUTO_SYNC_SCHEMA_IS_ONLY_SUPPORTED_BY_TREE_TO_TABLE_VIEWS_C6586215 =
+      "auto_sync_schema is only supported by tree to table views";
 
   public static final String MESSAGE_COPYTO_ARG_38343199 = "CopyTo-%s";
   public static final String MESSAGE_TARGETFILE_ARG_EC484B24 = "TargetFile: %s";
@@ -4081,4 +4094,7 @@ public final class DataNodeQueryMessages {
       "Dispatch LOAD piece: loadId={}, regionId={}, pieceIndex={}, tsFile={}, dataSize={}, replicaSet={}";
   public static final String LOG_DISPATCH_LOAD_PIECE_SUCCESS_LOADID_ARG_REGIONID_ARG_PIECEINDEX_ARG_DATASIZE_ARG_75F7AEFE =
       "Dispatch LOAD piece success: loadId={}, regionId={}, pieceIndex={}, dataSize={}";
+  public static final String EXCEPTION_PLAN_NODE_ARG_IS_ALREADY_REGISTERED_ON_MEMORY_SIDE_ARG_NOT_ARG_4C1BB625 = "Plan node %s is already registered on memory side %s, not %s";
+  public static final String EXCEPTION_MEMORY_RESERVATION_IS_NOT_REGISTERED_FOR_QUERY_ARG_FRAGMENT_ARG_PLAN_NODE_ARG_67A4B81F = "Memory reservation is not registered for query %s, fragment %s, plan node %s";
+  public static final String LOG_SHARED_EXCHANGE_BUDGET_FOR_FI_ARG_INPUT_ARG_OUTPUT_ARG_98AE1109 = "Shared exchange budget for FI {}: INPUT={}, OUTPUT={}";
 }

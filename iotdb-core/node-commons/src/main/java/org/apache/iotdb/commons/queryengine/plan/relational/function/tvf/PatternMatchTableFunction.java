@@ -124,6 +124,13 @@ public class PatternMatchTableFunction implements TableFunction {
       throw new UDFException(String.format(QueryMessages.HEIGHT_MUST_BE_NON_NEGATIVE, heightValue));
     }
 
+    String pattern = (String) ((ScalarArgument) arguments.get(PATTERN_PARAM)).getValue();
+    try {
+      QetchAlgorithm.validatePattern(pattern);
+    } catch (IllegalArgumentException e) {
+      throw new UDFException(e.getMessage(), e);
+    }
+
     // outputColumnSchema description
     DescribedSchema properColumnSchema =
         new DescribedSchema.Builder()
@@ -134,7 +141,7 @@ public class PatternMatchTableFunction implements TableFunction {
     // this is for transferring the parameters to the processor
     MapTableFunctionHandle handle =
         new MapTableFunctionHandle.Builder()
-            .addProperty(PATTERN_PARAM, ((ScalarArgument) arguments.get(PATTERN_PARAM)).getValue())
+            .addProperty(PATTERN_PARAM, pattern)
             .addProperty(SMOOTH_PARAM, ((ScalarArgument) arguments.get(SMOOTH_PARAM)).getValue())
             .addProperty(
                 THRESHOLD_PARAM, ((ScalarArgument) arguments.get(THRESHOLD_PARAM)).getValue())

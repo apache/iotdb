@@ -1038,24 +1038,13 @@ public class IoTDBTableIT {
         final Statement statement = connection.createStatement()) {
       statement.execute("use tree_view_db");
 
-      try {
-        statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.\"重庆\".\"1\".**");
-        fail();
-      } catch (final SQLException e) {
-        assertEquals(
-            "614: Multiple types encountered when auto detecting type of measurement 'S1', please check",
-            e.getMessage());
-      }
-
-      try {
-        statement.execute(
-            "create view tree_table (tag1 tag, tag2 tag, S1 field) as root.\"重庆\".\"1\".**");
-        fail();
-      } catch (final SQLException e) {
-        assertEquals(
-            "614: Multiple types encountered when auto detecting type of measurement 'S1', please check",
-            e.getMessage());
-      }
+      // Template t1 is set but not activated, so its S1 BOOLEAN is not a created series and does
+      // not take part in the detection
+      statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.\"重庆\".\"1\".**");
+      statement.execute("drop view tree_table");
+      statement.execute(
+          "create view tree_table (tag1 tag, tag2 tag, S1 field) as root.\"重庆\".\"1\".**");
+      statement.execute("drop view tree_table");
     }
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();

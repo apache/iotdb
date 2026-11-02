@@ -79,6 +79,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateTimeSeries
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateAlignedTimeSeriesPlanImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateTimeSeriesPlanImpl;
+import org.apache.iotdb.db.schemaengine.table.TreeToTableViewCache;
+import org.apache.iotdb.db.schemaengine.table.ViewColumnAutoSyncTrigger;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -94,9 +96,14 @@ import javax.annotation.Nonnull;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /** Schema write {@link PlanNode} visitor */
 public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegion> {
@@ -111,6 +118,10 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
       logMetaDataException(String.format("%s: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
+    final MeasurementPath path = node.getPath();
+    final Map<PartialPath, List<Pair<String, TSDataType>>> createdMeasurement =
+        toSingleMeasurement(path.getDevicePath(), path.getMeasurement(), node.getDataType());
+    syncViewColumns(node, createdMeasurement);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
   }
 
@@ -138,6 +149,11 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
       logMetaDataException(String.format("%s: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
+
+    final Map<PartialPath, List<Pair<String, TSDataType>>> createdMeasurements =
+        Collections.singletonMap(
+            node.getDevicePath(), toMeasurements(node.getMeasurements(), node.getDataTypes()));
+    syncViewColumns(node, createdMeasurements);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
   }
 
@@ -145,6 +161,7 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
   public TSStatus visitCreateMultiTimeSeries(
       final CreateMultiTimeSeriesNode node, final ISchemaRegion schemaRegion) {
     final Map<PartialPath, MeasurementGroup> measurementGroupMap = node.getMeasurementGroupMap();
+    final Map<PartialPath, List<Pair<String, TSDataType>>> createdMeasurements = new HashMap<>();
     final List<TSStatus> failingStatus = new ArrayList<>();
     PartialPath devicePath;
     MeasurementGroup measurementGroup;
@@ -160,6 +177,11 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
               transformToCreateTimeSeriesPlan(devicePath, measurementGroup, i);
           ((CreateTimeSeriesPlanImpl) createTimeSeriesPlan).setWithMerge(node.isGeneratedByPipe());
           schemaRegion.createTimeSeries(createTimeSeriesPlan, -1);
+          recordCreatedMeasurement(
+              createdMeasurements,
+              devicePath,
+              measurementGroup.getMeasurements().get(i),
+              measurementGroup.getDataTypes().get(i));
         } catch (final MetadataException e) {
           logMetaDataException(
               String.format("%s: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME), e);
@@ -167,6 +189,10 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
         }
       }
     }
+
+    // The measurements which were created need their columns even when another one of the same
+    // statement failed: no later write of them triggers this addition again.
+    syncViewColumns(node, createdMeasurements);
 
     if (!failingStatus.isEmpty()) {
       return RpcUtils.getStatus(failingStatus);
@@ -194,9 +220,11 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
   @Override
   public TSStatus visitInternalCreateTimeSeries(
       final InternalCreateTimeSeriesNode node, final ISchemaRegion schemaRegion) {
+
     final PartialPath devicePath = node.getDevicePath();
     final MeasurementGroup measurementGroup = node.getMeasurementGroup();
 
+    final Map<PartialPath, List<Pair<String, TSDataType>>> createdMeasurements = new HashMap<>();
     final List<TSStatus> existingTimeSeriesAndAlignmentMismatch = new ArrayList<>();
     final List<TSStatus> failingStatus = new ArrayList<>();
 
@@ -207,7 +235,8 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
           schemaRegion,
           existingTimeSeriesAndAlignmentMismatch,
           failingStatus,
-          node.isGeneratedByPipe());
+          node.isGeneratedByPipe(),
+          createdMeasurements);
     } else {
       executeInternalCreateTimeSeries(
           devicePath,
@@ -215,8 +244,11 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
           schemaRegion,
           existingTimeSeriesAndAlignmentMismatch,
           failingStatus,
-          node.isGeneratedByPipe());
+          node.isGeneratedByPipe(),
+          createdMeasurements);
     }
+
+    syncViewColumns(node, createdMeasurements);
 
     if (!failingStatus.isEmpty()) {
       return RpcUtils.getStatus(failingStatus);
@@ -232,6 +264,8 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
   @Override
   public TSStatus visitInternalCreateMultiTimeSeries(
       final InternalCreateMultiTimeSeriesNode node, final ISchemaRegion schemaRegion) {
+
+    final Map<PartialPath, List<Pair<String, TSDataType>>> createdMeasurements = new HashMap<>();
     PartialPath devicePath;
     MeasurementGroup measurementGroup;
 
@@ -249,7 +283,8 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
             schemaRegion,
             existingTimeSeriesAndAlignmentMismatch,
             failingStatus,
-            node.isGeneratedByPipe());
+            node.isGeneratedByPipe(),
+            createdMeasurements);
       } else {
         executeInternalCreateTimeSeries(
             devicePath,
@@ -257,9 +292,12 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
             schemaRegion,
             existingTimeSeriesAndAlignmentMismatch,
             failingStatus,
-            node.isGeneratedByPipe());
+            node.isGeneratedByPipe(),
+            createdMeasurements);
       }
     }
+
+    syncViewColumns(node, createdMeasurements);
 
     if (!failingStatus.isEmpty()) {
       return RpcUtils.getStatus(failingStatus);
@@ -278,7 +316,8 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
       final ISchemaRegion schemaRegion,
       final List<TSStatus> existingTimeSeriesAndAlignmentMismatch,
       final List<TSStatus> failingStatus,
-      final boolean withMerge) {
+      final boolean withMerge,
+      final Map<PartialPath, List<Pair<String, TSDataType>>> createdMeasurements) {
     final int size = measurementGroup.getMeasurements().size();
     // todo implement batch creation of one device in SchemaRegion
     boolean alignedIsSet = false;
@@ -292,6 +331,13 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
         // Thus the original ones are not altered
         ((CreateTimeSeriesPlanImpl) createTimeSeriesPlan).setWithMerge(withMerge);
         schemaRegion.createTimeSeries(createTimeSeriesPlan, -1);
+        // The alignment mismatch below does not undo the creation, so the measurement is created
+        // either way.
+        recordCreatedMeasurement(
+            createdMeasurements,
+            devicePath,
+            measurementGroup.getMeasurements().get(i),
+            measurementGroup.getDataTypes().get(i));
         if (((CreateTimeSeriesPlanImpl) createTimeSeriesPlan).getAligned().get() && !alignedIsSet) {
           existingTimeSeriesAndAlignmentMismatch.add(
               new TSStatus(TSStatusCode.ALIGNED_TIMESERIES_ERROR.getStatusCode())
@@ -316,7 +362,8 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
       final ISchemaRegion schemaRegion,
       final List<TSStatus> existingTimeSeriesAndAlignmentMismatch,
       final List<TSStatus> failingStatus,
-      final boolean withMerge) {
+      final boolean withMerge,
+      final Map<PartialPath, List<Pair<String, TSDataType>>> createdMeasurements) {
     final List<String> measurementList = measurementGroup.getMeasurements();
     final List<TSDataType> dataTypeList = measurementGroup.getDataTypes();
     final List<TSEncoding> encodingList = measurementGroup.getEncodings();
@@ -344,8 +391,19 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
 
     boolean shouldRetry = true;
     while (shouldRetry) {
+      // The retry trims the plan, so the measurements of this attempt are the ones the plan holds
+      // now. They are captured before the call, as the call itself trims the measurements it merges
+      // instead of creating.
+      final List<String> attemptedMeasurements =
+          new ArrayList<>(createAlignedTimeSeriesPlan.getMeasurements());
+      final List<TSDataType> attemptedDataTypes =
+          new ArrayList<>(createAlignedTimeSeriesPlan.getDataTypes());
       try {
         schemaRegion.createAlignedTimeSeries(createAlignedTimeSeriesPlan);
+        // An aligned batch is validated as a whole before it is created, so a call which returns
+        // without an exception has created every measurement it was given.
+        recordCreatedMeasurements(
+            createdMeasurements, devicePath, attemptedMeasurements, attemptedDataTypes);
         shouldRetry = false;
       } catch (final MeasurementAlreadyExistException e) {
         // The existence check will be executed before truly creation
@@ -411,6 +469,81 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
     }
   }
 
+  /**
+   * Adds to the tree-to-table views the columns the measurements a schema write has created need.
+   *
+   * <p>It is a best-effort side effect of the write which triggers it: every failure is logged here
+   * and none of them is propagated, so that the write operation is never affected.
+   *
+   * <p>A plan which a pipe pushed is skipped: the cluster the measurements come from has already
+   * added their columns, and those columns reach this cluster with the view schema itself, so
+   * asking ConfigNode for them again can only be rejected as a duplicate.
+   *
+   * @param node the plan which triggers the addition
+   * @param createdMeasurements the measurements this operation really created; only they get a
+   *     column, so that a creation which failed leaves no column behind
+   */
+  private void syncViewColumns(
+      final WritePlanNode node,
+      final Map<PartialPath, List<Pair<String, TSDataType>>> createdMeasurements) {
+    if (node.isGeneratedByPipe()) {
+      return;
+    }
+    final String operationId = node.getPlanNodeId().getId();
+    try {
+      if (TreeToTableViewCache.getInstance().hasView()) {
+        ViewColumnAutoSyncTrigger.sync(createdMeasurements, operationId);
+      }
+    } catch (final Throwable e) {
+      // Logged with the logger of the feature, so that every failure of the auto column addition,
+      // including the ones the trigger itself does not see, reaches its dedicated log file.
+      ViewColumnAutoSyncTrigger.LOGGER.error(
+          DataNodeSchemaMessages.LOG_TRIGGER_ADD_VIEW_COLUMN_FAILED_B909817F, operationId, e);
+    }
+  }
+
+  private static void recordCreatedMeasurement(
+      final Map<PartialPath, List<Pair<String, TSDataType>>> createdMeasurements,
+      final PartialPath devicePath,
+      final String measurement,
+      final TSDataType dataType) {
+    createdMeasurements
+        .computeIfAbsent(devicePath, key -> new ArrayList<>())
+        .add(new Pair<>(measurement, dataType));
+  }
+
+  private static void recordCreatedMeasurements(
+      final Map<PartialPath, List<Pair<String, TSDataType>>> createdMeasurements,
+      final PartialPath devicePath,
+      final List<String> measurements,
+      final List<TSDataType> dataTypes) {
+    for (int i = 0; i < measurements.size(); i++) {
+      recordCreatedMeasurement(
+          createdMeasurements, devicePath, measurements.get(i), dataTypes.get(i));
+    }
+  }
+
+  private static Map<PartialPath, List<Pair<String, TSDataType>>> toSingleMeasurement(
+      final PartialPath devicePath, final String measurement, final TSDataType dataType) {
+    return Collections.singletonMap(
+        devicePath, Collections.singletonList(new Pair<>(measurement, dataType)));
+  }
+
+  private static List<Pair<String, TSDataType>> toMeasurements(final Template template) {
+    return template.getSchemaMap().values().stream()
+        .map(schema -> new Pair<>(schema.getMeasurementName(), schema.getType()))
+        .toList();
+  }
+
+  private static List<Pair<String, TSDataType>> toMeasurements(
+      final List<String> measurements, final List<TSDataType> dataTypes) {
+    final List<Pair<String, TSDataType>> pairs = new ArrayList<>(measurements.size());
+    for (int i = 0; i < measurements.size(); i++) {
+      pairs.add(new Pair<>(measurements.get(i), dataTypes.get(i)));
+    }
+    return pairs;
+  }
+
   @Override
   public TSStatus visitAlterTimeSeries(
       final AlterTimeSeriesNode node, final ISchemaRegion schemaRegion) {
@@ -465,43 +598,49 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
   @Override
   public TSStatus visitActivateTemplate(
       final ActivateTemplateNode node, final ISchemaRegion schemaRegion) {
+    final Template template =
+        ClusterTemplateManager.getInstance().getTemplate(node.getTemplateId());
+    if (Objects.isNull(template)) {
+      return getUndefinedTemplateStatus(Collections.singleton(node.getTemplateId()));
+    }
     try {
-      final Template template =
-          ClusterTemplateManager.getInstance().getTemplate(node.getTemplateId());
-      if (Objects.isNull(template)) {
-        return new TSStatus(TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode())
-            .setMessage(
-                DataNodeMiscMessages
-                    .MESSAGE_TEMPLATE_NULL_TRYING_ACTIVATE_TEMPLATE_MAY_TEMPLATE_BEING_UNSET_1CE92779);
-      }
       schemaRegion.activateSchemaTemplate(node, template);
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (final MetadataException e) {
       logMetaDataException(e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
+    final PartialPath devicePath = node.getActivatePath();
+    final Map<PartialPath, List<Pair<String, TSDataType>>> activatedMeasurements =
+        Collections.singletonMap(devicePath, toMeasurements(template));
+    syncViewColumns(node, activatedMeasurements);
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus visitBatchActivateTemplate(
       final BatchActivateTemplateNode node, final ISchemaRegion schemaRegion) {
+    final Map<Integer, Template> templateMap = new HashMap<>();
+    final Set<Integer> missingTemplateIds = new HashSet<>();
+    collectTemplates(node.getTemplateActivationMap(), templateMap, missingTemplateIds);
+
+    final Map<PartialPath, List<Pair<String, TSDataType>>> activatedMeasurements = new HashMap<>();
     final List<TSStatus> statusList = new ArrayList<>();
     final List<PartialPath> alreadyActivatedDeviceList = new ArrayList<>();
     for (final Map.Entry<PartialPath, Pair<Integer, Integer>> entry :
         node.getTemplateActivationMap().entrySet()) {
-      final Template template =
-          ClusterTemplateManager.getInstance().getTemplate(entry.getValue().left);
+      final Template template = templateMap.get(entry.getValue().left);
       if (Objects.isNull(template)) {
-        return new TSStatus(TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode())
-            .setMessage(
-                DataNodeMiscMessages
-                    .MESSAGE_TEMPLATE_NULL_TRYING_ACTIVATE_TEMPLATE_MAY_TEMPLATE_BEING_UNSET_1CE92779);
+        // its id is in missingTemplateIds, which is reported at the end
+        continue;
       }
       try {
         schemaRegion.activateSchemaTemplate(
             SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
                 entry.getKey(), entry.getValue().right, entry.getValue().left),
             template);
+        // A device which already carries the template is reported below and gets no column here:
+        // its measurements were already covered when the template was activated on it.
+        activatedMeasurements.put(entry.getKey(), toMeasurements(template));
       } catch (final MetadataException e) {
         if (e.getErrorCode() == TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
           alreadyActivatedDeviceList.add(entry.getKey());
@@ -511,11 +650,15 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
         }
       }
     }
+    syncViewColumns(node, activatedMeasurements);
     if (!alreadyActivatedDeviceList.isEmpty()) {
       final TemplateIsInUseException e =
           new TemplateIsInUseException(alreadyActivatedDeviceList.toString());
       logMetaDataException(e);
       statusList.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+    }
+    if (!missingTemplateIds.isEmpty()) {
+      statusList.add(getUndefinedTemplateStatus(missingTemplateIds));
     }
     return statusList.isEmpty() ? RpcUtils.SUCCESS_STATUS : RpcUtils.getStatus(statusList);
   }
@@ -523,22 +666,28 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
   @Override
   public TSStatus visitInternalBatchActivateTemplate(
       final InternalBatchActivateTemplateNode node, final ISchemaRegion schemaRegion) {
+    final Map<Integer, Template> templateMap = new HashMap<>();
+    final Set<Integer> missingTemplateIds = new HashSet<>();
+    collectTemplates(node.getTemplateActivationMap(), templateMap, missingTemplateIds);
+
+    final Map<PartialPath, List<Pair<String, TSDataType>>> activatedMeasurements = new HashMap<>();
+
     for (final Map.Entry<PartialPath, Pair<Integer, Integer>> entry :
         node.getTemplateActivationMap().entrySet()) {
-      final Template template =
-          ClusterTemplateManager.getInstance().getTemplate(entry.getValue().left);
+      final Template template = templateMap.get(entry.getValue().left);
       if (Objects.isNull(template)) {
-        return new TSStatus(TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode())
-            .setMessage(
-                DataNodeMiscMessages
-                    .MESSAGE_TEMPLATE_NULL_TRYING_ACTIVATE_TEMPLATE_MAY_TEMPLATE_BEING_UNSET_1CE92779);
+        // its id is in missingTemplateIds, which is reported at the end
+        continue;
       }
       try {
         schemaRegion.activateSchemaTemplate(
             SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
                 entry.getKey(), entry.getValue().right, entry.getValue().left),
             template);
+        activatedMeasurements.put(entry.getKey(), toMeasurements(template));
       } catch (final TemplateIsInUseException e) {
+        // The measurements of a device which already carries the template were already covered when
+        // the template was activated on it.
         logger.info(
             String.format(
                 DataNodeSchemaMessages.DEVICE_TEMPLATE_ALREADY_ACTIVATED_ON_PATH_FMT,
@@ -548,7 +697,42 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
         return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
       }
     }
+    syncViewColumns(node, activatedMeasurements);
+    if (!missingTemplateIds.isEmpty()) {
+      return getUndefinedTemplateStatus(missingTemplateIds);
+    }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  private static void collectTemplates(
+      final Map<PartialPath, Pair<Integer, Integer>> templateActivationMap,
+      final Map<Integer, Template> templateMap,
+      final Set<Integer> missingTemplateIds) {
+    final ClusterTemplateManager templateManager = ClusterTemplateManager.getInstance();
+    for (final Pair<Integer, Integer> activation : templateActivationMap.values()) {
+      final int templateId = activation.left;
+      if (templateMap.containsKey(templateId) || missingTemplateIds.contains(templateId)) {
+        // already resolved for another path of this plan
+        continue;
+      }
+      final Template template = templateManager.getTemplate(templateId);
+      if (Objects.isNull(template)) {
+        missingTemplateIds.add(templateId);
+      } else {
+        templateMap.put(templateId, template);
+      }
+    }
+  }
+
+  private static TSStatus getUndefinedTemplateStatus(final Set<Integer> missingTemplateIds) {
+    return new TSStatus(TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode())
+        .setMessage(
+            String.format(
+                DataNodeMiscMessages
+                    .MESSAGE_THE_TEMPLATE_IS_NULL_WHEN_TRYING_TO_ACTIVATE_TEMPLATE_MAY_BE_THE_TEMPLATE_IS_BEING_UNSET_THE_TEMPLATE_IDS_ARE_ARG_7B5F4F72,
+                missingTemplateIds.stream()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(", "))));
   }
 
   @Override

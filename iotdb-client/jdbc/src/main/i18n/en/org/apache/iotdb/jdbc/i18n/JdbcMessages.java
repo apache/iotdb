@@ -164,7 +164,6 @@ public final class JdbcMessages {
       "Does not support setTransactionIsolation";
   public static final String NOT_SUPPORT_GET_TYPE_MAP = "Does not support getTypeMap";
   public static final String NOT_SUPPORT_SET_TYPE_MAP = "Does not support setTypeMap";
-  public static final String NOT_SUPPORT_READ_ONLY = "Does not support readOnly";
   public static final String NOT_SUPPORT_NATIVE_SQL = "Does not support nativeSQL";
   public static final String NOT_SUPPORT_RELEASE_SAVEPOINT =
       "Does not support releaseSavepoint";
@@ -225,5 +224,11 @@ public final class JdbcMessages {
       "Can not establish connection with %s : You may try to connect an old version IoTDB instance"
       + " using a client with new version: %s. ";
   public static final String EXCEPTION_CAN_NOT_ESTABLISH_CONNECTION_ARG_ARG_D7246055 = "Can not establish connection with %s : %s. ";
+  public static final String EXCEPTION_TIMESTAMP_ARG_OUT_RANGE_TIME_PRECISION_ARG_E25E3001 = "Timestamp %s is out of range for the time precision %s";
+  public static final String EXCEPTION_CANNOT_CONVERT_ARG_COLUMN_ARG_FBFBC158 = "Cannot convert a %s column to %s";
+  public static final String EXCEPTION_TARGET_TYPE_GETOBJECT_MUST_NOT_NULL_2E310BEC = "The target type of getObject must not be null";
+  public static final String LOG_SHOW_TABLES_ERROR_ARG_068CF1BA = "Show tables error: {}";
+  public static final String EXCEPTION_UNKNOWN_COLUMN_NAME_ARG_F8369278 = "Unknown column name: %s";
+  public static final String EXCEPTION_CANNOT_BIND_ARG_IOTDB_SQL_HAS_NO_LITERAL_INFINITE_FLOATING_4068FF32 = "Cannot bind %s: IoTDB SQL has no literal for an infinite floating-point value";
 
 }

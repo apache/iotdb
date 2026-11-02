@@ -20,6 +20,10 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String EXCEPTION_QUERY_CHUNK_RESOURCES_ARE_ALREADY_CLOSED_CA6A0559 =
+      "查询 Chunk 资源已关闭";
+  public static final String LOG_FAILED_TO_RELEASE_QUERY_CHUNK_RESOURCES_91573FE5 =
+      "释放查询 Chunk 资源失败";
   public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477 =
       "将 TsFile %s 转换为 tablet 失败。状态：%s";
   public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD =
@@ -622,8 +626,6 @@ public final class DataNodeQueryMessages {
       "TIMESTAMP 的 IN 列表字面量只能是 LongLiteral、DoubleLiteral 或 GenericLiteral，实际类型为 %s";
   public static final String IS_NULL_CAN_BE_PUSHED_DOWN =
       "IS NULL 可以下推";
-  public static final String GROUP_BY_TIME_CANNOT_BE_REVERSED =
-      "GROUP BY TIME 不能反转";
 
   // --- Plan / Optimization ---
 
@@ -1660,6 +1662,8 @@ public final class DataNodeQueryMessages {
       "[清理查询]";
   public static final String RELEASE_QUERY_RESOURCE_STATE =
       "[释放查询资源] 状态为: {}";
+  public static final String IGNORE_EXCEPTION_AFTER_QUERY_DONE =
+      "[忽略异常] 查询 {} 已处于终态 {}，忽略并发清理资源导致的异常";
   public static final String SKIP_EXECUTE =
       "[跳过执行]";
   public static final String SKIP_EXECUTE_AFTER_LOGICAL_PLAN =
@@ -4810,10 +4814,18 @@ public final class DataNodeQueryMessages {
           "没有可用于执行 DeviceEntry 内存限制的 materializer";
   public static final String EXCEPTION_NO_MORE_DEVICEENTRY_RECORDS_ARE_AVAILABLE_8D51C199 =
       "没有更多可用的 DeviceEntry 记录";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_DUPLICATE_ARG_ATTRIBUTES_ARE_NOT_ALLOWED_27315578 =
+          "\u521b\u5efa\u6216\u4fee\u6539 Topic \u5931\u8d25\uff0c\u4e0d\u5141\u8bb8\u91cd\u590d\u7684 %s \u5c5e\u6027";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_IS_ONLY_SUPPORTED_FOR_TABLE_TOPICS_A5126607 =
+          "\u521b\u5efa\u6216\u4fee\u6539 Topic \u5931\u8d25\uff0c%s \u4ec5\u652f\u6301\u8868\u6a21\u578b Topic";
   public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
       "只有 InMemoryDeviceEntryDataSet 支持获取内存中的设备条目";
   public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_PIECE_REF_F3498507 =
       "无效的 LOAD 共识分片引用：路径 %s，偏移 %d，大小 %d";
+  public static final String EXCEPTION_AUTO_SYNC_SCHEMA_IS_ONLY_SUPPORTED_BY_TREE_TO_TABLE_VIEWS_C6586215 =
+      "auto_sync_schema 仅支持树转表视图";
 
   public static final String MESSAGE_COPYTO_ARG_38343199 = "CopyTo-%s";
   public static final String MESSAGE_TARGETFILE_ARG_EC484B24 = "目标文件：%s";
@@ -4836,4 +4848,7 @@ public final class DataNodeQueryMessages {
       "下发 LOAD piece：loadId={}，regionId={}，pieceIndex={}，tsFile={}，dataSize={}，replicaSet={}";
   public static final String LOG_DISPATCH_LOAD_PIECE_SUCCESS_LOADID_ARG_REGIONID_ARG_PIECEINDEX_ARG_DATASIZE_ARG_75F7AEFE =
       "下发 LOAD piece 成功：loadId={}，regionId={}，pieceIndex={}，dataSize={}";
+  public static final String EXCEPTION_PLAN_NODE_ARG_IS_ALREADY_REGISTERED_ON_MEMORY_SIDE_ARG_NOT_ARG_4C1BB625 = "PlanNode %s 已注册到内存侧 %s，不能注册到 %s";
+  public static final String EXCEPTION_MEMORY_RESERVATION_IS_NOT_REGISTERED_FOR_QUERY_ARG_FRAGMENT_ARG_PLAN_NODE_ARG_67A4B81F = "查询 %s、Fragment %s、PlanNode %s 尚未注册内存账目";
+  public static final String LOG_SHARED_EXCHANGE_BUDGET_FOR_FI_ARG_INPUT_ARG_OUTPUT_ARG_98AE1109 = "FI {} 的共享 exchange 预算：INPUT={}，OUTPUT={}";
 }

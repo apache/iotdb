@@ -60,14 +60,13 @@ import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
-import static org.apache.iotdb.rpc.RpcUtils.convertToTimestamp;
 
 public class IoTDBJDBCResultSet implements ResultSet {
 
@@ -645,13 +644,69 @@ public class IoTDBJDBCResultSet implements ResultSet {
   }
 
   @Override
-  public <T> T getObject(int arg0, Class<T> arg1) throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  public <T> T getObject(int columnIndex, Class<T> type) throws SQLException {
+    if (type == null) {
+      throw new SQLException(JdbcMessages.EXCEPTION_TARGET_TYPE_GETOBJECT_MUST_NOT_NULL_2E310BEC);
+    }
+    try {
+      // Rejects a bad index before getDataType fails on it with an unchecked exception
+      ioTDBRpcDataSet.findColumnNameByIndex(columnIndex);
+      final TSDataType dataType = ioTDBRpcDataSet.getDataType(columnIndex);
+      final Object value;
+      if (type == String.class) {
+        value = ioTDBRpcDataSet.getString(columnIndex);
+      } else if (type == byte[].class) {
+        value = getBytes(columnIndex);
+      } else if (type == Timestamp.class && dataType == TSDataType.TIMESTAMP) {
+        value = ioTDBRpcDataSet.getTimestamp(columnIndex);
+      } else if (type == LocalDate.class && dataType == TSDataType.DATE) {
+        value = ioTDBRpcDataSet.getDate(columnIndex);
+      } else if (type == Boolean.class && dataType == TSDataType.BOOLEAN) {
+        value = nullIfLastReadWasNull(ioTDBRpcDataSet.getBoolean(columnIndex));
+      } else if (type == Integer.class && dataType == TSDataType.INT32) {
+        value = nullIfLastReadWasNull(ioTDBRpcDataSet.getInt(columnIndex));
+      } else if (type == Long.class
+          && (dataType == TSDataType.INT32
+              || dataType == TSDataType.INT64
+              || dataType == TSDataType.TIMESTAMP)) {
+        value = nullIfLastReadWasNull(ioTDBRpcDataSet.getLong(columnIndex));
+      } else if (type == Float.class && dataType == TSDataType.FLOAT) {
+        value = nullIfLastReadWasNull(ioTDBRpcDataSet.getFloat(columnIndex));
+      } else if (type == Double.class && dataType == TSDataType.FLOAT) {
+        value = nullIfLastReadWasNull((double) ioTDBRpcDataSet.getFloat(columnIndex));
+      } else if (type == Double.class && dataType == TSDataType.DOUBLE) {
+        value = nullIfLastReadWasNull(ioTDBRpcDataSet.getDouble(columnIndex));
+      } else {
+        throw new SQLException(
+            String.format(
+                JdbcMessages.EXCEPTION_CANNOT_CONVERT_ARG_COLUMN_ARG_FBFBC158,
+                dataType,
+                type.getName()));
+      }
+      return type.cast(value);
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
+  }
+
+  // The primitive getters return a default value such as 0 for SQL NULL
+  private Object nullIfLastReadWasNull(Object value) {
+    return ioTDBRpcDataSet.isLastReadWasNull() ? null : value;
   }
 
   @Override
-  public <T> T getObject(String arg0, Class<T> arg1) throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  public <T> T getObject(String columnLabel, Class<T> type) throws SQLException {
+    return getObject(findColumnIndex(columnLabel), type);
+  }
+
+  // findColumn() fails with an unchecked exception for an unknown label
+  private int findColumnIndex(String columnLabel) throws SQLException {
+    int index = ioTDBRpcDataSet.getColumnNameList().indexOf(columnLabel);
+    if (index < 0) {
+      throw new SQLException(
+          String.format(JdbcMessages.EXCEPTION_UNKNOWN_COLUMN_NAME_ARG_F8369278, columnLabel));
+    }
+    return index + 1;
   }
 
   @Override
@@ -741,12 +796,20 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public Timestamp getTimestamp(int columnIndex) throws SQLException {
-    return convertToTimestamp(getLong(columnIndex), statement.getTimeFactor());
+    try {
+      return ioTDBRpcDataSet.getTimestamp(columnIndex);
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
   }
 
   @Override
   public Timestamp getTimestamp(String columnName) throws SQLException {
-    return new Timestamp(getLong(columnName));
+    try {
+      return ioTDBRpcDataSet.getTimestamp(columnName);
+    } catch (StatementExecutionException | IllegalArgumentException e) {
+      throw new SQLException(e.getMessage());
+    }
   }
 
   @Override

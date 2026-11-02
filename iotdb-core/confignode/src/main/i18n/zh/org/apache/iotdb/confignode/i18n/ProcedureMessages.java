@@ -439,6 +439,8 @@ public final class ProcedureMessages {
       "向 DataNode 推送 pipe 元数据列表失败，将稍后重试。";
   public static final String FAILED_TO_PUSH_PIPE_META_TO_DATANODES_DETAILS =
       "向 DataNode 推送 pipe 元数据失败，详情：%s";
+  public static final String EXCEPTION_INTERNAL_ERROR_WHILE_PROCESSING_PUSHPIPEMETA_ON_DATANODE_5983BD5F =
+      "处理 DataNode 上的 pushPipeMeta 时发生内部错误。";
   public static final String FAILED_TO_PUSH_TOPIC_META_TO_DATANODES_DETAILS =
       "向 DataNode 推送 topic 元数据失败，详情：%s";
   public static final String FAILED_TO_REMOVE_DATA_NODE_BECAUSE_IT_IS_NOT_IN =
@@ -830,9 +832,10 @@ public final class ProcedureMessages {
       "尝试删除 pipe plugin [{}] 时发生可重试错误，状态：{}";
   public static final String RETRIEVABLE_ERROR_TRYING_TO_REMOVE_AINODE_STATE =
       "尝试移除 AINode [{}] 时发生可重试错误，状态 [{}]";
+  public static final String ROLLBACK_ADDTABLECOLUMN_COSTS_MS =
+      "Rollback AddTableColumn-{} costs {}ms.";
   public static final String ROLLBACK_CREATETABLE_COSTS_MS = "Rollback CreateTable-{} costs {}ms.";
   public static final String ROLLBACK_CREATE_TABLE_FAILED = "回滚创建表失败";
-  public static final String ROLLBACK_DROPTABLE_COSTS_MS = "Rollback DropTable-{} costs {}ms.";
   public static final String ROLLBACK_PRE_RELEASE = "回滚预释放 ";
   public static final String ROLLBACK_PRE_DELETE_TABLE_FAILED = "回滚预删除表 %s.%s 操作失败, 请手动输入sql删除";
   public static final String ROLLBACK_PRE_RELEASE_TEMPLATE_FAILED = "回滚预释放模板失败";
@@ -1520,10 +1523,16 @@ public final class ProcedureMessages {
   public static final String MESSAGE_ROLLING_BACK_AFTER_FAILURE_ARG_474DF456 = "正在回滚，失败原因：%s。";
   public static final String MESSAGE_ROLLING_BACK_AFTER_AN_EARLIER_FAILURE_850D0AF5 =
       "正在回滚此前发生的失败。";
+  public static final String
+      MESSAGE_SOME_OTHER_TASK_IS_SETTING_OR_UNSETTING_A_TEMPLATE_ON_TARGET_PATH_ARG_D4FEE38F =
+          "有其他任务正在目标路径 %s 上设置或卸载模板。";
   public static final String EXCEPTION_DATANODE_SETSYSTEMSTATUS_RPC_FAILED_ARG_ARG_ARG_7E8E5F9F =
       "DataNode setSystemStatus RPC 失败：%s：%s：%s； ";
   public static final String EXCEPTION_CONFIGNODE_TRYSETNODESTATUS_FAILED_ARG_ARG_ARG_C9BA78F4 =
       "ConfigNode trySetNodeStatus 失败：%s：%s：%s； ";
+  public static final String
+      LOG_FAILED_TO_DETECT_THE_TREE_SERIES_UNDER_THE_NEW_VIEW_ARG_ARG_ARG_8F20CAE7 =
+          "扫描新建视图 {}.{} 下的树序列失败：{}";
   public static final String
       LOG_PROCEDURE_ARG_IS_PAST_ITS_COMMIT_POINT_KEEPING_EVERY_STATE_IT_EXECUTED_CA21D7E9 =
           "流程 {} 已越过提交点，保留它执行过的所有状态。";

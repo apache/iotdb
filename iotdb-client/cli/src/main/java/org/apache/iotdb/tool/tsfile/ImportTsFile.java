@@ -370,8 +370,7 @@ public class ImportTsFile extends AbstractTsFileTool {
       ImportTsFileScanTool.traverseAndCollectFiles();
       ImportTsFileScanTool.addNoResourceOrModsToQueue();
 
-      asyncImportTsFiles();
-      return CODE_OK;
+      return asyncImportTsFiles();
     } catch (InterruptedException e) {
       IOT_PRINTER.println(String.format("Import tsfile fail: %s", e.getMessage()));
       Thread.currentThread().interrupt();
@@ -413,7 +412,8 @@ public class ImportTsFile extends AbstractTsFileTool {
         successDir, successOperation, failDir, failOperation);
   }
 
-  public static void asyncImportTsFiles() {
+  public static int asyncImportTsFiles() {
+    ImportTsFileBase.resetCounters();
     final List<Thread> list = new ArrayList<>(threadNum);
     for (int i = 0; i < threadNum; i++) {
       final Thread thread =
@@ -433,5 +433,8 @@ public class ImportTsFile extends AbstractTsFileTool {
             IOT_PRINTER.println("ImportTsFile thread join interrupted: " + e.getMessage());
           }
         });
+    return Thread.currentThread().isInterrupted() || ImportTsFileBase.hasFailures()
+        ? CODE_ERROR
+        : CODE_OK;
   }
 }

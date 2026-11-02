@@ -22,23 +22,36 @@ package org.apache.iotdb.confignode.it.cluster;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.consensus.ConfigRegionId;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.ratis.utils.Utils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.ratis.client.RaftClient;
+import org.apache.ratis.client.RaftClientConfigKeys;
+import org.apache.ratis.conf.RaftProperties;
+import org.apache.ratis.protocol.RaftClientReply;
+import org.apache.ratis.protocol.RaftGroup;
+import org.apache.ratis.protocol.RaftPeer;
+import org.apache.ratis.protocol.RaftPeerId;
+import org.apache.ratis.retry.RetryPolicies;
+import org.apache.ratis.util.TimeDuration;
 import org.apache.thrift.TException;
 import org.apache.tsfile.utils.Pair;
 import org.junit.After;
@@ -63,7 +76,6 @@ import java.util.stream.Stream;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
@@ -112,7 +124,7 @@ public class IoTDBNodeStatusPersistenceIT {
 
   @Test
   public void testStoppedNodesSurviveSnapshotRecovery() throws Exception {
-    initCluster(3, 1);
+    initCluster(3, Integer.MAX_VALUE);
     final int stoppedConfigNodeIndex = (EnvFactory.getEnv().getLeaderConfigNodeIndex() + 1) % 3;
     stopAndReportNodes(stoppedConfigNodeIndex);
     assertNodeStatuses(stoppedConfigNodeIndex, NodeStatus.Stopped);
@@ -129,10 +141,11 @@ public class IoTDBNodeStatusPersistenceIT {
     final int stoppedDataNodeId = cluster.getDataNodeList().get(0).getDataNodeId();
 
     // Verify actual completed snapshots, including their contents, before restarting the quorum.
-    // A low snapshot threshold alone would not prove snapshot recovery was exercised.
+    // Trigger snapshots only after registration and status persistence have completed.
     for (ConfigNodeWrapper configNode : liveConfigNodes) {
       awaitNodeStatusSnapshot(
           configNode,
+          cluster,
           Map.of(
               stoppedConfigNodeId, new Pair<>(NodeStatus.Stopped, null),
               stoppedDataNodeId, new Pair<>(NodeStatus.Stopped, null)));
@@ -186,19 +199,22 @@ public class IoTDBNodeStatusPersistenceIT {
 
   @Test
   public void testReadOnlyReasonSurvivesSnapshotRecovery() throws Exception {
-    initCluster(3, 1);
+    initCluster(3, Integer.MAX_VALUE);
     setDataNodeSystemStatus(NodeStatus.ReadOnly);
     awaitDataNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.MANUAL);
 
-    final int dataNodeId;
+    final TShowClusterResp cluster;
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      dataNodeId = client.showCluster().getDataNodeList().get(0).getDataNodeId();
+      cluster = client.showCluster();
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), cluster.getStatus().getCode());
     }
+    final int dataNodeId = cluster.getDataNodeList().get(0).getDataNodeId();
     // Inspect completed snapshots so live heartbeats cannot hide a missing durable reason.
     for (ConfigNodeWrapper configNode : getLiveConfigNodes()) {
       awaitNodeStatusSnapshot(
           configNode,
+          cluster,
           Collections.singletonMap(dataNodeId, new Pair<>(NodeStatus.ReadOnly, NodeStatus.MANUAL)));
     }
     restartLiveConfigNodes();
@@ -287,12 +303,16 @@ public class IoTDBNodeStatusPersistenceIT {
     // shutdown hooks on every platform. These tests exercise the reports' durable handling.
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      final TSStatus configNodeStatus = client.reportConfigNodeShutdown(configNodeLocation);
       assertEquals(
+          configNodeStatus.toString(),
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client.reportConfigNodeShutdown(configNodeLocation).getCode());
+          configNodeStatus.getCode());
+      final TSStatus dataNodeStatus = client.reportDataNodeShutdown(dataNodeLocation);
       assertEquals(
+          dataNodeStatus.toString(),
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client.reportDataNodeShutdown(dataNodeLocation).getCode());
+          dataNodeStatus.getCode());
     }
   }
 
@@ -330,50 +350,102 @@ public class IoTDBNodeStatusPersistenceIT {
   }
 
   private void awaitNodeStatusSnapshot(
-      ConfigNodeWrapper configNode, Map<Integer, Pair<NodeStatus, String>> expectedStatuses)
+      ConfigNodeWrapper configNode,
+      TShowClusterResp cluster,
+      Map<Integer, Pair<NodeStatus, String>> expectedStatuses)
       throws Exception {
-    for (int retry = 0; retry < 60; retry++) {
-      final List<Path> snapshotFiles = new ArrayList<>();
-      try {
-        final List<Path> groups;
-        try (Stream<Path> paths =
-            Files.list(Paths.get(configNode.getNodePath(), "data", "confignode", "consensus"))) {
-          groups = paths.filter(Files::isDirectory).collect(Collectors.toList());
-        }
-        // Never walk temporary snapshot directories: an open directory handle can prevent
-        // Ratis from atomically renaming them on Windows.
-        for (Path group : groups) {
-          try (Stream<Path> paths = Files.list(group.resolve("sm"))) {
-            snapshotFiles.addAll(
-                paths
-                    .filter(path -> path.getFileName().toString().matches("\\d+_\\d+"))
-                    .map(path -> path.resolve("node_info.bin"))
-                    .collect(Collectors.toList()));
-          }
-        }
-      } catch (IOException | UncheckedIOException e) {
-        // Ratis can delete an older snapshot while this directory tree is being enumerated.
-        TimeUnit.SECONDS.sleep(1);
-        continue;
-      }
-      for (Path snapshotFile : snapshotFiles) {
-        final NodeInfo recovered = new NodeInfo();
+    final List<RaftPeer> peers =
+        cluster.getConfigNodeList().stream()
+            .map(
+                node ->
+                    Utils.fromNodeInfoAndPriorityToRaftPeer(
+                        node.getConfigNodeId(), node.getConsensusEndPoint(), 0))
+            .collect(Collectors.toList());
+    final RaftPeerId peerId =
+        Utils.fromNodeIdToRaftPeerId(
+            cluster.getConfigNodeList().stream()
+                .filter(node -> node.getInternalEndPoint().getPort() == configNode.getPort())
+                .findFirst()
+                .orElseThrow(AssertionError::new)
+                .getConfigNodeId());
+    final RaftProperties properties = new RaftProperties();
+    RaftClientConfigKeys.Rpc.setRequestTimeout(
+        properties, TimeDuration.valueOf(5, TimeUnit.SECONDS));
+    final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
+    Throwable lastFailure = null;
+    try (RaftClient client =
+        RaftClient.newBuilder()
+            .setRaftGroup(
+                RaftGroup.valueOf(
+                    Utils.fromConsensusGroupIdToRaftGroupId(
+                        new ConfigRegionId(
+                            ConfigNodeDescriptor.getInstance().getConf().getConfigRegionId())),
+                    peers))
+            .setProperties(properties)
+            .setRetryPolicy(RetryPolicies.noRetry())
+            .build()) {
+      for (int retry = 0; retry < 60 && System.nanoTime() < deadline; retry++) {
+        final List<Path> snapshotFiles = new ArrayList<>();
         try {
-          recovered.processLoadSnapshot(snapshotFile.getParent().toFile());
-        } catch (IOException e) {
-          // A newer snapshot may have replaced this one since the directory was enumerated.
+          // A follower can still be applying the status plan after the leader acknowledges it.
+          // Request another completed snapshot until its persisted contents match the expectation.
+          final RaftClientReply reply =
+              client
+                  .getSnapshotManagementApi(peerId)
+                  .create(
+                      true,
+                      Math.max(
+                          1,
+                          Math.min(
+                              5000, TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime()))));
+          if (!reply.isSuccess()) {
+            throw new IOException(
+                "Snapshot request failed on " + configNode.getId() + ": " + reply);
+          }
+          final List<Path> groups;
+          try (Stream<Path> paths =
+              Files.list(Paths.get(configNode.getNodePath(), "data", "confignode", "consensus"))) {
+            groups = paths.filter(Files::isDirectory).collect(Collectors.toList());
+          }
+          // Never walk temporary snapshot directories: an open directory handle can prevent
+          // Ratis from atomically renaming them on Windows.
+          for (Path group : groups) {
+            try (Stream<Path> paths = Files.list(group.resolve("sm"))) {
+              snapshotFiles.addAll(
+                  paths
+                      .filter(path -> path.getFileName().toString().matches("\\d+_\\d+"))
+                      .map(path -> path.resolve("node_info.bin"))
+                      .collect(Collectors.toList()));
+            }
+          }
+        } catch (IOException | UncheckedIOException e) {
+          lastFailure = e;
+          // Ratis can delete an older snapshot while this directory tree is being enumerated.
+          TimeUnit.SECONDS.sleep(1);
           continue;
         }
-        if (expectedStatuses.entrySet().stream()
-            .allMatch(
-                entry ->
-                    java.util.Objects.equals(
-                        entry.getValue(), recovered.getPersistedNodeStatus(entry.getKey())))) {
-          return;
+        for (Path snapshotFile : snapshotFiles) {
+          final NodeInfo recovered = new NodeInfo();
+          try {
+            recovered.processLoadSnapshot(snapshotFile.getParent().toFile());
+          } catch (IOException e) {
+            lastFailure = e;
+            // A newer snapshot may have replaced this one since the directory was enumerated.
+            continue;
+          }
+          if (expectedStatuses.entrySet().stream()
+              .allMatch(
+                  entry ->
+                      java.util.Objects.equals(
+                          entry.getValue(), recovered.getPersistedNodeStatus(entry.getKey())))) {
+            return;
+          }
         }
+        TimeUnit.SECONDS.sleep(1);
       }
-      TimeUnit.SECONDS.sleep(1);
     }
-    fail("No completed snapshot contains " + expectedStatuses + " on " + configNode.getId());
+    throw new AssertionError(
+        "No completed snapshot contains " + expectedStatuses + " on " + configNode.getId(),
+        lastFailure);
   }
 }
