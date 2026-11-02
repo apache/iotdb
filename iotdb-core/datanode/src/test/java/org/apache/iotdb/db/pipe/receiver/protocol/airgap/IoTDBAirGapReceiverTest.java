@@ -48,6 +48,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -257,6 +258,41 @@ public class IoTDBAirGapReceiverTest {
     @Override
     public void send(final DatagramPacket packet) {
       Assert.fail("Strictly unidirectional requests must never send an ACK or NACK");
+    }
+  }
+
+  @Test
+  public void testInterruptedUdpRetryStopsWithoutReenteringReceiver() throws Exception {
+    final AtomicInteger receiveCount = new AtomicInteger();
+    final IoTDBAirGapReceiver receiver = new IoTDBAirGapReceiver(new RecordingSocket(), 7L);
+    final StubIoTDBDataNodeReceiverAgent stubAgent = new StubIoTDBDataNodeReceiverAgent();
+    stubAgent.setStubReceiver(
+        "udp-client",
+        new StubReceiver(
+            new TSStatus(
+                TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())) {
+          @Override
+          public TPipeTransferResp receive(final TPipeTransferReq req) {
+            Assert.assertEquals(1, receiveCount.incrementAndGet());
+            return super.receive(req);
+          }
+        });
+    setField(receiver, "agent", stubAgent);
+    try (final DatagramSocket receiverSocket = new NoResponseDatagramSocket()) {
+      final byte[] request =
+          toUdpDatagram(AirGapUdpProtocol.NO_ACK_REQUEST_ID_MASK | 75L, toRawRequestBytes());
+      final DatagramPacket packet =
+          new DatagramPacket(request, request.length, InetAddress.getLoopbackAddress(), 12345);
+      Thread.currentThread().interrupt();
+      try {
+        Assert.assertThrows(
+            InterruptedIOException.class,
+            () -> receiver.receiveUdp(receiverSocket, packet, "udp-client", request, () -> {}));
+        Assert.assertTrue(Thread.currentThread().isInterrupted());
+        Assert.assertEquals(1, receiveCount.get());
+      } finally {
+        Thread.interrupted();
+      }
     }
   }
 

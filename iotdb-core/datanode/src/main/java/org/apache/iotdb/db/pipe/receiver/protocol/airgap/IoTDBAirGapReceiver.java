@@ -45,6 +45,7 @@ import java.io.ByteArrayInputStream;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -262,6 +263,9 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
         Thread.sleep(PipeConfig.getInstance().getPipeAirGapRetryLocalIntervalMs());
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
+        final InterruptedIOException exception = new InterruptedIOException(e.getMessage());
+        exception.initCause(e);
+        throw exception;
       }
       if (System.currentTimeMillis() - startTime
           < PipeConfig.getInstance().getPipeAirGapRetryMaxMs()) {
