@@ -88,6 +88,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
@@ -643,7 +644,7 @@ public class AnalyzeUtils {
       throw new SemanticException(
           DataNodeQueryMessages.LEFT_HAND_EXPRESSION_IS_NOT_AN_IDENTIFIER + leftHandExp);
     }
-    String columnName = ((Identifier) leftHandExp).getValue();
+    String columnName = ((Identifier) leftHandExp).getValue().toLowerCase(Locale.ENGLISH);
     final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
     if (Objects.nonNull(columnSchema)
         && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
@@ -669,7 +670,7 @@ public class AnalyzeUtils {
       throw new SemanticException(
           DataNodeQueryMessages.LEFT_HAND_EXPRESSION_IS_NOT_AN_IDENTIFIER + leftHandExp);
     }
-    String columnName = ((Identifier) leftHandExp).getValue();
+    String columnName = ((Identifier) leftHandExp).getValue().toLowerCase(Locale.ENGLISH);
     final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
     if (Objects.nonNull(columnSchema)
         && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
@@ -695,7 +696,7 @@ public class AnalyzeUtils {
       throw new SemanticException(
           DataNodeQueryMessages.LEFT_HAND_EXPRESSION_IS_NOT_AN_IDENTIFIER + leftHandExp);
     }
-    String columnName = ((Identifier) leftHandExp).getValue();
+    String columnName = ((Identifier) leftHandExp).getValue().toLowerCase(Locale.ENGLISH);
     final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
     if (Objects.nonNull(columnSchema)
         && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
@@ -721,7 +722,7 @@ public class AnalyzeUtils {
       throw new SemanticException(
           DataNodeQueryMessages.LEFT_HAND_EXPRESSION_IS_NOT_AN_IDENTIFIER + leftHandExp);
     }
-    String columnName = ((Identifier) leftHandExp).getValue();
+    String columnName = ((Identifier) leftHandExp).getValue().toLowerCase(Locale.ENGLISH);
     final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
     if (Objects.nonNull(columnSchema)
         && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
@@ -815,7 +816,7 @@ public class AnalyzeUtils {
       return PredicateParseResult.time(oldPredicate);
     }
     // tag predicate
-    String columnName = identifier.getValue();
+    String columnName = identifier.getValue().toLowerCase(Locale.ENGLISH);
     final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
     if (Objects.nonNull(columnSchema)
         && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
@@ -926,7 +927,8 @@ public class AnalyzeUtils {
               final Identifier node,
               final Void context,
               final ExpressionTreeRewriter<Void> treeRewriter) {
-            return new SymbolReference(node.getValue());
+            // DELETE bypasses normal column resolution; use the schema's canonical names.
+            return new SymbolReference(node.getValue().toLowerCase(Locale.ENGLISH));
           }
         },
         expression);
