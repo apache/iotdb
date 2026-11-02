@@ -156,6 +156,144 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
   }
 
   @Test
+  public void testFallbackResumesRepeatedNonAlignedDevicesAcrossChunkGroups() throws Exception {
+    assertFallbackResumesRepeatedDevices(false);
+  }
+
+  @Test
+  public void testFallbackResumesRepeatedAlignedDevicesAcrossChunkGroups() throws Exception {
+    assertFallbackResumesRepeatedDevices(true);
+  }
+
+  @Test
+  public void testFallbackDoesNotReplayMinimumTimestamp() throws Exception {
+    assertFallbackResumesExtremeTimestamps(Long.MIN_VALUE);
+  }
+
+  @Test
+  public void testFallbackResumesAtMaximumTimestamp() throws Exception {
+    assertFallbackResumesExtremeTimestamps(Long.MAX_VALUE - 1);
+  }
+
+  private void assertFallbackResumesExtremeTimestamps(final long firstTimestamp) throws Exception {
+    tsFile = File.createTempFile("load-tree-extreme-timestamps-", ".tsfile");
+    final List<IMeasurementSchema> schemas =
+        Arrays.asList(new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN));
+    final long secondFlushOffset;
+    try (final TsFileWriter writer = new TsFileWriter(tsFile)) {
+      writer.registerTimeseries(new Path(DEVICE_0), schemas);
+      writeRows(writer, schemas, DEVICE_0, firstTimestamp, 1, false);
+      writer.flush();
+      secondFlushOffset = writer.getIOWriter().getPos();
+      writeRows(writer, schemas, DEVICE_0, firstTimestamp + 1, 1, false);
+    }
+    corruptGroupMarker(tsFile, secondFlushOffset);
+
+    final Map<String, Map<Long, Long>> points = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedLongPoints(statement, points);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    final Map<Long, Long> values = points.get(DEVICE_0 + ".s0");
+    Assert.assertNotNull(values);
+    Assert.assertEquals(2, values.size());
+    Assert.assertEquals(Long.valueOf(firstTimestamp), values.get(firstTimestamp));
+    Assert.assertEquals(Long.valueOf(firstTimestamp + 1), values.get(firstTimestamp + 1));
+    Assert.assertFalse("A fully recovered load can delete its source", tsFile.exists());
+  }
+
+  private void assertFallbackResumesRepeatedDevices(final boolean aligned) throws Exception {
+    tsFile = File.createTempFile("load-tree-repeated-devices-", ".tsfile");
+    final List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
+    final long secondFlushOffset;
+    try (final TsFileWriter writer = new TsFileWriter(tsFile)) {
+      for (final String device : Arrays.asList(DEVICE_0, DEVICE_1)) {
+        if (aligned) {
+          writer.registerAlignedTimeseries(device, schemas);
+        } else {
+          writer.registerTimeseries(new Path(device), schemas);
+        }
+        writeRows(writer, schemas, device, 0, 4, aligned);
+      }
+      writer.flush();
+      secondFlushOffset = writer.getIOWriter().getPos();
+      for (final String device : Arrays.asList(DEVICE_0, DEVICE_1)) {
+        writeRows(writer, schemas, device, 4, 4, aligned);
+      }
+    }
+    corruptGroupMarker(tsFile, secondFlushOffset);
+
+    final Map<String, Map<Long, Long>> points = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedLongPoints(statement, points);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    for (final String device : Arrays.asList(DEVICE_0, DEVICE_1)) {
+      for (int measurement = 0; measurement < 2; measurement++) {
+        final String path = device + ".s" + measurement;
+        final Map<Long, Long> values = points.get(path);
+        Assert.assertNotNull(path, values);
+        Assert.assertEquals(path, 8, values.size());
+        for (long timestamp = 0; timestamp < 8; timestamp++) {
+          Assert.assertEquals(
+              path, Long.valueOf(timestamp + measurement * 100), values.get(timestamp));
+        }
+      }
+    }
+    Assert.assertFalse("A fully recovered load can delete its source", tsFile.exists());
+  }
+
+  private static void corruptGroupMarker(final File tsFile, final long offset) throws Exception {
+    try (final RandomAccessFile file = new RandomAccessFile(tsFile, "rw")) {
+      file.seek(offset);
+      Assert.assertEquals(MetaMarker.CHUNK_GROUP_HEADER, file.readByte());
+      file.seek(offset);
+      file.writeByte(0x7f);
+    }
+  }
+
+  private static void writeRows(
+      final TsFileWriter writer,
+      final List<IMeasurementSchema> schemas,
+      final String device,
+      final long firstTimestamp,
+      final int rowCount,
+      final boolean aligned)
+      throws Exception {
+    final Tablet tablet = new Tablet(device, schemas, rowCount);
+    for (int row = 0; row < rowCount; row++) {
+      tablet.addTimestamp(row, firstTimestamp + row);
+      for (int column = 0; column < schemas.size(); column++) {
+        tablet.addValue(row, column, firstTimestamp + row + column * 100);
+      }
+    }
+    if (aligned) {
+      writer.writeAligned(tablet);
+    } else {
+      writer.writeTree(tablet);
+    }
+  }
+
+  @Test
   public void testFlushesPendingTabletsWhenIteratorFails() throws Exception {
     tsFile = File.createTempFile("load-tree-pending-tablet", ".tsfile");
     final List<IMeasurementSchema> schemaList =
@@ -436,6 +574,27 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
       return false;
     } catch (final Exception e) {
       return true;
+    }
+  }
+
+  private static void collectLoadedLongPoints(
+      final Statement statement, final Map<String, Map<Long, Long>> points) {
+    Assert.assertTrue(statement instanceof InsertMultiTabletsStatement);
+    for (final InsertTabletStatement tablet :
+        ((InsertMultiTabletsStatement) statement).getInsertTabletStatementList()) {
+      for (int column = 0; column < tablet.getMeasurements().length; column++) {
+        final String path =
+            tablet.getDevicePath().getFullPath() + "." + tablet.getMeasurements()[column];
+        final Map<Long, Long> values = points.computeIfAbsent(path, key -> new HashMap<>());
+        for (int row = 0; row < tablet.getRowCount(); row++) {
+          if (!tablet.isNull(row, column)) {
+            final long timestamp = tablet.getTimes()[row];
+            Assert.assertNull(
+                "Duplicate point: " + path + " at " + timestamp,
+                values.put(timestamp, ((long[]) tablet.getColumns()[column])[row]));
+          }
+        }
+      }
     }
   }
 
