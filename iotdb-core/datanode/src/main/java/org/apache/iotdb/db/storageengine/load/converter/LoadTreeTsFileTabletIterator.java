@@ -61,7 +61,8 @@ import static org.apache.iotdb.db.storageengine.load.LoadTsFilePathUtils.getVali
 
 /**
  * Load uses scan parsing first for throughput. If scan parsing hits corruption, fall back to query
- * parsing for the remaining measurements and devices so later data can still be loaded.
+ * parsing for the remaining measurements and devices so later data can still be loaded. Report any
+ * unrecoverable query failure after exhausting the readable data so a partial load cannot succeed.
  */
 class LoadTreeTsFileTabletIterator
     implements Iterable<Pair<Tablet, Boolean>>, Iterator<Pair<Tablet, Boolean>>, AutoCloseable {
@@ -91,6 +92,7 @@ class LoadTreeTsFileTabletIterator
   private Iterator<Pair<Tablet, Boolean>> activeIterator;
   private boolean scanInitialized;
   private boolean fallbackTriggered;
+  private RuntimeException unrecoverableQueryFailure;
 
   private IDeviceID lastEmittedDevice;
   private List<String> lastEmittedMeasurements = Collections.emptyList();
@@ -117,8 +119,7 @@ class LoadTreeTsFileTabletIterator
       try {
         ensureActiveIterator();
         if (Objects.isNull(activeIterator)) {
-          close();
-          return false;
+          return finishIteration();
         }
 
         if (activeIterator.hasNext()) {
@@ -126,8 +127,7 @@ class LoadTreeTsFileTabletIterator
         }
 
         if (!switchToNextIterator()) {
-          close();
-          return false;
+          return finishIteration();
         }
       } catch (final Exception e) {
         if (recoverFromIteratorFailure(e)) {
@@ -222,7 +222,7 @@ class LoadTreeTsFileTabletIterator
           activeQueryTask.measurements,
           file.getAbsolutePath(),
           e);
-      splitOrSkipActiveQueryTask();
+      splitOrSkipActiveQueryTask(e);
       return true;
     }
 
@@ -320,7 +320,13 @@ class LoadTreeTsFileTabletIterator
       final List<String> currentMeasurements) {
     final Set<String> completedMeasurements =
         fullyEmittedMeasurementsByDevice.getOrDefault(device, Collections.emptySet());
-    final Set<String> currentMeasurementSet = new LinkedHashSet<>(currentMeasurements);
+    // Scan clears its measurements before reading the next header. If that header is corrupt,
+    // resume the last emitted measurements after their last timestamp instead of replaying them.
+    final Set<String> currentMeasurementSet =
+        new LinkedHashSet<>(
+            currentMeasurements.isEmpty() && device.equals(lastEmittedDevice)
+                ? lastEmittedMeasurements
+                : currentMeasurements);
 
     final List<String> currentMeasurementsToResume = new ArrayList<>();
     final List<String> remainingMeasurements = new ArrayList<>();
@@ -399,7 +405,7 @@ class LoadTreeTsFileTabletIterator
             activeQueryTask.measurements,
             file.getAbsolutePath(),
             e);
-        splitOrSkipActiveQueryTask();
+        splitOrSkipActiveQueryTask(e);
       }
     }
 
@@ -541,7 +547,15 @@ class LoadTreeTsFileTabletIterator
     tasks.addLast(new QueryTask(device, measurements, startTime, endTime));
   }
 
-  private void splitOrSkipActiveQueryTask() {
+  private boolean finishIteration() {
+    close();
+    if (Objects.nonNull(unrecoverableQueryFailure)) {
+      throw unrecoverableQueryFailure;
+    }
+    return false;
+  }
+
+  private void splitOrSkipActiveQueryTask(final Exception failure) {
     final QueryTask failedTask = activeQueryTask;
     closeActiveQueryParser();
     if (Objects.isNull(failedTask)) {
@@ -549,6 +563,11 @@ class LoadTreeTsFileTabletIterator
     }
 
     if (failedTask.measurements.size() <= 1) {
+      // Keep salvaging later tasks, but retain the first failure so the caller preserves the
+      // source.
+      if (Objects.isNull(unrecoverableQueryFailure)) {
+        unrecoverableQueryFailure = toRuntimeException(failure);
+      }
       return;
     }
 

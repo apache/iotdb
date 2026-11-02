@@ -34,6 +34,7 @@ import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -104,14 +105,54 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
             });
 
     final Optional<TSStatus> status =
-        visitor.visitLoadFile(LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()), null);
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
 
     Assert.assertTrue(status.isPresent());
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.get().getCode());
+    Assert.assertTrue("A partial load must retain its source", tsFile.exists());
     final int loadedPointCountBeforeCorruption = pointCountByDevice.getOrDefault(DEVICE_0, 0);
     final int loadedPointCountAfterFallback = pointCountByDevice.getOrDefault(DEVICE_2, 0);
     Assert.assertTrue(loadedPointCountBeforeCorruption > 0);
     Assert.assertEquals(loadedPointCountBeforeCorruption, loadedPointCountAfterFallback);
+  }
+
+  @Test
+  public void testFullyRecoveredQueryFallbackCanDeleteSource() throws Exception {
+    tsFile = new File("load-tree-query-fallback-recoverable-marker.tsfile");
+    final long groupMarkerOffset = writeTsFile(tsFile);
+    // Keep the first marker valid for the reader's encryption-header check. Indexed queries can
+    // recover every point without reading the second device's chunk-group marker.
+    try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+      reader.position(groupMarkerOffset);
+      Assert.assertEquals(MetaMarker.CHUNK_GROUP_HEADER, reader.readMarker());
+    }
+    try (final RandomAccessFile file = new RandomAccessFile(tsFile, "rw")) {
+      file.seek(groupMarkerOffset);
+      file.writeByte(0x7f);
+    }
+    Assert.assertTrue("Expected scan parser to fail after corruption.", scanParserFails(tsFile));
+
+    final Map<String, Integer> pointCountByTimeseries = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPointsByTimeseries(statement, pointCountByTimeseries);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    for (final String device : Arrays.asList(DEVICE_0, DEVICE_1, DEVICE_2)) {
+      assertMeasurementLoadedCompletely(pointCountByTimeseries, device, 0);
+      assertMeasurementLoadedCompletely(pointCountByTimeseries, device, 1);
+    }
+    Assert.assertFalse("A fully recovered load can delete its source", tsFile.exists());
   }
 
   @Test
@@ -183,7 +224,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
         visitor.visitLoadFile(LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()), null);
 
     Assert.assertTrue(status.isPresent());
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.get().getCode());
 
     Assert.assertTrue(
         pointCountByTimeseries.getOrDefault(DEVICE_0 + ".s0", 0) < ROW_COUNT_PER_DEVICE);
@@ -215,7 +256,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
         visitor.visitLoadFile(LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()), null);
 
     Assert.assertTrue(status.isPresent());
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.get().getCode());
 
     assertMeasurementLoadedCompletely(pointCountByTimeseries, DEVICE_1, 0);
     Assert.assertTrue(
@@ -247,7 +288,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
         visitor.visitLoadFile(LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()), null);
 
     Assert.assertTrue(status.isPresent());
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.get().getCode());
 
     for (int measurementIndex = 0; measurementIndex < 8; ++measurementIndex) {
       assertMeasurementLoadedCompletely(pointCountByTimeseries, ALIGNED_DEVICE, measurementIndex);
@@ -280,7 +321,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
     Assert.assertNotEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.getCode());
   }
 
-  private void writeTsFile(final File file) throws Exception {
+  private long writeTsFile(final File file) throws Exception {
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
@@ -290,11 +331,15 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
             new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN),
             new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
 
+    final long secondGroupMarkerOffset;
     try (final TsFileWriter writer = new TsFileWriter(file)) {
       writeDevice(writer, schemaList, DEVICE_0, 0);
+      writer.flush();
+      secondGroupMarkerOffset = writer.getIOWriter().getPos();
       writeDevice(writer, schemaList, DEVICE_1, 10_000);
       writeDevice(writer, schemaList, DEVICE_2, 20_000);
     }
+    return secondGroupMarkerOffset;
   }
 
   private void writeWideAlignedTsFile(
