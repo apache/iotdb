@@ -19,8 +19,13 @@
 
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.ClusterConstant;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -28,8 +33,12 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.it.utils.TsFileGenerator;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -38,6 +47,8 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.tsfile.write.TsFileWriter;
+import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.awaitility.Awaitility;
@@ -52,6 +63,7 @@ import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
@@ -68,6 +80,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -619,6 +632,228 @@ public class IoTDBLoadTsFileClusterIT {
     }
   }
 
+  @Test
+  public void testDirectoryQueryFallbackRetainsOnlyFailedSources() throws Exception {
+    for (final boolean delete : new boolean[] {false, true}) {
+      final File directory = new File(tmpDir, delete ? "batch-delete" : "batch-none");
+      Assert.assertTrue(directory.mkdir());
+      final String devicePrefix = DATABASE + (delete ? ".batch_delete" : ".batch_none");
+      final File normal = new File(directory, "401-0-0-0.tsfile");
+      final File recoverable = new File(directory, "402-0-0-0.tsfile");
+      final File failed = new File(directory, "403-0-0-0.tsfile");
+      final File[] sources = {normal, recoverable, failed};
+      long recoverableMarkerOffset = -1;
+      for (int i = 0; i < sources.length; i++) {
+        final long groupMarkerOffset =
+            writeFallbackSource(sources[i], devicePrefix + ".d" + i, i == 1);
+        if (i == 1) {
+          recoverableMarkerOffset = groupMarkerOffset;
+        }
+      }
+      // All footer metadata stays valid, so LOAD must reach scheduling and query fallback.
+      replaceByte(recoverable, recoverableMarkerOffset, 0x7f);
+      final long compressionOffset = firstChunkCompressionOffset(failed);
+      final int originalCompression = replaceByte(failed, compressionOffset, 0x7f);
+
+      try (final Connection connection =
+              EnvFactory.getEnv()
+                  .getConnectionWithSpecifiedDataNode(EnvFactory.getEnv().getDataNodeWrapper(0));
+          final Statement statement = connection.createStatement()) {
+        final SQLException failure =
+            Assert.assertThrows(
+                SQLException.class, () -> statement.execute(fallbackLoadSql(directory, delete)));
+        assertFallbackLoadFailure(failure, failed);
+        Assert.assertFalse(failure.getMessage(), failure.getMessage().contains(normal.getName()));
+        Assert.assertFalse(
+            failure.getMessage(), failure.getMessage().contains(recoverable.getName()));
+        assertFallbackRows(statement, devicePrefix + ".d0");
+        assertFallbackRows(statement, devicePrefix + ".d1");
+        Assert.assertTrue(
+            EnvFactory.getEnv()
+                .getDataNodeWrapper(0)
+                .logContains(
+                    DataNodeQueryMessages
+                        .LOAD_SUCCESSFULLY_CONVERTED_TSFILE_ARG_INTO_TABLETS_AND_INSERTED
+                        .replace("{}", recoverable.getAbsolutePath())));
+        assertFallbackSourceExists(normal, !delete);
+        assertFallbackSourceExists(recoverable, !delete);
+        assertFallbackSourceExists(failed, true);
+
+        replaceByte(failed, compressionOffset, originalCompression);
+        statement.execute(fallbackLoadSql(failed, delete));
+        assertFallbackRows(statement, devicePrefix + ".d2");
+        assertFallbackRows(statement, devicePrefix + ".d0");
+        assertFallbackRows(statement, devicePrefix + ".d1");
+        assertFallbackSourceExists(failed, !delete);
+      }
+    }
+  }
+
+  @Test
+  public void testConcurrentQueryFallbackFailureRetainsSourceForRetry() throws Exception {
+    final File good = new File(tmpDir, "301-0-0-0.tsfile");
+    final File bad = new File(tmpDir, "302-0-0-0.tsfile");
+    final String device = DATABASE + ".concurrent";
+    writeFallbackSource(good, device + ".good", false);
+    writeFallbackSource(bad, device + ".bad", false);
+    final long compressionOffset = firstChunkCompressionOffset(bad);
+    final int originalCompression = replaceByte(bad, compressionOffset, 0x7f);
+    final ExecutorService loaders = Executors.newFixedThreadPool(2);
+    final CountDownLatch ready = new CountDownLatch(2);
+    final CountDownLatch start = new CountDownLatch(1);
+    try {
+      final List<Future<?>> loads = new ArrayList<>();
+      for (final File source : Arrays.asList(good, bad)) {
+        loads.add(
+            loaders.submit(
+                () -> {
+                  try (final Connection connection = EnvFactory.getEnv().getConnection();
+                      final Statement statement = connection.createStatement()) {
+                    ready.countDown();
+                    Assert.assertTrue(start.await(30, TimeUnit.SECONDS));
+                    if (source.equals(bad)) {
+                      final SQLException failure =
+                          Assert.assertThrows(
+                              SQLException.class,
+                              () -> statement.execute(fallbackLoadSql(source, true)));
+                      assertFallbackLoadFailure(failure, bad);
+                    } else {
+                      statement.execute(fallbackLoadSql(source, true));
+                    }
+                  }
+                  return null;
+                }));
+      }
+      Assert.assertTrue(ready.await(30, TimeUnit.SECONDS));
+      start.countDown();
+      for (final Future<?> load : loads) {
+        load.get(90, TimeUnit.SECONDS);
+      }
+      assertFallbackSourceExists(good, false);
+      assertFallbackSourceExists(bad, true);
+      try (final Connection connection = EnvFactory.getEnv().getConnection();
+          final Statement statement = connection.createStatement()) {
+        assertFallbackRows(statement, device + ".good");
+        replaceByte(bad, compressionOffset, originalCompression);
+        statement.execute(fallbackLoadSql(bad, true));
+        assertFallbackRows(statement, device + ".bad");
+        assertFallbackRows(statement, device + ".good");
+      }
+      assertFallbackSourceExists(bad, false);
+    } finally {
+      start.countDown();
+      loaders.shutdownNow();
+      Assert.assertTrue(loaders.awaitTermination(30, TimeUnit.SECONDS));
+    }
+  }
+
+  private static String fallbackLoadSql(final File source, final boolean delete) {
+    return String.format(
+        "load '%s' with ('database-level'='1','on-success'='%s',"
+            + "'tablet-conversion-threshold'='-1')",
+        source.getAbsolutePath(), delete ? "delete" : "none");
+  }
+
+  private static void assertFallbackLoadFailure(final SQLException failure, final File source) {
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), failure.getErrorCode());
+    Assert.assertTrue(failure.getMessage(), failure.getMessage().contains(source.getName()));
+  }
+
+  private static long writeFallbackSource(
+      final File file, final String device, final boolean includeAnchor) throws Exception {
+    final List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema(
+                "s1", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED),
+            new MeasurementSchema(
+                "s2", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
+    final String anchor = DATABASE + ".a_fallback_anchor";
+    final long groupMarkerOffset;
+    try (final TsFileWriter writer = new TsFileWriter(file)) {
+      if (includeAnchor) {
+        // Preserve a valid first group for the encryption-header check, and keep physical device
+        // order consistent with the metadata index so query fallback can resume after this group.
+        writer.registerAlignedTimeseries(anchor, schemas);
+        final Tablet anchorTablet = new Tablet(anchor, schemas);
+        anchorTablet.addTimestamp(0, 0);
+        anchorTablet.addValue(0, 0, 0L);
+        anchorTablet.addValue(0, 1, 0L);
+        writer.writeAligned(anchorTablet);
+        writer.flush();
+      }
+      groupMarkerOffset = writer.getIOWriter().getPos();
+      writer.registerAlignedTimeseries(device, schemas);
+      final Tablet tablet = new Tablet(device, schemas);
+      for (int i = 0; i < 4; i++) {
+        tablet.addTimestamp(i, i + 1);
+        tablet.addValue(i, 0, (long) i);
+        tablet.addValue(i, 1, (long) i * 10);
+      }
+      writer.writeAligned(tablet);
+    }
+    final TsFileResource resource = new TsFileResource(file);
+    final IDeviceID deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create(device);
+    resource.updateStartTime(deviceId, 1);
+    resource.updateEndTime(deviceId, 4);
+    if (includeAnchor) {
+      final IDeviceID anchorId = IDeviceID.Factory.DEFAULT_FACTORY.create(anchor);
+      resource.updateStartTime(anchorId, 0);
+      resource.updateEndTime(anchorId, 0);
+    }
+    resource.serialize();
+    try (final ModificationFile mods = resource.getExclusiveModFile()) {
+      mods.write(new TreeDeletionEntry(new MeasurementPath(device + ".s1"), 2, 2));
+    }
+    return groupMarkerOffset;
+  }
+
+  private static long firstChunkCompressionOffset(final File file) throws Exception {
+    try (final TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath())) {
+      reader.position(TSFileConfig.MAGIC_STRING.length() + 1L);
+      reader.readMarker();
+      reader.readChunkGroupHeader();
+      reader.readChunkHeader(reader.readMarker());
+      // The final two header bytes are compression and encoding; corrupt only compression.
+      return reader.position() - 2;
+    }
+  }
+
+  private static int replaceByte(final File file, final long offset, final int value)
+      throws IOException {
+    try (final RandomAccessFile bytes = new RandomAccessFile(file, "rw")) {
+      bytes.seek(offset);
+      final int original = bytes.readUnsignedByte();
+      bytes.seek(offset);
+      bytes.writeByte(value);
+      return original;
+    }
+  }
+
+  private static void assertFallbackSourceExists(final File file, final boolean expected) {
+    Assert.assertEquals(file.toString(), expected, file.exists());
+    Assert.assertEquals(
+        file.toString(), expected, new File(file + TsFileResource.RESOURCE_SUFFIX).exists());
+    Assert.assertEquals(
+        file.toString(), expected, new File(file + ModificationFile.FILE_SUFFIX).exists());
+  }
+
+  private static void assertFallbackRows(final Statement statement, final String device)
+      throws SQLException {
+    try (final ResultSet rows = statement.executeQuery("select s1,s2 from " + device)) {
+      for (int i = 0; i < 4; i++) {
+        Assert.assertTrue(device, rows.next());
+        Assert.assertEquals(i + 1, rows.getLong(1));
+        if (i == 1) {
+          Assert.assertNull(rows.getObject(2));
+        } else {
+          Assert.assertEquals(i, rows.getLong(2));
+        }
+        Assert.assertEquals(i * 10, rows.getLong(3));
+      }
+      Assert.assertFalse(device, rows.next());
+    }
+  }
+
   private void createDatabaseAndSchema(final Statement statement) throws SQLException {
     statement.execute("create database " + DATABASE);
     for (final String device : DEVICES) {
@@ -644,7 +879,8 @@ public class IoTDBLoadTsFileClusterIT {
               try (final Connection connection = EnvFactory.getEnv().getConnection();
                   final Statement statement = connection.createStatement();
                   final ResultSet resultSet = statement.executeQuery("show databases")) {
-                return resultSet.next();
+                // A healthy cluster may have no user databases.
+                return true;
               }
             });
   }
