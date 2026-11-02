@@ -248,7 +248,10 @@ public class PipeTaskCoordinator {
           : RpcUtils.getStatus(
               TSStatusCode.PIPE_NOT_EXIST_ERROR,
               String.format(
-                  "Failed to alter pipe %s. Failures: %s does not exist.", pipeName, pipeName));
+                  ManagerMessages
+                      .MESSAGE_FAILED_TO_ALTER_PIPE_ARG_FAILURES_ARG_DOES_NOT_EXIST_169BDB85,
+                  pipeName,
+                  pipeName));
     }
     if (!PipeConfigNodeAgent.isPipeDataInsertionEnabled(
         getUpdatedSourceParameters(req, currentPipeMeta))) {
@@ -298,7 +301,9 @@ public class PipeTaskCoordinator {
       return RpcUtils.getStatus(
           TSStatusCode.PIPE_NOT_EXIST_ERROR,
           String.format(
-              "Failed to start pipe %s. Failures: %s does not exist.", pipeName, pipeName));
+              ManagerMessages.MESSAGE_FAILED_TO_START_PIPE_ARG_FAILURES_ARG_DOES_NOT_EXIST_F13A63EE,
+              pipeName,
+              pipeName));
     }
     if (!PipeConfigNodeAgent.isPipeDataInsertionEnabled(
         pipeMeta.getStaticMeta().getSourceParameters())) {
@@ -368,7 +373,9 @@ public class PipeTaskCoordinator {
       return RpcUtils.getStatus(
           TSStatusCode.PIPE_NOT_EXIST_ERROR,
           String.format(
-              "Failed to stop pipe %s. Failures: %s does not exist.", pipeName, pipeName));
+              ManagerMessages.MESSAGE_FAILED_TO_STOP_PIPE_ARG_FAILURES_ARG_DOES_NOT_EXIST_8FB85886,
+              pipeName,
+              pipeName));
     }
     return stopPipe(pipeName, isTableModel);
   }
@@ -386,7 +393,10 @@ public class PipeTaskCoordinator {
           : RpcUtils.getStatus(
               TSStatusCode.PIPE_NOT_EXIST_ERROR,
               String.format(
-                  "Failed to drop pipe %s. Failures: %s does not exist.", pipeName, pipeName));
+                  ManagerMessages
+                      .MESSAGE_FAILED_TO_DROP_PIPE_ARG_FAILURES_ARG_DOES_NOT_EXIST_19C2ECB1,
+                  pipeName,
+                  pipeName));
     }
     final TSStatus status;
     if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {

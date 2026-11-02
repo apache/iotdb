@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistr
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapUdpProtocol;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiverAgent;
@@ -47,6 +48,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -199,6 +201,98 @@ public class IoTDBAirGapReceiverTest {
       Assert.assertEquals(Long.BYTES + 1, responsePacket.getLength());
       Assert.assertEquals(requestId, ByteBuffer.wrap(response).getLong());
       Assert.assertEquals(AirGapOneByteResponse.OK[0], response[Long.BYTES]);
+    }
+  }
+
+  @Test
+  public void testStrictUnidirectionalUdpNeverRespondsToSuccessOrFailure() throws Exception {
+    for (final TSStatusCode status :
+        new TSStatusCode[] {
+          TSStatusCode.SUCCESS_STATUS, TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION
+        }) {
+      try (final DatagramSocket receiverSocket = new NoResponseDatagramSocket()) {
+        final byte[] request =
+            toUdpDatagram(AirGapUdpProtocol.NO_ACK_REQUEST_ID_MASK | 73L, toRawRequestBytes());
+        final DatagramPacket packet =
+            new DatagramPacket(request, request.length, InetAddress.getLoopbackAddress(), 12345);
+        final IoTDBAirGapReceiver receiver = new IoTDBAirGapReceiver(new RecordingSocket(), 5L);
+        final StubIoTDBDataNodeReceiverAgent stubAgent = new StubIoTDBDataNodeReceiverAgent();
+        final AtomicInteger receivedRequests = new AtomicInteger();
+        stubAgent.setStubReceiver(
+            "udp-client",
+            new StubReceiver(new TSStatus(status.getStatusCode())) {
+              @Override
+              public TPipeTransferResp receive(final TPipeTransferReq req) {
+                Assert.assertTrue(
+                    ((AirGapPseudoTPipeTransferRequest) req).isStrictUnidirectional());
+                receivedRequests.incrementAndGet();
+                return super.receive(req);
+              }
+            });
+        setField(receiver, "agent", stubAgent);
+        receiver.receiveUdp(receiverSocket, packet, "udp-client", request, () -> {});
+        Assert.assertEquals(1, receivedRequests.get());
+      }
+    }
+  }
+
+  @Test
+  public void testStrictUnidirectionalUdpDoesNotRespondToCorruptRequest() throws Exception {
+    try (final DatagramSocket receiverSocket = new NoResponseDatagramSocket()) {
+      final byte[] request =
+          toUdpDatagram(AirGapUdpProtocol.NO_ACK_REQUEST_ID_MASK | 74L, toRawRequestBytes());
+      request[request.length - 1] ^= 1;
+      final DatagramPacket packet =
+          new DatagramPacket(request, request.length, InetAddress.getLoopbackAddress(), 12345);
+      final AtomicBoolean registered = new AtomicBoolean();
+      new IoTDBAirGapReceiver(new RecordingSocket(), 6L)
+          .receiveUdp(receiverSocket, packet, "udp-client", request, () -> registered.set(true));
+      Assert.assertFalse(registered.get());
+    }
+  }
+
+  private static class NoResponseDatagramSocket extends DatagramSocket {
+
+    private NoResponseDatagramSocket() throws SocketException {}
+
+    @Override
+    public void send(final DatagramPacket packet) {
+      Assert.fail("Strictly unidirectional requests must never send an ACK or NACK");
+    }
+  }
+
+  @Test
+  public void testInterruptedUdpRetryStopsWithoutReenteringReceiver() throws Exception {
+    final AtomicInteger receiveCount = new AtomicInteger();
+    final IoTDBAirGapReceiver receiver = new IoTDBAirGapReceiver(new RecordingSocket(), 7L);
+    final StubIoTDBDataNodeReceiverAgent stubAgent = new StubIoTDBDataNodeReceiverAgent();
+    stubAgent.setStubReceiver(
+        "udp-client",
+        new StubReceiver(
+            new TSStatus(
+                TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())) {
+          @Override
+          public TPipeTransferResp receive(final TPipeTransferReq req) {
+            Assert.assertEquals(1, receiveCount.incrementAndGet());
+            return super.receive(req);
+          }
+        });
+    setField(receiver, "agent", stubAgent);
+    try (final DatagramSocket receiverSocket = new NoResponseDatagramSocket()) {
+      final byte[] request =
+          toUdpDatagram(AirGapUdpProtocol.NO_ACK_REQUEST_ID_MASK | 75L, toRawRequestBytes());
+      final DatagramPacket packet =
+          new DatagramPacket(request, request.length, InetAddress.getLoopbackAddress(), 12345);
+      Thread.currentThread().interrupt();
+      try {
+        Assert.assertThrows(
+            InterruptedIOException.class,
+            () -> receiver.receiveUdp(receiverSocket, packet, "udp-client", request, () -> {}));
+        Assert.assertTrue(Thread.currentThread().isInterrupted());
+        Assert.assertEquals(1, receiveCount.get());
+      } finally {
+        Thread.interrupted();
+      }
     }
   }
 

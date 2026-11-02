@@ -204,7 +204,8 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   private static final DNAuditLogger AUDIT_LOGGER = DNAuditLogger.getInstance();
 
   private static final String OPERATION_AUDIT_STR =
-      "User %s (ID=%d) requests authority on the %s operation";
+      DataNodeQueryMessages
+          .EXCEPTION_USER_ARG_ID_ARG_REQUESTS_AUTHORITY_ON_THE_ARG_OPERATION_72418079;
 
   @Override
   public TSStatus visitNode(StatementNode node, TreeAccessCheckContext context) {
@@ -2481,9 +2482,10 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
           status =
               AuthorityChecker.getTSStatus(
                   false,
-                  "Has no permission to execute "
-                      + authorType
-                      + ", please ensure you have these privileges and the grant option is TRUE when granted");
+                  String.format(
+                      DataNodeQueryMessages
+                          .EXCEPTION_HAS_NO_PERMISSION_TO_EXECUTE_ARG_PLEASE_ENSURE_YOU_HAVE_THESE_PRIVILEGES_AND_THE_GRANT_OPTION_IS_TRUE_WHEN_GRANTED_6E1AD125,
+                      Objects.toString(authorType)));
           break;
         }
       } else if (privilegeType.isPathPrivilege()) {
@@ -2492,15 +2494,18 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
           status =
               AuthorityChecker.getTSStatus(
                   false,
-                  "Has no permission to execute "
-                      + authorType
-                      + ", please ensure you have these privileges and the grant option is TRUE when granted");
+                  String.format(
+                      DataNodeQueryMessages
+                          .EXCEPTION_HAS_NO_PERMISSION_TO_EXECUTE_ARG_PLEASE_ENSURE_YOU_HAVE_THESE_PRIVILEGES_AND_THE_GRANT_OPTION_IS_TRUE_WHEN_GRANTED_6E1AD125,
+                      Objects.toString(authorType)));
           break;
         }
       } else {
         status =
             AuthorityChecker.getTSStatus(
-                false, "Not support Relation statement in tree sql_dialect");
+                false,
+                DataNodeQueryMessages
+                    .EXCEPTION_NOT_SUPPORT_RELATION_STATEMENT_IN_TREE_SQL_DIALECT_088C9ADD);
         break;
       }
     }
@@ -2536,6 +2541,8 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       return SUCCEED;
     }
     AUDIT_LOGGER.recordObjectAuthenticationAuditLog(auditEntity.setResult(false), auditObject);
-    return AuthorityChecker.getTSStatus(false, "Only the admin user can perform this operation");
+    return AuthorityChecker.getTSStatus(
+        false,
+        DataNodeQueryMessages.EXCEPTION_ONLY_THE_ADMIN_USER_CAN_PERFORM_THIS_OPERATION_D0C730B6);
   }
 }

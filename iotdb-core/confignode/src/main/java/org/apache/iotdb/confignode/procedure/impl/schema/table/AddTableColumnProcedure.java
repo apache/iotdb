@@ -151,7 +151,7 @@ public class AddTableColumnProcedure
 
   @Override
   protected String getActionMessage() {
-    return "add table column";
+    return ProcedureMessages.MESSAGE_ADD_TABLE_COLUMN_DE7718D1;
   }
 
   /**

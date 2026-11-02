@@ -39,7 +39,8 @@ public abstract class AbstractAuditLogger {
       ThreadLocal.withInitial(() -> false);
 
   public static final String OBJECT_AUTHENTICATION_AUDIT_STR =
-      "User %s (ID=%d) requests authority on object %s with result %s";
+      CommonMessages
+          .EXCEPTION_USER_ARG_ID_ARG_REQUESTS_AUTHORITY_ON_OBJECT_ARG_WITH_RESULT_ARG_F0A4B9C0;
   public static final String AUDIT_LOG_NODE_ID = "node_id";
   public static final String AUDIT_LOG_USER_ID = "user_id";
   public static final String AUDIT_LOG_USERNAME = "username";

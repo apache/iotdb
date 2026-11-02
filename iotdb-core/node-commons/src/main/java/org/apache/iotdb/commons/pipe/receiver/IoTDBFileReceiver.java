@@ -316,7 +316,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     if (usernameString == null || passwordString == null) {
       return new TPipeTransferResp(
           RpcUtils.getStatus(
-              TSStatusCode.NOT_LOGIN, "Pipe handshake missing username or password."));
+              TSStatusCode.NOT_LOGIN,
+              PipeMessages.MESSAGE_PIPE_HANDSHAKE_MISSING_USERNAME_OR_PASSWORD_BDC2F19E));
     }
 
     // A connection may only ever stand for one user. If it is already authenticated as somebody
@@ -456,13 +457,15 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected TSStatus getNotLoggedInStatus() {
     return RpcUtils.getStatus(
         TSStatusCode.NOT_LOGIN,
-        "Log in failed. Either you are not authorized or the session has timed out.");
+        PipeMessages
+            .MESSAGE_LOG_IN_FAILED_EITHER_YOU_ARE_NOT_AUTHORIZED_OR_THE_SESSION_HAS_TIMED_OUT_A2078D30);
   }
 
   protected TSStatus getUnsupportedHandshakeV1Status() {
     return RpcUtils.getStatus(
         TSStatusCode.PIPE_HANDSHAKE_ERROR,
-        "Pipe handshake V1 is no longer supported. Please use handshake V2 with username and password.");
+        PipeMessages
+            .MESSAGE_PIPE_HANDSHAKE_V1_IS_NO_LONGER_SUPPORTED_PLEASE_USE_HANDSHAKE_V2_WITH_USERNAME_AND_PASSWORD_85FE0371);
   }
 
   protected abstract TSStatus login();
@@ -532,7 +535,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
       final TSStatus status =
           getReceiverTemporaryUnavailableStatus(
-              "receiving pipe file piece", getFilePieceSizeInBytes(req), e);
+              PipeMessages.LOG_RECEIVING_PIPE_FILE_PIECE_6162A697, getFilePieceSizeInBytes(req), e);
       PipeLogger.log(
           LOGGER::warn, e, PipeMessages.RECEIVER_FAILED_WRITE_FILE_PIECE, receiverId.get(), req);
       try {

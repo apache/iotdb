@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapUdpProtocol;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiverAgent;
@@ -44,6 +45,7 @@ import java.io.ByteArrayInputStream;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -232,6 +234,9 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     // Pseudo request, to reuse logic in IoTDBThriftReceiverAgent
     return (AirGapPseudoTPipeTransferRequest)
         new AirGapPseudoTPipeTransferRequest()
+            .setStrictUnidirectional(
+                currentDatagramRequestId != null
+                    && (currentDatagramRequestId & AirGapUdpProtocol.NO_ACK_REQUEST_ID_MASK) != 0)
             .setVersion(ReadWriteIOUtils.readByte(byteBuffer))
             .setType(ReadWriteIOUtils.readShort(byteBuffer))
             .setBody(byteBuffer.slice());
@@ -258,6 +263,9 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
         Thread.sleep(PipeConfig.getInstance().getPipeAirGapRetryLocalIntervalMs());
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
+        final InterruptedIOException exception = new InterruptedIOException(e.getMessage());
+        exception.initCause(e);
+        throw exception;
       }
       if (System.currentTimeMillis() - startTime
           < PipeConfig.getInstance().getPipeAirGapRetryMaxMs()) {
@@ -281,6 +289,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       final AirGapPseudoTPipeTransferRequest req) {
     return (AirGapPseudoTPipeTransferRequest)
         new AirGapPseudoTPipeTransferRequest()
+            .setStrictUnidirectional(req.isStrictUnidirectional())
             .setVersion(req.getVersion())
             .setType(req.getType())
             .setBody(req.body.duplicate());
@@ -296,7 +305,8 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
 
   private void respond(final byte[] response) throws IOException {
     if (currentDatagramSocket != null && currentRemoteSocketAddress != null) {
-      if (currentDatagramRequestId == null) {
+      if (currentDatagramRequestId == null
+          || (currentDatagramRequestId & AirGapUdpProtocol.NO_ACK_REQUEST_ID_MASK) != 0) {
         return;
       }
       final byte[] responseBytes =

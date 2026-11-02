@@ -235,7 +235,9 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
           LOGGER.warn(
               DataNodePipeMessages.BATCH_ID_DELETE_THE_TSFILE_AFTER_FAILED,
               currentBatchId.get(),
-              deleteSuccess ? "Successfully" : "Failed to",
+              deleteSuccess
+                  ? DataNodePipeMessages.LOG_SUCCESSFULLY_87AA2E73
+                  : DataNodePipeMessages.LOG_FAILED_TO_5CCBEC9C,
               sealedFile.right.getPath(),
               file.getPath(),
               deleteSuccess

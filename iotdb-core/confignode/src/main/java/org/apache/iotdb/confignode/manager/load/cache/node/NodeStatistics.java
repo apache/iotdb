@@ -56,7 +56,8 @@ public class NodeStatistics extends AbstractStatistics {
   }
 
   /**
-   * Resolves the requested statistics through {@link NodeStatus#transition}. If the requested
+   * Resolves the requested statistics through {@link NodeStatus#transition}, additionally
+   * preventing an unforced ReadOnly(Stopping) update from reviving a Stopped node. If the requested
    * status is accepted, its reason and load score are kept. Otherwise, the final status must not
    * carry the rejected status's reason or load score, e.g. Removing must not inherit ReadOnly's
    * DiskFull reason. The requested statistics timestamp is retained in both cases.
@@ -64,6 +65,14 @@ public class NodeStatistics extends AbstractStatistics {
   public static NodeStatistics transition(
       NodeStatistics previous, NodeStatistics requested, boolean force) {
     NodeStatus status = NodeStatus.transition(previous.status, requested.status, force);
+    if (!force
+        && previous.status == NodeStatus.Stopped
+        && requested.status == NodeStatus.ReadOnly
+        && NodeStatus.STOPPING.equals(requested.statusReason)) {
+      // A heartbeat during shutdown can be newer than the shutdown report without proving a
+      // restart.
+      status = NodeStatus.Stopped;
+    }
     if (status == requested.status) {
       return requested;
     }

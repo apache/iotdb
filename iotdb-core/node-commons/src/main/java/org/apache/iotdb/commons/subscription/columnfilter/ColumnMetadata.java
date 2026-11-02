@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.subscription.columnfilter;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
+
 import java.util.Objects;
 
 public class ColumnMetadata {
@@ -35,11 +37,21 @@ public class ColumnMetadata {
       final String columnName,
       final String datatype,
       final String category) {
-    this.database = Objects.requireNonNull(database, "database should not be null");
-    this.tableName = Objects.requireNonNull(tableName, "tableName should not be null");
-    this.columnName = Objects.requireNonNull(columnName, "columnName should not be null");
-    this.datatype = Objects.requireNonNull(datatype, "datatype should not be null");
-    this.category = Objects.requireNonNull(category, "category should not be null");
+    this.database =
+        Objects.requireNonNull(
+            database, PipeMessages.EXCEPTION_DATABASE_SHOULD_NOT_BE_NULL_3CF2693B);
+    this.tableName =
+        Objects.requireNonNull(
+            tableName, PipeMessages.EXCEPTION_TABLENAME_SHOULD_NOT_BE_NULL_FFA95ABE);
+    this.columnName =
+        Objects.requireNonNull(
+            columnName, PipeMessages.EXCEPTION_COLUMNNAME_SHOULD_NOT_BE_NULL_695366FD);
+    this.datatype =
+        Objects.requireNonNull(
+            datatype, PipeMessages.EXCEPTION_DATATYPE_SHOULD_NOT_BE_NULL_58A47BB3);
+    this.category =
+        Objects.requireNonNull(
+            category, PipeMessages.EXCEPTION_CATEGORY_SHOULD_NOT_BE_NULL_78602159);
   }
 
   public String getDatabase() {

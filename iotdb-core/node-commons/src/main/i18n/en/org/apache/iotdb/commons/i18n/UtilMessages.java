@@ -262,4 +262,10 @@ public final class UtilMessages {
   public static final String LOG_ARG_COLON_ARG_DCE519A1 = "{}: {}";
   public static final String EMPTY_MESSAGE = "";
 
+  public static final String
+      EXCEPTION_IN_WINDOWS_SYSTEM_THE_PATH_SHALL_NOT_CONTAIN_ARG_OR_ASCII_CONTROL_CHARACTERS_EQUALS_ONE_OF_ARG_WITH_OR_WITHOUT_AN_EXTENSION_OR_ENDS_WITH_OR_B3B92470 =
+          "In Windows System, the path shall not contain %s or ASCII control characters, equals one"
+              + " of %s with or without an extension, or ends with '.' or ' '.";
+
+  public static final String EXCEPTION_FROM_ARG_TO_ARG_D2758D41 = "from %s to %s";
 }

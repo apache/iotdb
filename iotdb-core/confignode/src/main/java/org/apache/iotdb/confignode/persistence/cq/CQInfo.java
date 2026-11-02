@@ -65,7 +65,8 @@ public class CQInfo implements SnapshotProcessor {
 
   private static final String CQ_NOT_EXIST_FORMAT = "CQ %s doesn't exist.";
 
-  private static final String CQ_TOKEN_NOT_MATCH_FORMAT = "Token of CQ %s doesn't match";
+  private static final String CQ_TOKEN_NOT_MATCH_FORMAT =
+      ConfigNodeMessages.EXCEPTION_TOKEN_OF_CQ_ARG_DOESN_T_MATCH_EE2E6387;
 
   private final Map<String, CQEntry> cqMap;
 
@@ -90,7 +91,9 @@ public class CQInfo implements SnapshotProcessor {
     try {
       if (cqMap.containsKey(cqId)) {
         res.code = TSStatusCode.CQ_ALREADY_EXIST.getStatusCode();
-        res.message = String.format("CQ %s has already been created.", cqId);
+        res.message =
+            String.format(
+                ConfigNodeMessages.EXCEPTION_CQ_ARG_HAS_ALREADY_BEEN_CREATED_8031B847, cqId);
       } else {
         CQEntry cqEntry =
             new CQEntry(
@@ -182,7 +185,9 @@ public class CQInfo implements SnapshotProcessor {
         res.message = String.format(CQ_TOKEN_NOT_MATCH_FORMAT, cqId);
       } else if (cqEntry.state == CQState.ACTIVE) {
         res.code = TSStatusCode.CQ_ALREADY_ACTIVE.getStatusCode();
-        res.message = String.format("CQ %s has already been active", cqId);
+        res.message =
+            String.format(
+                ConfigNodeMessages.EXCEPTION_CQ_ARG_HAS_ALREADY_BEEN_ACTIVE_46FB805D, cqId);
       } else {
         cqEntry.state = CQState.ACTIVE;
         res.code = TSStatusCode.SUCCESS_STATUS.getStatusCode();
@@ -217,8 +222,11 @@ public class CQInfo implements SnapshotProcessor {
         res.code = TSStatusCode.CQ_UPDATE_LAST_EXEC_TIME_ERROR.getStatusCode();
         res.message =
             String.format(
-                "Update last execution time of CQ %s failed because its original last execution time(%d) is larger than the updated one(%d).",
-                cqId, cqEntry.lastExecutionTime, plan.getExecutionTime());
+                ConfigNodeMessages
+                    .EXCEPTION_UPDATE_LAST_EXECUTION_TIME_OF_CQ_ARG_FAILED_BECAUSE_ITS_ORIGINAL_LAST_EXECUTION_TIME_ARG_IS_LARGER_THAN_THE_UPDATED_ONE_ARG_AB654FAF,
+                cqId,
+                cqEntry.lastExecutionTime,
+                plan.getExecutionTime());
       } else {
         cqEntry.lastExecutionTime = plan.getExecutionTime();
         res.code = TSStatusCode.SUCCESS_STATUS.getStatusCode();

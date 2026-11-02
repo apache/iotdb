@@ -342,4 +342,11 @@ public final class IoTConsensusMessages {
   public static final String
       EXCEPTION_FAILED_TO_TAKE_SNAPSHOT_FOR_CONSENSUS_GROUP_ARG_IN_ARG_CHECK_STATE_MACHINE_LOGS_FOR_THE_UNDERLYING_CAUSE_74663D2D =
           "为共识组 %s 在 %s 创建快照失败；请检查状态机日志以获取底层原因";
+
+  public static final String
+      EXCEPTION_THE_WRITE_IS_REJECTED_BECAUSE_THE_WAL_DIRECTORY_SIZE_HAS_REACHED_THE_THRESHOLD_ARG_BYTES_YOU_MAY_NEED_TO_ADJUST_THE_FLUSH_POLICY_OF_THE_STORAGE_STORAGEENGINE_OR_THE_IOTCONSENSUS_SYNCHRONIZATION_PARAMETER_49AB1306 =
+          "写入被拒绝，因为 WAL 目录大小已达到阈值 %d 字节。可能需要调整存储引擎的刷盘策略或 IoTConsensus 的同步参数";
+
+  public static final String
+      EXCEPTION_FAILED_TO_LOAD_SNAPSHOT_ARG_FOR_CONSENSUS_GROUP_ARG_F876AE5C = "加载快照 %s 失败，共识组：%s";
 }

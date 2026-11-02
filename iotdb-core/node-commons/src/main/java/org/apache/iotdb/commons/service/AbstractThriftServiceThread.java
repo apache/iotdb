@@ -192,7 +192,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
       }
       InetSocketAddress socketAddress = new InetSocketAddress(bindAddress, port);
       serverTransport =
-          TSSLTransportFactory.getServerSocket(
+          RpcSslUtils.createServerSocket(
               socketAddress.getPort(), clientTimeout, socketAddress.getAddress(), params);
       TThreadPoolServer.Args poolArgs =
           initSyncedPoolArgs(processor, threadsName, maxWorkerThreads, timeoutSecond);
