@@ -101,11 +101,13 @@ public class SubscriptionReceiverAgent {
   SubscriptionReceiverAgent() {
     this(
         SubscriptionReceiverV1::new,
-        SubscriptionConfig.getInstance().getSubscriptionEnabled()
-            && PipeDataNodeAgent.isSubscriptionFeatureEnabled(),
-        () ->
-            SubscriptionConfig.getInstance().getSubscriptionEnabled()
-                && PipeDataNodeAgent.isSubscriptionFeatureEnabled());
+        isSubscriptionEnabled(),
+        SubscriptionReceiverAgent::isSubscriptionEnabled);
+  }
+
+  private static boolean isSubscriptionEnabled() {
+    return SubscriptionConfig.getInstance().getSubscriptionEnabled()
+        && PipeDataNodeAgent.isSubscriptionFeatureEnabled();
   }
 
   SubscriptionReceiverAgent(

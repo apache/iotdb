@@ -594,23 +594,35 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private static boolean isDataInsertionRequest(final PipeRequestType requestType) {
-    switch (requestType) {
-      case TRANSFER_TABLET_INSERT_NODE:
-      case TRANSFER_TABLET_INSERT_NODE_V2:
-      case TRANSFER_TABLET_RAW:
-      case TRANSFER_TABLET_RAW_V2:
-      case TRANSFER_TABLET_BINARY:
-      case TRANSFER_TABLET_BINARY_V2:
-      case TRANSFER_TABLET_BATCH:
-      case TRANSFER_TABLET_BATCH_V2:
-      case TRANSFER_TS_FILE_PIECE:
-      case TRANSFER_TS_FILE_SEAL:
-      case TRANSFER_TS_FILE_PIECE_WITH_MOD:
-      case TRANSFER_TS_FILE_SEAL_WITH_MOD:
-        return true;
-      default:
-        return false;
-    }
+    return switch (requestType) {
+      case TRANSFER_TABLET_INSERT_NODE,
+          TRANSFER_TABLET_INSERT_NODE_V2,
+          TRANSFER_TABLET_RAW,
+          TRANSFER_TABLET_RAW_V2,
+          TRANSFER_TABLET_BINARY,
+          TRANSFER_TABLET_BINARY_V2,
+          TRANSFER_TABLET_BATCH,
+          TRANSFER_TABLET_BATCH_V2,
+          TRANSFER_TS_FILE_PIECE,
+          TRANSFER_TS_FILE_SEAL,
+          TRANSFER_TS_FILE_PIECE_WITH_MOD,
+          TRANSFER_TS_FILE_SEAL_WITH_MOD ->
+          true;
+      case HANDSHAKE_CONFIGNODE_V1,
+          HANDSHAKE_DATANODE_V1,
+          HANDSHAKE_CONFIGNODE_V2,
+          HANDSHAKE_DATANODE_V2,
+          TRANSFER_PLAN_NODE,
+          TRANSFER_SCHEMA_SNAPSHOT_PIECE,
+          TRANSFER_SCHEMA_SNAPSHOT_SEAL,
+          TRANSFER_CONFIG_PLAN,
+          TRANSFER_CONFIG_SNAPSHOT_PIECE,
+          TRANSFER_CONFIG_SNAPSHOT_SEAL,
+          TRANSFER_COMPRESSED,
+          TRANSFER_SLICE,
+          TRANSFER_PIPE_RECEIVER_RUNTIME_INFO_CLEANUP ->
+          false;
+    };
   }
 
   private TPipeTransferResp handleTransferTabletBinary(final PipeTransferTabletBinaryReq req) {
