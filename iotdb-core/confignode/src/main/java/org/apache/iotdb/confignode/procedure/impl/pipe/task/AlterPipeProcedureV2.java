@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -317,14 +318,17 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     final String pipeName = alterPipeRequest.getPipeName();
     LOGGER.info("AlterPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
-    final String exceptionMessage =
-        parsePushPipeMetaExceptionForPipe(
-            pipeName,
-            !PipeTaskAgent.isRealtimeOnlyPipe(currentPipeStaticMeta.getExtractorParameters())
-                    && PipeTaskAgent.isRealtimeOnlyPipe(
-                        updatedPipeStaticMeta.getExtractorParameters())
-                ? pushSinglePipeMetaToDataNodes4Realtime(pipeName, env)
-                : pushSinglePipeMetaToDataNodes(pipeName, env));
+    persistPendingPipeMetaExceptions(env);
+
+    final Map<Integer, TPushPipeMetaResp> respMap =
+        !PipeTaskAgent.isRealtimeOnlyPipe(currentPipeStaticMeta.getExtractorParameters())
+                && PipeTaskAgent.isRealtimeOnlyPipe(updatedPipeStaticMeta.getExtractorParameters())
+            ? pushSinglePipeMetaToDataNodes4Realtime(pipeName, env)
+            : pushSinglePipeMetaToDataNodes(pipeName, env);
+    if (pipeTaskInfo.get().recordDataNodePushPipeMetaExceptions(respMap, updatedPipeStaticMeta)) {
+      writePipeMetaChangesToConfigNodeConsensus(env);
+    }
+    final String exceptionMessage = parsePushPipeMetaExceptionForPipe(pipeName, respMap);
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
           "Failed to alter pipe {}, details: {}, metadata will be synchronized later.",

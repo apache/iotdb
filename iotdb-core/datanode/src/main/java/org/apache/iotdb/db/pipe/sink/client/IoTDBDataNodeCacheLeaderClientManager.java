@@ -27,14 +27,35 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Weigher;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public interface IoTDBDataNodeCacheLeaderClientManager {
 
   LeaderCacheManager LEADER_CACHE_MANAGER = new LeaderCacheManager();
+
+  TEndPoint getLeaderEndPoint(String deviceId);
+
+  static String generateReceiverKey(final List<TEndPoint> endPoints) {
+    return endPoints.stream()
+        .map(
+            endPoint -> {
+              final String host = endPoint.getIp();
+              final String formattedHost =
+                  host.contains(":") && !(host.startsWith("[") && host.endsWith("]"))
+                      ? "[" + host + "]"
+                      : host;
+              return formattedHost + ":" + endPoint.getPort();
+            })
+        .distinct()
+        .sorted()
+        .collect(Collectors.joining(",", "[", "]"));
+  }
 
   class LeaderCacheManager {
 
@@ -42,7 +63,9 @@ public interface IoTDBDataNodeCacheLeaderClientManager {
     private static final PipeConfig CONFIG = PipeConfig.getInstance();
 
     // leader cache built by LRU
-    private final Cache<String, TEndPoint> device2endpoint;
+    // A device can have different leaders in different receiving clusters. Keep one bounded
+    // cache, but namespace its entries by the sink's configured endpoints, before redirection.
+    private final Cache<Pair<String, String>, TEndPoint> device2endpoint;
     // a hashmap to reuse the created endpoint
     private final ConcurrentHashMap<TEndPoint, TEndPoint> endPoints = new ConcurrentHashMap<>();
 
@@ -57,7 +80,10 @@ public interface IoTDBDataNodeCacheLeaderClientManager {
       device2endpoint =
           Caffeine.newBuilder()
               .maximumWeight(allocatedMemoryBlock.getMemoryUsageInBytes())
-              .weigher((Weigher<String, TEndPoint>) (device, endPoint) -> device.getBytes().length)
+              .weigher(
+                  (Weigher<Pair<String, String>, TEndPoint>)
+                      (key, endPoint) ->
+                          key.getLeft().getBytes().length + key.getRight().getBytes().length)
               .recordStats()
               .build();
 
@@ -95,20 +121,23 @@ public interface IoTDBDataNodeCacheLeaderClientManager {
               });
     }
 
-    public TEndPoint getLeaderEndPoint(final String deviceId) {
-      return deviceId == null ? null : device2endpoint.getIfPresent(deviceId);
+    public TEndPoint getLeaderEndPoint(final String receiverKey, final String deviceId) {
+      return deviceId == null
+          ? null
+          : device2endpoint.getIfPresent(new Pair<>(receiverKey, deviceId));
     }
 
-    public void updateLeaderEndPoint(final String deviceId, final TEndPoint endPoint) {
+    public void updateLeaderEndPoint(
+        final String receiverKey, final String deviceId, final TEndPoint endPoint) {
       if (deviceId == null || endPoint == null) {
         return;
       }
 
       final TEndPoint endPointFromMap = endPoints.putIfAbsent(endPoint, endPoint);
       if (endPointFromMap != null) {
-        device2endpoint.put(deviceId, endPointFromMap);
+        device2endpoint.put(new Pair<>(receiverKey, deviceId), endPointFromMap);
       } else {
-        device2endpoint.put(deviceId, endPoint);
+        device2endpoint.put(new Pair<>(receiverKey, deviceId), endPoint);
       }
     }
   }

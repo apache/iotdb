@@ -30,6 +30,7 @@ import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncS
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.sync.IoTDBDataRegionSyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.websocket.WebSocketConnectorServer;
 import org.apache.iotdb.db.pipe.sink.protocol.websocket.WebSocketSink;
+import org.apache.iotdb.db.pipe.sink.protocol.writeback.WriteBackSink;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -41,7 +42,9 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.lang.reflect.Field;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
@@ -197,5 +200,38 @@ public class PipeSinkTest {
     tablet.addValue("s1", 0, 1L);
     return new PipeRawTabletInsertionEvent(
         tablet, false, pipeName, creationTime, null, null, false);
+  }
+
+  @Test
+  public void testWriteBackSinkDatabaseValidationAfterCloningParameters() throws Exception {
+    for (final String databaseKey : Arrays.asList("sink.database", "connector.database")) {
+      final PipeParameters parameters =
+          new PipeParameters(Collections.singletonMap(databaseKey, "root.target"))
+              .addOrReplaceEquivalentAttributesWithClone(
+                  new PipeParameters(
+                      Collections.singletonMap(
+                          PipeSinkConstant.SINK_ENABLE_SEND_TSFILE_LIMIT, "true")));
+
+      try (final WriteBackSink sink = new WriteBackSink()) {
+        sink.validate(new PipeParameterValidator(parameters));
+        sink.customize(
+            parameters,
+            new PipeTaskRuntimeConfiguration(new PipeTaskSinkRuntimeEnvironment("pipe", 1L, 1)));
+        final Field databaseNameField =
+            WriteBackSink.class.getDeclaredField("targetTreeModelDatabaseName");
+        databaseNameField.setAccessible(true);
+        Assert.assertEquals("root.target", databaseNameField.get(sink));
+      }
+    }
+
+    final HashMap<String, String> conflictingAttributes = new HashMap<>();
+    conflictingAttributes.put("connector.database", "root.connectorTarget");
+    conflictingAttributes.put("sink.database", "root.sinkTarget");
+    try (final WriteBackSink sink = new WriteBackSink()) {
+      Assert.assertThrows(
+          PipeException.class,
+          () ->
+              sink.validate(new PipeParameterValidator(new PipeParameters(conflictingAttributes))));
+    }
   }
 }
