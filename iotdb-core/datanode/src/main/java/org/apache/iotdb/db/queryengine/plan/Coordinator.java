@@ -431,7 +431,6 @@ public class Coordinator {
       ISchemaFetcher schemaFetcher,
       long timeOut,
       long startTime) {
-    ReadOnlyStatementValidator.check(statement);
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
     if (statement instanceof ShowPipeMemoryStatement) {
@@ -678,7 +677,6 @@ public class Coordinator {
       Metadata metadata,
       long timeOut,
       long startTime) {
-    ReadOnlyStatementValidator.check(statement);
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
     TableModelPlanner tableModelPlanner =
@@ -781,7 +779,6 @@ public class Coordinator {
         || statement instanceof RemoveRegion
         || statement instanceof Prepare
         || statement instanceof Deallocate) {
-      ReadOnlyStatementValidator.check(statement, sqlParser, clientSession);
       return new ConfigExecution(
           queryContext,
           null,
@@ -865,8 +862,6 @@ public class Coordinator {
       }
     }
 
-    // Check the resolved SQL that will be analyzed, including EXECUTE and EXECUTE IMMEDIATE.
-    ReadOnlyStatementValidator.check(statementToUse, sqlParser, clientSession);
     if (innerStatement instanceof WrappedInsertStatement) {
       ((WrappedInsertStatement) innerStatement).setContext(queryContext);
     }
