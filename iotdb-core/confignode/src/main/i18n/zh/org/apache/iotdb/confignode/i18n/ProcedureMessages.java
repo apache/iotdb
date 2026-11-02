@@ -439,6 +439,8 @@ public final class ProcedureMessages {
       "向 DataNode 推送 pipe 元数据列表失败，将稍后重试。";
   public static final String FAILED_TO_PUSH_PIPE_META_TO_DATANODES_DETAILS =
       "向 DataNode 推送 pipe 元数据失败，详情：%s";
+  public static final String EXCEPTION_INTERNAL_ERROR_WHILE_PROCESSING_PUSHPIPEMETA_ON_DATANODE_5983BD5F =
+      "处理 DataNode 上的 pushPipeMeta 时发生内部错误。";
   public static final String FAILED_TO_PUSH_TOPIC_META_TO_DATANODES_DETAILS =
       "向 DataNode 推送 topic 元数据失败，详情：%s";
   public static final String FAILED_TO_REMOVE_DATA_NODE_BECAUSE_IT_IS_NOT_IN =

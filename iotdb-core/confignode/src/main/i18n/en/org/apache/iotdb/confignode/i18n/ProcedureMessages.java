@@ -454,6 +454,8 @@ public final class ProcedureMessages {
       "Failed to push pipe meta list to data nodes, will retry later.";
   public static final String FAILED_TO_PUSH_PIPE_META_TO_DATANODES_DETAILS =
       "Failed to push pipe meta to dataNodes, details: %s";
+  public static final String EXCEPTION_INTERNAL_ERROR_WHILE_PROCESSING_PUSHPIPEMETA_ON_DATANODE_5983BD5F =
+      "Internal error while processing pushPipeMeta on DataNode.";
   public static final String FAILED_TO_PUSH_TOPIC_META_TO_DATANODES_DETAILS =
       "Failed to push topic meta to dataNodes, details: %s";
   public static final String FAILED_TO_REMOVE_DATA_NODE_BECAUSE_IT_IS_NOT_IN =
