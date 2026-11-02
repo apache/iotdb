@@ -230,6 +230,52 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
   }
 
   @Test
+  public void testFallbackRetainsMeasurementsSplitAcrossMetadataBatches() throws Exception {
+    tsFile = File.createTempFile("load-tree-metadata-batches-", ".tsfile");
+    final int measurementCount = 4001;
+    final List<IMeasurementSchema> schemas = new java.util.ArrayList<>();
+    for (int measurement = 0; measurement < measurementCount; measurement++) {
+      schemas.add(new MeasurementSchema("s" + measurement, TSDataType.INT64, TSEncoding.PLAIN));
+    }
+
+    final long secondGroupMarkerOffset;
+    try (final TsFileWriter writer = new TsFileWriter(tsFile)) {
+      writer.registerAlignedTimeseries(new PartialPath(DEVICE_0), schemas);
+      writeWideAlignedRow(writer, schemas, 0);
+      writer.flush();
+      secondGroupMarkerOffset = writer.getIOWriter().getPos();
+      writeWideAlignedRow(writer, schemas, 1);
+    }
+    corruptGroupMarker(tsFile, secondGroupMarkerOffset);
+    Assert.assertTrue("Expected scan parser to fail after corruption.", scanParserFails(tsFile));
+
+    final Map<String, Map<Long, Long>> points = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedLongPoints(statement, points);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    Assert.assertEquals(measurementCount, points.size());
+    for (int measurement = 0; measurement < measurementCount; measurement++) {
+      final String path = DEVICE_0 + ".s" + measurement;
+      final Map<Long, Long> values = points.get(path);
+      Assert.assertNotNull(path, values);
+      Assert.assertEquals(path, 2, values.size());
+      Assert.assertEquals(Long.valueOf(measurement * 10_000L), values.get(0L));
+      Assert.assertEquals(Long.valueOf(measurement * 10_000L + 1), values.get(1L));
+    }
+    Assert.assertFalse("A fully recovered load can delete its source", tsFile.exists());
+  }
+
+  @Test
   public void testFallbackDoesNotReplayMinimumTimestamp() throws Exception {
     assertFallbackResumesExtremeTimestamps(Long.MIN_VALUE);
   }
@@ -568,6 +614,17 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
       }
       writer.writeAligned(tablet);
     }
+  }
+
+  private void writeWideAlignedRow(
+      final TsFileWriter writer, final List<IMeasurementSchema> schemas, final long timestamp)
+      throws Exception {
+    final Tablet tablet = new Tablet(DEVICE_0, schemas, 1);
+    tablet.addTimestamp(0, timestamp);
+    for (int measurement = 0; measurement < schemas.size(); measurement++) {
+      tablet.addValue(0, measurement, measurement * 10_000L + timestamp);
+    }
+    writer.writeAligned(tablet);
   }
 
   private void writeDevice(

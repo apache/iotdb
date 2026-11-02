@@ -36,6 +36,7 @@ import org.apache.tsfile.exception.PathParseException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.TsFileSequenceReaderTimeseriesMetadataIterator;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -272,24 +273,32 @@ class LoadTreeTsFileTabletIterator
       throws IOException {
     final LinkedHashMap<IDeviceID, List<String>> deviceMeasurementsMap = new LinkedHashMap<>();
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath())) {
-      // iterAllTimeseriesMetadata treats an IOException as the end of iteration. Use throwing
-      // reads so an incomplete metadata index cannot turn a partial load into a success.
-      for (final IDeviceID device : reader.getAllDevices()) {
-        final Map<String, Long> emittedTimestamps =
-            lastEmittedTimestampsByDevice.getOrDefault(device, Collections.emptyMap());
-        deviceMeasurementsMap.put(
-            device,
-            reader.getDeviceTimeseriesMetadataWithoutChunkMetadata(device).stream()
-                .filter(
-                    metadata -> {
-                      final Long emittedTimestamp =
-                          emittedTimestamps.get(metadata.getMeasurementId());
-                      return !metadata.getMeasurementId().isEmpty()
-                          && (emittedTimestamp == null
-                              || emittedTimestamp < metadata.getStatistics().getEndTime());
-                    })
-                .map(TimeseriesMetadata::getMeasurementId)
-                .collect(Collectors.toList()));
+      // iterAllTimeseriesMetadata treats an IOException as the end of iteration. Use the
+      // throwing batch iterator so an incomplete metadata index cannot turn a partial load into a
+      // success without rereading every device's metadata separately.
+      final TsFileSequenceReaderTimeseriesMetadataIterator metadataIterator =
+          new TsFileSequenceReaderTimeseriesMetadataIterator(reader, false);
+      while (metadataIterator.hasNext()) {
+        for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> deviceMetadata :
+            metadataIterator.next().entrySet()) {
+          final Map<String, Long> emittedTimestamps =
+              lastEmittedTimestampsByDevice.getOrDefault(
+                  deviceMetadata.getKey(), Collections.emptyMap());
+          deviceMeasurementsMap
+              .computeIfAbsent(deviceMetadata.getKey(), key -> new ArrayList<>())
+              .addAll(
+                  deviceMetadata.getValue().stream()
+                      .filter(
+                          metadata -> {
+                            final Long emittedTimestamp =
+                                emittedTimestamps.get(metadata.getMeasurementId());
+                            return !metadata.getMeasurementId().isEmpty()
+                                && (emittedTimestamp == null
+                                    || emittedTimestamp < metadata.getStatistics().getEndTime());
+                          })
+                      .map(TimeseriesMetadata::getMeasurementId)
+                      .collect(Collectors.toList()));
+        }
       }
     }
     return deviceMeasurementsMap;
