@@ -87,14 +87,23 @@ public class PipeConfigNodeMetricsRestartTest {
   public void testConfigRegionSourceMetrics() {
     final PipeConfigRegionSourceMetrics metrics = PipeConfigRegionSourceMetrics.getInstance();
     bind(metrics);
-    metrics.register(mockConfigRegionSource());
+    final IoTDBConfigRegionSource source = mockConfigRegionSource();
+    when(source.getTaskID()).thenReturn(PIPE + "_0_" + CREATION_TIME);
+    when(source.getUnTransferredEventCount()).thenReturn(7L);
+    metrics.register(source);
     try {
+      assertEquals(7L, metrics.getRemainingEventCount(PIPE, CREATION_TIME));
+      assertEquals(0L, metrics.getRemainingEventCount(PIPE, CREATION_TIME + 1));
+      assertEquals(0L, metrics.getRemainingEventCount("other_pipe", CREATION_TIME));
       service.restartService();
       assertEquals(1, count(Metric.UNTRANSFERRED_CONFIG_COUNT));
+      when(source.getUnTransferredEventCount()).thenReturn(3L);
+      assertEquals(3L, metrics.getRemainingEventCount(PIPE, CREATION_TIME));
     } finally {
-      metrics.deregister(TASK_ID);
+      metrics.deregister(source.getTaskID());
     }
     assertEquals(0, count(Metric.UNTRANSFERRED_CONFIG_COUNT));
+    assertEquals(0L, metrics.getRemainingEventCount(PIPE, CREATION_TIME));
   }
 
   @Test
