@@ -224,11 +224,11 @@ public class ActiveLoadTsFileLoaderTest {
           new File(tempDir, "first.tsfile").getAbsolutePath(),
           tempDir.getAbsolutePath(),
           false,
-          false);
+          null);
       Assert.assertTrue(lastEmptyPoll.await(30, TimeUnit.SECONDS));
       Assert.assertEquals(1, executor.getActiveCount());
       final File next = new File(tempDir, "next.tsfile");
-      loader.tryTriggerTsFileLoad(next.getAbsolutePath(), tempDir.getAbsolutePath(), false, false);
+      loader.tryTriggerTsFileLoad(next.getAbsolutePath(), tempDir.getAbsolutePath(), false, null);
       Assert.assertTrue(loader.isFilePendingOrLoading(next));
       if (stop) {
         loader.stop();
@@ -271,7 +271,7 @@ public class ActiveLoadTsFileLoaderTest {
             producers.submit(
                 () ->
                     loader.tryTriggerTsFileLoad(
-                        source.getAbsolutePath(), tempDir.getAbsolutePath(), false, false)));
+                        source.getAbsolutePath(), tempDir.getAbsolutePath(), false, null)));
       }
       for (final Future<?> enqueue : enqueues) {
         enqueue.get(10, TimeUnit.SECONDS);

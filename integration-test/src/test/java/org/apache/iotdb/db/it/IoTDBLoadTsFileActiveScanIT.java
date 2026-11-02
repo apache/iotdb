@@ -31,11 +31,11 @@ import org.apache.iotdb.itbase.exception.InconsistentDataException;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.awaitility.Awaitility;
 import org.junit.After;
@@ -62,7 +62,7 @@ import java.util.stream.Stream;
 public class IoTDBLoadTsFileActiveScanIT {
   private static final String ORIGINAL_DIR = "ext/load/p1-original";
   private static final String RELOADED_DIR = "ext/load/p1-reloaded";
-  private static final List<IMeasurementSchema> SCHEMAS =
+  private static final List<MeasurementSchema> SCHEMAS =
       Arrays.asList(
           new MeasurementSchema("s", TSDataType.INT64),
           new MeasurementSchema("txt", TSDataType.TEXT));
@@ -108,8 +108,8 @@ public class IoTDBLoadTsFileActiveScanIT {
       // Publish the sidecars while tail magic is still absent. Closing the writer publishes the
       // complete file only after both deletion data and its resource are present.
       final TsFileResource resource = new TsFileResource(source);
-      resource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create(device), 9999);
-      resource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create(device), 20000);
+      resource.updateStartTime(new PlainDeviceID(device), 9999);
+      resource.updateEndTime(new PlainDeviceID(device), 20000);
       resource.serialize();
       try (final ModificationFile mods = resource.getModFile()) {
         mods.write(new Deletion(new MeasurementPath(device + ".s"), Long.MAX_VALUE, 10000, 10000));
@@ -168,16 +168,17 @@ public class IoTDBLoadTsFileActiveScanIT {
       throws Exception {
     final TsFileWriter writer = new TsFileWriter(source);
     try {
-      writer.registerAlignedTimeseries(device, SCHEMAS);
+      writer.registerAlignedTimeseries(new Path(device), SCHEMAS);
       final Tablet tablet = new Tablet(device, SCHEMAS, 3);
       final long[] times = {9999, 10000, 20000};
       for (int row = 0; row < times.length; row++) {
         tablet.addTimestamp(row, times[row]);
-        tablet.addValue(row, "s", 41L + row);
-        tablet.addValue(row, "txt", row == 0 ? "first" : row == 2 ? "last" : null);
+        tablet.addValue("s", row, 41L + row);
+        tablet.addValue("txt", row, row == 0 ? "first" : row == 2 ? "last" : null);
       }
+      tablet.rowSize = times.length;
       writer.writeAligned(tablet);
-      writer.flush();
+      writer.flushAllChunkGroups();
       return writer;
     } catch (final Exception e) {
       try {
@@ -195,11 +196,12 @@ public class IoTDBLoadTsFileActiveScanIT {
     final File staged = new File(directory.getParentFile(), name + ".publishing");
     try {
       try (final TsFileWriter writer = new TsFileWriter(staged)) {
-        writer.registerAlignedTimeseries(device, SCHEMAS);
+        writer.registerAlignedTimeseries(new Path(device), SCHEMAS);
         final Tablet tablet = new Tablet(device, SCHEMAS, 1);
         tablet.addTimestamp(0, 1);
-        tablet.addValue(0, "s", value);
-        tablet.addValue(0, "txt", "canary");
+        tablet.addValue("s", 0, value);
+        tablet.addValue("txt", 0, "canary");
+        tablet.rowSize = 1;
         writer.writeAligned(tablet);
       }
       try (final TsFileSequenceReader reader =
