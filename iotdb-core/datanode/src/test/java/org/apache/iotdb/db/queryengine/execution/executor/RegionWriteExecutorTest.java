@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.execution.executor;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
@@ -43,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement.AlterType;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
@@ -69,6 +74,40 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class RegionWriteExecutorTest {
+
+  @Test
+  public void testReadOnlyAllowsAttributeSyncRegistration() throws ConsensusException {
+    final CommonConfig config = CommonDescriptor.getInstance().getConfig();
+    final NodeStatus originalStatus = config.getNodeStatus();
+    final String originalReason = config.getStatusReason();
+    final IConsensus consensus = Mockito.mock(IConsensus.class);
+    final DataNodeRegionManager regionManager = Mockito.mock(DataNodeRegionManager.class);
+    final SchemaRegionId regionId = new SchemaRegionId(1);
+    Mockito.when(regionManager.getRegionLock(regionId)).thenReturn(new ReentrantReadWriteLock());
+    final RegionWriteExecutor executor =
+        new RegionWriteExecutor(
+            consensus,
+            consensus,
+            regionManager,
+            Mockito.mock(SchemaEngine.class),
+            Mockito.mock(ClusterTemplateManager.class),
+            Mockito.mock(TriggerFireVisitor.class));
+    final TableNodeLocationAddNode registration =
+        new TableNodeLocationAddNode(new PlanNodeId("register"), new TDataNodeLocation());
+    Mockito.when(consensus.write(regionId, registration))
+        .thenReturn(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    try {
+      for (String reason : new String[] {NodeStatus.MANUAL, NodeStatus.DISK_FULL}) {
+        config.setNodeStatusWithReason(NodeStatus.ReadOnly, reason);
+        final RegionExecutionResult result = executor.execute(regionId, registration);
+        assertTrue(result.isAccepted());
+        assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.getStatus().getCode());
+      }
+      Mockito.verify(consensus, Mockito.times(2)).write(regionId, registration);
+    } finally {
+      config.setNodeStatusWithReason(originalStatus, originalReason);
+    }
+  }
 
   @Test
   public void testAlterTimeSeriesRegionAvailability() throws Exception {
