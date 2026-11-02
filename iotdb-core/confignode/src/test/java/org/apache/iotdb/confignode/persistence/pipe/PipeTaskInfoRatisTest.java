@@ -79,14 +79,6 @@ public class PipeTaskInfoRatisTest {
     store(insertion);
     assertDisabled(() -> pipeTaskInfo.checkBeforeStartPipe("insertion"));
     assertDisabled(() -> pipeTaskInfo.checkBeforeStartPipe("insertion", false));
-    ConfigNodeDescriptor.getInstance()
-        .getConf()
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS_V2);
-    final String consensus = PipeStaticMeta.CONSENSUS_PIPE_PREFIX + "DataRegion[7]_1_2";
-    final TCreatePipeReq internal = createRequest(consensus, Map.of());
-    Assert.assertTrue(pipeTaskInfo.checkBeforeCreatePipe(internal));
-    store(internal);
-    pipeTaskInfo.checkBeforeStartPipe(consensus);
   }
 
   @Test

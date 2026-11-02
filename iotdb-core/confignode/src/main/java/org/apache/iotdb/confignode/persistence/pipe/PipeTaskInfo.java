@@ -432,8 +432,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   private void checkPipeDataInsertionAvailability(final PipeStaticMeta staticMeta) {
     // Procedures call these validators while holding the coordinator lock. Recheck the merged
     // source parameters here because concurrent ALTER requests can change the RPC-time snapshot.
-    if (!staticMeta.getPipeName().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)
-        && !PipeConfigNodeAgent.isPipeDataInsertionEnabled(staticMeta.getSourceParameters())) {
+    if (!PipeConfigNodeAgent.isPipeDataInsertionEnabled(staticMeta.getSourceParameters())) {
       throw new PipeException(
           PipeMessages
               .MESSAGE_PIPE_DATA_INSERTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_7D669ECC);

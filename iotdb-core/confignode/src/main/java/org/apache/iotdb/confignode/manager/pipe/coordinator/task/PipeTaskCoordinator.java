@@ -108,8 +108,7 @@ public class PipeTaskCoordinator {
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus createPipe(TCreatePipeReq req) {
-    if (!req.getPipeName().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)
-        && !PipeConfigNodeAgent.isPipeDataInsertionEnabled(req.getExtractorAttributes())) {
+    if (!PipeConfigNodeAgent.isPipeDataInsertionEnabled(req.getExtractorAttributes())) {
       return pipeDataInsertionDisabledStatus();
     }
 
@@ -251,9 +250,8 @@ public class PipeTaskCoordinator {
               String.format(
                   "Failed to alter pipe %s. Failures: %s does not exist.", pipeName, pipeName));
     }
-    if (!pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)
-        && !PipeConfigNodeAgent.isPipeDataInsertionEnabled(
-            getUpdatedSourceParameters(req, currentPipeMeta))) {
+    if (!PipeConfigNodeAgent.isPipeDataInsertionEnabled(
+        getUpdatedSourceParameters(req, currentPipeMeta))) {
       return pipeDataInsertionDisabledStatus();
     }
     req.setIsTableModel(isTableModel);
@@ -302,9 +300,8 @@ public class PipeTaskCoordinator {
           String.format(
               "Failed to start pipe %s. Failures: %s does not exist.", pipeName, pipeName));
     }
-    if (!pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)
-        && !PipeConfigNodeAgent.isPipeDataInsertionEnabled(
-            pipeMeta.getStaticMeta().getSourceParameters())) {
+    if (!PipeConfigNodeAgent.isPipeDataInsertionEnabled(
+        pipeMeta.getStaticMeta().getSourceParameters())) {
       return pipeDataInsertionDisabledStatus();
     }
     return startPipe(pipeName, isTableModel);

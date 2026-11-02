@@ -148,8 +148,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   @Override
   protected boolean isPipeDataInsertionEnabled(final PipeStaticMeta pipeStaticMeta) {
-    return pipeStaticMeta.getPipeName().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)
-        || PipeDataNodeAgent.isPipeDataInsertionEnabled(pipeStaticMeta.getSourceParameters());
+    return PipeDataNodeAgent.isPipeDataInsertionEnabled(pipeStaticMeta.getSourceParameters());
   }
 
   @Override

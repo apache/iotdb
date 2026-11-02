@@ -57,7 +57,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
-import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
@@ -1784,10 +1783,9 @@ public class ConfigManager implements IManager {
   }
 
   private TSStatus confirmPipeDataInsertionAvailability(
-      final String pipeName, final Map<String, String> sourceAttributes) {
+      final Map<String, String> sourceAttributes) {
     final TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        || pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)
         || PipeConfigNodeAgent.isPipeDataInsertionEnabled(sourceAttributes)) {
       return status;
     }
@@ -2600,8 +2598,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus createPipe(TCreatePipeReq req) {
-    TSStatus status =
-        confirmPipeDataInsertionAvailability(req.getPipeName(), req.getExtractorAttributes());
+    TSStatus status = confirmPipeDataInsertionAvailability(req.getExtractorAttributes());
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? pipeManager.getPipeTaskCoordinator().createPipe(req)
         : status;

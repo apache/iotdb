@@ -69,13 +69,6 @@ public class PipeConfigNodeTaskAgentTest {
         verify(agent.tasks.get(inclusion)).start();
         Assert.assertTrue(agent.contains(inclusion));
       }
-      ConfigNodeDescriptor.getInstance()
-          .getConf()
-          .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS_V2);
-      final String internal = PipeStaticMeta.CONSENSUS_PIPE_PREFIX + "DataRegion[7]_1_2";
-      Assert.assertNull(agent.handleSinglePipeMetaChanges(meta(internal, "data.insert")));
-      verify(agent.tasks.get(internal)).start();
-      Assert.assertTrue(agent.contains(internal));
     } finally {
       agent.dropAllPipeTasks();
       ConfigNodeDescriptor.getInstance()
