@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -31,8 +31,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 @SuppressWarnings({"squid:S106", "squid:S1144"})
 public class SessionPoolExample {
@@ -72,7 +74,16 @@ public class SessionPoolExample {
     // Choose the SessionPool you going to use
     constructRedirectSessionPool();
 
-    service = Executors.newFixedThreadPool(10);
+    // Professional Bounded ThreadPool to avoid OOM
+    service =
+        new ThreadPoolExecutor(
+            10,
+            10,
+            0L,
+            TimeUnit.MILLISECONDS,
+            new ArrayBlockingQueue<>(1000),
+            new ThreadPoolExecutor.CallerRunsPolicy());
+
     insertRecord();
     Thread.sleep(1000);
     queryByIterator();
