@@ -30,10 +30,6 @@ import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -43,7 +39,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -59,6 +54,7 @@ import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -227,31 +223,41 @@ public class IoTDBConnectionTest {
   }
 
   @Test
-  public void testOpenSessionRecognizesEnglishPasswordExpiration() throws Exception {
+  public void testPasswordExpirationWarningDateForEnglishDiagnostic() {
     String expirationDate = passwordExpirationDate(1);
-    assertOpenSessionWarning(
-        "Login successfully. Your password will expire at " + expirationDate, expirationDate);
+    assertEquals(
+        expirationDate,
+        IoTDBConnection.getPasswordExpirationDateToWarn(
+            "Login successfully. Your password will expire at " + expirationDate,
+            LocalDateTime.now()));
   }
 
   @Test
-  public void testOpenSessionRecognizesChinesePasswordExpiration() throws Exception {
+  public void testPasswordExpirationWarningDateForChineseDiagnostic() {
     String expirationDate = passwordExpirationDate(1);
-    assertOpenSessionWarning("密码将于以下时间过期：" + expirationDate, expirationDate);
+    assertEquals(
+        expirationDate,
+        IoTDBConnection.getPasswordExpirationDateToWarn(
+            "密码将于以下时间过期：" + expirationDate, LocalDateTime.now()));
   }
 
   @Test
-  public void testOpenSessionDoesNotWarnForDistantPasswordExpiration() throws Exception {
-    assertOpenSessionWarning("Your password will expire at " + passwordExpirationDate(30), null);
+  public void testPasswordExpirationWarningDateIsAbsentForDistantExpiration() {
+    String expirationDate = passwordExpirationDate(30);
+    assertNull(
+        IoTDBConnection.getPasswordExpirationDateToWarn(
+            "Your password will expire at " + expirationDate, LocalDateTime.now()));
   }
 
   @Test
-  public void testOpenSessionWithoutPasswordExpiration() throws Exception {
-    assertOpenSessionWarning("Login successfully", null);
+  public void testPasswordExpirationWarningDateIsAbsentWithoutDiagnostic() {
+    assertNull(
+        IoTDBConnection.getPasswordExpirationDateToWarn("Login successfully", LocalDateTime.now()));
   }
 
   @Test
   public void testOpenSessionWithoutStatusMessage() throws Exception {
-    assertOpenSessionWarning(null, null);
+    assertOpenSessionSucceeds(null);
   }
 
   private String passwordExpirationDate(int daysUntilExpiration) {
@@ -260,8 +266,7 @@ public class IoTDBConnectionTest {
         .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
   }
 
-  private void assertOpenSessionWarning(String statusMessage, String expirationDate)
-      throws Exception {
+  private void assertOpenSessionSucceeds(String statusMessage) throws Exception {
     Method openSession = prepareOpenSession();
     TSOpenSessionResp response =
         new TSOpenSessionResp(
@@ -269,38 +274,11 @@ public class IoTDBConnectionTest {
                 TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3)
             .setSessionId(1L);
     when(client.openSession(any(TSOpenSessionReq.class))).thenReturn(response);
-    Logger logger = (Logger) LoggerFactory.getLogger(IoTDBConnection.class);
-    Level originalLevel = logger.getLevel();
-    ListAppender<ILoggingEvent> appender = new ListAppender<>();
-    appender.start();
-    logger.addAppender(appender);
-    logger.setLevel(Level.WARN);
-    try {
-      openSession.invoke(connection);
+    openSession.invoke(connection);
 
-      Assert.assertFalse(connection.isClosed());
-      assertEquals(1L, connection.getSessionId());
-      verify(transport, never()).close();
-      if (expirationDate == null) {
-        assertTrue(appender.list.isEmpty());
-      } else {
-        assertEquals(1, appender.list.size());
-        ILoggingEvent warning = appender.list.get(0);
-        assertEquals(Level.WARN, warning.getLevel());
-        assertEquals(
-            JdbcMessages.LOG_ARG_ARG_PLEASE_CHANGE_IT_TIME_VIA_ALTER_USER_STATEMENT_6B67087C,
-            warning.getMessage());
-        Assert.assertArrayEquals(
-            new Object[] {
-              JdbcMessages.EXCEPTION_YOUR_PASSWORD_WILL_EXPIRE_AT_49098220, expirationDate
-            },
-            warning.getArgumentArray());
-      }
-    } finally {
-      logger.detachAppender(appender);
-      appender.stop();
-      logger.setLevel(originalLevel);
-    }
+    Assert.assertFalse(connection.isClosed());
+    assertEquals(1L, connection.getSessionId());
+    verify(transport, never()).close();
   }
 
   private Method prepareOpenSession() throws Exception {

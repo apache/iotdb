@@ -577,6 +577,22 @@ public class IoTDBConnection implements Connection {
     }
   }
 
+  static String getPasswordExpirationDateToWarn(String message, LocalDateTime now) {
+    if (message == null) {
+      return null;
+    }
+    for (String expirationPrefix : PASSWORD_EXPIRATION_DIAGNOSTIC_PREFIXES) {
+      int expirationIndex = message.indexOf(expirationPrefix);
+      if (expirationIndex != -1) {
+        String expirationDateStr = message.substring(expirationIndex + expirationPrefix.length());
+        DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        LocalDateTime expirationDate = LocalDateTime.from(dateFormat.parse(expirationDateStr));
+        return now.isAfter(expirationDate.minusDays(3)) ? expirationDateStr : null;
+      }
+    }
+    return null;
+  }
+
   private void openSession() throws SQLException {
     TSOpenSessionReq openReq = new TSOpenSessionReq();
 
@@ -609,25 +625,13 @@ public class IoTDBConnection implements Connection {
                   openResp.getServerProtocolVersion().getValue()));
         }
       }
-      String message = openResp.getStatus().getMessage();
-      if (message != null) {
-        for (String expirationPrefix : PASSWORD_EXPIRATION_DIAGNOSTIC_PREFIXES) {
-          int expirationIndex = message.indexOf(expirationPrefix);
-          if (expirationIndex != -1) {
-            String expirationDateStr =
-                message.substring(expirationIndex + expirationPrefix.length());
-            DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            LocalDateTime expirationDate = LocalDateTime.from(dateFormat.parse(expirationDateStr));
-            LocalDateTime now = LocalDateTime.now();
-            if (now.isAfter(expirationDate.minusDays(3))) {
-              logger.warn(
-                  JdbcMessages.LOG_ARG_ARG_PLEASE_CHANGE_IT_TIME_VIA_ALTER_USER_STATEMENT_6B67087C,
-                  JdbcMessages.EXCEPTION_YOUR_PASSWORD_WILL_EXPIRE_AT_49098220,
-                  expirationDateStr);
-            }
-            break;
-          }
-        }
+      String expirationDateStr =
+          getPasswordExpirationDateToWarn(openResp.getStatus().getMessage(), LocalDateTime.now());
+      if (expirationDateStr != null) {
+        logger.warn(
+            JdbcMessages.LOG_ARG_ARG_PLEASE_CHANGE_IT_TIME_VIA_ALTER_USER_STATEMENT_6B67087C,
+            JdbcMessages.EXCEPTION_YOUR_PASSWORD_WILL_EXPIRE_AT_49098220,
+            expirationDateStr);
       }
     } catch (TException e) {
       transport.close();
