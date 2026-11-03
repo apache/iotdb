@@ -41,7 +41,6 @@ import java.util.List;
 
 import static org.apache.iotdb.db.it.utils.MetadataFaultTestUtils.assertAllRows;
 import static org.apache.iotdb.db.it.utils.MetadataFaultTestUtils.assertFenced;
-import static org.apache.iotdb.db.it.utils.MetadataFaultTestUtils.assertRows;
 import static org.apache.iotdb.db.it.utils.MetadataFaultTestUtils.awaitAllRows;
 import static org.apache.iotdb.db.it.utils.MetadataFaultTestUtils.connect;
 import static org.apache.iotdb.db.it.utils.MetadataFaultTestUtils.execute;
@@ -130,8 +129,9 @@ public class IoTDBSchemaMetadataRecoveryIT extends AbstractSchemaIT {
               + ".d.s with datatype=INT32, encoding=PLAIN "
               + "tags('kind'='protected') attributes('owner'='old')",
           "insert into " + DB_LEASE + ".d(time,s) values(1,10)");
-      assertRows(
-          2,
+      // Wait for asynchronous IoTConsensus replication and warm the victim's schema cache before
+      // injecting metadata faults.
+      awaitAllRows(
           TREE_SQL_DIALECT,
           "select s from " + DB_LEASE + ".d",
           "Time," + DB_LEASE + ".d.s,",
