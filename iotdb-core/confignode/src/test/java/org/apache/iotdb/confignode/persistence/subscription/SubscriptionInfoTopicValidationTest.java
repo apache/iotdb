@@ -87,6 +87,75 @@ public class SubscriptionInfoTopicValidationTest {
   }
 
   @Test
+  public void testValidateTagFilterOnCreate() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
+    attributes.put(TopicConstant.TAG_FILTER_KEY, "region IN (\"north\", \"south\")");
+
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("table_topic").setTopicAttributes(attributes)));
+  }
+
+  @Test
+  public void testRejectInvalidTagFilterFromSessionApiOnCreate() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
+    attributes.put(TopicConstant.TAG_FILTER_KEY, "region = north");
+
+    assertCreateRejected(subscriptionInfo, attributes, "Invalid tag-filter");
+  }
+
+  @Test
+  public void testRejectInvalidTagFilterFromSessionApiOnAlter() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> originalAttributes = newIncrementalTableTopicAttributes();
+    originalAttributes.put(TopicConstant.TAG_FILTER_KEY, "region = \"north\"");
+    subscriptionInfo.createTopic(
+        new CreateTopicPlan(new TopicMeta("table_topic", 1L, originalAttributes)));
+
+    final Map<String, String> updatedAttributes = newIncrementalTableTopicAttributes();
+    updatedAttributes.put(TopicConstant.TAG_FILTER_KEY, "region IN ()");
+    try {
+      subscriptionInfo.validateBeforeAlteringTopic(
+          new TopicMeta("table_topic", 2L, updatedAttributes));
+      Assert.fail("Expected invalid tag-filter alteration to fail");
+    } catch (final SubscriptionException e) {
+      Assert.assertTrue(e.getMessage().contains("Invalid tag-filter"));
+    }
+  }
+
+  @Test
+  public void testRejectTagFilterOnTreeTopic() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(TopicConstant.TAG_FILTER_KEY, "region = \"north\"");
+
+    assertCreateRejected(subscriptionInfo, attributes, "only supported for table topics");
+  }
+
+  @Test
+  public void testTagFilterKeyIsCaseInsensitiveOnCreate() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    attributes.put("Tag-Filter", "region = \"north\"");
+
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("table_topic").setTopicAttributes(attributes)));
+  }
+
+  @Test
+  public void testRejectDuplicateTagFilterKeys() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    attributes.put(TopicConstant.TAG_FILTER_KEY, "region = \"north\"");
+    attributes.put("Tag-Filter", "region = \"south\"");
+
+    assertCreateRejected(subscriptionInfo, attributes, "duplicate tag-filter");
+  }
+
+  @Test
   public void testRejectTopicThatOnlySelectsAuditDatabase() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
 
@@ -248,6 +317,15 @@ public class SubscriptionInfoTopicValidationTest {
     attributes.put(TopicConstant.COLUMN_FILTER_KEY, " ");
 
     assertCreateRejected(subscriptionInfo, attributes, "column-filter should not be empty");
+  }
+
+  @Test
+  public void testRejectEmptyTagFilter() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
+    attributes.put(TopicConstant.TAG_FILTER_KEY, " ");
+
+    assertCreateRejected(subscriptionInfo, attributes, "tag-filter should not be empty");
   }
 
   @Test
@@ -518,10 +596,36 @@ public class SubscriptionInfoTopicValidationTest {
   }
 
   @Test
-  public void testRejectRetainingProgressOnInitialTopic() {
+  public void testAcceptRetainingProgressOnInitialTopic() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    for (final String value : new String[] {"true", " FALSE "}) {
+      final Map<String, String> attributes = newInitialTableTopicAttributes();
+      attributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, value);
+
+      Assert.assertTrue(
+          subscriptionInfo.validateBeforeCreatingTopic(
+              new TCreateTopicReq("initial_topic").setTopicAttributes(attributes)));
+    }
+  }
+
+  @Test
+  public void testAcceptRetainingProgressOnSnapshotTopic() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    attributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_SNAPSHOT_VALUE);
+    attributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "true");
+
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("snapshot_topic").setTopicAttributes(attributes)));
+  }
+
+  @Test
+  public void testInitialRetainProgressDoesNotAllowIncrementalRetentionAttributes() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
     final Map<String, String> attributes = newInitialTableTopicAttributes();
     attributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "true");
+    attributes.put(TopicConstant.RETENTION_BYTES_KEY, "1024");
 
     assertCreateRejected(subscriptionInfo, attributes, "only supported for incremental topics");
   }
@@ -529,10 +633,17 @@ public class SubscriptionInfoTopicValidationTest {
   @Test
   public void testRejectIllegalRetainProgressValue() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
-    attributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "yes");
-
-    assertCreateRejected(subscriptionInfo, attributes, "expected true or false");
+    for (final String mode :
+        new String[] {
+          TopicConstant.MODE_INITIAL_VALUE,
+          TopicConstant.MODE_SNAPSHOT_VALUE,
+          TopicConstant.MODE_INCREMENTAL_VALUE
+        }) {
+      final Map<String, String> attributes = newIncrementalTableTopicAttributes();
+      attributes.put(TopicConstant.MODE_KEY, mode);
+      attributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "yes");
+      assertCreateRejected(subscriptionInfo, attributes, "expected true or false");
+    }
   }
 
   @Test

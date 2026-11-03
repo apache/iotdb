@@ -41,10 +41,16 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -115,6 +121,180 @@ public class PipeMemoryManagerResizeTest {
     } finally {
       manager.release(tablet);
     }
+  }
+
+  @Test
+  public void testTsFileParserAllocationAndResizeShareProtectedCombinedLimit() {
+    final AtomicLong floatingMemoryUsageInBytes = new AtomicLong(0);
+    final PipeMemoryManager manager =
+        new PipeMemoryManager(
+            new AtomicLongMemoryBlock(
+                "PipeMemoryManagerResizeTest",
+                null,
+                TOTAL_MEMORY_SIZE_IN_BYTES,
+                MemoryBlockType.DYNAMIC),
+            floatingMemoryUsageInBytes::get);
+    final PipeTsFileParserMemoryBlock parser =
+        manager.forceAllocateForTsFileParserWithRetry("parser", 1000, "test");
+
+    try {
+      Assert.assertTrue(manager.tryResize(parser, 1100));
+      Assert.assertFalse(manager.tryResize(parser, 1140));
+      Assert.assertEquals(1100, parser.getMemoryUsageInBytes());
+      Assert.assertEquals(0, manager.getUsedMemorySizeInBytesOfTablets());
+      Assert.assertEquals(1100, manager.getUsedMemorySizeInBytesOfTsFiles());
+      Assert.assertEquals(1100, manager.getUsedMemorySizeInBytes());
+
+      final PipeRuntimeOutOfMemoryCriticalException allocationException =
+          Assert.assertThrows(
+              PipeRuntimeOutOfMemoryCriticalException.class,
+              () -> manager.forceAllocateForTsFileParserWithRetry("parser-2", 40, "test"));
+      Assert.assertTrue(
+          allocationException.getMessage(),
+          allocationException.getMessage().contains("usedTsFiles=1100 bytes"));
+      Assert.assertTrue(
+          allocationException.getMessage(),
+          allocationException.getMessage().contains("tabletLimit=900 bytes"));
+      Assert.assertTrue(
+          allocationException.getMessage().contains("tabletAndTsFileLimit=1200 bytes"));
+      Assert.assertTrue(
+          allocationException.getMessage().contains("protectedParserLimit=1140 bytes"));
+      Assert.assertEquals(2, manager.getPipeMemoryBlockInfoList().size());
+
+      // Parser working memory must not consume the tablet-only quota: the generated tablet
+      // still needs to be retained and sent while the parser owns its decoded pages/chunks.
+      final PipeTabletMemoryBlock output = manager.forceAllocateForTabletWithRetry("output", 50);
+      try {
+        Assert.assertTrue(manager.tryResize(output, 90));
+        Assert.assertEquals(90, manager.getUsedMemorySizeInBytesOfTablets());
+        Assert.assertEquals(1100, manager.getUsedMemorySizeInBytesOfTsFiles());
+      } finally {
+        manager.release(output);
+      }
+    } finally {
+      manager.release(parser);
+    }
+
+    Assert.assertEquals(0, manager.getUsedMemorySizeInBytes());
+  }
+
+  @Test
+  public void testZeroSizedTsFileParserCanGrowBeyondTabletLimitAndRelease() {
+    final PipeMemoryManager manager =
+        new PipeMemoryManager(
+            new AtomicLongMemoryBlock(
+                "PipeMemoryManagerResizeTest",
+                null,
+                TOTAL_MEMORY_SIZE_IN_BYTES,
+                MemoryBlockType.DYNAMIC),
+            () -> 0);
+    final PipeMemoryBlock event = manager.forceAllocate("event", 0);
+    final PipeTsFileParserMemoryBlock parser =
+        manager.forceAllocateForTsFileParserWithRetry("parser", 0, "test", event);
+    try {
+      Assert.assertTrue(manager.tryResize(parser, 1000));
+      Assert.assertEquals(1000, event.getMemoryUsageInBytes());
+      Assert.assertEquals(1000, manager.getUsedMemorySizeInBytesOfTsFiles());
+      Assert.assertEquals(1000, manager.getUsedMemorySizeInBytes());
+
+      Assert.assertTrue(manager.tryResize(parser, 100));
+      Assert.assertEquals(100, event.getMemoryUsageInBytes());
+      Assert.assertEquals(100, manager.getUsedMemorySizeInBytesOfTsFiles());
+      manager.release(event);
+      Assert.assertTrue(parser.isReleased());
+      Assert.assertEquals(0, manager.getUsedMemorySizeInBytesOfTsFiles());
+      Assert.assertEquals(0, manager.getUsedMemorySizeInBytesOfTablets());
+      Assert.assertEquals(0, manager.getUsedMemorySizeInBytes());
+    } finally {
+      manager.release(event);
+    }
+  }
+
+  @Test
+  public void testTsFileParserSharesQuotaWithTabletsAndTsFilesAndHonorsGlobalLimit() {
+    final PipeMemoryManager manager =
+        new PipeMemoryManager(
+            new AtomicLongMemoryBlock(
+                "PipeMemoryManagerResizeTest",
+                null,
+                TOTAL_MEMORY_SIZE_IN_BYTES,
+                MemoryBlockType.DYNAMIC),
+            () -> 0);
+    final PipeTabletMemoryBlock tablet = manager.forceAllocateForTabletWithRetry("tablet", 200);
+    final PipeTsFileMemoryBlock tsFile = manager.forceAllocateForTsFileWithRetry("tsFile", 500);
+    final PipeTsFileParserMemoryBlock parser =
+        manager.forceAllocateForTsFileParserWithRetry("parser", 400, "test");
+    final PipeMemoryBlock sink = manager.forceAllocate("sink", 900);
+    try {
+      Assert.assertFalse(manager.tryResize(parser, 440));
+      Assert.assertFalse(manager.tryResize(parser, 401));
+      Assert.assertEquals(200, manager.getUsedMemorySizeInBytesOfTablets());
+      Assert.assertEquals(900, manager.getUsedMemorySizeInBytesOfTsFiles());
+      Assert.assertEquals(2000, manager.getUsedMemorySizeInBytes());
+
+      manager.release(sink);
+      Assert.assertTrue(manager.tryResize(parser, 439));
+      Assert.assertFalse(manager.tryResize(parser, 440));
+      Assert.assertEquals(200, manager.getUsedMemorySizeInBytesOfTablets());
+      Assert.assertEquals(939, manager.getUsedMemorySizeInBytesOfTsFiles());
+      Assert.assertEquals(1139, manager.getUsedMemorySizeInBytes());
+    } finally {
+      manager.release(tablet);
+      manager.release(tsFile);
+      manager.release(parser);
+      manager.release(sink);
+    }
+    Assert.assertEquals(0, manager.getUsedMemorySizeInBytesOfTablets());
+    Assert.assertEquals(0, manager.getUsedMemorySizeInBytesOfTsFiles());
+    Assert.assertEquals(0, manager.getUsedMemorySizeInBytes());
+  }
+
+  @Test
+  public void testConcurrentTsFileParserAllocationsCannotOvershootQuota() throws Exception {
+    final PipeMemoryManager manager =
+        new PipeMemoryManager(
+            new AtomicLongMemoryBlock(
+                "PipeMemoryManagerResizeTest",
+                null,
+                TOTAL_MEMORY_SIZE_IN_BYTES,
+                MemoryBlockType.DYNAMIC),
+            () -> 0);
+    final ExecutorService executor = Executors.newFixedThreadPool(4);
+    final CountDownLatch start = new CountDownLatch(1);
+    final List<Future<PipeTsFileParserMemoryBlock>> futures = new ArrayList<>();
+    final List<PipeTsFileParserMemoryBlock> allocated = new ArrayList<>();
+    try {
+      for (int i = 0; i < 20; i++) {
+        futures.add(
+            executor.submit(
+                () -> {
+                  start.await();
+                  try {
+                    return manager.forceAllocateForTsFileParserWithRetry("parser", 300, "test");
+                  } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+                    return null;
+                  }
+                }));
+      }
+      start.countDown();
+      for (final Future<PipeTsFileParserMemoryBlock> future : futures) {
+        final PipeTsFileParserMemoryBlock block = future.get(10, TimeUnit.SECONDS);
+        if (block != null) {
+          allocated.add(block);
+        }
+      }
+      Assert.assertEquals(3, allocated.size());
+      Assert.assertEquals(900, manager.getUsedMemorySizeInBytes());
+      Assert.assertEquals(0, manager.getUsedMemorySizeInBytesOfTablets());
+      Assert.assertEquals(900, manager.getUsedMemorySizeInBytesOfTsFiles());
+      Assert.assertEquals(4, manager.getPipeMemoryBlockInfoList().size());
+    } finally {
+      executor.shutdownNow();
+      allocated.forEach(manager::release);
+    }
+    Assert.assertEquals(0, manager.getUsedMemorySizeInBytes());
+    Assert.assertEquals(0, manager.getUsedMemorySizeInBytesOfTsFiles());
+    Assert.assertEquals(0, manager.getUsedMemorySizeInBytesOfTablets());
   }
 
   @Test

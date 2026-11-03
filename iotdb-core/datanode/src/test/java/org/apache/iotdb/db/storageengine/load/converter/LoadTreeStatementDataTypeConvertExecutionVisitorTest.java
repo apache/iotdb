@@ -34,9 +34,13 @@ import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.IMetadataIndexEntry;
+import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Path;
@@ -51,6 +55,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -104,14 +109,298 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
             });
 
     final Optional<TSStatus> status =
-        visitor.visitLoadFile(LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()), null);
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
 
     Assert.assertTrue(status.isPresent());
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.get().getCode());
+    Assert.assertTrue("A partial load must retain its source", tsFile.exists());
     final int loadedPointCountBeforeCorruption = pointCountByDevice.getOrDefault(DEVICE_0, 0);
     final int loadedPointCountAfterFallback = pointCountByDevice.getOrDefault(DEVICE_2, 0);
     Assert.assertTrue(loadedPointCountBeforeCorruption > 0);
     Assert.assertEquals(loadedPointCountBeforeCorruption, loadedPointCountAfterFallback);
+  }
+
+  @Test
+  public void testFullyRecoveredQueryFallbackCanDeleteSource() throws Exception {
+    tsFile = new File("load-tree-query-fallback-recoverable-marker.tsfile");
+    final long groupMarkerOffset = writeTsFile(tsFile);
+    // Keep the first marker valid for the reader's encryption-header check. Indexed queries can
+    // recover every point without reading the second device's chunk-group marker.
+    try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+      reader.position(groupMarkerOffset);
+      Assert.assertEquals(MetaMarker.CHUNK_GROUP_HEADER, reader.readMarker());
+    }
+    try (final RandomAccessFile file = new RandomAccessFile(tsFile, "rw")) {
+      file.seek(groupMarkerOffset);
+      file.writeByte(0x7f);
+    }
+    Assert.assertTrue("Expected scan parser to fail after corruption.", scanParserFails(tsFile));
+
+    final Map<String, Integer> pointCountByTimeseries = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPointsByTimeseries(statement, pointCountByTimeseries);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    for (final String device : Arrays.asList(DEVICE_0, DEVICE_1, DEVICE_2)) {
+      assertMeasurementLoadedCompletely(pointCountByTimeseries, device, 0);
+      assertMeasurementLoadedCompletely(pointCountByTimeseries, device, 1);
+    }
+    Assert.assertFalse("A fully recovered load can delete its source", tsFile.exists());
+  }
+
+  @Test
+  public void testFallbackRetainsSourceWhenFirstDeviceMetadataIsUnreadable() throws Exception {
+    assertFallbackRetainsSourceWhenMetadataIsUnreadable(DEVICE_0);
+  }
+
+  @Test
+  public void testFallbackRetainsSourceWhenLaterDeviceMetadataIsUnreadable() throws Exception {
+    assertFallbackRetainsSourceWhenMetadataIsUnreadable(DEVICE_1);
+  }
+
+  private void assertFallbackRetainsSourceWhenMetadataIsUnreadable(final String corruptedDevice)
+      throws Exception {
+    tsFile = File.createTempFile("load-tree-unreadable-metadata-", ".tsfile");
+    final long groupMarkerOffset = writeTsFile(tsFile);
+    final IDeviceID deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create(corruptedDevice);
+    final long measurementIndexEndOffsetPosition;
+    try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+      final MetadataIndexNode deviceIndex =
+          reader.readFileMetadata().getTableMetadataIndexNode(deviceId.getTableName());
+      Assert.assertEquals(MetadataIndexNodeType.LEAF_DEVICE, deviceIndex.getNodeType());
+      final Pair<IMetadataIndexEntry, Long> deviceEntry =
+          deviceIndex.getChildIndexEntry(deviceId, true);
+      Assert.assertNotNull(deviceEntry);
+      final MetadataIndexNode measurementIndex =
+          reader.readMetadataIndexNode(deviceEntry.left.getOffset(), deviceEntry.right, false);
+      Assert.assertEquals(MetadataIndexNodeType.LEAF_MEASUREMENT, measurementIndex.getNodeType());
+      measurementIndexEndOffsetPosition = deviceEntry.right - Long.BYTES - Byte.BYTES;
+    }
+    // Preserve the footer and device index, but make the measurement metadata read reach EOF.
+    try (final RandomAccessFile bytes = new RandomAccessFile(tsFile, "rw")) {
+      bytes.seek(measurementIndexEndOffsetPosition);
+      bytes.writeLong(bytes.length() + 1);
+    }
+    try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+      Assert.assertThrows(
+          IOException.class,
+          () -> reader.getDeviceTimeseriesMetadataWithoutChunkMetadata(deviceId));
+    }
+    corruptGroupMarker(tsFile, groupMarkerOffset);
+    Assert.assertTrue("Expected scan parser to fail after corruption.", scanParserFails(tsFile));
+
+    final Map<String, Integer> points = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPointsByTimeseries(statement, points);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.get().getCode());
+    Assert.assertTrue("Unreadable metadata must retain the source", tsFile.exists());
+    assertMeasurementLoadedCompletely(points, DEVICE_0, 0);
+    assertMeasurementLoadedCompletely(points, DEVICE_0, 1);
+  }
+
+  @Test
+  public void testFallbackResumesRepeatedNonAlignedDevicesAcrossChunkGroups() throws Exception {
+    assertFallbackResumesRepeatedDevices(false);
+  }
+
+  @Test
+  public void testFallbackResumesRepeatedAlignedDevicesAcrossChunkGroups() throws Exception {
+    assertFallbackResumesRepeatedDevices(true);
+  }
+
+  @Test
+  public void testFallbackRetainsMeasurementsSplitAcrossMetadataBatches() throws Exception {
+    tsFile = File.createTempFile("load-tree-metadata-batches-", ".tsfile");
+    final int measurementCount = 4001;
+    final List<IMeasurementSchema> schemas = new java.util.ArrayList<>();
+    for (int measurement = 0; measurement < measurementCount; measurement++) {
+      schemas.add(new MeasurementSchema("s" + measurement, TSDataType.INT64, TSEncoding.PLAIN));
+    }
+
+    final long secondGroupMarkerOffset;
+    try (final TsFileWriter writer = new TsFileWriter(tsFile)) {
+      writer.registerAlignedTimeseries(new PartialPath(DEVICE_0), schemas);
+      writeWideAlignedRow(writer, schemas, 0);
+      writer.flush();
+      secondGroupMarkerOffset = writer.getIOWriter().getPos();
+      writeWideAlignedRow(writer, schemas, 1);
+    }
+    corruptGroupMarker(tsFile, secondGroupMarkerOffset);
+    Assert.assertTrue("Expected scan parser to fail after corruption.", scanParserFails(tsFile));
+
+    final Map<String, Map<Long, Long>> points = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedLongPoints(statement, points);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    Assert.assertEquals(measurementCount, points.size());
+    for (int measurement = 0; measurement < measurementCount; measurement++) {
+      final String path = DEVICE_0 + ".s" + measurement;
+      final Map<Long, Long> values = points.get(path);
+      Assert.assertNotNull(path, values);
+      Assert.assertEquals(path, 2, values.size());
+      Assert.assertEquals(Long.valueOf(measurement * 10_000L), values.get(0L));
+      Assert.assertEquals(Long.valueOf(measurement * 10_000L + 1), values.get(1L));
+    }
+    Assert.assertFalse("A fully recovered load can delete its source", tsFile.exists());
+  }
+
+  @Test
+  public void testFallbackDoesNotReplayMinimumTimestamp() throws Exception {
+    assertFallbackResumesExtremeTimestamps(Long.MIN_VALUE);
+  }
+
+  @Test
+  public void testFallbackResumesAtMaximumTimestamp() throws Exception {
+    assertFallbackResumesExtremeTimestamps(Long.MAX_VALUE - 1);
+  }
+
+  private void assertFallbackResumesExtremeTimestamps(final long firstTimestamp) throws Exception {
+    tsFile = File.createTempFile("load-tree-extreme-timestamps-", ".tsfile");
+    final List<IMeasurementSchema> schemas =
+        Arrays.asList(new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN));
+    final long secondFlushOffset;
+    try (final TsFileWriter writer = new TsFileWriter(tsFile)) {
+      writer.registerTimeseries(new Path(DEVICE_0), schemas);
+      writeRows(writer, schemas, DEVICE_0, firstTimestamp, 1, false);
+      writer.flush();
+      secondFlushOffset = writer.getIOWriter().getPos();
+      writeRows(writer, schemas, DEVICE_0, firstTimestamp + 1, 1, false);
+    }
+    corruptGroupMarker(tsFile, secondFlushOffset);
+
+    final Map<String, Map<Long, Long>> points = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedLongPoints(statement, points);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    final Map<Long, Long> values = points.get(DEVICE_0 + ".s0");
+    Assert.assertNotNull(values);
+    Assert.assertEquals(2, values.size());
+    Assert.assertEquals(Long.valueOf(firstTimestamp), values.get(firstTimestamp));
+    Assert.assertEquals(Long.valueOf(firstTimestamp + 1), values.get(firstTimestamp + 1));
+    Assert.assertFalse("A fully recovered load can delete its source", tsFile.exists());
+  }
+
+  private void assertFallbackResumesRepeatedDevices(final boolean aligned) throws Exception {
+    tsFile = File.createTempFile("load-tree-repeated-devices-", ".tsfile");
+    final List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
+    final long secondFlushOffset;
+    try (final TsFileWriter writer = new TsFileWriter(tsFile)) {
+      for (final String device : Arrays.asList(DEVICE_0, DEVICE_1)) {
+        if (aligned) {
+          writer.registerAlignedTimeseries(device, schemas);
+        } else {
+          writer.registerTimeseries(new Path(device), schemas);
+        }
+        writeRows(writer, schemas, device, 0, 4, aligned);
+      }
+      writer.flush();
+      secondFlushOffset = writer.getIOWriter().getPos();
+      for (final String device : Arrays.asList(DEVICE_0, DEVICE_1)) {
+        writeRows(writer, schemas, device, 4, 4, aligned);
+      }
+    }
+    corruptGroupMarker(tsFile, secondFlushOffset);
+
+    final Map<String, Map<Long, Long>> points = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedLongPoints(statement, points);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    for (final String device : Arrays.asList(DEVICE_0, DEVICE_1)) {
+      for (int measurement = 0; measurement < 2; measurement++) {
+        final String path = device + ".s" + measurement;
+        final Map<Long, Long> values = points.get(path);
+        Assert.assertNotNull(path, values);
+        Assert.assertEquals(path, 8, values.size());
+        for (long timestamp = 0; timestamp < 8; timestamp++) {
+          Assert.assertEquals(
+              path, Long.valueOf(timestamp + measurement * 100), values.get(timestamp));
+        }
+      }
+    }
+    Assert.assertFalse("A fully recovered load can delete its source", tsFile.exists());
+  }
+
+  private static void corruptGroupMarker(final File tsFile, final long offset) throws Exception {
+    try (final RandomAccessFile file = new RandomAccessFile(tsFile, "rw")) {
+      file.seek(offset);
+      Assert.assertEquals(MetaMarker.CHUNK_GROUP_HEADER, file.readByte());
+      file.seek(offset);
+      file.writeByte(0x7f);
+    }
+  }
+
+  private static void writeRows(
+      final TsFileWriter writer,
+      final List<IMeasurementSchema> schemas,
+      final String device,
+      final long firstTimestamp,
+      final int rowCount,
+      final boolean aligned)
+      throws Exception {
+    final Tablet tablet = new Tablet(device, schemas, rowCount);
+    for (int row = 0; row < rowCount; row++) {
+      tablet.addTimestamp(row, firstTimestamp + row);
+      for (int column = 0; column < schemas.size(); column++) {
+        tablet.addValue(row, column, firstTimestamp + row + column * 100);
+      }
+    }
+    if (aligned) {
+      writer.writeAligned(tablet);
+    } else {
+      writer.writeTree(tablet);
+    }
   }
 
   @Test
@@ -183,7 +472,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
         visitor.visitLoadFile(LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()), null);
 
     Assert.assertTrue(status.isPresent());
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.get().getCode());
 
     Assert.assertTrue(
         pointCountByTimeseries.getOrDefault(DEVICE_0 + ".s0", 0) < ROW_COUNT_PER_DEVICE);
@@ -215,7 +504,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
         visitor.visitLoadFile(LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()), null);
 
     Assert.assertTrue(status.isPresent());
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.get().getCode());
 
     assertMeasurementLoadedCompletely(pointCountByTimeseries, DEVICE_1, 0);
     Assert.assertTrue(
@@ -247,7 +536,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
         visitor.visitLoadFile(LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()), null);
 
     Assert.assertTrue(status.isPresent());
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.get().getCode());
 
     for (int measurementIndex = 0; measurementIndex < 8; ++measurementIndex) {
       assertMeasurementLoadedCompletely(pointCountByTimeseries, ALIGNED_DEVICE, measurementIndex);
@@ -280,7 +569,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
     Assert.assertNotEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.getCode());
   }
 
-  private void writeTsFile(final File file) throws Exception {
+  private long writeTsFile(final File file) throws Exception {
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
@@ -290,11 +579,15 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
             new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN),
             new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
 
+    final long secondGroupMarkerOffset;
     try (final TsFileWriter writer = new TsFileWriter(file)) {
       writeDevice(writer, schemaList, DEVICE_0, 0);
+      writer.flush();
+      secondGroupMarkerOffset = writer.getIOWriter().getPos();
       writeDevice(writer, schemaList, DEVICE_1, 10_000);
       writeDevice(writer, schemaList, DEVICE_2, 20_000);
     }
+    return secondGroupMarkerOffset;
   }
 
   private void writeWideAlignedTsFile(
@@ -321,6 +614,17 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
       }
       writer.writeAligned(tablet);
     }
+  }
+
+  private void writeWideAlignedRow(
+      final TsFileWriter writer, final List<IMeasurementSchema> schemas, final long timestamp)
+      throws Exception {
+    final Tablet tablet = new Tablet(DEVICE_0, schemas, 1);
+    tablet.addTimestamp(0, timestamp);
+    for (int measurement = 0; measurement < schemas.size(); measurement++) {
+      tablet.addValue(0, measurement, measurement * 10_000L + timestamp);
+    }
+    writer.writeAligned(tablet);
   }
 
   private void writeDevice(
@@ -391,6 +695,27 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
       return false;
     } catch (final Exception e) {
       return true;
+    }
+  }
+
+  private static void collectLoadedLongPoints(
+      final Statement statement, final Map<String, Map<Long, Long>> points) {
+    Assert.assertTrue(statement instanceof InsertMultiTabletsStatement);
+    for (final InsertTabletStatement tablet :
+        ((InsertMultiTabletsStatement) statement).getInsertTabletStatementList()) {
+      for (int column = 0; column < tablet.getMeasurements().length; column++) {
+        final String path =
+            tablet.getDevicePath().getFullPath() + "." + tablet.getMeasurements()[column];
+        final Map<Long, Long> values = points.computeIfAbsent(path, key -> new HashMap<>());
+        for (int row = 0; row < tablet.getRowCount(); row++) {
+          if (!tablet.isNull(row, column)) {
+            final long timestamp = tablet.getTimes()[row];
+            Assert.assertNull(
+                "Duplicate point: " + path + " at " + timestamp,
+                values.put(timestamp, ((long[]) tablet.getColumns()[column])[row]));
+          }
+        }
+      }
     }
   }
 

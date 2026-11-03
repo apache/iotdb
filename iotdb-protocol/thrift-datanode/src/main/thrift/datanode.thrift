@@ -356,6 +356,14 @@ struct TUpdateTableReq {
   1: required byte type
   2: required binary tableInfo
   3: optional string oldName
+  4: optional TUpdateTree2TableView updateTree2TableViewInfo
+}
+
+struct TUpdateTree2TableView{
+   1: required byte tree2TableOperationType
+   2: optional string treePath
+   3: optional bool isRestrict
+   4: optional i32 tagNum
 }
 
 struct TInvalidateTableCacheReq {
@@ -450,6 +458,7 @@ struct TDeviceViewReq {
   3: required i32 tagNumber
   4: required bool restrict
   5: optional set<string> requiredMeasurements
+  6: optional bool tolerateTypeMismatch
 }
 
 struct TDeviceViewResp {

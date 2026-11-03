@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.tools.utils;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+
 import org.apache.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.header.ChunkHeader;
@@ -40,6 +42,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public class TsFileRewriteSmallRangeI64Scan extends TsFileSequenceScan {
 
@@ -60,8 +63,10 @@ public class TsFileRewriteSmallRangeI64Scan extends TsFileSequenceScan {
     long sourceLength = sourceFile.length();
     long targetLength = targetFile.length();
     System.out.printf(
-        "Before rewrite %d, after rewrite %d, ratio %f%n",
-        sourceLength, targetLength, sourceLength * 1.0 / targetLength);
+        DataNodeMiscMessages.LOG_BEFORE_REWRITE_ARG_AFTER_REWRITE_ARG_RATIO_ARG_ARG_5D6B0081,
+        sourceLength,
+        targetLength,
+        sourceLength * 1.0 / targetLength);
   }
 
   @Override
@@ -105,7 +110,11 @@ public class TsFileRewriteSmallRangeI64Scan extends TsFileSequenceScan {
     } else {
       onAlignedChunk(chunk);
     }
-    System.out.println("Processed a chunk of " + currDeviceID + "." + currMeasurementID);
+    System.out.println(
+        String.format(
+            DataNodeMiscMessages.LOG_PROCESSED_A_CHUNK_OF_ARG_ARG_C6C93E9E,
+            Objects.toString(currDeviceID),
+            Objects.toString(currMeasurementID)));
     reader.position(
         reader.position()
             + chunk.getHeader().getSerializedSize()

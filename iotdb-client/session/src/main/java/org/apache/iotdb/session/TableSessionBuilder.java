@@ -49,6 +49,9 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   /**
    * Sets the list of node URLs for the IoTDB cluster.
    *
+   * <p>Use the same host/IP form as each DataNode's dn_rpc_address. Recovery deduplicates literal
+   * addresses, not DNS aliases.
+   *
    * @param nodeUrls a list of node URLs.
    * @return the current {@link TableSessionBuilder} instance.
    * @defaultValue Collection.singletonList(" localhost : 6667 ")

@@ -159,8 +159,14 @@ public class RemovePeerRestartConsensusTest {
       final PartitionInfo partitionInfo = newPartitionInfo(locations);
       final ConfigManager configManager =
           Mockito.mock(ConfigManager.class, Mockito.RETURNS_DEEP_STUBS);
-      Mockito.when(configManager.getPartitionManager().getAllReplicaSets())
-          .thenAnswer(ignored -> partitionInfo.getAllReplicaSets());
+      Mockito.when(configManager.getPartitionManager().getRegionDatabase(REGION))
+          .thenAnswer(call -> partitionInfo.getRegionDatabase(call.getArgument(0)));
+      Mockito.when(
+              configManager
+                  .getPartitionManager()
+                  .getReplicaSets("root.restart_repair", Collections.singletonList(REGION)))
+          .thenAnswer(
+              call -> partitionInfo.getReplicaSets(call.getArgument(0), call.getArgument(1)));
       Mockito.when(
               configManager
                   .getPartitionManager()

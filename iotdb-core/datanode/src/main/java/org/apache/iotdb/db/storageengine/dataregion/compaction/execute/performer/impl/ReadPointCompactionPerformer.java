@@ -183,7 +183,11 @@ public class ReadPointCompactionPerformer
       CompactionUtils.updatePlanIndexes(targetFiles, seqFiles, unseqFiles);
 
     } finally {
-      QueryResourceManager.getInstance().endQuery(queryId);
+      try {
+        fragmentInstanceContext.getQueryChunkReaders().close();
+      } finally {
+        QueryResourceManager.getInstance().endQuery(queryId);
+      }
     }
   }
 
@@ -237,13 +241,13 @@ public class ReadPointCompactionPerformer
     if (dataBlockReader.hasNextBatch()) {
       // chunkgroup is serialized only when at least one timeseries under this device has data
       compactionWriter.startChunkGroup(device, true);
-      measurementSchemas.add(0, timeSchema);
       compactionWriter.startMeasurement(
           TsFileConstant.TIME_COLUMN_ID,
-          new AlignedChunkWriterImpl(
-              measurementSchemas.remove(0),
-              measurementSchemas,
-              EncryptUtils.getEncryptParameter(getEncryptParameter())),
+          encryptParameter ->
+              new AlignedChunkWriterImpl(
+                  timeSchema,
+                  measurementSchemas,
+                  EncryptUtils.getEncryptParameter(encryptParameter)),
           0);
       writeWithReader(compactionWriter, dataBlockReader, device, 0, true);
       compactionWriter.endMeasurement(0);

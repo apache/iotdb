@@ -436,7 +436,7 @@ public class SubscriptionConsumerLifecycleTest {
       Assert.assertEquals(1, uncommittedCommitContexts.size());
       Assert.assertEquals(
           Collections.singleton(rejectedCommitContext), uncommittedCommitContexts.get(0L));
-      Assert.assertEquals(1, consumer.commitRequestCount);
+      Assert.assertEquals(4, consumer.commitRequestCount);
     } finally {
       consumer.close();
     }

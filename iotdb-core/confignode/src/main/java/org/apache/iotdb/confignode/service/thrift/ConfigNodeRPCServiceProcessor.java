@@ -108,6 +108,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerRelationalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatReq;
@@ -251,6 +253,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -592,7 +595,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       case TEST_SUB_PROCEDURE:
         return configManager.getProcedureManager().testSubProcedure();
       default:
-        String msg = String.format("operation %s is not supported", operation);
+        String msg =
+            String.format(
+                ConfigNodeMessages.EXCEPTION_OPERATION_ARG_IS_NOT_SUPPORTED_E069D2B9, operation);
         LOGGER.error(msg);
         throw new UnsupportedOperationException(msg);
     }
@@ -1029,7 +1034,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         noExistDB.forEach(database -> sb.append(database).append(","));
         return RpcUtils.getStatus(
             TSStatusCode.DATABASE_NOT_EXIST,
-            "Database " + sb.subSequence(0, sb.length() - 1) + " does not exist");
+            String.format(
+                ConfigNodeMessages.EXCEPTION_DATABASE_ARG_DOES_NOT_EXIST_0112959D,
+                Objects.toString(sb.subSequence(0, sb.length() - 1))));
       }
     }
     return configManager.flush(req);
@@ -1529,6 +1536,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus createTableView(final TCreateTableViewReq req) {
     return configManager.createTableView(req);
+  }
+
+  @Override
+  public TAutoSyncViewColumnsResp autoSyncViewColumns(TAutoSyncViewColumnsReq req) {
+    return configManager.autoSyncViewColumns(req);
   }
 
   @Override

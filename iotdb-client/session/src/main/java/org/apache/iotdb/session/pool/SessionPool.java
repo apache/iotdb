@@ -52,6 +52,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -502,7 +503,7 @@ public class SessionPool implements ISessionPool {
     if (nodeUrls.isEmpty()) {
       throw new IllegalArgumentException(SessionMessages.NODE_URLS_EMPTY);
     }
-    this.nodeUrls = nodeUrls;
+    this.nodeUrls = Collections.unmodifiableList(new ArrayList<>(nodeUrls));
     this.user = user;
     this.password = password;
     this.fetchSize = fetchSize;
@@ -519,9 +520,9 @@ public class SessionPool implements ISessionPool {
     this.version = version;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
-    this.formattedNodeUrls = nodeUrls.toString();
+    this.formattedNodeUrls = this.nodeUrls.toString();
     initThreadPool();
-    initAvailableNodes(SessionUtils.parseSeedNodeUrls(nodeUrls));
+    initAvailableNodes(SessionUtils.parseSeedNodeUrls(this.nodeUrls));
   }
 
   public SessionPool(AbstractSessionPoolBuilder builder) {
@@ -564,7 +565,7 @@ public class SessionPool implements ISessionPool {
       if (builder.nodeUrls.isEmpty()) {
         throw new IllegalArgumentException(SessionMessages.NODE_URLS_EMPTY);
       }
-      this.nodeUrls = builder.nodeUrls;
+      this.nodeUrls = Collections.unmodifiableList(new ArrayList<>(builder.nodeUrls));
       this.host = null;
       this.port = -1;
       this.formattedNodeUrls = builder.nodeUrls.toString();
@@ -3697,6 +3698,10 @@ public class SessionPool implements ISessionPool {
       return this;
     }
 
+    /**
+     * Configure recovery seeds using the same host/IP form as each DataNode's dn_rpc_address.
+     * Hostname aliases and IP literals are not DNS-deduplicated during recovery.
+     */
     public Builder nodeUrls(List<String> nodeUrls) {
       this.nodeUrls = nodeUrls;
       return this;

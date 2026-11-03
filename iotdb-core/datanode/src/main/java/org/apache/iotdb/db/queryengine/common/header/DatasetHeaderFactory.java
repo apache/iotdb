@@ -178,6 +178,10 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showTopicColumnHeaders, true);
   }
 
+  public static DatasetHeader getShowTableTopicHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showTableTopicColumnHeaders, true);
+  }
+
   public static DatasetHeader getShowSubscriptionHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showSubscriptionColumnHeaders, true);
   }

@@ -260,19 +260,37 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCl
         for (final TTsFilePieceReq request : requests) {
           final TLoadResp loadResp = client.sendTsFilePieceNode(request);
           if (!loadResp.isAccepted()) {
+            final TSStatus failureStatus =
+                loadResp.isSetStatus()
+                    ? loadResp.getStatus()
+                    : RpcUtils.getStatus(
+                        TSStatusCode.DISPATCH_ERROR,
+                        loadResp.isSetMessage()
+                            ? loadResp.getMessage()
+                            : DataNodeQueryMessages
+                                .MESSAGE_TARGET_NODE_REJECTED_LOAD_WITHOUT_A_STATUS_OR_A_MESSAGE_F4E4C645);
             final String errorCode =
                 loadResp.isSetStatus()
                     ? String.valueOf(loadResp.getStatus().getCode())
                     : UserDataTransferErrorCode.REMOTE_REJECTED.name();
             recordTransferAttempt(endPoint, false, errorCode, null);
             transferAttemptAudited = true;
-            LOGGER.warn(loadResp.getMessage());
-            throw new FragmentInstanceDispatchException(loadResp.getStatus());
+            LOGGER.warn(
+                DataNodeQueryMessages
+                    .LOG_LOAD_REJECTED_UUID_ARG_REGION_ARG_ENDPOINT_ARG_STATUS_ARG_8ED0679E,
+                uuid,
+                consensusGroupId,
+                endPoint,
+                failureStatus);
+            throw new FragmentInstanceDispatchException(failureStatus);
           }
         }
         recordTransferAttempt(endPoint, true, null, null);
         transferAttemptAudited = true;
       }
+    } catch (final FragmentInstanceDispatchException e) {
+      // A receiver rejection is already audited and carries its original status and retry hints.
+      throw e;
     } catch (final Exception e) {
       if (!transferAttemptAudited) {
         recordTransferAttempt(endPoint, false, null, e);
@@ -282,8 +300,9 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCl
       final String message =
           String.format(
               DataNodeQueryMessages
-                  .MESSAGE_FAILED_TO_DISPATCH_LOAD_COMMAND_ARG_TO_NODE_ARG_BECAUSE_OF_EXCEPTION_ARG_2D8A483D,
+                  .MESSAGE_FAILED_TO_DISPATCH_LOAD_ARG_FOR_REGION_ARG_TO_NODE_ARG_ARG_57EFEC3A,
               uuid,
+              consensusGroupId,
               endPoint,
               e);
       LOGGER.warn(message, e);

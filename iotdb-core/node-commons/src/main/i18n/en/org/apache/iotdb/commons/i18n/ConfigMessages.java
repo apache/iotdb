@@ -187,4 +187,6 @@ public final class ConfigMessages {
   public static final String LOG_PIPEEVENTREFERENCETRACKINGENABLED_SET_ARG_98E9A640 = "pipeEventReferenceTrackingEnabled is set to {}";
   public static final String LOG_PIPEEVENTREFERENCEELIMINATEINTERVALSECONDS_SET_ARG_62542387 = "pipeEventReferenceEliminateIntervalSeconds is set to {}";
 
+  public static final String LOG_GET_GIT_PROPERTIES_ERROR_ARG_2EF68070 =
+      "get git.properties error: %s";
 }

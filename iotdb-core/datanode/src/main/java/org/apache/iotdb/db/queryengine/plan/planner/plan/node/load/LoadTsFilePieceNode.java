@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.storageengine.load.splitter.ChunkData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
 
 import org.apache.tsfile.exception.NotImplementedException;
@@ -220,7 +221,8 @@ public class LoadTsFilePieceNode extends WritePlanNode {
         + '}';
   }
 
-  public static class ByteBufferInputStream extends InputStream {
+  public static class ByteBufferInputStream extends InputStream
+      implements ChunkData.ByteBufferSliceSource {
     private final ByteBuffer buffer;
 
     public ByteBufferInputStream(ByteBuffer buffer) {
@@ -245,7 +247,8 @@ public class LoadTsFilePieceNode extends WritePlanNode {
       return toRead;
     }
 
-    public ByteBuffer read(int length) {
+    @Override
+    public ByteBuffer readSlice(int length) {
       if (length < 0 || length > buffer.remaining()) {
         throw new IllegalArgumentException(
             DataNodeQueryMessages.INVALID_LENGTH_FOR_SLICING + length);

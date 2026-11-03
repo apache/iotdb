@@ -78,6 +78,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class AbstractSubscriptionProvider {
@@ -89,13 +90,12 @@ public abstract class AbstractSubscriptionProvider {
   // A commit response echoes accepted contexts and may also carry committed progress.
   private static final int COMMIT_RESPONSE_HEADROOM_FACTOR = 3;
 
-  private static final String STATUS_FORMATTER = "Status code is [%s], status message is [%s].";
   private static final String INTERNAL_ERROR_FORMATTER =
-      "Internal error occurred. " + STATUS_FORMATTER;
+      SubscriptionMessages
+          .EXCEPTION_INTERNAL_ERROR_OCCURRED_STATUS_CODE_IS_ARG_STATUS_MESSAGE_IS_ARG_D35048C4;
   private static final String SUBSCRIPTION_PIPE_TIMEOUT_FORMATTER =
-      "A timeout has occurred in procedures related to the pipe within the subscription procedure. "
-          + "Please manually check the subscription correctness later. "
-          + STATUS_FORMATTER;
+      SubscriptionMessages
+          .EXCEPTION_A_TIMEOUT_HAS_OCCURRED_IN_PROCEDURES_RELATED_TO_THE_PIPE_WITHIN_THE_SUBSCRIPTION_PROCEDURE_PLEASE_MANUALLY_CHECK_THE_SUBSCRIPTION_CORRECTNESS_LATER_STATUS_CODE_IS_ARG_STATUS_MESSAGE_IS_ARG_68B6AC95;
 
   private final SubscriptionSessionWrapper session;
 
@@ -107,7 +107,15 @@ public abstract class AbstractSubscriptionProvider {
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
   private final AtomicBoolean isClosing = new AtomicBoolean(false);
-  private final AtomicBoolean isAvailable = new AtomicBoolean(false);
+
+  private enum Availability {
+    NEW,
+    AVAILABLE,
+    UNAVAILABLE
+  }
+
+  private final AtomicReference<Availability> availability =
+      new AtomicReference<>(Availability.NEW);
   private final ReentrantLock rpcLock = new ReentrantLock();
 
   private final int localThriftMaxFrameSize;
@@ -174,9 +182,16 @@ public abstract class AbstractSubscriptionProvider {
   private TPipeSubscribeResp pipeSubscribe(final TPipeSubscribeReq req)
       throws TException, IoTDBConnectionException {
     rpcLock.lock();
+    SubscriptionSessionConnection connection = null;
     try {
-      final SubscriptionSessionConnection connection = getSessionConnection();
+      connection = getSessionConnection();
       return pipeSubscribeWithOptionalSlicing(req, requestBodySizeLimit, connection::pipeSubscribe);
+    } catch (final TException | IoTDBConnectionException e) {
+      setUnavailable();
+      if (connection != null) {
+        connection.forceClose();
+      }
+      throw e;
     } finally {
       rpcLock.unlock();
     }
@@ -236,15 +251,17 @@ public abstract class AbstractSubscriptionProvider {
   }
 
   boolean isAvailable() {
-    return isAvailable.get();
+    return availability.get() == Availability.AVAILABLE;
   }
 
   void setAvailable() {
-    isAvailable.set(true);
+    // A heartbeat that completes after a failed RPC must not revive this connection. Recovery
+    // constructs and handshakes a new provider instead.
+    availability.compareAndSet(Availability.NEW, Availability.AVAILABLE);
   }
 
   void setUnavailable() {
-    isAvailable.set(false);
+    availability.set(Availability.UNAVAILABLE);
   }
 
   int getDataNodeId() {
@@ -406,10 +423,17 @@ public abstract class AbstractSubscriptionProvider {
   }
 
   synchronized void closeSession() throws IoTDBConnectionException {
+    setUnavailable();
     try {
+      try {
+        // Recovery must preserve subscriptions and interrupt any heartbeat still using this
+        // session.
+        getSessionConnection().forceClose();
+      } catch (final IoTDBConnectionException ignored) {
+        // A failed handshake may not have opened a session.
+      }
       session.close();
     } finally {
-      setUnavailable();
       isClosed.set(true);
     }
   }
@@ -729,9 +753,32 @@ public abstract class AbstractSubscriptionProvider {
       setUnavailable();
       throw new SubscriptionConnectionException(e.getMessage(), e);
     }
-    verifyPipeSubscribeSuccess(resp.status);
+    try {
+      verifyPipeSubscribeSuccess(resp.status);
+    } catch (final SubscriptionRuntimeNonCriticalException e) {
+      // A missing broker is reported as a poll error instead of a transport failure. Treat it as a
+      // provider failure so the consumer can recreate this provider before the next poll.
+      if (isMissingBrokerPollError(resp.status)) {
+        setUnavailable();
+        throw new SubscriptionConnectionException(e.getMessage(), e);
+      }
+      throw e;
+    }
     final PipeSubscribePollResp pollResp = PipeSubscribePollResp.fromTPipeSubscribeResp(resp);
     return pollResp.getResponses();
+  }
+
+  private boolean isMissingBrokerPollError(final TSStatus status) {
+    if (status.code != TSStatusCode.SUBSCRIPTION_POLL_ERROR.getStatusCode()
+        || status.message == null) {
+      return false;
+    }
+    // These are server protocol diagnostics. Match both server locales independently of the client
+    // locale, including the distinct messages returned by file and tablet continuation polls.
+    return status.message.contains("no broker bound to consumer group [" + consumerGroupId + "]")
+        || status.message.contains(
+            "broker bound to consumer group [" + consumerGroupId + "] does not exist")
+        || status.message.contains("绑定到消费者组 [" + consumerGroupId + "] 的 Broker 不存在");
   }
 
   CommitResult commit(
@@ -756,20 +803,32 @@ public abstract class AbstractSubscriptionProvider {
 
     final List<SubscriptionCommitContext> acceptedCommitContexts = new ArrayList<>();
     final Map<String, TopicProgress> committedProgressByTopic = new LinkedHashMap<>();
+    int completedCommitContextCount = 0;
     rpcLock.lock();
     try {
       for (final List<SubscriptionCommitContext> batch : batches) {
         final CommitResult result = commitOnce(batch, nack);
+        completedCommitContextCount += batch.size();
         acceptedCommitContexts.addAll(result.getAcceptedCommitContexts());
         mergeTopicProgress(committedProgressByTopic, result.getCommittedProgressByTopic());
       }
+    } catch (final SubscriptionException e) {
+      if (nack || completedCommitContextCount == 0) {
+        throw e;
+      }
+      // Preserve every completed response even if a later batch fails with a server error. The
+      // consumer applies these results before propagating the original failure or retrying.
+      throw new CommitException(
+          e,
+          completedCommitContextCount,
+          new CommitResult(acceptedCommitContexts, committedProgressByTopic));
     } finally {
       rpcLock.unlock();
     }
     return new CommitResult(acceptedCommitContexts, committedProgressByTopic);
   }
 
-  private CommitResult commitOnce(
+  CommitResult commitOnce(
       final List<SubscriptionCommitContext> subscriptionCommitContexts, final boolean nack)
       throws SubscriptionException {
     final PipeSubscribeCommitReq req;
@@ -848,6 +907,32 @@ public abstract class AbstractSubscriptionProvider {
   @FunctionalInterface
   interface PipeSubscribeRequestSender {
     TPipeSubscribeResp send(TPipeSubscribeReq req) throws TException;
+  }
+
+  static final class CommitException extends SubscriptionException {
+    private final int completedCommitContextCount;
+    private final CommitResult completedResult;
+
+    private CommitException(
+        final SubscriptionException cause,
+        final int completedCommitContextCount,
+        final CommitResult completedResult) {
+      super(cause.getMessage(), cause);
+      this.completedCommitContextCount = completedCommitContextCount;
+      this.completedResult = completedResult;
+    }
+
+    int getCompletedCommitContextCount() {
+      return completedCommitContextCount;
+    }
+
+    CommitResult getCompletedResult() {
+      return completedResult;
+    }
+
+    SubscriptionException getFailure() {
+      return (SubscriptionException) getCause();
+    }
   }
 
   static final class CommitResult {
@@ -941,7 +1026,7 @@ public abstract class AbstractSubscriptionProvider {
         + ", consumerGroupId="
         + consumerGroupId
         + ", isAvailable="
-        + isAvailable
+        + isAvailable()
         + ", isClosed="
         + isClosed
         + "}";

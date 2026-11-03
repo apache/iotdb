@@ -55,6 +55,13 @@ public class PipeOperateSchemaQueueNode extends PlanNode {
   }
 
   @Override
+  public boolean isForwardable() {
+    // A close is decided from the local pipe metadata. After a leader change the new leader may
+    // already have newer metadata and an active source, so an old close must not be forwarded.
+    return isOpen;
+  }
+
+  @Override
   public List<PlanNode> getChildren() {
     return Collections.emptyList();
   }

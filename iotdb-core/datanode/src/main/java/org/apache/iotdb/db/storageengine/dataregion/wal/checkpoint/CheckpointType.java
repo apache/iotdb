@@ -19,14 +19,17 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 /** Type of {@link Checkpoint}. */
 public enum CheckpointType {
   // record all existing memTables info
-  GLOBAL_MEMORY_TABLE_INFO((byte) 0, "global memory table info"),
+  GLOBAL_MEMORY_TABLE_INFO(
+      (byte) 0, StorageEngineMessages.EXCEPTION_GLOBAL_MEMORY_TABLE_INFO_D31FC987),
   // record create info of one memTable
-  CREATE_MEMORY_TABLE((byte) 1, "create memory table"),
+  CREATE_MEMORY_TABLE((byte) 1, StorageEngineMessages.EXCEPTION_CREATE_MEMORY_TABLE_C9A458F5),
   // record flush info of one memTable
-  FLUSH_MEMORY_TABLE((byte) 2, "flush memory table");
+  FLUSH_MEMORY_TABLE((byte) 2, StorageEngineMessages.EXCEPTION_FLUSH_MEMORY_TABLE_F5383277);
 
   private final byte code;
   private final String name;

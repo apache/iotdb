@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.Peer;
@@ -29,6 +30,7 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.util.TimeDuration;
 import org.junit.After;
@@ -111,6 +113,44 @@ public class RatisConsensusTest {
     miniCluster.waitUntilActiveLeaderElectedAndReady();
 
     doConsensus(0, 10, 10);
+  }
+
+  @Test
+  public void testNonForwardableWriteAfterLeaderTransfer() throws Exception {
+    for (RatisConsensus server : servers) {
+      server.createLocalPeer(gid, peers);
+    }
+    miniCluster.waitUntilActiveLeaderElectedAndReady();
+
+    final int oldLeaderId = servers.get(0).getLeader(gid).getNodeId();
+    final int newLeaderId = (oldLeaderId + 1) % servers.size();
+    final RatisConsensus oldLeader = servers.get(oldLeaderId);
+    final IConsensusRequest leaderLocalRequest =
+        new TestUtils.TestRequest(TestUtils.TestRequest.incrRequest().serializeToByteBuffer()) {
+          @Override
+          public boolean isForwardable() {
+            return false;
+          }
+        };
+
+    oldLeader.transferLeader(gid, peers.get(newLeaderId));
+    miniCluster.waitUntilActiveLeaderElectedAndReady();
+    Assert.assertEquals(newLeaderId, oldLeader.getLeader(gid).getNodeId());
+
+    // The new leader has already made its own decision before the old request arrives.
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        servers.get(newLeaderId).write(gid, leaderLocalRequest).getCode());
+    Assert.assertEquals(
+        TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode(),
+        oldLeader.write(gid, leaderLocalRequest).getCode());
+    Assert.assertEquals(1, miniCluster.mustRead(newLeaderId));
+
+    // Ordinary writes issued to a follower must still reach the current leader.
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        oldLeader.write(gid, TestUtils.TestRequest.incrRequest()).getCode());
+    Assert.assertEquals(2, miniCluster.mustRead(newLeaderId));
   }
 
   @Test

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.dprofile;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -51,11 +52,12 @@ public class UDTFMinMax implements UDTF {
             x ->
                 ((String) x).equalsIgnoreCase(BATCH_COMPUTE)
                     || ((String) x).equalsIgnoreCase(STREAM_COMPUTE),
-            "Parameter \"compute\" is illegal. Please use \"batch\" (for default) or \"stream\".",
+            LibraryUdfMessages
+                .EXCEPTION_PARAMETER_COMPUTE_IS_ILLEGAL_PLEASE_USE_BATCH_FOR_DEFAULT_OR_STREAM_C46DD729,
             validator.getParameters().getStringOrDefault("compute", BATCH_COMPUTE))
         .validate(
             params -> (double) params[0] < (double) params[1],
-            "parameter $min$ should be smaller than $max$.",
+            LibraryUdfMessages.EXCEPTION_PARAMETER_MIN_SHOULD_BE_SMALLER_THAN_MAX_91D250E1,
             validator.getParameters().getDoubleOrDefault("min", -Double.MAX_VALUE),
             validator.getParameters().getDoubleOrDefault("max", Double.MAX_VALUE));
   }

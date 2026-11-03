@@ -59,6 +59,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -90,7 +91,7 @@ public class ConsensusPrefetchingQueueInitializationTest {
     when(walNode.getLogDirectory()).thenReturn(walDirectory);
     when(walNode.getCurrentSearchIndex()).thenReturn(3L);
     when(walNode.getCurrentWALFileVersion()).thenReturn(3L);
-    when(walNode.getCurrentWALMetaDataSnapshot()).thenReturn(new WALMetaData());
+    when(walNode.getWALMetaDataSnapshot(anyLong())).thenReturn(new WALMetaData());
     when(converter.convert(any())).thenReturn(Collections.emptyList());
     when(converter.isTableModel()).thenReturn(true);
 
@@ -168,7 +169,7 @@ public class ConsensusPrefetchingQueueInitializationTest {
 
     Files.delete(liveWal.toPath());
     final WALMetaData metadata = writeRequests(liveWal);
-    when(walNode.getCurrentWALMetaDataSnapshot()).thenReturn(metadata);
+    when(walNode.getWALMetaDataSnapshot(anyLong())).thenReturn(metadata);
     assertResumesAfterCommittedProgress();
   }
 

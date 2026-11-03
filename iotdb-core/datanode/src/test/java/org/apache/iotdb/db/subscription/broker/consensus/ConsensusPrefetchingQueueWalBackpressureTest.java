@@ -79,6 +79,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -129,7 +130,7 @@ public class ConsensusPrefetchingQueueWalBackpressureTest {
       when(walNode.getLogDirectory()).thenReturn(walDirectory);
       when(walNode.getCurrentSearchIndex()).thenReturn(3L);
       when(walNode.getCurrentWALFileVersion()).thenReturn(1L);
-      when(walNode.getCurrentWALMetaDataSnapshot()).thenReturn(new WALMetaData());
+      when(walNode.getWALMetaDataSnapshot(anyLong())).thenReturn(new WALMetaData());
       final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
       when(serverImpl.getConsensusReqReader()).thenReturn(walNode);
       when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
@@ -304,7 +305,7 @@ public class ConsensusPrefetchingQueueWalBackpressureTest {
       when(walNode.getLogDirectory()).thenReturn(walDirectory);
       when(walNode.getCurrentSearchIndex()).thenReturn((long) requestCount);
       when(walNode.getCurrentWALFileVersion()).thenReturn(1L);
-      when(walNode.getCurrentWALMetaDataSnapshot()).thenReturn(new WALMetaData());
+      when(walNode.getWALMetaDataSnapshot(anyLong())).thenReturn(new WALMetaData());
       final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
       when(serverImpl.getConsensusReqReader()).thenReturn(walNode);
       when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
@@ -373,11 +374,13 @@ public class ConsensusPrefetchingQueueWalBackpressureTest {
               deliveredLocalSeq, event.getCommitContext().getWriterProgress().getLocalSeq());
           assertTrue(queue.ack("consumer", event.getCommitContext()));
         }
-        assertEquals(
-            followerBeforePending ? oneTabletBytes : 0L, memoryManager.getUsedMemorySizeInBytes());
+        // Ordered replay retains blocked writer heads as raw requests until they can be emitted.
+        assertEquals(0L, memoryManager.getUsedMemorySizeInBytes());
       }
       assertEquals(requestCount, deliveredLocalSeq);
       if (followerBeforePending) {
+        assertTrue(queue.getRetainedRequestBytes() > 0L);
+        assertEquals(queue.getRetainedRequestBytes(), requestMemoryBlock.getUsedMemoryInBytes());
         // The replicated writer's later timestamp lets local requests drain in order. Removing
         // the local writer then releases that final follower entry without reading it again.
         queue.setActiveWriterNodeIds(Collections.singleton(WRITER_NODE_ID + 1));
@@ -411,7 +414,7 @@ public class ConsensusPrefetchingQueueWalBackpressureTest {
             missingWalGap
                 ? Arrays.asList(2L, 3L, 4L, 5L, 6L, 7L, 8L)
                 : (followerBeforePending
-                    ? Arrays.asList(1L, -1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L)
+                    ? Arrays.asList(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, -1L)
                     : Arrays.asList(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L)),
             conversions);
       }
@@ -453,7 +456,7 @@ public class ConsensusPrefetchingQueueWalBackpressureTest {
       when(walNode.getLogDirectory()).thenReturn(walDirectory);
       when(walNode.getCurrentSearchIndex()).thenReturn((long) REQUEST_COUNT);
       when(walNode.getCurrentWALFileVersion()).thenReturn(1L);
-      when(walNode.getCurrentWALMetaDataSnapshot()).thenReturn(new WALMetaData());
+      when(walNode.getWALMetaDataSnapshot(anyLong())).thenReturn(new WALMetaData());
 
       final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
       when(serverImpl.getConsensusReqReader()).thenReturn(walNode);
@@ -588,7 +591,7 @@ public class ConsensusPrefetchingQueueWalBackpressureTest {
       when(walNode.getLogDirectory()).thenReturn(walDirectory);
       when(walNode.getCurrentSearchIndex()).thenReturn((long) REQUEST_COUNT);
       when(walNode.getCurrentWALFileVersion()).thenReturn(1L);
-      when(walNode.getCurrentWALMetaDataSnapshot()).thenReturn(new WALMetaData());
+      when(walNode.getWALMetaDataSnapshot(anyLong())).thenReturn(new WALMetaData());
 
       final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
       when(serverImpl.getConsensusReqReader()).thenReturn(walNode);
@@ -726,7 +729,7 @@ public class ConsensusPrefetchingQueueWalBackpressureTest {
       when(walNode.getLogDirectory()).thenReturn(walDirectory);
       when(walNode.getCurrentSearchIndex()).thenReturn((long) requestCount);
       when(walNode.getCurrentWALFileVersion()).thenReturn(1L);
-      when(walNode.getCurrentWALMetaDataSnapshot()).thenReturn(new WALMetaData());
+      when(walNode.getWALMetaDataSnapshot(anyLong())).thenReturn(new WALMetaData());
 
       final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
       when(serverImpl.getConsensusReqReader()).thenReturn(walNode);

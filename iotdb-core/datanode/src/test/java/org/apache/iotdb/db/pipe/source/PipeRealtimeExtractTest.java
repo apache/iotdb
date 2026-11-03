@@ -1334,6 +1334,60 @@ public class PipeRealtimeExtractTest {
   }
 
   @Test
+  public void testTsFileSourceRegionLevelDowngradingSuppliesHeartbeatWhileTsFileIsInFlight()
+      throws Exception {
+    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    try (final PipeRealtimeDataRegionTsFileSource extractor =
+        createTsFileSourceForTest(
+            PipeSourceConstant.SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY, pipeTaskMeta)) {
+      final PipeRealtimeEvent firstEvent =
+          extractTsFileForTest(
+              extractor,
+              pipeTaskMeta,
+              createTsFileResource(dataRegion1, "123-1-0-0.tsfile"),
+              false);
+      final PipeRealtimeEvent secondEvent =
+          extractTsFileForTest(
+              extractor,
+              pipeTaskMeta,
+              createTsFileResource(dataRegion1, "123-2-0-0.tsfile"),
+              false);
+      final PipeRealtimeEvent heartbeat =
+          PipeRealtimeEventFactory.createRealtimeEvent(dataRegion1, false);
+      Assert.assertTrue(heartbeat.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(heartbeat);
+      final PipeRealtimeEvent completionBarrier =
+          PipeRealtimeEventFactory.createCompletionBarrierEvent(dataRegion1);
+      Assert.assertTrue(completionBarrier.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(completionBarrier);
+
+      // Drain the pending queue before adding another heartbeat so heartbeat coalescing does not
+      // discard it behind the completion barrier.
+      Assert.assertSame(firstEvent.getEvent(), extractor.supply());
+      final PipeRealtimeEvent heartbeatAfterCompletionBarrier =
+          PipeRealtimeEventFactory.createRealtimeEvent(dataRegion1, false);
+      Assert.assertTrue(
+          heartbeatAfterCompletionBarrier.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(heartbeatAfterCompletionBarrier);
+
+      Assert.assertSame(heartbeat.getEvent(), extractor.supply());
+      Assert.assertNull(extractor.supply());
+      Assert.assertFalse(secondEvent.getEvent().isReleased());
+      Assert.assertFalse(completionBarrier.getEvent().isReleased());
+      Assert.assertFalse(heartbeatAfterCompletionBarrier.getEvent().isReleased());
+
+      releaseSuppliedEvent(heartbeat.getEvent());
+      releaseSuppliedEvent(firstEvent.getEvent());
+      Assert.assertSame(secondEvent.getEvent(), extractor.supply());
+      releaseSuppliedEvent(secondEvent.getEvent());
+      Assert.assertSame(completionBarrier.getEvent(), extractor.supply());
+      releaseSuppliedEvent(completionBarrier.getEvent());
+      Assert.assertSame(heartbeatAfterCompletionBarrier.getEvent(), extractor.supply());
+      releaseSuppliedEvent(heartbeatAfterCompletionBarrier.getEvent());
+    }
+  }
+
+  @Test
   public void testTsFileSourceRegionLevelDowngradingFollowsQueryPriority() throws Exception {
     final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
     commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");

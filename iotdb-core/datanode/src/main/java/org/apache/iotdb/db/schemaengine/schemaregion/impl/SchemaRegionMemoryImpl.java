@@ -166,7 +166,6 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.calc.plan.planner.TableOperatorGenerator.makeLayout;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher.convertTagValuesToDeviceID;
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info of one certain
@@ -625,10 +624,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                 try {
                   tagManager.recoverIndex(measurementMNode.getOffset(), measurementMNode);
                 } catch (final IOException e) {
+                  // Snapshot callbacks run before the measurement is attached to its parent.
                   logger.error(
                       DataNodeSchemaMessages.FAILED_TO_RECOVER_TAG_INDEX,
-                      databaseFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
-                      schemaRegionId);
+                      measurementMNode.getName(),
+                      databaseFullPath,
+                      schemaRegionId,
+                      measurementMNode.getOffset(),
+                      e);
                 }
               },
               deviceMNode -> {

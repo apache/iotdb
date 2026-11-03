@@ -53,7 +53,7 @@ public class TsFileSettleByCompactionTool {
   private static final String PORT_NAME = "port";
 
   private static final String FILE_PATH_ARGS = "f";
-  private static final String FILE_PATH_NAME = "file paths";
+  private static final String FILE_PATH_NAME = DataNodeMiscMessages.EXCEPTION_FILE_PATHS_8A252140;
 
   private static final String DEFAULT_HOST_VALUE = "127.0.0.1";
   private static final String DEFAULT_PORT_VALUE = "10730";
@@ -100,7 +100,7 @@ public class TsFileSettleByCompactionTool {
         Option.builder(HOST_ARGS)
             .argName(HOST_NAME)
             .hasArg()
-            .desc("Host Name (optional, default 127.0.0.1")
+            .desc(DataNodeMiscMessages.EXCEPTION_HOST_NAME_OPTIONAL_DEFAULT_127_0_0_1_A3013008)
             .build();
     options.addOption(host);
 
@@ -117,7 +117,7 @@ public class TsFileSettleByCompactionTool {
             .argName(FILE_PATH_NAME)
             .hasArgs()
             .valueSeparator(' ')
-            .desc("File Paths (required)")
+            .desc(DataNodeMiscMessages.EXCEPTION_FILE_PATHS_REQUIRED_09CF75D5)
             .required()
             .build();
     options.addOption(filePaths);

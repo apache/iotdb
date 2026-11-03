@@ -21,6 +21,7 @@ package org.apache.iotdb.library.dprofile;
 
 import org.apache.iotdb.library.dprofile.util.ExactOrderStatistics;
 import org.apache.iotdb.library.dprofile.util.MADSketch;
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -45,7 +46,8 @@ public class UDAFMad implements UDTF {
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             error -> (double) error >= 0 && (double) error < 1,
-            "error has to be greater than or equal to 0 and less than 1.",
+            LibraryUdfMessages
+                .EXCEPTION_ERROR_HAS_TO_BE_GREATER_THAN_OR_EQUAL_TO_0_AND_LESS_THAN_1_2A840865,
             validator.getParameters().getDoubleOrDefault("error", 0));
   }
 

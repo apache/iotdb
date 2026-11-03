@@ -48,6 +48,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTree2TableView;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -272,6 +273,21 @@ public class SchemaUtils {
     return clientHandler.getResponseMap();
   }
 
+  /**
+   * Broadcasts a table change at commit-release through {@link ClusterCachePropagator}: proceed
+   * once every unreachable DataNode is provably self-fenced, instead of failing on the first one. A
+   * fenced DataNode fails closed and resyncs on lease recovery, which rebuilds the tree-to-table
+   * view index it missed; a DataNode which is not provably fenced may still serve clients, so the
+   * commit is reported as unproven instead.
+   *
+   * @return whether it is safe to proceed
+   */
+  public static boolean commitReleaseTableWithHA(
+      final TUpdateTableReq req, final ConfigManager configManager) {
+    return new ClusterCachePropagator(filterFencedDataNode(configManager))
+        .propagate(targets -> broadcastTableUpdate(req, targets));
+  }
+
   private static Map<Integer, TSStatus> failedOnly(final Map<Integer, TSStatus> responses) {
     return responses.entrySet().stream()
         .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
@@ -308,24 +324,22 @@ public class SchemaUtils {
     return req;
   }
 
-  public static Map<Integer, TSStatus> commitReleaseTable(
+  /**
+   * Builds the COMMIT_UPDATE_TABLE request of a change which also affects the tree-to-table view
+   * index of the DataNodes.
+   *
+   * <p>The caller declares the view attributes the DataNode needs to apply the change, so that a
+   * DataNode never reads them from the table it caches: that cache may hold a placeholder, in which
+   * case the DataNode could not compute the entry at all.
+   */
+  public static TUpdateTableReq buildCommitUpdateTableReq(
       final String database,
       final String tableName,
-      final ConfigManager configManager,
-      final @Nullable String oldName) {
+      final @Nullable String oldName,
+      final TUpdateTree2TableView viewInfo) {
     final TUpdateTableReq req = buildCommitUpdateTableReq(database, tableName, oldName);
-
-    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.UPDATE_TABLE, req, filterFencedDataNode(configManager));
-    CnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequest(
-            clientHandler,
-            ClusterCachePropagator.BROADCAST_RPC_RETRY,
-            ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
-    return clientHandler.getResponseMap().entrySet().stream()
-        .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    req.setUpdateTree2TableViewInfo(viewInfo);
+    return req;
   }
 
   /** Build the ROLLBACK_UPDATE_TABLE request used to roll back a pre-released table change. */
@@ -342,6 +356,16 @@ public class SchemaUtils {
     }
     req.setTableInfo(outputStream.toByteArray());
     req.setOldName(oldName);
+    return req;
+  }
+
+  public static TUpdateTableReq rollbackUpdateTableReq(
+      final String database,
+      final String tableName,
+      final String oldName,
+      final TUpdateTree2TableView viewInfo) {
+    final TUpdateTableReq req = rollbackUpdateTableReq(database, tableName, oldName);
+    req.setUpdateTree2TableViewInfo(viewInfo);
     return req;
   }
 

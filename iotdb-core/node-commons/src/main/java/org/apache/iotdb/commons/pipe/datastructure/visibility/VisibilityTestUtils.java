@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.visibility;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.datastructure.result.Result;
 import org.apache.iotdb.pipe.api.PipePlugin;
 
@@ -90,16 +91,12 @@ public class VisibilityTestUtils {
       if (!VisibilityUtils.isCompatible(node.visibility, child.visibility)) {
         return Result.err(
             String.format(
-                "Incompatible visibility detected:\n"
-                    + "Parent class: "
-                    + node.clazz.getName()
-                    + ", Visibility: "
-                    + node.visibility
-                    + "\n"
-                    + "Child class: "
-                    + child.clazz.getName()
-                    + ", Visibility: "
-                    + child.visibility));
+                PipeMessages
+                    .MESSAGE_INCOMPATIBLE_VISIBILITY_DETECTED_PARENT_CLASS_ARG_VISIBILITY_ARG_CHILD_CLASS_ARG_VISIBILITY_ARG_FCDC2616,
+                String.valueOf(node.clazz.getName()),
+                String.valueOf(node.visibility),
+                String.valueOf(child.clazz.getName()),
+                String.valueOf(child.visibility)));
       }
       final Result<Void, String> childResult = validateTreeNode(child);
       if (childResult.isErr()) {

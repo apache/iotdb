@@ -211,6 +211,8 @@ public class LogicalOptimizeFactory {
     ImmutableList.Builder<PlanOptimizer> optimizerBuilder = ImmutableList.builder();
 
     optimizerBuilder.add(
+        // Remove superseded COPY TO ordering before scan ordering and limit pushdown.
+        new RemoveRedundantSortForCopyTo(),
         new IterativeOptimizer(
             plannerContext,
             ruleStats,

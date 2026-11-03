@@ -317,12 +317,10 @@ public class TElasticFramedTransport extends TTransport {
     underlying.write(i32buf, 0, 4);
     underlying.write(writeBuffer.getBuffer(), 0, length);
     writeBuffer.reset();
-    if (length > thriftDefaultBufferSize) {
-      try {
-        writeBuffer.resizeIfNecessary(thriftDefaultBufferSize);
-      } catch (IOException e) {
-        throw new TTransportException(e);
-      }
+    try {
+      writeBuffer.resizeIfNecessary(length);
+    } catch (IOException e) {
+      throw new TTransportException(e);
     }
     underlying.flush();
   }

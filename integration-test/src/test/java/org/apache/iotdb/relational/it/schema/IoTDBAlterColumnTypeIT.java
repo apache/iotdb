@@ -341,12 +341,14 @@ public class IoTDBAlterColumnTypeIT {
               Collections.singletonList("s1"),
               Collections.singletonList(from),
               Collections.singletonList(ColumnCategory.FIELD));
+      // Batch fixture writes without crossing data type changes or flush boundaries.
       for (int i = 1; i <= 512; i++) {
-        tablet.addTimestamp(0, i);
-        tablet.addValue("s1", 0, genValue(from, i));
-        session.insert(tablet);
-        tablet.reset();
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(rowIndex, i);
+        tablet.addValue("s1", rowIndex, genValue(from, i));
       }
+      session.insert(tablet);
+      tablet.reset();
       session.executeNonQueryStatement("FLUSH");
 
       // alter the type to "to"
@@ -373,11 +375,12 @@ public class IoTDBAlterColumnTypeIT {
               Collections.singletonList(to),
               Collections.singletonList(ColumnCategory.FIELD));
       for (int i = 513; i <= 1024; i++) {
-        tablet.addTimestamp(0, i);
-        tablet.addValue("s1", 0, genValue(to, i));
-        session.insert(tablet);
-        tablet.reset();
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(rowIndex, i);
+        tablet.addValue("s1", rowIndex, genValue(to, i));
       }
+      session.insert(tablet);
+      tablet.reset();
       session.executeNonQueryStatement("FLUSH");
 
       standardAccumulatorQueryByTimeOnlyInvolveOldDataTypeTest(session, from, to);
@@ -1365,23 +1368,23 @@ public class IoTDBAlterColumnTypeIT {
       //      session.executeNonQueryStatement("FLUSH");
       for (int i = 1; i <= 512; i++) {
         int rowIndex = tablet.getRowSize();
-        tablet.addTimestamp(0, i);
+        tablet.addTimestamp(rowIndex, i);
         tablet.addValue("s1", rowIndex, genValue(from, i));
         tablet.addValue("s2", rowIndex, genValue(from, i * 2));
-        session.insert(tablet);
-        tablet.reset();
       }
+      session.insert(tablet);
+      tablet.reset();
 
       session.executeNonQueryStatement("FLUSH");
 
       for (int i = 513; i <= 1024; i++) {
         int rowIndex = tablet.getRowSize();
-        tablet.addTimestamp(0, i);
+        tablet.addTimestamp(rowIndex, i);
         tablet.addValue("s1", rowIndex, genValue(from, i));
         tablet.addValue("s2", rowIndex, genValue(from, i * 2));
-        session.insert(tablet);
-        tablet.reset();
       }
+      session.insert(tablet);
+      tablet.reset();
 
       SessionDataSet dataSet =
           session.executeQueryStatement(
@@ -1467,23 +1470,23 @@ public class IoTDBAlterColumnTypeIT {
 
       for (int i = 513; i <= 1024; i++) {
         int rowIndex = tablet.getRowSize();
-        tablet.addTimestamp(0, i);
+        tablet.addTimestamp(rowIndex, i);
         tablet.addValue("s1", rowIndex, genValue(from, i));
         tablet.addValue("s2", rowIndex, genValue(from, i * 2));
-        session.insert(tablet);
-        tablet.reset();
       }
+      session.insert(tablet);
+      tablet.reset();
 
       session.executeNonQueryStatement("FLUSH");
 
       for (int i = 1; i <= 512; i++) {
         int rowIndex = tablet.getRowSize();
-        tablet.addTimestamp(0, i);
+        tablet.addTimestamp(rowIndex, i);
         tablet.addValue("s1", rowIndex, genValue(from, i));
         tablet.addValue("s2", rowIndex, genValue(from, i * 2));
-        session.insert(tablet);
-        tablet.reset();
       }
+      session.insert(tablet);
+      tablet.reset();
       //        session.executeNonQueryStatement("FLUSH");
 
       SessionDataSet dataSet =
@@ -1572,23 +1575,23 @@ public class IoTDBAlterColumnTypeIT {
 
       for (int i = 513; i <= 1024; i++) {
         int rowIndex = tablet.getRowSize();
-        tablet.addTimestamp(0, i);
+        tablet.addTimestamp(rowIndex, i);
         tablet.addValue("s1", rowIndex, genValue(from, i));
         tablet.addValue("s2", rowIndex, genValue(from, i * 2));
-        session.insert(tablet);
-        tablet.reset();
       }
+      session.insert(tablet);
+      tablet.reset();
 
       session.executeNonQueryStatement("FLUSH");
 
       for (int i = 1; i <= 520; i++) {
         int rowIndex = tablet.getRowSize();
-        tablet.addTimestamp(0, i);
+        tablet.addTimestamp(rowIndex, i);
         tablet.addValue("s1", rowIndex, genValue(from, i));
         tablet.addValue("s2", rowIndex, genValue(from, i * 2));
-        session.insert(tablet);
-        tablet.reset();
       }
+      session.insert(tablet);
+      tablet.reset();
       //        session.executeNonQueryStatement("FLUSH");
 
       SessionDataSet dataSet =

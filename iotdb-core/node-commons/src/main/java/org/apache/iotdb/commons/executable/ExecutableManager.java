@@ -281,7 +281,8 @@ public class ExecutableManager {
 
   public static String getUnTrustedUriErrorMsg(String uri) {
     return String.format(
-        "Untrusted uri %s, current trusted_uri_pattern is %s",
-        uri, CommonDescriptor.getInstance().getConfig().getTrustedUriPattern());
+        CommonMessages.EXCEPTION_UNTRUSTED_URI_ARG_CURRENT_TRUSTED_URI_PATTERN_IS_ARG_9C06C271,
+        uri,
+        CommonDescriptor.getInstance().getConfig().getTrustedUriPattern());
   }
 }

@@ -21,6 +21,7 @@ package org.apache.iotdb.relational.it.db.it;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -119,6 +120,9 @@ public class IoTDBDeletionTableIT {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
+        .setDataRegionConsensusProtocolClass("org.apache.iotdb.consensus.simple.SimpleConsensus")
+        .setDataReplicationFactor(1)
+        .setEnableLastCache(true)
         .setPartitionInterval(1000)
         .setMemtableSizeThreshold(10000);
     // Adjust MemTable threshold size to make it flush automatically
@@ -1086,24 +1090,465 @@ public class IoTDBDeletionTableIT {
 
   @Test
   public void testSuccessfullyInvalidateCache() throws SQLException {
-    prepareData(4, 1);
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use test");
-      statement.executeQuery(
-          "SELECT last(time), last_by(s0,time), last_by(s1,time), last_by(s2,time), last_by(s3,time), last_by(s4,time) FROM vehicle4 where deviceId = 'd0'");
+      statement.execute(
+          "CREATE TABLE last_delete_cache(device_id STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO last_delete_cache(time,device_id,s1,s2) VALUES(1,'d0',11,101)");
+      statement.execute("INSERT INTO last_delete_cache(time,device_id,s1) VALUES(2,'d0',12)");
+      statement.execute("INSERT INTO last_delete_cache(time,device_id,s2) VALUES(3,'d0',103)");
+      statement.execute("INSERT INTO last_delete_cache(time,device_id,s1) VALUES(4,'d0',14)");
+      statement.execute("FLUSH");
 
-      // [1, 400] -> [1, 299]
-      statement.execute("DELETE FROM vehicle4 WHERE time >= 300");
-      try (ResultSet set = statement.executeQuery("SELECT s0 FROM vehicle4")) {
-        int cnt = 0;
-        while (set.next()) {
-          cnt++;
-        }
-        assertEquals(299, cnt);
+      assertLastValuesOnAllCoordinators(4L, 14, 103, 14, null, true);
+      assertLastCacheRows(
+          "1970-01-01T00:00:00.001Z,d0,11,101,",
+          "1970-01-01T00:00:00.002Z,d0,12,null,",
+          "1970-01-01T00:00:00.003Z,d0,null,103,",
+          "1970-01-01T00:00:00.004Z,d0,14,null,");
+
+      statement.execute("DELETE FROM last_delete_cache WHERE device_id='d0' AND time >= 4");
+      // The sparse fields must fall back independently after their common latest row is deleted.
+      // last ignores NULLs; last_by returns the value (including NULL) at the latest row.
+      assertLastValuesOnAllCoordinators(3L, 12, 103, null, 103);
+      assertLastCacheRows(
+          "1970-01-01T00:00:00.001Z,d0,11,101,",
+          "1970-01-01T00:00:00.002Z,d0,12,null,",
+          "1970-01-01T00:00:00.003Z,d0,null,103,");
+
+      statement.execute("DELETE FROM last_delete_cache WHERE device_id='d0' AND time = 1");
+      assertLastValuesOnAllCoordinators(3L, 12, 103, null, 103);
+      assertLastCacheRows(
+          "1970-01-01T00:00:00.002Z,d0,12,null,", "1970-01-01T00:00:00.003Z,d0,null,103,");
+
+      statement.execute("DELETE FROM last_delete_cache WHERE device_id='d0'");
+      assertLastValuesOnAllCoordinators(null, null, null, null, null);
+      assertLastCacheRows();
+
+      // Rewriting an older timestamp after the full delete must become the new last value; the
+      // deleted timestamp 4 must not reappear from the cache or the flushed file.
+      statement.execute("INSERT INTO last_delete_cache(time,device_id,s1) VALUES(2,'d0',120)");
+      assertLastCacheRows("1970-01-01T00:00:00.002Z,d0,120,null,");
+      assertLastValuesOnAllCoordinators(2L, 120, null, 120, null);
+      statement.execute("FLUSH");
+      assertLastValuesOnAllCoordinators(2L, 120, null, 120, null);
+      assertLastCacheRows("1970-01-01T00:00:00.002Z,d0,120,null,");
+    }
+  }
+
+  @Test
+  public void testRewrittenLastCacheWithTimeFilter() throws SQLException {
+    String query =
+        "SELECT last(time),last(s1),last(s2),last(device_id),last(label),last_by(time,s1) "
+            + "FROM last_filter_cache WHERE device_id='d0'";
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      statement.execute(
+          "CREATE TABLE last_filter_cache(device_id STRING TAG, label STRING ATTRIBUTE, s1 INT32 FIELD, s2 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO last_filter_cache(time,device_id,label,s1) VALUES(4,'d0','blue',14)");
+      statement.execute("DELETE FROM last_filter_cache WHERE device_id='d0'");
+    }
+    for (DataNodeWrapper node : EnvFactory.getEnv().getDataNodeWrapperList()) {
+      try (Connection connection =
+              EnvFactory.getEnv()
+                  .getConnection(
+                      node,
+                      SessionConfig.DEFAULT_USER,
+                      SessionConfig.DEFAULT_PASSWORD,
+                      BaseEnv.TABLE_SQL_DIALECT);
+          Statement statement = connection.createStatement()) {
+        statement.execute("USE test");
+        assertFilteredLastValues(statement, query, true);
       }
     }
-    cleanData(4);
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      statement.execute("INSERT INTO last_filter_cache(time,device_id,s1) VALUES(2,'d0',120)");
+    }
+    for (DataNodeWrapper node : EnvFactory.getEnv().getDataNodeWrapperList()) {
+      try (Connection connection =
+              EnvFactory.getEnv()
+                  .getConnection(
+                      node,
+                      SessionConfig.DEFAULT_USER,
+                      SessionConfig.DEFAULT_PASSWORD,
+                      BaseEnv.TABLE_SQL_DIALECT);
+          Statement statement = connection.createStatement()) {
+        statement.execute("USE test");
+        assertFilteredLastValues(statement, query, false);
+        assertFilteredLastValues(statement, query + " AND time > 2", true);
+        assertFilteredLastValues(statement, query + " AND time >= 3", true);
+        try (ResultSet rows = statement.executeQuery(query + " AND time > 2 GROUP BY device_id")) {
+          assertFalse(rows.next());
+        }
+        assertFilteredLastValues(statement, query + " AND time >= 2", false);
+        assertFilteredLastValues(statement, query + " AND time < 2", true);
+        assertFilteredLastValues(statement, query, false);
+        assertFilteredLastValues(statement, query + " AND time >= 2 GROUP BY device_id", false);
+      }
+    }
+  }
+
+  @Test
+  public void testSparseLastCacheWithoutTime() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      statement.execute(
+          "CREATE TABLE last_sparse_cache(device_id STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO last_sparse_cache(time,device_id,s1) VALUES(3,'d0',30),(1,'d1',10)");
+    }
+
+    // Multiple devices require partial aggregation. An empty s2 cache must not discard s1.
+    assertCachedLastQueryOnAllCoordinators(
+        "SELECT last(s1) AS v1,last(s2) AS v2 FROM last_sparse_cache", "v1,v2,", "30,null,");
+  }
+
+  @Test
+  public void testNullTagAndAttributeDoNotCacheDeviceAsEmpty() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      statement.execute(
+          "CREATE TABLE last_null_identity_cache(device_id STRING TAG, site STRING TAG, "
+              + "label STRING ATTRIBUTE, s1 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO last_null_identity_cache(time,device_id,site,s1) "
+              + "VALUES(3,'d0',null,30),(1,'d1','',10)");
+    }
+    // Populate the FIELD cache without initializing the time cache, then read NULL identities.
+    assertCachedLastQueryOnAllCoordinators(
+        "SELECT last(s1) AS v FROM last_null_identity_cache", "v,", "30,");
+    assertCachedLastQueryOnAllCoordinators(
+        "SELECT last(site) AS site,last(label) AS label "
+            + "FROM last_null_identity_cache WHERE device_id='d0'",
+        "site,label,",
+        "null,null,");
+    String query =
+        "SELECT last(time) AS t,last(s1) AS v,last(site) AS site,last(label) AS label "
+            + "FROM last_null_identity_cache WHERE device_id='d0'";
+    assertCachedLastQueryOnAllCoordinators(
+        query, "t,v,site,label,", "1970-01-01T00:00:00.003Z,30,null,null,");
+    assertCachedLastQueryOnAllCoordinators(
+        query + " GROUP BY device_id", "t,v,site,label,", "1970-01-01T00:00:00.003Z,30,null,null,");
+    assertCachedLastQueryOnAllCoordinators(
+        "SELECT last(time) AS t,last(s1) AS v,last(site) AS site,last(label) AS label "
+            + "FROM last_null_identity_cache WHERE device_id='d1' GROUP BY device_id",
+        "t,v,site,label,",
+        "1970-01-01T00:00:00.001Z,10,,null,");
+  }
+
+  @Test
+  public void testLastByTagAndAttributeUseSourceField() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      statement.execute(
+          "CREATE TABLE last_by_source_cache(device_id STRING TAG, site STRING TAG, "
+              + "label STRING ATTRIBUTE, s1 INT32 FIELD, s2 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO last_by_source_cache(time,device_id,site,label,s1) "
+              + "VALUES(10,'d0',null,'blue',30),(4,'d1','','green',40)");
+    }
+
+    String emptySourceQuery =
+        "SELECT last(time) AS t,last_by(device_id,s2) AS d,last_by(label,s2) AS a,"
+            + "last_by(time,s2) AS st FROM last_by_source_cache WHERE device_id='d0'";
+    assertCachedLastQueryOnAllCoordinators(
+        emptySourceQuery, "t,d,a,st,", "1970-01-01T00:00:00.010Z,null,null,null,");
+    assertCachedLastQueryOnAllCoordinators(
+        emptySourceQuery + " GROUP BY device_id",
+        "t,d,a,st,",
+        "1970-01-01T00:00:00.010Z,null,null,null,");
+
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      statement.execute(
+          "INSERT INTO last_by_source_cache(time,device_id,site,s2) "
+              + "VALUES(2,'d0',null,20),(3,'d1','',15)");
+    }
+    // s1 and s2 have different last times. The partial states must carry the source field's time,
+    // including when the selected TAG is NULL or an empty string.
+    assertCachedLastQueryOnAllCoordinators(
+        "SELECT last(s1) AS v,last_by(device_id,s2) AS d,last_by(label,s2) AS a,"
+            + "last_by(site,s2) AS site,last_by(site,s1) AS null_site "
+            + "FROM last_by_source_cache",
+        "v,d,a,site,null_site,",
+        "30,d1,green,,null,");
+  }
+
+  @Test
+  public void testFilteredLastCacheMissDoesNotHideOlderRows() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      statement.execute(
+          "CREATE TABLE last_filter_miss_cache(device_id STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO last_filter_miss_cache(time,device_id,s1) VALUES(2,'d0',120),(2,'d1',120)");
+    }
+    String[] queries = {
+      "SELECT last(time) AS t,last(s1) AS v1,last(s2) AS v2 "
+          + "FROM last_filter_miss_cache WHERE device_id='d0'",
+      "SELECT last(time) AS t,last_by(s1,time) AS v1,last_by(s2,time) AS v2 "
+          + "FROM last_filter_miss_cache WHERE device_id='d1'"
+    };
+    // Start with cache misses in both LAST_VALUES and LAST_ROW paths. Empty filtered reads must
+    // leave the older rows available to subsequent unfiltered and grouped queries.
+    for (String query : queries) {
+      assertCachedLastQueryOnAllCoordinators(
+          query + " AND time > 2", "t,v1,v2,", "null,null,null,");
+      assertCachedLastQueryOnAllCoordinators(
+          query, "t,v1,v2,", "1970-01-01T00:00:00.002Z,120,null,");
+      assertCachedLastQueryOnAllCoordinators(
+          query + " GROUP BY device_id", "t,v1,v2,", "1970-01-01T00:00:00.002Z,120,null,");
+    }
+  }
+
+  @Test
+  public void testLastCacheRespectsTableTTL() throws SQLException {
+    String query = "SELECT last(s1) AS v FROM last_ttl_cache WHERE device_id='d0'";
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      statement.execute("CREATE TABLE last_ttl_cache(device_id STRING TAG, s1 INT32 FIELD)");
+      statement.execute("INSERT INTO last_ttl_cache(time,device_id,s1) VALUES(1,'d0',11)");
+    }
+    assertCachedLastQueryOnAllCoordinators(query, "v,", "11,");
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      statement.execute("ALTER TABLE last_ttl_cache SET PROPERTIES TTL=1");
+    }
+    assertCachedLastQueryOnAllCoordinators(query, "v,", "null,");
+    assertCachedLastQueryOnAllCoordinators(query + " AND time >= 1", "v,", "null,");
+    assertCachedLastQueryOnAllCoordinators(query + " GROUP BY device_id", "v,");
+  }
+
+  @Test
+  public void testExpiredLastCacheMissDoesNotHideRowsAfterTTLIsExtended() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      statement.execute(
+          "CREATE TABLE last_ttl_miss_cache(device_id STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO last_ttl_miss_cache(time,device_id,s1) VALUES(2,'d0',120),(2,'d1',120)");
+      statement.execute("ALTER TABLE last_ttl_miss_cache SET PROPERTIES TTL=1");
+    }
+    String[] queries = {
+      "SELECT last(time) AS t,last(s1) AS v1,last(s2) AS v2 "
+          + "FROM last_ttl_miss_cache WHERE device_id='d0'",
+      "SELECT last(time) AS t,last_by(s1,time) AS v1,last_by(s2,time) AS v2 "
+          + "FROM last_ttl_miss_cache WHERE device_id='d1'"
+    };
+    // The first reads miss both LAST_VALUES and LAST_ROW caches while TTL hides the rows.
+    for (String query : queries) {
+      assertCachedLastQueryOnAllCoordinators(query, "t,v1,v2,", "null,null,null,");
+      assertCachedLastQueryOnAllCoordinators(query + " GROUP BY device_id", "t,v1,v2,");
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      statement.execute("ALTER TABLE last_ttl_miss_cache SET PROPERTIES TTL='INF'");
+      // The rows remain in memory; extending TTL makes them visible without another write.
+      try (ResultSet rows =
+          statement.executeQuery(
+              "SELECT time,device_id,s1,s2 FROM last_ttl_miss_cache ORDER BY device_id,time")) {
+        TestUtils.assertResultSetEqual(
+            rows,
+            "time,device_id,s1,s2,",
+            new String[] {
+              "1970-01-01T00:00:00.002Z,d0,120,null,", "1970-01-01T00:00:00.002Z,d1,120,null,"
+            });
+      }
+    }
+    // Read LAST_VALUES before LAST_ROW can scan again and repair its cached empty entries.
+    String lastValuesAfterLastRowMiss =
+        "SELECT last(time) AS t,last(s1) AS v1,last(s2) AS v2 "
+            + "FROM last_ttl_miss_cache WHERE device_id='d1'";
+    assertCachedLastQueryOnAllCoordinators(
+        lastValuesAfterLastRowMiss, "t,v1,v2,", "1970-01-01T00:00:00.002Z,120,null,");
+    assertCachedLastQueryOnAllCoordinators(
+        lastValuesAfterLastRowMiss + " GROUP BY device_id",
+        "t,v1,v2,",
+        "1970-01-01T00:00:00.002Z,120,null,");
+    for (String query : queries) {
+      assertCachedLastQueryOnAllCoordinators(
+          query, "t,v1,v2,", "1970-01-01T00:00:00.002Z,120,null,");
+      assertCachedLastQueryOnAllCoordinators(
+          query + " GROUP BY device_id", "t,v1,v2,", "1970-01-01T00:00:00.002Z,120,null,");
+    }
+  }
+
+  @Test
+  public void testLastByTimeOverDeletedDeviceDoesNotBreakLastCache() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      statement.execute(
+          "CREATE TABLE last_by_time_empty_cache(device_id STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO last_by_time_empty_cache(time,device_id,s1) VALUES(4,'d0',40),(1,'d1',10)");
+      statement.execute("DELETE FROM last_by_time_empty_cache WHERE device_id='d0'");
+    }
+    String query =
+        "SELECT last_by(time,time) AS t FROM last_by_time_empty_cache WHERE device_id='d0'";
+    String withFields =
+        "SELECT last_by(time,time) AS t,last_by(s1,time) AS v1,last_by(s2,time) AS v2 "
+            + "FROM last_by_time_empty_cache WHERE device_id='d0'";
+    // The device remains in schema after DELETE. An uninitialized time accumulator must still
+    // produce matching cache-column and cache-value arrays on every cold read.
+    assertCachedLastQueryOnAllCoordinators(query, "t,", "null,");
+    assertCachedLastQueryOnAllCoordinators(query + " GROUP BY device_id", "t,");
+    assertCachedLastQueryOnAllCoordinators(withFields, "t,v1,v2,", "null,null,null,");
+    assertCachedLastQueryOnAllCoordinators(withFields + " GROUP BY device_id", "t,v1,v2,");
+    assertCachedLastQueryOnAllCoordinators(
+        "SELECT last_by(time,time) AS t FROM last_by_time_empty_cache",
+        "t,",
+        "1970-01-01T00:00:00.001Z,");
+
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      statement.execute(
+          "INSERT INTO last_by_time_empty_cache(time,device_id,s1) VALUES(2,'d0',20)");
+    }
+    assertCachedLastQueryOnAllCoordinators(query, "t,", "1970-01-01T00:00:00.002Z,");
+    assertCachedLastQueryOnAllCoordinators(
+        withFields, "t,v1,v2,", "1970-01-01T00:00:00.002Z,20,null,");
+    assertCachedLastQueryOnAllCoordinators(
+        withFields + " GROUP BY device_id", "t,v1,v2,", "1970-01-01T00:00:00.002Z,20,null,");
+    assertCachedLastQueryOnAllCoordinators(
+        "SELECT last(time) AS t,last(s1) AS v1,last(s2) AS v2 "
+            + "FROM last_by_time_empty_cache WHERE device_id='d0'",
+        "t,v1,v2,",
+        "1970-01-01T00:00:00.002Z,20,null,");
+  }
+
+  private static void assertCachedLastQueryOnAllCoordinators(
+      String query, String header, String... expected) throws SQLException {
+    for (DataNodeWrapper node : EnvFactory.getEnv().getDataNodeWrapperList()) {
+      try (Connection connection =
+              EnvFactory.getEnv()
+                  .getConnection(
+                      node,
+                      SessionConfig.DEFAULT_USER,
+                      SessionConfig.DEFAULT_PASSWORD,
+                      BaseEnv.TABLE_SQL_DIALECT);
+          Statement statement = connection.createStatement()) {
+        statement.execute("USE test");
+        // The first read may populate the cache; the second must have the same result.
+        for (int i = 0; i < 2; i++) {
+          try (ResultSet rows = statement.executeQuery(query)) {
+            TestUtils.assertResultSetEqual(rows, header, expected);
+          }
+        }
+      }
+    }
+  }
+
+  private static void assertFilteredLastValues(Statement statement, String query, boolean empty)
+      throws SQLException {
+    Object[] expected = {2L, 120L, null, "d0", "blue", 2L};
+    try (ResultSet rows = statement.executeQuery(query)) {
+      assertTrue(query, rows.next());
+      for (int i = 0; i < expected.length; i++) {
+        if (empty || expected[i] == null) {
+          assertNull(query, rows.getObject(i + 1));
+        } else if (expected[i] instanceof Long) {
+          assertEquals(query, (long) expected[i], rows.getLong(i + 1));
+          assertFalse(query, rows.wasNull());
+        } else {
+          assertEquals(query, expected[i], rows.getString(i + 1));
+        }
+      }
+      assertFalse(query, rows.next());
+    }
+  }
+
+  private static void assertLastCacheRows(String... expected) {
+    TestUtils.tableResultSetEqualTest(
+        "SELECT time,device_id,s1,s2 FROM last_delete_cache ORDER BY device_id,time",
+        new String[] {"time", "device_id", "s1", "s2"},
+        expected,
+        "test");
+  }
+
+  private static void assertLastValuesOnAllCoordinators(
+      Long expectedTime, Integer s1, Integer s2, Integer byS1, Integer byS2) throws SQLException {
+    assertLastValuesOnAllCoordinators(expectedTime, s1, s2, byS1, byS2, false);
+  }
+
+  private static void assertLastValuesOnAllCoordinators(
+      Long expectedTime,
+      Integer s1,
+      Integer s2,
+      Integer byS1,
+      Integer byS2,
+      boolean verifyCachePath)
+      throws SQLException {
+    // Mixing last(FIELD) with last_by(FIELD,time) disables both last-cache optimizations.
+    String[] queries = {
+      "SELECT last(time),last(s1),last(s2) FROM last_delete_cache WHERE device_id='d0'",
+      "SELECT last(time),last_by(s1,time),last_by(s2,time) "
+          + "FROM last_delete_cache WHERE device_id='d0'"
+    };
+    Number[][] expected = {{expectedTime, s1, s2}, {expectedTime, byS1, byS2}};
+    for (DataNodeWrapper node : EnvFactory.getEnv().getDataNodeWrapperList()) {
+      // Direct connections keep each read on the coordinator whose cache was warmed.
+      try (Connection connection =
+              EnvFactory.getEnv()
+                  .getConnection(
+                      node,
+                      SessionConfig.DEFAULT_USER,
+                      SessionConfig.DEFAULT_PASSWORD,
+                      BaseEnv.TABLE_SQL_DIALECT);
+          Statement statement = connection.createStatement()) {
+        statement.execute("USE test");
+        for (int query = 0; query < queries.length; query++) {
+          String context = node.getIpAndPortString() + ": " + queries[query];
+          try (ResultSet rows = statement.executeQuery(queries[query])) {
+            assertTrue(context, rows.next());
+            for (int column = 0; column < expected[query].length; column++) {
+              String columnContext = context + ", column " + (column + 1);
+              if (expected[query][column] == null) {
+                assertNull(columnContext, rows.getObject(column + 1));
+              } else {
+                long actual = rows.getLong(column + 1);
+                assertFalse(columnContext + " is NULL", rows.wasNull());
+                assertEquals(columnContext, expected[query][column].longValue(), actual);
+              }
+            }
+            assertFalse(context, rows.next());
+          }
+          if (verifyCachePath) {
+            StringBuilder plan = new StringBuilder();
+            try (ResultSet rows = statement.executeQuery("EXPLAIN ANALYZE " + queries[query])) {
+              while (rows.next()) {
+                plan.append(rows.getString(1)).append('\n');
+              }
+            }
+            assertTrue(plan.toString(), plan.toString().contains("LastQueryAggTableScanOperator"));
+          }
+        }
+        if (expectedTime == null) {
+          try (ResultSet rows =
+              statement.executeQuery(
+                  "SELECT device_id,last(time),last_by(s1,time),last_by(s2,time) "
+                      + "FROM last_delete_cache WHERE device_id='d0' GROUP BY device_id")) {
+            assertFalse(rows.next());
+          }
+        }
+      }
+    }
   }
 
   @Test

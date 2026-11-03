@@ -20,6 +20,7 @@
 package org.apache.iotdb.library.frequency;
 
 import org.apache.iotdb.library.frequency.util.FFTUtil;
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -50,7 +51,7 @@ public class UDTFFFT implements UDTF {
             x ->
                 ((String) x).equalsIgnoreCase("uniform")
                     || ((String) x).equalsIgnoreCase("nonuniform"),
-            "Type should be 'uniform' or 'nonuniform'.",
+            LibraryUdfMessages.EXCEPTION_TYPE_SHOULD_BE_UNIFORM_OR_NONUNIFORM_DC4A47B1,
             validator.getParameters().getStringOrDefault("method", "uniform"))
         .validate(
             x ->
@@ -58,11 +59,11 @@ public class UDTFFFT implements UDTF {
                     || "imag".equalsIgnoreCase((String) x)
                     || "abs".equalsIgnoreCase((String) x)
                     || "angle".equalsIgnoreCase((String) x),
-            "Result should be 'real', 'imag', 'abs' or 'angle'.",
+            LibraryUdfMessages.EXCEPTION_RESULT_SHOULD_BE_REAL_IMAG_ABS_OR_ANGLE_F16F02C8,
             validator.getParameters().getStringOrDefault("result", "abs"))
         .validate(
             x -> (double) x > 0 && (double) x <= 1,
-            "Compress should be within (0,1].",
+            LibraryUdfMessages.EXCEPTION_COMPRESS_SHOULD_BE_WITHIN_0_1_263845C8,
             validator.getParameters().getDoubleOrDefault(COMPRESS_PARAM, 1));
   }
 

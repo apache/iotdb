@@ -34,6 +34,7 @@ import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -54,8 +55,12 @@ public class IoTDBDataDirViewer {
     } else {
       throw new IOException(DataNodeMiscMessages.INVALID_PARAMETERS_CHECK_USER_GUIDE);
     }
-    System.out.println("output save path:" + outFile);
-    System.out.println("data dir num:" + data_dir.length);
+    System.out.println(
+        String.format(
+            DataNodeMiscMessages.LOG_OUTPUT_SAVE_PATH_ARG_1876448C, Objects.toString(outFile)));
+    System.out.println(
+        String.format(
+            DataNodeMiscMessages.LOG_DATA_DIR_NUM_ARG_5D16D696, Objects.toString(data_dir.length)));
     try (PrintWriter pw = new PrintWriter(new FileWriter(outFile))) {
       for (String dir : data_dir) {
         File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
@@ -177,7 +182,10 @@ public class IoTDBDataDirViewer {
       Optional<Long> startTime = resource.getStartTime(device);
       long start;
       if (!startTime.isPresent()) {
-        printlnBoth(pw, String.format("|  |  |  |  |  |--device %s, start time is null", device));
+        printlnBoth(
+            pw,
+            String.format(
+                DataNodeMiscMessages.EXCEPTION_DEVICE_ARG_START_TIME_IS_NULL_0A1A37C4, device));
         return;
       } else {
         start = startTime.get();
@@ -185,7 +193,10 @@ public class IoTDBDataDirViewer {
       long end;
       Optional<Long> endTime = resource.getStartTime(device);
       if (!endTime.isPresent()) {
-        printlnBoth(pw, String.format("|  |  |  |  |  |--device %s, end time is null", device));
+        printlnBoth(
+            pw,
+            String.format(
+                DataNodeMiscMessages.EXCEPTION_DEVICE_ARG_END_TIME_IS_NULL_60C3310D, device));
         return;
       } else {
         end = endTime.get();
@@ -193,7 +204,8 @@ public class IoTDBDataDirViewer {
       printlnBoth(
           pw,
           String.format(
-              "|  |  |  |  |  |--device %s, start time %d (%s), end time %d (%s)",
+              DataNodeMiscMessages
+                  .EXCEPTION_DEVICE_ARG_START_TIME_ARG_ARG_END_TIME_ARG_ARG_00865978,
               device,
               start,
               DateTimeUtils.convertLongToDate(start),

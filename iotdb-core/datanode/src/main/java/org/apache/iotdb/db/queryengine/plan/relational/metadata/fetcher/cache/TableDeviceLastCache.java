@@ -144,6 +144,22 @@ public class TableDeviceLastCache {
       final @Nullable IMeasurementSchema[] measurementSchemas,
       final @Nonnull TimeValuePair[] timeValuePairs,
       final boolean invalidateNull) {
+    return tryUpdate(measurements, measurementSchemas, timeValuePairs, invalidateNull, true);
+  }
+
+  int tryUpdateFromQuery(
+      final @Nonnull String[] measurements, final @Nonnull TimeValuePair[] timeValuePairs) {
+    // A FIELD's last non-NULL value can be older than the device's latest row. Queries must
+    // provide an explicit time entry when they can establish the actual last-row time.
+    return tryUpdate(measurements, null, timeValuePairs, false, false);
+  }
+
+  private int tryUpdate(
+      final @Nonnull String[] measurements,
+      final @Nullable IMeasurementSchema[] measurementSchemas,
+      final @Nonnull TimeValuePair[] timeValuePairs,
+      final boolean invalidateNull,
+      final boolean updateLastTimeFromMeasurements) {
     int diff = 0;
     long lastTime = Long.MIN_VALUE;
 
@@ -172,7 +188,9 @@ public class TableDeviceLastCache {
         diff += tryUpdateCachedLast(measurement, timeValuePair);
       }
     }
-    tryUpdateLastTime(lastTime);
+    if (updateLastTimeFromMeasurements) {
+      tryUpdateLastTime(lastTime);
+    }
     return diff;
   }
 

@@ -163,8 +163,16 @@ public final class QueryMessages {
       "height 必须为非负数，但传入了：%s";
   public static final String INVALID_PATTERN_MISSING_REPEAT_SIGN =
       "无效的模式：%s，'}' 后缺少重复符号";
+  public static final String EXCEPTION_INVALID_PATTERN_ARG_REPETITION_SIGNS_AND_MUST_IMMEDIATELY_FOLLOW_30FC3998 =
+      "无效的模式：'%s'。重复符号 '+' 和 '*' 必须紧跟在 '}' 后。";
   public static final String INVALID_PATTERN_MUST_CONTAIN_DATA_POINTS =
       "无效的模式：'%s'。模式必须包含至少两个以逗号分隔的数值数据点，例如 '1,2,3'";
+  public static final String EXCEPTION_INVALID_PATTERN_ARG_REPETITION_GROUPS_MUST_CONTAIN_AT_LEAST_ONE_NUMERIC_DATA_POINT_E1880CCB =
+      "无效的模式：'%s'。重复组必须包含至少一个数值数据点。";
+  public static final String EXCEPTION_INVALID_PATTERN_ARG_UNMATCHED_OR_9B5E4AE4 =
+      "无效的模式：'%s'。'{' 或 '}' 不匹配。";
+  public static final String EXCEPTION_INVALID_PATTERN_ARG_INVALID_NUMERIC_DATA_POINT_ARG_12165323 =
+      "无效的模式：'%s'。无效的数值数据点：'%s'。";
 
   // ======================== Forecast / Classify TVF ========================
 
@@ -596,4 +604,5 @@ public final class QueryMessages {
       EXCEPTION_INPUT_ARRAY_LENGTH_MUST_BE_AT_LEAST_2_FFT_LENGTH_31DF6A25 =
           "输入数组长度必须至少为 FFT 长度的 2 倍。";
 
+  public static final String EXCEPTION_LINE_ARG_ARG_ARG_B222E08B = "第 %s 行第 %s 列：%s";
 }

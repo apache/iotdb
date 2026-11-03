@@ -346,12 +346,12 @@ public class SchemaEngine {
             timeRecord);
         return schemaRegion;
       } catch (final MetadataException e) {
-        logger.error(
+        throw new RuntimeException(
             String.format(
                 DataNodeSchemaMessages.SCHEMA_REGION_FAILED_TO_RECOVER,
                 schemaRegionId.getId(),
-                storageGroup));
-        throw new RuntimeException(e);
+                storageGroup),
+            e);
       }
     };
   }

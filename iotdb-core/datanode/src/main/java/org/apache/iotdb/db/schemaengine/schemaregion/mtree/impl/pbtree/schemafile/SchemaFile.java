@@ -315,15 +315,11 @@ public class SchemaFile implements ISchemaFile {
   public String inspect(PrintWriter pw) throws MetadataException, IOException {
     String header =
         String.format(
-            "=============================\n"
-                + "== PBTree File Sketch Tool ==\n"
-                + "=============================\n"
-                + "== Notice: \n"
-                + "==  Internal/Entity presents as (name, is_aligned, child_segment_address)\n"
-                + "==  Measurement presents as (name, data_type, encoding, compressor, alias_if_exist)\n"
-                + "=============================\n"
-                + "Belong to StorageGroup: [%s], segment of SG:%s, total pages:%d\n",
-            storageGroupName == null ? "NOT SPECIFIED" : storageGroupName,
+            DataNodeSchemaMessages
+                .EXCEPTION_PBTREE_FILE_SKETCH_TOOL_NOTICE_INTERNAL_ENTITY_PRESENTS_AS_NAME_IS_ALIGNED_CHILD_SEGMENT_ADDRESS_MEASUREMENT_PRESENTS_AS_NAME_DATA_TYPE_ENCODING_COMPRESSOR_ALIAS_IF_EXIST_BELONG_TO_STORAGEGROUP_ARG_SEGMENT_OF_SG_ARG_TOTAL_PAGES_ARG_006AFD00,
+            storageGroupName == null
+                ? DataNodeSchemaMessages.EXCEPTION_NOT_SPECIFIED_022755C1
+                : storageGroupName,
             Long.toHexString(lastSGAddr),
             lastPageIndex + 1);
     if (pw == null) {

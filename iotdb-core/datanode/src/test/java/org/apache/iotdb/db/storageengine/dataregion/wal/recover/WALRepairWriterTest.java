@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.recover;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
@@ -34,6 +35,10 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
@@ -42,6 +47,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -53,6 +59,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 public class WALRepairWriterTest {
@@ -73,6 +81,63 @@ public class WALRepairWriterTest {
     brokenFile.delete();
     for (int suffix = 1; suffix < 10; suffix++) {
       new File(logFile.getPath() + ".broken." + suffix).delete();
+    }
+  }
+
+  @Test
+  public void testFooterRepairReportsUnattributedProgressOnce() throws Exception {
+    final Logger logger = (Logger) LoggerFactory.getLogger(WALRepairWriter.class);
+    final Level originalLevel = logger.getLevel();
+    final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    logger.setLevel(Level.WARN);
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      long dataEnd;
+      try (WALWriter writer = new WALWriter(logFile)) {
+        for (int i = 1; i <= 8; i++) {
+          final InsertRowNode node = getInsertRowNode();
+          // Include replicated entries whose local search index cannot identify their writer.
+          node.setSearchIndex(i == 8 ? -1 : i);
+          final WALInfoEntry entry = new WALInfoEntry(1, node);
+          final ByteBuffer buffer = ByteBuffer.allocate(entry.serializedSize());
+          entry.serialize(new WALByteBufferForTest(buffer));
+          final WALMetaData metadata = new WALMetaData();
+          metadata.add(entry.serializedSize(), node.getSearchIndex(), 1, 1000, i == 8 ? 8 : 7, i);
+          writer.write(buffer, metadata);
+        }
+        dataEnd = writer.getOffset();
+      }
+      try (FileChannel channel = FileChannel.open(logFile.toPath(), StandardOpenOption.WRITE)) {
+        channel.truncate(dataEnd);
+      }
+      final WALMetaData recovered;
+      try (FileChannel channel = FileChannel.open(logFile.toPath(), StandardOpenOption.READ)) {
+        recovered = WALMetaData.readFromWALFile(logFile, channel);
+      }
+      Assert.assertTrue(new WALRepairWriter(logFile).repair(recovered));
+      // A second check of the intact file must neither rescan diagnostic arrays nor log again.
+      Assert.assertTrue(new WALRepairWriter(logFile).repair(recovered));
+      Assert.assertEquals(1, appender.list.size());
+      final ILoggingEvent warning = appender.list.get(0);
+      Assert.assertEquals(
+          StorageEngineMessages
+              .LOG_REBUILT_UNREADABLE_WAL_FOOTER_FILE_ARG_VERSION_ARG_ORIGINALFILEBYTES_ARG_WRITERPROGRESS_ARG_1DBF836E,
+          warning.getMessage());
+      final Map<?, ?> progress = (Map<?, ?>) warning.getArgumentArray()[3];
+      Assert.assertEquals(8, progress.get("entryCount"));
+      Assert.assertEquals(0, progress.get("attributedProgressEntries"));
+      Assert.assertEquals(8, progress.get("unattributedProgressEntries"));
+      Assert.assertEquals(7, progress.get("defaultLocalProgressEntries"));
+      Assert.assertEquals(4, ((List<?>) progress.get("unattributedSamples")).size());
+      Assert.assertTrue(warning.getFormattedMessage().contains(logFile.toString()));
+      try (WALByteBufReader reader = new WALByteBufReader(logFile)) {
+        Assert.assertEquals(8, reader.getMetaData().getBuffersSize().size());
+      }
+    } finally {
+      logger.detachAppender(appender);
+      logger.setLevel(originalLevel);
+      appender.stop();
     }
   }
 

@@ -73,6 +73,7 @@ import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.exception.runtime.TableLostRuntimeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource.Status;
@@ -372,7 +373,7 @@ public class DataRegion implements IDataRegionForQuery {
               .build();
 
   /** database info for mem control. */
-  private final DataRegionInfo dataRegionInfo = new DataRegionInfo(this);
+  private final DataRegionInfo dataRegionInfo;
 
   /** whether it's ready from recovery. */
   private boolean isReady = false;
@@ -431,6 +432,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.dataRegionIdString = dataRegionIdString;
     this.dataRegionId = new DataRegionId(Integer.parseInt(dataRegionIdString));
     this.databaseName = databaseName;
+    this.dataRegionInfo = new DataRegionInfo(this);
     this.fileFlushPolicy = fileFlushPolicy;
     this.isTableModel = isTableModelDatabase(databaseName);
     this.delayAnalyzer =
@@ -512,6 +514,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.isTableModel = isTableModelDatabase(databaseName);
     this.dataRegionIdString = dataRegionIdString;
     this.dataRegionId = new DataRegionId(Integer.parseInt(this.dataRegionIdString));
+    this.dataRegionInfo = new DataRegionInfo(this);
     this.tsFileManager = new TsFileManager(databaseName, dataRegionIdString, "");
     this.partitionMaxFileVersions = new HashMap<>();
     partitionMaxFileVersions.put(0L, 0L);
@@ -1073,7 +1076,9 @@ public class DataRegion implements IDataRegionForQuery {
         tsFileResource.removeResourceFile();
         tsFileProcessor.setTimeRangeId(timePartitionId);
         writer.makeMetadataVisible();
-        TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(dataRegionInfo);
+        TsFileProcessorInfo tsFileProcessorInfo =
+            new TsFileProcessorInfo(
+                dataRegionInfo, tsFileProcessor.getTsFileResource().getTsFilePath());
         tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
         this.dataRegionInfo.initTsFileProcessorInfo(tsFileProcessor);
         // get chunkMetadata size
@@ -1687,7 +1692,7 @@ public class DataRegion implements IDataRegionForQuery {
         logger.debug(
             StorageEngineMessages.STORAGE_LOG_WON_T_INSERT_TABLET_BECAUSE_C2DC8032,
             insertTabletNode.getSearchIndex(),
-            "insertTabletNode allMeasurementFailed");
+            StorageEngineMessages.MESSAGE_INSERTTABLETNODE_ALLMEASUREMENTFAILED_A147C989);
       }
       return true;
     }
@@ -1850,7 +1855,8 @@ public class DataRegion implements IDataRegionForQuery {
                   logger.error(
                       StorageEngineMessages
                           .STORAGE_LOG_REMOTE_REQUEST_CONFIG_NODE_FAILED_THAT_JUDGMENT_IF_TABLE_25FE3602,
-                      e.getMessage());
+                      e.getMessage(),
+                      e);
                   CommonMetadataUtils.throwTableNotExistsException(getDatabaseName(), tableName);
                   return null; // unreachable, throwTableNotExistsException always throws
                 }
@@ -2322,7 +2328,9 @@ public class DataRegion implements IDataRegionForQuery {
             this::flushCallback,
             sequence);
 
-    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(dataRegionInfo);
+    TsFileProcessorInfo tsFileProcessorInfo =
+        new TsFileProcessorInfo(
+            dataRegionInfo, tsFileProcessor.getTsFileResource().getTsFilePath());
     tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.dataRegionInfo.initTsFileProcessorInfo(tsFileProcessor);
 
@@ -5159,7 +5167,7 @@ public class DataRegion implements IDataRegionForQuery {
                   RpcUtils.getStatus(
                       TSStatusCode.OUT_OF_TTL.getStatusCode(),
                       String.format(
-                          "Insertion time [%s] is less than ttl time bound [%s]",
+                          DataNodeQueryMessages.OUT_OF_TTL_FMT,
                           DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
                           DateTimeUtils.convertLongToDate(CommonUtils.getTTLLowerBound(ttl)))));
           continue;
@@ -5277,7 +5285,7 @@ public class DataRegion implements IDataRegionForQuery {
                   RpcUtils.getStatus(
                       TSStatusCode.OUT_OF_TTL.getStatusCode(),
                       String.format(
-                          "Insertion time [%s] is less than ttl time bound [%s]",
+                          DataNodeQueryMessages.OUT_OF_TTL_FMT,
                           DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
                           DateTimeUtils.convertLongToDate(CommonUtils.getTTLLowerBound(ttl)))));
           insertRowNode.setFailedMeasurementNumber(

@@ -34,6 +34,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -53,12 +54,15 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALReader;
+import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALFakeNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractResultListener;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.storageengine.rescon.memory.WriteMemoryBlock;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
@@ -97,6 +101,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1769,6 +1774,162 @@ public class TsFileProcessorTest {
     assertTrue(processor.getTsFileResource().isClosed());
   }
 
+  @Test
+  public void testWriteMemoryCategoriesAndClose() throws Exception {
+    processor = newTestProcessor(filePath);
+    TSRecord record = new TSRecord(deviceId, 1);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.TEXT, "text", "payload"));
+    processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
+    IMemTable memTable = processor.getWorkMemTable();
+    assertTrue(memTable.getArrayMemoryBlock().getUsedMemoryInBytes() > 0);
+    assertTrue(memTable.getBinaryMemoryBlock().getUsedMemoryInBytes() > 0);
+    long metadataBytes =
+        sgInfo.getWriteMemoryManager().getMemoryBlocks().stream()
+            .filter(b -> b.getCategory() == WriteMemoryBlock.Category.TSFILE_METADATA)
+            .mapToLong(WriteMemoryBlock::getUsedMemoryInBytes)
+            .sum();
+    assertTrue(metadataBytes > 0);
+    assertEquals(memTable.getTVListsRamCost() + metadataBytes, sgInfo.getMemCost());
+    processor.syncClose();
+    assertEquals(0, sgInfo.getMemCost());
+    assertTrue(sgInfo.getWriteMemoryManager().getMemoryBlocks().isEmpty());
+  }
+
+  @Test
+  public void testWalFailureRollsBackRowMixedRowsAndSplitTablet() throws Exception {
+    processor = newTestProcessor(filePath);
+    insertAlignedRow(processor, deviceId, 0, false);
+    IMemTable memTable = processor.getWorkMemTable();
+    long regionBefore = sgInfo.getMemCost();
+    long ramBefore = memTable.getTVListsRamCost();
+    long logicalBefore = memTable.memSize();
+    long structureBefore = memTable.getStructureMemoryBlock().getUsedMemoryInBytes();
+    assertTrue(structureBefore > 0);
+    Field field = TsFileProcessor.class.getDeclaredField("walNode");
+    field.setAccessible(true);
+    Object originalWal = field.get(processor);
+    field.set(
+        processor,
+        new WALFakeNode(
+            AbstractResultListener.Status.FAILURE, new IOException("injected WAL failure")));
+    try {
+      TSRecord record = new TSRecord(deviceId, 1);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.TEXT, "text", "payload"));
+      InsertRowNode row = buildInsertRowNodeByTSRecord(record);
+      row.setAligned(true);
+      Assert.assertThrows(WriteProcessException.class, () -> processor.insert(row, new long[5]));
+      assertMemoryUnchanged(regionBefore, ramBefore, logicalBefore);
+      assertEquals(structureBefore, memTable.getStructureMemoryBlock().getUsedMemoryInBytes());
+
+      InsertRowsNode rows = new InsertRowsNode(new PlanNodeId("mixed"));
+      rows.addOneInsertRowNode(row, 0);
+      TSRecord nonAligned = new TSRecord("root.vehicle.other", 1);
+      nonAligned.addTuple(DataPoint.getDataPoint(TSDataType.TEXT, "text", "payload"));
+      rows.addOneInsertRowNode(buildInsertRowNodeByTSRecord(nonAligned), 1);
+      Assert.assertThrows(
+          WriteProcessException.class, () -> processor.insertRows(rows, new long[5]));
+      assertMemoryUnchanged(regionBefore, ramBefore, logicalBefore);
+      assertEquals(structureBefore, memTable.getStructureMemoryBlock().getUsedMemoryInBytes());
+
+      InsertTabletNode tablet = genSingleMeasurementTablet(10, true);
+      TSStatus[] results = new TSStatus[10];
+      Assert.assertThrows(
+          WriteProcessException.class,
+          () ->
+              processor.insertTablet(
+                  tablet,
+                  Arrays.asList(new int[] {0, 5}, new int[] {5, 10}),
+                  results,
+                  true,
+                  new long[5]));
+      assertMemoryUnchanged(regionBefore, ramBefore, logicalBefore);
+      assertEquals(structureBefore, memTable.getStructureMemoryBlock().getUsedMemoryInBytes());
+    } finally {
+      field.set(processor, originalWal);
+      processor.syncClose();
+    }
+  }
+
+  @Test
+  public void testRejectionRollsBackAllMemoryReservations() throws Exception {
+    processor = newTestProcessor(filePath);
+    int originalWait = config.getMaxWaitingTimeWhenInsertBlocked();
+    int originalPeriod = config.getCheckPeriodWhenInsertBlocked();
+    // Keep selection empty so rejection cannot launch an asynchronous flush in this test.
+    sgInfo.getAllReportedTsp().clear();
+    try (WriteMemoryBlock pressure =
+        sgInfo
+            .getWriteMemoryManager()
+            .createBlock("pressure", WriteMemoryBlock.Category.TSFILE_METADATA)) {
+      pressure.add((long) SystemInfo.getInstance().getRejectThreshold() + 1);
+      long before = sgInfo.getMemCost();
+      sgInfo.setNeedToReportToSystem(true);
+      config.setMaxWaitingTimeWhenInsertBlocked(0);
+      config.setCheckPeriodWhenInsertBlocked(1);
+      TSRecord record = new TSRecord(deviceId, 1);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.TEXT, "text", "payload"));
+      Assert.assertThrows(
+          WriteProcessRejectException.class,
+          () -> processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]));
+      assertMemoryUnchanged(before, 0, 0);
+      assertEquals(before, SystemInfo.getInstance().getTotalMemTableSize());
+    } finally {
+      config.setMaxWaitingTimeWhenInsertBlocked(originalWait);
+      config.setCheckPeriodWhenInsertBlocked(originalPeriod);
+      SystemInfo.getInstance().resetStorageGroupStatus(sgInfo);
+      processor.putMemTableBackAndClose();
+    }
+    assertEquals(0, sgInfo.getMemCost());
+    assertTrue(sgInfo.getWriteMemoryManager().getMemoryBlocks().isEmpty());
+  }
+
+  @Test
+  public void testZeroMemoryIncrementStillChecksPressure() throws Exception {
+    processor = newTestProcessor(filePath);
+    TSRecord first = new TSRecord(deviceId, 0);
+    first.addTuple(DataPoint.getDataPoint(TSDataType.INT64, "s1", "1"));
+    processor.insert(buildInsertRowNodeByTSRecord(first), new long[5]);
+    IMemTable memTable = processor.getWorkMemTable();
+    long ramBefore = memTable.getTVListsRamCost();
+    long logicalBefore = memTable.memSize();
+    int originalWait = config.getMaxWaitingTimeWhenInsertBlocked();
+    int originalPeriod = config.getCheckPeriodWhenInsertBlocked();
+    sgInfo.getAllReportedTsp().clear();
+    try (WriteMemoryBlock pressure =
+        sgInfo
+            .getWriteMemoryManager()
+            .createBlock("pressure", WriteMemoryBlock.Category.TSFILE_METADATA)) {
+      pressure.add((long) SystemInfo.getInstance().getRejectThreshold() + 1);
+      long before = sgInfo.getMemCost();
+      sgInfo.setNeedToReportToSystem(true);
+      config.setMaxWaitingTimeWhenInsertBlocked(0);
+      config.setCheckPeriodWhenInsertBlocked(1);
+      // The next numeric row reuses both its value/timestamp arrays and its metadata.
+      TSRecord next = new TSRecord(deviceId, 1);
+      next.addTuple(DataPoint.getDataPoint(TSDataType.INT64, "s1", "2"));
+      Assert.assertThrows(
+          WriteProcessRejectException.class,
+          () -> processor.insert(buildInsertRowNodeByTSRecord(next), new long[5]));
+      assertMemoryUnchanged(before, ramBefore, logicalBefore);
+      assertEquals(1, memTable.getTotalPointsNum());
+    } finally {
+      config.setMaxWaitingTimeWhenInsertBlocked(originalWait);
+      config.setCheckPeriodWhenInsertBlocked(originalPeriod);
+      SystemInfo.getInstance().resetStorageGroupStatus(sgInfo);
+      processor.putMemTableBackAndClose();
+    }
+    assertEquals(0, sgInfo.getMemCost());
+  }
+
+  private void assertMemoryUnchanged(long regionBytes, long ramBytes, long logicalBytes) {
+    assertEquals(regionBytes, sgInfo.getMemCost());
+    assertEquals(ramBytes, processor.getWorkMemTable().getTVListsRamCost());
+    assertEquals(logicalBytes, processor.getWorkMemTable().memSize());
+    for (WriteMemoryBlock block : sgInfo.getWriteMemoryManager().getMemoryBlocks()) {
+      assertEquals(0, block.getReservedMemoryInBytes());
+    }
+  }
+
   private void closeTsFileProcessor(TsFileProcessor unsealedTsFileProcessor)
       throws TsFileProcessorException {
     TsFileResource resource = unsealedTsFileProcessor.getTsFileResource();
@@ -1828,9 +1989,13 @@ public class TsFileProcessorTest {
   }
 
   private void assertAlignedTvListRamCostMatchesActual(String targetDevice) {
+    AlignedTVList list = getAlignedMemChunk(targetDevice).getWorkingTVList();
+    IMemTable table = processor.getWorkMemTable();
+    Assert.assertEquals(list.calculateRamSize().getRamSize(), table.getTVListsRamCost());
+    Assert.assertEquals(list.getArrayRamSize(), table.getArrayMemoryBlock().getUsedMemoryInBytes());
     Assert.assertEquals(
-        getAlignedMemChunk(targetDevice).getWorkingTVList().calculateRamSize().getRamSize(),
-        processor.getWorkMemTable().getTVListsRamCost());
+        list.getStructureRamSize(), table.getStructureMemoryBlock().getUsedMemoryInBytes());
+    assertTrue(table.getStructureMemoryBlock().getUsedMemoryInBytes() > 0);
   }
 
   private InsertTabletNode genSingleMeasurementTablet(int rowCount, boolean isAligned)

@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.confignode.it.regionmigration;
 
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.ratis.utils.Utils;
 import org.apache.iotdb.it.env.EnvFactory;
 
 import org.junit.Before;
@@ -38,5 +40,10 @@ public class IoTDBRegionMigrateITFrameworkForRatis
         .setConfigNodeRatisReconfigurationMaxRetryAttempts(10)
         .setDataRegionRatisReconfigurationMaxRetryAttempts(10)
         .setSchemaRegionRatisReconfigurationMaxRetryAttempts(10);
+  }
+
+  @Override
+  protected String getRegionDirName(int regionId) {
+    return Utils.fromConsensusGroupIdToRaftGroupId(new DataRegionId(regionId)).getUuid().toString();
   }
 }
