@@ -31,13 +31,17 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
 
 public class QueryStateMachineTest {
 
@@ -156,6 +160,37 @@ public class QueryStateMachineTest {
     assertEquals(
         TSStatusCode.CAN_NOT_CONNECT_DATANODE.getStatusCode(),
         stateMachine.getFailureStatus().code);
+  }
+
+  @Test
+  public void testInterruptionProvenanceBelongsToTheRecordedStatus() {
+    QueryStateMachine stateMachine =
+        new QueryStateMachine(genQueryId(), mock(ExecutorService.class));
+    TSStatus interruption = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+
+    stateMachine.transitionToFailed(interruption, true);
+
+    assertSame(interruption, stateMachine.getFailureStatus());
+    assertTrue(stateMachine.isFailureCausedByInterruption(interruption));
+    assertFalse(
+        stateMachine.isFailureCausedByInterruption(
+            new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())));
+  }
+
+  @Test
+  public void testLaterInterruptionDoesNotReclassifyExistingFailure() {
+    QueryStateMachine stateMachine =
+        new QueryStateMachine(genQueryId(), mock(ExecutorService.class));
+    TSStatus original = new TSStatus(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
+    TSStatus interruption = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+
+    stateMachine.transitionToFailed(original);
+    stateMachine.transitionToFailed(interruption, true);
+    stateMachine.transitionToFailed(original, true);
+
+    assertSame(original, stateMachine.getFailureStatus());
+    assertFalse(stateMachine.isFailureCausedByInterruption(original));
+    assertFalse(stateMachine.isFailureCausedByInterruption(interruption));
   }
 
   private QueryStateMachine genQueryStateMachine() {

@@ -183,11 +183,14 @@ public class PrimitiveMemTableTest {
           new StringArrayDeviceID("root.test.d1"), measurementSchemas, i, new Object[] {i, i, i});
     }
     memTable.delete(
-        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s1", TSDataType.INT32), 150, 160));
+        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s1", TSDataType.INT32), 150, 160),
+        true);
     memTable.delete(
-        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s2", TSDataType.INT32), 150, 160));
+        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s2", TSDataType.INT32), 150, 160),
+        true);
     memTable.delete(
-        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s3", TSDataType.INT32), 150, 160));
+        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s3", TSDataType.INT32), 150, 160),
+        true);
     ResourceByPathUtils resourcesByPathUtils =
         ResourceByPathUtils.getResourceInstance(
             new AlignedFullPath(
@@ -230,11 +233,14 @@ public class PrimitiveMemTableTest {
           new StringArrayDeviceID("root.test.d1"), measurementSchemas, i, new Object[] {i, i, i});
     }
     memTable.delete(
-        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s1", TSDataType.INT32), 150, 160));
+        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s1", TSDataType.INT32), 150, 160),
+        true);
     memTable.delete(
-        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s2", TSDataType.INT32), 150, 160));
+        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s2", TSDataType.INT32), 150, 160),
+        true);
     memTable.delete(
-        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s3", TSDataType.INT32), 150, 160));
+        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s3", TSDataType.INT32), 150, 160),
+        true);
     ResourceByPathUtils resourcesByPathUtils =
         ResourceByPathUtils.getResourceInstance(
             new AlignedFullPath(
@@ -290,11 +296,14 @@ public class PrimitiveMemTableTest {
       memTable.writeAlignedRow(deviceID, measurementSchemas, i, new Object[] {i, i, i});
     }
     memTable.delete(
-        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s1", TSDataType.INT32), 1, 10));
+        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s1", TSDataType.INT32), 1, 10),
+        true);
     memTable.delete(
-        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s2", TSDataType.INT32), 1, 10));
+        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s2", TSDataType.INT32), 1, 10),
+        true);
     memTable.delete(
-        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s3", TSDataType.INT32), 1, 10));
+        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s3", TSDataType.INT32), 1, 10),
+        true);
     Assert.assertFalse(originalWorkingList.isSorted());
 
     AlignedReadOnlyMemChunk flushingQueryMemChunk =

@@ -223,6 +223,7 @@ public class CachedSchemaPatternMatcherTest {
     countingMatcher.register(new PipeRealtimeDataRegionFakeSource());
 
     final PipeInsertionEvent insertionEvent = Mockito.mock(PipeInsertionEvent.class);
+    Mockito.when(insertionEvent.isTableModelEvent()).thenReturn(true);
     Mockito.when(insertionEvent.getTableModelDatabaseName()).thenReturn("db");
     final Map<IDeviceID, String[]> schemaInfo = new LinkedHashMap<>();
     schemaInfo.put(new StringArrayDeviceID("table1", "tag1"), new String[0]);

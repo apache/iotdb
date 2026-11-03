@@ -35,6 +35,6 @@ public class ColumnInDeletionException extends MetadataException {
             columnName,
             PathUtils.unQualifyDatabaseName(database),
             tableName),
-        TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+        TSStatusCode.COLUMN_IN_PRE_DELETE.getStatusCode());
   }
 }

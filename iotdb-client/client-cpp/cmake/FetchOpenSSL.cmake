@@ -18,7 +18,7 @@
 # =============================================================================
 # FetchOpenSSL.cmake  (only included when WITH_SSL=ON)
 #
-# Apache Thrift 0.24 (bundled by this client) builds against OpenSSL 3.x.
+# OpenSSL 3.x remains the default bundled dependency for the C++ client.
 #
 # By default, a fixed OpenSSL source release is downloaded, checksum-verified,
 # built as shared libraries, and installed under ${CMAKE_BINARY_DIR}/_deps.

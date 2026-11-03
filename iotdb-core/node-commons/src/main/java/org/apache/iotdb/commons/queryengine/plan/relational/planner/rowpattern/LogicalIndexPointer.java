@@ -21,12 +21,12 @@ package org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern;
 
 import org.apache.iotdb.commons.i18n.QueryMessages;
 
+import com.google.common.collect.Sets;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -144,7 +144,7 @@ public class LogicalIndexPointer {
 
   public static LogicalIndexPointer deserialize(ByteBuffer byteBuffer) {
     int labelCount = ReadWriteIOUtils.readInt(byteBuffer);
-    Set<IrLabel> labels = new HashSet<>();
+    Set<IrLabel> labels = Sets.newHashSetWithExpectedSize(labelCount);
     for (int i = 0; i < labelCount; i++) {
       labels.add(IrLabel.deserialize(byteBuffer));
     }

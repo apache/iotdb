@@ -53,6 +53,7 @@ import java.util.stream.Stream;
 public abstract class DiskUsageStatisticUtil implements Closeable {
 
   protected static final Logger logger = LoggerFactory.getLogger(DiskUsageStatisticUtil.class);
+  // Collected files retain a reader reference and its resource read lock until released.
   protected Queue<TsFileResource> resourcesWithReadLock;
   protected final long timePartition;
   protected final Iterator<TsFileResource> iterator;
@@ -100,9 +101,9 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
         if (!resource.isClosed()) {
           continue;
         }
-        resource.readLock();
+        FileReaderManager.getInstance().increaseFileReaderReference(resource, true);
         if (resource.isDeleted() || !resource.isClosed()) {
-          resource.readUnlock();
+          FileReaderManager.getInstance().decreaseFileReaderReference(resource, true);
           continue;
         }
         resourcesWithReadLock.add(resource);
@@ -118,7 +119,7 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
       return;
     }
     for (TsFileResource resource : resourcesWithReadLock) {
-      resource.readUnlock();
+      FileReaderManager.getInstance().decreaseFileReaderReference(resource, true);
     }
     resourcesWithReadLock = null;
   }
@@ -127,10 +128,9 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
     TsFileResource tsFileResource = iterator.next();
     if (tsFileResource.isDeleted() || calculateWithoutOpenFile(tsFileResource)) {
       iterator.remove();
-      tsFileResource.readUnlock();
+      FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource, true);
       return;
     }
-    FileReaderManager.getInstance().increaseFileReaderReference(tsFileResource, true);
     try {
       TsFileSequenceReader reader =
           FileReaderManager.getInstance()
@@ -146,7 +146,7 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
           tsFileResource.getTsFile().getAbsolutePath(),
           e);
     } finally {
-      // this operation including readUnlock
+      // Release the reader reference registered during collection, including its read lock.
       FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource, true);
       iterator.remove();
     }

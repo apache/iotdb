@@ -81,9 +81,9 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
           LOG.info(ProcedureMessages.SUCCESSFULLY_ADD_PEER, tConfigNodeLocation);
           break;
         case REGISTER_SUCCESS:
-          env.notifyRegisterSuccess(tConfigNodeLocation);
-          env.createConfigNodeHeartbeatCache(tConfigNodeLocation.getConfigNodeId());
           env.applyConfigNode(tConfigNodeLocation, versionInfo);
+          env.createConfigNodeHeartbeatCache(tConfigNodeLocation.getConfigNodeId());
+          env.notifyRegisterSuccess(tConfigNodeLocation);
           LOG.info(
               ProcedureMessages.THE_CONFIGNODE_IS_SUCCESSFULLY_ADDED_TO_THE_CLUSTER,
               tConfigNodeLocation);

@@ -48,7 +48,7 @@ public class UDTFHistogram implements UDTF {
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             count -> (int) count > 0,
-            "parameter $count$ should be larger than 0",
+            LibraryUdfMessages.EXCEPTION_PARAMETER_COUNT_SHOULD_BE_LARGER_THAN_0_8E8FFF68,
             validator.getParameters().getIntOrDefault("count", 1))
         .validate(
             params ->

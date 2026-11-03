@@ -78,7 +78,8 @@ public class DataNodeShutdownHook extends Thread {
                   Thread.sleep(10000);
                   StackTraceElement[] stackTrace = hookThread.getStackTrace();
                   StringBuilder stackTraceBuilder =
-                      new StringBuilder("Stack trace of shutdown hook:\n");
+                      new StringBuilder(
+                          DataNodeMiscMessages.EXCEPTION_STACK_TRACE_OF_SHUTDOWN_HOOK_2EB9D12F);
                   for (StackTraceElement traceElement : stackTrace) {
                     stackTraceBuilder.append(traceElement.toString()).append("\n");
                   }
@@ -108,16 +109,22 @@ public class DataNodeShutdownHook extends Thread {
             true,
             null,
             null);
-    String logMessage = String.format("DataNode %s exiting...", nodeLocation);
+    String logMessage =
+        String.format(DataNodeMiscMessages.EXCEPTION_DATANODE_ARG_EXITING_75D198C4, nodeLocation);
     DNAuditLogger.getInstance().log(fields, () -> logMessage);
 
     startWatcher();
+    CommonDescriptor.getInstance().getConfig().setStopping(true);
     // Stop external rpc service firstly.
     ExternalRPCService.getInstance().stop();
 
     // Reject write operations to make sure all tsfiles will be sealed
-    CommonDescriptor.getInstance().getConfig().setStopping(true);
-    CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+    CommonDescriptor.getInstance()
+        .getConfig()
+        .setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.STOPPING);
+    // A pre-apply read-only check can race with this transition. Drain admitted IoTConsensus
+    // applies, including their WAL separators, and permanently reject new ones before flushing.
+    StorageEngine.getInstance().stopIoTConsensusWrites();
     // Wait all wal are flushed
     WALManager.getInstance().waitAllWALFlushed();
 

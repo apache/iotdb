@@ -22,10 +22,13 @@ package org.apache.iotdb.pipe.it.dual.tablemodel.manual.enhanced;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
-import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualEnhanced;
@@ -41,16 +44,15 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.fail;
 
@@ -125,10 +127,9 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelDualManualIT {
         "test",
         handleFailure);
 
-    try (final Connection connection =
-            makeItCloseQuietly(senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT));
-        final Statement statement = makeItCloseQuietly(connection.createStatement()); ) {
-      ResultSet result = statement.executeQuery("show pipes");
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      // Fetch a fresh table-model snapshot on every poll while history pipes are being removed.
       await()
           .pollInSameThread()
           .pollDelay(1L, TimeUnit.SECONDS)
@@ -136,19 +137,20 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelDualManualIT {
           .atMost(600, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
-                try {
-                  int pipeNum = 0;
-                  while (result.next()) {
-                    final String pipeName = result.getString(ColumnHeaderConstant.ID);
-                    if (!pipeName.contains(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)
-                        && pipeName.endsWith("_history")) {
-                      pipeNum++;
-                    }
-                  }
-                  Assert.assertEquals(0, pipeNum);
-                } catch (Exception e) {
-                  Assert.fail();
-                }
+                final TShowPipeResp response =
+                    client.showPipe(
+                        new TShowPipeReq()
+                            .setIsTableModel(true)
+                            .setUserName(SessionConfig.DEFAULT_USER));
+                Assert.assertEquals(
+                    TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+                final List<TShowPipeInfo> showPipeResult = response.getPipeInfoList();
+                Assert.assertTrue(
+                    showPipeResult.stream()
+                        .noneMatch(
+                            i ->
+                                !i.getId().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)
+                                    && i.getId().endsWith("_history")));
               });
     }
   }
@@ -207,9 +209,8 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelDualManualIT {
           handleFailure);
     }
 
-    try (final Connection connection = makeItCloseQuietly(senderEnv.getConnection());
-        final Statement statement = makeItCloseQuietly(connection.createStatement()); ) {
-      ResultSet result = statement.executeQuery("show pipes");
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       await()
           .pollInSameThread()
           .pollDelay(1L, TimeUnit.SECONDS)
@@ -217,19 +218,17 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelDualManualIT {
           .atMost(600, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
-                try {
-                  int pipeNum = 0;
-                  while (result.next()) {
-                    if (!result
-                        .getString(ColumnHeaderConstant.ID)
-                        .contains(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
-                      pipeNum++;
-                    }
-                  }
-                  Assert.assertEquals(0, pipeNum);
-                } catch (Exception e) {
-                  Assert.fail();
-                }
+                final TShowPipeResp response =
+                    client.showPipe(
+                        new TShowPipeReq()
+                            .setIsTableModel(true)
+                            .setUserName(SessionConfig.DEFAULT_USER));
+                Assert.assertEquals(
+                    TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+                final List<TShowPipeInfo> showPipeResult = response.getPipeInfoList();
+                showPipeResult.removeIf(
+                    i -> i.getId().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX));
+                Assert.assertTrue(showPipeResult.isEmpty());
               });
     }
   }

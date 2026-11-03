@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.dprofile;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -51,7 +52,8 @@ public class UDAFIntegral implements UDTF {
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             x -> Util.isPositiveTime((String) x, validator.getParameters()),
-            "Unknown time unit input. Supported units are ns, us, ms, s, m, h, d.",
+            LibraryUdfMessages
+                .EXCEPTION_UNKNOWN_TIME_UNIT_INPUT_SUPPORTED_UNITS_ARE_NS_US_MS_S_M_H_D_69C56AE2,
             validator.getParameters().getStringOrDefault(TIME_UNIT_KEY, TIME_UNIT_S));
   }
 

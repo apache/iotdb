@@ -165,6 +165,7 @@ public enum StatementType {
   SHOW_PIPEPLUGINS,
 
   SHOW_PIPES,
+  SHOW_PIPE_MEMORY,
 
   BATCH_ACTIVATE_TEMPLATE,
 

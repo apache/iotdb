@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.commons.enums.PipeRateAverage;
 import org.apache.iotdb.commons.i18n.ConfigMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -174,8 +175,11 @@ public class CommonConfig {
   /** Status of current system. */
   private volatile NodeStatus status = NodeStatus.Running;
 
-  private NodeStatus lastStatus = NodeStatus.Unknown;
-  private String lastStatusReason = "";
+  /**
+   * Maximum length of the error message embedded in the UnrecoverableError status reason, keeping
+   * the reason bounded in heartbeats and SHOW results.
+   */
+  private static final int MAX_STATUS_REASON_LENGTH = 256;
 
   private volatile boolean isStopping = false;
 
@@ -341,6 +345,7 @@ public class CommonConfig {
       Math.min(
           64 * 1024 * 1024,
           (int) Math.min(Runtime.getRuntime().maxMemory() / 64, Integer.MAX_VALUE));
+  private int pipeAirGapReceiverUdpSocketBufferSizeInBytes = 32 * 1024 * 1024;
   private boolean pipeReceiverLoadConversionEnabled = false;
   private volatile long loggerPeriodicalLogMinIntervalSeconds = 60;
   private volatile long loggerCacheMaxSizeInBytes = 64 * MB;
@@ -426,8 +431,10 @@ public class CommonConfig {
 
   private int subscriptionConsensusBatchMaxDelayInMs = 50;
   private long subscriptionConsensusBatchMaxSizeInBytes = 8 * MB;
-  private int subscriptionConsensusBatchMaxTabletCount = 64;
-  private int subscriptionConsensusBatchMaxWalEntries = 128;
+  // Favor fewer poll/commit round trips during WAL catch-up. The byte limit remains the primary
+  // memory and RPC payload guard for large tablets.
+  private int subscriptionConsensusBatchMaxTabletCount = 512;
+  private int subscriptionConsensusBatchMaxWalEntries = 1024;
 
   private long subscriptionConsensusWalRetentionSizeInBytes = 512 * MB;
   private long subscriptionConsensusWalRetentionTimeMs = -1L;
@@ -438,6 +445,9 @@ public class CommonConfig {
   private long subscriptionConsensusConsumerEvictionTimeoutMs = 60_000;
 
   private boolean subscriptionConsensusLagBasedPriority = true;
+
+  // Disable fallback polling to keep each region's events with its assigned consumer.
+  private boolean subscriptionConsensusFallbackPollingEnabled = true;
 
   private int subscriptionConsensusPrefetchingQueueCapacity = 256;
 
@@ -781,8 +791,26 @@ public class CommonConfig {
     this.handleSystemErrorStrategy = handleSystemErrorStrategy;
   }
 
-  public void handleUnrecoverableError() {
-    handleSystemErrorStrategy.handle();
+  /**
+   * Handles an unrecoverable error with the given exception. The ReadOnly status reason is
+   * assembled here so that all call sites share one format: "UnrecoverableError, <timestamp>,
+   * <error message>". The error message is truncated to {@link #MAX_STATUS_REASON_LENGTH}
+   * characters so that the reason published in heartbeats and SHOW results stays bounded.
+   */
+  public void handleUnrecoverableError(Throwable e) {
+    String errorMessage =
+        e.getMessage() == null || e.getMessage().isEmpty()
+            ? e.getClass().getSimpleName()
+            : e.getMessage();
+    if (errorMessage.length() > MAX_STATUS_REASON_LENGTH) {
+      errorMessage = errorMessage.substring(0, MAX_STATUS_REASON_LENGTH) + "...";
+    }
+    handleSystemErrorStrategy.handle(
+        NodeStatus.UNRECOVERABLE_ERROR
+            + ", "
+            + DateTimeUtils.convertLongToDate(System.currentTimeMillis(), "ms")
+            + ", "
+            + errorMessage);
   }
 
   public double getDiskSpaceWarningThreshold() {
@@ -825,14 +853,33 @@ public class CommonConfig {
     return status;
   }
 
-  public synchronized void setNodeStatus(NodeStatus newStatus) {
+  /**
+   * Sets the node status without a new reason. An existing ReadOnly reason is preserved when
+   * ReadOnly is requested again; requests for other statuses clear the reason.
+   */
+  public void setNodeStatus(NodeStatus newStatus) {
+    setNodeStatusWithReason(newStatus, null);
+  }
+
+  /**
+   * Sets the node status and reason together. ReadOnly-to-ReadOnly updates select the reason
+   * through {@link NodeStatus#transitionReadOnlyReason(String, String)}. Other statuses clear the
+   * reason.
+   */
+  public synchronized void setNodeStatusWithReason(NodeStatus newStatus, String newReason) {
+    if (newStatus != NodeStatus.ReadOnly) {
+      newReason = null;
+    } else if (status == NodeStatus.ReadOnly) {
+      newReason = NodeStatus.transitionReadOnlyReason(statusReason, newReason);
+    }
     if (status == newStatus) {
+      this.statusReason = newReason;
       return;
     }
 
     logger.info(ConfigMessages.SET_SYSTEM_MODE, status, newStatus);
     this.status = newStatus;
-    this.statusReason = null;
+    this.statusReason = newReason;
 
     switch (newStatus) {
       case ReadOnly:
@@ -848,10 +895,6 @@ public class CommonConfig {
 
   public String getStatusReason() {
     return statusReason;
-  }
-
-  public void setStatusReason(String statusReason) {
-    this.statusReason = statusReason;
   }
 
   public int getTTimePartitionSlotTransmitLimit() {
@@ -1988,6 +2031,18 @@ public class CommonConfig {
     return pipeAirGapReceiverMaxPayloadSizeInBytes;
   }
 
+  public int getPipeAirGapReceiverUdpSocketBufferSizeInBytes() {
+    return pipeAirGapReceiverUdpSocketBufferSizeInBytes;
+  }
+
+  public void setPipeAirGapReceiverUdpSocketBufferSizeInBytes(
+      int pipeAirGapReceiverUdpSocketBufferSizeInBytes) {
+    if (pipeAirGapReceiverUdpSocketBufferSizeInBytes > 0) {
+      this.pipeAirGapReceiverUdpSocketBufferSizeInBytes =
+          pipeAirGapReceiverUdpSocketBufferSizeInBytes;
+    }
+  }
+
   public double getPipeMetaReportMaxLogNumPerRound() {
     return pipeMetaReportMaxLogNumPerRound;
   }
@@ -2835,6 +2890,15 @@ public class CommonConfig {
   public void setSubscriptionConsensusLagBasedPriority(
       final boolean subscriptionConsensusLagBasedPriority) {
     this.subscriptionConsensusLagBasedPriority = subscriptionConsensusLagBasedPriority;
+  }
+
+  public boolean isSubscriptionConsensusFallbackPollingEnabled() {
+    return subscriptionConsensusFallbackPollingEnabled;
+  }
+
+  public void setSubscriptionConsensusFallbackPollingEnabled(
+      final boolean subscriptionConsensusFallbackPollingEnabled) {
+    this.subscriptionConsensusFallbackPollingEnabled = subscriptionConsensusFallbackPollingEnabled;
   }
 
   public int getSubscriptionConsensusPrefetchingQueueCapacity() {

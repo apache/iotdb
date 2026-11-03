@@ -160,7 +160,7 @@ public class FastNonAlignedSeriesCompactionExecutor extends SeriesCompactionExec
         ModificationUtils.modifyChunkMetaData(
             iChunkMetadataList,
             getModificationsFromCache(
-                resource, deviceId, iChunkMetadataList.get(0).getMeasurementUid()));
+                resource, deviceId, iChunkMetadataList.get(0).getMeasurementUid(), false));
         if (iChunkMetadataList.isEmpty()) {
           // all chunks has been deleted in this file, just remove it
           removeFile(fileElement);

@@ -46,6 +46,11 @@ public enum RegionStatus {
     return status;
   }
 
+  public static RegionStatus fromNodeStatus(NodeStatus status) {
+    // Regions do not distinguish an explicitly stopped node from an unreachable node.
+    return status == NodeStatus.Stopped ? Unknown : valueOf(status.getStatus());
+  }
+
   public static boolean isNormalStatus(RegionStatus status) {
     // Currently, the only normal status is Running
     return status != null && status.equals(RegionStatus.Running);

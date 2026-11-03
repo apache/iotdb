@@ -88,6 +88,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -113,9 +114,11 @@ public class Session implements ISession {
   private static final Logger logger = LoggerFactory.getLogger(Session.class);
   protected static final TSProtocolVersion protocolVersion =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
-  public static final String MSG_UNSUPPORTED_DATA_TYPE = "Unsupported data type:";
+  public static final String MSG_UNSUPPORTED_DATA_TYPE =
+      SessionMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_07BE17C0;
   public static final String MSG_DONOT_ENABLE_REDIRECT =
-      "Query do not enable redirect," + " please confirm the session and server conf.";
+      SessionMessages
+          .EXCEPTION_QUERY_DO_NOT_ENABLE_REDIRECT_PLEASE_CONFIRM_THE_SESSION_AND_SERVER_CONF_AE321ADB;
   private static final ThreadPoolExecutor OPERATION_EXECUTOR =
       new ThreadPoolExecutor(
           SessionConfig.DEFAULT_SESSION_EXECUTOR_THREAD_NUM,
@@ -125,6 +128,7 @@ public class Session implements ISession {
           new LinkedBlockingQueue<>(SessionConfig.DEFAULT_SESSION_EXECUTOR_TASK_NUM),
           ThreadUtils.createThreadFactory("SessionExecutor", true));
   protected List<String> nodeUrls;
+  private final List<String> initialNodeUrls;
   protected String username;
   protected String password;
   protected boolean useEncryptedPassword;
@@ -204,18 +208,25 @@ public class Session implements ISession {
   // may be null
   protected volatile String database;
 
-  private static final String VALUES_SIZE_SHOULD_BE_EQUAL =
-      "times, measurementsList and valuesList's size should be equal";
+  protected volatile boolean enableAutoCreateSchema = true;
 
-  private static final String SESSION_CANNOT_CONNECT = "Session can not connect to {}";
+  private static final String VALUES_SIZE_SHOULD_BE_EQUAL =
+      SessionMessages
+          .EXCEPTION_TIMES_MEASUREMENTSLIST_AND_VALUESLIST_S_SIZE_SHOULD_BE_EQUAL_626B0CD6;
+
+  private static final String SESSION_CANNOT_CONNECT =
+      SessionMessages.EXCEPTION_SESSION_CAN_NOT_CONNECT_TO_ARG_226FBA66;
 
   private static final String ALL_VALUES_ARE_NULL =
-      "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements is [{}]";
+      SessionMessages
+          .EXCEPTION_ALL_VALUES_ARE_NULL_AND_THIS_SUBMISSION_IS_IGNORED_DEVICEID_IS_ARG_TIME_IS_ARG_MEASUREMENTS_IS_ARG_5524221C;
 
   private static final String ALL_VALUES_ARE_NULL_WITH_TIME =
-      "All values are null and this submission is ignored,deviceId is [{}],times are [{}],measurements are [{}]";
+      SessionMessages
+          .EXCEPTION_ALL_VALUES_ARE_NULL_AND_THIS_SUBMISSION_IS_IGNORED_DEVICEID_IS_ARG_TIMES_ARE_ARG_MEASUREMENTS_ARE_ARG_12C45858;
   private static final String ALL_VALUES_ARE_NULL_MULTI_DEVICES =
-      "All values are null and this submission is ignored,deviceIds are [{}],times are [{}],measurements are [{}]";
+      SessionMessages
+          .EXCEPTION_ALL_VALUES_ARE_NULL_AND_THIS_SUBMISSION_IS_IGNORED_DEVICEIDS_ARE_ARG_TIMES_ARE_ARG_MEASUREMENTS_ARE_ARG_6A993BCB;
   private static final String ALL_INSERT_DATA_IS_NULL = SessionMessages.ALL_INSERT_DATA_IS_NULL;
 
   protected static final String TABLE = "table";
@@ -365,6 +376,8 @@ public class Session implements ISession {
       boolean enableRedirection,
       Version version) {
     this.defaultEndPoint = new TEndPoint(host, rpcPort);
+    this.initialNodeUrls =
+        Collections.singletonList(UrlUtils.convertTEndPointIpv4AndIpv6Url(defaultEndPoint));
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
@@ -432,8 +445,9 @@ public class Session implements ISession {
     if (nodeUrls.isEmpty()) {
       throw new IllegalArgumentException(SessionMessages.NODE_URLS_EMPTY);
     }
-    nodeUrls = shuffleNodeUrls(nodeUrls);
+    nodeUrls = shuffleNodeUrls(new ArrayList<>(nodeUrls));
     this.nodeUrls = nodeUrls;
+    this.initialNodeUrls = Collections.unmodifiableList(new ArrayList<>(nodeUrls));
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
@@ -449,11 +463,13 @@ public class Session implements ISession {
       if (builder.nodeUrls.isEmpty()) {
         throw new IllegalArgumentException(SessionMessages.NODE_URLS_EMPTY);
       }
-      builder.nodeUrls = shuffleNodeUrls(builder.nodeUrls);
-      this.nodeUrls = builder.nodeUrls;
+      this.nodeUrls = shuffleNodeUrls(new ArrayList<>(builder.nodeUrls));
+      this.initialNodeUrls = Collections.unmodifiableList(new ArrayList<>(nodeUrls));
       this.enableQueryRedirection = true;
     } else {
       this.defaultEndPoint = new TEndPoint(builder.host, builder.rpcPort);
+      this.initialNodeUrls =
+          Collections.singletonList(UrlUtils.convertTEndPointIpv4AndIpv6Url(defaultEndPoint));
       this.enableQueryRedirection = builder.enableRedirection;
     }
     this.enableThriftRpcCompaction = builder.isThriftRpcCompactionEnabled;
@@ -484,6 +500,7 @@ public class Session implements ISession {
     this.sqlDialect = builder.sqlDialect;
     this.queryTimeoutInMs = builder.timeOut;
     this.database = builder.database;
+    this.enableAutoCreateSchema = builder.enableAutoCreateSchema;
   }
 
   @Override
@@ -537,6 +554,7 @@ public class Session implements ISession {
       this.availableNodes =
           NodesSupplier.createNodeSupplier(
               getNodeUrls(),
+              SessionUtils.parseSeedNodeUrls(initialNodeUrls),
               executorService,
               username,
               password,
@@ -553,7 +571,10 @@ public class Session implements ISession {
               enableRPCCompaction,
               version.toString());
     } else {
-      this.availableNodes = new DummyNodesSupplier(getNodeUrls());
+      // A static supplier has no separate seed tier. Keep every configured address after reopen.
+      Set<TEndPoint> staticNodes = new LinkedHashSet<>(getNodeUrls());
+      staticNodes.addAll(SessionUtils.parseSeedNodeUrls(initialNodeUrls));
+      this.availableNodes = new DummyNodesSupplier(new ArrayList<>(staticNodes));
     }
 
     this.connectionTimeoutInMs = connectionTimeoutInMs;
@@ -596,11 +617,9 @@ public class Session implements ISession {
   }
 
   private List<TEndPoint> getNodeUrls() {
-    if (defaultEndPoint != null) {
-      return Collections.singletonList(defaultEndPoint);
-    } else {
-      return SessionUtils.parseSeedNodeUrls(nodeUrls);
-    }
+    return defaultEndPoint == null
+        ? SessionUtils.parseSeedNodeUrls(initialNodeUrls)
+        : Collections.singletonList(defaultEndPoint.deepCopy());
   }
 
   @Override
@@ -2648,7 +2667,7 @@ public class Session implements ISession {
       List<List<TSDataType>> typesList,
       List<List<String>> measurementsList)
       throws IoTDBConnectionException {
-    List<ByteBuffer> buffersList = new ArrayList<>();
+    List<ByteBuffer> buffersList = new ArrayList<>(valuesList.size());
     for (int i = 0; i < valuesList.size(); i++) {
       ByteBuffer buffer =
           SessionUtils.getValueBuffer(typesList.get(i), valuesList.get(i), measurementsList.get(i));
@@ -2879,7 +2898,7 @@ public class Session implements ISession {
             (k, v) -> {
               if (v == null) {
                 List<String> measurements = new ArrayList<>(tablet.getSchemas().size());
-                List<TSDataType> dataTypes = new ArrayList<>();
+                List<TSDataType> dataTypes = new ArrayList<>(tablet.getSchemas().size());
                 tablet
                     .getSchemas()
                     .forEach(
@@ -3007,6 +3026,7 @@ public class Session implements ISession {
             .collect(Collectors.toList());
 
     StringBuilder errMsgBuilder = new StringBuilder();
+    List<Throwable> errors = new ArrayList<>();
     for (CompletableFuture<Void> completableFuture : completableFutures) {
       try {
         completableFuture.join();
@@ -3016,6 +3036,7 @@ public class Session implements ISession {
         if (cause instanceof IoTDBConnectionException) {
           throw (IoTDBConnectionException) cause;
         } else {
+          errors.add(cause);
           if (errMsgBuilder.length() > 0) {
             errMsgBuilder.append(";");
           }
@@ -3024,7 +3045,10 @@ public class Session implements ISession {
       }
     }
     if (errMsgBuilder.length() > 0) {
-      throw new StatementExecutionException(errMsgBuilder.toString());
+      StatementExecutionException exception =
+          new StatementExecutionException(errMsgBuilder.toString());
+      errors.forEach(exception::addSuppressed);
+      throw exception;
     }
   }
 
@@ -3289,8 +3313,8 @@ public class Session implements ISession {
       return;
     }
     request.addToPrefixPaths(filtered.getDeviceId());
-    List<String> measurements = new ArrayList<>();
-    List<Integer> dataTypes = new ArrayList<>();
+    List<String> measurements = new ArrayList<>(filtered.getSchemas().size());
+    List<Integer> dataTypes = new ArrayList<>(filtered.getSchemas().size());
     request.setIsAligned(isAligned);
     for (IMeasurementSchema measurementSchema : filtered.getSchemas()) {
       if (measurementSchema.getMeasurementName() == null) {
@@ -3980,9 +4004,9 @@ public class Session implements ISession {
       List<List<TSEncoding>> encodings,
       List<CompressionType> compressors)
       throws IoTDBConnectionException, StatementExecutionException {
-    List<String> flatMeasurements = new ArrayList<>();
-    List<TSDataType> flatDataTypes = new ArrayList<>();
-    List<TSEncoding> flatEncodings = new ArrayList<>();
+    List<String> flatMeasurements = new ArrayList<>(measurements.size());
+    List<TSDataType> flatDataTypes = new ArrayList<>(measurements.size());
+    List<TSEncoding> flatEncodings = new ArrayList<>(measurements.size());
     for (int idx = 0; idx < measurements.size(); idx++) {
       flatMeasurements.add(measurements.get(idx).get(0));
       flatDataTypes.add(dataTypes.get(idx).get(0));
@@ -4483,6 +4507,10 @@ public class Session implements ISession {
       return this;
     }
 
+    /**
+     * Configure recovery seeds using the same host/IP form as each DataNode's dn_rpc_address.
+     * Hostname aliases and IP literals are not DNS-deduplicated during recovery.
+     */
     public Builder nodeUrls(List<String> nodeUrls) {
       this.nodeUrls = nodeUrls;
       return this;
@@ -4520,6 +4548,11 @@ public class Session implements ISession {
 
     public Builder database(String database) {
       this.database = database;
+      return this;
+    }
+
+    public Builder enableAutoCreateSchema(boolean enableAutoCreateSchema) {
+      this.enableAutoCreateSchema = enableAutoCreateSchema;
       return this;
     }
 

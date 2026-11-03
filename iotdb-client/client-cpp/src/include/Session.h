@@ -780,6 +780,11 @@ public:
   std::unique_ptr<SessionDataSet> executeLastDataQuery(const std::vector<std::string>& paths,
                                                        int64_t lastTime);
 
+  // Query the latest value of each series below a tree-model prefix in a 1C1D deployment.
+  // Pass path nodes without wildcards; result rows are not ordered.
+  std::unique_ptr<SessionDataSet>
+  executeFastLastDataQueryForOnePrefixPath(const std::vector<std::string>& prefixes);
+
   void createSchemaTemplate(const Template& templ);
 
   void setSchemaTemplate(const std::string& template_name, const std::string& prefix_path);

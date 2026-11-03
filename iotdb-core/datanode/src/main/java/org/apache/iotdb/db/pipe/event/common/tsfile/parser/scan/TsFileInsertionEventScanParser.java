@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
@@ -47,7 +48,6 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.MetaMarker;
@@ -71,10 +71,11 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -85,6 +86,8 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 
 public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(TsFileInsertionEventScanParser.class);
 
   private static final int TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES = 8 * 1024;
 
@@ -181,8 +184,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     this.endTime = endTime;
     filter = Objects.nonNull(timeFilterExpression) ? timeFilterExpression.getFilter() : null;
 
-    this.allocatedMemoryBlockForBatchData = memoryManager.forceAllocateForTabletWithRetry(0);
-    this.allocatedMemoryBlockForChunk = memoryManager.forceAllocateForTabletWithRetry(0);
+    this.allocatedMemoryBlockForBatchData =
+        allocateTabletMemory(
+            TsFileInsertionEventScanParser.class.getSimpleName() + "#batchData", 0);
+    this.allocatedMemoryBlockForChunk =
+        allocateTabletMemory(TsFileInsertionEventScanParser.class.getSimpleName() + "#chunk", 0);
 
     try {
       currentModifications =
@@ -190,10 +196,12 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               ? ModsOperationUtil.loadModificationsFromTsFile(tsFile)
               : PatternTreeMapFactory.getModsPatternTreeMap();
       allocatedMemoryBlockForModifications =
-          memoryManager.forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
+          allocateTabletMemory(
+              TsFileInsertionEventScanParser.class.getSimpleName() + "#modifications",
+              currentModifications.ramBytesUsed());
 
       tsFileSequenceReader = createTsFileSequenceReader(tsFile, !currentModifications.isEmpty());
-      tsFileSequenceReader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
+      tsFileSequenceReader.position(tsFileSequenceReader.getDataStartOffset());
 
       prepareData();
       if (Objects.isNull(chunkReader)) {
@@ -257,7 +265,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     }
 
     allocatedMemoryBlockForTsFileInput =
-        memoryManager.forceAllocateForTabletWithRetry(TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES);
+        allocateTabletMemory(
+            TsFileInsertionEventScanParser.class.getSimpleName() + "#tsFileInput",
+            TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES);
     return new TsFileSequenceReader(
         new BufferedTsFileInput(tsFile.toPath(), TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES),
         false,
@@ -615,6 +625,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
   private void moveToNextChunkReader()
       throws IOException, IllegalStateException, IllegalPathException {
+    releaseChunkReader();
     ChunkHeader chunkHeader;
     currentMeasurements.clear();
     modsInfos.clear();
@@ -670,7 +681,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
             Chunk chunk =
                 new Chunk(
-                    chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()));
+                    chunkHeader,
+                    tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()),
+                    tsFileSequenceReader.getEncryptParam());
             final List<Long> pageEstimatedMemoryUsageInBytesList =
                 SinglePageWholeChunkReader
                     .calculatePageEstimatedMemoryUsageInBytesWithBatchDataList(chunk);
@@ -691,7 +704,10 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                     chunkHeader.getCompressionType()));
             modsInfos.addAll(
                 ModsOperationUtil.initializeMeasurementMods(
-                    currentDevice, Collections.singletonList(measurementID), currentModifications));
+                    currentDevice,
+                    Collections.singletonList(measurementID),
+                    currentModifications,
+                    false));
             return;
           }
         case MetaMarker.VALUE_CHUNK_HEADER:
@@ -720,7 +736,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               }
               final Chunk chunk =
                   new Chunk(
-                      chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()));
+                      chunkHeader,
+                      tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()),
+                      tsFileSequenceReader.getEncryptParam());
               valueChunk =
                   new CachedAlignedValueChunk(valueIndex, chunk, chunkHeader.getDataSize());
             } else {
@@ -799,7 +817,10 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       if ((chunkHeader.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
           == TsFileConstant.TIME_COLUMN_MASK) {
         final Chunk timeChunk =
-            new Chunk(chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()));
+            new Chunk(
+                chunkHeader,
+                tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()),
+                tsFileSequenceReader.getEncryptParam());
         timeChunkList.add(timeChunk);
         final boolean isMultiPage = marker == MetaMarker.TIME_CHUNK_HEADER;
         isMultiPageList.add(isMultiPage);
@@ -830,7 +851,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               chunkHeader.getMeasurementID(),
               statistics.getStartTime(),
               statistics.getEndTime(),
-              currentModifications)) {
+              currentModifications,
+              false)) {
         tsFileSequenceReader.position(nextMarkerOffset);
         return true;
       }
@@ -882,9 +904,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         }
         final List<Long> pageEstimatedMemoryUsageInBytesList =
             nextIsMultiPage
-                ? AlignedSinglePageWholeChunkReader
-                    .calculatePageEstimatedMemoryUsageInBytesWithBatchDataList(
-                        timeChunk, pendingAlignedChunkGroup.valueChunkList)
+                ? pendingAlignedChunkGroup.pageMemoryUsageEstimator
+                    .getPageEstimatedMemoryUsageInBytesList()
                 : Collections.emptyList();
         final long maxPageEstimatedMemoryUsageInBytes =
             pageEstimatedMemoryUsageInBytesList.isEmpty()
@@ -892,17 +913,20 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                 : pageEstimatedMemoryUsageInBytesList.get(0);
         resizePageDataMemoryIfNeeded(maxPageEstimatedMemoryUsageInBytes);
         final IChunkReader nextChunkReader =
-            nextIsMultiPage
-                ? new MemoryControlledChunkReader(
-                    new AlignedChunkReader(
-                        timeChunk, pendingAlignedChunkGroup.valueChunkList, filter),
-                    pageEstimatedMemoryUsageInBytesList)
-                : new AlignedSinglePageWholeChunkReader(
-                    timeChunk, pendingAlignedChunkGroup.valueChunkList, null);
+            createAlignedChunkReader(
+                timeChunk,
+                pendingAlignedChunkGroup.valueChunkList,
+                nextIsMultiPage,
+                pageEstimatedMemoryUsageInBytesList);
 
         // Publish the state transition only after all memory reservations and reader construction
         // succeed. Otherwise a retry would lose the already-read aligned chunk group.
         pendingAlignedChunkGroups.remove(0);
+        for (Chunk valueChunk : pendingAlignedChunkGroup.valueChunkList) {
+          if (valueChunk != null) {
+            valueChunk.close();
+          }
+        }
         pendingAlignedChunkSize =
             Math.max(0, pendingAlignedChunkSize - pendingAlignedChunkGroup.chunkSize);
         currentMeasurements.clear();
@@ -922,6 +946,39 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       throw e;
     }
     return false;
+  }
+
+  IChunkReader createAlignedChunkReader(
+      Chunk timeChunk,
+      List<Chunk> valueChunks,
+      boolean multiPage,
+      List<Long> pageEstimatedMemoryUsageInBytesList)
+      throws IOException {
+    // Pending chunks must survive a failed constructor so the same group can be retried.
+    Chunk retainedTimeChunk = null;
+    List<Chunk> retainedValueChunks = new ArrayList<>(valueChunks.size());
+    try {
+      retainedTimeChunk = retainChunk(timeChunk);
+      for (Chunk valueChunk : valueChunks) {
+        retainedValueChunks.add(valueChunk == null ? null : retainChunk(valueChunk));
+      }
+      return multiPage
+          ? new MemoryControlledChunkReader(
+              new AlignedChunkReader(retainedTimeChunk, retainedValueChunks, filter),
+              pageEstimatedMemoryUsageInBytesList)
+          : new AlignedSinglePageWholeChunkReader(retainedTimeChunk, retainedValueChunks, null);
+    } catch (IOException | RuntimeException | Error failure) {
+      // Chunk.close() is idempotent, including when constructor cleanup has already run.
+      if (retainedTimeChunk != null) {
+        retainedTimeChunk.close();
+      }
+      for (Chunk valueChunk : retainedValueChunks) {
+        if (valueChunk != null) {
+          valueChunk.close();
+        }
+      }
+      throw failure;
+    }
   }
 
   private boolean shouldReturnPendingAlignedChunkBeforeCaching(
@@ -985,6 +1042,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     resizeChunkMemoryBlockIfFirstValueChunkExceedsLimit(pendingAlignedChunkGroup, valueChunk);
     resizePageDataMemoryBlockIfFirstValueChunkExceedsLimit(pendingAlignedChunkGroup, valueChunk);
 
+    pendingAlignedChunkGroup.pageMemoryUsageEstimator.addValueChunk(valueChunk.chunk);
     pendingAlignedChunkGroup.valueChunkList.add(valueChunk.chunk);
     pendingAlignedChunkGroup.chunkSize += valueChunk.valueChunkSize;
     pendingAlignedChunkSize += valueChunk.valueChunkSize;
@@ -999,10 +1057,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             chunkHeader.getCompressionType()));
     pendingAlignedChunkGroup.modsInfos.addAll(
         ModsOperationUtil.initializeMeasurementMods(
-            currentDevice, Collections.singletonList(measurementID), currentModifications));
+            currentDevice, Collections.singletonList(measurementID), currentModifications, false));
   }
 
-  private PendingAlignedChunkGroup getOrCreatePendingAlignedChunkGroup(final int timeChunkIndex) {
+  private PendingAlignedChunkGroup getOrCreatePendingAlignedChunkGroup(final int timeChunkIndex)
+      throws IOException {
     final PendingAlignedChunkGroup pendingAlignedChunkGroup =
         findPendingAlignedChunkGroup(timeChunkIndex);
     if (Objects.nonNull(pendingAlignedChunkGroup)) {
@@ -1012,7 +1071,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     final PendingAlignedChunkGroup newPendingAlignedChunkGroup =
         new PendingAlignedChunkGroup(
             timeChunkIndex,
-            PipeMemoryWeightUtil.calculateChunkRamBytesUsed(timeChunkList.get(timeChunkIndex)));
+            PipeMemoryWeightUtil.calculateChunkRamBytesUsed(timeChunkList.get(timeChunkIndex)),
+            timeChunkList.get(timeChunkIndex));
     pendingAlignedChunkSize += newPendingAlignedChunkGroup.chunkSize;
 
     for (int i = 0; i < pendingAlignedChunkGroups.size(); ++i) {
@@ -1046,6 +1106,18 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   }
 
   private void clearCachedAlignedChunkData() {
+    for (PendingAlignedChunkGroup group : pendingAlignedChunkGroups) {
+      group.valueChunkList.forEach(
+          chunk -> {
+            if (chunk != null) {
+              chunk.close();
+            }
+          });
+    }
+    if (cachedAlignedValueChunk != null) {
+      cachedAlignedValueChunk.chunk.close();
+    }
+    timeChunkList.forEach(Chunk::close);
     pendingAlignedChunkGroups.clear();
     pendingAlignedChunkSize = 0;
     cachedAlignedValueChunk = null;
@@ -1088,49 +1160,12 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final PendingAlignedChunkGroup pendingAlignedChunkGroup,
       final CachedAlignedValueChunk valueChunk)
       throws IOException {
-    final List<Chunk> valueChunkList =
-        new ArrayList<>(
-            (Objects.isNull(pendingAlignedChunkGroup)
-                    ? 0
-                    : pendingAlignedChunkGroup.valueChunkList.size())
-                + 1);
-    if (Objects.nonNull(pendingAlignedChunkGroup)) {
-      valueChunkList.addAll(pendingAlignedChunkGroup.valueChunkList);
-    }
-    valueChunkList.add(valueChunk.chunk);
-
     final Chunk timeChunk = timeChunkList.get(timeChunkIndex);
-    final int timeChunkDataPosition = timeChunk.getData().position();
-    final List<Integer> valueChunkDataPositions = new ArrayList<>(valueChunkList.size());
-    for (final Chunk chunk : valueChunkList) {
-      valueChunkDataPositions.add(Objects.isNull(chunk) ? 0 : chunk.getData().position());
-    }
-
-    rewindChunkData(timeChunk);
-    valueChunkList.forEach(this::rewindChunkData);
-    try {
-      return AlignedSinglePageWholeChunkReader
-          .calculateMaxPageEstimatedMemoryUsageInBytesWithBatchData(timeChunk, valueChunkList);
-    } finally {
-      timeChunk.getData().position(timeChunkDataPosition);
-      for (int i = 0; i < valueChunkList.size(); ++i) {
-        final Chunk chunk = valueChunkList.get(i);
-        if (Objects.nonNull(chunk)) {
-          chunk.getData().position(valueChunkDataPositions.get(i));
-        }
-      }
-    }
-  }
-
-  private void rewindChunkData(final Chunk chunk) {
-    if (Objects.isNull(chunk)) {
-      return;
-    }
-
-    final ByteBuffer chunkData = chunk.getData();
-    if (Objects.nonNull(chunkData)) {
-      chunkData.rewind();
-    }
+    final AlignedSinglePageWholeChunkReader.PageMemoryUsageEstimator estimator =
+        Objects.isNull(pendingAlignedChunkGroup)
+            ? new AlignedSinglePageWholeChunkReader.PageMemoryUsageEstimator(timeChunk)
+            : pendingAlignedChunkGroup.pageMemoryUsageEstimator;
+    return estimator.calculateMaxPageEstimatedMemoryUsageInBytesWithValueChunk(valueChunk.chunk);
   }
 
   private boolean isSinglePageValueChunk(final ChunkHeader chunkHeader) {
@@ -1145,6 +1180,12 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
   @Override
   public void close() {
+    try {
+      releaseChunkReader();
+    } catch (IOException e) {
+      LOGGER.warn(DataNodeQueryMessages.LOG_FAILED_TO_RELEASE_QUERY_CHUNK_RESOURCES_91573FE5, e);
+    }
+    clearCachedAlignedChunkData();
     super.close();
     pendingPageDataAfterMemoryPressure = null;
     pendingTabletAfterMemoryPressure = null;
@@ -1163,6 +1204,23 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     if (allocatedMemoryBlockForTsFileInput != null) {
       allocatedMemoryBlockForTsFileInput.close();
     }
+  }
+
+  private void releaseChunkReader() throws IOException {
+    IChunkReader current = chunkReader;
+    chunkReader = null;
+    if (current != null) {
+      current.close();
+    }
+  }
+
+  private static Chunk retainChunk(Chunk chunk) {
+    return new Chunk(
+        chunk.getHeader(),
+        chunk.getData().duplicate(),
+        chunk.getDeleteIntervalList(),
+        chunk.getChunkStatistic(),
+        chunk.getEncryptParam());
   }
 
   private Statistics findAlignedChunkStatistics(
@@ -1196,14 +1254,20 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   private static class PendingAlignedChunkGroup {
 
     private final int timeChunkIndex;
+    private final AlignedSinglePageWholeChunkReader.PageMemoryUsageEstimator
+        pageMemoryUsageEstimator;
     private final List<Chunk> valueChunkList = new ArrayList<>();
     private final List<IMeasurementSchema> measurements = new ArrayList<>();
     private final List<ModsOperationUtil.ModsInfo> modsInfos = new ArrayList<>();
     private long chunkSize;
 
-    private PendingAlignedChunkGroup(final int timeChunkIndex, final long timeChunkSize) {
+    private PendingAlignedChunkGroup(
+        final int timeChunkIndex, final long timeChunkSize, final Chunk timeChunk)
+        throws IOException {
       this.timeChunkIndex = timeChunkIndex;
       this.chunkSize = timeChunkSize;
+      this.pageMemoryUsageEstimator =
+          new AlignedSinglePageWholeChunkReader.PageMemoryUsageEstimator(timeChunk);
     }
   }
 

@@ -769,14 +769,16 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     final StringBuilder builder = new StringBuilder("root.");
     for (int i = 0; i < nodeNames.size(); i++) {
       if (nodeNames.get(i).nodeNameWithoutWildcard() != null) {
-        builder
-            .append("`")
-            .append(
-                parseNodeString(
-                    ((Identifier) visit(nodeNames.get(i).nodeNameWithoutWildcard().identifier()))
-                        .getValue()))
-            .append("`")
-            .append(i == nodeNames.size() - 1 ? "" : ".");
+        final String nodeName =
+            parseNodeString(
+                ((Identifier) visit(nodeNames.get(i).nodeNameWithoutWildcard().identifier()))
+                    .getValue());
+        if (nodeName.startsWith("`") && nodeName.endsWith("`")) {
+          builder.append(nodeName);
+        } else {
+          builder.append("`").append(nodeName).append("`");
+        }
+        builder.append(i == nodeNames.size() - 1 ? "" : ".");
       } else {
         builder.append(nodeNames.get(i).getText());
       }
@@ -880,6 +882,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
     insertRowsStatement.setInsertRowStatementList(rowStatements);
     insertRowsStatement.setWriteToTable(true);
+    // All rows of a parsed `INSERT INTO <table> ... VALUES ...` share the same table and columns.
+    insertRowsStatement.setUniformTargets(true);
     return new InsertRows(insertRowsStatement, null);
   }
 
@@ -950,6 +954,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
     insertRowsStatement.setInsertRowStatementList(rowStatements);
     insertRowsStatement.setWriteToTable(true);
+    // All rows of a parsed `INSERT INTO <table> ... VALUES ...` share the same table and columns.
+    insertRowsStatement.setUniformTargets(true);
     return new InsertRows(insertRowsStatement, null);
   }
 
@@ -1037,17 +1043,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       }
 
       Expression timeExpression = expressions.get(timeColumnIndex);
-      if (timeExpression instanceof LongLiteral) {
-        timestamp = ((LongLiteral) timeExpression).getParsedValue();
-      } else if (timeExpression instanceof NullLiteral) {
-        throw new SemanticException(DataNodeQueryMessages.TIMESTAMP_CANNOT_BE_NULL);
-      } else {
-        timestamp =
-            parseDateTimeFormat(
-                ((StringLiteral) timeExpression).getValue(),
-                CommonDateTimeUtils.currentTime(),
-                zoneId);
-      }
+      timestamp = AstUtil.expressionToTimestamp(timeExpression, zoneId);
       nonTimeColCnt = expressions.size() - 1;
     }
 
@@ -1354,6 +1350,18 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getIdentifierIfPresent(ctx.identifier()).map(Identifier::getValue).orElse(null);
     final boolean hasWhereClause = ctx.WHERE() != null;
     return new ShowPipes(pipeName, hasWhereClause);
+  }
+
+  @Override
+  public Node visitShowPipeMemoryStatement(
+      final RelationalSqlParser.ShowPipeMemoryStatementContext ctx) {
+    return new ShowStatement(
+        getLocation(ctx),
+        InformationSchema.PIPE_MEMORY,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty());
   }
 
   @Override
@@ -1798,6 +1806,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       properties = visit(ctx.propertyAssignments().property(), Property.class);
     }
     for (Property property : properties) {
+      if (property.isSetToDefault()) {
+        throw new SemanticException(
+            DataNodeQueryMessages
+                .EXCEPTION_DEFAULT_IS_NOT_SUPPORTED_FOR_SET_CONFIGURATION_D76F13AD);
+      }
       String key = property.getName().getValue();
       Expression propertyValue = property.getNonDefaultValue();
       if (!propertyValue.getExpressionType().equals(TableExpressionType.STRING_LITERAL)) {
@@ -1861,6 +1874,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     Statement innerStatement;
     if (ctx.query() != null) {
       innerStatement = (Statement) visit(ctx.query());
+    } else if (ctx.copyToStatement() != null) {
+      innerStatement = (Statement) visit(ctx.copyToStatement());
     } else if (ctx.executeStatement() != null) {
       innerStatement = (Statement) visit(ctx.executeStatement());
     } else {
@@ -1892,6 +1907,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     Statement innerStatement;
     if (ctx.query() != null) {
       innerStatement = (Statement) visit(ctx.query());
+    } else if (ctx.copyToStatement() != null) {
+      innerStatement = (Statement) visit(ctx.copyToStatement());
     } else if (ctx.executeStatement() != null) {
       innerStatement = (Statement) visit(ctx.executeStatement());
     } else {
@@ -3570,7 +3587,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   public Node visitTrim(RelationalSqlParser.TrimContext ctx) {
     if (ctx.FROM() != null && ctx.trimsSpecification() == null && ctx.trimChar == null) {
       throw parseError(
-          "The 'trim' function must have specification, char or both arguments when it takes FROM",
+          DataNodeQueryMessages
+              .EXCEPTION_THE_TRIM_FUNCTION_MUST_HAVE_SPECIFICATION_CHAR_OR_BOTH_ARGUMENTS_WHEN_IT_TAKES_FROM_F0E51E3E,
           ctx);
     }
 
@@ -3628,7 +3646,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     try {
       field = Extract.Field.valueOf(fieldString.toUpperCase(ENGLISH));
     } catch (IllegalArgumentException e) {
-      throw parseError("Invalid EXTRACT field: " + fieldString, context);
+      throw parseError(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_INVALID_EXTRACT_FIELD_ARG_C1050A03,
+              Objects.toString(fieldString)),
+          context);
     }
     return new Extract(getLocation(context), (Expression) visit(context.valueExpression()), field);
   }
@@ -3698,11 +3720,21 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (name.toString().equalsIgnoreCase("if")) {
       check(
           ctx.expression().size() == 2 || ctx.expression().size() == 3,
-          "Invalid number of arguments for 'if' function",
+          DataNodeQueryMessages.EXCEPTION_INVALID_NUMBER_OF_ARGUMENTS_FOR_IF_FUNCTION_4FFCACCE,
           ctx);
-      check(!distinct, "DISTINCT not valid for 'if' function", ctx);
-      check(processingMode == null, "Running or final semantics not valid for 'if' function", ctx);
-      check(nullTreatment == null, "Null treatment clause not valid for 'if' function", ctx);
+      check(
+          !distinct,
+          DataNodeQueryMessages.EXCEPTION_DISTINCT_NOT_VALID_FOR_IF_FUNCTION_DAABCB19,
+          ctx);
+      check(
+          processingMode == null,
+          DataNodeQueryMessages
+              .EXCEPTION_RUNNING_OR_FINAL_SEMANTICS_NOT_VALID_FOR_IF_FUNCTION_53CF9A7E,
+          ctx);
+      check(
+          nullTreatment == null,
+          DataNodeQueryMessages.EXCEPTION_NULL_TREATMENT_CLAUSE_NOT_VALID_FOR_IF_FUNCTION_42DE8DB5,
+          ctx);
 
       Expression elseExpression = null;
       if (ctx.expression().size() == 3) {
@@ -3717,13 +3749,24 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     }
 
     if (name.toString().equalsIgnoreCase("nullif")) {
-      check(ctx.expression().size() == 2, "Invalid number of arguments for 'nullif' function", ctx);
-      check(!distinct, "DISTINCT not valid for 'nullif' function", ctx);
+      check(
+          ctx.expression().size() == 2,
+          DataNodeQueryMessages.EXCEPTION_INVALID_NUMBER_OF_ARGUMENTS_FOR_NULLIF_FUNCTION_DAFB26BF,
+          ctx);
+      check(
+          !distinct,
+          DataNodeQueryMessages.EXCEPTION_DISTINCT_NOT_VALID_FOR_NULLIF_FUNCTION_BC065363,
+          ctx);
       check(
           processingMode == null,
-          "Running or final semantics not valid for 'nullif' function",
+          DataNodeQueryMessages
+              .EXCEPTION_RUNNING_OR_FINAL_SEMANTICS_NOT_VALID_FOR_NULLIF_FUNCTION_D2ADE7AD,
           ctx);
-      check(nullTreatment == null, "Null treatment clause not valid for 'nullif' function", ctx);
+      check(
+          nullTreatment == null,
+          DataNodeQueryMessages
+              .EXCEPTION_NULL_TREATMENT_CLAUSE_NOT_VALID_FOR_NULLIF_FUNCTION_4D3234AA,
+          ctx);
 
       return new NullIfExpression(
           getLocation(ctx),
@@ -3734,14 +3777,23 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (name.toString().equalsIgnoreCase("coalesce")) {
       check(
           ctx.expression().size() >= 2,
-          "The 'coalesce' function must have at least two arguments",
+          DataNodeQueryMessages
+              .EXCEPTION_THE_COALESCE_FUNCTION_MUST_HAVE_AT_LEAST_TWO_ARGUMENTS_D93EC8BF,
           ctx);
-      check(!distinct, "DISTINCT not valid for 'coalesce' function", ctx);
+      check(
+          !distinct,
+          DataNodeQueryMessages.EXCEPTION_DISTINCT_NOT_VALID_FOR_COALESCE_FUNCTION_0473D98C,
+          ctx);
       check(
           processingMode == null,
-          "Running or final semantics not valid for 'coalesce' function",
+          DataNodeQueryMessages
+              .EXCEPTION_RUNNING_OR_FINAL_SEMANTICS_NOT_VALID_FOR_COALESCE_FUNCTION_0D0143A2,
           ctx);
-      check(nullTreatment == null, "Null treatment clause not valid for 'coalesce' function", ctx);
+      check(
+          nullTreatment == null,
+          DataNodeQueryMessages
+              .EXCEPTION_NULL_TREATMENT_CLAUSE_NOT_VALID_FOR_COALESCE_FUNCTION_CCF1779B,
+          ctx);
 
       return new CoalesceExpression(getLocation(ctx), visit(ctx.expression(), Expression.class));
     }
@@ -4254,13 +4306,22 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     char escape;
     if (context.UESCAPE() != null) {
       String escapeString = unquote(context.STRING().getText());
-      check(!escapeString.isEmpty(), "Empty Unicode escape character", context);
       check(
-          escapeString.length() == 1, "Invalid Unicode escape character: " + escapeString, context);
+          !escapeString.isEmpty(),
+          DataNodeQueryMessages.EXCEPTION_EMPTY_UNICODE_ESCAPE_CHARACTER_2094672A,
+          context);
+      check(
+          escapeString.length() == 1,
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_INVALID_UNICODE_ESCAPE_CHARACTER_ARG_C7E374D5,
+              Objects.toString(escapeString)),
+          context);
       escape = escapeString.charAt(0);
       check(
           isValidUnicodeEscape(escape),
-          "Invalid Unicode escape character: " + escapeString,
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_INVALID_UNICODE_ESCAPE_CHARACTER_ARG_C7E374D5,
+              Objects.toString(escapeString)),
           context);
     } else {
       escape = '\\';
@@ -4293,11 +4354,20 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             charactersNeeded = 4;
             escapedCharacterBuilder.append(ch);
           } else {
-            throw parseError("Invalid hexadecimal digit: " + ch, context);
+            throw parseError(
+                String.format(
+                    DataNodeQueryMessages.EXCEPTION_INVALID_HEXADECIMAL_DIGIT_ARG_1A042DF1,
+                    Objects.toString(ch)),
+                context);
           }
           break;
         case UNICODE_SEQUENCE:
-          check(isHexDigit(ch), "Incomplete escape sequence: " + escapedCharacterBuilder, context);
+          check(
+              isHexDigit(ch),
+              String.format(
+                  DataNodeQueryMessages.EXCEPTION_INCOMPLETE_ESCAPE_SEQUENCE_ARG_9FC5CC3B,
+                  Objects.toString(escapedCharacterBuilder)),
+              context);
           escapedCharacterBuilder.append(ch);
           if (charactersNeeded == escapedCharacterBuilder.length()) {
             String currentEscapedCode = escapedCharacterBuilder.toString();
@@ -4305,7 +4375,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             int codePoint = Integer.parseInt(currentEscapedCode, 16);
             check(
                 Character.isValidCodePoint(codePoint),
-                "Invalid escaped character: " + currentEscapedCode,
+                String.format(
+                    DataNodeQueryMessages.EXCEPTION_INVALID_ESCAPED_CHARACTER_ARG_A324BE13,
+                    Objects.toString(currentEscapedCode)),
                 context);
             if (Character.isSupplementaryCodePoint(codePoint)) {
               unicodeStringBuilder.appendCodePoint(codePoint);
@@ -4314,7 +4386,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
               if (Character.isSurrogate(currentCodePoint)) {
                 throw parseError(
                     String.format(
-                        "Invalid escaped character: %s. Escaped character is a surrogate. Use '\\+123456' instead.",
+                        DataNodeQueryMessages
+                            .EXCEPTION_INVALID_ESCAPED_CHARACTER_ARG_ESCAPED_CHARACTER_IS_A_SURROGATE_USE_123456_INSTEAD_AB5CFF96,
                         currentEscapedCode),
                     context);
               }
@@ -4325,7 +4398,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
           } else {
             check(
                 charactersNeeded > escapedCharacterBuilder.length(),
-                "Unexpected escape sequence length: " + escapedCharacterBuilder.length(),
+                String.format(
+                    DataNodeQueryMessages.EXCEPTION_UNEXPECTED_ESCAPE_SEQUENCE_LENGTH_ARG_2DAD5CAB,
+                    Objects.toString(escapedCharacterBuilder.length())),
                 context);
           }
           break;
@@ -4336,7 +4411,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
     check(
         state == UnicodeDecodeState.EMPTY,
-        "Incomplete escape sequence: " + escapedCharacterBuilder.toString(),
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_INCOMPLETE_ESCAPE_SEQUENCE_ARG_9FC5CC3B,
+            Objects.toString(escapedCharacterBuilder.toString())),
         context);
     return unicodeStringBuilder.toString();
   }
@@ -4541,9 +4618,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   private static void validateArgumentAlias(Identifier alias, ParserRuleContext context) {
     check(
         alias.isDelimited() || !alias.getValue().equalsIgnoreCase("COPARTITION"),
-        "The word \"COPARTITION\" is ambiguous in this context. "
-            + "To alias an argument, precede the alias with \"AS\". "
-            + "To specify co-partitioning, change the argument order so that the last argument cannot be aliased.",
+        DataNodeQueryMessages
+            .EXCEPTION_THE_WORD_COPARTITION_IS_AMBIGUOUS_IN_THIS_CONTEXT_TO_ALIAS_AN_ARGUMENT_PRECEDE_THE_ALIAS_WITH_AS_TO_SPECIFY_CO_PARTITIONING_CHANGE_THE_ARGUMENT_ORDER_SO_THAT_THE_LAST_ARGUMENT_CANNOT_BE_ALIASED_EC31C71A,
         context);
   }
 }

@@ -228,10 +228,9 @@ public class InsertMultiTabletsNode extends InsertNode {
 
   public static InsertMultiTabletsNode deserialize(ByteBuffer byteBuffer) {
     PlanNodeId planNodeId;
-    List<InsertTabletNode> insertTabletNodeList = new ArrayList<>();
-    List<Integer> parentIndex = new ArrayList<>();
-
     int size = byteBuffer.getInt();
+    List<InsertTabletNode> insertTabletNodeList = new ArrayList<>(size);
+    List<Integer> parentIndex = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       InsertTabletNode insertTabletNode = new InsertTabletNode(new PlanNodeId(""));
       insertTabletNode.subDeserialize(byteBuffer);

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.metric;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.consensus.iot.subscription.SubscriptionQueueRejectionReason;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusPrefetchingQueue;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -60,15 +61,9 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
 
   @Override
   public synchronized void unbindFrom(final AbstractMetricService metricService) {
-    final ImmutableSet<QueueMetricsKey> keys = ImmutableSet.copyOf(queueMap.keySet());
-    for (final QueueMetricsKey key : keys) {
-      deregister(key);
-    }
-    if (!queueMap.isEmpty()) {
-      LOGGER.warn(
-          DataNodePipeMessages
-              .PIPE_LOG_FAILED_TO_UNBIND_FROM_CONSENSUS_SUBSCRIPTION_PREFETCHING_A8F920D9);
-    }
+    // Keep the queues registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    ImmutableSet.copyOf(queueMap.keySet()).forEach(this::removeMetrics);
   }
 
   //////////////////////////// register & deregister ////////////////////////////
@@ -120,6 +115,18 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
         MetricLevel.IMPORTANT,
         queue,
         ConsensusPrefetchingQueue::getWalGapSkippedEntries,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_WAL_FILE_GAP.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getUnreadableWalFileCount,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_WAL_FILE_GAP_ENTRIES.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getUnreadableWalEntryCount,
         key.getTags());
     metricService.createAutoGauge(
         Metric.SUBSCRIPTION_CONSENSUS_ROUTING_EPOCH_CHANGE.toString(),
@@ -200,10 +207,93 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
         ConsensusPrefetchingQueue::getLastProgressTimeMs,
         key.getTags());
     metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_LAST_DELIVERY_INTERVAL_MS.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getLastDeliveryIntervalMs,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_MAX_DELIVERY_INTERVAL_MS.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getMaxDeliveryIntervalMs,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_DELIVERY_IDLE_TIME_MS.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getDeliveryIdleTimeMs,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_PREFETCH_DURATION_MS.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getPrefetchDurationMs,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_MAX_PREFETCH_DURATION_MS.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getMaxPrefetchDurationMs,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_PREFETCH_IDLE_TIME_MS.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getPrefetchIdleTimeMs,
+        key.getTags());
+    metricService.createAutoGauge(
         Metric.SUBSCRIPTION_CONSENSUS_PROGRESS_STATUS.toString(),
         MetricLevel.IMPORTANT,
         queue,
         ConsensusPrefetchingQueue::getProgressStatus,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_MEMORY_USED.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getSubscriptionMemoryUsedInBytes,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_MEMORY_QUOTA.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getSubscriptionMemoryQuotaInBytes,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_MEMORY_MAXIMUM.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getSubscriptionMemoryMaximumInBytes,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_ADMISSION_REJECTIONS.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getRealtimeAdmissionRejectionCount,
+        key.getTags());
+    for (final SubscriptionQueueRejectionReason reason :
+        SubscriptionQueueRejectionReason.values()) {
+      if (reason != SubscriptionQueueRejectionReason.NONE) {
+        metricService.createAutoGauge(
+            Metric.SUBSCRIPTION_CONSENSUS_ADMISSION_REJECTIONS_BY_REASON.toString(),
+            MetricLevel.IMPORTANT,
+            queue,
+            q -> q.getRealtimeAdmissionRejectionCount(reason),
+            key.getTagsWithReason(reason));
+      }
+    }
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_MEMORY_REJECTIONS.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getSubscriptionMemoryRejectionCount,
+        key.getTags());
+    metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_OVERSIZED_REJECTIONS.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getOversizedEntryRejectionCount,
         key.getTags());
   }
 
@@ -269,6 +359,14 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
         MetricType.AUTO_GAUGE, Metric.SUBSCRIPTION_CONSENSUS_WAL_GAP.toString(), key.getTags());
     metricService.remove(
         MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_WAL_FILE_GAP.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_WAL_FILE_GAP_ENTRIES.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
         Metric.SUBSCRIPTION_CONSENSUS_ROUTING_EPOCH_CHANGE.toString(),
         key.getTags());
     metricService.remove(
@@ -313,7 +411,62 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
         key.getTags());
     metricService.remove(
         MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_LAST_DELIVERY_INTERVAL_MS.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_MAX_DELIVERY_INTERVAL_MS.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_DELIVERY_IDLE_TIME_MS.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_PREFETCH_DURATION_MS.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_MAX_PREFETCH_DURATION_MS.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_PREFETCH_IDLE_TIME_MS.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
         Metric.SUBSCRIPTION_CONSENSUS_PROGRESS_STATUS.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.SUBSCRIPTION_CONSENSUS_MEMORY_USED.toString(), key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_MEMORY_QUOTA.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_MEMORY_MAXIMUM.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_ADMISSION_REJECTIONS.toString(),
+        key.getTags());
+    for (final SubscriptionQueueRejectionReason reason :
+        SubscriptionQueueRejectionReason.values()) {
+      if (reason != SubscriptionQueueRejectionReason.NONE) {
+        metricService.remove(
+            MetricType.AUTO_GAUGE,
+            Metric.SUBSCRIPTION_CONSENSUS_ADMISSION_REJECTIONS_BY_REASON.toString(),
+            key.getTagsWithReason(reason));
+      }
+    }
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_MEMORY_REJECTIONS.toString(),
+        key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_OVERSIZED_REJECTIONS.toString(),
         key.getTags());
   }
 
@@ -360,6 +513,17 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
     private String[] getTags() {
       return new String[] {
         Tag.NAME.toString(), queueId, Tag.REGION.toString(), regionId,
+      };
+    }
+
+    private String[] getTagsWithReason(final SubscriptionQueueRejectionReason reason) {
+      return new String[] {
+        Tag.NAME.toString(),
+        queueId,
+        Tag.REGION.toString(),
+        regionId,
+        Tag.REASON.toString(),
+        reason.getCode(),
       };
     }
 

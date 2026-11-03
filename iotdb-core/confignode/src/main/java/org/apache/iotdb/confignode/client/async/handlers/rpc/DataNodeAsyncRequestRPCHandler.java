@@ -36,6 +36,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
+import org.apache.iotdb.mpp.rpc.thrift.TGetDropTableModProgressResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPullCommitProgressResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
@@ -82,6 +83,14 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
     Map<Integer, ?> responseMap = context.getResponseMap();
     CountDownLatch countDownLatch = context.getCountDownLatch();
     switch (requestType) {
+      case GET_DROP_TABLE_MOD_PROGRESS:
+        return new GetDropTableModProgressRPCHandler(
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TGetDropTableModProgressResp>) responseMap,
+            countDownLatch);
       case CONSTRUCT_SCHEMA_BLACK_LIST:
       case ROLLBACK_SCHEMA_BLACK_LIST:
       case DELETE_DATA_FOR_DELETE_SCHEMA:

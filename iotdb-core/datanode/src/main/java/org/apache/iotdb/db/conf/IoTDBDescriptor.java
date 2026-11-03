@@ -1444,6 +1444,9 @@ public class IoTDBDescriptor {
       conf.setWalBufferSize(walBufferSize);
     }
 
+    conf.setWalEntrySizeLimitInByte(
+        Integer.parseInt(properties.getProperty("wal_entry_size_limit_in_byte", "-1")));
+
     boolean WALInsertNodeCacheShrinkClearEnabled =
         Boolean.parseBoolean(
             properties.getProperty(
@@ -2602,6 +2605,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_clean_up_task_execution_delay_time_seconds",
                 String.valueOf(conf.getLoadCleanupTaskExecutionDelayTimeSeconds()))));
+    conf.setLoadCleanupTaskIdleTimeoutSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "load_clean_up_task_idle_timeout_seconds",
+                String.valueOf(conf.getLoadCleanupTaskIdleTimeoutSeconds()))));
     conf.setLoadTsFileRetryCountOnRegionChange(
         Integer.parseInt(
             properties.getProperty(
@@ -2612,6 +2620,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_write_throughput_bytes_per_second",
                 String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
+
+    conf.setLoadTsFileWriteBufferSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_write_buffer_size_in_byte",
+                String.valueOf(conf.getLoadTsFileWriteBufferSize()))));
 
     conf.setLoadTsFileAllowedDirs(
         Arrays.stream(properties.getProperty("load_tsfile_allowed_dirs", "").trim().split(","))
@@ -2695,6 +2709,17 @@ public class IoTDBDescriptor {
                 "load_active_listening_verify_enable",
                 Boolean.toString(conf.isLoadActiveListeningVerifyEnable()))));
 
+    conf.setLoadRequireUserIdentity(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "load_require_user_identity", Boolean.toString(conf.isLoadRequireUserIdentity()))));
+
+    conf.setPipeReceiverRequireUserIdentity(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_receiver_require_user_identity",
+                Boolean.toString(conf.isPipeReceiverRequireUserIdentity()))));
+
     conf.setLoadDiskSelectStrategy(
         properties.getProperty(
             "load_disk_select_strategy",
@@ -2748,12 +2773,25 @@ public class IoTDBDescriptor {
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "load_clean_up_task_execution_delay_time_seconds"))));
 
+    conf.setLoadCleanupTaskIdleTimeoutSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "load_clean_up_task_idle_timeout_seconds",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "load_clean_up_task_idle_timeout_seconds"))));
+
     conf.setLoadWriteThroughputBytesPerSecond(
         Double.parseDouble(
             properties.getProperty(
                 "load_write_throughput_bytes_per_second",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "load_write_throughput_bytes_per_second"))));
+
+    conf.setLoadTsFileWriteBufferSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_write_buffer_size_in_byte",
+                String.valueOf(conf.getLoadTsFileWriteBufferSize()))));
 
     conf.setLoadTsFileAllowedDirs(
         Arrays.stream(

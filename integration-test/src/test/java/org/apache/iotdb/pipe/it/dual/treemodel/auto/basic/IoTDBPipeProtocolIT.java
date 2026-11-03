@@ -334,8 +334,8 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList("insert into root.db.d1(time, s1) values (3, 3)", "flush"),
           null);
 
-      Thread.sleep(5000);
-      TestUtils.assertDataEventuallyOnEnv(
+      // A stopped pipe must keep the receiver data unchanged.
+      TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
           "select count(*) from root.db.**",
           "count(root.db.d1.s1),",

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.storageengine.rescon.memory.WriteMemoryManager;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -32,11 +33,7 @@ public class DataRegionInfo {
 
   private final DataRegion dataRegion;
 
-  /**
-   * The total database memory cost, including unsealed TsFileResource, ChunkMetadata, WAL,
-   * primitive arrays and TEXT values
-   */
-  private final AtomicLong memoryCost;
+  private final WriteMemoryManager writeMemoryManager;
 
   /** The threshold of reporting it's size to SystemInfo */
   private final long storageGroupSizeReportThreshold =
@@ -57,7 +54,13 @@ public class DataRegionInfo {
 
   public DataRegionInfo(DataRegion dataRegion) {
     this.dataRegion = dataRegion;
-    memoryCost = new AtomicLong();
+    this.writeMemoryManager =
+        new WriteMemoryManager(
+            "DataRegion["
+                + dataRegion.getDatabaseName()
+                + "/"
+                + dataRegion.getDataRegionIdString()
+                + "]");
   }
 
   public DataRegion getDataRegion() {
@@ -69,16 +72,12 @@ public class DataRegionInfo {
     reportedTsps.add(tsFileProcessor);
   }
 
-  public void addStorageGroupMemCost(long cost) {
-    memoryCost.getAndAdd(cost);
-  }
-
-  public void releaseStorageGroupMemCost(long cost) {
-    memoryCost.getAndAdd(-cost);
+  public WriteMemoryManager getWriteMemoryManager() {
+    return writeMemoryManager;
   }
 
   public long getMemCost() {
-    return memoryCost.get();
+    return writeMemoryManager.getMemoryUsageInBytes();
   }
 
   public List<TsFileProcessor> getAllReportedTsp() {
@@ -87,7 +86,7 @@ public class DataRegionInfo {
 
   public boolean needToReportToSystem() {
     boolean needToReport =
-        memoryCost.get() - lastReportedSize.get() > storageGroupSizeReportThreshold
+        getMemCost() - lastReportedSize.get() > storageGroupSizeReportThreshold
             || needToReportToSystem.get();
     // report once and then reset flag to false
     if (needToReportToSystem.get()) {

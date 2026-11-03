@@ -124,10 +124,12 @@ public final class CommonMessages {
   public static final String REPAIR_SYSTEM_PROPERTIES = "repair system.properties, lack {}";
   public static final String PARAMETER_CANNOT_BE_MODIFIED_AFTER_FIRST_STARTUP_FMT =
       "%s can't be modified after first startup";
-  public static final String MISC_LOG_SERIALIZE_MUTABLE_SYSTEM_PROPERTIES_SUCCESSFULLY_WHICH_TAKES_4656A206 =
-      "Serialize mutable system properties successfully, which takes {} ms.";
-  public static final String MISC_LOG_DO_NOT_UPGRADE_IOTDB_FROM_V0_9_OR_LOWER_VERSION_TO_V1_0_9878EC88 =
-      "DO NOT UPGRADE IoTDB from v0.9 or lower version to v1.0! Please upgrade to v0.10 first";
+  public static final String
+      MISC_LOG_SERIALIZE_MUTABLE_SYSTEM_PROPERTIES_SUCCESSFULLY_WHICH_TAKES_4656A206 =
+          "Serialize mutable system properties successfully, which takes {} ms.";
+  public static final String
+      MISC_LOG_DO_NOT_UPGRADE_IOTDB_FROM_V0_9_OR_LOWER_VERSION_TO_V1_0_9878EC88 =
+          "DO NOT UPGRADE IoTDB from v0.9 or lower version to v1.0! Please upgrade to v0.10 first";
 
   private CommonMessages() {}
 
@@ -315,6 +317,9 @@ public final class CommonMessages {
   public static final String
       EXCEPTION_DISK_SPACE_WARNING_THRESHOLD_MUST_BE_IN_0_1_BUT_WAS_7B345766 =
           "disk_space_warning_threshold must be in [0, 1), but was ";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_CACHE_MEMORY_USAGE_PERCENTAGE_MUST_BE_IN_0_1_BUT_WAS_ARG_57FE2C66 =
+          "subscription_cache_memory_usage_percentage must be in [0, 1], but was %s.";
   public static final String EXCEPTION_FILTER_FUNCTION_WPASS_VALIDATION =
       "the value of wpass should be in (0, 1)";
   public static final String EXCEPTION_NO_CALCULATE_COLUMNS = "No columns could be calculated.";
@@ -335,10 +340,105 @@ public final class CommonMessages {
   public static final String
       EXCEPTION_SNAPSHOT_BUFFER_SIZE_MUST_NOT_EXCEED_ARG_BYTES_BUT_WAS_ARG_D1DA6F7E =
           "Snapshot buffer size must not exceed %d bytes, but was %d.";
-  public static final String EXCEPTION_TABLE_ARG_ARG_IS_BEING_DELETED_PLEASE_WAIT_FOR_DELETION_TO_FINISH_OR_RETRY_DROP_TABLE_IF_IT_IS_STUCK_7E22D78F =
-      "Table '%s.%s' is being deleted. Please wait for deletion to finish, or retry DROP TABLE if it is stuck.";
-  public static final String EXCEPTION_COLUMN_ARG_IN_TABLE_ARG_ARG_IS_BEING_DELETED_PLEASE_WAIT_FOR_DELETION_TO_FINISH_OR_RETRY_DROPPING_THE_COLUMN_IF_IT_IS_STUCK_875DAFFE =
-      "Column '%s' in table '%s.%s' is being deleted. Please wait for deletion to finish, or retry dropping the column if it is stuck.";
-  public static final String EXCEPTION_COLUMN_ARG_IN_TABLE_ARG_ARG_IS_BEING_ALTERED_PLEASE_WAIT_FOR_ALTERATION_TO_FINISH_OR_RETRY_ALTERING_THE_COLUMN_IF_IT_IS_STUCK_11155B55 =
-      "Column '%s' in table '%s.%s' is being altered. Please wait for alteration to finish, or retry altering the column if it is stuck.";
+  public static final String
+      EXCEPTION_THE_TABLE_ARG_ARG_IS_IN_THE_PRE_DELETE_STATE_PLEASE_WAIT_A_FEW_SECONDS_IF_THE_TABLE_IS_STILL_IN_THIS_STATE_PLEASE_DROP_IT_AGAIN_13B9D39F =
+          "The table %s.%s is in the pre-delete state. Please wait a few seconds. If the table is still in this state, please drop it again.";
+  public static final String
+      EXCEPTION_COLUMN_ARG_IN_TABLE_ARG_ARG_IS_BEING_DELETED_PLEASE_WAIT_FOR_DELETION_TO_FINISH_OR_RETRY_DROPPING_THE_COLUMN_IF_IT_IS_STUCK_875DAFFE =
+          "Column '%s' in table '%s.%s' is being deleted. Please wait for deletion to finish, or retry dropping the column if it is stuck.";
+  public static final String
+      EXCEPTION_COLUMN_ARG_IN_TABLE_ARG_ARG_IS_BEING_ALTERED_PLEASE_WAIT_FOR_ALTERATION_TO_FINISH_OR_RETRY_ALTERING_THE_COLUMN_IF_IT_IS_STUCK_11155B55 =
+          "Column '%s' in table '%s.%s' is being altered. Please wait for alteration to finish, or retry altering the column if it is stuck.";
+  public static final String EXCEPTION_MEMORY_BLOCK_ARG_IS_READ_ONLY_D10B3340 =
+      "Memory block %s is read-only";
+  public static final String EXCEPTION_MEMORY_BLOCK_ARG_ALREADY_USES_MUTABLE_ACCOUNTING_6F7DCB3F =
+      "Memory block %s already uses mutable accounting";
+
+  public static final String
+      EXCEPTION_UNTRUSTED_URI_ARG_CURRENT_TRUSTED_URI_PATTERN_IS_ARG_9C06C271 =
+          "Untrusted uri %s, current trusted_uri_pattern is %s";
+
+  public static final String LOG_AN_ERROR_OCCURRED_WHILE_RUNNING_THE_COMMAND_ARG_ABA3D641 =
+      "An error occurred while running the command: %s";
+
+  public static final String EXCEPTION_CONDITION_WAS_NOT_MET_WITHIN_ARG_MS_60098C77 =
+      "Condition was not met within %d ms";
+
+  public static final String
+      EXCEPTION_K_HAS_TO_BE_GREATER_THAN_0_AND_LESS_THAN_OR_EQUAL_TO_1000_AFD17B03 =
+          "k has to be greater than 0 and less than or equal to 1000.";
+
+  public static final String EXCEPTION_PARAMETER_OMEGA_SHOULD_BE_NON_NEGATIVE_6154A6D7 =
+      "Parameter omega should be non-negative.";
+
+  public static final String EXCEPTION_PARAMETER_ETA_SHOULD_BE_LARGER_THAN_0_022CA22F =
+      "Parameter eta should be larger than 0.";
+
+  public static final String EXCEPTION_PARAMETER_K_SHOULD_BE_A_POSITIVE_INTEGER_62AC8458 =
+      "Parameter k should be a positive integer.";
+
+  public static final String
+      EXCEPTION_PARAMETER_OUTPUT_COLUMN_SHOULD_BE_A_POSITIVE_INTEGER_A58CE07F =
+          "Parameter output_column should be a positive integer.";
+
+  public static final String EXCEPTION_UPPER_CAN_NOT_BE_SMALLER_THAN_LOWER_9041B33A =
+      "Upper can not be smaller than lower.";
+
+  public static final String
+      EXCEPTION_ILLEGAL_SAMPLE_PROPORTION_PROPORTION_0_AND_PROPORTION_1_E96EE649 =
+          "Illegal sample proportion. proportion > 0 and proportion <= 1";
+
+  public static final String EXCEPTION_ILLEGAL_NUMBER_NUMBER_SHOULD_BE_GREATER_THAN_0_17FCD676 =
+      "Illegal number. Number should be greater than 0.";
+
+  public static final String EXCEPTION_MAX_CAN_NOT_BE_SMALLER_THAN_MIN_D6EA3271 =
+      "max can not be smaller than min.";
+
+  public static final String EXCEPTION_MIN_CAN_NOT_BE_SMALLER_THAN_ARG_CBF3792E =
+      "min can not be smaller than %s.";
+
+  public static final String EXCEPTION_THE_GIVEN_VALUE_TYPE_IS_NOT_SUPPORTED_C2D711C3 =
+      "the given value type is not supported.";
+
+  public static final String EXCEPTION_TARGET_SHOULD_NOT_BE_EMPTY_1B2C02C6 =
+      "target should not be empty";
+
+  public static final String
+      EXCEPTION_LISTITERATORWRAPPER_DOES_NOT_SUPPORT_OPTIONAL_OPERATIONS_OF_LISTITERATOR_A5C61A70 =
+          "ListIteratorWrapper does not support optional operations of ListIterator.";
+
+  public static final String EXCEPTION_CANNOT_REMOVE_ELEMENT_AT_INDEX_0_42A1988F =
+      "Cannot remove element at index {0}.";
+
+  public static final String EXCEPTION_START_A_NEW_NODE_98ED9767 = "start a new node";
+
+  public static final String
+      EXCEPTION_REMOVE_NODE_WITH_THE_GIVEN_NODEIDS_OR_THE_NODE_STARTED_ON_THE_CURRENT_MACHINE_IF_OMITTED_NOTE_THAT_THE_DATANODE_ALLOWS_FOR_THE_REMOVAL_OF_MULTIPLE_NODES_AT_ONCE_THE_CONFIGNODE_CAN_ONLY_REMOVE_ONE_NODE_AT_A_TIME_B784A43C =
+          "Remove node(with the given nodeIds or the node started on the current machine, if"
+              + " omitted). Note that the DataNode allows for the removal of multiple nodes at"
+              + " once, the ConfigNode can only remove one node at a time.";
+
+  public static final String EXCEPTION_NEW_FIXED_THREAD_POOL_ARG_THREAD_NUMBER_ARG_465A36AF =
+      "new fixed thread pool: {}, thread number: {}";
+
+  public static final String EXCEPTION_NEW_SINGLE_THREAD_POOL_ARG_CB233F2A =
+      "new single thread pool: {}";
+
+  public static final String EXCEPTION_NEW_CACHED_THREAD_POOL_ARG_3169566A =
+      "new cached thread pool: {}";
+
+  public static final String EXCEPTION_NEW_SINGLE_SCHEDULED_THREAD_POOL_ARG_4B7C159F =
+      "new single scheduled thread pool: {}";
+
+  public static final String EXCEPTION_NEW_SCHEDULED_THREAD_POOL_ARG_37283992 =
+      "new scheduled thread pool: {}";
+
+  public static final String EXCEPTION_NEW_SYNCHRONOUSQUEUE_THREAD_POOL_ARG_F3261435 =
+      "new SynchronousQueue thread pool: {}";
+
+  public static final String EXCEPTION_NEW_THREAD_POOL_ARG_E17F65A1 = "new thread pool: {}";
+
+  public static final String
+      EXCEPTION_USER_ARG_ID_ARG_REQUESTS_AUTHORITY_ON_OBJECT_ARG_WITH_RESULT_ARG_F0A4B9C0 =
+          "User %s (ID=%d) requests authority on object %s with result %s";
 }

@@ -39,9 +39,16 @@ import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
 import org.apache.iotdb.consensus.ratis.utils.Retriable;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
 
+import org.apache.ratis.protocol.ClientId;
+import org.apache.ratis.protocol.LeaderElectionManagementRequest;
+import org.apache.ratis.protocol.RaftClientReply;
+import org.apache.ratis.protocol.RaftGroupId;
+import org.apache.ratis.protocol.TransferLeadershipRequest;
+import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.thirdparty.com.google.common.base.Preconditions;
 import org.apache.ratis.util.ExitUtils;
 import org.apache.ratis.util.FileUtils;
+import org.apache.ratis.util.LifeCycle;
 import org.apache.ratis.util.TimeDuration;
 import org.apache.ratis.util.Timestamp;
 import org.junit.Assert;
@@ -307,11 +314,51 @@ public class TestUtils {
     }
 
     void stop() throws IOException {
-      for (RatisConsensus server : servers) {
-        server.stop();
+      if (isStopped.get()) {
+        return;
+      }
+      try {
+        stepDownBeforeStopping();
+      } finally {
+        for (RatisConsensus server : servers) {
+          server.stop();
+        }
       }
       waitUntilPortsReleased(peerPorts);
       isStopped.set(true);
+    }
+
+    private void stepDownBeforeStopping() throws IOException {
+      final ClientId clientId = ClientId.randomId();
+      final List<RaftServer> runningServers = new ArrayList<>();
+      // Ratis 3.3.1 closes the log without joining the leader event processor. Step down through
+      // that processor first, so an in-flight leadership check cannot access an already closed log.
+      // Pause elections on every peer before stepping down to prevent a replacement leader.
+      for (RatisConsensus server : servers) {
+        final RaftServer raftServer = server.getServer();
+        if (raftServer.getLifeCycleState() != LifeCycle.State.RUNNING) {
+          continue;
+        }
+        runningServers.add(raftServer);
+        for (RaftGroupId groupId : raftServer.getGroupIds()) {
+          final RaftClientReply reply =
+              raftServer.leaderElectionManagement(
+                  LeaderElectionManagementRequest.newPause(
+                      clientId, raftServer.getId(), groupId, 0));
+          Assert.assertTrue(reply.toString(), reply.isSuccess());
+        }
+      }
+      for (RaftServer raftServer : runningServers) {
+        for (RaftGroupId groupId : raftServer.getGroupIds()) {
+          if (raftServer.getDivision(groupId).getInfo().isLeader()) {
+            final RaftClientReply reply =
+                raftServer.transferLeadership(
+                    new TransferLeadershipRequest(
+                        clientId, raftServer.getId(), groupId, 1, null, 10_000));
+            Assert.assertTrue(reply.toString(), reply.isSuccess());
+          }
+        }
+      }
     }
 
     void cleanUp() throws IOException {

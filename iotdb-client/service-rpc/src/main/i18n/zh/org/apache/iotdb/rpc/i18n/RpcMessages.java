@@ -30,8 +30,14 @@ public final class RpcMessages {
   public static final String FRAME_ERROR_NEGATIVE_FRAME_SIZE = "读取到负数帧大小 (%d)%s！";
   public static final String FRAME_ERROR_FRAME_SIZE_EXCEEDED =
       "帧大小 (%d) 超过保护最大值 (%d)%s！";
+  public static final String
+      EXCEPTION_FRAME_SIZE_ARG_EXCEEDS_THE_MAXIMUM_SUPPORTED_MESSAGE_SIZE_E83C0952 =
+      "帧大小 (%d) 超过支持的最大消息大小！";
   public static final String FRAME_ERROR_STRING_LENGTH_EXCEEDED =
       "字符串长度 (%d) 超过保护最大值 (%d)%s！";
+  public static final String
+      EXCEPTION_REQUIRED_READ_SIZE_ARG_EXCEEDS_REMAINING_FRAME_SIZE_ARG_ARG_9C0541EE =
+          "请求读取的大小 (%d) 超过当前帧剩余大小 (%d)%s！";
 
   // TElasticFramedTransport - SSL
   public static final String NON_SSL_TO_SSL_PORT =
@@ -96,4 +102,10 @@ public final class RpcMessages {
   public static final String EXCEPTION_KEYSTORE_OR_TRUSTSTORE_FILE_NOT_FOUND_5A6845B2 =
       "未找到 keystore 或 truststore 文件：";
 
+  public static final String EXCEPTION_MULTIPLE_ERROR_OCCUR_MESSAGES_75A34A00 = "发生多个错误，消息：";
+
+  public static final String EXCEPTION_THE_VALUE_GOT_BY_ARG_COLUMN_NAME_IS_NULL_65408BDE =
+      "通过列名 %s 获取的值为 NULL。";
+
+  public static final String EXCEPTION_DATA_TYPE_ARG_IS_NOT_SUPPORTED_31213160 = "不支持数据类型 %s。";
 }

@@ -523,6 +523,10 @@ LOCK
     : L O C K
     ;
 
+MEMORY
+    : M E M O R Y
+    ;
+
 MERGE
     : M E R G E
     ;

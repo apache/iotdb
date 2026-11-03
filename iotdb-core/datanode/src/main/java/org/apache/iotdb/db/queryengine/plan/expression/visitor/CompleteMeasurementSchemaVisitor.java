@@ -78,7 +78,7 @@ public class CompleteMeasurementSchemaVisitor extends ExpressionVisitor<Expressi
   public Expression visitFunctionExpression(
       FunctionExpression functionExpression, ISchemaTree schemaTree) {
     List<Expression> children = functionExpression.getExpressions();
-    List<Expression> replacedChildren = new ArrayList<>();
+    List<Expression> replacedChildren = new ArrayList<>(children.size());
     for (Expression child : children) {
       replacedChildren.add(this.process(child, schemaTree));
     }

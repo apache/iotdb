@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
@@ -67,6 +68,7 @@ public class SettleSelectorImpl implements ISettleSelector {
   private final boolean heavySelect;
   private final String storageGroupName;
   private final String dataRegionId;
+  private final boolean isTableModel;
   private final long timePartition;
   private final TsFileManager tsFileManager;
   private boolean isSeq;
@@ -83,6 +85,7 @@ public class SettleSelectorImpl implements ISettleSelector {
     this.heavySelect = heavySelect;
     this.storageGroupName = storageGroupName;
     this.dataRegionId = dataRegionId;
+    this.isTableModel = PathUtils.isTableModelDatabase(storageGroupName);
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
     this.context = context;
@@ -261,7 +264,7 @@ public class SettleSelectorImpl implements ISettleSelector {
       long ttl;
       String tableName = device.getTableName();
       boolean hasSetTTL;
-      if (tableName.startsWith("root.")) {
+      if (!isTableModel) {
         ttl = DataNodeTTLCache.getInstance().getTTLForTree(device);
         hasSetTTL = ttl != Long.MAX_VALUE;
       } else {
@@ -290,7 +293,7 @@ public class SettleSelectorImpl implements ISettleSelector {
             // overflow, like 100 - Long.MIN
             outdatedTimeDiff = Long.MAX_VALUE;
           }
-          long ttlThreshold = 3 * ttl > ttl ? ttl : Long.MAX_VALUE;
+          long ttlThreshold = ttl <= Long.MAX_VALUE / 3 ? 3 * ttl : Long.MAX_VALUE;
           hasExpiredTooLong =
               hasExpiredTooLong
                   || outdatedTimeDiff > Math.min(config.getMaxExpiredTime(), ttlThreshold);
@@ -309,7 +312,8 @@ public class SettleSelectorImpl implements ISettleSelector {
       return new FileDirtyInfo(DirtyStatus.FULLY_DIRTY, ttlTables);
     }
     hasExpiredTooLong = config.getMaxExpiredTime() != Long.MAX_VALUE && hasExpiredTooLong;
-    if (hasExpiredTooLong || deletedDeviceRatio >= config.getExpiredDataRatio()) {
+    if (hasExpiredTooLong
+        || (deletedDeviceRatio > 0 && deletedDeviceRatio >= config.getExpiredDataRatio())) {
       // evaluate dirty data size in the tsfile
       return new FileDirtyInfo(
           PARTIALLY_DIRTY, (long) (deletedDeviceRatio * resource.getTsFileSize()), ttlTables);
@@ -326,7 +330,7 @@ public class SettleSelectorImpl implements ISettleSelector {
       throws IllegalPathException {
     return ModificationUtils.isAllDeletedByMods(
         CompactionUtils.getMatchedModifications(
-            modifications, device, AlignedPath.VECTOR_PLACEHOLDER, null),
+            modifications, device, AlignedPath.VECTOR_PLACEHOLDER, null, isTableModel),
         startTime,
         endTime);
   }

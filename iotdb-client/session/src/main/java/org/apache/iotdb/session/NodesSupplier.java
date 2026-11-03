@@ -22,20 +22,29 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.session.i18n.SessionMessages;
 
+import org.apache.thrift.TApplicationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.Set;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 public class NodesSupplier implements INodeSupplier, Runnable {
 
@@ -54,10 +63,13 @@ public class NodesSupplier implements INodeSupplier, Runnable {
 
   private static final int FETCH_SIZE = 10_000;
 
-  // availableNodes won't be updated frequently, so we use CopyOnWriteArrayList which is thread-safe
-  // and is optimized for scenarios of reading more and writing less
+  // Publish complete snapshots; discovery must never overwrite the initial recovery addresses.
   @SuppressWarnings("java:S3077")
-  private volatile List<TEndPoint> availableNodes = new CopyOnWriteArrayList<>();
+  private volatile List<TEndPoint> availableNodes;
+
+  private final List<TEndPoint> seedNodes;
+  private final ScheduledExecutorService executorService;
+  private final AtomicBoolean refreshRequested = new AtomicBoolean();
 
   private final boolean useSSL;
   private final String trustStore;
@@ -82,13 +94,59 @@ public class NodesSupplier implements INodeSupplier, Runnable {
 
   private final QueryEndPointPolicy policy = new RoundRobinPolicy();
 
+  // Refresh serialization is independent of the short client-publication/cleanup critical section.
+  private final ReentrantLock refreshLock = new ReentrantLock();
+  // Accessed under refreshLock, in failure order, until a discovery query succeeds.
+  private final Set<TEndPoint> queryFailedNodes = new LinkedHashSet<>();
+  private final Object clientLock = new Object();
   private ThriftConnection client;
+  private ThriftConnection activeClient;
 
   private volatile boolean closed = false;
 
+  public static NodesSupplier createNodeSupplier(
+      List<TEndPoint> endPointList,
+      ScheduledExecutorService executorService,
+      String userName,
+      String password,
+      ZoneId zoneId,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      int connectionTimeoutInMs,
+      boolean useSSL,
+      String trustStore,
+      String trustStorePwd,
+      String keyStore,
+      String keyStorePwd,
+      String sslProtocol,
+      boolean enableRPCCompression,
+      String version) {
+
+    return createNodeSupplier(
+        endPointList,
+        endPointList,
+        executorService,
+        userName,
+        password,
+        zoneId,
+        thriftDefaultBufferSize,
+        thriftMaxFrameSize,
+        connectionTimeoutInMs,
+        useSSL,
+        trustStore,
+        trustStorePwd,
+        keyStore,
+        keyStorePwd,
+        sslProtocol,
+        enableRPCCompression,
+        version);
+  }
+
+  /** Bootstrap discovery independently of the permanent recovery seeds (for Session reopen). */
   @SuppressWarnings("unsafeThreadSchedule")
   public static NodesSupplier createNodeSupplier(
       List<TEndPoint> endPointList,
+      List<TEndPoint> seedNodes,
       ScheduledExecutorService executorService,
       String userName,
       String password,
@@ -108,6 +166,8 @@ public class NodesSupplier implements INodeSupplier, Runnable {
     NodesSupplier nodesSupplier =
         new NodesSupplier(
             endPointList,
+            seedNodes,
+            executorService,
             userName,
             password,
             zoneId,
@@ -133,6 +193,8 @@ public class NodesSupplier implements INodeSupplier, Runnable {
 
   private NodesSupplier(
       List<TEndPoint> endPointList,
+      List<TEndPoint> seedNodes,
+      ScheduledExecutorService executorService,
       String userName,
       String password,
       ZoneId zoneId,
@@ -147,7 +209,13 @@ public class NodesSupplier implements INodeSupplier, Runnable {
       String sslProtocol,
       boolean enableRPCCompression,
       String version) {
-    this.availableNodes.addAll(new HashSet<>(endPointList));
+    this.seedNodes =
+        Collections.unmodifiableList(
+            seedNodes.stream().distinct().map(TEndPoint::deepCopy).collect(Collectors.toList()));
+    this.availableNodes =
+        Collections.unmodifiableList(
+            endPointList.stream().distinct().map(TEndPoint::deepCopy).collect(Collectors.toList()));
+    this.executorService = executorService;
     this.userName = userName;
     this.password = password;
     this.useSSL = useSSL;
@@ -164,43 +232,135 @@ public class NodesSupplier implements INodeSupplier, Runnable {
     this.version = version;
   }
 
-  // the method will only be called while reconnecting, so it's ok to copy set each time
-  // and the List needn't be thread-safe, because it will only be used in one thread.
+  // Readers retain an immutable snapshot while discovery publishes replacements.
   @Override
   public List<TEndPoint> get() {
     return availableNodes;
   }
 
   @Override
-  public void run() {
-    if (closed) {
-      if (client != null) {
-        destroyCurrentClient();
-      }
-      return;
-    }
-    if (client == null) {
-      for (TEndPoint endPoint : availableNodes) {
-        if (createConnection(endPoint)) {
-          break;
-        }
-      }
-    }
+  public List<TEndPoint> getSeedNodes() {
+    return seedNodes;
+  }
 
-    // make sure the following code block can run thread-safely with close() method.
-    synchronized (this) {
-      if (client != null && !updateDataNodeList()) {
-        destroyCurrentClient();
+  @Override
+  public void requestRefresh() {
+    if (!closed && refreshRequested.compareAndSet(false, true)) {
+      try {
+        executorService.execute(
+            () -> {
+              try {
+                run();
+              } finally {
+                refreshRequested.set(false);
+              }
+            });
+      } catch (RejectedExecutionException e) {
+        // The session or pool may have shut down its executor concurrently.
+        refreshRequested.set(false);
       }
     }
   }
 
-  private boolean createConnection(TEndPoint endPoint) {
-    client =
+  @Override
+  public void run() {
+    if (closed || !refreshLock.tryLock()) {
+      return;
+    }
+    try {
+      Set<TEndPoint> attempted = new HashSet<>();
+      ThriftConnection current;
+      synchronized (clientLock) {
+        if (closed) {
+          return;
+        }
+        current = client;
+        activeClient = current;
+      }
+      if (current != null) {
+        attempted.add(current.endPoint);
+        if (refreshFrom(current)) {
+          return;
+        }
+      }
+
+      Set<TEndPoint> candidates = new LinkedHashSet<>(availableNodes);
+      List<TEndPoint> seeds = new ArrayList<>(seedNodes);
+      if (!seeds.isEmpty()) {
+        Collections.rotate(seeds, -ThreadLocalRandom.current().nextInt(seeds.size()));
+      }
+      candidates.addAll(seeds);
+      // Defer query-failed nodes across refresh rounds without losing them as recovery candidates.
+      // Remember all failures so two failing nodes cannot starve a third, healthy candidate.
+      queryFailedNodes.retainAll(candidates);
+      candidates.removeAll(queryFailedNodes);
+      candidates.addAll(queryFailedNodes);
+      for (TEndPoint endPoint : candidates) {
+        if (closed) {
+          return;
+        }
+        if (attempted.add(endPoint)) {
+          current = createConnection(endPoint);
+          if (current != null && refreshFrom(current)) {
+            return;
+          }
+        }
+      }
+    } finally {
+      ThriftConnection toClose = null;
+      synchronized (clientLock) {
+        if (closed) {
+          toClose = activeClient;
+          client = null;
+        }
+        activeClient = null;
+      }
+      // Only the refresh owner releases buffers that an interrupted operation could still use.
+      try {
+        if (toClose != null) {
+          toClose.close();
+        }
+      } finally {
+        refreshLock.unlock();
+      }
+    }
+  }
+
+  /** Return false only when the transport failed and another candidate should be tried now. */
+  private boolean refreshFrom(ThriftConnection current) {
+    if (closed) {
+      return true;
+    }
+    try {
+      if (updateDataNodeList(current)) {
+        queryFailedNodes.clear();
+      } else {
+        // End this round on a query error, but try another candidate on the next refresh.
+        // Moving repeated failures to the end also permits recovery after a cluster-wide outage.
+        queryFailedNodes.remove(current.endPoint);
+        queryFailedNodes.add(current.endPoint);
+        destroyClient(current);
+      }
+    } catch (IoTDBConnectionException e) {
+      destroyClient(current);
+      return false;
+    }
+    return true;
+  }
+
+  private ThriftConnection createConnection(TEndPoint endPoint) {
+    ThriftConnection current =
         new ThriftConnection(
             endPoint, thriftDefaultBufferSize, thriftMaxFrameSize, connectionTimeoutInMs);
+    synchronized (clientLock) {
+      if (closed) {
+        return null;
+      }
+      client = current;
+      activeClient = current;
+    }
     try {
-      client.init(
+      current.init(
           useSSL,
           trustStore,
           trustStorePwd,
@@ -212,42 +372,75 @@ public class NodesSupplier implements INodeSupplier, Runnable {
           enableRPCCompression,
           zoneId,
           version);
-      return true;
+      if (closed) {
+        destroyClient(current);
+        return null;
+      }
+      return current;
     } catch (Exception e) {
-      LOGGER.warn(SessionMessages.FAILED_TO_CREATE_CONNECTION, endPoint);
-      destroyCurrentClient();
-      return false;
+      if (!closed) {
+        LOGGER.warn(SessionMessages.FAILED_TO_CREATE_CONNECTION, endPoint);
+      }
+      destroyClient(current);
+      return null;
     }
   }
 
-  private synchronized void destroyCurrentClient() {
-    if (client != null) {
-      client.close();
-      client = null;
+  private void destroyClient(ThriftConnection current) {
+    synchronized (clientLock) {
+      if (client == current) {
+        client = null;
+      }
     }
+    current.close();
   }
 
   @Override
   public void close() {
-    closed = true;
-    destroyCurrentClient();
+    ThriftConnection current;
+    boolean inUse;
+    synchronized (clientLock) {
+      closed = true;
+      current = client != null ? client : activeClient;
+      inUse = current != null && current == activeClient;
+      client = null;
+    }
+    if (current != null) {
+      if (inUse) {
+        current.abort();
+      } else {
+        current.close();
+      }
+    }
   }
 
   @Override
   public Optional<TEndPoint> getQueryEndPoint() {
-    if (availableNodes == null || availableNodes.isEmpty()) {
+    List<TEndPoint> snapshot = availableNodes;
+    if (snapshot.isEmpty()) {
       return Optional.empty();
     } else {
-      return Optional.of(policy.chooseOne(get()));
+      return Optional.of(policy.chooseOne(snapshot));
     }
   }
 
-  private boolean updateDataNodeList() {
+  private boolean updateDataNodeList(ThriftConnection current) throws IoTDBConnectionException {
     try (SessionDataSet sessionDataSet =
-        client.executeQueryStatement(SHOW_AVAILABLE_URLS_COMMAND, TIMEOUT_IN_MS, FETCH_SIZE)) {
+        current.executeQueryStatement(SHOW_AVAILABLE_URLS_COMMAND, TIMEOUT_IN_MS, FETCH_SIZE)) {
       updateAvailableNodes(sessionDataSet);
-    } catch (Exception e1) {
-      LOGGER.warn(SessionMessages.FAILED_TO_FETCH_DATA_NODE_LIST, client.endPoint);
+    } catch (IoTDBConnectionException e) {
+      if (!closed) {
+        LOGGER.warn(SessionMessages.FAILED_TO_FETCH_DATA_NODE_LIST, current.endPoint);
+      }
+      if (!(e.getCause() instanceof TApplicationException)) {
+        throw e;
+      }
+      // A Thrift application error also means the peer responded; it is not a transport failure.
+      return false;
+    } catch (Exception e) {
+      if (!closed) {
+        LOGGER.warn(SessionMessages.FAILED_TO_FETCH_DATA_NODE_LIST, current.endPoint);
+      }
       return false;
     }
     return true;
@@ -266,9 +459,10 @@ public class NodesSupplier implements INodeSupplier, Runnable {
         }
       }
     }
-    // replace the older ones.
-    if (!res.isEmpty()) {
-      availableNodes = res;
+    // Wildcard addresses and transient Unknown statuses after leader changes convey no usable
+    // discovery information. Retain the last snapshot for routing and recovery in both cases.
+    if (!closed && !res.isEmpty()) {
+      availableNodes = Collections.unmodifiableList(res);
     }
   }
 }

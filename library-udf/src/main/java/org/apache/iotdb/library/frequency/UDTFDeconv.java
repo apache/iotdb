@@ -50,7 +50,7 @@ public class UDTFDeconv implements UDTF {
         .validateInputSeriesDataType(1, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
         .validate(
             x -> isQuotientResult((String) x) || ((String) x).equalsIgnoreCase(REMAINDER_RESULT),
-            "Result should be 'quotient' or 'remainder'.",
+            LibraryUdfMessages.EXCEPTION_RESULT_SHOULD_BE_QUOTIENT_OR_REMAINDER_ABBEA7C4,
             validator.getParameters().getStringOrDefault("result", QUOTIENT_RESULT));
   }
 

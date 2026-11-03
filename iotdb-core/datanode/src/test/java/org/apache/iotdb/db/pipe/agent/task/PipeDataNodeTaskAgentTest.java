@@ -42,7 +42,9 @@ import org.awaitility.Awaitility;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -54,6 +56,145 @@ public class PipeDataNodeTaskAgentTest {
 
   private static final int LOCAL_NODE_ID = 1;
   private static final int REGION_ID = 7;
+
+  @Test
+  public void testEmptyPartialMetadataKeepsExistingPipe() throws Exception {
+    final PipeDataNodeTaskAgent agent = newActiveTaskAgent();
+    final PipeMetaKeeper keeper = getField(agent, "pipeMetaKeeper");
+    final PipeMeta existing = newEmptyPipeMeta("existing", 1L);
+    addEmptyPipe(agent, existing);
+
+    Assert.assertEquals(
+        Collections.emptyList(), agent.handleMultiPipeMetaChanges(Collections.emptyList()));
+
+    Assert.assertSame(existing, keeper.getPipeMeta(existing.getStaticMeta()));
+  }
+
+  @Test
+  public void testPartialMetadataUpdatesOnlyRequestedPipe() throws Exception {
+    final PipeDataNodeTaskAgent agent = newActiveTaskAgent();
+    final PipeMetaKeeper keeper = getField(agent, "pipeMetaKeeper");
+    final PipeMeta existing = newEmptyPipeMeta("existing", 1L);
+    final PipeMeta unrelated = newEmptyPipeMeta("unrelated", 2L);
+    addEmptyPipe(agent, existing);
+    addEmptyPipe(agent, unrelated);
+    final PipeMeta updated = newEmptyPipeMeta("existing", 1L);
+    updated.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+
+    Assert.assertEquals(
+        Collections.emptyList(),
+        agent.handleMultiPipeMetaChanges(Collections.singletonList(updated)));
+
+    Assert.assertEquals(PipeStatus.RUNNING, existing.getRuntimeMeta().getStatus().get());
+    Assert.assertSame(unrelated, keeper.getPipeMeta(unrelated.getStaticMeta()));
+    Assert.assertEquals(PipeStatus.STOPPED, unrelated.getRuntimeMeta().getStatus().get());
+  }
+
+  @Test
+  public void testPartialDropKeepsUnrelatedPipeAndFullSnapshotStillRemovesIt() throws Exception {
+    final PipeDataNodeTaskAgent agent = newActiveTaskAgent();
+    final PipeMetaKeeper keeper = getField(agent, "pipeMetaKeeper");
+    final PipeMeta existing = newEmptyPipeMeta("existing", 1L);
+    final PipeMeta unrelated = newEmptyPipeMeta("unrelated", 2L);
+    addEmptyPipe(agent, existing);
+    addEmptyPipe(agent, unrelated);
+    final PipeMeta dropped = newEmptyPipeMeta("existing", 1L);
+    dropped.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
+
+    Assert.assertEquals(
+        Collections.emptyList(),
+        agent.handleMultiPipeMetaChanges(Collections.singletonList(dropped)));
+
+    Assert.assertNull(keeper.getPipeMeta(existing.getStaticMeta()));
+    Assert.assertSame(unrelated, keeper.getPipeMeta(unrelated.getStaticMeta()));
+    Assert.assertTrue(agent.handlePipeMetaChanges(Collections.emptyList()).isEmpty());
+    Assert.assertTrue(keeper.isEmpty());
+  }
+
+  @Test
+  public void testPartialStaleDropDoesNotRemoveNewerPipe() throws Exception {
+    final PipeDataNodeTaskAgent agent = newActiveTaskAgent();
+    final PipeMetaKeeper keeper = getField(agent, "pipeMetaKeeper");
+    final PipeMeta current = newEmptyPipeMeta("existing", 3L);
+    addEmptyPipe(agent, current);
+    final PipeMeta staleDropped = newEmptyPipeMeta("existing", 1L);
+    staleDropped.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
+
+    Assert.assertEquals(
+        Collections.emptyList(),
+        agent.handleMultiPipeMetaChanges(Collections.singletonList(staleDropped)));
+
+    Assert.assertSame(current, keeper.getPipeMeta(current.getStaticMeta()));
+  }
+
+  @Test
+  public void testPartialPreDeleteDoesNotRemoveExistingPipe() throws Exception {
+    final PipeDataNodeTaskAgent agent = newActiveTaskAgent();
+    final PipeMetaKeeper keeper = getField(agent, "pipeMetaKeeper");
+    final PipeMeta current = newEmptyPipeMeta("existing", 3L);
+    addEmptyPipe(agent, current);
+    final PipeMeta preDelete = newEmptyPipeMeta("existing", 4L);
+    preDelete.getRuntimeMeta().getStatus().set(PipeStatus.PRE_DELETE);
+
+    Assert.assertEquals(
+        Collections.emptyList(),
+        agent.handleMultiPipeMetaChanges(Collections.singletonList(preDelete)));
+
+    Assert.assertSame(current, keeper.getPipeMeta(current.getStaticMeta()));
+  }
+
+  @Test
+  public void testPartialAlterKeepsReplacementAndUnrelatedPipe() throws Exception {
+    final PipeDataNodeTaskAgent agent = newActiveTaskAgent();
+    final PipeMetaKeeper keeper = getField(agent, "pipeMetaKeeper");
+    final PipeMeta existing = newEmptyPipeMeta("existing", 1L);
+    final PipeMeta unrelated = newEmptyPipeMeta("unrelated", 2L);
+    addEmptyPipe(agent, existing);
+    addEmptyPipe(agent, unrelated);
+    final PipeMeta dropped = newEmptyPipeMeta("existing", 1L);
+    dropped.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
+    final PipeMeta replacement = newEmptyPipeMeta("existing", 3L);
+
+    Assert.assertEquals(
+        Collections.emptyList(),
+        agent.handleMultiPipeMetaChanges(Arrays.asList(dropped, replacement)));
+
+    Assert.assertEquals(
+        3L, keeper.getPipeMeta(replacement.getStaticMeta()).getStaticMeta().getCreationTime());
+    Assert.assertSame(unrelated, keeper.getPipeMeta(unrelated.getStaticMeta()));
+    Assert.assertEquals(2, keeper.getPipeMetaCount());
+  }
+
+  private void addEmptyPipe(final PipeDataNodeTaskAgent agent, final PipeMeta meta)
+      throws Exception {
+    final PipeMetaKeeper keeper = getField(agent, "pipeMetaKeeper");
+    final PipeTaskManager manager = getField(agent, "pipeTaskManager");
+    keeper.addPipeMeta(meta);
+    manager.addPipeTasks(meta.getStaticMeta(), Collections.emptyMap());
+  }
+
+  private static PipeDataNodeTaskAgent newActiveTaskAgent() {
+    return new PipeDataNodeTaskAgent() {
+      @Override
+      protected boolean isShutdown() {
+        return false;
+      }
+    };
+  }
+
+  private static PipeMeta newEmptyPipeMeta(final String name, final long creationTime)
+      throws IOException {
+    return PipeMeta.deserialize4TaskAgent(
+        new PipeMeta(
+                new PipeStaticMeta(
+                    name,
+                    creationTime,
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap()),
+                new PipeRuntimeMeta())
+            .serialize());
+  }
 
   @Test
   public void testGetPipeTaskProgressIndexReportsMissingTaskMeta() throws Exception {

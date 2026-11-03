@@ -21,6 +21,7 @@ package org.apache.iotdb.relational.it.schema;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -118,7 +119,8 @@ public class IoTDBTableDDLHAIT {
         victimDataNode.stop();
         Assert.assertFalse("victim DataNode should be stopped", victimDataNode.isAlive());
 
-        executeSpecificSql(databaseName, tableName, statement, createdAfterDownTableName);
+        executeSpecificSql(
+            databaseName, tableName, connection, statement, createdAfterDownTableName);
         testDropDeviceForTreeModel(statement);
       }
     } finally {
@@ -166,7 +168,8 @@ public class IoTDBTableDDLHAIT {
         // Run DDL HA tests via live DataNode. Operations should still succeed because
         // consensus can proceed with 2/3 nodes, and the ReadOnly victim still accepts
         // committed entries as a follower.
-        executeSpecificSql(databaseName, tableName, statement, createdAfterDownTableName);
+        executeSpecificSql(
+            databaseName, tableName, connection, statement, createdAfterDownTableName);
       }
 
     } finally {
@@ -175,7 +178,11 @@ public class IoTDBTableDDLHAIT {
   }
 
   public void executeSpecificSql(
-      String databaseName, String tableName, Statement statement, String createdAfterDownTableName)
+      String databaseName,
+      String tableName,
+      Connection connection,
+      Statement statement,
+      String createdAfterDownTableName)
       throws Exception {
 
     // Take one DataNode down. Its last successful ConfigNode contact is now frozen; after
@@ -228,11 +235,9 @@ public class IoTDBTableDDLHAIT {
         "DELETE DEVICES must succeed with one DataNode down");
 
     LOGGER.info("6. start to test high availability of dropping table procedure");
-    assertStatementEffect(
-        statement,
-        "DROP TABLE " + tableName,
-        () -> !tableExists(statement, tableName),
-        "DROP TABLE must succeed with one DataNode down");
+    TestUtils.dropTable(connection, databaseName, tableName);
+    assertTrue(
+        "DROP TABLE must succeed with one DataNode down", !tableExists(statement, tableName));
 
     LOGGER.info("7. start to test high availability of dropping database procedure");
     assertStatementEffect(

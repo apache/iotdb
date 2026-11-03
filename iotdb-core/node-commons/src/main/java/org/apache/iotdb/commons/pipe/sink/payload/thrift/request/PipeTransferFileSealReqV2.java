@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.sink.payload.thrift.request;
 
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
+import com.google.common.collect.Maps;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -28,7 +29,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -100,20 +100,20 @@ public abstract class PipeTransferFileSealReqV2 extends TPipeTransferReq {
   }
 
   public PipeTransferFileSealReqV2 translateFromTPipeTransferReq(final TPipeTransferReq req) {
-    fileNames = new ArrayList<>();
     int size = ReadWriteIOUtils.readInt(req.body);
+    fileNames = new ArrayList<>(size);
     for (int i = 0; i < size; ++i) {
       fileNames.add(ReadWriteIOUtils.readString(req.body));
     }
 
-    fileLengths = new ArrayList<>();
     size = ReadWriteIOUtils.readInt(req.body);
+    fileLengths = new ArrayList<>(size);
     for (int i = 0; i < size; ++i) {
       fileLengths.add(ReadWriteIOUtils.readLong(req.body));
     }
 
-    parameters = new HashMap<>();
     size = ReadWriteIOUtils.readInt(req.body);
+    parameters = Maps.newHashMapWithExpectedSize(size);
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(req.body);
       final String value = ReadWriteIOUtils.readString(req.body);

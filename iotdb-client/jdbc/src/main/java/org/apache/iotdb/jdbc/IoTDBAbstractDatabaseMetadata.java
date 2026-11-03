@@ -76,7 +76,8 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
           };
 
   private static final String METHOD_NOT_SUPPORTED_STRING = JdbcMessages.METHOD_NOT_SUPPORTED;
-  protected static final String CONVERT_ERROR_MSG = "Convert tsBlock error: {}";
+  protected static final String CONVERT_ERROR_MSG =
+      JdbcMessages.EXCEPTION_CONVERT_TSBLOCK_ERROR_ARG_D9D4A78D;
 
   protected IoTDBConnection connection;
   protected IClientRPCService.Iface client;
@@ -92,6 +93,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
   protected static final String BLOB = "BLOB";
   protected static final String TIMESTAMP = "TIMESTAMP";
   protected static final String DATE = "DATE";
+  protected static final String OBJECT = "OBJECT";
 
   protected static String sqlKeywordsThatArentSQL92;
 
@@ -415,10 +417,15 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     for (List<Object> valuesInRow : valuesList) {
       tsBlockBuilder.getTimeColumnBuilder().writeLong(0);
       for (int j = 0; j < tsDataTypeList.size(); j++) {
+        Object value = valuesInRow.get(j);
+        if (value == null) {
+          tsBlockBuilder.getColumnBuilder(j).appendNull();
+          continue;
+        }
         TSDataType columnType = tsDataTypeList.get(j);
         COLUMN_VALUE_WRITER_SERVICE
             .call(Type.fromTsDataType(columnType))
-            .write(tsBlockBuilder.getColumnBuilder(j), valuesInRow.get(j));
+            .write(tsBlockBuilder.getColumnBuilder(j), value);
       }
       tsBlockBuilder.declarePosition();
     }
@@ -474,6 +481,9 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         return Types.TIMESTAMP;
       case DATE:
         return Types.DATE;
+      case OBJECT:
+        // Database-specific: getObject() describes the value instead of returning it
+        return Types.OTHER;
       default:
         break;
     }
@@ -495,6 +505,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
       case "TEXT":
       case BLOB:
       case STRING:
+      case OBJECT:
         return Integer.MAX_VALUE;
       case TIMESTAMP:
         return 3;

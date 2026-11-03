@@ -28,6 +28,7 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoBasic;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.itbase.exception.InconsistentDataException;
 import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -205,6 +206,7 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
         .pollDelay(1L, TimeUnit.SECONDS)
         .pollInterval(1L, TimeUnit.SECONDS)
         .atMost(60L, TimeUnit.SECONDS)
+        .ignoreExceptionsMatching(e -> e instanceof InconsistentDataException)
         .untilAsserted(() -> Assert.assertTrue(hasExpectedReceiver(sql, sqlDialect, pipeName)));
   }
 
@@ -245,11 +247,13 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
 
   private void assertShowReceiversDoesNotContainPipe(
       final String sql, final String sqlDialect, final String pipeName) {
+    // Pipe connections close asynchronously, so DataNodes may observe different snapshots.
     Awaitility.await()
         .pollInSameThread()
         .pollDelay(1L, TimeUnit.SECONDS)
         .pollInterval(1L, TimeUnit.SECONDS)
         .atMost(60L, TimeUnit.SECONDS)
+        .ignoreExceptionsMatching(e -> e instanceof InconsistentDataException)
         .untilAsserted(() -> Assert.assertFalse(containsPipe(sql, sqlDialect, pipeName)));
   }
 
@@ -277,6 +281,7 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
         .pollDelay(1L, TimeUnit.SECONDS)
         .pollInterval(1L, TimeUnit.SECONDS)
         .atMost(60L, TimeUnit.SECONDS)
+        .ignoreExceptionsMatching(e -> e instanceof InconsistentDataException)
         .untilAsserted(
             () -> Assert.assertTrue(hasDataNodeAndConfigNodeReceivers(sql, sqlDialect, pipeName)));
   }
@@ -315,6 +320,7 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
         .pollDelay(1L, TimeUnit.SECONDS)
         .pollInterval(1L, TimeUnit.SECONDS)
         .atMost(60L, TimeUnit.SECONDS)
+        .ignoreExceptionsMatching(e -> e instanceof InconsistentDataException)
         .untilAsserted(
             () ->
                 Assert.assertTrue(

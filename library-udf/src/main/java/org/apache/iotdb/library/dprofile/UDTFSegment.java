@@ -52,7 +52,7 @@ public class UDTFSegment implements UDTF {
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             x -> (int) x > 0,
-            "Window size should be a positive integer.",
+            LibraryUdfMessages.EXCEPTION_WINDOW_SIZE_SHOULD_BE_A_POSITIVE_INTEGER_AF4CCC06,
             validator.getParameters().getIntOrDefault("window", 10))
         .validate(
             x -> Double.isFinite((double) x) && (double) x >= 0,
@@ -62,12 +62,12 @@ public class UDTFSegment implements UDTF {
             x ->
                 ((String) x).equalsIgnoreCase(METHOD_BOTTOM_UP)
                     || ((String) x).equalsIgnoreCase("swab"),
-            "Method is illegal.",
+            LibraryUdfMessages.EXCEPTION_METHOD_IS_ILLEGAL_4B26E375,
             validator.getParameters().getStringOrDefault("method", METHOD_BOTTOM_UP))
         .validate(
             x ->
                 ((String) x).equalsIgnoreCase(OUTPUT_FIRST) || ((String) x).equalsIgnoreCase("all"),
-            "Output type is invalid.",
+            LibraryUdfMessages.EXCEPTION_OUTPUT_TYPE_IS_INVALID_75CA99CF,
             validator.getParameters().getStringOrDefault("output", OUTPUT_FIRST));
   }
 
@@ -111,7 +111,7 @@ public class UDTFSegment implements UDTF {
     } else if (method.equals("swab")) { // haven't tested yet
       seg = Segment.swabAlg(v, maxError, windowSize);
     }
-    ArrayList<double[]> res = new ArrayList<>();
+    ArrayList<double[]> res = new ArrayList<>(seg.size());
     for (double[] doubles : seg) {
       res.add(Segment.approximatedSegment(doubles));
     }

@@ -42,8 +42,7 @@ public class RegionCache extends AbstractLoadCache {
     this.currentStatistics.set(RegionStatistics.generateDefaultRegionStatistics());
   }
 
-  @Override
-  public synchronized void updateCurrentStatistics(boolean forceUpdate) {
+  public synchronized void updateCurrentStatistics() {
     RegionHeartbeatSample lastSample;
     List<AbstractHeartbeatSample> history;
     synchronized (slidingWindow) {

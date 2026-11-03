@@ -29,6 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.load.LoadTsFileSnapshot;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,6 +106,7 @@ public class SnapshotTaker {
         success = createSnapshot(seqFiles, tempSnapshotId);
         success = success && createSnapshot(unseqFiles, tempSnapshotId);
         success = success && snapshotCompressionRatio(snapshotDirPath);
+        success = success && LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir);
       } finally {
         readUnlockTheFile();
       }
@@ -263,7 +265,11 @@ public class SnapshotTaker {
       }
       return true;
     } catch (IOException e) {
-      LOGGER.error(StorageEngineMessages.CATCH_IO_EXCEPTION_CREATING_SNAPSHOT, e);
+      LOGGER.error(
+          StorageEngineMessages.LOG_FAILED_TO_CREATE_SNAPSHOT_FOR_DATABASE_ARG_REGION_ARG_1A7C8DEA,
+          dataRegion.getDatabaseName(),
+          dataRegion.getDataRegionIdString(),
+          e);
       return false;
     }
   }
@@ -276,7 +282,7 @@ public class SnapshotTaker {
       return;
     }
     Files.deleteIfExists(target.toPath());
-    Files.createLink(target.toPath(), source.toPath());
+    SnapshotFileUtils.createLinkOrCopy(target.toPath(), source.toPath());
     snapshotLogger.logFile(source);
   }
 

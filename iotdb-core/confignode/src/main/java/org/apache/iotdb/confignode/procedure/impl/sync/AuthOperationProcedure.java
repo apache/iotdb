@@ -220,7 +220,7 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     int size = ReadWriteIOUtils.readInt(byteBuffer);
-    this.datanodes = new ArrayList<>();
+    this.datanodes = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       TDataNodeConfiguration datanode =
           ThriftCommonsSerDeUtils.deserializeTDataNodeConfiguration(byteBuffer);

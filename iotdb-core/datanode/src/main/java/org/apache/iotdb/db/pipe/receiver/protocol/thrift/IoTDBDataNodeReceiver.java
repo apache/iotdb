@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.receiver.protocol.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.disk.FolderManager;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
@@ -69,6 +70,7 @@ import org.apache.iotdb.db.pipe.receiver.visitor.PipeTreeStatementDataTypeConver
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeTreeStatementToBatchVisitor;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferPlanNodeReq;
@@ -194,6 +196,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private final PipeTransferSliceReqHandler sliceReqHandler = new PipeTransferSliceReqHandler();
 
+  private TPipeTransferReq lastSuccessfulUnidirectionalHandshake;
+  private TPipeTransferResp lastSuccessfulUnidirectionalHandshakeResp;
+
   private final SqlParser tableSqlParser = new SqlParser();
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
@@ -225,12 +230,48 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   @Override
   public synchronized TPipeTransferResp receive(final TPipeTransferReq req) {
+    final boolean isUnidirectionalHandshake =
+        req instanceof AirGapPseudoTPipeTransferRequest
+            && ((AirGapPseudoTPipeTransferRequest) req).isStrictUnidirectional()
+            && req.getType() == PipeRequestType.HANDSHAKE_DATANODE_V2.getType();
+    // Snapshot before decoding, which consumes the request body. Repeated no-ACK handshakes
+    // refresh a live session without discarding its partially received file or request slices.
+    final TPipeTransferReq handshake = isUnidirectionalHandshake ? req.deepCopy() : null;
+    if (isUnidirectionalHandshake
+        && hasPipeHandshakeCredential
+        && handshake.equals(lastSuccessfulUnidirectionalHandshake)) {
+      final TSStatus status = login();
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return lastSuccessfulUnidirectionalHandshakeResp.deepCopy();
+      }
+      hasPipeHandshakeCredential = false;
+      lastSuccessfulUnidirectionalHandshake = null;
+      lastSuccessfulUnidirectionalHandshakeResp = null;
+      return new TPipeTransferResp(status);
+    }
+    if (req.getType() == PipeRequestType.HANDSHAKE_DATANODE_V1.getType()
+        || req.getType() == PipeRequestType.HANDSHAKE_DATANODE_V2.getType()) {
+      lastSuccessfulUnidirectionalHandshake = null;
+      lastSuccessfulUnidirectionalHandshakeResp = null;
+    }
+    final TPipeTransferResp resp = receiveInternal(req);
+    if (isUnidirectionalHandshake
+        && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      lastSuccessfulUnidirectionalHandshake = handshake;
+      lastSuccessfulUnidirectionalHandshakeResp = resp.deepCopy();
+    }
+    return resp;
+  }
+
+  private TPipeTransferResp receiveInternal(final TPipeTransferReq req) {
     try {
       final long startTime = System.nanoTime();
       final short rawRequestType = req.getType();
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
         final PipeRequestType requestType = PipeRequestType.valueOf(rawRequestType);
-        if (requestType != PipeRequestType.TRANSFER_SLICE) {
+        if (requestType != PipeRequestType.TRANSFER_SLICE
+            && !(isStrictUnidirectionalRequest(req)
+                && requestType == PipeRequestType.TRANSFER_COMPRESSED)) {
           clearSliceReqHandler();
         }
         final TPipeTransferResp authResp = checkPipeTransferAuthenticated(requestType);
@@ -259,7 +300,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                   return new TPipeTransferResp(
                       RpcUtils.getStatus(
                           TSStatusCode.PIPE_HANDSHAKE_ERROR.getStatusCode(),
-                          "The receiver memory is not enough to handle the handshake request from datanode."));
+                          DataNodePipeMessages
+                              .MESSAGE_THE_RECEIVER_MEMORY_IS_NOT_ENOUGH_TO_HANDLE_THE_HANDSHAKE_REQUEST_FROM_DATANODE_0A182782));
                 }
                 return recordDataNodeHandshakeIfSuccess(
                     handleTransferHandshakeV2(
@@ -462,7 +504,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_SLICE:
             {
               try {
-                return handleTransferSlice(PipeTransferSliceReq.fromTPipeTransferReq(req));
+                return handleTransferSlice(
+                    PipeTransferSliceReq.fromTPipeTransferReq(req),
+                    isStrictUnidirectionalRequest(req));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferSliceTimer(System.nanoTime() - startTime);
@@ -476,12 +520,16 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                     PipeTransferCompressedReq.getMaxAdditionalDecompressedLengthInBytes(req);
                 try (final PipeMemoryBlock ignored =
                     tryAllocateReceiverMemory(requestedMemorySizeInBytes)) {
-                  return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
+                  return receiveNestedRequest(
+                      PipeTransferCompressedReq.fromTPipeTransferReq(req),
+                      isStrictUnidirectionalRequest(req));
                 }
               } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
                 return new TPipeTransferResp(
                     getReceiverTemporaryUnavailableStatus(
-                        "decompressing pipe transfer request", requestedMemorySizeInBytes, e));
+                        DataNodePipeMessages.MESSAGE_DECOMPRESSING_PIPE_TRANSFER_REQUEST_F09C8FD2,
+                        requestedMemorySizeInBytes,
+                        e));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferCompressedTimer(System.nanoTime() - startTime);
@@ -593,6 +641,37 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
 
     return new TPipeTransferResp(getNotLoggedInStatus());
+  }
+
+  /**
+   * Returns the name of the user that has been authenticated for the current transfer, either by
+   * the handshake or by the login of the underlying session, or {@code null} if no user can be
+   * determined. Callers must not substitute a privileged default for the missing user.
+   */
+  private String getAuthenticatedUser() {
+    // A name that was not produced by a completed handshake is not an authenticated identity, no
+    // matter whether it was left over by a failed handshake or by a default value.
+    if (hasPipeHandshakeCredential && username != null && !username.isEmpty()) {
+      return username;
+    }
+
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    if (!isLoggedInSession(clientSession)) {
+      return null;
+    }
+    final String sessionUsername = clientSession.getUsername();
+    return sessionUsername == null || sessionUsername.isEmpty() ? null : sessionUsername;
+  }
+
+  /**
+   * Returns whether the given session can authorize the statements of the current transfer.
+   *
+   * <p>The session of a pipe connection is not necessarily logged in. A connection that has not
+   * completed a handshake owns a session whose user id still defaults to the id of the super user,
+   * so the presence of a session alone must never be treated as an authenticated identity.
+   */
+  private static boolean isLoggedInSession(final IClientSession clientSession) {
+    return Objects.nonNull(clientSession) && clientSession.isLogin();
   }
 
   private static boolean requiresAuthentication(final PipeRequestType requestType) {
@@ -763,6 +842,21 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final boolean shouldWaitForSchemaBeforeLoad,
       final String conversionTaskId)
       throws IOException {
+    // The active load runs on another thread, so capture the identity here. Without a resolvable
+    // identity, fall back to the default user unless the receiver requires authentication.
+    String authenticatedUser = getAuthenticatedUser();
+    if (IoTDBDescriptor.getInstance().getConfig().isPipeReceiverRequireUserIdentity()) {
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      if (Objects.isNull(authenticatedUser)
+          || Objects.isNull(clientSession)
+          || !clientSession.isLogin()
+          || !authenticatedUser.equals(clientSession.getUsername())) {
+        return getNotLoggedInStatus();
+      }
+    } else if (Objects.isNull(authenticatedUser)) {
+      authenticatedUser = AuthorityChecker.SUPER_USER;
+    }
+
     final Map<String, String> loadAttributes =
         buildLoadTsFileAttributesForAsync(
             dataBaseName,
@@ -770,7 +864,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             validateTsFile.get(),
             shouldMarkAsPipeRequest.get(),
             shouldWaitForSchemaBeforeLoad,
-            conversionTaskId);
+            conversionTaskId,
+            authenticatedUser);
 
     if (!LoadUtil.loadFilesToActiveDir(loadAttributes, absolutePaths, true)) {
       throw new PipeException(DataNodePipeMessages.LOAD_ACTIVE_LISTENING_PIPE_DIR_IS_NOT);
@@ -802,38 +897,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final String dataBaseName,
       final boolean shouldConvertDataTypeOnTypeMismatch,
       final boolean validateTsFile,
-      final boolean shouldMarkAsPipeRequest) {
-    return buildLoadTsFileAttributesForAsync(
-        dataBaseName,
-        shouldConvertDataTypeOnTypeMismatch,
-        validateTsFile,
-        shouldMarkAsPipeRequest,
-        false,
-        null);
-  }
-
-  static Map<String, String> buildLoadTsFileAttributesForAsync(
-      final String dataBaseName,
-      final boolean shouldConvertDataTypeOnTypeMismatch,
-      final boolean validateTsFile,
-      final boolean shouldMarkAsPipeRequest,
-      final boolean shouldWaitForSchemaBeforeLoad) {
-    return buildLoadTsFileAttributesForAsync(
-        dataBaseName,
-        shouldConvertDataTypeOnTypeMismatch,
-        validateTsFile,
-        shouldMarkAsPipeRequest,
-        shouldWaitForSchemaBeforeLoad,
-        null);
-  }
-
-  static Map<String, String> buildLoadTsFileAttributesForAsync(
-      final String dataBaseName,
-      final boolean shouldConvertDataTypeOnTypeMismatch,
-      final boolean validateTsFile,
       final boolean shouldMarkAsPipeRequest,
       final boolean shouldWaitForSchemaBeforeLoad,
-      final String conversionTaskId) {
+      final String conversionTaskId,
+      final String userName) {
     return ActiveLoadPathHelper.buildAttributes(
         dataBaseName,
         LoadTsFileStatement.getDatabaseLevelByTreeDatabase(dataBaseName),
@@ -842,7 +909,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         !shouldWaitForSchemaBeforeLoad,
         null,
         shouldMarkAsPipeRequest,
-        AuthorityChecker.SUPER_USER,
+        // The user executing the asynchronous load. It must always be the authenticated sender: a
+        // privileged default here would let any authenticated account load data as that user.
+        userName,
         conversionTaskId);
   }
 
@@ -1000,6 +1069,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final DatabaseSchemaStatement statement =
         new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
     statement.setDatabasePath(databasePath);
+    statement.setEnablePrintExceptionLog(false);
 
     final TSStatus status = executeStatementAndClassifyExceptions(statement);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -1074,10 +1144,29 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return configReceiverId.get();
   }
 
-  private TPipeTransferResp handleTransferSlice(final PipeTransferSliceReq pipeTransferSliceReq) {
+  private boolean isStrictUnidirectionalRequest(final TPipeTransferReq req) {
+    return req instanceof AirGapPseudoTPipeTransferRequest
+        && ((AirGapPseudoTPipeTransferRequest) req).isStrictUnidirectional();
+  }
+
+  private TPipeTransferResp receiveNestedRequest(
+      final TPipeTransferReq req, final boolean strictUnidirectional) {
+    return receive(
+        strictUnidirectional
+            ? new AirGapPseudoTPipeTransferRequest()
+                .setStrictUnidirectional(true)
+                .setVersion(req.version)
+                .setType(req.type)
+                .setBody(req.body)
+            : req);
+  }
+
+  private TPipeTransferResp handleTransferSlice(
+      final PipeTransferSliceReq pipeTransferSliceReq, final boolean strictUnidirectional) {
     final long sliceBodySizeInBytes = getSliceBodySizeInBytes(pipeTransferSliceReq);
     long requestedMemorySizeInBytes = sliceBodySizeInBytes;
-    String memoryAction = "buffering sliced pipe transfer request";
+    String memoryAction =
+        DataNodePipeMessages.MESSAGE_BUFFERING_SLICED_PIPE_TRANSFER_REQUEST_5BB9367A;
     PipeMemoryBlock sliceMemoryBlock = null;
     try {
       sliceMemoryBlock = tryAllocateReceiverMemory(sliceBodySizeInBytes);
@@ -1089,7 +1178,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         return new TPipeTransferResp(
             RpcUtils.getStatus(
                 TSStatusCode.PIPE_TRANSFER_SLICE_OUT_OF_ORDER,
-                "Slice request is out of order, please check the request sequence."));
+                DataNodePipeMessages
+                    .MESSAGE_SLICE_REQUEST_IS_OUT_OF_ORDER_PLEASE_CHECK_THE_REQUEST_SEQUENCE_32958FCC));
       }
 
       allocatedSliceMemoryBlocks.add(sliceMemoryBlock);
@@ -1099,10 +1189,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         return new TPipeTransferResp(
             RpcUtils.getStatus(
                 TSStatusCode.SUCCESS_STATUS,
-                "Slice received, waiting for more slices to complete the request."));
+                DataNodePipeMessages
+                    .MESSAGE_SLICE_RECEIVED_WAITING_FOR_MORE_SLICES_TO_COMPLETE_THE_REQUEST_EDB0B3EA));
       }
 
-      memoryAction = "assembling sliced pipe transfer request";
+      memoryAction = DataNodePipeMessages.MESSAGE_ASSEMBLING_SLICED_PIPE_TRANSFER_REQUEST_EA6180BA;
       requestedMemorySizeInBytes = pipeTransferSliceReq.getOriginBodySize();
       try (final PipeMemoryBlock ignored = tryAllocateReceiverMemory(requestedMemorySizeInBytes)) {
         final Optional<TPipeTransferReq> req = sliceReqHandler.makeReqIfComplete();
@@ -1110,10 +1201,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           return new TPipeTransferResp(
               RpcUtils.getStatus(
                   TSStatusCode.SUCCESS_STATUS,
-                  "Slice received, waiting for more slices to complete the request."));
+                  DataNodePipeMessages
+                      .MESSAGE_SLICE_RECEIVED_WAITING_FOR_MORE_SLICES_TO_COMPLETE_THE_REQUEST_EDB0B3EA));
         }
         clearSliceReqHandler();
-        return receive(req.get());
+        return receiveNestedRequest(req.get(), strictUnidirectional);
       }
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
       closeMemoryBlock(sliceMemoryBlock);
@@ -1148,7 +1240,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private PipeMemoryBlock tryAllocateReceiverMemory(final long requestedMemorySizeInBytes)
       throws PipeRuntimeOutOfMemoryCriticalException {
     return PipeDataNodeResourceManager.memory()
-        .forceAllocate(Math.max(requestedMemorySizeInBytes, 0));
+        .forceAllocate(
+            IoTDBDataNodeReceiver.class.getSimpleName() + "#request",
+            Math.max(requestedMemorySizeInBytes, 0),
+            PipeMemoryBlockCategory.RECEIVER,
+            IoTDBDataNodeReceiver.class.getSimpleName());
   }
 
   @Override
@@ -1353,14 +1449,17 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             allocatedMemoryBlock =
                 PipeDataNodeResourceManager.memory()
                     .forceAllocate(
-                        (long) (estimatedMemory * pipeReceiverActualToEstimatedMemoryRatio));
+                        IoTDBDataNodeReceiver.class.getSimpleName() + "#statement",
+                        (long) (estimatedMemory * pipeReceiverActualToEstimatedMemoryRatio),
+                        PipeMemoryBlockCategory.RECEIVER,
+                        IoTDBDataNodeReceiver.class.getSimpleName());
             break;
           } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
             if (i == tryCount - 1) {
               final String message =
                   String.format(
-                      "Temporarily out of memory when executing statement %s, Requested memory: %s, "
-                          + "used memory: %s, free memory: %s, total non-floating memory: %s",
+                      DataNodePipeMessages
+                          .MESSAGE_TEMPORARILY_OUT_OF_MEMORY_WHEN_EXECUTING_STATEMENT_ARG_REQUESTED_MEMORY_ARG_USED_MEMORY_ARG_FREE_MEMORY_ARG_TOTAL_NON_FLOATING_MEMORY_ARG_2B46F2A6,
                       statement,
                       estimatedMemory * pipeReceiverActualToEstimatedMemoryRatio,
                       PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes(),
@@ -1443,7 +1542,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final Statement statement) {
     if (statement == null) {
       return RpcUtils.getStatus(
-          TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR, "Execute null statement.");
+          TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR,
+          DataNodePipeMessages.MESSAGE_EXECUTE_NULL_STATEMENT_2FC4F8E2);
     }
 
     // Judge which model the statement belongs to
@@ -1477,7 +1577,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
 
     final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-
+    if (!isLoggedInSession(clientSession)) {
+      // Without a logged in session the statement can not be authorized, so fail closed.
+      return getNotLoggedInStatus();
+    }
     // For table model, the authority check is done in inner execution. No need to check here
     if (!isTableModelStatement) {
       final TSStatus permissionCheckStatus =
@@ -1586,8 +1689,42 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return AuthorityChecker.checkUser(username, password);
   }
 
+  @Override
+  protected String getLoggedInSessionUsername() {
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    return Objects.nonNull(clientSession) && clientSession.isLogin()
+        ? clientSession.getUsername()
+        : null;
+  }
+
+  @Override
+  protected IAuditEntity createAuditEntity(final String username, final String cliHostname) {
+    // The role of the transfer is the one whose credentials were just verified. Its id is resolved
+    // from the local user manager and never taken from the handshake: the id supplied by the sender
+    // is not verified, and some table model authorization paths treat the super user id as a grant
+    // of every privilege.
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    // Only the address of the connection is taken from the session. The identity comes from the
+    // handshake and its id is resolved locally, because both the hostname and the id of the
+    // handshake are supplied by the sender.
+    final String clientAddress =
+        Objects.nonNull(clientSession) ? clientSession.getClientAddress() : null;
+    return new UserEntity(
+        Objects.isNull(username) ? -1L : AuthorityChecker.getUserId(username).orElse(-1L),
+        username,
+        Objects.nonNull(clientAddress) && !clientAddress.isEmpty() ? clientAddress : cliHostname);
+  }
+
   private TSStatus executeStatementForTableModel(
       final Statement statement, final String databaseName) {
+    // The transfer runs on the thread of its connection, so the session here is the one that the
+    // handshake logged in. A statement can only be authorized by a logged in session: a session of
+    // a connection without a completed handshake still carries the id of the super user, so it must
+    // not be treated as authenticated, and statements can not be authorized without any session.
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    if (!isLoggedInSession(clientSession)) {
+      return getNotLoggedInStatus();
+    }
     try {
       autoCreateDatabaseIfNecessary(databaseName);
 
@@ -1595,10 +1732,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           .executeForTableModel(
               shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
               tableSqlParser,
-              SESSION_MANAGER.getCurrSession(),
+              clientSession,
               SESSION_MANAGER.requestQueryId(),
-              SESSION_MANAGER.getSessionInfoOfPipeReceiver(
-                  SESSION_MANAGER.getCurrSession(), databaseName),
+              SESSION_MANAGER.getSessionInfoOfPipeReceiver(clientSession, databaseName),
               "",
               LocalExecutionPlanner.getInstance().metadata,
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
@@ -1617,10 +1753,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             .executeForTableModel(
                 shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
                 tableSqlParser,
-                SESSION_MANAGER.getCurrSession(),
+                clientSession,
                 SESSION_MANAGER.requestQueryId(),
-                SESSION_MANAGER.getSessionInfoOfPipeReceiver(
-                    SESSION_MANAGER.getCurrSession(), databaseName),
+                SESSION_MANAGER.getSessionInfoOfPipeReceiver(clientSession, databaseName),
                 "",
                 LocalExecutionPlanner.getInstance().metadata,
                 IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
@@ -1744,6 +1879,12 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TSStatus executeStatementForTreeModel(
       final Statement statement, final String databaseName) {
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    if (!isLoggedInSession(clientSession)) {
+      // Without a logged in session the statement can not be authorized, so fail closed.
+      return getNotLoggedInStatus();
+    }
+
     if (autoCreateTreeDatabaseIfNecessary(databaseName) == TreeDatabaseCreationResult.CONFLICTED) {
       // Continue execution, but let partition analysis infer the receiver-side database.
       clearTreeDatabaseName(statement);
@@ -1753,7 +1894,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         .executeForTreeModel(
             shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
             SESSION_MANAGER.requestQueryId(),
-            SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
+            SESSION_MANAGER.getSessionInfo(clientSession),
             "",
             ClusterPartitionFetcher.getInstance(),
             ClusterSchemaFetcher.getInstance(),
@@ -1819,15 +1960,20 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         return status;
       }
 
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      if (!isLoggedInSession(clientSession)) {
+        // Without a logged in session the statement can not be authorized, so fail closed.
+        return getNotLoggedInStatus();
+      }
+
       final TSStatus result =
           Coordinator.getInstance()
               .executeForTableModel(
                   shouldMarkAsPipeRequest.get() ? new PipeEnriched(statement) : statement,
                   tableSqlParser,
-                  SESSION_MANAGER.getCurrSession(),
+                  clientSession,
                   SESSION_MANAGER.requestQueryId(),
-                  SESSION_MANAGER.getSessionInfoOfPipeReceiver(
-                      SESSION_MANAGER.getCurrSession(), databaseName),
+                  SESSION_MANAGER.getSessionInfoOfPipeReceiver(clientSession, databaseName),
                   "",
                   LocalExecutionPlanner.getInstance().metadata,
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
@@ -1861,6 +2007,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   @Override
   public synchronized void handleExit() {
+    lastSuccessfulUnidirectionalHandshake = null;
+    lastSuccessfulUnidirectionalHandshakeResp = null;
     PipeReceiverRuntimeRegistry.getInstance()
         .deregister(configPipeReceiverRuntimeSessionKey.getAndSet(null));
     clearSliceReqHandler();

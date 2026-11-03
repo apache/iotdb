@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.agent.task.subtask.processor;
 
+import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
+
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -38,6 +40,7 @@ public class PipeProcessorSubtaskExecutionGuard {
   private final AtomicBoolean isRunning = new AtomicBoolean(false);
   private final AtomicLong executionEpoch = new AtomicLong(0);
   private final ThreadLocal<Long> invocationEpoch = new ThreadLocal<>();
+  private volatile Runnable workerWakeUpCallback;
 
   public PipeProcessorSubtaskExecutionGuard() {
     this(true);
@@ -55,9 +58,21 @@ public class PipeProcessorSubtaskExecutionGuard {
     return enabled;
   }
 
+  void setWorkerWakeUpCallback(final Runnable workerWakeUpCallback) {
+    this.workerWakeUpCallback = workerWakeUpCallback;
+  }
+
+  public Runnable getWorkerWakeUpCallback() {
+    return workerWakeUpCallback;
+  }
+
   void start() {
     if (enabled) {
       isRunning.set(true);
+      final Runnable wakeUpCallback = workerWakeUpCallback;
+      if (wakeUpCallback != null) {
+        wakeUpCallback.run();
+      }
     }
   }
 
@@ -105,6 +120,7 @@ public class PipeProcessorSubtaskExecutionGuard {
   }
 
   public void yieldIfParserNotAdmitted() {
+    PipeResourceMetrics.getInstance().recordTsFileParserAdmissionYield();
     throw PipeProcessorSubtaskYieldException.parserNotAdmitted();
   }
 }

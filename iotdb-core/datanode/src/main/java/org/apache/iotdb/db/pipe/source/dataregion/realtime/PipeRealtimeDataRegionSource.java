@@ -42,14 +42,18 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.pipe.processor.iotconsensusv2.IoTConsensusV2Processor;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeTimePartitionListener;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.MergeReaderPriority;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
@@ -96,11 +100,15 @@ import static org.apache.iotdb.commons.pipe.source.IoTDBSource.getSkipIfNoPrivil
 public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeRealtimeDataRegionSource.class);
+  private static final AtomicLong SOURCE_ID_GENERATOR = new AtomicLong(0);
 
   protected String pipeName;
   protected long creationTime;
   protected int dataRegionId = -1;
   protected PipeTaskMeta pipeTaskMeta;
+  // A lifecycle identity for this source instance, also attached to its events for attribution.
+  private final long sourceId = SOURCE_ID_GENERATOR.incrementAndGet();
+  private final AtomicLong completionStateVersion = new AtomicLong(0);
 
   protected boolean shouldExtractInsertion;
   protected boolean shouldExtractDeletion;
@@ -417,15 +425,49 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   protected abstract void doExtract(final PipeRealtimeEvent event);
 
+  protected static int compareTsFileEpochsByQueryPriority(
+      final TsFileEpoch epoch1, final TsFileEpoch epoch2) {
+    final TsFileResource resource1 = epoch1.getResource();
+    final TsFileResource resource2 = epoch2.getResource();
+
+    final int queryPriorityComparison =
+        new MergeReaderPriority(
+                resource1.getTsFileID().getTimestamp(),
+                resource1.getVersion(),
+                0,
+                resource1.isSeq())
+            .compareTo(
+                new MergeReaderPriority(
+                    resource2.getTsFileID().getTimestamp(),
+                    resource2.getVersion(),
+                    0,
+                    resource2.isSeq()));
+    if (queryPriorityComparison != 0) {
+      return queryPriorityComparison;
+    }
+
+    // Equal query priority does not imply the same file: this file-level comparison omits
+    // compaction versions and directories, and fixes the chunk offset at zero. Use deterministic
+    // tie-breakers for distinct files with the same seq/unseq flag, version and timestamp.
+    final int compactionVersionComparison =
+        Long.compare(
+            resource1.getTsFileID().compactionVersion, resource2.getTsFileID().compactionVersion);
+    return compactionVersionComparison != 0
+        ? compactionVersionComparison
+        : resource1.getTsFilePath().compareTo(resource2.getTsFilePath());
+  }
+
   protected void extractHeartbeat(final PipeRealtimeEvent event) {
     // Record the pending queue size before trying to put heartbeatEvent into queue
-    ((PipeHeartbeatEvent) event.getEvent()).recordExtractorQueueSize(pendingQueue);
+    final PipeHeartbeatEvent heartbeatEvent = (PipeHeartbeatEvent) event.getEvent();
+    heartbeatEvent.recordExtractorQueueSize(pendingQueue);
 
     final Event lastEvent = pendingQueue.peekLast();
-    if (lastEvent instanceof PipeRealtimeEvent
+    if (!heartbeatEvent.isCompletionBarrier()
+        && lastEvent instanceof PipeRealtimeEvent
         && ((PipeRealtimeEvent) lastEvent).getEvent() instanceof PipeHeartbeatEvent
         && (((PipeHeartbeatEvent) ((PipeRealtimeEvent) lastEvent).getEvent()).isShouldPrintMessage()
-            || !((PipeHeartbeatEvent) event.getEvent()).isShouldPrintMessage())) {
+            || !heartbeatEvent.isShouldPrintMessage())) {
       // If the last event in the pending queue is a heartbeat event, we should not extract any more
       // heartbeat events to avoid OOM when the pipe is stopped.
       // Besides, the printable event has higher priority to stay in queue to enable metrics report.
@@ -443,7 +485,9 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     // yet
     while (true) {
       final PipeRealtimeEvent lastEvent = ((PipeRealtimeEvent) pendingQueue.peekLast());
-      if (lastEvent == null || !(lastEvent.getEvent() instanceof PipeHeartbeatEvent)) {
+      if (lastEvent == null
+          || !(lastEvent.getEvent() instanceof PipeHeartbeatEvent)
+          || ((PipeHeartbeatEvent) lastEvent.getEvent()).isCompletionBarrier()) {
         break;
       }
       final PipeRealtimeEvent droppedEvent = (PipeRealtimeEvent) pendingQueue.pollLast();
@@ -530,6 +574,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
               DataNodePipeMessages.EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE_DATA_IS_LOST,
               event.getEvent());
       LOGGER.error(errorMessage);
+      markDataRegionCompletionInvalid();
       PipeDataNodeAgent.runtime()
           .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
       return null;
@@ -582,6 +627,29 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   public final int getDataRegionId() {
     return dataRegionId;
+  }
+
+  public final long getSourceId() {
+    return sourceId;
+  }
+
+  public final long getCompletionStateVersion() {
+    return completionStateVersion.get();
+  }
+
+  protected final void markCompletionStateChanged() {
+    completionStateVersion.incrementAndGet();
+  }
+
+  protected final void markDataRegionCompletionInvalid() {
+    PipeDataNodeSinglePipeMetrics.getInstance()
+        .markDataRegionCompletionInvalid(
+            pipeName, creationTime, dataRegionId, pipeTaskMeta, sourceId);
+  }
+
+  /** Whether this source is waiting for a TsFile to recover discarded tablet events. */
+  public boolean isTsFileEpochDegraded() {
+    return false;
   }
 
   public final long getRealtimeDataExtractionStartTime() {

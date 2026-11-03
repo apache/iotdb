@@ -29,14 +29,12 @@ import org.apache.iotdb.metrics.utils.SystemTag;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 @SuppressWarnings("java:S6548")
 public class ThreadPoolMetrics implements IMetricSet {
 
   private AbstractMetricService metricService;
-  private final Map<String, IThreadPoolMBean> notRegisteredPoolMap = new HashMap<>();
-  private final Map<String, IThreadPoolMBean> registeredPoolMap = new HashMap<>();
+  private final Map<String, IThreadPoolMBean> poolMap = new HashMap<>();
 
   public static ThreadPoolMetrics getInstance() {
     return ThreadPoolMetricsHolder.INSTANCE;
@@ -45,72 +43,53 @@ public class ThreadPoolMetrics implements IMetricSet {
   private ThreadPoolMetrics() {}
 
   public synchronized void registerThreadPool(IThreadPoolMBean pool, String name) {
-    if (metricService == null) {
-      notRegisteredPoolMap.put(name, pool);
-    } else {
-      registeredPoolMap.put(name, pool);
-      registerThreadPoolMetrics(name);
+    poolMap.put(name, pool);
+    if (metricService != null) {
+      registerThreadPoolMetrics(name, pool);
     }
   }
 
-  private void registerThreadPoolMetrics(String name) {
+  private void registerThreadPoolMetrics(String name, IThreadPoolMBean pool) {
     metricService.createAutoGauge(
         SystemMetric.THREAD_POOL_ACTIVE_THREAD_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        registeredPoolMap,
-        map ->
-            Optional.ofNullable(registeredPoolMap.get(name))
-                .map(IThreadPoolMBean::getActiveCount)
-                .orElse(0),
+        pool,
+        IThreadPoolMBean::getActiveCount,
         SystemTag.POOL_NAME.toString(),
         name);
     metricService.createAutoGauge(
         SystemMetric.THREAD_POOL_CORE_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        registeredPoolMap,
-        map ->
-            Optional.ofNullable(registeredPoolMap.get(name))
-                .map(IThreadPoolMBean::getCorePoolSize)
-                .orElse(0),
+        pool,
+        IThreadPoolMBean::getCorePoolSize,
         SystemTag.POOL_NAME.toString(),
         name);
     metricService.createAutoGauge(
         SystemMetric.THREAD_POOL_WAITING_TASK_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        registeredPoolMap,
-        map ->
-            Optional.ofNullable(registeredPoolMap.get(name))
-                .map(IThreadPoolMBean::getQueueLength)
-                .orElse(0),
+        pool,
+        IThreadPoolMBean::getQueueLength,
         SystemTag.POOL_NAME.toString(),
         name);
     metricService.createAutoGauge(
         SystemMetric.THREAD_POOL_DONE_TASK_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        registeredPoolMap,
-        map ->
-            Optional.ofNullable(registeredPoolMap.get(name))
-                .map(IThreadPoolMBean::getCompletedTaskCount)
-                .orElse(0L),
+        pool,
+        IThreadPoolMBean::getCompletedTaskCount,
         SystemTag.POOL_NAME.toString(),
         name);
     metricService.createAutoGauge(
         SystemMetric.THREAD_POOL_LARGEST_POOL_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        registeredPoolMap,
-        map ->
-            Optional.ofNullable(registeredPoolMap.get(name))
-                .map(IThreadPoolMBean::getLargestPoolSize)
-                .orElse(0),
+        pool,
+        IThreadPoolMBean::getLargestPoolSize,
         SystemTag.POOL_NAME.toString(),
         name);
   }
 
-  public synchronized void unRegisterThreadPool(String name) {
-    if (metricService == null) {
-      notRegisteredPoolMap.remove(name);
-    } else {
-      registeredPoolMap.remove(name);
+  public synchronized void unRegisterThreadPool(IThreadPoolMBean pool, String name) {
+    // A pool with the same name may have been registered while the old pool was shutting down.
+    if (poolMap.remove(name, pool) && metricService != null) {
       unRegisterThreadPoolMetrics(name);
     }
   }
@@ -146,20 +125,21 @@ public class ThreadPoolMetrics implements IMetricSet {
   @Override
   public synchronized void bindTo(AbstractMetricService metricService) {
     this.metricService = metricService;
-    for (Map.Entry<String, IThreadPoolMBean> entry : notRegisteredPoolMap.entrySet()) {
-      registerThreadPoolMetrics(entry.getKey());
+    for (Map.Entry<String, IThreadPoolMBean> entry : poolMap.entrySet()) {
+      registerThreadPoolMetrics(entry.getKey(), entry.getValue());
     }
-    registeredPoolMap.putAll(notRegisteredPoolMap);
-    notRegisteredPoolMap.clear();
   }
 
   @Override
   public synchronized void unbindFrom(AbstractMetricService metricService) {
-    for (Map.Entry<String, IThreadPoolMBean> entry : registeredPoolMap.entrySet()) {
-      unRegisterThreadPoolMetrics(entry.getKey());
+    if (this.metricService != metricService) {
+      return;
     }
-    registeredPoolMap.clear();
-    notRegisteredPoolMap.clear();
+    // Keep live pools registered so a metric service restart can bind them again.
+    for (String name : poolMap.keySet()) {
+      unRegisterThreadPoolMetrics(name);
+    }
+    this.metricService = null;
   }
 
   private static class ThreadPoolMetricsHolder {

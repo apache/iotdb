@@ -84,6 +84,7 @@ public class CachedSubscriptionPollResponse extends SubscriptionPollResponse {
   public void closeMemoryBlock() {
     if (Objects.nonNull(memoryBlock)) {
       memoryBlock.close();
+      memoryBlock = null;
     }
   }
 

@@ -74,6 +74,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -387,6 +388,122 @@ public class IoTDBInsertTableIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testInsertUnsupportedTimeExpressions() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      statement.execute(
+          "CREATE TABLE rejected_time_expression (device_id STRING TAG, value INT64 FIELD)");
+      statement.execute(
+          "CREATE TABLE rejected_custom_time_expression "
+              + "(device_id STRING TAG, event_time TIMESTAMP TIME, value INT64 FIELD)");
+      String[] expressions = {"1735660800000 + 1000", "?", "1.5", "true", "abs(1)"};
+      for (String expression : expressions) {
+        for (String columns : new String[] {" (time, device_id, value)", ""}) {
+          assertUnsupportedInsertExpression(
+              statement,
+              "INSERT INTO rejected_time_expression"
+                  + columns
+                  + " VALUES ("
+                  + expression
+                  + ", 'd1', 1)");
+        }
+      }
+      for (String sql :
+          new String[] {
+            "INSERT INTO rejected_time_expression (device_id, value, time) VALUES ('d1', 1, ?)",
+            "INSERT INTO rejected_custom_time_expression (device_id, event_time, value) "
+                + "VALUES ('d1', ?, 1)",
+            "INSERT INTO rejected_custom_time_expression VALUES ('d1', ?, 1)",
+            "INSERT INTO rejected_time_expression (time, device_id, value) "
+                + "VALUES (1735660800000, 'd1', ?)",
+            "INSERT INTO rejected_time_expression (time, device_id, value) "
+                + "VALUES (1735660800000, 'valid', 1), (?, 'invalid', 2)",
+            "INSERT INTO rejected_time_expression "
+                + "VALUES (1735660800000, 'valid', 1), (?, 'invalid', 2)"
+          }) {
+        assertUnsupportedInsertExpression(statement, sql);
+      }
+      for (String sql :
+          new String[] {
+            "INSERT INTO rejected_time_expression (time, device_id, value) VALUES (NULL, 'd1', 1)",
+            "INSERT INTO rejected_time_expression VALUES (NULL, 'd1', 1)"
+          }) {
+        SQLException exception = assertThrows(SQLException.class, () -> statement.execute(sql));
+        assertEquals(sql, TSStatusCode.SEMANTIC_ERROR.getStatusCode(), exception.getErrorCode());
+        assertTrue(
+            exception.getMessage(), exception.getMessage().contains("Timestamp cannot be null"));
+      }
+      for (String table :
+          new String[] {"rejected_time_expression", "rejected_custom_time_expression"}) {
+        try (ResultSet resultSet = statement.executeQuery("SELECT count(*) FROM " + table)) {
+          assertTrue(resultSet.next());
+          assertEquals(0, resultSet.getLong(1));
+          assertFalse(resultSet.next());
+        }
+      }
+    }
+  }
+
+  private static void assertUnsupportedInsertExpression(Statement statement, String sql) {
+    SQLException exception = assertThrows(SQLException.class, () -> statement.execute(sql));
+    assertEquals(sql, TSStatusCode.SEMANTIC_ERROR.getStatusCode(), exception.getErrorCode());
+    String message = exception.getMessage();
+    assertTrue(message, message.contains("Unsupported expression:"));
+    assertFalse(message, message.contains("ClassCastException"));
+    assertFalse(message, message.contains("cannot be cast"));
+    assertFalse(message, message.contains("org.apache.iotdb"));
+  }
+
+  @Test
+  public void testInsertSupportedTimeValues() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      statement.execute(
+          "CREATE TABLE supported_time_expression (device_id STRING TAG, value INT64 FIELD)");
+      String[] expressions = {
+        "1735660800000", "'2025-01-01T00:00:00+08:00'", "NOW()", "NOW() + 1d", "NOW() - 1d"
+      };
+      for (boolean explicitColumns : new boolean[] {true, false}) {
+        for (int i = 0; i < expressions.length; i++) {
+          String deviceId = "d" + explicitColumns + i;
+          long before = System.currentTimeMillis();
+          statement.execute(
+              "INSERT INTO supported_time_expression"
+                  + (explicitColumns ? " (time, device_id, value)" : "")
+                  + " VALUES ("
+                  + expressions[i]
+                  + ", '"
+                  + deviceId
+                  + "', "
+                  + i
+                  + ")");
+          long after = System.currentTimeMillis();
+          try (ResultSet resultSet =
+              statement.executeQuery(
+                  "SELECT time, value FROM supported_time_expression WHERE device_id = '"
+                      + deviceId
+                      + "'")) {
+            assertTrue(resultSet.next());
+            long timestamp = resultSet.getLong(1);
+            if (i < 2) {
+              assertEquals(1735660800000L, timestamp);
+            } else {
+              long offset = i == 3 ? 86400000L : i == 4 ? -86400000L : 0;
+              // Allow clock skew between the test client and cluster nodes.
+              assertTrue(timestamp >= before + offset - 10000);
+              assertTrue(timestamp <= after + offset + 10000);
+            }
+            assertEquals(i, resultSet.getLong(2));
+            assertFalse(resultSet.next());
+          }
+        }
+      }
     }
   }
 
@@ -1259,6 +1376,84 @@ public class IoTDBInsertTableIT {
       assertNull(rs1.getString("s1"));
       assertNull(rs1.getString("s2"));
       assertFalse(rs1.next());
+    }
+  }
+
+  @Test
+  public void testRejectedSqlFields() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "create table rejected_sql_fields (tag1 string tag, s1 int64 field, s2 int64 field)");
+      SQLException error =
+          assertThrows(
+              SQLException.class,
+              () -> statement.execute("insert into rejected_sql_fields(time, s1) values(1, true)"));
+      assertEquals(
+          "507: No column other than Time present, please check the request", error.getMessage());
+      try (ResultSet result = statement.executeQuery("select * from rejected_sql_fields")) {
+        assertFalse(result.next());
+      }
+
+      error =
+          assertThrows(
+              SQLException.class,
+              () ->
+                  statement.execute(
+                      "insert into rejected_sql_fields(time, tag1, s1, s2) values(2, 'd1', true, 42)"));
+      assertEquals(507, error.getErrorCode());
+      assertTrue(error.getMessage().contains("Fail to insert measurements [s1]"));
+      statement.execute("flush");
+      try (ResultSet result =
+          statement.executeQuery("select time, tag1, s1, s2 from rejected_sql_fields")) {
+        assertTrue(result.next());
+        assertEquals(2, result.getLong(1));
+        assertEquals("d1", result.getString(2));
+        assertNull(result.getObject(3));
+        assertEquals(42, result.getLong(4));
+        assertFalse(result.next());
+      }
+    }
+  }
+
+  @Test
+  public void testRejectedOnlyFieldDoesNotWriteTime() throws Exception {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("use test");
+      session.executeNonQueryStatement(
+          "create table rejected_only_field_time (tag1 string tag, s1 int64 field)");
+      for (boolean withTag : new boolean[] {true, false}) {
+        Tablet tablet =
+            new Tablet(
+                "rejected_only_field_time",
+                withTag ? Arrays.asList("tag1", "s1") : Arrays.asList("s1"),
+                withTag
+                    ? Arrays.asList(TSDataType.STRING, TSDataType.BOOLEAN)
+                    : Arrays.asList(TSDataType.BOOLEAN),
+                withTag
+                    ? Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD)
+                    : Arrays.asList(ColumnCategory.FIELD),
+                1);
+        tablet.addTimestamp(0, withTag ? 1 : 2);
+        if (withTag) {
+          tablet.addValue("tag1", 0, "d1");
+        }
+        tablet.addValue("s1", 0, true);
+        StatementExecutionException error =
+            assertThrows(StatementExecutionException.class, () -> session.insert(tablet));
+        assertEquals(
+            "507: No column other than Time present, please check the request", error.getMessage());
+      }
+      session.executeNonQueryStatement("flush");
+      for (String sql :
+          Arrays.asList(
+              "select * from rejected_only_field_time",
+              "show devices from rejected_only_field_time")) {
+        try (SessionDataSet dataSet = session.executeQueryStatement(sql)) {
+          assertFalse(dataSet.hasNext());
+        }
+      }
     }
   }
 

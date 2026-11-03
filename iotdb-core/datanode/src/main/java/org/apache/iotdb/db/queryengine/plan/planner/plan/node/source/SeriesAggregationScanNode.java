@@ -241,7 +241,8 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
   public static SeriesAggregationScanNode deserialize(ByteBuffer byteBuffer) {
     MeasurementPath partialPath = (MeasurementPath) PathDeserializeUtil.deserialize(byteBuffer);
     int aggregateDescriptorSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<AggregationDescriptor> aggregationDescriptorList = new ArrayList<>();
+    List<AggregationDescriptor> aggregationDescriptorList =
+        new ArrayList<>(aggregateDescriptorSize);
     for (int i = 0; i < aggregateDescriptorSize; i++) {
       aggregationDescriptorList.add(AggregationDescriptor.deserialize(byteBuffer));
     }

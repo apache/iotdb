@@ -33,8 +33,14 @@ public final class RpcMessages {
       "Read a negative frame size (%d)%s!";
   public static final String FRAME_ERROR_FRAME_SIZE_EXCEEDED =
       "Frame size (%d) larger than protect max size (%d)%s!";
+  public static final String
+      EXCEPTION_FRAME_SIZE_ARG_EXCEEDS_THE_MAXIMUM_SUPPORTED_MESSAGE_SIZE_E83C0952 =
+      "Frame size (%d) exceeds the maximum supported message size!";
   public static final String FRAME_ERROR_STRING_LENGTH_EXCEEDED =
       "String length (%d) larger than protect max size (%d)%s!";
+  public static final String
+      EXCEPTION_REQUIRED_READ_SIZE_ARG_EXCEEDS_REMAINING_FRAME_SIZE_ARG_ARG_9C0541EE =
+          "Required read size (%d) exceeds remaining frame size (%d)%s!";
 
   // TElasticFramedTransport - SSL
   public static final String NON_SSL_TO_SSL_PORT =
@@ -113,4 +119,12 @@ public final class RpcMessages {
   public static final String EXCEPTION_KEYSTORE_OR_TRUSTSTORE_FILE_NOT_FOUND_5A6845B2 =
       "keystore or truststore file not found: ";
 
+  public static final String EXCEPTION_MULTIPLE_ERROR_OCCUR_MESSAGES_75A34A00 =
+      "Multiple error occur, messages: ";
+
+  public static final String EXCEPTION_THE_VALUE_GOT_BY_ARG_COLUMN_NAME_IS_NULL_65408BDE =
+      "The value got by %s (column name) is NULL.";
+
+  public static final String EXCEPTION_DATA_TYPE_ARG_IS_NOT_SUPPORTED_31213160 =
+      "Data type %s is not supported.";
 }

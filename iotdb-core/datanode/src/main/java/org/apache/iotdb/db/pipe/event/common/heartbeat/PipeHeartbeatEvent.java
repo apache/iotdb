@@ -42,6 +42,9 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeHeartbeatEvent.class);
 
   private final int dataRegionId;
+  private final boolean completionBarrier;
+  private long assignerEpoch = Long.MIN_VALUE;
+  private long dataGeneration = Long.MIN_VALUE;
 
   private long timePublished;
   private long timeAssigned;
@@ -63,9 +66,15 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   private final boolean shouldPrintMessage;
 
   public PipeHeartbeatEvent(final int dataRegionId, final boolean shouldPrintMessage) {
+    this(dataRegionId, shouldPrintMessage, false);
+  }
+
+  public PipeHeartbeatEvent(
+      final int dataRegionId, final boolean shouldPrintMessage, final boolean completionBarrier) {
     super(null, 0, null, null, null, null, null, null, true, Long.MIN_VALUE, Long.MAX_VALUE);
     this.dataRegionId = dataRegionId;
     this.shouldPrintMessage = shouldPrintMessage;
+    this.completionBarrier = completionBarrier;
   }
 
   public PipeHeartbeatEvent(
@@ -74,7 +83,11 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
       final PipeTaskMeta pipeTaskMeta,
       final int dataRegionId,
       final long timePublished,
-      final boolean shouldPrintMessage) {
+      final boolean shouldPrintMessage,
+      final boolean completionBarrier,
+      final long assignerEpoch,
+      final long dataGeneration,
+      final long sourceId) {
     super(
         pipeName,
         creationTime,
@@ -90,6 +103,13 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     this.dataRegionId = dataRegionId;
     this.timePublished = timePublished;
     this.shouldPrintMessage = shouldPrintMessage;
+    this.completionBarrier = completionBarrier;
+    this.assignerEpoch = assignerEpoch;
+    this.dataGeneration = dataGeneration;
+    this.sourceId = sourceId;
+    if (completionBarrier && sourceId != Long.MIN_VALUE) {
+      addCompletionOnCommittedHook();
+    }
   }
 
   @Override
@@ -136,7 +156,16 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     // Should record PipeTaskMeta, for sometimes HeartbeatEvents should report exceptions.
     // Here we ignore parameters `pattern`, `startTime`, and `endTime`.
     return new PipeHeartbeatEvent(
-        pipeName, creationTime, pipeTaskMeta, dataRegionId, timePublished, shouldPrintMessage);
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        dataRegionId,
+        timePublished,
+        shouldPrintMessage,
+        completionBarrier,
+        assignerEpoch,
+        dataGeneration,
+        sourceId);
   }
 
   @Override
@@ -158,6 +187,63 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   public boolean isShouldPrintMessage() {
     return shouldPrintMessage;
+  }
+
+  public boolean isCompletionBarrier() {
+    return completionBarrier;
+  }
+
+  @Override
+  public boolean isControlEvent() {
+    return true;
+  }
+
+  @Override
+  public boolean shouldSkipProcessing() {
+    return completionBarrier;
+  }
+
+  public void bindCompletionBarrier(final long assignerEpoch, final long dataGeneration) {
+    if (completionBarrier) {
+      this.assignerEpoch = assignerEpoch;
+      this.dataGeneration = dataGeneration;
+    }
+  }
+
+  @Override
+  public void bindSource(final long sourceId) {
+    final boolean shouldAddCompletionHook =
+        completionBarrier
+            && pipeName != null
+            && this.sourceId == Long.MIN_VALUE
+            && sourceId != Long.MIN_VALUE;
+    super.bindSource(sourceId);
+    if (shouldAddCompletionHook) {
+      addCompletionOnCommittedHook();
+    }
+  }
+
+  private void addCompletionOnCommittedHook() {
+    addOnCommittedHook(
+        () ->
+            PipeDataNodeSinglePipeMetrics.getInstance()
+                .markDataRegionCompleted(
+                    pipeName,
+                    creationTime,
+                    dataRegionId,
+                    pipeTaskMeta,
+                    assignerEpoch,
+                    dataGeneration,
+                    sourceId,
+                    getCommitterKey()));
+  }
+
+  public long getAssignerEpoch() {
+    return assignerEpoch;
+  }
+
+  public long getDataGeneration() {
+    return dataGeneration;
   }
 
   /////////////////////////////// Delay Reporting ///////////////////////////////
@@ -224,10 +310,10 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   /////////////////////////////// For Commit Ordering ///////////////////////////////
 
-  /** {@link PipeHeartbeatEvent}s do not need to be committed in order. */
+  /** Only completion barriers need ordered commit. Periodic heartbeats remain best-effort. */
   @Override
   public boolean needToCommit() {
-    return false;
+    return completionBarrier && Objects.nonNull(pipeName) && sourceId != Long.MIN_VALUE;
   }
 
   /////////////////////////////// Object ///////////////////////////////
@@ -278,6 +364,14 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
         + pipeName
         + "', dataRegionId="
         + dataRegionId
+        + ", completionBarrier="
+        + completionBarrier
+        + ", assignerEpoch="
+        + assignerEpoch
+        + ", dataGeneration="
+        + dataGeneration
+        + ", sourceId="
+        + sourceId
         + ", startTime="
         + startTimeMessage
         + ", publishedToAssigned="

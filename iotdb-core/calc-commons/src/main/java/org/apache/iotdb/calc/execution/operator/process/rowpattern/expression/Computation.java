@@ -108,7 +108,7 @@ public abstract class Computation {
         return new BinaryComputation(left, right, op);
       } else if (expression instanceof LogicalExpression) {
         LogicalExpression logicalExpr = (LogicalExpression) expression;
-        List<Computation> computations = new ArrayList<>();
+        List<Computation> computations = new ArrayList<>(logicalExpr.getTerms().size());
         for (Expression term : logicalExpr.getTerms()) {
           computations.add(parse(term, counter, symbolToIndex));
         }

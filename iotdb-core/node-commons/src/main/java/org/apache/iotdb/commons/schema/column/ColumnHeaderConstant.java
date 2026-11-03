@@ -86,6 +86,7 @@ public class ColumnHeaderConstant {
   public static final String NODE_ID = "NodeID";
   public static final String NODE_TYPE = "NodeType";
   public static final String STATUS = "Status";
+  public static final String STATUS_REASON = "StatusReason";
   public static final String INTERNAL_ADDRESS = "InternalAddress";
   public static final String INTERNAL_PORT = "InternalPort";
   public static final String CONFIG_CONSENSUS_PORT = "ConfigConsensusPort";
@@ -133,6 +134,8 @@ public class ColumnHeaderConstant {
   // column names for show topics statement
   public static final String TOPIC_NAME = "TopicName";
   public static final String TOPIC_CONFIGS = "TopicConfigs";
+  public static final String TAG_FILTER_STATUS = "TagFilterStatus";
+  public static final String TAG_FILTER_MESSAGE = "TagFilterMessage";
   public static final String TOPIC = "Topic";
   public static final String CREATE_TOPIC = "Create Topic";
 
@@ -153,6 +156,7 @@ public class ColumnHeaderConstant {
   public static final String LAST_POLL_TIME = "LastPollTime";
   public static final String LAST_CONSUMER_ID = "LastConsumerId";
   public static final String SEEK_GENERATION = "SeekGeneration";
+  public static final String READY_ON_DNS = "ready_on_dns";
 
   // show cluster status
   public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
@@ -304,11 +308,30 @@ public class ColumnHeaderConstant {
   public static final String PIPE_PROCESSOR_TABLE_MODEL = "pipe_processor";
   public static final String PIPE_SINK_TABLE_MODEL = "pipe_sink";
   public static final String EXCEPTION_MESSAGE_TABLE_MODEL = "exception_message";
+  public static final String PROCEDURE_ID_TABLE_MODEL = "procedure_id";
+  public static final String PROGRESS_TABLE_MODEL = "progress";
+  public static final String ERROR_MESSAGE_TABLE_MODEL = "error_message";
+  public static final String WRITTEN_MOD_FILE_COUNT_TABLE_MODEL = "written_mod_file_count";
+  public static final String REMAINING_MOD_FILE_COUNT_TABLE_MODEL = "remaining_mod_file_count";
   public static final String REMAINING_EVENT_COUNT_TABLE_MODEL = "remaining_event_count";
   public static final String ESTIMATED_REMAINING_SECONDS_TABLE_MODEL =
       "estimated_remaining_seconds";
   public static final String IS_DEGRADED_TABLE_MODEL = "is_degraded";
   public static final String RECENT_FAILURES_TABLE_MODEL = "recent_failures";
+  public static final String NAME_TABLE_MODEL = "name";
+  public static final String PIPE_NAME_TABLE_MODEL = "pipe_name";
+  public static final String PIPE_MODEL_TABLE_MODEL = "pipe_model";
+  public static final String BLOCK_ID_TABLE_MODEL = "block_id";
+  public static final String CATEGORY_TABLE_MODEL = "category";
+  public static final String MEMORY_USAGE_IN_BYTES_TABLE_MODEL = "memory_usage_in_bytes";
+  public static final String PEAK_MEMORY_SIZE_IN_BYTES_TABLE_MODEL = "peak_memory_size_in_bytes";
+  public static final String MAX_MEMORY_SIZE_IN_BYTES_TABLE_MODEL = "max_memory_size_in_bytes";
+  public static final String ALLOCATION_TIME_TABLE_MODEL = "allocation_time";
+  public static final String ASSIGNER_TABLE_MODEL = "assigner";
+  public static final String PARENT_BLOCK_ID_TABLE_MODEL = "parent_block_id";
+  public static final String HIERARCHY_LEVEL_TABLE_MODEL = "hierarchy_level";
+  public static final String ACCOUNTED_MEMORY_USAGE_IN_BYTES_TABLE_MODEL =
+      "accounted_memory_usage_in_bytes";
 
   public static final String RECEIVER_NODE_TYPE_TABLE_MODEL = "receiver_node_type";
   public static final String RECEIVER_NODE_ID_TABLE_MODEL = "receiver_node_id";
@@ -345,6 +368,7 @@ public class ColumnHeaderConstant {
 
   public static final String NODE_ID_TABLE_MODEL = "node_id";
   public static final String NODE_TYPE_TABLE_MODEL = "node_type";
+  public static final String STATUS_REASON_TABLE_MODEL = "status_reason";
   public static final String INTERNAL_PORT_TABLE_MODEL = "internal_port";
   public static final String BUILD_INFO_TABLE_MODEL = "build_info";
 
@@ -675,6 +699,13 @@ public class ColumnHeaderConstant {
           new ColumnHeader(TOPIC_NAME, TSDataType.TEXT),
           new ColumnHeader(TOPIC_CONFIGS, TSDataType.TEXT));
 
+  public static final List<ColumnHeader> showTableTopicColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(TOPIC_NAME, TSDataType.TEXT),
+          new ColumnHeader(TOPIC_CONFIGS, TSDataType.TEXT),
+          new ColumnHeader(TAG_FILTER_STATUS, TSDataType.TEXT),
+          new ColumnHeader(TAG_FILTER_MESSAGE, TSDataType.TEXT));
+
   public static final List<ColumnHeader> showCreateTopicColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TOPIC, TSDataType.TEXT),
@@ -708,7 +739,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(LAST_PROGRESS_TIME, TSDataType.INT64),
           new ColumnHeader(LAST_POLL_TIME, TSDataType.INT64),
           new ColumnHeader(LAST_CONSUMER_ID, TSDataType.TEXT),
-          new ColumnHeader(SEEK_GENERATION, TSDataType.INT64));
+          new ColumnHeader(SEEK_GENERATION, TSDataType.INT64),
+          new ColumnHeader(READY_ON_DNS, TSDataType.TEXT));
 
   public static final List<ColumnHeader> selectIntoColumnHeaders =
       ImmutableList.of(

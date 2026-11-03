@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.binary;
 
+import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.binary.BinaryColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.binary.LogicAndColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.binary.LogicOrColumnTransformer;
@@ -37,12 +38,21 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.function.BiFunction;
 
 public class LogicBinaryColumnTransformerTest {
 
   private static final Type returnType = TypeFactory.getType(TSDataType.BOOLEAN);
 
   private static final int POSITION_COUNT = 4;
+
+  private static final Boolean[] AND_EXPECTED = {
+    null, false, null, false, false, false, null, false, true
+  };
+
+  private static final Boolean[] OR_EXPECTED = {
+    null, null, true, null, false, true, true, true, true
+  };
 
   private static final boolean[] leftInput = new boolean[] {true, false, true, false};
 
@@ -111,6 +121,86 @@ public class LogicBinaryColumnTransformerTest {
       Assert.fail("Left and Right input must both be of boolean type.");
     } catch (Exception ignored) {
 
+    }
+  }
+
+  @Test
+  public void testLogicAndWithNullsAndSelection() {
+    assertSelected(
+        (left, right) -> new LogicAndColumnTransformer(returnType, left, right),
+        AND_EXPECTED,
+        false);
+  }
+
+  @Test
+  public void testLogicAndWithNullsAndPartialSelection() {
+    assertSelected(
+        (left, right) -> new LogicAndColumnTransformer(returnType, left, right),
+        AND_EXPECTED,
+        true);
+  }
+
+  @Test
+  public void testLogicOrWithNullsAndSelection() {
+    assertSelected(
+        (left, right) -> new LogicOrColumnTransformer(returnType, left, right), OR_EXPECTED, false);
+  }
+
+  @Test
+  public void testLogicOrWithNullsAndPartialSelection() {
+    assertSelected(
+        (left, right) -> new LogicOrColumnTransformer(returnType, left, right), OR_EXPECTED, true);
+  }
+
+  private void assertSelected(
+      BiFunction<ColumnTransformer, ColumnTransformer, BinaryColumnTransformer> transformerFactory,
+      Boolean[] expected,
+      boolean partial) {
+    Boolean[] values = {null, false, true};
+    TsBlockBuilder builder =
+        new TsBlockBuilder(9, Arrays.asList(TSDataType.BOOLEAN, TSDataType.BOOLEAN));
+    for (Boolean left : values) {
+      for (Boolean right : values) {
+        builder.getTimeColumnBuilder().writeLong(0);
+        if (left == null) {
+          builder.getColumnBuilder(0).appendNull();
+        } else {
+          builder.getColumnBuilder(0).writeBoolean(left);
+        }
+        if (right == null) {
+          builder.getColumnBuilder(1).appendNull();
+        } else {
+          builder.getColumnBuilder(1).writeBoolean(right);
+        }
+        builder.declarePosition();
+      }
+    }
+    TsBlock block = builder.build();
+    IdentityColumnTransformer left = new IdentityColumnTransformer(returnType, 0);
+    IdentityColumnTransformer right = new IdentityColumnTransformer(returnType, 1);
+    left.addReferenceCount();
+    right.addReferenceCount();
+    left.initFromTsBlock(block);
+    right.initFromTsBlock(block);
+    BinaryColumnTransformer transformer = transformerFactory.apply(left, right);
+    transformer.addReferenceCount();
+    boolean[] selection = new boolean[9];
+    for (int i = 0; i < selection.length; i++) {
+      // Keep the right-FALSE rows (1 and 7) selected while excluding some left-FALSE rows.
+      selection[i] = !partial || (i != 3 && i != 5);
+    }
+    boolean[] selected = selection.clone();
+    transformer.evaluateWithSelection(selection);
+    Assert.assertArrayEquals(selected, selection);
+    Column result = transformer.getColumn();
+    Assert.assertEquals(expected.length, result.getPositionCount());
+    for (int i = 0; i < expected.length; i++) {
+      if (!selected[i] || expected[i] == null) {
+        Assert.assertTrue(result.isNull(i));
+      } else {
+        Assert.assertFalse(result.isNull(i));
+        Assert.assertEquals(expected[i], result.getBoolean(i));
+      }
     }
   }
 }

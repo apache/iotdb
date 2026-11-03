@@ -50,6 +50,9 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
   private long sleepingTimeInMilliSecond = 50;
 
   private final Set<PipeProcessorSubtask> subtasks;
+  private final Object wakeUpMonitor = new Object();
+  private final Runnable wakeUpCallback = this::wakeUp;
+  private boolean isWakeUpRequested;
 
   private volatile Thread workerThread;
   private volatile PipeProcessorSubtask currentSubtask;
@@ -116,10 +119,18 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
     return canSleepBeforeNextRound;
   }
 
-  private void sleepIfNecessary(final boolean canSleepBeforeNextRound) {
+  @VisibleForTesting
+  void sleepIfNecessary(final boolean canSleepBeforeNextRound) {
     if (canSleepBeforeNextRound) {
       try {
-        Thread.sleep(sleepingTimeInMilliSecond);
+        synchronized (wakeUpMonitor) {
+          // A parser can become eligible before this worker starts waiting. Keep that notification
+          // until the idle round consumes it, instead of sleeping with the fair queue head ready.
+          if (!isWakeUpRequested) {
+            wakeUpMonitor.wait(sleepingTimeInMilliSecond);
+          }
+          isWakeUpRequested = false;
+        }
       } catch (final InterruptedException e) {
         LOGGER.warn(DataNodePipeMessages.SUBTASK_WORKER_IS_INTERRUPTED, e);
         Thread.currentThread().interrupt();
@@ -127,6 +138,11 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
     } else {
       ++workingRoundInAdjustmentInterval;
     }
+  }
+
+  @VisibleForTesting
+  void setSleepingTimeInMilliSecond(final long sleepingTimeInMilliSecond) {
+    this.sleepingTimeInMilliSecond = sleepingTimeInMilliSecond;
   }
 
   private void adjustSleepingTimeIfNecessary() {
@@ -148,7 +164,16 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
   }
 
   public void schedule(final PipeProcessorSubtask pipeProcessorSubtask) {
+    pipeProcessorSubtask.setWorkerWakeUpCallback(wakeUpCallback);
     subtasks.add(pipeProcessorSubtask);
+    wakeUp();
+  }
+
+  private void wakeUp() {
+    synchronized (wakeUpMonitor) {
+      isWakeUpRequested = true;
+      wakeUpMonitor.notifyAll();
+    }
   }
 
   void watchLongRunningEvent() {

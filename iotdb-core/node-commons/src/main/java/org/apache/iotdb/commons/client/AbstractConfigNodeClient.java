@@ -162,6 +162,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDropTableProceduresResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -321,6 +322,11 @@ public abstract class AbstractConfigNodeClient<C extends AbstractConfigNodeClien
       }
     }
 
+    // Refresh stale candidates before retrying after an RPC or connection failure.
+    syncLatestConfigNodeList();
+    if (configNode != null) {
+      cursor = configNodes.indexOf(configNode);
+    }
     for (int tryHostNum = 0; tryHostNum < configNodes.size(); tryHostNum++) {
       cursor = (cursor + 1) % configNodes.size();
       TEndPoint tryEndpoint = configNodes.get(cursor);
@@ -344,8 +350,11 @@ public abstract class AbstractConfigNodeClient<C extends AbstractConfigNodeClien
   }
 
   public void syncLatestConfigNodeList() {
-    configNodes = getConfigNodeInfo().getLatestConfigNodes();
-    cursor = 0;
+    final List<TEndPoint> latestConfigNodes = getConfigNodeInfo().getLatestConfigNodes();
+    if (!latestConfigNodes.isEmpty()) {
+      configNodes = latestConfigNodes;
+      cursor = 0;
+    }
   }
 
   @Override
@@ -1299,6 +1308,11 @@ public abstract class AbstractConfigNodeClient<C extends AbstractConfigNodeClien
 
   @Override
   public TShowTable4InformationSchemaResp showTables4InformationSchema() throws TException {
+    return null;
+  }
+
+  @Override
+  public TShowDropTableProceduresResp showDropTableProcedures() throws TException {
     return null;
   }
 

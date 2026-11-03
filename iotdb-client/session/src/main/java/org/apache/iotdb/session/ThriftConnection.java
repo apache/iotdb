@@ -25,8 +25,8 @@ import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TElasticFramedTransport;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
-import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
@@ -36,12 +36,16 @@ import org.apache.iotdb.session.i18n.SessionMessages;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.net.Socket;
 import java.time.ZoneId;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ThriftConnection {
 
@@ -55,7 +59,10 @@ public class ThriftConnection {
 
   protected final int connectionTimeoutInMs;
 
-  protected TTransport transport;
+  protected volatile TTransport transport;
+  private final Object transportLock = new Object();
+  private final AtomicBoolean disposed = new AtomicBoolean();
+  private volatile boolean closed;
   protected IClientRPCService.Iface client;
   protected long sessionId;
   protected long statementId;
@@ -87,31 +94,28 @@ public class ThriftConnection {
       ZoneId zoneId,
       String version)
       throws IoTDBConnectionException {
-    DeepCopyRpcTransportFactory transportFactory =
-        DeepCopyRpcTransportFactory.getInstance(thriftDefaultBufferSize, thriftMaxFrameSize);
+    checkNotClosed();
     try {
-      if (useSSL) {
-        transport =
-            transportFactory.getTransport(
-                endPoint.getIp(),
-                endPoint.getPort(),
-                connectionTimeoutInMs,
-                trustStore,
-                trustStorePwd,
-                keyStore,
-                keyStorePwd,
-                sslProtocol);
-      } else {
-        transport =
-            transportFactory.getTransport(
-                // as there is a try-catch already, we do not need to use TSocket.wrap
-                endPoint.getIp(), endPoint.getPort(), connectionTimeoutInMs);
+      TTransport prepared =
+          createTransport(useSSL, trustStore, trustStorePwd, keyStore, keyStorePwd, sslProtocol);
+      boolean published;
+      synchronized (transportLock) {
+        published = !closed;
+        if (published) {
+          transport = prepared;
+        }
       }
-      if (!transport.isOpen()) {
-        transport.open();
+      if (!published) {
+        prepared.close();
+        throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
       }
+      if (!prepared.isOpen()) {
+        prepared.open();
+      }
+      checkNotClosed();
       this.zoneId = zoneId;
     } catch (TTransportException e) {
+      close();
       throw new IoTDBConnectionException(e);
     }
 
@@ -155,7 +159,7 @@ public class ThriftConnection {
       statementId = client.requestStatementId(sessionId);
 
     } catch (Exception e) {
-      transport.close();
+      close();
       throw new IoTDBConnectionException(e);
     }
   }
@@ -193,19 +197,74 @@ public class ThriftConnection {
         execResp.getColumnIndex2TsBlockColumnIndexList());
   }
 
-  public void close() {
-    if (transport != null && transport.isOpen()) {
-      try {
-        if (client != null) {
-          client.closeSession(new TSCloseSessionReq(sessionId));
-        }
-      } catch (TException e) {
-        LOGGER.warn(SessionMessages.CLOSING_SESSION_FAILED, sessionId, endPoint);
-      } finally {
-        if (transport.isOpen()) {
-          transport.close();
+  /** Create outside the publication lock: TLS setup itself can perform network I/O. */
+  protected TTransport createTransport(
+      boolean useSSL,
+      String trustStore,
+      String trustStorePwd,
+      String keyStore,
+      String keyStorePwd,
+      String sslProtocol)
+      throws TTransportException {
+    DeepCopyRpcTransportFactory factory =
+        DeepCopyRpcTransportFactory.getInstance(thriftDefaultBufferSize, thriftMaxFrameSize);
+    return useSSL
+        ? factory.getTransport(
+            endPoint.getIp(),
+            endPoint.getPort(),
+            connectionTimeoutInMs,
+            trustStore,
+            trustStorePwd,
+            keyStore,
+            keyStorePwd,
+            sslProtocol)
+        : factory.getTransport(endPoint.getIp(), endPoint.getPort(), connectionTimeoutInMs);
+  }
+
+  private void checkNotClosed() throws IoTDBConnectionException {
+    if (closed) {
+      throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
+    }
+  }
+
+  /**
+   * Abort socket I/O without waiting for the synchronized RPC client or releasing buffers still
+   * owned by the refresh thread. Closing the Socket directly also prevents TSocket.open() from
+   * creating a replacement socket if closure races with the start of TCP connect.
+   */
+  void abort() {
+    TTransport current;
+    synchronized (transportLock) {
+      closed = true;
+      current = transport;
+    }
+    if (current == null) {
+      return;
+    }
+    TTransport underlying =
+        current instanceof TElasticFramedTransport
+            ? ((TElasticFramedTransport) current).getSocket()
+            : current;
+    if (underlying instanceof TSocket) {
+      Socket socket = ((TSocket) underlying).getSocket();
+      if (socket != null) {
+        try {
+          socket.close();
+        } catch (IOException e) {
+          LOGGER.warn(SessionMessages.CLOSING_SESSION_FAILED, sessionId, endPoint, e);
         }
       }
+    } else {
+      underlying.close();
+    }
+  }
+
+  /** Release the transport after its refresh owner has finished using the buffers. */
+  public void close() {
+    abort();
+    if (disposed.compareAndSet(false, true) && transport != null) {
+      // Closing the transport also releases the server-side session through handleClientExit().
+      transport.close();
     }
   }
 }

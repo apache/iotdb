@@ -356,6 +356,14 @@ struct TUpdateTableReq {
   1: required byte type
   2: required binary tableInfo
   3: optional string oldName
+  4: optional TUpdateTree2TableView updateTree2TableViewInfo
+}
+
+struct TUpdateTree2TableView{
+   1: required byte tree2TableOperationType
+   2: optional string treePath
+   3: optional bool isRestrict
+   4: optional i32 tagNum
 }
 
 struct TInvalidateTableCacheReq {
@@ -380,6 +388,23 @@ struct TDeleteColumnDataReq {
 struct TDeleteDataOrDevicesForDropTableReq {
   1: required list<common.TConsensusGroupId> regionIdList
   2: required string tableName
+  3: optional i64 procedureId
+}
+
+struct TDropTableModProgress {
+  1: required i64 writtenModFileCount
+  // Unset until the region has identified all mod files involved in this deletion.
+  2: optional i64 remainingModFileCount
+}
+
+struct TGetDropTableModProgressReq {
+  1: required i64 procedureId
+  2: required list<common.TConsensusGroupId> regionIdList
+}
+
+struct TGetDropTableModProgressResp {
+  1: required common.TSStatus status
+  2: optional map<i32, TDropTableModProgress> regionProgress
 }
 
 struct TTableDeviceDeletionWithPatternAndFilterReq {
@@ -433,6 +458,7 @@ struct TDeviceViewReq {
   3: required i32 tagNumber
   4: required bool restrict
   5: optional set<string> requiredMeasurements
+  6: optional bool tolerateTypeMismatch
 }
 
 struct TDeviceViewResp {
@@ -1355,6 +1381,8 @@ service IDataNodeRPCService {
   * Delete data for drop table
   */
   common.TSStatus deleteDataForDropTable(TDeleteDataOrDevicesForDropTableReq req)
+
+  TGetDropTableModProgressResp getDropTableModProgress(TGetDropTableModProgressReq req)
 
   /**
   * Delete devices for drop table

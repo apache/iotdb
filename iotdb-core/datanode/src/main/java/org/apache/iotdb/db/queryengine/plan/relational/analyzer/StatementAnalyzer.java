@@ -169,6 +169,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultExpressionTraversalVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
@@ -503,7 +504,8 @@ public class StatementAnalyzer {
       if (matches.size() > 1) {
         throw new SemanticException(
             String.format(
-                "Column alias '%s' is ambiguous at positions %s",
+                DataNodeQueryMessages
+                    .EXCEPTION_COLUMN_ALIAS_ARG_IS_AMBIGUOUS_AT_POSITIONS_ARG_F6FF2E93,
                 identifier.getValue(),
                 matches.stream()
                     .map(alias -> Integer.toString(alias.getPosition()))
@@ -629,7 +631,8 @@ public class StatementAnalyzer {
       if (selectAlias.get().containsWindowFunction()) {
         throw new SemanticException(
             String.format(
-                "Lateral column alias '%s' containing window function is not supported",
+                DataNodeQueryMessages
+                    .EXCEPTION_LATERAL_COLUMN_ALIAS_ARG_CONTAINING_WINDOW_FUNCTION_IS_NOT_SUPPORTED_13F5E6AD,
                 node.getValue()));
       }
       Expression rewrittenExpression = selectAlias.get().getRewrittenExpression();
@@ -687,7 +690,9 @@ public class StatementAnalyzer {
       if (node.getWindow().isPresent() || node.getNullTreatment().isPresent()) {
         throw new SemanticException(
             String.format(
-                "Lateral column alias in window function arguments is not supported: %s", node));
+                DataNodeQueryMessages
+                    .EXCEPTION_LATERAL_COLUMN_ALIAS_IN_WINDOW_FUNCTION_ARGUMENTS_IS_NOT_SUPPORTED_ARG_10EB87DB,
+                node));
       }
       return new FunctionCall(
           node.getName(), node.isDistinct(), node.getProcessingMode(), arguments);
@@ -723,7 +728,10 @@ public class StatementAnalyzer {
               specification
                   .getLocation()
                   .orElseThrow(
-                      () -> new IllegalStateException("WindowSpecification location is missing")),
+                      () ->
+                          new IllegalStateException(
+                              DataNodeQueryMessages
+                                  .EXCEPTION_WINDOWSPECIFICATION_LOCATION_IS_MISSING_E9CE9D26)),
               specification.getExistingWindowName(),
               partitionBy,
               orderBy,
@@ -767,7 +775,11 @@ public class StatementAnalyzer {
       }
       return new WindowFrame(
           node.getLocation()
-              .orElseThrow(() -> new IllegalStateException("WindowFrame location is missing")),
+              .orElseThrow(
+                  () ->
+                      new IllegalStateException(
+                          DataNodeQueryMessages
+                              .EXCEPTION_WINDOWFRAME_LOCATION_IS_MISSING_F46D64A5)),
           node.getType(),
           start,
           end);
@@ -971,46 +983,22 @@ public class StatementAnalyzer {
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       DataNodeTreeViewSchemaUtils.checkTableInWrite(node.getDatabase(), table);
-      if (!node.parseWhere(
-          null,
-          table,
-          table.getColumnList().stream()
-              .filter(
-                  columnSchema ->
-                      columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
-              .map(TsTableColumnSchema::getColumnName)
-              .collect(Collectors.toList()),
-          queryContext)) {
-        analysis.setFinishQueryAfterAnalyze();
-        return null;
-      }
 
       // If node.location is absent, this is a pipe-transferred update, namely the assignments are
-      // already parsed at the sender
+      // already parsed at the sender. Still validate the target columns at the receiver.
       if (node.getLocation().isPresent()) {
-        final Set<SymbolReference> attributeNames = new HashSet<>();
+        final Set<String> attributeNames = new HashSet<>();
         node.setAssignments(
             node.getAssignments().stream()
                 .map(
                     assignment -> {
+                      validateUpdateTargetColumn(assignment.getName(), table);
                       final Expression parsedColumn =
                           analyzeAndRewriteExpression(
                                   translationMap, translationMap.getScope(), assignment.getName())
                               .getRight();
-                      if (!(parsedColumn instanceof SymbolReference)
-                          || table
-                                  .getColumnSchema(((SymbolReference) parsedColumn).getName())
-                                  .getColumnCategory()
-                              != TsTableColumnCategory.ATTRIBUTE) {
-                        throw new SemanticException(
-                            DataNodeQueryMessages.UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS);
-                      }
-                      if (attributeNames.contains(parsedColumn)) {
-                        throw new SemanticException(
-                            DataNodeQueryMessages
-                                .UPDATE_ATTRIBUTE_SHALL_SPECIFY_A_ATTRIBUTE_ONLY_ONCE);
-                      }
-                      attributeNames.add((SymbolReference) parsedColumn);
+                      validateUpdateAttributeColumn(parsedColumn, table, attributeNames);
+                      validateUpdateValueExpression(assignment.getValue(), table);
 
                       final Pair<Type, Expression> expressionPair;
                       try {
@@ -1040,8 +1028,128 @@ public class StatementAnalyzer {
                       return new UpdateAssignment(parsedColumn, expressionPair.getRight());
                     })
                 .collect(Collectors.toList()));
+      } else {
+        final Set<String> attributeNames = new HashSet<>();
+        node.getAssignments()
+            .forEach(
+                assignment -> {
+                  validateUpdateAttributeColumn(assignment.getName(), table, attributeNames);
+                  validateUpdateValueExpression(assignment.getValue(), table);
+                });
+      }
+
+      if (!node.parseWhere(
+          null,
+          table,
+          table.getColumnList().stream()
+              .filter(
+                  columnSchema ->
+                      columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
+              .map(TsTableColumnSchema::getColumnName)
+              .collect(Collectors.toList()),
+          queryContext)) {
+        analysis.setFinishQueryAfterAnalyze();
+        return null;
       }
       return null;
+    }
+
+    private void validateUpdateAttributeColumn(
+        final Expression column, final TsTable table, final Set<String> attributeNames) {
+      validateUpdateTargetColumn(column, table);
+      if (!(column instanceof SymbolReference)) {
+        throw new SemanticException(
+            DataNodeQueryMessages.UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS);
+      }
+
+      final String columnName = ((SymbolReference) column).getName();
+      final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
+      if (Objects.isNull(columnSchema)) {
+        throw new SemanticException(
+            String.format(DataNodeQueryMessages.COLUMN_S_CANNOT_BE_RESOLVED, columnName));
+      }
+      if (!attributeNames.add(columnName)) {
+        throw new SemanticException(
+            DataNodeQueryMessages.UPDATE_ATTRIBUTE_SHALL_SPECIFY_A_ATTRIBUTE_ONLY_ONCE);
+      }
+    }
+
+    private void validateUpdateTargetColumn(final Expression column, final TsTable table) {
+      final String columnName;
+      if (column instanceof Identifier) {
+        columnName = ((Identifier) column).getValue().toLowerCase(ENGLISH);
+      } else if (column instanceof SymbolReference) {
+        columnName = ((SymbolReference) column).getName();
+      } else {
+        return;
+      }
+
+      final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
+      if (Objects.nonNull(columnSchema)
+          && columnSchema.getColumnCategory() != TsTableColumnCategory.ATTRIBUTE) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_CANNOT_UPDATE_ARG_COLUMN_ARG_UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS_F805D1A6,
+                columnSchema.getColumnCategory(),
+                columnName));
+      }
+    }
+
+    private void validateUpdateValueExpression(final Expression expression, final TsTable table) {
+      final Set<String> unknownColumnNames = new HashSet<>();
+      final Map<String, TsTableColumnCategory> invalidColumns = new LinkedHashMap<>();
+      new DefaultExpressionTraversalVisitor<Void>() {
+        @Override
+        public Void visitIdentifier(final Identifier node, final Void context) {
+          collectUpdateValueColumn(
+              node.getValue().toLowerCase(ENGLISH), table, unknownColumnNames, invalidColumns);
+          return null;
+        }
+
+        @Override
+        public Void visitSymbolReference(final SymbolReference node, final Void context) {
+          collectUpdateValueColumn(node.getName(), table, unknownColumnNames, invalidColumns);
+          return null;
+        }
+
+        @Override
+        public Void visitDereferenceExpression(
+            final DereferenceExpression node, final Void context) {
+          final QualifiedName qualifiedName = DereferenceExpression.getQualifiedName(node);
+          if (Objects.nonNull(qualifiedName)) {
+            collectUpdateValueColumn(
+                qualifiedName.getSuffix(), table, unknownColumnNames, invalidColumns);
+            return null;
+          }
+          return super.visitDereferenceExpression(node, context);
+        }
+      }.process(expression);
+
+      if (unknownColumnNames.isEmpty() && !invalidColumns.isEmpty()) {
+        final Map.Entry<String, TsTableColumnCategory> invalidColumn =
+            invalidColumns.entrySet().iterator().next();
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_CANNOT_REFERENCE_ARG_COLUMN_ARG_IN_AN_UPDATE_VALUE_UPDATE_VALUES_CAN_ONLY_REFERENCE_ATTRIBUTE_OR_TAG_COLUMNS_C01BE71A,
+                invalidColumn.getValue(),
+                invalidColumn.getKey()));
+      }
+    }
+
+    private void collectUpdateValueColumn(
+        final String columnName,
+        final TsTable table,
+        final Set<String> unknownColumnNames,
+        final Map<String, TsTableColumnCategory> invalidColumns) {
+      final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
+      if (Objects.isNull(columnSchema)) {
+        unknownColumnNames.add(columnName);
+      } else if (columnSchema.getColumnCategory() == TsTableColumnCategory.FIELD
+          || columnSchema.getColumnCategory() == TsTableColumnCategory.TIME) {
+        invalidColumns.putIfAbsent(columnName, columnSchema.getColumnCategory());
+      }
     }
 
     @Override
@@ -1299,8 +1407,10 @@ public class StatementAnalyzer {
       } catch (final Exception e) {
         final String exceptionMessage =
             String.format(
-                "Failed to execute load tsfile statement %s. Detail: %s",
-                node, e.getMessage() == null ? e.getClass().getName() : e.getMessage());
+                DataNodeQueryMessages
+                    .EXCEPTION_FAILED_TO_EXECUTE_LOAD_TSFILE_STATEMENT_ARG_DETAIL_ARG_6B99B6D4,
+                node,
+                e.getMessage() == null ? e.getClass().getName() : e.getMessage());
         analysis.setFinishQueryAfterAnalyze(true);
         analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
       }
@@ -1313,7 +1423,9 @@ public class StatementAnalyzer {
       queryContext.setExplainType(ExplainType.EXPLAIN);
       queryContext.setExplainOutputFormat(node.getOutputFormat());
       analysis.setFinishQueryAfterAnalyze();
-      return visitQuery((Query) node.getStatement(), context);
+      Scope scope = process(node.getStatement(), context);
+      analysis.setScope(node, scope);
+      return scope;
     }
 
     @Override
@@ -1340,7 +1452,9 @@ public class StatementAnalyzer {
       queryContext.setExplainType(ExplainType.EXPLAIN_ANALYZE);
       queryContext.setVerbose(node.isVerbose());
       queryContext.setExplainOutputFormat(node.getOutputFormat());
-      return visitQuery((Query) node.getStatement(), context);
+      Scope scope = process(node.getStatement(), context);
+      analysis.setScope(node, scope);
+      return scope;
     }
 
     @Override
@@ -1375,7 +1489,10 @@ public class StatementAnalyzer {
           // not the root scope and ORDER BY is ineffective
           analysis.markRedundantOrderBy(node.getOrderBy().get());
           warningCollector.add(
-              new IoTDBWarning(REDUNDANT_ORDER_BY, "ORDER BY in subquery may have no effect"));
+              new IoTDBWarning(
+                  REDUNDANT_ORDER_BY,
+                  DataNodeQueryMessages
+                      .EXCEPTION_ORDER_BY_IN_SUBQUERY_MAY_HAVE_NO_EFFECT_8A480B62));
         }
       }
       analysis.setOrderByExpressions(node, orderByExpressions);
@@ -1704,7 +1821,10 @@ public class StatementAnalyzer {
           // not the root scope and ORDER BY is ineffective
           analysis.markRedundantOrderBy(orderBy);
           warningCollector.add(
-              new IoTDBWarning(REDUNDANT_ORDER_BY, "ORDER BY in subquery may have no effect"));
+              new IoTDBWarning(
+                  REDUNDANT_ORDER_BY,
+                  DataNodeQueryMessages
+                      .EXCEPTION_ORDER_BY_IN_SUBQUERY_MAY_HAVE_NO_EFFECT_8A480B62));
         }
       }
       analysis.setOrderByExpressions(node, orderByExpressions);
@@ -2039,7 +2159,8 @@ public class StatementAnalyzer {
     }
 
     private void analyzeWhere(Node node, Scope scope, Expression predicate) {
-      verifyNoAggregateWindowOrGroupingFunctions(predicate, "WHERE clause");
+      verifyNoAggregateWindowOrGroupingFunctions(
+          predicate, DataNodeQueryMessages.EXCEPTION_WHERE_CLAUSE_6F66E904);
 
       // contains Columns, expand them and concat them
       if (containsColumns(predicate)) {
@@ -3287,10 +3408,12 @@ public class StatementAnalyzer {
                 }
 
                 column = outputExpressions.get(toIntExact(ordinal - 1));
-                verifyNoAggregateWindowOrGroupingFunctions(column, "GROUP BY clause");
+                verifyNoAggregateWindowOrGroupingFunctions(
+                    column, DataNodeQueryMessages.EXCEPTION_GROUP_BY_CLAUSE_25F779A7);
               } else {
                 column = resolveGroupBySelectAlias(column, scope, outputExpressions, selectAliases);
-                verifyNoAggregateWindowOrGroupingFunctions(column, "GROUP BY clause");
+                verifyNoAggregateWindowOrGroupingFunctions(
+                    column, DataNodeQueryMessages.EXCEPTION_GROUP_BY_CLAUSE_25F779A7);
                 analyzeExpression(column, scope);
               }
 
@@ -3320,7 +3443,8 @@ public class StatementAnalyzer {
             for (Expression column : groupingElement.getExpressions()) {
               Expression originalColumn = column;
               column = resolveGroupBySelectAlias(column, scope, outputExpressions, selectAliases);
-              verifyNoAggregateWindowOrGroupingFunctions(column, "GROUP BY clause");
+              verifyNoAggregateWindowOrGroupingFunctions(
+                  column, DataNodeQueryMessages.EXCEPTION_GROUP_BY_CLAUSE_25F779A7);
               analyzeExpression(column, scope);
               if (!analysis.getColumnReferences().contains(NodeRef.of(column))) {
                 throw new SemanticException(
@@ -3342,7 +3466,8 @@ public class StatementAnalyzer {
                                     expression ->
                                         requireNonNull(
                                             resolvedGroupingColumns.get(NodeRef.of(expression)),
-                                            "resolved grouping expression is null"))
+                                            DataNodeQueryMessages
+                                                .EXCEPTION_RESOLVED_GROUPING_EXPRESSION_IS_NULL_19A41A60))
                                 .map(NodeRef::of)
                                 .map(analysis.getColumnReferenceFields()::get)
                                 .map(ResolvedField::getFieldId)
@@ -4447,7 +4572,8 @@ public class StatementAnalyzer {
 
         Expression expression = ((JoinOn) criteria).getExpression();
         if (expression != null) {
-          verifyNoAggregateWindowOrGroupingFunctions(expression, "JOIN clause");
+          verifyNoAggregateWindowOrGroupingFunctions(
+              expression, DataNodeQueryMessages.EXCEPTION_JOIN_CLAUSE_56FCD2FF);
 
           // Need to register coercions in case when join criteria requires coercion (e.g. join on
           // char(1) = char(2))
@@ -4486,7 +4612,8 @@ public class StatementAnalyzer {
           ComparisonExpression asofExpression =
               (ComparisonExpression) ((AsofJoinOn) criteria).getAsofExpression();
 
-          verifyNoAggregateWindowOrGroupingFunctions(asofExpression, "JOIN clause");
+          verifyNoAggregateWindowOrGroupingFunctions(
+              asofExpression, DataNodeQueryMessages.EXCEPTION_JOIN_CLAUSE_56FCD2FF);
 
           // ASOF Join does not support Correlation
           ExpressionAnalysis expressionAnalysis =
@@ -4961,11 +5088,11 @@ public class StatementAnalyzer {
       }
       rowCount.ifPresent(
           count -> {
-            if (count < 0) {
+            if (count <= 0) {
               throw new SemanticException(
                   String.format(
                       DataNodeQueryMessages
-                          .LIMIT_ROW_COUNT_MUST_BE_GREATER_OR_EQUAL_TO_0_ACTUAL_VALUE_S,
+                          .EXCEPTION_LIMIT_ROW_COUNT_MUST_BE_GREATER_THAN_0_ACTUAL_VALUE_ARG_79F8F1A3,
                       count));
             }
           });
@@ -6404,11 +6531,16 @@ public class StatementAnalyzer {
               DataNodeQueryMessages.SETTING_MONTHLY_INTERVALS_IS_NOT_SUPPORTED);
         }
       }
-
       // currently, only constant arguments are supported
       Object constantValue =
           evaluateConstantExpression(
               expression, new PlannerContext(metadata, typeManager), sessionContext);
+      if (constantValue == null) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages.THE_ARGUMENT_CANNOT_BE_NULL,
+                argumentSpecification.getName()));
+      }
       if (!argumentSpecification.getType().checkObjectType(constantValue)) {
         if ((argumentSpecification.getType().equals(org.apache.iotdb.udf.api.type.Type.STRING)
                 || argumentSpecification.getType().equals(org.apache.iotdb.udf.api.type.Type.TEXT))

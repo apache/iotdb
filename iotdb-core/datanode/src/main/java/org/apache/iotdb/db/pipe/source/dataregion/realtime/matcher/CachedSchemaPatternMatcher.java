@@ -33,7 +33,6 @@ import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,14 +46,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_ROOT;
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
-
 public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(CachedSchemaPatternMatcher.class);
-
-  protected static final String TREE_MODEL_EVENT_TABLE_NAME_PREFIX = PATH_ROOT + PATH_SEPARATOR;
 
   protected final ReentrantReadWriteLock lock;
   protected final Set<PipeRealtimeDataRegionSource> sources;
@@ -149,23 +143,24 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
       final boolean isTableModelTsFileEvent =
           event.getEvent() instanceof PipeTsFileInsertionEvent
               && ((PipeTsFileInsertionEvent) event.getEvent()).isTableModelEvent();
+      // The whole event comes from one data region, so all of its devices share the data model
+      // declared by the event. It must never be derived from the device name.
+      final boolean isTableModelEvent =
+          event.getEvent() instanceof PipeInsertionEvent
+              && ((PipeInsertionEvent) event.getEvent()).isTableModelEvent();
       final Set<String> tableNames = new HashSet<>();
       for (final Map.Entry<IDeviceID, String[]> entry : event.getSchemaInfo().entrySet()) {
         final IDeviceID deviceID = entry.getKey();
 
-        // TODO: Check the role to determine whether to match with tree model or table model
-        if (deviceID instanceof PlainDeviceID
-            || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
-            || deviceID.getTableName().equals(PATH_ROOT)) {
+        if (!isTableModelEvent) {
           matchTreeModelEvent(deviceID, entry.getValue(), matchedSources);
         } else {
           final String tableName = deviceID.getTableName();
           if (tableNames.add(tableName) && matchedSources.size() < sources.size()) {
-            final String tableModelDatabaseName =
-                event.getEvent() instanceof PipeInsertionEvent
-                    ? ((PipeInsertionEvent) event.getEvent()).getTableModelDatabaseName()
-                    : null;
-            matchTableModelEvent(tableModelDatabaseName, tableName, matchedSources);
+            matchTableModelEvent(
+                ((PipeInsertionEvent) event.getEvent()).getTableModelDatabaseName(),
+                tableName,
+                matchedSources);
           }
         }
 

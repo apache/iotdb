@@ -427,14 +427,17 @@ public class PipeTsFileResourceManager {
         : hardlinkOrCopiedFileToTsFilePublicResourceMap;
   }
 
-  public void pinTsFileResource(
+  /** Returns whether a companion mod-file reference was acquired. */
+  public boolean pinTsFileResource(
       final TsFileResource resource, final boolean withMods, final @Nullable String pipeName)
       throws IOException {
     final File pinnedTsFile = increaseFileReference(resource.getTsFile(), true, pipeName);
     try {
       if (withMods && resource.getExclusiveModFile().exists()) {
         increaseFileReference(resource.getExclusiveModFile().getFile(), false, pipeName);
+        return true;
       }
+      return false;
     } catch (final IOException | RuntimeException e) {
       // Pinning is a two-file operation.  Do not leave the TsFile pinned when the mod file cannot
       // be pinned (for example, when the pipe directory is temporarily unavailable).
@@ -448,9 +451,7 @@ public class PipeTsFileResourceManager {
   }
 
   public void unpinTsFileResource(
-      final TsFileResource resource,
-      final boolean shouldTransferModFile,
-      final @Nullable String pipeName)
+      final TsFileResource resource, final @Nullable String pipeName, final boolean pinnedModFile)
       throws IOException {
     Exception firstException = null;
     try {
@@ -462,7 +463,9 @@ public class PipeTsFileResourceManager {
 
     // Always attempt the mod-file cleanup even when resolving/decreasing the TsFile fails.  A
     // failed first cleanup must not strand the second reference.
-    if (shouldTransferModFile && resource.exclusiveModFileExists()) {
+    // Use the state captured when pinning. Compaction can remove the original mod file, and
+    // an event can acquire mod-file references even when no mod file was originally pinned.
+    if (pinnedModFile) {
       try {
         decreaseFileReference(
             getHardlinkOrCopiedFileInPipeDir(resource.getExclusiveModFile().getFile(), pipeName),

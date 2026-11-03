@@ -57,6 +57,4 @@ pause
 @REM -----------------------------------------------------------------------------
 :finally
 
-ENDLOCAL
-
-EXIT /B %ret_code%
+ENDLOCAL & EXIT /B %ret_code%

@@ -57,7 +57,8 @@ public class UDTFIQR implements UDTF {
             x ->
                 ((String) x).equalsIgnoreCase(BATCH_COMPUTE)
                     || ((String) x).equalsIgnoreCase(STREAM_COMPUTE),
-            "Parameter \"compute\" is illegal. Please use \"batch\" (for default) or \"stream\".",
+            LibraryUdfMessages
+                .EXCEPTION_PARAMETER_COMPUTE_IS_ILLEGAL_PLEASE_USE_BATCH_FOR_DEFAULT_OR_STREAM_C46DD729,
             validator.getParameters().getStringOrDefault("compute", BATCH_COMPUTE))
         .validate(
             params ->

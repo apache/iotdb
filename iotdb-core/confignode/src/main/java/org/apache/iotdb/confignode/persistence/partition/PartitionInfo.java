@@ -89,6 +89,7 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -243,7 +244,9 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public TSStatus pollRegionMaintainTask() {
     synchronized (regionMaintainTaskList) {
-      regionMaintainTaskList.remove(0);
+      if (!regionMaintainTaskList.isEmpty()) {
+        regionMaintainTaskList.remove(0);
+      }
       return RpcUtils.SUCCESS_STATUS;
     }
   }
@@ -790,11 +793,9 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public List<TRegionReplicaSet> getReplicaSets(
       String database, List<TConsensusGroupId> regionGroupIds) {
-    if (databasePartitionTables.containsKey(database)) {
-      return databasePartitionTables.get(database).getReplicaSets(regionGroupIds);
-    } else {
-      return Collections.emptyList();
-    }
+    // A database can be deleted while a Region lookup is in progress.
+    DatabasePartitionTable table = databasePartitionTables.get(database);
+    return table == null ? Collections.emptyList() : table.getReplicaSets(regionGroupIds);
   }
 
   /**
@@ -911,6 +912,17 @@ public class PartitionInfo implements SnapshotProcessor {
         .orElse(0);
   }
 
+  /** Count the series slots of one region type, including those in the pending allocation. */
+  public int getSeriesPartitionSlotsCount(
+      String database, TConsensusGroupType type, Collection<TSeriesPartitionSlot> unassignedSlots)
+      throws DatabaseNotExistsException {
+    final DatabasePartitionTable partitionTable = databasePartitionTables.get(database);
+    if (partitionTable == null || !partitionTable.isNotPreDeleted()) {
+      throw new DatabaseNotExistsException(database);
+    }
+    return partitionTable.getSeriesPartitionSlotsCount(type, unassignedSlots);
+  }
+
   /**
    * Only leader use this interface.
    *
@@ -1010,9 +1022,14 @@ public class PartitionInfo implements SnapshotProcessor {
         databasePartitionTableEntry.getValue().serialize(bufferedOutputStream, protocol);
       }
 
+      final List<RegionMaintainTask> copiedRegionMaintainTaskList;
+      synchronized (regionMaintainTaskList) {
+        copiedRegionMaintainTaskList = new ArrayList<>(regionMaintainTaskList);
+      }
+
       // serialize regionCleanList
-      ReadWriteIOUtils.write(regionMaintainTaskList.size(), bufferedOutputStream);
-      for (RegionMaintainTask task : regionMaintainTaskList) {
+      ReadWriteIOUtils.write(copiedRegionMaintainTaskList.size(), bufferedOutputStream);
+      for (RegionMaintainTask task : copiedRegionMaintainTaskList) {
         task.serialize(bufferedOutputStream, protocol);
       }
 

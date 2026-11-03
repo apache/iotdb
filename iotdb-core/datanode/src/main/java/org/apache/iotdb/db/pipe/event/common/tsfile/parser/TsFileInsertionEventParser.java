@@ -28,6 +28,7 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
@@ -138,7 +139,8 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
     this.sourceEvent = sourceEvent;
     this.memoryManager = memoryManager;
 
-    this.allocatedMemoryBlockForTablet = memoryManager.forceAllocateForTabletWithRetry(0);
+    this.allocatedMemoryBlockForTablet =
+        allocateTabletMemory(TsFileInsertionEventParser.class.getSimpleName() + "#tablet", 0);
 
     LOGGER.debug(
         DataNodePipeMessages.TSFILE_HAS_INITIALIZED_PIPENAME_CREATION_TIME_PATTERN,
@@ -150,6 +152,21 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
         startTime,
         endTime,
         isWithMod);
+  }
+
+  protected PipeMemoryBlock getParentMemoryBlock() {
+    return sourceEvent == null ? null : sourceEvent.getEventMemoryBlock();
+  }
+
+  protected TsFileInsertionEventParserMemoryBlock allocateTabletMemory(
+      final String name, final long sizeInBytes) {
+    return memoryManager.forceAllocateForTabletWithRetry(
+        name, sizeInBytes, getParentMemoryBlock(), sourceEvent);
+  }
+
+  protected TsFileInsertionEventParserMemoryBlock allocateGenericMemory(
+      final String name, final long sizeInBytes) {
+    return memoryManager.forceAllocate(name, sizeInBytes, getParentMemoryBlock(), sourceEvent);
   }
 
   /**

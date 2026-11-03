@@ -222,7 +222,7 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
       TSStatus[] results);
 
   @Override
-  public abstract long count();
+  public abstract long count(boolean ignoreAllNullRows);
 
   @Override
   public abstract long rowCount();
@@ -284,13 +284,16 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public abstract void encode(
-      BlockingQueue<Object> ioTaskQueue, BatchEncodeInfo encodeInfo, long[] times);
+      BlockingQueue<Object> ioTaskQueue,
+      BatchEncodeInfo encodeInfo,
+      long[] times,
+      boolean ignoreAllNullRows);
 
   @Override
   public abstract void release();
 
   @Override
-  public abstract boolean isEmpty();
+  public abstract boolean isEmpty(boolean ignoreAllNullRows);
 
   @Override
   public abstract List<? extends TVList> getSortedList();

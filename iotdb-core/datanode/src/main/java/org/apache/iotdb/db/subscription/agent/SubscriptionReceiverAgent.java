@@ -161,6 +161,8 @@ public class SubscriptionReceiverAgent {
               if (isHandshake(req)) {
                 if (isSuccessful(requestResult.response)) {
                   if (currentReceiver != null && currentReceiver != receiver) {
+                    releaseInFlightEventsOnNewInstanceTakeover(
+                        currentReceiver, receiver.getConsumerInstanceId());
                     invalidateReplacedReceiver(currentReceiver, identity);
                   }
                   return receiver;
@@ -192,7 +194,9 @@ public class SubscriptionReceiverAgent {
       final TSStatus status =
           RpcUtils.getStatus(
               TSStatusCode.SUBSCRIPTION_VERSION_ERROR,
-              String.format("Unknown PipeSubscribeRequestVersion %s.", reqVersion));
+              String.format(
+                  DataNodePipeMessages.MESSAGE_UNKNOWN_PIPESUBSCRIBEREQUESTVERSION_ARG_CA584E58,
+                  reqVersion));
       LOGGER.warn(
           DataNodePipeMessages
               .PIPE_LOG_SUBSCRIPTION_UNKNOWN_PIPESUBSCRIBEREQUESTVERSION_RESPONSE_56E5D93F,
@@ -319,6 +323,8 @@ public class SubscriptionReceiverAgent {
           }
           if (receiver.getConsumerInstanceId() != null
               && !shouldKeepCurrentReceiver(currentReceiver, receiver.getConsumerInstanceId())) {
+            releaseInFlightEventsOnNewInstanceTakeover(
+                currentReceiver, receiver.getConsumerInstanceId());
             invalidateReplacedReceiver(currentReceiver, key);
             registered.set(true);
             return receiver;
@@ -359,6 +365,14 @@ public class SubscriptionReceiverAgent {
         identity.consumerId(),
         identity.consumerGroupId());
     receiver.invalidateConsumer();
+  }
+
+  private static void releaseInFlightEventsOnNewInstanceTakeover(
+      final SubscriptionReceiver currentReceiver, final String incomingConsumerInstanceId) {
+    if (incomingConsumerInstanceId != null
+        && !Objects.equals(currentReceiver.getConsumerInstanceId(), incomingConsumerInstanceId)) {
+      currentReceiver.releaseInFlightEvents();
+    }
   }
 
   private static ConsumerConnection getConsumerConnection(

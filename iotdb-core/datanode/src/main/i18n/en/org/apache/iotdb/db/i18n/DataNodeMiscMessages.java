@@ -21,6 +21,8 @@ package org.apache.iotdb.db.i18n;
 
 /** Compile-time i18n constants for DataNode misc subsystems (English). */
 public final class DataNodeMiscMessages {
+  public static final String MESSAGE_QUERY_DOES_NOT_BELONG_TO_CURRENT_SESSION_A1198237 =
+      "The requested query does not belong to the current session.";
 
   public static final String MESSAGE_MISSING_LOAD_TSFILE_SLICE_METADATA_ARG_DE4333DA =
       "Missing Load TsFile slice metadata: %s";
@@ -121,6 +123,84 @@ public final class DataNodeMiscMessages {
   public static final String COLUMN_FILTER_LIKE_PATTERN = "LIKE pattern";
   public static final String COLUMN_FILTER_LIKE_ESCAPE = "LIKE escape";
   public static final String COLUMN_FILTER_REGEXP_PATTERN = "REGEXP pattern";
+  public static final String EXCEPTION_INVALID_TAG_FILTER_ARG_E4B1C1C6 =
+      "Invalid tag-filter: %s";
+  public static final String EXCEPTION_TAG_FILTER_SHOULD_NOT_BE_EMPTY_507CA5B0 =
+      "tag-filter should not be empty";
+  public static final String
+      EXCEPTION_ONLY_AND_COMPARISONS_ARE_SUPPORTED_IN_TAG_FILTER_19946958 =
+          "only =, !=, and <> comparisons are supported in tag-filter";
+  public static final String EXCEPTION_LEFT_OPERAND_MUST_BE_A_TAG_COLUMN_F9D4548B =
+      "left operand must be a TAG column";
+  public static final String EXCEPTION_TAG_FILTER_EVALUATION_FAILED_ARG_1B239B2F =
+      "Tag-filter evaluation failed: %s";
+  public static final String EXCEPTION_TAG_FILTER_SCHEMA_BINDING_FAILED_ARG_7A5D2D47 =
+      "Tag-filter schema binding failed: %s";
+  public static final String EXCEPTION_TAG_FILTER_EXCEEDS_MAXIMUM_UTF_8_LENGTH_OF_ARG_BYTES_9C8400F2 =
+      "tag-filter exceeds maximum UTF-8 length of %s bytes";
+  public static final String EXCEPTION_TAG_FILTER_AST_DEPTH_EXCEEDS_MAXIMUM_OF_ARG_64C92731 =
+      "tag-filter AST depth exceeds maximum of %s";
+  public static final String EXCEPTION_TAG_FILTER_AST_NODE_COUNT_EXCEEDS_MAXIMUM_OF_ARG_40CCE694 =
+      "tag-filter AST node count exceeds maximum of %s";
+  public static final String EXCEPTION_TAG_FILTER_IN_LIST_EXCEEDS_MAXIMUM_OF_ARG_VALUES_07E7FC6C =
+      "tag-filter IN list exceeds maximum of %s values";
+  public static final String EXCEPTION_TAG_FILTER_REGEXP_PATTERN_EXCEEDS_MAXIMUM_LENGTH_OF_ARG_CHARACTERS_67590971 =
+      "tag-filter REGEXP pattern exceeds maximum length of %s characters";
+  public static final String EXCEPTION_TABLE_SCHEMA_IS_NOT_AVAILABLE_FOR_TAG_FILTER_993AB728 =
+      "table schema is not available for tag-filter";
+  public static final String
+      EXCEPTION_TABLE_SCHEMA_ARG_ARG_IS_ABSENT_FROM_THIS_DATANODE_S_TABLE_CACHE_THE_TABLE_MAY_NOT_EXIST_OR_ITS_SCHEMA_HAS_NOT_BEEN_SYNCHRONIZED_YET_23975BDF =
+          "Table schema %s.%s is absent from this DataNode's table cache; the table may not exist or its schema has not been synchronized yet";
+  public static final String
+      EXCEPTION_TABLE_SCHEMA_KEPT_CHANGING_WHILE_BINDING_TAG_FILTER_FOR_DATABASE_PATTERN_ARG_AND_TABLE_PATTERN_ARG_RETRY_AFTER_SCHEMA_SYNCHRONIZATION_77A005E9 =
+          "Table schema kept changing while binding tag-filter for database pattern %s and table pattern %s; retry after schema synchronization";
+  public static final String EXCEPTION_REFERENCED_TAG_COLUMN_IS_MISSING_ARG_F5300BEA =
+      "referenced TAG column is missing: %s";
+  public static final String EXCEPTION_REFERENCED_COLUMN_IS_NOT_A_TAG_COLUMN_ARG_34D60881 =
+      "referenced column is not a TAG column: %s";
+  public static final String EXCEPTION_UNCOMPILED_LIKE_PREDICATE_01AEE439 =
+      "uncompiled LIKE predicate";
+  public static final String EXCEPTION_UNCOMPILED_REGEXP_PREDICATE_2B0DD646 =
+      "uncompiled REGEXP predicate";
+  public static final String EXCEPTION_MATCHER_IS_UNAVAILABLE_1A659D47 = "matcher is unavailable";
+  public static final String EXCEPTION_TABLET_SCHEMA_IS_MISSING_164075B0 = "tablet schema is missing";
+  public static final String EXCEPTION_TABLET_VALUE_COLUMNS_ARE_INCOMPLETE_DCD09F3C =
+      "tablet value columns are incomplete";
+  public static final String EXCEPTION_FAILED_TO_EVALUATE_A_TABLET_ROW_7E4E94CE =
+      "failed to evaluate a tablet row";
+  public static final String EXCEPTION_TABLE_BINDING_IS_NOT_AVAILABLE_882C5F2F =
+      "table binding is not available";
+  public static final String EXCEPTION_REFERENCED_COLUMN_IS_NOT_A_TAG_COLUMN_33FA34BC =
+      "referenced column is not a TAG column";
+  public static final String EXCEPTION_REFERENCED_COLUMN_CATEGORY_CHANGED_564594D8 =
+      "referenced column category changed";
+  public static final String EXCEPTION_REFERENCED_TAG_COLUMN_IS_MISSING_55E07377 =
+      "referenced TAG column is missing";
+  public static final String EXCEPTION_TABLET_MEASUREMENT_SCHEMA_IS_INCOMPLETE_6A813472 =
+      "tablet measurement schema is incomplete";
+  public static final String EXCEPTION_FAILED_TO_COMPACT_FILTERED_TABLET_5D4AD8AA =
+      "failed to compact filtered tablet";
+  public static final String EXCEPTION_TABLET_COLUMN_CATEGORIES_ARE_MISSING_2C660532 =
+      "tablet column categories are missing";
+  public static final String EXCEPTION_TABLET_COLUMN_CATEGORY_IS_MISSING_A812B500 =
+      "tablet column category is missing";
+  public static final String EXCEPTION_TABLET_TIMESTAMPS_ARE_INCOMPLETE_24F8CE6F =
+      "tablet timestamps are incomplete";
+  public static final String EXCEPTION_TABLET_BITMAPS_ARE_INCOMPLETE_7BBC8035 =
+      "tablet bitmaps are incomplete";
+  public static final String EXCEPTION_TABLET_VALUE_COLUMN_IS_INCOMPLETE_845721FE =
+      "tablet value column is incomplete";
+  public static final String EXCEPTION_TREE_VIEW_PROJECTOR_IS_UNAVAILABLE_FOR_FILTERED_SUBSCRIPTION_DATA_B5F396A5 =
+      "Tree View projector is unavailable for filtered subscription data";
+  public static final String
+      EXCEPTION_TOPIC_CONFIGURATION_IS_NOT_AVAILABLE_FOR_TAG_FILTER_1E023E3A =
+          "topic configuration is not available for tag-filter";
+  public static final String
+      EXCEPTION_TOPIC_CONFIGURATION_CHANGED_WHILE_CAPTURING_TAG_FILTER_SNAPSHOT_984CEB1B =
+          "topic configuration changed while capturing tag-filter snapshot";
+  public static final String
+      LOG_SUBSCRIPTION_TABLE_SCHEMA_IS_NOT_AVAILABLE_FOR_TAG_FILTER_TOPIC_ARG_E864C98F =
+      "Subscription: table schema is not available for tag-filter topic [{}]";
 
   public static final String CREATE_NEW_REGION_ERROR_FMT = "create new region %s error,  exception:%s";
   public static final String CREATE_NEW_REGION_SUCCEED_FMT = "create new region %s succeed";
@@ -791,6 +871,14 @@ public final class DataNodeMiscMessages {
       "Subscription: failed to lazily refresh column-filter matcher for topic [{}]";
   public static final String SUBSCRIPTION_DROP_COLUMN_FILTER =
       "Subscription: dropped column-filter matcher for topic [{}]";
+  public static final String
+      LOG_SUBSCRIPTION_FAILED_TO_REFRESH_TAG_FILTER_MATCHER_FOR_TOPIC_ARG_USE_EMPTY_MATCHER_TO_FAIL_CLOSED_3CB76D70 =
+          "Subscription: failed to refresh tag-filter matcher for topic [{}], use empty matcher to fail closed";
+  public static final String
+      LOG_SUBSCRIPTION_REFRESHED_TAG_FILTER_MATCHER_FOR_TOPIC_ARG_71598849 =
+          "Subscription: refreshed tag-filter matcher for topic [{}]";
+  public static final String LOG_SUBSCRIPTION_DROPPED_TAG_FILTER_MATCHER_FOR_TOPIC_ARG_9EA52458 =
+      "Subscription: dropped tag-filter matcher for topic [{}]";
   public static final String SUBSCRIPTION_UNSUPPORTED_CONSENSUS_PROGRESS_FILE_VERSION_FMT =
       "Unsupported consensus subscription progress file version %s";
 
@@ -831,6 +919,8 @@ public final class DataNodeMiscMessages {
       "Exception occurred when sealing events from batch {}";
   public static final String EXCEPTION_CONSTRUCT_NEW_BATCH =
       "Exception occurred when construct new batch";
+  public static final String EXCEPTION_FAILED_TO_SEAL_SUBSCRIPTION_EVENT_BATCH_1FB7E92C =
+      "Failed to seal subscription event batch";
 
   // ---------------------------------------------------------------------------
   // subscription – SubscriptionPrefetchingQueue
@@ -1036,6 +1126,10 @@ public final class DataNodeMiscMessages {
   // --- DataNodeInternalRPCServiceImpl ---
   public static final String LOAD_COMMAND_REQUIRES_TIME_PARTITION_TO_PROGRESS_INDEX_MAP =
       "Load command requires time partition to progress index map";
+  public static final String LOG_THE_LOAD_COMMAND_PROTOCOL_WAS_REMOVED_THE_REQUEST_OF_TASK_ARG_IS_REJECTED_76937A9C =
+      "The LOAD command protocol was removed; the request of task {} is rejected.";
+  public static final String MESSAGE_THE_LOAD_COMMAND_PROTOCOL_WAS_REMOVED_LOAD_TRAVELS_THROUGH_CONSENSUS_NOW_0165EE16 =
+      "The LOAD command protocol was removed, LOAD travels through consensus now.";
   public static final String TOPOLOGY_PROBING_TIMED_OUT_AFTER_S_MS =
       "Topology probing timed out after %sms";
   public static final String NO_SUCH_QUERY = "No such query";
@@ -1079,8 +1173,7 @@ public final class DataNodeMiscMessages {
   public static final String MISC_LOG_DATANODE_EXITS_JVM_MEMORY_USAGE_BE69D1F5 =
       "DataNode exits. Jvm memory usage: {}";
   public static final String MISC_LOG_FAILED_TO_REPORT_DATANODE_S_SHUTDOWN_TO_CONFIGNODE_THE_CLUSTER_E6727497 =
-      "Failed to report DataNode's shutdown to ConfigNode. The cluster will still take the current "
-          + "DataNode as Running for a few seconds.";
+      "Failed to confirm the DataNode shutdown report with the ConfigNode leader.";
   public static final String MISC_LOG_SOMETHING_WRONG_HAPPENED_WHILE_CALLING_CONSENSUS_LAYER_S_8B8FBB16 =
       "Something wrong happened while calling consensus layer's triggerSnapshot API.";
   public static final String MISC_LOG_THE_ADDREGIONPEERTASK_HAS_ALREADY_BEEN_SUBMITTED_AND_WILL_4D398F73 =
@@ -1374,8 +1467,7 @@ public final class DataNodeMiscMessages {
           + "should be an integer, which is %s";
   public static final String MISC_EXCEPTION_ILLEGAL_DEFAULTDATABASELEVEL_D_SHOULD_1_03088B38 =
       "Illegal defaultDatabaseLevel: %d, should >= 1";
-  public static final String MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_OR_95B4DB23 =
-      "loadTsFileSpiltPartitionMaxSize should be greater than or equal to 0";
+  public static final String MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_0_17B75192 = "loadTsFileSpiltPartitionMaxSize should be greater than 0";
   public static final String MISC_EXCEPTION_STATEMENTID_SDOESN_T_EXIST_IN_THIS_SESSION_S_BD5B4733 =
       "StatementId: %sdoesn't exist in this session %s";
   public static final String MISC_EXCEPTION_INTERNALCLIENTSESSION_SHOULD_NEVER_CALL_PREPARE_STATEMENT_CCAB3CDC =
@@ -1452,7 +1544,8 @@ public final class DataNodeMiscMessages {
   public static final String MESSAGE_CHANGEREGIONLEADER_SUCCESSFULLY_CHANGE_LEADER_REGIONGROUP_462797B4 = "[ChangeRegionLeader] Successfully change the leader of RegionGroup: ";
   public static final String MESSAGE_MESSAGE_3501C7E6 = " to ";
   public static final String MESSAGE_EXECUTEFASTLASTDATAQUERYFORONEPREFIXPATH_DOS_NOT_SUPPORT_WILDCARDS_8E8F44F5 = "The \"executeFastLastDataQueryForOnePrefixPath\" dos not support wildcards.";
-  public static final String MESSAGE_TEMPLATE_NULL_TRYING_ACTIVATE_TEMPLATE_MAY_TEMPLATE_BEING_UNSET_1CE92779 = "The template is null when trying to activate template, may be the template is being unset.";
+  public static final String MESSAGE_THE_TEMPLATE_IS_NULL_WHEN_TRYING_TO_ACTIVATE_TEMPLATE_MAY_BE_THE_TEMPLATE_IS_BEING_UNSET_THE_TEMPLATE_IDS_ARE_ARG_7B5F4F72 =
+      "The template is null when trying to activate template, may be the template is being unset. The template ids are %s.";
   public static final String MESSAGE_DOT_9D9B854A = ".";
   public static final String MESSAGE_ERROR_OCCURRED_WHILE_PARSING_SQL_TO_PHYSICAL_PLAN_COLON_5C9F2C59 = "Error occurred while parsing SQL to physical plan: ";
   public static final String MESSAGE_ERROR_OCCURRED_IN_READ_PROCESS_COLON_CD184195 = "Error occurred in read process: ";
@@ -1506,4 +1599,416 @@ public final class DataNodeMiscMessages {
       LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_BELOW_MINIMUM_ALLOWED_VALUE_ARG_USING_ARG_794ABC76 =
           "mpp_data_exchange_max_payload_size_in_bytes (%d) is below the minimum allowed value %d, using %d";
 
+  public static final String MESSAGE_MULTIPLE_TYPES_ENCOUNTERED_WHEN_AUTO_DETECTING_TYPE_OF_MEASUREMENT_ARG_PLEASE_CHECK_6EDF48DB =
+      "Multiple types encountered when auto detecting type of measurement '%s', please check";
+
+  public static final String LOG_FAILED_TO_COLLECT_THE_DEVICES_USING_THE_EXTENDED_TEMPLATE_ARG_AB32D554 =
+      "Failed to collect the devices using the extended template {}";
+
+  public static final String
+      MISC_EXCEPTION_LOAD_TSFILE_WRITE_BUFFER_SIZE_SHOULD_BE_GREATER_THAN_0_AB1BA936 =
+          "loadTsFileWriteBufferSize should be greater than 0";
+  public static final String EXCEPTION_BUFFER_SIZE_SHOULD_BE_GREATER_THAN_0_BB68B5C4 =
+      "bufferSize should be greater than 0";
+
+  public static final String
+      EXCEPTION_STATUS_CODE_ARG_QUERY_STATEMENT_ARG_FAILED_BECAUSE_ARG_3BC781BF =
+          "Status code: %s, Query Statement: %s failed because %s";
+
+  public static final String EXCEPTION_ARG_EXCEPTION_OCCURRED_ARG_FAILED_ARG_16CE5428 =
+      "[%s] Exception occurred: %s failed. %s";
+
+  public static final String
+      EXCEPTION_REQUEST_NAME_TSRAWDATAQUERYREQ_PATHS_SIZE_ARG_STARTIME_ARG_ENDTIME_ARG_SOME_PATHS_ARG_92B722A4 =
+          "Request name: TSRawDataQueryReq, paths size: %s, starTime: %s, endTime: %s, some paths:"
+              + " %s";
+
+  public static final String
+      EXCEPTION_REQUEST_NAME_TSLASTDATAQUERYREQ_PATHS_SIZE_ARG_SOME_PATHS_ARG_46D12DFF =
+          "Request name: TSLastDataQueryReq, paths size: %s, some paths: %s";
+
+  public static final String
+      EXCEPTION_REQUEST_NAME_TSAGGREGATIONQUERYREQ_STARTTIME_ARG_ENDTIME_ARG_PATHS_SIZE_ARG_SOME_PATHS_ARG_9E59CBB8 =
+          "Request name: TSAggregationQueryReq, startTime: %s, endTime: %s, paths size: %s, some"
+              + " paths: %s";
+
+  public static final String
+      EXCEPTION_REQUEST_NAME_TSFETCHRESULTSREQ_QUERYID_ARG_OUTPUT_VALUE_COLUMN_COUNT_ARG_FETCHSIZE_ARG_SOME_RESPONSE_HEADERS_ARG_15468822 =
+          "Request name: TSFetchResultsReq, queryId: %s, output value column count: %s, fetchSize:"
+              + " %s, some response headers: %s";
+
+  public static final String
+      EXCEPTION_REQUEST_NAME_TSFASTLASTDATAQUERYFORONEDEVICEREQ_DB_ARG_DEVICEID_ARG_SENSORSIZE_ARG_SENSORS_ARG_D1F9A498 =
+          "Request name: TSFastLastDataQueryForOneDeviceReq, db: %s, deviceId: %s, sensorSize: %s,"
+              + " sensors: %s";
+
+  public static final String LOG_NODE_TOOL_ARG_076E307A = "node-tool: %s";
+
+  public static final String LOG_SEE_NODE_TOOL_HELP_OR_NODE_TOOL_HELP_COMMAND_BB9F5146 =
+      "See 'node-tool help' or 'node-tool help <command>'.";
+
+  public static final String LOG_ERROR_ARG_76028BAA = "error: %s";
+
+  public static final String LOG_STACKTRACE_131CBB85 = "-- StackTrace --";
+
+  public static final String
+      EXCEPTION_FAILED_TO_REGISTERED_TRIGGER_ARG_BECAUSE_EXISTED_MD5_OF_JAR_FILE_FOR_TRIGGER_ARG_IS_DIFFERENT_FROM_THE_NEW_JAR_FILE_4069F2F9 =
+          "Failed to registered trigger %s, because existed md5 of jar file for trigger %s is"
+              + " different from the new jar file. ";
+
+  public static final String
+      EXCEPTION_FAILED_TO_REGISTERED_TRIGGER_ARG_BECAUSE_ERROR_OCCURRED_WHEN_TRYING_TO_COMPUTE_MD5_OF_JAR_FILE_FOR_TRIGGER_ARG_27F35B86 =
+          "Failed to registered trigger %s, because error occurred when trying to compute md5 of"
+              + " jar file for trigger %s ";
+
+  public static final String
+      EXCEPTION_FAILED_TO_REGISTER_TRIGGER_ARG_WITH_CLASSNAME_ARG_THE_CAUSE_IS_ARG_D08E9589 =
+          "Failed to register trigger %s with className: %s. The cause is: %s";
+
+  public static final String
+      EXCEPTION_ERROR_OCCURRED_DURING_EXECUTING_TRIGGER_ARG_ARG_ARG_PLEASE_CHECK_WHETHER_THE_IMPLEMENTATION_OF_TRIGGER_IS_CORRECT_ACCORDING_TO_THE_TRIGGER_API_DESCRIPTION_98708501 =
+          "Error occurred during executing Trigger(%s)#%s: %s, please check whether the"
+              + " implementation of Trigger is correct according to the trigger-api description.";
+
+  public static final String
+      LOG_PLEASE_INPUT_CORRECT_PARAM_WHICH_IS_PATH_OF_DATA_DIR_PD_PRINT_DETAILS_OR_NOT_F_PATH_OF_OUTFILE_EG_XXX_IOTDB_DATA_DATA_PD_TRUE_F_XXX_TSFILE_VALIDATION_VIEW_TXT_19739CB5 =
+          "Please input correct param, which is [path of data dir] [-pd = print details or not] [-f"
+              + " = path of outFile]. Eg: xxx/iotdb/data/data -pd=true"
+              + " -f=xxx/TsFile_validation_view.txt";
+
+  public static final String LOG_ARG_IS_NOT_A_CORRECT_DATA_DIRECTORY_OR_TSFILE_OF_IOTDB_CD028542 =
+      "%s is not a correct data directory or tsfile of IOTDB.";
+
+  public static final String LOG_PLEASE_INPUT_SEQUENCE_DATA_DIR_PATH_6B8E0450 =
+      "Please input sequence data dir path.";
+
+  public static final String LOG_TIMEPARTITIONS_WHICH_HAVE_OVERLAP_FILES_B50DEB6C =
+      "TimePartitions which have overlap files:";
+
+  public static final String LOG_OVERLAP_TSFILE_NUM_IS_ARG_TOTAL_TSFILE_NUM_IS_ARG_892F7267 =
+      "Overlap tsfile num is %d, total tsfile num is %d\n";
+
+  public static final String LOG_REPAIR_OVERLAP_TSFILES_Y_N_D8587D19 =
+      "Repair overlap tsfiles (y/n)";
+
+  public static final String LOG_ARG_DOES_NOT_EXIST_WHEN_REPAIRING_763A5B2F =
+      "%s does not exist when repairing";
+
+  public static final String LOG_FAILED_TO_REPAIR_ARG_6522A1E2 = "Failed to repair %s";
+
+  public static final String LOG_REPAIR_FILE_ARG_BEFC61E6 = "Repair file %s";
+
+  public static final String LOG_ARG_IS_NOT_A_CORRECT_PATH_F2B497AA = "%s is not a correct path";
+
+  public static final String LOG_TIMEPARTITION_ARG_HAS_OVERLAP_FILE_DIR_IS_ARG_3F69AA70 =
+      "TimePartition %s has overlap file, dir is %s";
+
+  public static final String
+      LOG_PREVIOUS_FILE_ARG_CURRENT_FILE_ARG_DEVICE_ARG_IN_PREVIOUS_FILE_END_TIME_IS_ARG_DEVICE_IN_CURRENT_FILE_START_TIME_IS_ARG_6AB6F44C =
+          "previous file: %s, current file: %s, device %s in previous file end time is %d, device"
+              + " in current file start time is %d\n";
+
+  public static final String
+      LOG_TIME_PARTITION_ARG_IS_SKIPPED_BECAUSE_A_COMPACTION_IS_NOT_FINISHED_4A775D07 =
+          "Time partition %s is skipped because a compaction is not finished";
+
+  public static final String LOG_ARG_IS_SKIPPED_BECAUSE_RESOURCE_FILE_IS_NOT_EXIST_24044E7F =
+      "%s is skipped because resource file is not exist.";
+
+  public static final String LOG_SERIES_DATA_TYPE_COUNT_ARG_4D78B18F = "Series data type count: %s";
+
+  public static final String
+      LOG_INT64_SERIES_STATISTICS_OVERPRECISED_ARG_JUSTPRECISED_ARG_SMALLRANGE_ARG_LARGERANGE_ARG_29005700 =
+          "Int64 series statistics: overPrecised %s, justPrecised %s, smallRange %s, largeRange %s";
+
+  public static final String LOG_DATA_TYPE_SIZE_ARG_3003BCA0 = "data type -> size: %s";
+
+  public static final String LOG_DATA_TYPE_POINT_COUNT_ARG_37821A36 =
+      "data type -> point count: %s";
+
+  public static final String LOG_DATA_TYPE_CHUNK_COUNT_ARG_15B8F1E4 =
+      "data type -> chunk count: %s";
+
+  public static final String LOG_AVERAGE_DISTINCT_BINARY_VALUE_NUM_ARG_E12BEF2A =
+      "average distinct binary value num: %s";
+
+  public static final String LOG_BEFORE_REWRITE_ARG_AFTER_REWRITE_ARG_RATIO_ARG_ARG_5D6B0081 =
+      "Before rewrite %d, after rewrite %d, ratio %f%n";
+
+  public static final String LOG_PROCESSED_A_CHUNK_OF_ARG_ARG_C6C93E9E =
+      "Processed a chunk of %s.%s";
+
+  public static final String LOG_TSFILE_PATH_ARG_5BCB5137 = "TsFile path:%s";
+
+  public static final String LOG_SKETCH_SAVE_PATH_ARG_9586FA20 = "Sketch save path:%s";
+
+  public static final String LOG_ANALYZING_THE_RESOURCE_FILE_FOLDER_ARG_FINISHED_75334FCE =
+      "Analyzing the resource file folder %s finished.";
+
+  public static final String LOG_ANALYZING_THE_RESOURCE_FILE_ARG_FINISHED_95367812 =
+      "Analyzing the resource file %s finished.";
+
+  public static final String LOG_ANALYZING_ARG_ARG_0AFCE795 = "Analyzing %s ...%n";
+
+  public static final String LOG_TIME_INDEX_TYPE_ARG_63B81EC5 = "Time index type: %s";
+
+  public static final String LOG_RESOURCE_PLAN_INDEX_RANGE_ARG_ARG_ARG_BB9E5A74 =
+      "Resource plan index range [%d, %d]%n";
+
+  public static final String LOG_DEVICE_ARG_START_TIME_ARG_ARG_END_TIME_ARG_ARG_ARG_7CC98253 =
+      "device %s, start time %d (%s), end time %d (%s)%n";
+
+  public static final String LOG_OUTPUT_SAVE_PATH_ARG_1876448C = "output save path:%s";
+
+  public static final String LOG_DATA_DIR_NUM_ARG_5D16D696 = "data dir num:%s";
+
+  public static final String EXCEPTION_DEVICE_ARG_START_TIME_IS_NULL_0A1A37C4 =
+      "|  |  |  |  |  |--device %s, start time is null";
+
+  public static final String EXCEPTION_DEVICE_ARG_END_TIME_IS_NULL_60C3310D =
+      "|  |  |  |  |  |--device %s, end time is null";
+
+  public static final String EXCEPTION_DEVICE_ARG_START_TIME_ARG_ARG_END_TIME_ARG_ARG_00865978 =
+      "|  |  |  |  |  |--device %s, start time %d (%s), end time %d (%s)";
+
+  public static final String
+      EXCEPTION_DELAYANALYZER_STATISTICS_SAMPLES_ARG_ARG_P50_ARG_MS_P95_ARG_MS_P99_ARG_MS_MAX_ARG_MS_F0EBB575 =
+          "DelayAnalyzer Statistics -> Samples: %d/%d, P50: %dms, P95: %dms, P99: %dms, Max: %dms";
+
+  public static final String EXCEPTION_ARG_METADATA_ERROR_69A34C2E = "%s: MetaData error: ";
+
+  public static final String
+      EXCEPTION_FAILED_TO_RESOLVE_CANONICAL_PATH_FOR_LOAD_TSFILE_ALLOWED_DIRECTORY_ARG_ARG_9BD3ABDA =
+          "Failed to resolve canonical path for Load TsFile allowed directory %s: %s";
+
+  public static final String
+      EXCEPTION_CANNOT_SET_MULTI_DIR_STRATEGY_TO_ARG_BECAUSE_CLUSTER_MODE_ONLY_ALLOWS_ARG_B0E64F6D =
+          "Cannot set multi_dir_strategy to %s, because cluster mode only allows %s.";
+
+  public static final String EXCEPTION_DATANODE_ARG_EXITING_75D198C4 = "DataNode %s exiting...";
+
+  public static final String
+      EXCEPTION_SUCCESSFULLY_START_THE_AUDIT_SERVICE_WITH_CONFIGURATIONS_AUDITABLEOPERATIONTYPE_ARG_AUDITABLEOPERATIONLEVEL_ARG_AUDITABLEOPERATIONRESULT_ARG_IN_DATANODE_ARG_5BC6AC7D =
+          "Successfully start the Audit service with configurations (auditableOperationType %s,"
+              + " auditableOperationLevel %s, auditableOperationResult %s) in DataNode %s";
+
+  public static final String
+      EXCEPTION_FAILED_TO_CONNECT_TO_AINODE_AFTER_ARG_RETRIES_PLEASE_CHECK_THE_STATUS_OF_AINODE_C93D40BE =
+          "Failed to connect to AINode after %d retries, please check the status of AINode";
+
+  public static final String
+      EXCEPTION_ARG_LOGIN_STATUS_ARG_USER_ARG_ID_ARG_OPENS_SESSION_ARG_70586F85 =
+          "%s: Login status: %s. User %s (ID=%d), opens Session-%s";
+
+  public static final String EXCEPTION_USER_ARG_ID_ARG_LOGIN_FAILED_WITH_CODE_ARG_ARG_93FAE4FD =
+      "User %s (ID=%d) login failed with code: %d, %s";
+
+  public static final String EXCEPTION_EXCEPTION_OCCURRED_WHILE_PROCESSING_NON_READ_2EEBCBDC =
+      "Exception occurred while processing non-read. ";
+
+  public static final String EXCEPTION_DATATYPE_NOT_CONSISTENT_27AE280F = "DataType not consistent";
+
+  public static final String EXCEPTION_TRIGGER_FIRES_SUCCESSFULLY_FACD095E =
+      "Trigger fires successfully";
+
+  public static final String
+      EXCEPTION_EXCEPTION_OCCURRED_WHEN_FIRING_AN_TRIGGER_WITH_OPTIMISTIC_STRATEGY_623857A6 =
+          "Exception occurred when firing an trigger with optimistic strategy";
+
+  public static final String
+      EXCEPTION_EXCEPTION_OCCURRED_WHEN_FIRING_AN_TRIGGER_WITH_PESSIMISTIC_STRATEGY_ED052363 =
+          "Exception occurred when firing an trigger with pessimistic strategy";
+
+  public static final String EXCEPTION_START_CHECKING_SEQ_FILES_8AE84FCD =
+      "Start checking seq files ...";
+
+  public static final String EXCEPTION_CHECK_FILES_IN_DATABASE_ARG_34C82099 =
+      "- Check files in database: %s";
+
+  public static final String
+      EXCEPTION_FINISH_CHECKING_SUCCESSFULLY_TOTALLY_FIND_ARG_BAD_FILES_70EE9E55 =
+          "Finish checking successfully, totally find %s bad files.";
+
+  public static final String
+      EXCEPTION_USAGE_ISGENERATEDBYPIPE_TRUE_FALSE_RESETPROGRESSINDEX_DIRS_DIR1_DIR2_ISGENERATEDBYPIPE_WHETHER_THE_TSFILERESOURCE_IS_ISGENERATEDBYPIPE_TO_BE_GENERATED_BY_PIPE_RESETPROGRESSINDEX_WHETHER_TO_RESET_THE_TSFILERESOURCES_PROGRESSINDEXES_DIRS_LIST_OF_DATA_DIRECTORIES_TO_VALIDATE_AND_REPAIR_2C27E522 =
+          "Usage: [--isGeneratedByPipe true|false] [--resetProgressIndex] --dirs <dir1> <dir2>"
+              + " ...\n"
+              + "  --isGeneratedByPipe: whether the TsFileResource is isGeneratedByPipe to be"
+              + " generated by pipe\n"
+              + "  --resetProgressIndex: whether to reset the TsFileResources' progressIndexes\n"
+              + "  --dirs: list of data directories to validate and repair";
+
+  public static final String
+      EXCEPTION_MEET_ERRORS_IN_READING_FILE_ARG_TSFILE_MAY_BE_CORRUPTED_35B0E30A =
+          "-- Meet errors in reading file %s, tsfile may be corrupted.";
+
+  public static final String EXCEPTION_TSFILE_SKETCH_1EC1BE8B =
+      "-------------------------------- TsFile Sketch --------------------------------";
+
+  public static final String EXCEPTION_FILE_PATH_ARG_24A369C1 = "file path: %s";
+
+  public static final String EXCEPTION_FILE_LENGTH_ARG_D908AA1C = "file length: %s";
+
+  public static final String EXCEPTION_ARG_END_OF_TSFILE_119E234F = "%s|\tEND of TsFile";
+
+  public static final String EXCEPTION_INDEXOFTIMERSERIESINDEX_TREE_D0E6F25B =
+      "---------------------------- IndexOfTimerseriesIndex Tree -----------------------------";
+
+  public static final String EXCEPTION_TSFILE_SKETCH_END_8C796669 =
+      "---------------------------------- TsFile Sketch End ----------------------------------";
+
+  public static final String EXCEPTION_ARG_META_OFFSET_ARG_4D94DFFD = "%s|\t[meta offset] %s";
+
+  public static final String
+      EXCEPTION_ARG_BLOOM_FILTER_BIT_VECTOR_BYTE_ARRAY_LENGTH_ARG_FILTERSIZE_ARG_HASHFUNCTIONSIZE_ARG_9F9959F5 =
+          "%s|\t[bloom filter] bit vector byte array length=%s, filterSize=%s, hashFunctionSize=%s";
+
+  public static final String EXCEPTION_ARG_MAGIC_TAIL_ARG_5A49658F = "%s|\t[magic tail] %s";
+
+  public static final String EXCEPTION_ARG_INDEXOFTIMERSERIESINDEX_NODE_TYPE_ARG_D0FE344F =
+      "%s|\t[IndexOfTimerseriesIndex Node] type=%s";
+
+  public static final String EXCEPTION_ARG_MAGIC_HEAD_ARG_BD711EBD = "%s|\t[magic head] %s";
+
+  public static final String EXCEPTION_ARG_VERSION_NUMBER_ARG_0FBD10B6 = "%s|\t[version number] %s";
+
+  public static final String EXCEPTION_ARG_CHUNK_GROUP_OF_ARG_NUM_OF_CHUNKS_ARG_52E5BE1A =
+      "%s [Chunk Group] of %s, num of Chunks:%s";
+
+  public static final String EXCEPTION_ARG_CHUNK_GROUP_HEADER_7D173A5C =
+      "%s|\t[Chunk Group Header]";
+
+  public static final String
+      EXCEPTION_ARG_CHUNK_HEADER_MARKER_ARG_MEASUREMENTID_ARG_DATASIZE_ARG_DATATYPE_ARG_COMPRESSIONTYPE_ARG_ENCODINGTYPE_ARG_5831221F =
+          "%s|\t\t[chunk header] marker=%s, measurementID=%s, dataSize=%s, dataType=%s,"
+              + " compressionType=%s, encodingType=%s";
+
+  public static final String EXCEPTION_ARG_CHUNK_GROUP_OF_ARG_ENDS_F5B5A51D =
+      "%s [Chunk Group] of %s ends";
+
+  public static final String EXCEPTION_FILE_PATHS_8A252140 = "file paths";
+
+  public static final String EXCEPTION_HOST_NAME_OPTIONAL_DEFAULT_127_0_0_1_A3013008 =
+      "Host Name (optional, default 127.0.0.1";
+
+  public static final String EXCEPTION_FILE_PATHS_REQUIRED_09CF75D5 = "File Paths (required)";
+
+  public static final String EXCEPTION_DELAYANALYZER_NO_DATA_COLLECTED_YET_A237116F =
+      "[DelayAnalyzer] No data collected yet";
+
+  public static final String EXCEPTION_FAILED_TO_CONNECT_TO_CONFIG_NODE_DE88B1B7 =
+      "Failed to connect to config node.";
+
+  public static final String EXCEPTION_AUTHENTICATION_FAILED_802B207B = "Authentication failed.";
+
+  public static final String
+      EXCEPTION_NO_PERMISSIONS_FOR_THIS_OPERATION_ONLY_ROOT_USER_IS_ALLOWED_550785E7 =
+          "No permissions for this operation, only root user is allowed";
+
+  public static final String
+      EXCEPTION_NO_PERMISSIONS_FOR_THIS_OPERATION_PLEASE_ADD_PRIVILEGE_428F7542 =
+          "No permissions for this operation, please add privilege ";
+
+  public static final String
+      EXCEPTION_NO_PERMISSIONS_FOR_THIS_OPERATION_PLEASE_ADD_GRANT_OPTION_TO_PRIVILEGE_52CAE93E =
+          "No permissions for this operation, please add grant option to privilege ";
+
+  public static final String
+      EXCEPTION_SOME_DATA_DIRS_ARE_REMOVED_FROM_DATA_DIRS_PARAMETER_PLEASE_ADD_THEM_BACK_7BF4DBFE =
+          "some data dirs are removed from data_dirs parameter, please add them back.";
+
+  public static final String EXCEPTION_EXECUTE_SUCCESSFULLY_BF983B59 = "Execute successfully";
+
+  public static final String EXCEPTION_CONSENSUS_HAS_NOT_BEEN_STARTED_AFTER_ARG_SECONDS_AC8147E7 =
+      "Consensus has not been started after %s seconds";
+
+  public static final String EXCEPTION_THIS_OPERATION_TYPE_IS_NOT_SUPPORTED_DD44BACE =
+      "This operation type is not supported";
+
+  public static final String EXCEPTION_PREVIOUS_REPAIR_TASK_IS_STILL_STOPPING_F6FAD84A =
+      "previous repair task is still stopping";
+
+  public static final String EXCEPTION_ALREADY_HAVE_A_RUNNING_REPAIR_TASK_826E4880 =
+      "already have a running repair task";
+
+  public static final String
+      EXCEPTION_CHANGEREGIONLEADER_THE_CURRENT_DATANODE_ARG_IS_ALREADY_THE_LEADER_OF_REGIONGROUP_ARG_SKIP_LEADER_TRANSFER_68699742 =
+          "[ChangeRegionLeader] The current DataNode: %s is already the leader of RegionGroup: %s,"
+              + " skip leader transfer.";
+
+  public static final String EXCEPTION_UNKNOWN_TASK_STATUS_ARG_62ED14CA = "Unknown task status: %s";
+
+  public static final String
+      EXCEPTION_QUERY_IS_NOT_FOUND_IT_MAY_BE_KILLED_BY_OTHERS_TIMEOUT_OR_SOME_OTHER_RUNTIME_ERRORS_YOU_CAN_SEE_MORE_DETAILS_IN_SERVER_LOG_90BD085E =
+          "Query is not found, it may be killed by others, timeout or some other runtime errors,"
+              + " you can see more details in server log.";
+
+  public static final String EXCEPTION_CANCELLATION_IS_NOT_IMPLEMENTED_91FA6607 =
+      "Cancellation is not implemented";
+
+  public static final String EXCEPTION_FAILED_TO_PARSE_SQL_ARG_20075759 = "Failed to parse SQL: %s";
+
+  public static final String EXCEPTION_UNKNOWN_TIME_ZONE_D224D82D = "Unknown time zone";
+
+  public static final String EXCEPTION_FETCH_METADATA_IS_NOT_SUPPORTED_20489A74 =
+      "Fetch Metadata is not supported.";
+
+  public static final String EXCEPTION_EXECUTE_BATCH_STATEMENTS_SUCCESSFULLY_38422BA6 =
+      "Execute batch statements successfully";
+
+  public static final String EXCEPTION_MODIFY_TEMPLATE_HAS_NOT_BEEN_SUPPORTED_976B19DE =
+      "Modify template has not been supported.";
+
+  public static final String EXCEPTION_ARG_HAS_NOT_BEEN_SUPPORTED_F90BAF99 =
+      "%shas not been supported.";
+
+  public static final String EXCEPTION_LOGIN_SUCCESSFULLY_1C2EF670 = "Login successfully";
+
+  public static final String EXCEPTION_STATEMENT_ID_NOT_SET_BY_CLIENT_BDA3B354 =
+      "statement id not set by client.";
+
+  public static final String EXCEPTION_FAILED_TO_ARG_ON_DATANODE_ARG_EXCEPTION_ARG_87B8946D =
+      "Failed to %s on DataNode: %s, exception: %s";
+
+  public static final String EXCEPTION_FAILED_TO_ARG_ON_CONFIGNODE_ARG_EXCEPTION_ARG_CD279F8B =
+      "Failed to %s on ConfigNode: %s, exception: %s";
+
+  public static final String
+      EXCEPTION_FAIL_TO_CONNECT_TO_AINODE_FROM_DATANODE_ARG_WHEN_EXECUTING_ARG_2DE6EA1D =
+          "Fail to connect to AINode from DataNode %s when executing %s.";
+
+  public static final String
+      EXCEPTION_EXTERNAL_SERVICE_INSTANCE_IS_NULL_WHEN_STATE_IS_RUNNING_B062C897 =
+          "External Service instance is null when state is RUNNING!";
+
+  public static final String EXCEPTION_STACK_TRACE_OF_SHUTDOWN_HOOK_2EB9D12F =
+      "Stack trace of shutdown hook:\n";
+
+  public static final String
+      EXCEPTION_UNEXPECTED_INTERRUPTION_WHEN_WAITING_TO_REGISTER_TO_THE_CLUSTER_DD7A0BEC =
+          "Unexpected interruption when waiting to register to the cluster";
+
+  public static final String EXCEPTION_STACK_TRACE_OF_MAIN_THREAD_0B7EC78B =
+      "Stack trace of main thread:\n";
+
+  public static final String LOG_FIND_THE_BAD_FILE_ARG_OVERLAP_WITH_LATTER_FILES_ECF50A14 =
+      "-- Find the bad file %s, overlap with latter files.";
+
+  public static final String LOG_FIND_THE_BAD_FILE_ARG_4251BC8D = "-- Find the bad file %s";
+
+  public static final String LOG_DEVICE_ARG_OVERLAP_BETWEEN_FILES_WITH_PREVIOUS_FILE_ARG_781B1DA1 =
+      "---- Device %s overlap between files, with previous file %s";
+
+  public static final String
+      LOG_TIMESERIES_ARG_OVERLAP_BETWEEN_FILES_WITH_PREVIOUS_FILE_ARG_6DF56DE2 =
+          "-------- Timeseries %s overlap between files, with previous file %s";
+
+  public static final String LOG_TIMESERIES_ARG_OVERLAP_BETWEEN_CHUNKS_99A2EA3F =
+      "-------- Timeseries %s overlap between chunks";
+
+  public static final String LOG_TIMESERIES_ARG_OVERLAP_BETWEEN_PAGES_E7D98B39 =
+      "-------- Timeseries %s overlap between pages";
+
+  public static final String LOG_TIMESERIES_ARG_OVERLAP_WITHIN_ONE_PAGE_A712F779 =
+      "-------- Timeseries %s overlap within one page";
 }

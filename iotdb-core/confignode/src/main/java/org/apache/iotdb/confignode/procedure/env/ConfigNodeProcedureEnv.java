@@ -492,7 +492,10 @@ public class ConfigNodeProcedureEnv {
       LOG.warn(ProcedureMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       return new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode())
           .setMessage(
-              "Failed to persist RegionGroup allocation in the consensus layer: " + e.getMessage());
+              String.format(
+                  ProcedureMessages
+                      .MESSAGE_FAILED_TO_PERSIST_REGIONGROUP_ALLOCATION_IN_THE_CONSENSUS_LAYER_ARG_E9C4A532,
+                  Objects.toString(e.getMessage())));
     }
   }
 
@@ -862,7 +865,8 @@ public class ConfigNodeProcedureEnv {
     return clientHandler.getResponseMap();
   }
 
-  public List<TSStatus> pushSingleConsumerGroupOnDataNode(ByteBuffer consumerGroupMeta) {
+  public Map<Integer, TPushConsumerGroupMetaResp> pushSingleConsumerGroupOnDataNode(
+      ByteBuffer consumerGroupMeta) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPushSingleConsumerGroupMetaReq request =
@@ -877,9 +881,7 @@ public class ConfigNodeProcedureEnv {
     final long timeoutInMs = getRequiredSubscriptionMetadataRequestTimeoutInMs();
     sendRequiredMetadataRequest(clientHandler, timeoutInMs);
     fillMissingConsumerGroupPushMetaResponses(clientHandler, timeoutInMs);
-    return clientHandler.getResponseList().stream()
-        .map(TPushConsumerGroupMetaResp::getStatus)
-        .collect(Collectors.toList());
+    return clientHandler.getResponseMap();
   }
 
   public List<TSStatus> dropSingleConsumerGroupOnDataNode(String consumerGroupNameToDrop) {
@@ -1032,10 +1034,9 @@ public class ConfigNodeProcedureEnv {
     return responseMap;
   }
 
-  private boolean isRuntimeActiveWriterNode(final int dataNodeId) {
-    return dataNodeId >= 0
-        && getLoadManager().getNodeStatus(dataNodeId) != NodeStatus.Unknown
-        && getLoadManager().getNodeStatus(dataNodeId) != NodeStatus.Removing;
+  boolean isRuntimeActiveWriterNode(final int dataNodeId) {
+    final NodeStatus nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
+    return dataNodeId >= 0 && !nodeStatus.mayBeOffline();
   }
 
   private static Map<Integer, TPushPipeMetaResp> sendPipeMetaRequest(
@@ -1187,8 +1188,11 @@ public class ConfigNodeProcedureEnv {
     return new TSStatus(statusCode.getStatusCode())
         .setMessage(
             String.format(
-                "Failed to %s on DataNode %s before metadata request timeout %sms",
-                requestType, dataNodeId, timeoutInMs));
+                ProcedureMessages
+                    .MESSAGE_FAILED_TO_ARG_ON_DATANODE_ARG_BEFORE_METADATA_REQUEST_TIMEOUT_ARG_MS_88BC27CA,
+                requestType,
+                dataNodeId,
+                timeoutInMs));
   }
 
   private static long getRuntimeMetaPushTimeoutInMs() {

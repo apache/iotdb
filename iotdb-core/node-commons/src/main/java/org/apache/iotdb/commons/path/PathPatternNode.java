@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.path;
 
+import com.google.common.collect.Sets;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -30,7 +31,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -272,7 +272,7 @@ public class PathPatternNode<V, S extends PathPatternNode.Serializer<V>> impleme
     final int typeOrValueSize = ReadWriteIOUtils.readInt(buffer);
     if (typeOrValueSize >= 0) {
       // measurement node in PatternTreeMap
-      final Set<V> valueSet = new HashSet<>();
+      final Set<V> valueSet = Sets.newHashSetWithExpectedSize(typeOrValueSize);
       for (int i = 0; i < typeOrValueSize; i++) {
         valueSet.add(serializer.read(buffer));
       }

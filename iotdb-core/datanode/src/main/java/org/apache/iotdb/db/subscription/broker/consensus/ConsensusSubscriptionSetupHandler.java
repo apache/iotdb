@@ -119,6 +119,9 @@ public class ConsensusSubscriptionSetupHandler {
    * region, and when a DataRegion is removed, all subscription queues are properly cleaned up.
    */
   public static void ensureNewRegionListenerRegistered() {
+    if (IoTConsensus.onPeerRecovering == null) {
+      IoTConsensus.onPeerRecovering = ConsensusSubscriptionSetupHandler::onRecoveredRegionCreated;
+    }
     if (IoTConsensus.onNewPeerCreated == null) {
       IoTConsensus.onNewPeerCreated = ConsensusSubscriptionSetupHandler::onNewRegionCreated;
       LOGGER.info(
@@ -133,12 +136,43 @@ public class ConsensusSubscriptionSetupHandler {
     }
   }
 
+  private static void onRecoveredRegionCreated(
+      final ConsensusGroupId groupId, final IoTConsensusServerImpl serverImpl) {
+    if (!(groupId instanceof DataRegionId)) {
+      return;
+    }
+    registerStartupDetachedRetentions(
+        groupId, serverImpl, ConsensusSubscriptionCommitManager.getInstance());
+  }
+
+  static void registerStartupDetachedRetentions(
+      final ConsensusGroupId groupId,
+      final IoTConsensusServerImpl serverImpl,
+      final ConsensusSubscriptionCommitManager commitManager) {
+    for (final ConsensusSubscriptionCommitManager.PersistedStateKey stateKey :
+        commitManager.getPersistedStateKeys()) {
+      if (!groupId.toString().equals(stateKey.getRegionId())) {
+        continue;
+      }
+      ConsensusSubscriptionWalRetention.registerDetached(
+          stateKey.getConsumerGroupId(),
+          stateKey.getTopicName(),
+          groupId,
+          serverImpl,
+          new SubscriptionWalRetentionPolicy(
+              stateKey.getTopicName(),
+              SubscriptionWalRetentionPolicy.UNBOUNDED,
+              SubscriptionWalRetentionPolicy.UNBOUNDED),
+          commitManager);
+    }
+  }
+
   /**
    * Callback invoked when a new DataRegion (IoTConsensusServerImpl) is created locally. Queries
    * existing subscription metadata to find all active consensus subscriptions and binds prefetching
    * queues to the new region.
    */
-  private static void onNewRegionCreated(
+  static void onNewRegionCreated(
       final ConsensusGroupId groupId, final IoTConsensusServerImpl serverImpl) {
     if (!(groupId instanceof DataRegionId)) {
       return;
@@ -161,110 +195,129 @@ public class ConsensusSubscriptionSetupHandler {
         allSubscriptions.size(),
         serverImpl.getSearchIndex());
 
-    for (final Map.Entry<String, java.util.Set<String>> groupEntry : allSubscriptions.entrySet()) {
-      final String consumerGroupId = groupEntry.getKey();
-      final boolean isTableModel = SubscriptionAgent.consumer().isTableModel(consumerGroupId);
-      for (final String topicName : groupEntry.getValue()) {
-        if (!isConsensusBasedTopic(topicName, isTableModel)) {
+    for (final String consumerGroupId : allSubscriptions.keySet()) {
+      // Serialize binding with metadata repair and its rollback. Re-read the group's topics after
+      // acquiring the lock so an unsubscribe while this callback was waiting cannot be undone.
+      SubscriptionAgent.consumer()
+          .executeWithConsumerGroupLock(
+              consumerGroupId,
+              () ->
+                  bindNewRegionForConsumerGroup(
+                      consumerGroupId, groupId, serverImpl, commitManager));
+    }
+  }
+
+  private static void bindNewRegionForConsumerGroup(
+      final String consumerGroupId,
+      final ConsensusGroupId groupId,
+      final IoTConsensusServerImpl serverImpl,
+      final ConsensusSubscriptionCommitManager commitManager) {
+    final boolean isTableModel = SubscriptionAgent.consumer().isTableModel(consumerGroupId);
+    for (final String topicName :
+        SubscriptionAgent.consumer().getTopicNamesSubscribedByConsumerGroup(consumerGroupId)) {
+      if (!isConsensusBasedTopic(topicName, isTableModel)) {
+        continue;
+      }
+      if (SubscriptionAgent.broker()
+          .hasConsensusQueueForRegion(consumerGroupId, topicName, groupId.toString())) {
+        continue;
+      }
+      try {
+        final Map<String, TopicConfig> topicConfigs =
+            SubscriptionAgent.topic()
+                .getTopicConfigs(java.util.Collections.singleton(topicName), isTableModel);
+        final TopicConfig topicConfig = topicConfigs.get(topicName);
+        if (topicConfig == null) {
           continue;
         }
-        try {
-          final Map<String, TopicConfig> topicConfigs =
-              SubscriptionAgent.topic()
-                  .getTopicConfigs(java.util.Collections.singleton(topicName), isTableModel);
-          final TopicConfig topicConfig = topicConfigs.get(topicName);
-          if (topicConfig == null) {
-            continue;
-          }
 
-          // Resolve the new DataRegion's actual database name
-          final DataRegion dataRegion =
-              StorageEngine.getInstance().getDataRegion((DataRegionId) groupId);
-          if (dataRegion == null) {
-            continue;
-          }
-          final String dbRaw = dataRegion.getDatabaseName();
-          final String dbTableModel = dbRaw.startsWith("root.") ? dbRaw.substring(5) : dbRaw;
-
-          if (!matchesTopicDataRegion(dbRaw, topicConfig, isTableModel)) {
-            continue;
-          }
-
-          final String actualDbName = topicConfig.isTableTopic() ? dbTableModel : null;
-          final ConsensusLogToTabletConverter converter =
-              buildConverter(topicName, topicConfig, actualDbName);
-          final SubscriptionWalRetentionPolicy retentionPolicy =
-              buildSubscriptionWalRetentionPolicy(topicName, topicConfig, serverImpl);
-
-          // Recover from persisted per-writer region progress when available. The queue will
-          // resolve a replay start from that progress on first poll via the region-level locator.
-          // A newly-created region starts from its first consensus index and never proposes its
-          // current local tail as an initial committed frontier.
-          commitManager.initializeStateWithoutTailProposal(consumerGroupId, topicName, groupId);
-          final RegionProgress committedRegionProgress =
-              resolveFallbackCommittedRegionProgress(
-                  commitManager, consumerGroupId, topicName, groupId);
-          final boolean hasLocalPersistedState =
-              commitManager.hasPersistedState(consumerGroupId, topicName, groupId);
-          // This region is created after the subscription already exists. Its first WAL entry may
-          // already be visible by the time this callback runs, so start from the beginning of this
-          // new region instead of tail+1 to avoid skipping the first write.
-          final long tailStartSearchIndex = FIRST_CONSENSUS_SEARCH_INDEX;
-          final long initialRuntimeVersion =
-              regionRuntimeVersion.getOrDefault(groupId.convertToTConsensusGroupId(), 0L);
-          final boolean initialActive =
-              lastKnownPreferredWriter.getOrDefault(groupId.convertToTConsensusGroupId(), -1)
-                  == IOTDB_CONFIG.getDataNodeId();
-          final Set<Integer> initialActiveWriterNodeIds =
-              regionActiveWriterNodeIds.getOrDefault(
-                  groupId.convertToTConsensusGroupId(),
-                  initialActive
-                      ? Collections.singleton(IOTDB_CONFIG.getDataNodeId())
-                      : Collections.emptySet());
-          final ConsensusRegionRuntimeState initialRuntimeState =
-              new ConsensusRegionRuntimeState(
-                  initialRuntimeVersion,
-                  lastKnownPreferredWriter.getOrDefault(groupId.convertToTConsensusGroupId(), -1),
-                  initialActive,
-                  initialActiveWriterNodeIds);
-
-          LOGGER.info(
-              DataNodePipeMessages
-                  .PIPE_LOG_AUTO_BINDING_CONSENSUS_QUEUE_FOR_TOPIC_IN_GROUP_TO_NEW_REGION_86F21649,
-              topicName,
-              consumerGroupId,
-              groupId,
-              dbTableModel,
-              tailStartSearchIndex,
-              hasLocalPersistedState,
-              committedRegionProgress,
-              initialRuntimeVersion,
-              initialActive);
-
-          SubscriptionAgent.broker()
-              .bindConsensusPrefetchingQueue(
-                  consumerGroupId,
-                  topicName,
-                  topicConfig.getOrderMode(),
-                  groupId,
-                  serverImpl,
-                  retentionPolicy,
-                  converter,
-                  commitManager,
-                  committedRegionProgress,
-                  tailStartSearchIndex,
-                  initialRuntimeVersion,
-                  initialActive);
-          SubscriptionAgent.broker().applyRuntimeStateForRegion(groupId, initialRuntimeState);
-        } catch (final Exception e) {
-          LOGGER.error(
-              DataNodePipeMessages
-                  .PIPE_LOG_FAILED_TO_AUTO_BIND_TOPIC_IN_GROUP_TO_NEW_REGION_5BFD0E7D,
-              topicName,
-              consumerGroupId,
-              groupId,
-              e);
+        // Resolve the new DataRegion's actual database name
+        final DataRegion dataRegion =
+            StorageEngine.getInstance().getDataRegion((DataRegionId) groupId);
+        if (dataRegion == null) {
+          continue;
         }
+        final String dbRaw = dataRegion.getDatabaseName();
+        final String dbTableModel = dbRaw.startsWith("root.") ? dbRaw.substring(5) : dbRaw;
+
+        if (!matchesTopicDataRegion(dbRaw, topicConfig, isTableModel)) {
+          continue;
+        }
+
+        final String actualDbName = topicConfig.isTableTopic() ? dbTableModel : null;
+        final ConsensusLogToTabletConverter converter =
+            buildConverter(topicName, topicConfig, actualDbName);
+        final SubscriptionWalRetentionPolicy retentionPolicy =
+            buildSubscriptionWalRetentionPolicy(topicName, topicConfig, serverImpl);
+
+        // Recover from persisted per-writer region progress when available. The queue will
+        // resolve a replay start from that progress on first poll via the region-level locator.
+        // A newly-created region starts from its first consensus index and never proposes its
+        // current local tail as an initial committed frontier.
+        commitManager.initializeStateWithoutTailProposal(consumerGroupId, topicName, groupId);
+        final RegionProgress committedRegionProgress =
+            resolveFallbackCommittedRegionProgress(
+                commitManager, consumerGroupId, topicName, groupId);
+        final boolean hasLocalPersistedState =
+            commitManager.hasPersistedState(consumerGroupId, topicName, groupId);
+        // This region is created after the subscription already exists. Its first WAL entry may
+        // already be visible by the time this callback runs, so start from the beginning of this
+        // new region instead of tail+1 to avoid skipping the first write.
+        final long tailStartSearchIndex = FIRST_CONSENSUS_SEARCH_INDEX;
+        final long initialRuntimeVersion =
+            regionRuntimeVersion.getOrDefault(groupId.convertToTConsensusGroupId(), 0L);
+        final boolean initialActive =
+            lastKnownPreferredWriter.getOrDefault(groupId.convertToTConsensusGroupId(), -1)
+                == IOTDB_CONFIG.getDataNodeId();
+        final Set<Integer> initialActiveWriterNodeIds =
+            regionActiveWriterNodeIds.getOrDefault(
+                groupId.convertToTConsensusGroupId(),
+                initialActive
+                    ? Collections.singleton(IOTDB_CONFIG.getDataNodeId())
+                    : Collections.emptySet());
+        final ConsensusRegionRuntimeState initialRuntimeState =
+            new ConsensusRegionRuntimeState(
+                initialRuntimeVersion,
+                lastKnownPreferredWriter.getOrDefault(groupId.convertToTConsensusGroupId(), -1),
+                initialActive,
+                initialActiveWriterNodeIds);
+
+        LOGGER.info(
+            DataNodePipeMessages
+                .PIPE_LOG_AUTO_BINDING_CONSENSUS_QUEUE_FOR_TOPIC_IN_GROUP_TO_NEW_REGION_86F21649,
+            topicName,
+            consumerGroupId,
+            groupId,
+            dbTableModel,
+            tailStartSearchIndex,
+            hasLocalPersistedState,
+            committedRegionProgress,
+            initialRuntimeVersion,
+            initialActive);
+
+        SubscriptionAgent.broker()
+            .bindConsensusPrefetchingQueue(
+                consumerGroupId,
+                topicName,
+                topicConfig.getOrderMode(),
+                groupId,
+                serverImpl,
+                retentionPolicy,
+                converter,
+                commitManager,
+                committedRegionProgress,
+                tailStartSearchIndex,
+                initialRuntimeVersion,
+                initialActive,
+                hasLocalPersistedState);
+        SubscriptionAgent.broker().applyRuntimeStateForRegion(groupId, initialRuntimeState);
+      } catch (final Exception e) {
+        LOGGER.error(
+            DataNodePipeMessages.PIPE_LOG_FAILED_TO_AUTO_BIND_TOPIC_IN_GROUP_TO_NEW_REGION_5BFD0E7D,
+            topicName,
+            consumerGroupId,
+            groupId,
+            e);
       }
     }
   }
@@ -287,6 +340,21 @@ public class ConsensusSubscriptionSetupHandler {
         groupId);
     try {
       SubscriptionAgent.broker().unbindByRegion(groupId);
+      final IConsensus dataRegionConsensus = DataRegionConsensusImpl.getInstance();
+      if (dataRegionConsensus instanceof IoTConsensus) {
+        final IoTConsensusServerImpl serverImpl =
+            ((IoTConsensus) dataRegionConsensus).getImpl(groupId);
+        if (Objects.nonNull(serverImpl)) {
+          for (final ConsensusSubscriptionCommitManager.PersistedStateKey stateKey :
+              ConsensusSubscriptionCommitManager.getInstance().getPersistedStateKeys()) {
+            if (groupId.toString().equals(stateKey.getRegionId())) {
+              ConsensusSubscriptionWalRetention.unregisterDetached(
+                  stateKey.getConsumerGroupId(), stateKey.getTopicName(), groupId, serverImpl);
+            }
+          }
+        }
+      }
+      ConsensusSubscriptionCommitManager.getInstance().removeAllStatesForRegion(groupId);
     } catch (final Exception e) {
       LOGGER.error(
           DataNodePipeMessages
@@ -341,6 +409,14 @@ public class ConsensusSubscriptionSetupHandler {
 
   public static void setupConsensusSubscriptions(
       final String consumerGroupId, final Set<String> topicNames, final boolean isTableModel) {
+    SubscriptionAgent.consumer()
+        .executeWithConsumerGroupLock(
+            consumerGroupId,
+            () -> setupConsensusSubscriptionsInternal(consumerGroupId, topicNames, isTableModel));
+  }
+
+  private static void setupConsensusSubscriptionsInternal(
+      final String consumerGroupId, final Set<String> topicNames, final boolean isTableModel) {
     final IConsensus dataRegionConsensus = DataRegionConsensusImpl.getInstance();
     if (!(dataRegionConsensus instanceof IoTConsensus)) {
       final String configuredProtocol = IOTDB_CONFIG.getDataRegionConsensusProtocolClass();
@@ -370,6 +446,10 @@ public class ConsensusSubscriptionSetupHandler {
         topicNames,
         ioTConsensus.getAllConsensusGroupIds().size());
 
+    // Recovery also visits topics with live queues. Roll back only newly bound regions so a
+    // failure on another topic cannot discard their in-flight events or committed progress.
+    final Map<String, Set<String>> existingQueueRegionIds =
+        SubscriptionAgent.broker().getConsensusQueueRegionIds(consumerGroupId, topicNames);
     final ConsensusSubscriptionCommitManager.SetupSnapshot setupSnapshot =
         commitManager.captureSetupSnapshot(consumerGroupId, topicNames);
     setupConsensusTopics(
@@ -381,18 +461,27 @@ public class ConsensusSubscriptionSetupHandler {
                 consumerGroupId, topicName, isTableModel, ioTConsensus, commitManager),
         attemptedTopicNames ->
             rollbackConsensusSubscriptionSetup(
-                consumerGroupId, attemptedTopicNames, commitManager, setupSnapshot));
+                consumerGroupId,
+                attemptedTopicNames,
+                commitManager,
+                setupSnapshot,
+                existingQueueRegionIds));
   }
 
   private static void rollbackConsensusSubscriptionSetup(
       final String consumerGroupId,
       final Set<String> attemptedTopicNames,
       final ConsensusSubscriptionCommitManager commitManager,
-      final ConsensusSubscriptionCommitManager.SetupSnapshot setupSnapshot) {
+      final ConsensusSubscriptionCommitManager.SetupSnapshot setupSnapshot,
+      final Map<String, Set<String>> existingQueueRegionIds) {
     RuntimeException rollbackFailure = null;
     for (final String topicName : attemptedTopicNames) {
       try {
-        SubscriptionAgent.broker().unbindConsensusPrefetchingQueue(consumerGroupId, topicName);
+        SubscriptionAgent.broker()
+            .rollbackConsensusPrefetchingQueues(
+                consumerGroupId,
+                topicName,
+                existingQueueRegionIds.getOrDefault(topicName, Collections.emptySet()));
       } catch (final RuntimeException e) {
         if (Objects.isNull(rollbackFailure)) {
           rollbackFailure = e;
@@ -402,7 +491,14 @@ public class ConsensusSubscriptionSetupHandler {
       }
     }
     try {
-      commitManager.restoreSetupSnapshot(setupSnapshot, attemptedTopicNames);
+      commitManager.restoreSetupSnapshot(
+          setupSnapshot, attemptedTopicNames, existingQueueRegionIds);
+      restoreStartupDetachedRetentions(
+          consumerGroupId,
+          attemptedTopicNames,
+          setupSnapshot,
+          commitManager,
+          existingQueueRegionIds);
     } catch (final RuntimeException e) {
       if (Objects.isNull(rollbackFailure)) {
         rollbackFailure = e;
@@ -412,6 +508,42 @@ public class ConsensusSubscriptionSetupHandler {
     }
     if (Objects.nonNull(rollbackFailure)) {
       throw rollbackFailure;
+    }
+  }
+
+  private static void restoreStartupDetachedRetentions(
+      final String consumerGroupId,
+      final Set<String> attemptedTopicNames,
+      final ConsensusSubscriptionCommitManager.SetupSnapshot setupSnapshot,
+      final ConsensusSubscriptionCommitManager commitManager,
+      final Map<String, Set<String>> existingQueueRegionIds) {
+    final IConsensus dataRegionConsensus = DataRegionConsensusImpl.getInstance();
+    if (!(dataRegionConsensus instanceof IoTConsensus)) {
+      return;
+    }
+    final IoTConsensus ioTConsensus = (IoTConsensus) dataRegionConsensus;
+    for (final String topicName : attemptedTopicNames) {
+      for (final String regionId : setupSnapshot.getRegionIds(topicName)) {
+        if (existingQueueRegionIds
+            .getOrDefault(topicName, Collections.emptySet())
+            .contains(regionId)) {
+          continue;
+        }
+        final ConsensusGroupId groupId = ConsensusGroupId.Factory.createFromString(regionId);
+        final IoTConsensusServerImpl serverImpl = ioTConsensus.getImpl(groupId);
+        if (Objects.nonNull(serverImpl)) {
+          ConsensusSubscriptionWalRetention.registerDetached(
+              consumerGroupId,
+              topicName,
+              groupId,
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  topicName,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              commitManager);
+        }
+      }
     }
   }
 
@@ -471,7 +603,7 @@ public class ConsensusSubscriptionSetupHandler {
    * DATABASE_KEY} filter. Additionally, the {@link #onNewRegionCreated} callback ensures that
    * regions created after this method runs are also automatically bound.
    */
-  private static void setupConsensusQueueForTopic(
+  static void setupConsensusQueueForTopic(
       final String consumerGroupId,
       final String topicName,
       final boolean isTableModel,
@@ -513,6 +645,23 @@ public class ConsensusSubscriptionSetupHandler {
 
     for (final ConsensusGroupId groupId : allGroupIds) {
       if (!(groupId instanceof DataRegionId)) {
+        continue;
+      }
+      if (ioTConsensus.isPeerCreationCallbackPending(groupId)
+          && SubscriptionAgent.consumer()
+              .isTopicSubscribedByConsumerGroup(consumerGroupId, topicName)) {
+        // The new-region callback binds this peer from its first WAL index. Binding it here from
+        // the current tail could skip writes replicated before the callback finishes.
+        bound = true;
+        continue;
+      }
+      if (SubscriptionAgent.broker()
+          .hasConsensusQueueForRegion(consumerGroupId, topicName, groupId.toString())) {
+        // In particular, a queue created by onNewRegionCreated must keep its initialization from
+        // the beginning of the region instead of being reinitialized from a local tail proposal.
+        // Check the live broker as well because a region callback can finish after the setup
+        // snapshot was captured.
+        bound = true;
         continue;
       }
 
@@ -604,7 +753,8 @@ public class ConsensusSubscriptionSetupHandler {
                   committedRegionProgress,
                   tailStartSearchIndex,
                   initialRuntimeVersion,
-                  initialActive);
+                  initialActive,
+                  hasLocalPersistedState);
       commitManager.initializeStateFromTailProposal(
           consumerGroupId, topicName, groupId, queue.computeTailRegionProgress());
 
@@ -632,6 +782,7 @@ public class ConsensusSubscriptionSetupHandler {
 
     if (isTableTopic) {
       SubscriptionAgent.broker().refreshColumnFilter(topicName, topicConfig);
+      SubscriptionAgent.broker().refreshTagFilter(topicName, topicConfig);
       // Table model: database + table name pattern
       tablePattern = buildTablePattern(topicConfig);
       return new ConsensusLogToTabletConverter(
@@ -698,16 +849,20 @@ public class ConsensusSubscriptionSetupHandler {
 
   private static long resolveRetentionValue(
       final TopicConfig topicConfig, final String key, final long defaultValue) {
-    if (!topicConfig.hasAttribute(key)) {
+    final String rawValue =
+        topicConfig.getAttribute().entrySet().stream()
+            .filter(entry -> Objects.nonNull(entry.getKey()))
+            .filter(entry -> key.equalsIgnoreCase(entry.getKey()))
+            .map(Map.Entry::getValue)
+            .findFirst()
+            .orElse(null);
+    if (Objects.isNull(rawValue)) {
       return normalizeRetentionValue(defaultValue);
     }
-    final long parsedValue = Long.parseLong(topicConfig.getAttribute().get(key));
+    final long parsedValue = Long.parseLong(rawValue);
     if (parsedValue == 0 || parsedValue < SubscriptionWalRetentionPolicy.UNBOUNDED) {
       throw new IllegalArgumentException(
-          String.format(
-              DataNodePipeMessages.PIPE_EXCEPTION_ILLEGAL_S_S_72D743AA,
-              key,
-              topicConfig.getAttribute().get(key)));
+          String.format(DataNodePipeMessages.PIPE_EXCEPTION_ILLEGAL_S_S_72D743AA, key, rawValue));
     }
     return normalizeRetentionValue(parsedValue);
   }
@@ -718,13 +873,32 @@ public class ConsensusSubscriptionSetupHandler {
 
   public static void teardownConsensusSubscriptions(
       final String consumerGroupId, final Set<String> topicNames) {
+    teardownConsensusSubscriptions(consumerGroupId, topicNames, true);
+  }
+
+  public static void teardownConsensusSubscriptions(
+      final String consumerGroupId,
+      final Set<String> topicNames,
+      final boolean retainConfiguredProgress) {
     for (final String topicName : topicNames) {
       try {
-        SubscriptionAgent.broker().unbindConsensusPrefetchingQueue(consumerGroupId, topicName);
+        final boolean isTableModel = SubscriptionAgent.consumer().isTableModel(consumerGroupId);
+        final TopicConfig topicConfig =
+            SubscriptionAgent.topic()
+                .getTopicConfigs(Collections.singleton(topicName), isTableModel)
+                .get(topicName);
+        final boolean retainProgressAfterUnsubscribe =
+            retainConfiguredProgress
+                && Objects.nonNull(topicConfig)
+                && topicConfig.isProgressRetainedAfterUnsubscribe();
+        SubscriptionAgent.broker()
+            .unbindConsensusPrefetchingQueue(
+                consumerGroupId, topicName, retainProgressAfterUnsubscribe);
 
-        // Clean up commit state for all regions of this topic
-        ConsensusSubscriptionCommitManager.getInstance()
-            .removeAllStatesForTopic(consumerGroupId, topicName);
+        if (!retainProgressAfterUnsubscribe) {
+          ConsensusSubscriptionCommitManager.getInstance()
+              .removeAllStatesForTopic(consumerGroupId, topicName);
+        }
 
         LOGGER.info(
             DataNodePipeMessages
@@ -738,6 +912,211 @@ public class ConsensusSubscriptionSetupHandler {
             topicName,
             consumerGroupId,
             e);
+      }
+    }
+  }
+
+  public static void restoreDetachedRetentions() {
+    final IConsensus dataRegionConsensus = DataRegionConsensusImpl.getInstance();
+    if (!(dataRegionConsensus instanceof IoTConsensus)) {
+      return;
+    }
+
+    ensureNewRegionListenerRegistered();
+    final IoTConsensus ioTConsensus = (IoTConsensus) dataRegionConsensus;
+    final ConsensusSubscriptionCommitManager commitManager =
+        ConsensusSubscriptionCommitManager.getInstance();
+    for (final ConsensusSubscriptionCommitManager.PersistedStateKey stateKey :
+        commitManager.getPersistedStateKeys()) {
+      try {
+        final String consumerGroupId = stateKey.getConsumerGroupId();
+        final String topicName = stateKey.getTopicName();
+        final ConsensusGroupId groupId =
+            ConsensusGroupId.Factory.createFromString(stateKey.getRegionId());
+
+        final IoTConsensusServerImpl serverImpl = ioTConsensus.getImpl(groupId);
+        if (!SubscriptionAgent.consumer().containsConsumerGroup(consumerGroupId)) {
+          if (Objects.nonNull(serverImpl)) {
+            ConsensusSubscriptionWalRetention.unregisterDetached(
+                consumerGroupId, topicName, groupId, serverImpl);
+          }
+          commitManager.removeState(consumerGroupId, topicName, groupId);
+          continue;
+        }
+
+        final boolean isTableModel = SubscriptionAgent.consumer().isTableModel(consumerGroupId);
+        final TopicConfig topicConfig =
+            SubscriptionAgent.topic()
+                .getTopicConfigs(Collections.singleton(topicName), isTableModel)
+                .get(topicName);
+        if (Objects.isNull(topicConfig)
+            || !topicConfig.isIncrementalMode()
+            || !topicConfig.isProgressRetainedAfterUnsubscribe()) {
+          if (Objects.nonNull(serverImpl)) {
+            ConsensusSubscriptionWalRetention.unregisterDetached(
+                consumerGroupId, topicName, groupId, serverImpl);
+          }
+          commitManager.removeState(consumerGroupId, topicName, groupId);
+          continue;
+        }
+        if (SubscriptionAgent.consumer()
+            .isTopicSubscribedByConsumerGroup(consumerGroupId, topicName)) {
+          continue;
+        }
+
+        if (Objects.isNull(serverImpl)) {
+          commitManager.removeState(consumerGroupId, topicName, groupId);
+          continue;
+        }
+        ConsensusSubscriptionWalRetention.registerDetached(
+            consumerGroupId,
+            topicName,
+            groupId,
+            serverImpl,
+            buildSubscriptionWalRetentionPolicy(topicName, topicConfig, serverImpl),
+            commitManager);
+      } catch (final Exception e) {
+        LOGGER.warn(
+            DataNodePipeMessages
+                .LOG_FAILED_TO_RESTORE_DETACHED_CONSENSUS_SUBSCRIPTION_WAL_RETENTION_FOR_CONSUMER_GROUP_ARG_TOPIC_ARG_REGION_ARG_296129FE,
+            stateKey.getConsumerGroupId(),
+            stateKey.getTopicName(),
+            stateKey.getRegionId(),
+            e);
+      }
+    }
+  }
+
+  public static void cleanupRetainedProgressForDroppedTopic(
+      final String topicName, final Boolean isTableModel) {
+    final IConsensus dataRegionConsensus = DataRegionConsensusImpl.getInstance();
+    final IoTConsensus ioTConsensus =
+        dataRegionConsensus instanceof IoTConsensus ? (IoTConsensus) dataRegionConsensus : null;
+    final ConsensusSubscriptionCommitManager commitManager =
+        ConsensusSubscriptionCommitManager.getInstance();
+    for (final ConsensusSubscriptionCommitManager.PersistedStateKey stateKey :
+        commitManager.getPersistedStateKeys()) {
+      if (!topicName.equals(stateKey.getTopicName())) {
+        continue;
+      }
+      final String consumerGroupId = stateKey.getConsumerGroupId();
+      if (Objects.nonNull(isTableModel)
+          && SubscriptionAgent.consumer().containsConsumerGroup(consumerGroupId)
+          && SubscriptionAgent.consumer().isTableModel(consumerGroupId) != isTableModel) {
+        continue;
+      }
+      final ConsensusGroupId groupId =
+          ConsensusGroupId.Factory.createFromString(stateKey.getRegionId());
+      if (Objects.nonNull(ioTConsensus)) {
+        final IoTConsensusServerImpl serverImpl = ioTConsensus.getImpl(groupId);
+        if (Objects.nonNull(serverImpl)) {
+          ConsensusSubscriptionWalRetention.unregisterDetached(
+              consumerGroupId, topicName, groupId, serverImpl);
+        }
+      }
+      commitManager.removeState(consumerGroupId, topicName, groupId);
+    }
+  }
+
+  public static void cleanupRetainedProgressForConsumerGroup(final String consumerGroupId) {
+    cleanupConsumerGroupProgressExceptTopics(consumerGroupId, Collections.emptySet());
+  }
+
+  public static boolean retainConfiguredProgressForConsumerGroup(
+      final String consumerGroupId, final boolean isTableModel) {
+    final Set<String> topicNames = new LinkedHashSet<>();
+    for (final ConsensusSubscriptionCommitManager.PersistedStateKey stateKey :
+        ConsensusSubscriptionCommitManager.getInstance().getPersistedStateKeys()) {
+      if (consumerGroupId.equals(stateKey.getConsumerGroupId())) {
+        topicNames.add(stateKey.getTopicName());
+      }
+    }
+    final Set<String> retainedTopicNames = new LinkedHashSet<>();
+    SubscriptionAgent.topic()
+        .getTopicConfigs(topicNames, isTableModel)
+        .forEach(
+            (topicName, topicConfig) -> {
+              if (topicConfig.isIncrementalMode()
+                  && topicConfig.isProgressRetainedAfterUnsubscribe()) {
+                retainedTopicNames.add(topicName);
+              }
+            });
+    cleanupConsumerGroupProgressExceptTopics(consumerGroupId, retainedTopicNames);
+    return !retainedTopicNames.isEmpty();
+  }
+
+  private static void cleanupConsumerGroupProgressExceptTopics(
+      final String consumerGroupId, final Set<String> retainedTopicNames) {
+    final IConsensus dataRegionConsensus = DataRegionConsensusImpl.getInstance();
+    final IoTConsensus ioTConsensus =
+        dataRegionConsensus instanceof IoTConsensus ? (IoTConsensus) dataRegionConsensus : null;
+    final ConsensusSubscriptionCommitManager commitManager =
+        ConsensusSubscriptionCommitManager.getInstance();
+    for (final ConsensusSubscriptionCommitManager.PersistedStateKey stateKey :
+        commitManager.getPersistedStateKeys()) {
+      if (!consumerGroupId.equals(stateKey.getConsumerGroupId())
+          || retainedTopicNames.contains(stateKey.getTopicName())) {
+        continue;
+      }
+      final ConsensusGroupId groupId =
+          ConsensusGroupId.Factory.createFromString(stateKey.getRegionId());
+      if (Objects.nonNull(ioTConsensus)) {
+        final IoTConsensusServerImpl serverImpl = ioTConsensus.getImpl(groupId);
+        if (Objects.nonNull(serverImpl)) {
+          ConsensusSubscriptionWalRetention.unregisterDetached(
+              consumerGroupId, stateKey.getTopicName(), groupId, serverImpl);
+        }
+      }
+      commitManager.removeState(consumerGroupId, stateKey.getTopicName(), groupId);
+    }
+    if (retainedTopicNames.isEmpty()) {
+      commitManager.removeAllStatesForConsumerGroup(consumerGroupId);
+    }
+  }
+
+  public static void refreshDetachedRetentionsForTopic(
+      final String topicName, final boolean isTableModel, final TopicConfig topicConfig) {
+    final IConsensus dataRegionConsensus = DataRegionConsensusImpl.getInstance();
+    final IoTConsensus ioTConsensus =
+        dataRegionConsensus instanceof IoTConsensus ? (IoTConsensus) dataRegionConsensus : null;
+    final ConsensusSubscriptionCommitManager commitManager =
+        ConsensusSubscriptionCommitManager.getInstance();
+    for (final ConsensusSubscriptionCommitManager.PersistedStateKey stateKey :
+        commitManager.getPersistedStateKeys()) {
+      if (!topicName.equals(stateKey.getTopicName())) {
+        continue;
+      }
+      final String consumerGroupId = stateKey.getConsumerGroupId();
+      if (!SubscriptionAgent.consumer().containsConsumerGroup(consumerGroupId)) {
+        continue;
+      }
+      if (SubscriptionAgent.consumer().isTableModel(consumerGroupId) != isTableModel) {
+        continue;
+      }
+      if (SubscriptionAgent.consumer()
+          .isTopicSubscribedByConsumerGroup(consumerGroupId, topicName)) {
+        continue;
+      }
+      final ConsensusGroupId groupId =
+          ConsensusGroupId.Factory.createFromString(stateKey.getRegionId());
+      final IoTConsensusServerImpl serverImpl =
+          Objects.nonNull(ioTConsensus) ? ioTConsensus.getImpl(groupId) : null;
+      if (topicConfig.isIncrementalMode()
+          && topicConfig.isProgressRetainedAfterUnsubscribe()
+          && Objects.nonNull(serverImpl)) {
+        ConsensusSubscriptionWalRetention.registerDetached(
+            consumerGroupId,
+            topicName,
+            groupId,
+            serverImpl,
+            buildSubscriptionWalRetentionPolicy(topicName, topicConfig, serverImpl),
+            commitManager);
+      } else {
+        if (Objects.nonNull(serverImpl)) {
+          ConsensusSubscriptionWalRetention.unregisterDetached(
+              consumerGroupId, topicName, groupId, serverImpl);
+        }
+        commitManager.removeState(consumerGroupId, topicName, groupId);
       }
     }
   }

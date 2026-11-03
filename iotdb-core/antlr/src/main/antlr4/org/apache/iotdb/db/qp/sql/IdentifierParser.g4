@@ -148,6 +148,7 @@ keyWords
     | LOAD
     | LOCAL
     | LOCK
+    | MEMORY
     | MERGE
     | METADATA
     | MIGRATE

@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.db.subscription.columnfilter;
 
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.subscription.columnfilter.ColumnMetadata;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -34,6 +37,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.function.BiFunction;
 
 public class ColumnFilterMatcher {
 
@@ -42,6 +48,11 @@ public class ColumnFilterMatcher {
   private final BoundColumnFilter boundColumnFilter;
   private final Set<String> selectedColumnNames;
   private final Expression expression;
+  private final TablePattern tablePattern;
+  private final BiFunction<String, String, TsTable> tableProvider;
+  private final Boolean tableTimeSelected;
+  private final ConcurrentMap<BoundColumnFilter.TableKey, CachedTableFilter> tableFilters =
+      new ConcurrentHashMap<>();
 
   private ColumnFilterMatcher(final Set<String> selectedColumnNames, final Expression expression) {
     this(null, selectedColumnNames, expression);
@@ -51,9 +62,38 @@ public class ColumnFilterMatcher {
       final BoundColumnFilter boundColumnFilter,
       final Set<String> selectedColumnNames,
       final Expression expression) {
+    this(boundColumnFilter, selectedColumnNames, expression, null, null);
+  }
+
+  private ColumnFilterMatcher(
+      final BoundColumnFilter boundColumnFilter,
+      final Set<String> selectedColumnNames,
+      final Expression expression,
+      final TablePattern tablePattern,
+      final BiFunction<String, String, TsTable> tableProvider) {
+    this(boundColumnFilter, selectedColumnNames, expression, tablePattern, tableProvider, null);
+  }
+
+  private ColumnFilterMatcher(
+      final BoundColumnFilter boundColumnFilter,
+      final Set<String> selectedColumnNames,
+      final Expression expression,
+      final TablePattern tablePattern,
+      final BiFunction<String, String, TsTable> tableProvider,
+      final Boolean tableTimeSelected) {
     this.boundColumnFilter = boundColumnFilter;
     this.selectedColumnNames = selectedColumnNames;
     this.expression = expression;
+    this.tablePattern = tablePattern;
+    this.tableProvider = tableProvider;
+    this.tableTimeSelected = tableTimeSelected;
+  }
+
+  /** A resolved table plan needs only column membership checks and its declared TIME selection. */
+  static ColumnFilterMatcher forTableSelection(
+      final Set<String> selectedColumnNames, final boolean timeSelected) {
+    return new ColumnFilterMatcher(
+        null, Collections.unmodifiableSet(selectedColumnNames), null, null, null, timeSelected);
   }
 
   public static ColumnFilterMatcher matchAll() {
@@ -79,6 +119,65 @@ public class ColumnFilterMatcher {
         null, new ColumnFilterParser().parseAndValidate(topicConfig.getColumnFilter()));
   }
 
+  /**
+   * Creates a streaming matcher. The expression is parsed once and table plans are reused until
+   * their local schema is replaced, including when a previously unknown table becomes available.
+   */
+  public static ColumnFilterMatcher fromTopicConfig(
+      final TopicConfig topicConfig, final BiFunction<String, String, TsTable> tableProvider)
+      throws SubscriptionException {
+    if (Objects.isNull(topicConfig)
+        || !topicConfig.isTableTopic()
+        || topicConfig.isColumnFilterTrivial()) {
+      return matchAll();
+    }
+    return new ColumnFilterMatcher(
+        null,
+        null,
+        new ColumnFilterParser().parseAndValidate(topicConfig.getColumnFilter()),
+        new TablePattern(
+            true,
+            topicConfig.getStringOrDefault(
+                TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE),
+            topicConfig.getStringOrDefault(
+                TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE)),
+        tableProvider);
+  }
+
+  /** Resolves the schema once per Tablet, keeping expression evaluation out of the column loop. */
+  public ColumnFilterMatcher forTable(final String databaseName, final String tableName) {
+    if (Objects.isNull(tableProvider)) {
+      return this;
+    }
+    final BoundColumnFilter.TableKey key = BoundColumnFilter.TableKey.of(databaseName, tableName);
+    final CachedTableFilter cached = tableFilters.get(key);
+    if (Objects.isNull(cached)
+        && (!tablePattern.matchesDatabase(key.getDatabaseName())
+            || !tablePattern.matchesTable(key.getTableName()))) {
+      return ofSelectedColumnNames(Collections.emptySet());
+    }
+    final TsTable table = tableProvider.apply(key.getDatabaseName(), key.getTableName());
+    if (Objects.isNull(table)) {
+      tableFilters.remove(key);
+      return ofSelectedColumnNames(Collections.emptySet());
+    }
+    // DataNodeTableCache replaces entire TsTable instances on schema changes. Comparing identity
+    // avoids copying schemas or evaluating predicates for every Tablet (and every row).
+    if (Objects.nonNull(cached) && cached.table == table) {
+      return cached.matcher;
+    }
+    return tableFilters.compute(
+            key,
+            (ignored, previous) ->
+                Objects.nonNull(previous) && previous.table == table
+                    ? previous
+                    : new CachedTableFilter(
+                        table,
+                        ColumnFilterBinder.bindTableFilter(
+                            expression, key.getDatabaseName(), table)))
+        .matcher;
+  }
+
   public static ColumnFilterMatcher ofSelectedColumnNames(final Set<String> selectedColumnNames) {
     if (Objects.isNull(selectedColumnNames)) {
       return matchAll();
@@ -98,11 +197,13 @@ public class ColumnFilterMatcher {
         && Objects.isNull(expression);
   }
 
-  public boolean shouldAutoRetainTagsAtRuntime() {
-    return Objects.isNull(boundColumnFilter);
-  }
-
   public boolean isTimeSelected() {
+    if (Objects.nonNull(tableTimeSelected)) {
+      return tableTimeSelected;
+    }
+    if (Objects.nonNull(tableProvider)) {
+      return tableFilters.values().stream().anyMatch(cached -> cached.matcher.isTimeSelected());
+    }
     if (isMatchAll()) {
       return true;
     }
@@ -116,6 +217,12 @@ public class ColumnFilterMatcher {
   }
 
   public boolean isTimeSelected(final String databaseName, final String tableName) {
+    if (Objects.nonNull(tableTimeSelected)) {
+      return tableTimeSelected;
+    }
+    if (Objects.nonNull(tableProvider)) {
+      return forTable(databaseName, tableName).isTimeSelected(databaseName, tableName);
+    }
     if (isMatchAll()) {
       return true;
     }
@@ -136,6 +243,23 @@ public class ColumnFilterMatcher {
   }
 
   public Map<String, Map<String, Boolean>> getTimeSelectedByTable(final String databaseName) {
+    if (Objects.nonNull(tableProvider)) {
+      final Map<String, Map<String, Boolean>> result = new HashMap<>();
+      tableFilters
+          .keySet()
+          .forEach(
+              key -> {
+                if (Objects.isNull(databaseName)
+                    || key.getDatabaseName().equals(normalize(databaseName))) {
+                  result
+                      .computeIfAbsent(key.getDatabaseName(), ignored -> new HashMap<>())
+                      .put(
+                          key.getTableName(),
+                          isTimeSelected(key.getDatabaseName(), key.getTableName()));
+                }
+              });
+      return result;
+    }
     if (Objects.isNull(boundColumnFilter) || boundColumnFilter.getTimeSelectedByTable().isEmpty()) {
       return Collections.emptyMap();
     }
@@ -173,6 +297,10 @@ public class ColumnFilterMatcher {
       final String columnName,
       final TSDataType dataType,
       final ColumnCategory category) {
+    if (Objects.nonNull(tableProvider)) {
+      return forTable(databaseName, tableName)
+          .match(databaseName, tableName, columnName, dataType, category);
+    }
     if (isMatchAll()) {
       return true;
     }
@@ -198,5 +326,15 @@ public class ColumnFilterMatcher {
 
   private static String normalizeNullable(final String value) {
     return Objects.nonNull(value) ? value.trim() : "";
+  }
+
+  private static final class CachedTableFilter {
+    private final TsTable table;
+    private final ColumnFilterMatcher matcher;
+
+    private CachedTableFilter(final TsTable table, final ColumnFilterMatcher matcher) {
+      this.table = table;
+      this.matcher = matcher;
+    }
   }
 }

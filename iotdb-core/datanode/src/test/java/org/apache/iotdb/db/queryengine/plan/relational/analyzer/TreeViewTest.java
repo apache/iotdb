@@ -66,20 +66,26 @@ public class TreeViewTest {
 
   @Before
   public void setup() {
+    // This planner test has no ConfigNode heartbeats and may exceed the default lease timeout.
     MetadataLeaseManager.getInstance().updateFenceThresholdMs(Long.MAX_VALUE);
     MetadataLeaseManager.getInstance().recoveryLeaseForTest(true);
     TsTable tsTable = new TsTable(DEVICE_VIEW_TEST_TABLE);
     tsTable.addProp(TsTable.TTL_PROPERTY, Long.MAX_VALUE + "");
     tsTable.addProp(TreeViewSchema.TREE_PATH_PATTERN, "root.test" + ".**");
     DataNodeTableCache.getInstance().preUpdateTable(TREE_VIEW_DB, tsTable, null);
-    DataNodeTableCache.getInstance().commitUpdateTable(TREE_VIEW_DB, DEVICE_VIEW_TEST_TABLE, null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(TREE_VIEW_DB, DEVICE_VIEW_TEST_TABLE, null, null);
   }
 
   @After
   public void tearDown() {
-    DataNodeTableCache.getInstance().invalid(TREE_VIEW_DB);
-    MetadataLeaseManager.getInstance().updateFenceThresholdMs(20_000);
-    MetadataLeaseManager.getInstance().recoveryLeaseForTest(true);
+    try {
+      DataNodeTableCache.getInstance().invalid(TREE_VIEW_DB);
+    } finally {
+      // Renew before restoring the timeout to avoid racing the background lease check.
+      MetadataLeaseManager.getInstance().recoveryLeaseForTest(true);
+      MetadataLeaseManager.getInstance().updateFenceThresholdMs(20_000);
+    }
   }
 
   @Test

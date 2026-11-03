@@ -141,13 +141,14 @@ public class DataRegionStateMachineTest {
 
   @Test
   public void testNonPipeWriteProcessRejectCanStillRetry() {
-    final DataRegionStateMachine stateMachine = new DataRegionStateMachine(null);
+    final TestingDataRegionStateMachine stateMachine = new TestingDataRegionStateMachine(false);
     final RetryControlledPlanNode planNode = new RetryControlledPlanNode(false);
 
     final TSStatus status = stateMachine.write(planNode);
 
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     Assert.assertEquals(2, planNode.getAcceptCount());
+    Assert.assertEquals(1, stateMachine.getWaitCount());
   }
 
   @Test
@@ -164,7 +165,7 @@ public class DataRegionStateMachineTest {
 
   @Test
   public void testMetadataLeaseFencedRetryRequiredRetriesAndFails() {
-    final DataRegionStateMachine stateMachine = new DataRegionStateMachine(null);
+    final TestingDataRegionStateMachine stateMachine = new TestingDataRegionStateMachine(false);
     final FixedStatusPlanNode planNode =
         new FixedStatusPlanNode(TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode());
 
@@ -173,11 +174,12 @@ public class DataRegionStateMachineTest {
     Assert.assertEquals(
         TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode(), status.getCode());
     Assert.assertEquals(5, planNode.getAcceptCount());
+    Assert.assertEquals(4, stateMachine.getWaitCount());
   }
 
   @Test
   public void testMetadataLeaseFencedRetryRequiredRetriesAndSucceeds() {
-    final DataRegionStateMachine stateMachine = new DataRegionStateMachine(null);
+    final TestingDataRegionStateMachine stateMachine = new TestingDataRegionStateMachine(false);
     final SequenceStatusPlanNode planNode =
         new SequenceStatusPlanNode(
             TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode(),
@@ -188,6 +190,51 @@ public class DataRegionStateMachineTest {
 
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     Assert.assertEquals(3, planNode.getAcceptCount());
+    Assert.assertEquals(2, stateMachine.getWaitCount());
+  }
+
+  @Test
+  public void testInterruptedWriteRetryStopsImmediately() {
+    Thread.interrupted();
+    try {
+      final TestingDataRegionStateMachine stateMachine = new TestingDataRegionStateMachine(true);
+      final FixedStatusPlanNode planNode =
+          new FixedStatusPlanNode(
+              TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode());
+
+      final TSStatus status = stateMachine.write(planNode);
+
+      Assert.assertEquals(
+          TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode(), status.getCode());
+      Assert.assertEquals(1, planNode.getAcceptCount());
+      Assert.assertEquals(1, stateMachine.getWaitCount());
+      Assert.assertTrue(Thread.currentThread().isInterrupted());
+    } finally {
+      Thread.interrupted();
+    }
+  }
+
+  private static class TestingDataRegionStateMachine extends DataRegionStateMachine {
+
+    private final boolean interruptOnWait;
+    private int waitCount;
+
+    private TestingDataRegionStateMachine(final boolean interruptOnWait) {
+      super(null);
+      this.interruptOnWait = interruptOnWait;
+    }
+
+    private int getWaitCount() {
+      return waitCount;
+    }
+
+    @Override
+    protected void waitBeforeNextWriteRetry() throws InterruptedException {
+      ++waitCount;
+      if (interruptOnWait) {
+        throw new InterruptedException();
+      }
+    }
   }
 
   private static class FixedStatusPlanNode extends PlanNode {

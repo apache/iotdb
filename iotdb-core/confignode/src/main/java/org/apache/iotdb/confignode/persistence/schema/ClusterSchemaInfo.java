@@ -27,9 +27,6 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.SemanticException;
-import org.apache.iotdb.commons.exception.table.ColumnInAlterException;
-import org.apache.iotdb.commons.exception.table.ColumnInDeletionException;
-import org.apache.iotdb.commons.exception.table.TableInDeletionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
@@ -37,7 +34,6 @@ import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -71,9 +67,9 @@ import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTableP
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
-import org.apache.iotdb.confignode.consensus.request.write.table.RollbackPreAlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackPreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnPropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
@@ -102,7 +98,9 @@ import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.persistence.schema.ConfigMTree.TableSchemaDetails;
+import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigTableNode;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTableColumnInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
@@ -114,7 +112,6 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.annotations.TableModel;
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -169,7 +166,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   private static final String TREE_SNAPSHOT_FILENAME = "cluster_schema.bin";
   private static final String TABLE_SNAPSHOT_FILENAME = "table_cluster_schema.bin";
-  private static final String ERROR_NAME = "Error Database name";
+  private static final String ERROR_NAME = ManagerMessages.MESSAGE_ERROR_DATABASE_NAME_35C4F124;
 
   private final TemplateTable templateTable;
 
@@ -611,7 +608,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * Only leader use this interface. Get the matched DatabaseSchemas.
    *
    * @param rawPathList Databases' path patterns or full paths
-   * @return All DatabaseSchemas that matches to the specific Database patterns
+   * @return All matching DatabaseSchemas keyed by their database names
    */
   public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByName(
       final List<String> rawPathList, final Boolean isTableModel) {
@@ -642,8 +639,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final List<PartialPath> matchedPaths =
           mTree.getMatchedDatabases(patternPath, ALL_MATCH_SCOPE, false);
       for (final PartialPath path : matchedPaths) {
-        schemaMap.put(
-            path.getFullPath(), mTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema());
+        final TDatabaseSchema schema =
+            mTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema();
+        // Table database "pg" and tree database "root.pg" share the same internal path.
+        schemaMap.put(schema.getName(), schema);
       }
     }
   }
@@ -1554,86 +1553,34 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
+  /**
+   * The table and its status, or empty when the table does not exist. The table is a copy, which
+   * the caller owns: the stored table is only written by the plans, under the write lock, and never
+   * through a reference handed out here.
+   */
   public Optional<Pair<TsTable, TableNodeStatus>> getTsTableIfExists(
       final String database, final String tableName) throws MetadataException {
     databaseReadWriteLock.readLock().lock();
     try {
-      return tableModelMTree.getTableAndStatusIfExists(
-          getQualifiedDatabasePartialPath(database), tableName);
-    } finally {
-      databaseReadWriteLock.readLock().unlock();
-    }
-  }
-
-  public TsTable getTableForModification(
-      final String database, final String tableName, final String... columnNames)
-      throws MetadataException {
-    databaseReadWriteLock.readLock().lock();
-    try {
-      final PartialPath databasePath = getQualifiedDatabasePartialPath(database);
-      final Optional<Pair<TsTable, TableNodeStatus>> tableAndStatus =
-          tableModelMTree.getTableAndStatusIfExists(databasePath, tableName);
-      if (!tableAndStatus.isPresent()) {
-        return null;
-      }
-      if (tableAndStatus.get().getRight() == TableNodeStatus.PRE_DELETE) {
-        throw new TableInDeletionException(database, tableName);
-      }
-      final TableSchemaDetails details =
-          tableModelMTree.getTableSchemaDetails(databasePath, tableName);
-      for (final String columnName : columnNames) {
-        if (details.preDeletedColumns.contains(columnName)) {
-          throw new ColumnInDeletionException(database, tableName, columnName);
-        }
-        if (details.preAlteredColumns.containsKey(columnName)) {
-          throw new ColumnInAlterException(database, tableName, columnName);
-        }
-      }
-      return tableModelMTree.getTableSchemaForDataNode(databasePath, tableName);
-    } finally {
-      databaseReadWriteLock.readLock().unlock();
-    }
-  }
-
-  public boolean isColumnAlterCommitted(
-      final String database,
-      final String tableName,
-      final String columnName,
-      final TSDataType dataType)
-      throws MetadataException {
-    databaseReadWriteLock.readLock().lock();
-    try {
-      final PartialPath databasePath = getQualifiedDatabasePartialPath(database);
-      final Optional<Pair<TsTable, TableNodeStatus>> tableAndStatus =
-          tableModelMTree.getTableAndStatusIfExists(databasePath, tableName);
-      if (!tableAndStatus.isPresent()) {
-        return false;
-      }
-      final TableSchemaDetails details =
-          tableModelMTree.getTableSchemaDetails(databasePath, tableName);
-      final TsTableColumnSchema columnSchema = details.table.getColumnSchema(columnName);
-      return !details.preAlteredColumns.containsKey(columnName)
-          && columnSchema != null
-          && columnSchema.getDataType() == dataType;
-    } finally {
-      databaseReadWriteLock.readLock().unlock();
-    }
-  }
-
-  public Optional<TSDataType> getPreAlteredColumnType(
-      final String database, final String tableName, final String columnName)
-      throws MetadataException {
-    databaseReadWriteLock.readLock().lock();
-    try {
-      final PartialPath databasePath = getQualifiedDatabasePartialPath(database);
-      if (!tableModelMTree.getTableAndStatusIfExists(databasePath, tableName).isPresent()) {
+      final Optional<Pair<TsTable, TableNodeStatus>> storedTable =
+          tableModelMTree.getTableAndStatusIfExists(
+              getQualifiedDatabasePartialPath(database), tableName);
+      if (storedTable.isEmpty()) {
         return Optional.empty();
       }
-      return Optional.ofNullable(
-          tableModelMTree
-              .getTableSchemaDetails(databasePath, tableName)
-              .preAlteredColumns
-              .get(columnName));
+      return Optional.of(
+          new Pair<>(new TsTable(storedTable.get().getLeft()), storedTable.get().getRight()));
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public Optional<ConfigTableNode> getTableNodeIfExists(
+      final String database, final String tableName) throws MetadataException {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return tableModelMTree.getTableNodeIfExists(
+          getQualifiedDatabasePartialPath(database), tableName);
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
@@ -1672,6 +1619,16 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             tableModelMTree.setTableProperties(
                 getQualifiedDatabasePartialPath(plan.getDatabase()),
                 plan.getTableName(),
+                plan.getProperties()));
+  }
+
+  public TSStatus setTableColumnProperties(final SetTableColumnPropertiesPlan plan) {
+    return executeWithLock(
+        () ->
+            tableModelMTree.setTableColumnProperties(
+                getQualifiedDatabasePartialPath(plan.getDatabase()),
+                plan.getTableName(),
+                plan.getColumnName(),
                 plan.getProperties()));
   }
 
@@ -1721,23 +1678,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (final SemanticException e) {
       return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), e.getMessage());
-    } finally {
-      databaseReadWriteLock.writeLock().unlock();
-    }
-  }
-
-  public TSStatus rollbackPreAlterColumnDataType(final RollbackPreAlterColumnDataTypePlan plan) {
-    databaseReadWriteLock.writeLock().lock();
-    try {
-      tableModelMTree.rollbackPreAlterColumnDataType(
-          getQualifiedDatabasePartialPath(plan.getDatabase()),
-          plan.getTableName(),
-          plan.getColumnName(),
-          plan.getNewType());
-      return RpcUtils.SUCCESS_STATUS;
-    } catch (final MetadataException e) {
-      LOGGER.warn(e.getMessage(), e);
-      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } finally {
       databaseReadWriteLock.writeLock().unlock();
     }

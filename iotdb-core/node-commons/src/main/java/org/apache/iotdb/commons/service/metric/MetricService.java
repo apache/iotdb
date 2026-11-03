@@ -130,8 +130,17 @@ public class MetricService extends AbstractMetricService implements MetricServic
       for (IMetricSet metricSet : metricSets) {
         LOGGER.info(
             ServiceMessages.METRIC_SERVICE_REBIND_METRIC_SET, metricSet.getClass().getName());
-        metricSet.unbindFrom(this);
-        metricSet.bindTo(this);
+        // Every metric was dropped by the restart, so a failed metric set must not stop the others
+        // from being bound again
+        try {
+          metricSet.unbindFrom(this);
+          metricSet.bindTo(this);
+        } catch (Exception e) {
+          LOGGER.warn(
+              ServiceMessages.LOG_FAILED_TO_REBIND_METRIC_SET_ARG_2C440B71,
+              metricSet.getClass().getName(),
+              e);
+        }
       }
     }
     LOGGER.info(ServiceMessages.METRIC_SERVICE_RESTART_SUCCESSFULLY);

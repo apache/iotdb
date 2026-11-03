@@ -366,6 +366,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     partitionCache.invalidAllCache();
   }
 
+  public void invalidReplicaSetCache(final TConsensusGroupId regionId) {
+    partitionCache.invalidReplicaSetCache(regionId);
+  }
+
   @Override
   public SchemaPartition getOrCreateSchemaPartition(
       final String database, final List<IDeviceID> deviceIDs, final String userName) {

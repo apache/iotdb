@@ -30,9 +30,9 @@ public class TableInDeletionException extends MetadataException {
     super(
         String.format(
             CommonMessages
-                .EXCEPTION_TABLE_ARG_ARG_IS_BEING_DELETED_PLEASE_WAIT_FOR_DELETION_TO_FINISH_OR_RETRY_DROP_TABLE_IF_IT_IS_STUCK_7E22D78F,
+                .EXCEPTION_THE_TABLE_ARG_ARG_IS_IN_THE_PRE_DELETE_STATE_PLEASE_WAIT_A_FEW_SECONDS_IF_THE_TABLE_IS_STILL_IN_THIS_STATE_PLEASE_DROP_IT_AGAIN_13B9D39F,
             PathUtils.unQualifyDatabaseName(database),
             tableName),
-        TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+        TSStatusCode.TABLE_IN_PRE_DELETE.getStatusCode());
   }
 }

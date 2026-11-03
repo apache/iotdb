@@ -79,7 +79,9 @@ public class TableStreamSortOperator extends AbstractSortOperator {
 
   @Override
   public TsBlock next() throws Exception {
-    if (canStreamOutput || !tsBlockBuilder.isEmpty()) {
+    // Buffered output may end between groups. Do not sort the next group's cached rows until its
+    // boundary is known, even when a previous group left a partially filled output block.
+    if (canStreamOutput) {
 
       buildResult();
 

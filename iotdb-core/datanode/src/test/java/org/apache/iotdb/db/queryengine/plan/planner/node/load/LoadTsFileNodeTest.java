@@ -71,6 +71,7 @@ public class LoadTsFileNodeTest {
   public void testLoadTsFilePieceNode() {
     LoadTsFilePieceNode node = new LoadTsFilePieceNode(new PlanNodeId(""), new File("1"));
     Assert.assertEquals(0, node.getDataSize());
+    Assert.assertEquals(0L, node.getPieceIndex());
     Assert.assertEquals(new ArrayList<>(), node.getAllTsFileData());
     Assert.assertEquals(node.getTsFile(), new File("1"));
     Assert.assertNull(node.getRegionReplicaSet());
@@ -86,11 +87,12 @@ public class LoadTsFileNodeTest {
     } catch (NotImplementedException ignored) {
     }
     Assert.assertEquals(0, node.allowedChildCount());
-    Assert.assertEquals("LoadTsFilePieceNode{tsFile=1, dataSize=0}", node.toString());
+    Assert.assertEquals("LoadTsFilePieceNode{tsFile=1, pieceIndex=0, dataSize=0}", node.toString());
     ByteBuffer buffer = ByteBuffer.allocate(1024);
     node.serialize(buffer);
     LoadTsFilePieceNode node1 = (LoadTsFilePieceNode) LoadTsFilePieceNode.deserialize(buffer);
     Assert.assertEquals(node.getTsFile(), node1.getTsFile());
+    Assert.assertEquals(node.getPieceIndex(), node1.getPieceIndex());
   }
 
   @Test

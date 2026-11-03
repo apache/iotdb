@@ -526,15 +526,15 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     TestUtils.assertDataAlwaysOnEnv(
         receiverEnv,
         "select count(temperature) from root.vehicle.car",
-        "count(root.vehicle.car.pressure),",
+        "count(root.vehicle.car.temperature),",
         Collections.singleton("0,"));
 
-    // Exception, skip
+    // Without the series schema, the query has only a Time column and no rows.
     TestUtils.assertDataAlwaysOnEnv(
         receiverEnv,
         "select count(temperature) from root.vehicle.plane",
-        "count(root.vehicle.plane.temperature),",
-        Collections.singleton("0,"));
+        "Time,",
+        Collections.emptySet());
 
     // Alter pipe, throw exception if no privileges
     try (final Connection connection = senderEnv.getConnection();
@@ -556,8 +556,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     TestUtils.assertDataAlwaysOnEnv(
         receiverEnv,
         "select count(pressure) from root.vehicle.car",
-        "count(root.vehicle.car.pressure),",
-        Collections.singleton("0,"));
+        "Time,",
+        Collections.emptySet());
 
     // Grant SELECT privilege
     TestUtils.executeNonQueries(

@@ -266,7 +266,8 @@ public class WritableMemChunkRegionScanTest {
       memTable.delete(
           new TreeDeletionEntry(
               new MeasurementPath(new StringArrayDeviceID("root.test.d1"), "s1"),
-              new TimeRange(1, 1500)));
+              new TimeRange(1, 1500)),
+          true);
       writableMemChunk =
           (AlignedWritableMemChunk)
               memTable.getWritableMemChunk(new StringArrayDeviceID("root.test.d1"), "");
@@ -295,8 +296,7 @@ public class WritableMemChunkRegionScanTest {
             new MeasurementSchema("s1", TSDataType.INT32),
             new MeasurementSchema("s2", TSDataType.INT32),
             new MeasurementSchema("s3", TSDataType.INT32));
-    AlignedWritableMemChunk writableMemChunk =
-        new AlignedWritableMemChunk(measurementSchemas, true);
+    AlignedWritableMemChunk writableMemChunk = new AlignedWritableMemChunk(measurementSchemas);
     int size = 100000;
     for (int i = 0; i < size; i++) {
       if (i <= 10000) {
@@ -429,7 +429,8 @@ public class WritableMemChunkRegionScanTest {
       memTable.delete(
           new TreeDeletionEntry(
               new MeasurementPath(new StringArrayDeviceID("root.test.d1"), "s1"),
-              new TimeRange(1, 1500)));
+              new TimeRange(1, 1500)),
+          true);
       WritableMemChunk writableMemChunk =
           (WritableMemChunk)
               memTable.getWritableMemChunk(new StringArrayDeviceID("root.test.d1"), "s1");

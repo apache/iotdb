@@ -58,6 +58,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -270,6 +271,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   public static final String ERROR_CODE = DataNodeMiscMessages.ERROR_CODE;
   private static final String USE_ENCRYPTED_PASSWORD_KEY = "use_encrypted_password";
+  private static final String ENABLE_AUTO_CREATE_SCHEMA_KEY = "enable_auto_create_schema";
 
   private static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
@@ -293,7 +295,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   private static final String NO_QUERY_EXECUTION_ERR_MSG =
-      "Query is not found, it may be killed by others, timeout or some other runtime errors, you can see more details in server log.";
+      DataNodeMiscMessages
+          .EXCEPTION_QUERY_IS_NOT_FOUND_IT_MAY_BE_KILLED_BY_OTHERS_TIMEOUT_OR_SOME_OTHER_RUNTIME_ERRORS_YOU_CAN_SEE_MORE_DETAILS_IN_SERVER_LOG_90BD085E;
 
   @FunctionalInterface
   public interface SelectResult {
@@ -357,7 +360,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         if (s == null) {
           return RpcUtils.getTSExecuteStatementResp(
               RpcUtils.getStatus(
-                  TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
+                  TSStatusCode.SQL_PARSE_ERROR,
+                  DataNodeMiscMessages.EXCEPTION_THIS_OPERATION_TYPE_IS_NOT_SUPPORTED_DD44BACE));
         }
 
         if (s instanceof CreateTableViewStatement) {
@@ -435,7 +439,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         if (s == null) {
           return RpcUtils.getTSExecuteStatementResp(
               RpcUtils.getStatus(
-                  TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
+                  TSStatusCode.SQL_PARSE_ERROR,
+                  DataNodeMiscMessages.EXCEPTION_THIS_OPERATION_TYPE_IS_NOT_SUPPORTED_DD44BACE));
         }
 
         queryId = SESSION_MANAGER.requestQueryId(clientSession, statementId);
@@ -1533,6 +1538,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     String statementType = null;
     Throwable t = null;
     IQueryExecution queryExecution = null;
+    boolean queryOwnedBySession = false;
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
     Long statementId = req.isSetStatementId() ? req.getStatementId() : null;
     try {
@@ -1542,12 +1548,21 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       queryExecution = COORDINATOR.getQueryExecution(req.queryId);
-
       if (queryExecution == null) {
         TSStatus noQueryExecutionStatus = new TSStatus(QUERY_WAS_KILLED.getStatusCode());
         noQueryExecutionStatus.setMessage(NO_QUERY_EXECUTION_ERR_MSG);
         return RpcUtils.getTSFetchResultsResp(noQueryExecutionStatus);
       }
+
+      if (!clientSession.containsQueryId(statementId, req.queryId)) {
+        // The query is still running, but it was submitted by another session: do not stream its
+        // result and do not release it, so that the query which owns it is left untouched.
+        return RpcUtils.getTSFetchResultsResp(
+            RpcUtils.getStatus(
+                TSStatusCode.NO_PERMISSION,
+                DataNodeMiscMessages.MESSAGE_QUERY_DOES_NOT_BELONG_TO_CURRENT_SESSION_A1198237));
+      }
+      queryOwnedBySession = true;
 
       TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
 
@@ -1577,19 +1592,21 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       throw error;
     } finally {
 
-      long currentOperationCost = System.nanoTime() - startTime;
-      COORDINATOR.recordExecutionTime(req.queryId, currentOperationCost);
+      if (queryOwnedBySession) {
+        long currentOperationCost = System.nanoTime() - startTime;
+        COORDINATOR.recordExecutionTime(req.queryId, currentOperationCost);
 
-      // record each operation time cost
-      CommonUtils.addStatementExecutionLatency(
-          OperationType.FETCH_RESULTS, statementType, currentOperationCost);
+        // record each operation time cost
+        CommonUtils.addStatementExecutionLatency(
+            OperationType.FETCH_RESULTS, statementType, currentOperationCost);
 
-      if (finished) {
-        // record total time cost for one query
-        long executionTime = COORDINATOR.getTotalExecutionTime(req.queryId);
-        CommonUtils.addQueryLatency(
-            StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        clearUp(clientSession, statementId, req.queryId, req, t);
+        if (finished) {
+          // record total time cost for one query
+          long executionTime = COORDINATOR.getTotalExecutionTime(req.queryId);
+          CommonUtils.addQueryLatency(
+              StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
+          clearUp(clientSession, statementId, req.queryId, req, t);
+        }
       }
 
       SESSION_MANAGER.updateIdleTime();
@@ -1621,8 +1638,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             parseUseEncryptedPassword(req));
     TSStatus tsStatus = RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
 
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() && database.isPresent()) {
-      clientSession.setDatabaseName(database.get().toLowerCase(Locale.ENGLISH));
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (database.isPresent()) {
+        clientSession.setDatabaseName(database.get().toLowerCase(Locale.ENGLISH));
+      }
+      clientSession.setEnableAutoCreateSchema(parseEnableAutoCreateSchema(req));
     }
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
     Map<String, String> configuration = new HashMap<>();
@@ -1666,6 +1686,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         && Boolean.parseBoolean(configuration.get(USE_ENCRYPTED_PASSWORD_KEY));
   }
 
+  private boolean parseEnableAutoCreateSchema(TSOpenSessionReq req) {
+    Map<String, String> configuration = req.configuration;
+    return configuration == null
+        || !configuration.containsKey(ENABLE_AUTO_CREATE_SCHEMA_KEY)
+        || Boolean.parseBoolean(configuration.get(ENABLE_AUTO_CREATE_SCHEMA_KEY));
+  }
+
   @Override
   public TSStatus closeSession(TSCloseSessionReq req) {
     return new TSStatus(
@@ -1678,13 +1705,34 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSStatus cancelOperation(TSCancelOperationReq req) {
     // TODO implement
-    return RpcUtils.getStatus(TSStatusCode.QUERY_NOT_ALLOWED, "Cancellation is not implemented");
+    return RpcUtils.getStatus(
+        TSStatusCode.QUERY_NOT_ALLOWED,
+        DataNodeMiscMessages.EXCEPTION_CANCELLATION_IS_NOT_IMPLEMENTED_91FA6607);
   }
 
   @Override
   public TSStatus closeOperation(TSCloseOperationReq req) {
+    IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    if (req.isSetQueryId()
+        && req.isSetStatementId()
+        && clientSession != null
+        && clientSession.isLogin()
+        && !clientSession.containsQueryId(req.getStatementId(), req.queryId)) {
+      // The queryId indexes the process-wide map of running queries, so only the session that
+      // submitted the query may release it.
+      if (COORDINATOR.getQueryExecution(req.queryId) != null) {
+        return RpcUtils.getStatus(
+            TSStatusCode.NO_PERMISSION,
+            DataNodeMiscMessages.MESSAGE_QUERY_DOES_NOT_BELONG_TO_CURRENT_SESSION_A1198237);
+      }
+      // A queryId that is no longer running keeps the previous behaviour: releasing it stays a
+      // no-op. It must not fall through to the global cleanup below: query ids are allocated
+      // before their execution is published, so the session that owns this queryId can register
+      // it between the lookup above and the cleanup.
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    }
     return SESSION_MANAGER.closeOperation(
-        SESSION_MANAGER.getCurrSession(),
+        clientSession,
         req.queryId,
         req.statementId,
         req.isSetStatementId(),
@@ -1711,7 +1759,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       if (statement == null) {
         return new TSPrepareResp(
-            RpcUtils.getStatus(TSStatusCode.SQL_PARSE_ERROR, "Failed to parse SQL: " + sql));
+            RpcUtils.getStatus(
+                TSStatusCode.SQL_PARSE_ERROR,
+                String.format(
+                    DataNodeMiscMessages.EXCEPTION_FAILED_TO_PARSE_SQL_ARG_20075759,
+                    Objects.toString(sql))));
       }
 
       int parameterCount = ParameterExtractor.getParameterCount(statement);
@@ -1768,12 +1820,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       ZoneId zoneId = SESSION_MANAGER.getCurrSession().getZoneId();
       return new TSGetTimeZoneResp(
           RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS),
-          zoneId != null ? zoneId.toString() : "Unknown time zone");
+          zoneId != null
+              ? zoneId.toString()
+              : DataNodeMiscMessages.EXCEPTION_UNKNOWN_TIME_ZONE_D224D82D);
     } catch (Exception e) {
       return new TSGetTimeZoneResp(
           onQueryException(
               e, OperationType.GET_TIME_ZONE.getName(), TSStatusCode.GENERATE_TIME_ZONE_ERROR),
-          "Unknown time zone");
+          DataNodeMiscMessages.EXCEPTION_UNKNOWN_TIME_ZONE_D224D82D);
     }
   }
 
@@ -2093,7 +2147,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSFetchMetadataResp fetchMetadata(TSFetchMetadataReq req) {
     return new TSFetchMetadataResp(
-        RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION, "Fetch Metadata is not supported."));
+        RpcUtils.getStatus(
+            TSStatusCode.UNSUPPORTED_OPERATION,
+            DataNodeMiscMessages.EXCEPTION_FETCH_METADATA_IS_NOT_SUPPORTED_20489A74));
   }
 
   @Override
@@ -2126,7 +2182,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
             if (s == null) {
               return RpcUtils.getStatus(
-                  TSStatusCode.EXECUTE_STATEMENT_ERROR, "This operation type is not supported");
+                  TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                  DataNodeMiscMessages.EXCEPTION_THIS_OPERATION_TYPE_IS_NOT_SUPPORTED_DD44BACE);
             }
 
             if (s instanceof CreateTableViewStatement) {
@@ -2202,7 +2259,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
             if (s == null) {
               return RpcUtils.getStatus(
-                  TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported");
+                  TSStatusCode.SQL_PARSE_ERROR,
+                  DataNodeMiscMessages.EXCEPTION_THIS_OPERATION_TYPE_IS_NOT_SUPPORTED_DD44BACE);
             }
 
             // TODO audit log, quota, StatementType
@@ -2262,7 +2320,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
     if (isAllSuccessful) {
       TSStatus res =
-          RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute batch statements successfully");
+          RpcUtils.getStatus(
+              TSStatusCode.SUCCESS_STATUS,
+              DataNodeMiscMessages.EXCEPTION_EXECUTE_BATCH_STATEMENTS_SUCCESSFULLY_38422BA6);
       if (useDatabase || isDatabaseSetBefore && Objects.isNull(clientSession.getDatabaseName())) {
         final TSStatus useDB =
             RpcUtils.getStatus(TSStatusCode.USE_OR_DROP_DB, clientSession.getDatabaseName());
@@ -2291,6 +2351,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     String statementType = null;
     Throwable t = null;
     IQueryExecution queryExecution = null;
+    boolean queryOwnedBySession = false;
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
     Long statementId = req.isSetStatementId() ? req.getStatementId() : null;
     try {
@@ -2305,6 +2366,17 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         noQueryExecutionStatus.setMessage(NO_QUERY_EXECUTION_ERR_MSG);
         return RpcUtils.getTSFetchResultsResp(noQueryExecutionStatus);
       }
+
+      if (!clientSession.containsQueryId(statementId, req.queryId)) {
+        // The query is still running, but it was submitted by another session: do not stream its
+        // result and do not release it, so that the query which owns it is left untouched.
+        return RpcUtils.getTSFetchResultsResp(
+            RpcUtils.getStatus(
+                TSStatusCode.NO_PERMISSION,
+                DataNodeMiscMessages.MESSAGE_QUERY_DOES_NOT_BELONG_TO_CURRENT_SESSION_A1198237));
+      }
+      queryOwnedBySession = true;
+
       queryExecution.updateCurrentRpcStartTime(startTime);
       statementType = queryExecution.getStatementType();
 
@@ -2332,19 +2404,21 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       throw error;
     } finally {
 
-      long currentOperationCost = System.nanoTime() - startTime;
-      COORDINATOR.recordExecutionTime(req.queryId, currentOperationCost);
+      if (queryOwnedBySession) {
+        long currentOperationCost = System.nanoTime() - startTime;
+        COORDINATOR.recordExecutionTime(req.queryId, currentOperationCost);
 
-      // record each operation time cost
-      CommonUtils.addStatementExecutionLatency(
-          OperationType.FETCH_RESULTS, statementType, currentOperationCost);
+        // record each operation time cost
+        CommonUtils.addStatementExecutionLatency(
+            OperationType.FETCH_RESULTS, statementType, currentOperationCost);
 
-      if (finished) {
-        // record total time cost for one query
-        long executionTime = COORDINATOR.getTotalExecutionTime(req.queryId);
-        CommonUtils.addQueryLatency(
-            StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        clearUp(clientSession, statementId, req.queryId, req, t);
+        if (finished) {
+          // record total time cost for one query
+          long executionTime = COORDINATOR.getTotalExecutionTime(req.queryId);
+          CommonUtils.addQueryLatency(
+              StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
+          clearUp(clientSession, statementId, req.queryId, req, t);
+        }
       }
 
       SESSION_MANAGER.updateIdleTime();
@@ -2994,13 +3068,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSStatus appendSchemaTemplate(TSAppendSchemaTemplateReq req) {
     return RpcUtils.getStatus(
-        TSStatusCode.UNSUPPORTED_OPERATION, "Modify template has not been supported.");
+        TSStatusCode.UNSUPPORTED_OPERATION,
+        DataNodeMiscMessages.EXCEPTION_MODIFY_TEMPLATE_HAS_NOT_BEEN_SUPPORTED_976B19DE);
   }
 
   @Override
   public TSStatus pruneSchemaTemplate(TSPruneSchemaTemplateReq req) {
     return RpcUtils.getStatus(
-        TSStatusCode.UNSUPPORTED_OPERATION, "Modify template has not been supported.");
+        TSStatusCode.UNSUPPORTED_OPERATION,
+        DataNodeMiscMessages.EXCEPTION_MODIFY_TEMPLATE_HAS_NOT_BEEN_SUPPORTED_976B19DE);
   }
 
   @Override
@@ -3023,7 +3099,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         resp.setStatus(
             RpcUtils.getStatus(
                 TSStatusCode.UNSUPPORTED_OPERATION,
-                TemplateQueryType.values()[req.getQueryType()].name() + "has not been supported."));
+                String.format(
+                    DataNodeMiscMessages.EXCEPTION_ARG_HAS_NOT_BEEN_SUPPORTED_F90BAF99,
+                    Objects.toString(TemplateQueryType.values()[req.getQueryType()].name()))));
         return resp;
       }
       switch (TemplateQueryType.values()[req.getQueryType()]) {
@@ -3183,7 +3261,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           }
         }
         resp.setMeasurements(result);
-        resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully"));
+        resp.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.SUCCESS_STATUS,
+                DataNodeMiscMessages.EXCEPTION_EXECUTE_SUCCESSFULLY_BF983B59));
         return resp;
       }
     } catch (Exception e) {
@@ -3579,8 +3660,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   protected TSStatus getNotLoggedInStatus() {
     return RpcUtils.getStatus(
-        TSStatusCode.NOT_LOGIN,
-        "Log in failed. Either you are not authorized or the session has timed out.");
+        TSStatusCode.NOT_LOGIN, DataNodePipeMessages.LOGIN_FAILED_OR_SESSION_TIMED_OUT);
   }
 
   private String checkIdentifierAndRemoveBackQuotesIfNecessary(String identifier) {

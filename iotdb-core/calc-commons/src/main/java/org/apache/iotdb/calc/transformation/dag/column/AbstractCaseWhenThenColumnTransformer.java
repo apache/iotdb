@@ -46,7 +46,7 @@ public abstract class AbstractCaseWhenThenColumnTransformer extends ColumnTransf
         whenTransformers.size() == thenTransformers.size(),
         CalcMessages
             .EXCEPTION_THE_SIZE_BETWEEN_WHENTRANSFORMERS_AND_THENTRANSFORMERS_NEEDS_TO_BE_SAME_AC796883);
-    this.whenThenTransformers = new ArrayList<>();
+    this.whenThenTransformers = new ArrayList<>(whenTransformers.size());
     for (int i = 0; i < whenTransformers.size(); i++) {
       this.whenThenTransformers.add(new Pair<>(whenTransformers.get(i), thenTransformers.get(i)));
     }

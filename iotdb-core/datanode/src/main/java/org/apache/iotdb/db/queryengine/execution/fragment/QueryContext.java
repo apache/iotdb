@@ -48,6 +48,11 @@ import java.util.stream.Collectors;
 
 /** QueryContext contains the shared information with in a query. */
 public class QueryContext {
+  private final QueryChunkReaders queryChunkReaders = new QueryChunkReaders();
+
+  public QueryChunkReaders getQueryChunkReaders() {
+    return queryChunkReaders;
+  }
 
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryContext.class);
   private QueryStatistics queryStatistics = new QueryStatistics();
@@ -145,6 +150,9 @@ public class QueryContext {
   }
 
   protected boolean shouldSkipModification(ModEntry modification) {
+    // tables is only collected by the table model query planning. Compaction and other contexts
+    // leave it null, which means that there is no table filter at all, so no modification can be
+    // skipped.
     if (tables != null && modification instanceof TableDeletionEntry) {
       String tableName = ((TableDeletionEntry) modification).getTableName();
       return !tables.contains(tableName);
@@ -170,7 +178,7 @@ public class QueryContext {
       return Collections.emptyList();
     }
     List<ModEntry> modEntries = fileModEntries.getOverlapped(deviceID, measurement);
-    if (deviceID.isTableModel()) {
+    if (isTableModel()) {
       // the pattern tree has false-positive for table model deletion, so we do a further
       //     filtering
       modEntries =
@@ -200,7 +208,7 @@ public class QueryContext {
     }
     List<ModEntry> modEntries =
         fileModEntries.getOverlapped(deviceID, AlignedPath.VECTOR_PLACEHOLDER);
-    if (deviceID.isTableModel()) {
+    if (isTableModel()) {
       // the pattern tree has false-positive for table model deletion, so we do a further
       //     filtering
       modEntries =
@@ -272,6 +280,11 @@ public class QueryContext {
 
   public boolean isIgnoreAllNullRows() {
     return ignoreAllNullRows;
+  }
+
+  // ignoreAllNullRows is true only for tree-model queries.
+  public boolean isTableModel() {
+    return !ignoreAllNullRows;
   }
 
   public void setIgnoreAllNullRows(boolean ignoreAllNullRows) {

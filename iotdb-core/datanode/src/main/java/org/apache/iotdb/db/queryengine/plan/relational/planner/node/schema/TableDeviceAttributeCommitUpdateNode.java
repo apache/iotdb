@@ -30,13 +30,13 @@ import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeCacheUpdater;
 
+import com.google.common.collect.Sets;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -170,7 +170,7 @@ public class TableDeviceAttributeCommitUpdateNode extends PlanNode implements IS
     }
 
     size = ReadWriteIOUtils.readInt(buffer);
-    final Set<TDataNodeLocation> shrunkNodes = new HashSet<>();
+    final Set<TDataNodeLocation> shrunkNodes = Sets.newHashSetWithExpectedSize(size);
     for (int i = 0; i < size; ++i) {
       shrunkNodes.add(
           DeviceAttributeCacheUpdater.deserializeNodeLocationForAttributeUpdate(buffer));

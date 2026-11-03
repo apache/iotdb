@@ -288,7 +288,7 @@ public class TransformOperator implements ProcessOperator {
 
   protected void prepareTsBlockBuilder(TsBlockBuilder tsBlockBuilder) {
     if (outputDataTypes == null) {
-      outputDataTypes = new ArrayList<>();
+      outputDataTypes = new ArrayList<>(transformers.length);
       for (LayerReader reader : transformers) {
         outputDataTypes.add(reader.getDataTypes()[0]);
       }

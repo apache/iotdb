@@ -47,7 +47,9 @@ public class IoTConsensusMemoryManager {
     synchronized (request) {
       long prevRef = request.incRef();
       if (prevRef == 0) {
-        final long retainedMemorySize = request.getRetainedMemorySize();
+        // The amount is captured once, so that an entry that materializes its bytes after it was
+        // queued returns exactly what it reserved when it is released.
+        final long retainedMemorySize = request.getQueueReservedMemorySize();
         boolean reserved = reserve(retainedMemorySize, true);
         if (reserved) {
           if (logger.isDebugEnabled()) {
@@ -114,7 +116,7 @@ public class IoTConsensusMemoryManager {
     synchronized (request) {
       long prevRef = request.decRef();
       if (prevRef == 1) {
-        final long retainedMemorySize = request.getRetainedMemorySize();
+        final long retainedMemorySize = request.getQueueReservedMemorySize();
         free(retainedMemorySize, true);
         if (logger.isDebugEnabled()) {
           logger.debug(

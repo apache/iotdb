@@ -23,8 +23,7 @@ import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingQueue;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
@@ -32,7 +31,7 @@ import static org.junit.Assert.fail;
 
 public class L2PriorityQueueTest {
   @Test
-  public void testPollBlocked() throws InterruptedException {
+  public void testPollBlocked() throws Exception {
     IndexedBlockingQueue<QueueElement> queue =
         new L2PriorityQueue<>(
             10,
@@ -43,29 +42,24 @@ public class L2PriorityQueueTest {
               return Integer.compare(o1.getValue(), o2.getValue());
             },
             new QueueElement(new QueueElement.QueueElementID(0), 0));
-    List<QueueElement> res = new ArrayList<>();
-    Thread t1 =
-        new Thread(
-            () -> {
-              try {
-                QueueElement e = queue.poll();
-                res.add(e);
-              } catch (InterruptedException e) {
-                e.printStackTrace();
-                fail();
-              }
-            });
+    FutureTask<QueueElement> result = new FutureTask<>(queue::poll);
+    Thread t1 = new Thread(result);
     t1.start();
-    await()
-        .atMost(1, TimeUnit.MINUTES)
-        .untilAsserted(() -> Assert.assertEquals(Thread.State.WAITING, t1.getState()));
-    QueueElement e2 = new QueueElement(new QueueElement.QueueElementID(1), 1);
-    queue.push(e2);
-    await()
-        .atMost(1, TimeUnit.MINUTES)
-        .untilAsserted(() -> Assert.assertEquals(Thread.State.TERMINATED, t1.getState()));
-    Assert.assertEquals(1, res.size());
-    Assert.assertEquals(e2.getDriverTaskId().toString(), res.get(0).getDriverTaskId().toString());
+    try {
+      await()
+          .atMost(10, TimeUnit.SECONDS)
+          .until(() -> result.isDone() || t1.getState() == Thread.State.WAITING);
+      if (result.isDone()) {
+        Assert.fail("poll completed before an element was pushed: " + result.get());
+      }
+      QueueElement e2 = new QueueElement(new QueueElement.QueueElementID(1), 1);
+      queue.push(e2);
+      Assert.assertSame(e2, result.get(10, TimeUnit.SECONDS));
+    } finally {
+      t1.interrupt();
+      t1.join(TimeUnit.SECONDS.toMillis(10));
+      Assert.assertFalse(t1.isAlive());
+    }
   }
 
   @Test

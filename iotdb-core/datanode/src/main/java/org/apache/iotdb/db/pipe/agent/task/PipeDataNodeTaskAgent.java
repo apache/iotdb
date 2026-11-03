@@ -47,8 +47,10 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -63,7 +65,10 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
+import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
+import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningFilter;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -75,6 +80,7 @@ import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
+import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -194,6 +200,61 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         .put(consensusGroupId, pipeTaskMeta);
   }
 
+  /** Applies a partial metadata batch without dropping pipes omitted from the request. */
+  public List<TPushPipeMetaRespExceptionMessage> handleMultiPipeMetaChanges(
+      final List<PipeMeta> pipeMetaListFromCoordinator) {
+    if (pipeMetaListFromCoordinator.isEmpty()) {
+      return Collections.emptyList();
+    }
+    if (!tryWriteLockWithTimeOutInMs(
+        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
+      return null;
+    }
+    try {
+      // Reconciliation and alter-progress reuse need one complete view under the same write lock.
+      // Resolve replacements using the keeper's name/visibility identity, including new versions
+      // of existing pipes. Preserve the incoming old-DROPPED/new pair used by alter procedures.
+      final Set<PipeStaticMeta> replacedLocalMetas =
+          pipeMetaListFromCoordinator.stream()
+              .map(
+                  meta -> {
+                    final PipeStaticMeta staticMeta = meta.getStaticMeta();
+                    final PipeStatus status = meta.getRuntimeMeta().getStatus().get();
+                    if (status == PipeStatus.DROPPED) {
+                      return pipeMetaKeeper.getPipeMeta(
+                          staticMeta.getPipeName(), staticMeta.getCreationTime());
+                    }
+                    return status == PipeStatus.PRE_DELETE
+                        ? null
+                        : pipeMetaKeeper.getPipeMeta(staticMeta);
+                  })
+              .filter(Objects::nonNull)
+              .map(PipeMeta::getStaticMeta)
+              .collect(Collectors.toSet());
+      final List<PipeMeta> fullPipeMetaList = new ArrayList<>(pipeMetaListFromCoordinator);
+      for (final PipeMeta localMeta : pipeMetaKeeper.getPipeMetaList()) {
+        if (!replacedLocalMetas.contains(localMeta.getStaticMeta())) {
+          fullPipeMetaList.add(localMeta);
+        }
+      }
+      return handlePipeMetaChangesInternal(fullPipeMetaList);
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  @Override
+  protected TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChangesInternal(
+      final PipeMeta pipeMetaFromCoordinator) {
+    clearCompletedEmptySnapshotTasks(pipeMetaFromCoordinator);
+    final TPushPipeMetaRespExceptionMessage exception =
+        super.handleSinglePipeMetaChangesInternal(pipeMetaFromCoordinator);
+    if (exception == null) {
+      restoreCompletedEmptySnapshot(pipeMetaFromCoordinator);
+    }
+    return exception;
+  }
+
   @Override
   public List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesInternal(
       final List<PipeMeta> pipeMetaListFromCoordinator) {
@@ -203,6 +264,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
 
     carryOverLocalProgressIndexForAlter(pipeMetaListFromCoordinator);
+    pipeMetaListFromCoordinator.forEach(this::clearCompletedEmptySnapshotTasks);
 
     final List<TPushPipeMetaRespExceptionMessage> exceptionMessages =
         super.handlePipeMetaChangesInternal(pipeMetaListFromCoordinator);
@@ -219,7 +281,50 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
           new TPushPipeMetaRespExceptionMessage("", e.getMessage(), System.currentTimeMillis()));
     }
 
+    for (final PipeMeta pipeMeta : pipeMetaListFromCoordinator) {
+      final String pipeName = pipeMeta.getStaticMeta().getPipeName();
+      if (exceptionMessages.stream().noneMatch(exception -> pipeName.equals(exception.pipeName))) {
+        restoreCompletedEmptySnapshot(pipeMeta);
+      }
+    }
+
     return exceptionMessages;
+  }
+
+  private void clearCompletedEmptySnapshotTasks(final PipeMeta pipeMeta) {
+    final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+    if (PipeStaticMeta.isSubscriptionPipe(staticMeta.getPipeName())
+        && staticMeta
+            .getSourceParameters()
+            .getBooleanOrDefault(SystemConstant.SUBSCRIPTION_EMPTY_SNAPSHOT_COMPLETED_KEY, false)) {
+      // Region creation/leader changes may append tasks after this snapshot has completed. Those
+      // tasks must never scan data that arrived after the original empty snapshot.
+      pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().clear();
+    }
+  }
+
+  private void restoreCompletedEmptySnapshot(final PipeMeta pipeMeta) {
+    final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+    if (isShutdown()
+        || !SubscriptionConfig.getInstance().getSubscriptionEnabled()
+        || pipeMeta.getRuntimeMeta().getStatus().get() != PipeStatus.RUNNING
+        || !PipeStaticMeta.isSubscriptionPipe(staticMeta.getPipeName())
+        || !staticMeta
+            .getSourceParameters()
+            .getBooleanOrDefault(SystemConstant.SUBSCRIPTION_EMPTY_SNAPSHOT_COMPLETED_KEY, false)) {
+      return;
+    }
+
+    // This is a coordinator-wide completion decision, not the absence of local tasks. Reapply it
+    // after both single-pipe updates and full metadata recovery so the snapshot terminates after a
+    // DataNode restart.
+    final String consumerGroupId =
+        staticMeta.getSinkParameters().getString(PipeSinkConstant.SINK_CONSUMER_GROUP_KEY);
+    SubscriptionAgent.broker().createPipeBrokerIfNotExist(consumerGroupId);
+    SubscriptionAgent.broker()
+        .updateCompletedTopicNames(
+            consumerGroupId,
+            staticMeta.getSinkParameters().getString(PipeSinkConstant.SINK_TOPIC_KEY));
   }
 
   /**
@@ -670,11 +775,93 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   ///////////////////////// Utils /////////////////////////
 
+  public String getPipeModel(final String pipeName, final long creationTime) {
+    // Both models can use the same name. Try the indexed keys first, so allocating event blocks
+    // does not scan every pipe's metadata.
+    PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    if (pipeMeta != null && pipeMeta.getStaticMeta().getCreationTime() != creationTime) {
+      pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, true);
+      if (pipeMeta == null || pipeMeta.getStaticMeta().getCreationTime() != creationTime) {
+        pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
+      }
+    }
+    return pipeMeta == null
+        ? null
+        : pipeMeta
+            .getStaticMeta()
+            .getSourceParameters()
+            .getStringOrDefault(
+                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+  }
+
   public Set<Integer> getPipeTaskRegionIdSet(final String pipeName, final long creationTime) {
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
     return pipeMeta == null
         ? Collections.emptySet()
         : pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().keySet();
+  }
+
+  /**
+   * Returns current realtime DataRegion sources keyed by region ID. The left value is true only for
+   * a supported, running, healthy Pipe whose expected DataRegion tasks are all present and ready. A
+   * false value means completion is unproven; the map may be partial or empty and must not be
+   * interpreted as completed. Runtime state is sampled under the task read lock.
+   */
+  public Pair<Boolean, Map<Integer, PipeRealtimeDataRegionSource>> getPipeCompletionSnapshot(
+      final String pipeName, final long creationTime) {
+    if (!tryReadLockWithTimeOutInMs(10)) {
+      return new Pair<>(false, Collections.emptyMap());
+    }
+
+    try {
+      final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
+      if (pipeMeta == null) {
+        return new Pair<>(false, Collections.emptyMap());
+      }
+
+      final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+      boolean supported =
+          staticMeta.supportsCompletionMark()
+              && pipeMeta.getRuntimeMeta().getStatus().get() == PipeStatus.RUNNING
+              && pipeMeta.getRuntimeMeta().getNodeId2PipeRuntimeExceptionMap().isEmpty()
+              && pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().values().stream()
+                  .noneMatch(PipeTaskMeta::hasExceptionMessages);
+
+      final Map<Integer, PipeRealtimeDataRegionSource> dataRegionId2Source = new HashMap<>();
+      final Map<Integer, PipeTask> pipeTaskMap = pipeTaskManager.getPipeTasks(staticMeta);
+      if (pipeTaskMap != null) {
+        for (final Map.Entry<Integer, PipeTask> entry : pipeTaskMap.entrySet()) {
+          if (!(entry.getValue() instanceof PipeDataNodeTask)) {
+            supported = false;
+            continue;
+          }
+          final PipeExtractor extractor = ((PipeDataNodeTask) entry.getValue()).getPipeExtractor();
+          if (!(extractor instanceof IoTDBDataRegionSource)) {
+            if (!(extractor instanceof IoTDBSchemaRegionSource)) {
+              supported = false;
+            }
+            continue;
+          }
+          final IoTDBDataRegionSource dataRegionSource = (IoTDBDataRegionSource) extractor;
+          final PipeRealtimeDataRegionSource realtimeSource =
+              dataRegionSource.getRealtimeSourceForCompletion();
+          if (realtimeSource == null) {
+            supported = false;
+          } else {
+            dataRegionId2Source.put(entry.getKey(), realtimeSource);
+          }
+          if (!dataRegionSource.isReadyForCompletion()) {
+            supported = false;
+          }
+        }
+      }
+      if (!dataRegionId2Source.keySet().equals(getExpectedDataRegionIds(pipeMeta))) {
+        supported = false;
+      }
+      return new Pair<>(supported, dataRegionId2Source);
+    } finally {
+      releaseReadLock();
+    }
   }
 
   public boolean hasPipeReleaseRegionRelatedResource(final int consensusGroupId) {
@@ -1045,6 +1232,16 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return;
     }
 
+    // Snapshot/query and non-streaming sources do not retain InsertNode tablets.
+    if (isSnapshotMode(sourceParameters)
+        || !sourceParameters.getBooleanOrDefault(
+            Arrays.asList(
+                PipeSourceConstant.EXTRACTOR_MODE_STREAMING_KEY,
+                PipeSourceConstant.SOURCE_MODE_STREAMING_KEY),
+            PipeSourceConstant.EXTRACTOR_MODE_STREAMING_DEFAULT_VALUE)) {
+      return;
+    }
+
     // If the realtime mode is batch or file, we do not need to allocate memory
     final String realtimeMode =
         sourceParameters.getStringByKeys(
@@ -1055,8 +1252,15 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return;
     }
 
+    // Hybrid sources share a pipe-wide floating-memory limit and downgrade to TsFiles when it is
+    // reached. Charging a full queue for every region rejects an idle pipe as its region count
+    // grows.
+    // Only forced-log sources cannot downgrade and retain the per-region estimate.
     final long needFloatingMemory =
-        PipeConfig.getInstance().getPipeInsertNodeQueueMemory() * dataRegionTaskCount;
+        PipeConfig.getInstance().getPipeInsertNodeQueueMemory()
+            * (PipeSourceConstant.EXTRACTOR_REALTIME_MODE_FORCED_LOG_VALUE.equals(realtimeMode)
+                ? dataRegionTaskCount
+                : 1);
     final long allocatedMemorySizeInBytes = this.getAllFloatingMemoryUsageInByte();
     final long remainingMemory =
         PipeDataNodeResourceManager.memory().getTotalFloatingMemorySizeInBytes()

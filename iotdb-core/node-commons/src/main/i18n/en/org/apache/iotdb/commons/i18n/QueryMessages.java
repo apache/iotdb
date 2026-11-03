@@ -163,8 +163,16 @@ public final class QueryMessages {
       "height must be a non-negative number, but got: %s";
   public static final String INVALID_PATTERN_MISSING_REPEAT_SIGN =
       "Invalid pattern: %s, missing repeat sign after '}'";
+  public static final String EXCEPTION_INVALID_PATTERN_ARG_REPETITION_SIGNS_AND_MUST_IMMEDIATELY_FOLLOW_30FC3998 =
+      "Invalid pattern: '%s'. Repetition signs '+' and '*' must immediately follow '}'.";
   public static final String INVALID_PATTERN_MUST_CONTAIN_DATA_POINTS =
       "Invalid pattern: '%s'. Pattern must contain at least two numeric data points separated by commas, e.g., '1,2,3'";
+  public static final String EXCEPTION_INVALID_PATTERN_ARG_REPETITION_GROUPS_MUST_CONTAIN_AT_LEAST_ONE_NUMERIC_DATA_POINT_E1880CCB =
+      "Invalid pattern: '%s'. Repetition groups must contain at least one numeric data point.";
+  public static final String EXCEPTION_INVALID_PATTERN_ARG_UNMATCHED_OR_9B5E4AE4 =
+      "Invalid pattern: '%s'. Unmatched '{' or '}'.";
+  public static final String EXCEPTION_INVALID_PATTERN_ARG_INVALID_NUMERIC_DATA_POINT_ARG_12165323 =
+      "Invalid pattern: '%s'. Invalid numeric data point: '%s'.";
 
   // ======================== Forecast / Classify TVF ========================
 
@@ -598,4 +606,5 @@ public final class QueryMessages {
       EXCEPTION_INPUT_ARRAY_LENGTH_MUST_BE_AT_LEAST_2_FFT_LENGTH_31DF6A25 =
           "Input array length must be at least 2 * FFT length.";
 
+  public static final String EXCEPTION_LINE_ARG_ARG_ARG_B222E08B = "line %s:%s: %s";
 }

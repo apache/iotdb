@@ -83,6 +83,15 @@ public class IoTDBComplexQueryIT {
   }
 
   @Test
+  public void testTableLessQueryWithOrderBy() {
+    tableResultSetEqualTest(
+        "SELECT CAST(1 AS TIMESTAMP) AS time, 1 AS v ORDER BY v, time",
+        new String[] {"time", "v"},
+        new String[] {"1970-01-01T00:00:00.001Z,1,"},
+        DATABASE_NAME);
+  }
+
+  @Test
   public void testTableLessQuery() {
     String[] expectedHeader;
     String[] retArray;

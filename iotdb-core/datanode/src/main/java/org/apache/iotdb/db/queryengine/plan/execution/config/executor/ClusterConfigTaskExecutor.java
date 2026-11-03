@@ -193,6 +193,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.ainode.AINodeConnectionException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
@@ -1460,11 +1461,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               == RepairTaskStatus.STOPPING) {
             tsStatus =
                 RpcUtils.getStatus(
-                    TSStatusCode.EXECUTE_STATEMENT_ERROR, "previous repair task is still stopping");
+                    TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                    DataNodeMiscMessages.EXCEPTION_PREVIOUS_REPAIR_TASK_IS_STILL_STOPPING_F6FAD84A);
           } else {
             tsStatus =
                 RpcUtils.getStatus(
-                    TSStatusCode.EXECUTE_STATEMENT_ERROR, "already have a running repair task");
+                    TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                    DataNodeMiscMessages.EXCEPTION_ALREADY_HAVE_A_RUNNING_REPAIR_TASK_826E4880);
           }
         }
       } catch (Exception e) {
@@ -1590,7 +1593,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
     } else {
       try {
-        CommonDescriptor.getInstance().getConfig().setNodeStatus(status);
+        if (status == NodeStatus.ReadOnly) {
+          CommonDescriptor.getInstance()
+              .getConfig()
+              .setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.MANUAL);
+        } else {
+          CommonDescriptor.getInstance().getConfig().setNodeStatus(status);
+        }
         tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } catch (Exception e) {
         tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
@@ -1786,13 +1795,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           databaseToTTL.putAll(resp.getPathTTLMap());
           continue;
         }
+        PathPatternTree queryScope = new PathPatternTree();
+        queryScope.appendPathPattern(pathPattern);
+        queryScope.constructTree();
+        // Query patterns may contain wildcards before the trailing **. Only the authority
+        // scope is restricted to full paths and literal prefixes.
         for (PartialPath overlappedPathPattern :
-            authorityScope.getOverlappedPathPatterns(pathPattern)) {
+            queryScope.intersectWithFullPathPrefixTree(authorityScope).getAllPathPatterns()) {
           List<String> nodes = Arrays.asList(overlappedPathPattern.getNodes());
           TShowTTLReq req = new TShowTTLReq(nodes);
           TShowTTLResp resp = client.showTTL(req);
           databaseToTTL.putAll(resp.getPathTTLMap());
-          if (showTTLStatement.isShowAllTTL()) {
+          // TTL rules can be stored on the prefix itself as well as on prefix.**.
+          if (overlappedPathPattern.endWithMultiLevelWildcard()) {
             req.setPathPattern(nodes.subList(0, nodes.size() - 1));
             resp = client.showTTL(req);
             databaseToTTL.putAll(resp.getPathTTLMap());
@@ -3301,6 +3316,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           showTopicResp.isSetTopicInfoList()
               ? showTopicResp.getTopicInfoList()
               : Collections.emptyList(),
+          showTopicsStatement.isTableModel(),
           future);
     } catch (final Exception e) {
       future.setException(e);
@@ -3935,9 +3951,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         LOGGER.error(DataNodeQueryMessages.CANNOT_REMOVE_INVALID_NODEIDS, invalidNodeIds);
         future.setException(
             new IOException(
-                "The DataNode(s) to be removed "
-                    + invalidNodeIds
-                    + " are not in the cluster, or the input format is incorrect."));
+                String.format(
+                    DataNodeQueryMessages
+                        .EXCEPTION_THE_DATANODE_S_TO_BE_REMOVED_ARG_ARE_NOT_IN_THE_CLUSTER_OR_THE_INPUT_FORMAT_IS_INCORRECT_103B72A3,
+                    Objects.toString(invalidNodeIds))));
         return future;
       }
 
@@ -4830,20 +4847,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     return future;
   }
 
-  public Set<String> getPreDeletedColumns(final String database, final String tableName) {
-    try (final ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TDescTableResp resp = configNodeClient.describeTable(database, tableName, true);
-      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new IoTDBRuntimeException(
-            getTableErrorMessage(resp.getStatus(), database), resp.getStatus().getCode());
-      }
-      return resp.isSetPreDeletedColumns() ? resp.getPreDeletedColumns() : Collections.emptySet();
-    } catch (final ClientManagerException | TException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
   @Override
   public SettableFuture<ConfigTaskResult> describeTable(
       final String database,
@@ -5212,7 +5215,53 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
-          || TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && ifExists) {
+          || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && ifExists)) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        future.setException(
+            new IoTDBException(getTableErrorMessage(tsStatus, database), tsStatus.getCode()));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterTableSetColumnProperties(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final Map<String, String> properties,
+      final String queryId,
+      final boolean tableIfExists,
+      final boolean columnIfExists) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      final ByteArrayOutputStream stream = new ByteArrayOutputStream();
+      try {
+        ReadWriteIOUtils.write(columnName, stream);
+        ReadWriteIOUtils.write(properties, stream);
+      } catch (final IOException ignored) {
+        // ByteArrayOutputStream won't throw IOException
+      }
+
+      final TSStatus tsStatus =
+          sendAlterReq2ConfigNode(
+              database,
+              tableName,
+              queryId,
+              AlterOrDropTableOperationType.SET_COLUMN_PROPERTIES,
+              stream.toByteArray(),
+              false,
+              client);
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
+          || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && tableIfExists)
+          || (TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode() == tsStatus.getCode()
+              && columnIfExists)) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
         future.setException(

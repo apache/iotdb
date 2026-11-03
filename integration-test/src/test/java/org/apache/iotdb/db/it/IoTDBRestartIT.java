@@ -21,6 +21,7 @@ package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.it.utils.DeletionTestUtils;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -30,6 +31,7 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.io.FileUtils;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -41,16 +43,21 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -61,7 +68,18 @@ public class IoTDBRestartIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setWalMode("SYNC");
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setWalMode("SYNC")
+        .setDataRegionConsensusProtocolClass("org.apache.iotdb.consensus.simple.SimpleConsensus")
+        .setDataReplicationFactor(1)
+        .setDataRegionGroupExtensionPolicy("CUSTOM")
+        .setDefaultDataRegionGroupNumPerDatabase(1)
+        .setMemtableSizeThreshold(16 * 1024 * 1024)
+        .setEnableSeqSpaceCompaction(false)
+        .setEnableUnseqSpaceCompaction(false)
+        .setEnableCrossSpaceCompaction(false);
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -161,6 +179,110 @@ public class IoTDBRestartIT {
         }
       } finally {
         resultSet.close();
+      }
+    }
+  }
+
+  @Test
+  public void testDeleteAndRewriteSurviveForcedRestart() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.restart_delete");
+      statement.execute("CREATE TIMESERIES root.restart_delete.d1.s1 WITH DATATYPE=INT64");
+      statement.execute("CREATE TIMESERIES root.restart_delete.d1.s2 WITH DATATYPE=INT64");
+      statement.execute("CREATE TIMESERIES root.restart_delete.d2.s1 WITH DATATYPE=INT64");
+      statement.execute("CREATE TIMESERIES root.restart_delete.d2.s2 WITH DATATYPE=INT64");
+
+      // The first two rows are in a TsFile. The remaining rows are only protected by the SYNC
+      // WAL when the delete is issued.
+      statement.execute("INSERT INTO root.restart_delete.d1(time,s1,s2) VALUES(1,11,101)");
+      statement.execute("INSERT INTO root.restart_delete.d1(time,s1) VALUES(2,12)");
+      statement.execute("INSERT INTO root.restart_delete.d2(time,s1,s2) VALUES(2,22,202)");
+      statement.execute("FLUSH");
+      Path history =
+          DeletionTestUtils.assertSharedTsFile(
+              "root.restart_delete",
+              IDeviceID.Factory.DEFAULT_FACTORY.create("root.restart_delete.d1"),
+              IDeviceID.Factory.DEFAULT_FACTORY.create("root.restart_delete.d2"));
+      assertEquals(
+          Map.of(1L, 11L, 2L, 12L),
+          DeletionTestUtils.readTreePoints(history, "root.restart_delete.d1", "s1"));
+      List<Path> closedFiles = DeletionTestUtils.getClosedTsFiles("root.restart_delete", true);
+
+      statement.execute("INSERT INTO root.restart_delete.d1(time,s1) VALUES(1,111)");
+      statement.execute("INSERT INTO root.restart_delete.d1(time,s1) VALUES(3,13)");
+      statement.execute("INSERT INTO root.restart_delete.d1(time,s1,s2) VALUES(4,14,104)");
+      assertEquals(closedFiles, DeletionTestUtils.getClosedTsFiles("root.restart_delete", true));
+      assertTrue(DeletionTestUtils.getClosedTsFiles("root.restart_delete", false).isEmpty());
+      assertEquals(
+          Map.of(1L, 11L, 2L, 12L),
+          DeletionTestUtils.readTreePoints(history, "root.restart_delete.d1", "s1"));
+
+      statement.execute("DELETE FROM root.restart_delete.d1.s1 WHERE time <= 3");
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s1,s2 FROM root.restart_delete.d1 ORDER BY time")) {
+        assertTrue(resultSet.next());
+        assertEquals(1, resultSet.getLong(1));
+        assertNull(resultSet.getObject(2));
+        assertEquals(101, resultSet.getLong(3));
+        assertTrue(resultSet.next());
+        assertEquals(4, resultSet.getLong(1));
+        assertEquals(14, resultSet.getLong(2));
+        assertEquals(104, resultSet.getLong(3));
+        assertFalse(resultSet.next());
+      }
+
+      // This rewrite is deliberately older than the surviving point. It must survive the old
+      // delete record and remain visible after recovery, while s2 stays NULL.
+      statement.execute("INSERT INTO root.restart_delete.d1(time,s1) VALUES(2,1202)");
+      assertEquals(closedFiles, DeletionTestUtils.getClosedTsFiles("root.restart_delete", true));
+      assertTrue(DeletionTestUtils.getClosedTsFiles("root.restart_delete", false).isEmpty());
+      try (ResultSet rows =
+          statement.executeQuery("SELECT s1,s2 FROM root.restart_delete.d1 ORDER BY time")) {
+        TestUtils.assertResultSetEqual(
+            rows,
+            "Time,root.restart_delete.d1.s1,root.restart_delete.d1.s2,",
+            new String[] {"1,null,101,", "2,1202,null,", "4,14,104,"});
+      }
+    }
+
+    TestUtils.stopForciblyAndRestartDataNodes();
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s1,s2 FROM root.restart_delete.d1 ORDER BY time")) {
+        assertTrue(resultSet.next());
+        assertEquals(1, resultSet.getLong(1));
+        assertNull(resultSet.getObject(2));
+        assertEquals(101, resultSet.getLong(3));
+        assertTrue(resultSet.next());
+        assertEquals(2, resultSet.getLong(1));
+        assertEquals(1202, resultSet.getLong(2));
+        assertNull(resultSet.getObject(3));
+        assertTrue(resultSet.next());
+        assertEquals(4, resultSet.getLong(1));
+        assertEquals(14, resultSet.getLong(2));
+        assertEquals(104, resultSet.getLong(3));
+        assertFalse(resultSet.next());
+      }
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s1,s2 FROM root.restart_delete.d2 ORDER BY time")) {
+        assertTrue(resultSet.next());
+        assertEquals(2, resultSet.getLong(1));
+        assertEquals(22, resultSet.getLong(2));
+        assertEquals(202, resultSet.getLong(3));
+        assertFalse(resultSet.next());
+      }
+      // Only after checking both the target and control do we test continued writes and flush.
+      statement.execute("INSERT INTO root.restart_delete.d1(time,s1,s2) VALUES(5,15,105)");
+      statement.execute("FLUSH");
+      try (ResultSet rows =
+          statement.executeQuery("SELECT s1,s2 FROM root.restart_delete.d1 ORDER BY time")) {
+        TestUtils.assertResultSetEqual(
+            rows,
+            "Time,root.restart_delete.d1.s1,root.restart_delete.d1.s2,",
+            new String[] {"1,null,101,", "2,1202,null,", "4,14,104,", "5,15,105,"});
       }
     }
   }

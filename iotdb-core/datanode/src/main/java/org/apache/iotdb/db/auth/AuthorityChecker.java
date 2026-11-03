@@ -41,6 +41,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TTablePrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.lbac.AllowAllLBACAccessControl;
+import org.apache.iotdb.db.lbac.ILBACAccessControl;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -92,13 +94,16 @@ public class AuthorityChecker {
   public static String ANY_SCOPE = "any";
 
   public static final String ONLY_ADMIN_ALLOWED =
-      "No permissions for this operation, only root user is allowed";
+      DataNodeMiscMessages
+          .EXCEPTION_NO_PERMISSIONS_FOR_THIS_OPERATION_ONLY_ROOT_USER_IS_ALLOWED_550785E7;
 
   public static final String NO_PERMISSION_PROMOTION =
-      "No permissions for this operation, please add privilege ";
+      DataNodeMiscMessages
+          .EXCEPTION_NO_PERMISSIONS_FOR_THIS_OPERATION_PLEASE_ADD_PRIVILEGE_428F7542;
 
   private static final String NO_GRANT_OPT_PERMISSION_PROMOTION =
-      "No permissions for this operation, please add grant option to privilege ";
+      DataNodeMiscMessages
+          .EXCEPTION_NO_PERMISSIONS_FOR_THIS_OPERATION_PLEASE_ADD_GRANT_OPTION_TO_PRIVILEGE_52CAE93E;
 
   private static final MemoizedSupplier<IAuthorityFetcher> authorityFetcher =
       MemoizedSupplier.valueOf(() -> new ClusterAuthorityFetcher(new BasicAuthorityCache()));
@@ -108,6 +113,8 @@ public class AuthorityChecker {
 
   private static volatile AccessControl accessControl =
       new AccessControlImpl(new ITableAuthCheckerImpl(), new TreeAccessCheckVisitor());
+
+  private static volatile ILBACAccessControl lbacAccessControl = new AllowAllLBACAccessControl();
 
   private AuthorityChecker() {
     // empty constructor
@@ -120,6 +127,16 @@ public class AuthorityChecker {
   @TestOnly
   public static void setAccessControl(AccessControl accessControl) {
     AuthorityChecker.accessControl = accessControl;
+  }
+
+  @SuppressWarnings("java:S100")
+  public static ILBACAccessControl getLBACAccessControl() {
+    return lbacAccessControl;
+  }
+
+  @SuppressWarnings("java:S100")
+  public static void setLBACAccessControl(final ILBACAccessControl lbacAccessControl) {
+    AuthorityChecker.lbacAccessControl = lbacAccessControl;
   }
 
   public static void setSuperUser(String superUser) {
@@ -212,6 +229,7 @@ public class AuthorityChecker {
                             auditEntity.getUserId(),
                             auditEntity.getUsername(),
                             auditEntity.getCliHostname())
+                        .setInternal(auditEntity.isInternal())
                         .setSqlString(auditEntity.getSqlString()));
       }
       return status;

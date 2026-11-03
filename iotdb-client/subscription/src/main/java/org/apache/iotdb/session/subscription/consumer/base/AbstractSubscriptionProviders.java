@@ -21,6 +21,7 @@ package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConsumerFencedException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
@@ -38,6 +39,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -50,11 +52,16 @@ final class AbstractSubscriptionProviders {
   private final SortedMap<Integer, AbstractSubscriptionProvider> subscriptionProviders =
       new ConcurrentSkipListMap<>();
   private final AtomicBoolean isClosing = new AtomicBoolean(false);
+  private final AtomicBoolean unavailableSyncInFlight = new AtomicBoolean(false);
+  private final Set<AbstractSubscriptionProvider> providersWithHeartbeatInFlight =
+      ConcurrentHashMap.newKeySet();
+  private final Object heartbeatResponseLock = new Object();
   private int nextDataNodeId = -1;
 
   private final ReentrantReadWriteLock subscriptionProvidersLock = new ReentrantReadWriteLock(true);
 
   private final Set<TEndPoint> initialEndpoints;
+  private long lastUnavailableSyncTimeMs;
 
   AbstractSubscriptionProviders(final Set<TEndPoint> initialEndpoints) {
     this.initialEndpoints = initialEndpoints;
@@ -83,11 +90,14 @@ final class AbstractSubscriptionProviders {
   /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
   void openProviders(final AbstractSubscriptionConsumer consumer) throws SubscriptionException {
     // close stale providers
-    closeProviders();
+    closeProviders(false);
 
     final Map<TEndPoint, String> connectionFailures = new LinkedHashMap<>();
     final List<Throwable> connectionFailureCauses = new ArrayList<>();
     for (final TEndPoint endPoint : initialEndpoints) {
+      if (isClosing.get() || consumer.isFenced()) {
+        return;
+      }
       final AbstractSubscriptionProvider defaultProvider;
       final int defaultDataNodeId;
 
@@ -109,6 +119,9 @@ final class AbstractSubscriptionProviders {
       }
       defaultDataNodeId = defaultProvider.getDataNodeId();
       addProvider(defaultDataNodeId, defaultProvider);
+      if (isClosing.get() || consumer.isFenced()) {
+        return;
+      }
 
       final Map<Integer, TEndPoint> allEndPoints;
       try {
@@ -127,6 +140,9 @@ final class AbstractSubscriptionProviders {
       }
 
       for (final Map.Entry<Integer, TEndPoint> entry : allEndPoints.entrySet()) {
+        if (isClosing.get() || consumer.isFenced()) {
+          return;
+        }
         if (defaultDataNodeId == entry.getKey()) {
           continue;
         }
@@ -236,7 +252,8 @@ final class AbstractSubscriptionProviders {
     }
     final AbstractSubscriptionProvider provider = subscriptionProviders.get(dataNodeId);
     try {
-      provider.close();
+      // Replacing a connection must not unsubscribe topics or drop the shared consumer.
+      provider.closeSession();
     } finally {
       LOGGER.info(SubscriptionMessages.CLOSE_STALE_PROVIDER, provider);
       subscriptionProviders.remove(dataNodeId);
@@ -316,29 +333,39 @@ final class AbstractSubscriptionProviders {
       return;
     }
 
-    acquireWriteLock();
-    try {
-      if (consumer.isClosed() || consumer.isFenced()) {
-        return;
+    for (final AbstractSubscriptionProvider provider : getAllProviders()) {
+      if (!providersWithHeartbeatInFlight.add(provider)) {
+        continue;
       }
-      heartbeatInternal(consumer);
-    } finally {
-      releaseWriteLock();
+      if (Objects.isNull(
+          SubscriptionExecutorServiceManager.submitProviderHeartbeat(
+              () -> heartbeatProvider(consumer, provider)))) {
+        providersWithHeartbeatInFlight.remove(provider);
+      }
     }
   }
 
-  private void heartbeatInternal(final AbstractSubscriptionConsumer consumer) {
-    for (final AbstractSubscriptionProvider provider : getAllProviders()) {
-      if (consumer.isFenced()) {
+  private void heartbeatProvider(
+      final AbstractSubscriptionConsumer consumer, final AbstractSubscriptionProvider provider) {
+    try {
+      if (consumer.isClosed()
+          || consumer.isFenced()
+          || !containsProvider(provider)
+          || !provider.isAvailable()) {
         return;
       }
-      try {
-        final List<SubscriptionCommitContext> processorBufferedCommitContexts =
-            consumer.getProcessorBufferedCommitContexts(provider.getDataNodeId());
-        final PipeSubscribeHeartbeatResp resp = provider.heartbeat(processorBufferedCommitContexts);
-        // update subscribed topics
+      final List<SubscriptionCommitContext> processorBufferedCommitContexts =
+          consumer.getProcessorBufferedCommitContexts(provider.getDataNodeId());
+      final PipeSubscribeHeartbeatResp resp = provider.heartbeat(processorBufferedCommitContexts);
+      if (consumer.isClosed()
+          || consumer.isFenced()
+          || !containsProvider(provider)
+          || !provider.isAvailable()) {
+        return;
+      }
+      provider.setAvailable();
+      synchronized (heartbeatResponseLock) {
         consumer.subscribedTopics = resp.getTopics();
-        // unsubscribe completed topics
         for (final String topicName : resp.getTopicNamesToUnsubscribe()) {
           LOGGER.info(
               SubscriptionMessages
@@ -347,22 +374,28 @@ final class AbstractSubscriptionProviders {
               topicName);
           consumer.unsubscribe(topicName);
         }
-        provider.setAvailable();
-      } catch (final SubscriptionConsumerFencedException e) {
-        consumer.fence(e);
-        provider.setUnavailable();
-        return;
-      } catch (final Exception e) {
-        LOGGER.warn(
-            SubscriptionMessages
-                .LOG_ARG_FAILED_SENDING_HEARTBEAT_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_SET_0B38FB1F,
-            consumer,
-            provider,
-            e,
-            e);
-        provider.setUnavailable();
       }
+    } catch (final SubscriptionConsumerFencedException e) {
+      if (containsProvider(provider)) {
+        consumer.fence(e);
+      }
+      provider.setUnavailable();
+    } catch (final Exception e) {
+      LOGGER.warn(
+          SubscriptionMessages
+              .LOG_ARG_FAILED_SENDING_HEARTBEAT_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_SET_0B38FB1F,
+          consumer,
+          provider,
+          e,
+          e);
+      provider.setUnavailable();
+    } finally {
+      providersWithHeartbeatInFlight.remove(provider);
     }
+  }
+
+  private boolean containsProvider(final AbstractSubscriptionProvider provider) {
+    return subscriptionProviders.get(provider.getDataNodeId()) == provider;
   }
 
   /////////////////////////////// sync endpoints ///////////////////////////////
@@ -383,8 +416,45 @@ final class AbstractSubscriptionProviders {
     }
   }
 
+  /** Reconnects unavailable providers immediately after a failed RPC. */
+  void syncIfUnavailable(final AbstractSubscriptionConsumer consumer) {
+    if (consumer.isClosed()
+        || consumer.isFenced()
+        || !unavailableSyncInFlight.compareAndSet(false, true)) {
+      return;
+    }
+
+    if (Objects.isNull(
+        SubscriptionExecutorServiceManager.submitProviderHeartbeat(
+            () -> {
+              try {
+                if (consumer.isClosed() || consumer.isFenced()) {
+                  return;
+                }
+                acquireWriteLock();
+                try {
+                  if (consumer.isClosed() || consumer.isFenced()) {
+                    return;
+                  }
+                  final long now = System.currentTimeMillis();
+                  if (now - lastUnavailableSyncTimeMs
+                      >= ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_MIN_VALUE) {
+                    lastUnavailableSyncTimeMs = now;
+                    syncInternal(consumer);
+                  }
+                } finally {
+                  releaseWriteLock();
+                }
+              } finally {
+                unavailableSyncInFlight.set(false);
+              }
+            }))) {
+      unavailableSyncInFlight.set(false);
+    }
+  }
+
   private void syncInternal(final AbstractSubscriptionConsumer consumer) {
-    if (consumer.isFenced()) {
+    if (consumer.isClosed() || consumer.isFenced()) {
       return;
     }
     if (hasNoAvailableProviders()) {
@@ -410,33 +480,14 @@ final class AbstractSubscriptionProviders {
       return;
     }
 
-    // add new providers or handshake existing providers
+    // Add new providers, replace unavailable providers, or heartbeat existing providers.
     for (final Map.Entry<Integer, TEndPoint> entry : allEndPoints.entrySet()) {
-      if (consumer.isFenced()) {
+      if (consumer.isClosed() || consumer.isFenced()) {
         return;
       }
-      final AbstractSubscriptionProvider provider = getProvider(entry.getKey());
-      if (Objects.isNull(provider)) {
-        // new provider
-        final TEndPoint endPoint = entry.getValue();
-        final AbstractSubscriptionProvider newProvider;
-        try {
-          newProvider = consumer.constructProviderAndHandshake(endPoint);
-        } catch (final SubscriptionConsumerFencedException e) {
-          consumer.fence(e);
-          return;
-        } catch (final Exception e) {
-          LOGGER.warn(
-              SubscriptionMessages.LOG_ARG_FAILED_CREATE_CONNECTION_ARG_BECAUSE_ARG_E536E22A,
-              consumer,
-              endPoint,
-              e,
-              e);
-          continue;
-        }
-        addProvider(entry.getKey(), newProvider);
-      } else {
-        // existing provider
+      AbstractSubscriptionProvider provider = getProvider(entry.getKey());
+      if (Objects.nonNull(provider) && provider.isAvailable()) {
+        // Existing provider
         try {
           consumer.subscribedTopics = provider.heartbeat().getTopics();
           provider.setAvailable();
@@ -454,20 +505,46 @@ final class AbstractSubscriptionProviders {
               e);
           provider.setUnavailable();
         }
-        // close and remove unavailable provider (reset the connection as much as possible)
-        if (!provider.isAvailable()) {
-          try {
-            closeAndRemoveProvider(entry.getKey());
-          } catch (final Exception e) {
-            LOGGER.warn(
-                SubscriptionMessages
-                    .LOG_EXCEPTION_OCCURRED_ARG_CLOSING_REMOVING_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_2EC38739,
-                consumer,
-                provider,
-                e,
-                e);
-          }
+      }
+
+      if (Objects.nonNull(provider) && !provider.isAvailable()) {
+        // Remove unavailable providers before creating replacements in this same sync round.
+        try {
+          closeAndRemoveProvider(entry.getKey());
+        } catch (final Exception e) {
+          LOGGER.warn(
+              SubscriptionMessages
+                  .LOG_EXCEPTION_OCCURRED_ARG_CLOSING_REMOVING_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_2EC38739,
+              consumer,
+              provider,
+              e,
+              e);
         }
+        provider = null;
+      }
+
+      if (Objects.isNull(provider)) {
+        // New or replacement provider
+        if (consumer.isClosed() || consumer.isFenced()) {
+          return;
+        }
+        final TEndPoint endPoint = entry.getValue();
+        final AbstractSubscriptionProvider newProvider;
+        try {
+          newProvider = consumer.constructProviderAndHandshake(endPoint);
+        } catch (final SubscriptionConsumerFencedException e) {
+          consumer.fence(e);
+          return;
+        } catch (final Exception e) {
+          LOGGER.warn(
+              SubscriptionMessages.LOG_ARG_FAILED_CREATE_CONNECTION_ARG_BECAUSE_ARG_E536E22A,
+              consumer,
+              endPoint,
+              e,
+              e);
+          continue;
+        }
+        addProvider(entry.getKey(), newProvider);
       }
     }
 

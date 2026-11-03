@@ -229,10 +229,9 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
 
   public static InsertRowsNode deserialize(ByteBuffer byteBuffer) {
     PlanNodeId planNodeId;
-    List<InsertRowNode> insertRowNodeList = new ArrayList<>();
-    List<Integer> insertRowNodeIndex = new ArrayList<>();
-
     int size = byteBuffer.getInt();
+    List<InsertRowNode> insertRowNodeList = new ArrayList<>(size);
+    List<Integer> insertRowNodeIndex = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       InsertRowNode insertRowNode = new InsertRowNode(new PlanNodeId(""));
       insertRowNode.subDeserialize(byteBuffer);

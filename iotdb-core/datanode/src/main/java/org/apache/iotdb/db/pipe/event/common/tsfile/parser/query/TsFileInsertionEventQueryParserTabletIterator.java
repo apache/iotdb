@@ -115,7 +115,7 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
 
     this.measurementModsList =
         ModsOperationUtil.initializeMeasurementMods(
-            deviceId, this.measurements, currentModifications);
+            deviceId, this.measurements, currentModifications, false);
   }
 
   private QueryDataSet buildQueryDataSet() throws IOException {

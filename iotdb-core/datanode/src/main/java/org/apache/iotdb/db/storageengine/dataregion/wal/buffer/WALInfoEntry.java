@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -115,6 +116,9 @@ public class WALInfoEntry extends WALEntry {
         break;
       case OBJECT_FILE_NODE:
         ((ObjectNode) value).serializeToWAL(buffer, encodedSearchIndex);
+        break;
+      case LOAD_TSFILE_CONSENSUS_NODE:
+        ((LoadTsFileConsensusNode) value).serializeToWAL(buffer, encodedSearchIndex);
         break;
       case MEMORY_TABLE_SNAPSHOT:
       case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
@@ -210,6 +214,8 @@ public class WALInfoEntry extends WALEntry {
         return RamUsageEstimator.sizeOfObject(value);
       case OBJECT_FILE_NODE:
         return ((ObjectNode) value).serializedSize();
+      case LOAD_TSFILE_CONSENSUS_NODE:
+        return ((LoadTsFileConsensusNode) value).serializedSize();
       default:
         throw new RuntimeException(StorageEngineMessages.UNSUPPORTED_WAL_ENTRY_TYPE + type);
     }

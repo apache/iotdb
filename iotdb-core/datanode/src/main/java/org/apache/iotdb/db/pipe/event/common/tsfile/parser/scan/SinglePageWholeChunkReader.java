@@ -35,6 +35,7 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.reader.chunk.AbstractChunkReader;
+import org.apache.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.tsfile.read.reader.page.LazyLoadPageData;
 import org.apache.tsfile.read.reader.page.PageReader;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -55,29 +56,47 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
   private final ByteBuffer chunkDataBuffer;
   private final EncryptParameter encryptParam;
   private final long pageEstimatedMemoryUsageInBytes;
+  private final Chunk ownedChunk;
 
   public SinglePageWholeChunkReader(Chunk chunk) throws IOException {
     super(Long.MIN_VALUE, null, null);
+    ownedChunk = chunk;
 
     this.chunkHeader = chunk.getHeader();
     this.chunkDataBuffer = chunk.getData();
     this.encryptParam = chunk.getEncryptParam();
-    this.pageEstimatedMemoryUsageInBytes =
-        calculateMaxPageEstimatedMemoryUsageInBytesWithBatchData(chunk);
-    initAllPageReaders();
+    try {
+      this.pageEstimatedMemoryUsageInBytes =
+          calculateMaxPageEstimatedMemoryUsageInBytesWithBatchData(chunk);
+      initAllPageReaders();
+    } catch (IOException | RuntimeException | Error e) {
+      try {
+        chunk.close();
+      } catch (RuntimeException failure) {
+        e.addSuppressed(failure);
+      }
+      throw e;
+    }
+  }
+
+  @Override
+  public void close() {
+    ownedChunk.close();
   }
 
   private void initAllPageReaders() throws IOException {
+    int pageIndex = 0;
     // construct next satisfied page header
     while (chunkDataBuffer.remaining() > 0) {
       pageReaderList.add(
           constructPageReader(
               PageHeader.deserializeFrom(
-                  chunkDataBuffer, (Statistics<? extends Serializable>) null)));
+                  chunkDataBuffer, (Statistics<? extends Serializable>) null),
+              pageIndex++));
     }
   }
 
-  private PageReader constructPageReader(PageHeader pageHeader) throws IOException {
+  private PageReader constructPageReader(PageHeader pageHeader, int pageIndex) throws IOException {
     final int currentPagePosition = chunkDataBuffer.position();
     chunkDataBuffer.position(currentPagePosition + pageHeader.getCompressedSize());
     return new PageReader(
@@ -86,7 +105,9 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
             chunkDataBuffer.array(),
             currentPagePosition,
             IUnCompressor.getUnCompressor(chunkHeader.getCompressionType()),
-            encryptParam),
+            encryptParam,
+            pageIndex,
+            chunkHeader.getChunkOrdinal()),
         chunkHeader.getDataType(),
         Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType()),
         getConfiguredTimeDecoder(),
@@ -191,13 +212,16 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
 
   private static int countSinglePageTimeValues(final Chunk chunk) throws IOException {
     final ByteBuffer chunkDataBuffer = chunk.getData().duplicate();
+    chunkDataBuffer.rewind();
     final PageHeader pageHeader = deserializePageHeader(chunkDataBuffer, chunk.getHeader());
     final ByteBuffer pageData =
-        deserializePageData(
+        ChunkReader.deserializePageData(
             pageHeader,
             chunkDataBuffer,
             chunk.getHeader(),
-            IDecryptor.getDecryptor(chunk.getEncryptParam()));
+            IDecryptor.getDecryptor(chunk.getEncryptParam()),
+            chunk.getEncryptParam(),
+            0);
     final Decoder decoder =
         Decoder.getDecoderByType(chunk.getHeader().getEncodingType(), TSDataType.INT64);
 
@@ -222,25 +246,42 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
       final long pageUncompressedSizeInBytes,
       final int rowCount,
       final List<TSDataType> valueDataTypeList) {
+    final int valueCount = valueDataTypeList.size();
+    return estimatePageMemoryUsageInBytesWithBatchData(
+        pageUncompressedSizeInBytes,
+        rowCount,
+        valueCount,
+        valueCount == 1 ? valueDataTypeList.get(0) : null,
+        estimateVectorValueMemoryUsageInBytes(valueDataTypeList));
+  }
+
+  static long estimatePageMemoryUsageInBytesWithBatchData(
+      final long pageUncompressedSizeInBytes,
+      final int rowCount,
+      final int valueCount,
+      final TSDataType singleValueDataType,
+      final long vectorValueMemoryUsageInBytes) {
     return pageUncompressedSizeInBytes
-        + estimateBatchDataMemoryUsageInBytes(rowCount, valueDataTypeList);
+        + estimateBatchDataMemoryUsageInBytes(
+            rowCount, valueCount, singleValueDataType, vectorValueMemoryUsageInBytes);
   }
 
   private static long estimateBatchDataMemoryUsageInBytes(
-      final int rowCount, final List<TSDataType> valueDataTypeList) {
-    final int valueCount = valueDataTypeList.size();
+      final int rowCount,
+      final int valueCount,
+      final TSDataType singleValueDataType,
+      final long vectorValueMemoryUsageInBytes) {
     final long segmentCount = Math.max(1, (rowCount + 15L) / 16);
     long estimatedMemoryUsageInBytes = RamUsageEstimator.sizeOfLongArray(16) * segmentCount;
 
     if (valueCount == 1) {
       estimatedMemoryUsageInBytes +=
-          estimateSingleValueArrayMemoryUsageInBytes(rowCount, valueDataTypeList.get(0));
+          estimateSingleValueArrayMemoryUsageInBytes(rowCount, singleValueDataType);
     } else if (valueCount > 1) {
       estimatedMemoryUsageInBytes += RamUsageEstimator.sizeOfObjectArray(16) * segmentCount;
       estimatedMemoryUsageInBytes +=
           (long) rowCount
-              * (RamUsageEstimator.sizeOfObjectArray(valueCount)
-                  + estimateVectorValueMemoryUsageInBytes(valueDataTypeList));
+              * (RamUsageEstimator.sizeOfObjectArray(valueCount) + vectorValueMemoryUsageInBytes);
     }
 
     return estimatedMemoryUsageInBytes;
@@ -260,16 +301,19 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
       final List<TSDataType> valueDataTypeList) {
     long estimatedMemoryUsageInBytes = 0;
     for (final TSDataType dataType : valueDataTypeList) {
-      if (Objects.isNull(dataType)) {
-        continue;
-      }
-
-      estimatedMemoryUsageInBytes +=
-          RamUsageEstimator.alignObjectSize(
-              RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
-                  + estimateTsPrimitiveTypeValueMemoryUsageInBytes(dataType));
+      estimatedMemoryUsageInBytes += estimateVectorValueMemoryUsageInBytes(dataType);
     }
     return estimatedMemoryUsageInBytes;
+  }
+
+  static long estimateVectorValueMemoryUsageInBytes(final TSDataType dataType) {
+    if (Objects.isNull(dataType)) {
+      return 0;
+    }
+
+    return RamUsageEstimator.alignObjectSize(
+        RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
+            + estimateTsPrimitiveTypeValueMemoryUsageInBytes(dataType));
   }
 
   private static long estimateTsPrimitiveTypeValueMemoryUsageInBytes(final TSDataType dataType) {

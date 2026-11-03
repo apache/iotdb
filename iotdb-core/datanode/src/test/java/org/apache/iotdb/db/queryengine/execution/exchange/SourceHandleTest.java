@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.runtime.MemoryLeakException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle;
@@ -47,10 +48,12 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -74,6 +77,70 @@ public class SourceHandleTest {
   }
 
   @Test
+  public void testPendingHandleCanCloseAfterForcedMemoryDeregistration() throws Exception {
+    for (int closeMode = 0; closeMode < 3; closeMode++) {
+      MemoryPool memoryPool =
+          new MemoryPool("pending", new MemoryManager(MOCK_TSBLOCK_SIZE), MOCK_TSBLOCK_SIZE);
+      memoryPool.registerPlanNodeIdToQueryMemoryMap(
+          "holder",
+          "0.0",
+          "holder",
+          org.apache.iotdb.db.queryengine.execution.memory.MemorySide.INPUT);
+      Assert.assertTrue(
+          memoryPool.tryReserve("holder", "0.0", "holder", MOCK_TSBLOCK_SIZE, MOCK_TSBLOCK_SIZE));
+      LocalMemoryManager manager = Mockito.mock(LocalMemoryManager.class);
+      Mockito.when(manager.getQueryPool()).thenReturn(memoryPool);
+      ExecutorService executor = Mockito.mock(ExecutorService.class);
+      Mockito.doAnswer(
+              invocation -> {
+                ((Runnable) invocation.getArgument(0)).run();
+                return null;
+              })
+          .when(executor)
+          .execute(Mockito.any(Runnable.class));
+      SourceHandleListener listener = Mockito.mock(SourceHandleListener.class);
+      SourceHandle source =
+          new SourceHandle(
+              new TEndPoint("remote", 12345),
+              new TFragmentInstanceId("pending", 1, "0"),
+              new TFragmentInstanceId("pending", 0, "0"),
+              "src",
+              0,
+              manager,
+              executor,
+              new TsBlockSerde(),
+              listener,
+              Mockito.mock(IClientManager.class));
+      source.isBlocked();
+      source.updatePendingDataBlockInfo(0, List.of(MOCK_TSBLOCK_SIZE));
+      Assert.assertEquals(1, memoryPool.getMemoryReservationSize());
+      memoryPool.deRegisterFragmentInstanceFromQueryMemoryMap("pending", "0.0", true);
+      // Detachment must not schedule an RPC for an unreserved block.
+      Mockito.verify(executor, Mockito.never()).execute(Mockito.any(Runnable.class));
+      Mockito.verify(executor, Mockito.never()).submit(Mockito.any(Runnable.class));
+      memoryPool.free("holder", "0.0", "holder", MOCK_TSBLOCK_SIZE);
+      if (closeMode == 0) {
+        source.abort();
+      } else if (closeMode == 1) {
+        source.abort(new RuntimeException("cancel query"));
+      } else {
+        source.close();
+      }
+      Assert.assertEquals(0, source.getBufferRetainedSizeInBytes());
+      Assert.assertEquals(0, memoryPool.getMemoryReservationSize());
+      Assert.assertEquals(0, memoryPool.getReservedBytes());
+      if (closeMode < 2) {
+        Assert.assertTrue(source.isAborted());
+        Mockito.verify(listener).onAborted(source);
+      } else {
+        Mockito.verify(listener).onFinished(source);
+      }
+      memoryPool.deRegisterFragmentInstanceFromQueryMemoryMap("holder", "0.0", true);
+      Assert.assertEquals(0, memoryPool.getQueryMemoryReservationSize());
+    }
+  }
+
+  @Test
   public void testCloseStopsFragmentFetchAfterInFlightRpc() throws Exception {
     testCancellationStopsFragmentFetchAfterInFlightRpc(false);
   }
@@ -81,6 +148,83 @@ public class SourceHandleTest {
   @Test
   public void testAbortStopsFragmentFetchAfterInFlightRpc() throws Exception {
     testCancellationStopsFragmentFetchAfterInFlightRpc(true);
+  }
+
+  @Test
+  public void reproduceAbortAfterFragmentInstanceMemoryIsForceDeregistered() throws Exception {
+    final String queryId = "q0";
+    final String fragmentInstanceId = "0.0";
+    final String localPlanNodeId = "exchange_0";
+    final TEndPoint remoteEndpoint =
+        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
+    final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
+    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
+    final MemoryPool memoryPool =
+        new MemoryPool("test", new MemoryManager(2 * MOCK_TSBLOCK_SIZE), 2 * MOCK_TSBLOCK_SIZE);
+    final LocalMemoryManager localMemoryManager = Mockito.mock(LocalMemoryManager.class);
+    Mockito.when(localMemoryManager.getQueryPool()).thenReturn(memoryPool);
+    final ExecutorService executorService = Mockito.mock(ExecutorService.class);
+    final SourceHandle sourceHandle =
+        new SourceHandle(
+            remoteEndpoint,
+            remoteFragmentInstanceId,
+            localFragmentInstanceId,
+            localPlanNodeId,
+            0,
+            localMemoryManager,
+            executorService,
+            Utils.createMockTsBlockSerde(MOCK_TSBLOCK_SIZE),
+            Mockito.mock(SourceHandleListener.class),
+            Mockito.mock(IClientManager.class));
+
+    sourceHandle.isBlocked();
+    sourceHandle.updatePendingDataBlockInfo(0, List.of(MOCK_TSBLOCK_SIZE));
+    Assert.assertEquals(MOCK_TSBLOCK_SIZE, sourceHandle.getBufferRetainedSizeInBytes());
+    Assert.assertEquals(MOCK_TSBLOCK_SIZE, memoryPool.getReservedBytes());
+
+    final CountDownLatch memoryDeregistered = new CountDownLatch(1);
+    final AtomicReference<Throwable> deregisterFailure = new AtomicReference<>();
+    final AtomicReference<Throwable> abortFailure = new AtomicReference<>();
+    final Thread fragmentInstanceCleanupThread =
+        new Thread(
+            () -> {
+              try {
+                memoryPool.deRegisterFragmentInstanceFromQueryMemoryMap(
+                    queryId, fragmentInstanceId, true);
+              } catch (Throwable t) {
+                deregisterFailure.set(t);
+              } finally {
+                memoryDeregistered.countDown();
+              }
+            });
+    final Thread driverSchedulerCleanupThread =
+        new Thread(
+            () -> {
+              try {
+                if (!memoryDeregistered.await(10, TimeUnit.SECONDS)) {
+                  abortFailure.set(
+                      new AssertionError("Timed out waiting for FI memory deregistration"));
+                  return;
+                }
+                sourceHandle.abort();
+              } catch (Throwable t) {
+                abortFailure.set(t);
+              }
+            });
+
+    fragmentInstanceCleanupThread.start();
+    driverSchedulerCleanupThread.start();
+    fragmentInstanceCleanupThread.join(TimeUnit.SECONDS.toMillis(10));
+    driverSchedulerCleanupThread.join(TimeUnit.SECONDS.toMillis(10));
+
+    Assert.assertFalse(fragmentInstanceCleanupThread.isAlive());
+    Assert.assertFalse(driverSchedulerCleanupThread.isAlive());
+    Assert.assertTrue(deregisterFailure.get() instanceof MemoryLeakException);
+    Assert.assertTrue(abortFailure.get() instanceof IllegalArgumentException);
+    Assert.assertEquals(
+        "RelatedMemoryReserved can't be null when freeing memory", abortFailure.get().getMessage());
+    Assert.assertEquals(MOCK_TSBLOCK_SIZE, sourceHandle.getBufferRetainedSizeInBytes());
+    Assert.assertEquals(MOCK_TSBLOCK_SIZE, memoryPool.getReservedBytes());
   }
 
   private void testCancellationStopsFragmentFetchAfterInFlightRpc(boolean abort) throws Exception {

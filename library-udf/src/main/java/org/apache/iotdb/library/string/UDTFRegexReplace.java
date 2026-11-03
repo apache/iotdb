@@ -63,12 +63,13 @@ public class UDTFRegexReplace implements UDTF {
             validator.getParameters().getString("regex"))
         .validate(
             limit -> (int) limit >= -1,
-            "limit has to be -1 for replacing all matches or non-negative integers for limited"
-                + " times.",
+            LibraryUdfMessages
+                .EXCEPTION_LIMIT_HAS_TO_BE_1_FOR_REPLACING_ALL_MATCHES_OR_NON_NEGATIVE_INTEGERS_FOR_LIMITED_TIMES_30768594,
             validator.getParameters().getIntOrDefault("limit", -1))
         .validate(
             offset -> (int) offset >= 0,
-            "offset has to be non-negative to skip first several matches.",
+            LibraryUdfMessages
+                .EXCEPTION_OFFSET_HAS_TO_BE_NON_NEGATIVE_TO_SKIP_FIRST_SEVERAL_MATCHES_2284C622,
             validator.getParameters().getIntOrDefault("offset", 0));
   }
 

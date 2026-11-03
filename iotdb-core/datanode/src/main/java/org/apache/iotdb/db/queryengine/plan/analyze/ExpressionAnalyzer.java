@@ -73,8 +73,10 @@ import java.util.stream.Collectors;
 public class ExpressionAnalyzer {
 
   private static final String RAW_AGGREGATION_HYBRID_ERROR_MSG =
-      "Raw data and aggregation result hybrid calculation is not supported.";
-  private static final String CONSTANT_COLUMN_ERROR_MSG = "Constant column is not supported.";
+      DataNodeQueryMessages
+          .EXCEPTION_RAW_DATA_AND_AGGREGATION_RESULT_HYBRID_CALCULATION_IS_NOT_SUPPORTED_BAFD6B9E;
+  private static final String CONSTANT_COLUMN_ERROR_MSG =
+      DataNodeQueryMessages.EXCEPTION_CONSTANT_COLUMN_IS_NOT_SUPPORTED_95251D13;
 
   private ExpressionAnalyzer() {
     // forbidden construction

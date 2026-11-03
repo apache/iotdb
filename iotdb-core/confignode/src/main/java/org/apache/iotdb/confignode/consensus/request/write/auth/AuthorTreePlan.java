@@ -24,13 +24,13 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
+import com.google.common.collect.Sets;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -244,7 +244,7 @@ public class AuthorTreePlan extends AuthorPlan {
       this.permissions = null;
     } else {
       int permissionsSize = buffer.getInt();
-      this.permissions = new HashSet<>();
+      this.permissions = Sets.newHashSetWithExpectedSize(permissionsSize);
       for (int i = 0; i < permissionsSize; i++) {
         permissions.add(buffer.getInt());
       }

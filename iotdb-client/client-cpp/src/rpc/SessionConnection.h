@@ -113,6 +113,9 @@ public:
   std::unique_ptr<SessionDataSet> executeLastDataQuery(const std::vector<std::string>& paths,
                                                        int64_t lastTime);
 
+  std::unique_ptr<SessionDataSet>
+  executeFastLastDataQueryForOnePrefixPath(const std::vector<std::string>& prefixes);
+
   void executeNonQueryStatement(const std::string& sql);
 
   std::unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql,

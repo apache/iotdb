@@ -20,6 +20,7 @@
 package org.apache.iotdb.library.anomaly;
 
 import org.apache.iotdb.library.anomaly.util.StreamMissDetector;
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -42,7 +43,8 @@ public class UDTFMissDetect implements UDTF {
         .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
         .validate(
             x -> (int) x >= 10,
-            "minlen should be an integer greater than or equal to 10.",
+            LibraryUdfMessages
+                .EXCEPTION_MINLEN_SHOULD_BE_AN_INTEGER_GREATER_THAN_OR_EQUAL_TO_10_D160A79D,
             validator.getParameters().getIntOrDefault("minlen", 10));
   }
 

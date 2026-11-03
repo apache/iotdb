@@ -173,7 +173,9 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       }
       // event can be supplied after the subtask is closed, so we need to check isClosed here
       if (!isClosed.get()) {
-        if (event instanceof TabletInsertionEvent) {
+        if (event.shouldSkipProcessing()) {
+          outputEventCollector.collect(event);
+        } else if (event instanceof TabletInsertionEvent) {
           if (event instanceof PipeInsertNodeTabletInsertionEvent
               && ((PipeInsertNodeTabletInsertionEvent) event).shouldParse4Privilege()) {
             final AtomicReference<Exception> ex = new AtomicReference<>();
@@ -229,14 +231,16 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
                   pipeNameWithCreationTime, outputEventCollector.getCollectInvocationCount());
         } else if (event instanceof PipeHeartbeatEvent) {
           pipeProcessor.process(event, outputEventCollector);
-          ((PipeHeartbeatEvent) event).onProcessed();
-          PipeProcessorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
         } else {
           pipeProcessor.process(
               event instanceof UserDefinedEnrichedEvent
                   ? ((UserDefinedEnrichedEvent) event).getUserDefinedEvent()
                   : event,
               outputEventCollector);
+        }
+        if (event instanceof PipeHeartbeatEvent) {
+          ((PipeHeartbeatEvent) event).onProcessed();
+          PipeProcessorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
         }
       }
 
@@ -308,7 +312,11 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       } else {
         LOGGER.info(
             DataNodePipeMessages.EXCEPTION_IN_PIPE_EVENT_PROCESSING_IGNORED_BECAUSE,
-            e.getMessage() != null ? " Message: " + e.getMessage() : "");
+            e.getMessage() != null
+                ? String.format(
+                    DataNodePipeMessages.MESSAGE_MESSAGE_ARG_F49E6C85,
+                    String.valueOf(e.getMessage()))
+                : "");
         clearReferenceCountAndReleaseLastEvent(event);
       }
     } finally {
@@ -323,6 +331,10 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     // this subtask won't be submitted to the executor directly
     // instead, it will be executed by the PipeProcessorSubtaskWorker
     // and the worker will be submitted to the executor
+  }
+
+  void setWorkerWakeUpCallback(final Runnable wakeUpCallback) {
+    executionGuard.setWorkerWakeUpCallback(wakeUpCallback);
   }
 
   @Override

@@ -36,6 +36,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -92,6 +93,47 @@ public class PipeTransferTsFileHandlerCleanupTest {
       if (file.exists()) {
         Assert.assertTrue(file.delete());
       }
+    }
+  }
+
+  @Test
+  public void testModFileDisappearingBeforeOpenDowngradesToTsFileOnly() throws Exception {
+    final File tsFile = Files.createTempFile("pipe-transfer-source", ".tsfile").toFile();
+    final File modFile =
+        new DisappearingFile(
+            Files.createTempDirectory("pipe-transfer-missing-mod")
+                .resolve("source.tsfile.mods2")
+                .toString());
+    final PipeTsFileInsertionEvent event = Mockito.mock(PipeTsFileInsertionEvent.class);
+    final PipeTransferTsFileHandler handler =
+        new PipeTransferTsFileHandler(
+            Mockito.mock(IoTDBDataRegionAsyncSink.class),
+            Collections.emptyMap(),
+            Collections.singletonList(event),
+            new AtomicInteger(1),
+            new AtomicBoolean(false),
+            tsFile,
+            modFile,
+            true,
+            null);
+
+    try {
+      final Method openNextFile = PipeTransferTsFileHandler.class.getDeclaredMethod("openNextFile");
+      openNextFile.setAccessible(true);
+      Assert.assertTrue((Boolean) openNextFile.invoke(handler));
+
+      final Field currentFile = PipeTransferTsFileHandler.class.getDeclaredField("currentFile");
+      currentFile.setAccessible(true);
+      Assert.assertSame(tsFile, currentFile.get(handler));
+
+      final Field effectiveTransferMod =
+          PipeTransferTsFileHandler.class.getDeclaredField("effectiveTransferMod");
+      effectiveTransferMod.setAccessible(true);
+      Assert.assertFalse(effectiveTransferMod.getBoolean(handler));
+    } finally {
+      handler.close();
+      Assert.assertTrue(tsFile.delete());
+      Assert.assertTrue(modFile.getParentFile().delete());
     }
   }
 
@@ -159,5 +201,19 @@ public class PipeTransferTsFileHandlerCleanupTest {
         null,
         false,
         null);
+  }
+
+  private static final class DisappearingFile extends File {
+
+    private final AtomicInteger existenceCheckCount = new AtomicInteger();
+
+    private DisappearingFile(final String pathname) {
+      super(pathname);
+    }
+
+    @Override
+    public boolean exists() {
+      return existenceCheckCount.incrementAndGet() <= 2;
+    }
   }
 }

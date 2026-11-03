@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.string;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -133,11 +134,12 @@ public class UDTFRegexSplit implements UDTF {
         .validateRequiredAttribute("regex")
         .validate(
             regex -> ((String) regex).length() > 0 && isValidRegex((String) regex),
-            "regexp has to be a valid regular expression.",
+            LibraryUdfMessages.EXCEPTION_REGEXP_HAS_TO_BE_A_VALID_REGULAR_EXPRESSION_FA012C63,
             validator.getParameters().getString("regex"))
         .validate(
             index -> (int) index >= -1,
-            "index must a non-negative integer to fetch split results or -1 to get length.",
+            LibraryUdfMessages
+                .EXCEPTION_INDEX_MUST_A_NON_NEGATIVE_INTEGER_TO_FETCH_SPLIT_RESULTS_OR_1_TO_GET_LENGTH_ABAF4445,
             validator.getParameters().getIntOrDefault("index", -1));
   }
 

@@ -56,7 +56,7 @@ public class UDTFKSigma implements UDTF {
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             x -> (int) x > 0,
-            "Window size should be larger than 0.",
+            LibraryUdfMessages.EXCEPTION_WINDOW_SIZE_SHOULD_BE_LARGER_THAN_0_F4C2184C,
             validator.getParameters().getIntOrDefault("window", DEFAULT_WINDOW_SIZE))
         .validate(
             x -> Double.isFinite((double) x) && (double) x > 0,

@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -310,7 +311,8 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
     if (isClosed()) {
       final String errorMessage =
           String.format(
-              "%s is not yet open, please open the subscription consumer before draining buffered messages.",
+              SubscriptionMessages
+                  .MESSAGE_ARG_IS_NOT_YET_OPEN_PLEASE_OPEN_THE_SUBSCRIPTION_CONSUMER_BEFORE_DRAINING_BUFFERED_MESSAGES_C73D871C,
               this);
       LOGGER.error(errorMessage);
       throw new SubscriptionException(errorMessage);
@@ -439,7 +441,8 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
 
     final String errorMessage =
         String.format(
-            "SubscriptionPullConsumer %s still has processor-buffered or drained messages when closing in manual-commit mode. Call drainBufferedMessages() and commit the returned messages before close.",
+            SubscriptionMessages
+                .MESSAGE_SUBSCRIPTIONPULLCONSUMER_ARG_STILL_HAS_PROCESSOR_BUFFERED_OR_DRAINED_MESSAGES_WHEN_CLOSING_IN_MANUAL_COMMIT_MODE_CALL_DRAINBUFFEREDMESSAGES_AND_COMMIT_THE_RETURNED_MESSAGES_BEFORE_CLOSE_389DC354,
             this);
     LOGGER.warn(errorMessage);
     throw new SubscriptionException(errorMessage);
@@ -548,6 +551,24 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   protected void commitAsync(
       final Iterable<SubscriptionMessage> messages, final AsyncCommitCallback callback) {
     super.commitAsync(messages, callback);
+  }
+
+  @Override
+  protected void onAckedCommitContexts(
+      final Collection<SubscriptionCommitContext> acceptedCommitContexts) {
+    if (!autoCommit
+        || Objects.isNull(uncommittedCommitContexts)
+        || acceptedCommitContexts.isEmpty()) {
+      return;
+    }
+
+    for (final Map.Entry<Long, Set<SubscriptionCommitContext>> entry :
+        uncommittedCommitContexts.entrySet()) {
+      entry.getValue().removeAll(acceptedCommitContexts);
+      if (entry.getValue().isEmpty()) {
+        uncommittedCommitContexts.remove(entry.getKey(), entry.getValue());
+      }
+    }
   }
 
   private List<SubscriptionMessage> filterUserVisibleMessages(

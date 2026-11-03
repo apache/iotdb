@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT1;
@@ -115,7 +116,8 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
 
     env.shutdownDataNode(stoppedDataNodeIndex);
     env.ensureNodeStatus(
-        Collections.singletonList(stoppedDataNode), Collections.singletonList(NodeStatus.Unknown));
+        Collections.singletonList(stoppedDataNode),
+        Collections.singletonList(EnvUtils.getNodeStatusAfterLocalStop()));
 
     assertShowReceiversWithoutDataNode(
         "show receivers", BaseEnv.TREE_SQL_DIALECT, queryDataNode, stoppedDataNodeId);
@@ -245,7 +247,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
 
     env.ensureNodeStatus(
         Collections.singletonList(restartedDataNode),
-        Collections.singletonList(NodeStatus.Unknown));
+        Collections.singletonList(EnvUtils.getNodeStatusAfterLocalStop()));
     assertNoThriftReceiverRuntimeOnDataNode(
         "show receivers", BaseEnv.TREE_SQL_DIALECT, restartedDataNodeId);
 
@@ -450,7 +452,9 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
             && receiverDataNodeId == getInt(resultSet, "ReceiverNodeId", "receiver_node_id")
             && "thrift".equals(getString(resultSet, "Protocol", "protocol"))
             && "Unknown".equals(getString(resultSet, "SenderClusterId", "sender_cluster_id"))
-            && SessionConfig.DEFAULT_USER.equals(getString(resultSet, "UserName", "user_name"))
+            // A V1 handshake carries no credentials, so the receiver reports no user instead of
+            // the privileged default user.
+            && "Unknown".equals(getString(resultSet, "UserName", "user_name"))
             && getString(resultSet, "SenderAddress", "sender_address") != null
             && getString(resultSet, "SenderPorts", "sender_ports") != null
             && getInt(resultSet, "ConnectionCount", "connection_count") >= 1

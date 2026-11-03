@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -69,7 +70,8 @@ public class OverlapStatisticTool {
     long startTime = System.currentTimeMillis();
     tool.process(dataDirs);
     System.out.printf(
-        "Total time cost: %.2fs\n", ((double) System.currentTimeMillis() - startTime) / 1000);
+        StorageEngineMessages.LOG_TOTAL_TIME_COST_ARG_S_62F6AC82,
+        ((double) System.currentTimeMillis() - startTime) / 1000);
   }
 
   public static void parseArgs(String[] args) {
@@ -104,21 +106,25 @@ public class OverlapStatisticTool {
                 .argName(WORKER_NUM_ARG)
                 .longOpt(WORKER_NUM_ARG)
                 .hasArg()
-                .desc("Concurrent time partition num(default: 10)")
+                .desc(
+                    StorageEngineMessages
+                        .EXCEPTION_CONCURRENT_TIME_PARTITION_NUM_DEFAULT_10_A7769F3C)
                 .build())
         .addOption(
             Option.builder()
                 .argName(SUB_TASK_NUM_ARG)
                 .longOpt(SUB_TASK_NUM_ARG)
                 .hasArg()
-                .desc("Concurrent file num in one time partition(default: 10)")
+                .desc(
+                    StorageEngineMessages
+                        .EXCEPTION_CONCURRENT_FILE_NUM_IN_ONE_TIME_PARTITION_DEFAULT_10_092CF549)
                 .build())
         .addOption(
             Option.builder()
                 .argName(DATA_DIRS_ARG)
                 .longOpt(DATA_DIRS_ARG)
                 .hasArg()
-                .desc("Data dirs(Required)")
+                .desc(StorageEngineMessages.EXCEPTION_DATA_DIRS_REQUIRED_5C28A151)
                 .required()
                 .build());
     return options;
@@ -147,7 +153,7 @@ public class OverlapStatisticTool {
         statistic.merge(partialRet);
       }
     }
-    PrintUtil.printOneStatistics(statistic, "All EXECUTED");
+    PrintUtil.printOneStatistics(statistic, StorageEngineMessages.EXCEPTION_ALL_EXECUTED_40CD1D65);
   }
 
   public TimePartitionProcessWorker[] constructWorkers(int workerNum) {
@@ -191,7 +197,10 @@ public class OverlapStatisticTool {
     }
     File dataDirWithIsSequence = new File(dataDirWithIsSeq);
     if (!dataDirWithIsSequence.exists() || !dataDirWithIsSequence.isDirectory()) {
-      System.out.println(dataDirWithIsSequence + " is not a correct path");
+      System.out.println(
+          String.format(
+              DataNodeMiscMessages.LOG_ARG_IS_NOT_A_CORRECT_PATH_F2B497AA,
+              Objects.toString(dataDirWithIsSequence)));
       return;
     }
 
@@ -225,8 +234,10 @@ public class OverlapStatisticTool {
             String resourceFilePath = file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX;
             if (!new File(resourceFilePath).exists()) {
               System.out.println(
-                  resourceFilePath
-                      + " is not exist, the tsfile is skipped because it is not closed.");
+                  String.format(
+                      StorageEngineMessages
+                          .LOG_ARG_IS_NOT_EXIST_THE_TSFILE_IS_SKIPPED_BECAUSE_IT_IS_NOT_CLOSED_33F73043,
+                      Objects.toString(resourceFilePath)));
               continue;
             }
             String filePath = file.getAbsolutePath();

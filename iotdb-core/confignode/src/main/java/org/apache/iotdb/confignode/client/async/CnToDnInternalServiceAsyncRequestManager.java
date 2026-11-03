@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAsyncReques
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeTSStatusRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackListRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.GetBuiltInExternalServiceRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.GetDropTableModProgressRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipeHeartbeatRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
@@ -78,6 +79,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TGetDropTableModProgressReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateColumnCacheReq;
@@ -458,6 +460,11 @@ public class CnToDnInternalServiceAsyncRequestManager
             client.invalidateTableCache(
                 (TInvalidateTableCacheReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
+        CnToDnAsyncRequestType.GET_DROP_TABLE_MOD_PROGRESS,
+        (req, client, handler) ->
+            client.getDropTableModProgress(
+                (TGetDropTableModProgressReq) req, (GetDropTableModProgressRPCHandler) handler));
+    actionMapBuilder.put(
         CnToDnAsyncRequestType.DELETE_DATA_FOR_DROP_TABLE,
         (req, client, handler) ->
             client.deleteDataForDropTable(
@@ -558,11 +565,15 @@ public class CnToDnInternalServiceAsyncRequestManager
 
   @Override
   protected void adjustClientTimeoutIfNecessary(
-      CnToDnAsyncRequestType CnToDnAsyncRequestType,
+      CnToDnAsyncRequestType requestType,
       AsyncDataNodeInternalServiceClient client,
       Long timeoutInMs) {
-    if (CnToDnAsyncRequestType.SUBMIT_TEST_CONNECTION_TASK.equals(CnToDnAsyncRequestType)) {
+    if (CnToDnAsyncRequestType.SUBMIT_TEST_CONNECTION_TASK.equals(requestType)) {
       client.setTimeoutTemporarily(TestConnectionUtils.calculateCnLeaderToAllDnMaxTime());
+    } else if (CnToDnAsyncRequestType.DELETE_DATA_FOR_DROP_TABLE.equals(requestType)
+        || CnToDnAsyncRequestType.DELETE_DEVICES_FOR_DROP_TABLE.equals(requestType)) {
+      // Asynchronous DROP TABLE deletion can take arbitrarily long to finish.
+      client.setTimeoutTemporarily(-1);
     } else if (timeoutInMs != null) {
       client.setTimeoutTemporarily(timeoutInMs);
     }

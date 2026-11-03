@@ -134,7 +134,7 @@ public class FragmentInstanceExecutionTest {
   }
 
   @Test
-  public void testTVListOwnerTransfer() throws InterruptedException {
+  public void testTVListOwnerTransfer() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
 
@@ -173,8 +173,9 @@ public class FragmentInstanceExecutionTest {
       fragmentInstanceContext2.decrementNumOfUnClosedDriver();
 
       fragmentInstanceContext1.getStateMachine().finished();
-      Thread.sleep(100);
+      instanceNotificationExecutor.submit(() -> {}).get(10, TimeUnit.SECONDS);
       fragmentInstanceContext2.getStateMachine().finished();
+      instanceNotificationExecutor.submit(() -> {}).get(10, TimeUnit.SECONDS);
 
       assertTrue(execution1.getInstanceState().isDone());
       assertTrue(execution2.getInstanceState().isDone());
@@ -209,7 +210,7 @@ public class FragmentInstanceExecutionTest {
                   new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN),
                   new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN),
                   new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN)));
-      AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas, true);
+      AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas);
       for (int i = 0; i < 100; i++) {
         memChunk.putAlignedRow(i, new Object[] {(long) i, (long) i * 2, (long) i * 3});
       }
@@ -265,8 +266,8 @@ public class FragmentInstanceExecutionTest {
       IMemTable memTable = createMemTable(deviceId, measurementId);
       assertEquals(1, memTable.getMemTableMap().size());
       IWritableMemChunkGroup memChunkGroup = memTable.getMemTableMap().values().iterator().next();
-      assertEquals(1, memChunkGroup.getMemChunkMap().size());
-      IWritableMemChunk memChunk = memChunkGroup.getMemChunkMap().values().iterator().next();
+      assertEquals(1, memChunkGroup.getMemChunkMap(true).size());
+      IWritableMemChunk memChunk = memChunkGroup.getMemChunkMap(true).values().iterator().next();
       TVList tvList = memChunk.getWorkingTVList();
       assertFalse(tvList.isSorted());
 
@@ -330,8 +331,8 @@ public class FragmentInstanceExecutionTest {
 
       assertEquals(1, memTable.getMemTableMap().size());
       IWritableMemChunkGroup memChunkGroup = memTable.getMemTableMap().values().iterator().next();
-      assertEquals(1, memChunkGroup.getMemChunkMap().size());
-      IWritableMemChunk memChunk = memChunkGroup.getMemChunkMap().values().iterator().next();
+      assertEquals(1, memChunkGroup.getMemChunkMap(true).size());
+      IWritableMemChunk memChunk = memChunkGroup.getMemChunkMap(true).values().iterator().next();
       AlignedTVList workingTvList = (AlignedTVList) memChunk.getWorkingTVList();
       assertFalse(workingTvList.isSorted());
       assertEquals(100, workingTvList.rowCount());

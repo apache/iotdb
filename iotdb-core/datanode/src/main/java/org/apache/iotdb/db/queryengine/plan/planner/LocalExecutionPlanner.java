@@ -35,6 +35,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
+import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
@@ -115,6 +116,9 @@ public class LocalExecutionPlanner {
 
     Operator root = generateOperator(instanceContext, context, plan);
 
+    // Select Collect consumption before estimating its retained input memory.
+    setExchangeMemoryLimits(plan, context);
+
     PipelineMemoryEstimator memoryEstimator =
         context.constructPipelineMemoryEstimator(root, null, plan, -1);
     // set the map to null for gc
@@ -131,9 +135,6 @@ public class LocalExecutionPlanner {
         getQueryDataSourceType((DataDriverContext) context.getDriverContext()));
 
     context.getTimePartitions().ifPresent(instanceContext::setTimePartitions);
-
-    // set maxBytes one SourceHandle can reserve after visiting the whole tree
-    context.setMaxBytesOneHandleCanReserve();
 
     return context.getPipelineDriverFactories();
   }
@@ -155,6 +156,9 @@ public class LocalExecutionPlanner {
 
     Operator root = generateOperator(instanceContext, context, plan);
 
+    // Select Collect consumption before estimating its retained input memory.
+    setExchangeMemoryLimits(plan, context);
+
     PipelineMemoryEstimator memoryEstimator =
         context.constructPipelineMemoryEstimator(root, null, plan, -1);
     // set the map to null for gc
@@ -164,9 +168,6 @@ public class LocalExecutionPlanner {
     checkMemory(memoryEstimator, instanceContext);
 
     context.addPipelineDriverFactory(root, context.getDriverContext(), 0);
-
-    // set maxBytes one SourceHandle can reserve after visiting the whole tree
-    context.setMaxBytesOneHandleCanReserve();
 
     return context.getPipelineDriverFactories();
   }
@@ -194,6 +195,22 @@ public class LocalExecutionPlanner {
             String.format(DataNodeQueryMessages.UNKNOWN_SQL_DIALECT, sqlDialect));
     }
     return root;
+  }
+
+  private void setExchangeMemoryLimits(PlanNode plan, LocalExecutionPlanContext context) {
+    FragmentInstanceContext instanceContext = context.getInstanceContext();
+    if (instanceContext.getSessionInfo() == null
+        || instanceContext.getSessionInfo().getSqlDialect() == TREE) {
+      context.setMaxBytesOneHandleCanReserve();
+      return;
+    }
+    // Choose the table FI policy only after all operators and pipelines are known.
+    context.setExchangeMemoryLimits(
+        plan,
+        MPPDataExchangeService.getInstance()
+            .getMPPDataExchangeManager()
+            .getLocalMemoryManager()
+            .getQueryPool());
   }
 
   private long checkMemory(

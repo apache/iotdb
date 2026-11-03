@@ -49,6 +49,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -70,6 +71,60 @@ public class AbstractCompactionWriterTest {
     compactionWriter.checkChunkSizeAndMayOpenANewChunk(null, chunkWriter, SUB_TASK_ID);
 
     Assert.assertEquals(1, chunkWriter.chunkSizeCheckCount);
+  }
+
+  @Test
+  public void testChunkWriterFactoryCanSwitchFileEncryptionParameter() {
+    TestCompactionWriter compactionWriter = new TestCompactionWriter();
+    EncryptParameter first = new EncryptParameter("UNENCRYPTED", null);
+    EncryptParameter second = new EncryptParameter("UNENCRYPTED", null);
+    List<EncryptParameter> createdWith = new ArrayList<>();
+    compactionWriter.setEncryptParameter(first);
+
+    compactionWriter.startMeasurement(
+        "s1",
+        encryptParameter -> {
+          createdWith.add(encryptParameter);
+          return new CountingChunkWriter();
+        },
+        SUB_TASK_ID);
+    compactionWriter.switchEncryptionParameter(second);
+
+    Assert.assertEquals(2, createdWith.size());
+    Assert.assertSame(first, createdWith.get(0));
+    Assert.assertSame(second, createdWith.get(1));
+  }
+
+  @Test
+  public void testChunkWriterFactoryPreservesSubclassMeasurementInitialization() {
+    List<IChunkWriter> initializedWriters = new ArrayList<>();
+    TestCompactionWriter compactionWriter =
+        new TestCompactionWriter() {
+          @Override
+          public void startMeasurement(
+              String measurement, IChunkWriter chunkWriter, int subTaskId) {
+            initializedWriters.add(chunkWriter);
+            super.startMeasurement(measurement, chunkWriter, subTaskId);
+          }
+        };
+    CountingChunkWriter first = new CountingChunkWriter();
+    List<EncryptParameter> createdWith = new ArrayList<>();
+    compactionWriter.startMeasurement(
+        "s1",
+        parameter -> {
+          createdWith.add(parameter);
+          return createdWith.size() == 1 ? first : new CountingChunkWriter();
+        },
+        SUB_TASK_ID);
+
+    Assert.assertEquals(1, initializedWriters.size());
+    Assert.assertSame(first, initializedWriters.get(0));
+
+    EncryptParameter next = new EncryptParameter("UNENCRYPTED", null);
+    compactionWriter.switchEncryptionParameter(next);
+    Assert.assertEquals(2, createdWith.size());
+    Assert.assertSame(next, createdWith.get(1));
+    Assert.assertEquals(1, initializedWriters.size());
   }
 
   @Test
@@ -120,13 +175,13 @@ public class AbstractCompactionWriterTest {
 
   @Test
   public void testWriteDataPointForAllDataTypes() {
-    assertWrittenPointTotalSize(TSDataType.BOOLEAN, true, Long.BYTES + Byte.BYTES);
-    assertWrittenPointTotalSize(TSDataType.INT32, 1, Long.BYTES + Integer.BYTES);
-    assertWrittenPointTotalSize(TSDataType.DATE, 1, Long.BYTES + Integer.BYTES);
-    assertWrittenPointTotalSize(TSDataType.INT64, 1L, Long.BYTES + Long.BYTES);
-    assertWrittenPointTotalSize(TSDataType.TIMESTAMP, 1L, Long.BYTES + Long.BYTES);
-    assertWrittenPointTotalSize(TSDataType.FLOAT, 1F, Long.BYTES + Float.BYTES);
-    assertWrittenPointTotalSize(TSDataType.DOUBLE, 1D, Long.BYTES + Double.BYTES);
+    assertWrittenPointTotalSize(TSDataType.BOOLEAN, true, 0);
+    assertWrittenPointTotalSize(TSDataType.INT32, 1, 0);
+    assertWrittenPointTotalSize(TSDataType.DATE, 1, 0);
+    assertWrittenPointTotalSize(TSDataType.INT64, 1L, 0);
+    assertWrittenPointTotalSize(TSDataType.TIMESTAMP, 1L, 0);
+    assertWrittenPointTotalSize(TSDataType.FLOAT, 1F, 0);
+    assertWrittenPointTotalSize(TSDataType.DOUBLE, 1D, 0);
 
     Binary binary = new Binary("abc", TSFileConfig.STRING_CHARSET);
     assertWrittenPointTotalSize(TSDataType.TEXT, binary, Long.BYTES + binary.getLength());
@@ -154,8 +209,7 @@ public class AbstractCompactionWriterTest {
     compactionWriter.startMeasurement("aligned", chunkWriter, SUB_TASK_ID);
     compactionWriter.writePoint(vector, chunkWriter);
 
-    Assert.assertEquals(
-        Long.BYTES + Integer.BYTES + Byte.BYTES, compactionWriter.getWrittenPointTotalSize());
+    Assert.assertEquals(0, compactionWriter.getWrittenPointTotalSize());
   }
 
   private static void assertWrittenPointTotalSize(
@@ -198,6 +252,8 @@ public class AbstractCompactionWriterTest {
 
   private static class TestCompactionWriter extends AbstractCompactionWriter {
 
+    private EncryptParameter encryptParameter;
+
     private void writePoint(TsPrimitiveType value, IChunkWriter chunkWriter) {
       writeDataPoint(1, value, chunkWriter, SUB_TASK_ID);
     }
@@ -212,6 +268,14 @@ public class AbstractCompactionWriterTest {
 
     private int getCompressedSizeToReachSizeCheckpoint() {
       return (int) Math.max(targetChunkSize / 10, 1L);
+    }
+
+    private void setEncryptParameter(EncryptParameter encryptParameter) {
+      this.encryptParameter = encryptParameter;
+    }
+
+    private void switchEncryptionParameter(EncryptParameter encryptParameter) {
+      switchChunkWriterEncryptionParameter(encryptParameter, SUB_TASK_ID);
     }
 
     @Override
@@ -242,7 +306,7 @@ public class AbstractCompactionWriterTest {
 
     @Override
     public EncryptParameter getEncryptParameter() {
-      return null;
+      return encryptParameter;
     }
 
     @Override

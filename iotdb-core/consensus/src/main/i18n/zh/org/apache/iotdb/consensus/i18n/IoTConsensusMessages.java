@@ -328,6 +328,10 @@ public final class IoTConsensusMessages {
   public static final String LOG_SUBSCRIPTION_QUEUE_FULL_DROPPED_ARG_ENTRY_S_LAST_ARG_MS_2AD8AB3D = "订阅队列已满，丢弃了 {} 个 entry，最近 {} ms，最新 ";
   public static final String LOG_SEARCHINDEX_ARG_QUEUESIZE_ARG_QUEUEREMAINING_ARG_2EA619ED = "searchIndex={}, queueSize={}, queueRemaining={}";
   public static final String LOG_SUBSCRIPTION_QUEUE_FULL_DROPPED_ENTRY_SEARCHINDEX_ARG_DROPPEDCOUNT_ARG_61F126B8 = "订阅队列已满，丢弃 entry，searchIndex={}，droppedCount={}";
+  public static final String LOG_SUBSCRIPTION_REALTIME_ADMISSION_REJECTED_ARG_ENTRY_S_IN_THE_LAST_ARG_MS_WAL_REPLAY_REQUIRED_GROUP_ARG_LATEST_SEARCHINDEX_ARG_REASONCODE_ARG_QUEUESIZE_ARG_QUEUEREMAINING_ARG_0FBF6226 =
+      "订阅实时准入拒绝了 {} 个 entry（最近 {} ms）；需通过 WAL 回放补齐，group={}，最新 searchIndex={}，reasonCode={}，queueSize={}，queueRemaining={}";
+  public static final String LOG_SUBSCRIPTION_REALTIME_ADMISSION_REJECTED_ENTRY_WAL_REPLAY_REQUIRED_GROUP_ARG_SEARCHINDEX_ARG_REASONCODE_ARG_REJECTEDCOUNT_ARG_7F76D6A9 =
+      "订阅实时准入拒绝 entry；需通过 WAL 回放补齐，group={}，searchIndex={}，reasonCode={}，rejectedCount={}";
   public static final String LOG_RESERVED_ARG_BYTES_BATCH_ARG_ARG_CURRENT_TOTAL_USAGE_ARG_308AE9C2 = "预留 {} 字节给批次 {}-{}，当前总使用量 {}";
   public static final String LOG_ARG_FAILED_SEND_IDLE_WRITER_SAFE_TIME_BARRIER_ARG_STATUS_AE047EAD = "{}：无法向 {} 发送 idle writer safe-time barrier。状态={}";
   public static final String LOG_ARG_WRITE_OPERATION_FAILED_SEARCHINDEX_ARG_CODE_ARG_SUBSCRIPTIONQUEUES_ARG_THIS_ARG_F4B17576 = "{}：写入操作失败。searchIndex: {}。Code: {}，订阅队列：{}，当前对象：{}";
@@ -335,4 +339,14 @@ public final class IoTConsensusMessages {
       LOG_FAILED_TO_RECORD_A_USER_DATA_TRANSFER_AUDIT_EVENT_CONSENSUS_REPLICATION_WILL_CONTINUE_F215E222 =
           "记录用户数据传送审计事件失败；Consensus 复制将继续。";
 
+  public static final String
+      EXCEPTION_FAILED_TO_TAKE_SNAPSHOT_FOR_CONSENSUS_GROUP_ARG_IN_ARG_CHECK_STATE_MACHINE_LOGS_FOR_THE_UNDERLYING_CAUSE_74663D2D =
+          "为共识组 %s 在 %s 创建快照失败；请检查状态机日志以获取底层原因";
+
+  public static final String
+      EXCEPTION_THE_WRITE_IS_REJECTED_BECAUSE_THE_WAL_DIRECTORY_SIZE_HAS_REACHED_THE_THRESHOLD_ARG_BYTES_YOU_MAY_NEED_TO_ADJUST_THE_FLUSH_POLICY_OF_THE_STORAGE_STORAGEENGINE_OR_THE_IOTCONSENSUS_SYNCHRONIZATION_PARAMETER_49AB1306 =
+          "写入被拒绝，因为 WAL 目录大小已达到阈值 %d 字节。可能需要调整存储引擎的刷盘策略或 IoTConsensus 的同步参数";
+
+  public static final String
+      EXCEPTION_FAILED_TO_LOAD_SNAPSHOT_ARG_FOR_CONSENSUS_GROUP_ARG_F876AE5C = "加载快照 %s 失败，共识组：%s";
 }

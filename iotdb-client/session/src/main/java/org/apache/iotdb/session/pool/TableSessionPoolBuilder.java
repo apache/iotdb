@@ -39,6 +39,9 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
   /**
    * Sets the list of node URLs for the IoTDB cluster.
    *
+   * <p>Use the same host/IP form as each DataNode's dn_rpc_address. Recovery deduplicates literal
+   * addresses, not DNS aliases.
+   *
    * @param nodeUrls a list of node URLs.
    * @return the current {@link TableSessionPoolBuilder} instance.
    * @defaultValue Collection.singletonList("localhost:6667")
@@ -314,6 +317,18 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
    */
   public TableSessionPoolBuilder sslProtocol(String sslProtocol) {
     this.sslProtocol = sslProtocol;
+    return this;
+  }
+
+  /**
+   * Enables or disables schema auto-creation for this pool's write requests.
+   *
+   * @param enableAutoCreateSchema whether to allow auto creating tables and columns.
+   * @return the current {@link TableSessionPoolBuilder} instance.
+   * @defaultValue true
+   */
+  public TableSessionPoolBuilder enableAutoCreateSchema(boolean enableAutoCreateSchema) {
+    this.enableAutoCreateSchema = enableAutoCreateSchema;
     return this;
   }
 
