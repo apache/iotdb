@@ -172,6 +172,16 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
         <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
             <groupId>net.java.dev.jna</groupId>
             <artifactId>jna</artifactId>
         </dependency>
@@ -542,6 +552,12 @@
                         <!-- For some reason this plugin missed it being used for a constant import -->
                         <ignoredDependency>org.apache.iotdb:isession</ignoredDependency>
                     </ignoredDependencies>
+                    <ignoredNonTestScopedDependencies>
+                        <!-- Logback supplies the server's runtime SLF4J backend and LogbackMetrics.
+                             Direct references in this module also support test log assertions. -->
+                        <ignoredNonTestScopedDependency>ch.qos.logback:logback-classic</ignoredNonTestScopedDependency>
+                        <ignoredNonTestScopedDependency>ch.qos.logback:logback-core</ignoredNonTestScopedDependency>
+                    </ignoredNonTestScopedDependencies>
                     <usedDependencies>
                         <!-- This dependency is required at runtime, when enabling the rest service -->
                         <usedDependency>org.glassfish.jersey.inject:jersey-hk2</usedDependency>

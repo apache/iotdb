@@ -39,9 +39,13 @@ abstract class AbstractPipeTripleManualIT {
     env2 = MultiEnvFactory.getEnv(1);
     env3 = MultiEnvFactory.getEnv(2);
     setupConfig();
-    env1.initClusterEnvironment(1, 1);
+    env1.initClusterEnvironment(1, getEnv1DataNodeCount());
     env2.initClusterEnvironment(1, 1);
     env3.initClusterEnvironment(1, 1);
+  }
+
+  protected int getEnv1DataNodeCount() {
+    return 1;
   }
 
   protected void setupConfig() {

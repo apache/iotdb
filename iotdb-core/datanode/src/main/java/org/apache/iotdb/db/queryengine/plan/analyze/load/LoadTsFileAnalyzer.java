@@ -44,6 +44,7 @@ import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -544,23 +545,43 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
         new LoadTsFileDataTypeConverter(context, isGeneratedByPipe);
-    final TSStatus status =
-        loadTsFileStatement.isConvertOnTypeMismatch()
-            ? loadTsFileDataTypeConverter.convertForTreeModel(loadTsFileStatement).orElse(null)
-            : null;
+    final String filePaths =
+        loadTsFileStatement.getTsFiles().stream()
+            .map(File::getPath)
+            .collect(Collectors.joining(", "));
+    try {
+      final TSStatus status =
+          loadTsFileStatement.isConvertOnTypeMismatch()
+              ? loadTsFileDataTypeConverter.convertForTreeModel(loadTsFileStatement).orElse(null)
+              : null;
 
-    if (status == null) {
-      LOGGER.warn(
-          "Load: Failed to convert to tablets from statement {}. Status is null.",
-          loadTsFileStatement);
-      analysis.setFailStatus(
-          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
-    } else if (!loadTsFileDataTypeConverter.isSuccessful(status)) {
-      LOGGER.warn(
-          "Load: Failed to convert to tablets from statement {}. Status: {}",
-          loadTsFileStatement,
-          status);
-      analysis.setFailStatus(status);
+      if (status == null) {
+        final String message =
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD,
+                filePaths,
+                DataNodeQueryMessages.MESSAGE_TABLET_CONVERSION_RETURNED_NO_STATUS_88BAB5D3);
+        LOGGER.warn(message);
+        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, message));
+      } else if (!loadTsFileDataTypeConverter.isSuccessful(status)) {
+        final String message =
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477,
+                filePaths,
+                status);
+        LOGGER.warn(message);
+        analysis.setFailStatus(status.deepCopy().setMessage(message));
+      }
+    } catch (final Exception conversionException) {
+      final String message =
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD,
+              filePaths,
+              conversionException);
+      LOGGER.warn(message, conversionException);
+      analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, message));
     }
 
     analysis.setFinishQueryAfterAnalyze(true);

@@ -35,6 +35,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.apache.iotdb.db.protocol.client.ConfigNodeInfo.CONFIG_REGION_ID;
+
 public class PipeConfigRegionSourceMetrics implements IMetricSet {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigRegionSourceMetrics.class);
@@ -46,7 +48,7 @@ public class PipeConfigRegionSourceMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
+  public synchronized void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
     ImmutableSet.copyOf(extractorMap.keySet()).forEach(this::createMetrics);
   }
@@ -69,12 +71,11 @@ public class PipeConfigRegionSourceMetrics implements IMetricSet {
   }
 
   @Override
-  public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(extractorMap.keySet()).forEach(this::deregister);
-    if (!extractorMap.isEmpty()) {
-      LOGGER.warn(
-          "Failed to unbind from pipe config region extractor metrics, extractor map not empty");
-    }
+  public synchronized void unbindFrom(final AbstractMetricService metricService) {
+    // Keep the extractors registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    // Synchronized with the (de)registrations, which may remove a registration being unbound.
+    ImmutableSet.copyOf(extractorMap.keySet()).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final String taskID) {
@@ -95,7 +96,7 @@ public class PipeConfigRegionSourceMetrics implements IMetricSet {
 
   //////////////////////////// pipe integration ////////////////////////////
 
-  public void register(final IoTDBConfigRegionSource extractor) {
+  public synchronized void register(final IoTDBConfigRegionSource extractor) {
     final String taskID = extractor.getTaskID();
     extractorMap.putIfAbsent(taskID, extractor);
     if (Objects.nonNull(metricService)) {
@@ -103,7 +104,7 @@ public class PipeConfigRegionSourceMetrics implements IMetricSet {
     }
   }
 
-  public void deregister(final String taskID) {
+  public synchronized void deregister(final String taskID) {
     if (!extractorMap.containsKey(taskID)) {
       LOGGER.warn(
           "Failed to deregister pipe config region extractor metrics, IoTDBConfigRegionExtractor({}) does not exist",
@@ -119,7 +120,7 @@ public class PipeConfigRegionSourceMetrics implements IMetricSet {
   //////////////////////////// Show pipes ////////////////////////////
 
   public long getRemainingEventCount(final String pipeName, final long creationTime) {
-    final String taskID = pipeName + "_" + creationTime;
+    final String taskID = pipeName + "_" + CONFIG_REGION_ID.getId() + "_" + creationTime;
     final IoTDBConfigRegionSource extractor = extractorMap.get(taskID);
     // Do not print log to allow collection when config region extractor does not exists
     if (Objects.isNull(extractor)) {

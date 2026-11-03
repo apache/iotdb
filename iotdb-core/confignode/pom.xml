@@ -194,7 +194,7 @@
                         </goals>
                         <configuration>
                             <sources>
-                                <source>src/main/i18n/${i18n.locale}</source>
+                                <source>${project.basedir}/src/main/i18n/${i18n.locale}</source>
                             </sources>
                         </configuration>
                     </execution>

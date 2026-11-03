@@ -292,7 +292,8 @@ public class WALNodeRecoverTask implements Runnable {
         logger.warn(
             "Fail to read memTable ids from the wal file {} of wal node: {}",
             walFile.getAbsoluteFile(),
-            e.getMessage());
+            logDirectory.getName(),
+            e);
       } catch (IOException e) {
         logger.warn(
             "Fail to read memTable ids from the wal file {} of wal node.",

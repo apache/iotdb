@@ -342,11 +342,12 @@ public class SchemaEngine {
             timeRecord);
         return schemaRegion;
       } catch (MetadataException e) {
-        logger.error(
+        throw new RuntimeException(
             String.format(
-                "SchemaRegion [%d] in StorageGroup [%s] failed to recover.",
-                schemaRegionId.getId(), storageGroup.getFullPath()));
-        throw new RuntimeException(e);
+                DataNodeSchemaMessages.SCHEMA_REGION_FAILED_TO_RECOVER,
+                schemaRegionId.getId(),
+                storageGroup.getFullPath()),
+            e);
       }
     };
   }
