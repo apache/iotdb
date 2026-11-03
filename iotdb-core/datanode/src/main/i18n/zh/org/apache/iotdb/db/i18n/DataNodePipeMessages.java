@@ -23,6 +23,9 @@ public final class DataNodePipeMessages {
 
   private DataNodePipeMessages() {}
 
+  public static final String LOG_DECREASE_REFERENCE_COUNT_FOR_TSFILE_ARG_ERROR_8EF0D114 =
+      "减少 TsFile {} 的引用计数时发生错误。";
+
   // ===================== LEGACY PIPE RECEIVER RESPONSES =====================
 
   public static final String MESSAGE_PIPE_DATA_TRANSPORT_ERROR_ARG_ECE6A238 = "Pipe 数据传输错误：%s";

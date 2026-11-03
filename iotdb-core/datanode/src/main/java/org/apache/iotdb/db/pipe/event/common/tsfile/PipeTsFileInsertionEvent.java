@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.task.subtask.processor.PipeProcessorSubtaskExecutionGuard;
 import org.apache.iotdb.db.pipe.agent.task.subtask.processor.PipeProcessorSubtaskYieldException;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
@@ -1060,6 +1061,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     }
   }
 
+  public boolean isWaitingForTsFileParserMemory() {
+    return tsFileParserMemoryReservationKey.isWaitingForSignal();
+  }
+
   public void cancelTsFileParserMemoryReservationIfPending() {
     synchronized (isTsFileParserMemoryReserved) {
       if (!isTsFileParserMemoryReserved.get()) {
@@ -1138,12 +1143,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   /** Release the resource of {@link TsFileInsertionDataContainer}. */
   @Override
   public void close() {
-    try {
-      cancelTsFileParserMemoryReservationIfPending();
-    } catch (final Exception e) {
-      LOGGER.warn("Decrease reference count for TsFile {} error.", tsFile, e);
-    }
-
+    // Every cleanup step is best effort and independent.  A parser/reader close failure must not
+    // strand its reservation or the pending tablet event.
     final PipeRawTabletInsertionEvent detachedPendingEvent;
     final boolean pendingEventIsBeingConsumed;
     final TsFileInsertionDataContainer containerToClose;
@@ -1162,6 +1163,18 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       if (pendingEventIsBeingConsumed) {
         pendingTabletReleaseDeferred = true;
       }
+    }
+
+    // Invalidate old invocations before cancelling: an invocation that passed its generation
+    // check can enqueue while close waits for dataContainer. It must either be removed here or
+    // observe the new generation and cancel its own request.
+    try {
+      cancelTsFileParserMemoryReservationIfPending();
+    } catch (final Exception e) {
+      LOGGER.warn(
+          DataNodePipeMessages.LOG_DECREASE_REFERENCE_COUNT_FOR_TSFILE_ARG_ERROR_8EF0D114,
+          tsFile,
+          e);
     }
 
     if (detachedPendingEvent != null && !pendingEventIsBeingConsumed) {
