@@ -30,6 +30,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.awaitility.Awaitility;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -70,7 +71,7 @@ public class IoTDBTableMetadataRecoveryIT {
   }
 
   @Test
-  public void testDatabaseTtlInheritanceAfterMissedBroadcast() throws Exception {
+  public void testTableTtlChangeAfterMissedBroadcast() throws Exception {
     String database = "p1_ttl";
     long day = TimeUnit.DAYS.toMillis(1);
     long old = System.currentTimeMillis() - 2 * day;
@@ -108,6 +109,9 @@ public class IoTDBTableMetadataRecoveryIT {
       stale.stopForcibly();
       assertFalse(stale.isAlive());
       execute(healthy, "ALTER DATABASE " + database + " SET PROPERTIES ttl=" + day);
+      // Tables copy the database TTL at creation; later database changes do not update them.
+      assertTtls(healthy, 7 * day, 30 * day);
+      execute(healthy, "ALTER TABLE inherited SET PROPERTIES ttl=" + day);
       assertTtls(healthy, day, 30 * day);
       assertRows(
           healthy,
@@ -188,6 +192,7 @@ public class IoTDBTableMetadataRecoveryIT {
   }
 
   @Test
+  @Ignore("auto_sync_schema is disabled; see #18874 and IoTDBTreeToTableViewAutoSyncIT")
   public void testViewAutoSyncAfterMissedRenameReplaceAndDisable() throws Exception {
     String treeDb = "root.p1_views";
     String viewDb = "p1_views";

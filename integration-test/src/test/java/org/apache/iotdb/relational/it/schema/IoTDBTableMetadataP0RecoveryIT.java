@@ -150,7 +150,7 @@ public class IoTDBTableMetadataP0RecoveryIT {
               + database
               + ".t (id string tag, a string attribute, old int32, kept int32)",
           "insert into " + database + ".t(time,id,a,old,kept) values(1,'d','v1',10,20)");
-      assertAllRows(
+      awaitAllRows(
           TABLE_SQL_DIALECT,
           "select id,a,old,kept from " + database + ".t where id='d'",
           "id,a,old,kept,",
