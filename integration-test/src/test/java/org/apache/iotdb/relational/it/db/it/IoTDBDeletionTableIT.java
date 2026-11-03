@@ -70,6 +70,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -1060,6 +1061,67 @@ public class IoTDBDeletionTableIT {
         assertTrue(e.getMessage().contains("attr1"));
         assertTrue(e.getMessage().contains("Please remove all attribute filters"));
       }
+    }
+  }
+
+  @Test
+  public void testDeleteRangesPreservePartitionGapsAndCompleteTagIdentity() throws SQLException {
+    final long[] times = {-1, 0, 1, 998, 999, 1000, 1001, 1002, 1003, 1998, 1999, 2000, 2001};
+    final Set<Long> deleted = Set.of(-1L, 999L, 1000L, 1001L, 1002L, 1999L, 2000L);
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      statement.execute(
+          "CREATE TABLE delete_boundary(tag1 STRING TAG,tag2 STRING TAG,s1 INT64 FIELD,s2 INT64 FIELD)");
+      for (long time : times) {
+        for (String tag : new String[] {"null", "''"}) {
+          statement.execute(
+              "INSERT INTO delete_boundary(time,tag1,tag2,s1,s2) VALUES("
+                  + time
+                  + ",'a',"
+                  + tag
+                  + ","
+                  + (time + 100)
+                  + ","
+                  + (time + 10000)
+                  + ")");
+        }
+      }
+      statement.execute("FLUSH");
+      statement.execute(
+          "INSERT INTO delete_boundary(time,tag1,s1) VALUES(999,'a',9999),(1001,'a',10001)");
+      final String delete = "DELETE FROM delete_boundary WHERE tag1='a' AND tag2 IS NULL AND ";
+      statement.execute(delete + "time < 0");
+      statement.execute(delete + "time >= 999 AND time <= 1000");
+      statement.execute(delete + "time >= 1000 AND time <= 1001");
+      statement.execute(delete + "time = 1002");
+      statement.execute(delete + "time > 1998 AND time < 2001");
+      statement.execute("INSERT INTO delete_boundary(time,tag1,s1) VALUES(1500,'a',15000)");
+      statement.execute(delete + "time >= 999 AND time <= 1000");
+
+      final List<String> expected = new ArrayList<>();
+      for (long time : times) {
+        expected.add(time + ",a,," + (time + 100) + "," + (time + 10000) + ",");
+        if (!deleted.contains(time)) {
+          expected.add(time + ",a,null," + (time + 100) + "," + (time + 10000) + ",");
+        }
+      }
+      expected.add("1500,a,null,15000,null,");
+      assertPartitionBoundaryRows(statement, expected);
+      // A rewrite after the final retry is a new row; old tombstones must not remove it.
+      statement.execute("INSERT INTO delete_boundary(time,tag1,s1,s2) VALUES(1000,'a',900,901)");
+      expected.add("1000,a,null,900,901,");
+      statement.execute("FLUSH");
+      assertPartitionBoundaryRows(statement, expected);
+    }
+  }
+
+  private static void assertPartitionBoundaryRows(Statement statement, List<String> expected)
+      throws SQLException {
+    try (ResultSet rows =
+        statement.executeQuery(
+            "SELECT cast(time AS INT64) AS t,tag1,tag2,s1,s2 FROM delete_boundary")) {
+      TestUtils.assertResultSetEqualUnordered(rows, "t,tag1,tag2,s1,s2,", expected);
     }
   }
 

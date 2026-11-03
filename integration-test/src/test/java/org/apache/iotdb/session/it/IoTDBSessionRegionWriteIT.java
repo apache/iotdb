@@ -178,6 +178,112 @@ public class IoTDBSessionRegionWriteIT {
         .orElseThrow(() -> new AssertionError("No DataNode at RPC port " + port));
   }
 
+  @Test
+  public void testDeleteAcrossRegionsKeepsPartialSuccessAndSupportsSafeRetry() throws Exception {
+    final String[] targets = new String[2];
+    final Map<String, Integer> owners = new HashMap<>();
+    final Map<String, Integer> regions = new HashMap<>();
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (int candidate = 0; candidate < 8 && targets[1] == null; candidate++) {
+        final String database = "root.delete_split_" + candidate;
+        statement.execute("CREATE DATABASE " + database);
+        statement.execute("CREATE TIMESERIES " + database + ".d.n INT64");
+        statement.execute("CREATE TIMESERIES " + database + ".d.t TEXT");
+        // Allocate both sides of the configured 1000-unit time-partition boundary before
+        // making an owner read-only. No schema or partition creation is needed by DELETE.
+        statement.execute(
+            "INSERT INTO "
+                + database
+                + ".d(time,n,t) VALUES"
+                + "(998,998,'keep-998'),(999,999,'keep-999'),(1000,1000,'keep-1000'),"
+                + "(1001,1001,'keep-1001'),(1002,1002,'keep-1002')");
+        try (ResultSet result = statement.executeQuery("SHOW REGIONS")) {
+          while (result.next()) {
+            if (database.equals(result.getString("Database"))
+                && "DataRegion".equals(result.getString("Type"))) {
+              assertEquals(null, owners.put(database, result.getInt("RpcPort")));
+              regions.put(database, result.getInt("RegionId"));
+            }
+          }
+        }
+        assertNotNull("Missing DataRegion for " + database, owners.get(database));
+        if (targets[0] == null) {
+          targets[0] = database;
+        } else if (!owners.get(targets[0]).equals(owners.get(database))) {
+          targets[1] = database;
+        }
+      }
+      statement.execute("FLUSH");
+    }
+    assertNotNull("No separately hosted Region in " + owners, targets[1]);
+    assertNotEquals(regions.get(targets[0]), regions.get(targets[1]));
+    assertNotEquals(owners.get(targets[0]), owners.get(targets[1]));
+    final DataNodeWrapper healthy = nodeAtPort(owners.get(targets[0]));
+    final DataNodeWrapper victim = nodeAtPort(owners.get(targets[1]));
+    final String delete =
+        "DELETE FROM "
+            + targets[0]
+            + ".d.n,"
+            + targets[1]
+            + ".d.n WHERE time >= 999 AND time <= 1001";
+    try (Session session =
+        new Session.Builder()
+            .host(healthy.getIp())
+            .port(healthy.getPort())
+            .enableAutoFetch(false)
+            .enableRedirection(false)
+            .maxRetryCount(0)
+            .build()) {
+      session.open(false, 30_000);
+      try {
+        setStatus(victim, "READONLY");
+        EnvFactory.getEnv()
+            .ensureNodeStatus(
+                Collections.singletonList(victim), Collections.singletonList(NodeStatus.ReadOnly));
+        StatementExecutionException failure =
+            assertThrows(
+                StatementExecutionException.class, () -> session.executeNonQueryStatement(delete));
+        assertEquals(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode(), failure.getStatusCode());
+        // One original request really executed on one Region and was rejected on the other.
+        // Cross-Region deletion does not promise atomic rollback.
+        assertRegionDeleteRows(targets[0], true);
+        assertRegionDeleteRows(targets[1], false);
+      } finally {
+        setStatus(victim, "RUNNING");
+      }
+      EnvFactory.getEnv()
+          .ensureNodeStatus(
+              Collections.singletonList(victim), Collections.singletonList(NodeStatus.Running));
+      // No writes occur between attempts. Repeating this same absolute range cannot remove
+      // a later rewrite, unlike a retry interleaved with new writes within the deleted range.
+      session.executeNonQueryStatement(delete);
+      assertRegionDeleteRows(targets[0], true);
+      assertRegionDeleteRows(targets[1], true);
+      session.executeNonQueryStatement("FLUSH");
+      assertRegionDeleteRows(targets[0], true);
+      assertRegionDeleteRows(targets[1], true);
+    }
+  }
+
+  private static void assertRegionDeleteRows(String database, boolean deleted) throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet result =
+            statement.executeQuery("SELECT n,t FROM " + database + ".d ORDER BY time")) {
+      TestUtils.assertResultSetEqual(
+          result,
+          "Time," + database + ".d.n," + database + ".d.t,",
+          new String[] {
+            "998,998,keep-998,",
+            "999," + (deleted ? "null" : "999") + ",keep-999,",
+            "1000," + (deleted ? "null" : "1000") + ",keep-1000,",
+            "1001," + (deleted ? "null" : "1001") + ",keep-1001,",
+            "1002,1002,keep-1002,"
+          });
+    }
+  }
+
   private static void setStatus(DataNodeWrapper node, String status) throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnectionWithSpecifiedDataNode(node);
         Statement statement = connection.createStatement()) {

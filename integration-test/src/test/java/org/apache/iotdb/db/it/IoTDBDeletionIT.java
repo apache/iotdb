@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -143,6 +144,20 @@ public class IoTDBDeletionIT {
           cnt++;
         }
         assertEquals(1, cnt);
+      }
+      try (ResultSet rows = statement.executeQuery("SELECT s0,s3,s4 FROM root.vehicle1.d0")) {
+        TestUtils.assertResultSetEqual(
+            rows,
+            "Time,root.vehicle1.d0.s0,root.vehicle1.d0.s3,root.vehicle1.d0.s4,",
+            new String[] {"10,310.0,text,true,"});
+      }
+      statement.execute("DELETE FROM root.vehicle1.d0.s0 WHERE time=10");
+      statement.execute("FLUSH");
+      try (ResultSet rows = statement.executeQuery("SELECT s0,s3,s4 FROM root.vehicle1.d0")) {
+        TestUtils.assertResultSetEqual(
+            rows,
+            "Time,root.vehicle1.d0.s0,root.vehicle1.d0.s3,root.vehicle1.d0.s4,",
+            new String[] {"10,null,text,true,"});
       }
     }
   }
@@ -511,6 +526,101 @@ public class IoTDBDeletionIT {
 
       statement.execute("DROP DATABASE root.test");
     }
+  }
+
+  @Test
+  public void testOverlappingDeleteRangesAtTimePartitionBoundaries() throws SQLException {
+    final String database = "root.delete_partition_boundary";
+    final long[] timestamps = {
+      -1, 0, 1, 998, 999, 1000, 1001, 1002, 1003, 1998, 1999, 2000, 2001, 4102444800000L
+    };
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE " + database);
+      statement.execute("CREATE TIMESERIES " + database + ".d1.s1 WITH DATATYPE=INT64");
+      statement.execute("CREATE TIMESERIES " + database + ".d1.s2 WITH DATATYPE=INT64");
+      statement.execute("CREATE TIMESERIES " + database + ".d2.s1 WITH DATATYPE=INT64");
+
+      for (long timestamp : timestamps) {
+        statement.execute(
+            "INSERT INTO "
+                + database
+                + ".d1(time,s1,s2) VALUES("
+                + timestamp
+                + ","
+                + (timestamp + 100)
+                + ","
+                + (timestamp + 10000)
+                + ")");
+        statement.execute(
+            "INSERT INTO "
+                + database
+                + ".d2(time,s1) VALUES("
+                + timestamp
+                + ","
+                + (timestamp + 30000)
+                + ")");
+      }
+      statement.execute("FLUSH");
+
+      // Leave unflushed values on both sides of the boundary as well as the closed-file data.
+      statement.execute("INSERT INTO " + database + ".d1(time,s1) VALUES(999,9999),(1001,10001)");
+      // The interval is 1000. Overlapping, adjacent and disjoint deletions must preserve the gap
+      // at 1003..1998, the unselected measurement and the other device.
+      statement.execute("DELETE FROM " + database + ".d1.s1 WHERE time >= 999 AND time <= 1000");
+      try (ResultSet rows =
+          statement.executeQuery("SELECT s1 FROM " + database + ".d1 WHERE time=1000")) {
+        assertFalse(rows.next());
+      }
+      statement.execute("DELETE FROM " + database + ".d1.s1 WHERE time >= 1000 AND time <= 1001");
+      statement.execute("DELETE FROM " + database + ".d1.s1 WHERE time = 1002");
+      statement.execute("DELETE FROM " + database + ".d1.s1 WHERE time > 1998 AND time < 2001");
+      statement.execute("INSERT INTO " + database + ".d1(time,s1) VALUES(1500,15000)");
+      // No writes within this range occur between retries. The disjoint new point must survive.
+      statement.execute("DELETE FROM " + database + ".d1.s1 WHERE time >= 999 AND time <= 1000");
+      statement.execute("INSERT INTO " + database + ".d1(time,s1) VALUES(1000,900)");
+      statement.execute("FLUSH");
+    }
+
+    TestUtils.resultSetEqualTest(
+        "SELECT s1,s2 FROM " + database + ".d1 ORDER BY time",
+        new String[] {"Time", database + ".d1.s1", database + ".d1.s2"},
+        new String[] {
+          "-1,99,9999,",
+          "0,100,10000,",
+          "1,101,10001,",
+          "998,1098,10998,",
+          "999,null,10999,",
+          "1000,900,11000,",
+          "1001,null,11001,",
+          "1002,null,11002,",
+          "1003,1103,11003,",
+          "1500,15000,null,",
+          "1998,2098,11998,",
+          "1999,null,11999,",
+          "2000,null,12000,",
+          "2001,2101,12001,",
+          "4102444800000,4102444800100,4102444810000,"
+        });
+    TestUtils.resultSetEqualTest(
+        "SELECT s1 FROM " + database + ".d2 ORDER BY time",
+        new String[] {"Time", database + ".d2.s1"},
+        new String[] {
+          "-1,29999,",
+          "0,30000,",
+          "1,30001,",
+          "998,30998,",
+          "999,30999,",
+          "1000,31000,",
+          "1001,31001,",
+          "1002,31002,",
+          "1003,31003,",
+          "1998,31998,",
+          "1999,31999,",
+          "2000,32000,",
+          "2001,32001,",
+          "4102444800000,4102444830000,"
+        });
   }
 
   private static void prepareSeries() {

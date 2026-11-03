@@ -23,10 +23,16 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.it.utils.DeletionTestUtils;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.awaitility.Awaitility;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -204,6 +210,125 @@ public class IoTDBRecreatedTimeseriesCompactionIT {
 
   private static void assertCompactionData(Statement statement) throws Exception {
     assertCompactionRows(statement, new String[] {"1,100,101,", "2,null,102,", "3,3,103,"});
+  }
+
+  @Test
+  public void testDeletionQueryCancellationAllowsCompactionAndContinuedWrites() throws Exception {
+    final String database = "root.delete_cancel";
+    final String device = database + ".d1";
+    final String query = "SELECT s1,s2 FROM " + device + " ORDER BY time";
+    // As in IoTDBShowQueriesIT, leave a full TsBlock after the initial Session fetch so the
+    // query stays registered until it is explicitly killed. Do not assert a concurrent snapshot.
+    final int rowCount = SessionConfig.DEFAULT_FETCH_SIZE + 1000;
+    try (ISession session = EnvFactory.getEnv().getSessionConnection();
+        Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE " + database);
+      statement.execute("CREATE TIMESERIES " + device + ".s1 WITH DATATYPE=INT64");
+      statement.execute("CREATE TIMESERIES " + device + ".s2 WITH DATATYPE=INT64");
+      Tablet tablet =
+          new Tablet(
+              device,
+              List.of(
+                  new MeasurementSchema("s1", TSDataType.INT64),
+                  new MeasurementSchema("s2", TSDataType.INT64)),
+              rowCount);
+      for (int time = 0; time < rowCount; time++) {
+        tablet.addTimestamp(time, time);
+        tablet.addValue("s1", time, 100000L + time);
+        tablet.addValue("s2", time, 200000L + time);
+      }
+      session.insertTablet(tablet);
+      statement.execute("FLUSH");
+      statement.execute(
+          "INSERT INTO "
+              + device
+              + "(time,s1,s2) VALUES("
+              + rowCount
+              + ","
+              + (100000L + rowCount)
+              + ","
+              + (200000L + rowCount)
+              + ")");
+      statement.execute("FLUSH");
+      final List<Path> inputs = DeletionTestUtils.getClosedTsFiles(database, true);
+      Assert.assertEquals(2, inputs.size());
+
+      try (SessionDataSet pending = session.executeQueryStatement(query)) {
+        Assert.assertTrue(pending.hasNext());
+        final String queryId = findDeletionQueryId(statement, query);
+        Assert.assertNotNull("The unconsumed query must actually be registered", queryId);
+        for (int time = 0; time < 5; time++) {
+          statement.execute("DELETE FROM " + device + ".s1 WHERE time=" + time);
+        }
+        statement.execute("KILL QUERY '" + queryId + "'");
+        Awaitility.await()
+            .pollInterval(200, TimeUnit.MILLISECONDS)
+            .atMost(30, TimeUnit.SECONDS)
+            .until(() -> findDeletionQueryId(statement, query) == null);
+      }
+      assertDeletionCancellationRows(statement, device, rowCount, false);
+      statement.execute("SET CONFIGURATION 'enable_seq_space_compaction'='true'");
+      try {
+        Awaitility.await()
+            .pollInterval(200, TimeUnit.MILLISECONDS)
+            .atMost(60, TimeUnit.SECONDS)
+            .until(
+                () -> {
+                  if (inputs.stream().anyMatch(Files::exists)) {
+                    return false;
+                  }
+                  for (Path output : DeletionTestUtils.getClosedTsFiles(database, true)) {
+                    if (TsFileNameGenerator.getTsFileName(output.getFileName().toString())
+                            .getInnerCompactionCnt()
+                        > 0) {
+                      return true;
+                    }
+                  }
+                  return false;
+                });
+        assertDeletionCancellationRows(statement, device, rowCount, false);
+        // Keep the original Session after cancellation: it must still complete writes/deletes.
+        session.executeNonQueryStatement("INSERT INTO " + device + "(time,s1) VALUES(2,902)");
+        session.deleteData(List.of(device + ".s1"), 7, 7);
+        session.executeNonQueryStatement("FLUSH");
+        assertDeletionCancellationRows(statement, device, rowCount, true);
+        Assert.assertNull(findDeletionQueryId(statement, query));
+      } finally {
+        statement.execute("SET CONFIGURATION 'enable_seq_space_compaction'='false'");
+      }
+    }
+  }
+
+  private static String findDeletionQueryId(Statement statement, String sql) throws Exception {
+    try (ResultSet queries = statement.executeQuery("SHOW QUERIES")) {
+      while (queries.next()) {
+        if (sql.equals(queries.getString("Statement"))) {
+          return queries.getString("QueryId");
+        }
+      }
+      return null;
+    }
+  }
+
+  private static void assertDeletionCancellationRows(
+      Statement statement, String device, int lastTime, boolean continued) throws Exception {
+    try (ResultSet rows =
+        statement.executeQuery("SELECT s1,s2 FROM " + device + " ORDER BY time")) {
+      for (int time = 0; time <= lastTime; time++) {
+        Assert.assertTrue("Missing timestamp " + time, rows.next());
+        Assert.assertEquals(time, rows.getLong(1));
+        if (continued && time == 2) {
+          Assert.assertEquals(902, rows.getLong(2));
+        } else if (time < 5 || (continued && time == 7)) {
+          Assert.assertNull(rows.getObject(2));
+        } else {
+          Assert.assertEquals(100000L + time, rows.getLong(2));
+        }
+        Assert.assertEquals(200000L + time, rows.getLong(3));
+      }
+      Assert.assertFalse(rows.next());
+    }
   }
 
   private static void assertCompactionRows(Statement statement, String[] expected)
