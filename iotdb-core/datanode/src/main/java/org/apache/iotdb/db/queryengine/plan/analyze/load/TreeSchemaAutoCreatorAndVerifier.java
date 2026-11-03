@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
@@ -305,6 +306,13 @@ public class TreeSchemaAutoCreatorAndVerifier {
   }
 
   private void handleException(Exception e, String statementString) throws SemanticException {
+    // Region groups may still be recovering after a restart. Preserve the status so the loader
+    // can distinguish that temporary unavailability from a permanent schema error.
+    if (e instanceof IoTDBRuntimeException
+        && ((IoTDBRuntimeException) e).getErrorCode()
+            == TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode()) {
+      throw (IoTDBRuntimeException) e;
+    }
     LOGGER.warn(DataNodeQueryMessages.AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR, e);
     throw new SemanticException(
         String.format(

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.load;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
@@ -898,6 +899,16 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private boolean setTemporaryUnavailableStatusIfNecessary(
       final IAnalysis analysis, final Throwable throwable) {
+    if (throwable instanceof IoTDBRuntimeException
+        && ((IoTDBRuntimeException) throwable).getErrorCode()
+            == TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION, throwable.getMessage()));
+      setRealStatement(analysis);
+      return true;
+    }
     if (isTemporaryUnavailableDueToPipeSchemaNotReady(throwable)) {
       setFailAnalysisForTemporaryUnavailablePipeSchema(analysis, throwable);
       return true;
