@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.jdbc.relational;
 
+import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Field;
 import org.apache.iotdb.jdbc.IoTDBAbstractDatabaseMetadata;
 import org.apache.iotdb.jdbc.IoTDBConnection;
@@ -51,11 +52,6 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBRelationalDatabaseMetadata.class);
-
-  private static final String DATABASE_VERSION =
-      IoTDBRelationalDatabaseMetadata.class.getPackage().getImplementationVersion() != null
-          ? IoTDBRelationalDatabaseMetadata.class.getPackage().getImplementationVersion()
-          : "UNKNOWN";
 
   public static final String SHOW_TABLES_ERROR_MSG =
       JdbcMessages.LOG_SHOW_TABLES_ERROR_ARG_068CF1BA;
@@ -195,7 +191,7 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
 
   @Override
   public String getDriverVersion() throws SQLException {
-    return DATABASE_VERSION;
+    return Config.DRIVER_VERSION;
   }
 
   @Override
