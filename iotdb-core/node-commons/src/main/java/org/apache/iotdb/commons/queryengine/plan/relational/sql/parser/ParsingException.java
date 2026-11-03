@@ -65,6 +65,10 @@ public class ParsingException extends RuntimeException {
 
   @Override
   public String getMessage() {
-    return String.format("line %s:%s: %s", getLineNumber(), getColumnNumber(), getErrorMessage());
+    return String.format(
+        QueryMessages.EXCEPTION_LINE_ARG_ARG_ARG_B222E08B,
+        getLineNumber(),
+        getColumnNumber(),
+        getErrorMessage());
   }
 }

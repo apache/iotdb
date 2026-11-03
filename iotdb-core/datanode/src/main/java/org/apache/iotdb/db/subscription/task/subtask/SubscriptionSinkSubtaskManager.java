@@ -59,7 +59,8 @@ public class SubscriptionSinkSubtaskManager {
       LoggerFactory.getLogger(SubscriptionSinkSubtaskManager.class);
 
   private static final String FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE =
-      "Failed to deregister PipeConnectorSubtask. No such subtask: ";
+      DataNodePipeMessages
+          .MESSAGE_FAILED_TO_DEREGISTER_PIPECONNECTORSUBTASK_NO_SUCH_SUBTASK_6702FB4D;
 
   // one SubscriptionConnectorSubtask for one subscription (one consumer group with one topic)
   private final Map<String, PipeSinkSubtaskLifeCycle> attributeSortedString2SubtaskLifeCycleMap =

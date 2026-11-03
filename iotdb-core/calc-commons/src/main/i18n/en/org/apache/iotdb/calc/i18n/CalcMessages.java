@@ -582,4 +582,59 @@ public final class CalcMessages {
       EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_ARG_ARGUMENTS_BUT_GOT_ARG_D6249DD2 =
           "Aggregate function [%s] requires %d arguments, but got %d";
 
+  public static final String EXCEPTION_UNSUPPORTED_TARGET_DATATYPE_ARG_AFE3789A =
+      "Unsupported target dataType: %s";
+
+  public static final String EXCEPTION_MAPPABLE_UDTF_EXECUTION_ERROR_CF878D75 =
+      "Mappable UDTF execution error";
+
+  public static final String
+      EXCEPTION_IOTDBLOCALFACTORY_MUST_NOT_BE_NULL_FOR_UDF_EXECUTION_97022410 =
+          "IoTDBLocalFactory must not be null for UDF execution";
+
+  public static final String
+      EXCEPTION_FRAGMENTINSTANCEID_MUST_NOT_BE_NULL_FOR_UDF_EXECUTION_877C90A5 =
+          "fragmentInstanceId must not be null for UDF execution";
+
+  public static final String EXCEPTION_QUERYID_MUST_NOT_BE_NULL_FOR_UDF_EXECUTION_CF534D6A =
+      "queryId must not be null for UDF execution";
+
+  public static final String
+      EXCEPTION_OUTERQUERYDEADLINEMS_MUST_BE_POSITIVE_FOR_UDF_EXECUTION_4A7B2F18 =
+          "outerQueryDeadlineMs must be positive for UDF execution";
+
+  public static final String
+      EXCEPTION_FAILED_TO_EXECUTE_FUNCTION_ARG_DUE_TO_AN_INVALID_INPUT_FORMAT_PROBLEMATIC_VALUE_ARG_58DDBF95 =
+          "Failed to execute function '%s' due to an invalid input format. Problematic value: %s";
+
+  public static final String
+      EXCEPTION_FAILED_TO_EXECUTE_FUNCTION_ARG_DUE_TO_AN_INVALID_INPUT_FORMAT_THE_VALUE_ARG_CORRESPONDING_TO_A_EMPTY_KEY_THE_EMPTY_KEY_IS_NOT_ALLOWED_IN_HMAC_OPERATION_9F75FE9B =
+          "Failed to execute function '%s' due to an invalid input format. the value '%s'"
+              + " corresponding to a empty key, the empty key is not allowed in HMAC operation.";
+
+  public static final String EXCEPTION_IOTDBLOCAL_MUST_NOT_BE_NULL_FOR_UDAF_CF7EF593 =
+      "IoTDBLocal must not be null for UDAF";
+
+  public static final String EXCEPTION_IOTDBLOCAL_MUST_NOT_BE_NULL_FOR_TABLE_FUNCTION_5580D0A5 =
+      "IoTDBLocal must not be null for table function";
+
+  public static final String EXCEPTION_THE_SYSTEM_CAN_T_ALLOW_MORE_QUERIES_93DD59F0 =
+      "The system can't allow more queries.";
+
+  public static final String EXCEPTION_UNSUPPORTED_EXPRESSION_ARG_3E55A85A =
+      "Unsupported expression: %s";
+
+  public static final String
+      EXCEPTION_VISIT_NOT_IMPLEMENTED_FOR_ARG_IN_GLOBALTIMEPREDICATEEXTRACT_936A2D52 =
+          "visit() not implemented for %s in GlobalTimePredicateExtract.";
+
+  public static final String
+      EXCEPTION_OBJECT_TYPE_ONLY_SUPPORT_GETSTRING_GETOBJECTFILE_OBJECTLENGTH_AND_READOBJECT_3C0EC792 =
+          "OBJECT Type only support getString, getObjectFile, objectLength and readObject";
+
+  public static final String EXCEPTION_SCALAR_SUB_QUERY_HAS_RETURNED_MULTIPLE_ROWS_0C87D6E6 =
+      "Scalar sub-query has returned multiple rows.";
+
+  public static final String EXCEPTION_SCALAR_SUB_QUERY_DOES_NOT_HAVE_OUTPUT_E64DBE29 =
+      "Scalar sub-query does not have output.";
 }

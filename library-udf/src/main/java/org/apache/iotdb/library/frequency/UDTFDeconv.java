@@ -51,7 +51,7 @@ public class UDTFDeconv implements UDTF {
             x ->
                 ((String) x).equalsIgnoreCase(QUOTINENT_RESULT)
                     || ((String) x).equalsIgnoreCase(REMAINDER_RESULT),
-            "Result should be 'quotient' or 'remainder'.",
+            LibraryUdfMessages.EXCEPTION_RESULT_SHOULD_BE_QUOTIENT_OR_REMAINDER_ABBEA7C4,
             validator.getParameters().getStringOrDefault("result", QUOTINENT_RESULT));
   }
 

@@ -26,6 +26,7 @@ import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.calc.execution.operator.process.function.partition.PartitionCache;
 import org.apache.iotdb.calc.execution.operator.process.function.partition.PartitionState;
 import org.apache.iotdb.calc.execution.operator.process.function.partition.Slice;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.udf.api.IoTDBLocal;
@@ -92,7 +93,9 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
       List<Integer> partitionChannels,
       boolean requireRecordSnapshot,
       IoTDBLocal ioTDBLocal) {
-    checkArgument(ioTDBLocal != null, "IoTDBLocal must not be null for table function");
+    checkArgument(
+        ioTDBLocal != null,
+        CalcMessages.EXCEPTION_IOTDBLOCAL_MUST_NOT_BE_NULL_FOR_TABLE_FUNCTION_5580D0A5);
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
     this.properChannelCount = properChannelCount;

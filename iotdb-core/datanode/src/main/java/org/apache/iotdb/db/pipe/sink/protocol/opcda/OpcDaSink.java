@@ -62,7 +62,7 @@ public class OpcDaSink implements PipeConnector {
     validator.validate(
         args -> (boolean) args[0] || (boolean) args[1] || (boolean) args[2] || (boolean) args[3],
         String.format(
-            "One of '%s', '%s', '%s' and '%s' must be specified",
+            DataNodePipeMessages.MESSAGE_ONE_OF_ARG_ARG_ARG_AND_ARG_MUST_BE_SPECIFIED_3362153D,
             SINK_OPC_DA_CLSID_KEY,
             CONNECTOR_OPC_DA_CLSID_KEY,
             SINK_OPC_DA_PROGID_KEY,

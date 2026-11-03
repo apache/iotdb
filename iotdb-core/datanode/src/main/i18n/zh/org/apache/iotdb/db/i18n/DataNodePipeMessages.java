@@ -722,8 +722,6 @@ public final class DataNodePipeMessages {
       "无法增加 event {} 的引用计数，在 batch 中忽略";
   public static final String CANNOT_SERIALIZE_BOTH_TABLET_AND_STATEMENT_ARE =
       "无法序列化：tablet 和 statement 均为空";
-  public static final String CERTIFICATE_DIRECTORY_IS_PLEASE_MOVE_CERTIFICATES_FROM =
-      "证书目录为：{}，请将证书从 reject 目录移动到 trusted 目录以允许加密访问";
   public static final String CLIENT_HAS_BEEN_RETURNED_TO_THE_POOL =
       "Client 已归还到连接池。当前 handler 状态为 {}。将不会传输 {}。";
   public static final String CLOSED_ASYNCPIPEDATATRANSFERSERVICECLIENTMANAGER_FOR_RECEIVER_ATTRIBUTES =
@@ -765,8 +763,6 @@ public final class DataNodePipeMessages {
   public static final String HANDSHAKE_ERROR_BY_HANDSHAKE_V2_RETRY_WITH_V1 =
       "使用 PipeTransferHandshakeV2Req 与接收端 {}:{} 握手失败，改用 PipeTransferHandshakeV1Req "
           + "重试握手。";
-  public static final String FAILED_TO_BUILD_AND_STARTUP_OPCUASERVER =
-      "构建并启动 OpcUaServer 失败";
   public static final String FAILED_TO_CLOSE_ASYNCPIPEDATATRANSFERSERVICECLIENTMANAGER_FOR_RECEIVER_ATTRIBUTE =
       "关闭 AsyncPipeDataTransferServiceClientManager for receiver attributes: {} 失败";
   public static final String FAILED_TO_CLOSE_CLIENT_AFTER_HANDSHAKE_FAILURE =
@@ -780,16 +776,12 @@ public final class DataNodePipeMessages {
       "成功传输 mod 文件后关闭 file reader 失败。";
   public static final String FAILED_TO_CLOSE_OR_INVALIDATE_CLIENT_WHEN =
       "connector 关闭时关闭或作废 client 失败。Client：{}, Exception：{}";
-  public static final String FAILED_TO_CLOSE_TRUSTLISTMANAGER_BECAUSE =
-      "关闭 trustListManager 失败，原因：{}。";
   public static final String FAILED_TO_CONNECT_TO_SERVER_ERROR_CODE =
       "连接 server 失败，错误码：0x";
   public static final String FAILED_TO_CONVERT_STATEMENT_TO_TABLET = "将 statement 转换为 tablet 失败。";
   public static final String FAILED_TO_CONVERT_STATEMENT_TO_TABLET_FOR =
       "为序列化将 statement 转换为 tablet 失败";
   public static final String FAILED_TO_CREATE_GROUP_ERROR_CODE_0X = "创建 group 失败，错误码：0x";
-  public static final String FAILED_TO_CREATE_NODES_AFTER_TRANSFER_DATA =
-      "传输 data value 后创建 node 失败，创建状态：";
   public static final String FAILED_TO_DELETE_BATCH_FILE_THIS_FILE =
       "删除 batch file {} 失败，该文件应稍后手动删除";
   public static final String FAILED_TO_GET_THE_SIZE_OF_PIPETRANSFERBATCHREQBUILDER =
@@ -797,15 +789,8 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_HANDSHAKE = "握手失败。";
   public static final String FAILED_TO_LOG_ERROR_WHEN_FAILED_TO =
       "传输文件失败后记录错误日志失败。";
-  public static final String FAILED_TO_PUSH_VALUE_CHANGE_TO_CLIENT =
-      "向 client 推送 value 变更失败，nodeId={}";
-  public static final String FAILED_TO_SEND_INITIAL_VALUE_TO_NEW =
-      "向新订阅发送初始 value 失败，nodeId={}";
   public static final String FAILED_TO_SERIALIZE_PROGRESS_INDEX = "序列化 progress index {} 失败";
   public static final String FAILED_TO_SHUTDOWN_EXECUTOR = "关闭 executor {} 失败。";
-  public static final String FAILED_TO_TRANSFER_DATAVALUE = "传输 dataValue 失败";
-  public static final String FAILED_TO_TRANSFER_DATAVALUE_AFTER_SUCCESSFULLY_CREATED =
-      "成功创建 node 后传输 dataValue 失败";
   public static final String FAILED_TO_TRANSFER_PIPEDELETENODEEVENT_COMMITTER_KEY_REPLICATE =
       "传输 PipeDeleteNodeEvent {} (committer key={}, replicate index={}) 失败。";
   public static final String FAILED_TO_TRANSFER_SLICE_RETRY_WHOLE_TRANSFER =
@@ -939,12 +924,6 @@ public final class DataNodePipeMessages {
       "LeaderCacheManager.allocatedMemoryBlock 已从 {} 扩展到 {}。";
   public static final String LEADERCACHEMANAGER_ALLOCATEDMEMORYBLOCK_HAS_SHRUNK_FROM_TO =
       "LeaderCacheManager.allocatedMemoryBlock 已从 {} 缩小到 {}。";
-  public static final String LOADING_KEYSTORE_AT = "正在从 {} 加载 KeyStore";
-  public static final String LOADING_KEYSTORE_AT_1 = "正在从 {}. 加载 KeyStore";
-  public static final String LOAD_KEYSTORE_FAILED_THE_EXISTING_KEYSTORE_MAY =
-      "加载 keyStore 失败，现有 keyStore 可能已过期，正在重新构造...";
-  public static final String NO_OPC_CLIENT_OR_SERVER_IS_SPECIFIED =
-      "传输 tablet 时未指定 OPC client 或 server";
   public static final String OPC_DA_SINK_MUST_RUN_ON_WINDOWS = "opc-da-sink 必须在 Windows 系统上运行。";
   public static final String PIPETABLEMODETSFILEBUILDERV2_DOES_NOT_SUPPORT_TREE_MODEL_TABLET =
       "PipeTableModeTsFileBuilderV2 不支持 tree model tablet to build TSFile";
@@ -966,11 +945,6 @@ public final class DataNodePipeMessages {
       "重定向到 position {}，正在传输的 TsFile 为 {}。";
   public static final String NETWORK_FAILED_TO_RECEIVE_TSFILE_STATUS =
       "网络接收 TsFile %s 失败，状态：%s";
-  public static final String SECURITY_DIR = "security 目录：{}";
-  public static final String SECURITY_PKI_DIR = "security pki 目录：{}";
-  public static final String
-      LOG_OPC_UA_ENDPOINT_SELECTED_CONFIGURED_ARG_ADVERTISED_ARG_EFFECTIVE_ARG_ALLOWENDPOINTREDIRECT_ARG_4FE076CB =
-          "已选择 OPC UA endpoint：configured={}，advertised={}，effective={}，allowEndpointRedirect={}。";
   public static final String SSL_TRUST_STORE_PAIR_REQUIRED_WHEN_SSL_ENABLED =
       "当 %s 或 %s 为 true 时，请在同一别名下指定完整的 trust-store 参数对：%s 和 %s、%s 和 %s，或 %s 和 %s";
   public static final String SSL_KEY_STORE_PATH_AND_PASSWORD_MUST_BE_SPECIFIED_TOGETHER =
@@ -996,8 +970,6 @@ public final class DataNodePipeMessages {
       "batch 大小上限已从 {} 扩展到 {}。";
   public static final String THE_BATCH_SIZE_LIMIT_HAS_SHRUNK_FROM =
       "batch 大小上限已从 {} 缩小到 {}。";
-  public static final String THE_DEFAULT_QUALITY_CAN_ONLY_BE_GOOD =
-      "默认 quality 只能为 'GOOD'、'BAD' 或 'UNCERTAIN'。";
   public static final String THE_EVENT_ACK_IS_NOT_FOUND = "未找到 event ack {}。";
   public static final String THE_EVENT_CAN_T_BE_TRANSFERRED_TO =
       "事件 {} 无法传输给 client，将稍后重试。";
@@ -1013,18 +985,10 @@ public final class DataNodePipeMessages {
       "pipe {} 已被 drop，出错的 event {} 将被忽略。";
   public static final String THE_PIPE_WAS_DROPPED_SO_THE_EVENT_2 =
       "pipe {} 已被 drop，event {} 将被丢弃。";
-  public static final String THE_QUALITY_VALUE_ONLY_SUPPORTS_BOOLEAN_TYPE =
-      "quality 值仅支持 boolean 类型，其中 true == GOOD，false == BAD。";
   public static final String THE_SCHEMA_REGION_AIR_GAP_CONNECTOR_DOES =
       "The schema region air gap connector 不支持 transferring single file piece bytes.";
   public static final String THE_SCHEMA_REGION_CONNECTOR_DOES_NOT_SUPPORT =
       "The schema region connector 不支持 transferring single file piece req.";
-  public static final String THE_SECURITY_POLICY_CANNOT_BE_EMPTY =
-      "安全策略不能为空。";
-  public static final String THE_SECURITY_POLICY_CAN_ONLY_BE_NONE =
-      "安全策略只能是 'None'、'Basic128Rsa15'、'Basic256'、'Basic256Sha256'、'Aes128_Sha256_RsaOaep' 或 'Aes256_Sha256_RsaPss'。";
-  public static final String THE_SEGMENTS_OF_TABLETS_MUST_EXIST =
-      "tablet 的 segment 必须存在";
   public static final String THE_TABLET_OF_COMMITID_CAN_T_BE =
       "commitId 为 {} 的 tablet 无法被 client 解析，将稍后重试。";
   public static final String THE_TRANSFER_THREAD_IS_INTERRUPTED = "传输线程被中断。";
@@ -1050,17 +1014,12 @@ public final class DataNodePipeMessages {
       "TIoTConsensusV2BatchTransferResp 为空";
   public static final String TIOTCONSENSUSV2TRANSFERRESP_IS_NULL = "TIoTConsensusV2TransferResp 为空";
   public static final String TPIPETRANSFERRESP_IS_NULL = "TPipeTransferResp 为空";
-  public static final String OPC_UA_SINK_MODEL_MUST_BE_CLIENT_SERVER_WHEN_OUTER_OR_WITH_QUALITY =
-      "当 OPC UA sink 指向外部 server 或将 'with-quality' 设置为 true 时，%s 或 %s 必须为 %s。";
-  public static final String WITH_QUALITY_MEASUREMENT_MUST_BE_VALUE_OR_QUALITY_NAME =
-      "启用 'with-quality' 模式时，measurement 必须是 \"value-name\" 或 \"quality-name\"。";
   public static final String SESSION_FAILED_TO_CHECK_AUTHORITY_FOR_STATEMENT =
       "Session {}: 检查 statement {} 权限失败，username = {}，response = {}。";
   public static final String TRANSFER_REQUEST_BODY_TOO_LARGE_WILL_BE_SLICED =
       "请求体过大，将切分请求。原始请求：{}-{}。请求体大小：{}，阈值：{}";
   public static final String TRANSFER_TSFILE_EVENT_ASYNCHRONOUSLY_WAS_INTERRUPTED =
       "异步传输 tsfile event {} 被中断。";
-  public static final String UNABLE_TO_CREATE_SECURITY_DIR = "无法创建 security dir: ";
   public static final String UNKNOWN_LOAD_BALANCE_STRATEGY_USE_ROUND_ROBIN =
       "未知的 load balance strategy: {}, use round-robin strategy instead。";
   public static final String UNSUPPORTED_BATCH_TYPE = "不支持的 batch type {}。";
@@ -1077,10 +1036,6 @@ public final class DataNodePipeMessages {
       "WebsocketConnector 仅支持 PipeInsertNodeTabletInsertionEvent 和 PipeRawTabletInsertionEvent。当前事件：{}。";
   public static final String WEBSOCKETCONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT_CURRENT_EVENT =
       "WebsocketConnector 仅支持 PipeTsFileInsertionEvent。当前事件：{}。";
-  public static final String WHEN_THE_OPC_UA_SINK_POINTS_TO =
-      "当 OPC UA sink 指向外部 server 时，不支持 table model 数据。";
-  public static final String WHEN_THE_OPC_UA_SINK_SETS_WITH =
-      "当 OPC UA sink 将 'with-quality' 设置为 true 时，不支持 table model 数据。";
   public static final String WRITEBACKSINK_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTABLETI =
       "WriteBackSink 仅支持 PipeInsertNodeTabletInsertionEvent 和 PipeRawTabletInsertionEvent。忽略 {}。";
 
@@ -1287,6 +1242,10 @@ public final class DataNodePipeMessages {
       "Pipe air gap receiver {}：监听数据时 socket {} 关闭。原因：{}";
   public static final String PIPE_AIR_GAP_RECEIVER_STARTED_SOCKET =
       "Pipe air gap receiver {} 已启动。Socket：{}";
+  public static final String EXCEPTION_AIR_GAP_UDP_PACKET_IS_MISSING_ITS_REQUEST_ID_C4228CC8 =
+      "Air-gap UDP 数据包缺少 request ID。";
+  public static final String EXCEPTION_AIR_GAP_UDP_PACKET_CONTAINS_TRAILING_BYTES_2D34D418 =
+      "Air-gap UDP 数据包包含多余字节。";
   public static final String PIPE_AIR_GAP_RECEIVER_TEMPORARY_UNAVAILABLE_RETRY =
       "Pipe air gap receiver {}：临时不可用重试超时，向 sender 返回 FAIL。";
   public static final String PIPE_DATA_TRANSPORT_ERROR = "Pipe 数据传输错误，{}";
@@ -1492,20 +1451,9 @@ public final class DataNodePipeMessages {
   public static final String ILLEGAL_TREE_PATTERN_FMT = "Pattern \"%s\" 非法。";
 
   // ---------------------------------------------------------------------------
-  // pipe – OpcUaServerBuilder
-  // ---------------------------------------------------------------------------
-  public static final String UNABLE_CREATE_SECURITY_DIR = "无法创建安全目录：";
-  public static final String OPC_UA_SECURITY_DIR =
-      "安全目录：{}";
-  public static final String OPC_UA_SECURITY_PKI_DIR =
-      "安全 PKI 目录：{}";
   public static final String
       EXCEPTION_THE_ADVERTISED_HOST_MUST_BE_A_HOSTNAME_OR_IP_ADDRESS_WITHOUT_A_SCHEME_PORT_OR_PATH_6857C67A =
           "advertised host 必须是不带 scheme、port 或 path 的 hostname 或 IP 地址。";
-  public static final String
-      LOG_ADVERTISED_HOST_ARG_IS_NOT_PRESENT_IN_THE_LOADED_OPC_UA_SERVER_CERTIFICATE_SUBJECT_ALTERNATIVE_NAMES_SECURED_CLIENTS_MAY_REJECT_IT_REPLACE_OR_REGENERATE_THE_CERTIFICATE_AND_ESTABLISH_TRUST_AGAIN_912358AF =
-          "advertised host {} 不在已加载的 OPC UA server 证书 subject alternative names 中。安全客户端可能拒绝该证书；"
-              + "请替换或重新生成证书并重新建立信任。";
 
   // ---------------------------------------------------------------------------
   // pipe – PipeDataNodePluginAgent
@@ -1529,6 +1477,372 @@ public final class DataNodePipeMessages {
   // ---------------------------------------------------------------------------
   public static final String TPIPE_TRANSFER_RESP_IS_NULL_WHEN_TRANSFERRING_SLICE =
       "传输分片时 TPipeTransferResp 为空。";
+
+  public static final String EXCEPTION_ARG_MUST_BE_0_BUT_GOT_ARG_B2A3D4A2 = "%s 必须 > 0，但得到 %s";
+  public static final String EXCEPTION_FAILED_TO_CLOSE_REPLAY_LOOKUP_ITERATOR_ARG_3B390069 =
+      "关闭重放查找迭代器失败：%s";
+  public static final String EXCEPTION_FAILED_TO_DROP_BROKER_BOUND_TO_CONSUMER_GROUP_ARG_ED5860D0 =
+      "删除绑定到消费者组 [%s] 的 Broker 失败";
+  public static final String
+      EXCEPTION_FAILED_TO_DROP_STALE_BROKER_BOUND_TO_CONSUMER_GROUP_ARG_138C2DF9 =
+          "删除绑定到消费者组 [%s] 的过期 Broker 失败";
+  public static final String
+      EXCEPTION_FAILED_TO_GET_ALL_SUBSCRIPTION_INFO_IN_CONFIG_NODE_STATUS_IS_ARG_1522CE8B =
+          "从 ConfigNode 获取全部订阅信息失败，状态为 %s";
+  public static final String
+      EXCEPTION_FAILED_TO_GET_ALL_TOPIC_INFO_IN_CONFIG_NODE_STATUS_IS_ARG_68B91348 =
+          "从 ConfigNode 获取全部主题信息失败，状态为 %s";
+  public static final String
+      EXCEPTION_FAILED_TO_LOGIN_FOR_TWO_STAGE_AGGREGATE_PIPE_ARG_ARG_STATUS_ARG_4CEBC1C1 =
+          "两阶段聚合 pipe %s-%s 登录失败，状态：%s。";
+  public static final String
+      EXCEPTION_MISSING_SOURCE_CREDENTIALS_FOR_TWO_STAGE_AGGREGATE_PIPE_ARG_ARG_FF84ED01 =
+          "两阶段聚合 pipe %s-%s 缺少 source 凭据。";
+  public static final String EXCEPTION_ONE_OF_ARG_ARG_MUST_BE_SPECIFIED_IN_CONSENSUS_PIPE_DE0285C1 =
+      "Consensus pipe 必须指定 %s、%s 中的一个";
+  public static final String
+      EXCEPTION_SHOULD_NOT_SET_BOTH_HISTORY_ENABLE_AND_REALTIME_ENABLE_TO_FALSE_33C36714 =
+          "history.enable 和 realtime.enable 不应同时设置为 false。";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_DROP_CONSUMER_GROUP_ARG_BECAUSE_ARG_69EE1696 =
+          "订阅：删除消费者组 %s 失败，原因是 %s";
+  public static final String EXCEPTION_SUBSCRIPTION_FAILED_TO_DROP_TOPIC_ARG_BECAUSE_ARG_F48512CF =
+      "订阅：删除主题 %s 失败，原因是 %s";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_HANDLE_SINGLE_CONSUMER_GROUP_META_CHANGES_FOR_CONSUMER_GROUP_ARG_BECAUSE_ARG_9DBB2FC4 =
+          "订阅：处理消费者组 %s 的单个消费者组元数据变更失败，原因是 %s";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_FAILED_TO_HANDLE_SINGLE_TOPIC_META_CHANGES_FOR_TOPIC_ARG_BECAUSE_ARG_5244F7D4 =
+          "订阅：处理主题 %s 的单个主题元数据变更失败，原因是 %s";
+  public static final String EXCEPTION_THE_PARAMETER_ARG_MUST_BE_GREATER_THAN_0_B9F6C794 =
+      "参数 %s 必须大于 0";
+  public static final String EXCEPTION_THE_PARAMETER_ARG_MUST_NOT_BE_EMPTY_CDF15003 = "参数 %s 不能为空。";
+  public static final String EXCEPTION_THE_TYPE_ARG_CANNOT_BE_CASTED_TO_ARG_40E9EE7A =
+      "类型 %s 无法转换为 %s。";
+  public static final String
+      EXCEPTION_THE_VALUE_OF_ARG_MUST_BE_GREATER_THAN_0_BUT_GOT_ARG_6C7642A1 =
+          "%s 的值必须大于 0，但得到 %d。";
+  public static final String LOG_FAILED_TO_5CCBEC9C = "未能";
+  public static final String LOG_INITIAL_RECEIVER_DELETE_ORIGIN_RECEIVE_DIR_118B3A8A =
+      "初始化接收端：删除原接收目录";
+  public static final String
+      LOG_IOTCONSENSUSV2_RECEIVER_RECEIVED_A_REQUEST_AFTER_IT_WAS_CLOSED_1DD1DE9D =
+          "IoTConsensusV2 接收端关闭后收到了请求。";
+  public static final String
+      LOG_MALFORMED_RELATIONALINSERTTABLETNODE_WITH_NULL_MEASUREMENTS_DATATYPES_COLUMNS_SKIPPING_CONVERSION_646E3BEB =
+          "RelationalInsertTabletNode 格式错误，measurements/dataTypes/columns 为 null，跳过转换";
+  public static final String
+      LOG_SKIPPING_MALFORMED_RELATIONALINSERTTABLETNODE_COLUMN_AT_INDEX_ARG_MEASUREMENTS_ARG_DATATYPES_ARG_COLUMNS_ARG_ADB81EAD =
+          "跳过 RelationalInsertTabletNode 中索引 {} 处格式错误的列（measurements={}，dataTypes={}，columns={}）";
+  public static final String LOG_SUCCESSFULLY_87AA2E73 = "成功";
+  public static final String
+      LOG_WAITING_FOR_THE_PREVIOUS_EVENT_TIMES_OUT_RETURNS_AN_ERROR_TO_LET_THE_SENDER_RETRY_AND_CONTINUE_SCHEDULING_997EF0B5 =
+          "等待前一个事件超时，返回错误以使发送端重试并继续调度。";
+  public static final String
+      MESSAGE_ALL_LOCALLY_REPLAYABLE_WAL_RECORDS_ARE_ALREADY_COVERED_49CD4AF6 =
+          "所有本地可重放的 WAL 记录均已覆盖";
+  public static final String MESSAGE_ARG_MUST_BE_0_BUT_GOT_ARG_4046BA32 = "%s 必须 >= 0，但得到 %s";
+  public static final String MESSAGE_ARG_MUST_BE_ARG_BUT_GOT_ARG_AND_ARG_05717C27 =
+      "%s 必须 <= %s，但得到 %s 和 %s";
+  public static final String MESSAGE_ARG_OR_ARG_6E068B23 = "%s 或 %s";
+  public static final String MESSAGE_ARG_TAIL_START_WITHOUT_PROGRESS_F2F00AE5 = "%s（无进度时从末尾开始）";
+  public static final String MESSAGE_ASSEMBLING_SLICED_PIPE_TRANSFER_REQUEST_EA6180BA =
+      "组装分片的 pipe 传输请求";
+  public static final String MESSAGE_BINARY_REQUEST_BODY_LENGTH_718123BB = "二进制请求体长度";
+  public static final String MESSAGE_BINARY_REQUEST_COUNT_517CF38D = "二进制请求数量";
+  public static final String MESSAGE_BITMAP_COLUMN_EXISTENCE_FCAEE601 = "位图列存在标志";
+  public static final String MESSAGE_BITMAP_EXISTENCE_48DE6555 = "位图存在标志";
+  public static final String MESSAGE_BUFFERING_SLICED_PIPE_TRANSFER_REQUEST_5BB9367A =
+      "缓冲分片的 pipe 传输请求";
+  public static final String MESSAGE_CLEAR_RECEIVE_DIR_MANUALLY_9BE91A01 = "手动清理接收目录";
+  public static final String MESSAGE_COMMITTED_REGION_PROGRESS_FALLBACK_237C42FD =
+      "回退到已提交的 Region 进度";
+  public static final String
+      MESSAGE_CONSENSUSPREFETCHINGQUEUE_ARG_INCONSISTENT_TABLET_OFFSET_FOR_CONSUMER_ARG_COMMIT_CONTEXT_ARG_REQUESTED_OFFSET_ARG_CURRENT_NEXTOFFSET_ARG_B5502990 =
+          "ConsensusPrefetchingQueue %s：消费者 %s 的 tablet 偏移量不一致，提交上下文 %s，请求偏移量 %s，当前 nextOffset %s";
+  public static final String
+      MESSAGE_CONSENSUSPREFETCHINGQUEUE_ARG_NO_IN_FLIGHT_EVENT_FOR_CONSUMER_ARG_COMMIT_CONTEXT_ARG_E6816AC1 =
+          "ConsensusPrefetchingQueue %s：消费者 %s 没有传输中的事件，提交上下文 %s";
+  public static final String
+      MESSAGE_CONSENSUSPREFETCHINGQUEUE_ARG_NO_REMAINING_TABLET_CHUNK_FOR_CONSUMER_ARG_COMMIT_CONTEXT_ARG_REQUESTED_OFFSET_ARG_CURRENT_NEXTOFFSET_ARG_A8323BFC =
+          "ConsensusPrefetchingQueue %s：消费者 %s 没有剩余的 tablet 分块，提交上下文 %s，请求偏移量 %s，当前 nextOffset %s";
+  public static final String
+      MESSAGE_CONSENSUSPREFETCHINGQUEUE_ARG_OFFSET_BASED_TABLET_CONTINUATION_IS_NOT_SUPPORTED_FOR_CONSENSUS_SUBSCRIPTION_CONSUMER_ARG_COMMIT_CONTEXT_ARG_OFFSET_ARG_3245CD9B =
+          "ConsensusPrefetchingQueue %s：Consensus 订阅不支持基于偏移量的 tablet 续传，消费者 %s，提交上下文 %s，偏移量 %s";
+  public static final String MESSAGE_CONSUMER_TOPIC_PROGRESS_HINT_BC1EAE8F = "消费者主题进度提示";
+  public static final String
+      MESSAGE_CURRENT_RESPONSE_IS_NULL_WHEN_FETCHING_NEXT_RESPONSE_CONSUMER_ID_ARG_COMMIT_CONTEXT_ARG_OFFSET_ARG_PREFETCHING_QUEUE_ARG_4BF8D18D =
+          "获取下一个响应时当前响应为 null，消费者 ID：%s，提交上下文：%s，偏移量：%s，预取队列：%s";
+  public static final String
+      MESSAGE_CURRENT_RESPONSE_IS_NULL_WHEN_FETCHING_NEXT_RESPONSE_CONSUMER_ID_ARG_COMMIT_CONTEXT_ARG_WRITING_OFFSET_ARG_PREFETCHING_QUEUE_ARG_101A4F56 =
+          "获取下一个响应时当前响应为 null，消费者 ID：%s，提交上下文：%s，写入偏移量：%s，预取队列：%s";
+  public static final String MESSAGE_DECOMPRESSING_PIPE_TRANSFER_REQUEST_F09C8FD2 = "解压 pipe 传输请求";
+  public static final String MESSAGE_EITHER_ARG_ARG_OR_ARG_ARG_MUST_BE_SPECIFIED_7CD5185D =
+      "必须指定 %s:%s 或 %s:%s";
+  public static final String
+      MESSAGE_ENCOUNTERED_BROKEN_RETAINED_WAL_FILES_DURING_REPLAY_SCAN_D967E7A5 =
+          "重放扫描期间遇到损坏的保留 WAL 文件";
+  public static final String MESSAGE_ERROR_OCCURS_WHEN_RECEIVING_REQUEST_ARG_58E0821E =
+      "接收请求时出错：%s。";
+  public static final String
+      MESSAGE_EXCEPTION_OCCURRED_WHEN_FETCHING_NEXT_RESPONSE_ARG_CONSUMER_ID_ARG_COMMIT_CONTEXT_ARG_OFFSET_ARG_PREFETCHING_QUEUE_ARG_8C49BE57 =
+          "获取下一个响应时发生异常：%s，消费者 ID：%s，提交上下文：%s，偏移量：%s，预取队列：%s";
+  public static final String
+      MESSAGE_EXCEPTION_OCCURRED_WHEN_FETCHING_NEXT_RESPONSE_ARG_CONSUMER_ID_ARG_COMMIT_CONTEXT_ARG_WRITING_OFFSET_ARG_PREFETCHING_QUEUE_ARG_67064CD2 =
+          "获取下一个响应时发生异常：%s，消费者 ID：%s，提交上下文：%s，写入偏移量：%s，预取队列：%s";
+  public static final String MESSAGE_EXCEPTION_OCCURRED_WHILE_SENDING_TO_RECEIVER_ARG_ARG_4085B890 =
+      "向接收端 %s:%s 发送时发生异常。";
+  public static final String MESSAGE_EXECUTE_NULL_STATEMENT_2FC4F8E2 = "执行的语句为 null。";
+  public static final String
+      MESSAGE_EXPECTED_REGION_ID_SET_IS_EMPTY_SENDER_SHOULD_TRY_AGAIN_B6AB06BA =
+          "预期的 Region ID 集合为空，发送端应重试。";
+  public static final String
+      MESSAGE_FAILED_TO_BORROW_CLIENT_FROM_CLIENT_POOL_OR_EXCEPTION_OCCURRED_WHEN_SENDING_TO_RECEIVER_3069AD54 =
+          "从客户端池借用客户端失败，或向接收端发送时发生异常。";
+  public static final String
+      MESSAGE_FAILED_TO_BORROW_CLIENT_FROM_CLIENT_POOL_OR_EXCEPTION_OCCURRED_WHEN_SENDING_TO_RECEIVER_ARG_ARG_6DC79166 =
+          "从客户端池借用客户端失败，或向接收端 %s:%s 发送时发生异常。";
+  public static final String
+      MESSAGE_FAILED_TO_BORROW_CLIENT_FROM_CLIENT_POOL_WHEN_SENDING_TO_RECEIVER_99167DD0 =
+          "向接收端发送时，从客户端池借用客户端失败。";
+  public static final String
+      MESSAGE_FAILED_TO_DEREGISTER_PIPECONNECTORSUBTASK_NO_SUCH_SUBTASK_6702FB4D =
+          "注销 PipeConnectorSubtask 失败，不存在该子任务： ";
+  public static final String MESSAGE_FAILED_TO_SEAL_FILE_ARG_BECAUSE_ARG_0005D0C7 =
+      "封装文件 %s 失败，原因是 %s";
+  public static final String
+      MESSAGE_FAILED_TO_SEAL_FILE_ARG_BECAUSE_THE_LENGTH_OF_FILE_IS_NOT_CORRECT_THE_ORIGINAL_FILE_HAS_LENGTH_ARG_BUT_RECEIVER_FILE_HAS_LENGTH_ARG_5384E25F =
+          "封装文件 %s 失败，文件长度不正确。原始文件长度为 %s，接收文件长度为 %s。";
+  public static final String
+      MESSAGE_FAILED_TO_SEAL_FILE_ARG_BECAUSE_THE_NUMBER_OF_FILES_IS_LESS_THAN_2_33A78E9A =
+          "封装文件 %s 失败，文件数量少于 2。";
+  public static final String
+      MESSAGE_FAILED_TO_SEAL_FILE_ARG_BECAUSE_WRITING_FILE_ARG_IS_NOT_AVAILABLE_D07F8563 =
+          "封装文件 %s 失败，正在写入的文件 %s 不可用。";
+  public static final String MESSAGE_FAILED_TO_SEAL_FILE_ARG_BECAUSE_WRITING_FILE_IS_ARG_E5256BEC =
+      "封装文件 %s 失败，正在写入的文件为 %s。";
+  public static final String MESSAGE_FAILED_TO_SEAL_FILE_ARG_THE_FILE_DOES_NOT_EXIST_8ABC8D19 =
+      "封装文件 %s 失败，该文件不存在。";
+  public static final String
+      MESSAGE_FAILED_TO_SEAL_FILE_BECAUSE_WRITING_FILE_ARG_IS_NOT_AVAILABLE_ED0C7EC3 =
+          "封装文件失败，正在写入的文件 %s 不可用。";
+  public static final String MESSAGE_FAILED_TO_WRITE_FILE_PIECE_BECAUSE_ARG_8932B268 =
+      "写入文件分片失败，原因是 %s";
+  public static final String
+      MESSAGE_INCONSISTENT_FILE_NAME_CURRENT_ARG_INCOMING_ARG_CONSUMER_ARG_WRITING_OFFSET_ARG_PREFETCHING_QUEUE_ARG_E00E88FA =
+          "文件名不一致，当前为 %s，收到的为 %s，消费者：%s，写入偏移量：%s，预取队列：%s";
+  public static final String
+      MESSAGE_INCONSISTENT_OFFSET_CURRENT_ARG_INCOMING_ARG_CONSUMER_ARG_FILE_NAME_ARG_PREFETCHING_QUEUE_ARG_7ACF57BB =
+          "偏移量不一致，当前为 %s，收到的为 %s，消费者：%s，文件名：%s，预取队列：%s";
+  public static final String
+      MESSAGE_INCONSISTENT_OFFSET_CURRENT_ARG_INCOMING_ARG_CONSUMER_ARG_PREFETCHING_QUEUE_ARG_3BB4E919 =
+          "偏移量不一致，当前为 %s，收到的为 %s，消费者：%s，预取队列：%s";
+  public static final String
+      MESSAGE_INCONSISTENT_POLLED_CONSUMER_ID_CURRENT_ARG_INCOMING_ARG_COMMIT_CONTEXT_ARG_OFFSET_ARG_PREFETCHING_QUEUE_ARG_2A5392D5 =
+          "轮询的消费者 ID 不一致，当前为 %s，收到的为 %s，提交上下文：%s，偏移量：%s，预取队列：%s";
+  public static final String
+      MESSAGE_INCONSISTENT_POLLED_CONSUMER_ID_CURRENT_ARG_INCOMING_ARG_COMMIT_CONTEXT_ARG_WRITING_OFFSET_ARG_PREFETCHING_QUEUE_ARG_BFC0847B =
+          "轮询的消费者 ID 不一致，当前为 %s，收到的为 %s，提交上下文：%s，写入偏移量：%s，预取队列：%s";
+  public static final String MESSAGE_INSERT_NODE_COUNT_EAA93423 = "插入节点数量";
+  public static final String
+      MESSAGE_IOTCONSENSUSV2ARG_RECEIVER_THREAD_GET_INTERRUPTED_WHEN_WAITING_FOR_BORROWING_TSFILEWRITER_60D5855E =
+          "IoTConsensusV2%s：接收线程在等待借用 tsFileWriter 时被中断。";
+  public static final String
+      MESSAGE_IOTCONSENSUSV2_PIPENAME_ARG_FAIL_TO_RECEIVE_BECAUSE_SYSTEM_IS_READ_ONLY_B8647AA5 =
+          "IoTConsensusV2-PipeName-%s：接收失败，系统处于只读状态。";
+  public static final String
+      MESSAGE_IOTCONSENSUSV2_PIPENAME_ARG_UNEXPECTED_CONSENSUSGROUPID_ARG_35141E13 =
+          "IoTConsensusV2-PipeName-%s：非预期的 consensusGroupId %s";
+  public static final String
+      MESSAGE_IOTCONSENSUSV2_RECEIVER_RECEIVED_A_DEPRECATED_REQUEST_WHICH_MAY_BECAUSE_ARG_CONSIDER_TO_DISCARD_IT_6378E4D7 =
+          "IoTConsensusV2 接收端收到了已过期的请求，可能原因是 %s。请考虑丢弃该请求。";
+  public static final String
+      MESSAGE_IOTCONSENSUSV2_SYNCCLIENT_CONNECTION_TO_ARG_ARG_FAILED_WHEN_ARG_BECAUSE_ARG_CE442C2C =
+          "IoTConsensusV2：syncClient 连接 %s:%s 在 %s 时失败，原因是：%s";
+  public static final String
+      MESSAGE_IOTCONSENSUSV2_TRANSFER_DELETIONEVENT_ARG_ERROR_RESULT_STATUS_ARG_DDABBD17 =
+          "IoTConsensusV2 传输 DeletionEvent %s 出错，结果状态：%s。";
+  public static final String
+      MESSAGE_IOTCONSENSUSV2_TRANSFER_PIPEINSERTNODETABLETINSERTIONEVENT_ARG_ERROR_RESULT_STATUS_ARG_1B888854 =
+          "IoTConsensusV2 传输 PipeInsertNodeTabletInsertionEvent %s 出错，结果状态：%s";
+  public static final String MESSAGE_IOTCONSENSUSV2_UNKNOWN_PIPEREQUESTTYPE_ARG_47DDDEA7 =
+      "IoTConsensusV2 未知的 PipeRequestType %s。";
+  public static final String MESSAGE_MEASUREMENT_SCHEMA_EXISTENCE_EB269FD7 = "测点元数据存在标志";
+  public static final String MESSAGE_MEASUREMENT_SCHEMA_EXISTENCE_FLAGS_9F9CA352 = "测点元数据存在标志";
+  public static final String
+      MESSAGE_MERGED_COMMITTED_REGION_PROGRESS_WITH_CONSUMER_TOPIC_PROGRESS_HINT_55C07BE8 =
+          "合并已提交的 Region 进度与消费者主题进度提示";
+  public static final String MESSAGE_MESSAGE_ARG_F49E6C85 = " 消息：%s";
+  public static final String MESSAGE_OMIT_THE_REMAINING_ARG_EVENT_S_E57A9B74 = "省略剩余的 %s 个事件……";
+  public static final String MESSAGE_ONE_OF_ARG_ARG_ARG_AND_ARG_MUST_BE_SPECIFIED_3362153D =
+      "必须指定 '%s'、'%s'、'%s' 和 '%s' 中的一个";
+  public static final String
+      MESSAGE_ONLY_IOTDB_THRIFT_SSL_SINK_SUPPORTS_SSL_TRANSMISSION_CURRENTLY_DFA6F0AD =
+          "目前仅 'iotdb-thrift-ssl-sink' 支持 SSL 传输。";
+  public static final String
+      MESSAGE_OUTDATED_POLL_REQUEST_AFTER_COMMIT_CONSUMER_ID_ARG_COMMIT_CONTEXT_ARG_OFFSET_ARG_PREFETCHING_QUEUE_ARG_AF34C3B9 =
+          "提交后收到过期的轮询请求，消费者 ID：%s，提交上下文：%s，偏移量：%s，预取队列：%s";
+  public static final String
+      MESSAGE_OUTDATED_POLL_REQUEST_AFTER_COMMIT_CONSUMER_ID_ARG_COMMIT_CONTEXT_ARG_WRITING_OFFSET_ARG_PREFETCHING_QUEUE_ARG_ACE7A194 =
+          "提交后收到过期的轮询请求，消费者 ID：%s，提交上下文：%s，写入偏移量：%s，预取队列：%s";
+  public static final String MESSAGE_PIPE_STARTING_ARG_A09517B7 = "Pipe：正在启动 %s";
+  public static final String
+      MESSAGE_PIPE_START_TO_EXTRACT_HISTORICAL_TSFILE_AND_DELETION_IF_USES_IOTCONSENSUSV2_C1603968 =
+          "Pipe：开始提取历史 TsFile 和删除事件（使用 IoTConsensusV2 时）";
+  public static final String MESSAGE_PIPE_TASK_RESTARTS_BEFORE_THIS_EVENT_WAS_SENT_HERE_1672EDEB =
+      "pipe 任务在此事件发送到这里之前已重启";
+  public static final String
+      MESSAGE_POLL_AFTER_SEALING_CONSUMER_ARG_FILE_NAME_ARG_WRITING_OFFSET_ARG_PREFETCHING_QUEUE_ARG_3C231E1E =
+          "文件封装后收到轮询请求，消费者：%s，文件名：%s，写入偏移量：%s，预取队列：%s";
+  public static final String MESSAGE_RAW_TABLET_COUNT_BB427E83 = "原始 tablet 数量";
+  public static final String MESSAGE_REFRESH_LEASE_763C9DE1 = "刷新租约";
+  public static final String MESSAGE_RELEASE_TSFILEWRITER_ARG_B6AA2548 = "释放 TsFileWriter-%s";
+  public static final String MESSAGE_REPLAY_LOOKUP_DID_NOT_COMPLETE_ARG_4D644439 = "重放查找未完成：%s";
+  public static final String MESSAGE_REPLAY_SCAN_DID_NOT_COMPLETE_8896B727 = "重放扫描未完成";
+  public static final String MESSAGE_REPLICATE_INDEX_IS_OUT_DATED_C76CF4A7 = "复制索引已过期";
+  public static final String
+      MESSAGE_REQUEST_SENDER_TO_RESET_FILE_READER_S_OFFSET_FROM_ARG_TO_ARG_9E97C709 =
+          "请求发送端将文件读取器的偏移量从 %s 重置为 %s。";
+  public static final String MESSAGE_RESOLVED_FIRST_UNCOVERED_REPLAYABLE_WAL_RECORD_CC3A4597 =
+      "已定位到第一条未覆盖且可重放的 WAL 记录";
+  public static final String
+      MESSAGE_RPC_PROCESSOR_IS_INTERRUPTED_BY_SHUTDOWN_HOOK_WHEN_WAIT_ON_CONDITION_BD788468 =
+          "RPC 处理器等待条件时被关闭钩子中断！";
+  public static final String MESSAGE_SCHEMA_EXISTENCE_A42C4027 = "元数据存在标志";
+  public static final String MESSAGE_SEAL_FILE_ARG_ARG_AND_ARG_ERROR_RESULT_STATUS_ARG_3470FE87 =
+      "封装文件 %s、%s 和 %s 出错，结果状态：%s。";
+  public static final String MESSAGE_SEAL_FILE_ARG_ERROR_RESULT_STATUS_ARG_FE3B82AC =
+      "封装文件 %s 出错，结果状态：%s。";
+  public static final String MESSAGE_SEAL_FILE_ARG_ERROR_SOCKET_ARG_A442249B =
+      "封装文件 %s 出错。Socket：%s。";
+  public static final String
+      MESSAGE_SEAL_SCHEMA_REGION_SNAPSHOT_FILE_ARG_AND_ARG_ERROR_SOCKET_ARG_9232FC1A =
+          "封装 SchemaRegion 快照文件 %s 和 %s 出错。Socket：%s。";
+  public static final String MESSAGE_SENDER_DN_RESTARTS_BEFORE_THIS_EVENT_WAS_SENT_HERE_7B94841A =
+      "发送端 DataNode 在此事件发送到这里之前已重启";
+  public static final String MESSAGE_SERIALIZATION_ERROR_DURING_PIPE_RECEIVING_ARG_FED63B76 =
+      "pipe 接收过程中发生序列化错误，%s";
+  public static final String
+      MESSAGE_SLICE_RECEIVED_WAITING_FOR_MORE_SLICES_TO_COMPLETE_THE_REQUEST_EDB0B3EA =
+          "已收到分片，正在等待更多分片以完成请求。";
+  public static final String
+      MESSAGE_SLICE_REQUEST_IS_OUT_OF_ORDER_PLEASE_CHECK_THE_REQUEST_SEQUENCE_32958FCC =
+          "分片请求顺序错误，请检查请求顺序。";
+  public static final String
+      MESSAGE_SUBSCRIPTIONPREFETCHINGTABLETQUEUE_ARG_IS_CURRENTLY_NOT_TRANSFERRING_ANY_TABLET_TO_CONSUMER_ARG_COMMIT_CONTEXT_ARG_OFFSET_ARG_ED3B95E8 =
+          "SubscriptionPrefetchingTabletQueue %s 当前未向消费者 %s 传输任何 tablet，提交上下文：%s，偏移量：%s";
+  public static final String
+      MESSAGE_SUBSCRIPTIONPREFETCHINGTSFILEQUEUE_ARG_IS_CURRENTLY_NOT_TRANSFERRING_ANY_FILE_TO_CONSUMER_ARG_COMMIT_CONTEXT_ARG_WRITING_OFFSET_ARG_339040B2 =
+          "SubscriptionPrefetchingTsFileQueue %s 当前未向消费者 %s 传输任何文件，提交上下文：%s，写入偏移量：%s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_ARG_IS_ONLY_SUPPORTED_FOR_CONSENSUS_BASED_SUBSCRIPTIONS_CONSUMERGROUP_ARG_TOPIC_ARG_5E577844 =
+          "订阅：%s 仅支持基于 Consensus 的订阅，consumerGroup=%s，topic=%s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_CONSENSUS_ARG_IS_UNAVAILABLE_BECAUSE_SUBSCRIPTION_RUNTIME_IS_STOPPED_CONSUMERGROUP_ARG_TOPIC_ARG_904E899B =
+          "订阅：订阅运行时已停止，Consensus %s 不可用，consumerGroup=%s，topic=%s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_CONSENSUS_SEEK_ONLY_SUPPORTS_BEGINNING_END_OR_TOPIC_PROGRESS_CONSUMERGROUP_ARG_TOPIC_ARG_SEEKTYPE_ARG_68165CFF =
+          "订阅：Consensus seek 仅支持 beginning/end 或主题进度，consumerGroup=%s，topic=%s，seekType=%s";
+  public static final String
+      MESSAGE_SUBSCRIPTION_CONSUMER_OWNER_IS_FENCED_FOR_TOPIC_ARG_REQUEST_OWNER_ID_ARG_REQUEST_OWNER_EPOCH_ARG_CURRENT_OWNER_ID_ARG_CURRENT_OWNER_EPOCH_ARG_7C442275 =
+          "订阅：主题 %s 的消费者 owner 已被隔离，请求的 owner-id：%s，请求的 owner-epoch：%s，当前的 owner-id：%s，当前的"
+              + " owner-epoch：%s。";
+  public static final String MESSAGE_SUBSCRIPTION_NO_BROKER_BOUND_TO_CONSUMER_GROUP_ARG_7198D84A =
+      "订阅：绑定到消费者组 [%s] 的 Broker 不存在";
+  public static final String
+      MESSAGE_SUBSCRIPTION_OWNER_LEASE_FOR_TOPIC_ARG_HAS_EXPIRED_OWNER_ID_ARG_OWNER_EPOCH_ARG_B9D7A369 =
+          "订阅：主题 %s 的 owner 租约已过期，owner-id：%s，owner-epoch：%s。";
+  public static final String
+      MESSAGE_SUBSCRIPTION_PIPE_BROKER_BOUND_TO_CONSUMER_GROUP_ARG_DOES_NOT_EXIST_AC4D1730 =
+          "订阅：绑定到消费者组 [%s] 的 Broker 不存在";
+  public static final String
+      MESSAGE_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_ARG_FOR_CONSUMER_GROUP_ARG_DOES_NOT_EXIST_2F5EE988 =
+          "订阅：主题 [%s] 绑定的消费者组 [%s] 的预取队列不存在";
+  public static final String
+      MESSAGE_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_ARG_FOR_CONSUMER_GROUP_ARG_IS_INVALID_5F6FB774 =
+          "订阅：主题 [%s] 绑定的消费者组 [%s] 的预取队列无效";
+  public static final String
+      MESSAGE_SUBSCRIPTION_TOPIC_ARG_ENABLES_OWNER_FENCING_BUT_CONSUMER_ARG_DOES_NOT_CARRY_OWNER_EPOCH_199193C0 =
+          "订阅：主题 %s 已启用 owner fencing，但消费者 %s 未携带 owner-epoch。";
+  public static final String
+      MESSAGE_SUBSCRIPTION_TOPIC_ARG_ENABLES_OWNER_FENCING_BUT_CONSUMER_ARG_DOES_NOT_CARRY_OWNER_ID_6662E002 =
+          "订阅：主题 %s 已启用 owner fencing，但消费者 %s 未携带 owner-id。";
+  public static final String
+      MESSAGE_TEMPORARILY_OUT_OF_MEMORY_WHEN_EXECUTING_STATEMENT_ARG_REQUESTED_MEMORY_ARG_USED_MEMORY_ARG_FREE_MEMORY_ARG_TOTAL_NON_FLOATING_MEMORY_ARG_2B46F2A6 =
+          "执行语句 %s 时暂时内存不足，请求内存：%s，已用内存：%s，空闲内存：%s，非浮动内存总量：%s";
+  public static final String MESSAGE_THE_OUTPUT_DATABASE_ARG_SHALL_START_WITH_ROOT_54921196 =
+      "输出数据库 %s 应以 root 开头。";
+  public static final String
+      MESSAGE_THE_OUTPUT_MEASUREMENTS_ARG_CONTAINS_ILLEGAL_MEASUREMENTS_THE_MEASUREMENTS_MUST_BE_THE_LAST_LEVEL_OF_A_LEGAL_PATH_793FA8AE =
+          "输出测点 %s 包含不合法的测点名，测点名必须是合法路径的最后一级";
+  public static final String
+      MESSAGE_THE_RECEIVER_ARG_ARG_REJECTED_THE_PIPE_TASK_BECAUSE_ARG_DACFA354 =
+          "接收端 %s:%s 拒绝了 pipe 任务，原因是 %s";
+  public static final String
+      MESSAGE_THE_RECEIVER_MEMORY_IS_NOT_ENOUGH_TO_HANDLE_THE_HANDSHAKE_REQUEST_FROM_DATANODE_0A182782 =
+          "接收端内存不足，无法处理来自 DataNode 的握手请求。";
+  public static final String
+      MESSAGE_TIMEOUT_IOTCONSENSUSV2CONNECTOR_OFFERS_AN_EVENT_INTO_TRANSFERBUFFER_FAILED_BECAUSE_TRANSFERBUFFER_IS_FULL_1FB1135B =
+          "超时：IoTConsensusV2Connector 向 transferBuffer 放入事件失败，transferBuffer 已满。";
+  public static final String MESSAGE_TIMESTAMP_COLUMN_EXISTENCE_E6CFC193 = "时间戳列存在标志";
+  public static final String MESSAGE_TOO_MANY_CONNECTIONS_59B1E815 = "连接数过多。";
+  public static final String
+      MESSAGE_TRANSFER_DATA_NODE_WRITE_PLAN_ARG_ERROR_RESULT_STATUS_ARG_2F546036 =
+          "传输 DataNode 写入计划 %s 出错，结果状态：%s。";
+  public static final String MESSAGE_TRANSFER_DATA_NODE_WRITE_PLAN_ARG_ERROR_SOCKET_ARG_B11D8B04 =
+      "传输 DataNode 写入计划 %s 出错。Socket：%s。";
+  public static final String MESSAGE_TRANSFER_DELETION_ARG_ERROR_RESULT_STATUS_ARG_EA5C7560 =
+      "传输删除事件 %s 出错，结果状态：%s。";
+  public static final String MESSAGE_TRANSFER_DELETION_ARG_ERROR_SOCKET_ARG_A64BC982 =
+      "传输删除事件 %s 出错。Socket：%s。";
+  public static final String MESSAGE_TRANSFER_DELETION_F84E5C8D = "传输删除事件";
+  public static final String MESSAGE_TRANSFER_FILE_ARG_ERROR_SOCKET_ARG_E5731EE7 =
+      "传输文件 %s 出错。Socket：%s。";
+  public static final String MESSAGE_TRANSFER_INSERTIONNODE_TABLET_EBBF5B0E =
+      "传输 insertionNode tablet";
+  public static final String
+      MESSAGE_TRANSFER_PIPEINSERTNODETABLETINSERTIONEVENT_ARG_ERROR_RESULT_STATUS_ARG_91AFC115 =
+          "传输 PipeInsertNodeTabletInsertionEvent %s 出错，结果状态：%s";
+  public static final String
+      MESSAGE_TRANSFER_PIPEINSERTNODETABLETINSERTIONEVENT_ARG_ERROR_SOCKET_ARG_62185FF1 =
+          "传输 PipeInsertNodeTabletInsertionEvent %s 出错。Socket：%s";
+  public static final String
+      MESSAGE_TRANSFER_PIPERAWTABLETINSERTIONEVENT_ARG_ERROR_RESULT_STATUS_ARG_6B130B80 =
+          "传输 PipeRawTabletInsertionEvent %s 出错，结果状态：%s";
+  public static final String
+      MESSAGE_TRANSFER_PIPERAWTABLETINSERTIONEVENT_ARG_ERROR_SOCKET_ARG_42F2BAD5 =
+          "传输 PipeRawTabletInsertionEvent %s 出错。Socket：%s。";
+  public static final String
+      MESSAGE_TRANSFER_PIPETRANSFERTABLETBATCHREQ_ERROR_RESULT_STATUS_ARG_5F084FBA =
+          "传输 PipeTransferTabletBatchReq 出错，结果状态：%s";
+  public static final String MESSAGE_TRANSFER_PIPETRANSFERTABLETBATCHREQ_ERROR_SOCKET_ARG_1AFDAB57 =
+      "传输 PipeTransferTabletBatchReq 出错。Socket：%s。";
+  public static final String MESSAGE_TRANSFER_TABLET_BATCH_25EF4F79 = "传输 tablet 批次";
+  public static final String MESSAGE_TRANSFER_TSFILE_17B7453E = "传输 TsFile";
+  public static final String
+      MESSAGE_TSFILEWRITER_ARG_ROLL_TO_NEW_DIR_AND_DELETE_LAST_WRITING_DIR_F4320934 =
+          "TsFileWriter-%s 切换到新目录并删除上一次写入的目录";
+  public static final String MESSAGE_UNKNOWN_IOTCONSENSUSV2REQUESTTYPE_ARG_0588B50C =
+      "未知的 IoTConsensusV2RequestType %s。";
+  public static final String MESSAGE_UNKNOWN_IOTCONSENSUSV2REQUESTVERSION_ARG_24529AC4 =
+      "未知的 IoTConsensusV2RequestVersion %s。";
+  public static final String MESSAGE_UNKNOWN_PIPESUBSCRIBEREQUESTVERSION_ARG_CA584E58 =
+      "未知的 PipeSubscribeRequestVersion %s。";
+  public static final String MESSAGE_UNKNOWN_REQUEST_TYPE_ARG_C71C1507 = "未知请求类型 %s。";
+  public static final String MESSAGE_UPDATE_TSFILEWRITER_ARG_B0877308 = "更新 TsFileWriter-%s";
+  public static final String MESSAGE_VALUE_COLUMN_EXISTENCE_D90DD8C4 = "值列存在标志";
+  public static final String
+      MESSAGE_WAL_ACCESS_IS_UNAVAILABLE_FOR_REGION_LEVEL_REPLAY_LOOKUP_678CB492 =
+          "无法访问 WAL 以执行 Region 级重放查找";
+  public static final String
+      MESSAGE_WRITE_BACK_PIPEINSERTNODETABLETINSERTIONEVENT_ARG_ERROR_RESULT_STATUS_ARG_E9256344 =
+          "回写 PipeInsertNodeTabletInsertionEvent %s 出错，结果状态：%s";
+  public static final String
+      MESSAGE_WRITE_BACK_PIPERAWTABLETINSERTIONEVENT_ARG_ERROR_RESULT_STATUS_ARG_B2342391 =
+          "回写 PipeRawTabletInsertionEvent %s 出错，结果状态：%s";
+  public static final String
+      MESSAGE_WRITE_BACK_PIPESTATEMENTINSERTIONEVENT_ARG_ERROR_RESULT_STATUS_ARG_54D251A9 =
+          "回写 PipeStatementInsertionEvent %s 出错，结果状态：%s";
 
   private DataNodePipeMessages() {}
   // ---------------------------------------------------------------------------
@@ -2406,12 +2720,6 @@ public final class DataNodePipeMessages {
       "添加 item %s 失败，opc 错误码：0x%s";
   public static final String FAILED_TO_WRITE_WITH_VALUE_AND_OPC_ERROR_CODE_FMT =
       "写入 %s 失败，值：%s，opc 错误码：0x%s";
-  public static final String NO_CERTIFICATE_FOUND =
-      "未找到证书";
-  public static final String CERTIFICATE_MISSING_APPLICATION_URI =
-      "证书缺少 application URI";
-  public static final String NULL_VALUE =
-      "null";
   public static final String INCREASE_REFERENCE_COUNT_ERROR_HOLDER_FMT =
       "增加引用计数出错。Holder Message：%s";
   public static final String DECREASE_REFERENCE_COUNT_ERROR_HOLDER_FMT =
@@ -2430,10 +2738,6 @@ public final class DataNodePipeMessages {
       "ConsensusPrefetchingQueue %s 无法调度 seek(%s)，因为 prefetch runtime 不可用";
   public static final String ERROR_PROGID_INVALID_OR_UNREGISTERED_HRESULT_FMT =
       "错误：ProgID 无效或未注册，(HRESULT=0x%s)";
-  public static final String ERROR_RUNNING_OPC_CLIENT_FMT =
-      "运行 opc client 出错：%s：%s";
-  public static final String ERROR_GETTING_OPC_CLIENT_FMT =
-      "获取 opc client 出错：%s：%s";
 
   // ---------------------------------------------------------------------------
   // slice A1 – datanode pipe (leftover literals)
@@ -2538,12 +2842,6 @@ public final class DataNodePipeMessages {
       "无法释放 Pipe {}（创建时间 {}）在 DataRegion {} 中的 TsFile 解析器内存，因为不存在对应的预留。";
   public static final String LOG_PIPE_PROCESSOR_WORKER_ARG_HAS_BEEN_PROCESSING_THE_SAME_EVENT_FOR_ARG_MS_PIPE_ARG_DATAREGION_ARG_SUBTASK_ARG_EVENT_ARG_THREAD_STATE_ARG_STACK_ARG_63B40775 =
       "Pipe processor worker {} 已连续处理同一 event {} ms。Pipe：{}，DataRegion：{}，subtask：{}，event：{}，线程状态：{}。栈：{}";
-  public static final String LOG_OPC_UA_SERVER_OPERATION_LIMITS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_5D2BCC90 =
-      "OPC UA 服务器操作限制：maxNodesPerWrite={}，maxNodesPerNodeManagement={}";
-  public static final String LOG_INTERRUPTED_WHILE_READING_OPC_UA_SERVER_OPERATION_LIMITS_USE_DEFAULTS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_357D46A4 =
-      "读取 OPC UA 服务器操作限制时被中断，使用默认值：maxNodesPerWrite={}，maxNodesPerNodeManagement={}";
-  public static final String LOG_FAILED_TO_READ_OPC_UA_SERVER_OPERATION_LIMITS_USE_DEFAULTS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_65460871 =
-      "读取 OPC UA 服务器操作限制失败，使用默认值：maxNodesPerWrite={}，maxNodesPerNodeManagement={}";
   public static final String MESSAGE_ARG_SUBSCRIPTION_ENTRY_REQUIRES_ARG_BYTES_ABOVE_THE_CURRENT_PER_QUEUE_MAXIMUM_ARG_BYTES_DATANODE_BUDGET_ARG_BYTES_REDUCE_THE_WRITE_BATCH_FIELD_SIZE_OR_INCREASE_SUBSCRIPTION_MATERIALIZATION_MEMORY_WAL_PROGRESS_HAS_NOT_ADVANCED_AFCBC7FC =
       "[%s] 订阅 entry 需要 %d 字节，超过当前队列可用上限 %d 字节（DataNode 预算 %d 字节）。请减小写入 batch/字段大小或增加订阅物化内存。WAL 进度未推进。";
   public static final String LOG_SUBSCRIPTION_FAILED_TO_REPLAY_DELIVERY_BATCH_ARG_FROM_WAL_RETAINING_UNCOMMITTED_STATE_0654EACD =
@@ -2631,4 +2929,8 @@ public final class DataNodePipeMessages {
   public static final String
       MESSAGE_FAILED_TO_APPEND_LEGACY_PIPE_RECEIVER_FILE_ARG_AT_OFFSET_ARG_WITH_ARG_BYTES_ARG_57428A06 =
           "追加 legacy pipe receiver 文件 %s 失败，偏移量 %d，写入 %d 字节：%s";
+
+  public static final String
+      EXCEPTION_HISTORICAL_SUMMARY_EXTRACTEDTSFILECOUNT_ARG_SKIPPEDTSFILECOUNT_ARG_SPLITTSFILECOUNT_ARG_UNSPLITTSFILECOUNT_ARG_DELETIONCOUNT_ARG_C8BF3247 =
+          "历史数据概览：提取的 TsFile 数=%s，跳过的 TsFile 数=%s，拆分的 TsFile 数=%s，未拆分的 TsFile 数=%s，删除数=%s";
 }

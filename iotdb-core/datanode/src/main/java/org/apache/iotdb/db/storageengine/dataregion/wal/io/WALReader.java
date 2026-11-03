@@ -32,6 +32,7 @@ import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
@@ -85,16 +86,24 @@ public class WALReader implements Closeable {
         nextEntry = null;
         return false;
       }
+    } catch (WALFormatException e) {
+      throw new UncheckedIOException(e);
     } catch (EOFException e) {
       fileCorrupted = true;
       return false;
     } catch (IOException e) {
+      if (WALFormatException.isFatal(e)) {
+        throw new UncheckedIOException(e);
+      }
       fileCorrupted = true;
       // log only when file should be complete
       if (!fileMayCorrupt) {
         logger.warn(StorageEngineMessages.FAIL_TO_READ_WAL_ENTRY_SKIP_BROKEN, logFile, e);
       }
     } catch (Exception e) {
+      if (WALFormatException.isFatal(e)) {
+        throw new IllegalStateException(e);
+      }
       fileCorrupted = true;
       logger.warn(StorageEngineMessages.FAIL_TO_READ_WAL_ENTRY_SKIP_BROKEN, logFile, e);
     }

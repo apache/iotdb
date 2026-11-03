@@ -80,6 +80,8 @@ public class ActiveLoadTsFileLoader {
 
   private final AtomicReference<WrappedThreadPoolExecutor> activeLoadExecutor =
       new AtomicReference<>();
+  // Guarded by activeLoadExecutor, including tasks submitted but not yet started.
+  private int activeLoadTasks;
   private final AtomicReference<String> failDir = new AtomicReference<>();
   private final boolean isVerify = IOTDB_CONFIG.isLoadActiveListeningVerifyEnable();
 
@@ -137,39 +139,47 @@ public class ActiveLoadTsFileLoader {
   }
 
   private void adjustExecutorIfNecessary() {
-    if (activeLoadExecutor.get() == null) {
-      synchronized (activeLoadExecutor) {
-        if (activeLoadExecutor.get() == null) {
-          activeLoadExecutor.set(
-              new WrappedThreadPoolExecutor(
-                  IOTDB_CONFIG.getLoadActiveListeningMaxThreadNum(),
-                  IOTDB_CONFIG.getLoadActiveListeningMaxThreadNum(),
-                  0L,
-                  TimeUnit.SECONDS,
-                  new LinkedBlockingQueue<>(),
-                  new IoTThreadFactory(ThreadName.ACTIVE_LOAD_TSFILE_LOADER.name()),
-                  ThreadName.ACTIVE_LOAD_TSFILE_LOADER.name()));
+    synchronized (activeLoadExecutor) {
+      if (activeLoadExecutor.get() == null) {
+        activeLoadExecutor.set(
+            new WrappedThreadPoolExecutor(
+                IOTDB_CONFIG.getLoadActiveListeningMaxThreadNum(),
+                IOTDB_CONFIG.getLoadActiveListeningMaxThreadNum(),
+                0L,
+                TimeUnit.SECONDS,
+                new LinkedBlockingQueue<>(),
+                new IoTThreadFactory(ThreadName.ACTIVE_LOAD_TSFILE_LOADER.name()),
+                ThreadName.ACTIVE_LOAD_TSFILE_LOADER.name()));
+      }
+
+      final WrappedThreadPoolExecutor executor = activeLoadExecutor.get();
+      final int targetCorePoolSize =
+          Math.min(pendingQueue.size(), IOTDB_CONFIG.getLoadActiveListeningMaxThreadNum());
+
+      if (executor.getCorePoolSize() != targetCorePoolSize) {
+        executor.setCorePoolSize(targetCorePoolSize);
+      }
+
+      // Executor active counts include a retiring worker, and exclude tasks not started yet.
+      // Reserve each loader task here, then release and recheck the queue when it exits.
+      while (activeLoadTasks < targetCorePoolSize) {
+        activeLoadTasks++;
+        try {
+          executor.execute(() -> tryLoadPendingTsFiles(executor));
+        } catch (final RuntimeException | Error e) {
+          activeLoadTasks--;
+          throw e;
         }
       }
-    }
-
-    final int targetCorePoolSize =
-        Math.min(pendingQueue.size(), IOTDB_CONFIG.getLoadActiveListeningMaxThreadNum());
-
-    if (activeLoadExecutor.get().getCorePoolSize() != targetCorePoolSize) {
-      activeLoadExecutor.get().setCorePoolSize(targetCorePoolSize);
-    }
-
-    // calculate how many threads need to be loaded
-    final int threadsToBeAdded =
-        Math.max(targetCorePoolSize - activeLoadExecutor.get().getActiveCount(), 0);
-    for (int i = 0; i < threadsToBeAdded; i++) {
-      activeLoadExecutor.get().execute(this::tryLoadPendingTsFiles);
     }
   }
 
   public void stop() {
-    final WrappedThreadPoolExecutor executor = activeLoadExecutor.getAndSet(null);
+    final WrappedThreadPoolExecutor executor;
+    synchronized (activeLoadExecutor) {
+      executor = activeLoadExecutor.getAndSet(null);
+      activeLoadTasks = 0;
+    }
     if (executor == null) {
       pendingQueue.clearPending();
       return;
@@ -194,6 +204,20 @@ public class ActiveLoadTsFileLoader {
         pendingQueue.clear();
       } else {
         pendingQueue.clearPending();
+      }
+    }
+  }
+
+  private void tryLoadPendingTsFiles(final WrappedThreadPoolExecutor executor) {
+    try {
+      tryLoadPendingTsFiles();
+    } finally {
+      synchronized (activeLoadExecutor) {
+        // A stopped executor must not restart the loader or change a replacement's task count.
+        if (activeLoadExecutor.get() == executor) {
+          activeLoadTasks--;
+          adjustExecutorIfNecessary();
+        }
       }
     }
   }

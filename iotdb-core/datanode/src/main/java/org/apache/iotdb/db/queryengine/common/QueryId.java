@@ -46,7 +46,8 @@ public class QueryId {
   private int nextPlanNodeIndex;
   private int nextPlanFragmentIndex;
 
-  private static final String INVALID_ID_ERROR_MSG = "Invalid id %s";
+  private static final String INVALID_ID_ERROR_MSG =
+      DataNodeQueryMessages.EXCEPTION_INVALID_ID_ARG_4E38C37A;
 
   public static QueryId valueOf(String queryId) {
     // ID is verified in the constructor

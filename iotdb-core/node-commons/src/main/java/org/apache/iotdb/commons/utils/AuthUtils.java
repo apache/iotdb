@@ -96,22 +96,25 @@ public class AuthUtils {
       }
 
       if (!hasLowerCase || !hasUpperCase || !hasDigit || !hasSpecialChar) {
-        StringBuilder builder = new StringBuilder("Invalid password, must contain at least");
+        StringBuilder builder = new StringBuilder();
         if (!hasLowerCase) {
-          builder.append(" one lowercase letter,");
+          builder.append(AuthMessages.EXCEPTION_ONE_LOWERCASE_LETTER_B49601B4);
         }
         if (!hasUpperCase) {
-          builder.append(" one uppercase letter,");
+          builder.append(AuthMessages.EXCEPTION_ONE_UPPERCASE_LETTER_94B320E6);
         }
         if (!hasDigit) {
-          builder.append(" one digit,");
+          builder.append(AuthMessages.EXCEPTION_ONE_DIGIT_27AFB265);
         }
         if (!hasSpecialChar) {
-          builder.append(" one special character,");
+          builder.append(AuthMessages.EXCEPTION_ONE_SPECIAL_CHARACTER_251EE695);
         }
         builder.deleteCharAt(builder.length() - 1);
-        builder.append(".");
-        throw new AuthException(TSStatusCode.ILLEGAL_PASSWORD, builder.toString());
+        throw new AuthException(
+            TSStatusCode.ILLEGAL_PASSWORD,
+            String.format(
+                AuthMessages.EXCEPTION_INVALID_PASSWORD_MUST_CONTAIN_AT_LEAST_ARG_4A71F1F6,
+                builder));
       }
     }
   }

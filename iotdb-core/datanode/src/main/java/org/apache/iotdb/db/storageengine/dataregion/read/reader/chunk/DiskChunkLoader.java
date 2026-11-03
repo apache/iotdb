@@ -92,6 +92,7 @@ public class DiskChunkLoader implements IChunkLoader {
       byte chunkType = chunk.getHeader().getChunkType();
       if (chunkType != MetaMarker.CHUNK_HEADER
           && chunkType != MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+        chunk.close();
         throw new ChunkTypeInconsistentException();
       }
 
@@ -109,6 +110,9 @@ public class DiskChunkLoader implements IChunkLoader {
               chunk,
               globalTimeFilter,
               this.context.getQueryStatistics()::addFilteredRowsOfPageLevel);
+      if (chunk.getEncryptParam() != null && chunk.getEncryptParam().isTdePageAead()) {
+        context.getQueryChunkReaders().retain(chunkReader, chunkReader.loadPageReaderList());
+      }
       SeriesScanCostMetricSet.getInstance()
           .recordSeriesScanCost(INIT_CHUNK_READER_NONALIGNED_DISK, System.nanoTime() - t2);
 

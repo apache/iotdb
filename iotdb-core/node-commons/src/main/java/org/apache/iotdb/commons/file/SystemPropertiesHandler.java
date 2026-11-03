@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.file;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.i18n.CommonMessages;
+import org.apache.iotdb.commons.i18n.StorageMessages;
 import org.apache.iotdb.commons.utils.FileUtils;
 
 import org.apache.ratis.util.AutoCloseableLock;
@@ -185,7 +186,8 @@ public abstract class SystemPropertiesHandler {
     if (formalFile.exists() && !FileUtils.deleteFileIfExist(formalFile)) {
       String msg =
           String.format(
-              "Delete formal system properties file fail: %s", formalFile.getAbsoluteFile());
+              StorageMessages.EXCEPTION_DELETE_FORMAL_SYSTEM_PROPERTIES_FILE_FAIL_ARG_BB18DD99,
+              formalFile.getAbsoluteFile());
       throw new IOException(msg);
     }
 

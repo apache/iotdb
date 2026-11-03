@@ -101,12 +101,14 @@ public class IoTConsensusRecoveryTest {
     IoTConsensus.onPeerRecovering =
         (groupId, server) -> {
           assertSame(server, consensus.getImpl(groupId));
+          assertTrue(consensus.isPeerCreationCallbackPending(groupId));
           assertFalse(stateMachines.get(groupId).started);
           notifications.computeIfAbsent(groupId, ignored -> new ArrayList<>()).add("recovering");
         };
     IoTConsensus.onNewPeerCreated =
         (groupId, server) -> {
           assertSame(server, consensus.getImpl(groupId));
+          assertTrue(consensus.isPeerCreationCallbackPending(groupId));
           assertTrue(stateMachines.get(groupId).started);
           notifications.computeIfAbsent(groupId, ignored -> new ArrayList<>()).add("available");
         };
@@ -116,6 +118,8 @@ public class IoTConsensusRecoveryTest {
     assertEquals(2, notifications.size());
     assertEquals(Arrays.asList("recovering", "available"), notifications.get(firstRegion));
     assertEquals(Arrays.asList("recovering", "available"), notifications.get(secondRegion));
+    assertFalse(consensus.isPeerCreationCallbackPending(firstRegion));
+    assertFalse(consensus.isPeerCreationCallbackPending(secondRegion));
   }
 
   @Test
@@ -141,6 +145,24 @@ public class IoTConsensusRecoveryTest {
     assertTrue(notifiedRegions.containsAll(Arrays.asList(firstRegion, secondRegion)));
     assertTrue(stateMachines.get(firstRegion).started);
     assertTrue(stateMachines.get(secondRegion).started);
+    assertFalse(consensus.isPeerCreationCallbackPending(firstRegion));
+    assertFalse(consensus.isPeerCreationCallbackPending(secondRegion));
+  }
+
+  @Test
+  public void testNewPeerRemainsPendingUntilCallbackReturns() throws Exception {
+    final DataRegionId regionId = new DataRegionId(3);
+    IoTConsensus.onNewPeerCreated =
+        (groupId, server) -> {
+          assertSame(server, consensus.getImpl(groupId));
+          assertTrue(consensus.getAllConsensusGroupIds().contains(groupId));
+          assertTrue(consensus.isPeerCreationCallbackPending(groupId));
+          throw new IllegalStateException("subscription binding failed");
+        };
+
+    createPeer(regionId);
+
+    assertFalse(consensus.isPeerCreationCallbackPending(regionId));
   }
 
   private IoTConsensus newConsensus() {

@@ -192,8 +192,10 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
       receiverStatusHandler.handle(
           status,
           String.format(
-              "Transfer config region write plan %s error, result status %s.",
-              pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().getType(), status),
+              ManagerMessages
+                  .MESSAGE_TRANSFER_CONFIG_REGION_WRITE_PLAN_ARG_ERROR_RESULT_STATUS_ARG_E5CA3333,
+              pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().getType(),
+              status),
           pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().toString(),
           true);
     }
@@ -284,8 +286,10 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
       receiverStatusHandler.handle(
           status,
           String.format(
-              "Seal config region snapshot file %s error, result status %s.",
-              snapshotFile, resp.getStatus()),
+              ManagerMessages
+                  .MESSAGE_SEAL_CONFIG_REGION_SNAPSHOT_FILE_ARG_ERROR_RESULT_STATUS_ARG_D89B8A5A,
+              snapshotFile,
+              resp.getStatus()),
           snapshotFile.toString(),
           true);
     }
