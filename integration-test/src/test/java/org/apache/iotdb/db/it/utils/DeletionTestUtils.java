@@ -25,6 +25,7 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
@@ -89,9 +90,7 @@ public final class DeletionTestUtils {
     Map<Long, Long> points = new TreeMap<>();
     try (TsFileSequenceReader reader = new TsFileSequenceReader(file.toString())) {
       List<TimeseriesMetadata> series =
-          reader
-              .getAllTimeseriesMetadata(true)
-              .get(IDeviceID.Factory.DEFAULT_FACTORY.create(device));
+          reader.getAllTimeseriesMetadata(true).get(new PlainDeviceID(device));
       if (series != null) {
         for (TimeseriesMetadata metadata : series) {
           if (!measurement.equals(metadata.getMeasurementId())) {

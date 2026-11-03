@@ -641,7 +641,7 @@ public class TsFilePlanRedoerTest {
     tsFileResource.updateEndTime(DEVICE1_NAME, 2);
     tsFileResource.updateStartTime(DEVICE2_NAME, 3);
     tsFileResource.updateEndTime(DEVICE2_NAME, 4);
-    IDeviceID nestedDevice = IDeviceID.Factory.DEFAULT_FACTORY.create(SG_NAME + ".d1.child");
+    IDeviceID nestedDevice = new PlainDeviceID(SG_NAME + ".d1.child");
     tsFileResource.updateStartTime(nestedDevice, 1);
     tsFileResource.updateEndTime(nestedDevice, 1);
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource);
@@ -676,7 +676,7 @@ public class TsFilePlanRedoerTest {
     Deletion nestedFieldDeletion = findDeletion(allDeletions.subList(3, 6), nestedDevice, "s2");
     assertNotNull(nestedFieldDeletion);
     assertEquals(1, nestedFieldDeletion.getEndTime());
-    IDeviceID unflushedDevice = IDeviceID.Factory.DEFAULT_FACTORY.create(SG_NAME + ".d1.unflushed");
+    IDeviceID unflushedDevice = new PlainDeviceID(SG_NAME + ".d1.unflushed");
     assertNull(findDeletion(allDeletions, unflushedDevice, "s1"));
   }
 

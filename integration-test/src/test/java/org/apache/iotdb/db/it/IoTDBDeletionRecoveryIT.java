@@ -24,7 +24,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
-import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -86,8 +86,8 @@ public class IoTDBDeletionRecoveryIT {
       Path history =
           DeletionTestUtils.assertSharedTsFile(
               "root.restart_delete",
-              IDeviceID.Factory.DEFAULT_FACTORY.create("root.restart_delete.d1"),
-              IDeviceID.Factory.DEFAULT_FACTORY.create("root.restart_delete.d2"));
+              new PlainDeviceID("root.restart_delete.d1"),
+              new PlainDeviceID("root.restart_delete.d2"));
       assertEquals(
           Map.of(1L, 11L, 2L, 12L),
           DeletionTestUtils.readTreePoints(history, "root.restart_delete.d1", "s1"));
