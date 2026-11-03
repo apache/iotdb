@@ -866,27 +866,58 @@ public class IoTConsensusServerImpl {
 
   public void waitTargetPeerUntilSyncLogCompleted(Peer targetPeer)
       throws ConsensusGroupModifyPeerException {
-    long checkIntervalInMs = 10_000L;
+    waitTargetPeerUntilSyncLogCompleted(targetPeer, Long.MAX_VALUE, 10_000L, false);
+  }
+
+  /** Wait for writes accepted before the first check, without chasing subsequent writes. */
+  public void waitTargetPeerUntilSyncLogCompleted(Peer targetPeer, long timeoutMs)
+      throws ConsensusGroupModifyPeerException {
+    waitTargetPeerUntilSyncLogCompleted(targetPeer, timeoutMs, 1000L, true);
+  }
+
+  private void waitTargetPeerUntilSyncLogCompleted(
+      Peer targetPeer, long timeoutMs, long checkIntervalInMs, boolean useFixedBoundary)
+      throws ConsensusGroupModifyPeerException {
+    final long startNanos = System.nanoTime();
+    final long timeoutNanos = TimeUnit.MILLISECONDS.toNanos(timeoutMs);
     try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
+      long targetSearchIndex = -1;
       while (true) {
         TWaitSyncLogCompleteRes res =
             client.waitSyncLogComplete(
                 new TWaitSyncLogCompleteReq(targetPeer.getGroupId().convertToTConsensusGroupId()));
-        if (res.complete) {
+        // Capture a finite replication boundary even if the writer continues accepting data.
+        if (targetSearchIndex < 0) {
+          targetSearchIndex = res.searchIndex;
+        }
+        final long currentTargetIndex = useFixedBoundary ? targetSearchIndex : res.searchIndex;
+        if (useFixedBoundary ? res.safeIndex >= targetSearchIndex : res.complete) {
           logger.info(
               IoTConsensusMessages.WAIT_SYNC_LOG_COMPLETED,
               targetPeer,
-              res.searchIndex,
+              currentTargetIndex,
               res.safeIndex);
           return;
         }
         logger.info(
             IoTConsensusMessages.WAIT_SYNC_LOG_IN_PROGRESS,
             targetPeer,
-            res.searchIndex,
+            currentTargetIndex,
             res.safeIndex);
-        Thread.sleep(checkIntervalInMs);
+        final long remainingNanos = timeoutNanos - (System.nanoTime() - startNanos);
+        if (remainingNanos <= 0) {
+          throw new ConsensusGroupModifyPeerException(
+              String.format(
+                  IoTConsensusMessages
+                      .EXCEPTION_TIMED_OUT_AFTER_ARG_MS_WAITING_FOR_ARG_TO_REPLICATE_THROUGH_INDEX_ARG_CURRENT_SYNC_INDEX_ARG_11DCFE73,
+                  timeoutMs,
+                  targetPeer,
+                  targetSearchIndex,
+                  res.safeIndex));
+        }
+        TimeUnit.NANOSECONDS.sleep(
+            Math.min(TimeUnit.MILLISECONDS.toNanos(checkIntervalInMs), remainingNanos));
       }
     } catch (ClientManagerException | TException e) {
       throw new ConsensusGroupModifyPeerException(

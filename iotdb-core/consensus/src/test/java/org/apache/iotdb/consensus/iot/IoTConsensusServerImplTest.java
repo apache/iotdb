@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.iot;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserDataTransferAuditHandler;
+import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
@@ -31,7 +32,11 @@ import org.apache.iotdb.consensus.common.request.DeserializedBatchIndexedConsens
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.config.UserDataTransferAuditClassifier;
+import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.i18n.ConsensusMessages;
+import org.apache.iotdb.consensus.iot.client.SyncIoTConsensusServiceClient;
+import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteReq;
+import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteRes;
 import org.apache.iotdb.consensus.iot.util.TestEntry;
 import org.apache.iotdb.consensus.iot.util.TestStateMachine;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -39,6 +44,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
 import java.util.Collections;
@@ -57,6 +63,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class IoTConsensusServerImplTest {
@@ -66,6 +73,136 @@ public class IoTConsensusServerImplTest {
   private static final int PEERS_PER_WRITER = 1_000;
 
   @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+  @Test(timeout = 5000)
+  @SuppressWarnings("unchecked")
+  public void testReplicationWaitUsesFixedBoundaryWhileWriterContinues() throws Exception {
+    final ScheduledExecutorService backgroundTaskService =
+        Executors.newSingleThreadScheduledExecutor();
+    final Peer thisNode = new Peer(new DataRegionId(1), 0, new TEndPoint("127.0.0.1", 6667));
+    final Peer remotePeer = new Peer(new DataRegionId(1), 1, new TEndPoint("127.0.0.1", 6668));
+    final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> manager =
+        Mockito.mock(IClientManager.class);
+    final SyncIoTConsensusServiceClient client = Mockito.mock(SyncIoTConsensusServiceClient.class);
+    Mockito.when(manager.borrowClient(remotePeer.getEndpoint())).thenReturn(client);
+    Mockito.when(client.waitSyncLogComplete(Mockito.any(TWaitSyncLogCompleteReq.class)))
+        .thenReturn(new TWaitSyncLogCompleteRes(false, 10, 0))
+        // The snapshot is replicated although newer writes have not caught up yet.
+        .thenReturn(new TWaitSyncLogCompleteRes(false, 11, 10))
+        .thenThrow(new AssertionError("replication boundary moved with the writer"));
+    try {
+      final IoTConsensusServerImpl server =
+          new IoTConsensusServerImpl(
+              temporaryFolder.getRoot().getAbsolutePath(),
+              null,
+              DirectoryStrategyType.SEQUENCE_STRATEGY,
+              thisNode,
+              Collections.singletonList(thisNode),
+              new TestStateMachine(),
+              backgroundTaskService,
+              null,
+              manager,
+              IoTConsensusConfig.newBuilder().build());
+      server.waitTargetPeerUntilSyncLogCompleted(remotePeer, 3000);
+      Mockito.verify(client, Mockito.times(2))
+          .waitSyncLogComplete(Mockito.any(TWaitSyncLogCompleteReq.class));
+      Mockito.verify(client).close();
+    } finally {
+      backgroundTaskService.shutdownNow();
+    }
+  }
+
+  @Test(timeout = 5000)
+  public void testReplicationWaitTimesOutAndReleasesClient() throws Exception {
+    assertReplicationWaitFailure(false);
+  }
+
+  @Test(timeout = 30000)
+  @SuppressWarnings("unchecked")
+  public void testPeerRemovalWaitStillRequiresReplicationComplete() throws Exception {
+    final ScheduledExecutorService backgroundTaskService =
+        Executors.newSingleThreadScheduledExecutor();
+    final Peer thisNode = new Peer(new DataRegionId(1), 0, new TEndPoint("127.0.0.1", 6667));
+    final Peer remotePeer = new Peer(new DataRegionId(1), 1, new TEndPoint("127.0.0.1", 6668));
+    final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> manager =
+        Mockito.mock(IClientManager.class);
+    final SyncIoTConsensusServiceClient client = Mockito.mock(SyncIoTConsensusServiceClient.class);
+    Mockito.when(manager.borrowClient(remotePeer.getEndpoint())).thenReturn(client);
+    Mockito.when(client.waitSyncLogComplete(Mockito.any(TWaitSyncLogCompleteReq.class)))
+        .thenReturn(new TWaitSyncLogCompleteRes(false, 10, 0))
+        .thenReturn(new TWaitSyncLogCompleteRes(false, 11, 10))
+        .thenReturn(new TWaitSyncLogCompleteRes(true, 11, 11));
+    try {
+      final IoTConsensusServerImpl server =
+          new IoTConsensusServerImpl(
+              temporaryFolder.getRoot().getAbsolutePath(),
+              null,
+              DirectoryStrategyType.SEQUENCE_STRATEGY,
+              thisNode,
+              Collections.singletonList(thisNode),
+              new TestStateMachine(),
+              backgroundTaskService,
+              null,
+              manager,
+              IoTConsensusConfig.newBuilder().build());
+      server.waitTargetPeerUntilSyncLogCompleted(remotePeer);
+      Mockito.verify(client, Mockito.times(3))
+          .waitSyncLogComplete(Mockito.any(TWaitSyncLogCompleteReq.class));
+      Mockito.verify(client).close();
+    } finally {
+      backgroundTaskService.shutdownNow();
+    }
+  }
+
+  @Test(timeout = 5000)
+  public void testReplicationWaitPreservesInterruptAndReleasesClient() throws Exception {
+    assertReplicationWaitFailure(true);
+  }
+
+  @SuppressWarnings("unchecked")
+  private void assertReplicationWaitFailure(final boolean interrupt) throws Exception {
+    final ScheduledExecutorService backgroundTaskService =
+        Executors.newSingleThreadScheduledExecutor();
+    final Peer thisNode = new Peer(new DataRegionId(1), 0, new TEndPoint("127.0.0.1", 6667));
+    final Peer remotePeer = new Peer(new DataRegionId(1), 1, new TEndPoint("127.0.0.1", 6668));
+    final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> manager =
+        Mockito.mock(IClientManager.class);
+    final SyncIoTConsensusServiceClient client = Mockito.mock(SyncIoTConsensusServiceClient.class);
+    Mockito.when(manager.borrowClient(remotePeer.getEndpoint())).thenReturn(client);
+    Mockito.when(client.waitSyncLogComplete(Mockito.any(TWaitSyncLogCompleteReq.class)))
+        .thenReturn(new TWaitSyncLogCompleteRes(false, 10, 0));
+    try {
+      final IoTConsensusServerImpl server =
+          new IoTConsensusServerImpl(
+              temporaryFolder.getRoot().getAbsolutePath(),
+              null,
+              DirectoryStrategyType.SEQUENCE_STRATEGY,
+              thisNode,
+              Collections.singletonList(thisNode),
+              new TestStateMachine(),
+              backgroundTaskService,
+              null,
+              manager,
+              IoTConsensusConfig.newBuilder().build());
+      if (interrupt) {
+        Thread.currentThread().interrupt();
+      }
+      final ConsensusGroupModifyPeerException exception =
+          assertThrows(
+              ConsensusGroupModifyPeerException.class,
+              () -> server.waitTargetPeerUntilSyncLogCompleted(remotePeer, interrupt ? 3000 : 0));
+      assertEquals(interrupt, Thread.currentThread().isInterrupted());
+      if (interrupt) {
+        assertTrue(exception.getCause() instanceof InterruptedException);
+      } else {
+        assertTrue(exception.getMessage().contains(remotePeer.toString()));
+      }
+      Mockito.verify(client).close();
+    } finally {
+      Thread.interrupted();
+      backgroundTaskService.shutdownNow();
+    }
+  }
 
   @Test
   public void testSyncLogBecomesReadOnlyWhileWaiting() throws Exception {

@@ -98,6 +98,12 @@ public class PipeSourceConstant {
   public static final String EXTRACTOR_HISTORY_ENABLE_KEY = "extractor.history.enable";
   public static final String SOURCE_HISTORY_ENABLE_KEY = "source.history.enable";
   public static final boolean EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE = true;
+  public static final String EXTRACTOR_HISTORY_WAIT_FOR_REPLICATION_TIMEOUT_MS_KEY =
+      "extractor.history.wait-for-replication.timeout-ms";
+  public static final String SOURCE_HISTORY_WAIT_FOR_REPLICATION_TIMEOUT_MS_KEY =
+      "source.history.wait-for-replication.timeout-ms";
+  public static final long EXTRACTOR_HISTORY_WAIT_FOR_REPLICATION_TIMEOUT_MS_DEFAULT_VALUE =
+      30_000L;
   public static final String EXTRACTOR_HISTORY_START_TIME_KEY = "extractor.history.start-time";
   public static final String SOURCE_HISTORY_START_TIME_KEY = "source.history.start-time";
   public static final String EXTRACTOR_HISTORY_END_TIME_KEY = "extractor.history.end-time";

@@ -564,6 +564,8 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_LOAD_SNAPSHOT_FROM_BYTEBUFFER =
       "加载 snapshot from byteBuffer {} 失败。";
   public static final String FAILED_TO_START_SOURCES = "启动 sources 失败。";
+  public static final String EXCEPTION_HISTORY_WAIT_FOR_REPLICATION_TIMEOUT_MS_MUST_BE_GREATER_THAN_0_4A4E80CB =
+      "history.wait-for-replication.timeout-ms 必须大于 0。";
   public static final String HEARTBEAT_EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE =
       "Heartbeat Event {} 无法被提供，因为其引用计数无法增加";
   public static final String EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE_DATA_IS_LOST =

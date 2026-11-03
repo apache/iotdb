@@ -154,6 +154,8 @@ public final class IoTConsensusMessages {
       "error when waiting %s to complete SyncLog. %s";
   public static final String THREAD_INTERRUPTED_WAITING_SYNC_LOG =
       "thread interrupted when waiting %s to complete SyncLog. %s";
+  public static final String EXCEPTION_TIMED_OUT_AFTER_ARG_MS_WAITING_FOR_ARG_TO_REPLICATE_THROUGH_INDEX_ARG_CURRENT_SYNC_INDEX_ARG_11DCFE73 =
+      "Timed out after %s ms waiting for %s to replicate through index %s (current sync index: %s).";
 
   // ===================== Index controller =====================
 

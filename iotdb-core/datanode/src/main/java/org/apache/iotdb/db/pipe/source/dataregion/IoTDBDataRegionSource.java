@@ -27,6 +27,12 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOpera
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.source.IoTDBSource;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.consensus.IConsensus;
+import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
+import org.apache.iotdb.consensus.iot.IoTConsensus;
+import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
@@ -63,6 +69,7 @@ import javax.annotation.Nonnull;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -75,6 +82,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_WAIT_FOR_REPLICATION_TIMEOUT_MS_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_WAIT_FOR_REPLICATION_TIMEOUT_MS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_STREAMING_DEFAULT_VALUE;
@@ -111,6 +120,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.S
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_WAIT_FOR_REPLICATION_TIMEOUT_MS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODE_SNAPSHOT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODE_STREAMING_KEY;
@@ -142,6 +152,9 @@ public class IoTDBDataRegionSource extends IoTDBSource {
 
   private boolean hasNoExtractionNeed = true;
   private boolean shouldExtractDeletion = false;
+  private boolean shouldWaitForHistoricalReplication = false;
+  private long historicalReplicationTimeoutMs =
+      EXTRACTOR_HISTORY_WAIT_FOR_REPLICATION_TIMEOUT_MS_DEFAULT_VALUE;
   private final AtomicBoolean completionSourceStarted = new AtomicBoolean(false);
 
   @Override
@@ -252,6 +265,29 @@ public class IoTDBDataRegionSource extends IoTDBSource {
 
     constructHistoricalSource();
     constructRealtimeSource(validator.getParameters());
+
+    shouldWaitForHistoricalReplication =
+        realtimeSource instanceof PipeRealtimeDataRegionHeartbeatSource
+            && validator
+                .getParameters()
+                .getBooleanOrDefault(
+                    Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
+                    EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE);
+    if (shouldWaitForHistoricalReplication) {
+      historicalReplicationTimeoutMs =
+          validator
+              .getParameters()
+              .getLongOrDefault(
+                  Arrays.asList(
+                      EXTRACTOR_HISTORY_WAIT_FOR_REPLICATION_TIMEOUT_MS_KEY,
+                      SOURCE_HISTORY_WAIT_FOR_REPLICATION_TIMEOUT_MS_KEY),
+                  EXTRACTOR_HISTORY_WAIT_FOR_REPLICATION_TIMEOUT_MS_DEFAULT_VALUE);
+      validator.validate(
+          timeout -> (long) timeout > 0,
+          DataNodePipeMessages
+              .EXCEPTION_HISTORY_WAIT_FOR_REPLICATION_TIMEOUT_MS_MUST_BE_GREATER_THAN_0_4A4E80CB,
+          historicalReplicationTimeoutMs);
+    }
 
     historicalSource.validate(validator);
     realtimeSource.validate(validator);
@@ -529,6 +565,31 @@ public class IoTDBDataRegionSource extends IoTDBSource {
   public void start() throws Exception {
     if (hasNoExtractionNeed || hasBeenStarted.get()) {
       return;
+    }
+
+    // A history-only source cannot recover writes that reach this replica after its scan.
+    // Wait outside the DataRegion write lock so consensus replication can apply those writes.
+    if (shouldWaitForHistoricalReplication) {
+      final IConsensus consensus = DataRegionConsensusImpl.getInstance();
+      if (consensus instanceof IoTConsensus) {
+        final DataRegionId dataRegionId = new DataRegionId(regionId);
+        final IoTConsensusServerImpl impl = ((IoTConsensus) consensus).getImpl(dataRegionId);
+        if (impl == null) {
+          throw new ConsensusGroupNotExistException(dataRegionId);
+        }
+        final long replicationStartNanos = System.nanoTime();
+        for (final Peer peer : impl.getConfiguration()) {
+          if (!peer.equals(impl.getThisNode())) {
+            impl.waitTargetPeerUntilSyncLogCompleted(
+                peer,
+                Math.max(
+                    0,
+                    historicalReplicationTimeoutMs
+                        - TimeUnit.NANOSECONDS.toMillis(
+                            System.nanoTime() - replicationStartNanos)));
+          }
+        }
+      }
     }
 
     final long startTime = System.currentTimeMillis();
