@@ -2117,6 +2117,7 @@ public class IoTDBSessionSimpleIT {
       throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.insertRecord("root.sg1.d1", 1, Arrays.asList("s3"), Arrays.asList("1"));
+      session.executeNonQueryStatement("FLUSH");
     }
 
     TestUtils.stopForciblyAndRestartDataNodes();
