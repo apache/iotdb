@@ -20,6 +20,7 @@
 package org.apache.iotdb.tool.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupArchiveReader;
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupArchiveReader.BackupStream;
@@ -28,6 +29,7 @@ import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupFormat;
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupManifest;
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupWriter;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -375,6 +377,59 @@ public class PipeLogicalBackupToolTest {
                 "dump", new String[] {"--scope", "config", "--include-auth", "true"}),
             false);
     Assert.assertTrue(auth.source.get("source.inclusion").contains("auth"));
+  }
+
+  @Test
+  public void testDumpTableExclusionsDoNotBroadenCapture() throws Exception {
+    final Map<String, List<String>> cases =
+        Map.of(
+            "backup_skip/.*",
+            List.of("backup_keep/measurements", "backup_keep/other_table"),
+            ".*/other_table",
+            List.of("backup_keep/measurements", "backup_skip/measurements"),
+            ".*/.*",
+            List.of());
+    for (final Map.Entry<String, List<String>> testCase : cases.entrySet()) {
+      final LogicalBackupDumpOptions options =
+          new LogicalBackupDumpOptions(
+              PipeLogicalBackupTool.parse(
+                  "dump",
+                  new String[] {
+                    "--scope",
+                    "schema,data",
+                    "--model",
+                    "table",
+                    "--include",
+                    "backup_.*/.*",
+                    "--exclude",
+                    testCase.getKey()
+                  }),
+              false);
+      final TablePattern pattern =
+          TablePattern.parsePipePatternFromSourceParameters(new PipeParameters(options.source));
+      final List<String> captured = new ArrayList<>();
+      for (final String database : List.of("backup_keep", "backup_skip", "unselected")) {
+        for (final String table : List.of("measurements", "other_table")) {
+          if (pattern.matchesDatabase(database) && pattern.matchesTable(table)) {
+            captured.add(database + "/" + table);
+          }
+        }
+      }
+      Assert.assertEquals(testCase.getKey(), testCase.getValue(), captured);
+    }
+  }
+
+  @Test
+  public void testDumpTableExcludeAllWithoutInclusion() throws Exception {
+    final LogicalBackupDumpOptions options =
+        new LogicalBackupDumpOptions(
+            PipeLogicalBackupTool.parse(
+                "dump", new String[] {"--scope", "data", "--model", "table", "--exclude", ".*/.*"}),
+            false);
+    final TablePattern pattern =
+        TablePattern.parsePipePatternFromSourceParameters(new PipeParameters(options.source));
+    Assert.assertFalse(
+        pattern.matchesDatabase("backup_db") && pattern.matchesTable("measurements"));
   }
 
   @Test

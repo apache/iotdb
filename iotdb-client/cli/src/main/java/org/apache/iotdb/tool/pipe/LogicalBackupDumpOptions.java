@@ -212,7 +212,7 @@ final class LogicalBackupDumpOptions {
     }
     for (int index = 0; index < 2; index++) {
       String regex = include[index];
-      if (exclude != null && !".*".equals(exclude[index])) {
+      if (exclude != null && ".*".equals(exclude[1 - index])) {
         regex = "(?!(?:" + exclude[index] + ")$)(?:" + regex + ")";
       }
       source.put(index == 0 ? "source.database-name" : "source.table-name", regex);
