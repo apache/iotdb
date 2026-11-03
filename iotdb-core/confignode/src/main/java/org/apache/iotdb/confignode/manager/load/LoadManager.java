@@ -109,7 +109,8 @@ public class LoadManager {
     this.loadServicesStarted = new AtomicBoolean(false);
     this.loadReadyStartTimeMillis = new AtomicLong(0);
     this.loadReady = new AtomicBoolean(false);
-    this.loadReadyReason = "ConfigNode leader load services are not started.";
+    this.loadReadyReason =
+        ManagerMessages.MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_ARE_NOT_STARTED_1C75DB82;
   }
 
   protected void setHeartbeatService(IManager configManager, LoadCache loadCache) {
@@ -169,7 +170,9 @@ public class LoadManager {
   public void startLoadServices() {
     loadReady.set(false);
     loadReadyStartTimeMillis.set(System.currentTimeMillis());
-    loadReadyReason = "ConfigNode leader is waiting for cluster heartbeat sampling.";
+    loadReadyReason =
+        ManagerMessages
+            .MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_CLUSTER_HEARTBEAT_SAMPLING_EDB0331F;
     loadCache.initHeartbeatCache(configManager);
     loadServicesStarted.set(true);
     heartbeatService.startHeartbeatService();
@@ -182,7 +185,7 @@ public class LoadManager {
     loadServicesStarted.set(false);
     loadReadyStartTimeMillis.set(0);
     loadReady.set(false);
-    loadReadyReason = "ConfigNode leader load services are stopped.";
+    loadReadyReason = ManagerMessages.MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_ARE_STOPPED_5884BB0F;
     heartbeatService.stopHeartbeatService();
     statisticsService.stopLoadStatisticsService();
     eventService.stopEventService();
@@ -210,7 +213,8 @@ public class LoadManager {
       return true;
     }
     if (!loadServicesStarted.get()) {
-      loadReadyReason = "ConfigNode leader load services are not started.";
+      loadReadyReason =
+          ManagerMessages.MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_ARE_NOT_STARTED_1C75DB82;
       return false;
     }
 
@@ -225,7 +229,7 @@ public class LoadManager {
 
     List<String> unreadyReasons = loadCache.getNodeHeartbeatUnreadyReasons();
     if (unreadyReasons.isEmpty()) {
-      loadReadyReason = "ConfigNode leader load services are ready.";
+      loadReadyReason = ManagerMessages.MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_ARE_READY_CC9C90E7;
       loadReady.set(true);
       return true;
     }
@@ -233,16 +237,19 @@ public class LoadManager {
     long elapsedMillis = System.currentTimeMillis() - loadReadyStartTimeMillis.get();
     if (elapsedMillis < FIRST_HEARTBEAT_READY_TOLERANCE_MS) {
       loadReadyReason =
-          "ConfigNode leader is waiting for first heartbeat from registered ConfigNodes/DataNodes: "
-              + unreadyReasons;
+          String.format(
+              ManagerMessages
+                  .MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_FIRST_HEARTBEAT_FROM_REGISTERED_CONFIGNODES_DATANODES_ARG_2FD3F6FA,
+              String.valueOf(unreadyReasons));
       return false;
     }
 
     loadReadyReason =
-        "ConfigNode leader load services are ready after waiting "
-            + FIRST_HEARTBEAT_READY_TOLERANCE_MS
-            + "ms for first heartbeat. Missing heartbeats: "
-            + unreadyReasons;
+        String.format(
+            ManagerMessages
+                .MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_ARE_READY_AFTER_WAITING_ARGMS_FOR_FIRST_HEARTBEAT_MISSING_HEARTBEATS_ARG_F8B81CAB,
+            String.valueOf(FIRST_HEARTBEAT_READY_TOLERANCE_MS),
+            String.valueOf(unreadyReasons));
     loadReady.set(true);
     return true;
   }
@@ -582,7 +589,9 @@ public class LoadManager {
     loadServicesStarted.set(true);
     loadReady.set(false);
     this.loadReadyStartTimeMillis.set(loadReadyStartTimeMillis);
-    loadReadyReason = "ConfigNode leader is waiting for cluster heartbeat sampling.";
+    loadReadyReason =
+        ManagerMessages
+            .MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_CLUSTER_HEARTBEAT_SAMPLING_EDB0331F;
   }
 
   @TestOnly

@@ -135,10 +135,15 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
 
       final String pipeName =
           PipeStaticMeta.generateSubscriptionPipeName(topicName, consumerGroupId);
-      if (!subscriptionInfo.get().isTopicSubscribedByConsumerGroup(topicName, consumerGroupId)
-          // even if there existed subscription meta, if there is no corresponding pipe meta, it
-          // will try to create the pipe
-          || !pipeTaskInfo.get().isPipeExisted(pipeName, topicMeta.visibleUnderTableModel())) {
+      final boolean pipeExists =
+          pipeTaskInfo.get().isPipeExisted(pipeName, topicMeta.visibleUnderTableModel());
+      final boolean topicAlreadySubscribed =
+          consumerGroupMeta.getSubscribedTopicNames().contains(topicName);
+      final boolean topicProgressRetained =
+          consumerGroupMeta.getRetainedTopicNames().contains(topicName);
+      // A retained subscription keeps the original Pipe and its sink queue alive. Reuse it
+      // only while the group is subscribed or has an explicit retained-progress marker.
+      if (!pipeExists || (!topicAlreadySubscribed && !topicProgressRetained)) {
         createPipeProcedures.add(
             new CreatePipeProcedureV2(
                 new TCreatePipeReq()
@@ -227,12 +232,12 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
           consensusTopicNames);
     }
 
-    // Push pipe meta to data nodes (only for non-consensus pipe-based topics)
-    if (!createPipeProcedures.isEmpty()) {
-      final List<PipeStaticMeta> pipeStaticMetas =
-          createPipeProcedures.stream()
-              .map(CreatePipeProcedureV2::getPipeStaticMeta)
-              .collect(Collectors.toList());
+    // Push pipe meta to data nodes (only for newly created non-consensus pipes).
+    final List<PipeStaticMeta> pipeStaticMetas =
+        createPipeProcedures.stream()
+            .map(CreatePipeProcedureV2::getPipeStaticMeta)
+            .collect(Collectors.toList());
+    if (!pipeStaticMetas.isEmpty()) {
       final String exceptionMessage =
           AbstractOperatePipeProcedureV2.parsePushPipeMetaExceptionForPipe(
               null, pushMultiPipeMetaToDataNodes(pipeStaticMetas, env));

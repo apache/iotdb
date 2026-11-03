@@ -188,7 +188,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       new TriggerInformationUpdater();
 
   private static final String REGISTER_INTERRUPTION =
-      "Unexpected interruption when waiting to register to the cluster";
+      DataNodeMiscMessages
+          .EXCEPTION_UNEXPECTED_INTERRUPTION_WHEN_WAITING_TO_REGISTER_TO_THE_CLUSTER_DD7A0BEC;
 
   private volatile boolean schemaRegionConsensusStarted = false;
   private volatile boolean dataRegionConsensusStarted = false;
@@ -225,7 +226,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
                   Thread.sleep(10000);
                   final StackTraceElement[] stackTrace = hookThread.getStackTrace();
                   final StringBuilder stackTraceBuilder =
-                      new StringBuilder("Stack trace of main thread:\n");
+                      new StringBuilder(
+                          DataNodeMiscMessages.EXCEPTION_STACK_TRACE_OF_MAIN_THREAD_0B7EC78B);
                   for (final StackTraceElement traceElement : stackTrace) {
                     stackTraceBuilder.append(traceElement.toString()).append("\n");
                   }
@@ -337,7 +339,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
                 null);
         String logMessage =
             String.format(
-                "Successfully start the Audit service with configurations (auditableOperationType %s, auditableOperationLevel %s, auditableOperationResult %s) in DataNode %s",
+                DataNodeMiscMessages
+                    .EXCEPTION_SUCCESSFULLY_START_THE_AUDIT_SERVICE_WITH_CONFIGURATIONS_AUDITABLEOPERATIONTYPE_ARG_AUDITABLEOPERATIONLEVEL_ARG_AUDITABLEOPERATIONRESULT_ARG_IN_DATANODE_ARG_5BC6AC7D,
                 CommonDescriptor.getInstance().getConfig().getAuditableOperationType().toString(),
                 CommonDescriptor.getInstance().getConfig().getAuditableOperationLevel().toString(),
                 CommonDescriptor.getInstance().getConfig().getAuditableOperationResult(),

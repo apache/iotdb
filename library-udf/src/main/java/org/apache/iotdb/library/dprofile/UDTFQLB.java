@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.dprofile;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -46,7 +47,8 @@ public class UDTFQLB implements UDTF {
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             x -> (int) x >= 0,
-            "Parameter $lag$ should be an positive integer, or '0' for default value.",
+            LibraryUdfMessages
+                .EXCEPTION_PARAMETER_LAG_SHOULD_BE_AN_POSITIVE_INTEGER_OR_0_FOR_DEFAULT_VALUE_2401EAB3,
             validator.getParameters().getIntOrDefault("lag", 0));
   }
 

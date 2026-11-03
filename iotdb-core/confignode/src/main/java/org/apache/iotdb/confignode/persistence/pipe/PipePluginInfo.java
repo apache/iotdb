@@ -40,6 +40,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipeP
 import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.pipe.plugin.PipePluginTableResp;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -185,7 +186,8 @@ public class PipePluginInfo implements SnapshotProcessor {
     if (!pipePluginMetaKeeper.containsPipePlugin(sourcePluginName)) {
       final String exceptionMessage =
           String.format(
-              "Failed to create or alter pipe, the pipe extractor plugin %s does not exist",
+              ManagerMessages
+                  .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_PIPE_THE_PIPE_EXTRACTOR_PLUGIN_ARG_DOES_NOT_EXIST_70C3F187,
               sourcePluginName);
       LOGGER.info(exceptionMessage);
       throw new PipeException(exceptionMessage);
@@ -199,7 +201,8 @@ public class PipePluginInfo implements SnapshotProcessor {
     if (!pipePluginMetaKeeper.containsPipePlugin(processorPluginName)) {
       final String exceptionMessage =
           String.format(
-              "Failed to create or alter pipe, the pipe processor plugin %s does not exist",
+              ManagerMessages
+                  .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_PIPE_THE_PIPE_PROCESSOR_PLUGIN_ARG_DOES_NOT_EXIST_6C22D67D,
               processorPluginName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
@@ -214,7 +217,8 @@ public class PipePluginInfo implements SnapshotProcessor {
     if (!pipePluginMetaKeeper.containsPipePlugin(sinkPluginName)) {
       final String exceptionMessage =
           String.format(
-              "Failed to create or alter pipe, the pipe connector plugin %s does not exist",
+              ManagerMessages
+                  .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_PIPE_THE_PIPE_CONNECTOR_PLUGIN_ARG_DOES_NOT_EXIST_4FC620C9,
               sinkPluginName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
@@ -277,8 +281,10 @@ public class PipePluginInfo implements SnapshotProcessor {
     } catch (final Throwable e) {
       final String errorMessage =
           String.format(
-              "Failed to execute createPipePlugin(%s) on config nodes, because of %s",
-              createPipePluginPlan.getPipePluginMeta().getPluginName(), e);
+              ManagerMessages
+                  .MESSAGE_FAILED_TO_EXECUTE_CREATEPIPEPLUGIN_ARG_ON_CONFIG_NODES_BECAUSE_OF_ARG_BD0C8727,
+              createPipePluginPlan.getPipePluginMeta().getPluginName(),
+              e);
       LOGGER.warn(errorMessage, e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
           .setMessage(errorMessage);
@@ -336,8 +342,10 @@ public class PipePluginInfo implements SnapshotProcessor {
       } catch (IOException e) {
         final String errorMessage =
             String.format(
-                "Failed to execute dropPipePlugin(%s) on config nodes, because of %s",
-                pluginName, e);
+                ManagerMessages
+                    .MESSAGE_FAILED_TO_EXECUTE_DROPPIPEPLUGIN_ARG_ON_CONFIG_NODES_BECAUSE_OF_ARG_21A255A2,
+                pluginName,
+                e);
         LOGGER.warn(errorMessage, e);
         return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
             .setMessage(errorMessage);
@@ -462,8 +470,11 @@ public class PipePluginInfo implements SnapshotProcessor {
     if (loadingFailureMessage != null) {
       final String exceptionMessage =
           String.format(
-              "Failed to create or alter pipe, the pipe %s plugin %s failed to load: %s",
-              pluginType, pluginName, loadingFailureMessage);
+              ManagerMessages
+                  .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_PIPE_THE_PIPE_ARG_PLUGIN_ARG_FAILED_TO_LOAD_ARG_EBEB74CC,
+              pluginType,
+              pluginName,
+              loadingFailureMessage);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }

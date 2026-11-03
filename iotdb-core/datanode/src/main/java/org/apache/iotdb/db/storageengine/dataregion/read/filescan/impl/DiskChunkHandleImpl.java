@@ -50,7 +50,8 @@ public class DiskChunkHandleImpl implements IChunkHandle {
   private final String measurement;
   private final String filePath;
   private final TsFileID tsFileID;
-  private EncryptParameter encryptParam;
+  protected EncryptParameter encryptParam;
+  protected int cryptoPageIndex = -1;
   protected ChunkHeader currentChunkHeader;
   protected PageHeader currentPageHeader;
   protected ByteBuffer currentChunkDataBuffer;
@@ -85,10 +86,12 @@ public class DiskChunkHandleImpl implements IChunkHandle {
     if (currentChunkDataBuffer != null) {
       return;
     }
-    Chunk chunk = reader.readMemChunk(offset);
-    this.currentChunkDataBuffer = chunk.getData();
-    this.currentChunkHeader = chunk.getHeader();
-    this.encryptParam = chunk.getEncryptParam();
+    try (Chunk chunk = reader.readMemChunk(offset)) {
+      this.currentChunkDataBuffer = chunk.getData();
+      this.currentChunkHeader = chunk.getHeader();
+      // The query's FileReaderManager reference owns this file-level context.
+      this.encryptParam = reader.getEncryptParam();
+    }
   }
 
   // Check if there is more pages to be scanned in Chunk.
@@ -107,6 +110,7 @@ public class DiskChunkHandleImpl implements IChunkHandle {
       init(reader);
     }
     if (currentChunkDataBuffer.hasRemaining()) {
+      cryptoPageIndex++;
       // If there is only one page, page statistics is not stored in the chunk header, which is the
       // same as chunkStatistics
       if ((byte) (this.currentChunkHeader.getChunkType() & 0x3F)
@@ -137,7 +141,12 @@ public class DiskChunkHandleImpl implements IChunkHandle {
     IDecryptor decryptor = IDecryptor.getDecryptor(encryptParam);
     ByteBuffer currentPageDataBuffer =
         ChunkReader.deserializePageData(
-            currentPageHeader, this.currentChunkDataBuffer, this.currentChunkHeader, decryptor);
+            currentPageHeader,
+            this.currentChunkDataBuffer,
+            this.currentChunkHeader,
+            decryptor,
+            encryptParam,
+            cryptoPageIndex);
     int timeBufferLength = ReadWriteForEncodingUtils.readUnsignedVarInt(currentPageDataBuffer);
     ByteBuffer timeBuffer = currentPageDataBuffer.slice();
     timeBuffer.limit(timeBufferLength);

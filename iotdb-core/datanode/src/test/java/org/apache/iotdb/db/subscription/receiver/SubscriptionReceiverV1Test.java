@@ -222,6 +222,39 @@ public class SubscriptionReceiverV1Test {
   }
 
   @Test
+  public void testHandshakeRepairsMissingBrokerWithoutChangingConsumerMetadata() throws Exception {
+    final String consumerGroupId = "group-" + UUID.randomUUID();
+    final String consumerId = "consumer-" + UUID.randomUUID();
+    final ConsumerConfig consumerConfig =
+        createConsumerConfig(1_000L, null, null, consumerId, consumerGroupId);
+    final ConsumerGroupMeta consumerGroupMeta =
+        new ConsumerGroupMeta(
+            consumerGroupId,
+            System.currentTimeMillis(),
+            new ConsumerMeta(
+                consumerId, System.currentTimeMillis(), consumerConfig.getAttribute()));
+    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    Assert.assertNull(
+        SubscriptionAgent.consumer().handleSingleConsumerGroupMetaChanges(consumerGroupMeta));
+    try {
+      Assert.assertTrue(SubscriptionAgent.broker().dropBroker(consumerGroupId));
+      Assert.assertFalse(SubscriptionAgent.broker().isBrokerExist(consumerGroupId));
+
+      final TSStatus status =
+          receiver
+              .handle(PipeSubscribeHandshakeReq.toTPipeSubscribeReq(consumerConfig))
+              .getStatus();
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertTrue(SubscriptionAgent.broker().isBrokerExist(consumerGroupId));
+      Assert.assertTrue(
+          SubscriptionAgent.consumer().isConsumerExisted(consumerGroupId, consumerId));
+    } finally {
+      SubscriptionAgent.consumer().handleDropConsumerGroup(consumerGroupId);
+    }
+  }
+
+  @Test
   public void testNeverHandshakenConsumerStillReturnsMissingConsumerStatus() {
     final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
 

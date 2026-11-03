@@ -98,8 +98,12 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
             }
             final String errorMessage =
                 String.format(
-                    "SubscriptionPrefetchingTsFileQueue %s is currently not transferring any file to consumer %s, commit context: %s, writing offset: %s",
-                    this, consumerId, commitContext, writingOffset);
+                    DataNodePipeMessages
+                        .MESSAGE_SUBSCRIPTIONPREFETCHINGTSFILEQUEUE_ARG_IS_CURRENTLY_NOT_TRANSFERRING_ANY_FILE_TO_CONSUMER_ARG_COMMIT_CONTEXT_ARG_WRITING_OFFSET_ARG_339040B2,
+                    this,
+                    consumerId,
+                    commitContext,
+                    writingOffset);
             LOGGER.warn(errorMessage);
             eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
             return null;
@@ -109,8 +113,12 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
             ev.cleanUp(false);
             final String errorMessage =
                 String.format(
-                    "outdated poll request after commit, consumer id: %s, commit context: %s, writing offset: %s, prefetching queue: %s",
-                    consumerId, commitContext, writingOffset, this);
+                    DataNodePipeMessages
+                        .MESSAGE_OUTDATED_POLL_REQUEST_AFTER_COMMIT_CONSUMER_ID_ARG_COMMIT_CONTEXT_ARG_WRITING_OFFSET_ARG_PREFETCHING_QUEUE_ARG_ACE7A194,
+                    consumerId,
+                    commitContext,
+                    writingOffset,
+                    this);
             LOGGER.warn(errorMessage);
             eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
             return null; // remove this entry
@@ -120,8 +128,13 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
           if (!Objects.equals(ev.getLastPolledConsumerId(), consumerId)) {
             final String errorMessage =
                 String.format(
-                    "inconsistent polled consumer id, current: %s, incoming: %s, commit context: %s, writing offset: %s, prefetching queue: %s",
-                    ev.getLastPolledConsumerId(), consumerId, commitContext, writingOffset, this);
+                    DataNodePipeMessages
+                        .MESSAGE_INCONSISTENT_POLLED_CONSUMER_ID_CURRENT_ARG_INCOMING_ARG_COMMIT_CONTEXT_ARG_WRITING_OFFSET_ARG_PREFETCHING_QUEUE_ARG_BFC0847B,
+                    ev.getLastPolledConsumerId(),
+                    consumerId,
+                    commitContext,
+                    writingOffset,
+                    this);
             LOGGER.warn(errorMessage);
             eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
             return ev;
@@ -131,8 +144,12 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
           if (Objects.isNull(response)) {
             final String errorMessage =
                 String.format(
-                    "current response is null when fetching next response, consumer id: %s commit context: %s, writing offset: %s, prefetching queue: %s",
-                    consumerId, commitContext, writingOffset, this);
+                    DataNodePipeMessages
+                        .MESSAGE_CURRENT_RESPONSE_IS_NULL_WHEN_FETCHING_NEXT_RESPONSE_CONSUMER_ID_ARG_COMMIT_CONTEXT_ARG_WRITING_OFFSET_ARG_PREFETCHING_QUEUE_ARG_101A4F56,
+                    consumerId,
+                    commitContext,
+                    writingOffset,
+                    this);
             LOGGER.warn(errorMessage);
             eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
             return ev;
@@ -157,7 +174,8 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
               if (!Objects.equals(fileName, ((FileInitPayload) payload).getFileName())) {
                 final String errorMessage =
                     String.format(
-                        "inconsistent file name, current: %s, incoming: %s, consumer: %s, writing offset: %s, prefetching queue: %s",
+                        DataNodePipeMessages
+                            .MESSAGE_INCONSISTENT_FILE_NAME_CURRENT_ARG_INCOMING_ARG_CONSUMER_ARG_WRITING_OFFSET_ARG_PREFETCHING_QUEUE_ARG_E00E88FA,
                         ((FileInitPayload) payload).getFileName(),
                         fileName,
                         consumerId,
@@ -174,7 +192,8 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
               if (!Objects.equals(fileName, ((FilePiecePayload) payload).getFileName())) {
                 final String errorMessage =
                     String.format(
-                        "inconsistent file name, current: %s, incoming: %s, consumer: %s, writing offset: %s, prefetching queue: %s",
+                        DataNodePipeMessages
+                            .MESSAGE_INCONSISTENT_FILE_NAME_CURRENT_ARG_INCOMING_ARG_CONSUMER_ARG_WRITING_OFFSET_ARG_PREFETCHING_QUEUE_ARG_E00E88FA,
                         ((FilePiecePayload) payload).getFileName(),
                         fileName,
                         consumerId,
@@ -188,7 +207,8 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
               if (writingOffset != ((FilePiecePayload) payload).getNextWritingOffset()) {
                 final String errorMessage =
                     String.format(
-                        "inconsistent offset, current: %s, incoming: %s, consumer: %s, file name: %s, prefetching queue: %s",
+                        DataNodePipeMessages
+                            .MESSAGE_INCONSISTENT_OFFSET_CURRENT_ARG_INCOMING_ARG_CONSUMER_ARG_FILE_NAME_ARG_PREFETCHING_QUEUE_ARG_7ACF57BB,
                         ((FilePiecePayload) payload).getNextWritingOffset(),
                         writingOffset,
                         consumerId,
@@ -203,8 +223,12 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
               {
                 final String errorMessage =
                     String.format(
-                        "poll after sealing, consumer: %s, file name: %s, writing offset: %s, prefetching queue: %s",
-                        consumerId, fileName, writingOffset, this);
+                        DataNodePipeMessages
+                            .MESSAGE_POLL_AFTER_SEALING_CONSUMER_ARG_FILE_NAME_ARG_WRITING_OFFSET_ARG_PREFETCHING_QUEUE_ARG_3C231E1E,
+                        consumerId,
+                        fileName,
+                        writingOffset,
+                        this);
                 LOGGER.warn(errorMessage);
                 eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
                 return ev;
@@ -232,8 +256,13 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
           } catch (final Exception e) {
             final String errorMessage =
                 String.format(
-                    "exception occurred when fetching next response: %s, consumer id: %s, commit context: %s, writing offset: %s, prefetching queue: %s",
-                    e, consumerId, commitContext, writingOffset, this);
+                    DataNodePipeMessages
+                        .MESSAGE_EXCEPTION_OCCURRED_WHEN_FETCHING_NEXT_RESPONSE_ARG_CONSUMER_ID_ARG_COMMIT_CONTEXT_ARG_WRITING_OFFSET_ARG_PREFETCHING_QUEUE_ARG_67064CD2,
+                    e,
+                    consumerId,
+                    commitContext,
+                    writingOffset,
+                    this);
             LOGGER.warn(errorMessage, e);
             eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
           }

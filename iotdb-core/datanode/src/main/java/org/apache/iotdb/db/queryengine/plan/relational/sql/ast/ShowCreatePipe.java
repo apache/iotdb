@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -37,7 +38,8 @@ public class ShowCreatePipe extends PipeStatement {
   private final String pipeName;
 
   public ShowCreatePipe(final String pipeName) {
-    this.pipeName = requireNonNull(pipeName, "pipeName is null");
+    this.pipeName =
+        requireNonNull(pipeName, DataNodeQueryMessages.EXCEPTION_PIPENAME_IS_NULL_FC04F696);
   }
 
   public String getPipeName() {

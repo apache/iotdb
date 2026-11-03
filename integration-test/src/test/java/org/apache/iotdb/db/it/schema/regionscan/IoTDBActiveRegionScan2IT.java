@@ -27,8 +27,8 @@ import org.junit.experimental.categories.Category;
 import org.junit.runners.Parameterized;
 
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBActiveRegionScanWithModsIT2 extends IoTDBActiveRegionScanWithModsIT {
-  public IoTDBActiveRegionScanWithModsIT2(final SchemaTestMode schemaTestMode) {
+public class IoTDBActiveRegionScan2IT extends IoTDBActiveRegionScanIT {
+  public IoTDBActiveRegionScan2IT(final SchemaTestMode schemaTestMode) {
     super(schemaTestMode);
   }
 

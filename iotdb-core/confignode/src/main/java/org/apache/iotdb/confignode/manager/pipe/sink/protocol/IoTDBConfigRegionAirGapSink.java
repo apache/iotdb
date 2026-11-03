@@ -186,8 +186,10 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
             pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan()))) {
       final String errorMessage =
           String.format(
-              "Transfer config region write plan %s error. Socket: %s.",
-              pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().getType(), socket);
+              ManagerMessages
+                  .MESSAGE_TRANSFER_CONFIG_REGION_WRITE_PLAN_ARG_ERROR_SOCKET_ARG_543F8727,
+              pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().getType(),
+              socket);
       // Send handshake because we don't know whether the receiver side configNode
       // has set up a new one
       sendHandshakeReq(socket);
@@ -249,7 +251,10 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
             pipeConfigRegionSnapshotEvent.toSealTypeString(),
             pipeConfigRegionSnapshotEvent.getAuthUserName()))) {
       final String errorMessage =
-          String.format("Seal config region snapshot %s error. Socket %s.", snapshot, socket);
+          String.format(
+              ManagerMessages.MESSAGE_SEAL_CONFIG_REGION_SNAPSHOT_ARG_ERROR_SOCKET_ARG_42098622,
+              snapshot,
+              socket);
       // Send handshake because we don't know whether the receiver side configNode
       // has set up a new one
       sendHandshakeReq(socket);

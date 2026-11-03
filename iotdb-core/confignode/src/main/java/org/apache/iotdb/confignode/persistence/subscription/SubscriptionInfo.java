@@ -249,7 +249,8 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
     final String exceptionMessage =
         String.format(
-            "Failed to create topic %s, the topic with the same name has been created",
+            ManagerMessages
+                .EXCEPTION_FAILED_TO_CREATE_TOPIC_ARG_THE_TOPIC_WITH_THE_SAME_NAME_HAS_BEEN_CREATED_E20FE8BF,
             createTopicReq.getTopicName());
     LOGGER.warn(exceptionMessage);
     throw new SubscriptionException(exceptionMessage);
@@ -292,7 +293,8 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
     final String exceptionMessage =
         String.format(
-            "Failed to drop topic %s, the topic is subscribed by some consumers",
+            ManagerMessages
+                .EXCEPTION_FAILED_TO_DROP_TOPIC_ARG_THE_TOPIC_IS_SUBSCRIBED_BY_SOME_CONSUMERS_94D34E76,
             topicMeta.getTopicName());
     LOGGER.warn(exceptionMessage);
     throw new SubscriptionException(exceptionMessage);
@@ -316,8 +318,10 @@ public class SubscriptionInfo implements SnapshotProcessor {
               if (pipePluginName.equals(meta.getConfig().getAttribute().get("processor"))) {
                 final String exceptionMessage =
                     String.format(
-                        "PipePlugin '%s' is already used by Topic '%s' as a processor.",
-                        pipePluginName, meta.getTopicName());
+                        ManagerMessages
+                            .EXCEPTION_PIPEPLUGIN_ARG_IS_ALREADY_USED_BY_TOPIC_ARG_AS_A_PROCESSOR_02306DD3,
+                        pipePluginName,
+                        meta.getTopicName());
                 LOGGER.warn(exceptionMessage);
                 throw new SubscriptionException(exceptionMessage);
               }
@@ -352,7 +356,8 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
     final String exceptionMessage =
         String.format(
-            "Failed to alter topic %s, the topic is not existed", topicMeta.getTopicName());
+            ManagerMessages.FAILED_TO_ALTER_TOPIC_THE_TOPIC_IS_NOT_EXISTED,
+            topicMeta.getTopicName());
     LOGGER.warn(exceptionMessage);
     throw new SubscriptionException(exceptionMessage);
   }
@@ -369,7 +374,8 @@ public class SubscriptionInfo implements SnapshotProcessor {
     if (!TopicConfig.isValidMode(mode)) {
       final String exceptionMessage =
           String.format(
-              "Failed to create or alter topic, unsupported %s=%s, expected one of [%s, %s, %s]",
+              ManagerMessages
+                  .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_UNSUPPORTED_ARG_ARG_EXPECTED_ONE_OF_ARG_ARG_ARG_9016126E,
               TopicConstant.MODE_KEY,
               mode,
               TopicConstant.MODE_SNAPSHOT_VALUE,
@@ -385,7 +391,8 @@ public class SubscriptionInfo implements SnapshotProcessor {
     if (topicConfig.isIncrementalMode() && !topicConfig.isRecordFormat()) {
       final String exceptionMessage =
           String.format(
-              "Failed to create or alter topic, %s=%s only supports %s=%s",
+              ManagerMessages
+                  .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_ARG_ONLY_SUPPORTS_ARG_ARG_93A39567,
               TopicConstant.MODE_KEY,
               TopicConstant.MODE_INCREMENTAL_VALUE,
               TopicConstant.FORMAT_KEY,
@@ -398,7 +405,8 @@ public class SubscriptionInfo implements SnapshotProcessor {
     if (!TopicConfig.isValidOrderMode(orderMode)) {
       final String exceptionMessage =
           String.format(
-              "Failed to create or alter topic, unsupported %s=%s, expected one of [%s, %s, %s]",
+              ManagerMessages
+                  .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_UNSUPPORTED_ARG_ARG_EXPECTED_ONE_OF_ARG_ARG_ARG_9016126E,
               TopicConstant.ORDER_MODE_KEY,
               orderMode,
               TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
@@ -411,6 +419,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
     validateColumnFilter(topicConfig);
     validateTagFilter(topicConfig);
     validateIncrementalTopicRetentionConfig(topicConfig);
+    validateRetainProgressAfterUnsubscribe(topicConfig);
     validateRecycleUncommittedEventInterval(topicConfig);
 
     final Long ownerLeaseDurationMs =
@@ -539,7 +548,8 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
     final String exceptionMessage =
         String.format(
-            "Failed to create or alter topic, %s=%s is only supported when %s=%s, but current value is %s",
+            ManagerMessages
+                .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_ARG_IS_ONLY_SUPPORTED_WHEN_ARG_ARG_BUT_CURRENT_VALUE_IS_ARG_7C765172,
             TopicConstant.MODE_KEY,
             TopicConstant.MODE_INCREMENTAL_VALUE,
             DATA_REGION_CONSENSUS_PROTOCOL_CLASS_KEY,
@@ -654,9 +664,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
   private void validateIncrementalTopicRetentionConfig(final TopicConfig topicConfig)
       throws SubscriptionException {
     if (!hasTopicAttributeIgnoreCase(topicConfig, TopicConstant.RETENTION_BYTES_KEY)
-        && !hasTopicAttributeIgnoreCase(topicConfig, TopicConstant.RETENTION_MS_KEY)
-        && !hasTopicAttributeIgnoreCase(
-            topicConfig, TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY)) {
+        && !hasTopicAttributeIgnoreCase(topicConfig, TopicConstant.RETENTION_MS_KEY)) {
       return;
     }
 
@@ -665,17 +673,13 @@ public class SubscriptionInfo implements SnapshotProcessor {
           String.format(
               ConfigNodeMessages
                   .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ATTRIBUTES_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_55CB0BF2,
-              List.of(
-                  TopicConstant.RETENTION_BYTES_KEY,
-                  TopicConstant.RETENTION_MS_KEY,
-                  TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY));
+              List.of(TopicConstant.RETENTION_BYTES_KEY, TopicConstant.RETENTION_MS_KEY));
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }
 
     validateRetentionValue(topicConfig, TopicConstant.RETENTION_BYTES_KEY);
     validateRetentionValue(topicConfig, TopicConstant.RETENTION_MS_KEY);
-    validateRetainProgressAfterUnsubscribe(topicConfig);
   }
 
   private void validateRetainProgressAfterUnsubscribe(final TopicConfig topicConfig)
@@ -719,8 +723,10 @@ public class SubscriptionInfo implements SnapshotProcessor {
     } catch (final NumberFormatException e) {
       final String exceptionMessage =
           String.format(
-              "Failed to create or alter topic, illegal %s=%s, expected a long value",
-              key, rawValue);
+              ManagerMessages
+                  .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ILLEGAL_ARG_ARG_EXPECTED_A_LONG_VALUE_BFF2A1CF,
+              key,
+              rawValue);
       LOGGER.warn(exceptionMessage, e);
       throw new SubscriptionException(exceptionMessage);
     } catch (final SubscriptionException e) {
@@ -754,8 +760,10 @@ public class SubscriptionInfo implements SnapshotProcessor {
     if (!Objects.equals(existedMode, updatedMode)) {
       final String exceptionMessage =
           String.format(
-              "Failed to alter topic %s, changing %s is not supported because existing subscription runtimes do not hot-refresh source mode",
-              topicName, TopicConstant.MODE_KEY);
+              ManagerMessages
+                  .EXCEPTION_FAILED_TO_ALTER_TOPIC_ARG_CHANGING_ARG_IS_NOT_SUPPORTED_BECAUSE_EXISTING_SUBSCRIPTION_RUNTIMES_DO_NOT_HOT_REFRESH_SOURCE_MODE_F27410E6,
+              topicName,
+              TopicConstant.MODE_KEY);
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }
@@ -780,8 +788,10 @@ public class SubscriptionInfo implements SnapshotProcessor {
       if (!Objects.equals(existedValue, updatedValue)) {
         final String exceptionMessage =
             String.format(
-                "Failed to alter topic %s, changing %s is not supported because existing consensus queues do not hot-refresh retention state",
-                topicName, retentionKey);
+                ManagerMessages
+                    .EXCEPTION_FAILED_TO_ALTER_TOPIC_ARG_CHANGING_ARG_IS_NOT_SUPPORTED_BECAUSE_EXISTING_CONSENSUS_QUEUES_DO_NOT_HOT_REFRESH_RETENTION_STATE_B84442B9,
+                topicName,
+                retentionKey);
         LOGGER.warn(exceptionMessage);
         throw new SubscriptionException(exceptionMessage);
       }
@@ -964,6 +974,12 @@ public class SubscriptionInfo implements SnapshotProcessor {
         if (consumerGroupMeta.visibleUnder(isTableModel)
             && !consumerGroupMeta.isTopicSubscribedByConsumerGroup(
                 plan.getTopicMeta().getTopicName())) {
+          if (consumerGroupMeta
+              .getRetainedTopicNames()
+              .contains(plan.getTopicMeta().getTopicName())) {
+            // The AlterTopicProcedure drops the retained Pipe before clearing this marker.
+            continue;
+          }
           commitProgressKeeper.removeTopicProgress(
               consumerGroupMeta.getConsumerGroupId(), plan.getTopicMeta().getTopicName());
           removeEmptyConsumerGroupWithoutProgress(consumerGroupMeta);
@@ -1004,22 +1020,72 @@ public class SubscriptionInfo implements SnapshotProcessor {
   public TSStatus dropTopic(DropTopicPlan plan) {
     acquireWriteLock();
     try {
+      final TopicMeta topicMeta =
+          plan.isTableModelSet()
+              ? topicMetaKeeper.getTopicMeta(plan.getTopicName(), plan.isTableModel())
+              : topicMetaKeeper.getTopicMeta(plan.getTopicName());
+      final boolean isTableModel =
+          plan.isTableModelSet()
+              ? plan.isTableModel()
+              : Objects.nonNull(topicMeta) && topicMeta.visibleUnderTableModel();
+      final boolean isModelScoped = plan.isTableModelSet() || Objects.nonNull(topicMeta);
       for (final ConsumerGroupMeta consumerGroupMeta :
           consumerGroupMetaKeeper.getAllConsumerGroupMeta()) {
-        if (!plan.isTableModelSet() || consumerGroupMeta.visibleUnder(plan.isTableModel())) {
+        if (!isModelScoped || consumerGroupMeta.visibleUnder(isTableModel)) {
+          if (isModelScoped
+              && consumerGroupMeta.getRetainedTopicNames().contains(plan.getTopicName())) {
+            // The DropTopicProcedure drops the retained Pipe before clearing this marker.
+            continue;
+          }
           commitProgressKeeper.removeTopicProgress(
               consumerGroupMeta.getConsumerGroupId(), plan.getTopicName());
           removeEmptyConsumerGroupWithoutProgress(consumerGroupMeta);
         }
       }
-      if (plan.isTableModelSet()) {
-        topicMetaKeeper.removeTopicMeta(plan.getTopicName(), plan.isTableModel());
-      } else {
-        topicMetaKeeper.removeTopicMeta(plan.getTopicName());
-      }
+      topicMetaKeeper.removeTopicMeta(plan.getTopicName(), isTableModel);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       releaseWriteLock();
+    }
+  }
+
+  public List<ConsumerGroupMeta> getConsumerGroupsRetainingTopic(
+      final String topicName, final boolean isTableModel) {
+    acquireReadLock();
+    try {
+      final List<ConsumerGroupMeta> consumerGroupMetas = new ArrayList<>();
+      for (final ConsumerGroupMeta meta : consumerGroupMetaKeeper.getAllConsumerGroupMeta()) {
+        if (meta.visibleUnder(isTableModel) && meta.getRetainedTopicNames().contains(topicName)) {
+          consumerGroupMetas.add(meta.deepCopy());
+        }
+      }
+      return consumerGroupMetas;
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public boolean shouldRetainSubscriptionPipe(
+      final String consumerGroupId, final String topicName, final boolean isTableModel) {
+    acquireReadLock();
+    try {
+      final ConsumerGroupMeta consumerGroupMeta =
+          consumerGroupMetaKeeper.getConsumerGroupMeta(consumerGroupId);
+      if (Objects.isNull(consumerGroupMeta) || !consumerGroupMeta.visibleUnder(isTableModel)) {
+        return false;
+      }
+      if (consumerGroupMeta.getRetainedTopicNames().contains(topicName)) {
+        return true;
+      }
+      // A snapshot may complete before the last unsubscribe creates the retained marker. Keep
+      // its Pipe while subscribed as well, so resubscribing cannot recreate and replay it.
+      final TopicMeta topicMeta = topicMetaKeeper.getTopicMeta(topicName, isTableModel);
+      return consumerGroupMeta.isTopicSubscribedByConsumerGroup(topicName)
+          && Objects.nonNull(topicMeta)
+          && topicMeta.getConfig().isSnapshotMode()
+          && topicMeta.getConfig().isProgressRetainedAfterUnsubscribe();
+    } finally {
+      releaseReadLock();
     }
   }
 
@@ -1067,8 +1133,10 @@ public class SubscriptionInfo implements SnapshotProcessor {
     // we should end the procedure
     final String exceptionMessage =
         String.format(
-            "Failed to create pipe consumer %s in consumer group %s, the consumer with the same name has been created",
-            createConsumerReq.getConsumerId(), createConsumerReq.getConsumerGroupId());
+            ManagerMessages
+                .EXCEPTION_FAILED_TO_CREATE_PIPE_CONSUMER_ARG_IN_CONSUMER_GROUP_ARG_THE_CONSUMER_WITH_THE_SAME_NAME_HAS_BEEN_CREATED_40DD2127,
+            createConsumerReq.getConsumerId(),
+            createConsumerReq.getConsumerGroupId());
     LOGGER.warn(exceptionMessage);
     throw new SubscriptionException(exceptionMessage);
   }
@@ -1093,8 +1161,10 @@ public class SubscriptionInfo implements SnapshotProcessor {
     // procedure
     final String exceptionMessage =
         String.format(
-            "Failed to drop pipe consumer %s in consumer group %s, the consumer does not exist",
-            dropConsumerReq.getConsumerId(), dropConsumerReq.getConsumerGroupId());
+            ManagerMessages
+                .EXCEPTION_FAILED_TO_DROP_PIPE_CONSUMER_ARG_IN_CONSUMER_GROUP_ARG_THE_CONSUMER_DOES_NOT_EXIST_5C5F241B,
+            dropConsumerReq.getConsumerId(),
+            dropConsumerReq.getConsumerGroupId());
     LOGGER.warn(exceptionMessage);
     throw new SubscriptionException(exceptionMessage);
   }
@@ -1118,7 +1188,8 @@ public class SubscriptionInfo implements SnapshotProcessor {
     // Consumer group not exist, not allowed to alter
     final String exceptionMessage =
         String.format(
-            "Failed to alter consumer group because the consumer group %s does not exist",
+            ManagerMessages
+                .EXCEPTION_FAILED_TO_ALTER_CONSUMER_GROUP_BECAUSE_THE_CONSUMER_GROUP_ARG_DOES_NOT_EXIST_AEB27705,
             consumerGroupMeta.getConsumerGroupId());
     LOGGER.warn(exceptionMessage);
     throw new SubscriptionException(exceptionMessage);
@@ -1185,6 +1256,12 @@ public class SubscriptionInfo implements SnapshotProcessor {
                 ? consumerGroupMetaKeeper.getConsumerGroupMeta(consumerGroupId)
                 : null;
         if (Objects.nonNull(currentConsumerGroupMeta)) {
+          final Set<String> removedRetainedTopics =
+              new HashSet<>(currentConsumerGroupMeta.getRetainedTopicNames());
+          removedRetainedTopics.removeAll(consumerGroupMeta.getRetainedTopicNames());
+          removedRetainedTopics.removeAll(consumerGroupMeta.getSubscribedTopicNames());
+          removedRetainedTopics.forEach(
+              topicName -> commitProgressKeeper.removeTopicProgress(consumerGroupId, topicName));
           ConsumerGroupMeta.getTopicsUnsubByGroup(currentConsumerGroupMeta, consumerGroupMeta)
               .forEach(
                   topicName -> {
@@ -1196,7 +1273,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
                       commitProgressKeeper.removeTopicProgress(consumerGroupId, topicName);
                     }
                   });
-          if (consumerGroupMeta.isEmpty()) {
+          if (consumerGroupMeta.isEmpty() && !currentConsumerGroupMeta.isEmpty()) {
             final Set<String> retainedTopicNames = new HashSet<>();
             for (final TopicMeta topicMeta : topicMetaKeeper.getAllTopicMeta()) {
               if (topicMeta.visibleUnderTableModel() == currentConsumerGroupMeta.visibleUnder(true)
@@ -1210,6 +1287,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
         }
         consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
         if (!consumerGroupMeta.isEmpty()
+            || !consumerGroupMeta.getRetainedTopicNames().isEmpty()
             || commitProgressKeeper.hasConsumerGroupProgress(consumerGroupId)) {
           consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, consumerGroupMeta);
         }
@@ -1222,8 +1300,32 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
   private void removeEmptyConsumerGroupWithoutProgress(final ConsumerGroupMeta consumerGroupMeta) {
     if (consumerGroupMeta.isEmpty()
+        && consumerGroupMeta.getRetainedTopicNames().isEmpty()
         && !commitProgressKeeper.hasConsumerGroupProgress(consumerGroupMeta.getConsumerGroupId())) {
       consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupMeta.getConsumerGroupId());
+    }
+  }
+
+  public void retainSubscriptionProgress(
+      final ConsumerGroupMeta existingMeta, final ConsumerGroupMeta updatedMeta) {
+    if (Objects.isNull(existingMeta)) {
+      return;
+    }
+    acquireReadLock();
+    try {
+      for (final String topicName :
+          ConsumerGroupMeta.getTopicsUnsubByGroup(existingMeta, updatedMeta)) {
+        final TopicMeta topicMeta =
+            topicMetaKeeper.getTopicMeta(topicName, existingMeta.visibleUnder(true));
+        if (Objects.nonNull(topicMeta)
+            && !topicMeta.getConfig().isIncrementalMode()
+            && topicMeta.getConfig().isProgressRetainedAfterUnsubscribe()) {
+          updatedMeta.retainTopic(topicName);
+        }
+      }
+      updatedMeta.getSubscribedTopicNames().forEach(updatedMeta::removeRetainedTopic);
+    } finally {
+      releaseReadLock();
     }
   }
 
@@ -1285,8 +1387,10 @@ public class SubscriptionInfo implements SnapshotProcessor {
       // we should end the procedure
       final String exceptionMessage =
           String.format(
-              "Failed to subscribe because the consumer %s in consumer group %s does not exist",
-              consumerId, consumerGroupId);
+              ManagerMessages
+                  .EXCEPTION_FAILED_TO_SUBSCRIBE_BECAUSE_THE_CONSUMER_ARG_IN_CONSUMER_GROUP_ARG_DOES_NOT_EXIST_FA5503BB,
+              consumerId,
+              consumerGroupId);
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }
@@ -1298,7 +1402,10 @@ public class SubscriptionInfo implements SnapshotProcessor {
       // 2.1. check if exist
       if (!isTopicExisted(topicName, subscribeReq.isTableModel)) {
         final String exceptionMessage =
-            String.format("Failed to subscribe because the topic %s does not exist", topicName);
+            String.format(
+                ManagerMessages
+                    .EXCEPTION_FAILED_TO_SUBSCRIBE_BECAUSE_THE_TOPIC_ARG_DOES_NOT_EXIST_557114A7,
+                topicName);
         LOGGER.warn(exceptionMessage);
         throw new SubscriptionException(exceptionMessage);
       }
@@ -1337,8 +1444,10 @@ public class SubscriptionInfo implements SnapshotProcessor {
         // we should end the procedure
         final String exceptionMessage =
             String.format(
-                "Failed to unsubscribe because the consumer %s in consumer group %s does not exist",
-                unsubscribeReq.getConsumerId(), unsubscribeReq.getConsumerGroupId());
+                ManagerMessages
+                    .EXCEPTION_FAILED_TO_UNSUBSCRIBE_BECAUSE_THE_CONSUMER_ARG_IN_CONSUMER_GROUP_ARG_DOES_NOT_EXIST_C4E1530D,
+                unsubscribeReq.getConsumerId(),
+                unsubscribeReq.getConsumerGroupId());
         LOGGER.warn(exceptionMessage);
         throw new SubscriptionException(exceptionMessage);
       }
@@ -1348,7 +1457,10 @@ public class SubscriptionInfo implements SnapshotProcessor {
     for (String topic : unsubscribeReq.getTopicNames()) {
       if (!isTopicExisted(topic, unsubscribeReq.isTableModel)) {
         final String exceptionMessage =
-            String.format("Failed to unsubscribe because the topic %s does not exist", topic);
+            String.format(
+                ManagerMessages
+                    .EXCEPTION_FAILED_TO_UNSUBSCRIBE_BECAUSE_THE_TOPIC_ARG_DOES_NOT_EXIST_DA0E75DD,
+                topic);
         LOGGER.warn(exceptionMessage);
         throw new SubscriptionException(exceptionMessage);
       }

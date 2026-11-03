@@ -97,7 +97,8 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
   private static final int INIT_NON_SEED_CONFIG_NODE_ID = -1;
 
-  private static final String CONFIGURATION = "IoTDB configuration: {}";
+  private static final String CONFIGURATION =
+      ConfigNodeMessages.EXCEPTION_IOTDB_CONFIGURATION_ARG_9C2F6017;
 
   private final String mbeanName =
       String.format(
@@ -198,7 +199,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
           if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             break;
           } else {
-            startUpSleep("restart ConfigNode failed! ");
+            startUpSleep(ConfigNodeMessages.EXCEPTION_RESTART_CONFIGNODE_FAILED_EAE90C05);
           }
         }
         loadSecretKey();
@@ -272,7 +273,8 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
           isJoinedCluster = true;
           break;
         }
-        startUpSleep("Waiting leader's scheduling is interrupted.");
+        startUpSleep(
+            ConfigNodeMessages.EXCEPTION_WAITING_LEADER_S_SCHEDULING_IS_INTERRUPTED_963B6D90);
       }
 
       if (!isJoinedCluster) {
@@ -423,7 +425,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
       } else {
         throw new StartupException(status.getMessage());
       }
-      startUpSleep("Register ConfigNode failed!");
+      startUpSleep(ConfigNodeMessages.EXCEPTION_REGISTER_CONFIGNODE_FAILED_388E8520);
     }
 
     LOGGER.error(ConfigNodeMessages.THE_CURRENT_CONFIGNODE_CAN_T_SEND_REGISTER_REQUEST_TO_THE);

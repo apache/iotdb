@@ -50,6 +50,8 @@ public class SystemConstant {
       "__system.sink-authentication-injected";
   public static final String SINK_WAIT_FOR_SCHEMA_BEFORE_LOAD_KEY =
       "__system.sink-wait-for-schema-before-load";
+  public static final String SUBSCRIPTION_EMPTY_SNAPSHOT_COMPLETED_KEY =
+      "__system.subscription-empty-snapshot-completed";
 
   /////////////////////////////////// Utility ///////////////////////////////////
 
@@ -62,6 +64,7 @@ public class SystemConstant {
     SYSTEM_KEYS.add(SOURCE_AUTHENTICATION_INJECTED_KEY);
     SYSTEM_KEYS.add(SINK_AUTHENTICATION_INJECTED_KEY);
     SYSTEM_KEYS.add(SINK_WAIT_FOR_SCHEMA_BEFORE_LOAD_KEY);
+    SYSTEM_KEYS.add(SUBSCRIPTION_EMPTY_SNAPSHOT_COMPLETED_KEY);
   }
 
   public static PipeParameters addSystemKeysIfNecessary(final PipeParameters givenPipeParameters) {
