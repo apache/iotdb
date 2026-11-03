@@ -23,6 +23,9 @@ public final class DataNodePipeMessages {
 
   private DataNodePipeMessages() {}
 
+  public static final String EXCEPTION_INCREASE_REFERENCE_COUNT_ERROR_HOLDER_MESSAGE_ARG_7E1D032D =
+      "Increase reference count error. Holder Message: %s";
+
   // ===================== LEGACY PIPE RECEIVER RESPONSES =====================
 
   public static final String MESSAGE_PIPE_DATA_TRANSPORT_ERROR_ARG_ECE6A238 =
