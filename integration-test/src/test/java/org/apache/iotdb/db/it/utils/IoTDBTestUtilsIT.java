@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -30,9 +31,15 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
+import java.sql.Connection;
+import java.sql.Statement;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -61,9 +68,53 @@ public class IoTDBTestUtilsIT {
 
   @Test
   public void testAssertDataAlwaysObservationPeriod() {
+    assertObservationPeriod(
+        () ->
+            TestUtils.assertDataAlwaysOnEnv(
+                EnvFactory.getEnv(), "count databases", "count,", Collections.singleton("0,"), 1));
+  }
+
+  @Test
+  public void testAssertDataAlwaysIncludesQueryTime() {
+    final AtomicInteger queries = new AtomicInteger();
+    final BaseEnv slowEnv = delayQueries(BaseEnv.class, EnvFactory.getEnv(), queries);
+    assertObservationPeriod(
+        () ->
+            TestUtils.assertDataAlwaysOnEnv(
+                slowEnv, "count databases", "count,", Collections.singleton("0,"), 1));
+    // A successful query taking longer than the observation period must not cause a timeout.
+    assertEquals(1, queries.get());
+  }
+
+  private <T> T delayQueries(final Class<T> type, final T delegate, final AtomicInteger queries) {
+    return type.cast(
+        Proxy.newProxyInstance(
+            type.getClassLoader(),
+            new Class<?>[] {type},
+            (proxy, method, args) -> {
+              if ("executeQuery".equals(method.getName())) {
+                queries.incrementAndGet();
+                TimeUnit.SECONDS.sleep(7);
+              }
+              final Object result;
+              try {
+                result = method.invoke(delegate, args);
+              } catch (InvocationTargetException e) {
+                throw e.getCause();
+              }
+              if (result instanceof Connection) {
+                return delayQueries(Connection.class, (Connection) result, queries);
+              }
+              if (result instanceof Statement) {
+                return delayQueries(Statement.class, (Statement) result, queries);
+              }
+              return result;
+            }));
+  }
+
+  private void assertObservationPeriod(final Runnable assertion) {
     final long start = System.nanoTime();
-    TestUtils.assertDataAlwaysOnEnv(
-        EnvFactory.getEnv(), "count databases", "count,", Collections.singleton("0,"), 1);
+    assertion.run();
     assertTrue(
         "The assertion must observe queries for the requested period",
         System.nanoTime() - start >= TimeUnit.SECONDS.toNanos(1));
