@@ -1322,6 +1322,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
           event.increaseReferenceCount(
               PipeHistoricalDataRegionTsFileAndDeletionSource.class.getName());
       if (!isReferenceCountIncreased) {
+        // Unlike realtime supply, which already holds a queued event reference, this is the
+        // event's first reference acquisition. The source's pin keeps the file available for retry.
         // Keep the queue entry, pin, and replicate index until an event owns the resource. A
         // failed reference acquisition must not advance historical progress past this file.
         throw new PipeException(
