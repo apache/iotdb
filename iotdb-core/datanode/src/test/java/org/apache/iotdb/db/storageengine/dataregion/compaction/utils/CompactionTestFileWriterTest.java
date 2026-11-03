@@ -202,6 +202,24 @@ public class CompactionTestFileWriterTest extends AbstractCompactionTest {
   }
 
   @Test
+  public void testEmptyTableSchemaWithTimeDataIsRetained() throws IOException {
+    final TsFileResource resource = createEmptyFileAndResource(true);
+    try (final CompactionTableModelTestFileWriter writer =
+        new CompactionTableModelTestFileWriter(resource)) {
+      writer.registerTableSchema("table1", Collections.emptyList());
+      writer.startChunkGroup("table1", Collections.emptyList());
+      writer.generateTimeOnlyDataToCurrentDevice(new TimeRange[] {new TimeRange(1, 3)});
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    try (final TsFileSequenceReader reader =
+        new TsFileSequenceReader(resource.getTsFile().getAbsolutePath())) {
+      Assert.assertTrue(reader.getTableSchemaMap().containsKey("table1"));
+      Assert.assertTrue(reader.getTableSchemaMap().get("table1").getColumnTypes().isEmpty());
+    }
+  }
+
+  @Test
   public void testFieldlessTableSchemaWithTimeDataIsRetained() throws IOException {
     final TsFileResource resource = createEmptyFileAndResource(true);
     try (final CompactionTableModelTestFileWriter writer =
@@ -217,6 +235,8 @@ public class CompactionTestFileWriterTest extends AbstractCompactionTest {
       Assert.assertTrue(reader.getTableSchemaMap().containsKey("table1"));
       Assert.assertFalse(
           reader.getTableSchemaMap().get("table1").getColumnTypes().contains(ColumnCategory.FIELD));
+      Assert.assertTrue(
+          reader.getTableSchemaMap().get("table1").getColumnTypes().contains(ColumnCategory.TIME));
     }
   }
 }

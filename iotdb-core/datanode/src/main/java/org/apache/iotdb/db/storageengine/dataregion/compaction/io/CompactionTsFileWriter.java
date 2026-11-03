@@ -44,10 +44,12 @@ import org.apache.tsfile.write.writer.tsmiterator.TSMIterator;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class CompactionTsFileWriter extends TsFileIOWriter {
   CompactionType type;
@@ -55,6 +57,7 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
   private volatile boolean isWritingAligned = false;
   private boolean isEmptyTargetFile = true;
   private IDeviceID currentDeviceId;
+  private final Set<String> tablesWithChunkGroups = new HashSet<>();
 
   private EncryptParameter firstEncryptParameter;
 
@@ -167,6 +170,9 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     TableSchema tableSchema = getSchema().getTableSchemaMap().get(tableName);
     boolean generateTableSchemaForCurrentChunkGroup = tableSchema != null;
     setGenerateTableSchema(generateTableSchemaForCurrentChunkGroup);
+    if (generateTableSchemaForCurrentChunkGroup) {
+      tablesWithChunkGroups.add(tableName);
+    }
     super.endChunkGroup();
     currentDeviceId = null;
   }
@@ -199,7 +205,11 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     while (iterator.hasNext()) {
       final Map.Entry<String, TableSchema> entry = iterator.next();
       final List<ColumnCategory> columnTypes = entry.getValue().getColumnTypes();
-      if (hasFieldOrTimeColumn(columnTypes)) {
+      // Keep the TableSchema of a table that wrote data in this target file even when the schema
+      // has no FIELD/TIME column. Do not synthesize columns here: the table-name entry alone is
+      // the table-model marker LOAD relies on, and removing it makes a table TsFile look like a
+      // tree TsFile.
+      if (hasFieldOrTimeColumn(columnTypes) || tablesWithChunkGroups.contains(entry.getKey())) {
         continue;
       }
       iterator.remove();

@@ -68,6 +68,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.UnclosedF
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.utils.SharedTimeDataBuffer;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileTableSchemaRegistrationUtils;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TableDiskUsageIndex;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
@@ -2233,6 +2234,11 @@ public class TsFileProcessor {
     if (logger.isDebugEnabled()) {
       logger.debug(StorageEngineMessages.START_TO_END_FILE, tsFileResource);
     }
+    // A table-model TsFile is only recognizable by its non-empty TableSchema map. Chunks may have
+    // been flushed before registerToTsFile() was called for their table, so repair the map from the
+    // chunks and the table cache here rather than silently writing a tree-model-looking file.
+    TsFileTableSchemaRegistrationUtils.ensureTableSchemasForExistingChunks(
+        writer, dataRegionInfo.getDataRegion().getDatabaseName());
     writer.endFile();
 
     // Listen after "endFile" to avoid unnecessary waiting for tsFile close

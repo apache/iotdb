@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.schema.table.TsFileTableSchemaUtil;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
@@ -29,7 +28,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
-import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
@@ -43,6 +41,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.Fu
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileTableSchemaRegistrationUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
@@ -113,6 +112,12 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
     super.recoverWithWriter();
 
     if (hasCrashed()) {
+      // Chunks that were already flushed before the crash may no longer have a WAL entry, so
+      // redoLog cannot be relied on to restore their TableSchema. Register every table that
+      // already has chunks in this file before the file is ended again. Otherwise endFile()
+      // would serialize an empty table schema map and turn a table-model TsFile into a
+      // tree-model one.
+      TsFileTableSchemaRegistrationUtils.ensureTableSchemasForExistingChunks(writer, databaseName);
       walRedoer
           .getRecoveryMemTable()
           .setEncryptParameter(EncryptUtils.getEncryptParameter(writer.getEncryptParameter()));
@@ -253,16 +258,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
   }
 
   private void registerToTsFile(String tableName) {
-    if (tableName != null) {
-      writer
-          .getSchema()
-          .getTableSchemaMap()
-          .computeIfAbsent(
-              tableName,
-              t ->
-                  TsFileTableSchemaUtil.toTsFileTableSchemaNoAttribute(
-                      DataNodeTableCache.getInstance().getTable(databaseName, t)));
-    }
+    TsFileTableSchemaRegistrationUtils.registerTableSchemaIfAbsent(writer, databaseName, tableName);
   }
 
   /**
@@ -326,6 +322,8 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         // if we put following codes in the 'if' clause above, this file can be continued writing
         // into it
         // currently, we close this file anyway
+        TsFileTableSchemaRegistrationUtils.ensureTableSchemasForExistingChunks(
+            writer, databaseName);
         writer.endFile();
         tsFileResource.serialize();
         FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);
