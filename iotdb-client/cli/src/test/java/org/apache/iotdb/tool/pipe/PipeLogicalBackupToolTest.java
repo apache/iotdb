@@ -46,9 +46,12 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFileAttributeView;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -60,6 +63,28 @@ import java.util.zip.ZipOutputStream;
 public class PipeLogicalBackupToolTest {
 
   @Rule public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+  @Test
+  public void testBackupTemporaryDirectoryIsPrivate() throws Exception {
+    final Path directory = PipeLogicalBackupTool.createPrivateBackupTempDirectory();
+    try {
+      Assert.assertEquals(
+          Path.of(System.getProperty("user.home")).toAbsolutePath().normalize(),
+          directory.getParent());
+      final PosixFileAttributeView posixView =
+          Files.getFileAttributeView(directory, PosixFileAttributeView.class);
+      if (posixView != null) {
+        Assert.assertEquals(
+            EnumSet.of(
+                PosixFilePermission.OWNER_READ,
+                PosixFilePermission.OWNER_WRITE,
+                PosixFilePermission.OWNER_EXECUTE),
+            posixView.readAttributes().permissions());
+      }
+    } finally {
+      Files.deleteIfExists(directory);
+    }
+  }
 
   @Test
   public void testDirectoryPackZipVerifyAndRestoreDryRun() throws Exception {

@@ -61,10 +61,14 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.PosixFileAttributeView;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -80,6 +84,11 @@ import java.util.zip.ZipOutputStream;
 public final class PipeLogicalBackupTool {
 
   private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+
+  private static final class SecureRandomHolder {
+    private static final SecureRandom INSTANCE = new SecureRandom();
+  }
+
   private static final String COMMAND_DUMP = "dump";
   private static final String COMMAND_PACK = "pack";
   private static final String COMMAND_RESTORE = "restore";
@@ -1435,7 +1444,7 @@ public final class PipeLogicalBackupTool {
 
   private static String getClusterId() {
     final byte[] bytes = new byte[16];
-    new SecureRandom().nextBytes(bytes);
+    SecureRandomHolder.INSTANCE.nextBytes(bytes);
     return "PIPE-LOGICAL-BACKUP-" + UUID.nameUUIDFromBytes(bytes);
   }
 
@@ -1443,6 +1452,21 @@ public final class PipeLogicalBackupTool {
     System.out.println(
         CliMessages
             .LOG_LOGICAL_BACKUP_DUMP_VERIFY_INSPECT_PACK_RESTORE_OPTIONS_DUMP_CONNECT_TO_A_SOURCE_AND_SEAL_A_BACKUP_DIRECTORY_DOES_NOT_CREATE_A_ZIP_INSPECT_SHOW_BACKUP_IDENTITY_SCOPE_STREAMS_SEGMENTS_COUNTS_AND_STATUS_VERIFY_CHECK_STRUCTURE_CHECKSUMS_AND_SEMANTICS_WITHOUT_CHANGING_THE_INPUT_PACK_VERIFY_AND_PACKAGE_AN_EXISTING_DIRECTORY_AS_ZIP_ACCEPTS_NO_CONNECTION_OPTIONS_RESTORE_PREFLIGHT_AND_REPLAY_A_DIRECTORY_ROOT_MANIFEST_JSON_OR_ZIP_INSPECT_VERIFY_INPUT_PATH_JSON_ALLOW_INCOMPLETE_PACK_INPUT_DIR_OUTPUT_ZIP_JSON_ALLOW_INCOMPLETE_DUMP_HOST_HOST_PORT_PORT_USER_ROOT_PASSWORD_STDIN_PASSWORD_ENV_NAME_BACKUP_DIR_DIR_BACKUP_ID_ID_SCOPE_CONFIG_SCHEMA_DATA_MODEL_TREE_TABLE_INCLUDE_PATTERN_EXCLUDE_PATTERN_START_TIME_TIME_END_TIME_TIME_INCLUDE_AUTH_TRUE_FALSE_MODE_SNAPSHOT_CONTINUOUS_UNTIL_ISO_8601_RESUME_FAIL_IF_EXISTS_APPEND_NEW_PIPE_NAME_NAME_SEGMENT_SIZE_BYTES_268435456_MAX_RECORD_BYTES_67108864_FSYNC_POLICY_ALWAYS_BATCH_PERIODIC_NONE_FSYNC_BATCH_OPERATIONS_N_FSYNC_PERIOD_MS_N_ON_UNSUPPORTED_FAIL_SKIP_INCLUDE_HEARTBEAT_TRUE_FALSE_TIMEOUT_SECONDS_3600_POLL_INTERVAL_SECONDS_2_JSON_ALLOW_INCOMPLETE_CONTINUOUS_REQUIRES_UNTIL_STOP_SEQUENCE_IS_RESERVED_AND_CURRENTLY_REJECTED_OBJECT_FILTERS_REQUIRE_ONE_MODEL_TREE_USES_PATH_LISTS_TABLE_USES_DATABASE_REGEX_TABLE_REGEX_TREE_CONFIG_SCHEMA_CAPTURE_ACCEPTS_A_SINGLE_PREFIX_FULL_PATH_WITHOUT_EXCLUSIONS_TABLE_EXCLUSIONS_MUST_SELECT_WHOLE_DATABASES_OR_WHOLE_TABLE_NAME_PATTERNS_RESTORE_INPUT_PATH_HOST_HOST_PORT_PORT_USER_USER_PASSWORD_STDIN_PASSWORD_ENV_NAME_DRY_RUN_CHECKPOINT_FILE_RESUME_CONFLICT_FAIL_INCLUDE_AUTH_TRUE_FALSE_JSON_ALLOW_INCOMPLETE_RESTORING_AUTHORIZATION_OBJECTS_REQUIRES_INCLUDE_AUTH_TRUE_LEGACY_CONFIG_IS_CONSERVATIVE_A_TARGET_CONNECTION_IS_REQUIRED_FOR_REPLAY_LOCAL_DRY_RUN_NEEDS_NO_CONNECTION_TARGET_PREFLIGHT_CHECKS_VERSION_PRECISION_AUTHENTICATION_AND_HANDSHAKE_SUPPORT_OBJECT_CONFLICTS_AND_PER_OBJECT_PRIVILEGES_ARE_CHECKED_DURING_REPLAY_DEPRECATED_ALIASES_EXPORT_INPUT_DIR_OUTPUT_ZIP_PACK_EXPORT_WITH_SOURCE_CONNECTION_OPTIONS_DUMP_THEN_PACK_IMPORT_RESTORE_EXIT_CODE_0_SUCCESS_1_FAILURE_ERRORS_AND_DEPRECATION_NOTICES_GO_TO_STDERR_B1983BE8);
+  }
+
+  static Path createPrivateBackupTempDirectory() throws IOException {
+    final Path userHome = Path.of(System.getProperty("user.home")).toAbsolutePath().normalize();
+    if (Files.getFileAttributeView(userHome, PosixFileAttributeView.class) != null) {
+      return Files.createTempDirectory(
+          userHome,
+          "iotdb-logical-backup-",
+          PosixFilePermissions.asFileAttribute(
+              EnumSet.of(
+                  PosixFilePermission.OWNER_READ,
+                  PosixFilePermission.OWNER_WRITE,
+                  PosixFilePermission.OWNER_EXECUTE)));
+    }
+    return Files.createTempDirectory(userHome, "iotdb-logical-backup-");
   }
 
   static class ImportCheckpoint {
@@ -1515,7 +1539,7 @@ public final class PipeLogicalBackupTool {
           || "manifest.json".equals(normalizedSource.getFileName().toString())) {
         return new BackupInput(normalizedSource, null);
       }
-      final Path temporaryDirectory = Files.createTempDirectory("iotdb-logical-backup-");
+      final Path temporaryDirectory = createPrivateBackupTempDirectory();
       try {
         extract(normalizedSource, temporaryDirectory);
         return new BackupInput(temporaryDirectory, temporaryDirectory);
