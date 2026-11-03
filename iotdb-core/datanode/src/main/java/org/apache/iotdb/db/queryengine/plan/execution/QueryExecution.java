@@ -25,7 +25,9 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.KilledByOthersException;
@@ -49,6 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntrySpillManager;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.TableModelPlanner;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -109,6 +112,7 @@ public class QueryExecution implements IQueryExecution {
   private final AtomicBoolean resultHandleCleanUp;
 
   private final AtomicBoolean stopped;
+  private final Object tableUdfClassLoaderLock = new Object();
 
   // cost time in ns of finished rpc
   private long totalExecutionTime = 0;
@@ -164,6 +168,7 @@ public class QueryExecution implements IQueryExecution {
             // preventing a premature close raced with late-scheduled FragmentInstances.
             context.releaseExternalTsFileQueryResources();
             this.stop(cause);
+            finalizeTableUDFClassLoader();
           }
         });
     this.stopped = new AtomicBoolean(false);
@@ -332,7 +337,24 @@ public class QueryExecution implements IQueryExecution {
 
   // Analyze the statement in QueryContext. Generate the analysis this query need
   private IAnalysis analyze(MPPQueryContext context) {
-    return planner.analyze(context);
+    if (!(planner instanceof TableModelPlanner)) {
+      return planner.analyze(context);
+    }
+    String queryId = context.getQueryId().getId();
+    UDFManagementService.getInstance().acquireReadLock();
+    try {
+      synchronized (tableUdfClassLoaderLock) {
+        UDFClassLoaderManager.getInstance().initializeUDFQuery(queryId);
+        try {
+          return planner.analyze(context);
+        } catch (RuntimeException | Error e) {
+          finalizeTableUDFClassLoader();
+          throw e;
+        }
+      }
+    } finally {
+      UDFManagementService.getInstance().releaseReadLock();
+    }
   }
 
   private void schedule() {
@@ -436,6 +458,7 @@ public class QueryExecution implements IQueryExecution {
 
   /** Release the resources that current QueryExecution hold with a specified exception */
   private void releaseResource(Throwable t) {
+    finalizeTableUDFClassLoader();
     context.recordDeviceEntryDiskIOMetricsOnRelease();
     // close ResultHandle to unblock client's getResult request
     // Actually, we should not close the ResultHandle when the QueryExecution is Finished.
@@ -463,6 +486,12 @@ public class QueryExecution implements IQueryExecution {
                     .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
                 context.getQueryId().getId()));
       }
+    }
+  }
+
+  private void finalizeTableUDFClassLoader() {
+    synchronized (tableUdfClassLoaderLock) {
+      UDFClassLoaderManager.getInstance().finalizeUDFQuery(context.getQueryId().getId());
     }
   }
 

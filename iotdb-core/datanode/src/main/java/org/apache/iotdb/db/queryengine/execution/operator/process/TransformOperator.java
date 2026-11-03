@@ -136,7 +136,7 @@ public class TransformOperator implements ProcessOperator {
       Map<String, List<InputLocation>> inputLocations,
       Expression[] outputExpressions,
       Map<NodeRef<Expression>, TSDataType> expressionTypes) {
-    UDFManagementService.getInstance().acquireLock();
+    UDFManagementService.getInstance().acquireReadLock();
     try {
       // This statement must be surrounded by the registration lock.
       UDFClassLoaderManager.getInstance().initializeUDFQuery(udtfQueryId);
@@ -155,7 +155,7 @@ public class TransformOperator implements ProcessOperator {
               .buildResultColumnPointReaders()
               .getOutputReaders();
     } finally {
-      UDFManagementService.getInstance().releaseLock();
+      UDFManagementService.getInstance().releaseReadLock();
     }
   }
 

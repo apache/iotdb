@@ -33,7 +33,9 @@ import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -116,6 +118,7 @@ public class FragmentInstanceContext extends QueryContext {
   private static final long LONG_WAIT_DURATION = 5_000_000_000L;
   private static final int MODS_MEMORY_ESTIMATE_READ_INTERVAL = 10_000;
   private final FragmentInstanceId id;
+  private boolean tableModelUDFQueryInitialized;
 
   private final FragmentInstanceStateMachine stateMachine;
 
@@ -1348,6 +1351,7 @@ public class FragmentInstanceContext extends QueryContext {
    * be decreased.
    */
   public synchronized void releaseResource() {
+    finalizeTableModelUDFQuery();
     try {
       getQueryChunkReaders().close();
     } catch (IOException e) {
@@ -1490,6 +1494,22 @@ public class FragmentInstanceContext extends QueryContext {
     if (dataNodeQueryContext.decreaseDataNodeFINum() == 0) {
       dataNodeQueryContext = null;
       dataNodeQueryContextMap.remove(id.getQueryId());
+    }
+  }
+
+  public synchronized void initializeTableModelUDFQuery() {
+    if (!tableModelUDFQueryInitialized
+        && sessionInfo != null
+        && sessionInfo.getSqlDialect() == SqlDialect.TABLE) {
+      UDFClassLoaderManager.getInstance().initializeUDFQuery(id.getFullId());
+      tableModelUDFQueryInitialized = true;
+    }
+  }
+
+  public synchronized void finalizeTableModelUDFQuery() {
+    if (tableModelUDFQueryInitialized) {
+      UDFClassLoaderManager.getInstance().finalizeUDFQuery(id.getFullId());
+      tableModelUDFQueryInitialized = false;
     }
   }
 

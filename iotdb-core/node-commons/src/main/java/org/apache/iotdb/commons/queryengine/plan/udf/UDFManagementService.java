@@ -42,17 +42,17 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class UDFManagementService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UDFManagementService.class);
 
-  private final ReentrantLock lock;
+  private final ReentrantReadWriteLock lock;
   private final UDFTable udfTable;
 
   private UDFManagementService() {
-    lock = new ReentrantLock();
+    lock = new ReentrantReadWriteLock();
     udfTable = new UDFTable();
     // register tree model built-in functions
     for (BuiltinTimeSeriesGeneratingFunction builtinTimeSeriesGeneratingFunction :
@@ -69,23 +69,31 @@ public class UDFManagementService {
     }
   }
 
-  public void acquireLock() {
-    lock.lock();
+  public void acquireReadLock() {
+    lock.readLock().lock();
   }
 
-  public void releaseLock() {
-    lock.unlock();
+  public void releaseReadLock() {
+    lock.readLock().unlock();
+  }
+
+  public void acquireWriteLock() {
+    lock.writeLock().lock();
+  }
+
+  public void releaseWriteLock() {
+    lock.writeLock().unlock();
   }
 
   public void register(UDFInformation udfInformation, ByteBuffer jarFile) throws Exception {
     Model model = checkAndGetModel(udfInformation);
     try {
-      acquireLock();
+      acquireWriteLock();
       checkIfRegistered(model, udfInformation);
       saveJarFile(udfInformation.getJarName(), jarFile);
       doRegister(model, udfInformation);
     } finally {
-      releaseLock();
+      releaseWriteLock();
     }
   }
 
@@ -206,7 +214,7 @@ public class UDFManagementService {
   public void deregister(Model model, String functionName, boolean needToDeleteJar)
       throws Exception {
     try {
-      acquireLock();
+      acquireWriteLock();
       UDFInformation information = udfTable.getUDFInformation(model, functionName);
       if (information == null) {
         return;
@@ -219,7 +227,7 @@ public class UDFManagementService {
             .removeFileUnderTemporaryRoot(functionName.toUpperCase() + ".txt");
       }
     } finally {
-      releaseLock();
+      releaseWriteLock();
     }
   }
 

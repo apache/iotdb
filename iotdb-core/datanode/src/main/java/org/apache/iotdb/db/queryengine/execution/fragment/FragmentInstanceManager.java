@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.QueryTimeoutException;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -179,12 +181,28 @@ public class FragmentInstanceManager {
                 context.setHighestPriority(instance.isHighestPriority());
 
                 try {
-                  List<PipelineDriverFactory> driverFactories =
-                      planner.plan(
-                          instance.getFragment().getPlanNodeTree(),
-                          instance.getFragment().getTypeProvider(),
-                          context,
-                          dataNodeQueryContexts[0]);
+                  List<PipelineDriverFactory> driverFactories;
+                  if (instance.getSessionInfo().getSqlDialect() == SqlDialect.TABLE) {
+                    UDFManagementService.getInstance().acquireReadLock();
+                    try {
+                      context.initializeTableModelUDFQuery();
+                      driverFactories =
+                          planner.plan(
+                              instance.getFragment().getPlanNodeTree(),
+                              instance.getFragment().getTypeProvider(),
+                              context,
+                              dataNodeQueryContexts[0]);
+                    } finally {
+                      UDFManagementService.getInstance().releaseReadLock();
+                    }
+                  } else {
+                    driverFactories =
+                        planner.plan(
+                            instance.getFragment().getPlanNodeTree(),
+                            instance.getFragment().getTypeProvider(),
+                            context,
+                            dataNodeQueryContexts[0]);
+                  }
 
                   List<IDriver> drivers = new ArrayList<>();
                   driverFactories.forEach(factory -> drivers.add(factory.createDriver()));
@@ -235,6 +253,7 @@ public class FragmentInstanceManager {
                   // still being created. Capture the failure result from the local context before
                   // returning from computeIfAbsent instead of looking it up from the map later.
                   failedInstanceInfo.set(context.getInstanceInfo());
+                  context.finalizeTableModelUDFQuery();
                   clearFIRelatedResources(instanceId);
                   return null;
                 }
