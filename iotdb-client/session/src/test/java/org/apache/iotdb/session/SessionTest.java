@@ -152,6 +152,7 @@ public class SessionTest {
     connections.put(new TEndPoint("default", 1), sessionConnection);
     connections.put(new TEndPoint("redirected", 2), redirectedConnection);
     Whitebox.setInternalState(session, "endPointToSessionConnection", connections);
+    Whitebox.setInternalState(session, "enableRedirection", false);
     Whitebox.setInternalState(session, "enableQueryRedirection", true);
     Whitebox.setInternalState(session, "isClosed", false);
 
