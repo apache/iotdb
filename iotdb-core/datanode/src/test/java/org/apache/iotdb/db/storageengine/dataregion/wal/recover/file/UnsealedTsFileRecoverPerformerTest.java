@@ -183,7 +183,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(
             new PlanNodeId("0"),
-            Collections.singletonList(new PartialPath(DEVICE2_NAME)),
+            Collections.singletonList(new PartialPath(DEVICE2_NAME, "**")),
             Long.MIN_VALUE,
             Long.MAX_VALUE);
     int fakeMemTableId = 1;
