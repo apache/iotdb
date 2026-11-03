@@ -71,7 +71,8 @@ public class TsFileResourceUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileResourceUtils.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final String VALIDATE_FAILED = "validate failed,";
+  private static final String VALIDATE_FAILED =
+      StorageEngineMessages.MESSAGE_VALIDATE_FAILED_BABCDFC5;
 
   private TsFileResourceUtils() {
     // util class

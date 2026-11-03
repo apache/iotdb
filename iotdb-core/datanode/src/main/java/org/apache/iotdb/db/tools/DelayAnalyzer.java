@@ -329,7 +329,7 @@ public class DelayAnalyzer {
    */
   public String getStatistics() {
     if (!isFull && cursor == 0) {
-      return "[DelayAnalyzer] No data collected yet";
+      return DataNodeMiscMessages.EXCEPTION_DELAYANALYZER_NO_DATA_COLLECTED_YET_A237116F;
     }
 
     long p50 = getDelayQuantile(0.50);
@@ -339,8 +339,14 @@ public class DelayAnalyzer {
     int currentSize = isFull ? windowSize : cursor;
 
     return String.format(
-        "DelayAnalyzer Statistics -> Samples: %d/%d, P50: %dms, P95: %dms, P99: %dms, Max: %dms",
-        currentSize, windowSize, p50, p95, p99, max);
+        DataNodeMiscMessages
+            .EXCEPTION_DELAYANALYZER_STATISTICS_SAMPLES_ARG_ARG_P50_ARG_MS_P95_ARG_MS_P99_ARG_MS_MAX_ARG_MS_F0EBB575,
+        currentSize,
+        windowSize,
+        p50,
+        p95,
+        p99,
+        max);
   }
 
   /** Print current statistics (for debugging) */

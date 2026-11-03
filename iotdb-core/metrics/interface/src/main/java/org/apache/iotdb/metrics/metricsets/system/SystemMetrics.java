@@ -64,7 +64,8 @@ public class SystemMetrics implements IMetricSet {
   private final com.sun.management.OperatingSystemMXBean osMxBean;
   private volatile Set<FileStore> fileStores = new HashSet<>();
   private volatile List<String> diskDirs = Collections.emptyList();
-  private static final String FAILED_TO_STATISTIC = "Failed to statistic the size of {}, because";
+  private static final String FAILED_TO_STATISTIC =
+      MetricsMessages.EXCEPTION_FAILED_TO_STATISTIC_THE_SIZE_OF_ARG_BECAUSE_DC9B94FB;
 
   public SystemMetrics() {
     this.osMxBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();

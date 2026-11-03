@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.pipe.api.exception;
 
+import org.apache.iotdb.pipe.api.i18n.PipeApiMessages;
+
 public class PipeConnectionException extends PipeException {
 
   public static final String CONNECTION_ERROR_FORMATTER =
-      "Error occurred while connecting to receiver %s:%s, please check network connectivity or SSL configurations when enable SSL transmission";
+      PipeApiMessages
+          .EXCEPTION_ERROR_OCCURRED_WHILE_CONNECTING_TO_RECEIVER_ARG_ARG_PLEASE_CHECK_NETWORK_CONNECTIVITY_OR_SSL_CONFIGURATIONS_WHEN_ENABLE_SSL_TRANSMISSION_5C0C2E01;
 
   public PipeConnectionException(final String message) {
     super(message);

@@ -110,4 +110,14 @@ public final class AuthMessages {
   public static final String EXCEPTION_ENCRYPT_DECRYPT_FAILED_163764B5 = "加密或解密失败。";
   public static final String EXCEPTION_BACKSLASH_QUOTE_D4C5D637 = "\"";
 
+  public static final String EXCEPTION_ONE_LOWERCASE_LETTER_B49601B4 = "一个小写字母，";
+
+  public static final String EXCEPTION_ONE_UPPERCASE_LETTER_94B320E6 = "一个大写字母，";
+
+  public static final String EXCEPTION_ONE_DIGIT_27AFB265 = "一个数字，";
+
+  public static final String EXCEPTION_ONE_SPECIAL_CHARACTER_251EE695 = "一个特殊字符，";
+
+  public static final String EXCEPTION_INVALID_PASSWORD_MUST_CONTAIN_AT_LEAST_ARG_4A71F1F6 =
+      "密码无效，必须至少包含%s。";
 }

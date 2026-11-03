@@ -408,7 +408,8 @@ public class LoadTsFileTableSchemaCache {
         if (realColumn != null && !fileColumn.getType().equals(realColumn.getType())) {
           final String message =
               String.format(
-                  "Data type mismatch for column %s in table %s, type in TsFile: %s, type in IoTDB: %s",
+                  DataNodeQueryMessages
+                      .MESSAGE_DATA_TYPE_MISMATCH_FOR_COLUMN_ARG_IN_TABLE_ARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_ECAD0C63,
                   fileColumn.getName(),
                   realSchema.getTableName(),
                   fileColumn.getType(),

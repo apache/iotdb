@@ -606,4 +606,5 @@ public final class QueryMessages {
       EXCEPTION_INPUT_ARRAY_LENGTH_MUST_BE_AT_LEAST_2_FFT_LENGTH_31DF6A25 =
           "Input array length must be at least 2 * FFT length.";
 
+  public static final String EXCEPTION_LINE_ARG_ARG_ARG_B222E08B = "line %s:%s: %s";
 }

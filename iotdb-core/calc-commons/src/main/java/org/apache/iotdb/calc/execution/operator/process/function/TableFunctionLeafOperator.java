@@ -59,7 +59,9 @@ public class TableFunctionLeafOperator implements ProcessOperator {
       TableFunctionProcessorProvider processorProvider,
       List<TSDataType> outputDataTypes,
       IoTDBLocal ioTDBLocal) {
-    checkArgument(ioTDBLocal != null, "IoTDBLocal must not be null for table function");
+    checkArgument(
+        ioTDBLocal != null,
+        CalcMessages.EXCEPTION_IOTDBLOCAL_MUST_NOT_BE_NULL_FOR_TABLE_FUNCTION_5580D0A5);
     this.operatorContext = operatorContext;
     this.processor = processorProvider.getSplitProcessor();
     this.blockBuilder = new TsBlockBuilder(outputDataTypes);
