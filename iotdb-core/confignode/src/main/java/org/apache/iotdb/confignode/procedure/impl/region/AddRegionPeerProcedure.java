@@ -94,7 +94,8 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
           TSStatus status = handler.createNewRegionPeer(regionId, targetDataNode);
           setKillPoint(state);
           if (status.getCode() != SUCCESS_STATUS.getStatusCode()) {
-            return warnAndRollBackAndNoMoreState(env, handler, "CREATE_NEW_REGION_PEER fail");
+            return warnAndRollBackAndNoMoreState(
+                env, handler, ProcedureMessages.EXCEPTION_CREATE_NEW_REGION_PEER_FAIL_2FE4FBAA);
           }
           setNextState(AddRegionPeerState.CREATE_CONSENSUS_PIPES);
           break;
@@ -120,7 +121,9 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
             setKillPoint(state);
             if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
               return warnAndRollBackAndNoMoreState(
-                  env, handler, "submit DO_ADD_REGION_PEER task fail");
+                  env,
+                  handler,
+                  ProcedureMessages.EXCEPTION_SUBMIT_DO_ADD_REGION_PEER_TASK_FAIL_53930422);
             }
           }
           TRegionMigrateResult result =
@@ -132,7 +135,12 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
             case FAIL:
               // maybe some DataNode crash
               return warnAndRollBackAndNoMoreState(
-                  env, handler, String.format("%s result is %s", state, result.getTaskStatus()));
+                  env,
+                  handler,
+                  String.format(
+                      ProcedureMessages.EXCEPTION_ARG_RESULT_IS_ARG_03198AFB,
+                      state,
+                      result.getTaskStatus()));
             case PROCESSING:
               // waitTaskFinish() only returns PROCESSING when its polling loop was interrupted by
               // an InterruptedException, i.e. this ConfigNode is shutting down / losing leadership
@@ -155,7 +163,11 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
               break outerSwitch;
             default:
               return warnAndRollBackAndNoMoreState(
-                  env, handler, String.format("status %s is unsupported", result.getTaskStatus()));
+                  env,
+                  handler,
+                  String.format(
+                      ProcedureMessages.EXCEPTION_STATUS_ARG_IS_UNSUPPORTED_1E9E19B7,
+                      result.getTaskStatus()));
           }
         case UPDATE_REGION_LOCATION_CACHE:
           handler.forceUpdateRegionCache(regionId, targetDataNode, RegionStatus.Running);

@@ -151,7 +151,7 @@ public class AddTableColumnProcedure
 
   @Override
   protected String getActionMessage() {
-    return "add table column";
+    return ProcedureMessages.MESSAGE_ADD_TABLE_COLUMN_DE7718D1;
   }
 
   /**
@@ -194,7 +194,7 @@ public class AddTableColumnProcedure
       }
     } finally {
       LOGGER.info(
-          ProcedureMessages.ROLLBACK_DROPTABLE_COSTS_MS,
+          ProcedureMessages.ROLLBACK_ADDTABLECOLUMN_COSTS_MS,
           state,
           (System.currentTimeMillis() - startTime));
     }

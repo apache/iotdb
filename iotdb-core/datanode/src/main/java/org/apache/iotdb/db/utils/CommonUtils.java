@@ -60,6 +60,7 @@ import org.apache.tsfile.read.common.type.Type;
 
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.utils.TypeServices.ValueConversion.VALUE_PARSER_SERVICE;
@@ -142,9 +143,12 @@ public class CommonUtils {
         sb.append(i == 0 ? "" : ",").append(req.getPaths().get(i));
       }
       return String.format(
-          "Request name: TSRawDataQueryReq, paths size: %s, starTime: %s, "
-              + "endTime: %s, some paths: %s",
-          req.getPathsSize(), req.getStartTime(), req.getEndTime(), sb);
+          DataNodeMiscMessages
+              .EXCEPTION_REQUEST_NAME_TSRAWDATAQUERYREQ_PATHS_SIZE_ARG_STARTIME_ARG_ENDTIME_ARG_SOME_PATHS_ARG_92B722A4,
+          req.getPathsSize(),
+          req.getStartTime(),
+          req.getEndTime(),
+          sb);
     } else if (request instanceof TSLastDataQueryReq) {
       TSLastDataQueryReq req = (TSLastDataQueryReq) request;
       StringBuilder sb = new StringBuilder();
@@ -152,8 +156,10 @@ public class CommonUtils {
         sb.append(i == 0 ? "" : ",").append(req.getPaths().get(i));
       }
       return String.format(
-          "Request name: TSLastDataQueryReq, paths size: %s, some paths: %s",
-          req.getPathsSize(), sb);
+          DataNodeMiscMessages
+              .EXCEPTION_REQUEST_NAME_TSLASTDATAQUERYREQ_PATHS_SIZE_ARG_SOME_PATHS_ARG_46D12DFF,
+          req.getPathsSize(),
+          sb);
     } else if (request instanceof TSAggregationQueryReq) {
       TSAggregationQueryReq req = (TSAggregationQueryReq) request;
       StringBuilder sb = new StringBuilder();
@@ -164,9 +170,12 @@ public class CommonUtils {
             .append(req.getPaths().get(i));
       }
       return String.format(
-          "Request name: TSAggregationQueryReq, startTime: %s, endTime: %s, "
-              + "paths size: %s, some paths: %s",
-          req.getStartTime(), req.getEndTime(), req.getPathsSize(), sb);
+          DataNodeMiscMessages
+              .EXCEPTION_REQUEST_NAME_TSAGGREGATIONQUERYREQ_STARTTIME_ARG_ENDTIME_ARG_PATHS_SIZE_ARG_SOME_PATHS_ARG_9E59CBB8,
+          req.getStartTime(),
+          req.getEndTime(),
+          req.getPathsSize(),
+          sb);
     } else if (request instanceof TSFastLastDataQueryForOneDeviceReq) {
       TSFastLastDataQueryForOneDeviceReq req = (TSFastLastDataQueryForOneDeviceReq) request;
       return getContentOfTSFastLastDataQueryForOneDeviceReq(req);
@@ -180,10 +189,12 @@ public class CommonUtils {
             .append(queryExecution.getDatasetHeader().getRespColumns().get(i));
       }
       return String.format(
-          "Request name: TSFetchResultsReq, "
-              + "queryId: %s, output value column count: %s, fetchSize: %s, "
-              + "some response headers: %s",
-          req.getQueryId(), queryExecution.getOutputValueColumnCount(), req.getFetchSize(), sb);
+          DataNodeMiscMessages
+              .EXCEPTION_REQUEST_NAME_TSFETCHRESULTSREQ_QUERYID_ARG_OUTPUT_VALUE_COLUMN_COUNT_ARG_FETCHSIZE_ARG_SOME_RESPONSE_HEADERS_ARG_15468822,
+          req.getQueryId(),
+          queryExecution.getOutputValueColumnCount(),
+          req.getFetchSize(),
+          sb);
     } else {
       return UNKNOWN_RESULT;
     }
@@ -192,9 +203,12 @@ public class CommonUtils {
   public static String getContentOfTSFastLastDataQueryForOneDeviceReq(
       TSFastLastDataQueryForOneDeviceReq req) {
     return String.format(
-        "Request name: TSFastLastDataQueryForOneDeviceReq, "
-            + "db: %s, deviceId: %s, sensorSize: %s, sensors: %s",
-        req.getDb(), req.getDeviceId(), req.getSensorsSize(), req.getSensors());
+        DataNodeMiscMessages
+            .EXCEPTION_REQUEST_NAME_TSFASTLASTDATAQUERYFORONEDEVICEREQ_DB_ARG_DEVICEID_ARG_SENSORSIZE_ARG_SENSORS_ARG_D1F9A498,
+        req.getDb(),
+        req.getDeviceId(),
+        req.getSensorsSize(),
+        req.getSensors());
   }
 
   public static int runCli(
@@ -247,13 +261,18 @@ public class CommonUtils {
   }
 
   private static void badUse(Exception e) {
-    System.out.println("node-tool: " + e.getMessage());
-    System.out.println("See 'node-tool help' or 'node-tool help <command>'.");
+    System.out.println(
+        String.format(
+            DataNodeMiscMessages.LOG_NODE_TOOL_ARG_076E307A, Objects.toString(e.getMessage())));
+    System.out.println(
+        DataNodeMiscMessages.LOG_SEE_NODE_TOOL_HELP_OR_NODE_TOOL_HELP_COMMAND_BB9F5146);
   }
 
   private static void err(Throwable e) {
-    System.err.println("error: " + e.getMessage());
-    System.err.println("-- StackTrace --");
+    System.err.println(
+        String.format(
+            DataNodeMiscMessages.LOG_ERROR_ARG_76028BAA, Objects.toString(e.getMessage())));
+    System.err.println(DataNodeMiscMessages.LOG_STACKTRACE_131CBB85);
     System.err.println(Throwables.getStackTraceAsString(e));
   }
 

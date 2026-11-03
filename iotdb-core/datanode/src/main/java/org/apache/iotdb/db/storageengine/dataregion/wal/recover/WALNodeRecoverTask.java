@@ -57,6 +57,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -76,6 +77,8 @@ public class WALNodeRecoverTask implements Runnable {
   private long firstValidVersionId = Long.MAX_VALUE;
   private Map<Long, MemTableInfo> memTableId2Info;
   private Map<Long, UnsealedTsFileRecoverPerformer> memTableId2RecoverPerformer = new HashMap<>();
+  private final Set<Long> failedMemTables = new HashSet<>();
+  private boolean recoveryFailed;
 
   public WALNodeRecoverTask(File logDirectory, CountDownLatch allNodesRecoveredLatch) {
     this.logDirectory = logDirectory;
@@ -121,6 +124,8 @@ public class WALNodeRecoverTask implements Runnable {
       recoverInfoFromCheckpoints();
       recoverTsFiles();
     } catch (Exception e) {
+      recoveryFailed = true;
+      WALManager.getInstance().markRecoveryFailed(logDirectory.getName(), e);
       for (UnsealedTsFileRecoverPerformer recoverPerformer : memTableId2RecoverPerformer.values()) {
         recoverPerformer.getRecoverListener().fail(e);
       }
@@ -130,7 +135,7 @@ public class WALNodeRecoverTask implements Runnable {
     } finally {
       for (UnsealedTsFileRecoverPerformer recoverPerformer : memTableId2RecoverPerformer.values()) {
         try {
-          if (!recoverPerformer.canWrite()) {
+          if (recoveryFailed || !recoverPerformer.canWrite()) {
             recoverPerformer.close();
           }
         } catch (Exception e) {
@@ -139,6 +144,13 @@ public class WALNodeRecoverTask implements Runnable {
       }
     }
 
+    if (recoveryFailed) {
+      logger.warn(
+          StorageEngineMessages
+              .LOG_WAL_NODE_RECOVERY_IN_ARG_WAS_INCOMPLETE_RETAINING_WAL_AND_CHECKPOINT_FILES_FOR_RETRY_48C1F7BF,
+          logDirectory);
+      return;
+    }
     if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
       // delete checkpoint info to avoid repeated recover
       File[] checkpointFiles = CheckpointFileUtils.listAllCheckpointFiles(logDirectory);
@@ -313,10 +325,15 @@ public class WALNodeRecoverTask implements Runnable {
       return;
     }
     // make preparation for recovery
-    for (UnsealedTsFileRecoverPerformer recoverPerformer : memTableId2RecoverPerformer.values()) {
+    for (Map.Entry<Long, UnsealedTsFileRecoverPerformer> entry :
+        memTableId2RecoverPerformer.entrySet()) {
+      UnsealedTsFileRecoverPerformer recoverPerformer = entry.getValue();
       try {
         recoverPerformer.startRecovery();
       } catch (Exception e) {
+        recoveryFailed = true;
+        WALManager.getInstance().markRecoveryFailed(logDirectory.getName(), e);
+        failedMemTables.add(entry.getKey());
         recoverPerformer.getRecoverListener().fail(e);
         if (WALFormatException.isFatal(e)) {
           throw new IllegalStateException(e);
@@ -347,7 +364,7 @@ public class WALNodeRecoverTask implements Runnable {
           // see WALInfoEntry#serialize, entry type
           buffer.position(Byte.BYTES);
           long memTableId = buffer.getLong();
-          if (!memTableId2Info.containsKey(memTableId)) {
+          if (!memTableId2Info.containsKey(memTableId) || failedMemTables.contains(memTableId)) {
             continue;
           }
           buffer.clear();
@@ -392,11 +409,19 @@ public class WALNodeRecoverTask implements Runnable {
 
   private void endRecovery() {
     // end recovering all recover performers
-    for (UnsealedTsFileRecoverPerformer recoverPerformer : memTableId2RecoverPerformer.values()) {
+    for (Map.Entry<Long, UnsealedTsFileRecoverPerformer> entry :
+        memTableId2RecoverPerformer.entrySet()) {
+      if (failedMemTables.contains(entry.getKey())) {
+        continue;
+      }
+      UnsealedTsFileRecoverPerformer recoverPerformer = entry.getValue();
       try {
         recoverPerformer.endRecovery();
         recoverPerformer.getRecoverListener().succeed();
       } catch (Exception e) {
+        recoveryFailed = true;
+        WALManager.getInstance().markRecoveryFailed(logDirectory.getName(), e);
+        failedMemTables.add(entry.getKey());
         recoverPerformer.getRecoverListener().fail(e);
         if (WALFormatException.isFatal(e)) {
           throw new IllegalStateException(e);

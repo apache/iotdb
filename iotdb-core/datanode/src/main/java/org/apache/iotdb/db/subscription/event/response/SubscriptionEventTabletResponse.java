@@ -125,6 +125,9 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
   @Override
   public synchronized void nack() {
     cleanUp();
+    // A completed download has already moved its parsed tablets out of the batch's current
+    // snapshot. Release that delivery's snapshot before rewinding, without acknowledging it.
+    events.cleanUpIterationSnapshot();
 
     // should not reset the iterator of batch when init
     // TODO: avoid completely rewinding the iterator

@@ -22,11 +22,17 @@ package org.apache.iotdb.db.trigger.executor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 public enum TriggerFireResult {
-  SUCCESS(0, "Trigger fires successfully"),
+  SUCCESS(0, DataNodeMiscMessages.EXCEPTION_TRIGGER_FIRES_SUCCESSFULLY_FACD095E),
 
-  FAILED_NO_TERMINATION(1, "Exception occurred when firing an trigger with optimistic strategy"),
+  FAILED_NO_TERMINATION(
+      1,
+      DataNodeMiscMessages
+          .EXCEPTION_EXCEPTION_OCCURRED_WHEN_FIRING_AN_TRIGGER_WITH_OPTIMISTIC_STRATEGY_623857A6),
 
-  TERMINATION(2, "Exception occurred when firing an trigger with pessimistic strategy");
+  TERMINATION(
+      2,
+      DataNodeMiscMessages
+          .EXCEPTION_EXCEPTION_OCCURRED_WHEN_FIRING_AN_TRIGGER_WITH_PESSIMISTIC_STRATEGY_ED052363);
 
   private final int id;
   private final String event;

@@ -73,8 +73,10 @@ public class IoTDBConnection implements Connection {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConnection.class);
   private static final TSProtocolVersion protocolVersion =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
-  private static final String NOT_SUPPORT_PREPARE_CALL = "Does not support prepareCall";
-  private static final String NOT_SUPPORT_PREPARE_STATEMENT = "Does not support prepareStatement";
+  private static final String NOT_SUPPORT_PREPARE_CALL =
+      JdbcMessages.EXCEPTION_DOES_NOT_SUPPORT_PREPARECALL_2E958060;
+  private static final String NOT_SUPPORT_PREPARE_STATEMENT =
+      JdbcMessages.EXCEPTION_DOES_NOT_SUPPORT_PREPARESTATEMENT_93B9FAF1;
   private static final String APACHE_IOTDB = "Apache IoTDB";
   private IClientRPCService.Iface client = null;
   private long sessionId = -1;
@@ -600,7 +602,7 @@ public class IoTDBConnection implements Connection {
                   openResp.getServerProtocolVersion().getValue()));
         }
       }
-      String expirationInformer = "Your password will expire at ";
+      String expirationInformer = JdbcMessages.EXCEPTION_YOUR_PASSWORD_WILL_EXPIRE_AT_49098220;
       String message = openResp.getStatus().getMessage();
       int expirationIndex = message.indexOf(expirationInformer);
       if (expirationIndex != -1) {
@@ -617,7 +619,9 @@ public class IoTDBConnection implements Connection {
       }
     } catch (TException e) {
       transport.close();
-      if (e.getMessage().contains("Required field 'client_protocol' was not present!")) {
+      if (e.getMessage()
+          .contains(
+              JdbcMessages.EXCEPTION_REQUIRED_FIELD_CLIENT_PROTOCOL_WAS_NOT_PRESENT_2059BC1E)) {
         // the server is an old version (less than 0.10)
         throw new SQLException(
             String.format(

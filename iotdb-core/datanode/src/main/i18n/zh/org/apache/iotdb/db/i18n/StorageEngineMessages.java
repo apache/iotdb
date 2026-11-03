@@ -20,6 +20,16 @@
 package org.apache.iotdb.db.i18n;
 
 public final class StorageEngineMessages {
+  public static final String EXCEPTION_CANNOT_ENABLE_WAL_NODE_ARG_BECAUSE_ITS_PREVIOUS_RECOVERY_FAILED_RESTART_AFTER_RESOLVING_THE_RECOVERY_FAILURE_56DF9750 =
+      "WAL 节点 %s 上次恢复失败，无法启用；请解决恢复失败原因后重启。";
+  public static final String LOG_WAL_NODE_RECOVERY_IN_ARG_WAS_INCOMPLETE_RETAINING_WAL_AND_CHECKPOINT_FILES_FOR_RETRY_48C1F7BF =
+      "目录 {} 中的 WAL 节点恢复未完成；保留 WAL 和 checkpoint 文件以便重试。";
+  public static final String EXCEPTION_FILE_ENCRYPTION_PARAMETER_PROVIDER_RETURNED_NULL_15C41723 =
+      "文件加密参数 Provider 返回 null";
+  public static final String EXCEPTION_PRECALCULATED_CHUNK_STAGING_IS_NOT_SUPPORTED_BY_THE_FILE_ENCRYPTION_POLICY_13DA8C32 =
+      "文件加密策略不支持预计算 Chunk 暂存";
+  public static final String EXCEPTION_MULTIPLE_FILE_ENCRYPTION_PARAMETER_PROVIDERS_ARE_CONFIGURED_5E7DDA5B =
+      "配置了多个文件加密参数 Provider";
   public static final String EXCEPTION_UNSUPPORTED_OR_UNAVAILABLE_WAL_FORMAT_4629CFE4 =
       "WAL 格式不支持或对应实现不可用";
   public static final String EXCEPTION_MULTIPLE_WAL_FORMAT_PROVIDERS_ARE_CONFIGURED_DD78877D =
@@ -49,6 +59,67 @@ public final class StorageEngineMessages {
 
     public static final String IS_NOT_SUPPORTED =
       " 不受支持";
+
+  public static final String EXCEPTION_FAILED_TO_ITERATE_TABLETS_WHILE_LOADING_TSFILE_4E6289F3 =
+      "加载 TsFile 时迭代 tablet 失败。";
+  public static final String EXCEPTION_USAGE_WALPRINTTOOL_FILE_11D2FB79 = "用法：WALPrintTool <file>";
+  public static final String MESSAGE_ARG_ARG_GET_FLUSHQUERYLOCK_WRITE_LOCK_687C85BC =
+      "{}：{} 获取 flushQueryLock 写锁";
+  public static final String MESSAGE_ARG_ARG_GET_FLUSHQUERYLOCK_WRITE_LOCK_RELEASED_AA87CEE1 =
+      "{}：{} 释放 flushQueryLock 写锁";
+  public static final String MESSAGE_ASYNC_RECOVER_TSFILE_RESOURCE_MEETS_ERROR_EE1393F9 =
+      "异步恢复 TsFile resource 时出错。";
+  public static final String MESSAGE_COMPACTION_IN_SEQ_SPACE_IS_NOT_ENABLED_045A20C5 = "顺序空间合并未启用";
+  public static final String MESSAGE_COMPACTION_IN_THIS_DATAREGION_IS_NOT_ALLOWED_0549D4A4 =
+      "不允许在此 DataRegion 中进行合并。";
+  public static final String MESSAGE_COMPACTION_IN_UNSEQ_SPACE_IS_NOT_ENABLED_952F1A1E =
+      "乱序空间合并未启用";
+  public static final String MESSAGE_DATABASE_ARG_DOES_NOT_EXIST_ON_LOCAL_CC032648 =
+      "数据库 %s 在本地不存在";
+  public static final String
+      MESSAGE_DATABASE_NAME_IS_UNEXPECTEDLY_NULL_FOR_LOADTSFILESTATEMENT_ARG_SKIP_DATA_TYPE_CONVERSION_8D13DC68 =
+          "LoadTsFileStatement 的数据库名意外为 null：%s。跳过数据类型转换。";
+  public static final String MESSAGE_DATAREGION_NOT_EXIST_34C4A229 = "DataRegion 不存在";
+  public static final String MESSAGE_DATAREGION_OF_FILES_IS_NOT_CONSISTENT_CFBDEDC4 =
+      "文件所属的 DataRegion 不一致。";
+  public static final String
+      MESSAGE_EVERY_SELECTED_TSFILE_DOES_NOT_CONTAINS_THE_MODS_FILE_EB7EDC38 =
+          "所有选中的 TsFile 均不包含 mods 文件。";
+  public static final String MESSAGE_FAILED_TO_CLOSE_DATABASE_PROCESSOR_BCBC9A66 = "关闭数据库处理器失败。";
+  public static final String MESSAGE_FAILED_TO_FORCE_CLOSE_PROCESSOR_E380BB3C = "强制关闭处理器失败。";
+  public static final String MESSAGE_FAILED_TO_SYNC_CLOSE_PROCESSOR_3816A67C = "同步关闭处理器失败。";
+  public static final String MESSAGE_INSERTTABLETNODE_ALLMEASUREMENTFAILED_A147C989 =
+      "insertTabletNode 的所有测点均失败";
+  public static final String MESSAGE_LEVEL_OF_FILES_IS_NOT_CONSISTENT_84F11E20 = "文件的层级不一致。";
+  public static final String MESSAGE_MEET_ERROR_WHEN_SUBMIT_SETTLE_TASK_2F356FA4 = "提交清理任务时出错。";
+  public static final String MESSAGE_NO_MODIFICATION_HAS_BEEN_WRITTEN_TO_THIS_FILE_ARG_21972815 =
+      "尚未向此文件[{}]写入任何修改";
+  public static final String MESSAGE_SELECTED_TSFILES_ARE_NOT_CONTINUOUS_853F6027 =
+      "选中的 TsFile 不连续。";
+  public static final String MESSAGE_SETTLE_BY_CROSS_COMPACTION_IS_NOT_ALLOWED_FD1312E6 =
+      "不允许通过跨空间合并进行清理。";
+  public static final String MESSAGE_STORAGEGROUP_OF_FILES_IS_NOT_CONSISTENT_2EA6791C =
+      "文件所属的 StorageGroup 不一致。";
+  public static final String MESSAGE_THE_FILES_TO_SETTLE_IS_NOT_OFFERED_95C7CC1E = "未提供需要清理的文件。";
+  public static final String MESSAGE_THE_FILE_NAME_OF_THE_TSFILE_IS_NOT_VALID_ARG_67195C7D =
+      "TsFile 文件名不合法：%s";
+  public static final String MESSAGE_THE_INITIAL_FILE_DOES_NOT_EXIST_AD547B8D = "初始文件不存在";
+  public static final String MESSAGE_THE_SPECIFIED_FILE_DOES_NOT_EXIST_IN_ARG_EEFC638B =
+      "指定的文件不存在于 %s";
+  public static final String MESSAGE_THE_TSFILE_IS_NOT_VALID_ARG_5B5DC96E = "TsFile 不合法：%s";
+  public static final String MESSAGE_TIMEPARTITION_OF_FILES_IS_NOT_CONSISTENT_AB12799B =
+      "文件所属的 TimePartition 不一致。";
+  public static final String
+      MESSAGE_TOO_MANY_FILES_OFFERED_THE_LIMITED_COUNT_OF_SYSTEM_CONFIG_IS_ARG_THE_INPUT_FILE_COUNT_IS_ARG_85D07B55 =
+          "提供的文件过多，系统配置限制为 %s，输入文件数为 %s";
+  public static final String
+      MESSAGE_UNABLE_TO_FIND_THE_CONFIGURATION_FILE_SOME_MODIFICATIONS_ARE_MADE_ONLY_IN_MEMORY_70BB69F5 =
+          "找不到配置文件，部分修改仅在内存中生效。";
+  public static final String MESSAGE_VALIDATE_FAILED_BABCDFC5 = "验证失败，";
+
+  public static final String
+      EXCEPTION_FAILED_TO_WRITE_A_PIECE_OF_THE_LOAD_TASK_ARG_BECAUSE_THE_PAYLOAD_OF_ITS_CHUNK_IS_ONLY_REFERENCED_AT_ARG_OF_ARG_AND_HAS_NOT_BEEN_READ_BACK_5AE8586E =
+          "写入 LOAD 任务 %s 的 piece 失败：其 chunk 载荷仅有 %s 个引用，共 %s 个 chunk，尚未读回。";
 
   private StorageEngineMessages() {}
 
@@ -1669,4 +1740,70 @@ public final class StorageEngineMessages {
 
   public static final String LOG_LOAD_CONSENSUS_CLEANER_SWEEP_FAILED_7C3E2E6D =
       "扫描已完成的 LOAD 任务暂存目录失败。";
+  public static final String LOG_FAILED_TO_CREATE_SNAPSHOT_FOR_DATABASE_ARG_REGION_ARG_1A7C8DEA =
+      "为 database {}、region {} 创建快照失败";
+
+  public static final String EXCEPTION_FAILED_TO_DETERMINE_THE_USER_THAT_LOADS_THE_TSFILE_E47F7207 =
+      "无法确定加载该 TsFile 的用户";
+  public static final String EXCEPTION_FAILED_TO_DETERMINE_THE_USER_FOR_THE_TSFILE_DATA_TYPE_CONVERSION_A221793E =
+      "无法确定执行 TsFile 数据类型转换的用户";
+
+  public static final String
+      LOG_WORKER_ARG_TIME_COST_ARG_2FS_SEQUENCE_SPACE_COST_ARG_2FS_BUILD_UNSEQUENCE_SPACE_COST_ARG_2FS_11CD533E =
+          "工作线程 %s 耗时：%%.2fs，顺序空间耗时：%%.2fs，构建乱序空间耗时：%%.2fs。\n";
+
+  public static final String LOG_ARG_DATA_TABLE_D6B1FAB8 = "%s数据表：";
+
+  public static final String
+      LOG_PROGRESS_ARG_SEQUENCE_FILE_PROGRESS_ARG_ARG_PARTITION_PROGRESS_ARG_ARG_ARG_F63A0CC5 =
+          "进度：%s\n顺序文件进度：%d/%d\n分区进度：%d/%d %s";
+
+  public static final String LOG_OVERLAP_TABLE_25E74227 = "重叠统计表：";
+
+  public static final String LOG_TOTAL_TIME_COST_ARG_S_62F6AC82 = "总耗时：%.2fs\n";
+
+  public static final String
+      LOG_ARG_IS_NOT_EXIST_THE_TSFILE_IS_SKIPPED_BECAUSE_IT_IS_NOT_CLOSED_33F73043 =
+          "%s 不存在，因 TsFile 尚未关闭而将其跳过。";
+
+  public static final String EXCEPTION_GLOBAL_MEMORY_TABLE_INFO_D31FC987 = "全局内存表信息";
+
+  public static final String EXCEPTION_CREATE_MEMORY_TABLE_C9A458F5 = "创建内存表";
+
+  public static final String EXCEPTION_FLUSH_MEMORY_TABLE_F5383277 = "刷写内存表";
+
+  public static final String EXCEPTION_FILE_NUMBER_BDF776A4 = "文件数量";
+
+  public static final String EXCEPTION_FILE_SIZE_MB_F383DFA7 = "文件大小（MB）";
+
+  public static final String EXCEPTION_SEQUENCE_FILE_96DAC97E = "顺序文件";
+
+  public static final String EXCEPTION_CHUNKGROUP_IN_SEQUENCE_FILE_AA750F6F = "顺序文件中的 ChunkGroup";
+
+  public static final String EXCEPTION_CHUNK_IN_SEQUENCE_FILE_3F4FFEF6 = "顺序文件中的 Chunk";
+
+  public static final String EXCEPTION_CONCURRENT_TIME_PARTITION_NUM_DEFAULT_10_A7769F3C =
+      "并发时间分区数（默认：10）";
+
+  public static final String
+      EXCEPTION_CONCURRENT_FILE_NUM_IN_ONE_TIME_PARTITION_DEFAULT_10_092CF549 =
+          "单个时间分区内的并发文件数（默认：10）";
+
+  public static final String EXCEPTION_DATA_DIRS_REQUIRED_5C28A151 = "数据目录（必需）";
+
+  public static final String EXCEPTION_ALL_EXECUTED_40CD1D65 = "全部执行完成";
+
+  public static final String EXCEPTION_TASK_DOES_NOT_STARTED_B7A8C59D = "任务尚未启动";
+
+  public static final String EXCEPTION_TASK_HAS_STARTED_8F884490 = "任务已启动";
+
+  public static final String EXCEPTION_TARGET_FILE_HAS_BEEN_GENERATED_COMPLETELY_DBDCCC37 =
+      "目标文件已完整生成";
+
+  public static final String EXCEPTION_TARGET_FILE_HAS_BEEN_REPLACED_IN_TSFILEMANAGER_9456BDD6 =
+      "目标文件已在 TsFileManager 中替换";
+
+  public static final String EXCEPTION_SOURCE_FILES_ARE_CLEANED_UP_83638D68 = "源文件已清理";
+
+  public static final String EXCEPTION_TASK_FINISHED_A075ACB1 = "任务已完成";
 }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
@@ -31,6 +32,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 
 public class TreeDeviceViewFieldDetectionHandler
@@ -38,6 +41,12 @@ public class TreeDeviceViewFieldDetectionHandler
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(TreeDeviceViewFieldDetectionHandler.class);
+
+  private static final Set<Integer> EXPECTED_FAILURE_CODES =
+      Set.of(
+          TSStatusCode.DATA_TYPE_MISMATCH.getStatusCode(),
+          TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode(),
+          TSStatusCode.COLUMN_CATEGORY_MISMATCH.getStatusCode());
 
   protected TreeDeviceViewFieldDetectionHandler(
       final CnToDnAsyncRequestType requestType,
@@ -63,6 +72,14 @@ public class TreeDeviceViewFieldDetectionHandler
     if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.info(
           ConfigNodeMessages.SUCCESSFULLY_ON_DATANODE, requestType, formattedTargetLocation);
+    } else if (isExpectedFailure(response.getStatus())) {
+      // The response is not logged, as it carries the detected fields and is of no use here.
+      LOGGER.info(
+          ConfigNodeMessages.FAILED_TO_ON_DATANODE_WITH_STATUS,
+          requestType,
+          formattedTargetLocation,
+          response.getStatus().getCode(),
+          failureMessage(response.getStatus()));
     } else {
       LOGGER.error(
           ConfigNodeMessages.FAILED_TO_ON_DATANODE_RESPONSE,
@@ -78,15 +95,54 @@ public class TreeDeviceViewFieldDetectionHandler
     countDownLatch.countDown();
   }
 
+  /**
+   * Whether every failure the status carries is decided by the input of the client. The DataNodes
+   * aggregate the failures of their regions into MULTIPLE_ERROR, so the sub statuses are checked
+   * instead of the code of the status itself.
+   */
+  private static boolean isExpectedFailure(final TSStatus status) {
+    if (status.getCode() != TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+      return EXPECTED_FAILURE_CODES.contains(status.getCode());
+    }
+    if (!status.isSetSubStatus() || status.getSubStatus().isEmpty()) {
+      return false;
+    }
+    for (final TSStatus subStatus : status.getSubStatus()) {
+      if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && !EXPECTED_FAILURE_CODES.contains(subStatus.getCode())) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * The message of the status, or of its first failing sub status when the status only aggregates
+   * the failures of several regions and carries no message of its own.
+   */
+  private static String failureMessage(final TSStatus status) {
+    if (status.getMessage() != null && !status.getMessage().isEmpty()) {
+      return status.getMessage();
+    }
+    if (status.isSetSubStatus()) {
+      for (final TSStatus subStatus : status.getSubStatus()) {
+        if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && subStatus.getMessage() != null) {
+          return subStatus.getMessage();
+        }
+      }
+    }
+    return "";
+  }
+
   @Override
   public void onError(final Exception e) {
     final String errorMsg =
-        "Failed to "
-            + requestType
-            + " on DataNode: "
-            + formattedTargetLocation
-            + ", exception: "
-            + e.getMessage();
+        String.format(
+            ConfigNodeMessages.EXCEPTION_FAILED_TO_ARG_ON_DATANODE_ARG_EXCEPTION_ARG_87B8946D,
+            Objects.toString(requestType),
+            Objects.toString(formattedTargetLocation),
+            Objects.toString(e.getMessage()));
     LOGGER.warn(errorMsg, e);
 
     // Ensure that the map is always non-null

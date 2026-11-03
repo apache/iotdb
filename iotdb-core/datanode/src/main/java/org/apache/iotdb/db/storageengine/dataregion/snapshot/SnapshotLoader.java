@@ -593,7 +593,7 @@ public class SnapshotLoader {
                 StorageEngineMessages.FAILED_TO_CREATE_DIR,
                 targetFile.getParentFile().getAbsolutePath()));
       }
-      Files.createLink(targetFile.toPath(), file.toPath());
+      SnapshotFileUtils.createLinkOrCopy(targetFile.toPath(), file.toPath());
     }
   }
 

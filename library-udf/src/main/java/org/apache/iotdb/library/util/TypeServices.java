@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.util;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.type.Type;
@@ -29,6 +30,7 @@ import org.apache.tsfile.read.common.type.service.TypeService;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /** Type-specific operations shared by library UDFs. */
@@ -122,7 +124,9 @@ public final class TypeServices {
                 default ->
                     (column, index) -> {
                       throw new IllegalArgumentException(
-                          "Unsupported data type: " + type.getTypeEnum());
+                          String.format(
+                              LibraryUdfMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_B411C29E,
+                              Objects.toString(type.getTypeEnum())));
                     };
               });
 

@@ -146,7 +146,8 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
               queryId,
               SessionManager.getInstance()
                   .getSessionInfoOfTableModel(SessionManager.getInstance().getCurrSession()),
-              "Try to Fetch Uncorrelated Scalar Subquery Result for Predicate",
+              DataNodeQueryMessages
+                  .EXCEPTION_TRY_TO_FETCH_UNCORRELATED_SCALAR_SUBQUERY_RESULT_FOR_PREDICATE_9B832E16,
               LocalExecutionPlanner.getInstance().metadata,
               context.getCteQueries(),
               ExplainType.NONE,
@@ -203,7 +204,8 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
       }
       checkArgument(
           dataType != null && column != null,
-          "Scalar Subquery result should not get null dataType or null column.");
+          DataNodeQueryMessages
+              .EXCEPTION_SCALAR_SUBQUERY_RESULT_SHOULD_NOT_GET_NULL_DATATYPE_OR_NULL_COLUMN_DOT_616056F4);
       return Optional.of(
           TypeServices.Predicate.UNCORRELATED_SCALAR_SUBQUERY_RESULT_LITERAL_SERVICE
               .call(Type.fromTsDataType(dataType))

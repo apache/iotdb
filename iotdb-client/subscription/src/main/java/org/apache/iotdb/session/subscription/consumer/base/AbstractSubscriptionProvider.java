@@ -90,13 +90,12 @@ public abstract class AbstractSubscriptionProvider {
   // A commit response echoes accepted contexts and may also carry committed progress.
   private static final int COMMIT_RESPONSE_HEADROOM_FACTOR = 3;
 
-  private static final String STATUS_FORMATTER = "Status code is [%s], status message is [%s].";
   private static final String INTERNAL_ERROR_FORMATTER =
-      "Internal error occurred. " + STATUS_FORMATTER;
+      SubscriptionMessages
+          .EXCEPTION_INTERNAL_ERROR_OCCURRED_STATUS_CODE_IS_ARG_STATUS_MESSAGE_IS_ARG_D35048C4;
   private static final String SUBSCRIPTION_PIPE_TIMEOUT_FORMATTER =
-      "A timeout has occurred in procedures related to the pipe within the subscription procedure. "
-          + "Please manually check the subscription correctness later. "
-          + STATUS_FORMATTER;
+      SubscriptionMessages
+          .EXCEPTION_A_TIMEOUT_HAS_OCCURRED_IN_PROCEDURES_RELATED_TO_THE_PIPE_WITHIN_THE_SUBSCRIPTION_PROCEDURE_PLEASE_MANUALLY_CHECK_THE_SUBSCRIPTION_CORRECTNESS_LATER_STATUS_CODE_IS_ARG_STATUS_MESSAGE_IS_ARG_68B6AC95;
 
   private final SubscriptionSessionWrapper session;
 
@@ -804,20 +803,32 @@ public abstract class AbstractSubscriptionProvider {
 
     final List<SubscriptionCommitContext> acceptedCommitContexts = new ArrayList<>();
     final Map<String, TopicProgress> committedProgressByTopic = new LinkedHashMap<>();
+    int completedCommitContextCount = 0;
     rpcLock.lock();
     try {
       for (final List<SubscriptionCommitContext> batch : batches) {
         final CommitResult result = commitOnce(batch, nack);
+        completedCommitContextCount += batch.size();
         acceptedCommitContexts.addAll(result.getAcceptedCommitContexts());
         mergeTopicProgress(committedProgressByTopic, result.getCommittedProgressByTopic());
       }
+    } catch (final SubscriptionException e) {
+      if (nack || completedCommitContextCount == 0) {
+        throw e;
+      }
+      // Preserve every completed response even if a later batch fails with a server error. The
+      // consumer applies these results before propagating the original failure or retrying.
+      throw new CommitException(
+          e,
+          completedCommitContextCount,
+          new CommitResult(acceptedCommitContexts, committedProgressByTopic));
     } finally {
       rpcLock.unlock();
     }
     return new CommitResult(acceptedCommitContexts, committedProgressByTopic);
   }
 
-  private CommitResult commitOnce(
+  CommitResult commitOnce(
       final List<SubscriptionCommitContext> subscriptionCommitContexts, final boolean nack)
       throws SubscriptionException {
     final PipeSubscribeCommitReq req;
@@ -896,6 +907,32 @@ public abstract class AbstractSubscriptionProvider {
   @FunctionalInterface
   interface PipeSubscribeRequestSender {
     TPipeSubscribeResp send(TPipeSubscribeReq req) throws TException;
+  }
+
+  static final class CommitException extends SubscriptionException {
+    private final int completedCommitContextCount;
+    private final CommitResult completedResult;
+
+    private CommitException(
+        final SubscriptionException cause,
+        final int completedCommitContextCount,
+        final CommitResult completedResult) {
+      super(cause.getMessage(), cause);
+      this.completedCommitContextCount = completedCommitContextCount;
+      this.completedResult = completedResult;
+    }
+
+    int getCompletedCommitContextCount() {
+      return completedCommitContextCount;
+    }
+
+    CommitResult getCompletedResult() {
+      return completedResult;
+    }
+
+    SubscriptionException getFailure() {
+      return (SubscriptionException) getCause();
+    }
   }
 
   static final class CommitResult {

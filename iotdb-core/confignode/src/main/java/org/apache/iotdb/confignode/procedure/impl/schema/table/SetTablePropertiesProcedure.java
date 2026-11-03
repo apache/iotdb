@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewPropertiesPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.SetViewPropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -74,7 +75,7 @@ public class SetTablePropertiesProcedure extends AbstractSetPropertiesProcedure 
 
   @Override
   protected String getActionMessage() {
-    return "set table properties";
+    return ProcedureMessages.MESSAGE_SET_TABLE_PROPERTIES_27E66D04;
   }
 
   @Override

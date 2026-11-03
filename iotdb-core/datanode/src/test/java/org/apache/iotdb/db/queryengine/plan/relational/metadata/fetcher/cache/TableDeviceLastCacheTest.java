@@ -33,6 +33,39 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class TableDeviceLastCacheTest {
 
   @Test
+  public void testQueryFieldTimesDoNotInitializeAlignedTime() {
+    final TableDeviceLastCache cache = new TableDeviceLastCache(false);
+    cache.initOrInvalidate(null, null, new String[] {"", "s1"}, false);
+    final TimeValuePair historicalValue = new TimeValuePair(2L, new TsPrimitiveType.TsInt(20));
+
+    cache.tryUpdateFromQuery(new String[] {"s1"}, new TimeValuePair[] {historicalValue});
+
+    Assert.assertEquals(historicalValue, cache.getTimeValuePair("s1"));
+    Assert.assertNull(cache.getTimeValuePair(""));
+    Assert.assertFalse(cache.getLastRow("", Collections.singletonList("s1")).isPresent());
+
+    cache.tryUpdateFromQuery(
+        new String[] {"", "s1"},
+        new TimeValuePair[] {
+          new TimeValuePair(7L, TableDeviceLastCache.PLACEHOLDER_NO_VALUE),
+          new TimeValuePair(7L, TableDeviceLastCache.PLACEHOLDER_NO_VALUE)
+        });
+
+    Assert.assertEquals(historicalValue, cache.getTimeValuePair("s1"));
+    Optional<Pair<OptionalLong, TsPrimitiveType[]>> result =
+        cache.getLastRow("", Collections.singletonList("s1"));
+    Assert.assertTrue(result.isPresent());
+    Assert.assertEquals(OptionalLong.of(7L), result.get().getLeft());
+    Assert.assertArrayEquals(
+        new TsPrimitiveType[] {TableDeviceLastCache.PLACEHOLDER_NO_VALUE}, result.get().getRight());
+
+    final TimeValuePair newerFieldValue = new TimeValuePair(8L, new TsPrimitiveType.TsInt(80));
+    cache.tryUpdateFromQuery(new String[] {"s1"}, new TimeValuePair[] {newerFieldValue});
+    Assert.assertEquals(newerFieldValue, cache.getTimeValuePair("s1"));
+    Assert.assertEquals(7L, cache.getTimeValuePair("").getTimestamp());
+  }
+
+  @Test
   public void testLazyUpdateOnlyComposesCachedMeasurements() {
     final TableDeviceLastCache cache = new TableDeviceLastCache(false);
     cache.initOrInvalidate(null, null, new String[] {"s1"}, false);

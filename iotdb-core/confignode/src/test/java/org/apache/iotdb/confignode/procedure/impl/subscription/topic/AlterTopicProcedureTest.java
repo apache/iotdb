@@ -62,6 +62,12 @@ public class AlterTopicProcedureTest {
             new TopicMeta("test_topic", 1, topicAttributes), updatedTopicAttributes));
   }
 
+  @Test
+  public void serializeDeserializeWithRetainedProgressStateTest() throws Exception {
+    final AlterTopicProcedure procedure = new AlterTopicProcedure(false, true);
+    assertSerializeDeserialize(procedure);
+  }
+
   private void assertSerializeDeserialize(final AlterTopicProcedure procedure) throws Exception {
     final PublicBAOS byteArrayOutputStream = new PublicBAOS();
     final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
@@ -71,6 +77,7 @@ public class AlterTopicProcedureTest {
     final AlterTopicProcedure deserializedProcedure =
         (AlterTopicProcedure) ProcedureFactory.getInstance().create(buffer);
     assertEquals(procedure, deserializedProcedure);
+    assertEquals(0, buffer.remaining());
   }
 
   @Test

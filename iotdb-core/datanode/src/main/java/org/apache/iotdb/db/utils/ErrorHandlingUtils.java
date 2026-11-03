@@ -111,8 +111,11 @@ public class ErrorHandlingUtils {
       if (status.getCode() != TSStatusCode.STORAGE_ENGINE_NOT_READY.getStatusCode()) {
         String message =
             String.format(
-                "Status code: %s, Query Statement: %s failed because %s",
-                status.getCode(), operation, status.getMessage());
+                DataNodeMiscMessages
+                    .EXCEPTION_STATUS_CODE_ARG_QUERY_STATEMENT_ARG_FAILED_BECAUSE_ARG_3BC781BF,
+                status.getCode(),
+                operation,
+                status.getMessage());
         if (status.getCode() == TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
             || status.getCode() == TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             || status.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode()
@@ -235,7 +238,8 @@ public class ErrorHandlingUtils {
   }
 
   private static TSStatus tryCatchNonQueryException(Exception e) {
-    String message = "Exception occurred while processing non-read. ";
+    String message =
+        DataNodeMiscMessages.EXCEPTION_EXCEPTION_OCCURRED_WHILE_PROCESSING_NON_READ_2EEBCBDC;
     if (e instanceof BatchProcessException) {
       BatchProcessException batchException = (BatchProcessException) e;
       // ignore logging sg not ready exception
@@ -261,7 +265,10 @@ public class ErrorHandlingUtils {
     TSStatusCode statusCode = TSStatusCode.representOf(errorCode);
     String message =
         String.format(
-            "[%s] Exception occurred: %s failed. %s", statusCode, operation, e.getMessage());
+            DataNodeMiscMessages.EXCEPTION_ARG_EXCEPTION_OCCURRED_ARG_FAILED_ARG_16CE5428,
+            statusCode,
+            operation,
+            e.getMessage());
     LOGGER.warn(ERROR_OPERATION_LOG, statusCode, operation, e);
     TSStatus status = RpcUtils.getStatus(errorCode, message);
     status.setNeedRetry(needRetry(status));

@@ -2179,6 +2179,12 @@ subscription_cache_memory_usage_percentage=0.2
 # Datatype: int
 subscription_consensus_prefetch_executor_max_thread_num=2
 
+# Whether consumers can poll ready events from regions assigned to other consumers when their own
+# assigned regions are empty. Disable this to preserve per-region consumer affinity.
+# effectiveMode: restart
+# Datatype: boolean
+subscription_consensus_fallback_polling_enabled=true
+
 # Maximum materialized consensus-subscription batch size. This is a batching target, not a hard
 # limit on one WAL entry/tablet. For large-field workloads, choose a value at least as large as a
 # typical single tablet if batching is desired, and provide enough materialization memory per queue.
