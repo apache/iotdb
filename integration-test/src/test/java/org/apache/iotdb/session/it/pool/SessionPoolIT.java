@@ -35,6 +35,7 @@ import org.apache.iotdb.session.pool.SessionPool;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.RowRecord;
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -43,16 +44,20 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadInfo;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -385,8 +390,9 @@ public class SessionPoolIT {
             .host(node.getIp())
             .port(node.getPort())
             .maxSize(1)
-            .connectionTimeoutInMs(1000)
-            .waitToGetSessionTimeoutInMs(1000)
+            // This also bounds RPC reads, including initial schema and DataRegion creation.
+            .connectionTimeoutInMs(30_000)
+            .waitToGetSessionTimeoutInMs(30_000)
             .maxRetryCount(0)
             .build();
     boolean nodeStopped = false;
@@ -453,6 +459,7 @@ public class SessionPoolIT {
       }
       assertEquals(1, pool.currentAvailableSize());
       assertEquals(0, pool.currentOccupiedSize());
+      assertInterruptedBorrowerReturnsCapacity(pool);
     } finally {
       try {
         if (nodeStopped) {
@@ -464,6 +471,79 @@ public class SessionPoolIT {
       } finally {
         pool.close();
       }
+    }
+  }
+
+  private void assertInterruptedBorrowerReturnsCapacity(SessionPool pool) throws Exception {
+    FutureTask<Boolean> write =
+        new FutureTask<>(
+            () -> {
+              pool.insertRecord(
+                  "root.sg1.d1",
+                  4,
+                  Collections.singletonList("pool_recovery"),
+                  Collections.singletonList(TSDataType.INT64),
+                  Collections.singletonList(44L));
+              return Thread.currentThread().isInterrupted();
+            });
+    Thread borrower = new Thread(write, "interrupted-session-pool-borrower");
+    borrower.setDaemon(true);
+    try {
+      try (SessionDataSetWrapper held =
+          pool.executeQueryStatement("SELECT pool_recovery FROM root.sg1.d1")) {
+        assertEquals(0, pool.currentAvailableSize());
+        assertEquals(1, pool.currentOccupiedSize());
+        borrower.start();
+        Awaitility.await()
+            .atMost(10, TimeUnit.SECONDS)
+            .pollInterval(10, TimeUnit.MILLISECONDS)
+            .until(
+                () -> {
+                  synchronized (pool) {
+                    ThreadInfo info =
+                        ManagementFactory.getThreadMXBean().getThreadInfo(borrower.getId());
+                    if (info == null
+                        || info.getThreadState() != Thread.State.TIMED_WAITING
+                        || info.getLockInfo() == null
+                        || info.getLockInfo().getIdentityHashCode()
+                            != System.identityHashCode(pool)) {
+                      return false;
+                    }
+                    // Interrupt an actual getSession() wait. Keep the monitor until the held
+                    // session is returned, so the borrower handles interruption before reusing it.
+                    borrower.interrupt();
+                    pool.closeResultSet(held);
+                    return true;
+                  }
+                });
+        // getSession() preserves interruption and continues borrowing when a session is returned.
+        // Future.get also propagates any write failure back to the test thread.
+        assertTrue(write.get(30, TimeUnit.SECONDS));
+        assertEquals(1, pool.currentAvailableSize());
+        assertEquals(0, pool.currentOccupiedSize());
+        try (SessionDataSetWrapper result =
+            pool.executeQueryStatement(
+                "SELECT pool_recovery FROM root.sg1.d1 WHERE time >= 1 AND time <= 4")) {
+          assertSame(held.getSession(), result.getSession());
+          long[][] expected = {{1, 11}, {3, 33}, {4, 44}};
+          for (long[] point : expected) {
+            assertTrue(result.hasNext());
+            RowRecord row = result.next();
+            assertEquals(point[0], row.getTimestamp());
+            assertEquals(point[1], row.getFields().get(0).getLongV());
+          }
+          assertFalse(result.hasNext());
+        }
+      }
+      assertEquals(1, pool.currentAvailableSize());
+      assertEquals(0, pool.currentOccupiedSize());
+    } finally {
+      if (!write.isDone()) {
+        pool.close();
+        borrower.interrupt();
+      }
+      borrower.join(30_000);
+      assertFalse("Interrupted borrower must terminate", borrower.isAlive());
     }
   }
 
