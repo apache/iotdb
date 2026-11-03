@@ -20,13 +20,16 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 
 import org.apache.thrift.TException;
+import org.apache.thrift.transport.TTransport;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -34,17 +37,25 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.sql.SQLClientInfoException;
 import java.sql.SQLException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -157,5 +168,62 @@ public class IoTDBConnectionTest {
     tableConnection.setCatalog(null);
 
     verify(tableConnection, never()).prepareStatement(anyString());
+  }
+
+  @Test
+  public void testOpenSessionRecognizesLegacyProtocolDiagnostic() throws Exception {
+    TException cause =
+        new TException(
+            "Required field 'client_protocol' was not present! Struct: TSOpenSessionReq(...)");
+
+    SQLException exception = failOpenSession(cause);
+
+    assertEquals(
+        String.format(
+            JdbcMessages
+                .EXCEPTION_CAN_NOT_ESTABLISH_CONNECTION_ARG_YOU_MAY_TRY_CONNECT_OLD_8FC3703E,
+            connection.getParams().getJdbcUriString(),
+            cause.getMessage()),
+        exception.getMessage());
+  }
+
+  @Test
+  public void testOpenSessionPreservesOtherMissingFieldDiagnostic() throws Exception {
+    TException cause =
+        new TException("Required field 'username' was not present! Struct: TSOpenSessionReq(...)");
+
+    SQLException exception = failOpenSession(cause);
+
+    assertEquals(
+        String.format(
+            JdbcMessages.EXCEPTION_CAN_NOT_ESTABLISH_CONNECTION_ARG_ARG_D7246055,
+            connection.getParams().getJdbcUriString(),
+            cause.getMessage()),
+        exception.getMessage());
+  }
+
+  private SQLException failOpenSession(TException cause) throws Exception {
+    IoTDBConnectionParams params =
+        Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667/", new Properties());
+    Field paramsField = IoTDBConnection.class.getDeclaredField("params");
+    paramsField.setAccessible(true);
+    paramsField.set(connection, params);
+    TTransport transport = mock(TTransport.class);
+    Field transportField = IoTDBConnection.class.getDeclaredField("transport");
+    transportField.setAccessible(true);
+    transportField.set(connection, transport);
+    connection.setClient(client);
+    when(client.openSession(any(TSOpenSessionReq.class))).thenThrow(cause);
+    Method openSession = IoTDBConnection.class.getDeclaredMethod("openSession");
+    openSession.setAccessible(true);
+
+    InvocationTargetException invocationException =
+        assertThrows(InvocationTargetException.class, () -> openSession.invoke(connection));
+
+    assertTrue(invocationException.getCause() instanceof SQLException);
+    SQLException exception = (SQLException) invocationException.getCause();
+    assertSame(cause, exception.getCause());
+    verify(transport).close();
+    return exception;
   }
 }

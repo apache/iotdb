@@ -73,6 +73,9 @@ public class IoTDBConnection implements Connection {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConnection.class);
   private static final TSProtocolVersion protocolVersion =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
+  // Match Thrift's fixed protocol text independently of the localized SQLException message.
+  private static final String MISSING_CLIENT_PROTOCOL_DIAGNOSTIC =
+      "Required field 'client_protocol' was not present!";
   private static final String NOT_SUPPORT_PREPARE_CALL =
       JdbcMessages.EXCEPTION_DOES_NOT_SUPPORT_PREPARECALL_2E958060;
   private static final String NOT_SUPPORT_PREPARE_STATEMENT =
@@ -619,9 +622,7 @@ public class IoTDBConnection implements Connection {
       }
     } catch (TException e) {
       transport.close();
-      if (e.getMessage()
-          .contains(
-              JdbcMessages.EXCEPTION_REQUIRED_FIELD_CLIENT_PROTOCOL_WAS_NOT_PRESENT_2059BC1E)) {
+      if (e.getMessage().contains(MISSING_CLIENT_PROTOCOL_DIAGNOSTIC)) {
         // the server is an old version (less than 0.10)
         throw new SQLException(
             String.format(
