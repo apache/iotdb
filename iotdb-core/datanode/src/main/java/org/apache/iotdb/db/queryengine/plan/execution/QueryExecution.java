@@ -490,6 +490,9 @@ public class QueryExecution implements IQueryExecution {
   }
 
   private void finalizeTableUDFClassLoader() {
+    if (!(planner instanceof TableModelPlanner)) {
+      return;
+    }
     synchronized (tableUdfClassLoaderLock) {
       UDFClassLoaderManager.getInstance().finalizeUDFQuery(context.getQueryId().getId());
     }

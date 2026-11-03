@@ -182,7 +182,8 @@ public class FragmentInstanceManager {
 
                 try {
                   List<PipelineDriverFactory> driverFactories;
-                  if (instance.getSessionInfo().getSqlDialect() == SqlDialect.TABLE) {
+                  if (instance.getSessionInfo() != null
+                      && instance.getSessionInfo().getSqlDialect() == SqlDialect.TABLE) {
                     UDFManagementService.getInstance().acquireReadLock();
                     try {
                       context.initializeTableModelUDFQuery();
