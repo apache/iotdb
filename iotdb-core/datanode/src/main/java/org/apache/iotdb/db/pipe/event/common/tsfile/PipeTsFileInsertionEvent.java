@@ -1548,6 +1548,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     }
   }
 
+  public boolean isWaitingForTsFileParserMemory() {
+    return tsFileParserMemoryReservationKey.isWaitingForSignal();
+  }
+
   public void cancelTsFileParserMemoryReservationIfPending() {
     synchronized (isTsFileParserMemoryReserved) {
       if (!isTsFileParserMemoryReserved.get()) {
@@ -1636,12 +1640,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   public void close() {
     // Every cleanup step is best effort and independent.  A parser/reader close failure must not
     // strand its reservation or the pending tablet event.
-    try {
-      cancelTsFileParserMemoryReservationIfPending();
-    } catch (final Exception e) {
-      LOGGER.warn(DataNodePipeMessages.DECREASE_REFERENCE_COUNT_FOR_TSFILE_ERROR, tsFile, e);
-    }
-
     final PipeRawTabletInsertionEvent detachedPendingEvent;
     final boolean pendingEventIsBeingConsumed;
     final TsFileInsertionEventParser parserToClose;
@@ -1662,6 +1660,15 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         // tablet merely because another thread closed the source event.
         pendingTabletReleaseDeferred = true;
       }
+    }
+
+    // Invalidate old invocations before cancelling: an invocation that passed its generation
+    // check can enqueue while close waits for eventParser. It must either be removed here or
+    // observe the new generation and cancel its own request.
+    try {
+      cancelTsFileParserMemoryReservationIfPending();
+    } catch (final Exception e) {
+      LOGGER.warn(DataNodePipeMessages.DECREASE_REFERENCE_COUNT_FOR_TSFILE_ERROR, tsFile, e);
     }
 
     if (detachedPendingEvent != null && !pendingEventIsBeingConsumed) {
