@@ -29,15 +29,17 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
 
@@ -119,8 +121,8 @@ public class SharedTsBlockQueueTest {
     Assert.assertTrue(addFuture.isDone());
   }
 
-  @Test(timeout = 15000L)
-  public void concurrencyTest() {
+  @Test
+  public void concurrencyTest() throws Exception {
     final String queryId = "q0";
     final long mockTsBlockSize = 1024L * 1024L;
 
@@ -140,119 +142,56 @@ public class SharedTsBlockQueueTest {
     queue.getCanAddTsBlock().set(null);
     queue.setMaxBytesCanReserve(Long.MAX_VALUE);
 
+    // Reuse an immutable block so mock generation is outside the concurrency deadline.
+    TsBlock block = Utils.createMockTsBlock(mockTsBlockSize);
+    int blockCount = 1000;
     ExecutorService executor = Executors.newFixedThreadPool(2);
-    AtomicReference<Integer> numOfTimesSenderBlocked = new AtomicReference<>(0);
-    AtomicReference<Integer> numOfTimesReceiverBlocked = new AtomicReference<>(0);
-    AtomicReference<Integer> numOfTsBlocksToSend = new AtomicReference<>(1000);
-    AtomicReference<Integer> numOfTsBlocksToReceive = new AtomicReference<>(1000);
-    executor.submit(
-        new SendTask(
-            queue, mockTsBlockSize, numOfTsBlocksToSend, numOfTimesSenderBlocked, executor));
-    executor.submit(
-        new ReceiveTask(queue, numOfTsBlocksToReceive, numOfTimesReceiverBlocked, executor));
-
-    while (numOfTsBlocksToSend.get() != 0 && numOfTsBlocksToReceive.get() != 0) {
-      String message =
-          String.format(
-              "Sender %d: %d, Receiver %d: %d",
-              numOfTimesSenderBlocked.get(),
-              numOfTsBlocksToSend.get(),
-              numOfTimesReceiverBlocked.get(),
-              numOfTsBlocksToReceive.get());
-      System.out.println(message);
+    CompletionService<Void> completedTasks = new ExecutorCompletionService<>(executor);
+    try {
+      completedTasks.submit(
+          () -> {
+            for (int i = 0; i < blockCount; i++) {
+              ListenableFuture<Void> blocked;
+              synchronized (queue) {
+                blocked = queue.add(block);
+              }
+              blocked.get(10, TimeUnit.SECONDS);
+            }
+            synchronized (queue) {
+              queue.setNoMoreTsBlocks(true);
+            }
+            return null;
+          });
+      completedTasks.submit(
+          () -> {
+            for (int i = 0; i < blockCount; i++) {
+              ListenableFuture<Void> blocked;
+              synchronized (queue) {
+                blocked = queue.isBlocked();
+              }
+              blocked.get(10, TimeUnit.SECONDS);
+              synchronized (queue) {
+                Assert.assertSame(block, queue.remove());
+              }
+            }
+            return null;
+          });
+      for (int i = 0; i < 2; i++) {
+        Future<Void> completed = completedTasks.poll(10, TimeUnit.SECONDS);
+        Assert.assertNotNull(completed);
+        completed.get();
+      }
+      Assert.assertTrue(queue.hasNoMoreTsBlocks());
+      Assert.assertTrue(queue.isEmpty());
+      Assert.assertEquals(0, spyMemoryPool.getReservedBytes());
+    } finally {
+      executor.shutdownNow();
       try {
-        Thread.sleep(10L);
-      } catch (InterruptedException e) {
-        Assert.fail(e.getMessage());
-      }
-    }
-  }
-
-  private static class SendTask implements Runnable {
-
-    private final SharedTsBlockQueue queue;
-    private final long mockTsBlockSize;
-    private final AtomicReference<Integer> numOfTsBlocksToSend;
-    private final AtomicReference<Integer> numOfTimesBlocked;
-    private final ExecutorService executor;
-
-    public SendTask(
-        SharedTsBlockQueue queue,
-        long mockTsBlockSize,
-        AtomicReference<Integer> numOfTsBlocksToSend,
-        AtomicReference<Integer> numOfTimesBlocked,
-        ExecutorService executor) {
-      this.queue = Validate.notNull(queue);
-      Validate.isTrue(mockTsBlockSize > 0L);
-      this.mockTsBlockSize = mockTsBlockSize;
-      this.numOfTsBlocksToSend = Validate.notNull(numOfTsBlocksToSend);
-      this.numOfTimesBlocked = Validate.notNull(numOfTimesBlocked);
-      this.executor = Validate.notNull(executor);
-    }
-
-    @Override
-    public void run() {
-      ListenableFuture<Void> blockedOnMemory = null;
-      while (numOfTsBlocksToSend.get() > 0) {
+        Assert.assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+      } finally {
         synchronized (queue) {
-          blockedOnMemory = queue.add(Utils.createMockTsBlock(mockTsBlockSize));
+          queue.close();
         }
-        numOfTsBlocksToSend.updateAndGet(v -> v - 1);
-        if (!blockedOnMemory.isDone()) {
-          break;
-        }
-      }
-
-      if (blockedOnMemory != null) {
-        numOfTimesBlocked.updateAndGet(v -> v + 1);
-        blockedOnMemory.addListener(
-            new SendTask(queue, mockTsBlockSize, numOfTsBlocksToSend, numOfTimesBlocked, executor),
-            executor);
-      } else {
-        synchronized (queue) {
-          queue.setNoMoreTsBlocks(true);
-        }
-      }
-    }
-  }
-
-  private static class ReceiveTask implements Runnable {
-
-    private final SharedTsBlockQueue queue;
-    private final AtomicReference<Integer> numOfTsBlocksToReceive;
-    private final AtomicReference<Integer> numOfTimesBlocked;
-    private final ExecutorService executor;
-
-    public ReceiveTask(
-        SharedTsBlockQueue queue,
-        AtomicReference<Integer> numOfTsBlocksToReceive,
-        AtomicReference<Integer> numOfTimesBlocked,
-        ExecutorService executor) {
-      this.queue = Validate.notNull(queue);
-      this.numOfTsBlocksToReceive = Validate.notNull(numOfTsBlocksToReceive);
-      this.numOfTimesBlocked = Validate.notNull(numOfTimesBlocked);
-      this.executor = Validate.notNull(executor);
-    }
-
-    @Override
-    public void run() {
-      ListenableFuture<Void> blocked = null;
-      while (numOfTsBlocksToReceive.get() > 0) {
-        synchronized (queue) {
-          blocked = queue.isBlocked();
-          if (blocked.isDone()) {
-            queue.remove();
-            numOfTsBlocksToReceive.updateAndGet(v -> v - 1);
-          } else {
-            break;
-          }
-        }
-      }
-
-      if (blocked != null) {
-        numOfTimesBlocked.updateAndGet(v -> v + 1);
-        blocked.addListener(
-            new ReceiveTask(queue, numOfTsBlocksToReceive, numOfTimesBlocked, executor), executor);
       }
     }
   }

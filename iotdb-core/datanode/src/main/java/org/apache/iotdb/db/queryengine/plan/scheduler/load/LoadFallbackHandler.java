@@ -132,9 +132,8 @@ public class LoadFallbackHandler {
 
       try {
         final TSStatus status =
-            failedNode.isTableModel()
-                ? executeTableModelConversion(converter, failedNode, filePath)
-                : executeTreeModelConversion(converter, failedNode, filePath);
+            convertTsFileToTablets(
+                converter, failedNode, isGeneratedByPipe, failedNode.isDeleteAfterLoad());
 
         if (converter.isSuccessful(status)) {
           iterator.remove();
@@ -173,29 +172,48 @@ public class LoadFallbackHandler {
     resolveFinalState(failureDetails);
   }
 
-  private TSStatus executeTableModelConversion(
+  static TSStatus convertTsFileToTablets(
       final LoadTsFileDataTypeConverter converter,
       final LoadSingleTsFileNode node,
-      final String filePath) {
+      final boolean isGeneratedByPipe,
+      final boolean deleteAfterLoad)
+      throws FileNotFoundException {
+    final String filePath = node.getTsFileResource().getTsFilePath();
+    return node.isTableModel()
+        ? executeTableModelConversion(converter, node, filePath, isGeneratedByPipe, deleteAfterLoad)
+        : executeTreeModelConversion(converter, node, filePath, isGeneratedByPipe, deleteAfterLoad);
+  }
+
+  private static TSStatus executeTableModelConversion(
+      final LoadTsFileDataTypeConverter converter,
+      final LoadSingleTsFileNode node,
+      final String filePath,
+      final boolean isGeneratedByPipe,
+      final boolean deleteAfterLoad) {
     final LoadTsFile statement =
         (isGeneratedByPipe
                 ? LoadTsFile.createForPipe(null, filePath, Collections.emptyMap())
                 : LoadTsFile.createUnchecked(null, filePath, Collections.emptyMap()))
             .setDatabase(node.getDatabase())
-            .setDeleteAfterLoad(node.isDeleteAfterLoad())
+            .setDeleteAfterLoad(deleteAfterLoad)
             .setConvertOnTypeMismatch(true);
 
+    if (isGeneratedByPipe) {
+      statement.markIsGeneratedByPipe();
+    }
     return converter.convertForTableModel(statement).orElse(null);
   }
 
-  private TSStatus executeTreeModelConversion(
+  private static TSStatus executeTreeModelConversion(
       final LoadTsFileDataTypeConverter converter,
       final LoadSingleTsFileNode node,
-      final String filePath)
+      final String filePath,
+      final boolean isGeneratedByPipe,
+      final boolean deleteAfterLoad)
       throws FileNotFoundException {
     final String database = LoadTsFileScheduler.getPartitionQueryDatabase(node, isGeneratedByPipe);
     final LoadTsFileStatement statement =
-        buildRetryTreeLoadStatement(filePath, node.isDeleteAfterLoad(), database);
+        buildRetryTreeLoadStatement(filePath, deleteAfterLoad, database, isGeneratedByPipe);
 
     return converter.convertForTreeModel(statement).orElse(null);
   }
@@ -229,6 +247,15 @@ public class LoadFallbackHandler {
 
   private LoadTsFileStatement buildRetryTreeLoadStatement(
       final String filePath, final boolean deleteAfterLoad, final String database)
+      throws FileNotFoundException {
+    return buildRetryTreeLoadStatement(filePath, deleteAfterLoad, database, isGeneratedByPipe);
+  }
+
+  private static LoadTsFileStatement buildRetryTreeLoadStatement(
+      final String filePath,
+      final boolean deleteAfterLoad,
+      final String database,
+      final boolean isGeneratedByPipe)
       throws FileNotFoundException {
     final LoadTsFileStatement statement =
         (isGeneratedByPipe

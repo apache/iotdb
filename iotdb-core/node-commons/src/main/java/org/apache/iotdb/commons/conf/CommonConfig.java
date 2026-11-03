@@ -345,6 +345,7 @@ public class CommonConfig {
       Math.min(
           64 * 1024 * 1024,
           (int) Math.min(Runtime.getRuntime().maxMemory() / 64, Integer.MAX_VALUE));
+  private int pipeAirGapReceiverUdpSocketBufferSizeInBytes = 32 * 1024 * 1024;
   private boolean pipeReceiverLoadConversionEnabled = false;
   private volatile long loggerPeriodicalLogMinIntervalSeconds = 60;
   private volatile long loggerCacheMaxSizeInBytes = 64 * MB;
@@ -444,6 +445,9 @@ public class CommonConfig {
   private long subscriptionConsensusConsumerEvictionTimeoutMs = 60_000;
 
   private boolean subscriptionConsensusLagBasedPriority = true;
+
+  // Disable fallback polling to keep each region's events with its assigned consumer.
+  private boolean subscriptionConsensusFallbackPollingEnabled = true;
 
   private int subscriptionConsensusPrefetchingQueueCapacity = 256;
 
@@ -2027,6 +2031,18 @@ public class CommonConfig {
     return pipeAirGapReceiverMaxPayloadSizeInBytes;
   }
 
+  public int getPipeAirGapReceiverUdpSocketBufferSizeInBytes() {
+    return pipeAirGapReceiverUdpSocketBufferSizeInBytes;
+  }
+
+  public void setPipeAirGapReceiverUdpSocketBufferSizeInBytes(
+      int pipeAirGapReceiverUdpSocketBufferSizeInBytes) {
+    if (pipeAirGapReceiverUdpSocketBufferSizeInBytes > 0) {
+      this.pipeAirGapReceiverUdpSocketBufferSizeInBytes =
+          pipeAirGapReceiverUdpSocketBufferSizeInBytes;
+    }
+  }
+
   public double getPipeMetaReportMaxLogNumPerRound() {
     return pipeMetaReportMaxLogNumPerRound;
   }
@@ -2874,6 +2890,15 @@ public class CommonConfig {
   public void setSubscriptionConsensusLagBasedPriority(
       final boolean subscriptionConsensusLagBasedPriority) {
     this.subscriptionConsensusLagBasedPriority = subscriptionConsensusLagBasedPriority;
+  }
+
+  public boolean isSubscriptionConsensusFallbackPollingEnabled() {
+    return subscriptionConsensusFallbackPollingEnabled;
+  }
+
+  public void setSubscriptionConsensusFallbackPollingEnabled(
+      final boolean subscriptionConsensusFallbackPollingEnabled) {
+    this.subscriptionConsensusFallbackPollingEnabled = subscriptionConsensusFallbackPollingEnabled;
   }
 
   public int getSubscriptionConsensusPrefetchingQueueCapacity() {

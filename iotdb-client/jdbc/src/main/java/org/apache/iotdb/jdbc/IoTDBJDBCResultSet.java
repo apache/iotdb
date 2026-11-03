@@ -70,7 +70,8 @@ import java.util.stream.IntStream;
 
 public class IoTDBJDBCResultSet implements ResultSet {
 
-  public static final String OBJECT_ERR_MSG = "OBJECT Type only support getString";
+  public static final String OBJECT_ERR_MSG =
+      JdbcMessages.EXCEPTION_OBJECT_TYPE_ONLY_SUPPORT_GETSTRING_B4BD14B4;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBJDBCResultSet.class);
 

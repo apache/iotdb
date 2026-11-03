@@ -172,7 +172,7 @@ public class ConsensusSubscriptionSetupHandler {
    * existing subscription metadata to find all active consensus subscriptions and binds prefetching
    * queues to the new region.
    */
-  private static void onNewRegionCreated(
+  static void onNewRegionCreated(
       final ConsensusGroupId groupId, final IoTConsensusServerImpl serverImpl) {
     if (!(groupId instanceof DataRegionId)) {
       return;
@@ -195,111 +195,129 @@ public class ConsensusSubscriptionSetupHandler {
         allSubscriptions.size(),
         serverImpl.getSearchIndex());
 
-    for (final Map.Entry<String, java.util.Set<String>> groupEntry : allSubscriptions.entrySet()) {
-      final String consumerGroupId = groupEntry.getKey();
-      final boolean isTableModel = SubscriptionAgent.consumer().isTableModel(consumerGroupId);
-      for (final String topicName : groupEntry.getValue()) {
-        if (!isConsensusBasedTopic(topicName, isTableModel)) {
+    for (final String consumerGroupId : allSubscriptions.keySet()) {
+      // Serialize binding with metadata repair and its rollback. Re-read the group's topics after
+      // acquiring the lock so an unsubscribe while this callback was waiting cannot be undone.
+      SubscriptionAgent.consumer()
+          .executeWithConsumerGroupLock(
+              consumerGroupId,
+              () ->
+                  bindNewRegionForConsumerGroup(
+                      consumerGroupId, groupId, serverImpl, commitManager));
+    }
+  }
+
+  private static void bindNewRegionForConsumerGroup(
+      final String consumerGroupId,
+      final ConsensusGroupId groupId,
+      final IoTConsensusServerImpl serverImpl,
+      final ConsensusSubscriptionCommitManager commitManager) {
+    final boolean isTableModel = SubscriptionAgent.consumer().isTableModel(consumerGroupId);
+    for (final String topicName :
+        SubscriptionAgent.consumer().getTopicNamesSubscribedByConsumerGroup(consumerGroupId)) {
+      if (!isConsensusBasedTopic(topicName, isTableModel)) {
+        continue;
+      }
+      if (SubscriptionAgent.broker()
+          .hasConsensusQueueForRegion(consumerGroupId, topicName, groupId.toString())) {
+        continue;
+      }
+      try {
+        final Map<String, TopicConfig> topicConfigs =
+            SubscriptionAgent.topic()
+                .getTopicConfigs(java.util.Collections.singleton(topicName), isTableModel);
+        final TopicConfig topicConfig = topicConfigs.get(topicName);
+        if (topicConfig == null) {
           continue;
         }
-        try {
-          final Map<String, TopicConfig> topicConfigs =
-              SubscriptionAgent.topic()
-                  .getTopicConfigs(java.util.Collections.singleton(topicName), isTableModel);
-          final TopicConfig topicConfig = topicConfigs.get(topicName);
-          if (topicConfig == null) {
-            continue;
-          }
 
-          // Resolve the new DataRegion's actual database name
-          final DataRegion dataRegion =
-              StorageEngine.getInstance().getDataRegion((DataRegionId) groupId);
-          if (dataRegion == null) {
-            continue;
-          }
-          final String dbRaw = dataRegion.getDatabaseName();
-          final String dbTableModel = dbRaw.startsWith("root.") ? dbRaw.substring(5) : dbRaw;
-
-          if (!matchesTopicDataRegion(dbRaw, topicConfig, isTableModel)) {
-            continue;
-          }
-
-          final String actualDbName = topicConfig.isTableTopic() ? dbTableModel : null;
-          final ConsensusLogToTabletConverter converter =
-              buildConverter(topicName, topicConfig, actualDbName);
-          final SubscriptionWalRetentionPolicy retentionPolicy =
-              buildSubscriptionWalRetentionPolicy(topicName, topicConfig, serverImpl);
-
-          // Recover from persisted per-writer region progress when available. The queue will
-          // resolve a replay start from that progress on first poll via the region-level locator.
-          // A newly-created region starts from its first consensus index and never proposes its
-          // current local tail as an initial committed frontier.
-          commitManager.initializeStateWithoutTailProposal(consumerGroupId, topicName, groupId);
-          final RegionProgress committedRegionProgress =
-              resolveFallbackCommittedRegionProgress(
-                  commitManager, consumerGroupId, topicName, groupId);
-          final boolean hasLocalPersistedState =
-              commitManager.hasPersistedState(consumerGroupId, topicName, groupId);
-          // This region is created after the subscription already exists. Its first WAL entry may
-          // already be visible by the time this callback runs, so start from the beginning of this
-          // new region instead of tail+1 to avoid skipping the first write.
-          final long tailStartSearchIndex = FIRST_CONSENSUS_SEARCH_INDEX;
-          final long initialRuntimeVersion =
-              regionRuntimeVersion.getOrDefault(groupId.convertToTConsensusGroupId(), 0L);
-          final boolean initialActive =
-              lastKnownPreferredWriter.getOrDefault(groupId.convertToTConsensusGroupId(), -1)
-                  == IOTDB_CONFIG.getDataNodeId();
-          final Set<Integer> initialActiveWriterNodeIds =
-              regionActiveWriterNodeIds.getOrDefault(
-                  groupId.convertToTConsensusGroupId(),
-                  initialActive
-                      ? Collections.singleton(IOTDB_CONFIG.getDataNodeId())
-                      : Collections.emptySet());
-          final ConsensusRegionRuntimeState initialRuntimeState =
-              new ConsensusRegionRuntimeState(
-                  initialRuntimeVersion,
-                  lastKnownPreferredWriter.getOrDefault(groupId.convertToTConsensusGroupId(), -1),
-                  initialActive,
-                  initialActiveWriterNodeIds);
-
-          LOGGER.info(
-              DataNodePipeMessages
-                  .PIPE_LOG_AUTO_BINDING_CONSENSUS_QUEUE_FOR_TOPIC_IN_GROUP_TO_NEW_REGION_86F21649,
-              topicName,
-              consumerGroupId,
-              groupId,
-              dbTableModel,
-              tailStartSearchIndex,
-              hasLocalPersistedState,
-              committedRegionProgress,
-              initialRuntimeVersion,
-              initialActive);
-
-          SubscriptionAgent.broker()
-              .bindConsensusPrefetchingQueue(
-                  consumerGroupId,
-                  topicName,
-                  topicConfig.getOrderMode(),
-                  groupId,
-                  serverImpl,
-                  retentionPolicy,
-                  converter,
-                  commitManager,
-                  committedRegionProgress,
-                  tailStartSearchIndex,
-                  initialRuntimeVersion,
-                  initialActive,
-                  hasLocalPersistedState);
-          SubscriptionAgent.broker().applyRuntimeStateForRegion(groupId, initialRuntimeState);
-        } catch (final Exception e) {
-          LOGGER.error(
-              DataNodePipeMessages
-                  .PIPE_LOG_FAILED_TO_AUTO_BIND_TOPIC_IN_GROUP_TO_NEW_REGION_5BFD0E7D,
-              topicName,
-              consumerGroupId,
-              groupId,
-              e);
+        // Resolve the new DataRegion's actual database name
+        final DataRegion dataRegion =
+            StorageEngine.getInstance().getDataRegion((DataRegionId) groupId);
+        if (dataRegion == null) {
+          continue;
         }
+        final String dbRaw = dataRegion.getDatabaseName();
+        final String dbTableModel = dbRaw.startsWith("root.") ? dbRaw.substring(5) : dbRaw;
+
+        if (!matchesTopicDataRegion(dbRaw, topicConfig, isTableModel)) {
+          continue;
+        }
+
+        final String actualDbName = topicConfig.isTableTopic() ? dbTableModel : null;
+        final ConsensusLogToTabletConverter converter =
+            buildConverter(topicName, topicConfig, actualDbName);
+        final SubscriptionWalRetentionPolicy retentionPolicy =
+            buildSubscriptionWalRetentionPolicy(topicName, topicConfig, serverImpl);
+
+        // Recover from persisted per-writer region progress when available. The queue will
+        // resolve a replay start from that progress on first poll via the region-level locator.
+        // A newly-created region starts from its first consensus index and never proposes its
+        // current local tail as an initial committed frontier.
+        commitManager.initializeStateWithoutTailProposal(consumerGroupId, topicName, groupId);
+        final RegionProgress committedRegionProgress =
+            resolveFallbackCommittedRegionProgress(
+                commitManager, consumerGroupId, topicName, groupId);
+        final boolean hasLocalPersistedState =
+            commitManager.hasPersistedState(consumerGroupId, topicName, groupId);
+        // This region is created after the subscription already exists. Its first WAL entry may
+        // already be visible by the time this callback runs, so start from the beginning of this
+        // new region instead of tail+1 to avoid skipping the first write.
+        final long tailStartSearchIndex = FIRST_CONSENSUS_SEARCH_INDEX;
+        final long initialRuntimeVersion =
+            regionRuntimeVersion.getOrDefault(groupId.convertToTConsensusGroupId(), 0L);
+        final boolean initialActive =
+            lastKnownPreferredWriter.getOrDefault(groupId.convertToTConsensusGroupId(), -1)
+                == IOTDB_CONFIG.getDataNodeId();
+        final Set<Integer> initialActiveWriterNodeIds =
+            regionActiveWriterNodeIds.getOrDefault(
+                groupId.convertToTConsensusGroupId(),
+                initialActive
+                    ? Collections.singleton(IOTDB_CONFIG.getDataNodeId())
+                    : Collections.emptySet());
+        final ConsensusRegionRuntimeState initialRuntimeState =
+            new ConsensusRegionRuntimeState(
+                initialRuntimeVersion,
+                lastKnownPreferredWriter.getOrDefault(groupId.convertToTConsensusGroupId(), -1),
+                initialActive,
+                initialActiveWriterNodeIds);
+
+        LOGGER.info(
+            DataNodePipeMessages
+                .PIPE_LOG_AUTO_BINDING_CONSENSUS_QUEUE_FOR_TOPIC_IN_GROUP_TO_NEW_REGION_86F21649,
+            topicName,
+            consumerGroupId,
+            groupId,
+            dbTableModel,
+            tailStartSearchIndex,
+            hasLocalPersistedState,
+            committedRegionProgress,
+            initialRuntimeVersion,
+            initialActive);
+
+        SubscriptionAgent.broker()
+            .bindConsensusPrefetchingQueue(
+                consumerGroupId,
+                topicName,
+                topicConfig.getOrderMode(),
+                groupId,
+                serverImpl,
+                retentionPolicy,
+                converter,
+                commitManager,
+                committedRegionProgress,
+                tailStartSearchIndex,
+                initialRuntimeVersion,
+                initialActive,
+                hasLocalPersistedState);
+        SubscriptionAgent.broker().applyRuntimeStateForRegion(groupId, initialRuntimeState);
+      } catch (final Exception e) {
+        LOGGER.error(
+            DataNodePipeMessages.PIPE_LOG_FAILED_TO_AUTO_BIND_TOPIC_IN_GROUP_TO_NEW_REGION_5BFD0E7D,
+            topicName,
+            consumerGroupId,
+            groupId,
+            e);
       }
     }
   }
@@ -391,6 +409,14 @@ public class ConsensusSubscriptionSetupHandler {
 
   public static void setupConsensusSubscriptions(
       final String consumerGroupId, final Set<String> topicNames, final boolean isTableModel) {
+    SubscriptionAgent.consumer()
+        .executeWithConsumerGroupLock(
+            consumerGroupId,
+            () -> setupConsensusSubscriptionsInternal(consumerGroupId, topicNames, isTableModel));
+  }
+
+  private static void setupConsensusSubscriptionsInternal(
+      final String consumerGroupId, final Set<String> topicNames, final boolean isTableModel) {
     final IConsensus dataRegionConsensus = DataRegionConsensusImpl.getInstance();
     if (!(dataRegionConsensus instanceof IoTConsensus)) {
       final String configuredProtocol = IOTDB_CONFIG.getDataRegionConsensusProtocolClass();
@@ -420,6 +446,10 @@ public class ConsensusSubscriptionSetupHandler {
         topicNames,
         ioTConsensus.getAllConsensusGroupIds().size());
 
+    // Recovery also visits topics with live queues. Roll back only newly bound regions so a
+    // failure on another topic cannot discard their in-flight events or committed progress.
+    final Map<String, Set<String>> existingQueueRegionIds =
+        SubscriptionAgent.broker().getConsensusQueueRegionIds(consumerGroupId, topicNames);
     final ConsensusSubscriptionCommitManager.SetupSnapshot setupSnapshot =
         commitManager.captureSetupSnapshot(consumerGroupId, topicNames);
     setupConsensusTopics(
@@ -431,19 +461,27 @@ public class ConsensusSubscriptionSetupHandler {
                 consumerGroupId, topicName, isTableModel, ioTConsensus, commitManager),
         attemptedTopicNames ->
             rollbackConsensusSubscriptionSetup(
-                consumerGroupId, attemptedTopicNames, commitManager, setupSnapshot));
+                consumerGroupId,
+                attemptedTopicNames,
+                commitManager,
+                setupSnapshot,
+                existingQueueRegionIds));
   }
 
   private static void rollbackConsensusSubscriptionSetup(
       final String consumerGroupId,
       final Set<String> attemptedTopicNames,
       final ConsensusSubscriptionCommitManager commitManager,
-      final ConsensusSubscriptionCommitManager.SetupSnapshot setupSnapshot) {
+      final ConsensusSubscriptionCommitManager.SetupSnapshot setupSnapshot,
+      final Map<String, Set<String>> existingQueueRegionIds) {
     RuntimeException rollbackFailure = null;
     for (final String topicName : attemptedTopicNames) {
       try {
         SubscriptionAgent.broker()
-            .unbindConsensusPrefetchingQueue(consumerGroupId, topicName, false);
+            .rollbackConsensusPrefetchingQueues(
+                consumerGroupId,
+                topicName,
+                existingQueueRegionIds.getOrDefault(topicName, Collections.emptySet()));
       } catch (final RuntimeException e) {
         if (Objects.isNull(rollbackFailure)) {
           rollbackFailure = e;
@@ -453,9 +491,14 @@ public class ConsensusSubscriptionSetupHandler {
       }
     }
     try {
-      commitManager.restoreSetupSnapshot(setupSnapshot, attemptedTopicNames);
+      commitManager.restoreSetupSnapshot(
+          setupSnapshot, attemptedTopicNames, existingQueueRegionIds);
       restoreStartupDetachedRetentions(
-          consumerGroupId, attemptedTopicNames, setupSnapshot, commitManager);
+          consumerGroupId,
+          attemptedTopicNames,
+          setupSnapshot,
+          commitManager,
+          existingQueueRegionIds);
     } catch (final RuntimeException e) {
       if (Objects.isNull(rollbackFailure)) {
         rollbackFailure = e;
@@ -472,7 +515,8 @@ public class ConsensusSubscriptionSetupHandler {
       final String consumerGroupId,
       final Set<String> attemptedTopicNames,
       final ConsensusSubscriptionCommitManager.SetupSnapshot setupSnapshot,
-      final ConsensusSubscriptionCommitManager commitManager) {
+      final ConsensusSubscriptionCommitManager commitManager,
+      final Map<String, Set<String>> existingQueueRegionIds) {
     final IConsensus dataRegionConsensus = DataRegionConsensusImpl.getInstance();
     if (!(dataRegionConsensus instanceof IoTConsensus)) {
       return;
@@ -480,6 +524,11 @@ public class ConsensusSubscriptionSetupHandler {
     final IoTConsensus ioTConsensus = (IoTConsensus) dataRegionConsensus;
     for (final String topicName : attemptedTopicNames) {
       for (final String regionId : setupSnapshot.getRegionIds(topicName)) {
+        if (existingQueueRegionIds
+            .getOrDefault(topicName, Collections.emptySet())
+            .contains(regionId)) {
+          continue;
+        }
         final ConsensusGroupId groupId = ConsensusGroupId.Factory.createFromString(regionId);
         final IoTConsensusServerImpl serverImpl = ioTConsensus.getImpl(groupId);
         if (Objects.nonNull(serverImpl)) {
@@ -554,7 +603,7 @@ public class ConsensusSubscriptionSetupHandler {
    * DATABASE_KEY} filter. Additionally, the {@link #onNewRegionCreated} callback ensures that
    * regions created after this method runs are also automatically bound.
    */
-  private static void setupConsensusQueueForTopic(
+  static void setupConsensusQueueForTopic(
       final String consumerGroupId,
       final String topicName,
       final boolean isTableModel,
@@ -596,6 +645,23 @@ public class ConsensusSubscriptionSetupHandler {
 
     for (final ConsensusGroupId groupId : allGroupIds) {
       if (!(groupId instanceof DataRegionId)) {
+        continue;
+      }
+      if (ioTConsensus.isPeerCreationCallbackPending(groupId)
+          && SubscriptionAgent.consumer()
+              .isTopicSubscribedByConsumerGroup(consumerGroupId, topicName)) {
+        // The new-region callback binds this peer from its first WAL index. Binding it here from
+        // the current tail could skip writes replicated before the callback finishes.
+        bound = true;
+        continue;
+      }
+      if (SubscriptionAgent.broker()
+          .hasConsensusQueueForRegion(consumerGroupId, topicName, groupId.toString())) {
+        // In particular, a queue created by onNewRegionCreated must keep its initialization from
+        // the beginning of the region instead of being reinitialized from a local tail proposal.
+        // Check the live broker as well because a region callback can finish after the setup
+        // snapshot was captured.
+        bound = true;
         continue;
       }
 

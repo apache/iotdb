@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool.common;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 
 import java.io.IOException;
@@ -110,7 +111,8 @@ public enum ImportTsFileOperation {
       case "delete":
         return ImportTsFileOperation.DELETE;
       default:
-        new IoTPrinter(System.out).println("Args error: os/of must be one of none, mv, cp, delete");
+        new IoTPrinter(System.out)
+            .println(CliMessages.LOG_ARGS_ERROR_OS_OF_MUST_BE_ONE_OF_NONE_MV_CP_DELETE_6E478D75);
         System.exit(Constants.CODE_ERROR);
         return null;
     }

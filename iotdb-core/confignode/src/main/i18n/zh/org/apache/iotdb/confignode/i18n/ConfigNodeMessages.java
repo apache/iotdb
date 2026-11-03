@@ -290,6 +290,7 @@ public final class ConfigNodeMessages {
   public static final String FAILED_TO_ON_DATANODE = "在 DataNode {} 上执行 {} 失败，{}";
   public static final String FAILED_TO_ON_DATANODE_EXCEPTION = "在 DataNode: {} 上执行 {} 失败，异常：{}";
   public static final String FAILED_TO_ON_DATANODE_RESPONSE = "在 DataNode: {} 上执行 {} 失败，响应：{}";
+  public static final String FAILED_TO_ON_DATANODE_WITH_STATUS = "执行 {} 失败（DataNode: {}），状态码：{}，信息：{}";
   public static final String FAILED_TO_OPERATE_PIPE = "操作 pipe 失败";
   public static final String FAILED_TO_SET_PIPE_STATUS = "设置 pipe 状态失败";
   public static final String FAILED_TO_SET_PIPE_STATUS_WITH_STOPPED_BY_RUNTIME_EXCEPTION =
@@ -566,6 +567,12 @@ public final class ConfigNodeMessages {
 
   public static final String AUTHENTICATION_FAILED = "认证失败。";
 
+  public static final String
+      EXCEPTION_COUNT_PATHS_USING_TEMPLATE_ERROR_ON_DATANODE_ID_ARG_INTERNALENDPOINT_ARG_ARG_E05E0F5B =
+          "在 DataNode 上统计使用模板的路径数量时出错：{id=%s, internalEndPoint=%s}%s";
+  public static final String EXCEPTION_FAILED_TO_ARG_ON_DATANODE_ARG_EXCEPTION_ARG_87B8946D =
+      "执行 %s 失败，DataNode：%s，异常：%s";
+
   private ConfigNodeMessages() {}
 
   // ---------------------------------------------------------------------------
@@ -787,4 +794,71 @@ public final class ConfigNodeMessages {
   public static final String
       LOG_FAILED_TO_TRANSFER_CONFIGNODE_LEADERSHIP_BEFORE_SHUTDOWN_CONTINUING_SHUTDOWN_2B9364D5 =
           "关闭前转移 ConfigNode leader 失败，继续关闭。";
+
+  public static final String EXCEPTION_OPERATION_ARG_IS_NOT_SUPPORTED_E069D2B9 = "不支持操作 %s";
+
+  public static final String
+      EXCEPTION_FAILED_TO_ADD_UDF_ARG_IN_UDF_TABLE_ON_CONFIG_NODES_BECAUSE_OF_ARG_2CA26D13 =
+          "在 ConfigNode 的 UDF_Table 中添加 UDF [%s] 失败，原因：%s";
+
+  public static final String
+      EXCEPTION_FAILED_TO_ADD_TRIGGER_ARG_IN_TRIGGERTABLE_ON_CONFIG_NODES_BECAUSE_OF_ARG_DFBA6E1C =
+          "在 ConfigNode 的 TriggerTable 中添加触发器 [%s] 失败，原因：%s";
+
+  public static final String EXCEPTION_CQ_ARG_HAS_ALREADY_BEEN_CREATED_8031B847 = "CQ %s 已创建。";
+
+  public static final String EXCEPTION_CQ_ARG_HAS_ALREADY_BEEN_ACTIVE_46FB805D = "CQ %s 已激活";
+
+  public static final String
+      EXCEPTION_UPDATE_LAST_EXECUTION_TIME_OF_CQ_ARG_FAILED_BECAUSE_ITS_ORIGINAL_LAST_EXECUTION_TIME_ARG_IS_LARGER_THAN_THE_UPDATED_ONE_ARG_AB654FAF =
+          "更新 CQ %s 的上次执行时间失败，因为原上次执行时间（%d）大于更新后的时间（%d）。";
+
+  public static final String EXCEPTION_DATABASE_ARG_DOES_NOT_EXIST_0112959D = "数据库 %s 不存在";
+
+  public static final String EXCEPTION_IOTDB_CONFIGURATION_ARG_9C2F6017 = "IoTDB 配置：{}";
+
+  public static final String EXCEPTION_RESTART_CONFIGNODE_FAILED_EAE90C05 = "重启 ConfigNode 失败！";
+
+  public static final String EXCEPTION_WAITING_LEADER_S_SCHEDULING_IS_INTERRUPTED_963B6D90 =
+      "等待 Leader 调度时被中断。";
+
+  public static final String EXCEPTION_REGISTER_CONFIGNODE_FAILED_388E8520 = "注册 ConfigNode 失败！";
+
+  public static final String
+      EXCEPTION_SYSTEMPROPERTIES_THE_PARAMETER_ARG_CAN_T_BE_MODIFIED_AFTER_FIRST_STARTUP_YOUR_CONFIGURATION_ARG_WILL_BE_FORCED_UPDATE_TO_ARG_42B1AD5E =
+          "[SystemProperties] 参数 \"{}\" 在首次启动后不能修改。配置 {} 将被强制更新为：{}";
+
+  public static final String
+      EXCEPTION_EXECUTED_FAILED_CHECK_USAGE_NODE_ID_INTERNAL_ADDRESS_INTERNAL_PORT_0852F64E =
+          "执行失败，请检查用法：<Node-id>/<internal_address>:<internal_port>";
+
+  public static final String EXCEPTION_UNKNOWN_REQUEST_TYPE_ARG_78571982 = "未知的请求类型：%s";
+
+  public static final String EXCEPTION_ALL_RETRY_FAILED_DUE_TO_ARG_AEA920B0 = "所有重试均失败，原因：%s";
+
+  public static final String
+      EXCEPTION_ARG_ERROR_ON_DATANODE_ID_ARG_INTERNALENDPOINT_ARG_ARG_14CDDEFD =
+          "在 DataNode 上执行 %s 时发生错误：{id=%s, internalEndPoint=%s}%s";
+
+  public static final String
+      EXCEPTION_FETCH_SCHEMAENGINE_BLACK_LIST_ERROR_ON_DATANODE_ID_ARG_INTERNALENDPOINT_ARG_ARG_3D21FC43 =
+          "在 DataNode 上获取元数据黑名单时发生错误：{id=%s, internalEndPoint=%s}%s";
+
+  public static final String EXCEPTION_FAILED_TO_ARG_ON_CONFIGNODE_ARG_EXCEPTION_ARG_CD279F8B =
+      "执行 %s 失败，ConfigNode：%s，异常：%s";
+
+  public static final String
+      EXCEPTION_CHECK_TIMESERIES_EXISTENCE_ERROR_ON_DATANODE_ID_ARG_INTERNALENDPOINT_ARG_ARG_D2A3135E =
+          "在 DataNode 上检查时间序列是否存在时发生错误：{id=%s, internalEndPoint=%s}%s";
+
+  public static final String EXCEPTION_TOKEN_OF_CQ_ARG_DOESN_T_MATCH_EE2E6387 = "CQ %s 的 Token 不匹配";
+
+  public static final String EXCEPTION_LOGIN_SUCCESSFULLY_1C2EF670 = "登录成功";
+
+  public static final String EXCEPTION_NO_SUCH_ROLE_ARG_42B804EB = "角色不存在：%s";
+
+  public static final String EXCEPTION_GET_ERROR_WHEN_SERIALIZE_PATTERN_TREE_9545A29E =
+      "序列化模式树时发生错误。";
+
+  public static final String EXCEPTION_NO_SUCH_USER_9F8AB2B7 = "用户不存在：";
 }

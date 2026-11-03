@@ -224,7 +224,9 @@ public abstract class AbstractDataTool {
       if (StringUtils.isNotBlank(defaultValue)) {
         return defaultValue;
       }
-      String msg = String.format("Required values for option '%s' not provided", name);
+      String msg =
+          String.format(
+              CliMessages.MESSAGE_REQUIRED_VALUES_FOR_OPTION_ARG_NOT_PROVIDED_86467CA2, name);
       LOGGER.info(msg);
       LOGGER.info(CliMessages.USE_HELP_FOR_MORE);
       throw new ArgsErrorException(msg);
@@ -257,20 +259,32 @@ public abstract class AbstractDataTool {
       if (givenTS != null) {
         trustStore = givenTS;
       } else {
-        trustStore = cliCtx.getLineReader().readLine("please input your trust_store:", '\0');
+        trustStore =
+            cliCtx
+                .getLineReader()
+                .readLine(CliMessages.MESSAGE_PLEASE_INPUT_YOUR_TRUST_STORE_387CF139, '\0');
       }
       String givenTPW = commandLine.getOptionValue(Constants.TRUST_STORE_PWD_ARGS);
       if (givenTPW != null) {
         trustStorePwd = givenTPW;
       } else {
-        trustStorePwd = cliCtx.getLineReader().readLine("please input your trust_store_pwd:", '\0');
+        trustStorePwd =
+            cliCtx
+                .getLineReader()
+                .readLine(CliMessages.MESSAGE_PLEASE_INPUT_YOUR_TRUST_STORE_PWD_F402D8D9, '\0');
       }
       keyStore = commandLine.getOptionValue(Constants.KEY_STORE_ARGS);
       keyStorePwd = commandLine.getOptionValue(Constants.KEY_STORE_PWD_ARGS);
       if (keyStore != null && keyStorePwd == null) {
-        keyStorePwd = cliCtx.getLineReader().readLine("please input your key_store_pwd:", '\0');
+        keyStorePwd =
+            cliCtx
+                .getLineReader()
+                .readLine(CliMessages.MESSAGE_PLEASE_INPUT_YOUR_KEY_STORE_PWD_D18797A4, '\0');
       } else if (keyStore == null && keyStorePwd != null) {
-        keyStore = cliCtx.getLineReader().readLine("please input your key_store:", '\0');
+        keyStore =
+            cliCtx
+                .getLineReader()
+                .readLine(CliMessages.MESSAGE_PLEASE_INPUT_YOUR_KEY_STORE_F2FBBF40, '\0');
       }
     }
     boolean hasPw = commandLine.hasOption(Constants.PW_ARGS);
@@ -279,7 +293,10 @@ public abstract class AbstractDataTool {
       if (inputPassword != null) {
         password = inputPassword;
       } else {
-        password = cliCtx.getLineReader().readLine("please input your password:", '\0');
+        password =
+            cliCtx
+                .getLineReader()
+                .readLine(CliMessages.MESSAGE_PLEASE_INPUT_YOUR_PASSWORD_72B23434, '\0');
       }
     } else {
       password = Constants.PW_DEFAULT_VALUE;
@@ -639,8 +656,10 @@ public abstract class AbstractDataTool {
                   headerTypeMap.put(headerNameWithoutType, type);
                 } else {
                   ioTPrinter.printf(
-                      "Line '%s', column '%s': '%s' unknown type%n",
-                      recordObj.getRecordNumber(), headerNameWithoutType, value);
+                      CliMessages.LOG_LINE_ARG_COLUMN_ARG_ARG_UNKNOWN_TYPE_ARG_93D3B31D,
+                      recordObj.getRecordNumber(),
+                      headerNameWithoutType,
+                      value);
                   isFail.set(true);
                 }
               }
@@ -650,8 +669,11 @@ public abstract class AbstractDataTool {
                 if (valueTrans == null) {
                   isFail.set(true);
                   ioTPrinter.printf(
-                      "Line '%s', column '%s': '%s' can't convert to '%s'%n",
-                      recordObj.getRecordNumber(), headerNameWithoutType, value, type);
+                      CliMessages.LOG_LINE_ARG_COLUMN_ARG_ARG_CAN_T_CONVERT_TO_ARG_ARG_F85541A2,
+                      recordObj.getRecordNumber(),
+                      headerNameWithoutType,
+                      value,
+                      type);
                 } else {
                   values.add(valueTrans);
                   measurements.add(headerNameWithoutType);
@@ -679,7 +701,7 @@ public abstract class AbstractDataTool {
     if (!failedRecords.isEmpty()) {
       writeFailedLinesFile(headerNames, failedFilePath, failedRecords);
     }
-    ioTPrinter.println("Import completely!");
+    ioTPrinter.println(CliMessages.LOG_IMPORT_COMPLETELY_B7451B2C);
   }
 
   /**
@@ -743,8 +765,10 @@ public abstract class AbstractDataTool {
                     headerTypeMap.put(header, type);
                   } else {
                     ioTPrinter.printf(
-                        "Line '%s', column '%s': '%s' unknown type%n",
-                        recordObj.getRecordNumber(), header, value);
+                        CliMessages.LOG_LINE_ARG_COLUMN_ARG_ARG_UNKNOWN_TYPE_ARG_93D3B31D,
+                        recordObj.getRecordNumber(),
+                        header,
+                        value);
                     isFail = true;
                   }
                 }
@@ -754,8 +778,11 @@ public abstract class AbstractDataTool {
                   if (valueTrans == null) {
                     isFail = true;
                     ioTPrinter.printf(
-                        "Line '%s', column '%s': '%s' can't convert to '%s'%n",
-                        recordObj.getRecordNumber(), header, value, type);
+                        CliMessages.LOG_LINE_ARG_COLUMN_ARG_ARG_CAN_T_CONVERT_TO_ARG_ARG_F85541A2,
+                        recordObj.getRecordNumber(),
+                        header,
+                        value,
+                        type);
                   } else {
                     measurements.add(header.replace(deviceId + '.', ""));
                     types.add(type);
@@ -786,9 +813,9 @@ public abstract class AbstractDataTool {
       writeFailedLinesFile(headerNames, failedFilePath, failedRecords);
     }
     if (Boolean.TRUE.equals(hasStarted.get())) {
-      ioTPrinter.println("Import completely!");
+      ioTPrinter.println(CliMessages.LOG_IMPORT_COMPLETELY_B7451B2C);
     } else {
-      ioTPrinter.println("No records!");
+      ioTPrinter.println(CliMessages.LOG_NO_RECORDS_05AB97C4);
     }
   }
 
@@ -869,7 +896,9 @@ public abstract class AbstractDataTool {
         }
       } catch (StatementExecutionException | IllegalPathException | IoTDBConnectionException e) {
         ioTPrinter.println(
-            "Meet error when query the type of timeseries because " + e.getMessage());
+            String.format(
+                CliMessages.LOG_MEET_ERROR_WHEN_QUERY_THE_TYPE_OF_TIMESERIES_BECAUSE_ARG_21949119,
+                Objects.toString(e.getMessage())));
         try {
           session.close();
         } catch (IoTDBConnectionException ex) {

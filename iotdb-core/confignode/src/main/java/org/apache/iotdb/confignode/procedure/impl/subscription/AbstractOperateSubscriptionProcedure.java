@@ -54,7 +54,7 @@ public abstract class AbstractOperateSubscriptionProcedure
       LoggerFactory.getLogger(AbstractOperateSubscriptionProcedure.class);
 
   private static final String SKIP_SUBSCRIPTION_PROCEDURE_MESSAGE =
-      "Skip subscription-related operations and do nothing";
+      ProcedureMessages.MESSAGE_SKIP_SUBSCRIPTION_RELATED_OPERATIONS_AND_DO_NOTHING_4EDC76FE;
 
   private static final int RETRY_THRESHOLD = 1;
 
@@ -379,21 +379,41 @@ public abstract class AbstractOperateSubscriptionProcedure
   protected Map<Integer, TPushConsumerGroupMetaResp> pushConsumerGroupMetaToDataNodes(
       ConfigNodeProcedureEnv env) throws IOException {
     final List<ByteBuffer> consumerGroupMetaBinaryList = new ArrayList<>();
+    final List<ConsumerGroupMeta> consumerGroupMetaList = new ArrayList<>();
     for (ConsumerGroupMeta consumerGroupMeta : subscriptionInfo.get().getAllConsumerGroupMeta()) {
+      consumerGroupMetaList.add(consumerGroupMeta);
       consumerGroupMetaBinaryList.add(consumerGroupMeta.serialize());
     }
 
-    return env.pushAllConsumerGroupMetaToDataNodes(consumerGroupMetaBinaryList);
+    final Map<Integer, TPushConsumerGroupMetaResp> responseMap =
+        env.pushAllConsumerGroupMetaToDataNodes(consumerGroupMetaBinaryList);
+    recordFullConsumerGroupMetaPush(env, consumerGroupMetaList, responseMap);
+    return responseMap;
   }
 
   protected Map<Integer, TPushConsumerGroupMetaResp> pushConsumerGroupMetaToDataNodesBestEffort(
       ConfigNodeProcedureEnv env) throws IOException {
     final List<ByteBuffer> consumerGroupMetaBinaryList = new ArrayList<>();
+    final List<ConsumerGroupMeta> consumerGroupMetaList = new ArrayList<>();
     for (ConsumerGroupMeta consumerGroupMeta : subscriptionInfo.get().getAllConsumerGroupMeta()) {
+      consumerGroupMetaList.add(consumerGroupMeta);
       consumerGroupMetaBinaryList.add(consumerGroupMeta.serialize());
     }
 
-    return env.pushAllConsumerGroupMetaToDataNodesBestEffort(consumerGroupMetaBinaryList);
+    final Map<Integer, TPushConsumerGroupMetaResp> responseMap =
+        env.pushAllConsumerGroupMetaToDataNodesBestEffort(consumerGroupMetaBinaryList);
+    recordFullConsumerGroupMetaPush(env, consumerGroupMetaList, responseMap);
+    return responseMap;
+  }
+
+  private void recordFullConsumerGroupMetaPush(
+      final ConfigNodeProcedureEnv env,
+      final List<ConsumerGroupMeta> consumerGroupMetaList,
+      final Map<Integer, TPushConsumerGroupMetaResp> responseMap) {
+    env.getConfigManager()
+        .getSubscriptionManager()
+        .getSubscriptionReadyDataNodeTracker()
+        .replaceFromFullPush(consumerGroupMetaList, responseMap);
   }
 
   public static boolean pushConsumerGroupMetaHasException(

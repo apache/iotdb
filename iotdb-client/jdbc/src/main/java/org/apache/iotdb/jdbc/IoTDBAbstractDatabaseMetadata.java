@@ -76,7 +76,8 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
           };
 
   private static final String METHOD_NOT_SUPPORTED_STRING = JdbcMessages.METHOD_NOT_SUPPORTED;
-  protected static final String CONVERT_ERROR_MSG = "Convert tsBlock error: {}";
+  protected static final String CONVERT_ERROR_MSG =
+      JdbcMessages.EXCEPTION_CONVERT_TSBLOCK_ERROR_ARG_D9D4A78D;
 
   protected IoTDBConnection connection;
   protected IClientRPCService.Iface client;

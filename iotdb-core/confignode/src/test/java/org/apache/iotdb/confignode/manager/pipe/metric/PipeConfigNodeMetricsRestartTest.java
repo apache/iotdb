@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.confignode.manager.pipe.agent.task.PipeConfigNodeSubtask;
 import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeConfigNodeRemainingTimeMetrics;
 import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeTemporaryMetaInCoordinatorMetrics;
@@ -33,6 +34,7 @@ import org.apache.iotdb.confignode.manager.pipe.source.IoTDBConfigRegionSource;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.IMetric;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.utils.MetricInfo;
@@ -49,6 +51,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.when;
 
 /** Pipe metrics must survive a metric service restart, which drops and rebinds all metrics. */
@@ -87,14 +91,23 @@ public class PipeConfigNodeMetricsRestartTest {
   public void testConfigRegionSourceMetrics() {
     final PipeConfigRegionSourceMetrics metrics = PipeConfigRegionSourceMetrics.getInstance();
     bind(metrics);
-    metrics.register(mockConfigRegionSource());
+    final IoTDBConfigRegionSource source = mockConfigRegionSource();
+    when(source.getTaskID()).thenReturn(PIPE + "_0_" + CREATION_TIME);
+    when(source.getUnTransferredEventCount()).thenReturn(7L);
+    metrics.register(source);
     try {
+      assertEquals(7L, metrics.getRemainingEventCount(PIPE, CREATION_TIME));
+      assertEquals(0L, metrics.getRemainingEventCount(PIPE, CREATION_TIME + 1));
+      assertEquals(0L, metrics.getRemainingEventCount("other_pipe", CREATION_TIME));
       service.restartService();
       assertEquals(1, count(Metric.UNTRANSFERRED_CONFIG_COUNT));
+      when(source.getUnTransferredEventCount()).thenReturn(3L);
+      assertEquals(3L, metrics.getRemainingEventCount(PIPE, CREATION_TIME));
     } finally {
-      metrics.deregister(TASK_ID);
+      metrics.deregister(source.getTaskID());
     }
     assertEquals(0, count(Metric.UNTRANSFERRED_CONFIG_COUNT));
+    assertEquals(0L, metrics.getRemainingEventCount(PIPE, CREATION_TIME));
   }
 
   @Test
@@ -154,6 +167,79 @@ public class PipeConfigNodeMetricsRestartTest {
     assertEquals(0, count(Metric.PIPE_GLOBAL_REMAINING_EVENT_COUNT));
   }
 
+  @Test
+  public void testTemporaryMetaMetricsWithUnderscores() {
+    final PipeTemporaryMetaInCoordinatorMetrics metrics =
+        PipeTemporaryMetaInCoordinatorMetrics.getInstance();
+    bind(metrics);
+    final String[] pipeNames = {
+      "pipe_with_underscores", "pipe_with_underscores", "pipe_with_another_suffix_", "_pipe"
+    };
+    final long[] creationTimes = {CREATION_TIME, CREATION_TIME + 1, CREATION_TIME, CREATION_TIME};
+    final List<String> registeredPipeIds = new ArrayList<>();
+    final List<PipeTemporaryMetaInCoordinator> temporaryMetas = new ArrayList<>();
+    try {
+      for (int i = 0; i < pipeNames.length; i++) {
+        final PipeStaticMeta staticMeta = Mockito.mock(PipeStaticMeta.class);
+        when(staticMeta.getPipeName()).thenReturn(pipeNames[i]);
+        when(staticMeta.getCreationTime()).thenReturn(creationTimes[i]);
+        final PipeMeta pipeMeta = Mockito.mock(PipeMeta.class);
+        when(pipeMeta.getStaticMeta()).thenReturn(staticMeta);
+        final PipeTemporaryMetaInCoordinator temporaryMeta =
+            Mockito.mock(PipeTemporaryMetaInCoordinator.class);
+        when(temporaryMeta.getGlobalRemainingEvents()).thenReturn(7L + i);
+        when(temporaryMeta.getGlobalRemainingTime()).thenReturn(10.0 + i);
+        when(pipeMeta.getTemporaryMeta()).thenReturn(temporaryMeta);
+        registeredPipeIds.add(pipeNames[i] + "_" + creationTimes[i]);
+        temporaryMetas.add(temporaryMeta);
+        metrics.register(pipeMeta);
+      }
+      assertEquals(pipeNames.length, count(Metric.PIPE_GLOBAL_REMAINING_EVENT_COUNT));
+      assertEquals(pipeNames.length, count(Metric.PIPE_GLOBAL_REMAINING_TIME));
+      for (int i = 0; i < pipeNames.length; i++) {
+        assertTemporaryMetaValues(pipeNames[i], creationTimes[i], 7L + i, 10.0 + i);
+      }
+      service.restartService();
+      when(temporaryMetas.get(0).getGlobalRemainingEvents()).thenReturn(3L);
+      when(temporaryMetas.get(0).getGlobalRemainingTime()).thenReturn(4.0);
+      assertTemporaryMetaValues(pipeNames[0], creationTimes[0], 3L, 4.0);
+      metrics.deregister(registeredPipeIds.remove(0));
+      assertEquals(pipeNames.length - 1, count(Metric.PIPE_GLOBAL_REMAINING_EVENT_COUNT));
+      assertEquals(pipeNames.length - 1, count(Metric.PIPE_GLOBAL_REMAINING_TIME));
+      assertNull(get(Metric.PIPE_GLOBAL_REMAINING_EVENT_COUNT, pipeNames[0], creationTimes[0]));
+      assertNull(get(Metric.PIPE_GLOBAL_REMAINING_TIME, pipeNames[0], creationTimes[0]));
+      for (int i = 1; i < pipeNames.length; i++) {
+        assertTemporaryMetaValues(pipeNames[i], creationTimes[i], 7L + i, 10.0 + i);
+      }
+      service.restartService();
+      assertEquals(pipeNames.length - 1, count(Metric.PIPE_GLOBAL_REMAINING_EVENT_COUNT));
+      assertEquals(pipeNames.length - 1, count(Metric.PIPE_GLOBAL_REMAINING_TIME));
+      assertNull(get(Metric.PIPE_GLOBAL_REMAINING_EVENT_COUNT, pipeNames[0], creationTimes[0]));
+      assertNull(get(Metric.PIPE_GLOBAL_REMAINING_TIME, pipeNames[0], creationTimes[0]));
+      for (int i = 1; i < pipeNames.length; i++) {
+        assertTemporaryMetaValues(pipeNames[i], creationTimes[i], 7L + i, 10.0 + i);
+      }
+    } finally {
+      registeredPipeIds.forEach(metrics::deregister);
+    }
+    assertEquals(0, count(Metric.PIPE_GLOBAL_REMAINING_EVENT_COUNT));
+    assertEquals(0, count(Metric.PIPE_GLOBAL_REMAINING_TIME));
+  }
+
+  private void assertTemporaryMetaValues(
+      final String pipeName,
+      final long creationTime,
+      final long remainingEvents,
+      final double remainingTime) {
+    final IMetric eventGauge =
+        get(Metric.PIPE_GLOBAL_REMAINING_EVENT_COUNT, pipeName, creationTime);
+    final IMetric timeGauge = get(Metric.PIPE_GLOBAL_REMAINING_TIME, pipeName, creationTime);
+    assertNotNull(eventGauge);
+    assertNotNull(timeGauge);
+    assertEquals(remainingEvents, ((AutoGauge) eventGauge).getValue(), 0.0);
+    assertEquals(remainingTime, ((AutoGauge) timeGauge).getValue(), 0.0);
+  }
+
   private void bind(final IMetricSet metricSet) {
     service.addMetricSet(metricSet);
     boundMetricSets.add(metricSet);
@@ -180,5 +266,18 @@ public class PipeConfigNodeMetricsRestartTest {
       }
     }
     throw new AssertionError(metric + " is not registered");
+  }
+
+  private IMetric get(final Metric metric, final String pipeName, final long creationTime) {
+    return service.getAllMetrics().entrySet().stream()
+        .filter(entry -> metric.toString().equals(entry.getKey().getName()))
+        .filter(entry -> pipeName.equals(entry.getKey().getTags().get(Tag.NAME.toString())))
+        .filter(
+            entry ->
+                String.valueOf(creationTime)
+                    .equals(entry.getKey().getTags().get(Tag.CREATION_TIME.toString())))
+        .map(Map.Entry::getValue)
+        .findFirst()
+        .orElse(null);
   }
 }

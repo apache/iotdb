@@ -552,7 +552,16 @@ public class FileLoaderUtils {
     if (chunkMetaData.isDataTypeModifiedAndCannotUseStatistics()) {
       chunkReader.markDataTypeModifiedAndCannotUseStatistics();
     }
-    return chunkReader.loadPageReaderList();
+    try {
+      return chunkReader.loadPageReaderList();
+    } catch (IOException | RuntimeException | Error failure) {
+      try {
+        chunkReader.close();
+      } catch (IOException | RuntimeException | Error cleanup) {
+        failure.addSuppressed(cleanup);
+      }
+      throw failure;
+    }
   }
 
   /**

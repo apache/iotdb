@@ -47,6 +47,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
 
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.TimeRange;
@@ -112,6 +113,9 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
     super.recoverWithWriter();
 
     if (hasCrashed()) {
+      walRedoer
+          .getRecoveryMemTable()
+          .setEncryptParameter(EncryptUtils.getEncryptParameter(writer.getEncryptParameter()));
       // tsfile has crashed due to failure,
       // the last ChunkGroup may contain the same data as the WALs,
       // so the time map must be updated first to avoid duplicated insertion
@@ -213,6 +217,10 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
           }
           // update memtable's database and dataRegionId
           memTable.setDatabaseAndDataRegionId(databaseName, dataRegionId);
+          if (writer != null) {
+            memTable.setEncryptParameter(
+                EncryptUtils.getEncryptParameter(writer.getEncryptParameter()));
+          }
           break;
         case INSERT_ROW_NODE:
         case INSERT_TABLET_NODE:

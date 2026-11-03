@@ -77,6 +77,7 @@ public class TsFileSplitter {
   private Map<Integer, List<AlignedChunkData>> pageIndex2ChunkData = new LinkedHashMap<>();
   private Map<Integer, long[]> pageIndex2Times = new HashMap<>();
   private boolean isTimeChunkNeedDecode = true;
+  private boolean forceDecodeChunks;
   private IDeviceID curDevice = null;
   private boolean isAligned;
   private int timeChunkIndexOfCurrentValueColumn = 0;
@@ -120,7 +121,8 @@ public class TsFileSplitter {
       }
 
       reader.readFileMetadata();
-      reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
+      forceDecodeChunks = reader.hasFileEncryptionHeader();
+      reader.position(reader.getDataStartOffset());
       getChunkMetadata(reader, offset2ChunkMetadata);
       byte marker;
       // It should be noted that time chunk and its corresponding value chunk are not necessarily
@@ -269,7 +271,9 @@ public class TsFileSplitter {
         }
         chunkData.writeEntirePage(pageHeader, reader.readCompressedPage(pageHeader));
       } else { // split page
-        ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
+        ByteBuffer pageData =
+            reader.readPage(
+                pageHeader, header.getCompressionType(), pageIndex, header.getChunkOrdinal());
         Pair<long[], Object[]> tvArray =
             decodePage(isAligned, pageData, pageHeader, defaultTimeDecoder, valueDecoder, header);
         long[] times = tvArray.left;
@@ -365,14 +369,15 @@ public class TsFileSplitter {
           allChunkData.add(alignedChunkData);
         }
       }
-      if (alignedChunkDataList.size() == 1) { // write entire page
+      if (alignedChunkDataList.size() == 1 && !forceDecodeChunks) { // write entire page
         // write the entire page if it's not an empty page.
         alignedChunkDataList
             .get(0)
             .writeEntirePage(pageHeader, reader.readCompressedPage(pageHeader));
       } else { // decode page
         long[] times = pageIndex2Times.get(pageIndex);
-        TsPrimitiveType[] values = decodeValuePage(reader, header, pageHeader, times, valueDecoder);
+        TsPrimitiveType[] values =
+            decodeValuePage(reader, header, pageHeader, times, valueDecoder, pageIndex);
         for (AlignedChunkData alignedChunkData : alignedChunkDataList) {
           alignedChunkData.writeDecodeValuePage(times, values, header.getDataType());
         }
@@ -538,11 +543,15 @@ public class TsFileSplitter {
   }
 
   private boolean needDecodeChunk(IChunkMetadata chunkMetadata) {
-    return !TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getStartTime())
-        .equals(TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getEndTime()));
+    return forceDecodeChunks
+        || !TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getStartTime())
+            .equals(TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getEndTime()));
   }
 
   private boolean needDecodePage(PageHeader pageHeader, IChunkMetadata chunkMetadata) {
+    if (forceDecodeChunks) {
+      return true;
+    }
     if (pageHeader.getStatistics() == null) {
       return !TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getStartTime())
           .equals(TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getEndTime()));
@@ -609,7 +618,8 @@ public class TsFileSplitter {
       ChunkHeader chunkHeader,
       PageHeader pageHeader,
       long[] times,
-      Decoder valueDecoder)
+      Decoder valueDecoder,
+      int pageIndex)
       throws IOException {
     // An empty page stands for an all-null slice of the column. It has to expand to one null per
     // time of the page, otherwise the decoded values would not line up with the decoded times.
@@ -618,7 +628,9 @@ public class TsFileSplitter {
     }
 
     valueDecoder.reset();
-    ByteBuffer pageData = reader.readPage(pageHeader, chunkHeader.getCompressionType());
+    ByteBuffer pageData =
+        reader.readPage(
+            pageHeader, chunkHeader.getCompressionType(), pageIndex, chunkHeader.getChunkOrdinal());
     ValuePageReader valuePageReader =
         new ValuePageReader(pageHeader, pageData, chunkHeader.getDataType(), valueDecoder);
     return valuePageReader.nextValueBatch(

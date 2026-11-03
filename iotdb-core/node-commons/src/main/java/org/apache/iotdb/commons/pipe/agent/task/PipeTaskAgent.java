@@ -171,7 +171,8 @@ public abstract class PipeTaskAgent {
       return new TPushPipeMetaRespExceptionMessage(
           pipeName,
           String.format(
-              "Timed out to wait for the pipe task agent write lock when handling single pipe meta changes for pipe %s.",
+              PipeMessages
+                  .MESSAGE_TIMED_OUT_TO_WAIT_FOR_THE_PIPE_TASK_AGENT_WRITE_LOCK_WHEN_HANDLING_SINGLE_PIPE_META_CHANGES_FOR_PIPE_ARG_BB90A99C,
               pipeName),
           System.currentTimeMillis());
     }
@@ -388,7 +389,8 @@ public abstract class PipeTaskAgent {
       return new TPushPipeMetaRespExceptionMessage(
           pipeName,
           String.format(
-              "Timed out to wait for the pipe task agent write lock when dropping pipe %s.",
+              PipeMessages
+                  .MESSAGE_TIMED_OUT_TO_WAIT_FOR_THE_PIPE_TASK_AGENT_WRITE_LOCK_WHEN_DROPPING_PIPE_ARG_53CC5A3B,
               pipeName),
           System.currentTimeMillis());
     }

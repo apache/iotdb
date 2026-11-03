@@ -50,6 +50,10 @@ public class SessionInfo {
   // SessionInfo is sent to execution nodes, so this field does not need serialization.
   private final transient boolean enableAutoCreateSchema;
 
+  // Whether the session is opened by the database itself. Like enableAutoCreateSchema, this is
+  // only consulted during analysis and therefore does not need serialization.
+  private transient boolean internal;
+
   public SessionInfo(long sessionId, UserEntity userEntity, ZoneId zoneId) {
     this.sessionId = sessionId;
     this.userEntity = userEntity;
@@ -163,6 +167,15 @@ public class SessionInfo {
 
   public boolean isEnableAutoCreateSchema() {
     return enableAutoCreateSchema;
+  }
+
+  public boolean isInternal() {
+    return internal;
+  }
+
+  public SessionInfo setInternal(final boolean internal) {
+    this.internal = internal;
+    return this;
   }
 
   public static SessionInfo deserializeFrom(final ByteBuffer buffer) {

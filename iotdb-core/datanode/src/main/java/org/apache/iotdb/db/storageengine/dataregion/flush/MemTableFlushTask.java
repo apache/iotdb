@@ -245,6 +245,10 @@ public class MemTableFlushTask {
     try {
       long writePlanIndicesStartTime = System.currentTimeMillis();
       writer.writePlanIndices();
+      if (writer.getEncryptParameter() != null && writer.getEncryptParameter().isTdePageAead()) {
+        // The file header and data must be durable before the WAL checkpoint can be released.
+        writer.getTsFileOutput().force();
+      }
       WRITING_METRICS.recordFlushCost(
           WritingMetrics.WRITE_PLAN_INDICES,
           System.currentTimeMillis() - writePlanIndicesStartTime);
