@@ -2029,15 +2029,9 @@ public class TestUtils {
       final BaseEnv env, final String sql, final long consistentSeconds) {
     try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      await()
-          .pollInSameThread()
-          .pollDelay(0L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
-          .during(consistentSeconds, TimeUnit.SECONDS)
-          .atMost(consistentSeconds + 5, TimeUnit.SECONDS)
-          .failFast(
-              () -> Assert.assertThrows(SQLException.class, () -> statement.executeQuery(sql)))
-          .until(() -> true);
+      assertAlways(
+          consistentSeconds,
+          () -> Assert.assertThrows(SQLException.class, () -> statement.executeQuery(sql)));
     } catch (final Exception e) {
       fail(e.getMessage());
     }
@@ -2172,34 +2166,28 @@ public class TestUtils {
             env.getConnection(
                 Objects.isNull(database) ? TREE_SQL_DIALECT : BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      await()
-          .pollInSameThread()
-          .pollDelay(0L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
-          .during(consistentSeconds, TimeUnit.SECONDS)
-          .atMost(consistentSeconds + 5, TimeUnit.SECONDS)
-          .failFast(
-              () -> {
-                try {
-                  if (Objects.nonNull(database)) {
-                    statement.execute("use " + database);
-                  }
-                  // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
-                  // sync requires tsFile to process. We flush in the middle of assertion because we
-                  // don't know when the data reaches the receiver in general cases
-                  if (!flushed[0]
-                      && isHalfTimeoutElapsed(
-                          System.currentTimeMillis() - startTime, consistentSeconds)) {
-                    flushed[0] = true;
-                    statement.execute("flush");
-                  }
-                  TestUtils.assertResultSetEqual(
-                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
-                } catch (Exception e) {
-                  Assert.fail();
-                }
-              })
-          .until(() -> true);
+      assertAlways(
+          consistentSeconds,
+          () -> {
+            try {
+              if (Objects.nonNull(database)) {
+                statement.execute("use " + database);
+              }
+              // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
+              // sync requires tsFile to process. We flush in the middle of assertion because we
+              // don't know when the data reaches the receiver in general cases
+              if (!flushed[0]
+                  && isHalfTimeoutElapsed(
+                      System.currentTimeMillis() - startTime, consistentSeconds)) {
+                flushed[0] = true;
+                statement.execute("flush");
+              }
+              TestUtils.assertResultSetEqual(
+                  executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+            } catch (Exception e) {
+              Assert.fail();
+            }
+          });
     } catch (Exception e) {
       e.printStackTrace();
       fail();
@@ -2217,39 +2205,33 @@ public class TestUtils {
     final boolean[] flushed = {false};
     try (Connection connection = env.getConnection();
         Statement statement = connection.createStatement()) {
-      await()
-          .pollInSameThread()
-          .pollDelay(0L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
-          .during(consistentSeconds, TimeUnit.SECONDS)
-          .atMost(consistentSeconds + 5, TimeUnit.SECONDS)
-          .failFast(
-              () -> {
-                try {
-                  // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
-                  // sync requires tsFile to process. We flush in the middle of assertion because we
-                  // don't know when the data reaches the receiver in general cases
-                  if (!flushed[0]
-                      && isHalfTimeoutElapsed(
-                          System.currentTimeMillis() - startTime, consistentSeconds)) {
-                    flushed[0] = true;
-                    statement.execute("flush");
-                  }
-                  TestUtils.assertResultSetEqual(
-                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
-                } catch (Exception e) {
-                  if (handleFailure != null) {
-                    handleFailure.accept(e.getMessage());
-                  }
-                  Assert.fail();
-                } catch (Error e) {
-                  if (handleFailure != null) {
-                    handleFailure.accept(e.getMessage());
-                  }
-                  throw e;
-                }
-              })
-          .until(() -> true);
+      assertAlways(
+          consistentSeconds,
+          () -> {
+            try {
+              // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
+              // sync requires tsFile to process. We flush in the middle of assertion because we
+              // don't know when the data reaches the receiver in general cases
+              if (!flushed[0]
+                  && isHalfTimeoutElapsed(
+                      System.currentTimeMillis() - startTime, consistentSeconds)) {
+                flushed[0] = true;
+                statement.execute("flush");
+              }
+              TestUtils.assertResultSetEqual(
+                  executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+            } catch (Exception e) {
+              if (handleFailure != null) {
+                handleFailure.accept(e.getMessage());
+              }
+              Assert.fail();
+            } catch (Error e) {
+              if (handleFailure != null) {
+                handleFailure.accept(e.getMessage());
+              }
+              throw e;
+            }
+          });
     } catch (Exception e) {
       e.printStackTrace();
       fail();
@@ -2269,45 +2251,54 @@ public class TestUtils {
     try (Connection connection =
             env.getConnection(database == null ? TREE_SQL_DIALECT : BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      await()
-          .pollInSameThread()
-          .pollDelay(0L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
-          .during(consistentSeconds, TimeUnit.SECONDS)
-          .atMost(consistentSeconds + 5, TimeUnit.SECONDS)
-          .failFast(
-              () -> {
-                try {
-                  if (database != null) {
-                    statement.execute("use " + database);
-                  }
-                  // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
-                  // sync requires tsFile to process. We flush in the middle of assertion because we
-                  // don't know when the data reaches the receiver in general cases
-                  if (!flushed[0]
-                      && isHalfTimeoutElapsed(
-                          System.currentTimeMillis() - startTime, consistentSeconds)) {
-                    flushed[0] = true;
-                    statement.execute("flush");
-                  }
-                  TestUtils.assertResultSetEqual(
-                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
-                } catch (Exception e) {
-                  if (handleFailure != null) {
-                    handleFailure.accept(e.getMessage());
-                  }
-                  Assert.fail();
-                } catch (Error e) {
-                  if (handleFailure != null) {
-                    handleFailure.accept(e.getMessage());
-                  }
-                  throw e;
-                }
-              })
-          .until(() -> true);
+      assertAlways(
+          consistentSeconds,
+          () -> {
+            try {
+              if (database != null) {
+                statement.execute("use " + database);
+              }
+              // For IoTV2 batch mode, the pipe receiver may need to flush because the replica
+              // sync requires tsFile to process. We flush in the middle of assertion because we
+              // don't know when the data reaches the receiver in general cases
+              if (!flushed[0]
+                  && isHalfTimeoutElapsed(
+                      System.currentTimeMillis() - startTime, consistentSeconds)) {
+                flushed[0] = true;
+                statement.execute("flush");
+              }
+              TestUtils.assertResultSetEqual(
+                  executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+            } catch (Exception e) {
+              if (handleFailure != null) {
+                handleFailure.accept(e.getMessage());
+              }
+              Assert.fail();
+            } catch (Error e) {
+              if (handleFailure != null) {
+                handleFailure.accept(e.getMessage());
+              }
+              throw e;
+            }
+          });
     } catch (Exception e) {
       e.printStackTrace();
       fail();
+    }
+  }
+
+  /** Observe for a bounded period, including time spent executing and checking each query. */
+  private static void assertAlways(final long consistentSeconds, final Runnable assertion)
+      throws InterruptedException {
+    final long start = System.nanoTime();
+    final long duration = TimeUnit.SECONDS.toNanos(consistentSeconds);
+    while (true) {
+      assertion.run();
+      final long remaining = duration - (System.nanoTime() - start);
+      if (remaining <= 0) {
+        return;
+      }
+      TimeUnit.NANOSECONDS.sleep(Math.min(remaining, TimeUnit.SECONDS.toNanos(1)));
     }
   }
 
