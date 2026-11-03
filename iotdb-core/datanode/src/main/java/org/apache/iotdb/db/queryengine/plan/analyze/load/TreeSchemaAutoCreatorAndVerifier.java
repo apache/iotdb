@@ -307,8 +307,8 @@ public class TreeSchemaAutoCreatorAndVerifier {
   }
 
   private void handleException(Exception e, String statementString) throws SemanticException {
-    // Region groups may still be recovering after a restart. Preserve the status so the loader
-    // can distinguish that temporary unavailability from a permanent schema error.
+    // Preserve region unavailability so LOAD can retain the file for retry. The status alone
+    // cannot distinguish a recovering region from a persistently missing one.
     Throwable current = e;
     while (current != null) {
       if (current instanceof IoTDBRuntimeException

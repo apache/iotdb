@@ -899,6 +899,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private boolean setTemporaryUnavailableStatusIfNecessary(
       final IAnalysis analysis, final Throwable throwable) {
+    // Region unavailability can persist beyond recovery. Retain the file for retry; permanent
+    // region loss still requires operator intervention.
     if (throwable instanceof IoTDBRuntimeException
         && ((IoTDBRuntimeException) throwable).getErrorCode()
             == TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode()) {
