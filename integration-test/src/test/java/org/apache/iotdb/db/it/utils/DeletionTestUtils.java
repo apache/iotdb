@@ -97,8 +97,8 @@ public final class DeletionTestUtils {
             continue;
           }
           for (IChunkMetadata chunk : metadata.getChunkMetadataList()) {
-            try (ChunkReader chunkReader =
-                new ChunkReader(reader.readMemChunk((ChunkMetadata) chunk))) {
+            ChunkReader chunkReader = new ChunkReader(reader.readMemChunk((ChunkMetadata) chunk));
+            try {
               while (chunkReader.hasNextSatisfiedPage()) {
                 BatchData page = chunkReader.nextPageData();
                 while (page.hasCurrent()) {
@@ -106,6 +106,8 @@ public final class DeletionTestUtils {
                   page.next();
                 }
               }
+            } finally {
+              chunkReader.close();
             }
           }
         }
