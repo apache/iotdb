@@ -67,6 +67,8 @@ public class ActiveLoadFailedMessageHandler {
                               .STORAGE_LOG_REJECTING_AUTO_LOAD_TSFILE_ISGENERATEDBYPIPE_DUE_TO_TIME_E18630DE,
                           filePair.getFile(),
                           filePair.isGeneratedByPipe()));
+              // ConfigNodes may use either locale, independently of the DataNode's build locale.
+              put("流程返回", get("procedure return"));
               // DataNode is not enough, please register more.
               put(
                   "not enough",

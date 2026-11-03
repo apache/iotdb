@@ -34,6 +34,13 @@
         <integrationTest.forkCount>1</integrationTest.forkCount>
         <integrationTest.includedGroups/>
         <integrationTest.launchNodeInSameJVM>true</integrationTest.launchNodeInSameJVM>
+        <!--
+          Force an English locale for the test JVM and for the DataNode/ConfigNode processes it spawns
+          (they inherit the environment). Many ITs format numbers with String.format("%f") or compare
+          formatted output (e.g. "1,000,000" / "1.1"), which breaks on hosts with a non-English default
+          locale such as de_DE.
+        -->
+        <integrationTest.localeOpts>-Duser.language=en -Duser.country=US</integrationTest.localeOpts>
         <integrationTest.nodeMaxHeapSize>200m</integrationTest.nodeMaxHeapSize>
         <integrationTest.nodeNewHeapSize>200m</integrationTest.nodeNewHeapSize>
         <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
@@ -330,6 +337,9 @@
                                 <exclude>**/subscription/it/**</exclude>
                             </excludes>
                             <useSystemClassLoader>false</useSystemClassLoader>
+                            <environmentVariables>
+                                <JAVA_TOOL_OPTIONS>${integrationTest.localeOpts}</JAVA_TOOL_OPTIONS>
+                            </environmentVariables>
                             <parallel>none</parallel>
                             <forkCount>${integrationTest.forkCount}</forkCount>
                             <reuseForks>false</reuseForks>

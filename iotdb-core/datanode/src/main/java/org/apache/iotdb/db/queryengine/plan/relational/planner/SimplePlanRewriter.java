@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import com.google.common.collect.ImmutableList;
@@ -77,7 +78,10 @@ public abstract class SimplePlanRewriter<C>
     /** This method is meant for invoking the rewrite logic on children while processing a node */
     public PlanNode rewrite(PlanNode node, C userContext) {
       PlanNode result = node.accept(nodeRewriter, new RewriteContext<>(nodeRewriter, userContext));
-      return verifyNotNull(result, "nodeRewriter returned null for %s", node.getClass().getName());
+      return verifyNotNull(
+          result,
+          DataNodeQueryMessages.EXCEPTION_NODEREWRITER_RETURNED_NULL_FOR_ARG_702AA2A4,
+          node.getClass().getName());
     }
 
     /** This method is meant for invoking the rewrite logic on children while processing a node */

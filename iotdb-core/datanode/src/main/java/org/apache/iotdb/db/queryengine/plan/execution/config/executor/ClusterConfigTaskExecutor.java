@@ -193,6 +193,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.ainode.AINodeConnectionException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
@@ -1460,11 +1461,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               == RepairTaskStatus.STOPPING) {
             tsStatus =
                 RpcUtils.getStatus(
-                    TSStatusCode.EXECUTE_STATEMENT_ERROR, "previous repair task is still stopping");
+                    TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                    DataNodeMiscMessages.EXCEPTION_PREVIOUS_REPAIR_TASK_IS_STILL_STOPPING_F6FAD84A);
           } else {
             tsStatus =
                 RpcUtils.getStatus(
-                    TSStatusCode.EXECUTE_STATEMENT_ERROR, "already have a running repair task");
+                    TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                    DataNodeMiscMessages.EXCEPTION_ALREADY_HAVE_A_RUNNING_REPAIR_TASK_826E4880);
           }
         }
       } catch (Exception e) {
@@ -3948,9 +3951,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         LOGGER.error(DataNodeQueryMessages.CANNOT_REMOVE_INVALID_NODEIDS, invalidNodeIds);
         future.setException(
             new IOException(
-                "The DataNode(s) to be removed "
-                    + invalidNodeIds
-                    + " are not in the cluster, or the input format is incorrect."));
+                String.format(
+                    DataNodeQueryMessages
+                        .EXCEPTION_THE_DATANODE_S_TO_BE_REMOVED_ARG_ARE_NOT_IN_THE_CLUSTER_OR_THE_INPUT_FORMAT_IS_INCORRECT_103B72A3,
+                    Objects.toString(invalidNodeIds))));
         return future;
       }
 

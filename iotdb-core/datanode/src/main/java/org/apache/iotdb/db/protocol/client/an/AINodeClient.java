@@ -87,12 +87,14 @@ public class AINodeClient implements IAINodeRPCService.Iface, AutoCloseable, Thr
   private static final int RETRY_INTERVAL_MS = 100;
   public static final String MSG_ALL_RETRY_FAILED =
       String.format(
-          "Failed to connect to AINode after %d retries, please check the status of AINode",
+          DataNodeMiscMessages
+              .EXCEPTION_FAILED_TO_CONNECT_TO_AINODE_AFTER_ARG_RETRIES_PLEASE_CHECK_THE_STATUS_OF_AINODE_C93D40BE,
           MAX_RETRY);
   public static final String MSG_AINODE_CONNECTION_FAIL =
-      "Fail to connect to AINode from DataNode %s when executing %s.";
+      DataNodeMiscMessages
+          .EXCEPTION_FAIL_TO_CONNECT_TO_AINODE_FROM_DATANODE_ARG_WHEN_EXECUTING_ARG_2DE6EA1D;
   private static final String UNSUPPORTED_INVOCATION =
-      "This method is not supported for invocation by DataNode";
+      DataNodeMiscMessages.UNSUPPORTED_INVOCATION_BY_DATANODE;
 
   @Override
   public TSStatus stopAINode() throws TException {

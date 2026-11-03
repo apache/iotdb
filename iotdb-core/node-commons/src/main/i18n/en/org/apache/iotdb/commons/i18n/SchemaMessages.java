@@ -67,6 +67,23 @@ public final class SchemaMessages {
   // TTL messages
   public static final String NOT_TTL_RULE_SET_FOR = "Not TTL rule set for %s";
 
+  public static final String
+      MESSAGE_ILLEGAL_PARAMETERS_DURING_FUNCTIONEXPRESSION_CONSTRUCTION_ARRAY_LENGTH_MISMATCH_1089726C =
+          "Illegal parameters during FunctionExpression construction. Array length mismatch.";
+  public static final String
+      MESSAGE_THE_DATABASE_NAME_ARG_IS_RESERVED_PLEASE_USE_ANOTHER_VALID_DATABASE_NAME_ECC25B4E =
+          "The database name \"%s\" is reserved, please use another valid database name.";
+  public static final String MESSAGE_THE_LAST_NODE_MUST_BE_5EB138C7 = "The last node must be '**'";
+  public static final String
+      MESSAGE_THE_TREE_VIEW_DOES_NOT_SUPPORT_NEED_LAST_CACHE_PROPERTY_F42719A1 =
+          "The tree view does not support need_last_cache property.";
+  public static final String
+      MESSAGE_THE_WILDCARD_IS_NOT_PERMITTED_TO_SET_BEFORE_THE_LAST_NODE_D7BCF29C =
+          "The wildCard is not permitted to set before the last node";
+  public static final String
+      MESSAGE_WHEN_THERE_ARE_OBJECT_FIELDS_THE_ARG_ARG_SHALL_NOT_BE_OR_CONTAIN_BBFCE31D =
+          "When there are object fields, the %s %s shall not be '.', '..' or contain './', '.\\'.";
+
   private SchemaMessages() {}
 
   public static final String PATH_DUPLICATED = "Path duplicated: ";

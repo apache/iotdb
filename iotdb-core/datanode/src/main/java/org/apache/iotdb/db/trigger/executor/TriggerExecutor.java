@@ -101,8 +101,11 @@ public class TriggerExecutor {
       throws TriggerExecutionException {
     String errorMessage =
         String.format(
-                "Error occurred during executing Trigger(%s)#%s: %s, please check whether the implementation of Trigger is correct according to the trigger-api description.",
-                triggerInformation.getTriggerName(), methodName, System.lineSeparator())
+                DataNodeMiscMessages
+                    .EXCEPTION_ERROR_OCCURRED_DURING_EXECUTING_TRIGGER_ARG_ARG_ARG_PLEASE_CHECK_WHETHER_THE_IMPLEMENTATION_OF_TRIGGER_IS_CORRECT_ACCORDING_TO_THE_TRIGGER_API_DESCRIPTION_98708501,
+                triggerInformation.getTriggerName(),
+                methodName,
+                System.lineSeparator())
             + t;
     LOGGER.warn(errorMessage);
     throw new TriggerExecutionException(errorMessage);

@@ -41,7 +41,7 @@ import com.google.common.base.Preconditions;
 public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
 
   public static final String TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG =
-      "The system can't allow more queries.";
+      CalcMessages.EXCEPTION_THE_SYSTEM_CAN_T_ALLOW_MORE_QUERIES_93DD59F0;
 
   protected final int capacity;
   protected final E queryHolder;

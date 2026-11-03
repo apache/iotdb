@@ -97,7 +97,7 @@ else()
 endif()
 set(BOOST_VERSION "${_iotdb_default_boost_version}"
     CACHE STRING "Boost version used when downloading / unpacking (Thrift build only)")
-set(THRIFT_VERSION "0.24.0"
+set(THRIFT_VERSION "0.25.0"
     CACHE STRING "Apache Thrift version used when downloading / building")
 
 if(WIN32)
@@ -135,7 +135,14 @@ add_library(iotdb_session SHARED
         ${SESSION_RPC_SRCS}
         ${THRIFT_GENERATED_SRCS})
 
+# Thrift 0.25 generates vector<bool>::emplace_back(), which requires C++17
+# with libc++. Keep this private to the library; examples and consumers use C++11.
+set_target_properties(iotdb_session PROPERTIES CXX_STANDARD 17)
+
 if(WIN32)
+    # Exclude unused Windows RPC/COM headers: their byte typedef conflicts with
+    # std::byte when included after the SDK's public using-directives.
+    target_compile_definitions(iotdb_session PRIVATE WIN32_LEAN_AND_MEAN)
     set_target_properties(iotdb_session PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 

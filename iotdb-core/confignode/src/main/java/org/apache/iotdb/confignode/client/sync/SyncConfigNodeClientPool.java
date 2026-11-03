@@ -39,6 +39,7 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 /** Synchronously send RPC requests to ConfigNode. See confignode.thrift for more details. */
@@ -103,7 +104,10 @@ public class SyncConfigNodeClientPool {
             return client.showAppliedConfigurations((int) req);
           default:
             return RpcUtils.getStatus(
-                TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);
+                TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                String.format(
+                    ConfigNodeMessages.EXCEPTION_UNKNOWN_REQUEST_TYPE_ARG_78571982,
+                    Objects.toString(requestType)));
         }
       } catch (Exception e) {
         lastException = e;
@@ -119,7 +123,9 @@ public class SyncConfigNodeClientPool {
     LOGGER.error(ConfigNodeMessages.FAILED_ON_CONFIGNODE, requestType, endPoint, lastException);
     return RpcUtils.getStatus(
         TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR,
-        "All retry failed due to: " + lastException.getMessage());
+        String.format(
+            ConfigNodeMessages.EXCEPTION_ALL_RETRY_FAILED_DUE_TO_ARG_AEA920B0,
+            Objects.toString(lastException.getMessage())));
   }
 
   /**

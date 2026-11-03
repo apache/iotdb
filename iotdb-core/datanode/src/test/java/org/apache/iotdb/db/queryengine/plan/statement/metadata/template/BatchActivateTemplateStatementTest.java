@@ -74,7 +74,9 @@ public class BatchActivateTemplateStatementTest {
                 new PartialPath("root.sg.v1.d1"),
                 new PartialPath("root.sg.v2.d1"),
                 // no template is set on this path, so it contributes no path
-                new PartialPath("root.sg.v3.d1")));
+                new PartialPath("root.sg.v3.d1"),
+                // A template mounted below this ancestor must not be selected.
+                new PartialPath("root.sg")));
 
     final List<PartialPath> paths = statement.getPaths();
 
@@ -96,6 +98,8 @@ public class BatchActivateTemplateStatementTest {
         new PartialPath("root.sg.v1.d1"), new Pair<>(template1, new PartialPath("root.sg.v1")));
     deviceMap.put(
         new PartialPath("root.sg.v2.d1"), new Pair<>(template2, new PartialPath("root.sg.v2")));
+    // A template mounted below this ancestor must not be selected.
+    deviceMap.put(new PartialPath("root.sg"), new Pair<>(template1, new PartialPath("root.sg.v1")));
 
     final InternalBatchActivateTemplateStatement statement =
         new InternalBatchActivateTemplateStatement(deviceMap);

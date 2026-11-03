@@ -89,13 +89,18 @@ public class OperatorNotFoundException extends IoTDBException {
       case LESS_THAN:
       case LESS_THAN_OR_EQUAL:
         return format(
-            "Cannot apply operator: %s %s %s",
-            argumentTypes.get(0), operatorType.getOperator(), argumentTypes.get(1));
+            DataNodeQueryMessages.MESSAGE_CANNOT_APPLY_OPERATOR_ARG_ARG_ARG_CCA56AA9,
+            argumentTypes.get(0),
+            operatorType.getOperator(),
+            argumentTypes.get(1));
       case NEGATION:
-        return format("Cannot negate %s", argumentTypes.get(0));
+        return format(
+            DataNodeQueryMessages.MESSAGE_CANNOT_NEGATE_ARG_FCF0C22A, argumentTypes.get(0));
       case IS_DISTINCT_FROM:
         return format(
-            "Cannot check if %s is distinct from %s", argumentTypes.get(0), argumentTypes.get(1));
+            DataNodeQueryMessages.MESSAGE_CANNOT_CHECK_IF_ARG_IS_DISTINCT_FROM_ARG_E9974593,
+            argumentTypes.get(0),
+            argumentTypes.get(1));
       case CAST:
         return format(
             DataNodeQueryMessages.CANNOT_CAST_TO,
@@ -104,10 +109,12 @@ public class OperatorNotFoundException extends IoTDBException {
                 () -> new NoSuchElementException(DataNodeQueryMessages.NO_VALUE_PRESENT)));
       case SUBSCRIPT:
         return format(
-            "Cannot use %s for subscript of %s", argumentTypes.get(1), argumentTypes.get(0));
+            DataNodeQueryMessages.EXCEPTION_CANNOT_USE_ARG_FOR_SUBSCRIPT_OF_ARG_15A147BC,
+            argumentTypes.get(1),
+            argumentTypes.get(0));
       default:
         return format(
-            "Operator '%s'%s cannot be applied to %s",
+            DataNodeQueryMessages.MESSAGE_OPERATOR_ARG_ARG_CANNOT_BE_APPLIED_TO_ARG_FE836F93,
             operatorType.getOperator(),
             returnType.map(value -> ":" + value).orElse(""),
             Joiner.on(", ").join(argumentTypes));

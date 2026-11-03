@@ -312,6 +312,8 @@ public final class ConfigNodeMessages {
       "Failed to {} on DataNode: {}, exception: {}";
   public static final String FAILED_TO_ON_DATANODE_RESPONSE =
       "Failed to {} on DataNode: {}, response: {}";
+  public static final String FAILED_TO_ON_DATANODE_WITH_STATUS =
+      "Failed to {} on DataNode: {}, code: {}, message: {}";
   public static final String FAILED_TO_OPERATE_PIPE = "Failed to operate pipe";
   public static final String FAILED_TO_SET_PIPE_STATUS = "Failed to set pipe status";
   public static final String FAILED_TO_SET_PIPE_STATUS_WITH_STOPPED_BY_RUNTIME_EXCEPTION =
@@ -598,6 +600,12 @@ public final class ConfigNodeMessages {
   public static final String ALL_RETRY_FAILED_DUE_TO = "All retry failed due to: ";
 
   public static final String AUTHENTICATION_FAILED = "Authentication failed.";
+  public static final String
+      EXCEPTION_COUNT_PATHS_USING_TEMPLATE_ERROR_ON_DATANODE_ID_ARG_INTERNALENDPOINT_ARG_ARG_E05E0F5B =
+          "Count paths using template error on DataNode: {id=%s, internalEndPoint=%s}%s";
+  public static final String EXCEPTION_FAILED_TO_ARG_ON_DATANODE_ARG_EXCEPTION_ARG_87B8946D =
+      "Failed to %s on DataNode: %s, exception: %s";
+
   private ConfigNodeMessages() {}
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
@@ -745,4 +753,82 @@ public final class ConfigNodeMessages {
   public static final String
       LOG_FAILED_TO_TRANSFER_CONFIGNODE_LEADERSHIP_BEFORE_SHUTDOWN_CONTINUING_SHUTDOWN_2B9364D5 =
           "Failed to transfer ConfigNode leadership before shutdown; continuing shutdown.";
+
+  public static final String EXCEPTION_OPERATION_ARG_IS_NOT_SUPPORTED_E069D2B9 =
+      "operation %s is not supported";
+
+  public static final String
+      EXCEPTION_FAILED_TO_ADD_UDF_ARG_IN_UDF_TABLE_ON_CONFIG_NODES_BECAUSE_OF_ARG_2CA26D13 =
+          "Failed to add UDF [%s] in UDF_Table on Config Nodes, because of %s";
+
+  public static final String
+      EXCEPTION_FAILED_TO_ADD_TRIGGER_ARG_IN_TRIGGERTABLE_ON_CONFIG_NODES_BECAUSE_OF_ARG_DFBA6E1C =
+          "Failed to add trigger [%s] in TriggerTable on Config Nodes, because of %s";
+
+  public static final String EXCEPTION_CQ_ARG_HAS_ALREADY_BEEN_CREATED_8031B847 =
+      "CQ %s has already been created.";
+
+  public static final String EXCEPTION_CQ_ARG_HAS_ALREADY_BEEN_ACTIVE_46FB805D =
+      "CQ %s has already been active";
+
+  public static final String
+      EXCEPTION_UPDATE_LAST_EXECUTION_TIME_OF_CQ_ARG_FAILED_BECAUSE_ITS_ORIGINAL_LAST_EXECUTION_TIME_ARG_IS_LARGER_THAN_THE_UPDATED_ONE_ARG_AB654FAF =
+          "Update last execution time of CQ %s failed because its original last execution time(%d)"
+              + " is larger than the updated one(%d).";
+
+  public static final String EXCEPTION_DATABASE_ARG_DOES_NOT_EXIST_0112959D =
+      "Database %s does not exist";
+
+  public static final String EXCEPTION_IOTDB_CONFIGURATION_ARG_9C2F6017 = "IoTDB configuration: {}";
+
+  public static final String EXCEPTION_RESTART_CONFIGNODE_FAILED_EAE90C05 =
+      "restart ConfigNode failed! ";
+
+  public static final String EXCEPTION_WAITING_LEADER_S_SCHEDULING_IS_INTERRUPTED_963B6D90 =
+      "Waiting leader's scheduling is interrupted.";
+
+  public static final String EXCEPTION_REGISTER_CONFIGNODE_FAILED_388E8520 =
+      "Register ConfigNode failed!";
+
+  public static final String
+      EXCEPTION_SYSTEMPROPERTIES_THE_PARAMETER_ARG_CAN_T_BE_MODIFIED_AFTER_FIRST_STARTUP_YOUR_CONFIGURATION_ARG_WILL_BE_FORCED_UPDATE_TO_ARG_42B1AD5E =
+          "[SystemProperties] The parameter \"{}\" can't be modified after first startup. Your"
+              + " configuration: {} will be forced update to: {}";
+
+  public static final String
+      EXCEPTION_EXECUTED_FAILED_CHECK_USAGE_NODE_ID_INTERNAL_ADDRESS_INTERNAL_PORT_0852F64E =
+          "Executed failed, check usage: <Node-id>/<internal_address>:<internal_port>";
+
+  public static final String EXCEPTION_UNKNOWN_REQUEST_TYPE_ARG_78571982 =
+      "Unknown request type: %s";
+
+  public static final String EXCEPTION_ALL_RETRY_FAILED_DUE_TO_ARG_AEA920B0 =
+      "All retry failed due to: %s";
+
+  public static final String
+      EXCEPTION_ARG_ERROR_ON_DATANODE_ID_ARG_INTERNALENDPOINT_ARG_ARG_14CDDEFD =
+          "%s error on DataNode: {id=%s, internalEndPoint=%s}%s";
+
+  public static final String
+      EXCEPTION_FETCH_SCHEMAENGINE_BLACK_LIST_ERROR_ON_DATANODE_ID_ARG_INTERNALENDPOINT_ARG_ARG_3D21FC43 =
+          "Fetch schemaengine black list error on DataNode: {id=%s, internalEndPoint=%s}%s";
+
+  public static final String EXCEPTION_FAILED_TO_ARG_ON_CONFIGNODE_ARG_EXCEPTION_ARG_CD279F8B =
+      "Failed to %s on ConfigNode: %s, exception: %s";
+
+  public static final String
+      EXCEPTION_CHECK_TIMESERIES_EXISTENCE_ERROR_ON_DATANODE_ID_ARG_INTERNALENDPOINT_ARG_ARG_D2A3135E =
+          "Check timeseries existence error on DataNode: {id=%s, internalEndPoint=%s}%s";
+
+  public static final String EXCEPTION_TOKEN_OF_CQ_ARG_DOESN_T_MATCH_EE2E6387 =
+      "Token of CQ %s doesn't match";
+
+  public static final String EXCEPTION_LOGIN_SUCCESSFULLY_1C2EF670 = "Login successfully";
+
+  public static final String EXCEPTION_NO_SUCH_ROLE_ARG_42B804EB = "No such role : %s";
+
+  public static final String EXCEPTION_GET_ERROR_WHEN_SERIALIZE_PATTERN_TREE_9545A29E =
+      "Get error when serialize pattern tree.";
+
+  public static final String EXCEPTION_NO_SUCH_USER_9F8AB2B7 = "No such user : ";
 }

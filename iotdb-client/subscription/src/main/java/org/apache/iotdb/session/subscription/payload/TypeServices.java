@@ -18,6 +18,8 @@
 
 package org.apache.iotdb.session.subscription.payload;
 
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
+
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.type.service.TypeService;
 import org.apache.tsfile.utils.Binary;
@@ -98,7 +100,8 @@ final class TypeServices {
 
   private static UnSupportedDataTypeException unsupportedDataType(Object dataType) {
     return new UnSupportedDataTypeException(
-        String.format("Data type %s is not supported.", dataType));
+        String.format(
+            SubscriptionMessages.EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160, dataType));
   }
 
   @FunctionalInterface

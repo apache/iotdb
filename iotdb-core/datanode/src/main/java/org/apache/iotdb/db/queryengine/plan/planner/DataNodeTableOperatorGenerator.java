@@ -214,7 +214,7 @@ import static org.apache.iotdb.db.queryengine.execution.operator.source.relation
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.isFilterGtOrGe;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.PLACEHOLDER_NO_VALUE;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.PLACEHOLDER_STALE_VALUE;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
@@ -1911,23 +1911,18 @@ public class DataNodeTableOperatorGenerator
                         "",
                         parameter.getMeasurementColumnNames());
             boolean allHitCache = true;
-            if (lastByResult.isPresent() && lastByResult.get().getLeft().isPresent()) {
+            // Check the aligned row's time even when the query has no FIELD columns.
+            if (lastByResult.isPresent()
+                && lastByResult.get().getLeft().isPresent()
+                && (updateTimeFilter == null
+                    || updateTimeFilter.satisfy(lastByResult.get().getLeft().getAsLong(), null))) {
               for (int j = 0; j < lastByResult.get().getRight().length; j++) {
                 TsPrimitiveType tsPrimitiveType = lastByResult.get().getRight()[j];
                 if (tsPrimitiveType == null
                     // Known-null at the aligned row time can still hit cache. Only miss or stale
                     // target
                     // values need to fall back to scan for correctness.
-                    || tsPrimitiveType == PLACEHOLDER_STALE_VALUE
-                    || (updateTimeFilter != null
-                        && !LastQueryUtil.satisfyFilter(
-                            updateTimeFilter,
-                            new TimeValuePair(
-                                lastByResult.get().getLeft().getAsLong(), tsPrimitiveType)))) {
-                  // the process logic is different from tree model which examine if
-                  // `isFilterGtOrGe(seriesScanOptions.getGlobalTimeFilter())`, set
-                  // `lastByResult.get().getRight()[j] = EMPTY_PRIMITIVE_TYPE`,
-                  // but it should skip in table model
+                    || tsPrimitiveType == PLACEHOLDER_STALE_VALUE) {
                   allHitCache = false;
                   break;
                 }
@@ -2014,18 +2009,18 @@ public class DataNodeTableOperatorGenerator
                         targetColumns);
             boolean allHitCache = true;
             if (lastResult != null) {
-              for (TimeValuePair timeValuePair : lastResult) {
+              for (int k = 0; k < lastResult.length; k++) {
+                TimeValuePair timeValuePair = lastResult[k];
                 if (timeValuePair == null || timeValuePair.getValue() == null) {
                   allHitCache = false;
                   break;
                 }
 
                 if (updateTimeFilter != null
-                    && !LastQueryUtil.satisfyFilter(
-                        parameter.getSeriesScanOptions().getGlobalTimeFilter(), timeValuePair)) {
+                    && !LastQueryUtil.satisfyFilter(updateTimeFilter, timeValuePair)) {
                   if (isFilterGtOrGe(updateTimeFilter)) {
-                    // it means there is no data meets Filter
-                    timeValuePair.setValue(PLACEHOLDER_NO_VALUE);
+                    // No row satisfies this query. Keep the shared cached pair unchanged.
+                    lastResult[k] = PLACEHOLDER_EMPTY_COLUMN;
                   } else {
                     allHitCache = false;
                     break;

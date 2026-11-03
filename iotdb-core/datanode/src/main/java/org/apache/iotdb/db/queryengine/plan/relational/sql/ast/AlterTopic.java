@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -38,8 +39,13 @@ public class AlterTopic extends SubscriptionStatement {
   private final Map<String, String> topicAttributes;
 
   public AlterTopic(final String topicName, final Map<String, String> topicAttributes) {
-    this.topicName = requireNonNull(topicName, "topic name can not be null");
-    this.topicAttributes = requireNonNull(topicAttributes, "topic attributes can not be null");
+    this.topicName =
+        requireNonNull(
+            topicName, DataNodeQueryMessages.EXCEPTION_TOPIC_NAME_CAN_NOT_BE_NULL_EA4ED0BF);
+    this.topicAttributes =
+        requireNonNull(
+            topicAttributes,
+            DataNodeQueryMessages.EXCEPTION_TOPIC_ATTRIBUTES_CAN_NOT_BE_NULL_791A8FED);
   }
 
   public String getTopicName() {

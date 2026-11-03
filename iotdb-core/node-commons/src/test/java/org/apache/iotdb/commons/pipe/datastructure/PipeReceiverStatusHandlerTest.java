@@ -42,6 +42,43 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 
 public class PipeReceiverStatusHandlerTest {
   @Test
+  public void testWrappedPermissionErrorsInBothLocales() {
+    for (final String message :
+        Arrays.asList(
+            "No permissions for this operation, please add privilege WRITE_DATA",
+            "无权执行此操作，请添加权限 WRITE_DATA")) {
+      final TSStatus status =
+          new TSStatus(TSStatusCode.METADATA_ERROR.getStatusCode()).setMessage(message);
+      new PipeReceiverStatusHandler(false, 60, false, 60, false, true)
+          .handle(status, "generic transfer failure", "record");
+
+      try {
+        new PipeReceiverStatusHandler(false, 60, false, 60, false, false)
+            .handle(status, "generic transfer failure", "record");
+        Assert.fail("Expected a retry when skipping permission failures is disabled");
+      } catch (final PipeRuntimeSinkNonReportTimeConfigurableException e) {
+        Assert.assertEquals(message, e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void testSkippingPermissionErrorsDoesNotSkipOtherFailures() {
+    final PipeReceiverStatusHandler handler =
+        new PipeReceiverStatusHandler(false, 60, false, 60, false, true);
+    try {
+      handler.handle(
+          new TSStatus(TSStatusCode.METADATA_ERROR.getStatusCode())
+              .setMessage("receiver rejected request"),
+          "generic transfer failure",
+          "record");
+      Assert.fail("Expected a retry for a non-permission failure");
+    } catch (final PipeRuntimeSinkNonReportTimeConfigurableException e) {
+      Assert.assertEquals("receiver rejected request", e.getMessage());
+    }
+  }
+
+  @Test
   public void testNestedStatusMessageOverridesGenericExceptionMessage() {
     final PipeReceiverStatusHandler handler =
         new PipeReceiverStatusHandler(false, 60, false, 60, false, false);

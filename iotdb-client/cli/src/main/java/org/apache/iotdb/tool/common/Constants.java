@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class Constants {
 
@@ -37,11 +38,11 @@ public class Constants {
 
   public static final String HOST_ARGS = "h";
   public static final String HOST_NAME = "host";
-  public static final String HOST_DESC = "Host Name (optional)";
+  public static final String HOST_DESC = CliMessages.EXCEPTION_HOST_NAME_OPTIONAL_FD001BC0;
   public static final String HOST_DEFAULT_VALUE = "127.0.0.1";
 
   public static final String HELP_ARGS = "help";
-  public static final String HELP_DESC = "Display help information";
+  public static final String HELP_DESC = CliMessages.EXCEPTION_DISPLAY_HELP_INFORMATION_3BBD4899;
 
   public static final String PORT_ARGS = "p";
   public static final String PORT_NAME = "port";
@@ -60,79 +61,95 @@ public class Constants {
 
   public static final String USE_SSL_ARGS = "usessl";
   public static final String USE_SSL_NAME = "use_ssl";
-  public static final String USE_SSL_DESC = "Use SSL statement. (optional)";
+  public static final String USE_SSL_DESC =
+      CliMessages.EXCEPTION_USE_SSL_STATEMENT_OPTIONAL_92E1AA92;
 
   public static final String TRUST_STORE_ARGS = "ts";
   public static final String TRUST_STORE_NAME = "trust_store";
-  public static final String TRUST_STORE_DESC = "Trust store. (optional)";
+  public static final String TRUST_STORE_DESC = CliMessages.EXCEPTION_TRUST_STORE_OPTIONAL_EA106F8E;
 
   public static final String TRUST_STORE_PWD_ARGS = "tpw";
   public static final String TRUST_STORE_PWD_NAME = "trust_store_password";
-  public static final String TRUST_STORE_PWD_DESC = "Trust store password. (optional)";
+  public static final String TRUST_STORE_PWD_DESC =
+      CliMessages.EXCEPTION_TRUST_STORE_PASSWORD_OPTIONAL_B017719D;
 
   public static final String KEY_STORE_ARGS = "ks";
   public static final String KEY_STORE_NAME = "key_store";
-  public static final String KEY_STORE_DESC = "Key store for mutual SSL. (optional)";
+  public static final String KEY_STORE_DESC =
+      CliMessages.EXCEPTION_KEY_STORE_FOR_MUTUAL_SSL_OPTIONAL_A617339F;
 
   public static final String KEY_STORE_PWD_ARGS = "kpw";
   public static final String KEY_STORE_PWD_NAME = "key_store_password";
-  public static final String KEY_STORE_PWD_DESC = "Key store password for mutual SSL. (optional)";
+  public static final String KEY_STORE_PWD_DESC =
+      CliMessages.EXCEPTION_KEY_STORE_PASSWORD_FOR_MUTUAL_SSL_OPTIONAL_CA3006DD;
 
   public static final String SSL_PROTOCOL_ARGS = "ssl_protocol";
   public static final String SSL_PROTOCOL_NAME = "ssl_protocol";
-  public static final String SSL_PROTOCOL_DESC = "SSL protocol. (optional)";
+  public static final String SSL_PROTOCOL_DESC =
+      CliMessages.EXCEPTION_SSL_PROTOCOL_OPTIONAL_F7C84E29;
 
   public static final String FILE_TYPE_ARGS = "ft";
   public static final String FILE_TYPE_NAME = "file_type";
   public static final String FILE_TYPE_ARGS_NAME = "format";
   public static final String FILE_TYPE_DESC =
-      "File type?You can choose tsfile)、csv) or sql).(required)";
+      CliMessages.EXCEPTION_FILE_TYPE_YOU_CAN_CHOOSE_TSFILE_CSV_OR_SQL_REQUIRED_046E0304;
   public static final String FILE_TYPE_DESC_EXPORT =
-      "Export file type ?You can choose tsfile)、csv) or sql).(required)";
+      CliMessages.EXCEPTION_EXPORT_FILE_TYPE_YOU_CAN_CHOOSE_TSFILE_CSV_OR_SQL_REQUIRED_04770009;
   public static final String FILE_TYPE_DESC_IMPORT =
-      "Types of imported files: csv, sql, tsfile.(required)";
+      CliMessages.EXCEPTION_TYPES_OF_IMPORTED_FILES_CSV_SQL_TSFILE_REQUIRED_E2678FF9;
 
   public static final String TIME_FORMAT_ARGS = "tf";
   public static final String TIME_FORMAT_NAME = "time_format";
   public static final String TIME_FORMAT_DESC =
-      "Output time Format in csv file. "
-          + "You can choose 1) timestamp, number, long 2) ISO8601, default 3) "
-          + "user-defined pattern like yyyy-MM-dd HH:mm:ss, default ISO8601.\n OutPut timestamp in sql file, No matter what time format is set(optional)";
+      CliMessages
+          .EXCEPTION_OUTPUT_TIME_FORMAT_IN_CSV_FILE_YOU_CAN_CHOOSE_1_TIMESTAMP_NUMBER_LONG_2_ISO8601_DEFAULT_3_USER_DEFINED_PATTERN_LIKE_YYYY_MM_DD_HH_MM_SS_DEFAULT_ISO8601_OUTPUT_TIMESTAMP_IN_SQL_FILE_NO_MATTER_WHAT_TIME_FORMAT_IS_SET_OPTIONAL_D766AEFB;
 
   public static final String TIME_ZONE_ARGS = "tz";
   public static final String TIME_ZONE_NAME = "timezone";
-  public static final String TIME_ZONE_DESC = "Time Zone eg. +08:00 or -01:00 .(optional)";
+  public static final String TIME_ZONE_DESC =
+      CliMessages.EXCEPTION_TIME_ZONE_EG_08_00_OR_01_00_OPTIONAL_7BEA75F1;
 
   public static final String TIMEOUT_ARGS = "timeout";
   public static final String TIMEOUT_NAME = "query_timeout";
-  public static final String TIMEOUT_DESC = "Timeout for session query.(optional)";
+  public static final String TIMEOUT_DESC =
+      CliMessages.EXCEPTION_TIMEOUT_FOR_SESSION_QUERY_OPTIONAL_69034017;
 
   public static final String ALIGNED_ARGS = "aligned";
   public static final String ALIGNED_NAME = "use_aligned";
-  public static final String ALIGNED_ARGS_NAME_EXPORT = "export aligned insert sql";
-  public static final String ALIGNED_ARGS_NAME_IMPORT = "use the aligned interface";
-  public static final String ALIGNED_EXPORT_DESC = "Whether export to sql of aligned.(optional)";
+  public static final String ALIGNED_ARGS_NAME_EXPORT =
+      CliMessages.EXCEPTION_EXPORT_ALIGNED_INSERT_SQL_EA4543D3;
+  public static final String ALIGNED_ARGS_NAME_IMPORT =
+      CliMessages.EXCEPTION_USE_THE_ALIGNED_INTERFACE_F915187B;
+  public static final String ALIGNED_EXPORT_DESC =
+      CliMessages.EXCEPTION_WHETHER_EXPORT_TO_SQL_OF_ALIGNED_OPTIONAL_CF4C6EA0;
   public static final String ALIGNED_IMPORT_DESC =
-      "Whether to use the interface of aligned.(optional)";
+      CliMessages.EXCEPTION_WHETHER_TO_USE_THE_INTERFACE_OF_ALIGNED_OPTIONAL_440B01C4;
 
   public static final String SQL_DIALECT_ARGS = "sql_dialect";
   public static final String SQL_DIALECT_DESC =
-      "Currently supports tree and table model, default tree. (optional)";
+      CliMessages.EXCEPTION_CURRENTLY_SUPPORTS_TREE_AND_TABLE_MODEL_DEFAULT_TREE_OPTIONAL_FB4F4486;
   public static final String SQL_DIALECT_VALUE_TREE = "tree";
   public static final String SQL_DIALECT_VALUE_TABLE = "table";
 
   public static final String DB_ARGS = "db";
   public static final String DB_NAME = "database";
   public static final String DB_DESC =
-      "The database to be exported,only takes effect when sql_dialect is table and required when file_type is csv and tsfile.(optional)";
+      CliMessages
+          .EXCEPTION_THE_DATABASE_TO_BE_EXPORTED_ONLY_TAKES_EFFECT_WHEN_SQL_DIALECT_IS_TABLE_AND_REQUIRED_WHEN_FILE_TYPE_IS_CSV_AND_TSFILE_OPTIONAL_DCB4863E;
 
   public static final String TABLE_ARGS = "table";
   public static final String TABLE_DESC =
-      "The table to be exported,only takes effect when sql_dialect is table.(optional)";
+      CliMessages
+          .EXCEPTION_THE_TABLE_TO_BE_EXPORTED_ONLY_TAKES_EFFECT_WHEN_SQL_DIALECT_IS_TABLE_OPTIONAL_718386C9;
   public static final String TABLE_DESC_EXPORT =
-      TABLE_DESC
-          + ".If the '-q' parameter is specified, this parameter does not take effect. If the export type is tsfile or sql, this parameter is required. (optional)";
-  public static final String TABLE_DESC_IMPORT = TABLE_DESC + " and file_type is csv. (optional)";
+      String.format(
+          CliMessages
+              .EXCEPTION_ARG_IF_THE_Q_PARAMETER_IS_SPECIFIED_THIS_PARAMETER_DOES_NOT_TAKE_EFFECT_IF_THE_EXPORT_TYPE_IS_TSFILE_OR_SQL_THIS_PARAMETER_IS_REQUIRED_OPTIONAL_8F65937E,
+          Objects.toString(TABLE_DESC));
+  public static final String TABLE_DESC_IMPORT =
+      String.format(
+          CliMessages.EXCEPTION_ARG_AND_FILE_TYPE_IS_CSV_OPTIONAL_695FD8E8,
+          Objects.toString(TABLE_DESC));
 
   public static final String DATATYPE_BOOLEAN = "boolean";
   public static final String DATATYPE_INT = "int";
@@ -191,34 +208,36 @@ public class Constants {
       Arrays.asList("Timeseries", "Alias", "DataType", "Encoding", "Compression");
 
   // export constants
-  public static final String EXPORT_CLI_PREFIX = "Export Data";
+  public static final String EXPORT_CLI_PREFIX = CliMessages.EXCEPTION_EXPORT_DATA_2F1FB3D9;
   public static final String EXPORT_SCHEMA_CLI_PREFIX = "ExportSchema";
 
   public static final String EXPORT_CLI_HEAD =
-      "Please obtain help information for the corresponding data type based on different parameters, for example:\n"
-          + "./export_data.sh -help tsfile\n"
-          + "./export_data.sh -help sql\n"
-          + "./export_data.sh -help csv";
+      CliMessages
+          .EXCEPTION_PLEASE_OBTAIN_HELP_INFORMATION_FOR_THE_CORRESPONDING_DATA_TYPE_BASED_ON_DIFFERENT_PARAMETERS_FOR_EXAMPLE_EXPORT_DATA_SH_HELP_TSFILE_EXPORT_DATA_SH_HELP_SQL_EXPORT_DATA_SH_HELP_CSV_0D410E8A;
 
   public static final String SCHEMA_CLI_CHECK_IN_HEAD =
-      "Too few params input, please check the following hint.";
+      CliMessages.EXCEPTION_TOO_FEW_PARAMS_INPUT_PLEASE_CHECK_THE_FOLLOWING_HINT_E6D41E98;
   public static final String START_TIME_ARGS = "start_time";
-  public static final String START_TIME_DESC = "The start time to be exported (optional)";
+  public static final String START_TIME_DESC =
+      CliMessages.EXCEPTION_THE_START_TIME_TO_BE_EXPORTED_OPTIONAL_8133559A;
 
   public static final String END_TIME_ARGS = "end_time";
-  public static final String END_TIME_DESC = "The end time to be exported. (optional)";
+  public static final String END_TIME_DESC =
+      CliMessages.EXCEPTION_THE_END_TIME_TO_BE_EXPORTED_OPTIONAL_355E448D;
 
   public static final String TARGET_DIR_ARGS = "t";
   public static final String TARGET_DIR_NAME = "target";
   public static final String TARGET_DIR_ARGS_NAME = "target_directory";
-  public static final String TARGET_DIR_DESC = "Target file directory (required)";
+  public static final String TARGET_DIR_DESC =
+      CliMessages.EXCEPTION_TARGET_FILE_DIRECTORY_REQUIRED_9A407F06;
   public static final String TARGET_DIR_SUBSCRIPTION_DESC =
-      "Target file directory.default ./target (optional)";
+      CliMessages.EXCEPTION_TARGET_FILE_DIRECTORY_DEFAULT_TARGET_OPTIONAL_52390574;
 
   public static final String TARGET_PATH_ARGS = "path";
   public static final String TARGET_PATH_ARGS_NAME = "path_pattern";
   public static final String TARGET_PATH_NAME = "exportPathPattern";
-  public static final String TARGET_PATH_DESC = "Export Path Pattern (optional)";
+  public static final String TARGET_PATH_DESC =
+      CliMessages.EXCEPTION_EXPORT_PATH_PATTERN_OPTIONAL_8E9C0DE8;
 
   public static final String QUERY_COMMAND_ARGS = "q";
   public static final String QUERY_COMMAND_NAME = "query";
@@ -229,7 +248,8 @@ public class Constants {
 
   public static final String TARGET_FILE_ARGS = "pfn";
   public static final String TARGET_FILE_NAME = "prefix_file_name";
-  public static final String TARGET_FILE_DESC = "Export file name .(optional)";
+  public static final String TARGET_FILE_DESC =
+      CliMessages.EXCEPTION_EXPORT_FILE_NAME_OPTIONAL_BBFDC3AE;
 
   public static final String MEASUREMENT_FILE_ARGS = "mf";
   public static final String MEASUREMENT_FILE_NAME = "measurement_file";
@@ -258,41 +278,46 @@ public class Constants {
   public static final String RPC_MAX_FRAME_SIZE_ARGS = "mfs";
   public static final String RPC_MAX_FRAME_SIZE_NAME = "rpc_max_frame_size";
   public static final String RPC_MAX_FRAME_SIZE_DESC =
-      "The max frame size of RPC, default is 536870912 bytes.(optional)";
+      CliMessages.EXCEPTION_THE_MAX_FRAME_SIZE_OF_RPC_DEFAULT_IS_536870912_BYTES_OPTIONAL_DDC009D1;
 
   public static final String DATA_TYPE_ARGS = "dt";
   public static final String DATA_TYPE_NAME = "datatype";
   public static final String DATA_TYPE_DESC =
-      "Will the data type of timeseries be printed in the head line of the CSV file?"
-          + '\n'
-          + "You can choose true) or false) . (optional)";
+      String.format(
+          CliMessages
+              .EXCEPTION_WILL_THE_DATA_TYPE_OF_TIMESERIES_BE_PRINTED_IN_THE_HEAD_LINE_OF_THE_CSV_FILE_ARG_YOU_CAN_CHOOSE_TRUE_OR_FALSE_OPTIONAL_D1409A80,
+          Objects.toString('\n'));
 
   public static final String LINES_PER_FILE_ARGS = "lpf";
   public static final String LINES_PER_FILE_NAME = "lines_per_file";
   public static final String LINES_PER_FILE_DESC =
-      "Lines per dump file,only effective in tree model.(optional)";
+      CliMessages.EXCEPTION_LINES_PER_DUMP_FILE_ONLY_EFFECTIVE_IN_TREE_MODEL_OPTIONAL_8138FC83;
 
   public static final String DUMP_FILE_NAME_DEFAULT = "dump";
 
   public static final String queryTableParamRequired =
-      "Either '-q' or '-table' is required when 'sql-dialect' is' table '";
-  public static final String INSERT_CSV_MEET_ERROR_MSG = "Meet error when insert csv because ";
-  public static final String INSERT_SQL_MEET_ERROR_MSG = "Meet error when insert sql because ";
+      CliMessages.EXCEPTION_EITHER_Q_OR_TABLE_IS_REQUIRED_WHEN_SQL_DIALECT_IS_TABLE_378EE68E;
+  public static final String INSERT_CSV_MEET_ERROR_MSG =
+      CliMessages.EXCEPTION_MEET_ERROR_WHEN_INSERT_CSV_BECAUSE_F4B95972;
+  public static final String INSERT_SQL_MEET_ERROR_MSG =
+      CliMessages.EXCEPTION_MEET_ERROR_WHEN_INSERT_SQL_BECAUSE_54810B8F;
   public static final String COLUMN_SQL_MEET_ERROR_MSG =
-      "Meet error when get table columns information because ";
+      CliMessages.EXCEPTION_MEET_ERROR_WHEN_GET_TABLE_COLUMNS_INFORMATION_BECAUSE_3E210150;
   public static final String TARGET_DATABASE_NOT_EXIST_MSG =
-      "The target database %s does not exist";
+      CliMessages.EXCEPTION_THE_TARGET_DATABASE_ARG_DOES_NOT_EXIST_342912D0;
   public static final String TARGET_TABLE_NOT_EXIST_MSG =
-      "There are no tables or the target table %s does not exist";
+      CliMessages.EXCEPTION_THERE_ARE_NO_TABLES_OR_THE_TARGET_TABLE_ARG_DOES_NOT_EXIST_23BCB7AF;
   public static final String TARGET_TABLE_EMPTY_MSG =
-      "There are no tables to export. Please check if the tables in the target database exist and if you have permission to access them.";
+      CliMessages
+          .EXCEPTION_THERE_ARE_NO_TABLES_TO_EXPORT_PLEASE_CHECK_IF_THE_TABLES_IN_THE_TARGET_DATABASE_EXIST_AND_IF_YOU_HAVE_PERMISSION_TO_ACCESS_THEM_1592463E;
 
   public static final String[] TIME_FORMAT =
       new String[] {"default", "long", "number", "timestamp"};
 
   public static final String PATH_ARGS = "path";
   public static final String PATH_DESC =
-      "The path to be exported,only takes effect when sql_dialect is tree.(optional)";
+      CliMessages
+          .EXCEPTION_THE_PATH_TO_BE_EXPORTED_ONLY_TAKES_EFFECT_WHEN_SQL_DIALECT_IS_TREE_OPTIONAL_99A39D5E;
 
   public static final long memoryThreshold = 10 * 1024 * 1024;
 
@@ -336,7 +361,7 @@ public class Constants {
         "yyyy.MM.dd'T'HH:mm:ss"
       };
 
-  public static final String SUBSCRIPTION_CLI_PREFIX = "Export TsFile";
+  public static final String SUBSCRIPTION_CLI_PREFIX = CliMessages.EXCEPTION_EXPORT_TSFILE_201F2F41;
   public static final int MAX_RETRY_TIMES = 2;
   public static final String LOOSE_RANGE = "";
   public static final boolean STRICT = false;
@@ -352,7 +377,7 @@ public class Constants {
   public static final String BASE_VIEW_TYPE = "BASE";
   public static final String HEADER_VIEW_TYPE = "ViewType";
   public static final String HEADER_TIMESERIES = "Timeseries";
-  public static final String EXPORT_COMPLETELY = "Export completely!";
+  public static final String EXPORT_COMPLETELY = CliMessages.LOG_EXPORT_COMPLETELY_34200D19;
   public static final String EXPORT_SCHEMA_TABLES_SELECT =
       "select * from information_schema.tables where database = '%s'";
   public static final String EXPORT_SCHEMA_TABLES_SHOW = "show tables details from %s";
@@ -366,81 +391,88 @@ public class Constants {
 
   // import constants
   public static final String IMPORT_SCHEMA_CLI_PREFIX = "ImportSchema";
-  public static final String IMPORT_CLI_PREFIX = "Import Data";
+  public static final String IMPORT_CLI_PREFIX = CliMessages.EXCEPTION_IMPORT_DATA_446C4D18;
 
   public static final String IMPORT_CLI_HEAD =
-      "Please obtain help information for the corresponding data type based on different parameters, for example:\n"
-          + "./import_data.sh -help tsfile\n"
-          + "./import_data.sh -help sql\n"
-          + "./import_data.sh -help csv";
+      CliMessages
+          .EXCEPTION_PLEASE_OBTAIN_HELP_INFORMATION_FOR_THE_CORRESPONDING_DATA_TYPE_BASED_ON_DIFFERENT_PARAMETERS_FOR_EXAMPLE_IMPORT_DATA_SH_HELP_TSFILE_IMPORT_DATA_SH_HELP_SQL_IMPORT_DATA_SH_HELP_CSV_F9320898;
 
   public static final String FILE_ARGS = "s";
   public static final String FILE_NAME = "source";
   public static final String FILE_DESC =
-      "The local directory path of the script file (folder) to be loaded. (required)";
+      CliMessages
+          .EXCEPTION_THE_LOCAL_DIRECTORY_PATH_OF_THE_SCRIPT_FILE_FOLDER_TO_BE_LOADED_REQUIRED_AC5278C5;
 
   public static final String FAILED_FILE_ARGS = "fd";
   public static final String FAILED_FILE_NAME = "fail_dir";
   public static final String FAILED_FILE_ARGS_NAME = "failDir";
   public static final String FAILED_FILE_DESC =
-      "Specifying a directory to save failed file, default YOUR_CSV_FILE_PATH (optional)";
+      CliMessages
+          .EXCEPTION_SPECIFYING_A_DIRECTORY_TO_SAVE_FAILED_FILE_DEFAULT_YOUR_CSV_FILE_PATH_OPTIONAL_DADE5B55;
 
   public static final String ON_SUCCESS_ARGS = "os";
   public static final String ON_SUCCESS_NAME = "on_success";
   public static final String ON_SUCCESS_DESC =
-      "When loading tsfile successfully, do operation on tsfile (and its .resource and .mods files), "
-          + "optional parameters are none, mv, cp, delete. (required)";
+      CliMessages
+          .EXCEPTION_WHEN_LOADING_TSFILE_SUCCESSFULLY_DO_OPERATION_ON_TSFILE_AND_ITS_RESOURCE_AND_MODS_FILES_OPTIONAL_PARAMETERS_ARE_NONE_MV_CP_DELETE_REQUIRED_601E75DC;
 
   public static final String SUCCESS_DIR_ARGS = "sd";
   public static final String SUCCESS_DIR_NAME = "success_dir";
   public static final String SUCCESS_DIR_DESC =
-      "The target folder when 'os' is 'mv' or 'cp'.(optional)";
+      CliMessages.EXCEPTION_THE_TARGET_FOLDER_WHEN_OS_IS_MV_OR_CP_OPTIONAL_8AFE2264;
 
   public static final String FAIL_DIR_ARGS = "fd";
   public static final String FAIL_DIR_NAME = "fail_dir";
   public static final String FAIL_DIR_CSV_DESC =
-      "Specifying a directory to save failed file, default YOUR_CSV_FILE_PATH.(optional)";
+      CliMessages
+          .EXCEPTION_SPECIFYING_A_DIRECTORY_TO_SAVE_FAILED_FILE_DEFAULT_YOUR_CSV_FILE_PATH_OPTIONAL_EA6E7DF7;
   public static final String FAIL_DIR_SQL_DESC =
-      "Specifying a directory to save failed file, default YOUR_SQL_FILE_PATH.(optional)";
+      CliMessages
+          .EXCEPTION_SPECIFYING_A_DIRECTORY_TO_SAVE_FAILED_FILE_DEFAULT_YOUR_SQL_FILE_PATH_OPTIONAL_8CF7BBC4;
   public static final String FAIL_DIR_TSFILE_DESC =
-      "The target folder when 'of' is 'mv' or 'cp'.(optional)";
+      CliMessages.EXCEPTION_THE_TARGET_FOLDER_WHEN_OF_IS_MV_OR_CP_OPTIONAL_E72A0E75;
 
   public static final String ON_FAIL_ARGS = "of";
   public static final String ON_FAIL_NAME = "on_fail";
   public static final String ON_FAIL_DESC =
-      "When loading tsfile fail, do operation on tsfile (and its .resource and .mods files), "
-          + "optional parameters are none, mv, cp, delete. (required)";
+      CliMessages
+          .EXCEPTION_WHEN_LOADING_TSFILE_FAIL_DO_OPERATION_ON_TSFILE_AND_ITS_RESOURCE_AND_MODS_FILES_OPTIONAL_PARAMETERS_ARE_NONE_MV_CP_DELETE_REQUIRED_7BA55A84;
 
   public static final String THREAD_NUM_ARGS = "tn";
   public static final String THREAD_NUM_NAME = "thread_num";
   public static final String THREAD_NUM_DESC =
-      "The number of threads used to import tsfile, default is 8.(optional)";
+      CliMessages
+          .EXCEPTION_THE_NUMBER_OF_THREADS_USED_TO_IMPORT_TSFILE_DEFAULT_IS_8_OPTIONAL_EAAFD75C;
 
   public static final String BATCH_POINT_SIZE_ARGS = "batch";
   public static final String BATCH_POINT_SIZE_NAME = "batch_size";
   public static final String BATCH_POINT_SIZE_ARGS_NAME = "batch_size";
   public static final String BATCH_POINT_SIZE_DESC = "100000 (optional)";
   public static final String BATCH_POINT_SIZE_LIMIT_DESC =
-      "10000 (only not aligned and sql_dialect tree optional)";
+      CliMessages.EXCEPTION_10000_ONLY_NOT_ALIGNED_AND_SQL_DIALECT_TREE_OPTIONAL_75B83039;
 
   public static final String TIMESTAMP_PRECISION_ARGS = "tp";
   public static final String TIMESTAMP_PRECISION_NAME = "timestamp_precision";
-  public static final String TIMESTAMP_PRECISION_ARGS_NAME = "timestamp precision (ms/us/ns)";
-  public static final String TIMESTAMP_PRECISION_DESC = "Timestamp precision (ms/us/ns).(optional)";
+  public static final String TIMESTAMP_PRECISION_ARGS_NAME =
+      CliMessages.EXCEPTION_TIMESTAMP_PRECISION_MS_US_NS_5DC07992;
+  public static final String TIMESTAMP_PRECISION_DESC =
+      CliMessages.EXCEPTION_TIMESTAMP_PRECISION_MS_US_NS_OPTIONAL_10C6809A;
 
   public static final String TYPE_INFER_ARGS = "ti";
   public static final String TYPE_INFER_NAME = "type_infer";
   public static final String TYPE_INFER_DESC =
-      "Define type info by option:\"boolean=text,int=long, ... (optional)";
+      CliMessages.EXCEPTION_DEFINE_TYPE_INFO_BY_OPTION_BOOLEAN_TEXT_INT_LONG_OPTIONAL_CF9F51B3;
 
   public static final String LINES_PER_FAILED_FILE_ARGS = "lpf";
   public static final String LINES_PER_FAILED_FILE_ARGS_NAME = "lines_per_failed_file";
   public static final String LINES_PER_FAILED_FILE_DESC =
-      "Lines per failed file,only takes effect and required when sql_dialect is table .(option)";
-  public static final String IMPORT_COMPLETELY = "Import completely!";
+      CliMessages
+          .EXCEPTION_LINES_PER_FAILED_FILE_ONLY_TAKES_EFFECT_AND_REQUIRED_WHEN_SQL_DIALECT_IS_TABLE_OPTION_55D8B932;
+  public static final String IMPORT_COMPLETELY = CliMessages.LOG_IMPORT_COMPLETELY_B7451B2C;
   public static final int BATCH_POINT_SIZE = 10000;
 
-  public static final String IMPORT_INIT_MEET_ERROR_MSG = "Meet error when init import because ";
+  public static final String IMPORT_INIT_MEET_ERROR_MSG =
+      CliMessages.EXCEPTION_MEET_ERROR_WHEN_INIT_IMPORT_BECAUSE_A38F65C6;
   public static final String REQUIRED_ARGS_ERROR_MSG =
-      "Invalid args: Required values for option '%s' not provided";
+      CliMessages.EXCEPTION_INVALID_ARGS_REQUIRED_VALUES_FOR_OPTION_ARG_NOT_PROVIDED_601B17E3;
 }

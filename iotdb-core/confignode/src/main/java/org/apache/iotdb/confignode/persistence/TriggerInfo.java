@@ -150,8 +150,10 @@ public class TriggerInfo implements SnapshotProcessor {
     } catch (Exception e) {
       final String errorMessage =
           String.format(
-              "Failed to add trigger [%s] in TriggerTable on Config Nodes, because of %s",
-              physicalPlan.getTriggerInformation().getTriggerName(), e);
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_ADD_TRIGGER_ARG_IN_TRIGGERTABLE_ON_CONFIG_NODES_BECAUSE_OF_ARG_DFBA6E1C,
+              physicalPlan.getTriggerInformation().getTriggerName(),
+              e);
       LOGGER.warn(errorMessage, e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
           .setMessage(errorMessage);

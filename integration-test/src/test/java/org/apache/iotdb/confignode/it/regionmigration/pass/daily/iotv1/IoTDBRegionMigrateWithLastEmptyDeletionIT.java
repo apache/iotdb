@@ -21,12 +21,16 @@ package org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv1;
 
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.DailyIT;
 
 import org.apache.tsfile.utils.Pair;
 import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.Statement;
@@ -37,6 +41,8 @@ import java.util.concurrent.TimeUnit;
 import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework.getAllDataNodes;
 import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework.getDataRegionMapWithLeader;
 
+@Category({DailyIT.class})
+@RunWith(IoTDBTestRunner.class)
 public class IoTDBRegionMigrateWithLastEmptyDeletionIT {
   @Before
   public void setUp() throws Exception {
