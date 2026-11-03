@@ -33,6 +33,7 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.itbase.exception.ParallelRequestTimeoutException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -935,16 +936,107 @@ public class IoTDBDeletionTableIT {
         builder.append("(1, 'd").append(i).append("', 'same', ").append(i).append(')');
       }
       statement.execute(builder.toString());
+      statement.execute("FLUSH");
+      statement.execute(
+          "INSERT INTO delete_by_attr_limit(time,deviceId,attr1,s1) VALUES"
+              + "(2,'d0','same',2000),(2,'d1000','same',3000)");
+      statement.execute(
+          "CREATE TABLE delete_by_attr_guard(deviceId STRING TAG, attr1 ATTRIBUTE, s1 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_by_attr_guard(time,deviceId,attr1,s1) VALUES(1,'d0','same',9000)");
+      final List<String> expected = new ArrayList<>();
+      for (int i = 0; i <= 1000; i++) {
+        expected.add("1,d" + i + ",same," + i + ",");
+      }
+      expected.add("2,d0,same,2000,");
+      expected.add("2,d1000,same,3000,");
 
       try {
         statement.execute("DELETE FROM delete_by_attr_limit WHERE attr1 = 'same'");
         fail("should not reach here!");
       } catch (SQLException e) {
+        assertEquals(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), e.getErrorCode());
         assertTrue(e.getMessage().contains("Too many devices (1001)"));
         assertTrue(e.getMessage().contains("limit is 1000"));
         assertTrue(e.getMessage().contains("attr1"));
         assertTrue(e.getMessage().contains("Please remove all attribute filters"));
       }
+
+      // The analyzer rejects the complete operation before dispatching any data deletion.
+      // Check every key/value, including disk and memory data, rather than only the exception.
+      assertAttributeLimitRows(statement, expected);
+      // A narrower ATTRIBUTE + TAG predicate must work after the rejected request.
+      statement.execute(
+          "DELETE FROM delete_by_attr_limit WHERE attr1='same' AND deviceId='d0' AND time=1");
+      expected.remove("1,d0,same,0,");
+      statement.execute("FLUSH");
+      assertAttributeLimitRows(statement, expected);
+      try (ResultSet rows =
+          statement.executeQuery(
+              "SELECT cast(time AS INT64) AS t,deviceId,attr1,s1 FROM delete_by_attr_guard")) {
+        TestUtils.assertResultSetEqual(
+            rows, "t,deviceId,attr1,s1,", new String[] {"1,d0,same,9000,"});
+      }
+    }
+  }
+
+  @Test
+  public void testAttributeDeleteWithMixedCaseColumnNames() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      statement.execute(
+          "CREATE TABLE delete_mixed_case(DeviceId STRING TAG, Attr1 ATTRIBUTE, s1 INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO delete_mixed_case(time,DeviceId,Attr1,s1) VALUES"
+              + "(1,'d0','same',10),(2,'d0','same',20),(1,'D0','same',30),"
+              + "(1,'d1','Other',40),(2,'d1','Other',41),(1,'d2',null,50),"
+              + "(1,'d3','Other',60),(1,'keep','same',70)");
+      final List<String> expected =
+          new ArrayList<>(
+              List.of(
+                  "1,d0,same,10,",
+                  "2,d0,same,20,",
+                  "1,D0,same,30,",
+                  "1,d1,Other,40,",
+                  "2,d1,Other,41,",
+                  "1,d2,null,50,",
+                  "1,d3,Other,60,",
+                  "1,keep,same,70,"));
+      final String[][] deletions = {
+        // This first request reproduced the missing-symbol NPE without a preceding rejection.
+        {"attr1='same' AND deviceId='d0' AND time=1", "1,d0,same,10,"},
+        {"ATTR1='same' AND DEVICEID='D0' AND TIME=1", "1,D0,same,30,"},
+        {"AtTr1 IS NULL AND DeViCeId='d2' AND TiMe=1", "1,d2,null,50,"},
+        {"AtTr1 LIKE 'Ot%' AND DeViCeId='d1' AND TiMe=1", "1,d1,Other,40,"},
+        {"AtTr1 IN ('Other') AND DeViCeId='d3' AND TiMe=1", "1,d3,Other,60,"},
+        {"AtTr1 IS NOT NULL AND DeViCeId='d0' AND TiMe=2", "2,d0,same,20,"}
+      };
+      for (String[] deletion : deletions) {
+        statement.execute("DELETE FROM delete_mixed_case WHERE " + deletion[0]);
+        assertTrue(expected.remove(deletion[1]));
+        assertMixedCaseAttributeRows(statement, expected);
+      }
+      statement.execute("FLUSH");
+      assertMixedCaseAttributeRows(statement, expected);
+    }
+  }
+
+  private static void assertMixedCaseAttributeRows(Statement statement, List<String> expected)
+      throws SQLException {
+    try (ResultSet rows =
+        statement.executeQuery(
+            "SELECT cast(time AS INT64) AS t,deviceId,attr1,s1 FROM delete_mixed_case")) {
+      TestUtils.assertResultSetEqualUnordered(rows, "t,deviceId,attr1,s1,", expected);
+    }
+  }
+
+  private static void assertAttributeLimitRows(Statement statement, List<String> expected)
+      throws SQLException {
+    try (ResultSet rows =
+        statement.executeQuery(
+            "SELECT cast(time AS INT64) AS t,deviceId,attr1,s1 FROM delete_by_attr_limit")) {
+      TestUtils.assertResultSetEqualUnordered(rows, "t,deviceId,attr1,s1,", expected);
     }
   }
 
