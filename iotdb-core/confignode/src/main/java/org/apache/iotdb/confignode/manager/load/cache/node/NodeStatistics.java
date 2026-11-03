@@ -107,7 +107,7 @@ public class NodeStatistics extends AbstractStatistics {
 
   @Override
   public int hashCode() {
-    return Objects.hash(status, statusReason, loadScore);
+    return Objects.hash(status, statusReason);
   }
 
   @Override
