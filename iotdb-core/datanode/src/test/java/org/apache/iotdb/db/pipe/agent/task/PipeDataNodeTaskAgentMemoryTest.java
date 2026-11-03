@@ -73,13 +73,6 @@ public class PipeDataNodeTaskAgentMemoryTest {
     checkMemory(Collections.emptyMap(), DATA_REGION_COUNT);
     for (final String key :
         new String[] {
-          PipeSourceConstant.SOURCE_MODE_STREAMING_KEY,
-          PipeSourceConstant.EXTRACTOR_MODE_STREAMING_KEY
-        }) {
-      checkMemory(Collections.singletonMap(key, "true"), DATA_REGION_COUNT);
-    }
-    for (final String key :
-        new String[] {
           PipeSourceConstant.SOURCE_REALTIME_MODE_KEY,
           PipeSourceConstant.EXTRACTOR_REALTIME_MODE_KEY
         }) {
@@ -148,20 +141,6 @@ public class PipeDataNodeTaskAgentMemoryTest {
           }) {
         checkMemory(Collections.singletonMap(key, mode), DATA_REGION_COUNT);
       }
-    }
-    for (final String key :
-        new String[] {
-          PipeSourceConstant.SOURCE_MODE_STREAMING_KEY,
-          PipeSourceConstant.EXTRACTOR_MODE_STREAMING_KEY
-        }) {
-      checkMemory(Collections.singletonMap(key, "false"), DATA_REGION_COUNT);
-    }
-    for (final String key :
-        new String[] {
-          PipeSourceConstant.SOURCE_MODE_SNAPSHOT_KEY,
-          PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_KEY
-        }) {
-      checkMemory(Collections.singletonMap(key, "true"), DATA_REGION_COUNT);
     }
     for (final String key :
         new String[] {PipeSourceConstant.SOURCE_MODE_KEY, PipeSourceConstant.EXTRACTOR_MODE_KEY}) {

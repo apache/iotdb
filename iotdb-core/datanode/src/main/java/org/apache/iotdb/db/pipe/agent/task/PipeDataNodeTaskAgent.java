@@ -1074,13 +1074,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return;
     }
 
-    // Snapshot/query and non-streaming sources do not retain InsertNode tablets.
-    if (isSnapshotMode(sourceParameters)
-        || !sourceParameters.getBooleanOrDefault(
-            Arrays.asList(
-                PipeSourceConstant.EXTRACTOR_MODE_STREAMING_KEY,
-                PipeSourceConstant.SOURCE_MODE_STREAMING_KEY),
-            PipeSourceConstant.EXTRACTOR_MODE_STREAMING_DEFAULT_VALUE)) {
+    // Snapshot/query sources do not retain InsertNode tablets.
+    if (isSnapshotMode(sourceParameters)) {
       return;
     }
 
