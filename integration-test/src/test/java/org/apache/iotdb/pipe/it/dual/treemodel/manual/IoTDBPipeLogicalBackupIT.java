@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupArchiveRead
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupCatalog;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeManual;
 import org.apache.iotdb.itbase.env.BaseEnv;
@@ -52,6 +53,8 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
+
+import static org.apache.iotdb.itbase.runtime.ClusterTestResultSet.getNodeResultSets;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeManual.class})
@@ -93,7 +96,12 @@ public class IoTDBPipeLogicalBackupIT extends AbstractPipeDualTreeModelManualIT 
                               final Statement statement = connection.createStatement();
                               final ResultSet result =
                                   statement.executeQuery("show pipe " + pipeName)) {
-                            return result.next();
+                            // Pipe metadata propagates asynchronously between DataNodes.
+                            boolean existsOnAllNodes = true;
+                            for (final ResultSet nodeResult : getNodeResultSets(result)) {
+                              existsOnAllNodes &= nodeResult.next();
+                            }
+                            return existsOnAllNodes;
                           }
                         });
                 try (final Connection connection = senderEnv.getTableConnection();
@@ -178,7 +186,7 @@ public class IoTDBPipeLogicalBackupIT extends AbstractPipeDualTreeModelManualIT 
             "create database root.unselected",
             "create timeseries root.unselected.d.s with datatype=INT32,encoding=PLAIN",
             "insert into root.unselected.d(time,s) values(2,100)",
-            "create user logical_backup_excluded_user 'test_password'",
+            "create user logical_backup_excluded_user 'LogicalBackup!2026'",
             "flush"),
         null);
     final Path parent = temporaryFolder.getRoot().toPath().toAbsolutePath();
@@ -284,12 +292,14 @@ public class IoTDBPipeLogicalBackupIT extends AbstractPipeDualTreeModelManualIT 
                 "--port",
                 env.getPort(),
                 "--user",
-                "root",
+                SessionConfig.DEFAULT_USER,
                 "--password-stdin"));
     args.addAll(Arrays.asList(options));
     final InputStream previous = System.in;
     try {
-      System.setIn(new ByteArrayInputStream("root\n".getBytes(StandardCharsets.UTF_8)));
+      System.setIn(
+          new ByteArrayInputStream(
+              (SessionConfig.DEFAULT_PASSWORD + "\n").getBytes(StandardCharsets.UTF_8)));
       Assert.assertEquals(0, PipeLogicalBackupTool.run(args.toArray(new String[0])));
     } finally {
       System.setIn(previous);
