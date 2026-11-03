@@ -20,8 +20,8 @@
 @echo off
 if "%OS%" == "Windows_NT" setlocal
 
-pushd %~dp0..\..
-if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%CD%
+pushd "%~dp0..\.."
+if NOT DEFINED IOTDB_HOME set "IOTDB_HOME=%CD%"
 popd
 
 if NOT DEFINED JAVA_HOME goto :no_java
