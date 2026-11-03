@@ -967,6 +967,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   public boolean shouldParseTime() {
     if (!isTimeParsed
         && Objects.nonNull(resource)
+        && (!isGeneratedByHistoricalExtractor || resource.isClosed())
         && startTime <= resource.getFileStartTime()
         && resource.getFileEndTime() <= endTime) {
       isTimeParsed = true;
