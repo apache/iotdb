@@ -29,6 +29,7 @@ import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -53,6 +54,8 @@ public class CheckpointReader {
         Checkpoint checkpoint = Checkpoint.deserialize(logStream);
         checkpoints.add(checkpoint);
       }
+    } catch (WALFormatException e) {
+      throw new UncheckedIOException(e);
     } catch (EOFException e) {
       logger.debug(
           StorageEngineMessages
@@ -60,6 +63,9 @@ public class CheckpointReader {
           logFile,
           e.getMessage());
     } catch (IOException e) {
+      if (WALFormatException.isFatal(e)) {
+        throw new UncheckedIOException(e);
+      }
       logger.warn(
           StorageEngineMessages
               .STORAGE_LOG_MEET_ERROR_WHEN_READING_CHECKPOINT_FILE_SKIP_BROKEN_CHECKPOINTS_DADF9E9D,

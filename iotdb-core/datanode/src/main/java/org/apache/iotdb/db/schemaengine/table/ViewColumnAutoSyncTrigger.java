@@ -137,21 +137,29 @@ public class ViewColumnAutoSyncTrigger {
             DataNodeSchemaMessages.LOG_ADD_VIEW_COLUMN_EMPTY_RESPONSE_B9502E26, operationId);
         return;
       }
-      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error(
-            DataNodeSchemaMessages.LOG_ADD_VIEW_COLUMN_CN_FAILED_FE4F10AC,
-            operationId,
-            resp.getStatus());
-      }
       // the views are updated one by one in ConfigNode, so the failed ones are reported one by one
       if (resp.getFailedViews() != null) {
         for (TAutoSyncViewColumnsFailure failedView : resp.getFailedViews()) {
-          LOGGER.error(
-              DataNodeSchemaMessages.LOG_ADD_VIEW_COLUMN_FAILED_FOR_VIEW_B3EB8144,
-              failedView.getDatabase(),
-              failedView.getTableName(),
-              operationId,
-              failedView.getStatus());
+          // Every replica applies the same schema log and asks for the same columns, so the ones
+          // which lose the race get COLUMN_ALREADY_EXISTS: the columns they ask for have already
+          // been added by the first replica, which is the expected result rather than a failure.
+          if (failedView.getStatus() != null
+              && failedView.getStatus().getCode()
+                  == TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()) {
+            LOGGER.info(
+                DataNodeSchemaMessages.LOG_ADD_VIEW_COLUMN_ALREADY_EXISTS_FOR_VIEW_EDFF86E8,
+                failedView.getDatabase(),
+                failedView.getTableName(),
+                operationId,
+                failedView.getStatus());
+          } else {
+            LOGGER.error(
+                DataNodeSchemaMessages.LOG_ADD_VIEW_COLUMN_FAILED_FOR_VIEW_B3EB8144,
+                failedView.getDatabase(),
+                failedView.getTableName(),
+                operationId,
+                failedView.getStatus());
+          }
         }
       }
     } catch (ClientManagerException | TException e) {

@@ -127,4 +127,23 @@ public final class UdfApiMessages {
           "输入序列（索引：%d）的数据类型无效。期望：%s。实际：%s。";
 
   private UdfApiMessages() {}
+
+  public static final String EXCEPTION_RETURNEDTYPE_IS_NULL_98FA07AD = "returnedType 为空";
+
+  public static final String EXCEPTION_TABLEFUNCTIONHANDLE_IS_NULL_7A2E991C =
+      "TableFunctionHandle 为空";
+
+  public static final String EXCEPTION_FIELDNAMES_IS_NULL_AD6E57B6 = "fieldNames 为空";
+
+  public static final String EXCEPTION_FIELDTYPES_IS_NULL_08BA6A6B = "fieldTypes 为空";
+
+  public static final String EXCEPTION_PARTITIONBY_IS_NULL_82C1E068 = "partitionBy 为空";
+
+  public static final String EXCEPTION_ORDERBY_IS_NULL_26D8DCDD = "orderBy 为空";
+
+  public static final String EXCEPTION_FIELDS_IS_NULL_04C032C9 = "fields 为空";
+
+  public static final String EXCEPTION_SHOULD_BE_A_POSITIVE_VALUE_081C5357 = "应为正数";
+
+  public static final String EXCEPTION_SHOULD_BE_A_NON_NEGATIVE_VALUE_D7F8F4F0 = "应为非负数";
 }

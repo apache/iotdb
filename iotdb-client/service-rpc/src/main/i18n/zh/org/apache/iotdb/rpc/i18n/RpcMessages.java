@@ -102,4 +102,10 @@ public final class RpcMessages {
   public static final String EXCEPTION_KEYSTORE_OR_TRUSTSTORE_FILE_NOT_FOUND_5A6845B2 =
       "未找到 keystore 或 truststore 文件：";
 
+  public static final String EXCEPTION_MULTIPLE_ERROR_OCCUR_MESSAGES_75A34A00 = "发生多个错误，消息：";
+
+  public static final String EXCEPTION_THE_VALUE_GOT_BY_ARG_COLUMN_NAME_IS_NULL_65408BDE =
+      "通过列名 %s 获取的值为 NULL。";
+
+  public static final String EXCEPTION_DATA_TYPE_ARG_IS_NOT_SUPPORTED_31213160 = "不支持数据类型 %s。";
 }

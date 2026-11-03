@@ -412,6 +412,9 @@ public class WALMetaData implements SerializedSize {
     try {
       return readFromWALFileWithoutRecovery(logFile, channel);
     } catch (IOException metadataFailure) {
+      if (WALFormatException.isFatal(metadataFailure)) {
+        throw metadataFailure;
+      }
       logger.warn(StorageEngineMessages.FAIL_TO_READ_WAL_LOGS_SKIP, logFile, metadataFailure);
       // Keep the original file when some entries are readable. The reconstructed metadata is an
       // in-memory view of that prefix; rewriting compressed segments while readers hold the file
@@ -457,6 +460,9 @@ public class WALMetaData implements SerializedSize {
       return new WALMetaData();
     }
     WALFileVersion version = WALFileVersion.getVersion(channel);
+    if (version == WALFileVersion.EXTENDED) {
+      return WALFormats.readMetadata(logFile, channel);
+    }
     if (channel.size() < version.getVersionBytes().length + Integer.BYTES
         || !isValidMagicString(channel, version)) {
       throw new BrokenWALFileException(logFile);

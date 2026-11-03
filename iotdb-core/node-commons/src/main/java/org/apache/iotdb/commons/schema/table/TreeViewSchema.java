@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -36,7 +37,7 @@ public class TreeViewSchema {
   public static final String TREE_PATH_PATTERN = "__tree_path_pattern";
   public static final String RESTRICT = "__restrict";
   public static final String UNSUPPORTED_NEED_LAST_CACHE_PROPERTY =
-      "The tree view does not support need_last_cache property.";
+      SchemaMessages.MESSAGE_THE_TREE_VIEW_DOES_NOT_SUPPORT_NEED_LAST_CACHE_PROPERTY_F42719A1;
 
   public static boolean isTreeViewTable(final TsTable table) {
     return table.getPropValue(TREE_PATH_PATTERN).isPresent();
@@ -86,18 +87,17 @@ public class TreeViewSchema {
   }
 
   /**
-   * A source measurement can only be referenced once, so this set decides whether a column may
-   * still be added for one.
+   * Source measurements already referenced by the view's FIELD columns, so this set decides whether
+   * a column may still be added for one. TAG/TIME/ATTRIBUTE columns do not reference tree
+   * measurements and therefore do not occupy the source-name namespace.
    */
   public static Set<String> getSourceNames(final TsTable view) {
     final Set<String> sourceNames = new HashSet<>();
     for (final TsTableColumnSchema schema : view.getColumnList()) {
-      if (Objects.isNull(schema.getProps())) {
-        // the columns which carry no props reference their own name
-        sourceNames.add(schema.getColumnName());
-      } else {
-        sourceNames.add(getSourceName(schema));
+      if (schema.getColumnCategory() != TsTableColumnCategory.FIELD) {
+        continue;
       }
+      sourceNames.add(getSourceName(schema));
     }
     return sourceNames;
   }
@@ -113,11 +113,12 @@ public class TreeViewSchema {
   public static String setPathPattern(final TsTable table, final PartialPath pathPattern) {
     final String[] nodes = pathPattern.getNodes();
     if (!PathPatternUtil.isMultiLevelMatchWildcard(nodes[nodes.length - 1])) {
-      return "The last node must be '**'";
+      return SchemaMessages.MESSAGE_THE_LAST_NODE_MUST_BE_5EB138C7;
     }
     for (int i = nodes.length - 2; i >= 0; --i) {
       if (PathPatternUtil.hasWildcard(nodes[i])) {
-        return "The wildCard is not permitted to set before the last node";
+        return SchemaMessages
+            .MESSAGE_THE_WILDCARD_IS_NOT_PERMITTED_TO_SET_BEFORE_THE_LAST_NODE_D7BCF29C;
       }
     }
     table.addProp(TREE_PATH_PATTERN, pathPattern.toString());

@@ -341,6 +341,20 @@ public class TableDeviceSchemaCache {
         false);
   }
 
+  /** Update query results without inferring the device's last-row time from FIELD timestamps. */
+  public void updateLastCacheFromQuery(
+      final String database,
+      final IDeviceID deviceId,
+      final String[] measurements,
+      final TimeValuePair[] timeValuePairs) {
+    dualKeyCache.update(
+        new TableId(database, deviceId.getTableName()),
+        deviceId,
+        null,
+        entry -> entry.tryUpdateLastCacheFromQuery(measurements, timeValuePairs),
+        false);
+  }
+
   /**
    * Update the last cache in writing or the second push of last cache query. If a measurement is
    * with all {@code null}s or is a tag/attribute column, its {@link TimeValuePair}[] shall be

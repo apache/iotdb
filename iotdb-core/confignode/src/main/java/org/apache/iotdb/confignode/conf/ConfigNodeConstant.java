@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.confignode.conf;
 
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+
 public class ConfigNodeConstant {
 
   public static final String GLOBAL_NAME = "IoTDB-ConfigNode";
@@ -31,7 +33,8 @@ public class ConfigNodeConstant {
   public static final String CONFIGNODE_JMX_PORT = "confignode.jmx.port";
 
   public static final String REMOVE_CONFIGNODE_USAGE =
-      "Executed failed, check usage: <Node-id>/<internal_address>:<internal_port>";
+      ConfigNodeMessages
+          .EXCEPTION_EXECUTED_FAILED_CHECK_USAGE_NODE_ID_INTERNAL_ADDRESS_INTERNAL_PORT_0852F64E;
 
   public static final String REMOVE_DATANODE_PROCESS = "[REMOVE_DATANODE_PROCESS]";
   public static final String REMOVE_AINODE_PROCESS = "[REMOVE_AINODE_PROCESS]";

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.udf.builtin;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.commons.utils.BlobUtils;
@@ -78,7 +79,7 @@ public class UDTFConst implements UDTF {
         .validateRequiredAttribute("type")
         .validate(
             type -> VALID_TYPES.contains((String) type),
-            "the given value type is not supported.",
+            CommonMessages.EXCEPTION_THE_GIVEN_VALUE_TYPE_IS_NOT_SUPPORTED_C2D711C3,
             validator.getParameters().getString("type"));
   }
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.agent.plugin.builtin.source.iotdb;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
@@ -38,7 +39,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 public class IoTDBSource implements PipeExtractor {
 
   private static final String PLACEHOLDER_ERROR_MSG =
-      "This class is a placeholder and should not be used.";
+      PipeMessages.MESSAGE_THIS_CLASS_IS_A_PLACEHOLDER_AND_SHOULD_NOT_BE_USED_A72EDAFA;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {

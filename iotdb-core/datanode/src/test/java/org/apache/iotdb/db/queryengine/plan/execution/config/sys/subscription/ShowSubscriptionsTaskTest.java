@@ -69,6 +69,8 @@ public class ShowSubscriptionsTaskTest {
         ColumnHeaderConstant.SUBSCRIPTION_ID, result.getResultSetHeader().getRespColumns().get(0));
     assertEquals(
         ColumnHeaderConstant.SEEK_GENERATION, result.getResultSetHeader().getRespColumns().get(19));
+    assertEquals(
+        ColumnHeaderConstant.READY_ON_DNS, result.getResultSetHeader().getRespColumns().get(20));
     assertEquals(1, resultSet.getPositionCount());
     assertEquals("topic_group", resultSet.getColumn(0).getBinary(0).toString());
     assertEquals("CATCHING_UP", resultSet.getColumn(5).getBinary(0).toString());
@@ -76,5 +78,6 @@ public class ShowSubscriptionsTaskTest {
     assertEquals(5L, resultSet.getColumn(8).getLong(0));
     assertEquals(20L, resultSet.getColumn(9).getLong(0));
     assertEquals(4L, resultSet.getColumn(19).getLong(0));
+    assertEquals("[]", resultSet.getColumn(20).getBinary(0).toString());
   }
 }

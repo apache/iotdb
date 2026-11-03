@@ -23,9 +23,13 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.table.ColumnInAlterException;
 import org.apache.iotdb.commons.exception.table.ColumnInDeletionException;
 import org.apache.iotdb.commons.exception.table.TableInDeletionException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -37,6 +41,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.PreAlterColumnD
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
@@ -371,6 +376,34 @@ public class ClusterSchemaManagerTest {
 
   private static FieldColumnSchema field(final String columnName) {
     return new FieldColumnSchema(columnName, TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4);
+  }
+
+  @Test
+  public void testAddColumnIgnoresNonFieldColumnNamesAsSources() throws Exception {
+    final String database = "root.source_name_test";
+    final String viewName = "tree_view";
+    final ClusterSchemaInfo clusterSchemaInfo = new ClusterSchemaInfo();
+    clusterSchemaInfo.createDatabase(
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase,
+            new TDatabaseSchema(database).setIsTableModel(true)));
+    final TsTable view = new TsTable(viewName);
+    Assert.assertNull(TreeViewSchema.setPathPattern(view, new PartialPath("root.sg.**")));
+    view.addColumnSchema(new FieldColumnSchema("s1", TSDataType.INT32));
+    view.addColumnSchema(new TagColumnSchema("dev_s1", TSDataType.STRING));
+    clusterSchemaInfo.preCreateTableView(
+        new PreCreateTableViewPlan(database, view, TableNodeStatus.PRE_CREATE));
+    clusterSchemaInfo.commitCreateTable(new CommitCreateTablePlan(database, viewName));
+    final ClusterSchemaManager clusterSchemaManager = managerOf(clusterSchemaInfo);
+
+    // The TAG column dev_s1 is not a source measurement, so it must not block this FROM column.
+    final FieldColumnSchema test = new FieldColumnSchema("test", TSDataType.INT32);
+    TreeViewSchema.setOriginalName(test, "dev_s1");
+    final Pair<TSStatus, TsTable> result =
+        clusterSchemaManager.tableColumnCheckForColumnExtension(
+            database, viewName, new ArrayList<>(Collections.singletonList(test)), true);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.getLeft().getCode());
+    Assert.assertNotNull(result.getRight().getColumnSchema("test"));
   }
 
   private static ClusterSchemaManager managerOf(final ClusterSchemaInfo clusterSchemaInfo) {

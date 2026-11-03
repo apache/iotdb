@@ -43,6 +43,11 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class IoTDBConnectionTest {
@@ -118,5 +123,39 @@ public class IoTDBConnectionTest {
   public void setTimeoutTest() throws SQLException {
     connection.setQueryTimeout(60);
     Assert.assertEquals(60, connection.getQueryTimeout());
+  }
+
+  @Test
+  public void testReadOnlyIsAcceptedAsHint() throws SQLException {
+    Assert.assertFalse(connection.isReadOnly());
+    connection.setReadOnly(true);
+    Assert.assertTrue(connection.isReadOnly());
+    connection.setReadOnly(false);
+    Assert.assertFalse(connection.isReadOnly());
+  }
+
+  @Test
+  public void testNewConnectionIsInAutoCommitMode() {
+    Assert.assertTrue(new IoTDBConnection().getAutoCommit());
+  }
+
+  @Test
+  public void testCatalogIsNullInTableDialect() throws SQLException {
+    IoTDBConnection tableConnection = spy(new IoTDBConnection());
+    doReturn(Constant.TABLE_DIALECT).when(tableConnection).getSqlDialect();
+    Assert.assertNull(tableConnection.getCatalog());
+
+    // The tree model keeps its catalog, which its DatabaseMetaData compares against
+    Assert.assertEquals("Apache IoTDB", connection.getCatalog());
+  }
+
+  @Test
+  public void testSetCatalogToNullIsIgnoredInTableDialect() throws SQLException {
+    IoTDBConnection tableConnection = spy(new IoTDBConnection());
+    doReturn(Constant.TABLE_DIALECT).when(tableConnection).getSqlDialect();
+
+    tableConnection.setCatalog(null);
+
+    verify(tableConnection, never()).prepareStatement(anyString());
   }
 }

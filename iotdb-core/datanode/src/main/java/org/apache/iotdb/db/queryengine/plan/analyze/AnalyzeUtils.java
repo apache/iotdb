@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
@@ -56,6 +58,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTreeRewriter;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TimeRange;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -86,6 +89,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
@@ -141,10 +145,10 @@ public class AnalyzeUtils {
             public PredicateParseResult visitExpression(
                 final Expression node, final PredicateParseContext context) {
               throw new SemanticException(
-                  DataNodeQueryMessages.UNSUPPORTED_EXPRESSION
-                      + node
-                      + " in "
-                      + context.rootExpression);
+                  String.format(
+                      DataNodeQueryMessages.EXCEPTION_ARG_IN_ARG_DF5B49C2,
+                      Objects.toString(DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + node),
+                      Objects.toString(context.rootExpression)));
             }
           };
 
@@ -169,7 +173,9 @@ public class AnalyzeUtils {
     validateSchema(analysis, insertBaseStatement, schemaValidation);
 
     InsertBaseStatement realStatement =
-        removeLogicalView ? removeLogicalView(analysis, insertBaseStatement) : insertBaseStatement;
+        removeLogicalView
+            ? removeLogicalView(analysis, insertBaseStatement, context)
+            : insertBaseStatement;
     if (analysis.isFinishQueryAfterAnalyze()) {
       return realStatement;
     }
@@ -371,9 +377,19 @@ public class AnalyzeUtils {
   }
 
   public static InsertBaseStatement removeLogicalView(
-      IAnalysis analysis, InsertBaseStatement insertBaseStatement) {
+      IAnalysis analysis, InsertBaseStatement insertBaseStatement, IAuditEntity context) {
     try {
-      return insertBaseStatement.removeLogicalView();
+      final InsertBaseStatement realStatement = insertBaseStatement.removeLogicalView();
+      // Inserts into a logical view are rewritten to the view's source series. Check the real
+      // target paths so a view created before this restriction cannot write root.__system.
+      final TSStatus systemDatabaseStatus =
+          TreeAccessCheckVisitor.checkSystemDatabaseWrite(
+              context, realStatement.getDevicePathsStream().toList());
+      if (systemDatabaseStatus != null) {
+        analysis.setFinishQueryAfterAnalyze(true);
+        analysis.setFailStatus(systemDatabaseStatus);
+      }
+      return realStatement;
     } catch (SemanticException e) {
       analysis.setFinishQueryAfterAnalyze(true);
       if (e.getCause() instanceof IoTDBException) {
@@ -401,8 +417,8 @@ public class AnalyzeUtils {
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.DATABASE_NOT_EXIST.getStatusCode(),
-              "Database not exists and failed to create automatically "
-                  + "because enable_auto_create_schema is FALSE."));
+              DataNodeQueryMessages
+                  .EXCEPTION_DATABASE_NOT_EXISTS_AND_FAILED_TO_CREATE_AUTOMATICALLY_BECAUSE_ENABLE_AUTO_CREATE_SCHEMA_IS_FALSE_C25F3F18));
     }
     analysis.setDataPartitionInfo(dataPartition);
   }
@@ -654,7 +670,7 @@ public class AnalyzeUtils {
       throw new SemanticException(
           DataNodeQueryMessages.LEFT_HAND_EXPRESSION_IS_NOT_AN_IDENTIFIER + leftHandExp);
     }
-    String columnName = ((Identifier) leftHandExp).getValue();
+    String columnName = ((Identifier) leftHandExp).getValue().toLowerCase(Locale.ENGLISH);
     final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
     if (Objects.nonNull(columnSchema)
         && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
@@ -680,7 +696,7 @@ public class AnalyzeUtils {
       throw new SemanticException(
           DataNodeQueryMessages.LEFT_HAND_EXPRESSION_IS_NOT_AN_IDENTIFIER + leftHandExp);
     }
-    String columnName = ((Identifier) leftHandExp).getValue();
+    String columnName = ((Identifier) leftHandExp).getValue().toLowerCase(Locale.ENGLISH);
     final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
     if (Objects.nonNull(columnSchema)
         && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
@@ -706,7 +722,7 @@ public class AnalyzeUtils {
       throw new SemanticException(
           DataNodeQueryMessages.LEFT_HAND_EXPRESSION_IS_NOT_AN_IDENTIFIER + leftHandExp);
     }
-    String columnName = ((Identifier) leftHandExp).getValue();
+    String columnName = ((Identifier) leftHandExp).getValue().toLowerCase(Locale.ENGLISH);
     final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
     if (Objects.nonNull(columnSchema)
         && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
@@ -732,7 +748,7 @@ public class AnalyzeUtils {
       throw new SemanticException(
           DataNodeQueryMessages.LEFT_HAND_EXPRESSION_IS_NOT_AN_IDENTIFIER + leftHandExp);
     }
-    String columnName = ((Identifier) leftHandExp).getValue();
+    String columnName = ((Identifier) leftHandExp).getValue().toLowerCase(Locale.ENGLISH);
     final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
     if (Objects.nonNull(columnSchema)
         && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
@@ -826,7 +842,7 @@ public class AnalyzeUtils {
       return PredicateParseResult.time(oldPredicate);
     }
     // tag predicate
-    String columnName = identifier.getValue();
+    String columnName = identifier.getValue().toLowerCase(Locale.ENGLISH);
     final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
     if (Objects.nonNull(columnSchema)
         && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
@@ -937,7 +953,8 @@ public class AnalyzeUtils {
               final Identifier node,
               final Void context,
               final ExpressionTreeRewriter<Void> treeRewriter) {
-            return new SymbolReference(node.getValue());
+            // DELETE bypasses normal column resolution; use the schema's canonical names.
+            return new SymbolReference(node.getValue().toLowerCase(Locale.ENGLISH));
           }
         },
         expression);

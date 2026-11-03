@@ -320,23 +320,29 @@ public class RelationalAuthorStatement extends Statement {
       case CREATE_USER:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return AuthorityChecker.getTSStatus(
-              false, "Cannot create user has same name with admin user");
+              false,
+              DataNodeQueryMessages
+                  .EXCEPTION_CANNOT_CREATE_USER_HAS_SAME_NAME_WITH_ADMIN_USER_82BA70F7);
         }
         break;
       case CREATE_ROLE:
         if (AuthorityChecker.SUPER_USER.equals(roleName)) {
           return AuthorityChecker.getTSStatus(
-              false, "Cannot create role has same name with admin user");
+              false,
+              DataNodeQueryMessages
+                  .EXCEPTION_CANNOT_CREATE_ROLE_HAS_SAME_NAME_WITH_ADMIN_USER_E48B225D);
         }
         break;
       case DROP_USER:
         if (AuthorityChecker.SUPER_USER.equals(userName) || userName.equals(currentUser)) {
-          return AuthorityChecker.getTSStatus(false, "Cannot drop admin user or yourself");
+          return AuthorityChecker.getTSStatus(
+              false, DataNodeQueryMessages.EXCEPTION_CANNOT_DROP_ADMIN_USER_OR_YOURSELF_9D34698F);
         }
         break;
       case DROP_ROLE:
         if (AuthorityChecker.SUPER_USER.equals(roleName)) {
-          return AuthorityChecker.getTSStatus(false, "Cannot drop role with admin name");
+          return AuthorityChecker.getTSStatus(
+              false, DataNodeQueryMessages.EXCEPTION_CANNOT_DROP_ROLE_WITH_ADMIN_NAME_BB13543F);
         }
         break;
       case GRANT_ROLE_ANY:
@@ -348,17 +354,21 @@ public class RelationalAuthorStatement extends Statement {
       case REVOKE_USER_SYS:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return AuthorityChecker.getTSStatus(
-              false, "Cannot grant/revoke privileges of admin user");
+              false,
+              DataNodeQueryMessages
+                  .EXCEPTION_CANNOT_GRANT_REVOKE_PRIVILEGES_OF_ADMIN_USER_E5DE4709);
         }
         break;
       case GRANT_USER_ROLE:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
-          return AuthorityChecker.getTSStatus(false, "Cannot grant role to admin");
+          return AuthorityChecker.getTSStatus(
+              false, DataNodeQueryMessages.EXCEPTION_CANNOT_GRANT_ROLE_TO_ADMIN_C98C3A7A);
         }
         break;
       case REVOKE_USER_ROLE:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
-          return AuthorityChecker.getTSStatus(false, "Cannot revoke role from admin");
+          return AuthorityChecker.getTSStatus(
+              false, DataNodeQueryMessages.EXCEPTION_CANNOT_REVOKE_ROLE_FROM_ADMIN_249835A2);
         }
         break;
       case GRANT_ROLE_ALL:
@@ -367,7 +377,9 @@ public class RelationalAuthorStatement extends Statement {
       case REVOKE_USER_ALL:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return AuthorityChecker.getTSStatus(
-              false, "Cannot grant/revoke all privileges of admin user");
+              false,
+              DataNodeQueryMessages
+                  .EXCEPTION_CANNOT_GRANT_REVOKE_ALL_PRIVILEGES_OF_ADMIN_USER_85CE7A1D);
         }
         break;
       case GRANT_USER_DB:
@@ -376,16 +388,23 @@ public class RelationalAuthorStatement extends Statement {
       case REVOKE_ROLE_DB:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return AuthorityChecker.getTSStatus(
-              false, "Cannot grant/revoke privileges of admin user");
+              false,
+              DataNodeQueryMessages
+                  .EXCEPTION_CANNOT_GRANT_REVOKE_PRIVILEGES_OF_ADMIN_USER_E5DE4709);
         }
         if (InformationSchema.INFORMATION_DATABASE.equals(database)) {
           return AuthorityChecker.getTSStatus(
-              false, "Cannot grant or revoke any privileges to information_schema");
+              false,
+              DataNodeQueryMessages
+                  .EXCEPTION_CANNOT_GRANT_OR_REVOKE_ANY_PRIVILEGES_TO_INFORMATION_SCHEMA_294F5703);
         }
         if (Audit.TABLE_MODEL_AUDIT_DATABASE.equals(database)) {
           return AuthorityChecker.getTSStatus(
               false,
-              "Cannot grant or revoke any privileges to " + Audit.TABLE_MODEL_AUDIT_DATABASE);
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_CANNOT_GRANT_OR_REVOKE_ANY_PRIVILEGES_TO_ARG_60E70A9B,
+                  Objects.toString(Audit.TABLE_MODEL_AUDIT_DATABASE)));
         }
         break;
       case GRANT_USER_TB:
@@ -394,16 +413,23 @@ public class RelationalAuthorStatement extends Statement {
       case REVOKE_ROLE_TB:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return AuthorityChecker.getTSStatus(
-              false, "Cannot grant/revoke privileges of admin user");
+              false,
+              DataNodeQueryMessages
+                  .EXCEPTION_CANNOT_GRANT_REVOKE_PRIVILEGES_OF_ADMIN_USER_E5DE4709);
         }
         if (InformationSchema.INFORMATION_DATABASE.equals(database)) {
           return AuthorityChecker.getTSStatus(
-              false, "Cannot grant or revoke any privileges to information_schema");
+              false,
+              DataNodeQueryMessages
+                  .EXCEPTION_CANNOT_GRANT_OR_REVOKE_ANY_PRIVILEGES_TO_INFORMATION_SCHEMA_294F5703);
         }
         if (Audit.TABLE_MODEL_AUDIT_DATABASE.equals(database)) {
           return AuthorityChecker.getTSStatus(
               false,
-              "Cannot grant or revoke any privileges to " + Audit.TABLE_MODEL_AUDIT_DATABASE);
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_CANNOT_GRANT_OR_REVOKE_ANY_PRIVILEGES_TO_ARG_60E70A9B,
+                  Objects.toString(Audit.TABLE_MODEL_AUDIT_DATABASE)));
         }
         break;
       default:

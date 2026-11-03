@@ -86,6 +86,7 @@ import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
@@ -206,9 +207,10 @@ public class TsFileProcessor {
 
   private final AtomicBoolean isTotallyGeneratedByPipe = new AtomicBoolean(true);
 
-  private static final String FLUSH_QUERY_WRITE_LOCKED = "{}: {} get flushQueryLock write lock";
+  private static final String FLUSH_QUERY_WRITE_LOCKED =
+      StorageEngineMessages.MESSAGE_ARG_ARG_GET_FLUSHQUERYLOCK_WRITE_LOCK_687C85BC;
   private static final String FLUSH_QUERY_WRITE_RELEASE =
-      "{}: {} get flushQueryLock write lock released";
+      StorageEngineMessages.MESSAGE_ARG_ARG_GET_FLUSHQUERYLOCK_WRITE_LOCK_RELEASED_AA87CEE1;
 
   /** Close file listener. */
   private final List<CloseFileListener> closeFileListeners = new CopyOnWriteArrayList<>();
@@ -243,10 +245,8 @@ public class TsFileProcessor {
     this.tsFileResource = new TsFileResource(tsfile, this);
     this.dataRegionInfo = dataRegionInfo;
     this.writer =
-        new RestorableTsFileIOWriter(
-            tsfile,
-            EncryptDBUtils.getFirstEncryptParamFromDatabase(
-                dataRegionInfo.getDataRegion().getDatabaseName()));
+        EncryptDBUtils.createRestorableWriterForNewFile(
+            tsfile, dataRegionInfo.getDataRegion().getDatabaseName());
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.walNode =
         WALManager.getInstance()
@@ -544,6 +544,8 @@ public class TsFileProcessor {
                 dataRegionInfo.getDataRegion().getDatabaseName(),
                 dataRegionInfo.getDataRegion().getDataRegionIdString());
     workMemTable.setWriteMemoryManager(dataRegionInfo.getWriteMemoryManager());
+    workMemTable.setEncryptParameter(
+        EncryptUtils.getEncryptParameter(writer.getEncryptParameter()));
     walNode.onMemTableCreated(workMemTable, tsFileResource.getTsFilePath());
   }
 

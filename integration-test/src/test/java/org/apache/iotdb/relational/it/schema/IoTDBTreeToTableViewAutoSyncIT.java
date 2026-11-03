@@ -600,6 +600,32 @@ public class IoTDBTreeToTableViewAutoSyncIT {
     }
   }
 
+  /**
+   * A TAG column name is not a source measurement. It must not prevent an explicit FROM column from
+   * referencing a tree measurement with the same name.
+   */
+  @Test
+  public void testTagColumnNameDoesNotBlockFromSource() throws Exception {
+    final String treeDb = "root.as21";
+    final String viewDb = "as21";
+    try (Connection tree = treeConnection();
+        Connection table = tableConnection()) {
+      execute(tree, "CREATE DATABASE " + treeDb);
+      execute(tree, "CREATE TIMESERIES " + treeDb + ".d1.s1 DOUBLE");
+
+      execute(table, "CREATE DATABASE " + viewDb);
+      execute(table, "USE " + viewDb);
+      execute(table, "CREATE VIEW v (dev STRING TAG, dev_s1 STRING TAG) AS " + treeDb + ".**");
+
+      // Create the measurement after the view so that it is not auto-detected as a column.
+      execute(tree, "CREATE TIMESERIES " + treeDb + ".d1.dev_s1 DOUBLE");
+
+      execute(table, "ALTER VIEW v ADD COLUMN test DOUBLE FIELD FROM dev_s1");
+
+      Assert.assertEquals("DOUBLE", fieldColumns(table, viewDb, "v").get("test"));
+    }
+  }
+
   // ==================== helpers ====================
 
   private static Connection treeConnection() throws SQLException {

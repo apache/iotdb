@@ -375,7 +375,6 @@ public class PipeParameters {
   public static class KeyReducer {
 
     private static final Set<String> FIRST_PREFIXES = new HashSet<>();
-    private static final Set<String> SECOND_PREFIXES = new HashSet<>();
 
     static {
       FIRST_PREFIXES.add("extractor.");
@@ -383,8 +382,6 @@ public class PipeParameters {
       FIRST_PREFIXES.add("processor.");
       FIRST_PREFIXES.add("connector.");
       FIRST_PREFIXES.add("sink.");
-
-      SECOND_PREFIXES.add("opcua.");
     }
 
     static String shallowReduce(String key) {
@@ -409,12 +406,6 @@ public class PipeParameters {
         if (lowerCaseKey.startsWith(prefix)) {
           key = key.substring(prefix.length());
           lowerCaseKey = lowerCaseKey.substring(prefix.length());
-          break;
-        }
-      }
-      for (final String prefix : SECOND_PREFIXES) {
-        if (lowerCaseKey.startsWith(prefix)) {
-          key = key.substring(prefix.length());
           break;
         }
       }
