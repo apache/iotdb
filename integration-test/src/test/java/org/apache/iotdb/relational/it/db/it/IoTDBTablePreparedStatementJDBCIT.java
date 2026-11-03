@@ -495,4 +495,109 @@ public class IoTDBTablePreparedStatementJDBCIT {
       }
     }
   }
+
+  @Test
+  public void testPreparedStatementWithTimestampProjection() throws SQLException {
+    try (Connection connection = getConnection();
+        Statement stmt = connection.createStatement()) {
+      stmt.execute("USE " + DATABASE_NAME);
+      // Self-contained fixture: the all-types table is created by another test method
+      stmt.execute(
+          "CREATE TABLE IF NOT EXISTS timestamp_projection_table("
+              + "int32_col INT32 FIELD, timestamp_col TIMESTAMP FIELD)");
+      stmt.execute(
+          "INSERT INTO timestamp_projection_table VALUES "
+              + "(2025-06-01T00:00:00, 123, 2025-06-15T10:30:00)");
+
+      // TIMESTAMP is a valid table-model field type and must keep its mapping as well
+      try (PreparedStatement ps =
+          connection.prepareStatement(
+              "SELECT timestamp_col, int32_col FROM timestamp_projection_table "
+                  + "WHERE int32_col = ?")) {
+        ps.setInt(1, 123);
+        try (ResultSet rs = ps.executeQuery()) {
+          assertTrue(rs.next());
+          assertEquals(
+              Timestamp.valueOf("2025-06-15 10:30:00").getTime(), rs.getTimestamp(1).getTime());
+          assertEquals(123, rs.getInt(2));
+          assertEquals(
+              Timestamp.valueOf("2025-06-15 10:30:00").getTime(),
+              rs.getTimestamp("timestamp_col").getTime());
+          assertEquals(123, rs.getInt("int32_col"));
+          assertFalse(rs.next());
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testPreparedStatementWithReorderedProjection() throws SQLException {
+    try (Connection connection = getConnection();
+        Statement stmt = connection.createStatement()) {
+      stmt.execute("USE " + DATABASE_NAME);
+
+      // Projection order ("value", "name") differs from the materialized order
+      try (PreparedStatement ps =
+          connection.prepareStatement("SELECT value, name FROM test_table WHERE int_value = ?")) {
+        ps.setInt(1, 20);
+        try (ResultSet rs = ps.executeQuery()) {
+          assertTrue(rs.next());
+          ResultSetMetaData metaData = rs.getMetaData();
+          assertEquals(2, metaData.getColumnCount());
+          assertEquals("value", metaData.getColumnName(1));
+          assertEquals("name", metaData.getColumnName(2));
+          assertEquals(200.3, rs.getDouble(1), 0.001);
+          assertEquals("Bob", rs.getString(2));
+          assertEquals("Bob", rs.getString("name"));
+          assertEquals(200.3, rs.getDouble("value"), 0.001);
+          assertFalse(rs.next());
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testPreparedStatementWithRepeatedProjection() throws SQLException {
+    try (Connection connection = getConnection();
+        Statement stmt = connection.createStatement()) {
+      stmt.execute("USE " + DATABASE_NAME);
+
+      // The same physical column is projected twice under different aliases
+      try (PreparedStatement ps =
+          connection.prepareStatement(
+              "SELECT name AS x, name AS y FROM test_table WHERE int_value = ?")) {
+        ps.setInt(1, 20);
+        try (ResultSet rs = ps.executeQuery()) {
+          assertTrue(rs.next());
+          assertEquals("Bob", rs.getString(1));
+          assertEquals("Bob", rs.getString(2));
+          assertEquals("Bob", rs.getString("x"));
+          assertEquals("Bob", rs.getString("y"));
+          assertFalse(rs.next());
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testPreparedStatementWithIdentityProjection() throws SQLException {
+    try (Connection connection = getConnection();
+        Statement stmt = connection.createStatement()) {
+      stmt.execute("USE " + DATABASE_NAME);
+
+      // Identity mapping: a regression control for the two cases above
+      try (PreparedStatement ps =
+          connection.prepareStatement("SELECT name, value FROM test_table WHERE int_value = ?")) {
+        ps.setInt(1, 20);
+        try (ResultSet rs = ps.executeQuery()) {
+          assertTrue(rs.next());
+          assertEquals("Bob", rs.getString(1));
+          assertEquals(200.3, rs.getDouble(2), 0.001);
+          assertEquals("Bob", rs.getString("name"));
+          assertEquals(200.3, rs.getDouble("value"), 0.001);
+          assertFalse(rs.next());
+        }
+      }
+    }
+  }
 }
