@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.udf.builtin.String;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -46,7 +47,7 @@ public class UDTFStrLocate implements UDTF {
         .validateInputSeriesDataType(0, Type.TEXT, Type.STRING)
         .validate(
             target -> ((String) target).length() > 0,
-            "target should not be empty",
+            CommonMessages.EXCEPTION_TARGET_SHOULD_NOT_BE_EMPTY_1B2C02C6,
             validator.getParameters().getString("target"));
   }
 

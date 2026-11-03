@@ -152,6 +152,35 @@ public class PipeMemoryManager {
         * totalNonFloatingMemorySizeInBytes;
   }
 
+  private boolean isEnoughForTsFileParserMemory(
+      final long extraMemoryInBytes, final long totalNonFloatingMemorySizeInBytes) {
+    return (double) usedMemorySizeInBytesOfTablets
+            + (double) usedMemorySizeInBytesOfTsFiles
+            + (double) extraMemoryInBytes
+        < EXCEED_PROTECT_THRESHOLD
+            * allowedMaxMemorySizeInBytesOfTabletsAndTsFiles(totalNonFloatingMemorySizeInBytes);
+  }
+
+  /** Reports both global availability and the category limits that can reject a resize. */
+  public synchronized String getResizeFailureMessage(final int retries, final long requestedSize) {
+    final long totalNonFloatingMemorySizeInBytes = getTotalNonFloatingMemorySizeInBytes();
+    final double combinedLimit =
+        allowedMaxMemorySizeInBytesOfTabletsAndTsFiles(totalNonFloatingMemorySizeInBytes);
+    return String.format(
+        DataNodePipeMessages
+            .EXCEPTION_FORCERESIZE_FAILED_AFTER_ARG_RETRIES_TOTAL_ARG_BYTES_USED_ARG_BYTES_USEDTABLETS_ARG_BYTES_USEDTSFILES_ARG_BYTES_TABLETLIMIT_ARG_BYTES_TSFILELIMIT_ARG_BYTES_TABLETANDTSFILELIMIT_ARG_BYTES_PROTECTEDPARSERLIMIT_ARG_BYTES_REQUESTED_ARG_BYTES_311C8C7E,
+        retries,
+        totalNonFloatingMemorySizeInBytes,
+        memoryBlock.getUsedMemoryInBytes(),
+        usedMemorySizeInBytesOfTablets,
+        usedMemorySizeInBytesOfTsFiles,
+        Math.round(allowedMaxMemorySizeInBytesOfTablets(totalNonFloatingMemorySizeInBytes)),
+        Math.round(allowedMaxMemorySizeInBytesOfTsTiles(totalNonFloatingMemorySizeInBytes)),
+        Math.round(combinedLimit),
+        Math.round(EXCEED_PROTECT_THRESHOLD * combinedLimit),
+        requestedSize);
+  }
+
   private static long getTsFileParserMemorySizeInBytes() {
     return Math.max(
         PIPE_CONFIG.getTsFileParserMemory(), PIPE_CONFIG.getPipeMemoryAllocateMinSizeInBytes());
@@ -556,6 +585,10 @@ public class PipeMemoryManager {
 
   private boolean isHardEnoughForResizing(
       final PipeMemoryBlock block, final long extraMemoryInBytes) {
+    if (block instanceof PipeTsFileParserMemoryBlock) {
+      return isEnoughForTsFileParserMemory(
+          extraMemoryInBytes, getTotalNonFloatingMemorySizeInBytes());
+    }
     if (!(block instanceof PipeTabletMemoryBlock) && !(block instanceof PipeTsFileMemoryBlock)) {
       return true;
     }
@@ -755,6 +788,39 @@ public class PipeMemoryManager {
       throws PipeRuntimeOutOfMemoryCriticalException {
     return forceAllocateForTabletWithRetry(
         name, tabletSizeInBytes, PipeMemoryBlockCategory.EVENT_CHILD, null, parent);
+  }
+
+  /** Allocates TsFile parser memory against the protected tablet + TsFile combined quota. */
+  public PipeTsFileParserMemoryBlock forceAllocateForTsFileParserWithRetry(
+      final String name, final long parserMemorySizeInBytes, final Object assigner) {
+    return forceAllocateForTsFileParserWithRetry(name, parserMemorySizeInBytes, assigner, null);
+  }
+
+  /** Allocates TsFile parser memory as an event child against the combined quota. */
+  public synchronized PipeTsFileParserMemoryBlock forceAllocateForTsFileParserWithRetry(
+      final String name,
+      final long parserMemorySizeInBytes,
+      final Object assigner,
+      final PipeMemoryBlock parent) {
+    final PipeMemoryBlockCategory category =
+        parent == null ? PipeMemoryBlockCategory.PARSER : PipeMemoryBlockCategory.EVENT_CHILD;
+    final PipeTsFileParserMemoryBlock block =
+        (PipeTsFileParserMemoryBlock)
+            registerMemoryBlock(
+                name, 0, PipeMemoryBlockType.TS_FILE_PARSER, category, assigner, parent);
+    if (!PIPE_MEMORY_MANAGEMENT_ENABLED || parserMemorySizeInBytes == 0) {
+      return block;
+    }
+
+    try {
+      // Initial allocation and subsequent growth must check the same post-allocation usage
+      // under the manager lock, including after a wait releases that lock.
+      forceResize(block, parserMemorySizeInBytes);
+      return block;
+    } catch (final RuntimeException e) {
+      release(block);
+      throw e;
+    }
   }
 
   public PipeTsFileMemoryBlock forceAllocateForTsFileWithRetry(
@@ -1001,17 +1067,14 @@ public class PipeMemoryManager {
 
     if (force) {
       throw new PipeRuntimeOutOfMemoryCriticalException(
-          String.format(
-              DataNodePipeMessages
-                  .PIPE_EXCEPTION_FORCERESIZE_FAILED_TO_ALLOCATE_MEMORY_AFTER_D_RETRIES_TOTAL_8C6948BC,
-              memoryAllocateMaxRetries,
-              getTotalNonFloatingMemorySizeInBytes(),
-              memoryBlock.getUsedMemoryInBytes(),
-              sizeInBytes));
+          getResizeFailureMessage(memoryAllocateMaxRetries, sizeInBytes));
     }
   }
 
   private boolean tryResizeInternal(final PipeMemoryBlock block, final long targetSize) {
+    if (block.isReleased()) {
+      return false;
+    }
     // Parent blocks expose an aggregate usage. Do not let a direct resize reduce that aggregate
     // below the bytes still owned by live children.
     final long normalizedTargetSize =
@@ -1248,6 +1311,11 @@ public class PipeMemoryManager {
       case TABLET:
         returnedMemoryBlock =
             new PipeTabletMemoryBlock(this, name, 0, normalizedCategory, null, normalizedParent);
+        break;
+      case TS_FILE_PARSER:
+        returnedMemoryBlock =
+            new PipeTsFileParserMemoryBlock(
+                this, name, 0, normalizedCategory, null, normalizedParent);
         break;
       case TS_FILE:
         returnedMemoryBlock =

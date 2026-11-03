@@ -63,7 +63,8 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
       FunctionArguments functionArguments,
       List<Type> inputDataTypes,
       IoTDBLocal ioTDBLocal) {
-    checkArgument(ioTDBLocal != null, "IoTDBLocal must not be null for UDAF");
+    checkArgument(
+        ioTDBLocal != null, CalcMessages.EXCEPTION_IOTDBLOCAL_MUST_NOT_BE_NULL_FOR_UDAF_CF7EF593);
     this.aggregateFunction = aggregateFunction;
     this.functionArguments = functionArguments;
     this.stateArray = new ObjectBigArray<>();

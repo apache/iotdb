@@ -67,7 +67,8 @@ public class ExternalServiceManagementService {
       LoggerFactory.getLogger(ExternalServiceManagementService.class);
 
   public static final String INSTANCE_NULL_ERROR_MSG =
-      "External Service instance is null when state is RUNNING!";
+      DataNodeMiscMessages
+          .EXCEPTION_EXTERNAL_SERVICE_INSTANCE_IS_NULL_WHEN_STATE_IS_RUNNING_B062C897;
 
   private ExternalServiceManagementService(String libRoot) {
     this.serviceInfos = new HashMap<>();

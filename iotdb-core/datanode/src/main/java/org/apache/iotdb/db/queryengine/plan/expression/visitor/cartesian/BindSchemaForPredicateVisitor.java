@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
 
 import org.apache.tsfile.external.commons.lang3.Validate;
 
@@ -47,6 +48,7 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.carte
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructBinaryExpressionsWithMemoryCheck;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpressionsWithMemoryCheck;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperandsWithMemoryCheck;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructUnaryExpressionsWithMemoryCheck;
 import static org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor.transformViewPath;
 import static org.apache.iotdb.db.utils.TypeInferenceUtils.bindTypeForBuiltinAggregationNonSeriesInputExpressions;
 
@@ -67,6 +69,14 @@ public class BindSchemaForPredicateVisitor
     }
     return reconstructBinaryExpressionsWithMemoryCheck(
         binaryExpression, leftExpressions, rightExpressions, context.getQueryContext());
+  }
+
+  @Override
+  public List<Expression> visitUnaryExpression(UnaryExpression unaryExpression, Context context) {
+    List<Expression> childExpressions =
+        process(unaryExpression.getExpression(), context.notRootClone());
+    return reconstructUnaryExpressionsWithMemoryCheck(
+        unaryExpression, childExpressions, context.getQueryContext());
   }
 
   @Override

@@ -41,6 +41,7 @@ import java.util.Set;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
+import static org.apache.iotdb.itbase.runtime.ClusterTestResultSet.getNodeResultSets;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -200,37 +201,39 @@ public class IoTDBUserDefinedTableFunctionIT {
         "large_result",
         "org.apache.iotdb.db.query.udf.example.relational.LargeResultTableFunction");
 
-    Set<String> returnedRows = new HashSet<>();
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("USE " + DATABASE_NAME);
-      try (ResultSet resultSet =
+      try (ResultSet clusterResult =
           statement.executeQuery(
               "SELECT * FROM large_result(vehicle, "
                   + LARGE_RESULT_REPEAT_COUNT
                   + ", "
                   + LARGE_RESULT_PAYLOAD_SIZE
                   + ")")) {
-        while (resultSet.next()) {
-          int repeatIndex = resultSet.getInt("repeat_index");
-          long time = resultSet.getLong("time");
-          Assert.assertTrue(repeatIndex >= 0 && repeatIndex < LARGE_RESULT_REPEAT_COUNT);
-          Assert.assertEquals(
-              repeatIndex + ":" + "x".repeat(LARGE_RESULT_PAYLOAD_SIZE),
-              resultSet.getString("payload"));
-          assertPassThroughColumns(resultSet, time);
-          Assert.assertTrue(
-              "Duplicate result row for time " + time + " and repeat index " + repeatIndex,
-              returnedRows.add(time + ":" + repeatIndex));
-        }
-      }
-    }
+        for (ResultSet resultSet : getNodeResultSets(clusterResult)) {
+          Set<String> returnedRows = new HashSet<>();
+          while (resultSet.next()) {
+            int repeatIndex = resultSet.getInt("repeat_index");
+            long time = resultSet.getLong("time");
+            Assert.assertTrue(repeatIndex >= 0 && repeatIndex < LARGE_RESULT_REPEAT_COUNT);
+            Assert.assertEquals(
+                repeatIndex + ":" + "x".repeat(LARGE_RESULT_PAYLOAD_SIZE),
+                resultSet.getString("payload"));
+            assertPassThroughColumns(resultSet, time);
+            Assert.assertTrue(
+                "Duplicate result row for time " + time + " and repeat index " + repeatIndex,
+                returnedRows.add(time + ":" + repeatIndex));
+          }
 
-    long[] inputTimes = new long[] {1, 2, 3, 5};
-    Assert.assertEquals(inputTimes.length * LARGE_RESULT_REPEAT_COUNT, returnedRows.size());
-    for (long time : inputTimes) {
-      for (int repeatIndex = 0; repeatIndex < LARGE_RESULT_REPEAT_COUNT; repeatIndex++) {
-        Assert.assertTrue(returnedRows.contains(time + ":" + repeatIndex));
+          long[] inputTimes = new long[] {1, 2, 3, 5};
+          Assert.assertEquals(inputTimes.length * LARGE_RESULT_REPEAT_COUNT, returnedRows.size());
+          for (long time : inputTimes) {
+            for (int repeatIndex = 0; repeatIndex < LARGE_RESULT_REPEAT_COUNT; repeatIndex++) {
+              Assert.assertTrue(returnedRows.contains(time + ":" + repeatIndex));
+            }
+          }
+        }
       }
     }
   }

@@ -115,7 +115,7 @@ public class SchemaMemMetricTableTest {
     table.addColumnSchema(
         new FieldColumnSchema("s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
     tableCache.preUpdateTable(DATABASE, table, null);
-    tableCache.commitUpdateTable(DATABASE, TABLE, null);
+    tableCache.commitUpdateTable(DATABASE, TABLE, null, null);
 
     final MemSchemaRegionStatistics statistics =
         new MemSchemaRegionStatistics(SCHEMA_REGION_ID, new MemSchemaEngineStatistics());

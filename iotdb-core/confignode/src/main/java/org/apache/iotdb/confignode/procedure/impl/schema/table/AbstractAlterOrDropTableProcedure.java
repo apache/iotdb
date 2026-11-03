@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.procedure.impl.schema.table;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
@@ -118,31 +117,22 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
     }
   }
 
-  protected void commitRelease(final ConfigNodeProcedureEnv env) {
-    commitRelease(env, null);
+  /**
+   * The request broadcast at commit-release. A subclass whose change also affects the tree-to-table
+   * view index of the DataNodes overrides this to declare the effect.
+   */
+  protected TUpdateTableReq buildCommitReleaseTableReq(final @Nullable String oldName) {
+    return SchemaUtils.buildCommitUpdateTableReq(database, table.getTableName(), oldName);
   }
 
-  protected void commitRelease(final ConfigNodeProcedureEnv env, final @Nullable String oldName) {
-    final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.commitReleaseTable(
-            database, table.getTableName(), env.getConfigManager(), oldName);
-    if (!failedResults.isEmpty()) {
-      LOGGER.warn(
-          ProcedureMessages.FAILED_TO_FOR_TABLE_TO_DATANODE_FAILURE_RESULTS,
-          getActionMessage(),
-          database,
-          table.getTableName(),
-          failedResults);
-    }
+  protected void commitReleaseWithHA(final ConfigNodeProcedureEnv env) {
+    commitReleaseWithHA(env, null);
   }
 
   protected void commitReleaseWithHA(
       final ConfigNodeProcedureEnv env, final @Nullable String oldName) {
-    final TUpdateTableReq req =
-        SchemaUtils.buildCommitUpdateTableReq(database, table.getTableName(), oldName);
-    final boolean proceeded =
-        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
-            .propagate(targets -> SchemaUtils.broadcastTableUpdate(req, targets));
+    final TUpdateTableReq req = buildCommitReleaseTableReq(oldName);
+    final boolean proceeded = SchemaUtils.commitReleaseTableWithHA(req, env.getConfigManager());
 
     if (!proceeded) {
       LOGGER.warn(
@@ -165,11 +155,11 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
   }
 
   protected void rollbackPreRelease(
-      final ConfigNodeProcedureEnv env, final @Nullable String tableName) {
+      final ConfigNodeProcedureEnv env, final @Nullable String oldName) {
     // A down DataNode must not block rollback either: proceed past provably-fenced DataNodes (which
     // resync on recovery) and only fail on an unacked DataNode that is not provably fenced.
     final TUpdateTableReq req =
-        SchemaUtils.rollbackUpdateTableReq(database, table.getTableName(), tableName);
+        SchemaUtils.rollbackUpdateTableReq(database, table.getTableName(), oldName);
     final boolean proceeded =
         new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
             .propagate(targets -> SchemaUtils.broadcastTableUpdate(req, targets));

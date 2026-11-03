@@ -168,7 +168,7 @@ public class DataNodeQueryContext {
         deviceCountAndMeasurementValues.get(tableName).get(deviceEntry).getRight();
     // if a device hits cache each time, the values recorded in context will be null
     if (values != null) {
-      TABLE_DEVICE_SCHEMA_CACHE.updateLastCacheIfExists(
+      TABLE_DEVICE_SCHEMA_CACHE.updateLastCacheFromQuery(
           tableName.getDatabaseName(),
           deviceEntry.getDeviceID(),
           values.keySet().toArray(new String[0]),

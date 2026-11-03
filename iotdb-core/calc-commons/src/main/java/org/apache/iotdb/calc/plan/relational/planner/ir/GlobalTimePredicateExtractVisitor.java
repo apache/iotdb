@@ -56,7 +56,7 @@ public class GlobalTimePredicateExtractVisitor
         Pair<Expression, Boolean>, GlobalTimePredicateExtractVisitor.Context> {
 
   private static final String NOT_SUPPORTED =
-      "visit() not implemented for %s in GlobalTimePredicateExtract.";
+      CalcMessages.EXCEPTION_VISIT_NOT_IMPLEMENTED_FOR_ARG_IN_GLOBALTIMEPREDICATEEXTRACT_936A2D52;
 
   /**
    * Extract global time predicate from query predicate.

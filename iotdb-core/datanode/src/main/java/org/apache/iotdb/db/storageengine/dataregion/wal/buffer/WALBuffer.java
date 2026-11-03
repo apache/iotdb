@@ -930,7 +930,8 @@ public class WALBuffer extends AbstractWALBuffer {
                     .STORAGE_LOG_FAIL_TO_READ_MEMTABLE_IDS_FROM_THE_WAL_FILE_OF_WAL_NODE_54B0056E,
                 id,
                 identifier,
-                e.getMessage());
+                e.getMessage(),
+                e);
           } catch (IOException e) {
             logger.warn(
                 StorageEngineMessages

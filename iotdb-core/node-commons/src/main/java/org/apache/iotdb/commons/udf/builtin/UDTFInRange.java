@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -51,7 +52,7 @@ public class UDTFInRange implements UDTF {
         .validateRequiredAttribute("lower")
         .validate(
             args -> (Double) args[0] >= (Double) args[1],
-            "Upper can not be smaller than lower.",
+            CommonMessages.EXCEPTION_UPPER_CAN_NOT_BE_SMALLER_THAN_LOWER_9041B33A,
             validator.getParameters().getDouble("upper"),
             validator.getParameters().getDouble("lower"));
   }

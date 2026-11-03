@@ -415,6 +415,58 @@ public class SubscriptionInfoTest {
   }
 
   @Test
+  public void testUnsubscribingRetainedInitialAndSnapshotTopicsPersistsMarkers() {
+    for (final String mode :
+        new String[] {TopicConstant.MODE_INITIAL_VALUE, TopicConstant.MODE_SNAPSHOT_VALUE}) {
+      final String consumerGroupId = "consumer-group-" + mode;
+      final String consumerId = "consumer";
+      final String topicName = "retained-topic-" + mode;
+      final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+      final Map<String, String> topicAttributes = new HashMap<>();
+      topicAttributes.put(TopicConstant.MODE_KEY, mode);
+      topicAttributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "true");
+      subscriptionInfo.createTopic(
+          new CreateTopicPlan(new TopicMeta(topicName, 1L, topicAttributes)));
+
+      final ConsumerGroupMeta currentMeta =
+          new ConsumerGroupMeta(
+              consumerGroupId, 1L, new ConsumerMeta(consumerId, 1L, Collections.emptyMap()));
+      currentMeta.addSubscription(consumerId, Collections.singleton(topicName));
+      subscriptionInfo.alterConsumerGroup(new AlterConsumerGroupPlan(currentMeta));
+
+      Assert.assertEquals(
+          TopicConstant.MODE_SNAPSHOT_VALUE.equals(mode),
+          subscriptionInfo.shouldRetainSubscriptionPipe(consumerGroupId, topicName, false));
+      Assert.assertFalse(
+          subscriptionInfo.shouldRetainSubscriptionPipe(consumerGroupId, topicName, true));
+
+      final ConsumerGroupMeta updatedMeta = currentMeta.deepCopy();
+      updatedMeta.removeSubscription(consumerId, Collections.singleton(topicName));
+      subscriptionInfo.retainSubscriptionProgress(currentMeta, updatedMeta);
+      subscriptionInfo.alterConsumerGroup(new AlterConsumerGroupPlan(updatedMeta));
+
+      Assert.assertTrue(updatedMeta.getRetainedTopicNames().contains(topicName));
+      Assert.assertTrue(
+          subscriptionInfo.shouldRetainSubscriptionPipe(consumerGroupId, topicName, false));
+
+      final ConsumerGroupMeta rejoinedMeta = updatedMeta.deepCopy();
+      rejoinedMeta.addSubscription(consumerId, Collections.singleton(topicName));
+      subscriptionInfo.retainSubscriptionProgress(updatedMeta, rejoinedMeta);
+      subscriptionInfo.alterConsumerGroup(new AlterConsumerGroupPlan(rejoinedMeta));
+      Assert.assertTrue(rejoinedMeta.getRetainedTopicNames().isEmpty());
+      Assert.assertEquals(
+          TopicConstant.MODE_SNAPSHOT_VALUE.equals(mode),
+          subscriptionInfo.shouldRetainSubscriptionPipe(consumerGroupId, topicName, false));
+
+      topicAttributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "false");
+      subscriptionInfo.alterTopic(
+          new AlterTopicPlan(new TopicMeta(topicName, 2L, topicAttributes)));
+      Assert.assertFalse(
+          subscriptionInfo.shouldRetainSubscriptionPipe(consumerGroupId, topicName, false));
+    }
+  }
+
+  @Test
   public void testAlterTopicDisablingRetentionRemovesUnsubscribedProgress() {
     final String consumerGroupId = "consumer-group";
     final String consumerId = "consumer";

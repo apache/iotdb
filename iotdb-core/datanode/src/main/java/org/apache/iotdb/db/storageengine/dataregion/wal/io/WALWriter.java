@@ -42,8 +42,8 @@ public class WALWriter extends LogWriter {
   }
 
   public WALWriter(File logFile, WALFileVersion version) throws IOException {
-    super(logFile, version);
-    this.version = version;
+    super(logFile, WALFormats.writeVersion(version));
+    this.version = WALFormats.writeVersion(version);
   }
 
   /**
@@ -68,7 +68,11 @@ public class WALWriter extends LogWriter {
 
   private synchronized void endFile() throws IOException {
     // The writer channel is write-only; its known version and size identify an empty header.
-    if (version != WALFileVersion.V1 && logChannel.size() == version.getVersionBytes().length) {
+    if (version != WALFileVersion.V1
+        && logChannel.size()
+            == (version == WALFileVersion.EXTENDED
+                ? dataStartOffset
+                : version.getVersionBytes().length)) {
       // A WAL with no entries is valid and has no marker or metadata trailer to append.
       super.close();
       return;
@@ -78,6 +82,10 @@ public class WALWriter extends LogWriter {
     // mark info part ends
     endMarker.serialize(markerBuffer);
     write(markerBuffer, false);
+    if (fileContext != null) {
+      fileContext.seal(logChannel, metaData, blockIndex++);
+      return;
+    }
     int metaDataSize = metaData.serializedSize(version);
 
     ByteBuffer buffer =
@@ -100,9 +108,12 @@ public class WALWriter extends LogWriter {
 
   @Override
   public void close() throws IOException {
+    if (!logChannel.isOpen()) {
+      return;
+    }
     try {
       endFile();
-    } catch (IOException | RuntimeException e) {
+    } catch (IOException | RuntimeException | Error e) {
       // In particular, failed recovery-file sealing must release the handle before its temporary
       // file can be removed on Windows, while preserving the original failure.
       try {

@@ -27,6 +27,7 @@ import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
+import org.apache.iotdb.itbase.runtime.ClusterTestResultSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -47,6 +48,7 @@ import java.text.DateFormat;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -65,6 +67,7 @@ import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.iotdb.itbase.env.BaseEnv.TABLE_SQL_DIALECT;
 import static org.apache.iotdb.itbase.env.BaseEnv.TREE_SQL_DIALECT;
+import static org.apache.iotdb.itbase.runtime.ClusterTestResultSet.getNodeResultSets;
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -277,6 +280,64 @@ public class TestUtils {
   public static void resultSetEqualTest(
       String sql, String[] expectedHeader, String[] expectedRetArray) {
     resultSetEqualTest(sql, expectedHeader, expectedRetArray, null);
+  }
+
+  /**
+   * Executes a tree-model query and checks unordered rows on every read node, including duplicate
+   * multiplicity.
+   *
+   * <p>Delegates to {@link #assertResultSetEqualUnordered(ResultSet, String, List)}, which uses
+   * {@link ClusterTestResultSet#getNodeResultSets(ResultSet)} to obtain each DataNode's underlying
+   * result set. Iterating those results bypasses the cluster wrapper's default cross-node,
+   * row-by-row comparison.
+   *
+   * <p>Use only when the query's final result does not require a particular row order or select a
+   * nondeterministic subset of rows.
+   */
+  public static void treeResultSetEqualTestUnordered(
+      String sql, String[] expectedHeader, String[] expectedRetArray) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      connection.setClientInfo("time_zone", "+00:00");
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        assertResultSetEqualUnordered(
+            resultSet, String.join(",", expectedHeader) + ",", Arrays.asList(expectedRetArray));
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  /**
+   * Executes a table-model query and checks unordered rows on every read node, including duplicate
+   * multiplicity. Selects {@code database} before the query when it is non-null.
+   *
+   * <p>Delegates to {@link #assertResultSetEqualUnordered(ResultSet, String, List)}, which uses
+   * {@link ClusterTestResultSet#getNodeResultSets(ResultSet)} to obtain each DataNode's underlying
+   * result set. Iterating those results bypasses the cluster wrapper's default cross-node,
+   * row-by-row comparison.
+   *
+   * <p>Use only when the query's final result does not require a particular row order or select a
+   * nondeterministic subset of rows.
+   */
+  public static void tableResultSetEqualTestUnordered(
+      String sql, String[] expectedHeader, String[] expectedRetArray, String database) {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection()) {
+      connection.setClientInfo("time_zone", "+00:00");
+      try (Statement statement = connection.createStatement()) {
+        if (database != null) {
+          statement.execute("use " + database);
+        }
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          assertResultSetEqualUnordered(
+              resultSet, String.join(",", expectedHeader) + ",", Arrays.asList(expectedRetArray));
+        }
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 
   public static void tableResultSetEqualTest(
@@ -807,6 +868,15 @@ public class TestUtils {
       final String expectedHeader,
       final Collection<String> expectedResult,
       final boolean printResult) {
+    if (expectedResult instanceof Set) {
+      List<ResultSet> nodeResults = getNodeResultSets(actualResultSet);
+      if (nodeResults.size() != 1 || nodeResults.get(0) != actualResultSet) {
+        for (ResultSet nodeResult : nodeResults) {
+          assertResultSetEqual(nodeResult, expectedHeader, expectedResult, printResult);
+        }
+        return;
+      }
+    }
     try {
       final ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
       final StringBuilder header = new StringBuilder();
@@ -868,27 +938,36 @@ public class TestUtils {
       String expectedHeader,
       Set<String> expectedRetSet,
       Consumer consumer) {
-    try {
-      ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
+    assertResultSetEqual(actualResultSet, expectedHeader, expectedRetSet, false);
+  }
+
+  /**
+   * Checks unordered rows on every node, preserving duplicate multiplicity.
+   *
+   * <p>The caller is responsible for ensuring that the query's final result has no ordering or
+   * arbitrary slice semantics that require deterministic row order.
+   */
+  public static void assertResultSetEqualUnordered(
+      ResultSet resultSet, String expectedHeader, List<String> expectedRows) throws SQLException {
+    List<String> sortedExpected = new ArrayList<>(expectedRows);
+    Collections.sort(sortedExpected);
+    for (ResultSet nodeResult : getNodeResultSets(resultSet)) {
+      ResultSetMetaData metadata = nodeResult.getMetaData();
       StringBuilder header = new StringBuilder();
-      for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-        header.append(resultSetMetaData.getColumnName(i)).append(",");
+      for (int i = 1; i <= metadata.getColumnCount(); i++) {
+        header.append(metadata.getColumnName(i)).append(",");
       }
       assertEquals(expectedHeader, header.toString());
-
-      Set<String> actualRetSet = new HashSet<>();
-
-      while (actualResultSet.next()) {
-        StringBuilder builder = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          builder.append(actualResultSet.getString(i)).append(",");
+      List<String> actualRows = new ArrayList<>();
+      while (nodeResult.next()) {
+        StringBuilder row = new StringBuilder();
+        for (int i = 1; i <= metadata.getColumnCount(); i++) {
+          row.append(nodeResult.getString(i)).append(",");
         }
-        actualRetSet.add(builder.toString());
+        actualRows.add(row.toString());
       }
-      assertStringSetEqual(expectedRetSet, actualRetSet);
-    } catch (Exception e) {
-      e.printStackTrace();
-      Assert.fail(String.valueOf(e));
+      Collections.sort(actualRows);
+      assertEquals(sortedExpected, actualRows);
     }
   }
 

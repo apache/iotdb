@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.processor.downsampling;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -68,8 +69,9 @@ public abstract class DownSamplingProcessor implements PipeProcessor {
     validator.validate(
         memoryLimitInBytes -> (Long) memoryLimitInBytes > 0,
         String.format(
-            "%s must be > 0, but got %s",
-            PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_KEY, memoryLimitInBytes),
+            DataNodePipeMessages.EXCEPTION_ARG_MUST_BE_0_BUT_GOT_ARG_B2A3D4A2,
+            PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_KEY,
+            memoryLimitInBytes),
         memoryLimitInBytes);
   }
 

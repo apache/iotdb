@@ -346,7 +346,10 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
     if (!impl.loadSnapshot(req.snapshotId)) {
       String message =
           String.format(
-              "Failed to load snapshot %s for consensus group %s", req.snapshotId, groupId);
+              IoTConsensusMessages
+                  .EXCEPTION_FAILED_TO_LOAD_SNAPSHOT_ARG_FOR_CONSENSUS_GROUP_ARG_F876AE5C,
+              req.snapshotId,
+              groupId);
       LOGGER.error(message);
       // Surface a region-migration-specific code (the snapshot load runs as part of the AddPeer
       // flow) rather than a generic internal error, so the coordinator's failure is meaningful.

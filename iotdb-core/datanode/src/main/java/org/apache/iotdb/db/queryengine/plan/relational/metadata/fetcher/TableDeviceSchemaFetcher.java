@@ -147,7 +147,7 @@ public class TableDeviceSchemaFetcher {
                   ? SessionManager.getInstance()
                       .getSessionInfoOfTableModel(SessionManager.getInstance().getCurrSession())
                   : context.getSession(),
-              "Fetch Device for insert",
+              DataNodeQueryMessages.MESSAGE_FETCH_DEVICE_FOR_INSERT_E0AF591F,
               LocalExecutionPlanner.getInstance().metadata,
               // Never timeout for insert
               Long.MAX_VALUE,
@@ -648,7 +648,7 @@ public class TableDeviceSchemaFetcher {
                       .getSessionInfo(SessionManager.getInstance().getCurrSession())
                   : mppQueryContext.getSession(),
               String.format(
-                  "fetch device for query %s : %s",
+                  DataNodeQueryMessages.MESSAGE_FETCH_DEVICE_FOR_QUERY_ARG_ARG_160027C4,
                   mppQueryContext == null ? "unknown" : mppQueryContext.getQueryId(),
                   mppQueryContext == null ? "unknown" : mppQueryContext.getSql()),
               LocalExecutionPlanner.getInstance().metadata,

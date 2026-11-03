@@ -101,7 +101,7 @@ public abstract class AbstractSetPropertiesProcedure
           LOGGER.info(ProcedureMessages.SET_PROPERTIES_TO_TABLE, database, tableName);
           break;
         case COMMIT_RELEASE:
-          commitRelease(env);
+          commitReleaseWithHA(env);
           LOGGER.info(
               ProcedureMessages.COMMIT_RELEASE_INFO_OF_TABLE_WHEN_SETTING_PROPERTIES,
               database,

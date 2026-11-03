@@ -454,6 +454,12 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           consumerConfig);
     }
 
+    // A previous inactivity cleanup or metadata race may have removed the local broker while the
+    // coordinator still has a non-empty consumer-group metadata record. Reconcile that state before
+    // exposing the consumer to subsequent requests. The operation is idempotent and serialized with
+    // metadata pushes by SubscriptionConsumerAgent.
+    SubscriptionAgent.consumer().ensureConsumerGroupBroker(consumerGroupId);
+
     activateConsumer(consumerConfig);
 
     final int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();

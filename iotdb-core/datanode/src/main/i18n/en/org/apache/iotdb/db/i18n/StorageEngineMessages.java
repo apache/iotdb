@@ -20,6 +20,25 @@
 package org.apache.iotdb.db.i18n;
 
 public final class StorageEngineMessages {
+  public static final String EXCEPTION_CANNOT_ENABLE_WAL_NODE_ARG_BECAUSE_ITS_PREVIOUS_RECOVERY_FAILED_RESTART_AFTER_RESOLVING_THE_RECOVERY_FAILURE_56DF9750 =
+      "Cannot enable WAL node %s because its previous recovery failed; restart after resolving the recovery failure.";
+  public static final String LOG_WAL_NODE_RECOVERY_IN_ARG_WAS_INCOMPLETE_RETAINING_WAL_AND_CHECKPOINT_FILES_FOR_RETRY_48C1F7BF =
+      "WAL node recovery in {} was incomplete; retaining WAL and checkpoint files for retry.";
+  public static final String EXCEPTION_FILE_ENCRYPTION_PARAMETER_PROVIDER_RETURNED_NULL_15C41723 =
+      "File encryption parameter provider returned null";
+  public static final String EXCEPTION_PRECALCULATED_CHUNK_STAGING_IS_NOT_SUPPORTED_BY_THE_FILE_ENCRYPTION_POLICY_13DA8C32 =
+      "Precalculated chunk staging is not supported by the file encryption policy";
+  public static final String EXCEPTION_MULTIPLE_FILE_ENCRYPTION_PARAMETER_PROVIDERS_ARE_CONFIGURED_5E7DDA5B =
+      "Multiple file encryption parameter providers are configured";
+  public static final String EXCEPTION_UNSUPPORTED_OR_UNAVAILABLE_WAL_FORMAT_4629CFE4 =
+      "Unsupported or unavailable WAL format";
+  public static final String EXCEPTION_MULTIPLE_WAL_FORMAT_PROVIDERS_ARE_CONFIGURED_DD78877D =
+      "Multiple WAL format providers are configured";
+  public static final String EXCEPTION_INVALID_WAL_LOGICAL_POSITION_8CF34AFE =
+      "Invalid WAL logical position";
+
+  public static final String LOG_REBUILT_UNREADABLE_WAL_FOOTER_FILE_ARG_VERSION_ARG_ORIGINALFILEBYTES_ARG_WRITERPROGRESS_ARG_1DBF836E =
+      "Rebuilt unreadable WAL footer: file={}, version={}, originalFileBytes={}, writerProgress={}.";
 
   public static final String MESSAGE_LOAD_TSFILE_SLICE_BODY_IS_NULL_OR_EMPTY_2A65366C =
       "Load TsFile slice body is null or empty";
@@ -40,6 +59,80 @@ public final class StorageEngineMessages {
 
     public static final String IS_NOT_SUPPORTED =
       " is not supported";
+
+  public static final String EXCEPTION_FAILED_TO_ITERATE_TABLETS_WHILE_LOADING_TSFILE_4E6289F3 =
+      "Failed to iterate tablets while loading TsFile.";
+  public static final String EXCEPTION_USAGE_WALPRINTTOOL_FILE_11D2FB79 =
+      "Usage: WALPrintTool <file>";
+  public static final String MESSAGE_ARG_ARG_GET_FLUSHQUERYLOCK_WRITE_LOCK_687C85BC =
+      "{}: {} get flushQueryLock write lock";
+  public static final String MESSAGE_ARG_ARG_GET_FLUSHQUERYLOCK_WRITE_LOCK_RELEASED_AA87CEE1 =
+      "{}: {} get flushQueryLock write lock released";
+  public static final String MESSAGE_ASYNC_RECOVER_TSFILE_RESOURCE_MEETS_ERROR_EE1393F9 =
+      "async recover tsfile resource meets error.";
+  public static final String MESSAGE_COMPACTION_IN_SEQ_SPACE_IS_NOT_ENABLED_045A20C5 =
+      "Compaction in Seq Space is not enabled";
+  public static final String MESSAGE_COMPACTION_IN_THIS_DATAREGION_IS_NOT_ALLOWED_0549D4A4 =
+      "Compaction in this DataRegion is not allowed.";
+  public static final String MESSAGE_COMPACTION_IN_UNSEQ_SPACE_IS_NOT_ENABLED_952F1A1E =
+      "Compaction in Unseq Space is not enabled";
+  public static final String MESSAGE_DATABASE_ARG_DOES_NOT_EXIST_ON_LOCAL_CC032648 =
+      "Database %s does not exist on local";
+  public static final String
+      MESSAGE_DATABASE_NAME_IS_UNEXPECTEDLY_NULL_FOR_LOADTSFILESTATEMENT_ARG_SKIP_DATA_TYPE_CONVERSION_8D13DC68 =
+          "Database name is unexpectedly null for LoadTsFileStatement: %s. Skip data type"
+              + " conversion.";
+  public static final String MESSAGE_DATAREGION_NOT_EXIST_34C4A229 = "DataRegion not exist";
+  public static final String MESSAGE_DATAREGION_OF_FILES_IS_NOT_CONSISTENT_CFBDEDC4 =
+      "DataRegion of files is not consistent.";
+  public static final String
+      MESSAGE_EVERY_SELECTED_TSFILE_DOES_NOT_CONTAINS_THE_MODS_FILE_EB7EDC38 =
+          "Every selected TsFile does not contains the mods file.";
+  public static final String MESSAGE_FAILED_TO_CLOSE_DATABASE_PROCESSOR_BCBC9A66 =
+      "Failed to close database processor.";
+  public static final String MESSAGE_FAILED_TO_FORCE_CLOSE_PROCESSOR_E380BB3C =
+      "Failed to force close processor.";
+  public static final String MESSAGE_FAILED_TO_SYNC_CLOSE_PROCESSOR_3816A67C =
+      "Failed to sync close processor.";
+  public static final String MESSAGE_INSERTTABLETNODE_ALLMEASUREMENTFAILED_A147C989 =
+      "insertTabletNode allMeasurementFailed";
+  public static final String MESSAGE_LEVEL_OF_FILES_IS_NOT_CONSISTENT_84F11E20 =
+      "Level of files is not consistent.";
+  public static final String MESSAGE_MEET_ERROR_WHEN_SUBMIT_SETTLE_TASK_2F356FA4 =
+      "meet error when submit settle task.";
+  public static final String MESSAGE_NO_MODIFICATION_HAS_BEEN_WRITTEN_TO_THIS_FILE_ARG_21972815 =
+      "No modification has been written to this file[{}]";
+  public static final String MESSAGE_SELECTED_TSFILES_ARE_NOT_CONTINUOUS_853F6027 =
+      "Selected TsFiles are not continuous.";
+  public static final String MESSAGE_SETTLE_BY_CROSS_COMPACTION_IS_NOT_ALLOWED_FD1312E6 =
+      "Settle by cross compaction is not allowed.";
+  public static final String MESSAGE_STORAGEGROUP_OF_FILES_IS_NOT_CONSISTENT_2EA6791C =
+      "StorageGroup of files is not consistent.";
+  public static final String MESSAGE_THE_FILES_TO_SETTLE_IS_NOT_OFFERED_95C7CC1E =
+      "The files to settle is not offered.";
+  public static final String MESSAGE_THE_FILE_NAME_OF_THE_TSFILE_IS_NOT_VALID_ARG_67195C7D =
+      "The File Name of the TsFile is not valid: %s";
+  public static final String MESSAGE_THE_INITIAL_FILE_DOES_NOT_EXIST_AD547B8D =
+      "The initial file does not exist";
+  public static final String MESSAGE_THE_SPECIFIED_FILE_DOES_NOT_EXIST_IN_ARG_EEFC638B =
+      "The specified file does not exist in %s";
+  public static final String MESSAGE_THE_TSFILE_IS_NOT_VALID_ARG_5B5DC96E =
+      "The TsFile is not valid: %s";
+  public static final String MESSAGE_TIMEPARTITION_OF_FILES_IS_NOT_CONSISTENT_AB12799B =
+      "TimePartition of files is not consistent.";
+  public static final String
+      MESSAGE_TOO_MANY_FILES_OFFERED_THE_LIMITED_COUNT_OF_SYSTEM_CONFIG_IS_ARG_THE_INPUT_FILE_COUNT_IS_ARG_85D07B55 =
+          "Too many files offered, the limited count of system config is %s, the input file count"
+              + " is %s";
+  public static final String
+      MESSAGE_UNABLE_TO_FIND_THE_CONFIGURATION_FILE_SOME_MODIFICATIONS_ARE_MADE_ONLY_IN_MEMORY_70BB69F5 =
+          "Unable to find the configuration file. Some modifications are made only in memory.";
+  public static final String MESSAGE_VALIDATE_FAILED_BABCDFC5 = "validate failed,";
+
+  public static final String
+      EXCEPTION_FAILED_TO_WRITE_A_PIECE_OF_THE_LOAD_TASK_ARG_BECAUSE_THE_PAYLOAD_OF_ITS_CHUNK_IS_ONLY_REFERENCED_AT_ARG_OF_ARG_AND_HAS_NOT_BEEN_READ_BACK_5AE8586E =
+          "Failed to write a piece of the LOAD task %s because the payload of its chunk is only"
+              + " referenced at %s of %s and has not been read back.";
 
   private StorageEngineMessages() {}
 
@@ -81,8 +174,10 @@ public final class StorageEngineMessages {
       "The LOAD snapshot progress file {} cannot be read back: {}";
   public static final String MESSAGE_LOAD_CONSENSUS_PIECE_CHECKSUM_MISMATCH_CF261675 =
       "LOAD consensus piece checksum mismatch, loadId: %s, pieceIndex: %d";
-  public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_EOF_8743387D =
-      "Unexpected end of file when reading staged piece %s at offset %s.";
+  public static final String
+      EXCEPTION_UNEXPECTED_END_OF_FILE_WHEN_READING_THE_STAGED_PIECE_ARG_ARG_BYTES_WERE_REQUESTED_FROM_OFFSET_ARG_BUT_THE_FILE_ENDED_AT_POSITION_ARG_3F9CA32B =
+          "Unexpected end of file when reading the staged piece %s: %d bytes were requested from "
+              + "offset %d, but the file ended at position %d.";
   public static final String EXCEPTION_STAGED_PIECE_FILE_ARG_IS_MISSING_AND_CANNOT_BE_READ_BACK_4F62F9C6 =
       "Staged piece file %s is missing and cannot be read back.";
   public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_CHUNK_PAYLOAD_REF_PATH_ARG_OFFSET_ARG_SIZE_ARG_6B70A61B =
@@ -1739,4 +1834,74 @@ public final class StorageEngineMessages {
 
   public static final String LOG_LOAD_CONSENSUS_CLEANER_SWEEP_FAILED_7C3E2E6D =
       "Failed to sweep the staged directories of the finished LOAD tasks.";
+  public static final String LOG_FAILED_TO_CREATE_SNAPSHOT_FOR_DATABASE_ARG_REGION_ARG_1A7C8DEA =
+      "Failed to create snapshot for database {}, region {}";
+
+  public static final String EXCEPTION_FAILED_TO_DETERMINE_THE_USER_THAT_LOADS_THE_TSFILE_E47F7207 =
+      "Failed to determine the user that loads the TsFile";
+  public static final String EXCEPTION_FAILED_TO_DETERMINE_THE_USER_FOR_THE_TSFILE_DATA_TYPE_CONVERSION_A221793E =
+      "Failed to determine the user for the TsFile data type conversion";
+
+  public static final String
+      LOG_WORKER_ARG_TIME_COST_ARG_2FS_SEQUENCE_SPACE_COST_ARG_2FS_BUILD_UNSEQUENCE_SPACE_COST_ARG_2FS_11CD533E =
+          "Worker%s Time cost: %%.2fs, Sequence space cost: %%.2fs, Build unsequence space cost:"
+              + " %%.2fs.\n";
+
+  public static final String LOG_ARG_DATA_TABLE_D6B1FAB8 = "%sData Table:";
+
+  public static final String
+      LOG_PROGRESS_ARG_SEQUENCE_FILE_PROGRESS_ARG_ARG_PARTITION_PROGRESS_ARG_ARG_ARG_F63A0CC5 =
+          "Progress: %s\nSequence File progress: %d/%d\nPartition progress: %d/%d %s";
+
+  public static final String LOG_OVERLAP_TABLE_25E74227 = "Overlap Table:";
+
+  public static final String LOG_TOTAL_TIME_COST_ARG_S_62F6AC82 = "Total time cost: %.2fs\n";
+
+  public static final String
+      LOG_ARG_IS_NOT_EXIST_THE_TSFILE_IS_SKIPPED_BECAUSE_IT_IS_NOT_CLOSED_33F73043 =
+          "%s is not exist, the tsfile is skipped because it is not closed.";
+
+  public static final String EXCEPTION_GLOBAL_MEMORY_TABLE_INFO_D31FC987 =
+      "global memory table info";
+
+  public static final String EXCEPTION_CREATE_MEMORY_TABLE_C9A458F5 = "create memory table";
+
+  public static final String EXCEPTION_FLUSH_MEMORY_TABLE_F5383277 = "flush memory table";
+
+  public static final String EXCEPTION_FILE_NUMBER_BDF776A4 = "File Number";
+
+  public static final String EXCEPTION_FILE_SIZE_MB_F383DFA7 = "File Size(MB)";
+
+  public static final String EXCEPTION_SEQUENCE_FILE_96DAC97E = "Sequence File";
+
+  public static final String EXCEPTION_CHUNKGROUP_IN_SEQUENCE_FILE_AA750F6F =
+      "ChunkGroup In Sequence File";
+
+  public static final String EXCEPTION_CHUNK_IN_SEQUENCE_FILE_3F4FFEF6 = "Chunk In Sequence File";
+
+  public static final String EXCEPTION_CONCURRENT_TIME_PARTITION_NUM_DEFAULT_10_A7769F3C =
+      "Concurrent time partition num(default: 10)";
+
+  public static final String
+      EXCEPTION_CONCURRENT_FILE_NUM_IN_ONE_TIME_PARTITION_DEFAULT_10_092CF549 =
+          "Concurrent file num in one time partition(default: 10)";
+
+  public static final String EXCEPTION_DATA_DIRS_REQUIRED_5C28A151 = "Data dirs(Required)";
+
+  public static final String EXCEPTION_ALL_EXECUTED_40CD1D65 = "All EXECUTED";
+
+  public static final String EXCEPTION_TASK_DOES_NOT_STARTED_B7A8C59D = "task does not started";
+
+  public static final String EXCEPTION_TASK_HAS_STARTED_8F884490 = "task has started";
+
+  public static final String EXCEPTION_TARGET_FILE_HAS_BEEN_GENERATED_COMPLETELY_DBDCCC37 =
+      "target file has been generated completely";
+
+  public static final String EXCEPTION_TARGET_FILE_HAS_BEEN_REPLACED_IN_TSFILEMANAGER_9456BDD6 =
+      "target file has been replaced in TsFileManager";
+
+  public static final String EXCEPTION_SOURCE_FILES_ARE_CLEANED_UP_83638D68 =
+      "source files are cleaned up";
+
+  public static final String EXCEPTION_TASK_FINISHED_A075ACB1 = "task finished";
 }

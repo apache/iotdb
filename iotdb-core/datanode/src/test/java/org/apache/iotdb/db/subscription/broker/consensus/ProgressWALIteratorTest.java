@@ -26,6 +26,7 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.ProgressWALReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALFileVersion;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter;
@@ -1250,9 +1251,79 @@ public class ProgressWALIteratorTest {
         assertTrue(iterator.hasNext());
         assertEquals(6L, iterator.next().getSearchIndex());
       }
+
+      final WALNode walNode = mock(WALNode.class);
+      when(walNode.getLogDirectory()).thenReturn(dir.toFile());
+      when(walNode.getCurrentWALFileVersion()).thenReturn(2L);
+      when(walNode.getCurrentSearchIndex()).thenReturn(7L);
+      try (ProgressWALReader reader = new ProgressWALReader(targetWal)) {
+        when(walNode.getWALMetaDataSnapshot(2L)).thenReturn(reader.getMetaData());
+      }
+      // A pending-path cursor can advance one past the live tail. Local search indexes still
+      // cannot justify skipping an uncovered follower with no local search index.
+      try (ProgressWALIterator iterator = new ProgressWALIterator(walNode, 1L)) {
+        iterator.advanceTo(8L, (physicalTime, nodeId, localSeq) -> nodeId == 7);
+        assertTrue(iterator.hasNext());
+        assertEquals(8, iterator.next().getNodeId());
+      }
+      try (ProgressWALIterator iterator = new ProgressWALIterator(walNode, 1L)) {
+        iterator.advanceTo(8L, (physicalTime, nodeId, localSeq) -> true);
+        // Committed/materialized history may now be reclaimed before the next WAL probe. The
+        // iterator must already be positioned beyond those files, without reporting data loss.
+        Files.delete(localWal.toPath());
+        Files.delete(followerWal.toPath());
+        for (int probe = 0; probe < 3; probe++) {
+          assertFalse(iterator.hasNext());
+        }
+        assertEquals(0, iterator.getSkippedBrokenWalFileCount());
+        assertFalse(iterator.isWaitingForReadableWal());
+      }
     } finally {
       Files.deleteIfExists(localWal.toPath());
       Files.deleteIfExists(followerWal.toPath());
+      Files.deleteIfExists(targetWal.toPath());
+      Files.deleteIfExists(dir);
+    }
+  }
+
+  @Test
+  public void testRepeatedAdvanceDoesNotRecheckReclaimedPrefix() throws Exception {
+    final Path dir = Files.createTempDirectory("progress-wal-iterator-reclaimed-prefix");
+    final File historyWal =
+        dir.resolve(WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+    final File middleWal =
+        dir.resolve(WALFileUtils.getLogFileName(1, 2, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+    final File targetWal =
+        dir.resolve(WALFileUtils.getLogFileName(2, 4, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+    try {
+      try (WALWriter writer = new WALWriter(historyWal, WALFileVersion.V3)) {
+        writer.write(searchableEntry(1L), singleEntryMeta(19, 1L, 1L, 100L, 7, 1L));
+        writer.write(searchableEntry(2L), singleEntryMeta(19, 2L, 1L, 200L, 7, 2L));
+      }
+      try (WALWriter writer = new WALWriter(middleWal, WALFileVersion.V3)) {
+        writer.write(searchableEntry(3L), singleEntryMeta(19, 3L, 1L, 300L, 7, 3L));
+        writer.write(searchableEntry(4L), singleEntryMeta(19, 4L, 1L, 400L, 7, 4L));
+      }
+      try (WALWriter writer = new WALWriter(targetWal, WALFileVersion.V3)) {
+        writer.write(searchableEntry(5L), singleEntryMeta(19, 5L, 1L, 500L, 7, 5L));
+      }
+      try (ProgressWALIterator iterator = new ProgressWALIterator(dir.toFile(), 1L)) {
+        iterator.advanceTo(3L, (physicalTime, nodeId, localSeq) -> true);
+        Files.delete(historyWal.toPath());
+        // No new WAL roll refreshes the file list between these pending-path advances.
+        iterator.advanceTo(5L, (physicalTime, nodeId, localSeq) -> true);
+        Files.delete(middleWal.toPath());
+        assertTrue(iterator.hasNext());
+        assertEquals(5L, iterator.next().getSearchIndex());
+        assertFalse(iterator.hasSkippedBrokenWalFiles());
+        assertFalse(iterator.isWaitingForReadableWal());
+      }
+    } finally {
+      Files.deleteIfExists(historyWal.toPath());
+      Files.deleteIfExists(middleWal.toPath());
       Files.deleteIfExists(targetWal.toPath());
       Files.deleteIfExists(dir);
     }

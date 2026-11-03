@@ -49,6 +49,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import static org.apache.iotdb.itbase.runtime.ClusterTestResultSet.getNodeResultSets;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -269,10 +270,14 @@ public class IoTDBInsertQueryIT {
 
       // It is allowed to insert without tags
       statement.execute("INSERT INTO vehicle1(time, s1, s2) SELECT time, s1, s2 FROM vehicle0");
-      ResultSet resultSet = statement.executeQuery("SELECT deviceId, manufacturer FROM vehicle1");
-      while (resultSet.next()) {
-        for (int i = 1; i <= 2; i++) {
-          assertNull(resultSet.getString(i));
+      try (ResultSet clusterResult =
+          statement.executeQuery("SELECT deviceId, manufacturer FROM vehicle1")) {
+        for (ResultSet resultSet : getNodeResultSets(clusterResult)) {
+          while (resultSet.next()) {
+            for (int i = 1; i <= 2; i++) {
+              assertNull(resultSet.getString(i));
+            }
+          }
         }
       }
 
@@ -280,13 +285,17 @@ public class IoTDBInsertQueryIT {
       statement.execute("DELETE FROM vehicle1");
       statement.execute(
           "INSERT INTO vehicle1(time, s2, manufacturer) SELECT time, s2, manufacturer FROM vehicle0");
-      resultSet = statement.executeQuery("SELECT deviceId, manufacturer, s1, s2 FROM vehicle1");
-      while (resultSet.next()) {
-        for (int i = 1; i <= 4; i++) {
-          if (i % 2 == 1) {
-            assertNull(resultSet.getString(i));
-          } else {
-            assertNotNull(resultSet.getString(i));
+      try (ResultSet clusterResult =
+          statement.executeQuery("SELECT deviceId, manufacturer, s1, s2 FROM vehicle1")) {
+        for (ResultSet resultSet : getNodeResultSets(clusterResult)) {
+          while (resultSet.next()) {
+            for (int i = 1; i <= 4; i++) {
+              if (i % 2 == 1) {
+                assertNull(resultSet.getString(i));
+              } else {
+                assertNotNull(resultSet.getString(i));
+              }
+            }
           }
         }
       }

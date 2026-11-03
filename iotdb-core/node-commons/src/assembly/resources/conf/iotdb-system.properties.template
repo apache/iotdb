@@ -391,6 +391,8 @@ prometheus_reporter_async_update=true
 # The reporters of metric module to report metrics
 # If there are more than one reporter, please separate them by commas ",".
 # Options: [JMX, PROMETHEUS]
+# The IOTDB session reporter is not supported: it writes to root.__system, which rejects writes
+# from external client sessions.
 # effectiveMode: restart
 # Datatype: String
 cn_metric_reporter_list=
@@ -414,6 +416,8 @@ cn_metric_prometheus_reporter_port=9091
 # The reporters of metric module to report metrics
 # If there are more than one reporter, please separate them by commas ",".
 # Options: [JMX, PROMETHEUS]
+# The IOTDB session reporter is not supported: it writes to root.__system, which rejects writes
+# from external client sessions.
 # effectiveMode: restart
 # Datatype: String
 dn_metric_reporter_list=
@@ -2107,19 +2111,6 @@ pipe_lib_dir=ext/pipe
 # Datatype: int
 pipe_subtask_executor_max_thread_num=0
 
-# The maximum number of TsFile parsers that can run concurrently across all Pipes on this DataNode.
-# When <= 0, use max(1, CPU core number / 2).
-# effectiveMode: hot_reload
-# Datatype: int
-pipe_tsfile_parser_in_flight_max_num=0
-
-# The maximum number of TsFile parsers that can run concurrently for one DataRegion of one Pipe.
-# Different DataRegions of the same Pipe have independent limits.
-# When <= 0, use 1.
-# effectiveMode: hot_reload
-# Datatype: int
-pipe_tsfile_parser_in_flight_max_num_per_pipe_region=1
-
 # The connection timeout (in milliseconds) for the thrift client.
 # effectiveMode: restart
 # Datatype: int
@@ -2187,6 +2178,12 @@ subscription_cache_memory_usage_percentage=0.2
 # effectiveMode: restart
 # Datatype: int
 subscription_consensus_prefetch_executor_max_thread_num=2
+
+# Whether consumers can poll ready events from regions assigned to other consumers when their own
+# assigned regions are empty. Disable this to preserve per-region consumer affinity.
+# effectiveMode: restart
+# Datatype: boolean
+subscription_consensus_fallback_polling_enabled=true
 
 # Maximum materialized consensus-subscription batch size. This is a batching target, not a hard
 # limit on one WAL entry/tablet. For large-field workloads, choose a value at least as large as a

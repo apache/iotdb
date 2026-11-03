@@ -20,6 +20,7 @@
 package org.apache.iotdb.pipe.it.dual.treemodel.auto.basic;
 
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -42,6 +43,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 
@@ -80,6 +82,60 @@ public class IoTDBPipeAutoSplitIT extends AbstractPipeDualTreeModelAutoIT {
         .setPipeAutoSplitFullEnabled(true); // set auto split to true
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
+  }
+
+  @Test
+  public void testWriteBackSinkWithTargetDatabase() throws Exception {
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "create database root.writeback_source",
+            "create aligned timeseries root.writeback_source.d1(s1 INT32)",
+            "insert into root.writeback_source.d1(time,s1) aligned values "
+                + "(1,1),(2,2),(3,3),(4,4),(5,5)",
+            "flush",
+            "create pipe writeback with source ("
+                + "'path'='root.writeback_source.**','inclusion'='data.insert',"
+                + "'forwarding-pipe-requests'='false',"
+                + "'history.enable'='true','realtime.enable'='true') "
+                + "with sink ('sink'='write-back-sink','sink.database'='root.writeback_target',"
+                + "'user'='root','password'='root')"),
+        null);
+
+    TestUtils.assertDataEventuallyOnEnv(
+        senderEnv,
+        "select s1 from root.writeback_target.d1",
+        "Time,root.writeback_target.d1.s1,",
+        new HashSet<>(Arrays.asList("1,1,", "2,2,", "3,3,", "4,4,", "5,5,")),
+        90);
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final List<TShowPipeInfo> pipeInfoList =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
+      final TShowPipeInfo realtimePipe =
+          pipeInfoList.stream()
+              .filter(pipeInfo -> "writeback_realtime".equals(pipeInfo.id))
+              .findFirst()
+              .orElseThrow(AssertionError::new);
+      Assert.assertEquals(PipeStatus.RUNNING.name(), realtimePipe.getState());
+      Assert.assertEquals("", realtimePipe.getExceptionMessage());
+    }
+
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Collections.singletonList(
+            "insert into root.writeback_source.d1(time,s1) aligned values "
+                + "(6,6),(7,7),(8,8),(9,9)"),
+        null);
+
+    TestUtils.assertDataEventuallyOnEnv(
+        senderEnv,
+        "select s1 from root.writeback_target.d1",
+        "Time,root.writeback_target.d1.s1,",
+        new HashSet<>(
+            Arrays.asList("1,1,", "2,2,", "3,3,", "4,4,", "5,5,", "6,6,", "7,7,", "8,8,", "9,9,")),
+        90);
   }
 
   @Test

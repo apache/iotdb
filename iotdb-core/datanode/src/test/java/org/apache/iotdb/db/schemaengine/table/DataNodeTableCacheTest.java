@@ -60,12 +60,12 @@ public class DataNodeTableCacheTest {
       final TsTable initial = createTable(TABLE_NAME);
       cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, initial, null);
       Assert.assertNull(cache.getTableInCache(TABLE_CACHE_TEST_DATABASE, TABLE_NAME));
-      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
+      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null, null);
       Assert.assertSame(initial, cache.getTableInCache(TABLE_CACHE_TEST_DATABASE, TABLE_NAME));
       final TsTable updated = new TsTable(initial);
       cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, updated, null);
       Assert.assertSame(initial, cache.getTableInCache(TABLE_CACHE_TEST_DATABASE, TABLE_NAME));
-      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
+      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null, null);
       Assert.assertSame(updated, cache.getTableInCache(TABLE_CACHE_TEST_DATABASE, TABLE_NAME));
     } finally {
       cache.invalid(TABLE_CACHE_TEST_DATABASE);
@@ -100,8 +100,8 @@ public class DataNodeTableCacheTest {
     try {
       cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, createTable(TABLE_NAME), null);
 
-      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
-      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
+      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null, null);
+      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null, null);
 
       Assert.assertEquals(
           TABLE_NAME, cache.getTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME).getTableName());
@@ -117,8 +117,8 @@ public class DataNodeTableCacheTest {
     try {
       cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, createTable(TABLE_NAME), null);
 
-      cache.rollbackUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
-      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
+      cache.rollbackUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null, null);
+      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null, null);
 
       Assert.assertNull(cache.getTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, false));
     } finally {
@@ -133,10 +133,10 @@ public class DataNodeTableCacheTest {
     cache.invalid(TABLE_CACHE_TEST_DATABASE);
     try {
       cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, createTable(TABLE_NAME), null);
-      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null);
+      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME, null, null);
 
       cache.preUpdateTable(TABLE_CACHE_TEST_DATABASE, createTable(newTableName), TABLE_NAME);
-      cache.rollbackUpdateTable(TABLE_CACHE_TEST_DATABASE, newTableName, TABLE_NAME);
+      cache.rollbackUpdateTable(TABLE_CACHE_TEST_DATABASE, newTableName, TABLE_NAME, null);
 
       Assert.assertEquals(
           TABLE_NAME, cache.getTable(TABLE_CACHE_TEST_DATABASE, TABLE_NAME).getTableName());
@@ -164,9 +164,9 @@ public class DataNodeTableCacheTest {
           TsTableInternalRPCUtil.serializeTableInitializationInfo(usingTables, specialTables));
 
       // The commit is the only sign of the rename, and the HA broadcast may send it more than once.
-      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, newName, oldName);
+      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, newName, oldName, null);
       assertRenameRepaired(cache, oldName, newName);
-      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, newName, oldName);
+      cache.commitUpdateTable(TABLE_CACHE_TEST_DATABASE, newName, oldName, null);
       assertRenameRepaired(cache, oldName, newName);
     } finally {
       cache.invalid(TABLE_CACHE_TEST_DATABASE);

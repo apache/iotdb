@@ -38,6 +38,7 @@ import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.LoginLockManager;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.PreparedStatementMemoryManager;
@@ -167,7 +168,7 @@ public class SessionManager implements SessionManagerMBean {
       } else {
         session.setSqlDialect(sqlDialect);
         supplySession(session, userId, username, ZoneId.of(zoneId), clientVersion);
-        String logInMessage = "Login successfully";
+        String logInMessage = DataNodeMiscMessages.EXCEPTION_LOGIN_SUCCESSFULLY_1C2EF670;
         openSessionResp
             .sessionId(session.getId())
             .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
@@ -182,7 +183,8 @@ public class SessionManager implements SessionManagerMBean {
                 true),
             () ->
                 String.format(
-                    "%s: Login status: %s. User %s (ID=%d), opens Session-%s",
+                    DataNodeMiscMessages
+                        .EXCEPTION_ARG_LOGIN_STATUS_ARG_USER_ARG_ID_ARG_OPENS_SESSION_ARG_70586F85,
                     IoTDBConstant.GLOBAL_DB_NAME,
                     openSessionResp.getMessage(),
                     username,
@@ -214,8 +216,12 @@ public class SessionManager implements SessionManagerMBean {
               false),
           () ->
               String.format(
-                  "User %s (ID=%d) login failed with code: %d, %s",
-                  username, userId, loginStatus.getCode(), loginStatus.getMessage()));
+                  DataNodeMiscMessages
+                      .EXCEPTION_USER_ARG_ID_ARG_LOGIN_FAILED_WITH_CODE_ARG_ARG_93FAE4FD,
+                  username,
+                  userId,
+                  loginStatus.getCode(),
+                  loginStatus.getMessage()));
     }
     return openSessionResp;
   }
@@ -279,8 +285,7 @@ public class SessionManager implements SessionManagerMBean {
       LongConsumer releaseByQueryId) {
     if (!checkLogin(session)) {
       return RpcUtils.getStatus(
-          TSStatusCode.NOT_LOGIN,
-          "Log in failed. Either you are not authorized or the session has timed out.");
+          TSStatusCode.NOT_LOGIN, DataNodePipeMessages.LOGIN_FAILED_OR_SESSION_TIMED_OUT);
     }
 
     try {
@@ -293,7 +298,8 @@ public class SessionManager implements SessionManagerMBean {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {
         return RpcUtils.getStatus(
-            TSStatusCode.CLOSE_OPERATION_ERROR, "statement id not set by client.");
+            TSStatusCode.CLOSE_OPERATION_ERROR,
+            DataNodeMiscMessages.EXCEPTION_STATEMENT_ID_NOT_SET_BY_CLIENT_BDA3B354);
       }
     } catch (Exception e) {
       return onNpeOrUnexpectedException(

@@ -294,7 +294,8 @@ public class PartitionCache {
       fetchDatabaseAndUpdateCache(false);
     } catch (final TException | ClientManagerException e) {
       logger.warn(
-          "Failed to get need_last_cache info for database {}, will put cache anyway, exception: {}",
+          DataNodeQueryMessages
+              .LOG_FAILED_TO_GET_NEED_LAST_CACHE_INFO_FOR_DATABASE_ARG_WILL_PUT_CACHE_ANYWAY_EXCEPTION_ARG_D5D80E96,
           database,
           e.getMessage());
       return true;

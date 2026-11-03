@@ -48,6 +48,7 @@ public enum PipeMemoryBlockCategory {
     return switch (type) {
       case NORMAL -> OTHER;
       case TABLET -> TABLET;
+      case TS_FILE_PARSER -> PARSER;
       case TS_FILE -> TS_FILE;
       case BATCH -> BATCH;
       case WAL -> WAL;
