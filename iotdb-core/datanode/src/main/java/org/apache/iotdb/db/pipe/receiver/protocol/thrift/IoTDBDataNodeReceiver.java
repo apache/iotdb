@@ -196,6 +196,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private final PipeTransferSliceReqHandler sliceReqHandler = new PipeTransferSliceReqHandler();
 
+  private TPipeTransferReq lastSuccessfulUnidirectionalHandshake;
+  private TPipeTransferResp lastSuccessfulUnidirectionalHandshakeResp;
+
   private final SqlParser tableSqlParser = new SqlParser();
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
@@ -227,12 +230,48 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   @Override
   public synchronized TPipeTransferResp receive(final TPipeTransferReq req) {
+    final boolean isUnidirectionalHandshake =
+        req instanceof AirGapPseudoTPipeTransferRequest
+            && ((AirGapPseudoTPipeTransferRequest) req).isStrictUnidirectional()
+            && req.getType() == PipeRequestType.HANDSHAKE_DATANODE_V2.getType();
+    // Snapshot before decoding, which consumes the request body. Repeated no-ACK handshakes
+    // refresh a live session without discarding its partially received file or request slices.
+    final TPipeTransferReq handshake = isUnidirectionalHandshake ? req.deepCopy() : null;
+    if (isUnidirectionalHandshake
+        && hasPipeHandshakeCredential
+        && handshake.equals(lastSuccessfulUnidirectionalHandshake)) {
+      final TSStatus status = login();
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return lastSuccessfulUnidirectionalHandshakeResp.deepCopy();
+      }
+      hasPipeHandshakeCredential = false;
+      lastSuccessfulUnidirectionalHandshake = null;
+      lastSuccessfulUnidirectionalHandshakeResp = null;
+      return new TPipeTransferResp(status);
+    }
+    if (req.getType() == PipeRequestType.HANDSHAKE_DATANODE_V1.getType()
+        || req.getType() == PipeRequestType.HANDSHAKE_DATANODE_V2.getType()) {
+      lastSuccessfulUnidirectionalHandshake = null;
+      lastSuccessfulUnidirectionalHandshakeResp = null;
+    }
+    final TPipeTransferResp resp = receiveInternal(req);
+    if (isUnidirectionalHandshake
+        && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      lastSuccessfulUnidirectionalHandshake = handshake;
+      lastSuccessfulUnidirectionalHandshakeResp = resp.deepCopy();
+    }
+    return resp;
+  }
+
+  private TPipeTransferResp receiveInternal(final TPipeTransferReq req) {
     try {
       final long startTime = System.nanoTime();
       final short rawRequestType = req.getType();
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
         final PipeRequestType requestType = PipeRequestType.valueOf(rawRequestType);
-        if (requestType != PipeRequestType.TRANSFER_SLICE) {
+        if (requestType != PipeRequestType.TRANSFER_SLICE
+            && !(isStrictUnidirectionalRequest(req)
+                && requestType == PipeRequestType.TRANSFER_COMPRESSED)) {
           clearSliceReqHandler();
         }
         final TPipeTransferResp authResp = checkPipeTransferAuthenticated(requestType);
@@ -261,7 +300,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                   return new TPipeTransferResp(
                       RpcUtils.getStatus(
                           TSStatusCode.PIPE_HANDSHAKE_ERROR.getStatusCode(),
-                          "The receiver memory is not enough to handle the handshake request from datanode."));
+                          DataNodePipeMessages
+                              .MESSAGE_THE_RECEIVER_MEMORY_IS_NOT_ENOUGH_TO_HANDLE_THE_HANDSHAKE_REQUEST_FROM_DATANODE_0A182782));
                 }
                 return recordDataNodeHandshakeIfSuccess(
                     handleTransferHandshakeV2(
@@ -464,7 +504,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_SLICE:
             {
               try {
-                return handleTransferSlice(PipeTransferSliceReq.fromTPipeTransferReq(req));
+                return handleTransferSlice(
+                    PipeTransferSliceReq.fromTPipeTransferReq(req),
+                    isStrictUnidirectionalRequest(req));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferSliceTimer(System.nanoTime() - startTime);
@@ -478,12 +520,16 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                     PipeTransferCompressedReq.getMaxAdditionalDecompressedLengthInBytes(req);
                 try (final PipeMemoryBlock ignored =
                     tryAllocateReceiverMemory(requestedMemorySizeInBytes)) {
-                  return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
+                  return receiveNestedRequest(
+                      PipeTransferCompressedReq.fromTPipeTransferReq(req),
+                      isStrictUnidirectionalRequest(req));
                 }
               } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
                 return new TPipeTransferResp(
                     getReceiverTemporaryUnavailableStatus(
-                        "decompressing pipe transfer request", requestedMemorySizeInBytes, e));
+                        DataNodePipeMessages.MESSAGE_DECOMPRESSING_PIPE_TRANSFER_REQUEST_F09C8FD2,
+                        requestedMemorySizeInBytes,
+                        e));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferCompressedTimer(System.nanoTime() - startTime);
@@ -1098,10 +1144,29 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return configReceiverId.get();
   }
 
-  private TPipeTransferResp handleTransferSlice(final PipeTransferSliceReq pipeTransferSliceReq) {
+  private boolean isStrictUnidirectionalRequest(final TPipeTransferReq req) {
+    return req instanceof AirGapPseudoTPipeTransferRequest
+        && ((AirGapPseudoTPipeTransferRequest) req).isStrictUnidirectional();
+  }
+
+  private TPipeTransferResp receiveNestedRequest(
+      final TPipeTransferReq req, final boolean strictUnidirectional) {
+    return receive(
+        strictUnidirectional
+            ? new AirGapPseudoTPipeTransferRequest()
+                .setStrictUnidirectional(true)
+                .setVersion(req.version)
+                .setType(req.type)
+                .setBody(req.body)
+            : req);
+  }
+
+  private TPipeTransferResp handleTransferSlice(
+      final PipeTransferSliceReq pipeTransferSliceReq, final boolean strictUnidirectional) {
     final long sliceBodySizeInBytes = getSliceBodySizeInBytes(pipeTransferSliceReq);
     long requestedMemorySizeInBytes = sliceBodySizeInBytes;
-    String memoryAction = "buffering sliced pipe transfer request";
+    String memoryAction =
+        DataNodePipeMessages.MESSAGE_BUFFERING_SLICED_PIPE_TRANSFER_REQUEST_5BB9367A;
     PipeMemoryBlock sliceMemoryBlock = null;
     try {
       sliceMemoryBlock = tryAllocateReceiverMemory(sliceBodySizeInBytes);
@@ -1113,7 +1178,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         return new TPipeTransferResp(
             RpcUtils.getStatus(
                 TSStatusCode.PIPE_TRANSFER_SLICE_OUT_OF_ORDER,
-                "Slice request is out of order, please check the request sequence."));
+                DataNodePipeMessages
+                    .MESSAGE_SLICE_REQUEST_IS_OUT_OF_ORDER_PLEASE_CHECK_THE_REQUEST_SEQUENCE_32958FCC));
       }
 
       allocatedSliceMemoryBlocks.add(sliceMemoryBlock);
@@ -1123,10 +1189,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         return new TPipeTransferResp(
             RpcUtils.getStatus(
                 TSStatusCode.SUCCESS_STATUS,
-                "Slice received, waiting for more slices to complete the request."));
+                DataNodePipeMessages
+                    .MESSAGE_SLICE_RECEIVED_WAITING_FOR_MORE_SLICES_TO_COMPLETE_THE_REQUEST_EDB0B3EA));
       }
 
-      memoryAction = "assembling sliced pipe transfer request";
+      memoryAction = DataNodePipeMessages.MESSAGE_ASSEMBLING_SLICED_PIPE_TRANSFER_REQUEST_EA6180BA;
       requestedMemorySizeInBytes = pipeTransferSliceReq.getOriginBodySize();
       try (final PipeMemoryBlock ignored = tryAllocateReceiverMemory(requestedMemorySizeInBytes)) {
         final Optional<TPipeTransferReq> req = sliceReqHandler.makeReqIfComplete();
@@ -1134,10 +1201,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           return new TPipeTransferResp(
               RpcUtils.getStatus(
                   TSStatusCode.SUCCESS_STATUS,
-                  "Slice received, waiting for more slices to complete the request."));
+                  DataNodePipeMessages
+                      .MESSAGE_SLICE_RECEIVED_WAITING_FOR_MORE_SLICES_TO_COMPLETE_THE_REQUEST_EDB0B3EA));
         }
         clearSliceReqHandler();
-        return receive(req.get());
+        return receiveNestedRequest(req.get(), strictUnidirectional);
       }
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
       closeMemoryBlock(sliceMemoryBlock);
@@ -1390,8 +1458,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             if (i == tryCount - 1) {
               final String message =
                   String.format(
-                      "Temporarily out of memory when executing statement %s, Requested memory: %s, "
-                          + "used memory: %s, free memory: %s, total non-floating memory: %s",
+                      DataNodePipeMessages
+                          .MESSAGE_TEMPORARILY_OUT_OF_MEMORY_WHEN_EXECUTING_STATEMENT_ARG_REQUESTED_MEMORY_ARG_USED_MEMORY_ARG_FREE_MEMORY_ARG_TOTAL_NON_FLOATING_MEMORY_ARG_2B46F2A6,
                       statement,
                       estimatedMemory * pipeReceiverActualToEstimatedMemoryRatio,
                       PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes(),
@@ -1474,7 +1542,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final Statement statement) {
     if (statement == null) {
       return RpcUtils.getStatus(
-          TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR, "Execute null statement.");
+          TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR,
+          DataNodePipeMessages.MESSAGE_EXECUTE_NULL_STATEMENT_2FC4F8E2);
     }
 
     // Judge which model the statement belongs to
@@ -1938,6 +2007,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   @Override
   public synchronized void handleExit() {
+    lastSuccessfulUnidirectionalHandshake = null;
+    lastSuccessfulUnidirectionalHandshakeResp = null;
     PipeReceiverRuntimeRegistry.getInstance()
         .deregister(configPipeReceiverRuntimeSessionKey.getAndSet(null));
     clearSliceReqHandler();

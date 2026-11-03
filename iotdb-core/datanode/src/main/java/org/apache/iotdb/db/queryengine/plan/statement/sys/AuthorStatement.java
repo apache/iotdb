@@ -34,6 +34,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public class AuthorStatement extends Statement implements IConfigStatement {
 
@@ -270,17 +271,22 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case CREATE_USER:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return AuthorityChecker.getTSStatus(
-              false, "Cannot create user has same name with admin user");
+              false,
+              DataNodeQueryMessages
+                  .EXCEPTION_CANNOT_CREATE_USER_HAS_SAME_NAME_WITH_ADMIN_USER_82BA70F7);
         }
         break;
       case DROP_USER:
         if (AuthorityChecker.SUPER_USER.equals(userName) || userName.equals(currentUser)) {
-          return AuthorityChecker.getTSStatus(false, "Cannot drop admin user or yourself");
+          return AuthorityChecker.getTSStatus(
+              false, DataNodeQueryMessages.EXCEPTION_CANNOT_DROP_ADMIN_USER_OR_YOURSELF_9D34698F);
         }
       case CREATE_ROLE:
         if (AuthorityChecker.SUPER_USER.equals(roleName)) {
           return AuthorityChecker.getTSStatus(
-              false, "Cannot create role has same name with admin user");
+              false,
+              DataNodeQueryMessages
+                  .EXCEPTION_CANNOT_CREATE_ROLE_HAS_SAME_NAME_WITH_ADMIN_USER_E48B225D);
         }
         break;
       case REVOKE_USER:
@@ -289,12 +295,18 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case REVOKE_ROLE:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return AuthorityChecker.getTSStatus(
-              false, "Cannot grant/revoke privileges of admin user");
+              false,
+              DataNodeQueryMessages
+                  .EXCEPTION_CANNOT_GRANT_REVOKE_PRIVILEGES_OF_ADMIN_USER_E5DE4709);
         }
         List<PartialPath> paths = getNodeNameList();
         if (paths.stream().anyMatch(Audit::includeByAuditTreeDB)) {
           return AuthorityChecker.getTSStatus(
-              false, "Cannot grant or revoke any privileges to " + Audit.TREE_MODEL_AUDIT_DATABASE);
+              false,
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_CANNOT_GRANT_OR_REVOKE_ANY_PRIVILEGES_TO_ARG_60E70A9B,
+                  Objects.toString(Audit.TREE_MODEL_AUDIT_DATABASE)));
         }
         break;
     }

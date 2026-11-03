@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.utils;
 
+import org.apache.iotdb.commons.i18n.UtilMessages;
+
 import org.apache.tsfile.external.commons.lang3.SystemUtils;
 
 import java.util.Arrays;
@@ -51,8 +53,10 @@ public class WindowsOSUtils {
 
   public static final String OS_SEGMENT_ERROR =
       String.format(
-          "In Windows System, the path shall not contain %s or ASCII control characters, equals one of %s with or without an extension, or ends with '.' or ' '.",
-          ILLEGAL_WINDOWS_CHARS, ILLEGAL_WINDOWS_NAMES);
+          UtilMessages
+              .EXCEPTION_IN_WINDOWS_SYSTEM_THE_PATH_SHALL_NOT_CONTAIN_ARG_OR_ASCII_CONTROL_CHARACTERS_EQUALS_ONE_OF_ARG_WITH_OR_WITHOUT_AN_EXTENSION_OR_ENDS_WITH_OR_B3B92470,
+          ILLEGAL_WINDOWS_CHARS,
+          ILLEGAL_WINDOWS_NAMES);
 
   public static boolean isLegalPathSegment4Windows(final String pathSegment) {
     if (!SystemUtils.IS_OS_WINDOWS) {

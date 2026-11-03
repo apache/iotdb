@@ -77,11 +77,16 @@ public class ExportSchema extends AbstractSchemaTool {
       parseBasicParams(commandLine);
       parseSpecialParams(commandLine);
     } catch (ArgsErrorException e) {
-      ioTPrinter.println("Args args: " + e.getMessage());
+      ioTPrinter.println(
+          String.format(
+              CliMessages.EXCEPTION_ARGS_ARGS_ARG_C39A089A, String.valueOf(e.getMessage())));
       ioTPrinter.println(CliMessages.USE_HELP_FOR_MORE);
       System.exit(Constants.CODE_ERROR);
     } catch (Exception e) {
-      ioTPrinter.println("Encounter an error, because " + e.getMessage());
+      ioTPrinter.println(
+          String.format(
+              CliMessages.EXCEPTION_ENCOUNTER_AN_ERROR_BECAUSE_ARG_484F4B80,
+              String.valueOf(e.getMessage())));
       System.exit(Constants.CODE_ERROR);
     }
     System.exit(exportToTargetPath());
@@ -101,7 +106,10 @@ public class ExportSchema extends AbstractSchemaTool {
                   host,
                   port);
           String pathPattern =
-              lineReader.readLine(Constants.EXPORT_CLI_PREFIX + "> please input path pattern: ");
+              lineReader.readLine(
+                  String.format(
+                      CliMessages.MESSAGE_ARG_PLEASE_INPUT_PATH_PATTERN_D784AEFD,
+                      String.valueOf(Constants.EXPORT_CLI_PREFIX)));
           ioTPrinter.println(pathPattern);
           String[] values = pathPattern.trim().split(";");
           for (int i = 0; i < values.length; i++) {
@@ -122,11 +130,13 @@ public class ExportSchema extends AbstractSchemaTool {
       ioTPrinter.println(Constants.EXPORT_COMPLETELY);
       return Constants.CODE_OK;
     } catch (InterruptedException e) {
-      ioTPrinter.println(String.format("Export schema fail: %s", e.getMessage()));
+      ioTPrinter.println(
+          String.format(CliMessages.MESSAGE_EXPORT_SCHEMA_FAIL_ARG_75FE5946, e.getMessage()));
       Thread.currentThread().interrupt();
       return Constants.CODE_ERROR;
     } catch (Exception e) {
-      ioTPrinter.println(String.format("Export schema fail: %s", e.getMessage()));
+      ioTPrinter.println(
+          String.format(CliMessages.MESSAGE_EXPORT_SCHEMA_FAIL_ARG_75FE5946, e.getMessage()));
       return Constants.CODE_ERROR;
     }
   }
@@ -164,12 +174,16 @@ public class ExportSchema extends AbstractSchemaTool {
       sqlDialectTree = false;
       if (StringUtils.isBlank(database)) {
         ioTPrinter.println(
-            String.format("The database param is required when sql_dialect is table "));
+            String.format(
+                CliMessages
+                    .MESSAGE_THE_DATABASE_PARAM_IS_REQUIRED_WHEN_SQL_DIALECT_IS_TABLE_1EFE6DAF));
         System.exit(Constants.CODE_ERROR);
       } else if (StringUtils.isNotBlank(database)
           && "information_schema".equalsIgnoreCase(database)) {
         ioTPrinter.println(
-            String.format("Does not support exporting system databases %s", database));
+            String.format(
+                CliMessages.MESSAGE_DOES_NOT_SUPPORT_EXPORTING_SYSTEM_DATABASES_ARG_D86F9100,
+                database));
         System.exit(Constants.CODE_ERROR);
       }
     }

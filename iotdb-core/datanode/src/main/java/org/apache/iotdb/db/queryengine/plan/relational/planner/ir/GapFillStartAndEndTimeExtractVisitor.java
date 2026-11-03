@@ -47,10 +47,12 @@ public class GapFillStartAndEndTimeExtractVisitor
     implements AstVisitor<Boolean, GapFillStartAndEndTimeExtractVisitor.Context> {
 
   private static final String UPDATE_START_TIME_ERROR_MSG =
-      "Operator of updateStatTime should only be GREATER_THAN and GREATER_THAN_OR_EQUAL, now is %s";
+      DataNodeQueryMessages
+          .EXCEPTION_OPERATOR_OF_UPDATESTATTIME_SHOULD_ONLY_BE_GREATER_THAN_AND_GREATER_THAN_OR_EQUAL_NOW_IS_ARG_25D66791;
 
   private static final String UPDATE_END_TIME_ERROR_MSG =
-      "Operator of updateEndTime should only be LESS_THAN and LESS_THAN_OR_EQUAL, now is %s";
+      DataNodeQueryMessages
+          .EXCEPTION_OPERATOR_OF_UPDATEENDTIME_SHOULD_ONLY_BE_LESS_THAN_AND_LESS_THAN_OR_EQUAL_NOW_IS_ARG_BF20DCC9;
 
   private final Symbol timeColumn;
 
@@ -59,7 +61,8 @@ public class GapFillStartAndEndTimeExtractVisitor
   }
 
   public static final String CAN_NOT_INFER_TIME_RANGE =
-      "could not infer startTime or endTime from WHERE clause";
+      DataNodeQueryMessages
+          .EXCEPTION_COULD_NOT_INFER_STARTTIME_OR_ENDTIME_FROM_WHERE_CLAUSE_9F371997;
 
   @Override
   public Boolean visitNode(Node node, GapFillStartAndEndTimeExtractVisitor.Context context) {

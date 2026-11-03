@@ -42,6 +42,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -104,7 +105,8 @@ public class RegionWriteExecutor {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
-  private static final String METADATA_ERROR_MSG = "Metadata error: {}";
+  private static final String METADATA_ERROR_MSG =
+      DataNodeQueryMessages.EXCEPTION_METADATA_ERROR_ARG_7430F33B;
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -160,7 +162,8 @@ public class RegionWriteExecutor {
       if (lock == null) {
         return RegionExecutionResult.create(
             false,
-            "Failed to get the lock of the region because the region is not existed.",
+            DataNodeQueryMessages
+                .EXCEPTION_FAILED_TO_GET_THE_LOCK_OF_THE_REGION_BECAUSE_THE_REGION_IS_NOT_EXISTED_91402E28,
             RpcUtils.getStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP));
       }
       return planNode.accept(executionVisitor, new WritePlanNodeExecutionContext(groupId, lock));
@@ -168,10 +171,11 @@ public class RegionWriteExecutor {
       // Detect problems caused by removed region
       if (Objects.isNull(regionManager.getRegionLock(groupId))) {
         final String errorMsg =
-            "Exception "
-                + e.getClass().getSimpleName()
-                + " encountered during region removal, will retry. Message: "
-                + e.getMessage();
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_EXCEPTION_ARG_ENCOUNTERED_DURING_REGION_REMOVAL_WILL_RETRY_MESSAGE_ARG_C52BF990,
+                Objects.toString(e.getClass().getSimpleName()),
+                Objects.toString(e.getMessage()));
         LOGGER.info(errorMsg);
         return RegionExecutionResult.create(
             false, errorMsg, RpcUtils.getStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP));
@@ -202,10 +206,12 @@ public class RegionWriteExecutor {
       if (CommonDescriptor.getInstance().getConfig().isReadOnly() && !isForceExecutedPlan(node)) {
         return RegionExecutionResult.create(
             false,
-            "Fail to do non-query operations because system is read-only.",
+            DataNodeQueryMessages
+                .EXCEPTION_FAIL_TO_DO_NON_QUERY_OPERATIONS_BECAUSE_SYSTEM_IS_READ_ONLY_10CA1ED2,
             RpcUtils.getStatus(
                 TSStatusCode.SYSTEM_READ_ONLY,
-                "Fail to do non-query operations because system is read-only."));
+                DataNodeQueryMessages
+                    .EXCEPTION_FAIL_TO_DO_NON_QUERY_OPERATIONS_BECAUSE_SYSTEM_IS_READ_ONLY_10CA1ED2));
       }
 
       try {
@@ -283,7 +289,8 @@ public class RegionWriteExecutor {
         final InsertNode insertNode, final WritePlanNodeExecutionContext context) {
       if (context.getRegionWriteValidationRWLock() == null) {
         final String message =
-            "Failed to get the lock of the region because the region is not existed.";
+            DataNodeQueryMessages
+                .EXCEPTION_FAILED_TO_GET_THE_LOCK_OF_THE_REGION_BECAUSE_THE_REGION_IS_NOT_EXISTED_91402E28;
         return RegionExecutionResult.create(
             false, message, RpcUtils.getStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP, message));
       }
@@ -319,7 +326,8 @@ public class RegionWriteExecutor {
         status =
             RpcUtils.getStatus(
                 TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode(),
-                "Failed to complete the insertion because trigger error before the insertion.");
+                DataNodeQueryMessages
+                    .EXCEPTION_FAILED_TO_COMPLETE_THE_INSERTION_BECAUSE_TRIGGER_ERROR_BEFORE_THE_INSERTION_92602240);
       } else {
         final long startWriteTime = System.nanoTime();
         status = dataRegionConsensus.write(groupId, insertNode);
@@ -334,7 +342,8 @@ public class RegionWriteExecutor {
           status =
               RpcUtils.getStatus(
                   TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode(),
-                  "Meet trigger error before/after the insertion, the insertion itself is completed.");
+                  DataNodeQueryMessages
+                      .EXCEPTION_MEET_TRIGGER_ERROR_BEFORE_AFTER_THE_INSERTION_THE_INSERTION_ITSELF_IS_COMPLETED_BC0788FF);
         }
         triggerCostTime += (System.nanoTime() - startTime);
       }
@@ -723,8 +732,10 @@ public class RegionWriteExecutor {
                   ? PlanVisitor.super.visitInternalCreateTimeSeries(node, context)
                   : RegionExecutionResult.create(
                       true,
-                      "Execute successfully",
-                      RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")),
+                      DataNodeMiscMessages.EXCEPTION_EXECUTE_SUCCESSFULLY_BF983B59,
+                      RpcUtils.getStatus(
+                          TSStatusCode.SUCCESS_STATUS,
+                          DataNodeMiscMessages.EXCEPTION_EXECUTE_SUCCESSFULLY_BF983B59)),
               failingStatus,
               alreadyExistingStatus);
         } finally {
@@ -825,8 +836,10 @@ public class RegionWriteExecutor {
                   ? PlanVisitor.super.visitInternalCreateMultiTimeSeries(node, context)
                   : RegionExecutionResult.create(
                       true,
-                      "Execute successfully",
-                      RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")),
+                      DataNodeMiscMessages.EXCEPTION_EXECUTE_SUCCESSFULLY_BF983B59,
+                      RpcUtils.getStatus(
+                          TSStatusCode.SUCCESS_STATUS,
+                          DataNodeMiscMessages.EXCEPTION_EXECUTE_SUCCESSFULLY_BF983B59)),
               failingStatus,
               alreadyExistingStatus);
         } finally {
@@ -866,9 +879,10 @@ public class RegionWriteExecutor {
       for (int i = 0; i < measurements.size(); ++i) {
         if (dataTypes.get(i) == TSDataType.OBJECT) {
           final String errorStr =
-              "The object type series "
-                  + path.concatAsMeasurementPath(measurements.get(i))
-                  + " is not supported.";
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_THE_OBJECT_TYPE_SERIES_ARG_IS_NOT_SUPPORTED_788E0C8E,
+                  Objects.toString(path.concatAsMeasurementPath(measurements.get(i))));
           return RegionExecutionResult.create(
               false, errorStr, RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, errorStr));
         }
@@ -999,7 +1013,8 @@ public class RegionWriteExecutor {
           // That means the template is being unset during the activation plan transport.
           String message =
               String.format(
-                  "Template is being unsetting from path %s. Please try activating later.",
+                  DataNodeQueryMessages
+                      .EXCEPTION_TEMPLATE_IS_BEING_UNSETTING_FROM_PATH_ARG_PLEASE_TRY_ACTIVATING_LATER_4E3DABCA,
                   node.getPathSetTemplate());
           return RegionExecutionResult.create(
               false, message, RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, message));
@@ -1049,7 +1064,8 @@ public class RegionWriteExecutor {
             // That means the template is being unset during the activation plan transport.
             String message =
                 String.format(
-                    "Template is being unsetting from path %s. Please try activating later.",
+                    DataNodeQueryMessages
+                        .EXCEPTION_TEMPLATE_IS_BEING_UNSETTING_FROM_PATH_ARG_PLEASE_TRY_ACTIVATING_LATER_4E3DABCA,
                     node.getPathSetTemplate(devicePath));
             return RegionExecutionResult.create(
                 false, message, RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, message));
@@ -1099,7 +1115,8 @@ public class RegionWriteExecutor {
             // That means the template is being unset during the activation plan transport.
             String message =
                 String.format(
-                    "Template is being unsetting from prefix path of %s. Please try activating later.",
+                    DataNodeQueryMessages
+                        .EXCEPTION_TEMPLATE_IS_BEING_UNSETTING_FROM_PREFIX_PATH_OF_ARG_PLEASE_TRY_ACTIVATING_LATER_165C2E48,
                     new PartialPath(
                             Arrays.copyOf(entry.getKey().getNodes(), entry.getValue().right + 1))
                         .getFullPath());

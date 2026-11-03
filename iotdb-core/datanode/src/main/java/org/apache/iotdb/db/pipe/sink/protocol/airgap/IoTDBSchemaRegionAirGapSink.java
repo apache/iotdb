@@ -83,7 +83,14 @@ public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
 
   @Override
   public void transfer(final Event event) throws Exception {
-    final int socketIndex = nextSocketIndex();
+    final boolean hasBatchToTransfer =
+        isTabletBatchModeEnabled
+            && Objects.nonNull(schemaRegionWritePlanEventBatch)
+            && !schemaRegionWritePlanEventBatch.isEmpty();
+    final boolean shouldRefreshReceiverSession =
+        !(event instanceof PipeHeartbeatEvent) || hasBatchToTransfer;
+    final int socketIndex =
+        shouldRefreshReceiverSession ? nextSocketIndex() : nextSocketIndex(false);
     final AirGapSocket socket = sockets.get(socketIndex);
 
     try {
@@ -239,7 +246,10 @@ public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
             : PipeTransferPlanNodeReq.toTPipeTransferBytes(planNode))) {
       final String errorMessage =
           String.format(
-              "Transfer data node write plan %s error. Socket: %s.", planNode.getType(), socket);
+              DataNodePipeMessages
+                  .MESSAGE_TRANSFER_DATA_NODE_WRITE_PLAN_ARG_ERROR_SOCKET_ARG_B11D8B04,
+              planNode.getType(),
+              socket);
       receiverStatusHandler.handle(
           new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
               .setMessage(errorMessage),
@@ -304,8 +314,11 @@ public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
             pipeSchemaRegionSnapshotEvent.toSealTypeString()))) {
       final String errorMessage =
           String.format(
-              "Seal schema region snapshot file %s and %s error. Socket %s.",
-              mtreeSnapshotFile, tagLogSnapshotFile, socket);
+              DataNodePipeMessages
+                  .MESSAGE_SEAL_SCHEMA_REGION_SNAPSHOT_FILE_ARG_AND_ARG_ERROR_SOCKET_ARG_9232FC1A,
+              mtreeSnapshotFile,
+              tagLogSnapshotFile,
+              socket);
       receiverStatusHandler.handle(
           new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
               .setMessage(errorMessage),

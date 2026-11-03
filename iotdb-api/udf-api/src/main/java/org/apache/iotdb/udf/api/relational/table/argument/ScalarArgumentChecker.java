@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.udf.api.relational.table.argument;
 
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
+
 import java.util.function.Function;
 
 public class ScalarArgumentChecker {
@@ -27,7 +29,7 @@ public class ScalarArgumentChecker {
         if (value instanceof Long && (Long) value > 0) {
           return null;
         }
-        return "should be a positive value";
+        return UdfApiMessages.EXCEPTION_SHOULD_BE_A_POSITIVE_VALUE_081C5357;
       };
 
   public static Function<Object, String> NON_NEGATIVE_DOUBLE_CHECKER =
@@ -35,6 +37,6 @@ public class ScalarArgumentChecker {
         if (value instanceof Double && (Double) value >= 0) {
           return null;
         }
-        return "should be a non-negative value";
+        return UdfApiMessages.EXCEPTION_SHOULD_BE_A_NON_NEGATIVE_VALUE_D7F8F4F0;
       };
 }

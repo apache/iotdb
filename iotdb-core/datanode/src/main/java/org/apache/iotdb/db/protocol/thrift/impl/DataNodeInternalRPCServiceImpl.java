@@ -115,6 +115,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.partition.DataPartitionTableGenerator;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -500,7 +501,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       LOGGER.warn(DataNodeMiscMessages.CONSENSUS_NOT_STARTED, consensusWaitTimeoutSeconds);
       return RpcUtils.getStatus(
           TSStatusCode.CONSENSUS_NOT_INITIALIZED,
-          "Consensus has not been started after " + consensusWaitTimeoutSeconds + " seconds");
+          String.format(
+              DataNodeMiscMessages
+                  .EXCEPTION_CONSENSUS_HAS_NOT_BEEN_STARTED_AFTER_ARG_SECONDS_AC8147E7,
+              Objects.toString(consensusWaitTimeoutSeconds)));
     }
   }
 
@@ -1854,7 +1858,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           (QueryStatement) StatementGenerator.createStatement(req.queryBody, session.getZoneId());
       if (s == null) {
         return RpcUtils.getStatus(
-            TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported");
+            TSStatusCode.SQL_PARSE_ERROR,
+            DataNodeMiscMessages.EXCEPTION_THIS_OPERATION_TYPE_IS_NOT_SUPPORTED_DD44BACE);
       }
 
       // 1. Add time filter in where
@@ -2696,12 +2701,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus startRepairData() throws TException {
     if (!storageEngine.isReadyForNonReadWriteFunctions()) {
-      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "not all sg is ready");
+      return RpcUtils.getStatus(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR,
+          DataNodeQueryMessages.QUERY_EXCEPTION_NOT_ALL_SG_IS_READY_9F51CF3E);
     }
     if (!CompactionTaskManager.getInstance().isInit()) {
       return RpcUtils.getStatus(
           TSStatusCode.EXECUTE_STATEMENT_ERROR,
-          "cannot start repair task because compaction is not enabled");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_CANNOT_START_REPAIR_TASK_BECAUSE_COMPACTION_IS_NOT_ENABLED_975C8DCD);
     }
     try {
       if (storageEngine.repairData()) {
@@ -2710,10 +2718,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         if (CompactionScheduleTaskManager.getRepairTaskManagerInstance().getRepairTaskStatus()
             == RepairTaskStatus.STOPPING) {
           return RpcUtils.getStatus(
-              TSStatusCode.EXECUTE_STATEMENT_ERROR, "previous repair task is still stopping");
+              TSStatusCode.EXECUTE_STATEMENT_ERROR,
+              DataNodeMiscMessages.EXCEPTION_PREVIOUS_REPAIR_TASK_IS_STILL_STOPPING_F6FAD84A);
         } else {
           return RpcUtils.getStatus(
-              TSStatusCode.EXECUTE_STATEMENT_ERROR, "already have a running repair task");
+              TSStatusCode.EXECUTE_STATEMENT_ERROR,
+              DataNodeMiscMessages.EXCEPTION_ALREADY_HAVE_A_RUNNING_REPAIR_TASK_826E4880);
         }
       }
     } catch (StorageEngineException e) {
@@ -3063,11 +3073,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     if (isLeader(regionId)) {
       String msg =
-          "[ChangeRegionLeader] The current DataNode: "
-              + req.getNewLeaderNode().getDataNodeId()
-              + " is already the leader of RegionGroup: "
-              + regionId
-              + ", skip leader transfer.";
+          String.format(
+              DataNodeMiscMessages
+                  .EXCEPTION_CHANGEREGIONLEADER_THE_CURRENT_DATANODE_ARG_IS_ALREADY_THE_LEADER_OF_REGIONGROUP_ARG_SKIP_LEADER_TRANSFER_68699742,
+              Objects.toString(req.getNewLeaderNode().getDataNodeId()),
+              Objects.toString(regionId));
       LOGGER.info(msg);
       resp.setStatus(successStatus.setMessage(msg));
       resp.setConsensusLogicalTimestamp(getLogicalClock(req.getRegionId()));
@@ -3854,7 +3864,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         setResponseFields(
             resp,
             DataPartitionTableGeneratorState.UNKNOWN.getCode(),
-            "Unknown task status: " + generator.getStatus(),
+            String.format(
+                DataNodeMiscMessages.EXCEPTION_UNKNOWN_TASK_STATUS_ARG_62ED14CA,
+                Objects.toString(generator.getStatus())),
             generator.getProgress(),
             RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
         LOGGER.info(DataNodeMiscMessages.DATA_PARTITION_TABLE_FAILED, currentTaskId);

@@ -157,7 +157,7 @@ public class DeleteTimeSeriesProcedure
     isAllLogicalView = true;
     final DeleteTimeSeriesRegionTaskExecutor<TConstructSchemaBlackListReq> constructBlackListTask =
         new DeleteTimeSeriesRegionTaskExecutor<TConstructSchemaBlackListReq>(
-            "construct schema engine black list",
+            ProcedureMessages.MESSAGE_CONSTRUCT_SCHEMA_ENGINE_BLACK_LIST_FCE4CBE0,
             env,
             targetSchemaRegionGroup,
             CnToDnAsyncRequestType.CONSTRUCT_SCHEMA_BLACK_LIST,
@@ -237,7 +237,7 @@ public class DeleteTimeSeriesProcedure
 
     final DeleteTimeSeriesRegionTaskExecutor<TDeleteDataForDeleteSchemaReq> deleteDataTask =
         new DeleteTimeSeriesRegionTaskExecutor<>(
-            "delete data",
+            ProcedureMessages.MESSAGE_DELETE_DATA_1896591B,
             env,
             relatedDataRegionGroup,
             false,
@@ -253,7 +253,7 @@ public class DeleteTimeSeriesProcedure
   private void deleteTimeSeriesSchema(final ConfigNodeProcedureEnv env) {
     final DeleteTimeSeriesRegionTaskExecutor<TDeleteTimeSeriesReq> deleteTimeSeriesTask =
         new DeleteTimeSeriesRegionTaskExecutor<>(
-            "delete time series in schema engine",
+            ProcedureMessages.MESSAGE_DELETE_TIME_SERIES_IN_SCHEMA_ENGINE_9B3DA44A,
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, mayDeleteAudit),
             CnToDnAsyncRequestType.DELETE_TIMESERIES,
@@ -290,7 +290,7 @@ public class DeleteTimeSeriesProcedure
     if (deleteTimeSeriesState == DeleteTimeSeriesState.CONSTRUCT_BLACK_LIST) {
       final DeleteTimeSeriesRegionTaskExecutor<TRollbackSchemaBlackListReq> rollbackStateTask =
           new DeleteTimeSeriesRegionTaskExecutor<>(
-              "roll back schema engine black list",
+              ProcedureMessages.MESSAGE_ROLL_BACK_SCHEMA_ENGINE_BLACK_LIST_39BA8E03,
               env,
               env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
               CnToDnAsyncRequestType.ROLLBACK_SCHEMA_BLACK_LIST,

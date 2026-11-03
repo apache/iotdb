@@ -143,10 +143,10 @@ public class AnalyzeUtils {
             public PredicateParseResult visitExpression(
                 final Expression node, final PredicateParseContext context) {
               throw new SemanticException(
-                  DataNodeQueryMessages.UNSUPPORTED_EXPRESSION
-                      + node
-                      + " in "
-                      + context.rootExpression);
+                  String.format(
+                      DataNodeQueryMessages.EXCEPTION_ARG_IN_ARG_DF5B49C2,
+                      Objects.toString(DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + node),
+                      Objects.toString(context.rootExpression)));
             }
           };
 
@@ -339,8 +339,10 @@ public class AnalyzeUtils {
     if (hasFailedMeasurement && !analysis.isFinishQueryAfterAnalyze()) {
       partialInsertMessage =
           String.format(
-              "Fail to insert measurements %s caused by %s",
-              insertStatement.getFailedMeasurements(), insertStatement.getFailedMessages());
+              DataNodeQueryMessages
+                  .EXCEPTION_FAIL_TO_INSERT_MEASUREMENTS_ARG_CAUSED_BY_ARG_B9858E6B,
+              insertStatement.getFailedMeasurements(),
+              insertStatement.getFailedMessages());
       LOGGER.warn(partialInsertMessage);
       analysis.setFailStatus(
           RpcUtils.getStatus(TSStatusCode.METADATA_ERROR.getStatusCode(), partialInsertMessage));
@@ -388,8 +390,8 @@ public class AnalyzeUtils {
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.DATABASE_NOT_EXIST.getStatusCode(),
-              "Database not exists and failed to create automatically "
-                  + "because enable_auto_create_schema is FALSE."));
+              DataNodeQueryMessages
+                  .EXCEPTION_DATABASE_NOT_EXISTS_AND_FAILED_TO_CREATE_AUTOMATICALLY_BECAUSE_ENABLE_AUTO_CREATE_SCHEMA_IS_FALSE_C25F3F18));
     }
     analysis.setDataPartitionInfo(dataPartition);
   }

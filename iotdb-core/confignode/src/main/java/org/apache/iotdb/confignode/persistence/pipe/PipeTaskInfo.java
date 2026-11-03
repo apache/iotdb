@@ -55,6 +55,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStat
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusWithStoppedByRuntimeExceptionPlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
@@ -208,8 +209,9 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
     final String exceptionMessage =
         String.format(
-            "Failed to create pipe %s, %s",
-            createPipeRequest.getPipeName(), PIPE_ALREADY_EXIST_MSG);
+            ManagerMessages.EXCEPTION_FAILED_TO_CREATE_PIPE_ARG_ARG_405A2E6F,
+            createPipeRequest.getPipeName(),
+            PIPE_ALREADY_EXIST_MSG);
     LOGGER.info(exceptionMessage);
     throw new PipeException(exceptionMessage);
   }
@@ -317,8 +319,9 @@ public class PipeTaskInfo implements SnapshotProcessor {
         updatedPipeStaticMeta, pipeStaticMetaFromCoordinator)) {
       final String exceptionMessage =
           String.format(
-              "Failed to alter pipe %s, %s",
-              alterPipeRequest.getPipeName(), PIPE_ALREADY_EXIST_MSG);
+              ManagerMessages.EXCEPTION_FAILED_TO_ALTER_PIPE_ARG_ARG_D38CC9FA,
+              alterPipeRequest.getPipeName(),
+              PIPE_ALREADY_EXIST_MSG);
       LOGGER.info(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
@@ -630,8 +633,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
       if (pluginName.equals(extractorPluginName)) {
         String exceptionMessage =
             String.format(
-                "PipePlugin '%s' is already used by Pipe '%s' as a source.",
-                pluginName, pipeMeta.getStaticMeta().getPipeName());
+                ManagerMessages
+                    .EXCEPTION_PIPEPLUGIN_ARG_IS_ALREADY_USED_BY_PIPE_ARG_AS_A_SOURCE_BA47AEF4,
+                pluginName,
+                pipeMeta.getStaticMeta().getPipeName());
         throw new PipeException(exceptionMessage);
       }
 
@@ -641,8 +646,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
       if (pluginName.equals(processorPluginName)) {
         String exceptionMessage =
             String.format(
-                "PipePlugin '%s' is already used by Pipe '%s' as a processor.",
-                pluginName, pipeMeta.getStaticMeta().getPipeName());
+                ManagerMessages
+                    .EXCEPTION_PIPEPLUGIN_ARG_IS_ALREADY_USED_BY_PIPE_ARG_AS_A_PROCESSOR_FA9F027E,
+                pluginName,
+                pipeMeta.getStaticMeta().getPipeName());
         throw new PipeException(exceptionMessage);
       }
 
@@ -654,8 +661,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
       if (pluginName.equals(connectorPluginName)) {
         String exceptionMessage =
             String.format(
-                "PipePlugin '%s' is already used by Pipe '%s' as a sink.",
-                pluginName, pipeMeta.getStaticMeta().getPipeName());
+                ManagerMessages
+                    .EXCEPTION_PIPEPLUGIN_ARG_IS_ALREADY_USED_BY_PIPE_ARG_AS_A_SINK_A438625C,
+                pluginName,
+                pipeMeta.getStaticMeta().getPipeName());
         throw new PipeException(exceptionMessage);
       }
     }

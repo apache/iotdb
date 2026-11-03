@@ -84,7 +84,8 @@ public class ContinuousSameSearchIndexSeparatorNode extends SearchNode implement
   // region all operations below are unsupported
 
   private static final String UNSUPPORTED_MESSAGE =
-      "ContinuousSameSearchIndexSeparatorNode not support this operation";
+      DataNodeQueryMessages
+          .MESSAGE_CONTINUOUSSAMESEARCHINDEXSEPARATORNODE_NOT_SUPPORT_THIS_OPERATION_CC9BC84B;
 
   @Override
   public TRegionReplicaSet getRegionReplicaSet() {

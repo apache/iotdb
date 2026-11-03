@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.udf.api.relational.table;
 
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
 import org.apache.iotdb.udf.api.relational.table.argument.DescribedSchema;
 
 import java.util.HashMap;
@@ -65,10 +66,12 @@ public class TableFunctionAnalysis {
       Map<String, List<Integer>> requiredColumns,
       boolean requiredRecordSnapshot,
       TableFunctionHandle handle) {
-    this.properColumnSchema = requireNonNull(properColumnSchema, "returnedType is null");
+    this.properColumnSchema =
+        requireNonNull(properColumnSchema, UdfApiMessages.EXCEPTION_RETURNEDTYPE_IS_NULL_98FA07AD);
     this.requiredColumns = requiredColumns;
     this.requireRecordSnapshot = requiredRecordSnapshot;
-    this.handle = requireNonNull(handle, "TableFunctionHandle is null");
+    this.handle =
+        requireNonNull(handle, UdfApiMessages.EXCEPTION_TABLEFUNCTIONHANDLE_IS_NULL_7A2E991C);
   }
 
   public Optional<DescribedSchema> getProperColumnSchema() {

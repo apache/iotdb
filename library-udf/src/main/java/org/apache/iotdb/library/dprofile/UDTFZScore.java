@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.dprofile;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -55,11 +56,13 @@ public class UDTFZScore implements UDTF {
             x ->
                 ((String) x).equalsIgnoreCase(BATCH_COMPUTE)
                     || ((String) x).equalsIgnoreCase(STREAM_COMPUTE),
-            "Parameter \"compute\" is illegal. Please use \"batch\" (for default) or \"stream\".",
+            LibraryUdfMessages
+                .EXCEPTION_PARAMETER_COMPUTE_IS_ILLEGAL_PLEASE_USE_BATCH_FOR_DEFAULT_OR_STREAM_C46DD729,
             validator.getParameters().getStringOrDefault("compute", BATCH_COMPUTE))
         .validate(
             x -> ((Double) x) > 0,
-            "Parameter \"sd\" is illegal. It should be larger than 0.",
+            LibraryUdfMessages
+                .EXCEPTION_PARAMETER_SD_IS_ILLEGAL_IT_SHOULD_BE_LARGER_THAN_0_61264233,
             validator.getParameters().getDoubleOrDefault("sd", 1.0));
   }
 

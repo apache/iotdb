@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -35,6 +36,7 @@ import org.apache.iotdb.udf.api.type.Type;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.IOException;
+import java.util.Objects;
 
 public abstract class UDTFContinuouslySatisfy implements UDTF {
   protected long min;
@@ -54,12 +56,14 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
             0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE, Type.BOOLEAN)
         .validate(
             args -> (Long) args[1] >= (Long) args[0],
-            "max can not be smaller than min.",
+            CommonMessages.EXCEPTION_MAX_CAN_NOT_BE_SMALLER_THAN_MIN_D6EA3271,
             validator.getParameters().getLongOrDefault("min", getDefaultMin()),
             validator.getParameters().getLongOrDefault("max", getDefaultMax()))
         .validate(
             min -> (Long) min >= getDefaultMin(),
-            "min can not be smaller than " + getDefaultMin() + ".",
+            String.format(
+                CommonMessages.EXCEPTION_MIN_CAN_NOT_BE_SMALLER_THAN_ARG_CBF3792E,
+                Objects.toString(getDefaultMin())),
             validator.getParameters().getLongOrDefault("min", getDefaultMin()));
   }
 

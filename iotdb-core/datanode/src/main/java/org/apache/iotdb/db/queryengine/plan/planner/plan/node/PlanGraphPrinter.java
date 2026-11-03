@@ -114,6 +114,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -134,7 +135,8 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   private static final int BOX_MARGIN = 1;
   private static final int CONNECTION_LINE_HEIGHT = 2;
 
-  private static final String REGION_NOT_ASSIGNED = "Not Assigned";
+  private static final String REGION_NOT_ASSIGNED =
+      DataNodeQueryMessages.EXCEPTION_NOT_ASSIGNED_F5DCFB95;
   public static final String DEVICE_NUMBER = "DeviceNumber";
   public static final String CACHED_DEVICE_NUMBER = "CachedDeviceNumber";
   public static final String REGIONS_OF_CURRENT_SUB_TASK = "RegionsOfCurrentSubTask";
@@ -156,23 +158,26 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitSeriesScan(SeriesScanNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("SeriesScan-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("Series: %s", node.getSeriesPath()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_SERIES_ARG_F5564925, node.getSeriesPath()));
 
     long limit = node.getPushDownLimit();
     long offset = node.getPushDownOffset();
     if (limit > 0) {
-      boxValue.add(String.format("Limit: %s", limit));
+      boxValue.add(String.format(DataNodeQueryMessages.EXCEPTION_LIMIT_ARG_C4FECCC2, limit));
     }
     if (offset > 0) {
-      boxValue.add(String.format("Offset: %s", offset));
+      boxValue.add(String.format(DataNodeQueryMessages.EXCEPTION_OFFSET_ARG_7D3690BE, offset));
     }
 
     Expression predicate = node.getPushDownPredicate();
     if (predicate != null) {
-      boxValue.add(String.format("Predicate: %s", predicate));
+      boxValue.add(
+          String.format(DataNodeQueryMessages.EXCEPTION_PREDICATE_ARG_5DFE6605, predicate));
     }
 
-    boxValue.add(String.format("ScanOrder: %s", node.getScanOrder()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_SCANORDER_ARG_AB0CB81A, node.getScanOrder()));
 
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
@@ -184,25 +189,31 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
     boxValue.add(String.format("AlignedSeriesScan-%s", node.getPlanNodeId().getId()));
     boxValue.add(
         String.format(
-            "Series: %s%s",
-            node.getAlignedPath().getIDeviceID(), node.getAlignedPath().getMeasurementList()));
+            DataNodeQueryMessages.EXCEPTION_SERIES_ARG_ARG_4AD75872,
+            node.getAlignedPath().getIDeviceID(),
+            node.getAlignedPath().getMeasurementList()));
 
     long limit = node.getPushDownLimit();
     long offset = node.getPushDownOffset();
     if (limit > 0) {
-      boxValue.add(String.format("Limit: %s", limit));
+      boxValue.add(String.format(DataNodeQueryMessages.EXCEPTION_LIMIT_ARG_C4FECCC2, limit));
     }
     if (offset > 0) {
-      boxValue.add(String.format("Offset: %s", offset));
+      boxValue.add(String.format(DataNodeQueryMessages.EXCEPTION_OFFSET_ARG_7D3690BE, offset));
     }
 
     Expression predicate = node.getPushDownPredicate();
     if (predicate != null) {
-      boxValue.add(String.format("Predicate: %s", predicate));
+      boxValue.add(
+          String.format(DataNodeQueryMessages.EXCEPTION_PREDICATE_ARG_5DFE6605, predicate));
     }
 
-    boxValue.add(String.format("QueryAllSensors: %s", node.isQueryAllSensors()));
-    boxValue.add(String.format("ScanOrder: %s", node.getScanOrder()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_QUERYALLSENSORS_ARG_ADCB5FCA,
+            node.isQueryAllSensors()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_SCANORDER_ARG_AB0CB81A, node.getScanOrder()));
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }
@@ -212,18 +223,24 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       SeriesAggregationScanNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("SeriesAggregationScan-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("Series: %s", node.getSeriesPath()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_SERIES_ARG_F5564925, node.getSeriesPath()));
     for (int i = 0; i < node.getAggregationDescriptorList().size(); i++) {
       AggregationDescriptor descriptor = node.getAggregationDescriptorList().get(i);
       boxValue.add(
           String.format(
-              "Aggregator-%d: %s, %s", i, descriptor.getAggregationType(), descriptor.getStep()));
+              DataNodeQueryMessages.EXCEPTION_AGGREGATOR_ARG_ARG_ARG_8C1D8DC9,
+              i,
+              descriptor.getAggregationType(),
+              descriptor.getStep()));
     }
     Expression predicate = node.getPushDownPredicate();
     if (predicate != null) {
-      boxValue.add(String.format("Predicate: %s", predicate));
+      boxValue.add(
+          String.format(DataNodeQueryMessages.EXCEPTION_PREDICATE_ARG_5DFE6605, predicate));
     }
-    boxValue.add(String.format("ScanOrder: %s", node.getScanOrder()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_SCANORDER_ARG_AB0CB81A, node.getScanOrder()));
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }
@@ -235,19 +252,25 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
     boxValue.add(String.format("AlignedSeriesAggregationScan-%s", node.getPlanNodeId().getId()));
     boxValue.add(
         String.format(
-            "Series: %s%s",
-            node.getAlignedPath().getIDeviceID(), node.getAlignedPath().getMeasurementList()));
+            DataNodeQueryMessages.EXCEPTION_SERIES_ARG_ARG_4AD75872,
+            node.getAlignedPath().getIDeviceID(),
+            node.getAlignedPath().getMeasurementList()));
     for (int i = 0; i < node.getAggregationDescriptorList().size(); i++) {
       AggregationDescriptor descriptor = node.getAggregationDescriptorList().get(i);
       boxValue.add(
           String.format(
-              "Aggregator-%d: %s, %s", i, descriptor.getAggregationType(), descriptor.getStep()));
+              DataNodeQueryMessages.EXCEPTION_AGGREGATOR_ARG_ARG_ARG_8C1D8DC9,
+              i,
+              descriptor.getAggregationType(),
+              descriptor.getStep()));
     }
     Expression predicate = node.getPushDownPredicate();
     if (predicate != null) {
-      boxValue.add(String.format("Predicate: %s", predicate));
+      boxValue.add(
+          String.format(DataNodeQueryMessages.EXCEPTION_PREDICATE_ARG_5DFE6605, predicate));
     }
-    boxValue.add(String.format("ScanOrder: %s", node.getScanOrder()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_SCANORDER_ARG_AB0CB81A, node.getScanOrder()));
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }
@@ -256,7 +279,8 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitSingleDeviceView(SingleDeviceViewNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("SingleDeviceView-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("DeviceName: %s", node.getDevice()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_DEVICENAME_ARG_59E457FD, node.getDevice()));
     return render(node, boxValue, context);
   }
 
@@ -264,7 +288,9 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitDeviceView(DeviceViewNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("DeviceView-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("DeviceCount: %d", node.getDevices().size()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_DEVICECOUNT_ARG_665654AC, node.getDevices().size()));
     return render(node, boxValue, context);
   }
 
@@ -280,7 +306,9 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitMergeSort(MergeSortNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("MergeSort-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("ChildrenCount: %d", node.getChildren().size()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_CHILDRENCOUNT_ARG_08EB5B4D, node.getChildren().size()));
     boxValue.add(node.getMergeOrderParameter().toString());
     return render(node, boxValue, context);
   }
@@ -289,7 +317,9 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitCollect(CollectNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Collect-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("ChildrenCount: %d", node.getChildren().size()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_CHILDRENCOUNT_ARG_08EB5B4D, node.getChildren().size()));
     return render(node, boxValue, context);
   }
 
@@ -297,7 +327,8 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitTopK(TopKNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("TopK-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("LimitValue: %d", node.getTopValue()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_LIMITVALUE_ARG_A0AB58C2, node.getTopValue()));
     boxValue.add(node.getMergeOrderParameter().toString());
     return render(node, boxValue, context);
   }
@@ -306,7 +337,9 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitDeviceMerge(DeviceMergeNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("DeviceMerge-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("DeviceCount: %d", node.getDevices().size()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_DEVICECOUNT_ARG_665654AC, node.getDevices().size()));
     return render(node, boxValue, context);
   }
 
@@ -314,11 +347,15 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitFill(FillNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Fill-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("Policy: %s", node.getFillDescriptor().getFillPolicy()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_POLICY_ARG_08266A9A,
+            node.getFillDescriptor().getFillPolicy()));
     if (node.getFillDescriptor().getTimeDurationThreshold() != null) {
       boxValue.add(
           String.format(
-              "TimeDurationThreshold: %s", node.getFillDescriptor().getTimeDurationThreshold()));
+              DataNodeQueryMessages.EXCEPTION_TIMEDURATIONTHRESHOLD_ARG_D521A764,
+              node.getFillDescriptor().getTimeDurationThreshold()));
     }
     return render(node, boxValue, context);
   }
@@ -327,7 +364,8 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitFilter(FilterNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Filter-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("Predicate: %s", node.getPredicate()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_PREDICATE_ARG_5DFE6605, node.getPredicate()));
     return render(node, boxValue, context);
   }
 
@@ -339,9 +377,18 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       AggregationDescriptor descriptor = node.getGroupByLevelDescriptors().get(i);
       boxValue.add(
           String.format(
-              "Aggregator-%d: %s, %s", i, descriptor.getAggregationType(), descriptor.getStep()));
-      boxValue.add(String.format("  Output: %s", descriptor.getOutputColumnNames()));
-      boxValue.add(String.format("  Input: %s", descriptor.getInputExpressions()));
+              DataNodeQueryMessages.EXCEPTION_AGGREGATOR_ARG_ARG_ARG_8C1D8DC9,
+              i,
+              descriptor.getAggregationType(),
+              descriptor.getStep()));
+      boxValue.add(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_OUTPUT_ARG_1B85810F,
+              descriptor.getOutputColumnNames()));
+      boxValue.add(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_INPUT_ARG_C70AA19F,
+              descriptor.getInputExpressions()));
     }
     return render(node, boxValue, context);
   }
@@ -350,22 +397,35 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitGroupByTag(GroupByTagNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("GroupByTag-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("Tag keys: %s", node.getTagKeys()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_TAG_KEYS_ARG_DFFA4DCF, node.getTagKeys()));
     int bucketIdx = 0;
     for (Entry<List<String>, List<CrossSeriesAggregationDescriptor>> entry :
         node.getTagValuesToAggregationDescriptors().entrySet()) {
-      boxValue.add(String.format("Bucket-%d: %s", bucketIdx, entry.getKey()));
+      boxValue.add(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_BUCKET_ARG_ARG_D52292C8, bucketIdx, entry.getKey()));
       int aggregatorIdx = 0;
       for (CrossSeriesAggregationDescriptor descriptor : entry.getValue()) {
         if (descriptor == null) {
-          boxValue.add(String.format("    Aggregator-%d: NULL", aggregatorIdx));
+          boxValue.add(
+              String.format(
+                  DataNodeQueryMessages.EXCEPTION_AGGREGATOR_ARG_NULL_B5E4F862, aggregatorIdx));
         } else {
           boxValue.add(
               String.format(
-                  "    Aggregator-%d: %s, %s",
-                  aggregatorIdx, descriptor.getAggregationType(), descriptor.getStep()));
-          boxValue.add(String.format("      Output: %s", descriptor.getOutputColumnNames()));
-          boxValue.add(String.format("      Input: %s", descriptor.getInputExpressions()));
+                  DataNodeQueryMessages.EXCEPTION_AGGREGATOR_ARG_ARG_ARG_C65C36A7,
+                  aggregatorIdx,
+                  descriptor.getAggregationType(),
+                  descriptor.getStep()));
+          boxValue.add(
+              String.format(
+                  DataNodeQueryMessages.EXCEPTION_OUTPUT_ARG_893AC7DA,
+                  descriptor.getOutputColumnNames()));
+          boxValue.add(
+              String.format(
+                  DataNodeQueryMessages.EXCEPTION_INPUT_ARG_F57C6A9B,
+                  descriptor.getInputExpressions()));
         }
         aggregatorIdx += 1;
       }
@@ -383,7 +443,10 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       AggregationDescriptor descriptor = node.getAggregationDescriptorList().get(i);
       boxValue.add(
           String.format(
-              "Aggregator-%d: %s, %s", i, descriptor.getAggregationType(), descriptor.getStep()));
+              DataNodeQueryMessages.EXCEPTION_AGGREGATOR_ARG_ARG_ARG_8C1D8DC9,
+              i,
+              descriptor.getAggregationType(),
+              descriptor.getStep()));
     }
     return render(node, boxValue, context);
   }
@@ -392,7 +455,8 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitOffset(OffsetNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Offset-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("value: %d", node.getOffset()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_VALUE_ARG_CD522509, node.getOffset()));
     return render(node, boxValue, context);
   }
 
@@ -404,7 +468,10 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       AggregationDescriptor descriptor = node.getAggregationDescriptorList().get(i);
       boxValue.add(
           String.format(
-              "Aggregator-%d: %s, %s", i, descriptor.getAggregationType(), descriptor.getStep()));
+              DataNodeQueryMessages.EXCEPTION_AGGREGATOR_ARG_ARG_ARG_8C1D8DC9,
+              i,
+              descriptor.getAggregationType(),
+              descriptor.getStep()));
     }
     return render(node, boxValue, context);
   }
@@ -417,7 +484,10 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       AggregationDescriptor descriptor = node.getAggregationDescriptorList().get(i);
       boxValue.add(
           String.format(
-              "Aggregator-%d: %s, %s", i, descriptor.getAggregationType(), descriptor.getStep()));
+              DataNodeQueryMessages.EXCEPTION_AGGREGATOR_ARG_ARG_ARG_8C1D8DC9,
+              i,
+              descriptor.getAggregationType(),
+              descriptor.getStep()));
     }
     return render(node, boxValue, context);
   }
@@ -443,7 +513,8 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitLeftOuterTimeJoin(LeftOuterTimeJoinNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("LeftOuterTimeJoin-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("Order: %s", node.getMergeOrder()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_ORDER_ARG_5AC5D051, node.getMergeOrder()));
     return render(node, boxValue, context);
   }
 
@@ -451,7 +522,8 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitInnerTimeJoin(InnerTimeJoinNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("InnerTimeJoin-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("Order: %s", node.getMergeOrder()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_ORDER_ARG_5AC5D051, node.getMergeOrder()));
     Optional<List<Long>> timePartitions = node.getTimePartitions();
     if (timePartitions.isPresent()) {
       int size = timePartitions.get().size();
@@ -485,7 +557,8 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitFullOuterTimeJoin(FullOuterTimeJoinNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("FullOuterTimeJoin-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("Order: %s", node.getMergeOrder()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_ORDER_ARG_5AC5D051, node.getMergeOrder()));
     return render(node, boxValue, context);
   }
 
@@ -493,7 +566,8 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitLimit(LimitNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Limit-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("Count: %d", node.getLimit()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_COUNT_ARG_4716A93F, node.getLimit()));
     return render(node, boxValue, context);
   }
 
@@ -504,7 +578,11 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
     for (int i = 0; i < node.getOutputExpressions().length; i++) {
       Expression exp = node.getOutputExpressions()[i];
       boxValue.add(
-          String.format("Exp-%d[%s]: %s", i, exp.getExpressionType(), exp.getExpressionString()));
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_EXP_ARG_ARG_ARG_DA510DF0,
+              i,
+              exp.getExpressionType(),
+              exp.getExpressionString()));
     }
     return render(node, boxValue, context);
   }
@@ -523,7 +601,9 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
 
     for (int i = 0; i < outputColumns.size(); i++) {
       String outputColumn = outputColumns.get(i);
-      boxValue.add(String.format("OutputColumn-%d: %s", i, outputColumn));
+      boxValue.add(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_OUTPUTCOLUMN_ARG_ARG_E768E3E4, i, outputColumn));
     }
     return render(node, boxValue, context);
   }
@@ -576,14 +656,18 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitLastQueryScan(LastQueryScanNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("LastQueryScan-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("Aligned: %s", node.isAligned()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_ALIGNED_ARG_E48AEDF2, node.isAligned()));
     boxValue.add(
         String.format(
-            "Series: %s%s", node.getDevicePath().getIDeviceID(), node.getMeasurementSchemas()));
+            DataNodeQueryMessages.EXCEPTION_SERIES_ARG_ARG_4AD75872,
+            node.getDevicePath().getIDeviceID(),
+            node.getMeasurementSchemas()));
 
     List<String> outputPaths = node.getOutputPaths();
     if (outputPaths != null) {
-      boxValue.add(String.format("OutputPaths: %s", outputPaths));
+      boxValue.add(
+          String.format(DataNodeQueryMessages.EXCEPTION_OUTPUTPATHS_ARG_0EC28B1F, outputPaths));
     }
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
@@ -614,7 +698,8 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitLastQueryTransform(LastQueryTransformNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("LastQueryTransform-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("ViewPath: %s", node.getViewPath()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_VIEWPATH_ARG_066D73F6, node.getViewPath()));
     return render(node, boxValue, context);
   }
 
@@ -643,10 +728,12 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitColumnInject(ColumnInjectNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("ColumnInject-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("TargetIndex: %d", node.getTargetIndex()));
     boxValue.add(
         String.format(
-            "ColumnGeneratorParameterType: %s",
+            DataNodeQueryMessages.EXCEPTION_TARGETINDEX_ARG_38B82D51, node.getTargetIndex()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_COLUMNGENERATORPARAMETERTYPE_ARG_74D7D221,
             node.getColumnGeneratorParameter().getGeneratorType()));
     return render(node, boxValue, context);
   }
@@ -656,7 +743,9 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitCteScan(CteScanNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("CteScan-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_OUTPUTSYMBOLS_ARG_2CDA67EC, node.getOutputSymbols()));
     return render(node, boxValue, context);
   }
 
@@ -673,51 +762,80 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
 
     List<String> boxValue = new ArrayList<>();
     boxValue.add(node.toString());
-    boxValue.add(String.format("QualifiedTableName: %s", node.getQualifiedObjectName().toString()));
-    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
-
-    if (deviceTableScanNode != null) {
-      boxValue.add(String.format("DeviceNumber: %s", deviceTableScanNode.getDeviceEntryCount()));
-      boxValue.add(String.format("ScanOrder: %s", deviceTableScanNode.getScanOrder()));
-      if (deviceTableScanNode.getTimePredicate().isPresent()) {
-        boxValue.add(
-            String.format("TimePredicate: %s", deviceTableScanNode.getTimePredicate().get()));
-      }
-    }
-    if (externalTsFileScanNode != null) {
-      boxValue.add(
-          String.format("TsFileNumber: %s", externalTsFileScanNode.getTsFilePaths().size()));
-    }
-
-    if (node.getPushDownPredicate() != null) {
-      boxValue.add(String.format("PushDownPredicate: %s", node.getPushDownPredicate()));
-    }
-    boxValue.add(String.format("PushDownOffset: %s", node.getPushDownOffset()));
-    boxValue.add(String.format("PushDownLimit: %s", node.getPushDownLimit()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_QUALIFIEDTABLENAME_ARG_111FC756,
+            node.getQualifiedObjectName().toString()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_OUTPUTSYMBOLS_ARG_2CDA67EC, node.getOutputSymbols()));
 
     if (deviceTableScanNode != null) {
       boxValue.add(
           String.format(
-              "PushDownLimitToEachDevice: %s", deviceTableScanNode.isPushLimitToEachDevice()));
+              DataNodeQueryMessages.EXCEPTION_DEVICENUMBER_ARG_446C345C,
+              deviceTableScanNode.getDeviceEntryCount()));
+      boxValue.add(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_SCANORDER_ARG_AB0CB81A,
+              deviceTableScanNode.getScanOrder()));
+      if (deviceTableScanNode.getTimePredicate().isPresent()) {
+        boxValue.add(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_TIMEPREDICATE_ARG_26915CBF,
+                deviceTableScanNode.getTimePredicate().get()));
+      }
+    }
+    if (externalTsFileScanNode != null) {
+      boxValue.add(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_TSFILENUMBER_ARG_0D17D680,
+              externalTsFileScanNode.getTsFilePaths().size()));
+    }
+
+    if (node.getPushDownPredicate() != null) {
+      boxValue.add(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_PUSHDOWNPREDICATE_ARG_196CC2DC,
+              node.getPushDownPredicate()));
+    }
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_PUSHDOWNOFFSET_ARG_00E1070C, node.getPushDownOffset()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_PUSHDOWNLIMIT_ARG_E1420251, node.getPushDownLimit()));
+
+    if (deviceTableScanNode != null) {
+      boxValue.add(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_PUSHDOWNLIMITTOEACHDEVICE_ARG_2DD716F0,
+              deviceTableScanNode.isPushLimitToEachDevice()));
       String topKRuntimeFilterSourceId = deviceTableScanNode.getTopKRuntimeFilterSourceId();
       if (topKRuntimeFilterSourceId != null) {
-        boxValue.add(String.format("TOPN OPT: %s", topKRuntimeFilterSourceId));
+        boxValue.add(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_TOPN_OPT_ARG_6358B1C6, topKRuntimeFilterSourceId));
       }
     }
 
     boxValue.add(
         String.format(
-            "RegionId: %s",
+            DataNodeQueryMessages.EXCEPTION_REGIONID_ARG_190371FB,
             node.getRegionReplicaSet() == null || node.getRegionReplicaSet().getRegionId() == null
                 ? REGION_NOT_ASSIGNED
                 : node.getRegionReplicaSet().getRegionId().getId()));
 
     if (deviceTableScanNode instanceof TreeDeviceViewScanNode) {
       TreeDeviceViewScanNode treeDeviceViewScanNode = (TreeDeviceViewScanNode) deviceTableScanNode;
-      boxValue.add(String.format("TreeDB: %s", treeDeviceViewScanNode.getTreeDBName()));
       boxValue.add(
           String.format(
-              "MeasurementToColumnName: %s", treeDeviceViewScanNode.getMeasurementColumnNameMap()));
+              DataNodeQueryMessages.EXCEPTION_TREEDB_ARG_409FDB70,
+              treeDeviceViewScanNode.getTreeDBName()));
+      boxValue.add(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_MEASUREMENTTOCOLUMNNAME_ARG_E2BC3300,
+              treeDeviceViewScanNode.getMeasurementColumnNameMap()));
     }
     if (node instanceof TableDiskUsageInformationSchemaTableScanNode) {
       boxValue.add(
@@ -735,7 +853,9 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Aggregation-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_OUTPUTSYMBOLS_ARG_2CDA67EC, node.getOutputSymbols()));
     int i = 0;
     for (org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode
             .Aggregation
@@ -743,9 +863,13 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       StringBuilder aggregator =
           new StringBuilder(
               String.format(
-                  "Aggregator-%d: %s", i++, aggregation.getResolvedFunction().toString()));
+                  DataNodeQueryMessages.EXCEPTION_AGGREGATOR_ARG_ARG_B03FFEF0,
+                  i++,
+                  aggregation.getResolvedFunction().toString()));
       if (aggregation.hasMask()) {
-        aggregator.append(String.format("  mask: %s", aggregation.getMask().get()));
+        aggregator.append(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_MASK_ARG_452DF02A, aggregation.getMask().get()));
       }
 
       if (aggregation.isDistinct()) {
@@ -753,12 +877,17 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       }
       boxValue.add(aggregator.toString());
     }
-    boxValue.add(String.format("GroupingKeys: %s", node.getGroupingKeys()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_GROUPINGKEYS_ARG_4D5DC588, node.getGroupingKeys()));
     if (node.isStreamable()) {
       boxValue.add("Streamable: true");
-      boxValue.add(String.format("PreGroupedSymbols: %s", node.getPreGroupedSymbols()));
+      boxValue.add(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_PREGROUPEDSYMBOLS_ARG_93C21065,
+              node.getPreGroupedSymbols()));
     }
-    boxValue.add(String.format("Step: %s", node.getStep()));
+    boxValue.add(String.format(DataNodeQueryMessages.EXCEPTION_STEP_ARG_ACB0A043, node.getStep()));
     return render(node, boxValue, context);
   }
 
@@ -768,8 +897,13 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(node.toString());
-    boxValue.add(String.format("QualifiedTableName: %s", node.getQualifiedObjectName().toString()));
-    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_QUALIFIEDTABLENAME_ARG_111FC756,
+            node.getQualifiedObjectName().toString()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_OUTPUTSYMBOLS_ARG_2CDA67EC, node.getOutputSymbols()));
     int i = 0;
     for (org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode
             .Aggregation
@@ -777,9 +911,13 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       StringBuilder aggregator =
           new StringBuilder(
               String.format(
-                  "Aggregator-%d: %s", i++, aggregation.getResolvedFunction().toString()));
+                  DataNodeQueryMessages.EXCEPTION_AGGREGATOR_ARG_ARG_B03FFEF0,
+                  i++,
+                  aggregation.getResolvedFunction().toString()));
       if (aggregation.hasMask()) {
-        aggregator.append(String.format("  mask: %s", aggregation.getMask().get()));
+        aggregator.append(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_MASK_ARG_452DF02A, aggregation.getMask().get()));
       }
 
       if (aggregation.isDistinct()) {
@@ -787,29 +925,49 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       }
       boxValue.add(aggregator.toString());
     }
-    boxValue.add(String.format("GroupingKeys: %s", node.getGroupingKeys()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_GROUPINGKEYS_ARG_4D5DC588, node.getGroupingKeys()));
     if (node.isStreamable()) {
       boxValue.add("Streamable: true");
-      boxValue.add(String.format("PreGroupedSymbols: %s", node.getPreGroupedSymbols()));
+      boxValue.add(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_PREGROUPEDSYMBOLS_ARG_93C21065,
+              node.getPreGroupedSymbols()));
     }
-    boxValue.add(String.format("Step: %s", node.getStep()));
+    boxValue.add(String.format(DataNodeQueryMessages.EXCEPTION_STEP_ARG_ACB0A043, node.getStep()));
 
     if (node.getProjection() != null) {
       boxValue.add(
-          String.format("Project-Expressions: %s", node.getProjection().getMap().values()));
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_PROJECT_EXPRESSIONS_ARG_B86BB5E3,
+              node.getProjection().getMap().values()));
     }
 
-    boxValue.add(String.format("DeviceNumber: %s", node.getDeviceEntryCount()));
-    boxValue.add(String.format("ScanOrder: %s", node.getScanOrder()));
-    if (node.getPushDownPredicate() != null) {
-      boxValue.add(String.format("PushDownPredicate: %s", node.getPushDownPredicate()));
-    }
-    boxValue.add(String.format("PushDownOffset: %s", node.getPushDownOffset()));
-    boxValue.add(String.format("PushDownLimit: %s", node.getPushDownLimit()));
-    boxValue.add(String.format("PushDownLimitToEachDevice: %s", node.isPushLimitToEachDevice()));
     boxValue.add(
         String.format(
-            "RegionId: %s",
+            DataNodeQueryMessages.EXCEPTION_DEVICENUMBER_ARG_446C345C, node.getDeviceEntryCount()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_SCANORDER_ARG_AB0CB81A, node.getScanOrder()));
+    if (node.getPushDownPredicate() != null) {
+      boxValue.add(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_PUSHDOWNPREDICATE_ARG_196CC2DC,
+              node.getPushDownPredicate()));
+    }
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_PUSHDOWNOFFSET_ARG_00E1070C, node.getPushDownOffset()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_PUSHDOWNLIMIT_ARG_E1420251, node.getPushDownLimit()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_PUSHDOWNLIMITTOEACHDEVICE_ARG_2DD716F0,
+            node.isPushLimitToEachDevice()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_REGIONID_ARG_190371FB,
             node.getRegionReplicaSet() == null || node.getRegionReplicaSet().getRegionId() == null
                 ? REGION_NOT_ASSIGNED
                 : node.getRegionReplicaSet().getRegionId().getId()));
@@ -817,10 +975,13 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
     if (node instanceof AggregationTreeDeviceViewScanNode) {
       AggregationTreeDeviceViewScanNode aggregationTreeDeviceViewScanNode =
           (AggregationTreeDeviceViewScanNode) node;
-      boxValue.add(String.format("TreeDB: %s", aggregationTreeDeviceViewScanNode.getTreeDBName()));
       boxValue.add(
           String.format(
-              "MeasurementToColumnName: %s",
+              DataNodeQueryMessages.EXCEPTION_TREEDB_ARG_409FDB70,
+              aggregationTreeDeviceViewScanNode.getTreeDBName()));
+      boxValue.add(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_MEASUREMENTTOCOLUMNNAME_ARG_E2BC3300,
               aggregationTreeDeviceViewScanNode.getMeasurementColumnNameMap()));
     }
     return render(node, boxValue, context);
@@ -843,7 +1004,8 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Filter-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("Predicate: %s", node.getPredicate()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_PREDICATE_ARG_5DFE6605, node.getPredicate()));
     return render(node, boxValue, context);
   }
 
@@ -853,8 +1015,13 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Project-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
-    boxValue.add(String.format("Expressions: %s", node.getAssignments().getMap().values()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_OUTPUTSYMBOLS_ARG_2CDA67EC, node.getOutputSymbols()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_EXPRESSIONS_ARG_7A24068A,
+            node.getAssignments().getMap().values()));
     return render(node, boxValue, context);
   }
 
@@ -864,7 +1031,9 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Into-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_OUTPUTSYMBOLS_ARG_2CDA67EC, node.getOutputSymbols()));
     return render(node, boxValue, context);
   }
 
@@ -907,7 +1076,9 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("OutputNode-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("OutputColumns-%s", node.getOutputColumnNames()));
-    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_OUTPUTSYMBOLS_ARG_2CDA67EC, node.getOutputSymbols()));
     return render(node, boxValue, context);
   }
 
@@ -915,7 +1086,10 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitExplainAnalyze(ExplainAnalyzeNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("ExplainAnalyze-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("ChildPermittedOutputs: %s", node.getChildPermittedOutputs()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_CHILDPERMITTEDOUTPUTS_ARG_206350BD,
+            node.getChildPermittedOutputs()));
     return render(node, boxValue, context);
   }
 
@@ -923,19 +1097,31 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitGapFill(GapFillNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("GapFill-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("StartTime: %s", node.getStartTime()));
-    boxValue.add(String.format("EndTime: %s", node.getEndTime()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_STARTTIME_ARG_51654DAE, node.getStartTime()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_ENDTIME_ARG_BE3FB95D, node.getEndTime()));
     if (node.getMonthDuration() != 0) {
-      boxValue.add(String.format("Interval: %smo", node.getMonthDuration()));
+      boxValue.add(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_INTERVAL_ARG_MO_73E81203, node.getMonthDuration()));
     } else {
       boxValue.add(
           String.format(
-              "Interval: %s" + CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
+              String.format(
+                  DataNodeQueryMessages.EXCEPTION_INTERVAL_ARG_S_ARG_F9714CBA,
+                  Objects.toString(
+                      CommonDescriptor.getInstance().getConfig().getTimestampPrecision())),
               node.getNonMonthDuration()));
     }
-    boxValue.add(String.format("GapFillColumn: %s", node.getGapFillColumn()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_GAPFILLCOLUMN_ARG_845A4BA2, node.getGapFillColumn()));
     if (!node.getGapFillGroupingKeys().isEmpty()) {
-      boxValue.add(String.format("GapFillGroupingKeys: %s", node.getGapFillGroupingKeys()));
+      boxValue.add(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_GAPFILLGROUPINGKEYS_ARG_DBA19008,
+              node.getGapFillGroupingKeys()));
     }
     return render(node, boxValue, context);
   }
@@ -945,11 +1131,23 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("PreviousFill-%s", node.getPlanNodeId().getId()));
     node.getTimeBound()
-        .ifPresent(timeBound -> boxValue.add(String.format("TIME_BOUND: %s", timeBound)));
+        .ifPresent(
+            timeBound ->
+                boxValue.add(
+                    String.format(
+                        DataNodeQueryMessages.EXCEPTION_TIME_BOUND_ARG_DA9D4812, timeBound)));
     node.getHelperColumn()
-        .ifPresent(timeColumn -> boxValue.add(String.format("TIME_COLUMN: %s", timeColumn)));
+        .ifPresent(
+            timeColumn ->
+                boxValue.add(
+                    String.format(
+                        DataNodeQueryMessages.EXCEPTION_TIME_COLUMN_ARG_3A2B0F89, timeColumn)));
     node.getGroupingKeys()
-        .ifPresent(groupingKeys -> boxValue.add(String.format("FILL_GROUP: %s", groupingKeys)));
+        .ifPresent(
+            groupingKeys ->
+                boxValue.add(
+                    String.format(
+                        DataNodeQueryMessages.EXCEPTION_FILL_GROUP_ARG_91675AC6, groupingKeys)));
 
     return render(node, boxValue, context);
   }
@@ -958,9 +1156,15 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitLinearFill(LinearFillNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("LinearFill-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("TIME_COLUMN: %s", node.getHelperColumn()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_TIME_COLUMN_ARG_3A2B0F89, node.getHelperColumn()));
     node.getGroupingKeys()
-        .ifPresent(groupingKeys -> boxValue.add(String.format("FILL_GROUP: %s", groupingKeys)));
+        .ifPresent(
+            groupingKeys ->
+                boxValue.add(
+                    String.format(
+                        DataNodeQueryMessages.EXCEPTION_FILL_GROUP_ARG_91675AC6, groupingKeys)));
     return render(node, boxValue, context);
   }
 
@@ -969,11 +1173,23 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("NextFill-%s", node.getPlanNodeId().getId()));
     node.getTimeBound()
-        .ifPresent(timeBound -> boxValue.add(String.format("TIME_BOUND: %s", timeBound)));
+        .ifPresent(
+            timeBound ->
+                boxValue.add(
+                    String.format(
+                        DataNodeQueryMessages.EXCEPTION_TIME_BOUND_ARG_DA9D4812, timeBound)));
     node.getHelperColumn()
-        .ifPresent(timeColumn -> boxValue.add(String.format("TIME_COLUMN: %s", timeColumn)));
+        .ifPresent(
+            timeColumn ->
+                boxValue.add(
+                    String.format(
+                        DataNodeQueryMessages.EXCEPTION_TIME_COLUMN_ARG_3A2B0F89, timeColumn)));
     node.getGroupingKeys()
-        .ifPresent(groupingKeys -> boxValue.add(String.format("FILL_GROUP: %s", groupingKeys)));
+        .ifPresent(
+            groupingKeys ->
+                boxValue.add(
+                    String.format(
+                        DataNodeQueryMessages.EXCEPTION_FILL_GROUP_ARG_91675AC6, groupingKeys)));
 
     return render(node, boxValue, context);
   }
@@ -982,7 +1198,9 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitValueFill(ValueFillNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("ValueFill-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("FilledValue: %s", node.getFilledValue()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_FILLEDVALUE_ARG_E9F0E84D, node.getFilledValue()));
     return render(node, boxValue, context);
   }
 
@@ -999,7 +1217,8 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Limit-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("Count: %s", node.getCount()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_COUNT_ARG_1E0B36E2, node.getCount()));
     return render(node, boxValue, context);
   }
 
@@ -1016,7 +1235,8 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Offset-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("Count: %s", node.getCount()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_COUNT_ARG_1E0B36E2, node.getCount()));
     return render(node, boxValue, context);
   }
 
@@ -1026,7 +1246,9 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Sort-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("OrderingScheme: %s", node.getOrderingScheme()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_ORDERINGSCHEME_ARG_88E8678A, node.getOrderingScheme()));
     return render(node, boxValue, context);
   }
 
@@ -1034,9 +1256,17 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitStreamSort(StreamSortNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("StreamSort-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("OrderingScheme: %s", node.getOrderingScheme()));
-    boxValue.add(String.format("StreamCompareKeyEndIndex: %s", node.getStreamCompareKeyEndIndex()));
-    boxValue.add(String.format("OrderByAllIdsAndTime: %s", node.isOrderByAllIdsAndTime()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_ORDERINGSCHEME_ARG_88E8678A, node.getOrderingScheme()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_STREAMCOMPAREKEYENDINDEX_ARG_B0B5E239,
+            node.getStreamCompareKeyEndIndex()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_ORDERBYALLIDSANDTIME_ARG_55959D0E,
+            node.isOrderByAllIdsAndTime()));
     return render(node, boxValue, context);
   }
 
@@ -1046,7 +1276,7 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
     boxValue.add(String.format("GroupNode-%s", node.getPlanNodeId().getId()));
     boxValue.add(
         String.format(
-            "PartitionKey: %s",
+            DataNodeQueryMessages.EXCEPTION_PARTITIONKEY_ARG_DD8CE0EC,
             node.getOrderingScheme().getOrderBy().subList(0, node.getPartitionKeyCount())));
     List<String> orderKey = new ArrayList<>();
     for (int i = node.getPartitionKeyCount();
@@ -1055,7 +1285,7 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       Symbol symbol = node.getOrderingScheme().getOrderBy().get(i);
       orderKey.add(symbol + " " + node.getOrderingScheme().getOrdering(symbol));
     }
-    boxValue.add(String.format("OrderKey: %s", orderKey));
+    boxValue.add(String.format(DataNodeQueryMessages.EXCEPTION_ORDERKEY_ARG_BAC08FCF, orderKey));
     return render(node, boxValue, context);
   }
 
@@ -1065,8 +1295,12 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("MergeSort-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
-    boxValue.add(String.format("OrderingScheme: %s", node.getOrderingScheme()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_OUTPUTSYMBOLS_ARG_2CDA67EC, node.getOutputSymbols()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_ORDERINGSCHEME_ARG_88E8678A, node.getOrderingScheme()));
     return render(node, boxValue, context);
   }
 
@@ -1076,7 +1310,9 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Collect-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_OUTPUTSYMBOLS_ARG_2CDA67EC, node.getOutputSymbols()));
     return render(node, boxValue, context);
   }
 
@@ -1086,10 +1322,13 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("TopK-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("OrderingScheme: %s", node.getOrderingScheme()));
-    boxValue.add(String.format("Count: %s", node.getCount()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_ORDERINGSCHEME_ARG_88E8678A, node.getOrderingScheme()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_COUNT_ARG_1E0B36E2, node.getCount()));
     if (node.getTopKRuntimeFilterSourceId() != null) {
-      boxValue.add("TOPN OPT");
+      boxValue.add(DataNodeQueryMessages.EXCEPTION_TOPN_OPT_D3D72301);
     }
     return render(node, boxValue, context);
   }
@@ -1098,9 +1337,13 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitCorrelatedJoin(CorrelatedJoinNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("CorrelatedJoin-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("JoinType: %s", node.getJoinType()));
-    boxValue.add(String.format("Correlation: %s", node.getCorrelation()));
-    boxValue.add(String.format("Filter: %s", node.getFilter()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_JOINTYPE_ARG_971DC3F9, node.getJoinType()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_CORRELATION_ARG_E71B97B0, node.getCorrelation()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_FILTER_ARG_DC936398, node.getFilter()));
     return render(node, boxValue, context);
   }
 
@@ -1109,17 +1352,33 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Join-%s", node.getPlanNodeId().getId()));
     if (node.getAsofCriteria().isPresent()) {
-      boxValue.add(String.format("ASOF-JoinType: %s", node.getJoinType()));
-      boxValue.add(String.format("ASOF-JoinCriteria: %s", node.getAsofCriteria().get()));
+      boxValue.add(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_ASOF_JOINTYPE_ARG_1F69241C, node.getJoinType()));
+      boxValue.add(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_ASOF_JOINCRITERIA_ARG_E313FAAD,
+              node.getAsofCriteria().get()));
     } else {
-      boxValue.add(String.format("JoinType: %s", node.getJoinType()));
+      boxValue.add(
+          String.format(DataNodeQueryMessages.EXCEPTION_JOINTYPE_ARG_971DC3F9, node.getJoinType()));
     }
-    boxValue.add(String.format("JoinCriteria: %s", node.getCriteria()));
-    boxValue.add(String.format("LeftOutputSymbols: %s", node.getLeftOutputSymbols()));
-    boxValue.add(String.format("RightOutputSymbols: %s", node.getRightOutputSymbols()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_JOINCRITERIA_ARG_EE225A01, node.getCriteria()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_LEFTOUTPUTSYMBOLS_ARG_D2BE06AE,
+            node.getLeftOutputSymbols()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_RIGHTOUTPUTSYMBOLS_ARG_90AEAE8B,
+            node.getRightOutputSymbols()));
     if (node.getFilter().isPresent()) {
       boxValue.add(
-          String.format("Filter: %s", node.getFilter().map(v -> v.toString()).orElse(null)));
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_FILTER_ARG_DC936398,
+              node.getFilter().map(v -> v.toString()).orElse(null)));
     }
     return render(node, boxValue, context);
   }
@@ -1128,10 +1387,17 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitSemiJoin(SemiJoinNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("SemiJoin-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
-    boxValue.add(String.format("SourceJoinSymbol: %s", node.getSourceJoinSymbol()));
     boxValue.add(
-        String.format("FilteringSourceJoinSymbol: %s", node.getFilteringSourceJoinSymbol()));
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_OUTPUTSYMBOLS_ARG_2CDA67EC, node.getOutputSymbols()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_SOURCEJOINSYMBOL_ARG_35F54565,
+            node.getSourceJoinSymbol()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_FILTERINGSOURCEJOINSYMBOL_ARG_7A864AF7,
+            node.getFilteringSourceJoinSymbol()));
     return render(node, boxValue, context);
   }
 
@@ -1139,17 +1405,34 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitPatternRecognition(PatternRecognitionNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("PatternRecognition-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("PartitionBy: %s", node.getPartitionBy()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_PARTITIONBY_ARG_E97DFDCD, node.getPartitionBy()));
     node.getOrderingScheme()
         .ifPresent(
-            orderingScheme -> boxValue.add(String.format("OrderingScheme: %s", orderingScheme)));
+            orderingScheme ->
+                boxValue.add(
+                    String.format(
+                        DataNodeQueryMessages.EXCEPTION_ORDERINGSCHEME_ARG_88E8678A,
+                        orderingScheme)));
     node.getHashSymbol()
-        .ifPresent(hashSymbol -> boxValue.add(String.format("HashSymbol: %s", hashSymbol)));
+        .ifPresent(
+            hashSymbol ->
+                boxValue.add(
+                    String.format(
+                        DataNodeQueryMessages.EXCEPTION_HASHSYMBOL_ARG_CB1619A6, hashSymbol)));
     // boxValue.add(String.format("Measures: %s", node.getMeasures()));
-    boxValue.add(String.format("RowsPerMatch: %s", node.getRowsPerMatch()));
-    boxValue.add(String.format("SkipToLabels: %s", node.getSkipToLabels()));
-    boxValue.add(String.format("SkipToPosition: %s", node.getSkipToPosition()));
-    boxValue.add(String.format("Pattern: %s", node.getPattern()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_ROWSPERMATCH_ARG_CFCB6FAC, node.getRowsPerMatch()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_SKIPTOLABELS_ARG_27BC57E1, node.getSkipToLabels()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_SKIPTOPOSITION_ARG_27FB2E49, node.getSkipToPosition()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_PATTERN_ARG_F93B8CF0, node.getPattern()));
     // boxValue.add(String.format("VariableDefinitions: %s", node.getVariableDefinitions()));
     return render(node, boxValue, context);
   }
@@ -1158,8 +1441,12 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitAssignUniqueId(AssignUniqueId node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("AssignUniqueId-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
-    boxValue.add(String.format("IdColumnSymbol: %s", node.getIdColumn()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_OUTPUTSYMBOLS_ARG_2CDA67EC, node.getOutputSymbols()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_IDCOLUMNSYMBOL_ARG_E37ADCC7, node.getIdColumn()));
     return render(node, boxValue, context);
   }
 
@@ -1168,20 +1455,35 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       TableFunctionProcessorNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("TableFunctionProcessor-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("Function: %s", node.getName()));
-    boxValue.add(String.format("ProperOutputs: %s", node.getProperOutputs()));
-    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
-    boxValue.add(String.format("RequiredSymbols: %s", node.getRequiredSymbols()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_FUNCTION_ARG_D328EC66, node.getName()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_PROPEROUTPUTS_ARG_D9578E71, node.getProperOutputs()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_OUTPUTSYMBOLS_ARG_2CDA67EC, node.getOutputSymbols()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_REQUIREDSYMBOLS_ARG_111D7FC1,
+            node.getRequiredSymbols()));
     node.getDataOrganizationSpecification()
         .ifPresent(
             specification -> {
               if (!specification.getPartitionBy().isEmpty()) {
                 boxValue.add(
-                    "Partition by: [" + Joiner.on(", ").join(specification.getPartitionBy()) + "]");
+                    String.format(
+                        DataNodeQueryMessages.EXCEPTION_PARTITION_BY_ARG_4F7F521F,
+                        Objects.toString(Joiner.on(", ").join(specification.getPartitionBy()))));
               }
               specification
                   .getOrderingScheme()
-                  .ifPresent(orderingScheme -> boxValue.add("Order by: " + orderingScheme));
+                  .ifPresent(
+                      orderingScheme ->
+                          boxValue.add(
+                              String.format(
+                                  DataNodeQueryMessages.EXCEPTION_ORDER_BY_ARG_D26FF4AA,
+                                  Objects.toString(orderingScheme))));
             });
     boxValue.add("TableFunctionHandle: " + node.getTableFunctionHandle());
     return render(node, boxValue, context);
@@ -1191,15 +1493,25 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitWindowFunction(WindowNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("WindowFunction-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_OUTPUTSYMBOLS_ARG_2CDA67EC, node.getOutputSymbols()));
 
     DataOrganizationSpecification specification = node.getSpecification();
     if (!specification.getPartitionBy().isEmpty()) {
-      boxValue.add("Partition by: [" + Joiner.on(", ").join(specification.getPartitionBy()) + "]");
+      boxValue.add(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_PARTITION_BY_ARG_4F7F521F,
+              Objects.toString(Joiner.on(", ").join(specification.getPartitionBy()))));
     }
     specification
         .getOrderingScheme()
-        .ifPresent(orderingScheme -> boxValue.add("Order by: " + orderingScheme));
+        .ifPresent(
+            orderingScheme ->
+                boxValue.add(
+                    String.format(
+                        DataNodeQueryMessages.EXCEPTION_ORDER_BY_ARG_D26FF4AA,
+                        Objects.toString(orderingScheme))));
 
     return render(node, boxValue, context);
   }
@@ -1208,8 +1520,11 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitValuesNode(ValuesNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("ValuesNode-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("RowCount: %s", node.getRowCount()));
-    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_ROWCOUNT_ARG_25F64C0A, node.getRowCount()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_OUTPUTSYMBOLS_ARG_2CDA67EC, node.getOutputSymbols()));
 
     return render(node, boxValue, context);
   }
@@ -1218,9 +1533,18 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitRowNumber(RowNumberNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("RowNumber-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("RowNumberSymbol: %s", node.getRowNumberSymbol()));
-    boxValue.add(String.format("isOrderingSensitive: %s", node.isOrderSensitive()));
-    boxValue.add("Partition by: [" + Joiner.on(", ").join(node.getPartitionBy()) + "]");
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_ROWNUMBERSYMBOL_ARG_39FD3A50,
+            node.getRowNumberSymbol()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_ISORDERINGSENSITIVE_ARG_96687CE9,
+            node.isOrderSensitive()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_PARTITION_BY_ARG_4F7F521F,
+            Objects.toString(Joiner.on(", ").join(node.getPartitionBy()))));
 
     return render(node, boxValue, context);
   }
@@ -1230,22 +1554,34 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
     List<String> boxValue = new ArrayList<>();
 
     boxValue.add(String.format("TopKRanking-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("RankingType: %s", node.getRankingType()));
-    boxValue.add(String.format("RankingSymbol: %s", node.getRankingSymbol()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_RANKINGTYPE_ARG_48037AC8, node.getRankingType()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_RANKINGSYMBOL_ARG_EC2D08FD, node.getRankingSymbol()));
     DataOrganizationSpecification specification = node.getSpecification();
     if (!specification.getPartitionBy().isEmpty()) {
-      boxValue.add("Partition by: [" + Joiner.on(", ").join(specification.getPartitionBy()) + "]");
+      boxValue.add(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_PARTITION_BY_ARG_4F7F521F,
+              Objects.toString(Joiner.on(", ").join(specification.getPartitionBy()))));
     }
     specification
         .getOrderingScheme()
-        .ifPresent(orderingScheme -> boxValue.add("Order by: " + orderingScheme));
+        .ifPresent(
+            orderingScheme ->
+                boxValue.add(
+                    String.format(
+                        DataNodeQueryMessages.EXCEPTION_ORDER_BY_ARG_D26FF4AA,
+                        Objects.toString(orderingScheme))));
 
     return render(node, boxValue, context);
   }
 
   private String printRegion(TRegionReplicaSet regionReplicaSet) {
     return String.format(
-        "Partition: %s",
+        DataNodeQueryMessages.EXCEPTION_PARTITION_ARG_975DEE2D,
         regionReplicaSet == null || regionReplicaSet == DataPartition.NOT_ASSIGNED
             ? REGION_NOT_ASSIGNED
             : String.valueOf(regionReplicaSet.getRegionId().id));
@@ -1255,7 +1591,9 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitUnion(UnionNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Union-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_OUTPUTSYMBOLS_ARG_2CDA67EC, node.getOutputSymbols()));
     return render(node, boxValue, context);
   }
 
@@ -1263,8 +1601,11 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitIntersect(IntersectNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Intersect-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
-    boxValue.add(String.format("isDistinct: %s", node.isDistinct()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_OUTPUTSYMBOLS_ARG_2CDA67EC, node.getOutputSymbols()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_ISDISTINCT_ARG_8F38F5E3, node.isDistinct()));
     return render(node, boxValue, context);
   }
 
@@ -1272,8 +1613,11 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public List<String> visitExcept(ExceptNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Except-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
-    boxValue.add(String.format("isDistinct: %s", node.isDistinct()));
+    boxValue.add(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_OUTPUTSYMBOLS_ARG_2CDA67EC, node.getOutputSymbols()));
+    boxValue.add(
+        String.format(DataNodeQueryMessages.EXCEPTION_ISDISTINCT_ARG_8F38F5E3, node.isDistinct()));
     return render(node, boxValue, context);
   }
 
