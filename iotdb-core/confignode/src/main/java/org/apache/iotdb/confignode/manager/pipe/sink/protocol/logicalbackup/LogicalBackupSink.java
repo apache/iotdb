@@ -58,6 +58,10 @@ import java.util.UUID;
 @TableModel
 public class LogicalBackupSink implements PipeConnector {
   private static final int FILE_PIECE_BYTES = 64 * 1024;
+  // Commit IDs restart with each process and committer generation. Keep the process namespace
+  // stable across sink instances so a retry of the same delivery still has the same ID.
+  private static final UUID PROCESS_ID = UUID.randomUUID();
+
   private LogicalBackupWriter writer;
   private LogicalBackupSettings settings;
 
@@ -178,9 +182,13 @@ public class LogicalBackupSink implements PipeConnector {
     String identity =
         event.getClass().getName()
             + "\0"
+            + PROCESS_ID
+            + "\0"
             + event.getPipeName()
             + "\0"
             + event.getCreationTime()
+            + "\0"
+            + (event.getCommitterKey() == null ? -1 : event.getCommitterKey().getRestartTimes())
             + "\0"
             + event.getCommitId();
     if (event instanceof PipeConfigRegionSnapshotEvent) {

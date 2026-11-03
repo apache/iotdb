@@ -21,11 +21,16 @@ package org.apache.iotdb.db.pipe.sink.protocol.logicalbackup;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskTemporaryRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupArchiveReader;
+import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupManifest;
+import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupWriter;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReqV2;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -53,6 +58,73 @@ import java.util.Map;
 public class LogicalBackupSinkTest {
 
   @Rule public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+  @Test
+  public void testRecreatedTaskDoesNotDeduplicateANewEvent() throws Exception {
+    assertTaskRestartPreservesEvents(10L);
+  }
+
+  @Test
+  public void testRecreatedTaskDoesNotRejectADifferentEvent() throws Exception {
+    assertTaskRestartPreservesEvents(20L);
+  }
+
+  private void assertTaskRestartPreservesEvents(final long endAfterRestart) throws Exception {
+    final Path directory = temporaryFolder.newFolder().toPath().resolve("backup");
+    for (int generation = 0; generation < 2; generation++) {
+      final PipeDeleteDataNodeEvent event =
+          new PipeDeleteDataNodeEvent(
+              new DeleteDataNode(
+                  new PlanNodeId("delete"),
+                  Collections.singletonList(new MeasurementPath("root.backup.d.s1")),
+                  1L,
+                  generation == 0 ? 10L : endAfterRestart),
+              "pipe",
+              1L,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              true,
+              false);
+      event.setCommitterKeyAndCommitId(new CommitterKey("pipe", 1L, 1, generation), 1L);
+      Assert.assertTrue(event.increaseReferenceCount(getClass().getName()));
+      try (final LogicalBackupSink sink = new LogicalBackupSink("data")) {
+        try (final LogicalBackupSink anotherSink = new LogicalBackupSink("data")) {
+          Assert.assertEquals(sink.eventId(event), anotherSink.eventId(event));
+        }
+        final LogicalBackupManifest manifest = new LogicalBackupManifest();
+        manifest.backupId = "backup";
+        manifest.pipeName = "pipe";
+        manifest.pipeCreationTime = 1L;
+        manifest.streamId = "stream";
+        manifest.streamType = "data";
+        manifest.regionId = 1;
+        manifest.timestampPrecision = "ms";
+        sink.writer =
+            new LogicalBackupWriter(
+                directory,
+                manifest,
+                4096,
+                1024,
+                LogicalBackupWriter.FsyncPolicy.ALWAYS,
+                1,
+                1,
+                generation > 0);
+        sink.transfer(event);
+        // Retrying the same delivery must still be idempotent after reopening the writer.
+        sink.transfer(event);
+      } finally {
+        event.decreaseReferenceCount(getClass().getName(), false);
+      }
+    }
+    final List<LogicalBackupArchiveReader.BackupStream> streams =
+        new LogicalBackupArchiveReader().read(directory, false);
+    Assert.assertEquals(1, streams.size());
+    Assert.assertEquals(2, streams.get(0).getEventGroups().size());
+  }
 
   @Test
   public void testTemporaryValidationDoesNotCreateBackupStreams() throws Exception {
