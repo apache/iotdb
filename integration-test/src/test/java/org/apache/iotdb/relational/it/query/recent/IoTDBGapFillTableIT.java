@@ -534,6 +534,32 @@ public class IoTDBGapFillTableIT {
   }
 
   @Test
+  public void twoUpperBoundsGapFillTest() {
+    // The gap fill ends at the tighter of the two upper bounds on time.
+    String[] expectedHeader = new String[] {"hour_time", "avg_s1"};
+    String[] retArray =
+        new String[] {
+          "2024-09-24T04:00:00.000Z,null,",
+          "2024-09-24T05:00:00.000Z,null,",
+          "2024-09-24T06:00:00.000Z,null,",
+          "2024-09-24T07:00:00.000Z,27.2,",
+          "2024-09-24T08:00:00.000Z,27.3,",
+          "2024-09-24T09:00:00.000Z,null,",
+          "2024-09-24T10:00:00.000Z,null,",
+        };
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1 where time >= 2024-09-24T04:00:00.000+00:00 AND time <= 2024-09-24T13:00:00.000+00:00 AND time <= 2024-09-24T10:00:00.000+00:00 AND device_id = 'd1' GROUP BY 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1 where time BETWEEN 2024-09-24T04:00:00.000+00:00 AND 2024-09-24T13:00:00.000+00:00 AND time <= 2024-09-24T10:00:00.000+00:00 AND device_id = 'd1' GROUP BY 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void abNormalGapFillTest() {
 
     // case 1: multiple date_bin_gapfill in group by clause
