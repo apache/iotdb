@@ -1968,7 +1968,8 @@ public class ClusterSchemaManager {
       final Map<String, String> updatedProperties,
       final boolean isTableView)
       throws MetadataException {
-    final TsTable originalTable = getTableWithUsingStatusIfExists(database, tableName).orElse(null);
+    final TsTable originalTable =
+        getTableWithUsingStatusIfExists(database, tableName).map(TsTable::new).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(
@@ -1992,6 +1993,19 @@ public class ClusterSchemaManager {
           RpcUtils.getStatus(
               TSStatusCode.SEMANTIC_ERROR, TreeViewSchema.UNSUPPORTED_NEED_LAST_CACHE_PROPERTY),
           null);
+    }
+
+    // Resolve DEFAULT before comparing properties and preparing the table sent to DataNodes.
+    if (updatedProperties.containsKey(TsTable.TTL_PROPERTY)
+        && Objects.isNull(updatedProperties.get(TsTable.TTL_PROPERTY))) {
+      try {
+        final TDatabaseSchema schema = getDatabaseSchemaByName(database);
+        if (schema.isSetTTL() && schema.getTTL() != Long.MAX_VALUE) {
+          updatedProperties.put(TsTable.TTL_PROPERTY, String.valueOf(schema.getTTL()));
+        }
+      } catch (final DatabaseNotExistsException e) {
+        throw new MetadataException(e);
+      }
     }
 
     updatedProperties
