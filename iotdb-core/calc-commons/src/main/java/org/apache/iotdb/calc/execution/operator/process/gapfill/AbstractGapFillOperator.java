@@ -224,7 +224,7 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
   }
 
   private boolean hasRemainingGapInPreviousGroup() {
-    return lastGroupKey != null && currentTime < endTime;
+    return lastGroupKey != null && currentTime <= endTime;
   }
 
   @Override
