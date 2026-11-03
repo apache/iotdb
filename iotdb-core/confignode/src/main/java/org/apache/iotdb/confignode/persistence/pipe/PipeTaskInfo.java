@@ -100,7 +100,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   private final PipeMetaKeeper pipeMetaKeeper;
 
   // Tracks runtime exception changes that have not yet been persisted through consensus.
-  private volatile boolean pipeMetaExceptionPersistencePending;
+  private final AtomicBoolean pipeMetaExceptionPersistencePending = new AtomicBoolean(false);
 
   // Pure in-memory object, not involved in snapshot serialization and deserialization.
   private final PipeTaskInfoVersion pipeTaskInfoVersion;
@@ -1171,7 +1171,9 @@ public class PipeTaskInfo implements SnapshotProcessor {
     try {
       final boolean hasException =
           recordDataNodePushPipeMetaExceptionsInternal(respMap, fallbackPipeStaticMeta);
-      pipeMetaExceptionPersistencePending |= hasException;
+      if (hasException) {
+        pipeMetaExceptionPersistencePending.set(true);
+      }
       return hasException;
     } finally {
       releaseWriteLock();
@@ -1179,11 +1181,11 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   public boolean hasPendingPipeMetaExceptionPersistence() {
-    return pipeMetaExceptionPersistencePending;
+    return pipeMetaExceptionPersistencePending.get();
   }
 
   public void markPipeMetaExceptionsPersisted() {
-    pipeMetaExceptionPersistencePending = false;
+    pipeMetaExceptionPersistencePending.set(false);
   }
 
   private boolean recordDataNodePushPipeMetaExceptionsInternal(
