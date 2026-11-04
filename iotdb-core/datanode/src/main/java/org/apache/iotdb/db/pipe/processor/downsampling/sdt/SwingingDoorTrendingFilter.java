@@ -86,13 +86,14 @@ public class SwingingDoorTrendingFilter<T> {
 
   private boolean tryFilter(final long timestamp, final T value) {
     final long timeDiff = timestamp - lastStoredTimestamp;
-    final long absTimeDiff = Math.abs(timeDiff);
 
-    if (absTimeDiff <= processor.getCompressionMinTimeInterval()) {
+    if (isTimeDistanceLessThanOrEqual(
+        timestamp, lastStoredTimestamp, processor.getCompressionMinTimeInterval())) {
       return false;
     }
 
-    if (absTimeDiff >= processor.getCompressionMaxTimeInterval()) {
+    if (isTimeDistanceGreaterThanOrEqual(
+        timestamp, lastStoredTimestamp, processor.getCompressionMaxTimeInterval())) {
       reset(timestamp, value);
       return true;
     }
@@ -142,6 +143,18 @@ public class SwingingDoorTrendingFilter<T> {
     lastReadTimestamp = timestamp;
 
     return false;
+  }
+
+  private boolean isTimeDistanceLessThanOrEqual(
+      final long left, final long right, final long maxDistance) {
+    final long distance = left >= right ? left - right : right - left;
+    return Long.compareUnsigned(distance, maxDistance) <= 0;
+  }
+
+  private boolean isTimeDistanceGreaterThanOrEqual(
+      final long left, final long right, final long minDistance) {
+    final long distance = left >= right ? left - right : right - left;
+    return Long.compareUnsigned(distance, minDistance) >= 0;
   }
 
   private void reset(final long timestamp, final T value) {
