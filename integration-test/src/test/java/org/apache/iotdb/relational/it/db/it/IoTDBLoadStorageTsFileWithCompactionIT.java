@@ -57,6 +57,7 @@ public class IoTDBLoadStorageTsFileWithCompactionIT {
   private static final String DATABASE = "load_storage_db";
   private static final String TABLE = "t1";
   private static final long COMPACTION_WAIT_SECONDS = 60L;
+  private static final String TABLE_MODEL_PROPERTY = "isTableModel";
 
   private static BaseEnv producerEnv;
   private static BaseEnv loaderEnv;
@@ -200,6 +201,9 @@ public class IoTDBLoadStorageTsFileWithCompactionIT {
       Assert.assertFalse(
           "The storage path must not synthesize a TIME column: " + tableSchemaMap.get(TABLE),
           tableSchemaMap.get(TABLE).getColumnTypes().contains(ColumnCategory.TIME));
+      Assert.assertTrue(
+          "A table-model TsFile must carry the " + TABLE_MODEL_PROPERTY + " property",
+          reader.readFileMetadata().getTsFileProperties().containsKey(TABLE_MODEL_PROPERTY));
     }
   }
 

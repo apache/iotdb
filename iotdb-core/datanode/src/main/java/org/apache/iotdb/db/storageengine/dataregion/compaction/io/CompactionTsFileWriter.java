@@ -56,6 +56,7 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
   private volatile boolean isWritingAligned = false;
   private boolean isEmptyTargetFile = true;
   private IDeviceID currentDeviceId;
+  private boolean tableModel;
 
   private EncryptParameter firstEncryptParameter;
 
@@ -90,6 +91,10 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     } finally {
       EncryptDBUtils.closeFileEncryptionParameter(parameter);
     }
+  }
+
+  public void setTableModel(final boolean tableModel) {
+    this.tableModel = tableModel;
   }
 
   public void markStartingWritingAligned() {
@@ -174,14 +179,12 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
 
   @Override
   public void endFile() throws IOException {
-    // Whether the target file collects any table schema, that is, whether it belongs to the table
-    // model. Read before the unused entries are dropped so that a file whose entries are all
-    // dropped is still marked as a table-model file.
-    final boolean isTableModelFile = !getSchema().getTableSchemaMap().isEmpty();
-    removeUnusedTableSchema();
-    if (isTableModelFile) {
+    // Every table-model TsFile carries the marker, whether or not its TableSchema map keeps an
+    // entry, so readers do not have to infer the model from the schema map.
+    if (tableModel) {
       TsFileTableSchemaRegistrationUtils.markTableModel(this);
     }
+    removeUnusedTableSchema();
     long beforeSize = this.getPos();
     super.endFile();
     long writtenDataSize = this.getPos() - beforeSize;
