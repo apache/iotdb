@@ -59,9 +59,8 @@ public class PipeSubtaskExecutorManager {
       return (IoTConsensusV2SubtaskExecutor) consensusExecutor;
     }
 
-    // The consensus executor is shared by all the consensus pipes of the node. If it has been shut
-    // down unexpectedly, recreate it, otherwise all the consensus pipes created or restarted
-    // afterwards would never be able to submit their sink subtasks.
+    // The consensus executor is shared by all consensus pipes. Recreate it if it has been shut
+    // down, otherwise the following consensus pipes can never start their sink subtasks.
     LOGGER.warn(
         DataNodePipeMessages
             .LOG_THE_SHARED_CONSENSUS_EXECUTOR_HAS_BEEN_SHUT_DOWN_RECREATING_IT_C14080E3);

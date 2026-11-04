@@ -579,6 +579,10 @@ public class PipeDataNodeTaskAgentTest {
             .getProgressIndex());
   }
 
+  /**
+   * A task that fails to start is dropped and unregistered, so the following meta sync creates it
+   * again.
+   */
   @Test
   public void testFailedTaskStartIsRolledBackForRetry() throws Exception {
     final PipeDataNodeTaskAgent agent = newActiveTaskAgent();
@@ -597,8 +601,6 @@ public class PipeDataNodeTaskAgentTest {
     pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
     keeper.addPipeMeta(pipeMeta);
 
-    // A task which has been created but can not be started, e.g., the sink of the task has been
-    // rejected by a shut-down thread pool.
     final PipeTask failedTask = Mockito.mock(PipeTask.class);
     Mockito.doThrow(new PipeException("failed to start the sink")).when(failedTask).start();
     manager.addPipeTask(pipeMeta.getStaticMeta(), REGION_ID, failedTask);
@@ -608,8 +610,6 @@ public class PipeDataNodeTaskAgentTest {
     startPipeTask.setAccessible(true);
     startPipeTask.invoke(agent, REGION_ID, pipeMeta.getStaticMeta());
 
-    // The half-started task is dropped and its task meta is removed, so that the following meta
-    // sync creates and starts the task again instead of keeping it as "RUNNING but never runs".
     Mockito.verify(failedTask).drop();
     Assert.assertNull(manager.getPipeTask(pipeMeta.getStaticMeta(), REGION_ID));
     Assert.assertNull(pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().get(REGION_ID));

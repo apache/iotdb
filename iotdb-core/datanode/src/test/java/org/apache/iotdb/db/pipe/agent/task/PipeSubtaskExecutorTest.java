@@ -118,6 +118,10 @@ public abstract class PipeSubtaskExecutorTest {
     Assert.assertFalse(subtask.isSubmittingSelf());
   }
 
+  /**
+   * A rejected submission must be rolled back, otherwise the following start() calls would take the
+   * "already running" branch and report a false success.
+   */
   @Test
   public void testStartWithRejectedSubmission() {
     executor.register(subtask);
@@ -130,8 +134,6 @@ public abstract class PipeSubtaskExecutorTest {
       // expected
     }
 
-    // The failed submission must be rolled back, otherwise the following start calls would take
-    // the "already running" branch and report a false success.
     verify(subtask).allowSubmittingSelf();
     verify(subtask).disallowSubmittingSelf();
     Assert.assertFalse(executor.isShutdown());

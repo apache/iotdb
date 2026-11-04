@@ -29,25 +29,26 @@ public class PipeSubtaskExecutorManagerTest {
 
   @After
   public void tearDown() {
-    // Do not leave the node-wide shared consensus executor shut down for the other tests in the
-    // same JVM. getConsensusExecutor() recreates it if it has been shut down.
+    // Recreate the shared consensus executor so the following tests are not affected.
     PipeSubtaskExecutorManager.getInstance().getConsensusExecutor();
   }
 
+  /** The consensus executor is a singleton while it is alive. */
   @Test
   public void testGetConsensusExecutor() {
     final PipeSubtaskExecutorManager manager = PipeSubtaskExecutorManager.getInstance();
 
     final IoTConsensusV2SubtaskExecutor consensusExecutor = manager.getConsensusExecutor();
     Assert.assertFalse(consensusExecutor.isShutdown());
-    // The consensus executor is shared by all the consensus pipes, so it must be a singleton as
-    // long as it is alive.
     Assert.assertSame(consensusExecutor, manager.getConsensusExecutor());
 
     consensusExecutor.shutdown();
     Assert.assertTrue(consensusExecutor.isShutdown());
   }
 
+  /**
+   * A shut-down consensus executor is recreated so that consensus pipes can start their subtasks.
+   */
   @Test
   public void testGetConsensusExecutorRecoversFromShutdown() {
     final PipeSubtaskExecutorManager manager = PipeSubtaskExecutorManager.getInstance();
@@ -56,8 +57,6 @@ public class PipeSubtaskExecutorManagerTest {
     consensusExecutor.shutdown();
     Assert.assertTrue(consensusExecutor.isShutdown());
 
-    // A shut-down consensus executor must not be handed to the following consensus pipes,
-    // otherwise none of their sink subtasks could ever be started.
     final IoTConsensusV2SubtaskExecutor recoveredExecutor = manager.getConsensusExecutor();
     Assert.assertNotSame(consensusExecutor, recoveredExecutor);
     Assert.assertFalse(recoveredExecutor.isShutdown());

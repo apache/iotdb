@@ -141,9 +141,8 @@ public abstract class PipeSubtaskExecutor {
 
     final PipeSubtask subtask = registeredIdSubtaskMapper.get(subTaskID);
     if (isShutdown()) {
-      // A shut-down executor can never execute the subtask. Fail fast before touching the
-      // "submitting self" state, otherwise start() may report a false success and the subtask
-      // will be counted as running but never executed until the node restarts.
+      // Fail fast before touching the "submitting self" state, otherwise start() may report a
+      // false success and the subtask will never be executed.
       LOGGER.error(
           PipeMessages.LOG_FAILED_TO_START_THE_SUBTASK_DD3FC1BA, subtask.getDisplayTaskID());
       throw new RejectedExecutionException(

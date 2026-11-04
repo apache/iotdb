@@ -293,10 +293,8 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
 
       submitSelfToWorker(true);
     } catch (final RejectedExecutionException e) {
-      // The worker pool or the scheduler has been shut down, e.g., because the pipe has been
-      // dropped. The "isSubmitted" sign must be cleared, otherwise the subtask would never be
-      // submitted again and would silently stop transferring events. The rejection is reported
-      // instead of being swallowed by the callback executor.
+      // The executor has been shut down, e.g., because the pipe was dropped. Clear isSubmitted so
+      // the subtask can be submitted again, and report the rejection.
       isSubmitted = false;
       LOGGER.warn(
           PipeMessages

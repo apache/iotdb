@@ -991,11 +991,9 @@ public abstract class PipeTaskAgent {
           pipeStaticMeta.getPipeName(),
           e);
 
-      // The task is not running now. Dropping it instead of keeping it as is, because a task that
-      // has already been created is never started again by the following meta sync, which would
-      // leave the pipe alive in the metadata but dead in fact until the node restarts. After the
-      // task meta is removed here, the following meta sync sees no task meta of this consensus
-      // group and creates the task again, which gives the task another chance to start.
+      // A created task is never started again by the following meta sync. Drop it and remove its
+      // task meta so that the meta sync creates and starts the task again instead of keeping it
+      // "RUNNING" but dead until the node restarts.
       rollbackPipeTask(consensusGroupId, pipeStaticMeta);
       return;
     }

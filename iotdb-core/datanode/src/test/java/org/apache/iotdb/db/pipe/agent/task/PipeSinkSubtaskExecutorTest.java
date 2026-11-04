@@ -58,14 +58,16 @@ public class PipeSinkSubtaskExecutorTest extends PipeSubtaskExecutorTest {
                 mock(PipeConnector.class)));
   }
 
+  /**
+   * A shut-down executor must reject {@code start()} and must not leave the subtask in the
+   * "submitting" state.
+   */
   @Test
   public void testStartAfterShutdown() {
     executor.register(subtask);
     executor.shutdown();
     Assert.assertTrue(executor.isShutdown());
 
-    // The submission is rejected by the shut-down executor, and the rejection must be reported
-    // instead of being swallowed as "started successfully"...
     for (int i = 0; i < 2; ++i) {
       try {
         executor.start(subtask.getTaskID());
@@ -73,19 +75,17 @@ public class PipeSinkSubtaskExecutorTest extends PipeSubtaskExecutorTest {
       } catch (final RejectedExecutionException e) {
         // expected
       }
-      // ... and the failed submission must not leave the subtask in the "submitting" state.
       Assert.assertFalse(subtask.isSubmittingSelf());
     }
   }
 
+  /** A rejected self-submission must be reported instead of being swallowed. */
   @Test
   public void testSubmitSelfAfterShutdown() throws Exception {
     executor.register(subtask);
     executor.shutdown();
     allowSubmittingSelfAgain(subtask);
 
-    // The subtask submits itself again after each round, so a rejected submission must be reported
-    // instead of being swallowed. Otherwise the subtask would stop transferring events silently.
     for (int i = 0; i < 2; ++i) {
       try {
         subtask.submitSelf();
@@ -96,6 +96,10 @@ public class PipeSinkSubtaskExecutorTest extends PipeSubtaskExecutorTest {
     }
   }
 
+  /**
+   * A rejected delayed submission must clear the submitted flag, otherwise the following
+   * submissions would be skipped.
+   */
   @Test
   public void testDelayedSubmitSelfAfterShutdown() throws Exception {
     final SinkWithSchedulingDelay sink = mock(SinkWithSchedulingDelay.class);
@@ -116,9 +120,6 @@ public class PipeSinkSubtaskExecutorTest extends PipeSubtaskExecutorTest {
     executor.shutdown();
     allowSubmittingSelfAgain(delayedSubtask);
 
-    // A delayed submission marks the subtask as submitted before scheduling it. If the scheduling
-    // is rejected, the sign must be cleared as well, otherwise every following submission would be
-    // skipped and the subtask would never be submitted again.
     for (int i = 0; i < 2; ++i) {
       try {
         delayedSubtask.submitSelf();
@@ -129,6 +130,10 @@ public class PipeSinkSubtaskExecutorTest extends PipeSubtaskExecutorTest {
     }
   }
 
+  /**
+   * Stopping and restarting a subtask while its previous call is still running must not start a
+   * second concurrent call.
+   */
   @Test
   public void testStartWhileThePreviousCallIsStillRunning() throws Exception {
     final AtomicInteger concurrentCallCount = new AtomicInteger(0);
@@ -169,8 +174,6 @@ public class PipeSinkSubtaskExecutorTest extends PipeSubtaskExecutorTest {
     executor.start(blockedSubtask.getTaskID());
     Assert.assertTrue(firstCallEntered.await(5, TimeUnit.SECONDS));
 
-    // Stop and start while the first call is still running. The subtask must not be submitted
-    // again, because a PipeSubtask is not designed to run in parallel with itself.
     executor.stop(blockedSubtask.getTaskID());
     executor.start(blockedSubtask.getTaskID());
 
@@ -185,6 +188,10 @@ public class PipeSinkSubtaskExecutorTest extends PipeSubtaskExecutorTest {
     }
   }
 
+  /**
+   * {@code start()} must fail after shutdown even if a pending delayed submission already marked
+   * the subtask as submitted.
+   */
   @Test
   public void testStartAfterShutdownWithPendingDelayedSubmission() {
     final SinkWithSchedulingDelay sink = mock(SinkWithSchedulingDelay.class);
@@ -201,13 +208,8 @@ public class PipeSinkSubtaskExecutorTest extends PipeSubtaskExecutorTest {
             sink);
 
     executor.register(delayedSubtask);
-
-    // The delayed submission is accepted and marks the subtask as submitted before it is
-    // dispatched.
     executor.start(delayedSubtask.getTaskID());
 
-    // The delayed submission will never be dispatched to the shut-down worker pool, so a following
-    // start() must not take the "already submitted" branch and report a false success.
     executor.shutdown();
     try {
       executor.start(delayedSubtask.getTaskID());
@@ -217,10 +219,7 @@ public class PipeSinkSubtaskExecutorTest extends PipeSubtaskExecutorTest {
     }
   }
 
-  /**
-   * Simulates the race where a subtask is submitting itself while its executor is being shut down:
-   * the executor can not submit it any more, but the subtask has not been told to stop yet.
-   */
+  /** Clears the stop flag to simulate a subtask that has not been told to stop yet. */
   private void allowSubmittingSelfAgain(final PipeSubtask subtask) throws Exception {
     final Field shouldStopSubmittingSelfField =
         PipeSubtask.class.getDeclaredField("shouldStopSubmittingSelf");
