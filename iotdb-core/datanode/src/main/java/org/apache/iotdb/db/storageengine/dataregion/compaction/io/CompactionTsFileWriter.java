@@ -45,12 +45,10 @@ import org.apache.tsfile.write.writer.tsmiterator.TSMIterator;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 public class CompactionTsFileWriter extends TsFileIOWriter {
   CompactionType type;
@@ -58,7 +56,6 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
   private volatile boolean isWritingAligned = false;
   private boolean isEmptyTargetFile = true;
   private IDeviceID currentDeviceId;
-  private final Set<String> tablesWithChunkGroups = new HashSet<>();
 
   private EncryptParameter firstEncryptParameter;
 
@@ -171,18 +168,18 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     TableSchema tableSchema = getSchema().getTableSchemaMap().get(tableName);
     boolean generateTableSchemaForCurrentChunkGroup = tableSchema != null;
     setGenerateTableSchema(generateTableSchemaForCurrentChunkGroup);
-    if (generateTableSchemaForCurrentChunkGroup) {
-      tablesWithChunkGroups.add(tableName);
-    }
     super.endChunkGroup();
     currentDeviceId = null;
   }
 
   @Override
   public void endFile() throws IOException {
+    // Whether the target file collects any table schema, that is, whether it belongs to the table
+    // model. Read before the unused entries are dropped so that a file whose entries are all
+    // dropped is still marked as a table-model file.
+    final boolean isTableModelFile = !getSchema().getTableSchemaMap().isEmpty();
     removeUnusedTableSchema();
-    if (!getSchema().getTableSchemaMap().isEmpty()) {
-      // A single table-model marker; readers no longer have to infer the model from the schema map.
+    if (isTableModelFile) {
       TsFileTableSchemaRegistrationUtils.markTableModel(this);
     }
     long beforeSize = this.getPos();
@@ -210,11 +207,7 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     while (iterator.hasNext()) {
       final Map.Entry<String, TableSchema> entry = iterator.next();
       final List<ColumnCategory> columnTypes = entry.getValue().getColumnTypes();
-      // Keep the TableSchema of a table that wrote data in this target file even when the schema
-      // has no FIELD/TIME column. Do not synthesize columns here: the table-name entry alone is
-      // the table-model marker LOAD relies on, and removing it makes a table TsFile look like a
-      // tree TsFile.
-      if (hasFieldOrTimeColumn(columnTypes) || tablesWithChunkGroups.contains(entry.getKey())) {
+      if (hasFieldOrTimeColumn(columnTypes)) {
         continue;
       }
       iterator.remove();
