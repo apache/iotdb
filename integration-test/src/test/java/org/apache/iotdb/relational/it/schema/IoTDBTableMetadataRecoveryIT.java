@@ -20,6 +20,7 @@
 package org.apache.iotdb.relational.it.schema;
 
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.it.utils.MetadataFaultTestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -95,6 +96,8 @@ public class IoTDBTableMetadataRecoveryIT {
                 + recent
                 + ",'d',2)");
       }
+      // Query endpoints may use the same data replica; drain every actual replica before stopping.
+      MetadataFaultTestUtils.awaitDataReplication(database);
       for (DataNodeWrapper dataNode : EnvFactory.getEnv().getDataNodeWrapperList()) {
         try (Connection warm = connection(dataNode, BaseEnv.TABLE_SQL_DIALECT)) {
           execute(warm, "USE " + database);
@@ -152,6 +155,7 @@ public class IoTDBTableMetadataRecoveryIT {
             "INSERT INTO overridden(time,dev,v) VALUES(" + (old + 1) + ",'d',3)",
             "INSERT INTO inherited(time,dev,v) VALUES(" + (recent + 1) + ",'d',4)");
       }
+      MetadataFaultTestUtils.awaitDataReplication(database);
       assertRows(
           healthy,
           "SELECT CAST(time AS INT64) AS ts,dev,v FROM inherited",
