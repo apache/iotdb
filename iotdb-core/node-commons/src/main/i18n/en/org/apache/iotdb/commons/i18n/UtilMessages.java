@@ -199,6 +199,9 @@ public final class UtilMessages {
   public static final String WRITE_T_PIPE_SINK_INFO_FAILED = "Write TPipeSinkInfo failed: ";
   public static final String READ_T_PIPE_SINK_INFO_FAILED = "Read TPipeSinkInfo failed: ";
 
+  public static final String EXCEPTION_LOG_INTERVAL_SHOULD_NOT_BE_NEGATIVE_7642B2EF =
+      "Log interval should not be negative";
+
   private UtilMessages() {}
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages

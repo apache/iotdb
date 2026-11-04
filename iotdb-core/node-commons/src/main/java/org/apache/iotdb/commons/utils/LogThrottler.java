@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.utils;
 
+import org.apache.iotdb.commons.i18n.UtilMessages;
+
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
@@ -39,7 +41,8 @@ public class LogThrottler {
 
   public LogThrottler(long logIntervalMs) {
     if (logIntervalMs < 0) {
-      throw new IllegalArgumentException("Log interval should not be negative");
+      throw new IllegalArgumentException(
+          UtilMessages.EXCEPTION_LOG_INTERVAL_SHOULD_NOT_BE_NEGATIVE_7642B2EF);
     }
     this.logIntervalMs = logIntervalMs;
   }
