@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.table.ColumnInAlterException;
 import org.apache.iotdb.commons.exception.table.ColumnInDeletionException;
@@ -2000,9 +2001,11 @@ public class ClusterSchemaManager {
         && Objects.isNull(updatedProperties.get(TsTable.TTL_PROPERTY))) {
       try {
         final TDatabaseSchema schema = getDatabaseSchemaByName(database);
-        if (schema.isSetTTL() && schema.getTTL() != Long.MAX_VALUE) {
-          updatedProperties.put(TsTable.TTL_PROPERTY, String.valueOf(schema.getTTL()));
-        }
+        updatedProperties.put(
+            TsTable.TTL_PROPERTY,
+            schema.isSetTTL() && schema.getTTL() != Long.MAX_VALUE
+                ? String.valueOf(schema.getTTL())
+                : IoTDBConstant.TTL_INFINITE);
       } catch (final DatabaseNotExistsException e) {
         throw new MetadataException(e);
       }
@@ -2011,9 +2014,14 @@ public class ClusterSchemaManager {
     updatedProperties
         .keySet()
         .removeIf(
-            key ->
-                Objects.equals(
-                    updatedProperties.get(key), originalTable.getPropValue(key).orElse(null)));
+            key -> {
+              if (TsTable.TTL_PROPERTY.equals(key)
+                  && IoTDBConstant.TTL_INFINITE.equalsIgnoreCase(updatedProperties.get(key))) {
+                return originalTable.getTableTTL() == Long.MAX_VALUE;
+              }
+              return Objects.equals(
+                  updatedProperties.get(key), originalTable.getPropValue(key).orElse(null));
+            });
     if (updatedProperties.isEmpty()) {
       return new Pair<>(RpcUtils.SUCCESS_STATUS, null);
     }
