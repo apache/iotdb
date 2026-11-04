@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeCacheLeaderClientManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.metrics.impl.DoNothingHistogram;
 import org.apache.iotdb.metrics.type.Histogram;
@@ -43,6 +42,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_FORMAT_HYBRID_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_FORMAT_KEY;
@@ -68,6 +68,7 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
 
   private final boolean usingTsFileBatch;
   private final boolean useLeaderCache;
+  private final Function<String, TEndPoint> leaderEndPointResolver;
 
   private final int requestMaxDelayInMs;
   private final long requestMaxBatchSizeInBytes;
@@ -88,6 +89,13 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
   private final Map<TEndPoint, PipeTabletEventPlainBatch> endPointToBatch = new HashMap<>();
 
   public PipeTransferBatchReqBuilder(final PipeParameters parameters) {
+    // Transports without leader redirection, such as air gap, always use the default batch.
+    this(parameters, deviceId -> null);
+  }
+
+  public PipeTransferBatchReqBuilder(
+      final PipeParameters parameters, final Function<String, TEndPoint> leaderEndPointResolver) {
+    this.leaderEndPointResolver = leaderEndPointResolver;
     usingTsFileBatch =
         parameters
             .getStringOrDefault(
@@ -167,8 +175,7 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
       return;
     }
 
-    final TEndPoint endPoint =
-        IoTDBDataNodeCacheLeaderClientManager.LEADER_CACHE_MANAGER.getLeaderEndPoint(deviceId);
+    final TEndPoint endPoint = leaderEndPointResolver.apply(deviceId);
     if (Objects.isNull(endPoint)) {
       defaultBatch.onEvent(event);
       return;

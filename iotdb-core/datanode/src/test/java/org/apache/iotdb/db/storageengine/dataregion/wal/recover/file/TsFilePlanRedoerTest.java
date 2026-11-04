@@ -29,6 +29,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.TsFileUtilsForRecoverTest;
@@ -70,6 +72,8 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class TsFilePlanRedoerTest {
@@ -599,7 +603,7 @@ public class TsFilePlanRedoerTest {
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(
             new PlanNodeId(""),
-            Collections.singletonList(new PartialPath(DEVICE1_NAME)),
+            Collections.singletonList(new PartialPath(DEVICE1_NAME, "**")),
             Long.MIN_VALUE,
             Long.MAX_VALUE);
 
@@ -609,6 +613,100 @@ public class TsFilePlanRedoerTest {
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource);
     planRedoer.redoDelete(deleteDataNode);
     assertTrue(modsFile.exists());
+  }
+
+  @Test
+  public void testRedoDeleteWithoutFlushedDataDoesNotCreateMods() throws Exception {
+    File file = new File(FILE_NAME);
+    assertTrue(file.getParentFile().isDirectory() || file.getParentFile().mkdirs());
+    tsFileResource = new TsFileResource(file);
+    TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource);
+
+    planRedoer.redoDelete(
+        new DeleteDataNode(
+            new PlanNodeId(""),
+            Collections.singletonList(new PartialPath(SG_NAME + ".**")),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE));
+
+    assertFalse(ModificationFile.getNormalMods(tsFileResource).exists());
+  }
+
+  @Test
+  public void testRedoTreeDeleteIsBoundedByFlushedDevicesAndFields() throws Exception {
+    File file = new File(FILE_NAME);
+    generateCompleteFile(file);
+    tsFileResource = new TsFileResource(file);
+    tsFileResource.updateStartTime(DEVICE1_NAME, 1);
+    tsFileResource.updateEndTime(DEVICE1_NAME, 2);
+    tsFileResource.updateStartTime(DEVICE2_NAME, 3);
+    tsFileResource.updateEndTime(DEVICE2_NAME, 4);
+    IDeviceID nestedDevice = new PlainDeviceID(SG_NAME + ".d1.child");
+    tsFileResource.updateStartTime(nestedDevice, 1);
+    tsFileResource.updateEndTime(nestedDevice, 1);
+    TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource);
+
+    planRedoer.redoDelete(
+        new DeleteDataNode(
+            new PlanNodeId(""),
+            Collections.singletonList(new PartialPath(SG_NAME + ".**.s1")),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE));
+
+    List<Deletion> deletions = getWrittenDeletions();
+    assertEquals(3, deletions.size());
+    assertDeletion(deletions, DEVICE1_NAME, "s1", 2);
+    assertDeletion(deletions, DEVICE2_NAME, "s1", 4);
+    assertDeletion(deletions, nestedDevice, "s1", 1);
+    assertNull(findDeletion(deletions, DEVICE1_NAME, "s2"));
+    assertNull(findDeletion(deletions, DEVICE2_NAME, "s2"));
+    assertNull(findDeletion(deletions, nestedDevice, "s2"));
+    assertNull(findDeletion(deletions, DEVICE3_NAME, "s1"));
+    assertNull(findDeletion(deletions, DEVICE3_NAME, "s2"));
+
+    planRedoer.redoDelete(
+        new DeleteDataNode(
+            new PlanNodeId(""),
+            Collections.singletonList(new PartialPath(SG_NAME + ".**")),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE));
+
+    List<Deletion> allDeletions = getWrittenDeletions();
+    assertEquals(6, allDeletions.size());
+    Deletion nestedFieldDeletion = findDeletion(allDeletions.subList(3, 6), nestedDevice, "s2");
+    assertNotNull(nestedFieldDeletion);
+    assertEquals(1, nestedFieldDeletion.getEndTime());
+    IDeviceID unflushedDevice = new PlainDeviceID(SG_NAME + ".d1.unflushed");
+    assertNull(findDeletion(allDeletions, unflushedDevice, "s1"));
+  }
+
+  private void assertDeletion(
+      List<Deletion> deletions, IDeviceID deviceID, String measurement, long endTime)
+      throws Exception {
+    Deletion deletion = findDeletion(deletions, deviceID, measurement);
+    assertNotNull(deletion);
+    assertEquals(Long.MIN_VALUE, deletion.getStartTime());
+    assertEquals(endTime, deletion.getEndTime());
+  }
+
+  private Deletion findDeletion(List<Deletion> deletions, IDeviceID deviceID, String measurement)
+      throws Exception {
+    PartialPath seriesPath = new PartialPath(deviceID, measurement);
+    for (Deletion deletion : deletions) {
+      if (deletion.getPath().matchFullPath(seriesPath)) {
+        return deletion;
+      }
+    }
+    return null;
+  }
+
+  private List<Deletion> getWrittenDeletions() {
+    List<Deletion> deletions = new ArrayList<>();
+    for (Modification modification : tsFileResource.getModFile().getModifications()) {
+      assertTrue(modification instanceof Deletion);
+      deletions.add((Deletion) modification);
+    }
+    return deletions;
   }
 
   @Test

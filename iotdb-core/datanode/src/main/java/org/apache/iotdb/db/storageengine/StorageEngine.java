@@ -368,7 +368,7 @@ public class StorageEngine implements IService {
       if (dataRegion != null) {
         List<Callable<Void>> asyncTsFileResourceRecoverTasks =
             dataRegion.getAsyncTsFileResourceRecoverTaskList();
-        if (asyncTsFileResourceRecoverTasks != null) {
+        if (asyncTsFileResourceRecoverTasks != null && !asyncTsFileResourceRecoverTasks.isEmpty()) {
           Callable<Void> taskOfRegion =
               () -> {
                 for (Callable<Void> task : asyncTsFileResourceRecoverTasks) {
@@ -398,6 +398,7 @@ public class StorageEngine implements IService {
 
   @Override
   public void stop() {
+    stopIoTConsensusWrites();
     loadTsFileManager.stop();
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion != null) {
@@ -417,6 +418,7 @@ public class StorageEngine implements IService {
 
   @Override
   public void shutdown(long milliseconds) throws ShutdownException {
+    stopIoTConsensusWrites();
     loadTsFileManager.stop();
     try {
       for (DataRegion dataRegion : dataRegionMap.values()) {
@@ -482,6 +484,17 @@ public class StorageEngine implements IService {
   @TestOnly
   public synchronized void reset() {
     dataRegionMap.clear();
+  }
+
+  public void stopIoTConsensusWrites() {
+    if (!CONFIG.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+      return;
+    }
+    for (DataRegion dataRegion : dataRegionMap.values()) {
+      if (dataRegion != null) {
+        dataRegion.stopIoTConsensusWrites();
+      }
+    }
   }
 
   /** flush command Sync asyncCloseOneProcessor all file node processors. */
@@ -986,26 +999,31 @@ public class StorageEngine implements IService {
       final int sliceIndex,
       final int sliceCount,
       final int originBodySize) {
-    final LoadTsFilePieceNodeAssembler.Result result =
-        loadTsFileManager.appendPieceNodeSlice(
-            dataRegionId, uuid, body, sliceIndex, sliceCount, originBodySize);
-    if (!result.isValid()) {
-      return RpcUtils.getStatus(
-          TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR, result.getErrorMessage());
-    }
-    if (!result.isComplete()) {
-      return RpcUtils.SUCCESS_STATUS;
-    }
+    return loadTsFileManager.executeLoadTask(
+        uuid,
+        () -> {
+          final LoadTsFilePieceNodeAssembler.Result result =
+              loadTsFileManager.appendPieceNodeSlice(
+                  dataRegionId, uuid, body, sliceIndex, sliceCount, originBodySize);
+          if (!result.isValid()) {
+            return RpcUtils.getStatus(
+                TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR, result.getErrorMessage());
+          }
+          if (!result.isComplete()) {
+            return RpcUtils.SUCCESS_STATUS;
+          }
 
-    try {
-      final Object planNode = PlanNodeType.deserialize(result.getBody());
-      if (!(planNode instanceof LoadTsFilePieceNode)) {
-        return new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode());
-      }
-      return writeLoadTsFileNode(dataRegionId, (LoadTsFilePieceNode) planNode, uuid);
-    } catch (final Exception e) {
-      return new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode());
-    }
+          try {
+            final Object planNode = PlanNodeType.deserialize(result.getBody());
+            if (!(planNode instanceof LoadTsFilePieceNode)) {
+              return new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode());
+            }
+            return writeLoadTsFileNode(dataRegionId, (LoadTsFilePieceNode) planNode, uuid);
+          } catch (final Exception e) {
+            return new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode());
+          }
+        },
+        new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()));
   }
 
   public TSStatus executeLoadCommand(

@@ -108,6 +108,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
           FileUtils.streamFiles(listeningDirFile, true, (String[]) null)) {
         try {
           fileStream
+              .filter(file -> !isUnderFailDir(file))
               .filter(file -> !ActiveLoadPathHelper.isTransferStagingFile(file, listeningDirFile))
               .map(file -> new File(getTsFilePath(file.getAbsolutePath())))
               .distinct()
@@ -140,6 +141,15 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
         }
       }
     }
+  }
+
+  private boolean isUnderFailDir(final File file) {
+    final String failDir = IOTDB_CONFIG.getLoadActiveListeningFailDir();
+    if (failDir == null || failDir.isEmpty()) {
+      return false;
+    }
+    final Path failDirPath = new File(failDir).toPath().toAbsolutePath().normalize();
+    return file.toPath().toAbsolutePath().normalize().startsWith(failDirPath);
   }
 
   private boolean checkPermission(final String listeningDir) {

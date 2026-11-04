@@ -101,6 +101,9 @@ public class ClientPoolProperty<V> {
       poolConfig.setMaxIdlePerKey(maxIdleClientNumForEachNode);
       poolConfig.setTimeBetweenEvictionRuns(Duration.ofMillis(timeBetweenEvictionRuns));
       poolConfig.setMinEvictableIdleTime(Duration.ofMillis(minIdleTimeForClient));
+      // -1 checks all idle clients across all nodes in each run. The default of 3 can leave
+      // expired connections (and their RPC buffers) in a large pool for hours.
+      poolConfig.setNumTestsPerEvictionRun(-1);
       poolConfig.setMaxWait(Duration.ofMillis(waitClientTimeoutMs));
       poolConfig.setTestOnReturn(true);
       poolConfig.setTestOnBorrow(true);
@@ -114,7 +117,7 @@ public class ClientPoolProperty<V> {
 
     public static final long WAIT_CLIENT_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(30);
     public static final long MIN_IDLE_TIME_FOR_CLIENT_MS = TimeUnit.MINUTES.toMillis(1);
-    public static final long TIME_BETWEEN_EVICTION_RUNS_MS = TimeUnit.MINUTES.toMillis(1);
+    public static final long TIME_BETWEEN_EVICTION_RUNS_MS = TimeUnit.SECONDS.toMillis(30);
     public static final int MAX_CLIENT_NUM_FOR_EACH_NODE = 1000;
     public static final int MAX_IDLE_CLIENT_NUM_FOR_EACH_NODE = 1000;
   }

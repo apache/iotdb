@@ -63,6 +63,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -178,6 +179,21 @@ public abstract class AbstractDataTool {
   protected static Boolean aligned;
   protected static Session session;
   protected static final LongAdder loadFileSuccessfulNum = new LongAdder();
+  protected static final LongAdder loadFileFailedNum = new LongAdder();
+  private static final ThreadLocal<Boolean> CURRENT_IMPORT_FAILED =
+      ThreadLocal.withInitial(() -> false);
+
+  protected static void markCurrentImportFailed() {
+    CURRENT_IMPORT_FAILED.set(true);
+  }
+
+  protected static boolean isCurrentImportFailed() {
+    return CURRENT_IMPORT_FAILED.get();
+  }
+
+  protected static void resetCurrentImportFailed() {
+    CURRENT_IMPORT_FAILED.set(false);
+  }
 
   protected static final String DATATYPE_BOOLEAN = "boolean";
   protected static final String DATATYPE_INT = "int";
@@ -411,7 +427,7 @@ public abstract class AbstractDataTool {
 
     AtomicInteger pointSize = new AtomicInteger(0);
 
-    ArrayList<List<Object>> failedRecords = new ArrayList<>();
+    BatchContext batchContext = new BatchContext();
 
     records.forEach(
         recordObj -> {
@@ -421,13 +437,27 @@ public abstract class AbstractDataTool {
           } else if (!Objects.equals(deviceName.get(), recordObj.get(1))) {
             // if device changed
             writeAndEmptyDataSet(
-                sessionPool, deviceName.get(), times, typesList, valuesList, measurementsList, 3);
+                sessionPool,
+                deviceName.get(),
+                times,
+                typesList,
+                valuesList,
+                measurementsList,
+                batchContext,
+                3);
             deviceName.set(recordObj.get(1));
             pointSize.set(0);
           } else if (pointSize.get() >= batchPointSize) {
             // insert a batch
             writeAndEmptyDataSet(
-                sessionPool, deviceName.get(), times, typesList, valuesList, measurementsList, 3);
+                sessionPool,
+                deviceName.get(),
+                times,
+                typesList,
+                valuesList,
+                measurementsList,
+                batchContext,
+                3);
             pointSize.set(0);
           }
 
@@ -486,10 +516,12 @@ public abstract class AbstractDataTool {
             }
           }
           if (Boolean.TRUE.equals(isFail.get())) {
-            failedRecords.add(recordObj.stream().collect(Collectors.toList()));
+            batchContext.recordFailure(recordObj);
           }
           if (!measurements.isEmpty()) {
-            times.add(parseTimestamp(recordObj.get(timeColumn)));
+            long timestamp = parseTimestamp(recordObj.get(timeColumn));
+            batchContext.recordBatch(recordObj);
+            times.add(timestamp);
             typesList.add(types);
             valuesList.add(values);
             measurementsList.add(measurements);
@@ -497,15 +529,147 @@ public abstract class AbstractDataTool {
         });
     if (!times.isEmpty()) {
       writeAndEmptyDataSet(
-          sessionPool, deviceName.get(), times, typesList, valuesList, measurementsList, 3);
+          sessionPool,
+          deviceName.get(),
+          times,
+          typesList,
+          valuesList,
+          measurementsList,
+          batchContext,
+          3);
       pointSize.set(0);
     }
-    if (!failedRecords.isEmpty()) {
-      writeFailedLinesFile(headerNames, failedFilePath, failedRecords);
+    if (!batchContext.failedRecords.isEmpty()) {
+      writeFailedLinesFile(
+          headerNames, failedFilePath, new ArrayList<>(batchContext.failedRecords.values()));
     }
     // ioTPrinter.println("Import completely!");
   }
 
+  @FunctionalInterface
+  private interface BatchInsert {
+    void insert() throws IoTDBConnectionException, StatementExecutionException;
+  }
+
+  private enum BatchResult {
+    SUCCESS,
+    STATEMENT_FAILURE,
+    CONNECTION_FAILURE
+  }
+
+  private static final class BatchContext {
+    private final Map<Long, List<Object>> failedRecords = new LinkedHashMap<>();
+    private final List<CSVRecord> batchRecords = new ArrayList<>();
+
+    private void recordFailure(CSVRecord record) {
+      failedRecords.computeIfAbsent(
+          record.getRecordNumber(), ignored -> record.stream().collect(Collectors.toList()));
+    }
+
+    private void recordBatch(CSVRecord record) {
+      batchRecords.add(record);
+    }
+
+    private void finishBatch(
+        BatchResult result, GroupInsert groupInsert, Session reconnectableSession, int retryTime) {
+      if (result == BatchResult.CONNECTION_FAILURE) {
+        recordRemainingFailures(0);
+      } else if (result == BatchResult.STATEMENT_FAILURE) {
+        retryGroups(groupInsert, reconnectableSession, retryTime);
+      }
+      batchRecords.clear();
+    }
+
+    private void retryGroups(GroupInsert groupInsert, Session reconnectableSession, int retryTime) {
+      for (int index = 0; index < batchRecords.size(); index++) {
+        final int groupIndex = index;
+        BatchResult result =
+            executeBatchWithRetry(
+                () -> groupInsert.insert(groupIndex), reconnectableSession, retryTime, false);
+        if (result == BatchResult.CONNECTION_FAILURE) {
+          recordRemainingFailures(index);
+          return;
+        }
+        if (result == BatchResult.STATEMENT_FAILURE) {
+          recordFailure(batchRecords.get(index));
+          markCurrentImportFailed();
+        }
+      }
+    }
+
+    private void recordRemainingFailures(int from) {
+      for (int index = from; index < batchRecords.size(); index++) {
+        recordFailure(batchRecords.get(index));
+      }
+      markCurrentImportFailed();
+    }
+  }
+
+  @FunctionalInterface
+  private interface GroupInsert {
+    void insert(int index) throws IoTDBConnectionException, StatementExecutionException;
+  }
+
+  private static BatchResult executeBatchWithRetry(
+      BatchInsert batchInsert, Session reconnectableSession, int retryTime) {
+    return executeBatchWithRetry(batchInsert, reconnectableSession, retryTime, true);
+  }
+
+  private static BatchResult executeBatchWithRetry(
+      BatchInsert batchInsert, Session reconnectableSession, int retryTime, boolean reportFailure) {
+    for (int attempt = 0; ; attempt++) {
+      try {
+        batchInsert.insert();
+        return BatchResult.SUCCESS;
+      } catch (IoTDBConnectionException e) {
+        if (attempt >= retryTime) {
+          reportInsertFailure(e, reportFailure);
+          return BatchResult.CONNECTION_FAILURE;
+        }
+        if (reconnectableSession != null) {
+          try {
+            reconnectableSession.open();
+          } catch (IoTDBConnectionException reconnectException) {
+            if (attempt + 1 >= retryTime) {
+              reportInsertFailure(reconnectException, reportFailure);
+              return BatchResult.CONNECTION_FAILURE;
+            }
+          }
+        }
+      } catch (StatementExecutionException e) {
+        reportInsertFailure(e, reportFailure);
+        return BatchResult.STATEMENT_FAILURE;
+      }
+    }
+  }
+
+  private static void reportInsertFailure(Exception e, boolean reportFailure) {
+    if (reportFailure) {
+      ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
+    }
+  }
+
+  private static BatchResult insertBatch(
+      SessionPool sessionPool,
+      List<String> deviceIds,
+      List<Long> times,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList,
+      List<List<String>> measurementsList,
+      int retryTime) {
+    return executeBatchWithRetry(
+        () -> {
+          if (Boolean.FALSE.equals(aligned)) {
+            sessionPool.insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
+          } else {
+            sessionPool.insertAlignedRecords(
+                deviceIds, times, measurementsList, typesList, valuesList);
+          }
+        },
+        null,
+        retryTime);
+  }
+
   private static void writeAndEmptyDataSet(
       SessionPool sessionPool,
       String device,
@@ -513,29 +677,46 @@ public abstract class AbstractDataTool {
       List<List<TSDataType>> typesList,
       List<List<Object>> valuesList,
       List<List<String>> measurementsList,
+      BatchContext batchContext,
       int retryTime) {
-    try {
-      if (Boolean.FALSE.equals(aligned)) {
-        sessionPool.insertRecordsOfOneDevice(
-            device, times, measurementsList, typesList, valuesList);
-      } else {
-        sessionPool.insertAlignedRecordsOfOneDevice(
-            device, times, measurementsList, typesList, valuesList);
-      }
-    } catch (IoTDBConnectionException e) {
-      if (retryTime > 0) {
-        writeAndEmptyDataSet(
-            sessionPool, device, times, typesList, valuesList, measurementsList, --retryTime);
-      }
-    } catch (StatementExecutionException e) {
-      ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
-      System.exit(1);
-    } finally {
-      times.clear();
-      typesList.clear();
-      valuesList.clear();
-      measurementsList.clear();
-    }
+    BatchResult result =
+        executeBatchWithRetry(
+            () -> {
+              if (Boolean.FALSE.equals(aligned)) {
+                sessionPool.insertRecordsOfOneDevice(
+                    device, times, measurementsList, typesList, valuesList);
+              } else {
+                sessionPool.insertAlignedRecordsOfOneDevice(
+                    device, times, measurementsList, typesList, valuesList);
+              }
+            },
+            null,
+            retryTime);
+    batchContext.finishBatch(
+        result,
+        index -> {
+          if (Boolean.FALSE.equals(aligned)) {
+            sessionPool.insertRecordsOfOneDevice(
+                device,
+                Arrays.asList(times.get(index)),
+                Arrays.asList(measurementsList.get(index)),
+                Arrays.asList(typesList.get(index)),
+                Arrays.asList(valuesList.get(index)));
+          } else {
+            sessionPool.insertAlignedRecordsOfOneDevice(
+                device,
+                Arrays.asList(times.get(index)),
+                Arrays.asList(measurementsList.get(index)),
+                Arrays.asList(typesList.get(index)),
+                Arrays.asList(valuesList.get(index)));
+          }
+        },
+        null,
+        retryTime);
+    times.clear();
+    typesList.clear();
+    valuesList.clear();
+    measurementsList.clear();
   }
 
   private static void writeAndEmptyDataSet(
@@ -545,38 +726,46 @@ public abstract class AbstractDataTool {
       List<List<TSDataType>> typesList,
       List<List<Object>> valuesList,
       List<List<String>> measurementsList,
+      BatchContext batchContext,
       int retryTime) {
-    try {
-      if (Boolean.FALSE.equals(aligned)) {
-        session.insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
-      } else {
-        session.insertAlignedRecords(deviceIds, times, measurementsList, typesList, valuesList);
-      }
-    } catch (IoTDBConnectionException e) {
-      if (retryTime > 0) {
-        try {
-          session.open();
-        } catch (IoTDBConnectionException ex) {
-          ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
-        }
-        writeAndEmptyDataSet(
-            session, deviceIds, times, typesList, valuesList, measurementsList, --retryTime);
-      }
-    } catch (StatementExecutionException e) {
-      ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
-      try {
-        session.close();
-      } catch (IoTDBConnectionException ex) {
-        // do nothing
-      }
-      System.exit(1);
-    } finally {
-      deviceIds.clear();
-      times.clear();
-      typesList.clear();
-      valuesList.clear();
-      measurementsList.clear();
-    }
+    BatchResult result =
+        executeBatchWithRetry(
+            () -> {
+              if (Boolean.FALSE.equals(aligned)) {
+                session.insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
+              } else {
+                session.insertAlignedRecords(
+                    deviceIds, times, measurementsList, typesList, valuesList);
+              }
+            },
+            session,
+            retryTime);
+    batchContext.finishBatch(
+        result,
+        index -> {
+          if (Boolean.FALSE.equals(aligned)) {
+            session.insertRecords(
+                Arrays.asList(deviceIds.get(index)),
+                Arrays.asList(times.get(index)),
+                Arrays.asList(measurementsList.get(index)),
+                Arrays.asList(typesList.get(index)),
+                Arrays.asList(valuesList.get(index)));
+          } else {
+            session.insertAlignedRecords(
+                Arrays.asList(deviceIds.get(index)),
+                Arrays.asList(times.get(index)),
+                Arrays.asList(measurementsList.get(index)),
+                Arrays.asList(typesList.get(index)),
+                Arrays.asList(valuesList.get(index)));
+          }
+        },
+        session,
+        retryTime);
+    deviceIds.clear();
+    times.clear();
+    typesList.clear();
+    valuesList.clear();
+    measurementsList.clear();
   }
 
   private static void writeAndEmptyDataSet(
@@ -586,38 +775,46 @@ public abstract class AbstractDataTool {
       List<List<TSDataType>> typesList,
       List<List<Object>> valuesList,
       List<List<String>> measurementsList,
+      BatchContext batchContext,
       int retryTime) {
-    try {
-      if (Boolean.FALSE.equals(aligned)) {
-        session.insertRecordsOfOneDevice(device, times, measurementsList, typesList, valuesList);
-      } else {
-        session.insertAlignedRecordsOfOneDevice(
-            device, times, measurementsList, typesList, valuesList);
-      }
-    } catch (IoTDBConnectionException e) {
-      if (retryTime > 0) {
-        try {
-          session.open();
-        } catch (IoTDBConnectionException ex) {
-          ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
-        }
-        writeAndEmptyDataSet(
-            session, device, times, typesList, valuesList, measurementsList, --retryTime);
-      }
-    } catch (StatementExecutionException e) {
-      ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
-      try {
-        session.close();
-      } catch (IoTDBConnectionException ex) {
-        // do nothing
-      }
-      System.exit(1);
-    } finally {
-      times.clear();
-      typesList.clear();
-      valuesList.clear();
-      measurementsList.clear();
-    }
+    BatchResult result =
+        executeBatchWithRetry(
+            () -> {
+              if (Boolean.FALSE.equals(aligned)) {
+                session.insertRecordsOfOneDevice(
+                    device, times, measurementsList, typesList, valuesList);
+              } else {
+                session.insertAlignedRecordsOfOneDevice(
+                    device, times, measurementsList, typesList, valuesList);
+              }
+            },
+            session,
+            retryTime);
+    batchContext.finishBatch(
+        result,
+        index -> {
+          if (Boolean.FALSE.equals(aligned)) {
+            session.insertRecordsOfOneDevice(
+                device,
+                Arrays.asList(times.get(index)),
+                Arrays.asList(measurementsList.get(index)),
+                Arrays.asList(typesList.get(index)),
+                Arrays.asList(valuesList.get(index)));
+          } else {
+            session.insertAlignedRecordsOfOneDevice(
+                device,
+                Arrays.asList(times.get(index)),
+                Arrays.asList(measurementsList.get(index)),
+                Arrays.asList(typesList.get(index)),
+                Arrays.asList(valuesList.get(index)));
+          }
+        },
+        session,
+        retryTime);
+    times.clear();
+    typesList.clear();
+    valuesList.clear();
+    measurementsList.clear();
   }
 
   private static void writeAndEmptyDataSet(
@@ -627,28 +824,37 @@ public abstract class AbstractDataTool {
       List<List<TSDataType>> typesList,
       List<List<Object>> valuesList,
       List<List<String>> measurementsList,
+      BatchContext batchContext,
       int retryTime) {
-    try {
-      if (Boolean.FALSE.equals(aligned)) {
-        sessionPool.insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
-      } else {
-        sessionPool.insertAlignedRecords(deviceIds, times, measurementsList, typesList, valuesList);
-      }
-    } catch (IoTDBConnectionException e) {
-      if (retryTime > 0) {
-        writeAndEmptyDataSet(
-            sessionPool, deviceIds, times, typesList, valuesList, measurementsList, --retryTime);
-      }
-    } catch (StatementExecutionException e) {
-      ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
-      System.exit(1);
-    } finally {
-      deviceIds.clear();
-      times.clear();
-      typesList.clear();
-      valuesList.clear();
-      measurementsList.clear();
-    }
+    BatchResult result =
+        insertBatch(
+            sessionPool, deviceIds, times, typesList, valuesList, measurementsList, retryTime);
+    batchContext.finishBatch(
+        result,
+        index -> {
+          if (Boolean.FALSE.equals(aligned)) {
+            sessionPool.insertRecords(
+                Arrays.asList(deviceIds.get(index)),
+                Arrays.asList(times.get(index)),
+                Arrays.asList(measurementsList.get(index)),
+                Arrays.asList(typesList.get(index)),
+                Arrays.asList(valuesList.get(index)));
+          } else {
+            sessionPool.insertAlignedRecords(
+                Arrays.asList(deviceIds.get(index)),
+                Arrays.asList(times.get(index)),
+                Arrays.asList(measurementsList.get(index)),
+                Arrays.asList(typesList.get(index)),
+                Arrays.asList(valuesList.get(index)));
+          }
+        },
+        null,
+        retryTime);
+    deviceIds.clear();
+    times.clear();
+    typesList.clear();
+    valuesList.clear();
+    measurementsList.clear();
   }
 
   private static void writeFailedLinesFile(
@@ -985,7 +1191,7 @@ public abstract class AbstractDataTool {
     AtomicReference<Boolean> hasStarted = new AtomicReference<>(false);
     AtomicInteger pointSize = new AtomicInteger(0);
 
-    ArrayList<List<Object>> failedRecords = new ArrayList<>();
+    BatchContext batchContext = new BatchContext();
 
     records.forEach(
         recordObj -> {
@@ -993,7 +1199,14 @@ public abstract class AbstractDataTool {
             hasStarted.set(true);
           } else if (pointSize.get() >= batchPointSize) {
             writeAndEmptyDataSet(
-                sessionPool, deviceIds, times, typesList, valuesList, measurementsList, 3);
+                sessionPool,
+                deviceIds,
+                times,
+                typesList,
+                valuesList,
+                measurementsList,
+                batchContext,
+                3);
             pointSize.set(0);
           }
 
@@ -1042,7 +1255,9 @@ public abstract class AbstractDataTool {
               }
             }
             if (!measurements.isEmpty()) {
-              times.add(parseTimestamp(recordObj.get(timeColumn)));
+              long timestamp = parseTimestamp(recordObj.get(timeColumn));
+              batchContext.recordBatch(recordObj);
+              times.add(timestamp);
               deviceIds.add(deviceId);
               typesList.add(types);
               valuesList.add(values);
@@ -1050,17 +1265,18 @@ public abstract class AbstractDataTool {
             }
           }
           if (isFail) {
-            failedRecords.add(recordObj.stream().collect(Collectors.toList()));
+            batchContext.recordFailure(recordObj);
           }
         });
     if (!deviceIds.isEmpty()) {
       writeAndEmptyDataSet(
-          sessionPool, deviceIds, times, typesList, valuesList, measurementsList, 3);
+          sessionPool, deviceIds, times, typesList, valuesList, measurementsList, batchContext, 3);
       pointSize.set(0);
     }
 
-    if (!failedRecords.isEmpty()) {
-      writeFailedLinesFile(headerNames, failedFilePath, failedRecords);
+    if (!batchContext.failedRecords.isEmpty()) {
+      writeFailedLinesFile(
+          headerNames, failedFilePath, new ArrayList<>(batchContext.failedRecords.values()));
     }
     //    if (Boolean.TRUE.equals(hasStarted.get())) {
     //      ioTPrinter.println("Import completely!");
@@ -1117,7 +1333,7 @@ public abstract class AbstractDataTool {
 
     AtomicInteger pointSize = new AtomicInteger(0);
 
-    ArrayList<List<Object>> failedRecords = new ArrayList<>();
+    BatchContext batchContext = new BatchContext();
 
     records.forEach(
         recordObj -> {
@@ -1127,13 +1343,27 @@ public abstract class AbstractDataTool {
           } else if (!Objects.equals(deviceName.get(), recordObj.get(1))) {
             // if device changed
             writeAndEmptyDataSet(
-                session, deviceName.get(), times, typesList, valuesList, measurementsList, 3);
+                session,
+                deviceName.get(),
+                times,
+                typesList,
+                valuesList,
+                measurementsList,
+                batchContext,
+                3);
             deviceName.set(recordObj.get(1));
             pointSize.set(0);
           } else if (pointSize.get() >= batchPointSize) {
             // insert a batch
             writeAndEmptyDataSet(
-                session, deviceName.get(), times, typesList, valuesList, measurementsList, 3);
+                session,
+                deviceName.get(),
+                times,
+                typesList,
+                valuesList,
+                measurementsList,
+                batchContext,
+                3);
             pointSize.set(0);
           }
 
@@ -1193,10 +1423,12 @@ public abstract class AbstractDataTool {
             }
           }
           if (Boolean.TRUE.equals(isFail.get())) {
-            failedRecords.add(recordObj.stream().collect(Collectors.toList()));
+            batchContext.recordFailure(recordObj);
           }
           if (!measurements.isEmpty()) {
-            times.add(parseTimestamp(recordObj.get(timeColumn)));
+            long timestamp = parseTimestamp(recordObj.get(timeColumn));
+            batchContext.recordBatch(recordObj);
+            times.add(timestamp);
             typesList.add(types);
             valuesList.add(values);
             measurementsList.add(measurements);
@@ -1204,13 +1436,23 @@ public abstract class AbstractDataTool {
         });
     if (!times.isEmpty()) {
       writeAndEmptyDataSet(
-          session, deviceName.get(), times, typesList, valuesList, measurementsList, 3);
+          session,
+          deviceName.get(),
+          times,
+          typesList,
+          valuesList,
+          measurementsList,
+          batchContext,
+          3);
       pointSize.set(0);
     }
-    if (!failedRecords.isEmpty()) {
-      writeFailedLinesFile(headerNames, failedFilePath, failedRecords);
+    if (!batchContext.failedRecords.isEmpty()) {
+      writeFailedLinesFile(
+          headerNames, failedFilePath, new ArrayList<>(batchContext.failedRecords.values()));
     }
-    ioTPrinter.println("Import completely!");
+    if (!isCurrentImportFailed()) {
+      ioTPrinter.println("Import completely!");
+    }
   }
 
   /**
@@ -1243,7 +1485,7 @@ public abstract class AbstractDataTool {
     AtomicReference<Boolean> hasStarted = new AtomicReference<>(false);
     AtomicInteger pointSize = new AtomicInteger(0);
 
-    ArrayList<List<Object>> failedRecords = new ArrayList<>();
+    BatchContext batchContext = new BatchContext();
 
     records.forEach(
         recordObj -> {
@@ -1251,7 +1493,14 @@ public abstract class AbstractDataTool {
             hasStarted.set(true);
           } else if (pointSize.get() >= batchPointSize) {
             writeAndEmptyDataSet(
-                session, deviceIds, times, typesList, valuesList, measurementsList, 3);
+                session,
+                deviceIds,
+                times,
+                typesList,
+                valuesList,
+                measurementsList,
+                batchContext,
+                3);
             pointSize.set(0);
           }
 
@@ -1297,7 +1546,9 @@ public abstract class AbstractDataTool {
               }
             }
             if (!measurements.isEmpty()) {
-              times.add(parseTimestamp(recordObj.get(timeColumn)));
+              long timestamp = parseTimestamp(recordObj.get(timeColumn));
+              batchContext.recordBatch(recordObj);
+              times.add(timestamp);
               deviceIds.add(deviceId);
               typesList.add(types);
               valuesList.add(values);
@@ -1305,20 +1556,22 @@ public abstract class AbstractDataTool {
             }
           }
           if (isFail) {
-            failedRecords.add(recordObj.stream().collect(Collectors.toList()));
+            batchContext.recordFailure(recordObj);
           }
         });
     if (!deviceIds.isEmpty()) {
-      writeAndEmptyDataSet(session, deviceIds, times, typesList, valuesList, measurementsList, 3);
+      writeAndEmptyDataSet(
+          session, deviceIds, times, typesList, valuesList, measurementsList, batchContext, 3);
       pointSize.set(0);
     }
 
-    if (!failedRecords.isEmpty()) {
-      writeFailedLinesFile(headerNames, failedFilePath, failedRecords);
+    if (!batchContext.failedRecords.isEmpty()) {
+      writeFailedLinesFile(
+          headerNames, failedFilePath, new ArrayList<>(batchContext.failedRecords.values()));
     }
-    if (Boolean.TRUE.equals(hasStarted.get())) {
+    if (Boolean.TRUE.equals(hasStarted.get()) && !isCurrentImportFailed()) {
       ioTPrinter.println("Import completely!");
-    } else {
+    } else if (Boolean.FALSE.equals(hasStarted.get())) {
       ioTPrinter.println("No records!");
     }
   }

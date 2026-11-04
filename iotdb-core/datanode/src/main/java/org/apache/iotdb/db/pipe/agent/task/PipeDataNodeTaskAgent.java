@@ -1078,6 +1078,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return;
     }
 
+    // Snapshot/query sources do not retain InsertNode tablets.
+    if (isSnapshotMode(sourceParameters)) {
+      return;
+    }
+
     // If the realtime mode is batch or file, we do not need to allocate memory
     final String realtimeMode =
         sourceParameters.getStringByKeys(
@@ -1088,8 +1093,15 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return;
     }
 
+    // Hybrid sources share a pipe-wide floating-memory limit and downgrade to TsFiles when it is
+    // reached. Charging a full queue for every region rejects an idle pipe as its region count
+    // grows.
+    // Only forced-log sources cannot downgrade and retain the per-region estimate.
     final long needFloatingMemory =
-        PipeConfig.getInstance().getPipeInsertNodeQueueMemory() * dataRegionTaskCount;
+        PipeConfig.getInstance().getPipeInsertNodeQueueMemory()
+            * (PipeSourceConstant.EXTRACTOR_REALTIME_MODE_FORCED_LOG_VALUE.equals(realtimeMode)
+                ? dataRegionTaskCount
+                : 1);
     final long allocatedMemorySizeInBytes = this.getAllFloatingMemoryUsageInByte();
     final long remainingMemory =
         PipeDataNodeResourceManager.memory().getTotalFloatingMemorySizeInBytes()
