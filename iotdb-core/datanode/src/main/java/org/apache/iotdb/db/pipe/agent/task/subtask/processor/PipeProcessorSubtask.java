@@ -355,6 +355,12 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     return lastEvent instanceof EnrichedEvent && retryCount.get() > MAX_RETRY_TIMES;
   }
 
+  boolean isWaitingForTsFileParserMemory() {
+    final Event event = lastEvent;
+    return event instanceof PipeTsFileInsertionEvent
+        && ((PipeTsFileInsertionEvent) event).isWaitingForTsFileParserMemory();
+  }
+
   @Override
   public void close() {
     // Always deregister the metrics to avoid the deletion of the data region
