@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 
@@ -36,6 +37,20 @@ import java.io.IOException;
 import java.nio.file.Files;
 
 public class PipeTsFileInsertionEventTest {
+
+  @Test
+  public void testRealtimeTsFileTimeParsingRemainsUnchanged() {
+    final TsFileResource resource = new TsFileResource(new File("1-1-0-0.tsfile"));
+    final IDeviceID device = new PlainDeviceID("root.db1.d1");
+    resource.updateStartTime(device, 0);
+    resource.updateEndTime(device, Long.MIN_VALUE);
+    resource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
+    final PipeTsFileInsertionEvent event =
+        new PipeTsFileInsertionEvent(
+            resource, null, false, false, false, "realtime_time_filter", 1L, null, null, -10, 10);
+    Assert.assertFalse(event.shouldParseTime());
+    event.close();
+  }
 
   @Test(timeout = 60000)
   public void testRealtimeEventCanSkipWaitingForClosedStatusAfterTsFileSealed() throws Exception {

@@ -23,6 +23,9 @@ public final class DataNodePipeMessages {
 
   private DataNodePipeMessages() {}
 
+  public static final String EXCEPTION_INCREASE_REFERENCE_COUNT_ERROR_HOLDER_MESSAGE_ARG_7E1D032D =
+      "增加引用计数失败。持有者信息：%s";
+
   // ===================== LEGACY PIPE RECEIVER RESPONSES =====================
 
   public static final String MESSAGE_PIPE_DATA_TRANSPORT_ERROR_ARG_ECE6A238 = "Pipe 数据传输错误：%s";
