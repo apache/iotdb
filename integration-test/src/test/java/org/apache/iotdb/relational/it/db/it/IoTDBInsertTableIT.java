@@ -1188,6 +1188,22 @@ public class IoTDBInsertTableIT {
   }
 
   @Test
+  public void testInsertWithPipeAndTTL() {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("use \"test\"");
+      statement.execute("create table t_big (dev string tag, v double field) with (ttl=100000);");
+      statement.execute("insert into t_big (time, dev, v) values (now(), 'd1', 11);");
+      statement.execute(
+          "insert into t_big (time, dev, v) values (1793772199053, 'd1', 13) (1793772199053, 'd1', 14);");
+      fail();
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains("less than ttl time bound"));
+    }
+  }
+
+  @Test
   public void testInsertTabletWithTTL()
       throws IoTDBConnectionException, StatementExecutionException {
     long ttl = 1;
