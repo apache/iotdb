@@ -29,17 +29,27 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
+import org.apache.tsfile.file.metadata.TsFileMetadata;
+import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.write.schema.Schema;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.junit.After;
 import org.junit.Test;
+import org.mockito.AdditionalMatchers;
 import org.mockito.Mockito;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 public class TsFileTableSchemaRegistrationUtilsTest {
@@ -60,8 +70,8 @@ public class TsFileTableSchemaRegistrationUtilsTest {
     registerTable(tableName, table);
 
     final Schema schema = new Schema();
-    TsFileTableSchemaRegistrationUtils.ensureTableSchemasForExistingChunks(
-        mockWriter(schema, tableName), DATABASE);
+    final TsFileIOWriter writer = mockWriter(schema, tableName);
+    TsFileTableSchemaRegistrationUtils.registerTableSchemaIfAbsent(writer, DATABASE, tableName);
 
     final TableSchema registered = schema.getTableSchemaMap().get(tableName);
     assertNotNull(registered);
@@ -78,12 +88,94 @@ public class TsFileTableSchemaRegistrationUtilsTest {
     registerTable(tableName, table);
 
     final Schema schema = new Schema();
-    TsFileTableSchemaRegistrationUtils.ensureTableSchemasForExistingChunks(
-        mockWriter(schema, tableName), DATABASE);
+    final TsFileIOWriter writer = mockWriter(schema, tableName);
+    TsFileTableSchemaRegistrationUtils.registerTableSchemaIfAbsent(writer, DATABASE, tableName);
 
     final TableSchema registered = schema.getTableSchemaMap().get(tableName);
     assertNotNull(registered);
     assertTrue(registered.getColumnTypes().isEmpty());
+  }
+
+  @Test
+  public void testDroppedTableIsNotTouched() {
+    final String tableName = "dropped_table";
+    final Schema schema = new Schema();
+    final TsFileIOWriter writer = mockWriter(schema, tableName);
+
+    TsFileTableSchemaRegistrationUtils.registerTableSchemaIfAbsent(writer, DATABASE, tableName);
+
+    // The storage path does not describe a table it cannot read. The file stays recognizable
+    // through the table-model file property instead.
+    assertTrue(schema.getTableSchemaMap().isEmpty());
+  }
+
+  @Test
+  public void testExistingSchemaIsNotRewritten() {
+    final String tableName = "existing_table";
+    final Schema schema = new Schema();
+    final TableSchema existingSchema = new TableSchema(tableName);
+    schema.registerTableSchema(existingSchema);
+    final TsFileIOWriter writer = mockWriter(schema, tableName);
+
+    TsFileTableSchemaRegistrationUtils.registerTableSchemaIfAbsent(writer, DATABASE, tableName);
+
+    assertSame(existingSchema, schema.getTableSchemaMap().get(tableName));
+    Mockito.verify(writer, Mockito.never())
+        .addTsFileProperty(Mockito.anyString(), Mockito.any(byte[].class));
+  }
+
+  @Test
+  public void testTreeModelDatabaseIsNotTouched() {
+    final String tableName = "tree_table";
+    final Schema schema = new Schema();
+    final TsFileIOWriter writer = mockWriter(schema, tableName);
+
+    TsFileTableSchemaRegistrationUtils.registerTableSchemaIfAbsent(
+        writer, "root.tree_db", tableName);
+
+    assertTrue(schema.getTableSchemaMap().isEmpty());
+    Mockito.verify(writer, Mockito.never())
+        .addTsFileProperty(Mockito.anyString(), Mockito.any(byte[].class));
+  }
+
+  @Test
+  public void testMarkTableModelWritesSingleProperty() {
+    final TsFileIOWriter writer = mockWriter(new Schema(), "t1");
+
+    TsFileTableSchemaRegistrationUtils.markTableModel(writer);
+
+    Mockito.verify(writer)
+        .addTsFileProperty(
+            Mockito.eq(TsFileTableSchemaRegistrationUtils.TABLE_MODEL_PROPERTY),
+            AdditionalMatchers.aryEq("true".getBytes(StandardCharsets.UTF_8)));
+  }
+
+  @Test
+  public void testTableModelPropertyIsPersistedWithoutTableSchema() throws IOException {
+    final Path tempDir = Files.createTempDirectory("table-model-marker");
+    final File tsFile = tempDir.resolve("marker.tsfile").toFile();
+    try {
+      try (final TsFileIOWriter writer = new TsFileIOWriter(tsFile)) {
+        TsFileTableSchemaRegistrationUtils.markTableModel(writer);
+        writer.endFile();
+      }
+
+      try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+        final TsFileMetadata metadata = reader.readFileMetadata();
+        // The single property is enough to recognize the file as a table-model TsFile, even when
+        // the TableSchema map is empty.
+        assertTrue(TsFileTableSchemaRegistrationUtils.isTableModel(metadata));
+        assertArrayEquals(
+            "true".getBytes(StandardCharsets.UTF_8),
+            metadata
+                .getTsFileProperties()
+                .get(TsFileTableSchemaRegistrationUtils.TABLE_MODEL_PROPERTY));
+        assertTrue(reader.getTableSchemaMap().isEmpty());
+      }
+    } finally {
+      Files.deleteIfExists(tsFile.toPath());
+      Files.deleteIfExists(tempDir);
+    }
   }
 
   private static void registerTable(final String tableName, final TsTable table) {

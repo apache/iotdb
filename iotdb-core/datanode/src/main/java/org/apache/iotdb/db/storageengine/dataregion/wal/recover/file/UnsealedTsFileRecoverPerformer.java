@@ -112,12 +112,6 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
     super.recoverWithWriter();
 
     if (hasCrashed()) {
-      // Chunks that were already flushed before the crash may no longer have a WAL entry, so
-      // redoLog cannot be relied on to restore their TableSchema. Register every table that
-      // already has chunks in this file before the file is ended again. Otherwise endFile()
-      // would serialize an empty table schema map and turn a table-model TsFile into a
-      // tree-model one.
-      TsFileTableSchemaRegistrationUtils.ensureTableSchemasForExistingChunks(writer, databaseName);
       walRedoer
           .getRecoveryMemTable()
           .setEncryptParameter(EncryptUtils.getEncryptParameter(writer.getEncryptParameter()));
@@ -322,8 +316,9 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         // if we put following codes in the 'if' clause above, this file can be continued writing
         // into it
         // currently, we close this file anyway
-        TsFileTableSchemaRegistrationUtils.ensureTableSchemasForExistingChunks(
-            writer, databaseName);
+        if (isTableModel) {
+          TsFileTableSchemaRegistrationUtils.markTableModel(writer);
+        }
         writer.endFile();
         tsFileResource.serialize();
         FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);

@@ -24,6 +24,7 @@ import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionIoDataType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileTableSchemaRegistrationUtils;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.encrypt.EncryptParameter;
@@ -180,6 +181,10 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
   @Override
   public void endFile() throws IOException {
     removeUnusedTableSchema();
+    if (!getSchema().getTableSchemaMap().isEmpty()) {
+      // A single table-model marker; readers no longer have to infer the model from the schema map.
+      TsFileTableSchemaRegistrationUtils.markTableModel(this);
+    }
     long beforeSize = this.getPos();
     super.endFile();
     long writtenDataSize = this.getPos() - beforeSize;

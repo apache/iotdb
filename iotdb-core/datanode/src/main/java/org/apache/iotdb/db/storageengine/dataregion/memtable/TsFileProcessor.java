@@ -160,6 +160,14 @@ public class TsFileProcessor {
 
   private final Map<String, Long> registeredTableSchemaVersions = new ConcurrentHashMap<>();
 
+  /**
+   * Whether this processor writes a table-model TsFile. Such a file is marked with a single {@link
+   * TsFileTableSchemaRegistrationUtils#TABLE_MODEL_PROPERTY} property at {@link #endFile()}, so the
+   * closed file stays recognizable as a table-model TsFile without any per-table schema lookup on
+   * the write path.
+   */
+  private final boolean tableModelTsFile;
+
   /** Tsfile resource for index this tsfile. */
   private final TsFileResource tsFileResource;
 
@@ -247,6 +255,7 @@ public class TsFileProcessor {
     this.writer =
         EncryptDBUtils.createRestorableWriterForNewFile(
             tsfile, dataRegionInfo.getDataRegion().getDatabaseName());
+    this.tableModelTsFile = dataRegionInfo.getDataRegion().isTableModel();
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.walNode =
         WALManager.getInstance()
@@ -270,6 +279,7 @@ public class TsFileProcessor {
     this.tsFileResource = tsFileResource;
     this.dataRegionInfo = dataRegionInfo;
     this.writer = writer;
+    this.tableModelTsFile = dataRegionInfo.getDataRegion().isTableModel();
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
     this.walNode =
@@ -2234,11 +2244,12 @@ public class TsFileProcessor {
     if (logger.isDebugEnabled()) {
       logger.debug(StorageEngineMessages.START_TO_END_FILE, tsFileResource);
     }
-    // A table-model TsFile is only recognizable by its non-empty TableSchema map. Chunks may have
-    // been flushed before registerToTsFile() was called for their table, so repair the map from the
-    // chunks and the table cache here rather than silently writing a tree-model-looking file.
-    TsFileTableSchemaRegistrationUtils.ensureTableSchemasForExistingChunks(
-        writer, dataRegionInfo.getDataRegion().getDatabaseName());
+    // Mark the file as a table-model TsFile. This is a single constant-time file property: the
+    // TableSchema entries themselves are registered on the write path by registerToTsFile(), and
+    // are repaired during recovery and compaction, so no per-device scan is needed at close.
+    if (tableModelTsFile) {
+      TsFileTableSchemaRegistrationUtils.markTableModel(writer);
+    }
     writer.endFile();
 
     // Listen after "endFile" to avoid unnecessary waiting for tsFile close

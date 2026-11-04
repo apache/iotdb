@@ -24,61 +24,80 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
-import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.TableSchema;
+import org.apache.tsfile.file.metadata.TsFileMetadata;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Objects;
+
 /**
- * Ensures that a table-model TsFile retains a TableSchema for every table that has data in it.
+ * Keeps a table-model TsFile identifiable and self-describing.
  *
- * <p>For a table-model TsFile, a non-empty table schema map is the marker that distinguishes it
- * from a tree-model TsFile. This class deliberately only changes map membership: it never adds,
- * removes, or rewrites columns in an existing TableSchema. In particular, an empty schema (for
- * example, one produced from a time-only table by the existing schema converter) is still written
- * as-is so that the table remains identifiable.
+ * <p>Every table-model TsFile carries a single {@value #TABLE_MODEL_PROPERTY} file property. It is
+ * a constant-time marker that tells readers the file belongs to the table model, so a file whose
+ * TableSchema map is empty is not mistaken for a tree-model TsFile.
+ *
+ * <p>The TableSchema map keeps one entry per table that writes data into the file. This class only
+ * changes map membership: it never adds, removes, or rewrites columns in an existing TableSchema.
+ * In particular it does not synthesize an entry for a table that no longer exists, the file stays
+ * recognizable through the file property instead.
  */
 public final class TsFileTableSchemaRegistrationUtils {
+
+  /** File property written by every table-model TsFile; its value is {@code true}. */
+  public static final String TABLE_MODEL_PROPERTY = "isTableModel";
+
+  private static final byte[] TABLE_MODEL_PROPERTY_VALUE = "true".getBytes(StandardCharsets.UTF_8);
 
   private TsFileTableSchemaRegistrationUtils() {}
 
   /**
-   * Registers the missing TableSchema for every table that already has chunks in the writer.
-   *
-   * <p>This is deliberately called both when a normal flush ends a file and when an unsealed file
-   * is recovered: in both cases chunks may already be present while the schema map is empty or
-   * incomplete (for example because a table was written before the table schema was registered, or
-   * because the WAL entry for an already-flushed chunk has been removed).
+   * Records that the file being written belongs to the table model. This is one file property, so
+   * the write path pays no per-table cost.
    */
-  public static void ensureTableSchemasForExistingChunks(
-      final TsFileIOWriter writer, final String databaseName) {
-    if (writer == null || !PathUtils.isTableModelDatabase(databaseName)) {
+  public static void markTableModel(final TsFileIOWriter writer) {
+    if (writer == null) {
       return;
     }
-    for (final IDeviceID deviceId : writer.getDeviceChunkMetadataMap().keySet()) {
-      registerTableSchemaIfAbsent(writer, databaseName, deviceId.getTableName());
-    }
+    writer.addTsFileProperty(TABLE_MODEL_PROPERTY, TABLE_MODEL_PROPERTY_VALUE);
   }
 
   /**
-   * Registers the TableSchema for {@code tableName} if it is absent. A table that has already been
-   * dropped still gets an empty schema entry so that the chunks already present in the file do not
-   * silently turn it into a tree-model TsFile.
+   * Whether the given file metadata says that the TsFile was written as a table-model file. This
+   * does not look at the TableSchema map, so it also recognizes a table-model file whose schema map
+   * is empty.
+   */
+  public static boolean isTableModel(final TsFileMetadata metadata) {
+    return metadata != null
+        && metadata.getTsFileProperties() != null
+        && metadata.getTsFileProperties().containsKey(TABLE_MODEL_PROPERTY);
+  }
+
+  /**
+   * Registers the TableSchema of {@code tableName} when the writer does not have it yet.
+   *
+   * <p>This is called while an unsealed table-model file is recovered: the TableSchema of a table
+   * whose data is replayed from the WAL has to be registered again, otherwise the closed file would
+   * carry the chunks of the table but no description of them.
+   *
+   * <p>A table that no longer exists is skipped instead of being written with an empty schema: the
+   * storage path does not describe tables it cannot read, and the file property already tells
+   * readers that the file is a table-model one.
    */
   public static void registerTableSchemaIfAbsent(
       final TsFileIOWriter writer, final String databaseName, final String tableName) {
-    if (writer == null || tableName == null) {
+    if (Objects.isNull(writer)
+        || Objects.isNull(tableName)
+        || !PathUtils.isTableModelDatabase(databaseName)
+        || writer.getSchema().getTableSchemaMap().containsKey(tableName)) {
       return;
     }
-    if (writer.getSchema().getTableSchemaMap().containsKey(tableName)) {
-      return;
-    }
-
     final TsTable table = DataNodeTableCache.getInstance().getTable(databaseName, tableName, false);
+    if (Objects.isNull(table)) {
+      return;
+    }
     writer
         .getSchema()
-        .registerTableSchema(
-            table == null
-                ? new TableSchema(tableName)
-                : TsFileTableSchemaUtil.toTsFileTableSchemaNoAttribute(table));
+        .registerTableSchema(TsFileTableSchemaUtil.toTsFileTableSchemaNoAttribute(table));
   }
 }
