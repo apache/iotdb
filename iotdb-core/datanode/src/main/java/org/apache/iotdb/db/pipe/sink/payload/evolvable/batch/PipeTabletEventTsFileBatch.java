@@ -26,8 +26,8 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.sink.util.builder.PipeTableModelTsFileBuilderV2;
 import org.apache.iotdb.db.pipe.sink.util.builder.PipeTreeModelTsFileBuilderV2;
 import org.apache.iotdb.db.pipe.sink.util.builder.PipeTsFileBuilder;
-import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
-import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
+import org.apache.iotdb.db.utils.sorter.TableModelTabletEventSorter;
+import org.apache.iotdb.db.utils.sorter.TreeModelTabletEventSorter;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -274,7 +274,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       final long creationTime,
       final Tablet tablet,
       final boolean isAligned) {
-    new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+    new TreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
     pipeName2WeightMap.compute(
         new Pair<>(pipeName, creationTime),
@@ -285,7 +285,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
   private void bufferTableModelTablet(
       final String pipeName, final long creationTime, final Tablet tablet, final String dataBase) {
-    new PipeTableModelTabletEventSorter(tablet).sortAndDeduplicateByDevIdTimestamp();
+    new TableModelTabletEventSorter(tablet).sortAndDeduplicateByDevIdTimestamp();
 
     pipeName2WeightMap.compute(
         new Pair<>(pipeName, creationTime),
