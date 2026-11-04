@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -32,9 +33,14 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 /**
  * This class helps redo wal logs into a TsFile. Notice: You should update time map in {@link
@@ -55,6 +61,7 @@ public class TsFilePlanRedoer {
 
   void redoDelete(DeleteDataNode deleteDataNode) throws IOException {
     List<PartialPath> paths = deleteDataNode.getPathList();
+    List<Deletion> deletionEntries = new ArrayList<>();
     for (PartialPath path : paths) {
       // path here is device path pattern
       recoveryMemTable.delete(
@@ -62,15 +69,64 @@ public class TsFilePlanRedoer {
           path.getDevicePath(),
           deleteDataNode.getDeleteStartTime(),
           deleteDataNode.getDeleteEndTime());
-      tsFileResource
-          .getModFile()
-          .write(
-              new Deletion(
-                  path,
-                  tsFileResource.getTsFileSize(),
-                  deleteDataNode.getDeleteStartTime(),
-                  deleteDataNode.getDeleteEndTime()));
+      deletionEntries.addAll(
+          deletionsForFlushedData(
+              path, deleteDataNode.getDeleteStartTime(), deleteDataNode.getDeleteEndTime()));
     }
+    if (!deletionEntries.isEmpty()) {
+      for (Deletion deletion : deletionEntries) {
+        tsFileResource.getModFile().write(deletion);
+      }
+    }
+  }
+
+  private List<Deletion> deletionsForFlushedData(
+      PartialPath pathPattern, long deleteStartTime, long deleteEndTime) throws IOException {
+    // WAL inserts are replayed into memory and flushed after all deletions have been replayed.
+    // A file-wide deletion would also hide later inserts. The resource still describes only the
+    // data already on disk, and redoInsert skips that data using each device's end time.
+    List<Deletion> deletions = new ArrayList<>();
+    for (IDeviceID deviceID : tsFileResource.getDevices()) {
+      Optional<Long> startTime = tsFileResource.getStartTime(deviceID);
+      Optional<Long> endTime = tsFileResource.getEndTime(deviceID);
+      if (!startTime.isPresent() || !endTime.isPresent() || startTime.get() > endTime.get()) {
+        continue;
+      }
+      if (deleteEndTime < startTime.get() || deleteStartTime > endTime.get()) {
+        continue;
+      }
+
+      PartialPath devicePath;
+      PartialPath measurementPath;
+      try {
+        devicePath = new PartialPath(deviceID);
+      } catch (IllegalPathException e) {
+        throw new IOException(e);
+      }
+      boolean affectsDevice =
+          pathPattern.getDevicePath().matchFullPath(devicePath)
+              || (pathPattern.endWithMultiLevelWildcard() && pathPattern.matchFullPath(devicePath));
+      if (!affectsDevice) {
+        continue;
+      }
+
+      String measurement =
+          pathPattern.endWithMultiLevelWildcard()
+              ? ONE_LEVEL_PATH_WILDCARD
+              : pathPattern.getMeasurement();
+      try {
+        measurementPath = new PartialPath(deviceID, measurement);
+      } catch (IllegalPathException e) {
+        throw new IOException(e);
+      }
+      deletions.add(
+          new Deletion(
+              measurementPath,
+              tsFileResource.getTsFileSize(),
+              deleteStartTime,
+              Math.min(deleteEndTime, endTime.get())));
+    }
+    return deletions;
   }
 
   void redoInsert(InsertNode node) throws WriteProcessException {

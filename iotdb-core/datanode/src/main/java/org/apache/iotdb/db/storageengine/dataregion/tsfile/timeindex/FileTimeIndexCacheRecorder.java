@@ -102,7 +102,7 @@ public class FileTimeIndexCacheRecorder {
                   buffer.flip();
                   writer.write(buffer);
                 } catch (IOException e) {
-                  LOGGER.warn("Meet error when record FileTimeIndexCache: {}", e.getMessage());
+                  LOGGER.warn("Meet error when record FileTimeIndexCache: {}", e.getMessage(), e);
                 }
               });
       if (!result) {
@@ -155,7 +155,7 @@ public class FileTimeIndexCacheRecorder {
                     }
                   }
                 } catch (IOException e) {
-                  LOGGER.warn("Meet error when compact FileTimeIndexCache: {}", e.getMessage());
+                  LOGGER.warn("Meet error when compact FileTimeIndexCache: {}", e.getMessage(), e);
                 }
               });
       if (!result) {
@@ -199,7 +199,7 @@ public class FileTimeIndexCacheRecorder {
         writer.close();
         deleteFileOrDirectory(writer.getLogFile(), true);
       } catch (IOException e) {
-        LOGGER.warn("Meet error when close FileTimeIndexCache: {}", e.getMessage());
+        LOGGER.warn("Meet error when close FileTimeIndexCache: {}", e.getMessage(), e);
       }
     }
   }
