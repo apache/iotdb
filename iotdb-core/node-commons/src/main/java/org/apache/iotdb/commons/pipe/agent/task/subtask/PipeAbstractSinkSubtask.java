@@ -42,6 +42,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 
 public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
@@ -288,17 +289,31 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
       return;
     }
 
-    final long schedulingDelayInMs = getNextSchedulingDelayInMs();
-    if (schedulingDelayInMs > 0) {
-      isSubmitted = true;
-      subtaskWorkerScheduledExecutor.schedule(
-          // Keep the isSubmitted placeholder set before the delayed submission to avoid duplicate
-          // schedules, so the delayed task should not mark it again.
-          () -> submitSelfToWorker(false), schedulingDelayInMs, TimeUnit.MILLISECONDS);
-      return;
-    }
+    try {
+      final long schedulingDelayInMs = getNextSchedulingDelayInMs();
+      if (schedulingDelayInMs > 0) {
+        isSubmitted = true;
+        subtaskWorkerScheduledExecutor.schedule(
+            // Keep the isSubmitted placeholder set before the delayed submission to avoid duplicate
+            // schedules, so the delayed task should not mark it again.
+            () -> submitSelfToWorker(false), schedulingDelayInMs, TimeUnit.MILLISECONDS);
+        return;
+      }
 
-    submitSelfToWorker(true);
+      submitSelfToWorker(true);
+    } catch (final RejectedExecutionException e) {
+      // The worker pool or the scheduler has been shut down, e.g., because the pipe has been
+      // dropped. The "isSubmitted" sign must be cleared, otherwise the subtask would never be
+      // submitted again and would silently stop transferring events. The rejection is reported
+      // instead of being swallowed by the callback executor.
+      isSubmitted = false;
+      LOGGER.warn(
+          PipeMessages
+              .LOG_FAILED_TO_SUBMIT_THE_SUBTASK_ARG_BECAUSE_THE_EXECUTOR_HAS_BEEN_SHUT_DOWN_198335BE,
+          getDisplayTaskID(),
+          e);
+      throw e;
+    }
   }
 
   @Override

@@ -396,6 +396,9 @@ public final class PipeMessages {
   public static final String SUBTASK_ALREADY_RUNNING = "The subtask {} is already running.";
   public static final String SUBTASK_STARTED = "The subtask {} is started to submit self.";
   public static final String SUBTASK_CLOSED = "The subtask {} is closed successfully.";
+  public static final String
+      LOG_FAILED_TO_SUBMIT_THE_SUBTASK_ARG_BECAUSE_THE_EXECUTOR_HAS_BEEN_SHUT_DOWN_198335BE =
+          "Failed to submit the subtask {} because the executor has been shut down.";
   public static final String SUBTASK_CLOSE_FAILED = "Failed to close the subtask {}.";
   public static final String LOG_FAILED_TO_START_THE_SUBTASK_DD3FC1BA =
       "Failed to start the subtask {}.";

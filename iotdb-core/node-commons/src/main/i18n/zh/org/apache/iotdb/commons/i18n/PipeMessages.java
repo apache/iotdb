@@ -379,6 +379,9 @@ public final class PipeMessages {
   public static final String SUBTASK_ALREADY_RUNNING = "子任务 {} 已在运行。";
   public static final String SUBTASK_STARTED = "子任务 {} 已开始自提交。";
   public static final String SUBTASK_CLOSED = "子任务 {} 已成功关闭。";
+  public static final String
+      LOG_FAILED_TO_SUBMIT_THE_SUBTASK_ARG_BECAUSE_THE_EXECUTOR_HAS_BEEN_SHUT_DOWN_198335BE =
+          "执行器已关闭，提交子任务 {} 失败。";
   public static final String SUBTASK_CLOSE_FAILED = "关闭子任务 {} 失败。";
   public static final String LOG_FAILED_TO_START_THE_SUBTASK_DD3FC1BA =
       "启动子任务 {} 失败。";

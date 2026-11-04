@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.pipe.agent.task;
 
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
+import org.apache.iotdb.commons.pipe.sink.protocol.PipeSinkWithSchedulingDelay;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeSinkSubtaskExecutor;
 import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeSinkSubtask;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -29,7 +31,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.lang.reflect.Field;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.mockito.Mockito.mock;
 
@@ -70,4 +74,68 @@ public class PipeSinkSubtaskExecutorTest extends PipeSubtaskExecutorTest {
       Assert.assertFalse(subtask.isSubmittingSelf());
     }
   }
+
+  @Test
+  public void testSubmitSelfAfterShutdown() throws Exception {
+    executor.register(subtask);
+    executor.shutdown();
+    allowSubmittingSelfAgain(subtask);
+
+    // The subtask submits itself again after each round, so a rejected submission must be reported
+    // instead of being swallowed. Otherwise the subtask would stop transferring events silently.
+    for (int i = 0; i < 2; ++i) {
+      try {
+        subtask.submitSelf();
+        Assert.fail("The submission of a subtask should fail if the executor is shut down");
+      } catch (final RejectedExecutionException e) {
+        // expected
+      }
+    }
+  }
+
+  @Test
+  public void testDelayedSubmitSelfAfterShutdown() throws Exception {
+    final SinkWithSchedulingDelay sink = mock(SinkWithSchedulingDelay.class);
+    Mockito.when(sink.consumeSchedulingDelayMs()).thenReturn(1000L);
+
+    final PipeSubtask delayedSubtask =
+        Mockito.spy(
+            new PipeSinkSubtask(
+                "PipeConnectorSubtaskExecutorTest",
+                System.currentTimeMillis(),
+                "TestAttributeSortedString",
+                "TestAttributeSortedString",
+                0,
+                mock(UnboundedBlockingPendingQueue.class),
+                sink));
+
+    executor.register(delayedSubtask);
+    executor.shutdown();
+    allowSubmittingSelfAgain(delayedSubtask);
+
+    // A delayed submission marks the subtask as submitted before scheduling it. If the scheduling
+    // is rejected, the sign must be cleared as well, otherwise every following submission would be
+    // skipped and the subtask would never be submitted again.
+    for (int i = 0; i < 2; ++i) {
+      try {
+        delayedSubtask.submitSelf();
+        Assert.fail("The submission of a subtask should fail if the executor is shut down");
+      } catch (final RejectedExecutionException e) {
+        // expected
+      }
+    }
+  }
+
+  /**
+   * Simulates the race where a subtask is submitting itself while its executor is being shut down:
+   * the executor can not submit it any more, but the subtask has not been told to stop yet.
+   */
+  private void allowSubmittingSelfAgain(final PipeSubtask subtask) throws Exception {
+    final Field shouldStopSubmittingSelfField =
+        PipeSubtask.class.getDeclaredField("shouldStopSubmittingSelf");
+    shouldStopSubmittingSelfField.setAccessible(true);
+    ((AtomicBoolean) shouldStopSubmittingSelfField.get(subtask)).set(false);
+  }
+
+  private interface SinkWithSchedulingDelay extends PipeConnector, PipeSinkWithSchedulingDelay {}
 }
