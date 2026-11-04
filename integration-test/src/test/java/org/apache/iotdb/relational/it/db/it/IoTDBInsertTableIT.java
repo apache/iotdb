@@ -1195,8 +1195,7 @@ public class IoTDBInsertTableIT {
       statement.execute("use \"test\"");
       statement.execute("create table t_big (dev string tag, v double field) with (ttl=100000);");
       statement.execute("insert into t_big (time, dev, v) values (now(), 'd1', 11);");
-      statement.execute(
-          "insert into t_big (time, dev, v) values (1793772199053, 'd1', 13);");
+      statement.execute("insert into t_big (time, dev, v) values (1793772199053, 'd1', 13);");
       fail();
     } catch (Exception e) {
       Assert.assertTrue(e.getMessage().contains("less than ttl time bound"));
