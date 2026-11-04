@@ -977,9 +977,42 @@ public abstract class PipeTaskAgent {
 
   private void startPipeTask(final int consensusGroupId, final PipeStaticMeta pipeStaticMeta) {
     final PipeTask pipeTask = pipeTaskManager.getPipeTask(pipeStaticMeta, consensusGroupId);
-    if (pipeTask != null) {
+    if (pipeTask == null) {
+      return;
+    }
+
+    try {
       pipeTask.start();
-      thawRate(pipeStaticMeta.getPipeName(), pipeStaticMeta.getCreationTime());
+    } catch (final Exception e) {
+      LOGGER.error(
+          PipeMessages
+              .LOG_FAILED_TO_START_THE_TASK_OF_CONSENSUS_GROUP_ARG_FOR_PIPE_ARG_THE_TASK_IS_DROPPED_AND_WILL_BE_RECREATED_BY_THE_FOLLOWING_META_SYNC_7594577C,
+          consensusGroupId,
+          pipeStaticMeta.getPipeName(),
+          e);
+
+      // The task is not running now. Dropping it instead of keeping it as is, because a task that
+      // has already been created is never started again by the following meta sync, which would
+      // leave the pipe alive in the metadata but dead in fact until the node restarts. After the
+      // task meta is removed here, the following meta sync sees no task meta of this consensus
+      // group and creates the task again, which gives the task another chance to start.
+      rollbackPipeTask(consensusGroupId, pipeStaticMeta);
+      return;
+    }
+
+    thawRate(pipeStaticMeta.getPipeName(), pipeStaticMeta.getCreationTime());
+  }
+
+  private void rollbackPipeTask(final int consensusGroupId, final PipeStaticMeta pipeStaticMeta) {
+    try {
+      dropPipeTask(consensusGroupId, pipeStaticMeta);
+    } catch (final Exception e) {
+      LOGGER.warn(
+          PipeMessages
+              .LOG_FAILED_TO_DROP_THE_TASK_OF_CONSENSUS_GROUP_ARG_FOR_PIPE_ARG_AFTER_IT_FAILED_TO_START_394297EC,
+          consensusGroupId,
+          pipeStaticMeta.getPipeName(),
+          e);
     }
   }
 

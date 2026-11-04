@@ -364,6 +364,13 @@ public final class PipeMessages {
   public static final String PIPE_WAS_STOPPED_CRITICAL_EXCEPTION =
       "Pipe %s (creation time = %s) was stopped because of critical exception "
           + "(occurred time %s).";
+  public static final String
+      LOG_FAILED_TO_START_THE_TASK_OF_CONSENSUS_GROUP_ARG_FOR_PIPE_ARG_THE_TASK_IS_DROPPED_AND_WILL_BE_RECREATED_BY_THE_FOLLOWING_META_SYNC_7594577C =
+          "Failed to start the task of consensus group {} for pipe {}. The task is dropped and "
+              + "will be recreated by the following meta sync.";
+  public static final String
+      LOG_FAILED_TO_DROP_THE_TASK_OF_CONSENSUS_GROUP_ARG_FOR_PIPE_ARG_AFTER_IT_FAILED_TO_START_394297EC =
+          "Failed to drop the task of consensus group {} for pipe {} after it failed to start.";
 
   // ===================== PipeEventCommitManager =====================
 

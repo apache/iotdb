@@ -349,6 +349,12 @@ public final class PipeMessages {
       "Pipe %s（创建时间 = %s）将因 connector %s 中的严重异常（发生时间 %s）而停止。";
   public static final String PIPE_WAS_STOPPED_CRITICAL_EXCEPTION =
       "Pipe %s（创建时间 = %s）已因严重异常（发生时间 %s）而停止。";
+  public static final String
+      LOG_FAILED_TO_START_THE_TASK_OF_CONSENSUS_GROUP_ARG_FOR_PIPE_ARG_THE_TASK_IS_DROPPED_AND_WILL_BE_RECREATED_BY_THE_FOLLOWING_META_SYNC_7594577C =
+          "启动共识组 {} 的 Pipe {} 任务失败。该任务已被丢弃，将由下一次元数据同步重新创建。";
+  public static final String
+      LOG_FAILED_TO_DROP_THE_TASK_OF_CONSENSUS_GROUP_ARG_FOR_PIPE_ARG_AFTER_IT_FAILED_TO_START_394297EC =
+          "启动失败后，丢弃共识组 {} 的 Pipe {} 任务时出错。";
 
   // ===================== PipeEventCommitManager =====================
 
