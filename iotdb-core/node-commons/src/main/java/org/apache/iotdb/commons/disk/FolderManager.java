@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.commons.disk;
 
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategy;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
@@ -40,9 +39,9 @@ import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class FolderManager {
   private static final Logger logger = LoggerFactory.getLogger(FolderManager.class);
@@ -61,7 +60,7 @@ public class FolderManager {
    * Map storing the state of each folder (HEALTHY/ABNORMAL). Key: folder path as String Value:
    * corresponding FolderState enum value
    */
-  private final Map<String, FolderState> foldersStates = new HashMap<>();
+  private final Map<String, FolderState> foldersStates = new ConcurrentHashMap<>();
 
   private final DirectoryStrategy selectStrategy;
 
@@ -120,7 +119,7 @@ public class FolderManager {
                 foldersStates.getOrDefault(folder, FolderState.ABNORMAL) == FolderState.HEALTHY);
   }
 
-  private boolean hasFolderWithAvailableDiskSpace() {
+  public boolean hasFolderWithAvailableDiskSpace() {
     return folders.stream()
         .anyMatch(
             folder ->
@@ -139,7 +138,7 @@ public class FolderManager {
       }
       CommonDescriptor.getInstance()
           .getConfig()
-          .setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
+          .setReadOnlyForDiskFull(this, this::hasFolderWithAvailableDiskSpace);
     } else {
       logger.warn(UtilMessages.CANNOT_SELECT_FOLDER_BUT_DISK_HAS_SPACE, e);
     }
