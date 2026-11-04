@@ -86,6 +86,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -594,18 +595,47 @@ public class Session implements ISession {
 
   @Override
   public synchronized void close() throws IoTDBConnectionException {
+    Throwable closeException = null;
     try {
       if (isClosed) {
         return;
       }
-      if (enableRedirection) {
+
+      Set<SessionConnection> closedConnections = Collections.newSetFromMap(new IdentityHashMap<>());
+      if (endPointToSessionConnection != null) {
         for (SessionConnection sessionConnection : endPointToSessionConnection.values()) {
-          sessionConnection.close();
+          if (sessionConnection != null && closedConnections.add(sessionConnection)) {
+            try {
+              sessionConnection.close();
+            } catch (IoTDBConnectionException | RuntimeException e) {
+              if (closeException == null) {
+                closeException = e;
+              } else if (closeException != e) {
+                closeException.addSuppressed(e);
+              }
+            }
+          }
         }
-      } else {
-        defaultSessionConnection.close();
+      }
+
+      if (defaultSessionConnection != null && closedConnections.add(defaultSessionConnection)) {
+        try {
+          defaultSessionConnection.close();
+        } catch (IoTDBConnectionException | RuntimeException e) {
+          if (closeException == null) {
+            closeException = e;
+          } else if (closeException != e) {
+            closeException.addSuppressed(e);
+          }
+        }
       }
     } finally {
+      if (!isClosed) {
+        if (endPointToSessionConnection != null) {
+          endPointToSessionConnection.clear();
+        }
+        defaultSessionConnection = null;
+      }
       // if executorService is null, it means that availableNodes is got from SessionPool and we
       // shouldn't clean that
       if (this.executorService != null) {
@@ -615,6 +645,13 @@ public class Session implements ISession {
         this.availableNodes = null;
       }
       isClosed = true;
+    }
+
+    if (closeException instanceof IoTDBConnectionException) {
+      throw (IoTDBConnectionException) closeException;
+    }
+    if (closeException instanceof RuntimeException) {
+      throw (RuntimeException) closeException;
     }
   }
 
