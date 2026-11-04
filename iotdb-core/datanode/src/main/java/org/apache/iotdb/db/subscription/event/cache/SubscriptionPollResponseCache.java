@@ -24,6 +24,7 @@ import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -105,16 +106,23 @@ public class SubscriptionPollResponseCache {
   }
 
   private SubscriptionPollResponseCache() {
-    final long initMemorySizeInBytes =
-        PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes() / 5;
+    final long totalNonFloatingMemorySizeInBytes =
+        PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes();
+    final float memoryUsagePercentage =
+        SubscriptionConfig.getInstance().getSubscriptionCacheMemoryUsagePercentage();
     final long maxMemorySizeInBytes =
-        (long)
-            (PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes()
-                * SubscriptionConfig.getInstance().getSubscriptionCacheMemoryUsagePercentage());
+        calculateMaxMemorySizeInBytes(totalNonFloatingMemorySizeInBytes, memoryUsagePercentage);
+    final long initMemorySizeInBytes =
+        calculateInitialMemorySizeInBytes(totalNonFloatingMemorySizeInBytes, memoryUsagePercentage);
 
     // properties required by pipe memory control framework
     final PipeMemoryBlock allocatedMemoryBlock =
-        PipeDataNodeResourceManager.memory().tryAllocate(initMemorySizeInBytes);
+        PipeDataNodeResourceManager.memory()
+            .tryAllocate(
+                SubscriptionPollResponseCache.class.getSimpleName(),
+                initMemorySizeInBytes,
+                PipeMemoryBlockCategory.SUBSCRIPTION,
+                SubscriptionPollResponseCache.class.getSimpleName());
 
     this.cache =
         Caffeine.newBuilder()
@@ -147,5 +155,17 @@ public class SubscriptionPollResponseCache {
                   oldMemory,
                   newMemory);
             });
+  }
+
+  static long calculateInitialMemorySizeInBytes(
+      final long totalNonFloatingMemorySizeInBytes, final float memoryUsagePercentage) {
+    return Math.min(
+        totalNonFloatingMemorySizeInBytes / 5,
+        calculateMaxMemorySizeInBytes(totalNonFloatingMemorySizeInBytes, memoryUsagePercentage));
+  }
+
+  static long calculateMaxMemorySizeInBytes(
+      final long totalNonFloatingMemorySizeInBytes, final float memoryUsagePercentage) {
+    return (long) (totalNonFloatingMemorySizeInBytes * memoryUsagePercentage);
   }
 }

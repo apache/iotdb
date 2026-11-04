@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DropTableModProgress;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.And;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.FullExactMatch;
@@ -46,6 +47,27 @@ import java.util.Arrays;
 import static org.junit.Assert.assertEquals;
 
 public class RelationalDeleteDataNodeTest {
+
+  @Test
+  public void testDropTableProcedureIdSurvivesConsensusSerialization() throws IOException {
+    final RelationalDeleteDataNode node =
+        new RelationalDeleteDataNode(
+            DropTableModProgress.planNodeId(42),
+            new TableDeletionEntry(
+                new DeletionPredicate("table"), new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
+            null);
+    assertEquals(
+        42,
+        DropTableModProgress.procedureId(
+            PlanNodeType.deserialize(node.serializeToByteBuffer()).getPlanNodeId()));
+    final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    node.serialize(new DataOutputStream(bytes));
+    assertEquals(
+        42,
+        DropTableModProgress.procedureId(
+            PlanNodeType.deserialize(ByteBuffer.wrap(bytes.toByteArray())).getPlanNodeId()));
+    assertEquals(-1, DropTableModProgress.procedureId(new PlanNodeId("query-plan")));
+  }
 
   @Test
   public void testSerialization() throws IOException {

@@ -59,6 +59,14 @@ public abstract class LoadTsFileAbstractMemoryBlock implements AutoCloseable {
     return isClosed.get();
   }
 
+  /**
+   * Creates a sub-block that caps the memory one part of a task may hold and accounts it on this
+   * block as well.
+   */
+  public LoadTsFileAbstractMemoryBlock createSubBlock(final long maxMemorySizeInBytes) {
+    return new LoadTsFileSubMemoryBlock(this, maxMemorySizeInBytes);
+  }
+
   @Override
   public void close() {
     if (isClosed.compareAndSet(false, true)) {

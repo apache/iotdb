@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.calc.execution.operator.process.join.merge.comparator;
 
-import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
 
 import org.apache.tsfile.read.common.type.Type;
 
@@ -59,38 +59,6 @@ public class JoinKeyComparatorFactory {
   }
 
   public static JoinKeyComparator getComparator(Type type, boolean isAscending) {
-    switch (type.getTypeEnum()) {
-      case INT32:
-      case DATE:
-        return isAscending
-            ? AscIntTypeJoinKeyComparator.getInstance()
-            : DescIntTypeJoinKeyComparator.getInstance();
-      case INT64:
-      case TIMESTAMP:
-        return isAscending
-            ? AscLongTypeJoinKeyComparator.getInstance()
-            : DescLongTypeJoinKeyComparator.getInstance();
-      case FLOAT:
-        return isAscending
-            ? AscFloatTypeJoinKeyComparator.getInstance()
-            : DescFloatTypeJoinKeyComparator.getInstance();
-      case DOUBLE:
-        return isAscending
-            ? AscDoubleTypeJoinKeyComparator.getInstance()
-            : DescDoubleTypeJoinKeyComparator.getInstance();
-      case BOOLEAN:
-        return isAscending
-            ? AscBooleanTypeJoinKeyComparator.getInstance()
-            : DescBooleanTypeJoinKeyComparator.getInstance();
-      case STRING:
-      case BLOB:
-      case TEXT:
-        return isAscending
-            ? AscBinaryTypeJoinKeyComparator.getInstance()
-            : DescBinaryTypeJoinKeyComparator.getInstance();
-      default:
-        // other types are not supported.
-        throw new UnsupportedOperationException(CalcMessages.UNSUPPORTED_DATA_TYPE + type);
-    }
+    return TypeServices.JOIN_KEY_COMPARATOR_SERVICE.call(type).apply(isAscending);
   }
 }

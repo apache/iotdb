@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -105,6 +106,12 @@ public class AllowAllAccessControl implements AccessControl {
 
   @Override
   public void checkUserGlobalSysPrivilege(IAuditEntity auditEntity) {}
+
+  @Override
+  public void checkUserGlobalSysPrivilege(
+      IAuditEntity auditEntity,
+      AuditLogOperation auditLogOperation,
+      Supplier<String> auditObject) {}
 
   @Override
   public boolean hasGlobalPrivilege(IAuditEntity entity, PrivilegeType privilegeType) {

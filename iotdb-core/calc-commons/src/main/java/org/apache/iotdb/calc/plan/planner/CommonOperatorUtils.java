@@ -28,33 +28,13 @@ import org.apache.iotdb.calc.execution.operator.process.fill.filter.MonthInterva
 import org.apache.iotdb.calc.execution.operator.process.fill.filter.MonthIntervalUSFillFilter;
 import org.apache.iotdb.calc.execution.operator.process.fill.identity.IdentityFill;
 import org.apache.iotdb.calc.execution.operator.process.fill.identity.IdentityLinearFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.linear.DoubleLinearFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.linear.FloatLinearFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.linear.IntLinearFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.linear.LongLinearFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.next.BinaryNextFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.next.BooleanNextFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.next.DoubleNextFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.next.FloatNextFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.next.IntNextFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.next.LongNextFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.previous.BinaryPreviousFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.previous.BinaryPreviousFillWithTimeDuration;
-import org.apache.iotdb.calc.execution.operator.process.fill.previous.BooleanPreviousFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.previous.BooleanPreviousFillWithTimeDuration;
-import org.apache.iotdb.calc.execution.operator.process.fill.previous.DoublePreviousFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.previous.DoublePreviousFillWithTimeDuration;
-import org.apache.iotdb.calc.execution.operator.process.fill.previous.FloatPreviousFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.previous.FloatPreviousFillWithTimeDuration;
-import org.apache.iotdb.calc.execution.operator.process.fill.previous.IntPreviousFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.previous.IntPreviousFillWithTimeDuration;
-import org.apache.iotdb.calc.execution.operator.process.fill.previous.LongPreviousFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.previous.LongPreviousFillWithTimeDuration;
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
 import org.apache.iotdb.commons.i18n.QueryMessages;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.column.LongColumn;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.TimeDuration;
 
 import java.time.ZoneId;
@@ -77,31 +57,8 @@ public class CommonOperatorUtils {
   public static ILinearFill[] getLinearFill(int inputColumns, List<TSDataType> inputDataTypes) {
     ILinearFill[] linearFill = new ILinearFill[inputColumns];
     for (int i = 0; i < inputColumns; i++) {
-      switch (inputDataTypes.get(i)) {
-        case INT32:
-        case DATE:
-          linearFill[i] = new IntLinearFill();
-          break;
-        case INT64:
-        case TIMESTAMP:
-          linearFill[i] = new LongLinearFill();
-          break;
-        case FLOAT:
-          linearFill[i] = new FloatLinearFill();
-          break;
-        case DOUBLE:
-          linearFill[i] = new DoubleLinearFill();
-          break;
-        case BOOLEAN:
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-          linearFill[i] = IDENTITY_LINEAR_FILL;
-          break;
-        default:
-          throw new IllegalArgumentException(UNKNOWN_DATATYPE + inputDataTypes.get(i));
-      }
+      linearFill[i] =
+          TypeServices.LINEAR_FILL_SERVICE.call(Type.fromTsDataType(inputDataTypes.get(i))).get();
     }
     return linearFill;
   }
@@ -115,49 +72,10 @@ public class CommonOperatorUtils {
 
     IFill[] previousFill = new IFill[inputColumns];
     for (int i = 0; i < inputColumns; i++) {
-      switch (inputDataTypes.get(i)) {
-        case BOOLEAN:
-          previousFill[i] =
-              filter == null
-                  ? new BooleanPreviousFill()
-                  : new BooleanPreviousFillWithTimeDuration(filter);
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-          previousFill[i] =
-              filter == null
-                  ? new BinaryPreviousFill()
-                  : new BinaryPreviousFillWithTimeDuration(filter);
-          break;
-        case INT32:
-        case DATE:
-          previousFill[i] =
-              filter == null ? new IntPreviousFill() : new IntPreviousFillWithTimeDuration(filter);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          previousFill[i] =
-              filter == null
-                  ? new LongPreviousFill()
-                  : new LongPreviousFillWithTimeDuration(filter);
-          break;
-        case FLOAT:
-          previousFill[i] =
-              filter == null
-                  ? new FloatPreviousFill()
-                  : new FloatPreviousFillWithTimeDuration(filter);
-          break;
-        case DOUBLE:
-          previousFill[i] =
-              filter == null
-                  ? new DoublePreviousFill()
-                  : new DoublePreviousFillWithTimeDuration(filter);
-          break;
-        default:
-          throw new IllegalArgumentException(UNKNOWN_DATATYPE + inputDataTypes.get(i));
-      }
+      previousFill[i] =
+          TypeServices.PREVIOUS_FILL_SERVICE
+              .call(Type.fromTsDataType(inputDataTypes.get(i)))
+              .apply(filter);
     }
     return previousFill;
   }
@@ -171,33 +89,10 @@ public class CommonOperatorUtils {
 
     ILinearFill[] nextFill = new ILinearFill[inputColumns];
     for (int i = 0; i < inputColumns; i++) {
-      switch (inputDataTypes.get(i)) {
-        case BOOLEAN:
-          nextFill[i] = new BooleanNextFill(filter);
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-          nextFill[i] = new BinaryNextFill(filter);
-          break;
-        case INT32:
-        case DATE:
-          nextFill[i] = new IntNextFill(filter);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          nextFill[i] = new LongNextFill(filter);
-          break;
-        case FLOAT:
-          nextFill[i] = new FloatNextFill(filter);
-          break;
-        case DOUBLE:
-          nextFill[i] = new DoubleNextFill(filter);
-          break;
-        default:
-          throw new IllegalArgumentException(UNKNOWN_DATATYPE + inputDataTypes.get(i));
-      }
+      nextFill[i] =
+          TypeServices.NEXT_FILL_SERVICE
+              .call(Type.fromTsDataType(inputDataTypes.get(i)))
+              .apply(filter);
     }
     return nextFill;
   }

@@ -47,21 +47,21 @@ public interface IWritableMemChunkGroup extends WALEntryValue {
 
   void release();
 
-  long count();
+  long count(boolean ignoreAllNullRows);
 
   boolean contains(String measurement);
 
-  Map<String, IWritableMemChunk> getMemChunkMap();
+  Map<String, IWritableMemChunk> getMemChunkMap(boolean ignoreAllNullRows);
 
-  boolean isEmpty();
+  boolean isEmpty(boolean ignoreAllNullRows);
 
-  long delete(ModEntry modEntry);
+  long delete(ModEntry modEntry, boolean ignoreAllNullRows);
 
-  long deleteTime(ModEntry modEntry);
+  long deleteTime(ModEntry modEntry, boolean ignoreAllNullRows);
 
   IWritableMemChunk getWritableMemChunk(String measurement);
 
-  long getMaxTime();
+  long getMaxTime(boolean ignoreAllNullRows);
 
   void setEncryptParameter(EncryptParameter encryptParameter);
 

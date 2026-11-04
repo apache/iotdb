@@ -22,15 +22,16 @@ package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.HyperLogLog;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.HyperLogLogStateFactory;
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.HyperLogLog.DEFAULT_STANDARD_ERROR;
@@ -39,6 +40,7 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ApproxCountDistinctAccumulator.class);
   private final TSDataType seriesDataType;
+  private final TypeServices.HyperLogLogColumnAdder valueAdder;
   private final HyperLogLogStateFactory.SingleHyperLogLogState state =
       HyperLogLogStateFactory.createSingleState();
 
@@ -46,6 +48,8 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
 
   public ApproxCountDistinctAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
+    this.valueAdder =
+        TypeServices.HYPER_LOG_LOG_COLUMN_ADDER_SERVICE.call(Type.fromTsDataType(seriesDataType));
   }
 
   @Override
@@ -66,36 +70,22 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
         arguments.length == 1 ? DEFAULT_STANDARD_ERROR : arguments[1].getDouble(0);
     HyperLogLog hll = getOrCreateHyperLogLog(state, maxStandardError);
 
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        addIntInput(arguments[0], mask, hll);
-        return;
-      case INT64:
-      case TIMESTAMP:
-        addLongInput(arguments[0], mask, hll);
-        return;
-      case FLOAT:
-        addFloatInput(arguments[0], mask, hll);
-        return;
-      case DOUBLE:
-        addDoubleInput(arguments[0], mask, hll);
-        return;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        addBinaryInput(arguments[0], mask, hll);
-        return;
-      case BOOLEAN:
-        addBooleanInput(arguments[0], mask, hll);
-        return;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages
-                    .EXCEPTION_UNSUPPORTED_DATA_TYPE_APPROX_COUNT_DISTINCT_AGGREGATION_ARG_58F0391E,
-                seriesDataType));
+    Column valueColumn = arguments[0];
+    int positionCount = mask.getSelectedPositionCount();
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!valueColumn.isNull(i)) {
+          valueAdder.add(hll, valueColumn, i);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      for (int i = 0; i < positionCount; i++) {
+        int position = selectedPositions[i];
+        if (!valueColumn.isNull(position)) {
+          valueAdder.add(hll, valueColumn, position);
+        }
+      }
     }
   }
 
@@ -132,7 +122,7 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
   @Override
   public void addStatistics(Statistics[] statistics) {
     throw new UnsupportedOperationException(
-        CalcMessages.EXCEPTION_APPROXCOUNTDISTINCTACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS_81005A79);
+        CalcMessages.APPROX_COUNT_DISTINCT_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS);
   }
 
   @Override

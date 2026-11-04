@@ -206,6 +206,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePl
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipeMemoryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePluginsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
@@ -251,6 +252,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectS
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowRepairDataPartitionTableProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
@@ -339,28 +341,33 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private static final String DELETE_RANGE_ERROR_MSG =
-      "For delete statement, where clause can only contain atomic expressions like : "
-          + "time > XXX, time <= XXX, or two atomic expressions connected by 'AND'";
+      DataNodeQueryMessages
+          .EXCEPTION_FOR_DELETE_STATEMENT_WHERE_CLAUSE_CAN_ONLY_CONTAIN_ATOMIC_EXPRESSIONS_LIKE_TIME_XXX_TIME_XXX_OR_TWO_ATOMIC_EXPRESSIONS_CONNECTED_BY_AND_13848FC7;
   private static final String DELETE_ONLY_SUPPORT_TIME_EXP_ERROR_MSG =
-      "For delete statement, where clause can only contain time expressions, "
-          + "value filter is not currently supported.";
+      DataNodeQueryMessages
+          .EXCEPTION_FOR_DELETE_STATEMENT_WHERE_CLAUSE_CAN_ONLY_CONTAIN_TIME_EXPRESSIONS_VALUE_FILTER_IS_NOT_CURRENTLY_SUPPORTED_CE1E768E;
 
   private static final String GROUP_BY_COMMON_ONLY_ONE_MSG =
-      "Only one of group by time or group by variation/series/session can be supported at a time";
+      DataNodeQueryMessages
+          .EXCEPTION_ONLY_ONE_OF_GROUP_BY_TIME_OR_GROUP_BY_VARIATION_SERIES_SESSION_CAN_BE_SUPPORTED_AT_A_TIME_8B5E5251;
 
   private static final String LIMIT_CONFIGURATION_ENABLED_ERROR_MSG =
-      "Limit configuration is not enabled, please enable it first.";
+      DataNodeQueryMessages
+          .EXCEPTION_LIMIT_CONFIGURATION_IS_NOT_ENABLED_PLEASE_ENABLE_IT_FIRST_C9926C20;
 
   public static final String DELETE_RANGE_COMPARISON_ERROR_MSG =
-      "For delete statement, where clause use a range comparison on the same field, the left value of the range cannot be greater than the right value of the range, it must be written like this : time > 5 and time < 10";
+      DataNodeQueryMessages
+          .EXCEPTION_FOR_DELETE_STATEMENT_WHERE_CLAUSE_USE_A_RANGE_COMPARISON_ON_THE_SAME_FIELD_THE_LEFT_VALUE_OF_THE_RANGE_CANNOT_BE_GREATER_THAN_THE_RIGHT_VALUE_OF_THE_RANGE_IT_MUST_BE_WRITTEN_LIKE_THIS_TIME_5_AND_TIME_10_66891DD6;
 
   private static final String NODE_NAME_IN_INTO_PATH_MATCHER = "([a-zA-Z0-9_${}\\u2E80-\\u9FFF]+)";
   private static final Pattern NODE_NAME_IN_INTO_PATH_PATTERN =
       Pattern.compile(NODE_NAME_IN_INTO_PATH_MATCHER);
 
   private static final String IGNORENULL = "IgnoreNull";
-  public static final String UNSUPPORTED_DATATYPE_MSG = "Unsupported datatype: %s";
-  public static final String INCORRECT_DATA_TYPE_MSG = "Incorrect Data type";
+  public static final String UNSUPPORTED_DATATYPE_MSG =
+      DataNodeQueryMessages.EXCEPTION_UNSUPPORTED_DATATYPE_ARG_42D9A3BC;
+  public static final String INCORRECT_DATA_TYPE_MSG =
+      DataNodeQueryMessages.EXCEPTION_INCORRECT_DATA_TYPE_B7789C9F;
   private ZoneId zoneId;
 
   public boolean isUseWildcard() {
@@ -372,7 +379,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private boolean lastLevelUseWildcard = false;
 
   public static final String SERVICE_MANAGEMENT_NOT_SUPPORTED =
-      "Service management SQLs are not supported now!";
+      DataNodeQueryMessages.EXCEPTION_SERVICE_MANAGEMENT_SQLS_ARE_NOT_SUPPORTED_NOW_ADD4A6D4;
 
   public void setZoneId(ZoneId zoneId) {
     this.zoneId = zoneId;
@@ -1930,7 +1937,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     TimeDuration slidingStep = groupByTimeComponent.getSlidingStep();
     if (slidingStep.containsMonth()
         && Math.ceil(
-                ((groupByTimeComponent.getEndTime() - groupByTimeComponent.getStartTime())
+                (((double) groupByTimeComponent.getEndTime()
+                        - (double) groupByTimeComponent.getStartTime())
                     / (double) slidingStep.getMinTotalDuration(currPrecision)))
             >= 10000) {
       throw new SemanticException(
@@ -3016,6 +3024,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         ctx.databaseAttributeClause()) {
       final IoTDBSqlParser.DatabaseAttributeKeyContext attributeKey =
           attribute.databaseAttributeKey();
+      if (attributeKey == null) {
+        if (attribute.NEED_LAST_CACHE() != null) {
+          databaseSchemaStatement.setNeedLastCache(
+              Boolean.parseBoolean(attribute.boolean_literal().getText()));
+        }
+        continue;
+      }
       if (attributeKey.TTL() != null) {
         final long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
         databaseSchemaStatement.setTtl(ttl);
@@ -3155,12 +3170,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         return parseTimeRangeForDeleteTimeRange(
             predicate.getExpressionType(),
             ((CompareBinaryExpression) predicate).getLeftExpression(),
-            ((CompareBinaryExpression) predicate).getRightExpression());
+            ((CompareBinaryExpression) predicate).getRightExpression(),
+            predicate);
       } else {
         return parseTimeRangeForDeleteTimeRange(
             predicate.getExpressionType(),
             ((CompareBinaryExpression) predicate).getRightExpression(),
-            ((CompareBinaryExpression) predicate).getLeftExpression());
+            ((CompareBinaryExpression) predicate).getLeftExpression(),
+            predicate);
       }
     } else {
       throw new SemanticException(DELETE_RANGE_ERROR_MSG);
@@ -3168,7 +3185,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private TimeRange parseTimeRangeForDeleteTimeRange(
-      ExpressionType expressionType, Expression timeExpression, Expression valueExpression) {
+      ExpressionType expressionType,
+      Expression timeExpression,
+      Expression valueExpression,
+      Expression comparisonExpression) {
     if (!(timeExpression instanceof TimestampOperand)
         || !(valueExpression instanceof ConstantOperand)) {
       throw new SemanticException(DELETE_ONLY_SUPPORT_TIME_EXP_ERROR_MSG);
@@ -3181,10 +3201,24 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     long time = Long.parseLong(((ConstantOperand) valueExpression).getValueString());
     switch (expressionType) {
       case LESS_THAN:
+        if (time == Long.MIN_VALUE) {
+          throw new SemanticException(
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_THE_TIME_PREDICATE_DOES_NOT_SELECT_ANY_TIME_RANGE_ARG_98DBCE32,
+                  comparisonExpression));
+        }
         return new TimeRange(Long.MIN_VALUE, time - 1);
       case LESS_EQUAL:
         return new TimeRange(Long.MIN_VALUE, time);
       case GREATER_THAN:
+        if (time == Long.MAX_VALUE) {
+          throw new SemanticException(
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_THE_TIME_PREDICATE_DOES_NOT_SELECT_ANY_TIME_RANGE_ARG_98DBCE32,
+                  comparisonExpression));
+        }
         return new TimeRange(time + 1, Long.MAX_VALUE);
       case GREATER_EQUAL:
         return new TimeRange(time, Long.MAX_VALUE);
@@ -3642,14 +3676,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     long time;
     time = parseDateTimeFormat(ctx.getChild(0).getText());
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
-      if ("+".equals(ctx.getChild(i).getText())) {
-        time +=
+      try {
+        long duration =
             DataNodeDateTimeUtils.convertDurationStrToLong(
                 time, ctx.getChild(i + 1).getText(), precision, false);
-      } else {
-        time -=
-            DataNodeDateTimeUtils.convertDurationStrToLong(
-                time, ctx.getChild(i + 1).getText(), precision, false);
+        time =
+            "+".equals(ctx.getChild(i).getText())
+                ? Math.addExact(time, duration)
+                : Math.subtractExact(time, duration);
+      } catch (ArithmeticException e) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_DATE_EXPRESSION_IS_OUT_OF_RANGE_ARG_ED35A8A1,
+                ctx.getText()));
       }
     }
     return time;
@@ -3659,14 +3698,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     long time;
     time = parseDateTimeFormat(ctx.getChild(0).getText(), currentTime, zoneId);
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
-      if ("+".equals(ctx.getChild(i).getText())) {
-        time +=
+      try {
+        long duration =
             DataNodeDateTimeUtils.convertDurationStrToLong(
                 time, ctx.getChild(i + 1).getText(), false);
-      } else {
-        time -=
-            DataNodeDateTimeUtils.convertDurationStrToLong(
-                time, ctx.getChild(i + 1).getText(), false);
+        time =
+            "+".equals(ctx.getChild(i).getText())
+                ? Math.addExact(time, duration)
+                : Math.subtractExact(time, duration);
+      } catch (ArithmeticException e) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_DATE_EXPRESSION_IS_OUT_OF_RANGE_ARG_ED35A8A1,
+                ctx.getText()));
       }
     }
     return time;
@@ -4440,6 +4484,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   @Override
+  public Statement visitShowPipeMemory(IoTDBSqlParser.ShowPipeMemoryContext ctx) {
+    return new ShowPipeMemoryStatement();
+  }
+
+  @Override
   public Statement visitShowPipes(IoTDBSqlParser.ShowPipesContext ctx) {
     final ShowPipesStatement showPipesStatement = new ShowPipesStatement();
 
@@ -4449,6 +4498,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     showPipesStatement.setWhereClause(ctx.WHERE() != null);
 
     return showPipesStatement;
+  }
+
+  @Override
+  public Statement visitShowReceivers(IoTDBSqlParser.ShowReceiversContext ctx) {
+    return new ShowReceiversStatement();
   }
 
   @Override
@@ -4536,6 +4590,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.topicName != null) {
       showSubscriptionsStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
     }
+    showSubscriptionsStatement.setDetails(ctx.DETAILS() != null);
 
     return showSubscriptionsStatement;
   }
@@ -4601,6 +4656,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
               Math.max(getRegionIdStatement.getStartTimeStamp(), timestamp));
           break;
         case GREATER_THAN:
+          if (timestamp == Long.MAX_VALUE) {
+            throw new SemanticException(
+                String.format(
+                    DataNodeQueryMessages
+                        .EXCEPTION_THE_TIME_PREDICATE_DOES_NOT_SELECT_ANY_TIME_RANGE_ARG_98DBCE32,
+                    timeRangeExpression));
+          }
           getRegionIdStatement.setStartTimeStamp(
               Math.max(getRegionIdStatement.getStartTimeStamp(), timestamp + 1));
           break;
@@ -4609,6 +4671,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
               Math.min(getRegionIdStatement.getEndTimeStamp(), timestamp));
           break;
         case LESS_THAN:
+          if (timestamp == Long.MIN_VALUE) {
+            throw new SemanticException(
+                String.format(
+                    DataNodeQueryMessages
+                        .EXCEPTION_THE_TIME_PREDICATE_DOES_NOT_SELECT_ANY_TIME_RANGE_ARG_98DBCE32,
+                    timeRangeExpression));
+          }
           getRegionIdStatement.setEndTimeStamp(
               Math.min(getRegionIdStatement.getEndTimeStamp(), timestamp - 1));
           break;
@@ -4704,8 +4773,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitRemoveDataNode(IoTDBSqlParser.RemoveDataNodeContext ctx) {
-    List<Integer> nodeIds =
-        ctx.dataNodeIds.stream().map(token -> Integer.parseInt(token.getText())).collect(toList());
+    List<Integer> nodeIds = Collections.singletonList(Integer.parseInt(ctx.dataNodeId.getText()));
     return new RemoveDataNodeStatement(nodeIds);
   }
 

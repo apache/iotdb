@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTab
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnPropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
@@ -174,6 +175,8 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
         return visitAddTableViewColumn((AddTableViewColumnPlan) plan, context);
       case SetTableProperties:
         return visitSetTableProperties((SetTablePropertiesPlan) plan, context);
+      case SetTableColumnProperties:
+        return visitSetTableColumnProperties((SetTableColumnPropertiesPlan) plan, context);
       case SetViewProperties:
         return visitSetViewProperties((SetViewPropertiesPlan) plan, context);
       case RenameTableColumn:
@@ -460,6 +463,11 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
   public R visitSetTableProperties(
       final SetTablePropertiesPlan setTablePropertiesPlan, final C context) {
     return visitPlan(setTablePropertiesPlan, context);
+  }
+
+  public R visitSetTableColumnProperties(
+      final SetTableColumnPropertiesPlan setTableColumnPropertiesPlan, final C context) {
+    return visitPlan(setTableColumnPropertiesPlan, context);
   }
 
   // Use set table properties by default

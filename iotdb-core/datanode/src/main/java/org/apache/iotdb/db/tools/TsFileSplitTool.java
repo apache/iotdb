@@ -42,9 +42,8 @@ import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.reader.page.PageReader;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
@@ -185,6 +184,7 @@ public class TsFileSplitTool {
             int dataSize = chunkHeader.getDataSize();
             Decoder valueDecoder =
                 Decoder.getDecoderByType(chunkHeader.getEncodingType(), dataType);
+            int pageIndex = 0;
             Decoder defaultTimeDecoder =
                 Decoder.getDecoderByType(
                     TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
@@ -198,7 +198,12 @@ public class TsFileSplitTool {
                   reader.readPageHeader(
                       dataType,
                       ((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.CHUNK_HEADER);
-              ByteBuffer pageData = reader.readPage(pageHeader, chunkHeader.getCompressionType());
+              ByteBuffer pageData =
+                  reader.readPage(
+                      pageHeader,
+                      chunkHeader.getCompressionType(),
+                      pageIndex++,
+                      chunkHeader.getChunkOrdinal());
               PageReader pageReader =
                   new PageReader(pageData, dataType, valueDecoder, defaultTimeDecoder);
               BatchData batchData = pageReader.getAllSatisfiedPageData();
@@ -240,35 +245,7 @@ public class TsFileSplitTool {
 
   private void writeToChunkWriter(
       ChunkWriterImpl chunkWriter, long time, Object value, TSDataType dataType) {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        chunkWriter.write(time, (int) value);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        chunkWriter.write(time, (long) value);
-        break;
-      case FLOAT:
-        chunkWriter.write(time, (float) value);
-        break;
-      case DOUBLE:
-        chunkWriter.write(time, (double) value);
-        break;
-      case BOOLEAN:
-        chunkWriter.write(time, (boolean) value);
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        chunkWriter.write(time, (Binary) value);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                DataNodeMiscMessages.MISC_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
-                dataType));
-    }
+    Type.fromTsDataType(dataType).write(chunkWriter, time, value);
   }
 
   private TsFileResource endFileAndGenerateResource(TsFileIOWriter writer) throws IOException {

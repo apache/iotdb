@@ -18,6 +18,7 @@
 package org.apache.iotdb.rest.protocol.table.v1.handler;
 
 import org.apache.iotdb.rest.i18n.RestMessages;
+import org.apache.iotdb.rest.protocol.handler.RequestLimitChecker;
 import org.apache.iotdb.rest.protocol.table.v1.model.InsertTabletRequest;
 import org.apache.iotdb.rest.protocol.table.v1.model.SQL;
 
@@ -63,6 +64,15 @@ public class RequestValidationHandler {
     if (insertTabletRequest.getTimestamps().size() != insertTabletRequest.getValues().size()) {
       errorMessages.add(RestMessages.VALUES_AND_TIMESTAMPS_SIZE_MISMATCH);
     }
+
+    int rowCount = insertTabletRequest.getTimestamps().size();
+    int columnCount = insertTabletRequest.getColumnNames().size();
+    RequestLimitChecker.checkRowCount(
+        RestMessages.MESSAGE_TABLE_INSERTTABLET_REQUEST_573D371C, rowCount);
+    RequestLimitChecker.checkColumnCount(
+        RestMessages.MESSAGE_TABLE_INSERTTABLET_REQUEST_573D371C, columnCount);
+    RequestLimitChecker.checkValueCount(
+        RestMessages.MESSAGE_TABLE_INSERTTABLET_REQUEST_573D371C, (long) rowCount * columnCount);
 
     for (int i = 0; i < insertTabletRequest.getDataTypes().size(); i++) {
       String dataType = insertTabletRequest.getDataTypes().get(i);

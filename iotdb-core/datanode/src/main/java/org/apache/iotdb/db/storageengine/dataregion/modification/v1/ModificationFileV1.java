@@ -154,7 +154,9 @@ public class ModificationFileV1 implements AutoCloseable {
 
   public void remove() throws IOException {
     close();
-    boolean deleted = FSFactoryProducer.getFSFactory().getFile(filePath).delete();
+    boolean deleted =
+        FSFactoryProducer.getFSFactory()
+            .deleteIfExists(FSFactoryProducer.getFSFactory().getFile(filePath));
     if (!deleted) {
       logger.warn(StorageEngineMessages.DELETE_MODIFICATION_FILE_FAILED, filePath);
     }

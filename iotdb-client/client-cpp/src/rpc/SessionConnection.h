@@ -53,7 +53,7 @@ public:
 
   const TEndPoint& getEndPoint();
 
-  void init(const TEndPoint& endpoint, bool useSSL, const std::string& trustCertFilePath);
+  void init(const TEndPoint& endpoint, const SslConfig& sslConfig);
 
   void insertStringRecord(const TSInsertStringRecordReq& request);
 
@@ -113,6 +113,9 @@ public:
   std::unique_ptr<SessionDataSet> executeLastDataQuery(const std::vector<std::string>& paths,
                                                        int64_t lastTime);
 
+  std::unique_ptr<SessionDataSet>
+  executeFastLastDataQueryForOnePrefixPath(const std::vector<std::string>& prefixes);
+
   void executeNonQueryStatement(const std::string& sql);
 
   std::unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql,
@@ -123,6 +126,7 @@ public:
   }
 
   friend class Session;
+  friend class SessionTestAccessor;
 
 private:
   void close();

@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.role.LocalFileRoleAccessor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -49,7 +50,9 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -186,6 +189,23 @@ public class CNPhysicalPlanGeneratorTest {
       count++;
     }
     Assert.assertEquals(5, count);
+  }
+
+  @Test
+  public void unsupportedProfileVersionIsRejectedTest() throws Exception {
+    setupAuthorInfo();
+    final File roleProfile = new File(snapshotDir, "futureRole" + IoTDBConstant.PROFILE_SUFFIX);
+    try (final DataOutputStream outputStream =
+        new DataOutputStream(new FileOutputStream(roleProfile))) {
+      // A version newer than the one this node supports.
+      outputStream.writeInt(LocalFileRoleAccessor.VERSION + 1);
+    }
+
+    final CNPhysicalPlanGenerator planGenerator =
+        new CNPhysicalPlanGenerator(roleProfile.toPath(), CNSnapshotFileType.ROLE, "");
+    // The profile must not be parsed at all, and the failure must be surfaced to the caller.
+    Assert.assertFalse(planGenerator.hasNext());
+    Assert.assertThrows(Exception.class, planGenerator::checkException);
   }
 
   @Test

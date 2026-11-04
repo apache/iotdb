@@ -240,6 +240,7 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
             loadTsFileValidation,
             shouldMarkAsPipeRequest,
             skipIfNoPrivileges);
+    clientManager.setPipeInfo(pipeName, creationTime);
   }
 
   protected abstract IoTDBSyncClientManager constructClient(
@@ -286,11 +287,11 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
     long position = 0;
     try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
       while (true) {
-        mayLimitRateAndRecordIO(readFileBufferSize);
         final int readLength = reader.read(readBuffer);
         if (readLength == -1) {
           break;
         }
+        mayLimitRateAndRecordIO(readLength);
 
         final byte[] payLoad =
             readLength == readFileBufferSize
@@ -345,7 +346,10 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
             && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
           receiverStatusHandler.handle(
               resp.getStatus(),
-              String.format("Transfer file %s error, result status %s.", file, resp.getStatus()),
+              String.format(
+                  PipeMessages.MESSAGE_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD,
+                  file,
+                  resp.getStatus()),
               file.getName());
         }
       }
@@ -368,5 +372,26 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
     }
 
     super.close();
+  }
+
+  @Override
+  public void discardReceiverRuntimeSessions() {
+    if (clientManager != null) {
+      clientManager.discardReceiverRuntimeSessions();
+    }
+  }
+
+  @Override
+  public void discardReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    if (clientManager != null) {
+      clientManager.discardReceiverRuntimeSessions(pipeName, creationTime);
+    }
+  }
+
+  @Override
+  public void registerReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    if (clientManager != null) {
+      clientManager.registerReceiverRuntimeSessions(pipeName, creationTime);
+    }
   }
 }

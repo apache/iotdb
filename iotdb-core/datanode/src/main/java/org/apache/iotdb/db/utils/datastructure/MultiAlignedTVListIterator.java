@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -32,15 +32,17 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.TsBlockUtil;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.TsPrimitiveType;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.LongConsumer;
+
+import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 
 public abstract class MultiAlignedTVListIterator extends MemPointIterator {
   protected List<TSDataType> tsDataTypeList;
@@ -161,7 +163,8 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
           iterator.getPrimitiveTypeObject(currentRowIndex(columnIndex), columnIndex);
     }
     TimeValuePair currentTvPair =
-        new TimeValuePair(currentTime, TsPrimitiveType.getByType(TSDataType.VECTOR, vector));
+        new TimeValuePair(
+            currentTime, Type.fromTsDataType(TSDataType.VECTOR).getTsPrimitiveType(vector));
     next();
     return currentTvPair;
   }
@@ -181,7 +184,8 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
       vector[columnIndex] =
           iterator.getPrimitiveTypeObject(currentRowIndex(columnIndex), columnIndex);
     }
-    return new TimeValuePair(currentTime, TsPrimitiveType.getByType(TSDataType.VECTOR, vector));
+    return new TimeValuePair(
+        currentTime, Type.fromTsDataType(TSDataType.VECTOR).getTsPrimitiveType(vector));
   }
 
   @Override
@@ -226,49 +230,22 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
           continue;
         }
 
-        switch (tsDataTypeList.get(columnIndex)) {
-          case BOOLEAN:
-            valueBuilder.writeBoolean(
-                alignedTVList.getBooleanByValueIndex(valueIndex, validColumnIndex));
-            break;
-          case INT32:
-          case DATE:
-            valueBuilder.writeInt(alignedTVList.getIntByValueIndex(valueIndex, validColumnIndex));
-            break;
-          case INT64:
-          case TIMESTAMP:
-            valueBuilder.writeLong(alignedTVList.getLongByValueIndex(valueIndex, validColumnIndex));
-            break;
-          case FLOAT:
-            float valueF = alignedTVList.getFloatByValueIndex(valueIndex, validColumnIndex);
-            if (encodingList != null) {
-              valueF =
-                  alignedTVList.roundValueWithGivenPrecision(
-                      valueF, floatPrecision, encodingList.get(columnIndex));
-            }
-            valueBuilder.writeFloat(valueF);
-            break;
-          case DOUBLE:
-            double valueD = alignedTVList.getDoubleByValueIndex(valueIndex, validColumnIndex);
-            if (encodingList != null) {
-              valueD =
-                  alignedTVList.roundValueWithGivenPrecision(
-                      valueD, floatPrecision, encodingList.get(columnIndex));
-            }
-            valueBuilder.writeDouble(valueD);
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-          case OBJECT:
-            valueBuilder.writeBinary(
-                alignedTVList.getBinaryByValueIndex(valueIndex, validColumnIndex));
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format(
-                    DataNodeMiscMessages.MISC_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
-                    tsDataTypeList.get(columnIndex)));
+        TSDataType sourceDataType = alignedTVList.dataTypes.get(validColumnIndex);
+        TSDataType targetDataType = tsDataTypeList.get(columnIndex);
+        if (sourceDataType == targetDataType) {
+          TypeServices.StorageEngine.ARRAY_VALUE_COLUMN_WRITER_SERVICE
+              .call(Type.fromTsDataType(targetDataType))
+              .write(
+                  valueBuilder,
+                  alignedTVList.values.get(validColumnIndex).get(valueIndex / ARRAY_SIZE),
+                  valueIndex % ARRAY_SIZE,
+                  floatPrecision,
+                  encodingList == null ? null : encodingList.get(columnIndex));
+        } else {
+          TsPrimitiveType value =
+              alignedTVListIterator.getPrimitiveTypeObject(
+                  currentRowIndex(columnIndex), columnIndex);
+          Type.fromTsDataType(targetDataType).write(valueBuilder, value);
         }
       }
       next();

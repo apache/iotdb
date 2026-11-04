@@ -24,6 +24,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -167,7 +168,7 @@ public class IoTDBTableAggregationQueryWithNetworkPartitionIT {
       EnvFactory.getEnv()
           .ensureNodeStatus(
               Collections.singletonList(dataNodeWrapper),
-              Collections.singletonList(NodeStatus.Unknown));
+              Collections.singletonList(EnvUtils.getNodeStatusAfterLocalStop()));
     }
 
     List<String> otherNodes = new ArrayList<>();
@@ -209,7 +210,7 @@ public class IoTDBTableAggregationQueryWithNetworkPartitionIT {
       EnvFactory.getEnv()
           .ensureNodeStatus(
               Collections.singletonList(dataNodeWrapper),
-              Collections.singletonList(NodeStatus.Unknown));
+              Collections.singletonList(EnvUtils.getNodeStatusAfterLocalStop()));
     }
 
     List<String> otherNodes = new ArrayList<>();

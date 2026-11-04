@@ -37,7 +37,7 @@
             <destName>LICENSE</destName>
         </file>
         <file>
-            <source>${maven.multiModuleProjectDirectory}/NOTICE-binary</source>
+            <source>src/assembly/resources/NOTICE-binary</source>
             <destName>NOTICE</destName>
         </file>
     </files>
@@ -59,6 +59,10 @@
             <directory>dist/ainode</directory>
             <outputDirectory>lib</outputDirectory>
             <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <directory>src/assembly/resources/licenses</directory>
+            <outputDirectory>licenses</outputDirectory>
         </fileSet>
         <fileSet>
             <directory>${project.basedir}/../../scripts/sbin</directory>

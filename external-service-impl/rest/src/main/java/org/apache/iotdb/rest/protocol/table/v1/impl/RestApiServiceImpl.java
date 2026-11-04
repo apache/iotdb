@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.rest.i18n.RestMessages;
 import org.apache.iotdb.rest.protocol.handler.QueryRowLimitUtils;
 import org.apache.iotdb.rest.protocol.table.v1.NotFoundException;
 import org.apache.iotdb.rest.protocol.table.v1.RestApiService;
@@ -113,7 +114,9 @@ public class RestApiServiceImpl extends RestApiService {
         return res;
       }
     } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       if (queryId != null) {
         COORDINATOR.cleanupQueryExecution(queryId);
@@ -136,7 +139,9 @@ public class RestApiServiceImpl extends RestApiService {
 
       return executeQueryInternal(sql, statement, clientSession, relationSqlParser);
     } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long costTime = System.nanoTime() - startTime;
       Optional.ofNullable(statement)
@@ -178,7 +183,9 @@ public class RestApiServiceImpl extends RestApiService {
 
       return responseGenerateHelper(result);
     } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long costTime = System.nanoTime() - startTime;
       Optional.ofNullable(insertTabletStatement)
@@ -234,7 +241,9 @@ public class RestApiServiceImpl extends RestApiService {
       }
       return responseGenerateHelper(result);
     } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       if (queryId != null) {
         COORDINATOR.cleanupQueryExecution(queryId);
@@ -294,7 +303,7 @@ public class RestApiServiceImpl extends RestApiService {
           .entity(
               new org.apache.iotdb.rest.protocol.model.ExecutionStatus()
                   .code(TSStatusCode.SQL_PARSE_ERROR.getStatusCode())
-                  .message("This operation type is not supported"))
+                  .message(RestMessages.EXCEPTION_THIS_OPERATION_TYPE_IS_NOT_SUPPORTED_DD44BACE))
           .build();
     }
     boolean isQueryStmt = ExecuteStatementHandler.validateStatement(statement);

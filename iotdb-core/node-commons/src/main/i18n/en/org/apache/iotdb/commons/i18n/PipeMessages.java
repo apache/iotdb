@@ -20,6 +20,12 @@
 package org.apache.iotdb.commons.i18n;
 
 public final class PipeMessages {
+  public static final String EXCEPTION_STRICTLY_UNIDIRECTIONAL_AIR_GAP_TRANSPORT_REQUIRES_UDP_78921AF9 =
+      "Strictly unidirectional air-gap transport requires UDP.";
+  public static final String LOG_STRICTLY_UNIDIRECTIONAL_UDP_TRANSPORT_IS_ENABLED_REQUESTS_ARE_SENT_WITHOUT_ACKNOWLEDGEMENTS_DELIVERY_AND_RECEIVER_ERRORS_CANNOT_BE_CONFIRMED_0A2F4382 =
+      "Strictly unidirectional UDP transport is enabled. Requests are sent without acknowledgements; delivery and receiver errors cannot be confirmed.";
+  public static final String LOG_AIR_GAP_HANDSHAKE_REQUEST_SENT_ON_SOCKET_ARG_WITHOUT_WAITING_FOR_ACKNOWLEDGEMENT_E1ECD582 =
+      "Air gap handshake request sent on socket {} without waiting for acknowledgement.";
 
   // ===================== Common / Shared =====================
 
@@ -48,6 +54,10 @@ public final class PipeMessages {
   public static final String CONFIG_IS_PIPE_ENABLE_MEMORY_CHECK =
       "IsPipeEnableMemoryCheck: {}";
   public static final String CONFIG_PIPE_TSFILE_PARSER_MEMORY = "PipeTsFileParserMemory: {}";
+  public static final String CONFIG_PIPE_TSFILE_PARSER_IN_FLIGHT_MAX_NUM =
+      "PipeTsFileParserInFlightMaxNum: {}";
+  public static final String CONFIG_PIPE_TSFILE_PARSER_IN_FLIGHT_MAX_NUM_PER_PIPE_REGION =
+      "PipeTsFileParserInFlightMaxNumPerPipeRegion: {}";
   public static final String CONFIG_SINK_BATCH_MEMORY_INSERT_NODE =
       "SinkBatchMemoryInsertNode: {}";
   public static final String CONFIG_SINK_BATCH_MEMORY_TSFILE = "SinkBatchMemoryTsFile: {}";
@@ -432,11 +442,11 @@ public final class PipeMessages {
   public static final String NON_CRITICAL_EXCEPTION_WILL_THROW_CRITICAL =
       "A non PipeRuntimeSinkCriticalException occurred, will throw a PipeRuntimeSinkCriticalException.";
   public static final String PIPE_CONNECTION_EXCEPTION_RETRYING =
-      "PipeConnectionException occurred, %s retries to handshake with the target system.";
+      "PipeConnectionException occurred, %s retries to handshake with the target system. Root cause: %s.";
   public static final String HANDSHAKE_SUCCESS = "{} handshakes with the target system successfully.";
   public static final String HANDSHAKE_FAILED_RETRYING =
       "{} failed to handshake with the target system for {} times, "
-          + "will retry at most {} times.";
+          + "will retry at most {} times. Root cause: {}.";
   public static final String INTERRUPTED_WHILE_SLEEPING_RETRY_HANDSHAKE =
       "Interrupted while sleeping, will retry to handshake with the target system.";
   public static final String HANDSHAKE_FAILED_STOPPING =
@@ -504,6 +514,14 @@ public final class PipeMessages {
       "IoTDBAirGapConnector is customized with handshakeTimeoutMs: {}.";
   public static final String AIR_GAP_CUSTOMIZED_E_LANGUAGE =
       "IoTDBAirGapConnector is customized with eLanguageEnable: {}.";
+  public static final String
+      EXCEPTION_AIR_GAP_UDP_DATAGRAM_SIZE_ARG_EXCEEDS_CONFIGURED_PACKET_SIZE_ARG_559D0654 =
+          "Air gap UDP datagram size %d exceeds configured packet size %d.";
+  public static final String EXCEPTION_TIMED_OUT_WAITING_FOR_THE_MATCHING_AIR_GAP_ACK_DD2F3706 =
+      "Timed out waiting for the matching air-gap ACK.";
+  public static final String
+      EXCEPTION_AIR_GAP_UDP_PACKET_SIZE_ARG_IS_TOO_SMALL_TO_TRANSFER_SLICED_REQUESTS_722B32AB =
+          "Air gap UDP packet size %d is too small to transfer sliced requests.";
   public static final String CONNECTED_TO_TARGET_SERVER =
       "Successfully connected to target server ip: {}, port: {}.";
   public static final String FAILED_TO_CLOSE_SOCKET =
@@ -511,9 +529,9 @@ public final class PipeMessages {
   public static final String FAILED_TO_CONNECT_TO_TARGET =
       "Failed to connect to target server ip: {}, port: {}, because: {}. Ignore it.";
   public static final String HANDSHAKE_ERROR_RECEIVING_END =
-      "Handshake error occurs. It may be caused by an error on the receiving end. Ignore it.";
+      "Handshake error occurs. It may be caused by an error on the receiving end. Ignore it. Root cause: {}.";
   public static final String HANDSHAKE_ERROR_WITH_TARGET =
-      "Handshake error with target server, socket: %s";
+      "Handshake error with target server, endpoint: %s";
   public static final String HANDSHAKE_SUCCESS_SOCKET = "Handshake success. Socket: {}";
   public static final String FAILED_TO_CLOSE_CLIENT = "Failed to close client {}.";
   public static final String UNKNOWN_LOAD_BALANCE_STRATEGY =
@@ -562,8 +580,6 @@ public final class PipeMessages {
 
   // ===================== PipeEventCommitMetrics =====================
 
-  public static final String FAILED_TO_UNBIND_COMMIT_METRICS =
-      "Failed to unbind from pipe event commit metrics, event committer map not empty";
 
   // ===================== PipePhantomReferenceManager =====================
 
@@ -605,6 +621,8 @@ public final class PipeMessages {
       "Receiver id = %s: Handshake failed, response status = %s.";
   public static final String RECEIVER_HANDSHAKE_FAILED_LOGIN =
       "Receiver id = %s: Handshake failed because login failed, response status = %s.";
+  public static final String MESSAGE_THE_PIPE_RECEIVER_CONNECTION_IS_ALREADY_AUTHENTICATED_AS_ANOTHER_USER_AND_CANNOT_BE_USED_TO_TRANSFER_DATA_AS_ARG_FFA5DF78 =
+      "The pipe receiver connection is already authenticated as another user and cannot be used to transfer data as %s.";
   public static final String RECEIVER_TEMPORARILY_OUT_OF_MEMORY_FORMAT =
       "Temporarily out of memory when %s. Requested memory: %d bytes. Root cause: %s";
   public static final String RECEIVER_USER_LOGIN_SUCCESS =
@@ -756,6 +774,131 @@ public final class PipeMessages {
       "%s: will retry forever. status: %s, message: %s";
   public static final String OTHER_EXCEPTION_RETRY_SECONDS =
       "{}: will retry for at least {} seconds. status: {}";
+
+  public static final String EXCEPTION_CATEGORY_SHOULD_NOT_BE_NULL_78602159 =
+      "category should not be null";
+  public static final String EXCEPTION_COLUMNNAME_SHOULD_NOT_BE_NULL_695366FD =
+      "columnName should not be null";
+  public static final String EXCEPTION_DATABASE_SHOULD_NOT_BE_NULL_3CF2693B =
+      "database should not be null";
+  public static final String EXCEPTION_DATATYPE_SHOULD_NOT_BE_NULL_58A47BB3 =
+      "datatype should not be null";
+  public static final String EXCEPTION_HOST_ARG_PORT_ARG_BECAUSE_ARG_E9F2BDE7 =
+      " (host: %s, port: %s, because: %s)";
+  public static final String EXCEPTION_TABLENAME_SHOULD_NOT_BE_NULL_FFA95ABE =
+      "tableName should not be null";
+  public static final String
+      EXCEPTION_THE_INCLUSION_EXCLUSION_STRING_CONTAINS_ILLEGAL_PATH_1BC64146 =
+          "The 'inclusion.exclusion' string contains illegal path.";
+  public static final String EXCEPTION_THE_INCLUSION_STRING_CONTAINS_ILLEGAL_PATH_B97B3F90 =
+      "The 'inclusion' string contains illegal path.";
+  public static final String
+      EXCEPTION_THE_NUMBER_OF_COMPRESSORS_SHOULD_BE_LESS_THAN_OR_EQUAL_TO_ARG_BUT_GOT_ARG_128D372F =
+          "The number of compressors should be less than or equal to %d, but got %d.";
+  public static final String
+      EXCEPTION_THE_VALUE_OF_KEY_ARG_OR_ARG_MUST_BE_EITHER_RETRY_OR_IGNORE_783FDB2B =
+          "The value of key %s or %s must be either 'retry' or 'ignore'.";
+  public static final String LOG_AIR_GAP_TRANSPORT_IS_ARG_UDP_PACKET_SIZE_IS_ARG_BYTES_61CDFC29 =
+      "Air gap transport is {}, udp packet size is {} bytes.";
+  public static final String
+      LOG_FAILED_TO_BUILD_PIPE_RECEIVER_RUNTIME_INFO_CLEANUP_REQUEST_FOR_PIPE_ARG_ARG_982EAA59 =
+          "Failed to build pipe receiver runtime info cleanup request for pipe {}@{}.";
+  public static final String
+      LOG_FAILED_TO_CLEANUP_PIPE_RECEIVER_RUNTIME_INFO_FOR_PIPE_ARG_ARG_ON_TARGET_ARG_ARG_ACF5450E =
+          "Failed to cleanup pipe receiver runtime info for pipe {}@{} on target {}:{}.";
+  public static final String
+      LOG_FAILED_TO_CLEANUP_PIPE_RECEIVER_RUNTIME_INFO_FOR_PIPE_ARG_ARG_ON_TARGET_ARG_ARG_RESPONSE_IS_NULL_BDD53753 =
+          "Failed to cleanup pipe receiver runtime info for pipe {}@{} on target {}:{}, response is"
+              + " null.";
+  public static final String
+      LOG_FAILED_TO_CLEANUP_PIPE_RECEIVER_RUNTIME_INFO_FOR_PIPE_ARG_ARG_ON_TARGET_ARG_ARG_RESPONSE_STATUS_ARG_2AFF0D91 =
+          "Failed to cleanup pipe receiver runtime info for pipe {}@{} on target {}:{}, response"
+              + " status: {}.";
+  public static final String
+      LOG_RECEIVED_SLICE_BODY_SIZE_ARG_EXCEEDS_ORIGIN_BODY_SIZE_ARG_12E71952 =
+          "Received slice body size {} exceeds origin body size {}";
+  public static final String
+      LOG_RECEIVED_SLICE_BODY_SIZE_ARG_IS_NOT_EQUAL_TO_ORIGIN_BODY_SIZE_ARG_EBE1BB1E =
+          "Received slice body size {} is not equal to origin body size {}";
+  public static final String LOG_RECEIVING_PIPE_FILE_PIECE_6162A697 = "receiving pipe file piece";
+  public static final String MESSAGE_AIR_GAP_TRANSPORT_SHOULD_BE_ONE_OF_ARG_BUT_GOT_ARG_A32FE833 =
+      "Air gap transport should be one of %s, but got %s.";
+  public static final String MESSAGE_ARG_MUST_BE_0_BUT_GOT_ARG_B2A3D4A2 =
+      "%s must be > 0, but got %s";
+  public static final String MESSAGE_CODE_ARG_MESSAGE_ARG_5265299D = "code: %d, message: %s";
+  public static final String MESSAGE_COMPRESSOR_SHOULD_BE_ONE_OF_ARG_BUT_GOT_ARG_A1E39742 =
+      "Compressor should be one of %s, but got %s.";
+  public static final String
+      MESSAGE_FAILED_TO_REFLECT_PIPEPLUGIN_ARG_ARG_INSTANCE_BECAUSE_ARG_1F0896A9 =
+          "Failed to reflect PipePlugin %s(%s) instance, because %s";
+  public static final String
+      MESSAGE_FAILED_TO_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PIPEPLUGIN_ARG_FAILED_TO_LOAD_ARG_81A13C60 =
+          "Failed to reflect PipePlugin instance, because PipePlugin %s failed to load: %s";
+  public static final String
+      MESSAGE_FAILED_TO_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PIPEPLUGIN_ARG_HAS_NOT_BEEN_REGISTERED_34B1267F =
+          "Failed to reflect PipePlugin instance, because PipePlugin %s has not been registered.";
+  public static final String
+      MESSAGE_INCOMPATIBLE_VISIBILITY_DETECTED_PARENT_CLASS_ARG_VISIBILITY_ARG_CHILD_CLASS_ARG_VISIBILITY_ARG_FCDC2616 =
+          "Incompatible visibility detected:\n"
+              + "Parent class: %s, Visibility: %s\n"
+              + "Child class: %s, Visibility: %s";
+  public static final String
+      MESSAGE_LOAD_BALANCE_STRATEGY_SHOULD_BE_ONE_OF_ARG_BUT_GOT_ARG_9247DA78 =
+          "Load balance strategy should be one of %s, but got %s.";
+  public static final String
+      MESSAGE_LOAD_TSFILE_STRATEGY_SHOULD_BE_ONE_OF_ARG_BUT_GOT_ARG_FF567B85 =
+          "Load tsfile strategy should be one of %s, but got %s.";
+  public static final String
+      MESSAGE_LOG_IN_FAILED_EITHER_YOU_ARE_NOT_AUTHORIZED_OR_THE_SESSION_HAS_TIMED_OUT_A2078D30 =
+          "Log in failed. Either you are not authorized or the session has timed out.";
+  public static final String MESSAGE_MESSAGE_ARG_F49E6C85 = " Message: %s";
+  public static final String MESSAGE_NOT_RECORDED_06D234C1 = "not recorded";
+  public static final String MESSAGE_NO_PERMISSION_7EA2F5F6 = "No permission";
+  public static final String MESSAGE_ONE_OF_ARG_ARG_ARG_ARG_ARG_ARG_MUST_BE_SPECIFIED_A41C7BCE =
+      "One of %s, %s:%s, %s, %s:%s must be specified";
+  public static final String MESSAGE_PIPE_HANDSHAKE_MISSING_USERNAME_OR_PASSWORD_BDC2F19E =
+      "Pipe handshake missing username or password.";
+  public static final String
+      MESSAGE_PIPE_HANDSHAKE_V1_IS_NO_LONGER_SUPPORTED_PLEASE_USE_HANDSHAKE_V2_WITH_USERNAME_AND_PASSWORD_85FE0371 =
+          "Pipe handshake V1 is no longer supported. Please use handshake V2 with username and"
+              + " password.";
+  public static final String MESSAGE_RATE_LIMIT_SHOULD_BE_IN_THE_RANGE_0_F_BUT_GOT_F_A84E09CD =
+      "Rate limit should be in the range (0, %f], but got %f.";
+  public static final String MESSAGE_RETRY_IS_NOT_ALLOWED_84FB8FBC = "retry is not allowed";
+  public static final String MESSAGE_RETRY_TIMEOUT_5FCC0622 = "retry timeout";
+  public static final String MESSAGE_THE_PIPETASKSTAGE_HAS_BEEN_DROPPED_900F76E5 =
+      "The PipeTaskStage has been dropped";
+  public static final String MESSAGE_THE_PIPETASKSTAGE_HAS_BEEN_EXTERNALLY_STOPPED_E79BC421 =
+      "The PipeTaskStage has been externally stopped";
+  public static final String MESSAGE_THE_PIPETASKSTAGE_HAS_BEEN_STARTED_D1041DE5 =
+      "The PipeTaskStage has been started";
+  public static final String MESSAGE_THE_PIPETASKSTAGE_HAS_NOT_BEEN_CREATED_DCBE2DDD =
+      "The PipeTaskStage has not been created";
+  public static final String MESSAGE_THE_PIPE_DOES_NOT_EXIST_91EBC1F4 = "the pipe does not exist";
+  public static final String MESSAGE_THE_PIPE_INCLUSION_CONTENT_CAN_T_BE_EMPTY_80945D2A =
+      "The pipe inclusion content can't be empty.";
+  public static final String MESSAGE_THE_PIPE_WITH_THE_SAME_NAME_HAS_BEEN_CREATED_6D246B19 =
+      "the pipe with the same name has been created";
+  public static final String MESSAGE_THIS_CLASS_IS_A_PLACEHOLDER_AND_SHOULD_NOT_BE_USED_A72EDAFA =
+      "This class is a placeholder and should not be used.";
+  public static final String
+      MESSAGE_TIMED_OUT_TO_WAIT_FOR_THE_PIPE_TASK_AGENT_WRITE_LOCK_WHEN_DROPPING_PIPE_ARG_53CC5A3B =
+          "Timed out to wait for the pipe task agent write lock when dropping pipe %s.";
+  public static final String
+      MESSAGE_TIMED_OUT_TO_WAIT_FOR_THE_PIPE_TASK_AGENT_WRITE_LOCK_WHEN_HANDLING_SINGLE_PIPE_META_CHANGES_FOR_PIPE_ARG_BB90A99C =
+          "Timed out to wait for the pipe task agent write lock when handling single pipe meta"
+              + " changes for pipe %s.";
+  public static final String MESSAGE_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD =
+      "Transfer file %s error, result status %s.";
+  public static final String MESSAGE_TRANSFER_FILE_ARG_ERROR_SOCKET_ARG_E5731EE7 =
+      "Transfer file %s error. Socket %s.";
+  public static final String
+      MESSAGE_UDP_PACKET_SIZE_SHOULD_BE_IN_THE_RANGE_ARG_ARG_BUT_GOT_ARG_8FE01537 =
+          "UDP packet size should be in the range [%d, %d], but got %d.";
+  public static final String MESSAGE_UNCLASSIFIED_EXCEPTION_783F6E1F = "Unclassified exception";
+  public static final String
+      MESSAGE_ZSTD_COMPRESSION_LEVEL_SHOULD_BE_IN_THE_RANGE_ARG_ARG_BUT_GOT_ARG_E5A3079B =
+          "Zstd compression level should be in the range [%d, %d], but got %d.";
 
   private PipeMessages() {}
 
@@ -921,6 +1064,7 @@ public final class PipeMessages {
   public static final String EXCEPTION_FAILED_REMOVE_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_75C319C3 =
       "Failed to remove subscription from consumer group meta: consumer %s does not exist in"
       + " consumer group %s";
+  public static final String EXCEPTION_FAILED_TO_CREATE_CONSUMER_ARG_BECAUSE_INCONSISTENT_SQL_DIALECT_UNDER_THE_SAME_CONSUMER_GROUP_EXPECTED_ARG_ACTUAL_ARG_A7DA3FB9 = "Failed to create consumer %s because inconsistent sql dialect under the same consumer group, expected %s, actual %s";
   public static final String EXCEPTION_PATH_PATTERN_ARG_NOT_VALID_SOURCE_ONLY_PREFIX_FULL_PATH_784778B8 = "The path pattern %s is not valid for the source. Only prefix or full path is allowed.";
   public static final String EXCEPTION_CAPTURE_TREE_CAN_NOT_SPECIFIED_FALSE_DOUBLE_LIVING_ENABLED_29A08445 = "capture.tree can not be specified to false when double living is enabled";
   public static final String EXCEPTION_CAPTURE_TABLE_CAN_NOT_SPECIFIED_FALSE_DOUBLE_LIVING_ENABLED_8AEB8F7B = "capture.table can not be specified to false when double living is enabled";
@@ -953,6 +1097,8 @@ public final class PipeMessages {
   public static final String LOG_ORIGIN_REQUEST_TYPE_MISMATCH_EXPECTED_ARG_ACTUAL_ARG_D96D10AE = "Origin request type mismatch: expected {}, actual {}";
   public static final String LOG_ORIGIN_BODY_SIZE_MISMATCH_EXPECTED_ARG_ACTUAL_ARG_5D410B75 = "Origin body size mismatch: expected {}, actual {}";
   public static final String LOG_INVALID_SLICE_INDEX_EXPECTED_ARG_ACTUAL_ARG_2AC41628 = "Invalid slice index: expected {}, actual {}";
+  public static final String LOG_PIPE_ARG_ARG_ENCOUNTERED_AN_UNEXPECTED_HYBRIDPROGRESSINDEX_IN_ARG_PROGRESS_INDEX_ARG_7C578B17 =
+      "Pipe {}@{} encountered an unexpected HybridProgressIndex in {}. Progress index: {}.";
   public static final String EXCEPTION_DECOMPRESSED_LENGTH_SHOULD_BETWEEN_0_ARG_BUT_GOT_ARG_488B3073 = "Decompressed length should be between 0 and %d, but got %d.";
   public static final String EXCEPTION_COMMA_50AD1C01 = ", ";
   public static final String MESSAGE_NO_DATAPARTITIONTABLE_GENERATION_TASK_FOUND_4414BE55 = "No DataPartitionTable generation task found";
@@ -961,4 +1107,6 @@ public final class PipeMessages {
   public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_FAILED_D85CD23A = "DataPartitionTable generation failed: ";
   public static final String MESSAGE_UNKNOWN_TASK_STATUS_E05D98F0 = "Unknown task status: ";
 
+  public static final String EXCEPTION_UDP_SEND_INTERVAL_MUST_BE_NON_NEGATIVE_BUT_GOT_ARG_36D41687 =
+      "UDP send interval must be non-negative, but got %d.";
 }

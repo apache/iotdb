@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -32,25 +34,45 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegionInfo;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegionTest;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALReader;
+import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALFakeNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractResultListener;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.storageengine.rescon.memory.WriteMemoryBlock;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
@@ -58,10 +80,13 @@ import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -74,6 +99,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadInfo;
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -81,9 +109,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static junit.framework.TestCase.assertTrue;
 import static org.apache.iotdb.db.storageengine.dataregion.DataRegionTest.buildInsertRowNodeByTSRecord;
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
@@ -137,6 +169,259 @@ public class TsFileProcessorTest {
     }
     config.setTargetChunkPointNum(defaultTargetChunkPointNum);
     config.setTargetChunkSize(defaultTargetChunkSize);
+  }
+
+  @Test
+  public void testRegisterToTsFileCachesTableSchemaByVersion() throws IOException {
+    processor =
+        new TsFileProcessor(
+            storageGroup,
+            SystemFileFactory.INSTANCE.getFile(filePath),
+            sgInfo,
+            this::closeTsFileProcessor,
+            (tsFileProcessor, updateMap, systemFlushTime) -> {},
+            true);
+
+    final AtomicInteger supplierCalls = new AtomicInteger();
+    final AtomicInteger secondTableSupplierCalls = new AtomicInteger();
+    final TableSchema firstSchema = new TableSchema("table1");
+    final TableSchema updatedSchema = new TableSchema("table1");
+    final TableSchema secondTableSchema = new TableSchema("table2");
+
+    processor.registerToTsFile(
+        "table1",
+        1,
+        tableName -> supplierCalls.incrementAndGet() == 1 ? firstSchema : updatedSchema);
+    processor.registerToTsFile(
+        "table1",
+        1,
+        tableName -> supplierCalls.incrementAndGet() == 1 ? firstSchema : updatedSchema);
+
+    Assert.assertEquals(1, supplierCalls.get());
+    Assert.assertSame(
+        firstSchema, processor.getWriter().getSchema().getTableSchemaMap().get("table1"));
+
+    processor.registerToTsFile(
+        "table2",
+        1,
+        tableName -> {
+          secondTableSupplierCalls.incrementAndGet();
+          return secondTableSchema;
+        });
+
+    Assert.assertEquals(1, secondTableSupplierCalls.get());
+    Assert.assertSame(
+        secondTableSchema, processor.getWriter().getSchema().getTableSchemaMap().get("table2"));
+
+    processor.registerToTsFile(
+        "table1",
+        2,
+        tableName -> supplierCalls.incrementAndGet() == 1 ? firstSchema : updatedSchema);
+
+    Assert.assertEquals(2, supplierCalls.get());
+    Assert.assertSame(
+        updatedSchema, processor.getWriter().getSchema().getTableSchemaMap().get("table1"));
+  }
+
+  @Test
+  public void testDeletionDuringFlushCompletionIsPersisted() throws Exception {
+    WALMode originalWalMode = config.getWalMode();
+    config.setWalMode(WALMode.SYNC);
+    try {
+      processor =
+          new TsFileProcessor(
+              storageGroup,
+              SystemFileFactory.INSTANCE.getFile(filePath),
+              sgInfo,
+              this::closeTsFileProcessor,
+              (tsFileProcessor, updateMap, systemFlushTime) -> {
+                // Take over flushing after asyncClose's guard, before FlushManager registration.
+                tsFileProcessor.setManagedByFlushManager(true);
+              },
+              true);
+      processor.setTsFileProcessorInfo(new TsFileProcessorInfo(sgInfo));
+      sgInfo.initTsFileProcessorInfo(processor);
+      TSRecord record = new TSRecord(deviceId, 1);
+      record.addTuple(DataPoint.getDataPoint(dataType, measurementId, "1"));
+      processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
+      processor.asyncClose();
+      Assert.assertNull(processor.getWorkMemTable());
+
+      MeasurementPath path = new MeasurementPath(deviceId + "." + measurementId);
+      TreeDeletionEntry deletion = new TreeDeletionEntry(path, Long.MIN_VALUE, Long.MAX_VALUE);
+      FutureTask<Void> flush =
+          new FutureTask<>(
+              () -> {
+                processor.flushOneMemTable();
+                return null;
+              });
+      Thread flushThread = new Thread(flush, "test-flush-deletion-completion");
+      Object flushingMemTables = processor.getFlushingMemTable();
+      long monitorOwner = Thread.currentThread().getId();
+      try {
+        synchronized (flushingMemTables) {
+          flushThread.start();
+          // On the old path the flush has already scanned modifications when it reaches this
+          // monitor. The fixed path reaches it before scanning and releasing the memtable.
+          await()
+              .atMost(30, TimeUnit.SECONDS)
+              .until(
+                  () -> {
+                    ThreadInfo info =
+                        ManagementFactory.getThreadMXBean().getThreadInfo(flushThread.getId());
+                    return info != null
+                        && info.getThreadState() == Thread.State.BLOCKED
+                        && info.getLockOwnerId() == monitorOwner
+                        && info.getLockInfo().getIdentityHashCode()
+                            == System.identityHashCode(flushingMemTables);
+                  });
+          assertTrue(processor.deleteDataInMemory(deletion));
+        }
+      } finally {
+        try {
+          flush.get(30, TimeUnit.SECONDS);
+        } finally {
+          processor.setManagedByFlushManager(false);
+        }
+      }
+      assertEquals(0, processor.getFlushingMemTableSize());
+      assertEquals(
+          Collections.singletonList(deletion),
+          ModificationFile.readAllModifications(new File(filePath), false));
+    } finally {
+      try {
+        if (processor != null) {
+          processor.syncClose();
+        }
+      } finally {
+        config.setWalMode(originalWalMode);
+      }
+    }
+  }
+
+  @Test
+  public void testTreeDeletionWALWithoutWorkingMemTable() throws Exception {
+    testDeletionWALWithoutWorkingMemTable(false);
+  }
+
+  @Test
+  public void testTableDeletionWALWithoutWorkingMemTable() throws Exception {
+    testDeletionWALWithoutWorkingMemTable(true);
+  }
+
+  private void testDeletionWALWithoutWorkingMemTable(boolean tableModel) throws Exception {
+    WALMode originalWalMode = config.getWalMode();
+    config.setWalMode(WALMode.SYNC);
+    try {
+      processor =
+          new TsFileProcessor(
+              storageGroup,
+              SystemFileFactory.INSTANCE.getFile(filePath),
+              sgInfo,
+              this::closeTsFileProcessor,
+              (tsFileProcessor, updateMap, systemFlushTime) -> {
+                // Take over flushing after asyncClose's guard, before FlushManager registration.
+                tsFileProcessor.setManagedByFlushManager(true);
+              },
+              true);
+      processor.setTsFileProcessorInfo(new TsFileProcessorInfo(sgInfo));
+      sgInfo.initTsFileProcessorInfo(processor);
+      WALNode walNode =
+          (WALNode)
+              WALManager.getInstance()
+                  .applyForWALNode(WALManager.getApplicantUniqueId(storageGroup, true));
+
+      Assert.assertNull(processor.getWorkMemTable());
+      logDeletionForTest(tableModel, 1);
+
+      TSRecord record = new TSRecord(deviceId, 1);
+      record.addTuple(DataPoint.getDataPoint(dataType, measurementId, "1"));
+      processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
+      long memTableId = processor.getWorkMemTable().getMemTableId();
+      logDeletionForTest(tableModel, 2);
+
+      // Use the production close path, while keeping flush execution under test control.
+      try {
+        processor.asyncClose();
+        Assert.assertNull(processor.getWorkMemTable());
+        assertEquals(1, processor.getFlushingMemTableSize());
+        processor.flushOneMemTable();
+      } finally {
+        processor.setManagedByFlushManager(false);
+      }
+      assertEquals(0, processor.getFlushingMemTableSize());
+      walNode.rollWALFile();
+
+      List<Long> memTableIds = new ArrayList<>();
+      List<Long> searchIndexes = new ArrayList<>();
+      File[] walFiles = WALFileUtils.listAllWALFiles(walNode.getLogDirectory());
+      Assert.assertNotNull(walFiles);
+      WALFileUtils.ascSortByVersionId(walFiles);
+      for (File walFile : walFiles) {
+        try (WALReader reader = new WALReader(walFile)) {
+          while (reader.hasNext()) {
+            WALEntry entry = reader.next();
+            if (entry.getValue() instanceof DeleteDataNode) {
+              Assert.assertFalse(tableModel);
+              DeleteDataNode deletion = (DeleteDataNode) entry.getValue();
+              assertEquals(Long.MIN_VALUE, deletion.getDeleteStartTime());
+              assertEquals(Long.MAX_VALUE, deletion.getDeleteEndTime());
+              assertEquals(
+                  Collections.singletonList(new MeasurementPath(deviceId + "." + measurementId)),
+                  deletion.getPathList());
+              memTableIds.add(entry.getMemTableId());
+              searchIndexes.add(deletion.getSearchIndex());
+            } else if (entry.getValue() instanceof RelationalDeleteDataNode) {
+              Assert.assertTrue(tableModel);
+              RelationalDeleteDataNode deletion = (RelationalDeleteDataNode) entry.getValue();
+              assertEquals(
+                  Collections.singletonList(
+                      new TableDeletionEntry(
+                          new DeletionPredicate("t2"),
+                          new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE))),
+                  deletion.getModEntries());
+              memTableIds.add(entry.getMemTableId());
+              searchIndexes.add(deletion.getSearchIndex());
+            }
+          }
+        }
+      }
+      assertEquals(
+          Arrays.asList((long) TsFileProcessor.MEMTABLE_NOT_EXIST, memTableId), memTableIds);
+      assertEquals(Arrays.asList(1L, 2L), searchIndexes);
+    } finally {
+      try {
+        if (processor != null) {
+          processor.syncClose();
+        }
+      } finally {
+        config.setWalMode(originalWalMode);
+      }
+    }
+  }
+
+  private void logDeletionForTest(boolean tableModel, long searchIndex) throws Exception {
+    WALFlushListener listener;
+    if (tableModel) {
+      RelationalDeleteDataNode deletion =
+          new RelationalDeleteDataNode(
+              new PlanNodeId(""),
+              new TableDeletionEntry(
+                  new DeletionPredicate("t2"), new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
+              storageGroup);
+      deletion.setSearchIndex(searchIndex);
+      listener = processor.logDeleteDataNodeInWAL(deletion);
+    } else {
+      DeleteDataNode deletion =
+          new DeleteDataNode(
+              new PlanNodeId(""),
+              Collections.singletonList(new MeasurementPath(deviceId + "." + measurementId)),
+              Long.MIN_VALUE,
+              Long.MAX_VALUE);
+      deletion.setSearchIndex(searchIndex);
+      listener = processor.logDeleteDataNodeInWAL(deletion);
+    }
+    assertEquals(WALFlushListener.Status.SUCCESS, listener.waitForResult());
   }
 
   @Test
@@ -536,21 +821,21 @@ public class TsFileProcessorTest {
         true,
         new long[5]);
     IMemTable memTable = processor.getWorkMemTable();
-    Assert.assertEquals(1596552, memTable.getTVListsRamCost());
+    Assert.assertEquals(1788704, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNode(100, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[5]);
-    Assert.assertEquals(1596552, memTable.getTVListsRamCost());
+    Assert.assertEquals(1788704, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNode(200, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[5]);
-    Assert.assertEquals(1596552, memTable.getTVListsRamCost());
+    Assert.assertEquals(1788704, memTable.getTVListsRamCost());
     Assert.assertEquals(90000, memTable.getTotalPointsNum());
     Assert.assertEquals(720360, memTable.memSize());
     // Test records
@@ -559,13 +844,13 @@ public class TsFileProcessorTest {
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
       processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
     }
-    Assert.assertEquals(1598168, memTable.getTVListsRamCost());
+    Assert.assertEquals(1790320, memTable.getTVListsRamCost());
     Assert.assertEquals(90100, memTable.getTotalPointsNum());
     Assert.assertEquals(721560, memTable.memSize());
   }
 
   @Test
-  public void alignedTabletKeepsFailedStatusesAndCountsWrittenRows()
+  public void alignedTabletDoesNotChargePrimitiveArrayForFailedOnlyBlock()
       throws MetadataException, WriteProcessException, IOException, IllegalPathException {
     final int rowCount = PrimitiveArrayManager.ARRAY_SIZE + 2;
     final List<int[]> rangeList = Collections.singletonList(new int[] {0, rowCount - 1});
@@ -584,11 +869,196 @@ public class TsFileProcessorTest {
     actualProcessor.insertTablet(
         genSingleMeasurementTablet(rowCount, true), rangeList, actualResults, false, new long[5]);
 
+    // The failed-only block never materializes its value array, so the only difference from the
+    // expected processor is the primitive array payload+header; the slot reference is charged once
+    // by the container model and is identical on both sides.
     Assert.assertEquals(
-        expectedProcessor.getWorkMemTable().getTVListsRamCost(),
+        expectedProcessor.getWorkMemTable().getTVListsRamCost()
+            - AlignedTVList.primitiveArrayMemCost(dataType),
         actualProcessor.getWorkMemTable().getTVListsRamCost());
     Assert.assertEquals(
         TSStatusCode.OUT_OF_TTL.getStatusCode(), actualResults[failedIndex].getCode());
+  }
+
+  @Test
+  public void alignedTabletOnlyChargesMaterializedPrimitiveArrays()
+      throws MetadataException, WriteProcessException, IOException, IllegalPathException {
+    processor = newTestProcessor(filePath + ".lazy-allocation");
+    processor.insertTablet(
+        genAlignedTablet(new String[] {"s0", "s1"}, PrimitiveArrayManager.ARRAY_SIZE, 0),
+        Collections.singletonList(new int[] {0, PrimitiveArrayManager.ARRAY_SIZE}),
+        new TSStatus[PrimitiveArrayManager.ARRAY_SIZE],
+        true,
+        new long[5]);
+
+    long ramCostBeforeNewBlock = processor.getWorkMemTable().getTVListsRamCost();
+    processor.insertTablet(
+        genAlignedTablet(new String[] {"s0"}, 1, PrimitiveArrayManager.ARRAY_SIZE),
+        Collections.singletonList(new int[] {0, 1}),
+        new TSStatus[1],
+        true,
+        new long[5]);
+
+    // A new block charges the per-block cost (timestamps + headers/refs) plus the primitive array
+    // of the newly materialized column; the column's slot reference is charged once by the
+    // container model and is unchanged when the inner list grows by one slot (8-byte aligned).
+    Assert.assertEquals(
+        AlignedTVList.alignedTvListArrayMemCostWithoutPrimitiveArrays(
+                new TSDataType[] {TSDataType.INT32, TSDataType.INT32}, null)
+            + AlignedTVList.primitiveArrayMemCost(TSDataType.INT32),
+        processor.getWorkMemTable().getTVListsRamCost() - ramCostBeforeNewBlock);
+  }
+
+  @Test
+  public void alignedRowOnlyChargesMaterializedPrimitiveArrays()
+      throws MetadataException, WriteProcessException, IOException, IllegalPathException {
+    processor = newTestProcessor(filePath + ".lazy-row-allocation");
+    processor.insertTablet(
+        genAlignedTablet(new String[] {"s0", "s1"}, PrimitiveArrayManager.ARRAY_SIZE, 0),
+        Collections.singletonList(new int[] {0, PrimitiveArrayManager.ARRAY_SIZE}),
+        new TSStatus[PrimitiveArrayManager.ARRAY_SIZE],
+        true,
+        new long[5]);
+
+    long ramCostBeforeNewBlock = processor.getWorkMemTable().getTVListsRamCost();
+    TSRecord record = new TSRecord(deviceId, PrimitiveArrayManager.ARRAY_SIZE);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, "s0", "1"));
+    InsertRowNode rowNode = buildInsertRowNodeByTSRecord(record);
+    rowNode.setAligned(true);
+    processor.insert(rowNode, new long[5]);
+
+    // A new block charges the per-block cost (timestamps + headers/refs) plus the primitive array
+    // of the newly materialized column; the column's slot reference is charged once by the
+    // container model and is unchanged when the inner list grows by one slot (8-byte aligned).
+    Assert.assertEquals(
+        AlignedTVList.alignedTvListArrayMemCostWithoutPrimitiveArrays(
+                new TSDataType[] {TSDataType.INT32, TSDataType.INT32}, null)
+            + AlignedTVList.primitiveArrayMemCost(TSDataType.INT32),
+        processor.getWorkMemTable().getTVListsRamCost() - ramCostBeforeNewBlock);
+  }
+
+  @Test
+  public void alignedBitmapMemoryAccountingMatchesActualAllocations()
+      throws MetadataException, WriteProcessException, IOException, IllegalPathException {
+    processor = newTestProcessor(filePath + ".bitmap-accounting");
+    int denseRowCount = PrimitiveArrayManager.ARRAY_SIZE * 2 + 1;
+    processor.insertTablet(
+        genAlignedTablet(new String[] {"s0", "s1"}, denseRowCount, 0),
+        Collections.singletonList(new int[] {0, denseRowCount}),
+        new TSStatus[denseRowCount],
+        true,
+        new long[5]);
+
+    AlignedWritableMemChunk alignedMemChunk = getAlignedMemChunk(deviceId);
+    Assert.assertNull(alignedMemChunk.getWorkingTVList().getBitMaps());
+    assertAlignedTvListRamCostMatchesActual(deviceId);
+
+    InsertTabletNode nullTablet = genAlignedTablet(new String[] {"s0", "s1"}, 2, denseRowCount);
+    BitMap secondColumnNulls = new BitMap(2);
+    secondColumnNulls.markAll();
+    nullTablet.setBitMaps(new BitMap[] {null, secondColumnNulls});
+    processor.insertTablet(
+        nullTablet,
+        Arrays.asList(new int[] {0, 1}, new int[] {1, 2}),
+        new TSStatus[2],
+        true,
+        new long[5]);
+
+    List<BitMap> secondColumnBitMaps = alignedMemChunk.getWorkingTVList().getBitMaps().get(1);
+    Assert.assertNull(secondColumnBitMaps.get(0));
+    Assert.assertNull(secondColumnBitMaps.get(1));
+    Assert.assertNotNull(secondColumnBitMaps.get(2));
+    assertAlignedTvListRamCostMatchesActual(deviceId);
+
+    TSRecord extendedColumnRecord = new TSRecord(deviceId, denseRowCount + 2L);
+    extendedColumnRecord.addTuple(DataPoint.getDataPoint(TSDataType.INT32, "s2", "1"));
+    InsertRowNode extendedColumnRow = buildInsertRowNodeByTSRecord(extendedColumnRecord);
+    extendedColumnRow.setAligned(true);
+    processor.insert(extendedColumnRow, new long[5]);
+
+    int extendedColumnIndex = alignedMemChunk.getMeasurementIndex("s2");
+    Assert.assertNull(
+        alignedMemChunk.getWorkingTVList().getValues().get(extendedColumnIndex).get(0));
+    Assert.assertNull(
+        alignedMemChunk.getWorkingTVList().getValues().get(extendedColumnIndex).get(1));
+    List<BitMap> extendedColumnBitMaps =
+        alignedMemChunk.getWorkingTVList().getBitMaps().get(extendedColumnIndex);
+    Assert.assertNull(extendedColumnBitMaps.get(0));
+    Assert.assertNull(extendedColumnBitMaps.get(1));
+    Assert.assertNotNull(extendedColumnBitMaps.get(2));
+    assertAlignedTvListRamCostMatchesActual(deviceId);
+  }
+
+  @Test
+  public void alignedTabletRamCostSnapshotUsesSingleDeviceFastPath() {
+    IMemTable memTable = new PrimitiveMemTable("root.snapshot", "0");
+    IDeviceID firstDevice = IDeviceID.Factory.DEFAULT_FACTORY.create("root.snapshot.d0");
+    IDeviceID secondDevice = IDeviceID.Factory.DEFAULT_FACTORY.create("root.snapshot.d1");
+    List<int[]> rangeList = Collections.singletonList(new int[] {0, 2});
+
+    int[] treeSplitCalls = {0};
+    InsertTabletNode treeNode =
+        new InsertTabletNode(new PlanNodeId("tree")) {
+          @Override
+          public IDeviceID getDeviceID(int rowIdx) {
+            return firstDevice;
+          }
+
+          @Override
+          public List<Pair<IDeviceID, Integer>> splitByDevice(int start, int end) {
+            treeSplitCalls[0]++;
+            return Collections.singletonList(new Pair<>(firstDevice, end));
+          }
+        };
+    treeNode.setAligned(true);
+
+    Assert.assertNotNull(
+        TsFileProcessor.takeAlignedTVListRamCostSnapshot(memTable, treeNode, rangeList));
+    Assert.assertEquals(0, treeSplitCalls[0]);
+
+    int[] relationalSplitCalls = {0};
+    RelationalInsertTabletNode relationalNode =
+        new RelationalInsertTabletNode(new PlanNodeId("table")) {
+          @Override
+          public IDeviceID getDeviceID(int rowIdx) {
+            return rowIdx == 0 ? firstDevice : secondDevice;
+          }
+
+          @Override
+          public List<Pair<IDeviceID, Integer>> splitByDevice(int start, int end) {
+            relationalSplitCalls[0]++;
+            return Arrays.asList(new Pair<>(firstDevice, 1), new Pair<>(secondDevice, end));
+          }
+        };
+    relationalNode.setAligned(true);
+
+    Assert.assertNotNull(
+        TsFileProcessor.takeAlignedTVListRamCostSnapshot(memTable, relationalNode, rangeList));
+    Assert.assertEquals(1, relationalSplitCalls[0]);
+
+    relationalNode.setSingleDevice();
+    Assert.assertNotNull(
+        TsFileProcessor.takeAlignedTVListRamCostSnapshot(memTable, relationalNode, rangeList));
+    Assert.assertEquals(1, relationalSplitCalls[0]);
+  }
+
+  @Test
+  public void alignedTabletReusesDeviceRangesAcrossWriteStages()
+      throws IOException, WriteProcessException, IllegalPathException {
+    processor = newTestProcessor(filePath + ".device-range-reuse");
+    final AtomicInteger splitCalls = new AtomicInteger();
+    final int rowCount = 4;
+    final List<int[]> rangeList =
+        Arrays.asList(new int[] {0, rowCount / 2}, new int[] {rowCount / 2, rowCount});
+
+    processor.insertTablet(
+        genCountingAlignedTablet(new String[] {"s0"}, rowCount, 0, splitCalls),
+        rangeList,
+        new TSStatus[rowCount],
+        true,
+        new long[5]);
+
+    Assert.assertEquals(rangeList.size(), splitCalls.get());
   }
 
   @Test
@@ -614,56 +1084,56 @@ public class TsFileProcessorTest {
         true,
         new long[5]);
     IMemTable memTable = processor.getWorkMemTable();
-    Assert.assertEquals(1596552, memTable.getTVListsRamCost());
+    Assert.assertEquals(1788704, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNodeFors3000ToS6000(0, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[5]);
-    Assert.assertEquals(3219552, memTable.getTVListsRamCost());
+    Assert.assertEquals(4152744, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNode(100, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[5]);
-    Assert.assertEquals(3219552, memTable.getTVListsRamCost());
+    Assert.assertEquals(4152744, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNodeFors3000ToS6000(100, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[5]);
-    Assert.assertEquals(3219552, memTable.getTVListsRamCost());
+    Assert.assertEquals(4152744, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNode(200, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[5]);
-    Assert.assertEquals(3219552, memTable.getTVListsRamCost());
+    Assert.assertEquals(4152744, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNodeFors3000ToS6000(200, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[5]);
-    Assert.assertEquals(3219552, memTable.getTVListsRamCost());
+    Assert.assertEquals(4152744, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNode(300, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[5]);
-    Assert.assertEquals(6466104, memTable.getTVListsRamCost());
+    Assert.assertEquals(5761296, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNodeFors3000ToS6000(300, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
         new long[5]);
-    Assert.assertEquals(6466104, memTable.getTVListsRamCost());
+    Assert.assertEquals(7633296, memTable.getTVListsRamCost());
 
     Assert.assertEquals(240000, memTable.getTotalPointsNum());
     Assert.assertEquals(1920960, memTable.memSize());
@@ -673,14 +1143,14 @@ public class TsFileProcessorTest {
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
       processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
     }
-    Assert.assertEquals(6467720, memTable.getTVListsRamCost());
+    Assert.assertEquals(7634912, memTable.getTVListsRamCost());
     // Test records
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(deviceId, i);
       record.addTuple(DataPoint.getDataPoint(dataType, "s1", String.valueOf(i)));
       processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
     }
-    Assert.assertEquals(6469336, memTable.getTVListsRamCost());
+    Assert.assertEquals(7636528, memTable.getTVListsRamCost());
     Assert.assertEquals(240200, memTable.getTotalPointsNum());
     Assert.assertEquals(1923360, memTable.memSize());
   }
@@ -931,6 +1401,33 @@ public class TsFileProcessorTest {
     Assert.assertEquals(memTable1.getTVListsRamCost(), memTable2.getTVListsRamCost());
     Assert.assertEquals(memTable1.getTotalPointsNum(), memTable2.getTotalPointsNum());
     Assert.assertEquals(memTable1.memSize(), memTable2.memSize());
+  }
+
+  @Test
+  public void testAlignedSparseRowDoesNotChargeUnallocatedPrimitiveArrayOnNewBlock()
+      throws IOException, WriteProcessException, IllegalPathException {
+    processor = newTestProcessor(filePath);
+    String sparseDevice = deviceId + ".sparse";
+    String denseDevice = deviceId + ".dense";
+    for (int i = 0; i < PrimitiveArrayManager.ARRAY_SIZE; i++) {
+      insertAlignedRow(processor, sparseDevice, i, true);
+      insertAlignedRow(processor, denseDevice, i, true);
+    }
+
+    IMemTable memTable = processor.getWorkMemTable();
+    long ramCostBeforeSparseRow = memTable.getTVListsRamCost();
+    insertAlignedRow(processor, sparseDevice, PrimitiveArrayManager.ARRAY_SIZE, false);
+    long sparseRowRamIncrement = memTable.getTVListsRamCost() - ramCostBeforeSparseRow;
+
+    long ramCostBeforeDenseRow = memTable.getTVListsRamCost();
+    insertAlignedRow(processor, denseDevice, PrimitiveArrayManager.ARRAY_SIZE, true);
+    long denseRowRamIncrement = memTable.getTVListsRamCost() - ramCostBeforeDenseRow;
+
+    // Both rows advance the same block (identical container growth), so the difference is only the
+    // dense row's materialized value array payload+header, not its slot reference.
+    Assert.assertEquals(
+        AlignedTVList.primitiveArrayMemCost(dataType),
+        denseRowRamIncrement - sparseRowRamIncrement);
   }
 
   @Test
@@ -1277,6 +1774,162 @@ public class TsFileProcessorTest {
     assertTrue(processor.getTsFileResource().isClosed());
   }
 
+  @Test
+  public void testWriteMemoryCategoriesAndClose() throws Exception {
+    processor = newTestProcessor(filePath);
+    TSRecord record = new TSRecord(deviceId, 1);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.TEXT, "text", "payload"));
+    processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
+    IMemTable memTable = processor.getWorkMemTable();
+    assertTrue(memTable.getArrayMemoryBlock().getUsedMemoryInBytes() > 0);
+    assertTrue(memTable.getBinaryMemoryBlock().getUsedMemoryInBytes() > 0);
+    long metadataBytes =
+        sgInfo.getWriteMemoryManager().getMemoryBlocks().stream()
+            .filter(b -> b.getCategory() == WriteMemoryBlock.Category.TSFILE_METADATA)
+            .mapToLong(WriteMemoryBlock::getUsedMemoryInBytes)
+            .sum();
+    assertTrue(metadataBytes > 0);
+    assertEquals(memTable.getTVListsRamCost() + metadataBytes, sgInfo.getMemCost());
+    processor.syncClose();
+    assertEquals(0, sgInfo.getMemCost());
+    assertTrue(sgInfo.getWriteMemoryManager().getMemoryBlocks().isEmpty());
+  }
+
+  @Test
+  public void testWalFailureRollsBackRowMixedRowsAndSplitTablet() throws Exception {
+    processor = newTestProcessor(filePath);
+    insertAlignedRow(processor, deviceId, 0, false);
+    IMemTable memTable = processor.getWorkMemTable();
+    long regionBefore = sgInfo.getMemCost();
+    long ramBefore = memTable.getTVListsRamCost();
+    long logicalBefore = memTable.memSize();
+    long structureBefore = memTable.getStructureMemoryBlock().getUsedMemoryInBytes();
+    assertTrue(structureBefore > 0);
+    Field field = TsFileProcessor.class.getDeclaredField("walNode");
+    field.setAccessible(true);
+    Object originalWal = field.get(processor);
+    field.set(
+        processor,
+        new WALFakeNode(
+            AbstractResultListener.Status.FAILURE, new IOException("injected WAL failure")));
+    try {
+      TSRecord record = new TSRecord(deviceId, 1);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.TEXT, "text", "payload"));
+      InsertRowNode row = buildInsertRowNodeByTSRecord(record);
+      row.setAligned(true);
+      Assert.assertThrows(WriteProcessException.class, () -> processor.insert(row, new long[5]));
+      assertMemoryUnchanged(regionBefore, ramBefore, logicalBefore);
+      assertEquals(structureBefore, memTable.getStructureMemoryBlock().getUsedMemoryInBytes());
+
+      InsertRowsNode rows = new InsertRowsNode(new PlanNodeId("mixed"));
+      rows.addOneInsertRowNode(row, 0);
+      TSRecord nonAligned = new TSRecord("root.vehicle.other", 1);
+      nonAligned.addTuple(DataPoint.getDataPoint(TSDataType.TEXT, "text", "payload"));
+      rows.addOneInsertRowNode(buildInsertRowNodeByTSRecord(nonAligned), 1);
+      Assert.assertThrows(
+          WriteProcessException.class, () -> processor.insertRows(rows, new long[5]));
+      assertMemoryUnchanged(regionBefore, ramBefore, logicalBefore);
+      assertEquals(structureBefore, memTable.getStructureMemoryBlock().getUsedMemoryInBytes());
+
+      InsertTabletNode tablet = genSingleMeasurementTablet(10, true);
+      TSStatus[] results = new TSStatus[10];
+      Assert.assertThrows(
+          WriteProcessException.class,
+          () ->
+              processor.insertTablet(
+                  tablet,
+                  Arrays.asList(new int[] {0, 5}, new int[] {5, 10}),
+                  results,
+                  true,
+                  new long[5]));
+      assertMemoryUnchanged(regionBefore, ramBefore, logicalBefore);
+      assertEquals(structureBefore, memTable.getStructureMemoryBlock().getUsedMemoryInBytes());
+    } finally {
+      field.set(processor, originalWal);
+      processor.syncClose();
+    }
+  }
+
+  @Test
+  public void testRejectionRollsBackAllMemoryReservations() throws Exception {
+    processor = newTestProcessor(filePath);
+    int originalWait = config.getMaxWaitingTimeWhenInsertBlocked();
+    int originalPeriod = config.getCheckPeriodWhenInsertBlocked();
+    // Keep selection empty so rejection cannot launch an asynchronous flush in this test.
+    sgInfo.getAllReportedTsp().clear();
+    try (WriteMemoryBlock pressure =
+        sgInfo
+            .getWriteMemoryManager()
+            .createBlock("pressure", WriteMemoryBlock.Category.TSFILE_METADATA)) {
+      pressure.add((long) SystemInfo.getInstance().getRejectThreshold() + 1);
+      long before = sgInfo.getMemCost();
+      sgInfo.setNeedToReportToSystem(true);
+      config.setMaxWaitingTimeWhenInsertBlocked(0);
+      config.setCheckPeriodWhenInsertBlocked(1);
+      TSRecord record = new TSRecord(deviceId, 1);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.TEXT, "text", "payload"));
+      Assert.assertThrows(
+          WriteProcessRejectException.class,
+          () -> processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]));
+      assertMemoryUnchanged(before, 0, 0);
+      assertEquals(before, SystemInfo.getInstance().getTotalMemTableSize());
+    } finally {
+      config.setMaxWaitingTimeWhenInsertBlocked(originalWait);
+      config.setCheckPeriodWhenInsertBlocked(originalPeriod);
+      SystemInfo.getInstance().resetStorageGroupStatus(sgInfo);
+      processor.putMemTableBackAndClose();
+    }
+    assertEquals(0, sgInfo.getMemCost());
+    assertTrue(sgInfo.getWriteMemoryManager().getMemoryBlocks().isEmpty());
+  }
+
+  @Test
+  public void testZeroMemoryIncrementStillChecksPressure() throws Exception {
+    processor = newTestProcessor(filePath);
+    TSRecord first = new TSRecord(deviceId, 0);
+    first.addTuple(DataPoint.getDataPoint(TSDataType.INT64, "s1", "1"));
+    processor.insert(buildInsertRowNodeByTSRecord(first), new long[5]);
+    IMemTable memTable = processor.getWorkMemTable();
+    long ramBefore = memTable.getTVListsRamCost();
+    long logicalBefore = memTable.memSize();
+    int originalWait = config.getMaxWaitingTimeWhenInsertBlocked();
+    int originalPeriod = config.getCheckPeriodWhenInsertBlocked();
+    sgInfo.getAllReportedTsp().clear();
+    try (WriteMemoryBlock pressure =
+        sgInfo
+            .getWriteMemoryManager()
+            .createBlock("pressure", WriteMemoryBlock.Category.TSFILE_METADATA)) {
+      pressure.add((long) SystemInfo.getInstance().getRejectThreshold() + 1);
+      long before = sgInfo.getMemCost();
+      sgInfo.setNeedToReportToSystem(true);
+      config.setMaxWaitingTimeWhenInsertBlocked(0);
+      config.setCheckPeriodWhenInsertBlocked(1);
+      // The next numeric row reuses both its value/timestamp arrays and its metadata.
+      TSRecord next = new TSRecord(deviceId, 1);
+      next.addTuple(DataPoint.getDataPoint(TSDataType.INT64, "s1", "2"));
+      Assert.assertThrows(
+          WriteProcessRejectException.class,
+          () -> processor.insert(buildInsertRowNodeByTSRecord(next), new long[5]));
+      assertMemoryUnchanged(before, ramBefore, logicalBefore);
+      assertEquals(1, memTable.getTotalPointsNum());
+    } finally {
+      config.setMaxWaitingTimeWhenInsertBlocked(originalWait);
+      config.setCheckPeriodWhenInsertBlocked(originalPeriod);
+      SystemInfo.getInstance().resetStorageGroupStatus(sgInfo);
+      processor.putMemTableBackAndClose();
+    }
+    assertEquals(0, sgInfo.getMemCost());
+  }
+
+  private void assertMemoryUnchanged(long regionBytes, long ramBytes, long logicalBytes) {
+    assertEquals(regionBytes, sgInfo.getMemCost());
+    assertEquals(ramBytes, processor.getWorkMemTable().getTVListsRamCost());
+    assertEquals(logicalBytes, processor.getWorkMemTable().memSize());
+    for (WriteMemoryBlock block : sgInfo.getWriteMemoryManager().getMemoryBlocks()) {
+      assertEquals(0, block.getReservedMemoryInBytes());
+    }
+  }
+
   private void closeTsFileProcessor(TsFileProcessor unsealedTsFileProcessor)
       throws TsFileProcessorException {
     TsFileResource resource = unsealedTsFileProcessor.getTsFileResource();
@@ -1308,6 +1961,43 @@ public class TsFileProcessorTest {
     return newProcessor;
   }
 
+  private void insertAlignedRow(
+      TsFileProcessor targetProcessor,
+      String targetDevice,
+      long timestamp,
+      boolean writeSecondColumn)
+      throws IllegalPathException, WriteProcessException {
+    TSRecord record = new TSRecord(targetDevice, timestamp);
+    record.addTuple(DataPoint.getDataPoint(dataType, measurementId, Long.toString(timestamp)));
+    if (writeSecondColumn) {
+      record.addTuple(DataPoint.getDataPoint(dataType, "s1", Long.toString(timestamp)));
+    }
+    InsertRowNode node = buildInsertRowNodeByTSRecord(record);
+    node.setAligned(true);
+    targetProcessor.insert(node, new long[5]);
+  }
+
+  private AlignedWritableMemChunk getAlignedMemChunk(String targetDevice) {
+    IWritableMemChunk memChunk =
+        processor
+            .getWorkMemTable()
+            .getWritableMemChunk(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(targetDevice),
+                AlignedPath.VECTOR_PLACEHOLDER);
+    Assert.assertNotNull(memChunk);
+    return (AlignedWritableMemChunk) memChunk;
+  }
+
+  private void assertAlignedTvListRamCostMatchesActual(String targetDevice) {
+    AlignedTVList list = getAlignedMemChunk(targetDevice).getWorkingTVList();
+    IMemTable table = processor.getWorkMemTable();
+    Assert.assertEquals(list.calculateRamSize().getRamSize(), table.getTVListsRamCost());
+    Assert.assertEquals(list.getArrayRamSize(), table.getArrayMemoryBlock().getUsedMemoryInBytes());
+    Assert.assertEquals(
+        list.getStructureRamSize(), table.getStructureMemoryBlock().getUsedMemoryInBytes());
+    assertTrue(table.getStructureMemoryBlock().getUsedMemoryInBytes() > 0);
+  }
+
   private InsertTabletNode genSingleMeasurementTablet(int rowCount, boolean isAligned)
       throws IllegalPathException {
     String[] measurements = new String[] {measurementId};
@@ -1333,6 +2023,73 @@ public class TsFileProcessorTest {
         null,
         columns,
         rowCount);
+  }
+
+  private InsertTabletNode genAlignedTablet(String[] measurements, int rowCount, long startTime)
+      throws IllegalPathException {
+    TSDataType[] dataTypes = new TSDataType[measurements.length];
+    MeasurementSchema[] schemas = new MeasurementSchema[measurements.length];
+    Object[] columns = new Object[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
+      dataTypes[i] = TSDataType.INT32;
+      schemas[i] = new MeasurementSchema(measurements[i], TSDataType.INT32, encoding);
+      columns[i] = new int[rowCount];
+    }
+    long[] times = new long[rowCount];
+    for (int row = 0; row < rowCount; row++) {
+      times[row] = startTime + row;
+      for (Object column : columns) {
+        ((int[]) column)[row] = row;
+      }
+    }
+    return new InsertTabletNode(
+        new QueryId("test_write").genPlanNodeId(),
+        new PartialPath(deviceId),
+        true,
+        measurements,
+        dataTypes,
+        schemas,
+        times,
+        null,
+        columns,
+        rowCount);
+  }
+
+  private InsertTabletNode genCountingAlignedTablet(
+      String[] measurements, int rowCount, long startTime, AtomicInteger splitCalls)
+      throws IllegalPathException {
+    TSDataType[] dataTypes = new TSDataType[measurements.length];
+    MeasurementSchema[] schemas = new MeasurementSchema[measurements.length];
+    Object[] columns = new Object[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
+      dataTypes[i] = TSDataType.INT32;
+      schemas[i] = new MeasurementSchema(measurements[i], TSDataType.INT32, encoding);
+      columns[i] = new int[rowCount];
+    }
+    long[] times = new long[rowCount];
+    for (int row = 0; row < rowCount; row++) {
+      times[row] = startTime + row;
+      for (Object column : columns) {
+        ((int[]) column)[row] = row;
+      }
+    }
+    return new InsertTabletNode(
+        new QueryId("test_write").genPlanNodeId(),
+        new PartialPath(deviceId),
+        true,
+        measurements,
+        dataTypes,
+        schemas,
+        times,
+        null,
+        columns,
+        rowCount) {
+      @Override
+      public List<Pair<IDeviceID, Integer>> splitByDevice(int start, int end) {
+        splitCalls.incrementAndGet();
+        return super.splitByDevice(start, end);
+      }
+    };
   }
 
   private InsertTabletNode genInsertTableNode(long startTime, boolean isAligned)

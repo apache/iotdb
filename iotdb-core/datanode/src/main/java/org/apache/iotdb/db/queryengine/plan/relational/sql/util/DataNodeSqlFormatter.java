@@ -60,6 +60,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorS
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetTableComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
@@ -386,6 +387,30 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
         .append(" SET PROPERTIES ")
         .append(joinProperties(node.getProperties()));
 
+    return null;
+  }
+
+  @Override
+  public Void visitSetColumnProperties(SetColumnProperties node, Integer context) {
+    builder.append("ALTER TABLE ");
+    if (node.tableIfExists()) {
+      builder.append("IF EXISTS ");
+    }
+    builder
+        .append(CommonQuerySqlFormatter.formatName(node.getTableName()))
+        .append(" ALTER COLUMN ");
+    if (node.columnIfExists()) {
+      builder.append("IF EXISTS ");
+    }
+    builder.append(CommonQuerySqlFormatter.formatName(node.getColumnName()));
+    for (final Property property : node.getProperties()) {
+      switch (property.getName().getValue()) {
+        // No column property key is supported in this edition.
+        default:
+          throw new UnsupportedOperationException(
+              DataNodeQueryMessages.UNSUPPORTED_COLUMN_PROPERTY + property.getName().getValue());
+      }
+    }
     return null;
   }
 
@@ -768,7 +793,7 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
     if (node.hasIfNotExistsCondition()) {
       builder.append("IF NOT EXISTS ");
     }
-    builder.append(node.getTopicName());
+    builder.append(ShowCreateTableTask.getIdentifier(node.getTopicName()));
     builder.append(" \n");
 
     if (!node.getTopicAttributes().isEmpty()) {
@@ -780,11 +805,9 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
                   .map(
                       entry ->
                           indentString(1)
-                              + "\""
-                              + entry.getKey()
-                              + "\" = \""
-                              + entry.getValue()
-                              + "\"")
+                              + ShowCreateTableTask.getString(entry.getKey())
+                              + " = "
+                              + ShowCreateTableTask.getString(entry.getValue()))
                   .collect(joining(", " + "\n")))
           .append(")\n");
     }
@@ -795,7 +818,7 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
   @Override
   public Void visitAlterTopic(AlterTopic node, Integer context) {
     builder.append("ALTER TOPIC ");
-    builder.append(node.getTopicName());
+    builder.append(ShowCreateTableTask.getIdentifier(node.getTopicName()));
     builder.append(" \n");
 
     builder
@@ -806,11 +829,9 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
                 .map(
                     entry ->
                         indentString(1)
-                            + "\""
-                            + entry.getKey()
-                            + "\" = \""
-                            + entry.getValue()
-                            + "\"")
+                            + ShowCreateTableTask.getString(entry.getKey())
+                            + " = "
+                            + ShowCreateTableTask.getString(entry.getValue()))
                 .collect(joining(", " + "\n")))
         .append(")\n");
 
@@ -850,10 +871,14 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
 
   @Override
   public Void visitShowSubscriptions(ShowSubscriptions node, Integer context) {
+    builder.append("SHOW SUBSCRIPTIONS");
+    if (node.isDetails()) {
+      builder.append(" DETAILS");
+    }
     if (Objects.isNull(node.getTopicName())) {
-      builder.append("SHOW SUBSCRIPTIONS");
+      return null;
     } else {
-      builder.append("SHOW SUBSCRIPTIONS ON ").append(node.getTopicName());
+      builder.append(" ON ").append(ShowCreateTableTask.getIdentifier(node.getTopicName()));
     }
 
     return null;

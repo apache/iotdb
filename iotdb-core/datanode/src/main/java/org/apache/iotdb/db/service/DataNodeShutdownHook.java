@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.disk.utils.DirectoryChecker;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -45,7 +46,6 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
-import org.apache.iotdb.db.storageengine.rescon.disk.DirectoryChecker;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -78,7 +78,8 @@ public class DataNodeShutdownHook extends Thread {
                   Thread.sleep(10000);
                   StackTraceElement[] stackTrace = hookThread.getStackTrace();
                   StringBuilder stackTraceBuilder =
-                      new StringBuilder("Stack trace of shutdown hook:\n");
+                      new StringBuilder(
+                          DataNodeMiscMessages.EXCEPTION_STACK_TRACE_OF_SHUTDOWN_HOOK_2EB9D12F);
                   for (StackTraceElement traceElement : stackTrace) {
                     stackTraceBuilder.append(traceElement.toString()).append("\n");
                   }
@@ -108,16 +109,22 @@ public class DataNodeShutdownHook extends Thread {
             true,
             null,
             null);
-    String logMessage = String.format("DataNode %s exiting...", nodeLocation);
+    String logMessage =
+        String.format(DataNodeMiscMessages.EXCEPTION_DATANODE_ARG_EXITING_75D198C4, nodeLocation);
     DNAuditLogger.getInstance().log(fields, () -> logMessage);
 
     startWatcher();
+    CommonDescriptor.getInstance().getConfig().setStopping(true);
     // Stop external rpc service firstly.
     ExternalRPCService.getInstance().stop();
 
     // Reject write operations to make sure all tsfiles will be sealed
-    CommonDescriptor.getInstance().getConfig().setStopping(true);
-    CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+    CommonDescriptor.getInstance()
+        .getConfig()
+        .setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.STOPPING);
+    // A pre-apply read-only check can race with this transition. Drain admitted IoTConsensus
+    // applies, including their WAL separators, and permanently reject new ones before flushing.
+    StorageEngine.getInstance().stopIoTConsensusWrites();
     // Wait all wal are flushed
     WALManager.getInstance().waitAllWALFlushed();
 

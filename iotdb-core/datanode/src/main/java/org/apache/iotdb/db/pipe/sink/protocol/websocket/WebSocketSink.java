@@ -145,18 +145,15 @@ public class WebSocketSink implements PipeConnector, PipeConnectorWithEventDisca
       return;
     }
 
-    try {
-      ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
-          .consumeTabletInsertionEventsWithRetry(
-              event -> {
-                // Skip report if any tablet events is added
-                ((PipeTsFileInsertionEvent) tsFileInsertionEvent).skipReportOnCommit();
-                transfer(event);
-              },
-              "WebSocketConnector::transfer");
-    } finally {
-      tsFileInsertionEvent.close();
-    }
+    ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
+        .consumeTabletInsertionEventsWithRetry(
+            event -> {
+              // Skip report if any tablet events is added
+              ((PipeTsFileInsertionEvent) tsFileInsertionEvent).skipReportOnCommit();
+              transfer(event);
+            },
+            "WebSocketConnector::transfer");
+    tsFileInsertionEvent.close();
   }
 
   @Override

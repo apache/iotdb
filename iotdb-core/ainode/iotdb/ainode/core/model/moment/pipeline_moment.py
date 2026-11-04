@@ -19,6 +19,7 @@
 # This file contains code adapted from the MOMENT project
 # (https://github.com/moment-timeseries-foundation-model/moment),
 # originally licensed under the MIT License.
+# Copyright (c) 2024 Auton Lab, Carnegie Mellon University
 
 import torch
 

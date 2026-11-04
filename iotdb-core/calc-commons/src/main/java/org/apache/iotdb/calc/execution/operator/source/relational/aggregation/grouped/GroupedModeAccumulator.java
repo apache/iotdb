@@ -31,20 +31,19 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Utils.UNSUPPORTED_TYPE_MESSAGE;
-import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Utils.serializeBinaryValue;
 import static org.apache.tsfile.utils.BytesUtils.bytesToBool;
 import static org.apache.tsfile.utils.BytesUtils.bytesToLongFromOffset;
-import static org.apache.tsfile.utils.TsPrimitiveType.getByType;
 
 public class GroupedModeAccumulator implements GroupedAccumulator {
 
@@ -53,6 +52,7 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(GroupedModeAccumulator.class);
   private final TSDataType seriesDataType;
+  private final Type type;
 
   private final MapBigArray countMaps = new MapBigArray();
 
@@ -60,6 +60,7 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
 
   public GroupedModeAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
+    this.type = Type.fromTsDataType(seriesDataType);
   }
 
   @Override
@@ -75,34 +76,7 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
 
   @Override
   public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
-    switch (seriesDataType) {
-      case BOOLEAN:
-        addBooleanInput(groupIds, arguments[0], mask);
-        break;
-      case INT32:
-      case DATE:
-        addIntInput(groupIds, arguments[0], mask);
-        break;
-      case FLOAT:
-        addFloatInput(groupIds, arguments[0], mask);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        addLongInput(groupIds, arguments[0], mask);
-        break;
-      case DOUBLE:
-        addDoubleInput(groupIds, arguments[0], mask);
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        addBinaryInput(groupIds, arguments[0], mask);
-        break;
-      default:
-        throw new UnsupportedOperationException(
-            String.format(UNSUPPORTED_TYPE_MESSAGE, seriesDataType));
-    }
+    addInput(groupIds, arguments[0], mask);
   }
 
   @Override
@@ -149,34 +123,7 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
       return;
     }
 
-    switch (seriesDataType) {
-      case BOOLEAN:
-        columnBuilder.writeBoolean(maxEntry.getKey().getBoolean());
-        break;
-      case INT32:
-      case DATE:
-        columnBuilder.writeInt(maxEntry.getKey().getInt());
-        break;
-      case FLOAT:
-        columnBuilder.writeFloat(maxEntry.getKey().getFloat());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        columnBuilder.writeLong(maxEntry.getKey().getLong());
-        break;
-      case DOUBLE:
-        columnBuilder.writeDouble(maxEntry.getKey().getDouble());
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        columnBuilder.writeBinary(maxEntry.getKey().getBinary());
-        break;
-      default:
-        throw new UnsupportedOperationException(
-            String.format(UNSUPPORTED_TYPE_MESSAGE, seriesDataType));
-    }
+    type.write(columnBuilder, maxEntry.getKey());
   }
 
   @Override
@@ -188,121 +135,52 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
     nullCounts.reset();
   }
 
+  private void addInput(int[] groupIds, Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        addValue(groupIds[i], column, i);
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      for (int i = 0; i < positionCount; i++) {
+        int position = selectedPositions[i];
+        addValue(groupIds[position], column, position);
+      }
+    }
+  }
+
+  private void addValue(int groupId, Column column, int position) {
+    HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupId);
+    if (column.isNull(position)) {
+      nullCounts.increment(groupId);
+    } else {
+      countMap.compute(
+          column.getTsPrimitiveType(position), (key, count) -> count == null ? 1L : count + 1);
+      checkMapSize(countMap.size());
+    }
+  }
+
   // haveNull | nullCount (optional) | countMap
   private byte[] serializeCountMap(int groupId) {
-    byte[] bytes;
     int offset = 1 + (nullCounts.get(groupId) == 0 ? 0 : Long.BYTES);
     HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupId);
-
-    switch (seriesDataType) {
-      case BOOLEAN:
-        bytes = new byte[offset + Integer.BYTES + (1 + Long.BYTES) * countMap.size()];
-        BytesUtils.boolToBytes(nullCounts.get(groupId) != 0, bytes, 0);
-        if (nullCounts.get(groupId) != 0) {
-          BytesUtils.longToBytes(nullCounts.get(groupId), bytes, 1);
-        }
-        BytesUtils.intToBytes(countMap.size(), bytes, offset);
-        offset += 4;
-        for (Map.Entry<TsPrimitiveType, Long> entry : countMap.entrySet()) {
-          BytesUtils.boolToBytes(entry.getKey().getBoolean(), bytes, offset);
-          offset += 1;
-          BytesUtils.longToBytes(entry.getValue(), bytes, offset);
-          offset += Long.BYTES;
-        }
-        break;
-      case INT32:
-      case DATE:
-        bytes = new byte[offset + Integer.BYTES + (Integer.BYTES + Long.BYTES) * countMap.size()];
-        BytesUtils.boolToBytes(nullCounts.get(groupId) != 0, bytes, 0);
-        if (nullCounts.get(groupId) != 0) {
-          BytesUtils.longToBytes(nullCounts.get(groupId), bytes, 1);
-        }
-        BytesUtils.intToBytes(countMap.size(), bytes, offset);
-        offset += Integer.BYTES;
-        for (Map.Entry<TsPrimitiveType, Long> entry : countMap.entrySet()) {
-          BytesUtils.intToBytes(entry.getKey().getInt(), bytes, offset);
-          offset += Integer.BYTES;
-          BytesUtils.longToBytes(entry.getValue(), bytes, offset);
-          offset += Long.BYTES;
-        }
-        break;
-      case FLOAT:
-        bytes = new byte[offset + Integer.BYTES + (Float.BYTES + Long.BYTES) * countMap.size()];
-        BytesUtils.boolToBytes(nullCounts.get(groupId) != 0, bytes, 0);
-        if (nullCounts.get(groupId) != 0) {
-          BytesUtils.longToBytes(nullCounts.get(groupId), bytes, 1);
-        }
-        BytesUtils.intToBytes(countMap.size(), bytes, offset);
-        offset += Integer.BYTES;
-        for (Map.Entry<TsPrimitiveType, Long> entry : countMap.entrySet()) {
-          BytesUtils.floatToBytes(entry.getKey().getFloat(), bytes, offset);
-          offset += Float.BYTES;
-          BytesUtils.longToBytes(entry.getValue(), bytes, offset);
-          offset += Long.BYTES;
-        }
-        break;
-      case INT64:
-      case TIMESTAMP:
-        bytes = new byte[offset + Integer.BYTES + (Long.BYTES + Long.BYTES) * countMap.size()];
-        BytesUtils.boolToBytes(nullCounts.get(groupId) != 0, bytes, 0);
-        if (nullCounts.get(groupId) != 0) {
-          BytesUtils.longToBytes(nullCounts.get(groupId), bytes, 1);
-        }
-        BytesUtils.intToBytes(countMap.size(), bytes, offset);
-        offset += Integer.BYTES;
-        for (Map.Entry<TsPrimitiveType, Long> entry : countMap.entrySet()) {
-          BytesUtils.longToBytes(entry.getKey().getLong(), bytes, offset);
-          offset += Long.BYTES;
-          BytesUtils.longToBytes(entry.getValue(), bytes, offset);
-          offset += Long.BYTES;
-        }
-        break;
-      case DOUBLE:
-        bytes = new byte[offset + Integer.BYTES + (Double.BYTES + Long.BYTES) * countMap.size()];
-        BytesUtils.boolToBytes(nullCounts.get(groupId) != 0, bytes, 0);
-        if (nullCounts.get(groupId) != 0) {
-          BytesUtils.longToBytes(nullCounts.get(groupId), bytes, 1);
-        }
-        BytesUtils.intToBytes(countMap.size(), bytes, offset);
-        offset += Integer.BYTES;
-        for (Map.Entry<TsPrimitiveType, Long> entry : countMap.entrySet()) {
-          BytesUtils.doubleToBytes(entry.getKey().getDouble(), bytes, offset);
-          offset += Double.BYTES;
-          BytesUtils.longToBytes(entry.getValue(), bytes, offset);
-          offset += Long.BYTES;
-        }
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        bytes =
-            new byte
-                [offset
-                    + Integer.BYTES
-                    + (Integer.BYTES + Long.BYTES) * countMap.size()
-                    + countMap.keySet().stream()
-                        .mapToInt(key -> key.getBinary().getValues().length)
-                        .sum()];
-        BytesUtils.boolToBytes(nullCounts.get(groupId) != 0, bytes, 0);
-        if (nullCounts.get(groupId) != 0) {
-          BytesUtils.longToBytes(nullCounts.get(groupId), bytes, 1);
-        }
-        BytesUtils.intToBytes(countMap.size(), bytes, offset);
-        offset += Integer.BYTES;
-        for (Map.Entry<TsPrimitiveType, Long> entry : countMap.entrySet()) {
-          Binary binary = entry.getKey().getBinary();
-          serializeBinaryValue(binary, bytes, offset);
-          offset += (Integer.BYTES + binary.getLength());
-          BytesUtils.longToBytes(entry.getValue(), bytes, offset);
-          offset += Long.BYTES;
-        }
-        break;
-      default:
-        throw new UnsupportedOperationException(
-            String.format(UNSUPPORTED_TYPE_MESSAGE, seriesDataType));
+    int valueSize = countMap.keySet().stream().mapToInt(type::calcTypeSize).sum();
+    byte[] bytes = new byte[offset + Integer.BYTES + valueSize + Long.BYTES * countMap.size()];
+    BytesUtils.boolToBytes(nullCounts.get(groupId) != 0, bytes, 0);
+    if (nullCounts.get(groupId) != 0) {
+      BytesUtils.longToBytes(nullCounts.get(groupId), bytes, 1);
     }
-
+    BytesUtils.intToBytes(countMap.size(), bytes, offset);
+    offset += Integer.BYTES;
+    for (Map.Entry<TsPrimitiveType, Long> entry : countMap.entrySet()) {
+      TsPrimitiveType key = entry.getKey();
+      int keySize = type.calcTypeSize(key);
+      type.toBytes(key, bytes, offset);
+      offset += keySize;
+      BytesUtils.longToBytes(entry.getValue(), bytes, offset);
+      offset += Long.BYTES;
+    }
     return bytes;
   }
 
@@ -317,76 +195,11 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
     offset += Integer.BYTES;
 
     HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupId);
-
-    switch (seriesDataType) {
-      case BOOLEAN:
-        for (int i = 0; i < size; i++) {
-          TsPrimitiveType key = new TsPrimitiveType.TsBoolean(bytesToBool(bytes, offset));
-          offset += 1;
-          long count = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset);
-          offset += Long.BYTES;
-          countMap.compute(key, (k, v) -> v == null ? count : v + count);
-        }
-        break;
-      case INT32:
-      case DATE:
-        for (int i = 0; i < size; i++) {
-          TsPrimitiveType key = new TsPrimitiveType.TsInt(BytesUtils.bytesToInt(bytes, offset));
-          offset += Integer.BYTES;
-          long count = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset);
-          offset += Long.BYTES;
-          countMap.compute(key, (k, v) -> v == null ? count : v + count);
-        }
-        break;
-      case FLOAT:
-        for (int i = 0; i < size; i++) {
-          TsPrimitiveType key = new TsPrimitiveType.TsFloat(BytesUtils.bytesToFloat(bytes, offset));
-          offset += Float.BYTES;
-          long count = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset);
-          offset += Long.BYTES;
-          countMap.compute(key, (k, v) -> v == null ? count : v + count);
-        }
-        break;
-      case INT64:
-      case TIMESTAMP:
-        for (int i = 0; i < size; i++) {
-          TsPrimitiveType key =
-              new TsPrimitiveType.TsLong(
-                  BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset));
-          offset += Long.BYTES;
-          long count = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset);
-          offset += Long.BYTES;
-          countMap.compute(key, (k, v) -> v == null ? count : v + count);
-        }
-        break;
-      case DOUBLE:
-        for (int i = 0; i < size; i++) {
-          TsPrimitiveType key =
-              new TsPrimitiveType.TsDouble(BytesUtils.bytesToDouble(bytes, offset));
-          offset += Double.BYTES;
-          long count = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset);
-          offset += Long.BYTES;
-          countMap.compute(key, (k, v) -> v == null ? count : v + count);
-        }
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        for (int i = 0; i < size; i++) {
-          int length = BytesUtils.bytesToInt(bytes, offset);
-          offset += Integer.BYTES;
-          TsPrimitiveType key =
-              new TsPrimitiveType.TsBinary(new Binary(BytesUtils.subBytes(bytes, offset, length)));
-          offset += length;
-          long count = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset);
-          offset += Long.BYTES;
-          countMap.compute(key, (k, v) -> v == null ? count : v + count);
-        }
-        break;
-      default:
-        throw new UnsupportedOperationException(
-            String.format(UNSUPPORTED_TYPE_MESSAGE, seriesDataType));
+    ByteBuffer buffer = ByteBuffer.wrap(bytes, offset, bytes.length - offset);
+    for (int i = 0; i < size; i++) {
+      TsPrimitiveType key = type.deserialize(buffer);
+      long count = buffer.getLong();
+      countMap.compute(key, (k, v) -> v == null ? count : v + count);
     }
   }
 
@@ -398,7 +211,8 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         if (!column.isNull(i)) {
           HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[i]);
           countMap.compute(
-              getByType(seriesDataType, column.getBoolean(i)), (k, v) -> v == null ? 1 : v + 1);
+              Type.fromTsDataType(seriesDataType).getTsPrimitiveType(column.getBoolean(i)),
+              (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(countMap.size());
 
         } else {
@@ -413,7 +227,7 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         if (!column.isNull(position)) {
           HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[position]);
           countMap.compute(
-              getByType(seriesDataType, column.getBoolean(position)),
+              Type.fromTsDataType(seriesDataType).getTsPrimitiveType(column.getBoolean(position)),
               (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(countMap.size());
 
@@ -432,7 +246,8 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         if (!column.isNull(i)) {
           HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[i]);
           countMap.compute(
-              getByType(seriesDataType, column.getInt(i)), (k, v) -> v == null ? 1 : v + 1);
+              Type.fromTsDataType(seriesDataType).getTsPrimitiveType(column.getInt(i)),
+              (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(countMap.size());
 
         } else {
@@ -447,7 +262,8 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         if (!column.isNull(position)) {
           HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[position]);
           countMap.compute(
-              getByType(seriesDataType, column.getInt(position)), (k, v) -> v == null ? 1 : v + 1);
+              Type.fromTsDataType(seriesDataType).getTsPrimitiveType(column.getInt(position)),
+              (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(countMap.size());
 
         } else {
@@ -465,7 +281,8 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         if (!column.isNull(i)) {
           HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[i]);
           countMap.compute(
-              getByType(seriesDataType, column.getFloat(i)), (k, v) -> v == null ? 1 : v + 1);
+              Type.fromTsDataType(seriesDataType).getTsPrimitiveType(column.getFloat(i)),
+              (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(countMap.size());
 
         } else {
@@ -480,7 +297,7 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         if (!column.isNull(position)) {
           HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[position]);
           countMap.compute(
-              getByType(seriesDataType, column.getFloat(position)),
+              Type.fromTsDataType(seriesDataType).getTsPrimitiveType(column.getFloat(position)),
               (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(countMap.size());
 
@@ -499,7 +316,8 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         if (!column.isNull(i)) {
           HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[i]);
           countMap.compute(
-              getByType(seriesDataType, column.getLong(i)), (k, v) -> v == null ? 1 : v + 1);
+              Type.fromTsDataType(seriesDataType).getTsPrimitiveType(column.getLong(i)),
+              (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(countMap.size());
 
         } else {
@@ -514,7 +332,8 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         if (!column.isNull(position)) {
           HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[position]);
           countMap.compute(
-              getByType(seriesDataType, column.getLong(position)), (k, v) -> v == null ? 1 : v + 1);
+              Type.fromTsDataType(seriesDataType).getTsPrimitiveType(column.getLong(position)),
+              (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(countMap.size());
 
         } else {
@@ -532,7 +351,8 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         if (!column.isNull(i)) {
           HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[i]);
           countMap.compute(
-              getByType(seriesDataType, column.getDouble(i)), (k, v) -> v == null ? 1 : v + 1);
+              Type.fromTsDataType(seriesDataType).getTsPrimitiveType(column.getDouble(i)),
+              (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(countMap.size());
 
         } else {
@@ -547,7 +367,7 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         if (!column.isNull(position)) {
           HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[position]);
           countMap.compute(
-              getByType(seriesDataType, column.getDouble(position)),
+              Type.fromTsDataType(seriesDataType).getTsPrimitiveType(column.getDouble(position)),
               (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(countMap.size());
 
@@ -566,7 +386,8 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         if (!column.isNull(i)) {
           HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[i]);
           countMap.compute(
-              getByType(seriesDataType, column.getBinary(i)), (k, v) -> v == null ? 1 : v + 1);
+              Type.fromTsDataType(seriesDataType).getTsPrimitiveType(column.getBinary(i)),
+              (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(countMap.size());
 
         } else {
@@ -581,7 +402,7 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         if (!column.isNull(position)) {
           HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[position]);
           countMap.compute(
-              getByType(seriesDataType, column.getBinary(position)),
+              Type.fromTsDataType(seriesDataType).getTsPrimitiveType(column.getBinary(position)),
               (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(countMap.size());
 

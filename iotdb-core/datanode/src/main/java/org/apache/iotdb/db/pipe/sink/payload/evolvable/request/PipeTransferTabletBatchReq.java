@@ -46,6 +46,11 @@ import java.util.Objects;
 
 public class PipeTransferTabletBatchReq extends TPipeTransferReq {
 
+  private static final int BATCH_REQUEST_COUNT_SERIALIZED_SIZE =
+      Integer.BYTES // legacy binary request count
+          + Integer.BYTES // insert node request count
+          + Integer.BYTES; // raw tablet request count
+
   private final transient List<PipeTransferTabletBinaryReq> binaryReqs = new ArrayList<>();
   private final transient List<PipeTransferTabletInsertNodeReq> insertNodeReqs = new ArrayList<>();
   private final transient List<PipeTransferTabletRawReq> tabletReqs = new ArrayList<>();
@@ -129,19 +134,28 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
 
     batchReq.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
     batchReq.type = PipeRequestType.TRANSFER_TABLET_BATCH.getType();
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    try (final PublicBAOS byteArrayOutputStream =
+            new PublicBAOS(calculateSerializedSize(insertNodeBuffers, tabletBuffers));
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       // Binary buffer, for rolling upgrade
       ReadWriteIOUtils.write(0, outputStream);
 
+      // Insert-node and raw-tablet serializations are self-delimiting, so their lengths are not
+      // written separately.
       ReadWriteIOUtils.write(insertNodeBuffers.size(), outputStream);
       for (final ByteBuffer insertNodeBuffer : insertNodeBuffers) {
-        outputStream.write(insertNodeBuffer.array(), 0, insertNodeBuffer.limit());
+        outputStream.write(
+            insertNodeBuffer.array(),
+            insertNodeBuffer.arrayOffset() + insertNodeBuffer.position(),
+            insertNodeBuffer.remaining());
       }
 
       ReadWriteIOUtils.write(tabletBuffers.size(), outputStream);
       for (final ByteBuffer tabletBuffer : tabletBuffers) {
-        outputStream.write(tabletBuffer.array(), 0, tabletBuffer.limit());
+        outputStream.write(
+            tabletBuffer.array(),
+            tabletBuffer.arrayOffset() + tabletBuffer.position(),
+            tabletBuffer.remaining());
       }
 
       batchReq.body =
@@ -151,15 +165,26 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     return batchReq;
   }
 
+  static int calculateSerializedSize(
+      final List<ByteBuffer> insertNodeBuffers, final List<ByteBuffer> tabletBuffers) {
+    return BATCH_REQUEST_COUNT_SERIALIZED_SIZE
+        + insertNodeBuffers.stream().mapToInt(ByteBuffer::remaining).sum()
+        + tabletBuffers.stream().mapToInt(ByteBuffer::remaining).sum();
+  }
+
   public static PipeTransferTabletBatchReq fromTPipeTransferReq(
       final TPipeTransferReq transferReq) {
     final PipeTransferTabletBatchReq batchReq = new PipeTransferTabletBatchReq();
     final TabletStringInternPool tabletStringInternPool = new TabletStringInternPool();
 
     // Legacy 1.3.x batch bodies may carry WAL binary requests before insert nodes and tablets.
-    int size = readNonNegativeSize(transferReq.body, "binary request count");
+    int size =
+        readNonNegativeSize(
+            transferReq.body, DataNodePipeMessages.MESSAGE_BINARY_REQUEST_COUNT_517CF38D);
     for (int i = 0; i < size; ++i) {
-      final int length = readNonNegativeSize(transferReq.body, "binary request body length");
+      final int length =
+          readNonNegativeSize(
+              transferReq.body, DataNodePipeMessages.MESSAGE_BINARY_REQUEST_BODY_LENGTH_718123BB);
       if (length > transferReq.body.remaining()) {
         throw new IllegalArgumentException(
             String.format(
@@ -174,7 +199,9 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
           PipeTransferTabletBinaryReq.toTPipeTransferReq(ByteBuffer.wrap(body)));
     }
 
-    size = readNonNegativeSize(transferReq.body, "insert node count");
+    size =
+        readNonNegativeSize(
+            transferReq.body, DataNodePipeMessages.MESSAGE_INSERT_NODE_COUNT_EAA93423);
     for (int i = 0; i < size; ++i) {
       final int startPosition = transferReq.body.position();
       try {
@@ -194,7 +221,9 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
       }
     }
 
-    size = readNonNegativeSize(transferReq.body, "raw tablet count");
+    size =
+        readNonNegativeSize(
+            transferReq.body, DataNodePipeMessages.MESSAGE_RAW_TABLET_COUNT_BB427E83);
     for (int i = 0; i < size; ++i) {
       final int startPosition = transferReq.body.position();
       try {

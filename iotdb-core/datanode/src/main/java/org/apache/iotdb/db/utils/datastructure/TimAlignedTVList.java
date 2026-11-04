@@ -26,15 +26,20 @@ public class TimAlignedTVList extends AlignedTVList {
   private final TimSort policy;
 
   TimAlignedTVList(List<TSDataType> types) {
-    super(types);
+    this(types, true);
+  }
+
+  TimAlignedTVList(List<TSDataType> types, boolean initializeValueColumns) {
+    super(types, initializeValueColumns);
     policy = new TimSort(this);
   }
 
   @Override
   public synchronized int sort() {
-    policy.checkSortedTimestampsAndIndices();
     if (!sorted) {
+      policy.checkSortedTimestampsAndIndices();
       policy.sort(0, rowCount);
+      updateSegmentMovedMap();
     }
     policy.clearSortedValue();
     policy.clearSortedTime();

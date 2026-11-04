@@ -19,19 +19,44 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.pipe.task.OperatePipeTaskState;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class AbstractOperatePipeProcedureV2Test {
+
+  @Test
+  public void testParsePushPipeMetaExceptionForPipeIncludesUnscopedException() {
+    final TPushPipeMetaRespExceptionMessage exceptionMessage =
+        new TPushPipeMetaRespExceptionMessage(
+            "", "failed to close schema listening queue", System.currentTimeMillis());
+    final TPushPipeMetaResp response =
+        new TPushPipeMetaResp()
+            .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
+            .setExceptionMessages(Collections.singletonList(exceptionMessage));
+
+    final String message =
+        AbstractOperatePipeProcedureV2.parsePushPipeMetaExceptionForPipe(
+            "targetPipe", Map.of(1, response));
+
+    Assert.assertTrue(message.contains("DataNodeId: 1"));
+    Assert.assertTrue(message.contains("Message: failed to close schema listening queue"));
+  }
 
   @Test
   public void testSuccessfulStateDoesNotYield() throws Exception {
@@ -89,6 +114,32 @@ public class AbstractOperatePipeProcedureV2Test {
     Assert.assertEquals(2, procedure.calculateExecutionCount);
   }
 
+  @Test
+  public void testTimeoutDiagnosticReportsCurrentStateAndRetryReason() throws Exception {
+    final TestOperatePipeProcedure procedure = new TestOperatePipeProcedure();
+    procedure.failValidation = true;
+
+    procedure.executeFromState(null, OperatePipeTaskState.VALIDATE_TASK);
+
+    final String diagnosticMessage = procedure.getTimeoutDiagnosticMessage();
+    Assert.assertTrue(diagnosticMessage.contains("START_PIPE"));
+    Assert.assertTrue(diagnosticMessage.contains("VALIDATE_TASK"));
+    Assert.assertTrue(diagnosticMessage.contains("retry"));
+  }
+
+  @Test
+  public void testTimeoutDiagnosticReportsDataNodeOperation() throws Exception {
+    final TestOperatePipeProcedure procedure = new TestOperatePipeProcedure();
+    procedure.setPendingDataNodeIdsForTest(Set.of(3, 1));
+
+    procedure.executeFromState(null, OperatePipeTaskState.OPERATE_ON_DATA_NODES);
+
+    final String diagnosticMessage = procedure.getTimeoutDiagnosticMessage();
+    Assert.assertTrue(diagnosticMessage.contains("OPERATE_ON_DATA_NODES"));
+    Assert.assertTrue(diagnosticMessage.contains("DataNodes [1, 3]"));
+    Assert.assertTrue(diagnosticMessage.contains("SHOW CLUSTER"));
+  }
+
   private static class TestOperatePipeProcedure extends AbstractOperatePipeProcedureV2 {
 
     private int validateExecutionCount;
@@ -102,6 +153,10 @@ public class AbstractOperatePipeProcedureV2Test {
 
     private Procedure<?>[] runOnce() throws InterruptedException {
       return execute(null);
+    }
+
+    private void setPendingDataNodeIdsForTest(final Set<Integer> pendingDataNodeIds) {
+      setPendingDataNodeIds(pendingDataNodeIds);
     }
 
     @Override

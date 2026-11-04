@@ -1380,12 +1380,20 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     expectedHeader = buildHeaders(30);
+    // Exclude l4 so both blob extrema are unique; tied rows may arrive in either order.
     sql =
-        "select max_by(time,blob),max_by(device,blob),max_by(level,blob),max_by(attr1,blob),max_by(attr2,blob),max_by(num,blob),max_by(bignum,blob),max_by(floatnum,blob),max_by(str,blob),max_by(bool,blob),max_by(date,blob),max_by(blob,blob),max_by(ts,blob),max_by(stringv,blob),max_by(doubleNum,blob),min_by(time,blob),min_by(device,blob),min_by(level,blob),min_by(attr1,blob),min_by(attr2,blob),min_by(num,blob),min_by(bignum,blob),min_by(floatnum,blob),min_by(str,blob),min_by(bool,blob),min_by(date,blob),min_by(blob,blob),min_by(ts,blob),min_by(stringv,blob),min_by(doubleNum,blob) from table0";
+        "select max_by(time,blob),max_by(device,blob),max_by(level,blob),max_by(attr1,blob),max_by(attr2,blob),max_by(num,blob),max_by(bignum,blob),max_by(floatnum,blob),max_by(str,blob),max_by(bool,blob),max_by(date,blob),max_by(blob,blob),max_by(ts,blob),max_by(stringv,blob),max_by(doubleNum,blob),min_by(time,blob),min_by(device,blob),min_by(level,blob),min_by(attr1,blob),min_by(attr2,blob),min_by(num,blob),min_by(bignum,blob),min_by(floatnum,blob),min_by(str,blob),min_by(bool,blob),min_by(date,blob),min_by(blob,blob),min_by(ts,blob),min_by(stringv,blob),min_by(doubleNum,blob) from table0 where level != 'l4'";
     retArray =
         new String[] {
           "1971-01-01T00:00:10.000Z,d1,l5,null,null,7,2147983648,213.112,lemon,true,null,0x108dcd63,2024-09-25T06:15:35.000Z,null,null,1970-01-01T00:00:00.020Z,d1,l2,yy,zz,2,2147483648,434.12,pineapple,true,null,0x108dcd62,2024-09-24T06:15:35.000Z,null,6666.8,",
         };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    // Retain the unfiltered ties: either associated value is valid, but the extrema are fixed.
+    expectedHeader = buildHeaders(4);
+    sql =
+        "select max_by(num,blob) in (7,9),min_by(num,blob) in (2,5),max_by(blob,blob),min_by(blob,blob) from table0";
+    retArray = new String[] {"true,true,0x108dcd63,0x108dcd62,"};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     expectedHeader = buildHeaders(3);

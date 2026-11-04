@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
 import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.plan.planner.memory.PipelineMemoryEstimator;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
@@ -34,12 +35,13 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
+import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimator;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.OperatorMemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
@@ -114,6 +116,9 @@ public class LocalExecutionPlanner {
 
     Operator root = generateOperator(instanceContext, context, plan);
 
+    // Select Collect consumption before estimating its retained input memory.
+    setExchangeMemoryLimits(plan, context);
+
     PipelineMemoryEstimator memoryEstimator =
         context.constructPipelineMemoryEstimator(root, null, plan, -1);
     // set the map to null for gc
@@ -130,9 +135,6 @@ public class LocalExecutionPlanner {
         getQueryDataSourceType((DataDriverContext) context.getDriverContext()));
 
     context.getTimePartitions().ifPresent(instanceContext::setTimePartitions);
-
-    // set maxBytes one SourceHandle can reserve after visiting the whole tree
-    context.setMaxBytesOneHandleCanReserve();
 
     return context.getPipelineDriverFactories();
   }
@@ -154,6 +156,9 @@ public class LocalExecutionPlanner {
 
     Operator root = generateOperator(instanceContext, context, plan);
 
+    // Select Collect consumption before estimating its retained input memory.
+    setExchangeMemoryLimits(plan, context);
+
     PipelineMemoryEstimator memoryEstimator =
         context.constructPipelineMemoryEstimator(root, null, plan, -1);
     // set the map to null for gc
@@ -163,9 +168,6 @@ public class LocalExecutionPlanner {
     checkMemory(memoryEstimator, instanceContext);
 
     context.addPipelineDriverFactory(root, context.getDriverContext(), 0);
-
-    // set maxBytes one SourceHandle can reserve after visiting the whole tree
-    context.setMaxBytesOneHandleCanReserve();
 
     return context.getPipelineDriverFactories();
   }
@@ -193,6 +195,22 @@ public class LocalExecutionPlanner {
             String.format(DataNodeQueryMessages.UNKNOWN_SQL_DIALECT, sqlDialect));
     }
     return root;
+  }
+
+  private void setExchangeMemoryLimits(PlanNode plan, LocalExecutionPlanContext context) {
+    FragmentInstanceContext instanceContext = context.getInstanceContext();
+    if (instanceContext.getSessionInfo() == null
+        || instanceContext.getSessionInfo().getSqlDialect() == TREE) {
+      context.setMaxBytesOneHandleCanReserve();
+      return;
+    }
+    // Choose the table FI policy only after all operators and pipelines are known.
+    context.setExchangeMemoryLimits(
+        plan,
+        MPPDataExchangeService.getInstance()
+            .getMPPDataExchangeManager()
+            .getLocalMemoryManager()
+            .getQueryPool());
   }
 
   private long checkMemory(
@@ -289,7 +307,10 @@ public class LocalExecutionPlanner {
         .forEach(
             pipeline -> {
               DataDriverContext dataDriverContext = (DataDriverContext) pipeline.getDriverContext();
-              sourcePaths.addAll(dataDriverContext.getPaths());
+              if (dataDriverContext.getSourceOperators().stream()
+                  .anyMatch(sourceOperator -> !sourceOperator.isBatchQueryDataSource())) {
+                sourcePaths.addAll(dataDriverContext.getPaths());
+              }
               dataDriverContext.clearPaths();
             });
     return sourcePaths;
@@ -336,15 +357,18 @@ public class LocalExecutionPlanner {
     }
     long allocated = allocateOperatorsMemory(memoryInBytes, isHighestPriority);
     if (allocated < 0) {
-      throw new MemoryNotEnoughException(
+      long freeBytes = OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes();
+      throw new OperatorMemoryNotEnoughException(
           String.format(
               DataNodeQueryMessages
                   .QUERY_EXCEPTION_THERE_IS_NOT_ENOUGH_MEMORY_FOR_QUERY_S_THE_CONTEXTHOLDER_546CDD02,
               queryId,
               contextHolder,
-              OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes(),
+              freeBytes,
               reservedBytes,
-              memoryInBytes));
+              memoryInBytes),
+          memoryInBytes,
+          freeBytes);
     }
     return allocated;
   }

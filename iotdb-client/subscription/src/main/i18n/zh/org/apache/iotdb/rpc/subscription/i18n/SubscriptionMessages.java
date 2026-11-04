@@ -21,6 +21,10 @@ package org.apache.iotdb.rpc.subscription.i18n;
 
 public final class SubscriptionMessages {
 
+  public static final String
+      EXCEPTION_SUBSCRIPTION_REQUEST_EXCEEDS_THE_NEGOTIATED_FRAME_LIMIT_CA8DEB50 =
+          "订阅请求超过协商的帧大小限制";
+
   // --- TopicConstant / ConsumerConstant ---
   public static final String UTILITY_CLASS = "工具类";
 
@@ -52,6 +56,8 @@ public final class SubscriptionMessages {
 
   // --- SubscriptionExecutorServiceManager ---
   public static final String EXECUTOR_LAUNCHING = "正在启动 {}，核心线程池大小：{}...";
+  public static final String LOG_SUBSCRIPTION_HEARTBEAT_EXECUTOR_REACHED_ITS_THREAD_OR_QUEUE_LIMIT_SKIP_13157249 =
+      "Subscription heartbeat executor 达到线程数或队列容量上限；本轮跳过 heartbeat 任务，下个周期重试（线程上限 {}，队列容量 {}）。";
   public static final String EXECUTOR_SHUTTING_DOWN = "正在关闭 {}...";
   public static final String EXECUTOR_NOT_LAUNCHED_SUBMIT =
       "{} 尚未启动，忽略提交任务";
@@ -115,6 +121,70 @@ public final class SubscriptionMessages {
   public static final String OWNER_LEASE_DURATION_SHOULD_BE_POSITIVE_WHEN_SET =
       "当设置 %s 时，订阅 topic 的 owner 租约时长应为正数";
 
+  public static final String
+      EXCEPTION_A_TIMEOUT_HAS_OCCURRED_IN_PROCEDURES_RELATED_TO_THE_PIPE_WITHIN_THE_SUBSCRIPTION_PROCEDURE_PLEASE_MANUALLY_CHECK_THE_SUBSCRIPTION_CORRECTNESS_LATER_STATUS_CODE_IS_ARG_STATUS_MESSAGE_IS_ARG_68B6AC95 =
+          "订阅流程中的 pipe 相关流程超时。请稍后手动检查订阅是否正确。状态码为 [%s]，状态消息为 [%s]。";
+  public static final String
+      EXCEPTION_INTERNAL_ERROR_OCCURRED_STATUS_CODE_IS_ARG_STATUS_MESSAGE_IS_ARG_D35048C4 =
+          "发生内部错误。状态码为 [%s]，状态消息为 [%s]。";
+  public static final String
+      MESSAGE_ARG_COMMIT_NACK_ARG_PARTIALLY_ACCEPTED_REQUESTED_ARG_ACCEPTED_ARG_FAILED_ARG_BEA40307 =
+          "%s 的提交（nack：%s）部分被接受，请求数=%d，接受数=%d，失败数=%d";
+  public static final String
+      MESSAGE_ARG_FAILED_TO_FETCH_ALL_ENDPOINTS_FROM_ALL_AVAILABLE_SUBSCRIPTION_PROVIDERS_ARG_FAF8E639 =
+          "%s 无法从所有可用的订阅提供方 %s 获取全部端点";
+  public static final String
+      MESSAGE_ARG_FAILED_TO_SEEKAFTER_TOPIC_ARG_TO_TOPICPROGRESS_REGIONCOUNT_ARG_ON_SUBSCRIPTION_PROVIDERS_ARG_SEEK_REQUIRES_EVERY_AVAILABLE_PROVIDER_TO_SUCCEED_BF2AA1F1 =
+          "%s 对主题 %s 执行 seekAfter 并定位到 topicProgress(regionCount=%d) 失败，订阅提供方为 %s；seek"
+              + " 要求所有可用的提供方均执行成功";
+  public static final String
+      MESSAGE_ARG_FAILED_TO_SEEK_TOPIC_ARG_ON_SUBSCRIPTION_PROVIDERS_ARG_SEEK_REQUIRES_EVERY_AVAILABLE_PROVIDER_TO_SUCCEED_0B6CAC68 =
+          "%s 对主题 %s 执行 seek 失败，订阅提供方为 %s；seek 要求所有可用的提供方均执行成功";
+  public static final String
+      MESSAGE_ARG_FAILED_TO_SEEK_TOPIC_ARG_TO_TOPICPROGRESS_REGIONCOUNT_ARG_ON_SUBSCRIPTION_PROVIDERS_ARG_SEEK_REQUIRES_EVERY_AVAILABLE_PROVIDER_TO_SUCCEED_61972EC7 =
+          "%s 将主题 %s 定位到 topicProgress(regionCount=%d) 失败，订阅提供方为 %s；seek 要求所有可用的提供方均执行成功";
+  public static final String
+      MESSAGE_ARG_FAILED_TO_SUBSCRIBE_TOPICS_ARG_FROM_ALL_AVAILABLE_SUBSCRIPTION_PROVIDERS_ARG_FF729C26 =
+          "%s 订阅主题 %s 失败，已尝试所有可用的订阅提供方 %s";
+  public static final String
+      MESSAGE_ARG_FAILED_TO_UNSUBSCRIBE_TOPICS_ARG_FROM_ALL_AVAILABLE_SUBSCRIPTION_PROVIDERS_ARG_43E08B57 =
+          "%s 取消订阅主题 %s 失败，已尝试所有可用的订阅提供方 %s";
+  public static final String
+      MESSAGE_ARG_HAS_EVER_BEEN_CLOSED_UNSUPPORTED_OPERATION_AFTER_CLOSING_7B7F7FFB =
+          "%s 已被关闭，不支持关闭后操作。";
+  public static final String
+      MESSAGE_ARG_IS_NOT_YET_OPEN_PLEASE_OPEN_THE_SUBSCRIPTION_CONSUMER_BEFORE_DRAINING_BUFFERED_MESSAGES_C73D871C =
+          "%s 尚未打开，请先打开订阅消费者再取出缓冲消息。";
+  public static final String
+      MESSAGE_ARG_IS_NOT_YET_OPEN_PLEASE_OPEN_THE_SUBSCRIPTION_CONSUMER_FIRST_8AD8C37A =
+          "%s 尚未打开，请先打开订阅消费者。";
+  public static final String
+      MESSAGE_INCONSISTENT_COMMIT_CONTEXT_CURRENT_IS_ARG_INCOMING_IS_ARG_CONSUMER_ARG_115134DB =
+          "提交上下文不一致，当前为 %s，收到的为 %s，消费者：%s";
+  public static final String
+      MESSAGE_INCONSISTENT_FILE_LENGTH_CURRENT_IS_ARG_INCOMING_IS_ARG_CONSUMER_ARG_4C3AD74E =
+          "文件长度不一致，当前为 %s，收到的为 %s，消费者：%s";
+  public static final String
+      MESSAGE_INCONSISTENT_FILE_NAME_CURRENT_IS_ARG_INCOMING_IS_ARG_CONSUMER_ARG_2700F4BA =
+          "文件名不一致，当前为 %s，收到的为 %s，消费者：%s";
+  public static final String
+      MESSAGE_INCONSISTENT_FILE_OFFSET_CURRENT_IS_ARG_INCOMING_IS_ARG_CONSUMER_ARG_B96B6D69 =
+          "文件偏移量不一致，当前为 %s，收到的为 %s，消费者：%s";
+  public static final String
+      MESSAGE_INCONSISTENT_TABLET_SIZE_CURRENT_IS_ARG_INCOMING_IS_ARG_CONSUMER_ARG_DB4A9BBB =
+          "tablet 大小不一致，当前为 %s，收到的为 %s，消费者：%s";
+  public static final String
+      MESSAGE_SUBSCRIPTIONPULLCONSUMER_ARG_STILL_HAS_PROCESSOR_BUFFERED_OR_DRAINED_MESSAGES_WHEN_CLOSING_IN_MANUAL_COMMIT_MODE_CALL_DRAINBUFFEREDMESSAGES_AND_COMMIT_THE_RETURNED_MESSAGES_BEFORE_CLOSE_389DC354 =
+          "SubscriptionPullConsumer %s 在手动提交模式下关闭时，仍有处理器缓冲或已取出的消息。请在关闭前调用 drainBufferedMessages()"
+              + " 并提交返回的消息。";
+  public static final String
+      MESSAGE_TIMEOUT_OCCURRED_WHEN_SUBSCRIPTIONCONSUMER_ARG_POLLING_FILE_ARG_WITH_COMMIT_CONTEXT_ARG_RECORD_WRITING_OFFSET_ARG_FOR_SUBSEQUENT_POLL_58D40345 =
+          "SubscriptionConsumer %s 轮询文件 %s 超时，提交上下文为 %s，记录写入偏移量 %s 以供后续轮询使用";
+  public static final String
+      MESSAGE_TIMEOUT_WHILE_POLL_TABLETS_WITH_COMMIT_CONTEXT_ARG_CONSUMER_ARG_11B58727 =
+          "轮询 tablet 超时，提交上下文：%s，消费者：%s";
+  public static final String MESSAGE_UNEXPECTED_RESPONSE_TYPE_ARG_EF03AB8B = "非预期的响应类型：%s";
+
   private SubscriptionMessages() {}
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
@@ -143,6 +213,8 @@ public final class SubscriptionMessages {
   public static final String LOG_ARG_FAILED_SENDING_HEARTBEAT_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_SET_0B38FB1F = "{} 无法向 SubscriptionProvider {} 发送心跳，原因：{}，将 SubscriptionProvider 设为不可用";
   public static final String LOG_EXCEPTION_OCCURRED_ARG_CLOSING_REMOVING_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_2EC38739 = "{} 关闭并移除 SubscriptionProvider {} 时发生异常，原因：{}";
   public static final String EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_CONNECT_INITIAL_ENDPOINTS_ARG_5DB83198 = "集群没有可连接初始 endpoint %s 的可用 SubscriptionProvider";
+  public static final String EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_CONNECT_INITIAL_ENDPOINTS_ARG_712D99EA =
+      "集群没有可连接初始 endpoint %s 的可用 SubscriptionProvider。连接失败原因：%s";
   public static final String LOG_ARG_HAS_BEEN_LAUNCHED_SET_CORE_POOL_SIZE_ARG_WILL_0FDECBE3 = "{} 已启动，将 core pool size 设置为 {} 的操作会被忽略";
   public static final String LOG_INTERRUPT_WORKER_WHICH_MAY_CAUSE_SOME_TASK_INCONSISTENT_PLEASE_CHECK_04926D9F = "中断 worker 可能造成某些任务不一致。请检查业务日志。";
   public static final String LOG_THREAD_POOL_CAN_T_SHUTDOWN_EVEN_INTERRUPTING_WORKER_THREADS_WHICH_A49166F9 =
@@ -219,7 +291,7 @@ public final class SubscriptionMessages {
   public static final String EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_ARG_FETCH_ALL_ENDPOINTS_D232693E = "%s 获取所有 endpoint 时，集群没有可用的 SubscriptionProvider";
   public static final String EXCEPTION_PASSWORD_ENCRYPTEDPASSWORD_MUTUALLY_EXCLUSIVE_ENCRYPTEDPASSWORD_ALREADY_SET_E4548A43 = "password 与 encryptedPassword 互斥；已设置 encryptedPassword";
   public static final String EXCEPTION_PASSWORD_ENCRYPTEDPASSWORD_MUTUALLY_EXCLUSIVE_PASSWORD_ALREADY_SET_BB20AD1E = "password 与 encryptedPassword 互斥；已设置 password";
-  public static final String EXCEPTION_CONSENSUS_MODE_TOPIC_SHOULD_NOT_GENERATE_PIPE_SOURCE_ATTRIBUTES_BBDFF732 = "Consensus mode 主题不应生成 pipe source attributes";
+  public static final String EXCEPTION_INCREMENTAL_MODE_TOPIC_SHOULD_NOT_GENERATE_PIPE_SOURCE_ATTRIBUTES_09D75393 = "incremental mode 的 topic 不应生成 pipe source attributes";
   public static final String EXCEPTION_UNSUPPORTED_SUBSCRIPTIONCOMMITCONTEXT_VERSION_8021B27B = "不支持的 SubscriptionCommitContext 版本：";
   public static final String OUTDATED_SUBSCRIPTION_EVENT = "过期的订阅事件";
   public static final String FIELD_SEPARATOR = "，";

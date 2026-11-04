@@ -184,9 +184,22 @@ public class LogDispatcher {
   }
 
   public void offer(IndexedConsensusRequest request) {
+    offer(request, true);
+  }
+
+  public void offer(IndexedConsensusRequest request, boolean keepRequestsForSubscription) {
     // we don't need to serialize and offer request when replicaNum is 1.
     if (!threads.isEmpty()) {
-      request.buildSerializedRequests();
+      // A request that deferred its serialization keeps only its source objects, which stay small,
+      // so that the entries waiting in the queues to be replicated do not retain their payloads.
+      // Such requests materialize their bytes when a batch is built instead.
+      final boolean serializationDeferred = request.hasDeferredRequests();
+      if (!serializationDeferred) {
+        request.buildSerializedRequests();
+      }
+      if (!keepRequestsForSubscription && !serializationDeferred) {
+        request.clearRequests();
+      }
       synchronized (this) {
         threads.forEach(
             thread -> {
@@ -204,6 +217,10 @@ public class LogDispatcher {
               }
             });
       }
+    } else if (!keepRequestsForSubscription) {
+      // A single-replica region has no dispatcher thread, but still does not need the raw request
+      // after the state machine has applied it when subscriptions are disabled.
+      request.clearRequests();
     }
   }
 
@@ -599,6 +616,7 @@ public class LogDispatcher {
           currentIndex,
           maxIndex);
       boolean hasCorruptedData = false;
+      final boolean consensusGroupContainsUserData = impl.containsUserData();
       // targetIndex is the index of request that we need to find
       long targetIndex = currentIndex;
       // Even if there is no WAL files, these code won't produce error.
@@ -623,6 +641,9 @@ public class LogDispatcher {
           hasCorruptedData = true;
         }
         targetIndex = data.getSearchIndex() + 1;
+        // The WAL reader derives this bit directly from the entry type. Apply the group-level
+        // exclusion here without deserializing the request solely for audit classification.
+        data.setContainsUserData(consensusGroupContainsUserData && data.containsUserData());
         data.buildSerializedRequests();
         // construct request from wal
         TLogEntry logEntry =
@@ -630,7 +651,7 @@ public class LogDispatcher {
                 data.getSerializedRequests(), data.getSearchIndex(), true, data.getMemorySize());
         logEntry.setRoutingEpoch(data.getRoutingEpoch());
         logEntry.setPhysicalTime(data.getPhysicalTime());
-        logBatches.addTLogEntry(logEntry);
+        logBatches.addTLogEntry(logEntry, data.containsUserData());
       }
       // In the case of corrupt Data, we return true so that we can send a batch as soon as
       // possible, avoiding potential duplication
@@ -639,6 +660,9 @@ public class LogDispatcher {
 
     private void constructBatchIndexedFromConsensusRequest(
         IndexedConsensusRequest request, Batch logBatches) {
+      // A request that deferred its serialization keeps only its source objects while it is queued,
+      // so its bytes are materialized here, when the batch that carries them is built.
+      request.buildSerializedRequests();
       TLogEntry logEntry =
           new TLogEntry(
               request.getSerializedRequests(),
@@ -647,7 +671,7 @@ public class LogDispatcher {
               request.getMemorySize());
       logEntry.setRoutingEpoch(request.getRoutingEpoch());
       logEntry.setPhysicalTime(request.getPhysicalTime());
-      logBatches.addTLogEntry(logEntry);
+      logBatches.addTLogEntry(logEntry, request.containsUserData());
     }
   }
 

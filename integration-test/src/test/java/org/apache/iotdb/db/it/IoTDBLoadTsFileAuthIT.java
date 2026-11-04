@@ -42,6 +42,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -178,6 +179,34 @@ public class IoTDBLoadTsFileAuthIT {
 
     waitUntilAllActiveLoadPendingDirsAreEmpty(TimeUnit.SECONDS.toMillis(60));
     assertCountEventually(10, TimeUnit.SECONDS.toMillis(60));
+  }
+
+  @Test
+  public void testAsyncLoadShouldNotMoveFileWithoutTsFileSuffix() throws Exception {
+    assertAsyncLoadDoesNotMoveInvalidTsFile(new File(tmpDir, "not-a-tsfile.txt"), "Can not find");
+  }
+
+  @Test
+  public void testAsyncLoadShouldNotMoveInvalidTsFile() throws Exception {
+    assertAsyncLoadDoesNotMoveInvalidTsFile(new File(tmpDir, "invalid.tsfile"), "Loading file");
+  }
+
+  private static void assertAsyncLoadDoesNotMoveInvalidTsFile(
+      final File sourceFile, final String expectedErrorMessage) throws Exception {
+    final String originalContent = "ordinary file content";
+    Files.write(sourceFile.toPath(), originalContent.getBytes(StandardCharsets.UTF_8));
+
+    assertNonQueryTestFail(
+        String.format(
+            "load \"%s\" with ('async'='true', 'on-success'='delete')",
+            sourceFile.getAbsolutePath()),
+        expectedErrorMessage);
+
+    Assert.assertTrue(
+        "Non-TsFile source must remain in its original location", sourceFile.isFile());
+    Assert.assertEquals(
+        originalContent,
+        new String(Files.readAllBytes(sourceFile.toPath()), StandardCharsets.UTF_8));
   }
 
   private static void prepareSchemaAndTsFile(final File tsFile) throws Exception {

@@ -34,6 +34,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.env.cluster.config.MppBaseConfig;
 import org.apache.iotdb.it.env.cluster.config.MppCommonConfig;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
@@ -212,15 +213,35 @@ public class IoTDBClusterNodeErrorStartUpIT {
           dataNodeRestartResp.getStatus().getCode());
       Assert.assertTrue(dataNodeRestartResp.getStatus().getMessage().contains("whose nodeId="));
 
-      // Shutdown and check
+      // Local stop runs shutdown hooks on Unix, but terminates the process directly on Windows.
+      // A ConfigNode that was the leader at shutdown time can also remain Unknown if its report
+      // cannot reach another leader.
       EnvFactory.getEnv().shutdownConfigNode(1);
       EnvFactory.getEnv().shutdownDataNode(0);
       EnvFactory.getEnv()
           .ensureNodeStatus(
-              Arrays.asList(
-                  EnvFactory.getEnv().getConfigNodeWrapper(1),
-                  EnvFactory.getEnv().getDataNodeWrapper(0)),
-              Arrays.asList(NodeStatus.Unknown, NodeStatus.Unknown));
+              Arrays.asList(EnvFactory.getEnv().getDataNodeWrapper(0)),
+              Arrays.asList(EnvUtils.getNodeStatusAfterLocalStop()));
+      boolean isConfigNodeDown = false;
+      for (int retry = 0; retry < 30; retry++) {
+        TShowClusterResp showClusterResp = client.showCluster();
+        for (TConfigNodeLocation configNodeLocation : showClusterResp.getConfigNodeList()) {
+          if (configNodeLocation.getConsensusEndPoint().getPort()
+              == registeredConfigNodeWrapper.getConsensusPort()) {
+            String configNodeStatus =
+                showClusterResp.getNodeStatus().get(configNodeLocation.getConfigNodeId());
+            if (NodeStatus.Stopped.getStatus().equals(configNodeStatus)
+                || NodeStatus.Unknown.getStatus().equals(configNodeStatus)) {
+              isConfigNodeDown = true;
+            }
+          }
+        }
+        if (isConfigNodeDown) {
+          break;
+        }
+        Thread.sleep(1000);
+      }
+      Assert.assertTrue(isConfigNodeDown);
 
       /* Restart and updatePeer */
       // TODO: Delete this IT after enable modify internal TEndPoints

@@ -90,28 +90,28 @@ public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor
         .validate(
             compressionDeviation -> (Double) compressionDeviation >= 0,
             String.format(
-                "%s must be >= 0, but got %s",
+                DataNodePipeMessages.MESSAGE_ARG_MUST_BE_0_BUT_GOT_ARG_4046BA32,
                 PipeProcessorConstant.PROCESSOR_SDT_COMPRESSION_DEVIATION_KEY,
                 compressionDeviation),
             compressionDeviation)
         .validate(
             compressionMinTimeInterval -> (Long) compressionMinTimeInterval >= 0,
             String.format(
-                "%s must be >= 0, but got %s",
+                DataNodePipeMessages.MESSAGE_ARG_MUST_BE_0_BUT_GOT_ARG_4046BA32,
                 PipeProcessorConstant.PROCESSOR_SDT_MIN_TIME_INTERVAL_KEY,
                 compressionMinTimeInterval),
             compressionMinTimeInterval)
         .validate(
             compressionMaxTimeInterval -> (Long) compressionMaxTimeInterval >= 0,
             String.format(
-                "%s must be >= 0, but got %s",
+                DataNodePipeMessages.MESSAGE_ARG_MUST_BE_0_BUT_GOT_ARG_4046BA32,
                 PipeProcessorConstant.PROCESSOR_SDT_MAX_TIME_INTERVAL_KEY,
                 compressionMaxTimeInterval),
             compressionMaxTimeInterval)
         .validate(
             minMaxPair -> (Long) minMaxPair[0] <= (Long) minMaxPair[1],
             String.format(
-                "%s must be <= %s, but got %s and %s",
+                DataNodePipeMessages.MESSAGE_ARG_MUST_BE_ARG_BUT_GOT_ARG_AND_ARG_05717C27,
                 PipeProcessorConstant.PROCESSOR_SDT_MIN_TIME_INTERVAL_KEY,
                 PipeProcessorConstant.PROCESSOR_SDT_MAX_TIME_INTERVAL_KEY,
                 compressionMinTimeInterval,

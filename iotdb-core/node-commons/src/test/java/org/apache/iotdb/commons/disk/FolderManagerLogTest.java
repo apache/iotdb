@@ -61,7 +61,6 @@ public class FolderManagerLogTest {
     previousStatusReason = COMMON_CONFIG.getStatusReason();
     previousDiskSpaceWarningThreshold = COMMON_CONFIG.getDiskSpaceWarningThreshold();
     COMMON_CONFIG.setNodeStatus(NodeStatus.Running);
-    COMMON_CONFIG.setStatusReason(null);
     setDiskSpaceWarningThresholdForTest(previousDiskSpaceWarningThreshold);
     FolderManager.resetAllFoldersFullLogTimes();
 
@@ -78,8 +77,8 @@ public class FolderManagerLogTest {
   public void tearDown() {
     setDiskSpaceWarningThresholdForTest(previousDiskSpaceWarningThreshold);
     FolderManager.resetAllFoldersFullLogTimes();
-    COMMON_CONFIG.setNodeStatus(previousNodeStatus);
-    COMMON_CONFIG.setStatusReason(previousStatusReason);
+    COMMON_CONFIG.setNodeStatus(NodeStatus.Running);
+    COMMON_CONFIG.setNodeStatusWithReason(previousNodeStatus, previousStatusReason);
   }
 
   @Test

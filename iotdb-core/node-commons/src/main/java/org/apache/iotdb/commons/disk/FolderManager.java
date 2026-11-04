@@ -73,10 +73,19 @@ public class FolderManager {
   private final DirectoryStrategy selectStrategy;
   private final String foldersKey;
 
+  private final boolean changeSystemStatusToReadOnly;
+
   public FolderManager(List<String> folders, DirectoryStrategyType type)
+      throws DiskSpaceInsufficientException {
+    this(folders, type, true);
+  }
+
+  public FolderManager(
+      List<String> folders, DirectoryStrategyType type, boolean changeSystemStatusToReadOnly)
       throws DiskSpaceInsufficientException {
     this.folders = folders;
     this.foldersKey = folders.toString();
+    this.changeSystemStatusToReadOnly = changeSystemStatusToReadOnly;
     folders.forEach(dir -> foldersStates.put(dir, FolderState.HEALTHY));
     switch (type) {
       case SEQUENCE_STRATEGY:
@@ -94,6 +103,7 @@ public class FolderManager {
       default:
         throw new RuntimeException();
     }
+    this.selectStrategy.setChangeSystemStatusToReadOnly(changeSystemStatusToReadOnly);
     try {
       this.selectStrategy.setFolders(folders);
       this.selectStrategy.setFoldersStates(foldersStates);
@@ -173,13 +183,13 @@ public class FolderManager {
   }
 
   private void handleAllFoldersFull(DiskSpaceInsufficientException e) {
+    if (!changeSystemStatusToReadOnly) {
+      return;
+    }
     if (!hasFolderWithAvailableDiskSpace()) {
       logAllFoldersFullIfNecessary(e);
       CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
-      if (!NodeStatus.ReadOnly.equals(commonConfig.getNodeStatus())) {
-        commonConfig.setNodeStatus(NodeStatus.ReadOnly);
-      }
-      commonConfig.setStatusReason(NodeStatus.DISK_FULL);
+      commonConfig.setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
     } else {
       logger.warn(UtilMessages.CANNOT_SELECT_FOLDER_BUT_DISK_HAS_SPACE, e);
     }

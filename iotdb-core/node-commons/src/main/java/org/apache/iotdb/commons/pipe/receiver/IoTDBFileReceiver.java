@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistry;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
@@ -62,8 +63,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
 
 /**
  * {@link IoTDBFileReceiver} is the parent class of receiver on both configNode and DataNode,
@@ -81,8 +80,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   // Used to restore the original thread name when the receiver is closed.
   private String originalThreadName;
 
-  protected String username = CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
-  protected String password = CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
+  // The identity of the sender is only set after a successful handshake or taken from a logged in
+  // session. There is deliberately no default user, because a missing identity must never degrade
+  // to a privileged one.
+  protected String username;
+  protected String password;
   protected IAuditEntity userEntity;
   protected boolean hasPipeHandshakeCredential = false;
 
@@ -103,6 +105,13 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected final AtomicBoolean shouldMarkAsPipeRequest = new AtomicBoolean(true);
   protected final AtomicBoolean skipIfNoPrivileges = new AtomicBoolean(false);
 
+  protected String senderClusterId = PipeReceiverRuntimeRegistry.UNKNOWN;
+  protected String receiverPipeName;
+  protected long receiverPipeCreationTime = Long.MIN_VALUE;
+  private final AtomicReference<String> pipeReceiverRuntimeSessionKey = new AtomicReference<>();
+  private final AtomicReference<String> pipeReceiverRuntimeConnectionIdentity =
+      new AtomicReference<>();
+
   @Override
   public IoTDBSinkRequestVersion getVersion() {
     return IoTDBSinkRequestVersion.VERSION_1;
@@ -110,6 +119,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
   protected TPipeTransferResp handleTransferHandshakeV1(final PipeTransferHandshakeV1Req req) {
     hasPipeHandshakeCredential = false;
+    senderClusterId = PipeReceiverRuntimeRegistry.UNKNOWN;
+    receiverPipeName = null;
+    receiverPipeCreationTime = Long.MIN_VALUE;
 
     if (!CommonDescriptor.getInstance()
         .getConfig()
@@ -286,14 +298,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       return new TPipeTransferResp(status);
     }
 
-    long userId = -1;
+    // The user id carried by the handshake is supplied by the sender and can be forged, so it is
+    // deliberately ignored here. The audit entity is resolved by the receiver after the credentials
+    // have been verified, see createAuditEntity.
     String cliHostname = "";
 
-    final String userIdString =
-        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USER_ID);
-    if (userIdString != null) {
-      userId = Long.parseLong(userIdString);
-    }
     final String cliHostnameString =
         req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLI_HOSTNAME);
     if (cliHostnameString != null) {
@@ -307,12 +316,31 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     if (usernameString == null || passwordString == null) {
       return new TPipeTransferResp(
           RpcUtils.getStatus(
-              TSStatusCode.NOT_LOGIN, "Pipe handshake missing username or password."));
+              TSStatusCode.NOT_LOGIN,
+              PipeMessages.MESSAGE_PIPE_HANDSHAKE_MISSING_USERNAME_OR_PASSWORD_BDC2F19E));
+    }
+
+    // A connection may only ever stand for one user. If it is already authenticated as somebody
+    // else, the credentials of this handshake must not rebind it: the statements of the transfer
+    // would otherwise be executed with the privileges of the other user.
+    final String loggedInSessionUsername = getLoggedInSessionUsername();
+    if (Objects.nonNull(loggedInSessionUsername)
+        && !loggedInSessionUsername.equals(usernameString)) {
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.NO_PERMISSION,
+              String.format(
+                  PipeMessages
+                      .MESSAGE_THE_PIPE_RECEIVER_CONNECTION_IS_ALREADY_AUTHENTICATED_AS_ANOTHER_USER_AND_CANNOT_BE_USED_TO_TRANSFER_DATA_AS_ARG_FFA5DF78,
+                  usernameString));
+      PipeLogger.log(
+          LOGGER::warn, PipeMessages.RECEIVER_HANDSHAKE_FAILED_WITH_ID, receiverId.get(), status);
+      return new TPipeTransferResp(status);
     }
 
     username = usernameString;
     password = passwordString;
-    userEntity = new UserEntity(userId, username, cliHostname);
+    userEntity = null;
     hasPipeHandshakeCredential = true;
 
     final TSStatus status;
@@ -320,15 +348,18 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       status = login();
     } catch (final Exception e) {
       hasPipeHandshakeCredential = false;
+      userEntity = null;
       throw e;
     }
     if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       hasPipeHandshakeCredential = false;
+      userEntity = null;
       PipeLogger.log(
           LOGGER::warn, PipeMessages.RECEIVER_HANDSHAKE_FAILED_LOGIN, receiverId.get(), status);
       return new TPipeTransferResp(status);
     } else {
       lastSuccessfulLoginTime = System.currentTimeMillis();
+      userEntity = createAuditEntity(username, cliHostname);
       LOGGER.info(PipeMessages.RECEIVER_USER_LOGIN_SUCCESS, receiverId.get(), username);
     }
 
@@ -365,6 +396,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             req.getParams()
                 .getOrDefault(PipeTransferHandshakeConstant.HANDSHAKE_KEY_SKIP_IF, "false")));
 
+    final String pipeNameString =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PIPE_NAME);
+    final String pipeCreationTimeString =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PIPE_CREATION_TIME);
+
     // Handle the handshake request as a v1 request.
     // Here we construct a fake "dataNode" request to valid from v1 validation logic, though
     // it may not require the actual type of the v1 request.
@@ -376,8 +412,17 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
                 return PipeRequestType.HANDSHAKE_DATANODE_V1;
               }
             }.convertToTPipeTransferReq(timestampPrecision));
+    if (isSuccess(handshakeResp)) {
+      senderClusterId = clusterIdFromHandshakeRequest;
+      receiverPipeName = pipeNameString;
+      receiverPipeCreationTime = parsePipeCreationTime(pipeCreationTimeString);
+    }
     hasPipeHandshakeCredential =
         handshakeResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    if (!hasPipeHandshakeCredential) {
+      // The handshake did not complete, so the identity of this transfer can not be used.
+      userEntity = null;
+    }
     return handshakeResp;
   }
 
@@ -412,16 +457,40 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected TSStatus getNotLoggedInStatus() {
     return RpcUtils.getStatus(
         TSStatusCode.NOT_LOGIN,
-        "Log in failed. Either you are not authorized or the session has timed out.");
+        PipeMessages
+            .MESSAGE_LOG_IN_FAILED_EITHER_YOU_ARE_NOT_AUTHORIZED_OR_THE_SESSION_HAS_TIMED_OUT_A2078D30);
   }
 
   protected TSStatus getUnsupportedHandshakeV1Status() {
     return RpcUtils.getStatus(
         TSStatusCode.PIPE_HANDSHAKE_ERROR,
-        "Pipe handshake V1 is no longer supported. Please use handshake V2 with username and password.");
+        PipeMessages
+            .MESSAGE_PIPE_HANDSHAKE_V1_IS_NO_LONGER_SUPPORTED_PLEASE_USE_HANDSHAKE_V2_WITH_USERNAME_AND_PASSWORD_85FE0371);
   }
 
   protected abstract TSStatus login();
+
+  /**
+   * Returns the user name of the client session that this connection is authenticated with, or
+   * {@code null} if the connection carries no logged in session.
+   *
+   * <p>A handshake is rejected when it tries to authenticate a connection with another user, so
+   * that the identity of a transfer is always the one whose credentials were verified.
+   */
+  protected String getLoggedInSessionUsername() {
+    return null;
+  }
+
+  /**
+   * Creates the audit entity of a sender whose credentials have been verified.
+   *
+   * <p>The identity is resolved on the receiver side. Names and ids carried by the handshake are
+   * not authoritative, so implementations must look the user up in the user manager of their own
+   * node instead of trusting the sender.
+   */
+  protected IAuditEntity createAuditEntity(final String username, final String cliHostname) {
+    return new UserEntity(-1L, username, cliHostname);
+  }
 
   protected final TPipeTransferResp handleTransferFilePiece(
       final PipeTransferFilePieceReq req,
@@ -434,7 +503,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // of the file. So the receiver should reset the offset of the writing file to the beginning
       // of the file.
       if (isRequestThroughAirGap && req.getStartWritingOffset() < writingFileWriter.length()) {
-        writingFileWriter.setLength(req.getStartWritingOffset());
+        org.apache.iotdb.commons.utils.FileUtils.truncateFile(
+            writingFile, req.getStartWritingOffset());
+        writingFileWriter.seek(req.getStartWritingOffset());
       }
 
       if (!isWritingFileOffsetCorrect(req.getStartWritingOffset())) {
@@ -442,7 +513,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
           // If the file is a tsFile, then the content will not be changed for a specific filename.
           // However, for other files (mod, snapshot, etc.) the content varies for the same name in
           // different times, then we must rewrite the file to apply the newest version.
-          writingFileWriter.setLength(0);
+          org.apache.iotdb.commons.utils.FileUtils.truncateFile(writingFile, 0);
+          writingFileWriter.seek(0);
         }
 
         final TSStatus status =
@@ -463,7 +535,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
       final TSStatus status =
           getReceiverTemporaryUnavailableStatus(
-              "receiving pipe file piece", getFilePieceSizeInBytes(req), e);
+              PipeMessages.LOG_RECEIVING_PIPE_FILE_PIECE_6162A697, getFilePieceSizeInBytes(req), e);
       PipeLogger.log(
           LOGGER::warn, e, PipeMessages.RECEIVER_FAILED_WRITE_FILE_PIECE, receiverId.get(), req);
       try {
@@ -745,6 +817,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   // Support null in fileName list, which means that this file is optional and is currently absent
   protected final TPipeTransferResp handleTransferFileSealV2(final PipeTransferFileSealReqV2 req) {
     final List<String> fileNames = req.getFileNames();
+    TSStatus loadStatus = null;
     try {
       final List<File> files =
           fileNames.stream()
@@ -812,6 +885,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
               .collect(Collectors.toList());
 
       final TSStatus status = loadFileV2(req, fileAbsolutePaths);
+      loadStatus = status;
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.debug(PipeMessages.RECEIVER_SEAL_FILE_SUCCESS, receiverId.get(), fileAbsolutePaths);
       } else {
@@ -846,8 +920,20 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       closeCurrentWritingFileWriter(false);
       // Clear the directory instead of only deleting the referenced files in seal request
       // to avoid previously undeleted file being redundant when transferring multi files
-      IoTDBReceiverAgent.cleanPipeReceiverDir(receiverFileDirWithIdSuffix.get());
+      if (shouldDeleteSealedFilesOnFailure(req, loadStatus)) {
+        IoTDBReceiverAgent.cleanPipeReceiverDir(receiverFileDirWithIdSuffix.get());
+      }
     }
+  }
+
+  /**
+   * Decides whether files in the receiver's staging directory should be removed after a V2 seal.
+   * The default keeps the historical behavior. A receiver may retain files when a conversion task
+   * is retryable so that a sender retry can resume the same task without losing its input.
+   */
+  protected boolean shouldDeleteSealedFilesOnFailure(
+      final PipeTransferFileSealReqV2 req, final TSStatus loadStatus) {
+    return true;
   }
 
   private TPipeTransferResp checkNonFinalFileSeal(
@@ -948,8 +1034,82 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       final PipeTransferFileSealReqV2 req, final List<String> fileAbsolutePaths)
       throws IOException, IllegalPathException;
 
+  protected synchronized void recordPipeReceiverHandshake(
+      final String receiverNodeType, final int receiverNodeId, final String protocol) {
+    final String senderHost = getSenderHost();
+    final String senderPort = getSenderPort();
+    final String connectionIdentity =
+        String.format(
+            "%s-%s-%s-%s-%s", receiverNodeType, receiverNodeId, protocol, senderHost, senderPort);
+    if (!Objects.equals(connectionIdentity, pipeReceiverRuntimeConnectionIdentity.get())
+        || pipeReceiverRuntimeSessionKey.get() == null) {
+      final String oldSessionKey =
+          pipeReceiverRuntimeSessionKey.getAndSet(
+              String.format(
+                  "%s-%s-%s-%s", receiverNodeType, receiverNodeId, protocol, receiverId.get()));
+      pipeReceiverRuntimeConnectionIdentity.set(connectionIdentity);
+      PipeReceiverRuntimeRegistry.getInstance().deregister(oldSessionKey);
+    }
+
+    // A receiver object represents one physical connection, while receiverId changes on every
+    // handshake. Keep its runtime session key stable so repeated handshakes can associate multiple
+    // pipes with the same connection.
+    final String sessionKey = pipeReceiverRuntimeSessionKey.get();
+    PipeReceiverRuntimeRegistry.getInstance()
+        .registerOrUpdateSession(
+            sessionKey,
+            receiverNodeType,
+            receiverNodeId,
+            protocol,
+            senderHost,
+            parseSenderPort(senderPort),
+            username,
+            senderClusterId,
+            receiverPipeName,
+            receiverPipeCreationTime,
+            System.currentTimeMillis());
+  }
+
+  protected void recordPipeReceiverTransfer() {
+    PipeReceiverRuntimeRegistry.getInstance()
+        .markTransfer(pipeReceiverRuntimeSessionKey.get(), System.currentTimeMillis());
+  }
+
+  protected synchronized void clearPipeReceiverRuntime() {
+    pipeReceiverRuntimeConnectionIdentity.set(null);
+    PipeReceiverRuntimeRegistry.getInstance()
+        .deregister(pipeReceiverRuntimeSessionKey.getAndSet(null));
+  }
+
+  protected static boolean isSuccess(final TPipeTransferResp resp) {
+    return resp != null
+        && resp.getStatus() != null
+        && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+  }
+
+  private static int parseSenderPort(final String senderPort) {
+    try {
+      return Integer.parseInt(senderPort);
+    } catch (final Exception e) {
+      return -1;
+    }
+  }
+
+  private static long parsePipeCreationTime(final String pipeCreationTime) {
+    if (pipeCreationTime == null) {
+      return Long.MIN_VALUE;
+    }
+    try {
+      return Long.parseLong(pipeCreationTime);
+    } catch (final NumberFormatException e) {
+      return Long.MIN_VALUE;
+    }
+  }
+
   @Override
   public synchronized void handleExit() {
+    clearPipeReceiverRuntime();
+
     if (writingFileWriter != null) {
       try {
         writingFileWriter.close();
@@ -1020,6 +1180,13 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
     // Close the session
     closeSession();
+
+    // Do not keep the credentials or the identity of a finished transfer, so that a reused
+    // receiver object can never answer an unauthenticated request with them.
+    username = null;
+    password = null;
+    userEntity = null;
+    hasPipeHandshakeCredential = false;
 
     LOGGER.info(PipeMessages.RECEIVER_EXITED, receiverId.get());
 

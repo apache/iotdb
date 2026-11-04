@@ -35,13 +35,16 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.channels.FileChannel;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
 import java.util.ArrayList;
@@ -89,6 +92,19 @@ public class FileUtils {
     } catch (IOException e) {
       LOGGER.error(e.getMessage(), e);
       return false;
+    }
+  }
+
+  /**
+   * Truncate a file through its NIO file system provider.
+   *
+   * <p>Using {@link FileChannel#open(Path, java.nio.file.OpenOption...)} allows a configured
+   * default {@link java.nio.file.spi.FileSystemProvider} to intercept the truncation.
+   */
+  public static void truncateFile(File file, long size) throws IOException {
+    try (FileChannel channel = FileChannel.open(file.toPath(), StandardOpenOption.WRITE)) {
+      channel.truncate(size);
+      channel.force(true);
     }
   }
 
@@ -197,7 +213,7 @@ public class FileUtils {
     File[] files = parentFolder.listFiles();
     if (parentFolder.isDirectory() && (files == null || files.length == 0)) {
       acquireRemovePermit(parentFolder, deleteRateLimiter);
-      if (!parentFolder.delete()) {
+      if (!deleteFileIfExist(parentFolder)) {
         LOGGER.warn(UtilMessages.DELETE_FOLDER_FAILED, parentFolder.getAbsolutePath());
       }
     }
@@ -314,6 +330,33 @@ public class FileUtils {
   }
 
   /**
+   * Checks whether a target path is strictly under one of the allowed directories after
+   * canonicalization.
+   *
+   * <p>The method returns {@code false} if the target equals an allowed directory or if any path
+   * cannot be canonicalized.
+   */
+  public static boolean isFilePathAllowed(String targetFilePath, String[] allowedDirectories) {
+    if (targetFilePath == null || allowedDirectories == null) {
+      return false;
+    }
+    try {
+      final Path targetPath = new File(targetFilePath).getCanonicalFile().toPath();
+      for (String allowedDirectory : allowedDirectories) {
+        if (allowedDirectory != null && !allowedDirectory.isEmpty()) {
+          final Path allowedPath = new File(allowedDirectory).getCanonicalFile().toPath();
+          if (!targetPath.equals(allowedPath) && targetPath.startsWith(allowedPath)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    } catch (IOException e) {
+      return false;
+    }
+  }
+
+  /**
    * Move source file to target file. The move will be divided into three steps: 1. Copy the source
    * file to the "target.unfinished" location 2. Rename the "target.unfinished" to "target" 3.
    * Delete the source file
@@ -330,7 +373,10 @@ public class FileUtils {
     }
 
     final String fromTo =
-        String.format("from %s to %s", source.getAbsolutePath(), target.getAbsolutePath());
+        String.format(
+            UtilMessages.EXCEPTION_FROM_ARG_TO_ARG_D2758D41,
+            source.getAbsolutePath(),
+            target.getAbsolutePath());
     LOGGER.info(UtilMessages.MOVE_FILE_START, fromTo);
 
     // Prepare the xxx.unfinished File, delete it if it's already exist
@@ -643,5 +689,20 @@ public class FileUtils {
       return WindowsOSUtils.OS_SEGMENT_ERROR;
     }
     return null;
+  }
+
+  /**
+   * Validates a path segment before it is used to construct a path.
+   *
+   * <p>In addition to the application-level checks above, constructing a {@link Path} validates
+   * platform-specific path syntax (for example, NUL characters on Unix).
+   */
+  public static String validatePathSegment(final String pathSegment) {
+    final String pathError = getIllegalError4Directory(pathSegment);
+    if (pathError != null) {
+      throw new IllegalArgumentException(pathError);
+    }
+    Paths.get(pathSegment);
+    return pathSegment;
   }
 }

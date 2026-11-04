@@ -2112,25 +2112,35 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void testWriteRestartAndDeleteDB()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.insertRecord("root.sg1.d1", 1, Arrays.asList("s3"), Arrays.asList("1"));
+      session.executeNonQueryStatement("FLUSH");
+    }
 
-      TestUtils.stopForciblyAndRestartDataNodes();
+    TestUtils.stopForciblyAndRestartDataNodes();
 
-      SessionDataSet dataSet = session.executeQueryStatement("select s3 from root.sg1.d1");
-      dataSet.next();
-      dataSet.close();
+    // This case verifies recovered database caches, so do not retain transports across the restart.
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      try (SessionDataSet dataSet = session.executeQueryStatement("select s3 from root.sg1.d1")) {
+        assertTrue(dataSet.hasNext());
+        dataSet.next();
+        assertFalse(dataSet.hasNext());
+      }
 
       session.executeNonQueryStatement("DELETE DATABASE root.sg1");
 
       session.insertRecord(
           "root.sg1.d1", 1, Arrays.asList("s1", "s2", "s3"), Arrays.asList("1", "1", "1"));
 
-      dataSet = session.executeQueryStatement("SELECT * FROM root.sg1.d1");
-      RowRecord record = dataSet.next();
-      assertEquals(3, record.getFields().size());
+      try (SessionDataSet dataSet = session.executeQueryStatement("SELECT * FROM root.sg1.d1")) {
+        assertTrue(dataSet.hasNext());
+        RowRecord record = dataSet.next();
+        assertEquals(3, record.getFields().size());
+        assertFalse(dataSet.hasNext());
+      }
     }
   }
 
@@ -2164,6 +2174,7 @@ public class IoTDBSessionSimpleIT {
     tablet.addValue("s8", 0, new Binary(new byte[] {1}));
     tablet.addValue("s9", 0, "string_value");
     tablet.addValue("s10", 0, DateUtils.parseIntToLocalDate(20250403));
+    tablet.addValue("s11", 0, 1L);
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.insertTablet(tablet);
@@ -2193,8 +2204,8 @@ public class IoTDBSessionSimpleIT {
           assertEquals("string_value", iterator.getString("root.sg.d1.s9"));
           assertFalse(iterator.isNull("root.sg.d1.s10"));
           assertEquals(DateUtils.parseIntToLocalDate(20250403), iterator.getDate("root.sg.d1.s10"));
-          assertTrue(iterator.isNull("root.sg.d1.s11"));
-          assertNull(iterator.getTimestamp("root.sg.d1.s11"));
+          assertFalse(iterator.isNull("root.sg.d1.s11"));
+          assertEquals(new Timestamp(1), iterator.getTimestamp("root.sg.d1.s11"));
 
           assertEquals(new Timestamp(0), iterator.getTimestamp("Time"));
           assertFalse(iterator.isNull("Time"));
@@ -2205,6 +2216,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void testInsertWrongTypeRecord() throws IoTDBConnectionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       assertThrows(
@@ -2220,6 +2232,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void testAlterDefaultCompression()
       throws IoTDBConnectionException, StatementExecutionException {
     // auto-create

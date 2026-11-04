@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeMan
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -175,12 +176,21 @@ public class TopKRankingOperator implements ProcessOperator {
   }
 
   @Override
+  public ListenableFuture<?> isBlocked() {
+    // MergeSort/Exchange inputs must participate in the driver's readiness checks. Once output
+    // is ready, draining it must not wait for another input block.
+    return finished || outputIterator != null || partial && isBuilderFull()
+        ? NOT_BLOCKED
+        : inputOperator.isBlocked();
+  }
+
+  @Override
   public TsBlock next() throws Exception {
     if (groupedTopNBuilder == null) {
       groupedTopNBuilder = groupedTopNBuilderSupplier.get();
     }
 
-    if (!finished) {
+    if (!finished && outputIterator == null) {
       // If we are in partial mode and builder is full
       // we shall flush output immediately
       if (!partial || !isBuilderFull()) {

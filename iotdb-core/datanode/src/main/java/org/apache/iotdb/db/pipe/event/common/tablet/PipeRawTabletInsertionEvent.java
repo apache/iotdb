@@ -38,6 +38,8 @@ import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventT
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
 import org.apache.iotdb.pipe.api.access.Row;
@@ -64,6 +66,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   private final boolean isAligned;
 
   private final EnrichedEvent sourceEvent;
+  private final AtomicBoolean generatedEventRegisteredWithSource = new AtomicBoolean(false);
+  private final AtomicBoolean generatedEventOutcomeReported = new AtomicBoolean(false);
   private boolean needToReport;
 
   private final PipeTabletMemoryBlock allocatedMemoryBlock;
@@ -115,14 +119,34 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     inheritSourceEventReportSkippingIfNecessary();
 
     // Allocate empty memory block, will be resized later.
+    final PipeMemoryBlock parentMemoryBlock =
+        sourceEvent instanceof PipeInsertionEvent
+            ? ((PipeInsertionEvent) sourceEvent).getEventMemoryBlock()
+            : null;
     this.allocatedMemoryBlock =
-        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+        PipeDataNodeResourceManager.memory()
+            .forceAllocateForTabletWithRetry(
+                PipeRawTabletInsertionEvent.class.getSimpleName(),
+                0,
+                parentMemoryBlock == null
+                    ? PipeMemoryBlockCategory.EVENT
+                    : PipeMemoryBlockCategory.TABLET,
+                this,
+                parentMemoryBlock);
+    this.allocatedMemoryBlock.setAssigner(this);
 
-    if (needToReport) {
+    if (needToReport || sourceEvent instanceof PipeTsFileInsertionEvent) {
       addOnCommittedHook(
           () -> {
-            if (shouldReportOnCommit) {
+            // The last generated tablet still owns the progress-index cleanup. Other generated
+            // tablets only contribute to the transfer completion of their source TsFile.
+            if (shouldReportOnCommit && needToReport) {
               eliminateProgressIndex();
+            }
+            if (sourceEvent instanceof PipeTsFileInsertionEvent
+                && generatedEventOutcomeReported.compareAndSet(false, true)) {
+              ((PipeTsFileInsertionEvent) sourceEvent)
+                  .markGeneratedTabletInsertionEventAsTransferred();
             }
           });
     }
@@ -200,9 +224,10 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   }
 
   @TestOnly
-  public PipeRawTabletInsertionEvent(final Tablet tablet, final boolean isAligned) {
+  public PipeRawTabletInsertionEvent(
+      final boolean isTableModel, final Tablet tablet, final boolean isAligned) {
     this(
-        null,
+        isTableModel,
         null,
         null,
         null,
@@ -225,9 +250,12 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   @TestOnly
   public PipeRawTabletInsertionEvent(
-      final Tablet tablet, final boolean isAligned, final TreePattern treePattern) {
+      final boolean isTableModel,
+      final Tablet tablet,
+      final boolean isAligned,
+      final TreePattern treePattern) {
     this(
-        null,
+        isTableModel,
         null,
         null,
         null,
@@ -250,10 +278,27 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   @TestOnly
   public PipeRawTabletInsertionEvent(
-      final Tablet tablet, final long startTime, final long endTime) {
+      final boolean isTableModel, final Tablet tablet, final long startTime, final long endTime) {
     this(
-        null, null, null, null, tablet, false, null, false, null, 0, null, null, null, null, null,
-        null, true, startTime, endTime);
+        isTableModel,
+        null,
+        null,
+        null,
+        tablet,
+        false,
+        null,
+        false,
+        null,
+        0,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        true,
+        startTime,
+        endTime);
   }
 
   @Override
@@ -267,6 +312,11 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
           .increaseRawTabletEventCount(pipeName, creationTime);
     }
     return true;
+  }
+
+  @Override
+  public PipeTabletMemoryBlock getEventMemoryBlock() {
+    return allocatedMemoryBlock;
   }
 
   @Override
@@ -304,6 +354,22 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     }
 
     return true;
+  }
+
+  /** Marks this generated tablet as accepted by the processor output collector. */
+  public void markAsGeneratedEventRegisteredWithSource() {
+    generatedEventRegisteredWithSource.set(true);
+  }
+
+  @Override
+  public boolean clearReferenceCount(final String holderMessage) {
+    final boolean cleared = super.clearReferenceCount(holderMessage);
+    if (generatedEventRegisteredWithSource.get()
+        && generatedEventOutcomeReported.compareAndSet(false, true)
+        && sourceEvent instanceof PipeTsFileInsertionEvent) {
+      ((PipeTsFileInsertionEvent) sourceEvent).markGeneratedTabletInsertionEventAsDiscarded();
+    }
+    return cleared;
   }
 
   protected void eliminateProgressIndex() {
@@ -391,7 +457,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   }
 
   public void markAsNeedToReport() {
-    if (!needToReport) {
+    if (!needToReport && !(sourceEvent instanceof PipeTsFileInsertionEvent)) {
       addOnCommittedHook(
           () -> {
             if (shouldReportOnCommit) {
@@ -479,8 +545,10 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   private TabletInsertionEventParser initEventParser() {
     if (eventParser == null) {
+      // The data model of the payload is the one declared by the event, it must never be derived
+      // from the device name of the tablet.
       eventParser =
-          tablet.getDeviceId().startsWith("root.")
+          !isTableModelEvent()
               ? new TabletInsertionEventTreePatternParser(
                   pipeTaskMeta,
                   this,

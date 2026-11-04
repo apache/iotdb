@@ -106,9 +106,10 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
 
     for (final String topic : unsubscribeReq.getTopicNames()) {
       if (topicsUnsubByGroup.contains(topic)) {
-        final TopicMeta topicMeta = subscriptionInfo.get().deepCopyTopicMeta(topic);
+        final TopicMeta topicMeta =
+            subscriptionInfo.get().deepCopyTopicMeta(topic, unsubscribeReq.isTableModel);
         final String topicMode = topicMeta.getConfig().getMode();
-        final boolean isConsensusBasedTopic = topicMeta.getConfig().isConsensusMode();
+        final boolean isConsensusBasedTopic = topicMeta.getConfig().isIncrementalMode();
 
         if (isConsensusBasedTopic) {
           LOGGER.info(
@@ -117,6 +118,10 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
                   + ProcedureMessages.LOG_MODE_ARG_SKIPPING_PIPE_REMOVAL_133B0CD6,
               topic,
               topicMode);
+          continue;
+        }
+
+        if (topicMeta.getConfig().isProgressRetainedAfterUnsubscribe()) {
           continue;
         }
 
@@ -183,21 +188,23 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
       throws SubscriptionException, IOException {
     LOGGER.info(ProcedureMessages.DROPSUBSCRIPTIONPROCEDURE_EXECUTEFROMOPERATEONDATANODES);
 
-    // Push pipe meta to data nodes
-    final String exceptionMessage =
-        AbstractOperatePipeProcedureV2.parsePushPipeMetaExceptionForPipe(
-            null, dropMultiPipeOnDataNodes(dropPipeProcedures, env));
-    if (!exceptionMessage.isEmpty()) {
-      // throw exception instead of logging warn, do not rely on metadata synchronization
-      throw new SubscriptionException(
-          String.format(
-              ProcedureMessages
-                  .FAILED_TO_DROP_PIPES_WHEN_DROPPING_SUBSCRIPTION_WITH_REQUEST_BECAUSE,
-              dropPipeProcedures.stream()
-                  .map(DropPipeProcedureV2::getPipeName)
-                  .collect(Collectors.toList()),
-              unsubscribeReq,
-              exceptionMessage));
+    if (!dropPipeProcedures.isEmpty()) {
+      // An empty Pipe metadata batch triggers full reconciliation and drops every local Pipe.
+      final String exceptionMessage =
+          AbstractOperatePipeProcedureV2.parsePushPipeMetaExceptionForPipe(
+              null, dropMultiPipeOnDataNodes(dropPipeProcedures, env));
+      if (!exceptionMessage.isEmpty()) {
+        // throw exception instead of logging warn, do not rely on metadata synchronization
+        throw new SubscriptionException(
+            String.format(
+                ProcedureMessages
+                    .FAILED_TO_DROP_PIPES_WHEN_DROPPING_SUBSCRIPTION_WITH_REQUEST_BECAUSE,
+                dropPipeProcedures.stream()
+                    .map(DropPipeProcedureV2::getPipeName)
+                    .collect(Collectors.toList()),
+                unsubscribeReq,
+                exceptionMessage));
+      }
     }
 
     // Push consumer group meta to data nodes

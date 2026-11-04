@@ -28,11 +28,13 @@ import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ISchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWritePlanFactory;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -140,6 +142,44 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
     }
   }
 
+  @Test
+  public void testLoadSnapshotWithTableDeviceBelowTopLevelTreeDevice() throws Exception {
+    if (!testParams.getTestModeName().equals("MemoryMode")) {
+      return;
+    }
+
+    final String schemaRegionConsensusProtocolClass =
+        config.getSchemaRegionConsensusProtocolClass();
+    config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    try {
+      final ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+
+      // Build a mixed-model tree where the table-name node is also a tree-model device.
+      schemaRegion.createTimeSeries(
+          SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
+              new MeasurementPath("root.sg.t.s1"),
+              TSDataType.INT32,
+              TSEncoding.PLAIN,
+              CompressionType.UNCOMPRESSED,
+              null,
+              null,
+              null,
+              null),
+          -1);
+      SchemaRegionTestUtil.createTableDevice(
+          schemaRegion, "t", new String[] {"d1"}, Collections.emptyMap());
+
+      final File snapshotDir = new File(config.getSchemaDir() + File.separator + "snapshot");
+      Assert.assertTrue(snapshotDir.mkdir());
+      Assert.assertTrue(schemaRegion.createSnapshot(snapshotDir));
+
+      Assert.assertTrue(schemaRegion.loadSnapshot(snapshotDir));
+      Assert.assertEquals(1, schemaRegion.getSchemaRegionStatistics().getTableDevicesNumber("t"));
+    } finally {
+      config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
+    }
+  }
+
   private Template generateTemplate() throws IllegalPathException {
     Template template =
         new Template(
@@ -198,16 +238,34 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
     String schemaRegionConsensusProtocolClass = config.getSchemaRegionConsensusProtocolClass();
     config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     try {
+      long directBufferMemoryCostBeforeRegion =
+          SystemInfo.getInstance().getDirectBufferMemoryCost();
       ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+      long expectedDirectBufferMemoryCost =
+          directBufferMemoryCostBeforeRegion
+              + config.getSchemaRatisConsensusLogAppenderBufferSizeMax();
+      Assert.assertEquals(
+          expectedDirectBufferMemoryCost, SystemInfo.getInstance().getDirectBufferMemoryCost());
 
-      // Loading from a directory that does not contain a snapshot must report failure rather than
-      // silently falling back to an empty region and reporting success. Callers (the AddPeer flow
-      // and the Ratis snapshot-install path) rely on this success/failure contract.
-      File missingSnapshotDir =
-          new File(config.getSchemaDir() + File.separator + "non-existent-snapshot");
-      Assert.assertFalse(missingSnapshotDir.exists());
+      try {
+        // Loading from a directory that does not contain a snapshot must report failure rather than
+        // silently falling back to an empty region and reporting success. Callers (the AddPeer flow
+        // and the Ratis snapshot-install path) rely on this success/failure contract.
+        File missingSnapshotDir =
+            new File(config.getSchemaDir() + File.separator + "non-existent-snapshot");
+        Assert.assertFalse(missingSnapshotDir.exists());
 
-      Assert.assertFalse(schemaRegion.loadSnapshot(missingSnapshotDir));
+        for (int i = 0; i < 2; i++) {
+          Assert.assertFalse(schemaRegion.loadSnapshot(missingSnapshotDir));
+          Assert.assertEquals(
+              expectedDirectBufferMemoryCost, SystemInfo.getInstance().getDirectBufferMemoryCost());
+        }
+      } finally {
+        SchemaEngine.getInstance().deleteSchemaRegion(schemaRegion.getSchemaRegionId());
+        Assert.assertEquals(
+            directBufferMemoryCostBeforeRegion,
+            SystemInfo.getInstance().getDirectBufferMemoryCost());
+      }
     } finally {
       config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
     }

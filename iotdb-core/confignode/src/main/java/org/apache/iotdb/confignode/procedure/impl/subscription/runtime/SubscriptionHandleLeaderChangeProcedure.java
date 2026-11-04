@@ -94,7 +94,7 @@ public class SubscriptionHandleLeaderChangeProcedure extends AbstractOperateSubs
       return false;
     }
     for (final TopicMeta topicMeta : subscriptionInfo.get().getAllTopicMeta()) {
-      if (topicMeta.getConfig().isConsensusMode()) {
+      if (topicMeta.getConfig().isIncrementalMode()) {
         return true;
       }
     }
@@ -447,10 +447,11 @@ public class SubscriptionHandleLeaderChangeProcedure extends AbstractOperateSubs
     for (final Integer dataNodeId : readableDataNodeIds) {
       final TSStatus status = respMap.get(dataNodeId);
       if (Objects.isNull(status)) {
-        errorMessageBuilder
-            .append("DataNode ")
-            .append(dataNodeId)
-            .append(": missing subscription runtime push response; ");
+        errorMessageBuilder.append(
+            String.format(
+                ProcedureMessages
+                    .MESSAGE_DATANODE_ARG_MISSING_SUBSCRIPTION_RUNTIME_PUSH_RESPONSE_FD3DEE6E,
+                dataNodeId));
         continue;
       }
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

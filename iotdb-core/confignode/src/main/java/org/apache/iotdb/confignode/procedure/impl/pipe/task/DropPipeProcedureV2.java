@@ -23,12 +23,14 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
+import org.apache.iotdb.confignode.procedure.state.pipe.task.OperatePipeTaskState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -135,6 +137,42 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     LOGGER.info(
         ProcedureMessages.DROPPIPEPROCEDUREV2_EXECUTEFROMWRITECONFIGNODECONSENSUS, pipeName);
 
+    // Legacy procedures created without an explicit model do not persist pipeMetaToDrop. Restore
+    // it from PipeTaskInfo so a recovered procedure can still expose PRE_DELETE through SHOW PIPES.
+    if (!restorePipeMetaToDropIfNecessary()) {
+      return;
+    }
+
+    TSStatus response;
+    try {
+      response =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(
+                  isTableModelSet
+                      ? new SetPipeStatusPlanV2(pipeName, PipeStatus.PRE_DELETE, isTableModel)
+                      : new SetPipeStatusPlanV2(pipeName, PipeStatus.PRE_DELETE));
+    } catch (ConsensusException e) {
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
+      response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      response.setMessage(e.getMessage());
+    }
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(response.getMessage());
+    }
+  }
+
+  boolean restorePipeMetaToDropIfNecessary() {
+    if (pipeMetaToDrop == null) {
+      pipeMetaToDrop =
+          isTableModelSet
+              ? pipeTaskInfo.get().getPipeMetaByPipeName(pipeName, isTableModel)
+              : pipeTaskInfo.get().getPipeMetaByPipeName(pipeName);
+    }
+    return pipeMetaToDrop != null;
+  }
+
+  private void dropPipeOnConfigNode(final ConfigNodeProcedureEnv env) throws PipeException {
     TSStatus response;
     try {
       response =
@@ -155,7 +193,7 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
+  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(ProcedureMessages.DROPPIPEPROCEDUREV2_EXECUTEFROMOPERATEONDATANODES, pipeName);
 
     String exceptionMessage;
@@ -169,17 +207,21 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         droppedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
         exceptionMessage =
             parsePushPipeMetaExceptionForPipe(
-                pipeName, env.pushSinglePipeMetaToDataNodes(droppedPipeMeta.serialize()));
+                pipeName,
+                env.pushSinglePipeMetaToDataNodes(
+                    droppedPipeMeta.serialize(), this::setPendingDataNodeIds));
       }
     } catch (final IOException e) {
       exceptionMessage = e.getMessage();
     }
-    if (!exceptionMessage.isEmpty()) {
+    if (exceptionMessage != null && !exceptionMessage.isEmpty()) {
       LOGGER.warn(
           ProcedureMessages.FAILED_TO_DROP_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED_LATER,
           pipeName,
           exceptionMessage);
     }
+    updateExecutionStage(OperatePipeTaskState.WRITE_CONFIG_NODE_CONSENSUS, false);
+    dropPipeOnConfigNode(env);
   }
 
   @Override

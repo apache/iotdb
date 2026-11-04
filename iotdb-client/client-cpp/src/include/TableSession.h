@@ -41,6 +41,7 @@ public:
   unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql, int64_t timeoutInMs);
   void open(bool enableRPCCompression = false);
   void close();
+  void setSslConfig(const SslConfig& sslConfig);
 };
 
 #endif // IOTDB_TABLESESSION_H

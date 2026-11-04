@@ -94,17 +94,14 @@ public abstract class AbstractLoadCache {
    * @return The latest heartbeat sample.
    */
   public AbstractHeartbeatSample getLastSample() {
-    return slidingWindow.isEmpty() ? null : slidingWindow.get(slidingWindow.size() - 1);
+    synchronized (slidingWindow) {
+      return slidingWindow.isEmpty() ? null : slidingWindow.get(slidingWindow.size() - 1);
+    }
   }
 
   public boolean hasHeartbeatSample() {
     return getLastSample() != null;
   }
-
-  /**
-   * Update currentStatistics based on the latest heartbeat sample that cached in the slidingWindow.
-   */
-  public abstract void updateCurrentStatistics(boolean forceUpdate);
 
   public AbstractStatistics getCurrentStatistics() {
     return currentStatistics.get();

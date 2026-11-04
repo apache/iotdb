@@ -87,8 +87,8 @@ public class FirstCreateStrategyTest {
     }
     commonConfig.setWalDirs(prevWalDirs);
     setDiskSpaceWarningThresholdForTest(previousDiskSpaceWarningThreshold);
-    commonConfig.setNodeStatus(previousNodeStatus);
-    commonConfig.setStatusReason(previousStatusReason);
+    commonConfig.setNodeStatus(NodeStatus.Running);
+    commonConfig.setNodeStatusWithReason(previousNodeStatus, previousStatusReason);
   }
 
   @Test

@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -22,41 +22,134 @@ package org.apache.iotdb.metrics.metricsets.disk;
 import org.apache.iotdb.metrics.i18n.MetricsMessages;
 
 import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.Arrays;
-import java.util.Collections;
+import java.nio.file.Path;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.LockSupport;
+import java.util.function.LongSupplier;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class LinuxDiskMetricsManagerTest {
+  @Rule public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-  @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
+  private Path diskStats;
+  private Path diskIds;
+  private Path processIo;
+  private final AtomicLong clock = new AtomicLong(10001);
+
+  @Before
+  public void setUp() throws Exception {
+    diskStats = temporaryFolder.newFile("diskstats").toPath();
+    diskIds = temporaryFolder.newFolder("block").toPath();
+    Path queue = Files.createDirectories(diskIds.resolve("vda/queue"));
+    Files.write(queue.resolve("hw_sector_size"), "512\n".getBytes(StandardCharsets.UTF_8));
+    processIo = temporaryFolder.newFile("io").toPath();
+    Files.write(processIo, "syscr: 1\nsyscw: 2\n".getBytes(StandardCharsets.UTF_8));
+    writeDiskStats(10, 100, 200);
+  }
 
   @Test
-  public void diskInfoFailureLoggedOnlyOnceUntilRecovery() throws Exception {
-    File diskIdFolder = createDiskIdFolder();
-    File processIoFile = tempFolder.newFile("process-io");
-    writeProcessIoFile(processIoFile);
-    File diskStatsFile = new File(tempFolder.getRoot(), "diskstats");
+  public void testFirstSampleAndUnchangedOrBackwardClock() throws Exception {
+    LinuxDiskMetricsManager manager = newManager(clock::get);
+    assertEquals(0.0, manager.getIoUtilsPercentage().get("vda"), 0.0);
+    assertEquals(0.0, manager.getQueueSizeForDisk().get("vda"), 0.0);
 
+    clock.addAndGet(20000);
+    writeDiskStats(20, 5100, 10200);
+    assertEquals(0.25, manager.getIoUtilsPercentage().get("vda"), 0.0);
+    assertEquals(0.5, manager.getQueueSizeForDisk().get("vda"), 0.0);
+    Map<String, Long> previousCounts = manager.getReadOperationCountForDisk();
+
+    writeDiskStats(30, 15100, 30200);
+    // Neither a zero interval nor a backward wall clock replaces the last valid sample.
+    assertEquals(0.25, manager.getIoUtilsPercentage().get("vda"), 0.0);
+    clock.set(1);
+    assertEquals(0.5, manager.getQueueSizeForDisk().get("vda"), 0.0);
+    clock.set(50001);
+    assertEquals(0.5, manager.getIoUtilsPercentage().get("vda"), 0.0);
+    assertEquals(1.0, manager.getQueueSizeForDisk().get("vda"), 0.0);
+    assertEquals(Long.valueOf(20), previousCounts.get("vda"));
+    assertEquals(Long.valueOf(30), manager.getReadOperationCountForDisk().get("vda"));
+  }
+
+  @Test
+  public void testRefreshUsesTheTimestampCheckedForEligibility() {
+    // A second clock read would return the previous sample time and cause a zero denominator.
+    AtomicLong nextTime = new AtomicLong(10001);
+    LinuxDiskMetricsManager manager = newManager(() -> nextTime.getAndSet(10001));
+    manager.getReadDataSizeForDisk();
+    nextTime.set(30001);
+    manager.getReadDataSizeForDisk();
+    assertEquals(0.0, manager.getIoUtilsPercentage().get("vda"), 0.0);
+    assertEquals(0.0, manager.getQueueSizeForDisk().get("vda"), 0.0);
+  }
+
+  @Test
+  public void testConcurrentReadersWaitForCompleteSample() throws Exception {
+    CountDownLatch sampling = new CountDownLatch(1);
+    CountDownLatch release = new CountDownLatch(1);
     LinuxDiskMetricsManager manager =
-        new LinuxDiskMetricsManager(
-            diskStatsFile.getAbsolutePath(),
-            diskIdFolder.getAbsolutePath(),
-            getDiskSectorSizePath(diskIdFolder),
-            processIoFile.getAbsolutePath());
+        newManager(
+            () -> {
+              sampling.countDown();
+              try {
+                assertTrue(release.await(10, TimeUnit.SECONDS));
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError(e);
+              }
+              return clock.get();
+            });
+    FutureTask<Map<String, Double>> refresh = new FutureTask<>(manager::getReadDataSizeForDisk);
+    FutureTask<Map<String, Double>> read = new FutureTask<>(manager::getIoUtilsPercentage);
+    Thread refreshing = new Thread(refresh, "disk-refresh");
+    Thread reading = new Thread(read, "disk-read");
+    try {
+      refreshing.start();
+      assertTrue(sampling.await(10, TimeUnit.SECONDS));
+      reading.start();
+      long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+      while (reading.getState() != Thread.State.BLOCKED && !read.isDone()) {
+        if (System.nanoTime() > deadline) {
+          fail("The metric reader did not wait for the active disk sample");
+        }
+        LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(1));
+      }
+      assertEquals(Thread.State.BLOCKED, reading.getState());
+      release.countDown();
+      refresh.get(10, TimeUnit.SECONDS);
+      assertEquals(0.0, read.get(10, TimeUnit.SECONDS).get("vda"), 0.0);
+    } finally {
+      release.countDown();
+      refresh.cancel(true);
+      read.cancel(true);
+      refreshing.join(TimeUnit.SECONDS.toMillis(10));
+      reading.join(TimeUnit.SECONDS.toMillis(10));
+    }
+  }
 
-    ch.qos.logback.classic.Logger logger =
-        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(LinuxDiskMetricsManager.class);
+  @Test
+  public void testDiskInfoFailureLoggedOnceUntilRecovery() throws Exception {
+    LinuxDiskMetricsManager manager = newManager(clock::get);
+    Logger logger = (Logger) LoggerFactory.getLogger(LinuxDiskMetricsManager.class);
     Level previousLevel = logger.getLevel();
     logger.setLevel(Level.WARN);
     ListAppender<ILoggingEvent> appender = new ListAppender<>();
@@ -65,18 +158,17 @@ public class LinuxDiskMetricsManagerTest {
     logger.addAppender(appender);
 
     try {
+      Files.delete(diskStats);
       invokeUpdateInfo(manager);
       invokeUpdateInfo(manager);
-      Assert.assertEquals(
-          1, countLogEvents(appender, MetricsMessages.CANNOT_FIND_DISK_IO_STATUS_FILE));
+      assertEquals(1L, countLogEvents(appender, MetricsMessages.CANNOT_FIND_DISK_IO_STATUS_FILE));
 
-      writeDiskStatsFile(diskStatsFile);
+      writeDiskStats(20, 100, 200);
       invokeUpdateInfo(manager);
 
-      Files.delete(diskStatsFile.toPath());
+      Files.delete(diskStats);
       invokeUpdateInfo(manager);
-      Assert.assertEquals(
-          2, countLogEvents(appender, MetricsMessages.CANNOT_FIND_DISK_IO_STATUS_FILE));
+      assertEquals(2L, countLogEvents(appender, MetricsMessages.CANNOT_FIND_DISK_IO_STATUS_FILE));
     } finally {
       logger.detachAppender(appender);
       logger.setLevel(previousLevel);
@@ -85,21 +177,9 @@ public class LinuxDiskMetricsManagerTest {
   }
 
   @Test
-  public void missingProcessInfoLogsCannotFindOnlyOnceWithoutUpdateError() throws Exception {
-    File diskIdFolder = createDiskIdFolder();
-    File diskStatsFile = tempFolder.newFile("diskstats");
-    writeDiskStatsFile(diskStatsFile);
-    File processIoFile = new File(tempFolder.getRoot(), "missing-process-io");
-
-    LinuxDiskMetricsManager manager =
-        new LinuxDiskMetricsManager(
-            diskStatsFile.getAbsolutePath(),
-            diskIdFolder.getAbsolutePath(),
-            getDiskSectorSizePath(diskIdFolder),
-            processIoFile.getAbsolutePath());
-
-    ch.qos.logback.classic.Logger logger =
-        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(LinuxDiskMetricsManager.class);
+  public void testMissingProcessInfoDoesNotAlsoLogUpdateError() throws Exception {
+    LinuxDiskMetricsManager manager = newManager(clock::get);
+    Logger logger = (Logger) LoggerFactory.getLogger(LinuxDiskMetricsManager.class);
     Level previousLevel = logger.getLevel();
     logger.setLevel(Level.WARN);
     ListAppender<ILoggingEvent> appender = new ListAppender<>();
@@ -108,13 +188,13 @@ public class LinuxDiskMetricsManagerTest {
     logger.addAppender(appender);
 
     try {
+      Files.delete(processIo);
       invokeUpdateInfo(manager);
       invokeUpdateInfo(manager);
 
-      Assert.assertEquals(
-          1, countLogEvents(appender, MetricsMessages.CANNOT_FIND_PROCESS_IO_STATUS_FILE));
-      Assert.assertEquals(
-          0, countLogEvents(appender, MetricsMessages.ERROR_UPDATING_PROCESS_IO_INFO));
+      assertEquals(
+          1L, countLogEvents(appender, MetricsMessages.CANNOT_FIND_PROCESS_IO_STATUS_FILE));
+      assertEquals(0L, countLogEvents(appender, MetricsMessages.ERROR_UPDATING_PROCESS_IO_INFO));
     } finally {
       logger.detachAppender(appender);
       logger.setLevel(previousLevel);
@@ -122,47 +202,24 @@ public class LinuxDiskMetricsManagerTest {
     }
   }
 
-  private File createDiskIdFolder() throws Exception {
-    File diskIdFolder = tempFolder.newFolder("block");
-    File sectorSizeFolder = new File(diskIdFolder, "sda" + File.separator + "queue");
-    Assert.assertTrue(sectorSizeFolder.mkdirs());
-    Files.write(
-        new File(sectorSizeFolder, "hw_sector_size").toPath(),
-        Collections.singletonList("512"),
-        StandardCharsets.UTF_8);
-    return diskIdFolder;
-  }
-
-  private String getDiskSectorSizePath(File diskIdFolder) {
-    return new File(
-            diskIdFolder, "%s" + File.separator + "queue" + File.separator + "hw_sector_size")
-        .getAbsolutePath();
-  }
-
-  private void writeDiskStatsFile(File diskStatsFile) throws Exception {
-    Files.write(
-        diskStatsFile.toPath(),
-        Collections.singletonList(" 8 0 sda 1 0 2 3 4 0 5 6 7 8 9"),
-        StandardCharsets.UTF_8);
-  }
-
-  private void writeProcessIoFile(File processIoFile) throws Exception {
-    Files.write(
-        processIoFile.toPath(),
-        Arrays.asList(
-            "syscr: 1", "syscw: 2", "read_bytes: 3", "write_bytes: 4", "rchar: 5", "wchar: 6"),
-        StandardCharsets.UTF_8);
+  private LinuxDiskMetricsManager newManager(LongSupplier timeSupplier) {
+    return new LinuxDiskMetricsManager(diskStats, diskIds, processIo, timeSupplier);
   }
 
   private void invokeUpdateInfo(LinuxDiskMetricsManager manager) throws Exception {
-    Method updateInfo = LinuxDiskMetricsManager.class.getDeclaredMethod("updateInfo");
+    Method updateInfo = LinuxDiskMetricsManager.class.getDeclaredMethod("updateInfo", long.class);
     updateInfo.setAccessible(true);
-    updateInfo.invoke(manager);
+    updateInfo.invoke(manager, clock.get());
   }
 
   private long countLogEvents(ListAppender<ILoggingEvent> appender, String messagePattern) {
     return appender.list.stream()
         .filter(event -> messagePattern.equals(event.getMessage()))
         .count();
+  }
+
+  private void writeDiskStats(long reads, long busyTime, long queueTime) throws Exception {
+    String stats = "   8 0 vda " + reads + " 0 40 0 0 0 0 0 0 " + busyTime + " " + queueTime + "\n";
+    Files.write(diskStats, stats.getBytes(StandardCharsets.UTF_8));
   }
 }

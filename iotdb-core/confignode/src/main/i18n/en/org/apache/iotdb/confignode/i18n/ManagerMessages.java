@@ -73,6 +73,7 @@ public final class ManagerMessages {
       "DataRegionGroupExtensionPolicy %s doesn't exist.";
   public static final String DECREASE_REFERENCE_COUNT_FOR_SNAPSHOT_ERROR =
       "Decrease reference count for snapshot {} error.";
+  public static final String DELETING_REGIONS_COSTS_MS = "Deleting regions costs {}ms";
   public static final String DETECTED_HISTORICAL_PIPE_COMPLETION_REPORT_FROM_DATANODE =
       "Detected historical pipe completion report from DataNode {} for pipe {}. remainingEventCount: {}, remainingTime: {}, completedDataNodes: {}";
   public static final String DETECTED_COMPLETION_OF_PIPE_STATIC_META_REMOVE_IT =
@@ -142,6 +143,8 @@ public final class ManagerMessages {
       "Failed to collect user name for user id {}";
   public static final String FAILED_TO_CREATE_CONSUMER_IN_CONSUMER_GROUP_RESULT_STATUS =
       "Failed to create consumer {} in consumer group {}. Result status: {}.";
+  public static final String EXCEPTION_FAILED_TO_SUBSCRIBE_TOPIC_ARG_FOR_CONSUMER_ARG_CONSUMER_DOES_NOT_EXIST_IN_CONSUMER_GROUP_BFF68F12 =
+      "Failed to subscribe topic %s for consumer %s because the consumer does not exist in the consumer group";
   public static final String FAILED_TO_CREATE_PEER_FOR_CONSENSUS_GROUP =
       "Failed to create peer for consensus group";
   public static final String FAILED_TO_CREATE_PIPE_RESULT_STATUS =
@@ -201,14 +204,6 @@ public final class ManagerMessages {
       "Failed to sync template {} extension info to DataNode {}";
   public static final String FAILED_TO_SYNC_TOPIC_META_RESULT_STATUS =
       "Failed to sync topic meta. Result status: {}.";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_CONFIG_REGION_CONNECTOR_METRICS_CONNECTOR =
-      "Failed to unbind from pipe config region connector metrics, connector map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_CONFIG_REGION_EXTRACTOR_METRICS_EXTRACTOR =
-      "Failed to unbind from pipe config region extractor metrics, extractor map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_REMAINING_TIME_METRICS_REMAININGTIMEOPERATOR_MAP =
-      "Failed to unbind from pipe remaining time metrics, RemainingTimeOperator map not empty";
-  public static final String FAILED_TO_UNBIND_FROM_PIPE_TEMPORARY_META_METRICS_PIPETEMPORARYMETA_MAP =
-      "Failed to unbind from pipe temporary meta metrics, PipeTemporaryMeta map not empty";
   public static final String FAILED_TO_UPDATE_PIPE_PROCEDURE_TIMER_PIPEPROCEDURE_DOES_NOT_EXIST =
       "Failed to update pipe procedure timer, PipeProcedure({}) does not exist";
   public static final String FAILED_TO_UPDATE_THE_LAST_EXECUTION_TIME_OF_CQ_BECAUSE =
@@ -286,6 +281,26 @@ public final class ManagerMessages {
       "LoadStatistics service is started successfully.";
   public static final String LOADSTATISTICS_SERVICE_IS_STOPPED_SUCCESSFULLY =
       "LoadStatistics service is stopped successfully.";
+  public static final String
+      LOG_SKIP_DUPLICATE_REGION_ID_ARG_IN_RECONSTRUCTREGION_REQUEST_TO_DATANODE_ARG_ED195F69 =
+          "Skip duplicate Region ID {} in ReconstructRegion request to DataNode {}.";
+  public static final String
+      LOG_SKIP_NON_EXISTENT_REGION_ID_ARG_IN_RECONSTRUCTREGION_REQUEST_TO_DATANODE_ARG_7F76D789 =
+          "Skip non-existent Region ID {} in ReconstructRegion request to DataNode {}.";
+  public static final String MESSAGE_DUPLICATE_REGION_ID_ARG_IN_THE_REQUEST_B6FFCCFC =
+      "Duplicate Region ID %d in the request";
+  public static final String MESSAGE_REGION_IDS_MUST_NOT_BE_EMPTY_B42DAAFD =
+      "Region IDs must not be empty";
+  public static final String MESSAGE_SOURCE_AND_TARGET_DATANODE_IDS_MUST_BE_DIFFERENT_ARG_286D3838 =
+      "Source and target DataNode IDs must be different: %d";
+  public static final String LOG_SUBMIT_REGION_OPERATION_PROCEDURE_SUCCESSFULLY_ARG_90468B38 =
+      "Submit region operation procedure successfully: {}";
+  public static final String MESSAGE_REGION_ARG_DOES_NOT_EXIST_3C8400C9 =
+      "Region %d does not exist";
+  public static final String MESSAGE_SOURCE_DATANODE_ARG_DOES_NOT_EXIST_IN_THE_CLUSTER_2255633C =
+      "Source DataNode %s does not exist in the cluster";
+  public static final String MESSAGE_TARGET_DATANODE_ARG_DOES_NOT_EXIST_IN_THE_CLUSTER_679D59AF =
+      "Target DataNode %s does not exist in the cluster";
   public static final String MIGRATEREGION_SUBMIT_REGIONMIGRATEPROCEDURE_SUCCESSFULLY_REGION_ORIGIN_DATANODE =
       "[MigrateRegion] Submit RegionMigrateProcedure successfully, Region: {}, Origin DataNode: {}, Dest DataNode: {}, Add Coordinator: {}, Remove Coordinator: {}";
   public static final String SUBMIT_REGIONMIGRATEPROCEDURE_FAILED_BECAUSE_REGIONGROUP_DOESN_T_EXIST =
@@ -440,6 +455,8 @@ public final class ManagerMessages {
       "Start to create Region: {} on DataNode: {}";
   public static final String START_TO_CREATE_UDF_ON_DATA_NODES_NEEDTOSAVEJAR =
       "Start to create UDF [{}] on Data Nodes, needToSaveJar[{}]";
+  public static final String START_TO_DELETE_REGION_ON_DATANODE =
+      "Start to delete Region: {} on DataNode: {}";
   public static final String START_TRANSFER_OF = "Start transfer of {}";
   public static final String STOP_SUBMITTING_CQ_BECAUSE = "Stop submitting CQ {} because {}";
   public static final String STOP_SUBMITTING_CQ_BECAUSE_CURRENT_NODE_IS_NOT_LEADER_OR =
@@ -466,8 +483,8 @@ public final class ManagerMessages {
       "Successfully transferred config region snapshot {}.";
   public static final String THERE_IS_NO_RUNNING_DATANODE_TO_EXECUTE_CQ =
       "There is no RUNNING DataNode to execute CQ {}";
-  public static final String THE_CONFIGNODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_UNKNOWN =
-      "The ConfigNode-{} will be shutdown soon, mark it as Unknown";
+  public static final String LOG_NODE_ARG_REPORTED_SHUTDOWN_CURRENT_STATUS_IS_ARG_A375D665 =
+      "Node {} reported shutdown; current status is {}.";
   public static final String THE_CONFIG_REGION_AIR_GAP_CONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING =
       "The config region air gap connector does not support transferring single file piece bytes.";
   public static final String THE_CONFIG_REGION_SINK_DOES_NOT_SUPPORT_TRANSFERRING_SINGLE_FILE =
@@ -476,8 +493,6 @@ public final class ManagerMessages {
       "The config region snapshots %s cannot be parsed.";
   public static final String THE_DATABASE_DOESN_T_EXIST_MAYBE_IT_HAS_BEEN_PRE =
       "The Database: {} doesn't exist. Maybe it has been pre-deleted.";
-  public static final String THE_DATANODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_UNKNOWN =
-      "The DataNode-{} will be shutdown soon, mark it as Unknown";
   public static final String THE_REMOVENODEREPLICASELECT_METHOD_OF_GREEDYREGIONGROUPALLOCATOR_IS_YET =
       "The removeNodeReplicaSelect method of GreedyRegionGroupAllocator is yet to be implemented.";
   public static final String THE_REMOVENODEREPLICASELECT_METHOD_OF_PARTITEGRAPHPLACEMENTREGIONGROUPALLOCATOR =
@@ -522,8 +537,6 @@ public final class ManagerMessages {
       "Unexpected interruption during waiting for configNode leader ready.";
   public static final String UNEXPECTED_INTERRUPTION_DURING_WAITING_FOR_GET_CLUSTER_ID =
       "Unexpected interruption during waiting for get cluster id.";
-  public static final String UNEXPECTED_NON_CREATE_REGION_MAINTAIN_TASK_SKIPPED =
-      "Unexpected non-create task in the RegionMaintainer queue; skipping it (the queue only recreates region replicas now, and region deletion is handled by RemoveRegionGroupProcedure).";
   public static final String UNEXPECTED_NULL_PROCEDURE_PARAMETERS_FOR_WAITINGPROCEDUREFINISHED =
       "Unexpected null procedure parameters for waitingProcedureFinished";
   public static final String UNKNOWN_DATAPARTITION_ALLOCATION_STRATEGY_USING_INHERIT_STRATEGY_BY_DEFAULT =
@@ -551,6 +564,186 @@ public final class ManagerMessages {
   public static final String REMOVE_CONFIGNODE_FAILED_BECAUSE_THE_CONFIGNODE_NOT_IN_CURRENT_CLUSTER = "Remove ConfigNode failed because the ConfigNode not in current Cluster.";
   public static final String SUCCESSFULLY_REMOVE_CONFIGNODE = "Successfully remove confignode.";
   public static final String REMOVE_CONFIGNODE_FAILED_BECAUSE_TRANSFER_CONFIGNODE_LEADER_FAILED = "Remove ConfigNode failed because transfer ConfigNode leader failed.";
+  public static final String LOG_FAILED_TO_TRANSFER_CONFIGNODE_LEADER_FROM_ARG_TO_ARG_TRYING_ANOTHER_CANDIDATE_BA922E92 = "Failed to transfer ConfigNode leader from {} to {}, trying another candidate.";
+  public static final String LOG_COULD_NOT_CONFIRM_A_CONFIGNODE_LEADER_OTHER_THAN_ARG_AFTER_ATTEMPTING_TO_TRANSFER_LEADERSHIP_TO_ARG_TRYING_ANOTHER_CANDIDATE_91EF68C1 = "Could not confirm a ConfigNode leader other than {} after attempting to transfer leadership to {}, trying another candidate.";
+  public static final String LOG_STOPPED_RETRYING_CONFIGNODE_LEADER_TRANSFER_BECAUSE_THE_REMAINING_RPC_TIMEOUT_IS_INSUFFICIENT_6429A49C = "Stopped retrying ConfigNode leader transfer because the remaining RPC timeout is insufficient.";
+
+  public static final String
+      EXCEPTION_FAILED_TO_ALTER_CONSUMER_GROUP_BECAUSE_THE_CONSUMER_GROUP_ARG_DOES_NOT_EXIST_AEB27705 =
+          "Failed to alter consumer group because the consumer group %s does not exist";
+  public static final String EXCEPTION_FAILED_TO_ALTER_PIPE_ARG_ARG_D38CC9FA =
+      "Failed to alter pipe %s, %s";
+  public static final String
+      EXCEPTION_FAILED_TO_ALTER_TOPIC_ARG_CHANGING_ARG_IS_NOT_SUPPORTED_BECAUSE_EXISTING_CONSENSUS_QUEUES_DO_NOT_HOT_REFRESH_RETENTION_STATE_B84442B9 =
+          "Failed to alter topic %s, changing %s is not supported because existing consensus queues"
+              + " do not hot-refresh retention state";
+  public static final String
+      EXCEPTION_FAILED_TO_ALTER_TOPIC_ARG_CHANGING_ARG_IS_NOT_SUPPORTED_BECAUSE_EXISTING_SUBSCRIPTION_RUNTIMES_DO_NOT_HOT_REFRESH_SOURCE_MODE_F27410E6 =
+          "Failed to alter topic %s, changing %s is not supported because existing subscription"
+              + " runtimes do not hot-refresh source mode";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_PIPE_THE_PIPE_ARG_PLUGIN_ARG_FAILED_TO_LOAD_ARG_EBEB74CC =
+          "Failed to create or alter pipe, the pipe %s plugin %s failed to load: %s";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_PIPE_THE_PIPE_CONNECTOR_PLUGIN_ARG_DOES_NOT_EXIST_4FC620C9 =
+          "Failed to create or alter pipe, the pipe connector plugin %s does not exist";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_PIPE_THE_PIPE_EXTRACTOR_PLUGIN_ARG_DOES_NOT_EXIST_70C3F187 =
+          "Failed to create or alter pipe, the pipe extractor plugin %s does not exist";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_PIPE_THE_PIPE_PROCESSOR_PLUGIN_ARG_DOES_NOT_EXIST_6C22D67D =
+          "Failed to create or alter pipe, the pipe processor plugin %s does not exist";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_ARG_IS_ONLY_SUPPORTED_WHEN_ARG_ARG_BUT_CURRENT_VALUE_IS_ARG_7C765172 =
+          "Failed to create or alter topic, %s=%s is only supported when %s=%s, but current value"
+              + " is %s";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_ARG_ONLY_SUPPORTS_ARG_ARG_93A39567 =
+          "Failed to create or alter topic, %s=%s only supports %s=%s";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ILLEGAL_ARG_ARG_EXPECTED_A_LONG_VALUE_BFF2A1CF =
+          "Failed to create or alter topic, illegal %s=%s, expected a long value";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_UNSUPPORTED_ARG_ARG_EXPECTED_ONE_OF_ARG_ARG_ARG_9016126E =
+          "Failed to create or alter topic, unsupported %s=%s, expected one of [%s, %s, %s]";
+  public static final String EXCEPTION_FAILED_TO_CREATE_PIPE_ARG_ARG_405A2E6F =
+      "Failed to create pipe %s, %s";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_PIPE_CONSUMER_ARG_IN_CONSUMER_GROUP_ARG_THE_CONSUMER_WITH_THE_SAME_NAME_HAS_BEEN_CREATED_40DD2127 =
+          "Failed to create pipe consumer %s in consumer group %s, the consumer with the same name"
+              + " has been created";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_TOPIC_ARG_THE_TOPIC_WITH_THE_SAME_NAME_HAS_BEEN_CREATED_E20FE8BF =
+          "Failed to create topic %s, the topic with the same name has been created";
+  public static final String
+      EXCEPTION_FAILED_TO_DROP_PIPE_CONSUMER_ARG_IN_CONSUMER_GROUP_ARG_THE_CONSUMER_DOES_NOT_EXIST_5C5F241B =
+          "Failed to drop pipe consumer %s in consumer group %s, the consumer does not exist";
+  public static final String
+      EXCEPTION_FAILED_TO_DROP_TOPIC_ARG_THE_TOPIC_IS_SUBSCRIBED_BY_SOME_CONSUMERS_94D34E76 =
+          "Failed to drop topic %s, the topic is subscribed by some consumers";
+  public static final String
+      EXCEPTION_FAILED_TO_SUBSCRIBE_BECAUSE_THE_CONSUMER_ARG_IN_CONSUMER_GROUP_ARG_DOES_NOT_EXIST_FA5503BB =
+          "Failed to subscribe because the consumer %s in consumer group %s does not exist";
+  public static final String
+      EXCEPTION_FAILED_TO_SUBSCRIBE_BECAUSE_THE_TOPIC_ARG_DOES_NOT_EXIST_557114A7 =
+          "Failed to subscribe because the topic %s does not exist";
+  public static final String
+      EXCEPTION_FAILED_TO_UNSUBSCRIBE_BECAUSE_THE_CONSUMER_ARG_IN_CONSUMER_GROUP_ARG_DOES_NOT_EXIST_C4E1530D =
+          "Failed to unsubscribe because the consumer %s in consumer group %s does not exist";
+  public static final String
+      EXCEPTION_FAILED_TO_UNSUBSCRIBE_BECAUSE_THE_TOPIC_ARG_DOES_NOT_EXIST_DA0E75DD =
+          "Failed to unsubscribe because the topic %s does not exist";
+  public static final String EXCEPTION_INVALID_TABLE_STATUS_ARG_172413CC =
+      "Invalid table status %s";
+  public static final String
+      EXCEPTION_PIPEPLUGIN_ARG_IS_ALREADY_USED_BY_PIPE_ARG_AS_A_PROCESSOR_FA9F027E =
+          "PipePlugin '%s' is already used by Pipe '%s' as a processor.";
+  public static final String
+      EXCEPTION_PIPEPLUGIN_ARG_IS_ALREADY_USED_BY_PIPE_ARG_AS_A_SINK_A438625C =
+          "PipePlugin '%s' is already used by Pipe '%s' as a sink.";
+  public static final String
+      EXCEPTION_PIPEPLUGIN_ARG_IS_ALREADY_USED_BY_PIPE_ARG_AS_A_SOURCE_BA47AEF4 =
+          "PipePlugin '%s' is already used by Pipe '%s' as a source.";
+  public static final String
+      EXCEPTION_PIPEPLUGIN_ARG_IS_ALREADY_USED_BY_TOPIC_ARG_AS_A_PROCESSOR_02306DD3 =
+          "PipePlugin '%s' is already used by Topic '%s' as a processor.";
+  public static final String LOG_FAILED_TO_GET_DEVICE_VIEW_FIELD_TYPE_ON_REGION_ARG_317F545F =
+      "Failed to get device view field type on region {}.";
+  public static final String
+      LOG_FAILED_TO_INVALIDATE_LAST_CACHE_OF_DATABASE_ARG_ON_DATANODE_ARG_STATUS_ARG_E0B53CBD =
+          "Failed to invalidate last cache of database {} on DataNode {}, status: {}";
+  public static final String
+      MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_DEFAULT_ARGREGIONGROUPNUM_ARG_4C00E92C =
+          "%s should be greater than or equal to default %sRegionGroupNum: %d.";
+  public static final String MESSAGE_COLUMN_ARG_ALREADY_EXIST_92F91B6A =
+      "Column '%s' already exist";
+  public static final String MESSAGE_COLUMN_ARG_DOES_NOT_EXIST_FF67AE82 =
+      "Column '%s' does not exist";
+  public static final String
+      MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_CLUSTER_HEARTBEAT_SAMPLING_EDB0331F =
+          "ConfigNode leader is waiting for cluster heartbeat sampling.";
+  public static final String
+      MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_FIRST_HEARTBEAT_FROM_REGISTERED_CONFIGNODES_DATANODES_ARG_2FD3F6FA =
+          "ConfigNode leader is waiting for first heartbeat from registered ConfigNodes/DataNodes:"
+              + " %s";
+  public static final String MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_ARE_NOT_STARTED_1C75DB82 =
+      "ConfigNode leader load services are not started.";
+  public static final String
+      MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_ARE_READY_AFTER_WAITING_ARGMS_FOR_FIRST_HEARTBEAT_MISSING_HEARTBEATS_ARG_F8B81CAB =
+          "ConfigNode leader load services are ready after waiting %sms for first heartbeat."
+              + " Missing heartbeats: %s";
+  public static final String MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_ARE_READY_CC9C90E7 =
+      "ConfigNode leader load services are ready.";
+  public static final String MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_ARE_STOPPED_5884BB0F =
+      "ConfigNode leader load services are stopped.";
+  public static final String MESSAGE_ERROR_DATABASE_NAME_35C4F124 = "Error Database name";
+  public static final String MESSAGE_FAILED_TO_ALTER_PIPE_ARG_FAILURES_ARG_DOES_NOT_EXIST_169BDB85 =
+      "Failed to alter pipe %s. Failures: %s does not exist.";
+  public static final String
+      MESSAGE_FAILED_TO_ARG_DATABASE_THE_ARG_CAN_ONLY_BE_SET_WHEN_ARG_REGION_GROUP_EXTENSION_POLICY_IS_CUSTOM_F90B15BA =
+          "Failed to %s database. The %s can only be set when %s_region_group_extension_policy is"
+              + " CUSTOM.";
+  public static final String MESSAGE_FAILED_TO_DROP_PIPE_ARG_FAILURES_ARG_DOES_NOT_EXIST_19C2ECB1 =
+      "Failed to drop pipe %s. Failures: %s does not exist.";
+  public static final String
+      MESSAGE_FAILED_TO_DROP_PIPE_PLUGIN_ARG_FAILURES_ARG_DOES_NOT_EXIST_E7932165 =
+          "Failed to drop pipe plugin %s. Failures: %s does not exist.";
+  public static final String
+      MESSAGE_FAILED_TO_DROP_SUBSCRIPTION_ARG_FAILURES_ARG_DOES_NOT_EXIST_5F1F04CF =
+          "Failed to drop subscription %s. Failures: %s does not exist.";
+  public static final String MESSAGE_FAILED_TO_DROP_TOPIC_ARG_FAILURES_ARG_DOES_NOT_EXIST_BE8DCA00 =
+      "Failed to drop topic %s. Failures: %s does not exist.";
+  public static final String
+      MESSAGE_FAILED_TO_EXECUTE_CREATEPIPEPLUGIN_ARG_ON_CONFIG_NODES_BECAUSE_OF_ARG_BD0C8727 =
+          "Failed to execute createPipePlugin(%s) on config nodes, because of %s";
+  public static final String
+      MESSAGE_FAILED_TO_EXECUTE_DROPPIPEPLUGIN_ARG_ON_CONFIG_NODES_BECAUSE_OF_ARG_21A255A2 =
+          "Failed to execute dropPipePlugin(%s) on config nodes, because of %s";
+  public static final String
+      MESSAGE_FAILED_TO_RECOVER_CONFIGNODE_BECAUSE_THERE_EXISTS_DATA_FROM_AN_OLDER_INCOMPATIBLE_VERSION_WILL_SHUTDOWN_SOON_PLEASE_DELETE_ALL_DATA_AND_THEN_RESTART_AGAIN_42C9C4F7 =
+          "Failed to recover configNode, because there exists data from an older incompatible"
+              + " version, will shutdown soon. Please delete all data, and then restart again.";
+  public static final String MESSAGE_FAILED_TO_START_PIPE_ARG_FAILURES_ARG_DOES_NOT_EXIST_F13A63EE =
+      "Failed to start pipe %s. Failures: %s does not exist.";
+  public static final String MESSAGE_FAILED_TO_STOP_PIPE_ARG_FAILURES_ARG_DOES_NOT_EXIST_8FB85886 =
+      "Failed to stop pipe %s. Failures: %s does not exist.";
+  public static final String
+      MESSAGE_FAILED_TO_SYNC_TEMPLATE_ARG_EXTENSION_INFO_TO_DATANODE_ARG_66326847 =
+          "Failed to sync template %s extension info to DataNode %s";
+  public static final String
+      MESSAGE_MEASUREMENT_ARG_ALREADY_EXIST_IN_SCHEMAENGINE_TEMPLATE_ARG_26339B5F =
+          "Measurement %s already exist in schemaengine template %s";
+  public static final String MESSAGE_NO_TEMPLATE_ON_ARG_C7AA69D1 = "No template on %s";
+  public static final String MESSAGE_SEAL_CONFIG_REGION_SNAPSHOT_ARG_ERROR_SOCKET_ARG_42098622 =
+      "Seal config region snapshot %s error. Socket %s.";
+  public static final String
+      MESSAGE_SEAL_CONFIG_REGION_SNAPSHOT_FILE_ARG_ERROR_RESULT_STATUS_ARG_D89B8A5A =
+          "Seal config region snapshot file %s error, result status %s.";
+  public static final String MESSAGE_SOME_OTHER_TASK_IS_DELETING_DATABASE_ARG_7BDB2C0F =
+      "Some other task is deleting database %s";
+  public static final String MESSAGE_TABLE_ARG_ARG_DOES_NOT_EXIST_8D6D421C =
+      "Table '%s.%s' does not exist";
+  public static final String
+      MESSAGE_TABLE_ARG_ARG_IS_A_BASE_TABLE_DOES_NOT_SUPPORT_ALTER_VIEW_75E0E7D2 =
+          "Table '%s.%s' is a base table, does not support alter view";
+  public static final String
+      MESSAGE_TABLE_ARG_ARG_IS_A_TREE_VIEW_TABLE_DOES_NOT_SUPPORT_ALTER_TABLE_931AAA09 =
+          "Table '%s.%s' is a tree view table, does not support alter table";
+  public static final String
+      MESSAGE_TEMPLATE_ARG_HAS_BEEN_SET_ON_MTREE_CANNOT_BE_DROPPED_NOW_B8AC5437 =
+          "Template [%s] has been set on MTree, cannot be dropped now.";
+  public static final String MESSAGE_THE_NEW_COLUMN_NAME_ARG_ALREADY_EXISTS_726B75C0 =
+      "The new column name %s already exists";
+  public static final String MESSAGE_THE_RENAMING_FOR_TIME_COLUMN_IS_NOT_SUPPORTED_409B946E =
+      "The renaming for time column is not supported.";
+  public static final String
+      MESSAGE_TRANSFER_CONFIG_REGION_WRITE_PLAN_ARG_ERROR_RESULT_STATUS_ARG_E5CA3333 =
+          "Transfer config region write plan %s error, result status %s.";
+  public static final String
+      MESSAGE_TRANSFER_CONFIG_REGION_WRITE_PLAN_ARG_ERROR_SOCKET_ARG_543F8727 =
+          "Transfer config region write plan %s error. Socket: %s.";
+  public static final String MESSAGE_UNDEFINED_TEMPLATE_NAME_ARG_35357209 =
+      "Undefined template name: %s";
 
   private ManagerMessages() {}
   // ---------------------------------------------------------------------------
@@ -593,10 +786,14 @@ public final class ManagerMessages {
   public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_USE_ROLE_FILE_TYPE_ARG_1B548759 = "Got IOException when deserialize use&role file, type:{}";
   public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_ROLELIST_1354F29E = "Got IOException when deserialize roleList";
   public static final String LOG_GOT_EXCEPTION_DESERIALIZING_TTL_FILE_F806EB40 = "Got exception when deserializing ttl file";
+  public static final String LOG_UNSUPPORTED_USER_ROLE_PROFILE_VERSION_ARG_THIS_NODE_SUPPORTS_UP_TO_ARG_2ABBF4FA = "Unsupported user/role profile version %d, this node supports up to %d";
   public static final String LOG_UNRECOGNIZED_NODE_TYPE_CANNOT_DESERIALIZE_MTREE_GIVEN_BUFFER_5CF3121B = "Unrecognized node type. Cannot deserialize MTree from given buffer";
   public static final String LOG_GOT_IOEXCEPTION_CONSTRUCT_DATABASE_TREE_49436621 = "Got IOException when construct database Tree";
   public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_TEMPLATE_INFO_49EE617E = "Got IOException when deserialize template info";
   public static final String MESSAGE_MEASUREMENTS_NOT_FOUND_ARG_CANNOT_AUTO_DETECT_980D7D44 = "Measurements not found for %s, cannot auto detect";
+  public static final String EXCEPTION_THE_DUPLICATED_SOURCE_MEASUREMENT_ARG_IS_UNSUPPORTED_YET_873AF566 = "The duplicated source measurement %s is unsupported yet.";
+  public static final String MESSAGE_MULTIPLE_TYPES_ENCOUNTERED_WHEN_AUTO_DETECTING_TYPE_OF_MEASUREMENT_ARG_PLEASE_CHECK_6EDF48DB = "Multiple types encountered when auto detecting type of measurement '%s', please check";
+  public static final String MESSAGE_THE_MEASUREMENTS_ARG_AND_ARG_SHARE_THE_SAME_LOWER_CASE_WHEN_AUTO_DETECTING_TYPE_PLEASE_CHECK_7225D062 = "The measurements %s and %s share the same lower case when auto detecting type, please check";
   public static final String LOG_FAILED_TAKE_SNAPSHOT_BECAUSE_SNAPSHOT_FILE_ARG_ALREADY_EXIST_EB2A6093 = "Failed to take snapshot, because snapshot file [{}] is already exist.";
   public static final String LOG_FAILED_LOAD_SNAPSHOT_SNAPSHOT_FILE_ARG_NOT_EXIST_8828CFBA = "Failed to load snapshot,snapshot file [{}] is not exist.";
   public static final String LOG_YOU_MAYBE_NEED_RENAME_SIMPLE_DIR_0_0_MANUALLY_2A12C5C9 = "you maybe need to rename the simple dir to 0_0 manually.";
@@ -694,5 +891,169 @@ public final class ManagerMessages {
   public static final String MESSAGE_SUBSCRIPTIONOWNERLEASESYNCER_IS_STOPPED_SUCCESSFULLY_11442F29 = "SubscriptionOwnerLeaseSyncer is stopped successfully.";
   public static final String MESSAGE_NO_AVAILABLE_ARG_REGIONGROUP_FOR_DATABASE_ARG_REGIONGROUPS_VISIBLE_IN_PARTITIONINFO_AND_THEIR_LOADCACHE_STATUS_ARG_615F5D49 =
       "No available {} RegionGroup for Database: {}. RegionGroups visible in PartitionInfo and their LoadCache status: {}";
+  public static final String
+      MESSAGE_ARG_PLEASE_MANUALLY_CHECK_LATER_WHETHER_THE_PROCEDURE_IS_EXECUTED_SUCCESSFULLY_A82B739D =
+          "%s Please manually check later whether the procedure is executed successfully.";
 
+  public static final String MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_NODE_STATUS_PERSISTENCE_8CA96809 =
+      "ConfigNode leader is waiting for node status persistence.";
+
+  public static final String LOG_FAILED_TO_RESOLVE_THE_USER_ID_OF_THE_PIPE_SENDER_ARG_THE_AUDIT_RECORDS_OF_THIS_TRANSFER_WILL_NOT_CONTAIN_A_USER_ID_0F8C4256 =
+      "Failed to resolve the user id of the pipe sender {}, the audit records of this transfer will not contain a user id.";
+
+  public static final String MESSAGE_CREATE_76EA0BEB = "create";
+
+  public static final String MESSAGE_ALTER_5667DA2F = "alter";
+
+  public static final String
+      EXCEPTION_SOME_OTHER_TASK_IS_OPERATING_TABLE_UNDER_THE_DATABASE_ARG_PLEASE_RETRY_AFTER_THE_PROCEDURE_FINISHES_7347FB95 =
+          "Some other task is operating table under the database %s, please retry after the"
+              + " procedure finishes.";
+
+  public static final String
+      EXCEPTION_SUBMIT_REMOVEDATANODESPROCEDURE_FAILED_BECAUSE_ANOTHER_REMOVEDATANODESPROCEDURE_ARG_IS_ALREADY_IN_PROCESSING_IOTDB_IS_ABLE_TO_HAVE_AT_MOST_1_REMOVEDATANODESPROCEDURE_AT_THE_SAME_TIME_FOR_FURTHER_INFORMATION_PLEASE_SEARCH_PID_ARG_IN_LOG_2CF436E9 =
+          "Submit RemoveDataNodesProcedure failed, because another RemoveDataNodesProcedure %s is"
+              + " already in processing. IoTDB is able to have at most 1 RemoveDataNodesProcedure"
+              + " at the same time. For further information, please search [pid%d] in log. ";
+
+  public static final String
+      EXCEPTION_SUBMIT_REMOVEDATANODESPROCEDURE_FAILED_BECAUSE_ANOTHER_REGIONMIGRATEPROCEDURE_ARG_IS_ALREADY_IN_PROCESSING_WHICH_CONFLICTS_WITH_THIS_REMOVEDATANODESPROCEDURE_THE_REGIONMIGRATEPROCEDURE_IS_MIGRATING_THE_REGION_ARG_TO_THE_DATANODE_ARG_FOR_FURTHER_INFORMATION_PLEASE_SEARCH_PID_ARG_IN_LOG_4417FBB5 =
+          "Submit RemoveDataNodesProcedure failed, because another RegionMigrateProcedure %s is"
+              + " already in processing which conflicts with this RemoveDataNodesProcedure. The"
+              + " RegionMigrateProcedure is migrating the region %s to the DataNode %s. For further"
+              + " information, please search [pid%d] in log. ";
+
+  public static final String
+      EXCEPTION_SUBMIT_REMOVEDATANODESPROCEDURE_FAILED_BECAUSE_THE_REGIONMIGRATEPROCEDURE_GENERATED_BY_THIS_REMOVEDATANODESPROCEDURE_CONFLICTS_WITH_EACH_OTHER_ONLY_ONE_REPLICA_OF_THE_SAME_CONSENSUS_GROUP_IS_ALLOWED_TO_BE_MIGRATED_AT_THE_SAME_TIME_THE_CONFLICT_REGION_ID_IS_ARG_7B427300 =
+          "Submit RemoveDataNodesProcedure failed, because the RegionMigrateProcedure generated by"
+              + " this RemoveDataNodesProcedure conflicts with each other. Only one replica of the"
+              + " same consensus group is allowed to be migrated at the same time.The conflict"
+              + " region id is %s . ";
+
+  public static final String
+      EXCEPTION_SUBMIT_REGIONMIGRATEPROCEDURE_FAILED_BECAUSE_THE_ORIGINAL_DATANODE_ARG_DOESN_T_CONTAIN_REGION_ARG_E0013C8F =
+          "Submit RegionMigrateProcedure failed, because the original DataNode %s doesn't contain"
+              + " Region %s";
+
+  public static final String
+      EXCEPTION_SUBMIT_REGIONMIGRATEPROCEDURE_FAILED_BECAUSE_THE_TARGET_DATANODE_ARG_ALREADY_CONTAINS_REGION_ARG_9BC561F5 =
+          "Submit RegionMigrateProcedure failed, because the target DataNode %s already contains"
+              + " Region %s";
+
+  public static final String EXCEPTION_ARG_ONLY_HAS_1_REPLICA_IT_CANNOT_BE_RECONSTRUCTED_988920D7 =
+      "%s only has 1 replica, it cannot be reconstructed";
+
+  public static final String
+      EXCEPTION_SUBMIT_RECONSTRUCTREGIONPROCEDURE_FAILED_BECAUSE_THE_TARGET_DATANODE_ARG_DOESN_T_CONTAIN_REGION_ARG_FE53A85F =
+          "Submit ReconstructRegionProcedure failed, because the target DataNode %s doesn't contain"
+              + " Region %s";
+
+  public static final String EXCEPTION_TARGET_DATANODE_ARG_ALREADY_CONTAINS_REGION_ARG_04CEE3BB =
+      "Target DataNode %s already contains region %s";
+
+  public static final String EXCEPTION_ARG_ONLY_HAS_1_REPLICA_IT_CANNOT_BE_REMOVED_8B9BBE04 =
+      "%s only has 1 replica, it cannot be removed";
+
+  public static final String EXCEPTION_TARGET_DATANODE_ARG_DOESN_T_CONTAIN_REGION_ARG_ABAF6E86 =
+      "Target DataNode %s doesn't contain Region %s";
+
+  public static final String EXCEPTION_CANNOT_FIND_ARG_D2C34365 = "Cannot find %s";
+
+  public static final String EXCEPTION_TARGET_DATANODE_ARG_IS_NOT_IN_RUNNING_STATUS_2A2180BA =
+      "Target DataNode %s is not in Running status.";
+
+  public static final String
+      EXCEPTION_ANOTHER_REMOVEDATANODESPROCEDURE_ARG_IS_ALREADY_IN_PROCESSING_WHICH_CONFLICTS_WITH_THIS_PROCEDURE_THE_REMOVEDATANODESPROCEDURE_IS_REMOVING_THE_DATANODES_ARG_WHICH_CONTAINS_THE_REGION_ARG_FOR_FURTHER_INFORMATION_PLEASE_SEARCH_PID_ARG_IN_LOG_7FAF09DA =
+          "Another RemoveDataNodesProcedure %s is already in processing which conflicts with this"
+              + " procedure. The RemoveDataNodesProcedure is removing the DataNodes %s which"
+              + " contains the region %s. For further information, please search [pid%d] in log. ";
+
+  public static final String
+      EXCEPTION_ANOTHER_REMOVEDATANODESPROCEDURE_ARG_IS_ALREADY_IN_PROCESSING_WHICH_CONFLICTS_WITH_THIS_PROCEDURE_THE_REMOVEDATANODESPROCEDURE_IS_REMOVING_THE_TARGET_DATANODE_ARG_FOR_FURTHER_INFORMATION_PLEASE_SEARCH_PID_ARG_IN_LOG_06E88C1C =
+          "Another RemoveDataNodesProcedure %s is already in processing which conflicts with this"
+              + " procedure. The RemoveDataNodesProcedure is removing the target DataNode %s. For"
+              + " further information, please search [pid%d] in log. ";
+
+  public static final String
+      EXCEPTION_ARG_HAS_SOME_OTHER_REGION_OPERATION_PROCEDURES_IN_PROGRESS_THEIR_PROCEDURE_ID_IS_ARG_F64BEEC1 =
+          "%s has some other region operation procedures in progress, their procedure id is: %s";
+
+  public static final String
+      EXCEPTION_THE_REGION_S_DATABASE_ARG_IS_BELONG_TO_ARG_MODEL_BUT_THE_MODEL_YOU_ARE_OPERATING_IS_ARG_2A0C563A =
+          "The region's database %s is belong to %s model, but the model you are operating is %s";
+
+  public static final String
+      LOG_SKIP_INJECTING_TREE_VIEW_SOURCE_ATTRIBUTES_FOR_TOPIC_TABLE_ARG_ARG_BECAUSE_SCHEMA_LOOKUP_FAILED_9816904F =
+          "Skip injecting tree-view source attributes for topic table {}.{} because schema lookup"
+              + " failed";
+
+  public static final String
+      EXCEPTION_EXTERNALSERVICE_ARG_HAS_ALREADY_BEEN_CREATED_ON_DATANODE_ARG_CEB6658C =
+          "ExternalService %s has already been created on DataNode %s.";
+
+  public static final String EXCEPTION_PATH_ARG_DOES_NOT_EXIST_3B3B812E = "Path %s does not exist";
+
+  public static final String
+      EXCEPTION_DEVICE_TEMPLATE_ARG_IS_NOT_SET_ON_ANY_PREFIX_PATH_OF_ARG_C20091F6 =
+          "Device Template %s is not set on any prefix path of %s";
+
+  public static final String
+      EXCEPTION_TIMED_OUT_TO_WAIT_FOR_PROCEDURE_RETURN_THE_PROCEDURE_IS_STILL_RUNNING_AF871578 =
+          "Timed out to wait for procedure return. The procedure is still running.";
+
+  public static final String EXCEPTION_SOME_OTHER_TASK_IS_DELETING_SOME_TARGET_TIMESERIES_2D824DD9 =
+      "Some other task is deleting some target timeseries.";
+
+  public static final String EXCEPTION_SOME_OTHER_TASK_IS_DELETING_SOME_TARGET_VIEWS_445DE100 =
+      "Some other task is deleting some target views.";
+
+  public static final String
+      EXCEPTION_SOME_OTHER_TASK_IS_DEACTIVATING_SOME_TARGET_TEMPLATE_FROM_TARGET_PATH_8E1EE9E6 =
+          "Some other task is deactivating some target template from target path.";
+
+  public static final String EXCEPTION_ORIGINAL_DATANODE_E1F76128 = "Original DataNode";
+
+  public static final String EXCEPTION_DESTINATION_DATANODE_ABA20AFE = "Destination DataNode";
+
+  public static final String EXCEPTION_COORDINATOR_FOR_ADD_PEER_92999E70 =
+      "Coordinator for add peer";
+
+  public static final String EXCEPTION_TARGET_DATANODE_78D8241E = "Target DataNode";
+
+  public static final String EXCEPTION_SIMPLECONSENSUS_NOT_SUPPORTS_REGION_OPERATION_9E4F9731 =
+      "SimpleConsensus not supports region operation.";
+
+  public static final String EXCEPTION_SOME_OTHER_TASK_IS_OPERATING_TABLE_WITH_SAME_NAME_2959424C =
+      "Some other task is operating table with same name.";
+
+  public static final String EXCEPTION_EXTERNALSERVICE_ARG_IS_NOT_EXISTED_ON_DATANODE_ARG_E941E787 =
+      "ExternalService %s is not existed on DataNode %s.";
+
+  public static final String
+      EXCEPTION_UNABLE_TO_FIND_THE_CONFIGURATION_FILE_SOME_MODIFICATIONS_ARE_MADE_ONLY_IN_MEMORY_70BB69F5 =
+          "Unable to find the configuration file. Some modifications are made only in memory.";
+
+  public static final String
+      EXCEPTION_THE_INTERNAL_CONFIGURATION_APPLICATION_TARGET_IS_INVALID_669ED6B7 =
+          "The internal configuration application target is invalid.";
+
+  public static final String
+      EXCEPTION_THE_PARAMETER_ARG_MUST_BE_CONSISTENT_ACROSS_THE_ENTIRE_CLUSTER_AND_CANNOT_BE_SET_ON_A_SPECIFIC_NODE_43EBC6E3 =
+          "The parameter '%s' must be consistent across the entire cluster and cannot be set on a"
+              + " specific node.";
+
+  public static final String
+      EXCEPTION_THE_USED_QUOTA_EXCEEDS_THE_PRESET_QUOTA_PLEASE_SET_A_LARGER_VALUE_2AAE5636 =
+          "The used quota exceeds the preset quota. Please set a larger value.";
+
+  public static final String EXCEPTION_CONFIGNODE_LEADER_CANNOT_CONNECT_TO_THE_SENDER_ARG_3A20DE7B =
+      "ConfigNode leader cannot connect to the sender: %s";
+
+  public static final String EXCEPTION_POSSIBLE_SOLUTIONS_ARE_AS_FOLLOWS_C72CA4F1 =
+      " Possible solutions are as follows:\r\n";
+
+  public static final String
+      EXCEPTION_REJECT_REGISTER_PLEASE_ENSURE_THAT_THE_PARAMETER_ARG_IS_CONSISTENT_WITH_THE_SEED_CONFIGNODE_C072CE7C =
+          "Reject register, please ensure that the parameter %s is consistent with the"
+              + " Seed-ConfigNode.";
 }

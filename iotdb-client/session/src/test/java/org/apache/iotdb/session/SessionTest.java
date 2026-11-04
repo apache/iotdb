@@ -51,9 +51,11 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -1218,5 +1220,46 @@ public class SessionTest {
   public void testTimeoutUsingBuilder() {
     ISession session1 = new Session.Builder().timeOut(1).build();
     assertEquals(1L, session1.getQueryTimeout());
+  }
+
+  @Test
+  public void testSortTabletOrderedRunsAndStableDuplicates() {
+    Random random = new Random(18606);
+    for (int size : new int[] {0, 1, 2, 31, 1024, 262144}) {
+      for (int pattern = 0; pattern < 4; pattern++) {
+        long[] times = new long[size];
+        for (int i = 0; i < size; i++) {
+          times[i] =
+              pattern == 0
+                  ? i
+                  : pattern == 1
+                      ? size - i
+                      : pattern == 2 ? (size - i) / 3 : random.nextInt(Math.max(1, size / 4));
+        }
+        if (pattern == 0 && size > 1) {
+          long last = times[size - 1];
+          times[size - 1] = times[size - 2];
+          times[size - 2] = last;
+        }
+        Integer[] expected = new Integer[size];
+        Tablet tablet =
+            new Tablet(
+                "root.sg.d",
+                Collections.singletonList(new MeasurementSchema("s", TSDataType.INT32)),
+                Math.max(1, size));
+        for (int i = 0; i < size; i++) {
+          expected[i] = i;
+          tablet.addTimestamp(i, times[i]);
+          tablet.addValue("s", i, i);
+        }
+        Arrays.sort(expected, Comparator.comparingLong(i -> times[i]));
+        ((Session) session).sortTablet(tablet);
+        int[] values = (int[]) tablet.getValues()[0];
+        for (int i = 0; i < size; i++) {
+          assertEquals(times[expected[i]], tablet.getTimestamps()[i]);
+          assertEquals(expected[i].intValue(), values[i]);
+        }
+      }
+    }
   }
 }

@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class InsertRowsStatement extends InsertBaseStatement {
 
@@ -51,6 +52,15 @@ public class InsertRowsStatement extends InsertBaseStatement {
 
   /** the InsertRowsStatement list */
   private List<InsertRowStatement> insertRowStatementList;
+
+  /**
+   * Whether every row of this statement targets the same table and carries the same column set.
+   * Only producers that build all rows from a single (table, column) definition set this, e.g. a
+   * parsed {@code INSERT INTO <table> ... VALUES ...}. It stays {@code false} by default so that a
+   * statement assembled from multiple sources (pipe batches, data type conversions, splits) is
+   * analysed row by row and no target table is skipped.
+   */
+  private boolean uniformTargets;
 
   public InsertRowsStatement() {
     super();
@@ -98,6 +108,14 @@ public class InsertRowsStatement extends InsertBaseStatement {
     this.insertRowStatementList = insertRowStatementList;
   }
 
+  public boolean isUniformTargets() {
+    return uniformTargets;
+  }
+
+  public void setUniformTargets(final boolean uniformTargets) {
+    this.uniformTargets = uniformTargets;
+  }
+
   @Override
   public boolean isEmpty() {
     return insertRowStatementList.isEmpty();
@@ -115,6 +133,16 @@ public class InsertRowsStatement extends InsertBaseStatement {
       result.addAll(insertRowStatement.getPaths());
     }
     return result;
+  }
+
+  @Override
+  public Stream<PartialPath> getPathsStream() {
+    return insertRowStatementList.stream().flatMap(InsertRowStatement::getPathsStream);
+  }
+
+  @Override
+  public Stream<PartialPath> getDevicePathsStream() {
+    return insertRowStatementList.stream().map(InsertRowStatement::getDevicePath);
   }
 
   @Override
@@ -244,6 +272,24 @@ public class InsertRowsStatement extends InsertBaseStatement {
   @Override
   protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
     insertRowStatementList.forEach(InsertBaseStatement::removeAttributeColumns);
+  }
+
+  @Override
+  public String getPipeLoggingString() {
+    if (Objects.isNull(insertRowStatementList) || insertRowStatementList.isEmpty()) {
+      return "InsertRowsStatement{rowCount=0}";
+    }
+
+    final int rowCount = insertRowStatementList.size();
+    return "InsertRowsStatement{"
+        + "rowCount="
+        + rowCount
+        + ", firstRow="
+        + insertRowStatementList.get(0).getPipeLoggingString()
+        + (rowCount > 1
+            ? ", lastRow=" + insertRowStatementList.get(rowCount - 1).getPipeLoggingString()
+            : "")
+        + '}';
   }
 
   @Override

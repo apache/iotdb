@@ -928,4 +928,30 @@ public class IoTDBCaseWhenThenIT {
         new String[] {"0,0.0,", "1000000,11.0,", "20000000,22.0,", "210000000,33.0,"};
     resultSetEqualTest(sql, expectedHeader, retArray);
   }
+
+  @Test
+  public void testNullableAndInLaterCaseBranch() {
+    prepareData(
+        new String[] {
+          "CREATE TIMESERIES root.sg.case_null.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.sg.case_null.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
+          "INSERT INTO root.sg.case_null(time, s2) VALUES (1, 1)",
+          "INSERT INTO root.sg.case_null(time, s1, s2) VALUES (2, 1, 1), (3, 0, 1), (4, 101, 1)"
+        });
+    resultSetEqualTest(
+        "SELECT CASE WHEN s1 > 100 THEN 1 WHEN s1 > 0 AND s2 > 0 THEN 2 ELSE 3 END AS result "
+            + "FROM root.sg.case_null",
+        new String[] {TIMESTAMP_STR, "result"},
+        new String[] {"1,3.0,", "2,2.0,", "3,3.0,", "4,1.0,"});
+    resultSetEqualTest(
+        "SELECT CASE WHEN s1 > 100 THEN 1 WHEN NOT (s1 > 0 AND s2 > 0) THEN 2 ELSE 3 END AS result "
+            + "FROM root.sg.case_null",
+        new String[] {TIMESTAMP_STR, "result"},
+        new String[] {"1,3.0,", "2,3.0,", "3,2.0,", "4,1.0,"});
+    resultSetEqualTest(
+        "SELECT CASE WHEN s1 > 100 THEN false WHEN s2 > 0 THEN (s1 > 0 AND s2 > 0) END AS result "
+            + "FROM root.sg.case_null",
+        new String[] {TIMESTAMP_STR, "result"},
+        new String[] {"1,null,", "2,true,", "3,false,", "4,false,"});
+  }
 }

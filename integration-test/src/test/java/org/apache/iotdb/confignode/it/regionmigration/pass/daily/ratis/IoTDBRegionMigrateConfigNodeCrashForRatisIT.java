@@ -183,6 +183,8 @@ public class IoTDBRegionMigrateConfigNodeCrashForRatisIT
             .collect(Collectors.toList()));
     killConfigNodeKeywords.addAll(
         Arrays.stream(RemoveRegionPeerState.values())
+            // Ratis finishes removal before the IoTConsensus V1-only reset state.
+            .filter(state -> state != RemoveRegionPeerState.RESET_IOT_CONSENSUS_V1_PEER_LIST)
             .map(KillPoint::enumToString)
             .collect(Collectors.toList()));
     successTest(1, 1, 1, 2, killConfigNodeKeywords, noKillPoints(), KillNode.CONFIG_NODE);

@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Maps;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -145,11 +146,12 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
       PartialPath devicePath = new PartialPath(nodes);
 
       int pathSize = ReadWriteIOUtils.readInt(buffer);
-      Map<PartialPath, List<TimeseriesContext>> measurementToSchemaInfo = new HashMap<>();
+      Map<PartialPath, List<TimeseriesContext>> measurementToSchemaInfo =
+          Maps.newHashMapWithExpectedSize(pathSize);
       for (int j = 0; j < pathSize; j++) {
         PartialPath path = deserializePartialPath(nodes, buffer);
         int schemaSize = ReadWriteIOUtils.readInt(buffer);
-        List<TimeseriesContext> schemaInfos = new ArrayList<>();
+        List<TimeseriesContext> schemaInfos = new ArrayList<>(schemaSize);
         for (int k = 0; k < schemaSize; k++) {
           schemaInfos.add(TimeseriesContext.deserialize(buffer));
         }
@@ -308,12 +310,12 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
       return new MeasurementPath(newNodes);
     } else {
       int size = ReadWriteIOUtils.readInt(buffer);
-      List<String> measurements = new ArrayList<>();
-      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      List<String> measurements = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
         measurements.add(ReadWriteIOUtils.readString(buffer));
       }
       size = ReadWriteIOUtils.readInt(buffer);
+      List<IMeasurementSchema> schemaList = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
         schemaList.add(MeasurementSchema.deserializeFrom(buffer));
       }

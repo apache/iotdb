@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.security.encrypt.AsymmetricEncrypt;
@@ -82,15 +83,14 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterAuthorityFetcher.class);
   private static final CommonConfig CONFIG = CommonDescriptor.getInstance().getConfig();
   private final IAuthorCache iAuthorCache;
-  private boolean cacheOutDate = false;
-  private long heartBeatTimeStamp = 0;
 
   private boolean acceptCache = true;
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
 
-  private static final String CONNECTERROR = "Failed to connect to config node.";
+  private static final String CONNECTERROR =
+      DataNodeMiscMessages.EXCEPTION_FAILED_TO_CONNECT_TO_CONFIG_NODE_DE88B1B7;
   private static final long CONNECT_ERROR_LOG_INTERVAL_MS = 60_000L;
   private static final AtomicLong LAST_CONNECT_ERROR_LOG_TIME = new AtomicLong(0L);
 
@@ -130,7 +130,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   @Override
   public TSStatus checkUserSysPrivilege(String username, PrivilegeType permission) {
-    checkCacheAvailable();
+    failIfMetadataLeaseFenced();
     return checkPrivilege(
         username,
         new PrivilegeUnion(permission, false),
@@ -142,7 +142,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   @Override
   public Collection<PrivilegeType> checkUserSysPrivileges(
       String username, Collection<PrivilegeType> permissions) {
-    checkCacheAvailable();
+    failIfMetadataLeaseFenced();
     Set<PrivilegeType> missingPrivileges = new HashSet<>();
     for (PrivilegeType permission : permissions) {
       TSStatus status =
@@ -161,7 +161,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   @Override
   public TSStatus checkUserSysPrivilegesGrantOpt(String username, PrivilegeType permission) {
-    checkCacheAvailable();
+    failIfMetadataLeaseFenced();
     return checkPrivilege(
         username,
         new PrivilegeUnion(permission, true),
@@ -177,7 +177,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     if (username.equals(AuthorityChecker.INTERNAL_AUDIT_USER)) {
       return posList;
     }
-    checkCacheAvailable();
+    failIfMetadataLeaseFenced();
     User user = getUser(username, true);
     if (user.isOpenIdUser()) {
       return posList;
@@ -209,6 +209,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   @Override
   public TSStatus checkUserPathPrivilegesGrantOpt(
       String username, List<? extends PartialPath> paths, PrivilegeType permission) {
+    failIfMetadataLeaseFenced();
     User user = iAuthorCache.getUserCache(username);
     if (user != null) {
       if (user.isOpenIdUser()) {
@@ -252,7 +253,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   @Override
   public TSStatus checkUserDBPrivileges(
       String username, String database, PrivilegeType permission) {
-    checkCacheAvailable();
+    failIfMetadataLeaseFenced();
     return checkPrivilege(
         username,
         new PrivilegeUnion(database, permission),
@@ -265,7 +266,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   @Override
   public TSStatus checkUserDBPrivilegesGrantOpt(
       String username, String database, PrivilegeType permission) {
-    checkCacheAvailable();
+    failIfMetadataLeaseFenced();
     return checkPrivilege(
         username,
         new PrivilegeUnion(database, permission, true),
@@ -279,7 +280,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   @Override
   public TSStatus checkUserTBPrivileges(
       String username, String database, String table, PrivilegeType permission) {
-    checkCacheAvailable();
+    failIfMetadataLeaseFenced();
     return checkPrivilege(
         username,
         new PrivilegeUnion(database, table, permission),
@@ -295,7 +296,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   @Override
   public TSStatus checkUserTBPrivilegesGrantOpt(
       String username, String database, String table, PrivilegeType permission) {
-    checkCacheAvailable();
+    failIfMetadataLeaseFenced();
     return checkPrivilege(
         username,
         new PrivilegeUnion(database, table, permission, true),
@@ -310,7 +311,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   @Override
   public TSStatus checkUserAnyScopePrivilegeGrantOption(String username, PrivilegeType permission) {
-    checkCacheAvailable();
+    failIfMetadataLeaseFenced();
     return checkPrivilege(
         username,
         new PrivilegeUnion(permission, false, true),
@@ -322,7 +323,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   /** -- check database/table visible -- * */
   @Override
   public TSStatus checkDBVisible(String username, String database) {
-    checkCacheAvailable();
+    failIfMetadataLeaseFenced();
     return checkPrivilege(
         username,
         new PrivilegeUnion(database, null, false),
@@ -333,7 +334,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   @Override
   public TSStatus checkTBVisible(String username, String database, String table) {
-    checkCacheAvailable();
+    failIfMetadataLeaseFenced();
     return checkPrivilege(
         username,
         new PrivilegeUnion(database, table, null, false),
@@ -346,6 +347,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   @Override
   public PathPatternTree getAuthorizedPatternTree(String username, PrivilegeType permission)
       throws AuthException {
+    failIfMetadataLeaseFenced();
     PathPatternTree patternTree = new PathPatternTree();
     User user = iAuthorCache.getUserCache(username);
     if (user != null) {
@@ -393,6 +395,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   private SettableFuture<ConfigTaskResult> operatePermissionInternal(
       Object plan, boolean isRelational) {
+    failIfMetadataLeaseFenced();
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -468,6 +471,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   private SettableFuture<ConfigTaskResult> queryPermissionInternal(
       Object plan, boolean isRelational) {
+    failIfMetadataLeaseFenced();
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TAuthorizerResp authorizerResp = new TAuthorizerResp();
     try (ConfigNodeClient configNodeClient =
@@ -512,35 +516,10 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     return iAuthorCache;
   }
 
-  @Override
-  public void refreshToken() {
-    long currentTime = System.currentTimeMillis();
-    if (heartBeatTimeStamp == 0) {
-      heartBeatTimeStamp = currentTime;
-      return;
-    }
-    if (currentTime - heartBeatTimeStamp > CONFIG.getDatanodeTokenTimeoutMS()) {
-      cacheOutDate = true;
-    }
-    heartBeatTimeStamp = currentTime;
-  }
-
-  // Package-private for testing (ClusterAuthorityFetcherLeaseTest).
-  void checkCacheAvailable() {
-    // cacheOutDate is set by refreshToken() only when a heartbeat finally arrives after a long gap,
-    // so it cannot catch an *ongoing* ConfigNode partition (no heartbeat arrives, refreshToken() is
-    // never called). isFenced() is evaluated on this DataNode's own clock and fires without any
-    // heartbeat: while fenced we drop the permission cache and force a re-fetch from the
-    // ConfigNode,
-    // which fails closed while partitioned, so a missed REVOKE cannot keep authorizing a privilege.
-    if (cacheOutDate || isMetadataLeaseFenced()) {
-      iAuthorCache.invalidAllCache();
-    }
-    cacheOutDate = false;
-  }
-
-  boolean isMetadataLeaseFenced() {
-    return MetadataLeaseManager.getInstance().isFenced();
+  void failIfMetadataLeaseFenced() {
+    MetadataLeaseManager.getInstance()
+        .failIfMetadataLeaseFenced(
+            MetadataLeaseFencedException.LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
   }
 
   @TestOnly
@@ -551,7 +530,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   @Override
   public TSStatus checkUser(
       final String username, final String password, final boolean useEncryptedPassword) {
-    checkCacheAvailable();
+    failIfMetadataLeaseFenced();
     final User user = iAuthorCache.getUserCache(username);
     if (user != null) {
       if (user.isOpenIdUser()) {
@@ -560,16 +539,22 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         if (useEncryptedPassword) {
           return password.equals(user.getPassword())
               ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
-              : RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
+              : RpcUtils.getStatus(
+                  TSStatusCode.WRONG_LOGIN_PASSWORD,
+                  DataNodeMiscMessages.EXCEPTION_AUTHENTICATION_FAILED_802B207B);
         } else {
           return AuthUtils.validatePassword(password, user.getPassword())
                   || AuthUtils.validatePassword(
                       password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)
               ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
-              : RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
+              : RpcUtils.getStatus(
+                  TSStatusCode.WRONG_LOGIN_PASSWORD,
+                  DataNodeMiscMessages.EXCEPTION_AUTHENTICATION_FAILED_802B207B);
         }
       } else {
-        return RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
+        return RpcUtils.getStatus(
+            TSStatusCode.WRONG_LOGIN_PASSWORD,
+            DataNodeMiscMessages.EXCEPTION_AUTHENTICATION_FAILED_802B207B);
       }
     } else {
       TLoginReq req =
@@ -602,7 +587,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   @Override
   public User getUser(String userName, final boolean force) {
-    checkCacheAvailable();
+    failIfMetadataLeaseFenced();
     User user = iAuthorCache.getUserCache(userName);
     if (user != null) {
       return user;
@@ -636,7 +621,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   @Override
   public boolean checkRole(String userName, String roleName) {
-    checkCacheAvailable();
+    failIfMetadataLeaseFenced();
     User user = iAuthorCache.getUserCache(userName);
     if (user != null) {
       return user.isOpenIdUser() || user.getRoleSet().contains(roleName);

@@ -19,32 +19,17 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.unary;
 
-import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.calc.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.read.common.type.TypeEnum;
-import org.apache.tsfile.utils.Binary;
 
-import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class InColumnTransformer extends UnaryColumnTransformer {
-  private final Satisfy satisfy;
-
-  private final TypeEnum childType;
-
-  private Set<Integer> intSet;
-  private Set<Long> longSet;
-  private Set<Float> floatSet;
-  private Set<Double> doubleSet;
-  private Set<Boolean> booleanSet;
-  private Set<Binary> stringSet;
+  private final TypeServices.InColumnValueMatcher valueMatcher;
 
   public InColumnTransformer(
       Type returnType,
@@ -52,12 +37,15 @@ public class InColumnTransformer extends UnaryColumnTransformer {
       boolean isNotIn,
       Set<String> values) {
     super(returnType, childColumnTransformer);
-    satisfy = isNotIn ? new NotInSatisfy() : new InSatisfy();
-    this.childType =
-        childColumnTransformer.getType() == null
-            ? null
-            : childColumnTransformer.getType().getTypeEnum();
-    initTypedSet(values);
+    Type childType = childColumnTransformer.getType();
+    if (childType == null) {
+      valueMatcher = (column, position) -> false;
+      return;
+    }
+    TypeServices.InColumnValueMatcher matcher =
+        TypeServices.IN_COLUMN_VALUE_MATCHER_SERVICE.call(childType).create(values);
+    this.valueMatcher =
+        isNotIn ? (column, position) -> !matcher.matches(column, position) : matcher;
   }
 
   @Override
@@ -83,190 +71,6 @@ public class InColumnTransformer extends UnaryColumnTransformer {
   }
 
   private void transform(Column column, ColumnBuilder columnBuilder, int i) {
-    switch (childType) {
-      case INT32:
-      case DATE:
-        returnType.writeBoolean(columnBuilder, satisfy.of(column.getInt(i)));
-        break;
-      case INT64:
-      case TIMESTAMP:
-        returnType.writeBoolean(columnBuilder, satisfy.of(column.getLong(i)));
-        break;
-      case FLOAT:
-        returnType.writeBoolean(columnBuilder, satisfy.of(column.getFloat(i)));
-        break;
-      case DOUBLE:
-        returnType.writeBoolean(columnBuilder, satisfy.of(column.getDouble(i)));
-        break;
-      case BOOLEAN:
-        returnType.writeBoolean(columnBuilder, satisfy.of(column.getBoolean(i)));
-        break;
-      case STRING:
-      case TEXT:
-      case BLOB:
-        returnType.writeBoolean(columnBuilder, satisfy.of(column.getBinary(i)));
-        break;
-      default:
-        throw new UnsupportedOperationException(
-            CalcMessages.UNSUPPORTED_DATA_TYPE_LOWER + childType);
-    }
-  }
-
-  private void initTypedSet(Set<String> values) {
-    if (childType == null) {
-      return;
-    }
-    String errorMsg = "\"%s\" cannot be cast to [%s]";
-    switch (childType) {
-      case INT32:
-        intSet = new HashSet<>();
-        for (String value : values) {
-          try {
-            intSet.add(Integer.valueOf(value));
-          } catch (IllegalArgumentException e) {
-            throw new SemanticException(String.format(errorMsg, value, childType));
-          }
-        }
-        break;
-      case INT64:
-      case TIMESTAMP:
-        longSet = new HashSet<>();
-        for (String value : values) {
-          try {
-            longSet.add(Long.valueOf(value));
-          } catch (IllegalArgumentException e) {
-            throw new SemanticException(String.format(errorMsg, value, childType));
-          }
-        }
-        break;
-      case FLOAT:
-        floatSet = new HashSet<>();
-        for (String value : values) {
-          try {
-            floatSet.add(Float.valueOf(value));
-          } catch (IllegalArgumentException e) {
-            throw new SemanticException(String.format(errorMsg, value, childType));
-          }
-        }
-        break;
-      case DOUBLE:
-        doubleSet = new HashSet<>();
-        for (String value : values) {
-          try {
-            doubleSet.add(Double.valueOf(value));
-          } catch (IllegalArgumentException e) {
-            throw new SemanticException(String.format(errorMsg, value, childType));
-          }
-        }
-        break;
-      case BOOLEAN:
-        booleanSet = new HashSet<>();
-        for (String value : values) {
-          booleanSet.add(strictCastToBool(value));
-        }
-        break;
-      case TEXT:
-      case STRING:
-        stringSet =
-            values.stream()
-                .map(v -> new Binary(v, TSFileConfig.STRING_CHARSET))
-                .collect(Collectors.toSet());
-        break;
-      case BLOB:
-      case DATE:
-      default:
-        throw new UnsupportedOperationException(
-            CalcMessages.UNSUPPORTED_DATA_TYPE_LOWER + childType);
-    }
-  }
-
-  private boolean strictCastToBool(String s) {
-    if ("true".equalsIgnoreCase(s)) {
-      return true;
-    } else if ("false".equalsIgnoreCase(s)) {
-      return false;
-    }
-    throw new SemanticException(String.format(CalcMessages.CANNOT_CAST_TO_BOOLEAN, s));
-  }
-
-  private interface Satisfy {
-
-    boolean of(int intValue);
-
-    boolean of(long longValue);
-
-    boolean of(float floatValue);
-
-    boolean of(double doubleValue);
-
-    boolean of(boolean booleanValue);
-
-    boolean of(Binary stringValue);
-  }
-
-  private class InSatisfy implements Satisfy {
-
-    @Override
-    public boolean of(int intValue) {
-      return intSet.contains(intValue);
-    }
-
-    @Override
-    public boolean of(long longValue) {
-      return longSet.contains(longValue);
-    }
-
-    @Override
-    public boolean of(float floatValue) {
-      return floatSet.contains(floatValue);
-    }
-
-    @Override
-    public boolean of(double doubleValue) {
-      return doubleSet.contains(doubleValue);
-    }
-
-    @Override
-    public boolean of(boolean booleanValue) {
-      return booleanSet.contains(booleanValue);
-    }
-
-    @Override
-    public boolean of(Binary stringValue) {
-      return stringSet.contains(stringValue);
-    }
-  }
-
-  private class NotInSatisfy implements Satisfy {
-
-    @Override
-    public boolean of(int intValue) {
-      return !intSet.contains(intValue);
-    }
-
-    @Override
-    public boolean of(long longValue) {
-      return !longSet.contains(longValue);
-    }
-
-    @Override
-    public boolean of(float floatValue) {
-      return !floatSet.contains(floatValue);
-    }
-
-    @Override
-    public boolean of(double doubleValue) {
-      return !doubleSet.contains(doubleValue);
-    }
-
-    @Override
-    public boolean of(boolean booleanValue) {
-      return !booleanSet.contains(booleanValue);
-    }
-
-    @Override
-    public boolean of(Binary stringValue) {
-      return !stringSet.contains(stringValue);
-    }
+    returnType.writeBoolean(columnBuilder, valueMatcher.matches(column, i));
   }
 }

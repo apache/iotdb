@@ -23,14 +23,14 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Ag
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.HyperLogLog;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.HyperLogLogStateFactory;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.HyperLogLogBigArray;
-import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.HyperLogLog.DEFAULT_STANDARD_ERROR;
 
@@ -38,12 +38,15 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(GroupedApproxCountDistinctAccumulator.class);
   private final TSDataType seriesDataType;
+  private final TypeServices.HyperLogLogColumnAdder valueAdder;
 
   private final HyperLogLogStateFactory.GroupedHyperLogLogState state =
       HyperLogLogStateFactory.createGroupedState();
 
   public GroupedApproxCountDistinctAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
+    this.valueAdder =
+        TypeServices.HYPER_LOG_LOG_COLUMN_ADDER_SERVICE.call(Type.fromTsDataType(seriesDataType));
   }
 
   @Override
@@ -63,36 +66,25 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
         arguments.length == 1 ? DEFAULT_STANDARD_ERROR : arguments[1].getDouble(0);
     HyperLogLogBigArray hlls = getOrCreateHyperLogLog(state);
 
-    switch (seriesDataType) {
-      case BOOLEAN:
-        addBooleanInput(groupIds, arguments[0], mask, hlls, maxStandardError);
-        return;
-      case INT32:
-      case DATE:
-        addIntInput(groupIds, arguments[0], mask, hlls, maxStandardError);
-        return;
-      case INT64:
-      case TIMESTAMP:
-        addLongInput(groupIds, arguments[0], mask, hlls, maxStandardError);
-        return;
-      case FLOAT:
-        addFloatInput(groupIds, arguments[0], mask, hlls, maxStandardError);
-        return;
-      case DOUBLE:
-        addDoubleInput(groupIds, arguments[0], mask, hlls, maxStandardError);
-        return;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        addBinaryInput(groupIds, arguments[0], mask, hlls, maxStandardError);
-        return;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages
-                    .EXCEPTION_UNSUPPORTED_DATA_TYPE_APPROX_COUNT_DISTINCT_AGGREGATION_ARG_58F0391E,
-                seriesDataType));
+    Column valueColumn = arguments[0];
+    // A sparse mask stores only selected positions, not every input row.
+    int positionCount = mask.getSelectedPositionCount();
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        HyperLogLog hll = hlls.get(groupIds[i], maxStandardError);
+        if (!valueColumn.isNull(i)) {
+          valueAdder.add(hll, valueColumn, i);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      for (int i = 0; i < positionCount; i++) {
+        int position = selectedPositions[i];
+        HyperLogLog hll = hlls.get(groupIds[position], maxStandardError);
+        if (!valueColumn.isNull(position)) {
+          valueAdder.add(hll, valueColumn, position);
+        }
+      }
     }
   }
 
@@ -133,7 +125,8 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
       AggregationMask mask,
       HyperLogLogBigArray hlls,
       double maxStandardError) {
-    int positionCount = mask.getPositionCount();
+    // A sparse mask stores only selected positions, not every input row.
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
@@ -164,7 +157,8 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
       AggregationMask mask,
       HyperLogLogBigArray hlls,
       double maxStandardError) {
-    int positionCount = mask.getPositionCount();
+    // A sparse mask stores only selected positions, not every input row.
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
@@ -195,7 +189,8 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
       AggregationMask mask,
       HyperLogLogBigArray hlls,
       double maxStandardError) {
-    int positionCount = mask.getPositionCount();
+    // A sparse mask stores only selected positions, not every input row.
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
@@ -226,7 +221,8 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
       AggregationMask mask,
       HyperLogLogBigArray hlls,
       double maxStandardError) {
-    int positionCount = mask.getPositionCount();
+    // A sparse mask stores only selected positions, not every input row.
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
@@ -257,7 +253,8 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
       AggregationMask mask,
       HyperLogLogBigArray hlls,
       double maxStandardError) {
-    int positionCount = mask.getPositionCount();
+    // A sparse mask stores only selected positions, not every input row.
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
@@ -288,7 +285,8 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
       AggregationMask mask,
       HyperLogLogBigArray hlls,
       double maxStandardError) {
-    int positionCount = mask.getPositionCount();
+    // A sparse mask stores only selected positions, not every input row.
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {

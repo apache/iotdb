@@ -72,6 +72,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
@@ -151,6 +153,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDropTableProceduresResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -345,9 +348,13 @@ public interface IManager {
   /**
    * Report that the specified DataNode will be shutdown.
    *
-   * <p>The ConfigNode-leader will mark it as {@link NodeStatus#Unknown}
+   * <p>The ConfigNode-leader requests {@link NodeStatus#Stopped}, retaining an existing {@link
+   * NodeStatus#Removing}. Success confirms that the resulting status is persisted and can be
+   * restored by a new leader. If the report is not received, heartbeat timeout produces {@link
+   * NodeStatus#Unknown} only when there is no Stopped or Removing status to retain, including one
+   * restored from persistence. A failed write may still update the current leader's memory.
    *
-   * @return {@link TSStatusCode#SUCCESS_STATUS} if reporting successfully
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if the resulting status is persisted
    */
   TSStatus reportDataNodeShutdown(TDataNodeLocation dataNodeLocation);
 
@@ -538,10 +545,14 @@ public interface IManager {
   TSStatus removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan);
 
   /**
-   * Report that the specified ConfigNode will be shutdown. The ConfigNode-leader will mark it as
-   * Unknown.
+   * Report that the specified ConfigNode will be shutdown. The leader requests {@link
+   * NodeStatus#Stopped}, retaining an existing {@link NodeStatus#Removing}. Success confirms that
+   * the resulting status is persisted and can be restored by a new leader. If the report is not
+   * received, heartbeat timeout produces {@link NodeStatus#Unknown} only when there is no Stopped
+   * or Removing status to retain, including one restored from persistence. A failed write may still
+   * update the current leader's memory.
    *
-   * @return {@link TSStatusCode#SUCCESS_STATUS} if reporting successfully
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if the resulting status is persisted
    */
   TSStatus reportConfigNodeShutdown(TConfigNodeLocation configNodeLocation);
 
@@ -910,11 +921,15 @@ public interface IManager {
 
   TSStatus alterOrDropTable(final TAlterOrDropTableReq req);
 
+  TAutoSyncViewColumnsResp autoSyncViewColumns(TAutoSyncViewColumnsReq req);
+
   TDeleteTableDeviceResp deleteDevice(final TDeleteTableDeviceReq req);
 
   TShowTableResp showTables(final String database, final boolean isDetails);
 
   TShowTable4InformationSchemaResp showTables4InformationSchema();
+
+  TShowDropTableProceduresResp showDropTableProcedures();
 
   TDescTableResp describeTable(
       final String database, final String tableName, final boolean isDetails);

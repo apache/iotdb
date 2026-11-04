@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.memory;
 
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 
@@ -80,7 +81,14 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
   public void reserveMemoryCumulatively(final long size) {
     bytesToBeReserved += size;
     if (bytesToBeReserved >= MEMORY_BATCH_THRESHOLD) {
-      reserveMemoryImmediately();
+      try {
+        reserveMemoryImmediately();
+      } catch (RuntimeException | Error failure) {
+        // reserveMemoryImmediately can fail only while asking the planner for memory, before it
+        // updates this manager's counters. Keep the caller-visible reservation operation atomic.
+        bytesToBeReserved -= size;
+        throw failure;
+      }
     }
   }
 
@@ -129,6 +137,13 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
     }
   }
 
+  @Override
+  public void releaseMemoryImmediately(final long size) {
+    if (size > 0) {
+      releaseBytesImmediately(size);
+    }
+  }
+
   private void releaseBytesImmediately(final long size) {
     long poolBytes = deductReleaseAccounting(size);
     if (poolBytes > 0) {
@@ -154,7 +169,9 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
     fallbackBytesInTotal = 0;
 
     reservedBytesInTotal -= remaining;
-    checkState(reservedBytesInTotal >= 0, "Released bytes has been larger than reserved!");
+    checkState(
+        reservedBytesInTotal >= 0,
+        DataNodeQueryMessages.EXCEPTION_RELEASED_BYTES_HAS_BEEN_LARGER_THAN_RESERVED_69DE5487);
     return remaining;
   }
 

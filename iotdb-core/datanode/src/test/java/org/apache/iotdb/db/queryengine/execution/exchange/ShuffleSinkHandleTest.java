@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.exchange;
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkChannel;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.LocalSourceHandle;
@@ -35,10 +36,235 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.util.Collections;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
 
 public class ShuffleSinkHandleTest {
+  @Test
+  public void testClosePreventsConcurrentAbort() throws Exception {
+    TFragmentInstanceId fragmentInstanceId = new TFragmentInstanceId("q0", 0, "0");
+    ISinkChannel channel = Mockito.mock(ISinkChannel.class);
+    MPPDataExchangeManager.SinkListener sinkListener =
+        Mockito.mock(MPPDataExchangeManager.SinkListener.class);
+    CountDownLatch closeStarted = new CountDownLatch(1);
+    CountDownLatch allowCloseToFinish = new CountDownLatch(1);
+    Mockito.when(channel.close())
+        .thenAnswer(
+            invocation -> {
+              closeStarted.countDown();
+              Assert.assertTrue(allowCloseToFinish.await(5, TimeUnit.SECONDS));
+              return true;
+            });
+
+    ShuffleSinkHandle shuffleSinkHandle =
+        new ShuffleSinkHandle(
+            fragmentInstanceId,
+            Collections.singletonList(channel),
+            new DownStreamChannelIndex(0),
+            ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
+            sinkListener);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+
+    try {
+      Future<Boolean> closeResult = executor.submit(shuffleSinkHandle::close);
+      Assert.assertTrue(closeStarted.await(5, TimeUnit.SECONDS));
+
+      CountDownLatch abortCalled = new CountDownLatch(1);
+      Future<Boolean> abortResult =
+          executor.submit(
+              () -> {
+                abortCalled.countDown();
+                return shuffleSinkHandle.abort();
+              });
+      Assert.assertTrue(abortCalled.await(5, TimeUnit.SECONDS));
+      Assert.assertFalse(abortResult.isDone());
+      allowCloseToFinish.countDown();
+
+      Assert.assertTrue(closeResult.get(5, TimeUnit.SECONDS));
+      Assert.assertFalse(abortResult.get(5, TimeUnit.SECONDS));
+      Assert.assertTrue(shuffleSinkHandle.isClosed());
+      Assert.assertFalse(shuffleSinkHandle.isAborted());
+      Mockito.verify(channel).close();
+      Mockito.verify(channel, Mockito.never()).abort();
+      Mockito.verify(sinkListener).onFinish(shuffleSinkHandle);
+      Mockito.verify(sinkListener, Mockito.never()).onAborted(shuffleSinkHandle);
+    } finally {
+      allowCloseToFinish.countDown();
+      executor.shutdownNow();
+    }
+  }
+
+  @Test
+  public void testAbortPreventsConcurrentClose() throws Exception {
+    TFragmentInstanceId fragmentInstanceId = new TFragmentInstanceId("q0", 0, "0");
+    ISinkChannel channel = Mockito.mock(ISinkChannel.class);
+    MPPDataExchangeManager.SinkListener sinkListener =
+        Mockito.mock(MPPDataExchangeManager.SinkListener.class);
+    CountDownLatch abortStarted = new CountDownLatch(1);
+    CountDownLatch allowAbortToFinish = new CountDownLatch(1);
+    Mockito.when(channel.abort())
+        .thenAnswer(
+            invocation -> {
+              abortStarted.countDown();
+              Assert.assertTrue(allowAbortToFinish.await(5, TimeUnit.SECONDS));
+              return true;
+            });
+
+    ShuffleSinkHandle shuffleSinkHandle =
+        new ShuffleSinkHandle(
+            fragmentInstanceId,
+            Collections.singletonList(channel),
+            new DownStreamChannelIndex(0),
+            ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
+            sinkListener);
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+
+    try {
+      Future<Boolean> abortResult = executor.submit(shuffleSinkHandle::abort);
+      Assert.assertTrue(abortStarted.await(5, TimeUnit.SECONDS));
+
+      Assert.assertFalse(shuffleSinkHandle.close());
+      allowAbortToFinish.countDown();
+
+      Assert.assertTrue(abortResult.get(5, TimeUnit.SECONDS));
+      Assert.assertTrue(shuffleSinkHandle.isAborted());
+      Assert.assertFalse(shuffleSinkHandle.isClosed());
+      Mockito.verify(channel).abort();
+      Mockito.verify(channel, Mockito.never()).close();
+      Mockito.verify(sinkListener).onAborted(shuffleSinkHandle);
+      Mockito.verify(sinkListener, Mockito.never()).onFinish(shuffleSinkHandle);
+    } finally {
+      allowAbortToFinish.countDown();
+      executor.shutdownNow();
+    }
+  }
+
+  @Test
+  public void testConcurrentAbortWaitsForCompletion() throws Exception {
+    TFragmentInstanceId fragmentInstanceId = new TFragmentInstanceId("q0", 0, "0");
+    ISinkChannel channel = Mockito.mock(ISinkChannel.class);
+    MPPDataExchangeManager.SinkListener sinkListener =
+        Mockito.mock(MPPDataExchangeManager.SinkListener.class);
+    CountDownLatch abortStarted = new CountDownLatch(1);
+    CountDownLatch allowAbortToFinish = new CountDownLatch(1);
+    Mockito.when(channel.abort())
+        .thenAnswer(
+            invocation -> {
+              abortStarted.countDown();
+              Assert.assertTrue(allowAbortToFinish.await(5, TimeUnit.SECONDS));
+              return true;
+            });
+
+    ShuffleSinkHandle shuffleSinkHandle =
+        new ShuffleSinkHandle(
+            fragmentInstanceId,
+            Collections.singletonList(channel),
+            new DownStreamChannelIndex(0),
+            ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
+            sinkListener);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+
+    try {
+      Future<Boolean> firstAbortResult = executor.submit(shuffleSinkHandle::abort);
+      Assert.assertTrue(abortStarted.await(5, TimeUnit.SECONDS));
+
+      CountDownLatch secondAbortCalled = new CountDownLatch(1);
+      Future<Boolean> secondAbortResult =
+          executor.submit(
+              () -> {
+                secondAbortCalled.countDown();
+                return shuffleSinkHandle.abort();
+              });
+      Assert.assertTrue(secondAbortCalled.await(5, TimeUnit.SECONDS));
+      Assert.assertFalse(secondAbortResult.isDone());
+      allowAbortToFinish.countDown();
+
+      Assert.assertTrue(firstAbortResult.get(5, TimeUnit.SECONDS));
+      Assert.assertFalse(secondAbortResult.get(5, TimeUnit.SECONDS));
+      Mockito.verify(channel).abort();
+      Mockito.verify(sinkListener).onAborted(shuffleSinkHandle);
+    } finally {
+      allowAbortToFinish.countDown();
+      executor.shutdownNow();
+    }
+  }
+
+  @Test
+  public void testAbortPreventsConcurrentSetNoMoreTsBlocks() throws Exception {
+    TFragmentInstanceId fragmentInstanceId = new TFragmentInstanceId("q0", 0, "0");
+    ISinkChannel channel = Mockito.mock(ISinkChannel.class);
+    MPPDataExchangeManager.SinkListener sinkListener =
+        Mockito.mock(MPPDataExchangeManager.SinkListener.class);
+    CountDownLatch abortStarted = new CountDownLatch(1);
+    CountDownLatch allowAbortToFinish = new CountDownLatch(1);
+    Mockito.when(channel.abort())
+        .thenAnswer(
+            invocation -> {
+              abortStarted.countDown();
+              Assert.assertTrue(allowAbortToFinish.await(5, TimeUnit.SECONDS));
+              return true;
+            });
+
+    ShuffleSinkHandle shuffleSinkHandle =
+        new ShuffleSinkHandle(
+            fragmentInstanceId,
+            Collections.singletonList(channel),
+            new DownStreamChannelIndex(0),
+            ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
+            sinkListener);
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+
+    try {
+      Future<Boolean> abortResult = executor.submit(shuffleSinkHandle::abort);
+      Assert.assertTrue(abortStarted.await(5, TimeUnit.SECONDS));
+
+      shuffleSinkHandle.setNoMoreTsBlocks();
+
+      Mockito.verify(channel, Mockito.never()).setNoMoreTsBlocks();
+      Mockito.verify(sinkListener, Mockito.never()).onEndOfBlocks(shuffleSinkHandle);
+      allowAbortToFinish.countDown();
+      Assert.assertTrue(abortResult.get(5, TimeUnit.SECONDS));
+    } finally {
+      allowAbortToFinish.countDown();
+      executor.shutdownNow();
+    }
+  }
+
+  @Test
+  public void testCloseDoesNotWaitOnReentrantCall() {
+    TFragmentInstanceId fragmentInstanceId = new TFragmentInstanceId("q0", 0, "0");
+    ISinkChannel channel = Mockito.mock(ISinkChannel.class);
+    MPPDataExchangeManager.SinkListener sinkListener =
+        Mockito.mock(MPPDataExchangeManager.SinkListener.class);
+    AtomicReference<ShuffleSinkHandle> shuffleSinkHandleReference = new AtomicReference<>();
+    Mockito.when(channel.close())
+        .thenAnswer(
+            invocation -> {
+              Assert.assertFalse(shuffleSinkHandleReference.get().close());
+              return true;
+            });
+
+    ShuffleSinkHandle shuffleSinkHandle =
+        new ShuffleSinkHandle(
+            fragmentInstanceId,
+            Collections.singletonList(channel),
+            new DownStreamChannelIndex(0),
+            ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
+            sinkListener);
+    shuffleSinkHandleReference.set(shuffleSinkHandle);
+
+    Assert.assertTrue(shuffleSinkHandle.close());
+    Assert.assertTrue(shuffleSinkHandle.isClosed());
+    Mockito.verify(channel).close();
+    Mockito.verify(sinkListener).onFinish(shuffleSinkHandle);
+  }
+
   @Test
   public void testAbort() {
     final String queryId = "q0";

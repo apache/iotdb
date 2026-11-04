@@ -52,6 +52,11 @@ public class ThreadSafeMemoryReservationManager extends NotThreadSafeMemoryReser
   }
 
   @Override
+  public synchronized void releaseMemoryImmediately(long size) {
+    super.releaseMemoryImmediately(size);
+  }
+
+  @Override
   public synchronized void releaseAllReservedMemory() {
     super.releaseAllReservedMemory();
   }

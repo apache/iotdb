@@ -51,7 +51,7 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
+  public synchronized void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
     ImmutableSet.copyOf(connectorMap.keySet()).forEach(this::createMetrics);
   }
@@ -59,6 +59,37 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
   private void createMetrics(final String taskID) {
     createRate(taskID);
     createHistogram(taskID);
+  }
+
+  private static String[] getCreationTimeTags(final PipeSinkSubtask connector) {
+    return connector.getPipeName() == null
+        ? new String[] {
+          Tag.NAME.toString(),
+          connector.getAttributeSortedString(),
+          Tag.CREATION_TIME.toString(),
+          String.valueOf(connector.getCreationTime())
+        }
+        : new String[] {
+          Tag.NAME.toString(),
+          connector.getAttributeSortedString(),
+          Tag.PIPE.toString(),
+          connector.getPipeName(),
+          Tag.CREATION_TIME.toString(),
+          String.valueOf(connector.getCreationTime())
+        };
+  }
+
+  private static String[] getNameTags(final PipeSinkSubtask connector) {
+    return connector.getPipeName() == null
+        ? new String[] {Tag.NAME.toString(), connector.getAttributeSortedString()}
+        : new String[] {
+          Tag.NAME.toString(),
+          connector.getAttributeSortedString(),
+          Tag.PIPE.toString(),
+          connector.getPipeName(),
+          Tag.CREATION_TIME.toString(),
+          String.valueOf(connector.getCreationTime())
+        };
   }
 
   private void createRate(final String taskID) {
@@ -69,10 +100,7 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
         metricService.getOrCreateRate(
             Metric.PIPE_CONNECTOR_SCHEMA_TRANSFER.toString(),
             MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            connector.getAttributeSortedString(),
-            Tag.CREATION_TIME.toString(),
-            String.valueOf(connector.getCreationTime())));
+            getCreationTimeTags(connector)));
   }
 
   private void createHistogram(final String taskID) {
@@ -82,37 +110,30 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
         metricService.getOrCreateHistogram(
             Metric.PIPE_SCHEMA_BATCH_SIZE.toString(),
             MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            connector.getAttributeSortedString(),
-            Tag.CREATION_TIME.toString(),
-            String.valueOf(connector.getCreationTime()));
+            getCreationTimeTags(connector));
     connector.setSchemaBatchSizeHistogram(schemaBatchSizeHistogram);
 
     final Histogram schemaBatchTimeIntervalHistogram =
         metricService.getOrCreateHistogram(
             Metric.PIPE_SCHEMA_BATCH_TIME_COST.toString(),
             MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            connector.getAttributeSortedString(),
-            Tag.CREATION_TIME.toString(),
-            String.valueOf(connector.getCreationTime()));
+            getCreationTimeTags(connector));
     connector.setSchemaBatchTimeIntervalHistogram(schemaBatchTimeIntervalHistogram);
 
     final Histogram schemaBatchEventSizeHistogram =
         metricService.getOrCreateHistogram(
             Metric.PIPE_CONNECTOR_BATCH_SIZE.toString(),
             MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            connector.getAttributeSortedString());
+            getNameTags(connector));
     connector.setEventSizeHistogram(schemaBatchEventSizeHistogram);
   }
 
   @Override
-  public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(connectorMap.keySet()).forEach(this::deregister);
-    if (!connectorMap.isEmpty()) {
-      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_SCHEMA_REGION);
-    }
+  public synchronized void unbindFrom(final AbstractMetricService metricService) {
+    // Keep the subtasks registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    // Synchronized with the (de)registrations, which may remove a registration being unbound.
+    ImmutableSet.copyOf(connectorMap.keySet()).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final String taskID) {
@@ -126,10 +147,7 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
     metricService.remove(
         MetricType.RATE,
         Metric.PIPE_CONNECTOR_SCHEMA_TRANSFER.toString(),
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
+        getCreationTimeTags(connector));
     schemaRateMap.remove(taskID);
   }
 
@@ -138,27 +156,18 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
     metricService.remove(
         MetricType.HISTOGRAM,
         Metric.PIPE_SCHEMA_BATCH_SIZE.toString(),
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
+        getCreationTimeTags(connector));
     metricService.remove(
         MetricType.HISTOGRAM,
         Metric.PIPE_SCHEMA_BATCH_TIME_COST.toString(),
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
+        getCreationTimeTags(connector));
     metricService.remove(
-        MetricType.HISTOGRAM,
-        Metric.PIPE_CONNECTOR_BATCH_SIZE.toString(),
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString());
+        MetricType.HISTOGRAM, Metric.PIPE_CONNECTOR_BATCH_SIZE.toString(), getNameTags(connector));
   }
 
   //////////////////////////// Register & deregister (pipe integration) ////////////////////////////
 
-  public void register(final PipeSinkSubtask pipeSinkSubtask) {
+  public synchronized void register(final PipeSinkSubtask pipeSinkSubtask) {
     final String taskID = pipeSinkSubtask.getTaskID();
     connectorMap.putIfAbsent(taskID, pipeSinkSubtask);
     if (Objects.nonNull(metricService)) {
@@ -166,7 +175,7 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
     }
   }
 
-  public void deregister(final String taskID) {
+  public synchronized void deregister(final String taskID) {
     if (!connectorMap.containsKey(taskID)) {
       LOGGER.warn(
           DataNodePipeMessages.FAILED_TO_DEREGISTER_PIPE_SCHEMA_REGION_CONNECTOR,

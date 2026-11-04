@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.runtime;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
@@ -125,6 +126,9 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
         .getPipeMetaList()
         .forEach(
             pipeMeta -> {
+              if (PipeStatus.PRE_DELETE.equals(pipeMeta.getRuntimeMeta().getStatus().get())) {
+                return;
+              }
               if (!pipeMeta.getStaticMeta().isSourceExternal()) {
                 return;
               }
@@ -200,6 +204,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(response.getMessage());
     }
+    pipeTaskInfo.get().markPipeMetaExceptionsPersisted();
   }
 
   @Override
@@ -207,8 +212,11 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
       throws PipeException, IOException {
     LOGGER.debug(ProcedureMessages.PIPEMETASYNCPROCEDURE_EXECUTEFROMOPERATEONDATANODES);
 
+    persistPendingPipeMetaExceptions(env);
+
     Map<Integer, TPushPipeMetaResp> respMap = pushPipeMetaToDataNodesBestEffortAndGetResponse(env);
     if (pipeTaskInfo.get().recordDataNodePushPipeMetaExceptions(respMap)) {
+      writePipeMetaChangesToConfigNodeConsensus(env);
       throw new PipeException(
           String.format(
               ProcedureMessages.FAILED_TO_PUSH_PIPE_META_TO_DATANODES_DETAILS,

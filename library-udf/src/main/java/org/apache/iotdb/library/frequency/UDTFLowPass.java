@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.frequency;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -49,7 +50,7 @@ public class UDTFLowPass implements UDTF {
         .validateRequiredAttribute(WPASS_PARAM)
         .validate(
             x -> (double) x > 0 && (double) x < 1,
-            "Wpass should be within (0,1).",
+            LibraryUdfMessages.EXCEPTION_WPASS_SHOULD_BE_WITHIN_0_1_24771828,
             validator.getParameters().getDouble(WPASS_PARAM));
   }
 

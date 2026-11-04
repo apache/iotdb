@@ -78,6 +78,10 @@ public class ProgressWALReader implements Closeable {
     return delegate.getCurrentEntryIndex();
   }
 
+  public void releaseReadBuffers() {
+    delegate.releaseReadBuffers();
+  }
+
   @Override
   public void close() throws IOException {
     delegate.close();

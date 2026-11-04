@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.builder;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TCommitId;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2TransferReq;
@@ -28,6 +29,7 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TabletBatchReq;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TabletInsertNodeReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -40,7 +42,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -98,7 +99,13 @@ public abstract class IoTConsensusV2TransferBatchReqBuilder implements AutoClose
             Arrays.asList(CONNECTOR_IOTDB_BATCH_SIZE_KEY, SINK_IOTDB_BATCH_SIZE_KEY),
             CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE);
 
-    allocatedMemoryBlock = PipeDataNodeResourceManager.memory().forceAllocate(0);
+    allocatedMemoryBlock =
+        PipeDataNodeResourceManager.memory()
+            .forceAllocate(
+                IoTConsensusV2TransferBatchReqBuilder.class.getSimpleName(),
+                0,
+                PipeMemoryBlockCategory.BATCH,
+                IoTConsensusV2TransferBatchReqBuilder.class.getSimpleName());
   }
 
   /**
@@ -164,7 +171,16 @@ public abstract class IoTConsensusV2TransferBatchReqBuilder implements AutoClose
 
     final long newTotalBufferSize =
         Math.min(totalBufferSize + bufferSize, getMaxBatchSizeInBytes());
-    PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlock, newTotalBufferSize);
+    if (!PipeDataNodeResourceManager.memory().tryResize(allocatedMemoryBlock, newTotalBufferSize)) {
+      throw new PipeRuntimeOutOfMemoryCriticalException(
+          String.format(
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_FORCERESIZE_FAILED_TO_ALLOCATE_MEMORY_AFTER_D_RETRIES_TOTAL_8C6948BC,
+              0,
+              PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes(),
+              PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes(),
+              newTotalBufferSize - totalBufferSize));
+    }
     totalBufferSize = newTotalBufferSize;
   }
 
@@ -209,7 +225,6 @@ public abstract class IoTConsensusV2TransferBatchReqBuilder implements AutoClose
   }
 
   protected int buildTabletInsertionBuffer(TabletInsertionEvent event) throws WALPipeException {
-    final ByteBuffer buffer;
     final TCommitId commitId;
 
     // event instanceof PipeInsertNodeTabletInsertionEvent)
@@ -221,17 +236,15 @@ public abstract class IoTConsensusV2TransferBatchReqBuilder implements AutoClose
             pipeInsertNodeTabletInsertionEvent.getCommitterKey().getRestartTimes(),
             pipeInsertNodeTabletInsertionEvent.getRebootTimes());
 
-    // Read the bytebuffer from the wal file and transfer it directly without serializing or
-    // deserializing if possible
     final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
     // IoTConsensusV2 will transfer binary data to TIoTConsensusV2TransferReq
     final ProgressIndex progressIndex = pipeInsertNodeTabletInsertionEvent.getProgressIndex();
-    buffer = insertNode.serializeToByteBuffer();
-    batchReqs.add(
+    final IoTConsensusV2TabletInsertNodeReq request =
         IoTConsensusV2TabletInsertNodeReq.toTIoTConsensusV2TransferReq(
-            insertNode, commitId, consensusGroupId, progressIndex, thisDataNodeId));
+            insertNode, commitId, consensusGroupId, progressIndex, thisDataNodeId);
+    batchReqs.add(request);
 
-    return buffer.limit();
+    return request.body.remaining();
   }
 
   @Override

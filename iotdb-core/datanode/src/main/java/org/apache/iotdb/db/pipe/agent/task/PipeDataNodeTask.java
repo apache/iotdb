@@ -22,6 +22,8 @@ package org.apache.iotdb.db.pipe.agent.task;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
 import org.apache.iotdb.commons.pipe.agent.task.stage.PipeTaskStage;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.agent.task.stage.PipeTaskSourceStage;
+import org.apache.iotdb.pipe.api.PipeExtractor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -101,12 +103,26 @@ public class PipeDataNodeTask implements PipeTask {
         System.currentTimeMillis() - startTime);
   }
 
+  @Override
+  public void registerReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    sinkStage.registerReceiverRuntimeSessions(pipeName, creationTime);
+  }
+
+  @Override
+  public void discardReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    sinkStage.discardReceiverRuntimeSessions(pipeName, creationTime);
+  }
+
   public int getRegionId() {
     return regionId;
   }
 
   public String getPipeName() {
     return pipeName;
+  }
+
+  public PipeExtractor getPipeExtractor() {
+    return ((PipeTaskSourceStage) sourceStage).getPipeExtractor();
   }
 
   public boolean isCompleted() {

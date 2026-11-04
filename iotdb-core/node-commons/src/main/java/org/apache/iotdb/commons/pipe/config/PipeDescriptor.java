@@ -238,6 +238,16 @@ public class PipeDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "pipe_tsfile_parser_memory", String.valueOf(config.getPipeTsFileParserMemory()))));
+    config.setPipeTsFileParserInFlightMaxNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_tsfile_parser_in_flight_max_num",
+                String.valueOf(config.getPipeTsFileParserInFlightMaxNum()))));
+    config.setPipeTsFileParserInFlightMaxNumPerPipeRegion(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_tsfile_parser_in_flight_max_num_per_pipe_region",
+                String.valueOf(config.getPipeTsFileParserInFlightMaxNumPerPipeRegion()))));
     config.setPipeSinkBatchMemoryInsertNode(
         Long.parseLong(
             properties.getProperty(
@@ -477,6 +487,11 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_air_gap_receiver_max_payload_size_in_bytes",
                 String.valueOf(config.getPipeAirGapReceiverMaxPayloadSizeInBytes()))));
+    config.setPipeAirGapReceiverUdpSocketBufferSizeInBytes(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_air_gap_receiver_udp_socket_buffer_size_in_bytes",
+                Integer.toString(config.getPipeAirGapReceiverUdpSocketBufferSizeInBytes()))));
     config.setPipeReceiverLoadConversionEnabled(
         Boolean.parseBoolean(
             properties.getProperty(

@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.file;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.i18n.CommonMessages;
+import org.apache.iotdb.commons.i18n.StorageMessages;
 import org.apache.iotdb.commons.utils.FileUtils;
 
 import org.apache.ratis.util.AutoCloseableLock;
@@ -161,7 +162,7 @@ public abstract class SystemPropertiesHandler {
       return;
     }
     if (formalFile.exists() && tmpFile.exists()) {
-      if (!tmpFile.delete()) {
+      if (!FileUtils.deleteFileIfExist(tmpFile)) {
         LOGGER.warn(
             CommonMessages
                 .LOG_DELETE_SYSTEM_PROPERTIES_TMP_FILE_FAIL_YOU_MAY_MANUALLY_DELETE_F81C4A53,
@@ -182,10 +183,11 @@ public abstract class SystemPropertiesHandler {
           CommonMessages
               .EXCEPTION_TMP_SYSTEM_PROPERTIES_FILE_MUST_EXIST_CALL_REPLACEFORMALFILE_FA63B976);
     }
-    if (formalFile.exists() && !formalFile.delete()) {
+    if (formalFile.exists() && !FileUtils.deleteFileIfExist(formalFile)) {
       String msg =
           String.format(
-              "Delete formal system properties file fail: %s", formalFile.getAbsoluteFile());
+              StorageMessages.EXCEPTION_DELETE_FORMAL_SYSTEM_PROPERTIES_FILE_FAIL_ARG_BB18DD99,
+              formalFile.getAbsoluteFile());
       throw new IOException(msg);
     }
 
@@ -198,8 +200,8 @@ public abstract class SystemPropertiesHandler {
   }
 
   public void delete() {
-    this.formalFile.delete();
-    this.tmpFile.delete();
+    FileUtils.deleteFileIfExist(this.formalFile);
+    FileUtils.deleteFileIfExist(this.tmpFile);
     if (this.formalFile.exists() || this.tmpFile.exists()) {
       LOGGER.warn(
           CommonMessages

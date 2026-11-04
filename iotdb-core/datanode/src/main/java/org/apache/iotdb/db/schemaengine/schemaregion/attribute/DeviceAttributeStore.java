@@ -43,6 +43,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +58,9 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   private static final long MAP_SIZE = RamUsageEstimator.shallowSizeOfInstance(HashMap.class);
 
   private final List<Map<String, Binary>> deviceAttributeList = new ArrayList<>();
+  // Reuse holes without moving live pointers or changing the snapshot format.
+  private BitSet freeAttributePointers = new BitSet(0);
+  private int nextFreeAttributePointer;
 
   private final MemSchemaRegionStatistics regionStatistics;
 
@@ -67,8 +71,10 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   // It's OK not to calculate the region statistics here. The caller shall ensure that the
   // statistics is cleared at the outside.
   @Override
-  public void clear() {
+  public synchronized void clear() {
     deviceAttributeList.clear();
+    freeAttributePointers = new BitSet(0);
+    nextFreeAttributePointer = 0;
   }
 
   @Override
@@ -113,7 +119,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public void loadFromSnapshot(final File snapshotDir) throws IOException {
+  public synchronized void loadFromSnapshot(final File snapshotDir) throws IOException {
     final File snapshot =
         SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT);
     if (!snapshot.exists()) {
@@ -133,7 +139,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   public synchronized int createAttribute(
       final List<String> nameList, final Object[] valueList, final String tableName) {
     // todo implement storage for device of diverse data types
-    long memUsage = MAP_SIZE + RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+    long memUsage = MAP_SIZE;
     final Map<String, Binary> attributeMap = new HashMap<>();
     for (int i = 0; i < nameList.size(); i++) {
       if (valueList.length <= i) {
@@ -147,19 +153,29 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
       memUsage += MemUsageUtil.computeKVMemUsageInMap(nameList.get(i), value);
       addTableAttributeMemory(tableName, value.ramBytesUsed());
     }
-    deviceAttributeList.add(attributeMap);
+    int pointer = freeAttributePointers.nextSetBit(nextFreeAttributePointer);
+    if (pointer < 0) {
+      pointer = deviceAttributeList.size();
+      deviceAttributeList.add(attributeMap);
+      memUsage += RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+    } else {
+      deviceAttributeList.set(pointer, attributeMap);
+      freeAttributePointers.clear(pointer);
+      nextFreeAttributePointer = pointer + 1;
+    }
     requestMemory(memUsage);
-    return deviceAttributeList.size() - 1;
+    return pointer;
   }
 
   @Override
-  public Map<String, Binary> alterAttribute(
+  public synchronized Map<String, Binary> alterAttribute(
       final int pointer,
       final List<String> nameList,
       final Object[] valueList,
       final String tableName) {
     // todo implement storage for device of diverse data types
     long memUsageDelta = 0L;
+    long valueMemUsageDelta = 0L;
     long originMemUsage;
     long updatedMemUsage;
     final Map<String, Binary> updateMap = new HashMap<>();
@@ -173,11 +189,12 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
         continue;
       }
       final Binary value = (Binary) valueList[i];
+      final Binary oldValue = attributeMap.get(key);
+      valueMemUsageDelta +=
+          (value == null ? 0 : value.ramBytesUsed())
+              - (oldValue == null ? 0 : oldValue.ramBytesUsed());
 
-      originMemUsage =
-          attributeMap.containsKey(key)
-              ? MemUsageUtil.computeKVMemUsageInMap(key, attributeMap.get(key))
-              : 0;
+      originMemUsage = oldValue == null ? 0 : MemUsageUtil.computeKVMemUsageInMap(key, oldValue);
       if (value != null) {
         if (!Objects.equals(value, attributeMap.put(key, value))) {
           updateMap.put(key, value);
@@ -193,28 +210,33 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     }
     if (memUsageDelta > 0) {
       requestMemory(memUsageDelta);
-      addTableAttributeMemory(tableName, memUsageDelta);
     } else if (memUsageDelta < 0) {
       releaseMemory(-memUsageDelta);
-      decreaseTableAttributeMemory(tableName, -memUsageDelta);
+    }
+    if (valueMemUsageDelta > 0) {
+      addTableAttributeMemory(tableName, valueMemUsageDelta);
+    } else if (valueMemUsageDelta < 0) {
+      decreaseTableAttributeMemory(tableName, -valueMemUsageDelta);
     }
     return updateMap;
   }
 
   @Override
-  public void removeAttribute(final int pointer, final String tableName) {
-    releaseMemory(
-        MAP_SIZE + UpdateDetailContainer.sizeOfMapEntries(deviceAttributeList.get(pointer)));
+  public synchronized void removeAttribute(final int pointer, final String tableName) {
+    final Map<String, Binary> attributeMap = deviceAttributeList.get(pointer);
+    if (attributeMap == null) {
+      return;
+    }
+    releaseMemory(MAP_SIZE + UpdateDetailContainer.sizeOfMapEntries(attributeMap));
     decreaseTableAttributeMemory(
         tableName,
-        deviceAttributeList.get(pointer).values().stream()
-            .map(UpdateDetailContainer::sizeOf)
-            .reduce(0L, Long::sum));
+        attributeMap.values().stream().map(UpdateDetailContainer::sizeOf).reduce(0L, Long::sum));
     deviceAttributeList.set(pointer, null);
+    markFreeAttributePointer(pointer);
   }
 
   @Override
-  public void removeAttribute(
+  public synchronized void removeAttribute(
       final int pointer, final String attributeName, final String tableName) {
     final Map<String, Binary> attributeMap = deviceAttributeList.get(pointer);
     if (Objects.isNull(attributeMap)) {
@@ -228,12 +250,12 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public Map<String, Binary> getAttributes(final int pointer) {
+  public synchronized Map<String, Binary> getAttributes(final int pointer) {
     return deviceAttributeList.get(pointer);
   }
 
   @Override
-  public Binary getAttributes(final int pointer, final String name) {
+  public synchronized Binary getAttributes(final int pointer, final String name) {
     return deviceAttributeList.get(pointer).get(name);
   }
 
@@ -271,12 +293,23 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     for (int i = 0; i < size; i++) {
       final Map<String, Binary> attributeMap = readMap(inputStream, false);
       deviceAttributeList.add(attributeMap);
+      if (attributeMap == null) {
+        markFreeAttributePointer(i);
+      }
       requestMemory(
           RamUsageEstimator.NUM_BYTES_OBJECT_REF
               + (Objects.nonNull(attributeMap)
                   ? MAP_SIZE + UpdateDetailContainer.sizeOfMapEntries(attributeMap)
                   : 0));
     }
+  }
+
+  private void markFreeAttributePointer(final int pointer) {
+    final int oldCapacity = freeAttributePointers.size();
+    freeAttributePointers.set(pointer);
+    // Account for bitmap storage as well as the retained references in deviceAttributeList.
+    requestMemory((freeAttributePointers.size() - oldCapacity) / Byte.SIZE);
+    nextFreeAttributePointer = Math.min(nextFreeAttributePointer, pointer);
   }
 
   public static Map<String, Binary> readMap(final InputStream inputStream, final boolean concurrent)

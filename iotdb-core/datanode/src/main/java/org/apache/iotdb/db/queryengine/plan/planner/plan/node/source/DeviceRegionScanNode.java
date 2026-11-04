@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Maps;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -105,7 +106,7 @@ public class DeviceRegionScanNode extends RegionScanNode {
 
   public static PlanNode deserialize(ByteBuffer buffer) {
     int size = ReadWriteIOUtils.readInt(buffer);
-    Map<PartialPath, DeviceContext> devicePathToContextMap = new HashMap<>();
+    Map<PartialPath, DeviceContext> devicePathToContextMap = Maps.newHashMapWithExpectedSize(size);
     for (int i = 0; i < size; i++) {
       PartialPath path = (PartialPath) PathDeserializeUtil.deserialize(buffer);
       devicePathToContextMap.put(path, DeviceContext.deserialize(buffer));

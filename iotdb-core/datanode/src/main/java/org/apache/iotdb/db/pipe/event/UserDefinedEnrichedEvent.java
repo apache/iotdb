@@ -56,10 +56,21 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
         enrichedEvent.getEndTime());
     this.userDefinedEvent = userDefinedEvent;
     this.enrichedEvent = enrichedEvent;
+    bindSource(enrichedEvent.getSourceId());
   }
 
   public UserDefinedEvent getUserDefinedEvent() {
     return userDefinedEvent;
+  }
+
+  @Override
+  public boolean isControlEvent() {
+    return userDefinedEvent.isControlEvent();
+  }
+
+  @Override
+  public boolean shouldSkipProcessing() {
+    return userDefinedEvent.shouldSkipProcessing();
   }
 
   @Override

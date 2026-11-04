@@ -39,6 +39,7 @@ import org.apache.iotdb.db.trigger.executor.TriggerFireVisitor;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataOutputStream;
@@ -161,6 +162,11 @@ public class PipeEnrichedInsertNode extends InsertNode {
   @Override
   public void setDataRegionReplicaSet(final TRegionReplicaSet dataRegionReplicaSet) {
     insertNode.setDataRegionReplicaSet(dataRegionReplicaSet);
+  }
+
+  @Override
+  public void clearUselessFieldsAfterRouting() {
+    insertNode.clearUselessFieldsAfterRouting();
   }
 
   @Override
@@ -288,6 +294,16 @@ public class PipeEnrichedInsertNode extends InsertNode {
   protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     PlanNodeType.PIPE_ENRICHED_INSERT_DATA.serialize(stream);
     insertNode.serialize(stream);
+  }
+
+  @Override
+  protected int serializedAttributesSize() {
+    return PlanNodeType.BYTES + insertNode.serializeToByteBufferSize();
+  }
+
+  @Override
+  protected int serializedPlanNodeIdSize() {
+    return ReadWriteIOUtils.sizeToWrite(super.getPlanNodeId().getId());
   }
 
   public static PipeEnrichedInsertNode deserialize(final ByteBuffer buffer) {

@@ -20,13 +20,18 @@ package org.apache.iotdb.commons.udf.utils;
 
 import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
+import java.util.Set;
 
 public class MasterRepairUtil {
+  private static final Set<Type> NUMERIC_TYPES =
+      EnumSet.of(Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE);
   private final ArrayList<ArrayList<Double>> td = new ArrayList<>();
   private final ArrayList<ArrayList<Double>> tdCleaned = new ArrayList<>();
   private final ArrayList<ArrayList<Double>> md = new ArrayList<>();
@@ -90,34 +95,15 @@ public class MasterRepairUtil {
   }
 
   public static double getValueAsDouble(Row row, int index) throws Exception {
-    double ans;
     try {
-      switch (row.getDataType(index)) {
-        case INT32:
-          ans = row.getInt(index);
-          break;
-        case INT64:
-          ans = row.getLong(index);
-          break;
-        case FLOAT:
-          ans = row.getFloat(index);
-          break;
-        case DOUBLE:
-          ans = row.getDouble(index);
-          break;
-        case DATE:
-        case BLOB:
-        case STRING:
-        case TIMESTAMP:
-        case BOOLEAN:
-        case TEXT:
-        default:
-          throw new Exception(CommonMessages.VALUE_NOT_NUMERIC);
+      // DATE and TIMESTAMP have numeric storage but are not repairable numeric measurements.
+      if (!NUMERIC_TYPES.contains(row.getDataType(index))) {
+        throw new Exception(CommonMessages.VALUE_NOT_NUMERIC);
       }
+      return row.getDouble(index);
     } catch (IOException e) {
       throw new Exception(CommonMessages.FAIL_TO_GET_DATA_TYPE_IN_ROW + row.getTime(), e);
     }
-    return ans;
   }
 
   public void buildKDTree() {

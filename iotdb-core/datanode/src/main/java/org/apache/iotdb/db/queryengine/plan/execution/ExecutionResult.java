@@ -26,8 +26,16 @@ public class ExecutionResult {
   public final QueryId queryId;
   public final TSStatus status;
 
+  /** Whether this failure originated from an interrupted wait rather than another query error. */
+  public final boolean failureCausedByInterruption;
+
   public ExecutionResult(QueryId queryId, TSStatus status) {
+    this(queryId, status, false);
+  }
+
+  ExecutionResult(QueryId queryId, TSStatus status, boolean failureCausedByInterruption) {
     this.queryId = queryId;
     this.status = status;
+    this.failureCausedByInterruption = failureCausedByInterruption;
   }
 }

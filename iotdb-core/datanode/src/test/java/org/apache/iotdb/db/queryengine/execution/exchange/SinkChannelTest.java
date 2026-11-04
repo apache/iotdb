@@ -37,6 +37,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent;
 import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -87,6 +88,7 @@ public class SinkChannelTest {
     SinkListener mockSinkListener = Mockito.mock(SinkListener.class);
     // Construct several mock TsBlock(s).
     List<TsBlock> mockTsBlocks = Utils.createMockTsBlocks(numOfMockTsBlock, mockTsBlockSize);
+    TsBlockSerde mockTsBlockSerde = Utils.createMockTsBlockSerde(mockTsBlockSize);
 
     // Construct SinkChannel.
     SinkChannel sinkChannel =
@@ -98,7 +100,7 @@ public class SinkChannelTest {
             localFragmentInstanceId,
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
-            Utils.createMockTsBlockSerde(mockTsBlockSize),
+            mockTsBlockSerde,
             mockSinkListener,
             mockClientManager);
     sinkChannel.open();
@@ -145,6 +147,8 @@ public class SinkChannelTest {
     for (int i = 0; i < numOfMockTsBlock; i++) {
       try {
         sinkChannel.getSerializedTsBlock(i);
+        sinkChannel.getSerializedTsBlock(i);
+        Mockito.verify(mockTsBlockSerde, Mockito.times(1)).serialize(mockTsBlocks.get(i));
       } catch (IOException e) {
         e.printStackTrace();
         Assert.fail();
@@ -166,6 +170,16 @@ public class SinkChannelTest {
     Assert.assertTrue(sinkChannel.isFinished());
     Assert.assertFalse(sinkChannel.isAborted());
     Assert.assertEquals(mockTsBlockSize, sinkChannel.getBufferRetainedSizeInBytes());
+    for (int i = 0; i < numOfMockTsBlock; i++) {
+      try {
+        sinkChannel.getSerializedTsBlock(i);
+        Assert.fail("The acknowledged serialized TsBlock should have been released");
+      } catch (IllegalStateException expected) {
+        // Both the original entry and serialized cache must be removed by acknowledgement.
+      } catch (IOException e) {
+        Assert.fail(e.getMessage());
+      }
+    }
     Mockito.verify(mockMemoryPool, Mockito.timeout(10_0000).times(1))
         .free(
             queryId,

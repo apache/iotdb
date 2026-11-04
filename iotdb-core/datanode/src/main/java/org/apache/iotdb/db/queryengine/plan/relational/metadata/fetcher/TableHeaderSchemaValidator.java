@@ -368,7 +368,8 @@ public class TableHeaderSchemaValidator {
     final List<Integer> missingMeasurementIndices = new ArrayList<>();
 
     final boolean isAutoCreateSchemaEnabled =
-        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
+            && context.getSession().isEnableAutoCreateSchema();
 
     // First round validate, check existing schema
     if (table == null) {

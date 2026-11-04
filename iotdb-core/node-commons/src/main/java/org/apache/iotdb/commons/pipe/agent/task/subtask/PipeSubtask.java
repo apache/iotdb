@@ -140,7 +140,12 @@ public abstract class PipeSubtask
 
   public void allowSubmittingSelf() {
     retryCount.set(0);
+    onAllowSubmittingSelf();
     shouldStopSubmittingSelf.set(false);
+  }
+
+  protected void onAllowSubmittingSelf() {
+    // Do nothing by default.
   }
 
   /**
@@ -151,7 +156,15 @@ public abstract class PipeSubtask
    *     {@code false} to {@code true}, {@code false} otherwise
    */
   public boolean disallowSubmittingSelf() {
-    return !shouldStopSubmittingSelf.getAndSet(true);
+    final boolean isChanged = !shouldStopSubmittingSelf.getAndSet(true);
+    if (isChanged) {
+      onDisallowSubmittingSelf();
+    }
+    return isChanged;
+  }
+
+  protected void onDisallowSubmittingSelf() {
+    // Do nothing by default.
   }
 
   public boolean isSubmittingSelf() {

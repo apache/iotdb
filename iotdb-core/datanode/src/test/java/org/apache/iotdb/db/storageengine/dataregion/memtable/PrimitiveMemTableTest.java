@@ -63,10 +63,10 @@ import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -183,11 +183,14 @@ public class PrimitiveMemTableTest {
           new StringArrayDeviceID("root.test.d1"), measurementSchemas, i, new Object[] {i, i, i});
     }
     memTable.delete(
-        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s1", TSDataType.INT32), 150, 160));
+        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s1", TSDataType.INT32), 150, 160),
+        true);
     memTable.delete(
-        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s2", TSDataType.INT32), 150, 160));
+        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s2", TSDataType.INT32), 150, 160),
+        true);
     memTable.delete(
-        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s3", TSDataType.INT32), 150, 160));
+        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s3", TSDataType.INT32), 150, 160),
+        true);
     ResourceByPathUtils resourcesByPathUtils =
         ResourceByPathUtils.getResourceInstance(
             new AlignedFullPath(
@@ -230,11 +233,14 @@ public class PrimitiveMemTableTest {
           new StringArrayDeviceID("root.test.d1"), measurementSchemas, i, new Object[] {i, i, i});
     }
     memTable.delete(
-        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s1", TSDataType.INT32), 150, 160));
+        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s1", TSDataType.INT32), 150, 160),
+        true);
     memTable.delete(
-        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s2", TSDataType.INT32), 150, 160));
+        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s2", TSDataType.INT32), 150, 160),
+        true);
     memTable.delete(
-        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s3", TSDataType.INT32), 150, 160));
+        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s3", TSDataType.INT32), 150, 160),
+        true);
     ResourceByPathUtils resourcesByPathUtils =
         ResourceByPathUtils.getResourceInstance(
             new AlignedFullPath(
@@ -290,11 +296,14 @@ public class PrimitiveMemTableTest {
       memTable.writeAlignedRow(deviceID, measurementSchemas, i, new Object[] {i, i, i});
     }
     memTable.delete(
-        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s1", TSDataType.INT32), 1, 10));
+        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s1", TSDataType.INT32), 1, 10),
+        true);
     memTable.delete(
-        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s2", TSDataType.INT32), 1, 10));
+        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s2", TSDataType.INT32), 1, 10),
+        true);
     memTable.delete(
-        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s3", TSDataType.INT32), 1, 10));
+        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s3", TSDataType.INT32), 1, 10),
+        true);
     Assert.assertFalse(originalWorkingList.isSorted());
 
     AlignedReadOnlyMemChunk flushingQueryMemChunk =
@@ -682,34 +691,41 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < size; i++) {
       switch (dataType) {
         case BOOLEAN:
-          ret[i] = new TimeValuePair(rand.nextLong(), TsPrimitiveType.getByType(dataType, true));
+          ret[i] =
+              new TimeValuePair(
+                  rand.nextLong(), Type.fromTsDataType(dataType).getTsPrimitiveType(true));
           break;
         case INT32:
           ret[i] =
               new TimeValuePair(
-                  rand.nextLong(), TsPrimitiveType.getByType(dataType, rand.nextInt()));
+                  rand.nextLong(),
+                  Type.fromTsDataType(dataType).getTsPrimitiveType(rand.nextInt()));
           break;
         case INT64:
           ret[i] =
               new TimeValuePair(
-                  rand.nextLong(), TsPrimitiveType.getByType(dataType, rand.nextLong()));
+                  rand.nextLong(),
+                  Type.fromTsDataType(dataType).getTsPrimitiveType(rand.nextLong()));
           break;
         case FLOAT:
           ret[i] =
               new TimeValuePair(
-                  rand.nextLong(), TsPrimitiveType.getByType(dataType, rand.nextFloat()));
+                  rand.nextLong(),
+                  Type.fromTsDataType(dataType).getTsPrimitiveType(rand.nextFloat()));
           break;
         case DOUBLE:
           ret[i] =
               new TimeValuePair(
-                  rand.nextLong(), TsPrimitiveType.getByType(dataType, rand.nextDouble()));
+                  rand.nextLong(),
+                  Type.fromTsDataType(dataType).getTsPrimitiveType(rand.nextDouble()));
           break;
         case TEXT:
           ret[i] =
               new TimeValuePair(
                   rand.nextLong(),
-                  TsPrimitiveType.getByType(
-                      dataType, new Binary("a" + rand.nextDouble(), TSFileConfig.STRING_CHARSET)));
+                  Type.fromTsDataType(dataType)
+                      .getTsPrimitiveType(
+                          new Binary("a" + rand.nextDouble(), TSFileConfig.STRING_CHARSET)));
           break;
         default:
           throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);

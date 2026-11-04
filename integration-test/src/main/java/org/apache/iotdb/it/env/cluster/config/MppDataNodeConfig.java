@@ -81,6 +81,12 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setThriftMaxFrameSize(int thriftMaxFrameSize) {
+    properties.setProperty("dn_thrift_max_frame_size", String.valueOf(thriftMaxFrameSize));
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
       long loadTsFileAnalyzeSchemaMemorySizeInBytes) {
     properties.setProperty(
@@ -178,6 +184,21 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   @Override
   public DataNodeConfig setDnMultiDirStrategy(String multiDirStrategy) {
     setProperty("dn_multi_dir_strategy", multiDirStrategy);
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setTableQueryDeviceEntryBatchSizeInBytes(long batchSizeInBytes) {
+    setProperty("table_query_device_entry_batch_size_in_bytes", String.valueOf(batchSizeInBytes));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setMppDataExchangeMaxPayloadSizeInBytes(
+      int mppDataExchangeMaxPayloadSizeInBytes) {
+    setProperty(
+        "mpp_data_exchange_max_payload_size_in_bytes",
+        String.valueOf(mppDataExchangeMaxPayloadSizeInBytes));
     return this;
   }
 }

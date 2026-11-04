@@ -23,11 +23,24 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 public class MetadataLeaseFencedException extends IoTDBRuntimeException {
 
-  public MetadataLeaseFencedException(String message) {
-    super(message, TSStatusCode.METADATA_LEASE_FENCED.getStatusCode());
+  public enum LeaseFencedRetryPolicy {
+    NONE,
+    RETRY_UNTIL_SUCCESS
   }
 
-  public MetadataLeaseFencedException(Throwable cause) {
-    super(cause, TSStatusCode.METADATA_LEASE_FENCED.getStatusCode());
+  public MetadataLeaseFencedException(
+      String message, LeaseFencedRetryPolicy leaseFencedRetryPolicy) {
+    super(message, getStatusCode(leaseFencedRetryPolicy));
+  }
+
+  public MetadataLeaseFencedException(
+      Throwable cause, LeaseFencedRetryPolicy leaseFencedRetryPolicy) {
+    super(cause, getStatusCode(leaseFencedRetryPolicy));
+  }
+
+  private static int getStatusCode(LeaseFencedRetryPolicy leaseFencedRetryPolicy) {
+    return leaseFencedRetryPolicy == LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS
+        ? TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode()
+        : TSStatusCode.METADATA_LEASE_FENCED.getStatusCode();
   }
 }

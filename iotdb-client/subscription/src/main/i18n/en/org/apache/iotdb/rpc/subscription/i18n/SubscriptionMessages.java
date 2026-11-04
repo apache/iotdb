@@ -21,6 +21,10 @@ package org.apache.iotdb.rpc.subscription.i18n;
 
 public final class SubscriptionMessages {
 
+  public static final String
+      EXCEPTION_SUBSCRIPTION_REQUEST_EXCEEDS_THE_NEGOTIATED_FRAME_LIMIT_CA8DEB50 =
+          "Subscription request exceeds the negotiated frame limit";
+
   // --- TopicConstant / ConsumerConstant ---
   public static final String UTILITY_CLASS = "Utility class";
 
@@ -53,6 +57,8 @@ public final class SubscriptionMessages {
 
   // --- SubscriptionExecutorServiceManager ---
   public static final String EXECUTOR_LAUNCHING = "Launching {} with core pool size {}...";
+  public static final String LOG_SUBSCRIPTION_HEARTBEAT_EXECUTOR_REACHED_ITS_THREAD_OR_QUEUE_LIMIT_SKIP_13157249 =
+      "Subscription heartbeat executor reached its thread or queue limit; skipping heartbeat tasks until the next interval (thread limit {}, queue capacity {}).";
   public static final String EXECUTOR_SHUTTING_DOWN = "Shutting down {}...";
   public static final String EXECUTOR_NOT_LAUNCHED_SUBMIT =
       "{} has not been launched, ignore submit task";
@@ -122,6 +128,78 @@ public final class SubscriptionMessages {
   public static final String OWNER_LEASE_DURATION_SHOULD_BE_POSITIVE_WHEN_SET =
       "Subscription topic owner lease duration should be positive when %s is set";
 
+  public static final String
+      EXCEPTION_A_TIMEOUT_HAS_OCCURRED_IN_PROCEDURES_RELATED_TO_THE_PIPE_WITHIN_THE_SUBSCRIPTION_PROCEDURE_PLEASE_MANUALLY_CHECK_THE_SUBSCRIPTION_CORRECTNESS_LATER_STATUS_CODE_IS_ARG_STATUS_MESSAGE_IS_ARG_68B6AC95 =
+          "A timeout has occurred in procedures related to the pipe within the subscription"
+              + " procedure. Please manually check the subscription correctness later. Status code"
+              + " is [%s], status message is [%s].";
+  public static final String
+      EXCEPTION_INTERNAL_ERROR_OCCURRED_STATUS_CODE_IS_ARG_STATUS_MESSAGE_IS_ARG_D35048C4 =
+          "Internal error occurred. Status code is [%s], status message is [%s].";
+  public static final String
+      MESSAGE_ARG_COMMIT_NACK_ARG_PARTIALLY_ACCEPTED_REQUESTED_ARG_ACCEPTED_ARG_FAILED_ARG_BEA40307 =
+          "%s commit (nack: %s) partially accepted, requested=%d, accepted=%d, failed=%d";
+  public static final String
+      MESSAGE_ARG_FAILED_TO_FETCH_ALL_ENDPOINTS_FROM_ALL_AVAILABLE_SUBSCRIPTION_PROVIDERS_ARG_FAF8E639 =
+          "%s failed to fetch all endpoints from all available subscription providers %s";
+  public static final String
+      MESSAGE_ARG_FAILED_TO_SEEKAFTER_TOPIC_ARG_TO_TOPICPROGRESS_REGIONCOUNT_ARG_ON_SUBSCRIPTION_PROVIDERS_ARG_SEEK_REQUIRES_EVERY_AVAILABLE_PROVIDER_TO_SUCCEED_BF2AA1F1 =
+          "%s failed to seekAfter topic %s to topicProgress(regionCount=%d) on subscription"
+              + " providers %s; seek requires every available provider to succeed";
+  public static final String
+      MESSAGE_ARG_FAILED_TO_SEEK_TOPIC_ARG_ON_SUBSCRIPTION_PROVIDERS_ARG_SEEK_REQUIRES_EVERY_AVAILABLE_PROVIDER_TO_SUCCEED_0B6CAC68 =
+          "%s failed to seek topic %s on subscription providers %s; seek requires every available"
+              + " provider to succeed";
+  public static final String
+      MESSAGE_ARG_FAILED_TO_SEEK_TOPIC_ARG_TO_TOPICPROGRESS_REGIONCOUNT_ARG_ON_SUBSCRIPTION_PROVIDERS_ARG_SEEK_REQUIRES_EVERY_AVAILABLE_PROVIDER_TO_SUCCEED_61972EC7 =
+          "%s failed to seek topic %s to topicProgress(regionCount=%d) on subscription providers"
+              + " %s; seek requires every available provider to succeed";
+  public static final String
+      MESSAGE_ARG_FAILED_TO_SUBSCRIBE_TOPICS_ARG_FROM_ALL_AVAILABLE_SUBSCRIPTION_PROVIDERS_ARG_FF729C26 =
+          "%s failed to subscribe topics %s from all available subscription providers %s";
+  public static final String
+      MESSAGE_ARG_FAILED_TO_UNSUBSCRIBE_TOPICS_ARG_FROM_ALL_AVAILABLE_SUBSCRIPTION_PROVIDERS_ARG_43E08B57 =
+          "%s failed to unsubscribe topics %s from all available subscription providers %s";
+  public static final String
+      MESSAGE_ARG_HAS_EVER_BEEN_CLOSED_UNSUPPORTED_OPERATION_AFTER_CLOSING_7B7F7FFB =
+          "%s has ever been closed, unsupported operation after closing.";
+  public static final String
+      MESSAGE_ARG_IS_NOT_YET_OPEN_PLEASE_OPEN_THE_SUBSCRIPTION_CONSUMER_BEFORE_DRAINING_BUFFERED_MESSAGES_C73D871C =
+          "%s is not yet open, please open the subscription consumer before draining buffered"
+              + " messages.";
+  public static final String
+      MESSAGE_ARG_IS_NOT_YET_OPEN_PLEASE_OPEN_THE_SUBSCRIPTION_CONSUMER_FIRST_8AD8C37A =
+          "%s is not yet open, please open the subscription consumer first.";
+  public static final String
+      MESSAGE_INCONSISTENT_COMMIT_CONTEXT_CURRENT_IS_ARG_INCOMING_IS_ARG_CONSUMER_ARG_115134DB =
+          "inconsistent commit context, current is %s, incoming is %s, consumer: %s";
+  public static final String
+      MESSAGE_INCONSISTENT_FILE_LENGTH_CURRENT_IS_ARG_INCOMING_IS_ARG_CONSUMER_ARG_4C3AD74E =
+          "inconsistent file length, current is %s, incoming is %s, consumer: %s";
+  public static final String
+      MESSAGE_INCONSISTENT_FILE_NAME_CURRENT_IS_ARG_INCOMING_IS_ARG_CONSUMER_ARG_2700F4BA =
+          "inconsistent file name, current is %s, incoming is %s, consumer: %s";
+  public static final String
+      MESSAGE_INCONSISTENT_FILE_OFFSET_CURRENT_IS_ARG_INCOMING_IS_ARG_CONSUMER_ARG_B96B6D69 =
+          "inconsistent file offset, current is %s, incoming is %s, consumer: %s";
+  public static final String
+      MESSAGE_INCONSISTENT_TABLET_SIZE_CURRENT_IS_ARG_INCOMING_IS_ARG_CONSUMER_ARG_DB4A9BBB =
+          "inconsistent tablet size, current is %s, incoming is %s, consumer: %s";
+  public static final String
+      MESSAGE_SUBSCRIPTIONPULLCONSUMER_ARG_STILL_HAS_PROCESSOR_BUFFERED_OR_DRAINED_MESSAGES_WHEN_CLOSING_IN_MANUAL_COMMIT_MODE_CALL_DRAINBUFFEREDMESSAGES_AND_COMMIT_THE_RETURNED_MESSAGES_BEFORE_CLOSE_389DC354 =
+          "SubscriptionPullConsumer %s still has processor-buffered or drained messages when"
+              + " closing in manual-commit mode. Call drainBufferedMessages() and commit the"
+              + " returned messages before close.";
+  public static final String
+      MESSAGE_TIMEOUT_OCCURRED_WHEN_SUBSCRIPTIONCONSUMER_ARG_POLLING_FILE_ARG_WITH_COMMIT_CONTEXT_ARG_RECORD_WRITING_OFFSET_ARG_FOR_SUBSEQUENT_POLL_58D40345 =
+          "Timeout occurred when SubscriptionConsumer %s polling file %s with commit context %s,"
+              + " record writing offset %s for subsequent poll";
+  public static final String
+      MESSAGE_TIMEOUT_WHILE_POLL_TABLETS_WITH_COMMIT_CONTEXT_ARG_CONSUMER_ARG_11B58727 =
+          "timeout while poll tablets with commit context: %s, consumer: %s";
+  public static final String MESSAGE_UNEXPECTED_RESPONSE_TYPE_ARG_EF03AB8B =
+      "unexpected response type: %s";
+
   private SubscriptionMessages() {}
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
@@ -155,6 +233,8 @@ public final class SubscriptionMessages {
       + " provider unavailable";
   public static final String LOG_EXCEPTION_OCCURRED_ARG_CLOSING_REMOVING_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_2EC38739 = "Exception occurred when {} closing and removing subscription provider {} because of {}";
   public static final String EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_CONNECT_INITIAL_ENDPOINTS_ARG_5DB83198 = "Cluster has no available subscription providers to connect with initial endpoints %s";
+  public static final String EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_CONNECT_INITIAL_ENDPOINTS_ARG_712D99EA =
+      "Cluster has no available subscription providers to connect with initial endpoints %s. Connection failures: %s";
   public static final String LOG_ARG_HAS_BEEN_LAUNCHED_SET_CORE_POOL_SIZE_ARG_WILL_0FDECBE3 = "{} has been launched, set core pool size to {} will be ignored";
   public static final String LOG_INTERRUPT_WORKER_WHICH_MAY_CAUSE_SOME_TASK_INCONSISTENT_PLEASE_CHECK_04926D9F = "Interrupt the worker, which may cause some task inconsistent. Please check the biz logs.";
   public static final String LOG_THREAD_POOL_CAN_T_SHUTDOWN_EVEN_INTERRUPTING_WORKER_THREADS_WHICH_A49166F9 =
@@ -270,7 +350,7 @@ public final class SubscriptionMessages {
   public static final String EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_ARG_FETCH_ALL_ENDPOINTS_D232693E = "Cluster has no available subscription providers when %s fetch all endpoints";
   public static final String EXCEPTION_PASSWORD_ENCRYPTEDPASSWORD_MUTUALLY_EXCLUSIVE_ENCRYPTEDPASSWORD_ALREADY_SET_E4548A43 = "password and encryptedPassword are mutually exclusive; encryptedPassword is already set";
   public static final String EXCEPTION_PASSWORD_ENCRYPTEDPASSWORD_MUTUALLY_EXCLUSIVE_PASSWORD_ALREADY_SET_BB20AD1E = "password and encryptedPassword are mutually exclusive; password is already set";
-  public static final String EXCEPTION_CONSENSUS_MODE_TOPIC_SHOULD_NOT_GENERATE_PIPE_SOURCE_ATTRIBUTES_BBDFF732 = "Consensus mode topic should not generate pipe source attributes";
+  public static final String EXCEPTION_INCREMENTAL_MODE_TOPIC_SHOULD_NOT_GENERATE_PIPE_SOURCE_ATTRIBUTES_09D75393 = "Incremental mode topic should not generate pipe source attributes";
   public static final String EXCEPTION_UNSUPPORTED_SUBSCRIPTIONCOMMITCONTEXT_VERSION_8021B27B = "Unsupported SubscriptionCommitContext version: ";
   public static final String OUTDATED_SUBSCRIPTION_EVENT = "outdated subscription event";
   public static final String FIELD_SEPARATOR = ", ";

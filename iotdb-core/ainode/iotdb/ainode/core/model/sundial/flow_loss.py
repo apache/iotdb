@@ -70,10 +70,6 @@ class FlowLoss(nn.Module):
         return x
 
 
-def modulate(x, shift, scale):
-    return x * (1 + scale) + shift
-
-
 class TimestepEmbedder(nn.Module):
     """
     Embeds scalar timesteps into vector representations.
@@ -98,7 +94,9 @@ class TimestepEmbedder(nn.Module):
         :param max_period: controls the minimum frequency of the embeddings.
         :return: an (N, D) Tensor of positional embeddings.
         """
+        # Adapted from GLIDE:
         # https://github.com/openai/glide-text2im/blob/main/glide_text2im/nn.py
+        # Copyright (c) 2021 OpenAI
         half = dim // 2
         freqs = torch.exp(
             -math.log(max_period)
@@ -119,11 +117,8 @@ class TimestepEmbedder(nn.Module):
         return t_emb
 
 
-class ResBlock(nn.Module):
-    """
-    A residual block that can optionally change the number of channels.
-    :param channels: the number of input channels.
-    """
+class ConditionalResidualBlock(nn.Module):
+    """A residual MLP controlled by a per-sample conditioning vector."""
 
     def __init__(self, channels):
         super().__init__()
@@ -140,17 +135,21 @@ class ResBlock(nn.Module):
             nn.SiLU(), nn.Linear(channels, 3 * channels, bias=True)
         )
 
-    def forward(self, x, y):
-        shift_mlp, scale_mlp, gate_mlp = self.adaLN_modulation(y).chunk(3, dim=-1)
-        h = modulate(self.in_ln(x), shift_mlp, scale_mlp)
-        h = self.mlp(h)
-        return x + gate_mlp * h
+    def reset_conditioning_parameters(self):
+        nn.init.zeros_(self.adaLN_modulation[-1].weight)
+        nn.init.zeros_(self.adaLN_modulation[-1].bias)
+
+    def forward(self, features, condition):
+        offset, gain_delta, update_scale = torch.tensor_split(
+            self.adaLN_modulation(condition), 3, dim=-1
+        )
+        conditioned = torch.addcmul(offset, self.in_ln(features), gain_delta.add(1))
+        update = self.mlp(conditioned)
+        return torch.addcmul(features, update, update_scale)
 
 
-class FinalLayer(nn.Module):
-    """
-    The final layer adopted from DiT.
-    """
+class ConditionalOutputProjection(nn.Module):
+    """Map condition-normalized features to the requested output width."""
 
     def __init__(self, model_channels, out_channels):
         super().__init__()
@@ -162,11 +161,20 @@ class FinalLayer(nn.Module):
             nn.SiLU(), nn.Linear(model_channels, 2 * model_channels, bias=True)
         )
 
-    def forward(self, x, c):
-        shift, scale = self.adaLN_modulation(c).chunk(2, dim=-1)
-        x = modulate(self.norm_final(x), shift, scale)
-        x = self.linear(x)
-        return x
+    def reset_conditioning_parameters(self):
+        nn.init.zeros_(self.adaLN_modulation[-1].weight)
+        nn.init.zeros_(self.adaLN_modulation[-1].bias)
+        nn.init.zeros_(self.linear.weight)
+        nn.init.zeros_(self.linear.bias)
+
+    def forward(self, features, condition):
+        offset, gain_delta = torch.tensor_split(
+            self.adaLN_modulation(condition), 2, dim=-1
+        )
+        conditioned = torch.addcmul(
+            offset, self.norm_final(features), gain_delta.add(1)
+        )
+        return self.linear(conditioned)
 
 
 class SimpleMLPAdaLN(nn.Module):
@@ -199,16 +207,10 @@ class SimpleMLPAdaLN(nn.Module):
 
         self.input_proj = nn.Linear(in_channels, model_channels)
 
-        res_blocks = []
-        for i in range(num_res_blocks):
-            res_blocks.append(
-                ResBlock(
-                    model_channels,
-                )
-            )
-
-        self.res_blocks = nn.ModuleList(res_blocks)
-        self.final_layer = FinalLayer(model_channels, out_channels)
+        self.res_blocks = nn.ModuleList(
+            ConditionalResidualBlock(model_channels) for _ in range(num_res_blocks)
+        )
+        self.final_layer = ConditionalOutputProjection(model_channels, out_channels)
 
         self.initialize_weights()
 
@@ -225,16 +227,10 @@ class SimpleMLPAdaLN(nn.Module):
         nn.init.normal_(self.time_embed.mlp[0].weight, std=0.02)
         nn.init.normal_(self.time_embed.mlp[2].weight, std=0.02)
 
-        # Zero-out adaLN modulation layers
         for block in self.res_blocks:
-            nn.init.constant_(block.adaLN_modulation[-1].weight, 0)
-            nn.init.constant_(block.adaLN_modulation[-1].bias, 0)
+            block.reset_conditioning_parameters()
 
-        # Zero-out output layers
-        nn.init.constant_(self.final_layer.adaLN_modulation[-1].weight, 0)
-        nn.init.constant_(self.final_layer.adaLN_modulation[-1].bias, 0)
-        nn.init.constant_(self.final_layer.linear.weight, 0)
-        nn.init.constant_(self.final_layer.linear.bias, 0)
+        self.final_layer.reset_conditioning_parameters()
 
     def forward(self, x, t, c):
         """

@@ -33,7 +33,6 @@ import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,21 +46,16 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_ROOT;
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
-
 public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(CachedSchemaPatternMatcher.class);
-
-  protected static final String TREE_MODEL_EVENT_TABLE_NAME_PREFIX = PATH_ROOT + PATH_SEPARATOR;
 
   protected final ReentrantReadWriteLock lock;
   protected final Set<PipeRealtimeDataRegionSource> sources;
 
   // Use full cache to avoid queue stuck and block insertion
   protected final Map<IDeviceID, Set<PipeRealtimeDataRegionSource>> deviceToSourcesCache;
-  protected final Map<Pair<String, IDeviceID>, Set<PipeRealtimeDataRegionSource>>
+  protected final Map<Pair<String, String>, Set<PipeRealtimeDataRegionSource>>
       databaseAndTableToSourcesCache;
 
   public CachedSchemaPatternMatcher() {
@@ -102,7 +96,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   public void invalidateCache() {
     lock.writeLock().lock();
     try {
-      // Will invalidate device cache
+      // The table-model cache also depends on access control, so it must be invalidated separately.
       databaseAndTableToSourcesCache.clear();
     } finally {
       lock.writeLock().unlock();
@@ -144,26 +138,33 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
         return new Pair<>(matchedSources, findUnmatchedSources(matchedSources));
       }
 
+      // tableNames is also used for privilege checks on table-model TsFile events, so it must be
+      // complete even after every source has already matched.
+      final boolean isTableModelTsFileEvent =
+          event.getEvent() instanceof PipeTsFileInsertionEvent
+              && ((PipeTsFileInsertionEvent) event.getEvent()).isTableModelEvent();
+      // The whole event comes from one data region, so all of its devices share the data model
+      // declared by the event. It must never be derived from the device name.
+      final boolean isTableModelEvent =
+          event.getEvent() instanceof PipeInsertionEvent
+              && ((PipeInsertionEvent) event.getEvent()).isTableModelEvent();
       final Set<String> tableNames = new HashSet<>();
       for (final Map.Entry<IDeviceID, String[]> entry : event.getSchemaInfo().entrySet()) {
         final IDeviceID deviceID = entry.getKey();
 
-        // TODO: Check the role to determine whether to match with tree model or table model
-        if (deviceID instanceof PlainDeviceID
-            || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
-            || deviceID.getTableName().equals(PATH_ROOT)) {
+        if (!isTableModelEvent) {
           matchTreeModelEvent(deviceID, entry.getValue(), matchedSources);
         } else {
-          tableNames.add(deviceID.getTableName());
-          matchTableModelEvent(
-              event.getEvent() instanceof PipeInsertionEvent
-                  ? ((PipeInsertionEvent) event.getEvent()).getTableModelDatabaseName()
-                  : null,
-              deviceID,
-              matchedSources);
+          final String tableName = deviceID.getTableName();
+          if (tableNames.add(tableName) && matchedSources.size() < sources.size()) {
+            matchTableModelEvent(
+                ((PipeInsertionEvent) event.getEvent()).getTableModelDatabaseName(),
+                tableName,
+                matchedSources);
+          }
         }
 
-        if (matchedSources.size() == sources.size()) {
+        if (matchedSources.size() == sources.size() && !isTableModelTsFileEvent) {
           break;
         }
       }
@@ -171,7 +172,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
       if (event.getEvent() instanceof PipeTsFileInsertionEvent) {
         final PipeTsFileInsertionEvent tsFileInsertionEvent =
             (PipeTsFileInsertionEvent) event.getEvent();
-        if (tsFileInsertionEvent.isTableModelEvent()) {
+        if (isTableModelTsFileEvent) {
           tsFileInsertionEvent.setTableNames(tableNames);
         } else {
           tsFileInsertionEvent.setTreeSchemaMap(event.getSchemaInfo());
@@ -273,7 +274,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
 
   protected void matchTableModelEvent(
       final String databaseName,
-      final IDeviceID tableName,
+      final String tableName,
       final Set<PipeRealtimeDataRegionSource> matchedSources) {
     // this would not happen
     if (databaseName == null) {
@@ -294,7 +295,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   }
 
   protected Set<PipeRealtimeDataRegionSource> filterSourcesByDatabaseAndTable(
-      final Pair<String, IDeviceID> databaseNameAndTableName) {
+      final Pair<String, String> databaseNameAndTableName) {
     final Set<PipeRealtimeDataRegionSource> filteredSources = new HashSet<>();
 
     for (final PipeRealtimeDataRegionSource source : sources) {
@@ -317,21 +318,20 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   }
 
   private boolean matchesTablePattern(
-      final TablePattern tablePattern, final Pair<String, IDeviceID> databaseNameAndTableName) {
+      final TablePattern tablePattern, final Pair<String, String> databaseNameAndTableName) {
     return Objects.isNull(tablePattern)
         || (tablePattern.isTableModelDataAllowedToBeCaptured()
             && tablePattern.matchesDatabase(databaseNameAndTableName.getLeft())
-            && tablePattern.matchesTable(databaseNameAndTableName.getRight().getTableName()));
+            && tablePattern.matchesTable(databaseNameAndTableName.getRight()));
   }
 
   private boolean notFilteredByAccess(
-      final UserEntity userEntity, final Pair<String, IDeviceID> databaseNameAndTableName) {
+      final UserEntity userEntity, final Pair<String, String> databaseNameAndTableName) {
     return AuthorityChecker.getAccessControl()
         .checkCanSelectFromTable4Pipe(
             userEntity.getUsername(),
             new QualifiedObjectName(
-                databaseNameAndTableName.getLeft(),
-                databaseNameAndTableName.getRight().getTableName()),
+                databaseNameAndTableName.getLeft(), databaseNameAndTableName.getRight()),
             userEntity);
   }
 

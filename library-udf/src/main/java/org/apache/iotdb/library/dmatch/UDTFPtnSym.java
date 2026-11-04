@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.dmatch;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -45,11 +46,11 @@ public class UDTFPtnSym implements UDTF {
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             x -> (int) x > 0,
-            "window has to be a positive integer.",
+            LibraryUdfMessages.EXCEPTION_WINDOW_HAS_TO_BE_A_POSITIVE_INTEGER_4A4AC181,
             validator.getParameters().getIntOrDefault("window", 10))
         .validate(
             x -> (double) x >= 0.0d,
-            "threshold has to be non-negative.",
+            LibraryUdfMessages.EXCEPTION_THRESHOLD_HAS_TO_BE_NON_NEGATIVE_4A7BED9A,
             validator.getParameters().getDoubleOrDefault("threshold", Double.MAX_VALUE));
   }
 

@@ -63,12 +63,16 @@ import static java.util.stream.Collectors.toList;
 
 public class TagManager {
 
-  private static final String TAG_FORMAT = "tag key is %s, tag value is %s, tlog offset is %d";
-  private static final String DEBUG_MSG = "%s : TimeSeries %s is removed from tag inverted index, ";
+  private static final String TAG_FORMAT =
+      DataNodeSchemaMessages.LOG_TAG_KEY_IS_ARG_TAG_VALUE_IS_ARG_TLOG_OFFSET_IS_ARG_C1DB5214;
+  private static final String DEBUG_MSG =
+      DataNodeSchemaMessages.LOG_ARG_TIMESERIES_ARG_IS_REMOVED_FROM_TAG_INVERTED_INDEX_01BC0CE1;
   private static final String DEBUG_MSG_1 =
-      "%s: TimeSeries %s's tag info has been removed from tag inverted index ";
+      DataNodeSchemaMessages
+          .LOG_ARG_TIMESERIES_ARG_S_TAG_INFO_HAS_BEEN_REMOVED_FROM_TAG_INVERTED_INDEX_C6DAD2DF;
   private static final String PREVIOUS_CONDITION =
-      "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b";
+      DataNodeSchemaMessages
+          .LOG_BEFORE_DELETING_IT_TAG_KEY_IS_ARG_TAG_VALUE_IS_ARG_TLOG_OFFSET_IS_ARG_CONTAINS_KEY_B_BE8C6CBC;
 
   // The tag index memory model adds one int-sized estimated overhead for each indexed key, value,
   // and measurement reference. This is an accounting estimate rather than a specific
@@ -137,7 +141,7 @@ public class TagManager {
     File tagSnapshot =
         SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.TAG_LOG_SNAPSHOT);
     File tagFile = SystemFileFactory.INSTANCE.getFile(sgSchemaDirPath, SchemaConstant.TAG_LOG);
-    if (tagFile.exists() && !tagFile.delete()) {
+    if (tagFile.exists() && !FileUtils.deleteFileIfExist(tagFile)) {
       logger.warn(DataNodeSchemaMessages.FAILED_TO_DELETE_EXISTING_WHEN_LOADING, tagFile.getName());
     }
 
@@ -145,7 +149,7 @@ public class TagManager {
       org.apache.tsfile.external.commons.io.FileUtils.copyFile(tagSnapshot, tagFile);
       return new TagManager(sgSchemaDirPath, regionStatistics);
     } catch (IOException e) {
-      if (!tagFile.delete()) {
+      if (!FileUtils.deleteFileIfExist(tagFile)) {
         logger.warn(
             DataNodeSchemaMessages.FAILED_TO_DELETE_EXISTING_WHEN_COPY_FAILURE, tagFile.getName());
       }
@@ -246,7 +250,8 @@ public class TagManager {
     return tagValueMap != null && tagValueMap.containsKey(tagValue);
   }
 
-  private List<IMeasurementMNode<?>> getMatchedTimeseriesInIndex(TagFilter tagFilter) {
+  List<IMeasurementMNode<?>> getMatchedTimeseriesInIndex(
+      final TagFilter tagFilter, final PartialPath pathPattern, final boolean isPrefixMatch) {
     Map<String, Set<IMeasurementMNode<?>>> value2Node = tagIndex.get(tagFilter.getKey());
     if (value2Node == null || value2Node.isEmpty()) {
       return Collections.emptyList();
@@ -264,19 +269,20 @@ public class TagManager {
         }
       }
     } else {
-      for (Map.Entry<String, Set<IMeasurementMNode<?>>> entry : value2Node.entrySet()) {
-        if (entry.getKey() == null || entry.getValue() == null) {
-          continue;
-        }
-        String tagValue = entry.getKey();
-        if (tagFilter.getValue().equals(tagValue)) {
-          allMatchedNodes.addAll(entry.getValue());
-        }
+      final Set<IMeasurementMNode<?>> matchedNodes = value2Node.get(tagFilter.getValue());
+      if (matchedNodes != null) {
+        allMatchedNodes.addAll(matchedNodes);
       }
     }
-    // we just sort them by the alphabetical order
+
+    // Filter by path before sorting to avoid sorting irrelevant measurements.
     allMatchedNodes =
         allMatchedNodes.stream()
+            .filter(
+                node ->
+                    isPrefixMatch
+                        ? pathPattern.prefixMatchFullPath(node.getPartialPath())
+                        : pathPattern.matchFullPath(node.getPartialPath()))
             .sorted(Comparator.comparing(IMNode::getFullPath))
             .collect(toList());
 
@@ -289,11 +295,13 @@ public class TagManager {
     final SchemaFilter schemaFilter = plan.getSchemaFilter();
     // currently, only one TagFilter is supported
     // all IMeasurementMNode in allMatchedNodes satisfied TagFilter
+    final PartialPath pathPattern = plan.getPath();
     final Iterator<IMeasurementMNode<?>> allMatchedNodes =
         getMatchedTimeseriesInIndex(
-                (TagFilter) SchemaFilter.extract(schemaFilter, SchemaFilterType.TAGS_FILTER).get(0))
+                (TagFilter) SchemaFilter.extract(schemaFilter, SchemaFilterType.TAGS_FILTER).get(0),
+                pathPattern,
+                plan.isPrefixMatch())
             .iterator();
-    final PartialPath pathPattern = plan.getPath();
     final SchemaIterator<ITimeSeriesSchemaInfo> schemaIterator =
         new SchemaIterator<ITimeSeriesSchemaInfo>() {
           private ITimeSeriesSchemaInfo nextMatched;
@@ -325,21 +333,20 @@ public class TagManager {
             nextMatched = null;
             while (allMatchedNodes.hasNext()) {
               final IMeasurementMNode<?> node = allMatchedNodes.next();
-              if (plan.isPrefixMatch()
-                  ? pathPattern.prefixMatchFullPath(node.getPartialPath())
-                  : pathPattern.matchFullPath(node.getPartialPath())) {
-                final Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
-                    readTagFile(node.getOffset());
-                nextMatched =
-                    new ShowTimeSeriesResult(
-                        node.getFullPath(),
-                        node.getAlias(),
-                        node.getSchema(),
-                        tagAndAttributePair.left,
-                        tagAndAttributePair.right,
-                        node.getParent().getAsDeviceMNode().isAligned());
-                break;
+              if (node.isPreDeleted()) {
+                continue;
               }
+              final Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
+                  readTagFile(node.getOffset());
+              nextMatched =
+                  new ShowTimeSeriesResult(
+                      node.getFullPath(),
+                      node.getAlias(),
+                      node.getSchema(),
+                      tagAndAttributePair.left,
+                      tagAndAttributePair.right,
+                      node.getParent().getAsDeviceMNode().isAligned());
+              break;
             }
           }
 

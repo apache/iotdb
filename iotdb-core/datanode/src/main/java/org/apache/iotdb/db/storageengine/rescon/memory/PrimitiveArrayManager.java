@@ -25,17 +25,23 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.memory.StorageEngineMemoryMetrics;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Array;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.IntFunction;
+import java.util.function.ToLongFunction;
 
 /** Manage all primitive data lists in memory, including get and release operations. */
 public class PrimitiveArrayManager {
@@ -61,7 +67,8 @@ public class PrimitiveArrayManager {
   private static final IMemoryBlock POOLED_ARRAYS_MEMORY_BLOCK =
       MEMORY_CONFIG
           .getBufferedArraysMemoryManager()
-          .exactAllocate("BufferedArrays", MemoryBlockType.DYNAMIC);
+          .exactAllocateReadOnly(
+              "BufferedArrays", MemoryBlockType.DYNAMIC, () -> getPooledArrayMemoryInBytes(0));
 
   /** threshold total size of arrays for all data types */
   private static final double POOLED_ARRAYS_MEMORY_THRESHOLD =
@@ -69,6 +76,31 @@ public class PrimitiveArrayManager {
 
   /** TSDataType#serialize() -> ArrayDeque<Array>, VECTOR and UNKNOWN are ignored */
   private static final ArrayDeque[] POOLED_ARRAYS = new ArrayDeque[TSDataType.values().length];
+
+  // Indexed by TSDataType#serialize(), like POOLED_ARRAYS. Resolve the array type once at startup.
+  private static final ToLongFunction<Object>[] ARRAY_SIZE_CALCULATORS =
+      createArraySizeCalculators();
+
+  @SuppressWarnings("unchecked")
+  private static ToLongFunction<Object>[] createArraySizeCalculators() {
+    ToLongFunction<Object>[] calculators = new ToLongFunction[TSDataType.values().length];
+    calculators[TSDataType.BOOLEAN.serialize()] = a -> RamUsageEstimator.sizeOf((boolean[]) a);
+    calculators[TSDataType.INT32.serialize()] = a -> RamUsageEstimator.sizeOf((int[]) a);
+    calculators[TSDataType.DATE.serialize()] = calculators[TSDataType.INT32.serialize()];
+    calculators[TSDataType.INT64.serialize()] = a -> RamUsageEstimator.sizeOf((long[]) a);
+    calculators[TSDataType.TIMESTAMP.serialize()] = calculators[TSDataType.INT64.serialize()];
+    calculators[TSDataType.FLOAT.serialize()] = a -> RamUsageEstimator.sizeOf((float[]) a);
+    calculators[TSDataType.DOUBLE.serialize()] = a -> RamUsageEstimator.sizeOf((double[]) a);
+    // Binary[] entries are cleared on return; only the shallow reference array belongs to the pool.
+    calculators[TSDataType.TEXT.serialize()] = a -> RamUsageEstimator.shallowSizeOf((Binary[]) a);
+    calculators[TSDataType.STRING.serialize()] = calculators[TSDataType.TEXT.serialize()];
+    calculators[TSDataType.BLOB.serialize()] = calculators[TSDataType.TEXT.serialize()];
+    calculators[TSDataType.OBJECT.serialize()] = calculators[TSDataType.TEXT.serialize()];
+    return calculators;
+  }
+
+  // Each entry is guarded by the corresponding queue's monitor.
+  private static final long[] POOLED_ARRAY_BYTES = new long[TSDataType.values().length];
 
   /** TSDataType#serialize() -> max size of ArrayDeque<Array>, VECTOR and UNKNOWN are ignored */
   private static final int[] LIMITS = new int[TSDataType.values().length];
@@ -115,7 +147,14 @@ public class PrimitiveArrayManager {
     limitUpdateThreshold = (long) ((TSDataType.values().length - 2) * limit);
 
     for (int i = 0; i < POOLED_ARRAYS.length; ++i) {
-      POOLED_ARRAYS[i] = new ArrayDeque<>((int) limit);
+      if (POOLED_ARRAYS[i] == null) {
+        POOLED_ARRAYS[i] = new ArrayDeque<>((int) limit);
+      } else {
+        synchronized (POOLED_ARRAYS[i]) {
+          POOLED_ARRAYS[i].clear();
+          POOLED_ARRAY_BYTES[i] = 0;
+        }
+      }
     }
 
     for (AtomicLong allocationRequestCount : ALLOCATION_REQUEST_COUNTS) {
@@ -155,6 +194,9 @@ public class PrimitiveArrayManager {
     Object array;
     synchronized (POOLED_ARRAYS[order]) {
       array = POOLED_ARRAYS[order].poll();
+      if (array != null) {
+        POOLED_ARRAY_BYTES[order] -= ARRAY_SIZE_CALCULATORS[order].applyAsLong(array);
+      }
     }
     StorageEngineMemoryMetrics.getInstance().incPamAllocation();
     if (array == null) {
@@ -230,36 +272,9 @@ public class PrimitiveArrayManager {
   }
 
   private static Object createPrimitiveArray(TSDataType dataType) {
-    Object dataArray;
-    switch (dataType) {
-      case BOOLEAN:
-        dataArray = new boolean[ARRAY_SIZE];
-        break;
-      case INT32:
-      case DATE:
-        dataArray = new int[ARRAY_SIZE];
-        break;
-      case INT64:
-      case TIMESTAMP:
-        dataArray = new long[ARRAY_SIZE];
-        break;
-      case FLOAT:
-        dataArray = new float[ARRAY_SIZE];
-        break;
-      case DOUBLE:
-        dataArray = new double[ARRAY_SIZE];
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        dataArray = new Binary[ARRAY_SIZE];
-        break;
-      default:
-        throw new UnSupportedDataTypeException(dataType.name());
-    }
-
-    return dataArray;
+    return TypeServices.StorageEngine.PRIMITIVE_ARRAY_ALLOCATOR_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .apply(ARRAY_SIZE);
   }
 
   /**
@@ -291,9 +306,25 @@ public class PrimitiveArrayManager {
       ArrayDeque<Object> arrays = POOLED_ARRAYS[order];
       if (arrays.size() < LIMITS[order]) {
         arrays.add(array);
+        POOLED_ARRAY_BYTES[order] += ARRAY_SIZE_CALCULATORS[order].applyAsLong(array);
       } else {
         StorageEngineMemoryMetrics.getInstance().incPamReleaseFailure();
       }
+    }
+  }
+
+  public static IMemoryBlock getMemoryBlock() {
+    return POOLED_ARRAYS_MEMORY_BLOCK;
+  }
+
+  private static long getPooledArrayMemoryInBytes(int order) {
+    if (order == POOLED_ARRAYS.length) {
+      return 0;
+    }
+    // Hold every queue lock in ascending order for a linearizable total. Borrow/return paths
+    // hold only one queue lock and never call this method or the memory manager.
+    synchronized (POOLED_ARRAYS[order]) {
+      return POOLED_ARRAY_BYTES[order] + getPooledArrayMemoryInBytes(order + 1);
     }
   }
 
@@ -310,51 +341,13 @@ public class PrimitiveArrayManager {
    */
   public static Object createDataListsByType(TSDataType dataType, int size) {
     int arrayNumber = getArrayRowCount(size);
-    switch (dataType) {
-      case BOOLEAN:
-        boolean[][] booleans = new boolean[arrayNumber][];
-        for (int i = 0; i < arrayNumber; i++) {
-          booleans[i] = new boolean[ARRAY_SIZE];
-        }
-        return booleans;
-      case INT32:
-      case DATE:
-        int[][] ints = new int[arrayNumber][];
-        for (int i = 0; i < arrayNumber; i++) {
-          ints[i] = new int[ARRAY_SIZE];
-        }
-        return ints;
-      case INT64:
-      case TIMESTAMP:
-        long[][] longs = new long[arrayNumber][];
-        for (int i = 0; i < arrayNumber; i++) {
-          longs[i] = new long[ARRAY_SIZE];
-        }
-        return longs;
-      case FLOAT:
-        float[][] floats = new float[arrayNumber][];
-        for (int i = 0; i < arrayNumber; i++) {
-          floats[i] = new float[ARRAY_SIZE];
-        }
-        return floats;
-      case DOUBLE:
-        double[][] doubles = new double[arrayNumber][];
-        for (int i = 0; i < arrayNumber; i++) {
-          doubles[i] = new double[ARRAY_SIZE];
-        }
-        return doubles;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        Binary[][] binaries = new Binary[arrayNumber][];
-        for (int i = 0; i < arrayNumber; i++) {
-          binaries[i] = new Binary[ARRAY_SIZE];
-        }
-        return binaries;
-      default:
-        throw new UnSupportedDataTypeException(dataType.name());
-    }
+    IntFunction<Object> arrayAllocator =
+        TypeServices.StorageEngine.PRIMITIVE_ARRAY_ALLOCATOR_SERVICE.call(
+            Type.fromTsDataType(dataType));
+    Object[] dataLists =
+        (Object[]) Array.newInstance(arrayAllocator.apply(0).getClass(), arrayNumber);
+    Arrays.setAll(dataLists, index -> arrayAllocator.apply(ARRAY_SIZE));
+    return dataLists;
   }
 
   public static int getArrayRowCount(int size) {

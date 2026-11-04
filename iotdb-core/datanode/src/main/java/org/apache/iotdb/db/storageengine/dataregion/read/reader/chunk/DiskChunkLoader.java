@@ -37,6 +37,7 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
 
+import java.io.File;
 import java.io.IOException;
 
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.INIT_CHUNK_READER_NONALIGNED_DISK;
@@ -91,6 +92,7 @@ public class DiskChunkLoader implements IChunkLoader {
       byte chunkType = chunk.getHeader().getChunkType();
       if (chunkType != MetaMarker.CHUNK_HEADER
           && chunkType != MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+        chunk.close();
         throw new ChunkTypeInconsistentException();
       }
 
@@ -108,6 +110,9 @@ public class DiskChunkLoader implements IChunkLoader {
               chunk,
               globalTimeFilter,
               this.context.getQueryStatistics()::addFilteredRowsOfPageLevel);
+      if (chunk.getEncryptParam() != null && chunk.getEncryptParam().isTdePageAead()) {
+        context.getQueryChunkReaders().retain(chunkReader, chunkReader.loadPageReaderList());
+      }
       SeriesScanCostMetricSet.getInstance()
           .recordSeriesScanCost(INIT_CHUNK_READER_NONALIGNED_DISK, System.nanoTime() - t2);
 
@@ -121,5 +126,9 @@ public class DiskChunkLoader implements IChunkLoader {
 
   public TsFileID getTsFileID() {
     return resource.getTsFileID();
+  }
+
+  public File getTsFile() {
+    return resource.getTsFile();
   }
 }

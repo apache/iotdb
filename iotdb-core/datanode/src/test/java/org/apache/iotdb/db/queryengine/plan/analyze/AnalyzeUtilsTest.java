@@ -23,6 +23,10 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
@@ -31,32 +35,204 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedNam
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeResp;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class AnalyzeUtilsTest {
+
+  @Test
+  public void testSchemaFailureIsNotOverwrittenByPartialInsertError() {
+    final InsertRowStatement row = new InsertRowStatement();
+    row.setMeasurements(new String[] {"field"});
+    row.setDataTypes(new TSDataType[] {TSDataType.INT64});
+    row.setValues(new Object[] {1L});
+    final Analysis analysis = new Analysis();
+
+    AnalyzeUtils.validateSchema(
+        analysis,
+        row,
+        () -> {
+          row.markFailedMeasurement(0, new IllegalArgumentException("type mismatch"));
+          throw new SemanticException(
+              DataNodeQueryMessages.NO_COLUMN_OTHER_THAN_TIME_PRESENT_PLEASE_CHECK);
+        });
+
+    assertTrue(analysis.isFinishQueryAfterAnalyze());
+    assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), analysis.getFailStatus().getCode());
+    assertEquals(
+        DataNodeQueryMessages.NO_COLUMN_OTHER_THAN_TIME_PRESENT_PLEASE_CHECK,
+        analysis.getFailStatus().getMessage());
+  }
+
+  @Test
+  public void testRejectedOnlyFieldStillLooksUpRowAndTabletPartition() throws Exception {
+    final InsertRowStatement row = new InsertRowStatement();
+    row.setDevicePath(new PartialPath("root.sg.d1"));
+    row.setMeasurements(new String[] {"tag", "field"});
+    row.setDataTypes(new TSDataType[] {TSDataType.STRING, TSDataType.INT64});
+    row.setValues(new Object[] {"device", 1L});
+    row.setTime(1L);
+    assertRejectedFieldStillLooksUpPartition(row);
+
+    final InsertTabletStatement tablet = new InsertTabletStatement();
+    tablet.setDevicePath(new PartialPath("root.sg.d1"));
+    tablet.setMeasurements(new String[] {"tag", "field"});
+    tablet.setDataTypes(new TSDataType[] {TSDataType.STRING, TSDataType.INT64});
+    tablet.setColumns(new Object[] {new String[] {"device"}, new long[] {1L}});
+    tablet.setTimes(new long[] {1L});
+    tablet.setRowCount(1);
+    assertRejectedFieldStillLooksUpPartition(tablet);
+  }
+
+  private static void assertRejectedFieldStillLooksUpPartition(InsertBaseStatement statement) {
+    statement.setColumnCategories(
+        new TsTableColumnCategory[] {TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD});
+    statement.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("tag", TSDataType.STRING),
+          new MeasurementSchema("field", TSDataType.INT64)
+        });
+    final Analysis analysis = new Analysis();
+    final MPPQueryContext context = new MPPQueryContext(new QueryId("rejected_field"));
+    context.setSession(Mockito.mock(SessionInfo.class));
+    final DataPartition partition = Mockito.mock(DataPartition.class);
+    final AtomicBoolean partitionQueried = new AtomicBoolean();
+
+    AnalyzeUtils.analyzeInsert(
+        context,
+        statement,
+        () -> statement.markFailedMeasurement(1, new IllegalArgumentException("type mismatch")),
+        (params, userName) -> {
+          partitionQueried.set(true);
+          return partition;
+        },
+        AnalyzeUtils::computeTableDataPartitionParams,
+        analysis,
+        false);
+
+    assertTrue(partitionQueried.get());
+    assertFalse(analysis.isFinishQueryAfterAnalyze());
+    assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), analysis.getFailStatus().getCode());
+    assertTrue(analysis.getFailStatus().getMessage().contains("field"));
+    assertSame(partition, analysis.getDataPartitionInfo());
+  }
+
+  @Test
+  public void testRejectedFieldsInEveryRowStillLookUpPartition() throws Exception {
+    final InsertRowsStatement rows = createRowsWithRejectedFields(2);
+    final Analysis analysis = new Analysis();
+    final MPPQueryContext context = new MPPQueryContext(new QueryId("all_rows_rejected"));
+    context.setSession(Mockito.mock(SessionInfo.class));
+    final DataPartition partition = Mockito.mock(DataPartition.class);
+    final AtomicBoolean partitionQueried = new AtomicBoolean();
+
+    AnalyzeUtils.analyzeInsert(
+        context,
+        rows,
+        () -> {},
+        (params, userName) -> {
+          partitionQueried.set(true);
+          return partition;
+        },
+        AnalyzeUtils::computeTableDataPartitionParams,
+        analysis,
+        false);
+
+    assertTrue(partitionQueried.get());
+    assertFalse(analysis.isFinishQueryAfterAnalyze());
+    assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), analysis.getFailStatus().getCode());
+    assertTrue(analysis.getFailStatus().getMessage().contains("field"));
+    assertSame(partition, analysis.getDataPartitionInfo());
+  }
+
+  @Test
+  public void testValidFieldInAnotherRowContinuesPartitionLookup() throws Exception {
+    final InsertRowsStatement rows = createRowsWithRejectedFields(1);
+    final Analysis analysis = new Analysis();
+    final MPPQueryContext context = new MPPQueryContext(new QueryId("one_valid_row"));
+    context.setSession(Mockito.mock(SessionInfo.class));
+    final DataPartition partition = Mockito.mock(DataPartition.class);
+    final AtomicBoolean partitionQueried = new AtomicBoolean();
+
+    AnalyzeUtils.analyzeInsert(
+        context,
+        rows,
+        () -> {},
+        (params, userName) -> {
+          partitionQueried.set(true);
+          return partition;
+        },
+        AnalyzeUtils::computeTableDataPartitionParams,
+        analysis,
+        false);
+
+    assertTrue(partitionQueried.get());
+    assertFalse(analysis.isFinishQueryAfterAnalyze());
+    assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), analysis.getFailStatus().getCode());
+    assertSame(partition, analysis.getDataPartitionInfo());
+  }
+
+  private static InsertRowsStatement createRowsWithRejectedFields(int rejectedRows)
+      throws Exception {
+    final List<InsertRowStatement> rowStatements = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      final InsertRowStatement row = new InsertRowStatement();
+      row.setDevicePath(new PartialPath("root.sg.d1"));
+      row.setMeasurements(new String[] {"tag", "field"});
+      row.setDataTypes(new TSDataType[] {TSDataType.STRING, TSDataType.INT64});
+      row.setColumnCategories(
+          new TsTableColumnCategory[] {TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD});
+      row.setMeasurementSchemas(
+          new MeasurementSchema[] {
+            new MeasurementSchema("tag", TSDataType.STRING),
+            new MeasurementSchema("field", TSDataType.INT64)
+          });
+      row.setValues(new Object[] {"device" + i, 1L});
+      row.setTime(i);
+      if (i < rejectedRows) {
+        row.markFailedMeasurement(1, new IllegalArgumentException("type mismatch"));
+      }
+      rowStatements.add(row);
+    }
+    final InsertRowsStatement rows = new InsertRowsStatement();
+    rows.setInsertRowStatementList(rowStatements);
+    rows.updateAfterSchemaValidation(null);
+    return rows;
+  }
 
   @Test
   public void testParseDeletePredicateWithRenamedTimeColumn() {
@@ -68,13 +244,62 @@ public class AnalyzeUtilsTest {
             new Identifier("ts"),
             new LongLiteral("100"));
 
-    List<TableDeletionEntry> entries =
-        AnalyzeUtils.parseExpressions2ModEntries(
-            expression, table, "db", new MPPQueryContext(new QueryId("1")));
+    List<TableDeletionEntry> entries = parseExpressions2ModEntries(expression, table);
 
     assertEquals(1, entries.size());
     assertEquals(Long.MIN_VALUE, entries.get(0).getStartTime());
     assertEquals(100, entries.get(0).getEndTime());
+  }
+
+  @Test
+  public void testParseDeleteTimePredicateWithBoundary() {
+    TsTable table = new TsTable("table1");
+    table.addColumnSchema(new TimeColumnSchema("time", TSDataType.TIMESTAMP));
+
+    Expression expression =
+        new ComparisonExpression(
+            ComparisonExpression.Operator.GREATER_THAN,
+            new Identifier("time"),
+            new LongLiteral(String.valueOf(Long.MAX_VALUE - 1)));
+    List<TableDeletionEntry> entries = parseExpressions2ModEntries(expression, table);
+    assertEquals(1, entries.size());
+    assertEquals(Long.MAX_VALUE, entries.get(0).getStartTime());
+    assertEquals(Long.MAX_VALUE, entries.get(0).getEndTime());
+
+    expression =
+        new ComparisonExpression(
+            ComparisonExpression.Operator.LESS_THAN,
+            new Identifier("time"),
+            new LongLiteral(String.valueOf(Long.MIN_VALUE + 1)));
+    entries = parseExpressions2ModEntries(expression, table);
+    assertEquals(1, entries.size());
+    assertEquals(Long.MIN_VALUE, entries.get(0).getStartTime());
+    assertEquals(Long.MIN_VALUE, entries.get(0).getEndTime());
+  }
+
+  @Test
+  public void testParseDeleteTimePredicateWithEmptyBoundary() {
+    TsTable table = new TsTable("table1");
+    table.addColumnSchema(new TimeColumnSchema("time", TSDataType.TIMESTAMP));
+
+    assertThrows(
+        SemanticException.class,
+        () ->
+            parseExpressions2ModEntries(
+                new ComparisonExpression(
+                    ComparisonExpression.Operator.GREATER_THAN,
+                    new Identifier("time"),
+                    new LongLiteral(String.valueOf(Long.MAX_VALUE))),
+                table));
+    assertThrows(
+        SemanticException.class,
+        () ->
+            parseExpressions2ModEntries(
+                new ComparisonExpression(
+                    ComparisonExpression.Operator.LESS_THAN,
+                    new Identifier("time"),
+                    new LongLiteral(String.valueOf(Long.MIN_VALUE))),
+                table));
   }
 
   @Test
@@ -129,5 +354,11 @@ public class AnalyzeUtilsTest {
   private static TRegionReplicaSet dataRegionReplicaSet(final int regionId) {
     return new TRegionReplicaSet(
         new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId), Collections.emptyList());
+  }
+
+  private static List<TableDeletionEntry> parseExpressions2ModEntries(
+      final Expression expression, final TsTable table) {
+    return AnalyzeUtils.parseExpressions2ModEntries(
+        expression, table, "db", new MPPQueryContext(new QueryId("test_query")));
   }
 }

@@ -24,6 +24,10 @@ import org.apache.iotdb.pipe.api.type.Binary;
 import java.time.LocalDate;
 import java.util.Objects;
 
+import static org.apache.iotdb.commons.utils.CommonDateTimeUtils.timeDifferenceAsDouble;
+import static org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingTimeUtils.isTimeDistanceGreaterThanOrEqualTo;
+import static org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingTimeUtils.isTimeDistanceLessThanOrEqualTo;
+
 public class SwingingDoorTrendingFilter<T> {
 
   private final SwingingDoorTrendingSamplingProcessor processor;
@@ -65,8 +69,8 @@ public class SwingingDoorTrendingFilter<T> {
   }
 
   private void init(final long firstTimestamp, final T firstValue) {
-    upperDoor = Double.MIN_VALUE;
-    lowerDoor = Double.MAX_VALUE;
+    upperDoor = Double.NEGATIVE_INFINITY;
+    lowerDoor = Double.POSITIVE_INFINITY;
 
     lastReadTimestamp = firstTimestamp;
     lastReadValue = firstValue;
@@ -85,14 +89,12 @@ public class SwingingDoorTrendingFilter<T> {
   }
 
   private boolean tryFilter(final long timestamp, final T value) {
-    final long timeDiff = timestamp - lastStoredTimestamp;
-
-    if (isTimeDistanceLessThanOrEqual(
+    if (isTimeDistanceLessThanOrEqualTo(
         timestamp, lastStoredTimestamp, processor.getCompressionMinTimeInterval())) {
       return false;
     }
 
-    if (isTimeDistanceGreaterThanOrEqual(
+    if (isTimeDistanceGreaterThanOrEqualTo(
         timestamp, lastStoredTimestamp, processor.getCompressionMaxTimeInterval())) {
       reset(timestamp, value);
       return true;
@@ -115,6 +117,7 @@ public class SwingingDoorTrendingFilter<T> {
     final double doubleValue = Double.parseDouble(value.toString());
     final double lastStoredDoubleValue = Double.parseDouble(lastStoredValue.toString());
     final double valueDiff = doubleValue - lastStoredDoubleValue;
+    final double timeDiff = timeDifferenceAsDouble(timestamp, lastStoredTimestamp);
 
     final double currentUpperSlope = (valueDiff - processor.getCompressionDeviation()) / timeDiff;
     if (currentUpperSlope > upperDoor) {
@@ -145,21 +148,9 @@ public class SwingingDoorTrendingFilter<T> {
     return false;
   }
 
-  private boolean isTimeDistanceLessThanOrEqual(
-      final long left, final long right, final long maxDistance) {
-    final long distance = left >= right ? left - right : right - left;
-    return Long.compareUnsigned(distance, maxDistance) <= 0;
-  }
-
-  private boolean isTimeDistanceGreaterThanOrEqual(
-      final long left, final long right, final long minDistance) {
-    final long distance = left >= right ? left - right : right - left;
-    return Long.compareUnsigned(distance, minDistance) >= 0;
-  }
-
   private void reset(final long timestamp, final T value) {
-    upperDoor = Double.MIN_VALUE;
-    lowerDoor = Double.MAX_VALUE;
+    upperDoor = Double.NEGATIVE_INFINITY;
+    lowerDoor = Double.POSITIVE_INFINITY;
 
     lastStoredTimestamp = timestamp;
     lastStoredValue = value;

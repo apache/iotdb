@@ -126,8 +126,10 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
     if (availableDataNodes.isEmpty()) {
       String errorMsg =
           String.format(
-              "All replicas for region[%s] are not available in these DataNodes[%s]",
-              regionReplicaSet.getRegionId(), regionReplicaSet.getDataNodeLocations());
+              DataNodeQueryMessages
+                  .EXCEPTION_ALL_REPLICAS_FOR_REGION_ARG_ARE_NOT_AVAILABLE_IN_THESE_DATANODES_ARG_598EFEC2,
+              regionReplicaSet.getRegionId(),
+              regionReplicaSet.getDataNodeLocations());
       throw new IoTDBRuntimeException(
           errorMsg, TSStatusCode.NO_AVAILABLE_REPLICA.getStatusCode(), true);
     }

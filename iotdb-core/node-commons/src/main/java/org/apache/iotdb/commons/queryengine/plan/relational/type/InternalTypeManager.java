@@ -82,66 +82,21 @@ public class InternalTypeManager implements TypeManager {
     if (type == null) {
       return null;
     }
-    TypeEnum typeEnum = type.getTypeEnum();
-    switch (typeEnum) {
-      case TEXT:
-        return TSDataType.TEXT;
-      case FLOAT:
-        return TSDataType.FLOAT;
-      case DOUBLE:
-        return TSDataType.DOUBLE;
-      case INT32:
-        return TSDataType.INT32;
-      case INT64:
-        return TSDataType.INT64;
-      case BOOLEAN:
-        return TSDataType.BOOLEAN;
-      case UNKNOWN:
-        return TSDataType.UNKNOWN;
-      case DATE:
-        return TSDataType.DATE;
-      case TIMESTAMP:
-        return TSDataType.TIMESTAMP;
-      case BLOB:
-      case ROW:
-        return TSDataType.BLOB;
-      case STRING:
-        return TSDataType.STRING;
-      case OBJECT:
-        return TSDataType.OBJECT;
-      default:
-        throw new IllegalArgumentException();
+    final TypeEnum typeEnum = type.getTypeEnum();
+    // TSDataType has no ROW counterpart, so preserve its existing binary representation.
+    if (typeEnum == TypeEnum.ROW) {
+      return TSDataType.BLOB;
     }
+    if (typeEnum == TypeEnum.VECTOR) {
+      throw new IllegalArgumentException();
+    }
+    return TSDataType.valueOf(typeEnum.name());
   }
 
   public static Type fromTSDataType(TSDataType dataType) {
-    switch (dataType) {
-      case TEXT:
-        return TEXT;
-      case FLOAT:
-        return FLOAT;
-      case DOUBLE:
-        return DOUBLE;
-      case INT32:
-        return INT32;
-      case INT64:
-        return INT64;
-      case BOOLEAN:
-        return BOOLEAN;
-      case UNKNOWN:
-        return UNKNOWN;
-      case DATE:
-        return DATE;
-      case TIMESTAMP:
-        return TIMESTAMP;
-      case BLOB:
-        return BLOB;
-      case OBJECT:
-        return OBJECT;
-      case STRING:
-        return STRING;
-      default:
-        throw new IllegalArgumentException();
+    if (dataType == TSDataType.VECTOR) {
+      throw new IllegalArgumentException();
     }
+    return Type.fromTsDataType(dataType);
   }
 }

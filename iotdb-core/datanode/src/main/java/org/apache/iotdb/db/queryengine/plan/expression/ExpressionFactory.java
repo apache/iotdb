@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinTimeSeriesGeneratingFunction;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.EqualToExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterEqualExpression;
@@ -217,11 +218,25 @@ public class ExpressionFactory {
   }
 
   public static GroupByTimeExpression groupByTime(GroupByTimeParameter parameter) {
+    if (!parameter.isLeftCRightO() && parameter.getEndTime() == Long.MAX_VALUE) {
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages
+              .EXCEPTION_RIGHT_CLOSED_GROUP_BY_TIME_WITH_LONG_MAX_VALUE_END_TIME_CANNOT_BE_REPRESENTED_AS_A_SINGLE_RIGHT_OPEN_TIME_FILTER_772F893F);
+    }
     long startTime =
-        parameter.isLeftCRightO() ? parameter.getStartTime() : parameter.getStartTime() + 1;
-    long endTime = parameter.isLeftCRightO() ? parameter.getEndTime() : parameter.getEndTime() + 1;
+        parameter.isLeftCRightO()
+            ? parameter.getStartTime()
+            : saturatingIncrement(parameter.getStartTime());
+    long endTime =
+        parameter.isLeftCRightO()
+            ? parameter.getEndTime()
+            : saturatingIncrement(parameter.getEndTime());
     return new GroupByTimeExpression(
         startTime, endTime, parameter.getInterval(), parameter.getSlidingStep());
+  }
+
+  private static long saturatingIncrement(long value) {
+    return value == Long.MAX_VALUE ? Long.MAX_VALUE : value + 1;
   }
 
   public static GroupByTimeExpression groupByTime(

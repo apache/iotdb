@@ -92,8 +92,8 @@ public class SystemPropertiesUtils {
     Properties systemProperties = systemPropertiesHandler.read();
     ConfigurationFileUtils.updateAppliedProperties(systemProperties, false);
     final String format =
-        "[SystemProperties] The parameter \"{}\" can't be modified after first startup."
-            + " Your configuration: {} will be forced update to: {}";
+        ConfigNodeMessages
+            .EXCEPTION_SYSTEMPROPERTIES_THE_PARAMETER_ARG_CAN_T_BE_MODIFIED_AFTER_FIRST_STARTUP_YOUR_CONFIGURATION_ARG_WILL_BE_FORCED_UPDATE_TO_ARG_42B1AD5E;
 
     String internalAddress = systemProperties.getProperty(CN_INTERNAL_ADDRESS, null);
     if (!internalAddress.equals(conf.getInternalAddress())) {

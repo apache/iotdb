@@ -54,7 +54,8 @@ public class PullCommitProgressRPCHandler
     if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.info(
           ConfigNodeMessages.SUCCESSFULLY_ON_DATANODE, requestType, formattedTargetLocation);
-    } else {
+    } else if (response.getStatus().getCode()
+        != TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode()) {
       LOGGER.error(
           ConfigNodeMessages.FAILED_TO_ON_DATANODE_RESPONSE,
           requestType,
@@ -69,12 +70,11 @@ public class PullCommitProgressRPCHandler
   @Override
   public void onError(Exception e) {
     String errorMsg =
-        "Failed to "
-            + requestType
-            + " on DataNode: "
-            + formattedTargetLocation
-            + ", exception: "
-            + e.getMessage();
+        String.format(
+            ConfigNodeMessages.EXCEPTION_FAILED_TO_ARG_ON_DATANODE_ARG_EXCEPTION_ARG_87B8946D,
+            String.valueOf(requestType),
+            String.valueOf(formattedTargetLocation),
+            String.valueOf(e.getMessage()));
     LOGGER.error(errorMsg, e);
 
     responseMap.put(

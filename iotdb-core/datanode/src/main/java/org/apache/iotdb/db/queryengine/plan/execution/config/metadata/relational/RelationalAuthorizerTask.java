@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
+import org.apache.iotdb.db.audit.UserRoleModificationAuditContext;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -29,16 +30,20 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 public class RelationalAuthorizerTask implements IConfigTask {
   private final RelationalAuthorStatement statement;
+  private final UserRoleModificationAuditContext userRoleAuditContext;
 
-  public RelationalAuthorizerTask(RelationalAuthorStatement statement) {
+  public RelationalAuthorizerTask(
+      RelationalAuthorStatement statement, UserRoleModificationAuditContext userRoleAuditContext) {
     this.statement = statement;
+    this.userRoleAuditContext = userRoleAuditContext;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor) {
     if (statement.getQueryType() != QueryType.READ
         && statement.getQueryType() != QueryType.READ_WRITE) {
-      return AuthorityChecker.operatePermission(statement);
+      return userRoleAuditContext.executeAndAudit(
+          () -> AuthorityChecker.operatePermission(statement));
     } else {
       return AuthorityChecker.queryPermission(statement);
     }

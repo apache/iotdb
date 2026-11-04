@@ -22,8 +22,11 @@ package org.apache.iotdb.commons.pipe.receiver;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.pipe.IoTConsensusV2RetryWithIncreasingIntervalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkResourceException;
 import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.resource.PipeResourceFailureType;
+import org.apache.iotdb.commons.pipe.resource.PipeStopStrategy;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -37,8 +40,10 @@ import javax.annotation.Nullable;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -46,9 +51,12 @@ import java.util.concurrent.atomic.AtomicReference;
 public class PipeReceiverStatusHandler {
 
   private static Logger LOGGER = LoggerFactory.getLogger(PipeReceiverStatusHandler.class);
-  private static final String NO_PERMISSION = "No permission";
-  private static final String UNCLASSIFIED_EXCEPTION = "Unclassified exception";
+  private static final String NO_PERMISSION = PipeMessages.MESSAGE_NO_PERMISSION_7EA2F5F6;
+  private static final String UNCLASSIFIED_EXCEPTION =
+      PipeMessages.MESSAGE_UNCLASSIFIED_EXCEPTION_783F6E1F;
   private static final String NO_PERMISSION_STR = "No permissions for this operation";
+  // Receivers may use either locale, independently of the sender's build locale.
+  private static final String NO_PERMISSION_ZH_STR = "无权执行此操作";
   private static final int MAX_RECORD_MESSAGE_LENGTH_IN_LOG = 2048;
 
   private final boolean isRetryAllowedWhenConflictOccurs;
@@ -98,7 +106,8 @@ public class PipeReceiverStatusHandler {
    *
    * @throws PipeRuntimeSinkNonReportTimeConfigurableException to retry the current {@link Event}
    * @param status the {@link TSStatus} to judge
-   * @param exceptionMessage The exception message to throw
+   * @param exceptionMessage the fallback exception message when {@code status} does not contain a
+   *     usable receiver message
    * @param recordMessage The message to record an ignored {@link Event}, the caller should assure
    *     that the same {@link Event} generates always the same record message, for instance, do not
    *     put any time-related info here
@@ -109,15 +118,31 @@ public class PipeReceiverStatusHandler {
       final String recordMessage,
       final boolean log4NoPrivileges) {
 
+    // Batch responses may put the actual receiver error only in a nested sub-status, while callers
+    // may supply a generic transfer wrapper. Prefer the receiver message before constructing the
+    // retry exception so the downstream error can be reported to users.
+    final String effectiveExceptionMessage = getEffectiveExceptionMessage(status, exceptionMessage);
+
     if (RetryUtils.needRetryForWrite(status.getCode())) {
       LOGGER.info(PipeMessages.IOT_CONSENSUS_RETRY_WITH_INTERVAL, status);
       throw new IoTConsensusV2RetryWithIncreasingIntervalException(
-          exceptionMessage, Integer.MAX_VALUE);
+          effectiveExceptionMessage, Integer.MAX_VALUE);
     }
 
     if (RetryUtils.notNeedRetryForConsensus(status.getCode())) {
       LOGGER.info(PipeMessages.IOT_CONSENSUS_WILL_NOT_RETRY, status);
       return;
+    }
+
+    if (!PipeStopStrategy.accept(null, status)) {
+      PipeLogger.log(
+          LOGGER::info,
+          PipeMessages.TEMPORARY_UNAVAILABLE_RETRY,
+          status,
+          effectiveExceptionMessage);
+      final PipeResourceFailureType failureType =
+          PipeStopStrategy.getResourceFailureType(null, status);
+      throw new PipeRuntimeSinkResourceException(effectiveExceptionMessage, failureType);
     }
 
     switch (status.getCode()) {
@@ -133,22 +158,17 @@ public class PipeReceiverStatusHandler {
           return;
         }
 
-      case 1808: // PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION
-        {
-          PipeLogger.log(
-              LOGGER::info, PipeMessages.TEMPORARY_UNAVAILABLE_RETRY, status, exceptionMessage);
-          throw new PipeRuntimeSinkNonReportTimeConfigurableException(
-              exceptionMessage, Long.MAX_VALUE);
-        }
-
       case 1810: // PIPE_RECEIVER_USER_CONFLICT_EXCEPTION
       case 1815: // PIPE_RECEIVER_PARALLEL_OR_USER_CONFLICT_EXCEPTION
         if (!isRetryAllowedWhenConflictOccurs) {
           LOGGER.warn(
               PipeMessages.USER_CONFLICT_NOT_ALLOWED,
-              shouldRecordIgnoredDataWhenConflictOccurs ? recordMessage : "not recorded",
+              shouldRecordIgnoredDataWhenConflictOccurs
+                  ? recordMessage
+                  : PipeMessages.MESSAGE_NOT_RECORDED_06D234C1,
               status);
-          logDiscardedUserConflictData("retry is not allowed", recordMessage, status);
+          logDiscardedUserConflictData(
+              PipeMessages.MESSAGE_RETRY_IS_NOT_ALLOWED_84FB8FBC, recordMessage, status);
           return;
         }
 
@@ -160,9 +180,12 @@ public class PipeReceiverStatusHandler {
                   > retryMaxMillisWhenConflictOccurs) {
             LOGGER.warn(
                 PipeMessages.USER_CONFLICT_RETRY_TIMEOUT,
-                shouldRecordIgnoredDataWhenConflictOccurs ? recordMessage : "not recorded",
+                shouldRecordIgnoredDataWhenConflictOccurs
+                    ? recordMessage
+                    : PipeMessages.MESSAGE_NOT_RECORDED_06D234C1,
                 status);
-            logDiscardedUserConflictData("retry timeout", recordMessage, status);
+            logDiscardedUserConflictData(
+                PipeMessages.MESSAGE_RETRY_TIMEOUT_5FCC0622, recordMessage, status);
             resetExceptionStatus();
             return;
           }
@@ -180,7 +203,7 @@ public class PipeReceiverStatusHandler {
               status);
           exceptionEventHasBeenRetried.set(true);
           throw new PipeRuntimeSinkNonReportTimeConfigurableException(
-              exceptionMessage,
+              effectiveExceptionMessage,
               status.getCode() == 1815
                       && PipeConfig.getInstance().isPipeRetryLocallyForParallelOrUserConflict()
                   ? Long.MAX_VALUE
@@ -193,32 +216,247 @@ public class PipeReceiverStatusHandler {
             LOGGER.warn(
                 PipeMessages.USER_CONFLICT_IGNORED,
                 getNoPermission(true),
-                shouldRecordIgnoredDataWhenOtherExceptionsOccur ? recordMessage : "not recorded",
+                shouldRecordIgnoredDataWhenOtherExceptionsOccur
+                    ? recordMessage
+                    : PipeMessages.MESSAGE_NOT_RECORDED_06D234C1,
                 status);
           }
           return;
         }
-        handleOtherExceptions(status, exceptionMessage, recordMessage, true);
+        handleOtherExceptions(status, effectiveExceptionMessage, recordMessage, true);
         break;
       default:
         // Some auth error may be wrapped in other codes
-        if (Objects.nonNull(exceptionMessage) && exceptionMessage.contains(NO_PERMISSION_STR)) {
+        if (Objects.nonNull(effectiveExceptionMessage)
+            && (effectiveExceptionMessage.contains(NO_PERMISSION_STR)
+                || effectiveExceptionMessage.contains(NO_PERMISSION_ZH_STR))) {
           if (skipIfNoPrivileges) {
             if (log4NoPrivileges && LOGGER.isWarnEnabled()) {
               LOGGER.warn(
                   PipeMessages.USER_CONFLICT_IGNORED,
                   getNoPermission(true),
-                  shouldRecordIgnoredDataWhenOtherExceptionsOccur ? recordMessage : "not recorded",
+                  shouldRecordIgnoredDataWhenOtherExceptionsOccur
+                      ? recordMessage
+                      : PipeMessages.MESSAGE_NOT_RECORDED_06D234C1,
                   status);
             }
             return;
           }
-          handleOtherExceptions(status, exceptionMessage, recordMessage, true);
+          handleOtherExceptions(status, effectiveExceptionMessage, recordMessage, true);
           break;
         }
         // Other exceptions
-        handleOtherExceptions(status, exceptionMessage, recordMessage, false);
+        handleOtherExceptions(status, effectiveExceptionMessage, recordMessage, false);
         break;
+    }
+  }
+
+  private static String getEffectiveExceptionMessage(
+      final TSStatus status, final String exceptionMessage) {
+    final String statusMessage = getStatusMessage(status);
+    if (hasText(statusMessage)) {
+      return statusMessage;
+    }
+    return exceptionMessage;
+  }
+
+  /**
+   * Returns the most useful non-blank message in a status tree. A nested failed status is preferred
+   * over its aggregate wrapper because it usually contains the actual receiver error. Messages used
+   * to carry redirection device paths are never reported as errors.
+   */
+  public static String getStatusMessage(final @Nullable TSStatus status) {
+    if (status == null) {
+      return null;
+    }
+
+    final StatusMessageCandidate candidate =
+        findStatusMessage(
+            status,
+            Collections.newSetFromMap(new IdentityHashMap<>()),
+            /* inheritedClassificationCode= */ -1,
+            /* depth= */ 0,
+            new int[] {0});
+    if (candidate != null) {
+      return candidate.message;
+    }
+
+    // A successful status can carry an application-specific message. It is safe to expose one only
+    // when the whole tree has no failure status; a success child must never mask a failure.
+    if (containsFailureStatus(status, Collections.newSetFromMap(new IdentityHashMap<>()))) {
+      return null;
+    }
+    return findSuccessStatusMessage(status, Collections.newSetFromMap(new IdentityHashMap<>()));
+  }
+
+  private static boolean containsFailureStatus(
+      final TSStatus status, final Set<TSStatus> visitedStatuses) {
+    if (status == null || !visitedStatuses.add(status)) {
+      return false;
+    }
+    if (isFailureStatus(status.getCode())) {
+      return true;
+    }
+    if (status.isSetSubStatus() && status.getSubStatus() != null) {
+      for (final TSStatus subStatus : status.getSubStatus()) {
+        if (containsFailureStatus(subStatus, visitedStatuses)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private static String findSuccessStatusMessage(
+      final TSStatus status, final Set<TSStatus> visitedStatuses) {
+    if (status == null || !visitedStatuses.add(status)) {
+      return null;
+    }
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && hasText(status.getMessage())
+        && !isRedirectionMessageStatus(status)) {
+      return status.getMessage();
+    }
+    if (status.isSetSubStatus() && status.getSubStatus() != null) {
+      for (final TSStatus subStatus : status.getSubStatus()) {
+        final String message = findSuccessStatusMessage(subStatus, visitedStatuses);
+        if (hasText(message)) {
+          return message;
+        }
+      }
+    }
+    return null;
+  }
+
+  private static StatusMessageCandidate findStatusMessage(
+      final TSStatus status,
+      final Set<TSStatus> visitedStatuses,
+      final int inheritedClassificationCode,
+      final int depth,
+      final int[] traversalOrder) {
+    if (status == null || !visitedStatuses.add(status)) {
+      return null;
+    }
+
+    final int currentOrder = traversalOrder[0]++;
+    final boolean wrapper = isPipeStatusWrapper(status.getCode());
+    final int classificationCode =
+        STATUS_PRIORITY.contains(status.getCode()) ? status.getCode() : inheritedClassificationCode;
+
+    StatusMessageCandidate bestCandidate = null;
+    boolean hasFailureDescendant = false;
+    if (status.isSetSubStatus() && status.getSubStatus() != null) {
+      for (final TSStatus subStatus : status.getSubStatus()) {
+        final StatusMessageCandidate candidate =
+            findStatusMessage(
+                subStatus, visitedStatuses, classificationCode, depth + 1, traversalOrder);
+        if (candidate != null) {
+          hasFailureDescendant = true;
+          bestCandidate = chooseBetterStatusMessage(bestCandidate, candidate);
+        }
+      }
+    }
+
+    final String ownMessage = getOwnFailureStatusMessage(status);
+    if (ownMessage != null) {
+      bestCandidate =
+          chooseBetterStatusMessage(
+              bestCandidate,
+              new StatusMessageCandidate(
+                  ownMessage,
+                  wrapper,
+                  !hasFailureDescendant,
+                  classificationCode,
+                  depth,
+                  currentOrder));
+    }
+    return bestCandidate;
+  }
+
+  private static StatusMessageCandidate chooseBetterStatusMessage(
+      final @Nullable StatusMessageCandidate current, final StatusMessageCandidate candidate) {
+    if (current == null) {
+      return candidate;
+    }
+
+    // A concrete failure leaf is the closest representation of the receiver error. Aggregate and
+    // Pipe classification statuses are retained as a fallback for responses that have no leaf
+    // message of their own.
+    if (candidate.leaf != current.leaf) {
+      return candidate.leaf ? candidate : current;
+    }
+    if (candidate.wrapper != current.wrapper) {
+      return candidate.wrapper ? current : candidate;
+    }
+
+    final int candidatePriority = getStatusPriority(candidate.classificationCode);
+    final int currentPriority = getStatusPriority(current.classificationCode);
+    if (candidatePriority != currentPriority) {
+      return candidatePriority > currentPriority ? candidate : current;
+    }
+    if (candidate.depth != current.depth) {
+      return candidate.depth > current.depth ? candidate : current;
+    }
+    return candidate.traversalOrder < current.traversalOrder ? candidate : current;
+  }
+
+  private static String getOwnFailureStatusMessage(final TSStatus status) {
+    return hasText(status.getMessage())
+            && !isRedirectionMessageStatus(status)
+            && isFailureStatus(status.getCode())
+        ? status.getMessage()
+        : null;
+  }
+
+  private static boolean isPipeStatusWrapper(final int statusCode) {
+    return statusCode == TSStatusCode.MULTIPLE_ERROR.getStatusCode()
+        || statusCode == TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()
+        || statusCode == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()
+        || statusCode == TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode()
+        || statusCode
+            == TSStatusCode.PIPE_RECEIVER_PARALLEL_OR_USER_CONFLICT_EXCEPTION.getStatusCode();
+  }
+
+  private static int getStatusPriority(final int statusCode) {
+    return STATUS_PRIORITY.indexOf(statusCode);
+  }
+
+  private static boolean isRedirectionMessageStatus(final TSStatus status) {
+    return status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+        || (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && status.isSetRedirectNode());
+  }
+
+  private static boolean isFailureStatus(final int statusCode) {
+    return statusCode != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && statusCode != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode();
+  }
+
+  private static boolean hasText(final String message) {
+    return message != null && !message.trim().isEmpty();
+  }
+
+  private static final class StatusMessageCandidate {
+    private final String message;
+    private final boolean wrapper;
+    private final boolean leaf;
+    private final int classificationCode;
+    private final int depth;
+    private final int traversalOrder;
+
+    private StatusMessageCandidate(
+        final String message,
+        final boolean wrapper,
+        final boolean leaf,
+        final int classificationCode,
+        final int depth,
+        final int traversalOrder) {
+      this.message = message;
+      this.wrapper = wrapper;
+      this.leaf = leaf;
+      this.classificationCode = classificationCode;
+      this.depth = depth;
+      this.traversalOrder = traversalOrder;
     }
   }
 
@@ -235,7 +473,9 @@ public class PipeReceiverStatusHandler {
       LOGGER.warn(
           PipeMessages.OTHER_EXCEPTION_RETRY_TIMEOUT,
           getNoPermission(noPermission),
-          shouldRecordIgnoredDataWhenOtherExceptionsOccur ? recordMessage : "not recorded",
+          shouldRecordIgnoredDataWhenOtherExceptionsOccur
+              ? recordMessage
+              : PipeMessages.MESSAGE_NOT_RECORDED_06D234C1,
           status);
       resetExceptionStatus();
       return;
@@ -351,6 +591,10 @@ public class PipeReceiverStatusHandler {
       }
     }
     resultStatus.setSubStatus(givenStatusList);
+    final String statusMessage = getStatusMessage(resultStatus);
+    if (hasText(statusMessage)) {
+      resultStatus.setMessage(statusMessage);
+    }
     return resultStatus;
   }
 

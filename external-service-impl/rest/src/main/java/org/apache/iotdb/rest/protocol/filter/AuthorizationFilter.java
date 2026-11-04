@@ -25,14 +25,17 @@ import org.apache.iotdb.db.conf.rest.IoTDBRestServiceConfig;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.protocol.session.RestClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.rest.i18n.RestMessages;
 import org.apache.iotdb.rest.protocol.model.ExecutionStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import jakarta.servlet.annotation.WebFilter;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.container.ContainerResponseFilter;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
@@ -42,6 +45,7 @@ import java.io.IOException;
 import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.util.Base64;
+import java.util.Objects;
 import java.util.UUID;
 
 @WebFilter("/*")
@@ -51,6 +55,8 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
   IoTDBRestServiceConfig config = IoTDBRestServiceDescriptor.getInstance().getConfig();
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
+
+  @Context private HttpServletRequest servletRequest;
 
   public AuthorizationFilter() throws AuthException {
     // do nothing
@@ -97,7 +103,8 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
 
     String sessionid = UUID.randomUUID().toString();
     if (SESSION_MANAGER.getCurrSession() == null) {
-      RestClientSession restClientSession = new RestClientSession(sessionid);
+      String clientAddress = servletRequest == null ? sessionid : servletRequest.getRemoteAddr();
+      RestClientSession restClientSession = new RestClientSession(sessionid, clientAddress);
       restClientSession.setUsername(user.getUsername());
       SESSION_MANAGER.registerSession(restClientSession);
       SESSION_MANAGER.supplySession(
@@ -128,7 +135,8 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
               .entity(
                   new ExecutionStatus()
                       .code(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode())
-                      .message("Illegal format of authorization header."))
+                      .message(
+                          RestMessages.EXCEPTION_ILLEGAL_FORMAT_OF_AUTHORIZATION_HEADER_D34F8A26))
               .build();
       containerRequestContext.abortWith(resp);
       return null;
@@ -178,7 +186,10 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
               .entity(
                   new ExecutionStatus()
                       .code(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode())
-                      .message("Invalid time zone: " + timeZoneHeader))
+                      .message(
+                          String.format(
+                              RestMessages.EXCEPTION_INVALID_TIME_ZONE_ARG_43D4C03A,
+                              Objects.toString(timeZoneHeader))))
               .build();
       requestContext.abortWith(resp);
       return null;

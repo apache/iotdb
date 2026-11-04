@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.library.dprofile;
 
-import org.apache.iotdb.library.util.Util;
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
+import org.apache.iotdb.library.util.TypeServices;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -29,11 +30,69 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
+import java.io.IOException;
+
 /** calculate the approximate percentile. */
 public class UDAFQuantile implements UDTF {
   private org.apache.iotdb.library.dprofile.util.HeapLongKLLSketch sketch;
   private double rank;
-  private Type dataType;
+  private QuantileOperations operations;
+
+  private static final QuantileOperations INT_OPERATIONS =
+      new QuantileOperations() {
+        public long encode(Row row) throws IOException {
+          return row.getInt(0);
+        }
+
+        public void write(long result, PointCollector collector) throws IOException {
+          collector.putInt(0, (int) result);
+        }
+      };
+  private static final QuantileOperations LONG_OPERATIONS =
+      new QuantileOperations() {
+        public long encode(Row row) throws IOException {
+          return row.getLong(0);
+        }
+
+        public void write(long result, PointCollector collector) throws IOException {
+          collector.putLong(0, result);
+        }
+      };
+  private static final QuantileOperations FLOAT_OPERATIONS =
+      new QuantileOperations() {
+        public long encode(Row row) throws IOException {
+          float value = row.getFloat(0);
+          long bits = Float.floatToIntBits(value);
+          return value >= 0f ? bits : bits ^ Long.MAX_VALUE;
+        }
+
+        public void write(long result, PointCollector collector) throws IOException {
+          result = (result >>> 31) == 0 ? result : result ^ Long.MAX_VALUE;
+          collector.putFloat(0, Float.intBitsToFloat((int) result));
+        }
+      };
+  private static final QuantileOperations DOUBLE_OPERATIONS =
+      new QuantileOperations() {
+        public long encode(Row row) throws IOException {
+          double value = row.getDouble(0);
+          long bits = Double.doubleToLongBits(value);
+          return value >= 0d ? bits : bits ^ Long.MAX_VALUE;
+        }
+
+        public void write(long result, PointCollector collector) throws IOException {
+          result = (result >>> 63) == 0 ? result : result ^ Long.MAX_VALUE;
+          collector.putDouble(0, Double.longBitsToDouble(result));
+        }
+      };
+  private static final QuantileOperations UNSUPPORTED_OPERATIONS =
+      new QuantileOperations() {
+        public long encode(Row row) {
+          throw new IllegalArgumentException(
+              LibraryUdfMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_A8CA7BE7);
+        }
+
+        public void write(long result, PointCollector collector) {}
+      };
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -42,11 +101,12 @@ public class UDAFQuantile implements UDTF {
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             k -> (int) k >= 100,
-            "Size K has to be greater or equal than 100.",
+            LibraryUdfMessages.EXCEPTION_SIZE_K_HAS_TO_BE_GREATER_THAN_OR_EQUAL_TO_100_C514D1C3,
             validator.getParameters().getIntOrDefault("K", 800))
         .validate(
             rank -> (double) rank > 0 && (double) rank <= 1,
-            "rank has to be greater than 0 and less than or equal to 1.",
+            LibraryUdfMessages
+                .EXCEPTION_RANK_HAS_TO_BE_GREATER_THAN_0_AND_LESS_THAN_OR_EQUAL_TO_1_0F16AF94,
             validator.getParameters().getDoubleOrDefault("rank", 0.5));
   }
 
@@ -56,7 +116,15 @@ public class UDAFQuantile implements UDTF {
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
         .setOutputDataType(parameters.getDataType(0));
-    dataType = parameters.getDataType(0);
+    Type dataType = parameters.getDataType(0);
+    operations =
+        TypeServices.numericService(
+                INT_OPERATIONS,
+                LONG_OPERATIONS,
+                FLOAT_OPERATIONS,
+                DOUBLE_OPERATIONS,
+                UNSUPPORTED_OPERATIONS)
+            .call(TypeServices.toReadType(dataType));
     int k = parameters.getIntOrDefault("K", 800);
     rank = parameters.getDoubleOrDefault("rank", 0.5);
 
@@ -65,19 +133,7 @@ public class UDAFQuantile implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
-    final long encoded;
-    switch (dataType) {
-      case INT32:
-        encoded = row.getInt(0);
-        break;
-      case INT64:
-        encoded = row.getLong(0);
-        break;
-      default:
-        encoded = dataToLong(Util.getValueAsDouble(row));
-        break;
-    }
-    sketch.update(encoded);
+    sketch.update(operations.encode(row));
   }
 
   @Override
@@ -94,49 +150,12 @@ public class UDAFQuantile implements UDTF {
         k = n - 1;
       }
     }
-    long result = sketch.findMinValueWithRank(k);
-    switch (dataType) {
-      case INT32:
-        collector.putInt(0, (int) result);
-        break;
-      case INT64:
-        collector.putLong(0, result);
-        break;
-      case FLOAT:
-        collector.putFloat(0, (float) longToResult(result));
-        break;
-      case DOUBLE:
-        collector.putDouble(0, longToResult(result));
-        break;
-      default:
-        break;
-    }
+    operations.write(sketch.findMinValueWithRank(k), collector);
   }
 
-  private long dataToLong(double res) {
-    switch (dataType) {
-      case FLOAT:
-        float f = (float) res;
-        long flBits = Float.floatToIntBits(f);
-        return f >= 0f ? flBits : flBits ^ Long.MAX_VALUE;
-      case DOUBLE:
-        long d = Double.doubleToLongBits(res);
-        return res >= 0d ? d : d ^ Long.MAX_VALUE;
-      default:
-        return (long) res;
-    }
-  }
+  private interface QuantileOperations {
+    long encode(Row row) throws IOException;
 
-  private double longToResult(long result) {
-    switch (dataType) {
-      case FLOAT:
-        result = (result >>> 31) == 0 ? result : result ^ Long.MAX_VALUE;
-        return Float.intBitsToFloat((int) (result));
-      case DOUBLE:
-        result = (result >>> 63) == 0 ? result : result ^ Long.MAX_VALUE;
-        return Double.longBitsToDouble(result);
-      default:
-        return (double) result;
-    }
+    void write(long result, PointCollector collector) throws IOException;
   }
 }

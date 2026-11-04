@@ -28,6 +28,7 @@ import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -47,6 +48,13 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.fail;
 
@@ -237,5 +245,136 @@ public class PipeTsFileResourceManagerTest {
     Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile, null));
     Assert.assertFalse(Files.exists(originFile.toPath()));
     Assert.assertFalse(Files.exists(originModFile.toPath()));
+  }
+
+  @Test
+  public void testUnpinAfterOriginalModsRemoved() throws Exception {
+    final TsFileResource resource = new TsFileResource(new File(TS_FILE_NAME));
+    resource
+        .getExclusiveModFile()
+        .write(new TreeDeletionEntry(new MeasurementPath("root.lemming.**"), 0, Long.MAX_VALUE));
+    resource.getExclusiveModFile().close();
+
+    final boolean pinnedModFile =
+        pipeTsFileResourceManager.pinTsFileResource(resource, true, PIPE_NAME);
+    Assert.assertTrue(pinnedModFile);
+    final File pipeTsFile =
+        PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile(), PIPE_NAME);
+    final File pipeMods = ModificationFile.getExclusiveMods(pipeTsFile);
+    Assert.assertEquals(1, pipeTsFileResourceManager.getFileReferenceCount(pipeMods, PIPE_NAME));
+
+    Assert.assertTrue(resource.remove());
+    Assert.assertFalse(resource.exclusiveModFileExists());
+    Assert.assertTrue(pipeMods.exists());
+    pipeTsFileResourceManager.unpinTsFileResource(resource, PIPE_NAME, pinnedModFile);
+
+    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeTsFile, PIPE_NAME));
+    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeMods, PIPE_NAME));
+    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeMods, null));
+    Assert.assertFalse(pipeMods.exists());
+  }
+
+  @Test
+  public void testUnpinDoesNotReleaseModsCreatedAfterPinning() throws Exception {
+    final TsFileResource resource = new TsFileResource(new File(TS_FILE_NAME));
+    final boolean pinnedModFile =
+        pipeTsFileResourceManager.pinTsFileResource(resource, true, PIPE_NAME);
+    Assert.assertFalse(pinnedModFile);
+
+    // An event can acquire mods created after historical selection pinned the TsFile alone.
+    resource
+        .getExclusiveModFile()
+        .write(new TreeDeletionEntry(new MeasurementPath("root.lemming.**"), 0, Long.MAX_VALUE));
+    resource.getExclusiveModFile().close();
+    final File eventMods =
+        pipeTsFileResourceManager.increaseFileReference(
+            resource.getExclusiveModFile().getFile(), false, PIPE_NAME);
+    pipeTsFileResourceManager.unpinTsFileResource(resource, PIPE_NAME, pinnedModFile);
+
+    Assert.assertEquals(1, pipeTsFileResourceManager.getFileReferenceCount(eventMods, PIPE_NAME));
+    Assert.assertTrue(eventMods.exists());
+    pipeTsFileResourceManager.decreaseFileReference(eventMods, PIPE_NAME);
+    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(eventMods, PIPE_NAME));
+    Assert.assertFalse(eventMods.exists());
+  }
+
+  @Test
+  public void testConcurrentIncreaseTsFile() throws Exception {
+    assertConcurrentIncreaseFileReference(new File(TS_FILE_NAME), true);
+  }
+
+  @Test
+  public void testConcurrentIncreaseCopiedFile() throws Exception {
+    assertConcurrentIncreaseFileReference(new File(MODS_FILE_NAME), false);
+  }
+
+  @Test
+  public void testIncreaseFileReferenceRollsBackOnPublicReferenceFailure() throws Exception {
+    final File originModFile = new File(MODS_FILE_NAME);
+    final File pipeModFile =
+        PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(originModFile, PIPE_NAME);
+    final File publicModFile =
+        new File(pipeModFile.getParentFile().getParentFile(), pipeModFile.getName());
+    Assert.assertTrue(publicModFile.mkdirs());
+
+    Assert.assertThrows(
+        IOException.class,
+        () -> pipeTsFileResourceManager.increaseFileReference(originModFile, false, PIPE_NAME));
+
+    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile, PIPE_NAME));
+    Assert.assertFalse(Files.exists(pipeModFile.toPath()));
+  }
+
+  private void assertConcurrentIncreaseFileReference(final File originFile, final boolean isTsFile)
+      throws Exception {
+    final int concurrency = 64;
+    final CountDownLatch readyLatch = new CountDownLatch(concurrency);
+    final CountDownLatch startLatch = new CountDownLatch(1);
+    final ExecutorService executor = Executors.newFixedThreadPool(concurrency);
+    final List<Future<File>> futures = new ArrayList<>(concurrency);
+
+    try {
+      for (int i = 0; i < concurrency; i++) {
+        futures.add(
+            executor.submit(
+                () -> {
+                  readyLatch.countDown();
+                  startLatch.await();
+                  return pipeTsFileResourceManager.increaseFileReference(
+                      originFile, isTsFile, PIPE_NAME);
+                }));
+      }
+
+      Assert.assertTrue(readyLatch.await(30, TimeUnit.SECONDS));
+      startLatch.countDown();
+
+      File pipeFile = null;
+      for (final Future<File> future : futures) {
+        final File referencedFile = future.get(30, TimeUnit.SECONDS);
+        if (pipeFile == null) {
+          pipeFile = referencedFile;
+        } else {
+          Assert.assertEquals(pipeFile, referencedFile);
+        }
+      }
+
+      Assert.assertNotNull(pipeFile);
+      Assert.assertEquals(
+          concurrency, pipeTsFileResourceManager.getFileReferenceCount(pipeFile, PIPE_NAME));
+      Assert.assertEquals(
+          concurrency, pipeTsFileResourceManager.getFileReferenceCount(pipeFile, null));
+      Assert.assertTrue(Files.exists(pipeFile.toPath()));
+
+      for (int i = 0; i < concurrency; i++) {
+        pipeTsFileResourceManager.decreaseFileReference(pipeFile, PIPE_NAME);
+      }
+      Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeFile, PIPE_NAME));
+      Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeFile, null));
+      Assert.assertFalse(Files.exists(pipeFile.toPath()));
+    } finally {
+      startLatch.countDown();
+      executor.shutdownNow();
+      Assert.assertTrue(executor.awaitTermination(30, TimeUnit.SECONDS));
+    }
   }
 }

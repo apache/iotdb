@@ -91,6 +91,8 @@ public final class ProcedureMessages {
   public static final String AUTHENTICATION_FAILED = "认证失败。";
   public static final String AUTH_PROCEDURE_CLEAN_DATANODE_CACHE_SUCCESSFULLY =
       "Auth procedure：成功清理 datanode 缓存";
+  public static final String AUTH_PROCEDURE_CACHE_INVALIDATION_FAILED =
+      "权限计划已提交，但 DataNode 权限缓存失效失败。部分 DataNode 可能仍持有过期权限，请手动清理权限缓存。";
   public static final String BEGIN_TO_CHANGE_DATANODE_STATUS_NODESTATUSMAP =
       "{}, 开始修改 DataNode 状态，nodeStatusMap：{}";
   public static final String BEGIN_TO_STOP_DATANODES_AND_KILL_THE_DATANODE_PROCESS =
@@ -344,7 +346,7 @@ public final class ProcedureMessages {
   public static final String ERROR_IN_DESERIALIZE_PROCID_THIS_PROCEDURE_WILL_BE_IGNORED_IT =
       "反序列化 {}（procID {}）出错。该 procedure 将被忽略。它可能属于旧版本，目前无法使用。";
   public static final String EXECUTE_AUTH_PLAN_SUCCESS_TO_INVALIDATE_DATANODES =
-      "执行 auth plan {} 成功。使 datanode 缓存失效：{}";
+      "执行 auth plan {} 成功。";
   public static final String EXECUTING_ON_REGION_FOR_COLUMN_IN_WHEN_DROPPING_COLUMN =
       "删除列时在表 {}.{} 中列 {} 对应的 region 上执行";
   public static final String FAILED_TO_ACTIVE_CQ_BECAUSE_OF_NO_SUCH_CQ =
@@ -437,6 +439,8 @@ public final class ProcedureMessages {
       "向 DataNode 推送 pipe 元数据列表失败，将稍后重试。";
   public static final String FAILED_TO_PUSH_PIPE_META_TO_DATANODES_DETAILS =
       "向 DataNode 推送 pipe 元数据失败，详情：%s";
+  public static final String EXCEPTION_INTERNAL_ERROR_WHILE_PROCESSING_PUSHPIPEMETA_ON_DATANODE_5983BD5F =
+      "处理 DataNode 上的 pushPipeMeta 时发生内部错误。";
   public static final String FAILED_TO_PUSH_TOPIC_META_TO_DATANODES_DETAILS =
       "向 DataNode 推送 topic 元数据失败，详情：%s";
   public static final String FAILED_TO_REMOVE_DATA_NODE_BECAUSE_IT_IS_NOT_IN =
@@ -531,7 +535,6 @@ public final class ProcedureMessages {
       "重试 {} 次后删除 pipe plugin [{}] 仍失败";
   public static final String FAIL_TO_DROP_TRIGGER_AT_STATE = "在 STATE [%s] 处删除 trigger [%s] 失败";
   public static final String FAIL_TO_DROP_TRIGGER_ON_DATA_NODES = "在 DataNode 上删除 trigger [%s] 失败";
-  public static final String FAIL_TO_EXECUTE_PLAN_AT_STATE = "在 state[%s] 处执行 plan [%s] 失败";
   public static final String FAIL_TO_REMOVE_AINODE_AT_STATE = "在 STATE [%s] 处移除 AINode [%s] 失败，%s";
   public static final String FAIL_TO_REMOVE_AINODE_ON_CONFIG_NODES =
       "在 ConfigNode [%s] 上移除 [%s] 个 AINode 失败";
@@ -598,16 +601,6 @@ public final class ProcedureMessages {
   public static final String PID_ADDREGION_STATE_FAILED = "[pid{}][AddRegion] 状态 {} 失败";
   public static final String PID_ADDREGION_SUCCESS_HAS_BEEN_ADDED_TO_DATANODE_PROCEDURE_TOOK =
       "[pid{}][AddRegion] 成功，{} 已添加到 DataNode {}。Procedure 耗时 {}（开始于 {}）。";
-  public static final String PID_REMOVEREGIONGROUP_STARTED_WILL_BE_DELETED =
-      "[pid{}][RemoveRegionGroup] 开始，region group {} 将从 DataNode {} 上删除。";
-  public static final String PID_REMOVEREGIONGROUP_STARTED_REPLICA_WILL_BE_DELETED_FROM_DATANODE =
-      "[pid{}][RemoveRegionGroup] region {} 将从 DataNode {} 上删除。";
-  public static final String PID_REMOVEREGIONGROUP_STATE_FAILED =
-      "[pid{}][RemoveRegionGroup] 状态 {} 失败";
-  public static final String PID_REMOVEREGIONGROUP_DELETE_REPLICA_FAILED =
-      "[pid{}][RemoveRegionGroup] 删除 region {} 的一个副本失败（第 {} 次尝试），将持续重试直到删除成功。原因：{}";
-  public static final String PID_REMOVEREGIONGROUP_SUCCESS_PROCEDURE_TOOK =
-      "[pid{}][RemoveRegionGroup] 成功，region group {} 已删除。过程耗时 {}（开始于 {}）。";
   public static final String PID_MIGRATEREGION_STARTED_WILL_BE_MIGRATED_FROM_DATANODE_TO =
       "[pid{}][MigrateRegion] 开始，{} 将从 DataNode {} 迁移到 {}。";
   public static final String PID_MIGRATEREGION_STATE_COMPLETE = "[pid{}][MigrateRegion] 状态 {} 完成";
@@ -815,6 +808,15 @@ public final class ProcedureMessages {
       "RemoveRegionLocation：从 DataNode {} 移除 region {}，结果为 {}";
   public static final String REMOVEREGIONPEER_STATE_FAILED = "RemoveRegionPeer 状态 {} 失败";
   public static final String REMOVEREGIONPEER_STATE_SUCCESS = "RemoveRegionPeer 状态 {} 成功";
+  public static final String
+      LOG_CANNOT_RECONCILE_PEER_LIST_FOR_ARG_AFTER_REMOVING_DATANODE_ARG_THE_CURRENT_REPLICA_SET_STILL_CONTAINS_THE_REMOVED_DATANODE_DBBF45DC =
+          "无法纠正 {} 在移除 DataNode {} 后的 peer 列表：当前副本集仍包含已移除的 DataNode。";
+  public static final String
+      LOG_FAILED_TO_RESET_PEER_LIST_FOR_ARG_ON_DATANODE_ARG_TO_ARG_ARG_C8D872B4 =
+          "将 {} 在 DataNode {} 上的 peer 列表重置为 {} 失败：{}";
+  public static final String
+      EXCEPTION_FAILED_TO_FINALIZE_REGION_PEER_REMOVAL_FOR_ARG_AT_STATE_ARG_AFTER_ARG_ATTEMPTS_382EA168 =
+          "Region %s 的 peer 移除收尾在状态 %s 尝试 %d 次后失败。";
   public static final String REMOVEREGION_RATIS_TRANSFER_LEADER_FAIL_BUT_PROCEDURE_WILL_CONTINUE =
       "[RemoveRegion] Ratis 转换 leader 失败，但 procedure 将继续。";
   public static final String REMOVE_CONFIG_NODE = "移除 ConfigNode";
@@ -828,13 +830,12 @@ public final class ProcedureMessages {
       "尝试创建 pipe plugin [{}] 时发生可重试错误，状态：{}";
   public static final String RETRIEVABLE_ERROR_TRYING_TO_DROP_PIPE_PLUGIN_STATE =
       "尝试删除 pipe plugin [{}] 时发生可重试错误，状态：{}";
-  public static final String RETRIEVABLE_ERROR_TRYING_TO_EXECUTE_PLAN_STATE =
-      "尝试执行 plan {} 时发生可重试错误，状态：{}";
   public static final String RETRIEVABLE_ERROR_TRYING_TO_REMOVE_AINODE_STATE =
       "尝试移除 AINode [{}] 时发生可重试错误，状态 [{}]";
+  public static final String ROLLBACK_ADDTABLECOLUMN_COSTS_MS =
+      "Rollback AddTableColumn-{} costs {}ms.";
   public static final String ROLLBACK_CREATETABLE_COSTS_MS = "Rollback CreateTable-{} costs {}ms.";
   public static final String ROLLBACK_CREATE_TABLE_FAILED = "回滚创建表失败";
-  public static final String ROLLBACK_DROPTABLE_COSTS_MS = "Rollback DropTable-{} costs {}ms.";
   public static final String ROLLBACK_PRE_RELEASE = "回滚预释放 ";
   public static final String ROLLBACK_PRE_DELETE_TABLE_FAILED = "回滚预删除表 %s.%s 操作失败, 请手动输入sql删除";
   public static final String ROLLBACK_PRE_RELEASE_TEMPLATE_FAILED = "回滚预释放模板失败";
@@ -1127,6 +1128,79 @@ public final class ProcedureMessages {
   public static final String FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE =
       "在共识层执行写入 API 失败，原因：";
 
+  public static final String EXCEPTION_DATANODEID_ARG_14BB8DE3 = "DataNodeId：%s， ";
+  public static final String EXCEPTION_DATANODEID_ARG_1D548B40 = "DataNodeId：%s，";
+  public static final String
+      EXCEPTION_DATANODEID_ARG_MESSAGE_INTERNAL_ERROR_WHILE_PROCESSING_PUSHPIPEMETA_ON_DATANODES_ARG_A5AC599F =
+          "DataNodeId：%s，消息：在 DataNode 上处理 pushPipeMeta 时发生内部错误。%s";
+  public static final String
+      EXCEPTION_DATANODEID_ARG_MESSAGE_TIMEOUT_TO_WAIT_FOR_LOCK_WHILE_PROCESSING_PUSHPIPEMETA_ON_DATANODES_C9A7107B =
+          "DataNodeId：%s，消息：在 DataNode 上处理 pushPipeMeta 时等待锁超时。";
+  public static final String EXCEPTION_ROLL_BACK_TABLE_DEVICE_BLACK_LIST_DFE5A8CB = "回滚表设备黑名单";
+  public static final String MESSAGE_ADD_TABLE_COLUMN_DE7718D1 = "添加表列";
+  public static final String MESSAGE_ADD_VIEW_COLUMN_69FF810F = "添加视图列";
+  public static final String MESSAGE_ALTER_CONSUMER_GROUP_91CA211B = "修改消费者组";
+  public static final String MESSAGE_ALTER_TABLE_COLUMN_DATA_TYPE_CE3B07A5 = "修改表列数据类型";
+  public static final String MESSAGE_ALTER_TOPIC_9A77D5DF = "修改主题";
+  public static final String MESSAGE_ALTER_VIEW_0A6CD249 = "修改视图";
+  public static final String MESSAGE_CONSTRUCT_SCHEMA_BLACK_LIST_514776EF = "构建元数据黑名单";
+  public static final String MESSAGE_CONSTRUCT_SCHEMA_ENGINE_BLACK_LIST_FCE4CBE0 = "构建元数据引擎黑名单";
+  public static final String MESSAGE_CONSTRUCT_VIEW_SCHEMA_ENGINE_BLACK_LIST_780F07B3 =
+      "构建视图元数据引擎黑名单";
+  public static final String MESSAGE_CREATE_CONSUMER_6E8AB994 = "创建消费者";
+  public static final String MESSAGE_CREATE_SUBSCRIPTION_2230F05D = "创建订阅";
+  public static final String MESSAGE_CREATE_TOPIC_1E58E34B = "创建主题";
+  public static final String
+      MESSAGE_DATANODE_ARG_MISSING_SUBSCRIPTION_RUNTIME_PUSH_RESPONSE_FD3DEE6E =
+          "DataNode %s：缺少订阅运行时推送响应； ";
+  public static final String
+      MESSAGE_DATAPARTITIONINTEGRITY_ERROR_CHECKING_DATAPARTITIONTABLE_STATUS_DUE_TO_THREAD_INTERRUPTION_4291648D =
+          "[DataPartitionIntegrity] 检查 DataPartitionTable 状态时因线程中断而出错。";
+  public static final String
+      MESSAGE_DATAPARTITIONINTEGRITY_ERROR_WAITING_FOR_DATANODE_STARTUP_DUE_TO_THREAD_INTERRUPTION_6427FBB0 =
+          "[DataPartitionIntegrity] 等待 DataNode 启动时因线程中断而出错。";
+  public static final String
+      MESSAGE_DATAPARTITIONINTEGRITY_ERROR_WAITING_FOR_ROLL_BACK_THE_ARG_STATE_DUE_TO_THREAD_INTERRUPTION_C34DD7A4 =
+          "[DataPartitionIntegrity] 等待回滚 %s 状态时因线程中断而出错。";
+  public static final String MESSAGE_DATAPARTITIONTABLE_INTEGRITY_CHECK_PROGRESS_1F_88FF4383 =
+      "DataPartitionTable 完整性检查进度：%.1f%%";
+  public static final String MESSAGE_DEACTIVATE_TEMPLATE_SCHEMA_F8DEF172 = "停用模板元数据";
+  public static final String MESSAGE_DELETE_DATA_1896591B = "删除数据";
+  public static final String MESSAGE_DELETE_DATA_FOR_DROP_TABLE_A678391E = "删除表的数据";
+  public static final String MESSAGE_DELETE_DATA_FOR_TABLE_DEVICE_0FA6C84A = "删除表设备的数据";
+  public static final String MESSAGE_DELETE_DEVICES_FOR_DROP_TABLE_A4F6E84E = "删除表的设备";
+  public static final String MESSAGE_DELETE_TABLE_DEVICE_IN_BLACK_LIST_B93F1C9F = "删除黑名单中的表设备";
+  public static final String MESSAGE_DELETE_TIME_SERIES_IN_SCHEMA_ENGINE_9B3DA44A = "在元数据引擎中删除时间序列";
+  public static final String MESSAGE_DELETE_VIEW_IN_SCHEMA_ENGINE_4468ABF7 = "在元数据引擎中删除视图";
+  public static final String MESSAGE_DROP_CONSUMER_22F524DC = "删除消费者";
+  public static final String MESSAGE_DROP_SUBSCRIPTION_43CE36A6 = "删除订阅";
+  public static final String MESSAGE_DROP_TABLE_COLUMN_6FA1DB5F = "删除表列";
+  public static final String MESSAGE_DROP_TABLE_F5849AD7 = "删除表";
+  public static final String MESSAGE_DROP_TOPIC_DE9EC653 = "删除主题";
+  public static final String MESSAGE_DROP_VIEW_COLUMN_0BFC4728 = "删除视图列";
+  public static final String MESSAGE_HANDLE_LEADER_CHANGE_206848AB = "处理 leader 变更";
+  public static final String MESSAGE_MESSAGE_ARG_5EECEF40 = "消息：%s";
+  public static final String MESSAGE_PIPENAME_ARG_MESSAGE_ARG_6E450D29 = "PipeName：%s，消息：%s";
+  public static final String MESSAGE_RENAME_TABLE_COLUMN_AA1E6913 = "重命名表列";
+  public static final String MESSAGE_RENAME_TABLE_D9C28057 = "重命名表";
+  public static final String MESSAGE_RENAME_VIEW_2A0DD1B0 = "重命名视图";
+  public static final String MESSAGE_RENAME_VIEW_COLUMN_66B7933E = "重命名视图列";
+  public static final String MESSAGE_ROLL_BACK_SCHEMA_BLACK_LIST_5F1CB6A2 = "回滚元数据黑名单";
+  public static final String MESSAGE_ROLL_BACK_SCHEMA_ENGINE_BLACK_LIST_39BA8E03 = "回滚元数据引擎黑名单";
+  public static final String MESSAGE_ROLL_BACK_VIEW_SCHEMA_ENGINE_BLACK_LIST_0408EBAE =
+      "回滚视图元数据引擎黑名单";
+  public static final String MESSAGE_SET_TABLE_COLUMN_PROPERTIES_F16B8274 = "设置表列属性";
+  public static final String MESSAGE_SET_TABLE_PROPERTIES_27E66D04 = "设置表属性";
+  public static final String MESSAGE_SET_VIEW_PROPERTIES_DB957EE0 = "设置视图属性";
+  public static final String MESSAGE_SKIP_SUBSCRIPTION_RELATED_OPERATIONS_AND_DO_NOTHING_4EDC76FE =
+      "跳过订阅相关操作，无需处理";
+  public static final String MESSAGE_SYNC_COMMIT_PROGRESS_72F4012C = "同步提交进度";
+  public static final String MESSAGE_SYNC_CONSUMER_GROUP_META_5EBCB050 = "同步消费者组元数据";
+  public static final String MESSAGE_SYNC_TOPIC_META_C7ECFD37 = "同步主题元数据";
+  public static final String
+      MESSAGE_TRY_TO_START_A_RUNNING_PIPE_OR_STOP_A_STOPPED_PIPE_DO_NOTHING_EB6A38D3 =
+          "尝试启动 RUNNING 状态的 pipe 或停止 STOPPED 状态的 pipe，无需操作。";
+
   private ProcedureMessages() {}
 
   // ---------------------------------------------------------------------------
@@ -1148,13 +1222,13 @@ public final class ProcedureMessages {
       "暂停 pid={}, activeCount={}";
   public static final String LOG_EXCEPTION_HAPPENED_WORKER_ARG_EXECUTE_PROCEDURE_ARG_6E3AD27D =
       "worker {} 执行 procedure {} 时发生异常";
+  public static final String
+      LOG_FAILED_TO_COMMIT_RELEASE_ARG_FOR_TABLE_ARG_ARG_TO_DATANODE_FAILURE_RESULTS_ARG_55386572 =
+          "在 {} procedure 操作中， 对表{}.{} 的正式提交失败，失败结果：{}";
   public static final String LOG_WORKER_STUCK_ARG_ARG_RUN_TIME_ARG_MS_FB612354 =
       "Worker 卡住 {}({})，运行时间 {} ms";
   public static final String LOG_PROCEDURE_WORKERS_ARG_RUNNING_ARG_RUNNING_STUCK_1565936D =
       "Procedure workers：{} 正在运行，{} 正在运行且卡住";
-  public static final String
-      LOG_PROCEDUREEXECUTOR_THREADGROUP_ARG_CONTAINS_RUNNING_THREADS_WHICH_USED_NON_PROCEDURE_BD865211 =
-          "ProcedureExecutor threadGroup {} 包含被非 procedure 模块使用的运行线程。";
   public static final String LOG_ADD_PROCEDURE_ARG_AS_ARG_TH_ROLLBACK_STEP_C71B2184 =
       "将 procedure {} 添加为第 {} 个回滚步骤";
   public static final String
@@ -1181,6 +1255,9 @@ public final class ProcedureMessages {
           "移除 ConfigNode 失败，原因：更新 ConsensusGroup peer 信息失败。";
   public static final String MESSAGE_CAN_T_REMOVE_DATANODE_LIMIT_REPLICATION_FACTOR_D960E3A6 =
       "无法移除 DataNode，原因：受副本因子限制，";
+  public static final String
+      MESSAGE_SUBMIT_REMOVEDATANODESPROCEDURE_FAILED_BECAUSE_WHEN_THERE_ARE_OTHER_UNKNOWN_STOPPED_OR_READONLY_NODES_IN_THE_CONSENSUS_GROUP_THAT_ARE_NOT_REMOVE_NODES_THE_REMOVE_OPERATION_CANNOT_BE_PERFORMED_FOR_SECURITY_REASONS_PLEASE_CHECK_THE_STATUS_OF_THE_NODE_ARG_AND_ENSURE_IT_IS_RUNNING_5063B3F6 =
+          "提交 RemoveDataNodesProcedure 失败：共识组内存在非移除目标且状态为 Unknown、Stopped 或 ReadOnly 的其他节点时，出于安全考虑无法执行移除操作。请检查节点 %s 的状态并确保其处于 Running 状态。";
   public static final String
       MESSAGE_AVAILABLEDATANODESIZE_ARG_MAXREPLICAFACTOR_ARG_MAX_ALLOWED_REMOVED_DATA_NODE_SIZE_FB8C382C =
           "availableDataNodeSize：%s，maxReplicaFactor：%s，允许移除的最大 DataNode 数量为：%s";
@@ -1473,12 +1550,6 @@ public final class ProcedureMessages {
       MESSAGE_EXCEPTION_HAPPENED_WHEN_WORKER_ARG_EXECUTE_PROCEDURE_ARG_6E3AD27D =
           "worker {} 执行 procedure {} 时发生异常";
   public static final String
-      EXCEPTION_CANNOT_DERIVE_A_COLLISION_FREE_DELETE_TASKID_PROCID_ARG_DELETETASKSEQ_ARG_EXCEED_THE_71B7046A =
-          "无法推导出无冲突的 delete taskId：procId=%d，deleteTaskSeq=%d 超出了 ";
-  public static final String
-      EXCEPTION_CANNOT_DERIVE_A_COLLISION_FREE_DELETE_TASKID_PROCID_ARG_DELETETASKSEQ_ARG_EXCEED_THE_ARG_ARG_BIT_BUDGET_015C598D =
-          "无法推导出无冲突的 delete taskId：procId=%d，deleteTaskSeq=%d 超出了 %d/%d 位的预算";
-  public static final String
       MESSAGE_FAILED_TO_SHOW_DATAPARTITIONTABLE_INTEGRITY_CHECK_PROGRESS_5EE98694 =
           "显示 DataPartitionTable 完整性检查进度失败";
   public static final String
@@ -1487,4 +1558,89 @@ public final class ProcedureMessages {
   public static final String
       MESSAGE_UNEXPECTED_DATAPARTITIONTABLEINTEGRITYCHECKPROCEDURESTATE_ARG_WHEN_SHOWING_PROGRESS_D3C07BA1 =
           "非预期的 DataPartitionTableIntegrityCheckProcedureState {}（显示进度时）";
+  public static final String
+      MESSAGE_PIPE_OPERATION_ARG_TIMED_OUT_PROCEDUREID_ARG_STUCK_AT_ARG_REASON_ARG_THE_PROCEDURE_IS_STILL_RUNNING_7EEAC50E =
+          "Pipe 操作 %s 超时（procedureId=%d）。卡在 %s。原因：%s。该 Procedure 仍在运行。";
+  public static final String
+      MESSAGE_NO_PROCEDURE_WORKER_IS_CURRENTLY_AVAILABLE_WORKERS_MAY_BE_BUSY_OR_BLOCKED_BY_OTHER_PROCEDURES_AB0B1595 =
+          "当前没有可用的 Procedure worker；worker 可能正忙或被其他 Procedure 阻塞。";
+  public static final String
+      MESSAGE_WAITING_TO_ACQUIRE_THE_PIPETASKCOORDINATOR_LOCK_BECAUSE_ANOTHER_PIPE_OPERATION_IS_HOLDING_IT_25A3B6B8 =
+          "正在等待获取 PipeTaskCoordinator 锁，因为另一个 Pipe 操作正在持有该锁。";
+  public static final String
+      MESSAGE_WAITING_TO_ACQUIRE_THE_CONFIGNODE_NODE_LOCK_BECAUSE_ANOTHER_NODE_PROCEDURE_IS_HOLDING_IT_56494E86 =
+          "正在等待获取 ConfigNode 节点锁，因为另一个节点 Procedure 正在持有该锁。";
+  public static final String
+      MESSAGE_WAITING_TO_ACQUIRE_THE_CONFIGNODE_NODE_LOCK_HELD_BY_ARG_PROCEDUREID_ARG_3F432041 =
+          "正在等待获取由 %s（procedureId=%d）持有的 ConfigNode 节点锁。";
+  public static final String
+      MESSAGE_PIPE_REQUEST_OR_PLUGIN_VALIDATION_HAS_NOT_COMPLETED_A_PLUGIN_CHECK_OR_METADATA_ACCESS_MAY_BE_SLOW_57C36CEF =
+          "Pipe 请求或插件校验尚未完成；插件检查或元数据访问可能过慢。";
+  public static final String
+      MESSAGE_PIPE_METADATA_CALCULATION_HAS_NOT_COMPLETED_METADATA_ACCESS_OR_LOCAL_CALCULATION_MAY_BE_SLOW_DEBF2504 =
+          "Pipe 元数据计算尚未完成；元数据访问或本地计算可能过慢。";
+  public static final String
+      MESSAGE_THE_CONFIGNODE_CONSENSUS_WRITE_HAS_NOT_RETURNED_RUN_SHOW_CLUSTER_TO_CHECK_NODE_STATUS_B0A6E1A7 =
+          "ConfigNode 共识写尚未返回；请执行 SHOW CLUSTER 检查节点状态。";
+  public static final String
+      MESSAGE_DATANODES_ARG_HAVE_NOT_RESPONDED_TO_THE_PIPE_METADATA_PUSH_RUN_SHOW_CLUSTER_TO_CHECK_THEIR_STATUS_9C2F806F =
+          "DataNode %s 尚未响应 Pipe 元数据推送；请执行 SHOW CLUSTER 检查其状态。";
+  public static final String
+      MESSAGE_THE_PIPE_METADATA_PUSH_HAS_NOT_COMPLETED_RUN_SHOW_CLUSTER_TO_CHECK_DATANODE_STATUS_A8F3F0A0 =
+          "Pipe 元数据推送尚未完成；请执行 SHOW CLUSTER 检查 DataNode 状态。";
+  public static final String
+      MESSAGE_THE_PREVIOUS_ATTEMPT_FAILED_WITH_ARG_AND_THIS_STATE_IS_BEING_RETRIED_7A541F27 =
+          "上一次尝试因“%s”失败，正在重试此状态。";
+  public static final String MESSAGE_THE_STATE_FAILED_WITH_ARG_AND_ROLLBACK_IS_PENDING_E7B43829 =
+      "此状态因“%s”失败，正在等待回滚。";
+  public static final String MESSAGE_ROLLING_BACK_AFTER_FAILURE_ARG_474DF456 = "正在回滚，失败原因：%s。";
+  public static final String MESSAGE_ROLLING_BACK_AFTER_AN_EARLIER_FAILURE_850D0AF5 =
+      "正在回滚此前发生的失败。";
+  public static final String
+      MESSAGE_SOME_OTHER_TASK_IS_SETTING_OR_UNSETTING_A_TEMPLATE_ON_TARGET_PATH_ARG_D4FEE38F =
+          "有其他任务正在目标路径 %s 上设置或卸载模板。";
+  public static final String EXCEPTION_DATANODE_SETSYSTEMSTATUS_RPC_FAILED_ARG_ARG_ARG_7E8E5F9F =
+      "DataNode setSystemStatus RPC 失败：%s：%s：%s； ";
+  public static final String EXCEPTION_CONFIGNODE_TRYSETNODESTATUS_FAILED_ARG_ARG_ARG_C9BA78F4 =
+      "ConfigNode trySetNodeStatus 失败：%s：%s：%s； ";
+  public static final String
+      LOG_FAILED_TO_DETECT_THE_TREE_SERIES_UNDER_THE_NEW_VIEW_ARG_ARG_ARG_8F20CAE7 =
+          "扫描新建视图 {}.{} 下的树序列失败：{}";
+  public static final String
+      LOG_PROCEDURE_ARG_IS_PAST_ITS_COMMIT_POINT_KEEPING_EVERY_STATE_IT_EXECUTED_CA21D7E9 =
+          "流程 {} 已越过提交点，保留它执行过的所有状态。";
+  public static final String LOG_FINISH_PROCEDURE_WITHOUT_ROLLBACK_41F7A354 = "结束流程（不回滚）";
+  public static final String LOG_DELETE_CHILD_PROCEDURES_WITHOUT_ROLLBACK_6E62D1C1 =
+      "删除子流程（不回滚）";
+
+  public static final String
+      MESSAGE_FAILED_TO_PERSIST_REGIONGROUP_ALLOCATION_IN_THE_CONSENSUS_LAYER_ARG_E9C4A532 =
+          "在共识层持久化 RegionGroup 分配结果失败：%s";
+
+  public static final String
+      MESSAGE_FAILED_TO_ARG_ON_DATANODE_ARG_BEFORE_METADATA_REQUEST_TIMEOUT_ARG_MS_88BC27CA =
+          "执行 %s 失败，DataNode：%s，元数据请求超时：%sms";
+
+  public static final String EXCEPTION_ARG_RESULT_IS_ARG_03198AFB = "%s 的结果为 %s";
+
+  public static final String EXCEPTION_STATUS_ARG_IS_UNSUPPORTED_1E9E19B7 = "不支持状态 %s";
+
+  public static final String EXCEPTION_PROCEDURE_RELEASE_LOCK_AD22A19B = "流程释放锁";
+
+  public static final String EXCEPTION_COUNT_DOWN_CHILDREN_PROCEDURE_C7306F56 = "递减子流程计数";
+
+  public static final String EXCEPTION_SUBPROC_ARG_IS_NULL_ABORTING_PROCEDURE_CDFB42EC =
+      "子流程 [%s] 为空，中止流程";
+
+  public static final String EXCEPTION_ROOT_PROCEDURE_ROLLBACK_068C01D9 = "根流程回滚";
+
+  public static final String
+      EXCEPTION_BUT_YOU_MAY_NEED_TO_RESTART_THE_RELATED_DATANODE_TO_MAKE_SURE_EVERYTHING_IS_CLEANED_UP_12A12383 =
+          "但可能需要重启相关 DataNode，以确保清理完成。 ";
+
+  public static final String EXCEPTION_CREATE_NEW_REGION_PEER_FAIL_2FE4FBAA =
+      "CREATE_NEW_REGION_PEER 失败";
+
+  public static final String EXCEPTION_SUBMIT_DO_ADD_REGION_PEER_TASK_FAIL_53930422 =
+      "提交 DO_ADD_REGION_PEER 任务失败";
 }

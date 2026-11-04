@@ -19,6 +19,7 @@
 #include "SessionConnection.h"
 #include "SessionImpl.h"
 #include "RpcCommon.h"
+#include "RpcSslUtils.h"
 #include "common_types.h"
 #include <thrift/protocol/TBinaryProtocol.h>
 #include <thrift/protocol/TCompactProtocol.h>
@@ -26,6 +27,7 @@
 #include <thrift/transport/TSocket.h>
 #include <thrift/transport/TTransportException.h>
 
+#include <stdexcept>
 #include <utility>
 
 #include "SessionDataSet.h"
@@ -46,7 +48,7 @@ SessionConnection::SessionConnection(Session::Impl* session_ptr, const TEndPoint
       sqlDialect(std::move(dialect)), database(std::move(db)) {
   this->zoneId = zoneId.empty() ? getSystemDefaultZoneId() : zoneId;
   endPointList.push_back(endpoint);
-  init(endPoint, session->useSSL_, session->trustCertFilePath_);
+  init(endPoint, session->sslConfig_);
 }
 
 void SessionConnection::close() {
@@ -92,12 +94,10 @@ SessionConnection::~SessionConnection() {
   }
 }
 
-void SessionConnection::init(const TEndPoint& endpoint, bool useSSL,
-                             const std::string& trustCertFilePath) {
-  if (useSSL) {
+void SessionConnection::init(const TEndPoint& endpoint, const SslConfig& sslConfig) {
+  if (sslConfig.useSsl) {
 #if WITH_SSL
-    socketFactory_->loadTrustedCertificates(trustCertFilePath.c_str());
-    socketFactory_->authenticate(false);
+    configureSslSocketFactory(socketFactory_, sslConfig);
     auto sslSocket = socketFactory_->createSocket(endPoint.ip, endPoint.port);
     sslSocket->setConnTimeout(connectionTimeoutInMs);
     transport = std::make_shared<TFramedTransport>(sslSocket);
@@ -258,6 +258,43 @@ SessionConnection::executeLastDataQuery(const std::vector<std::string>& paths, i
                               zoneId, timeFactor, resp.columnIndex2TsBlockColumnIndexList);
 }
 
+std::unique_ptr<SessionDataSet> SessionConnection::executeFastLastDataQueryForOnePrefixPath(
+    const std::vector<std::string>& prefixes) {
+  for (const auto& prefix : prefixes) {
+    if (prefix.find('*') != std::string::npos) {
+      throw std::invalid_argument("Fast Last Query prefix must not contain wildcards");
+    }
+  }
+
+  TSFastLastDataQueryForOnePrefixPathReq req;
+  req.__set_prefixes(prefixes);
+  req.__set_fetchSize(fetchSize);
+  req.__set_enableRedirectQuery(session->enableRedirection_);
+
+  auto result = callWithRetryAndReconnect<TSExecuteStatementResp>(
+      [this, &req]() {
+        req.__set_sessionId(sessionId);
+        req.__set_statementId(statementId);
+        TSExecuteStatementResp resp;
+        client->executeFastLastDataQueryForOnePrefixPath(resp, req);
+        return resp;
+      },
+      [](const TSExecuteStatementResp& resp) { return resp.status; });
+  if (result.getException()) {
+    throw IoTDBConnectionException(extractExceptionMessage(result.getException()));
+  }
+  TSExecuteStatementResp resp = result.getResult();
+  if (result.getRetryAttempts() == 0) {
+    RpcUtils::verifySuccessWithRedirection(resp.status);
+  } else {
+    RpcUtils::verifySuccess(resp.status);
+  }
+  return createSessionDataSet("", resp.columns, resp.dataTypeList, resp.columnNameIndexMap,
+                              resp.queryId, statementId, client, sessionId, resp.queryResult,
+                              resp.ignoreTimeStamp, connectionTimeoutInMs, resp.moreData, fetchSize,
+                              zoneId, timeFactor, resp.columnIndex2TsBlockColumnIndexList);
+}
+
 void SessionConnection::executeNonQueryStatement(const string& sql) {
   TSExecuteStatementReq req;
   req.__set_sessionId(sessionId);
@@ -332,7 +369,7 @@ bool SessionConnection::reconnect() {
         }
         tryHostNum++;
         try {
-          init(this->endPoint, this->session->useSSL_, this->session->trustCertFilePath_);
+          init(this->endPoint, this->session->sslConfig_);
           reconnect = true;
         } catch (const IoTDBConnectionException& e) {
           log_warn("The current node may have been down, connection exception: %s", e.what());

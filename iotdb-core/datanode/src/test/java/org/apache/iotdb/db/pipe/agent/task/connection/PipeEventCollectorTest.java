@@ -53,7 +53,7 @@ public class PipeEventCollectorTest {
     pendingQueue.discardEventsOfPipe("pipe", 1L, 1);
 
     final PipeEventCollector droppedPipeCollector =
-        new PipeEventCollector(pendingQueue, 1L, 1, false, false, false);
+        new PipeEventCollector(pendingQueue, 1L, 1, Long.MIN_VALUE, false, false, false);
     final PipeRawTabletInsertionEvent droppedPipeEvent =
         createPipeRawTabletInsertionEvent("pipe", 1L);
     droppedPipeCollector.collect(droppedPipeEvent);
@@ -62,7 +62,7 @@ public class PipeEventCollectorTest {
     Assert.assertEquals(0, pendingQueue.size());
 
     final PipeEventCollector recreatedPipeCollector =
-        new PipeEventCollector(pendingQueue, 2L, 1, false, false, false);
+        new PipeEventCollector(pendingQueue, 2L, 1, Long.MIN_VALUE, false, false, false);
     final PipeRawTabletInsertionEvent recreatedPipeEvent =
         createPipeRawTabletInsertionEvent("pipe", 2L);
     recreatedPipeCollector.collect(recreatedPipeEvent);

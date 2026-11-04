@@ -41,6 +41,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_KEY;
+import static org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingTimeUtils.isTimeDistanceGreaterThanOrEqualTo;
 
 @TreeModel
 public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
@@ -64,8 +65,10 @@ public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
     validator.validate(
         seconds -> (Long) seconds > 0,
         String.format(
-            "The value of %s must be greater than 0, but got %d.",
-            PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_KEY, intervalSeconds),
+            DataNodePipeMessages
+                .EXCEPTION_THE_VALUE_OF_ARG_MUST_BE_GREATER_THAN_0_BUT_GOT_ARG_6C7642A1,
+            PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_KEY,
+            intervalSeconds),
         intervalSeconds);
     intervalInCurrentPrecision =
         TimestampPrecisionUtils.convertToCurrPrecision(intervalSeconds, TimeUnit.SECONDS);
@@ -116,7 +119,8 @@ public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
       final Long lastSampleTime = pathLastObjectCache.getPartialPathLastObject(timeSeriesSuffix);
 
       if (lastSampleTime == null
-          || isTimeDistanceGreaterThanOrEqual(currentRowTime, lastSampleTime)) {
+          || isTimeDistanceGreaterThanOrEqualTo(
+              currentRowTime, lastSampleTime, intervalInCurrentPrecision)) {
         try {
           rowCollector.collectRow(row);
 
@@ -134,10 +138,5 @@ public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
         }
       }
     }
-  }
-
-  private boolean isTimeDistanceGreaterThanOrEqual(long left, long right) {
-    long distance = left >= right ? left - right : right - left;
-    return Long.compareUnsigned(distance, intervalInCurrentPrecision) >= 0;
   }
 }

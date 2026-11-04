@@ -56,15 +56,14 @@ public class DataNodeInternalRPCServiceImplLogTest {
     DATANODE_CONFIG.setDataNodeId(0);
     COMMON_CONFIG.setDiskSpaceWarningThreshold(0.5);
     COMMON_CONFIG.setNodeStatus(NodeStatus.Running);
-    COMMON_CONFIG.setStatusReason(null);
     DataNodeInternalRPCServiceImpl.resetDiskFullWarningLogTime();
   }
 
   @After
   public void tearDown() {
     COMMON_CONFIG.setDiskSpaceWarningThreshold(previousDiskSpaceWarningThreshold);
-    COMMON_CONFIG.setNodeStatus(previousNodeStatus);
-    COMMON_CONFIG.setStatusReason(previousStatusReason);
+    COMMON_CONFIG.setNodeStatus(NodeStatus.Running);
+    COMMON_CONFIG.setNodeStatusWithReason(previousNodeStatus, previousStatusReason);
     DATANODE_CONFIG.setDataNodeId(previousDataNodeId);
     DataNodeInternalRPCServiceImpl.resetDiskFullWarningLogTime();
   }

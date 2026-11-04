@@ -49,6 +49,9 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   /**
    * Sets the list of node URLs for the IoTDB cluster.
    *
+   * <p>Use the same host/IP form as each DataNode's dn_rpc_address. Recovery deduplicates literal
+   * addresses, not DNS aliases.
+   *
    * @param nodeUrls a list of node URLs.
    * @return the current {@link TableSessionBuilder} instance.
    * @defaultValue Collection.singletonList(" localhost : 6667 ")
@@ -176,6 +179,18 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
    */
   public TableSessionBuilder enableAutoFetch(boolean enableAutoFetch) {
     this.enableAutoFetch = enableAutoFetch;
+    return this;
+  }
+
+  /**
+   * Enables or disables schema auto-creation for this session's write requests.
+   *
+   * @param enableAutoCreateSchema whether to allow auto creating tables and columns.
+   * @return the current {@link TableSessionBuilder} instance.
+   * @defaultValue true
+   */
+  public TableSessionBuilder enableAutoCreateSchema(boolean enableAutoCreateSchema) {
+    this.enableAutoCreateSchema = enableAutoCreateSchema;
     return this;
   }
 

@@ -32,7 +32,9 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnviro
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.commons.pipe.resource.PipeResourceFailureType;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
+import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.metric.sink.PipeConfigRegionSinkMetrics;
@@ -174,16 +176,22 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
    */
   @Override
   protected boolean executeOnce() throws Exception {
-    if (isClosed.get()) {
+    if (isClosed.get() || shouldStopSubmittingSelf.get()) {
       return false;
     }
 
     final Event event = lastEvent != null ? lastEvent : source.supply();
-    // Record the last event for retry when exception occurs
+    // Keep the event for retry or restart if supply() returns after the task is stopped.
     setLastEvent(event);
 
+    // close() may have released the last event before supply() returned.
+    if (isClosed.get()) {
+      clearReferenceCountAndReleaseLastEvent(event);
+      return false;
+    }
+
     try {
-      if (event == null) {
+      if (event == null || shouldStopSubmittingSelf.get()) {
         return false;
       }
 
@@ -230,6 +238,18 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
     }
   }
 
+  public void registerReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    if (outputPipeSink instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeSink).registerReceiverRuntimeSessions(pipeName, creationTime);
+    }
+  }
+
+  public void discardReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    if (outputPipeSink instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeSink).discardReceiverRuntimeSessions(pipeName, creationTime);
+    }
+  }
+
   //////////////////////////// Error report ////////////////////////////
 
   @Override
@@ -241,6 +261,13 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
   protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
     lastExceptionTime = Long.MAX_VALUE;
     PipeConfigNodeAgent.runtime().report(event, exception);
+  }
+
+  @Override
+  protected void reportResourceFailure(
+      final EnrichedEvent event, final PipeResourceFailureType failureType) {
+    PipeConfigNodeAgent.task()
+        .recordPipeResourceFailure(event.getPipeName(), event.getCreationTime(), failureType);
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////

@@ -21,6 +21,7 @@ package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.g
 
 import org.apache.tsfile.utils.Binary;
 
+import static org.apache.tsfile.utils.BytesUtils.intToBytes;
 import static org.apache.tsfile.utils.RamUsageEstimator.shallowSizeOfInstance;
 import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfObject;
 
@@ -46,6 +47,12 @@ public final class BinaryBigArray {
    */
   public Binary get(long index) {
     return array.get(index);
+  }
+
+  public void toBytes(long index, byte[] bytes, int offset) {
+    Binary value = get(index);
+    intToBytes(value.getLength(), bytes, offset);
+    System.arraycopy(value.getValues(), 0, bytes, offset + Integer.BYTES, value.getLength());
   }
 
   /**

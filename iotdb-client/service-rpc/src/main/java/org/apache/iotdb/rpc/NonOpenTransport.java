@@ -20,6 +20,7 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 
 /** A TTransport that does not require open/close. */
 public abstract class NonOpenTransport extends TTransport {
@@ -39,5 +40,10 @@ public abstract class NonOpenTransport extends TTransport {
   @Override
   public void open() {
     isOpen = true;
+  }
+
+  @Override
+  public void resetMessageSizeAndConsumedBytes(long newSize) throws TTransportException {
+    // This in-memory transport does not track a message-size budget.
   }
 }

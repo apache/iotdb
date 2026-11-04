@@ -48,4 +48,14 @@ public class PipeConfigNodeTask implements PipeTask {
   public void stop() {
     stage.stop();
   }
+
+  @Override
+  public void registerReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    stage.registerReceiverRuntimeSessions(pipeName, creationTime);
+  }
+
+  @Override
+  public void discardReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    stage.discardReceiverRuntimeSessions(pipeName, creationTime);
+  }
 }

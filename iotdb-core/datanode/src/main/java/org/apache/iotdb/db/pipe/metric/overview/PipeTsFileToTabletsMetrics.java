@@ -57,7 +57,7 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
+  public synchronized void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
     ImmutableSet.copyOf(pipe).forEach(this::createMetrics);
   }
@@ -101,11 +101,11 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
   }
 
   @Override
-  public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(pipe).forEach(this::deregister);
-    if (!pipe.isEmpty()) {
-      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_TSFILE_TO, pipe);
-    }
+  public synchronized void unbindFrom(final AbstractMetricService metricService) {
+    // Keep the pipes registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    // Synchronized with the (de)registrations, which may remove a registration being unbound.
+    ImmutableSet.copyOf(pipe).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final String pipeID) {
@@ -147,7 +147,7 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister ////////////////////////////
 
-  public void register(final IoTDBDataRegionSource extractor) {
+  public synchronized void register(final IoTDBDataRegionSource extractor) {
     final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
     pipe.add(pipeID);
     if (Objects.nonNull(metricService)) {
@@ -155,7 +155,7 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
     }
   }
 
-  public void deregister(final String pipeID) {
+  public synchronized void deregister(final String pipeID) {
     if (!pipe.contains(pipeID)) {
       LOGGER.info(DataNodePipeMessages.SKIP_DEREGISTER_PIPE_TSFILE_TO_TABLETS, pipeID);
       return;

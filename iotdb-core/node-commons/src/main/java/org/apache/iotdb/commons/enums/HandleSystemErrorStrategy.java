@@ -33,13 +33,15 @@ public enum HandleSystemErrorStrategy {
 
   private static final Logger logger = LoggerFactory.getLogger(HandleSystemErrorStrategy.class);
 
-  public void handle() {
+  public void handle(String errorReason) {
     if (this == HandleSystemErrorStrategy.CHANGE_TO_READ_ONLY) {
       logger.error(
           CommonMessages
               .LOG_UNRECOVERABLE_ERROR_OCCURS_CHANGE_SYSTEM_STATUS_READ_ONLY_BECAUSE_HANDLE_05C9AD1A,
           new RuntimeException(CommonMessages.SYSTEM_READ_ONLY));
-      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setNodeStatusWithReason(NodeStatus.ReadOnly, errorReason);
     } else if (this == HandleSystemErrorStrategy.SHUTDOWN) {
       logger.error(
           CommonMessages

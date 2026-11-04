@@ -1,0 +1,38 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.queryengine.execution.fragment;
+
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+
+/**
+ * Internal control signal for stopping a scan after its fragment has finished. This is unchecked so
+ * scan operators do not wrap it as an I/O failure before the driver can handle normal termination.
+ */
+public class FragmentInstanceFinishedException extends RuntimeException {
+
+  public FragmentInstanceFinishedException(FragmentInstanceId fragmentInstanceId) {
+    super(
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_FRAGMENT_INSTANCE_ARG_IS_ALREADY_ARG_B44984B4,
+            fragmentInstanceId,
+            FragmentInstanceState.FINISHED));
+  }
+}

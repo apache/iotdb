@@ -84,8 +84,7 @@ public class SubscriptionRuntimeCoordinator {
                   final NodeStatus oldStatus = getNodeStatus(pair.getLeft());
                   final NodeStatus newStatus = getNodeStatus(pair.getRight());
                   return oldStatus != newStatus
-                      && (isRuntimeSensitiveStatus(oldStatus)
-                          || isRuntimeSensitiveStatus(newStatus));
+                      && (oldStatus.mayBeOffline() || newStatus.mayBeOffline());
                 });
     if (!shouldRefreshRuntime) {
       return;
@@ -102,7 +101,7 @@ public class SubscriptionRuntimeCoordinator {
             .getSubscriptionCoordinator()
             .getSubscriptionInfo()
             .getAllTopicMeta()) {
-      if (topicMeta.getConfig().isConsensusMode()) {
+      if (topicMeta.getConfig().isIncrementalMode()) {
         return true;
       }
     }
@@ -152,9 +151,5 @@ public class SubscriptionRuntimeCoordinator {
 
   private static NodeStatus getNodeStatus(final NodeStatistics statistics) {
     return statistics == null ? NodeStatus.Unknown : statistics.getStatus();
-  }
-
-  private static boolean isRuntimeSensitiveStatus(final NodeStatus status) {
-    return status == NodeStatus.Unknown || status == NodeStatus.Removing;
   }
 }

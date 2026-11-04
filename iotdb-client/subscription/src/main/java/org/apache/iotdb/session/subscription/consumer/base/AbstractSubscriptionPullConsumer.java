@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -87,6 +88,7 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   private final EmptyPollLogThrottler emptyPollLogThrottler = new EmptyPollLogThrottler();
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
+  private final AtomicBoolean isClosing = new AtomicBoolean(false);
 
   @Override
   boolean isClosed() {
@@ -154,57 +156,77 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   }
 
   @Override
-  public synchronized void close() {
-    if (isClosed.get()) {
+  public void close() {
+    if (isClosed.get() || !isClosing.compareAndSet(false, true)) {
       return;
     }
 
-    if (!processors.isEmpty()) {
-      if (autoCommit) {
-        final List<SubscriptionMessage> drainedMessages = drainProcessorPipeline();
-        if (!drainedMessages.isEmpty()) {
+    try {
+      synchronized (this) {
+        if (isClosed.get()) {
+          return;
+        }
+
+        if (isFenced()) {
+          isClosed.set(true);
+          prepareClose();
+          super.close();
+          return;
+        }
+
+        List<SubscriptionMessage> drainedProcessorMessages = Collections.emptyList();
+        if (!processors.isEmpty()) {
+          drainedProcessorMessages = drainProcessorPipeline();
+          if (!autoCommit && !drainedProcessorMessages.isEmpty()) {
+            pendingDrainedMessages.addAll(drainedProcessorMessages);
+          }
+        }
+
+        // In manual-commit mode, preserve the existing retry contract: validate before making the
+        // terminal close state visible so the caller can drain and commit, then retry close().
+        if (!autoCommit) {
+          ensureNoManualBufferedMessagesOnClose();
+        }
+
+        // Publish the terminal state before touching the network. Workers stop starting new RPCs,
+        // while prepareClose() bounds subsequent requests and interrupts any read already blocked.
+        isClosed.set(true);
+        prepareClose();
+
+        if (autoCommit && !drainedProcessorMessages.isEmpty()) {
           try {
-            commitSync(drainedMessages);
+            commitSync(drainedProcessorMessages);
           } catch (final SubscriptionException e) {
             LOGGER.warn(
                 SubscriptionMessages.LOG_FAILED_COMMIT_DRAINED_PROCESSOR_MESSAGES_CLOSE_4264DB35,
                 e);
           }
         }
-      } else {
-        final List<SubscriptionMessage> drainedMessages = drainProcessorPipeline();
-        if (!drainedMessages.isEmpty()) {
-          pendingDrainedMessages.addAll(drainedMessages);
+
+        if (autoCommit && !pendingDrainedMessages.isEmpty()) {
+          final List<SubscriptionMessage> drainedMessages = drainPendingDrainedMessages();
+          if (!drainedMessages.isEmpty()) {
+            try {
+              commitSync(drainedMessages);
+            } catch (final SubscriptionException e) {
+              LOGGER.warn(
+                  SubscriptionMessages
+                      .LOG_FAILED_COMMIT_PENDING_DRAINED_PROCESSOR_MESSAGES_CLOSE_644B5DDD,
+                  e);
+            }
+          }
         }
-        ensureNoManualBufferedMessagesOnClose();
-      }
-    }
 
-    if (autoCommit && !pendingDrainedMessages.isEmpty()) {
-      final List<SubscriptionMessage> drainedMessages = drainPendingDrainedMessages();
-      if (!drainedMessages.isEmpty()) {
-        try {
-          commitSync(drainedMessages);
-        } catch (final SubscriptionException e) {
-          LOGGER.warn(
-              SubscriptionMessages
-                  .LOG_FAILED_COMMIT_PENDING_DRAINED_PROCESSOR_MESSAGES_CLOSE_644B5DDD,
-              e);
+        if (autoCommit) {
+          // commit all uncommitted messages
+          commitAllUncommittedMessages();
         }
+
+        super.close();
       }
+    } finally {
+      isClosing.set(false);
     }
-
-    if (!autoCommit) {
-      ensureNoManualBufferedMessagesOnClose();
-    }
-
-    if (autoCommit) {
-      // commit all uncommitted messages
-      commitAllUncommittedMessages();
-    }
-
-    isClosed.set(true);
-    super.close();
   }
 
   /////////////////////////////// poll & commit ///////////////////////////////
@@ -289,7 +311,8 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
     if (isClosed()) {
       final String errorMessage =
           String.format(
-              "%s is not yet open, please open the subscription consumer before draining buffered messages.",
+              SubscriptionMessages
+                  .MESSAGE_ARG_IS_NOT_YET_OPEN_PLEASE_OPEN_THE_SUBSCRIPTION_CONSUMER_BEFORE_DRAINING_BUFFERED_MESSAGES_C73D871C,
               this);
       LOGGER.error(errorMessage);
       throw new SubscriptionException(errorMessage);
@@ -418,7 +441,8 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
 
     final String errorMessage =
         String.format(
-            "SubscriptionPullConsumer %s still has processor-buffered or drained messages when closing in manual-commit mode. Call drainBufferedMessages() and commit the returned messages before close.",
+            SubscriptionMessages
+                .MESSAGE_SUBSCRIPTIONPULLCONSUMER_ARG_STILL_HAS_PROCESSOR_BUFFERED_OR_DRAINED_MESSAGES_WHEN_CLOSING_IN_MANUAL_COMMIT_MODE_CALL_DRAINBUFFEREDMESSAGES_AND_COMMIT_THE_RETURNED_MESSAGES_BEFORE_CLOSE_389DC354,
             this);
     LOGGER.warn(errorMessage);
     throw new SubscriptionException(errorMessage);
@@ -529,6 +553,24 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
     super.commitAsync(messages, callback);
   }
 
+  @Override
+  protected void onAckedCommitContexts(
+      final Collection<SubscriptionCommitContext> acceptedCommitContexts) {
+    if (!autoCommit
+        || Objects.isNull(uncommittedCommitContexts)
+        || acceptedCommitContexts.isEmpty()) {
+      return;
+    }
+
+    for (final Map.Entry<Long, Set<SubscriptionCommitContext>> entry :
+        uncommittedCommitContexts.entrySet()) {
+      entry.getValue().removeAll(acceptedCommitContexts);
+      if (entry.getValue().isEmpty()) {
+        uncommittedCommitContexts.remove(entry.getKey(), entry.getValue());
+      }
+    }
+  }
+
   private List<SubscriptionMessage> filterUserVisibleMessages(
       final List<SubscriptionMessage> messages) {
     if (messages.isEmpty()) {
@@ -626,7 +668,7 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
     future[0] =
         SubscriptionExecutorServiceManager.submitAutoCommitWorker(
             () -> {
-              if (isClosed()) {
+              if (isClosed() || isFenced()) {
                 if (Objects.nonNull(future[0])) {
                   future[0].cancel(false);
                   LOGGER.info(SubscriptionMessages.PULL_CONSUMER_CANCEL_AUTO_COMMIT, this);
@@ -642,7 +684,7 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   private class AutoCommitWorker implements Runnable {
     @Override
     public void run() {
-      if (isClosed()) {
+      if (isClosed() || isFenced()) {
         return;
       }
 
@@ -676,6 +718,9 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   }
 
   private void commitAllUncommittedMessages() {
+    if (isFenced()) {
+      return;
+    }
     for (final Map.Entry<Long, Set<SubscriptionCommitContext>> entry :
         uncommittedCommitContexts.entrySet()) {
       try {

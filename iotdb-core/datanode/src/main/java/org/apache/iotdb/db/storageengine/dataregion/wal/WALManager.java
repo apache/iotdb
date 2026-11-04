@@ -47,6 +47,7 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -64,6 +65,7 @@ public class WALManager implements IService {
 
   // manage all wal nodes and decide how to allocate them
   private final NodeAllocationStrategy walNodesManager;
+  private final Map<String, Exception> failedRecoveryNodes = new ConcurrentHashMap<>();
   // single thread to delete old .wal files
   private ScheduledExecutorService walDeleteThread;
   // total disk usage of wal files
@@ -96,6 +98,7 @@ public class WALManager implements IService {
 
   /** Apply for a wal node. */
   public IWALNode applyForWALNode(String applicantUniqueId) {
+    checkRecoveryFailure(applicantUniqueId);
     if (config.getWalMode() == WALMode.DISABLE) {
       return WALFakeNode.getSuccessInstance();
     }
@@ -106,6 +109,7 @@ public class WALManager implements IService {
   /** WAL node will be registered only when using iot series consensus protocol. */
   public void registerWALNode(
       String applicantUniqueId, String logDirectory, long startFileVersion, long startSearchIndex) {
+    checkRecoveryFailure(applicantUniqueId);
     if (config.getWalMode() == WALMode.DISABLE
         || (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
             && !config
@@ -117,6 +121,26 @@ public class WALManager implements IService {
     ((FirstCreateStrategy) walNodesManager)
         .registerWALNode(applicantUniqueId, logDirectory, startFileVersion, startSearchIndex);
     WritingMetrics.getInstance().createWALNodeInfoMetrics(applicantUniqueId);
+  }
+
+  /** Called during recovery, before failed listeners can permit subsequent node allocation. */
+  public void markRecoveryFailed(String applicantUniqueId, Exception failure) {
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+        || config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
+      failedRecoveryNodes.putIfAbsent(applicantUniqueId, failure);
+    }
+  }
+
+  private void checkRecoveryFailure(String applicantUniqueId) {
+    Exception failure = failedRecoveryNodes.get(applicantUniqueId);
+    if (failure != null) {
+      throw new IllegalStateException(
+          String.format(
+              StorageEngineMessages
+                  .EXCEPTION_CANNOT_ENABLE_WAL_NODE_ARG_BECAUSE_ITS_PREVIOUS_RECOVERY_FAILED_RESTART_AFTER_RESOLVING_THE_RECOVERY_FAILURE_56DF9750,
+              applicantUniqueId),
+          failure);
+    }
   }
 
   /** WAL node will be deleted only when using iot series consensus protocol. */
@@ -329,6 +353,7 @@ public class WALManager implements IService {
     totalDiskUsage.set(0);
     resetWalThrottleWarningLogTime();
     walNodesManager.clear();
+    failedRecoveryNodes.clear();
   }
 
   void logWalThrottleWarningIfNecessary() {

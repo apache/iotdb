@@ -70,6 +70,9 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.TableFunctionUtils.checkType;
 import static org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.TableFunctionUtils.parseOptions;
 import static org.apache.iotdb.commons.queryengine.plan.relational.utils.ResultColumnAppender.createResultColumnAppender;
+import static org.apache.iotdb.commons.queryengine.plan.udf.ForecastTimeUtils.calculateForecastInterval;
+import static org.apache.iotdb.commons.queryengine.plan.udf.ForecastTimeUtils.calculateForecastOutputTime;
+import static org.apache.iotdb.commons.queryengine.plan.udf.ForecastTimeUtils.calculateForecastStartTime;
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
 
 public class ForecastTableFunction implements TableFunction {
@@ -439,15 +442,10 @@ public class ForecastTableFunction implements TableFunction {
             String.format(
                 QueryMessages.INPUT_END_TIME_LESS_THAN_START_TIME, inputStartTime, inputEndTime));
       }
-      long interval = outputInterval;
-      if (outputInterval <= 0) {
-        interval =
-            inputRecords.size() == 1
-                ? 0
-                : (inputEndTime - inputStartTime) / (inputRecords.size() - 1);
-      }
-      long outputTime =
-          (outputStartTime == Long.MIN_VALUE) ? (inputEndTime + interval) : outputStartTime;
+      long interval =
+          calculateForecastInterval(
+              inputStartTime, inputEndTime, inputRecords.size(), outputInterval);
+      long outputTime = calculateForecastStartTime(inputEndTime, outputStartTime, interval);
       if (outputTime <= inputEndTime) {
         throw new SemanticException(
             String.format(
@@ -457,7 +455,7 @@ public class ForecastTableFunction implements TableFunction {
                 outputTime));
       }
       for (int i = 0; i < outputLength; i++) {
-        properColumnBuilders.get(0).writeLong(outputTime + interval * i);
+        properColumnBuilders.get(0).writeLong(calculateForecastOutputTime(outputTime, interval, i));
       }
 
       // predicated columns

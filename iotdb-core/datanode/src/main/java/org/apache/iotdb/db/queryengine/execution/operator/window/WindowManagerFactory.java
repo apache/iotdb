@@ -21,8 +21,10 @@ package org.apache.iotdb.db.queryengine.execution.operator.window;
 
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
+import org.apache.iotdb.db.utils.TypeServices;
+import org.apache.iotdb.db.utils.TypeServices.Aggregation.EventWindowManagerProvider;
 
-import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.read.common.type.Type;
 
 public class WindowManagerFactory {
 
@@ -59,57 +61,19 @@ public class WindowManagerFactory {
 
   private static VariationWindowManager genEqualEventWindowManager(
       VariationWindowParameter eventWindowParameter, boolean ascending) {
-    switch (eventWindowParameter.getDataType()) {
-      case INT32:
-        return new EqualIntWindowManager(eventWindowParameter, ascending);
-      case INT64:
-        return new EqualLongWindowManager(eventWindowParameter, ascending);
-      case FLOAT:
-        return new EqualFloatWindowManager(eventWindowParameter, ascending);
-      case DOUBLE:
-        return new EqualDoubleWindowManager(eventWindowParameter, ascending);
-      case TEXT:
-        return new EqualBinaryWindowManager(eventWindowParameter, ascending);
-      case BOOLEAN:
-        return new EqualBooleanWindowManager(eventWindowParameter, ascending);
-      case BLOB:
-      case OBJECT:
-      case STRING:
-      case TIMESTAMP:
-      case DATE:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                DataNodeQueryMessages
-                    .QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EQUAL_EVENT_AGGREGATION_S_5076ACFE,
-                eventWindowParameter.getDataType()));
-    }
+    return getEventWindowManagerProvider(eventWindowParameter)
+        .createEqual(eventWindowParameter, ascending);
   }
 
   private static VariationWindowManager genVariationEventWindowManager(
       VariationWindowParameter eventWindowParameter, boolean ascending) {
-    switch (eventWindowParameter.getDataType()) {
-      case INT32:
-        return new VariationIntWindowManager(eventWindowParameter, ascending);
-      case INT64:
-        return new VariationLongWindowManager(eventWindowParameter, ascending);
-      case FLOAT:
-        return new VariationFloatWindowManager(eventWindowParameter, ascending);
-      case DOUBLE:
-        return new VariationDoubleWindowManager(eventWindowParameter, ascending);
-      case TIMESTAMP:
-      case DATE:
-      case STRING:
-      case BOOLEAN:
-      case BLOB:
-      case OBJECT:
-      case TEXT:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                DataNodeQueryMessages
-                    .QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_VARIATION_EVENT_AGGREGATION_S_47341532,
-                eventWindowParameter.getDataType()));
-    }
+    return getEventWindowManagerProvider(eventWindowParameter)
+        .createVariation(eventWindowParameter, ascending);
+  }
+
+  private static EventWindowManagerProvider getEventWindowManagerProvider(
+      final VariationWindowParameter parameter) {
+    return TypeServices.Aggregation.EVENT_WINDOW_MANAGER_PROVIDER_SERVICE.call(
+        Type.fromTsDataType(parameter.getDataType()));
   }
 }

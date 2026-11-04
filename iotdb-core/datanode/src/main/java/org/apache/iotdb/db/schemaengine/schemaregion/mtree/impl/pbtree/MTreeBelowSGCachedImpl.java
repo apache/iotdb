@@ -471,6 +471,7 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException {
     final List<IMeasurementMNode<ICachedMNode>> measurementMNodeList = new ArrayList<>();
     MetaFormatUtils.checkSchemaMeasurementNames(measurements);
+    MetaFormatUtils.checkSchemaMeasurementAliases(devicePath, measurements, aliasList);
     final ICachedMNode deviceParent = checkAndAutoCreateInternalPath(devicePath);
 
     try {
@@ -608,8 +609,10 @@ public class MTreeBelowSGCachedImpl {
     ICachedMNode device;
     try {
       device = getNodeByPath(devicePath);
-    } catch (MetadataException e) {
+    } catch (PathNotExistException e) {
       return Collections.emptyMap();
+    } catch (MetadataException e) {
+      return Collections.singletonMap(0, e);
     }
     try {
       if (!device.isDevice()) {
@@ -1074,6 +1077,9 @@ public class MTreeBelowSGCachedImpl {
     ICachedMNode cur = databaseMNode;
     ICachedMNode next;
     try {
+      if (cur == null) {
+        throw new PathNotExistException(path.getFullPath(), true);
+      }
       for (int i = levelOfDB + 1; i < nodes.length; i++) {
         next = store.getChild(cur, nodes[i]);
         if (next == null) {
@@ -1090,7 +1096,9 @@ public class MTreeBelowSGCachedImpl {
       pinMNode(cur);
       return cur;
     } finally {
-      unPinPath(cur);
+      if (cur != null) {
+        unPinPath(cur);
+      }
     }
   }
 

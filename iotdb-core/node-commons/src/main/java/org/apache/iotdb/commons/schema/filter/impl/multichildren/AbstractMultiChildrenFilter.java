@@ -43,7 +43,7 @@ public abstract class AbstractMultiChildrenFilter extends SchemaFilter {
 
   protected AbstractMultiChildrenFilter(final ByteBuffer byteBuffer) {
     final int num = ReadWriteIOUtils.readInt(byteBuffer);
-    children = new ArrayList<>();
+    children = new ArrayList<>(num);
     for (int i = 0; i < num; ++i) {
       this.children.add(SchemaFilter.deserialize(byteBuffer));
     }

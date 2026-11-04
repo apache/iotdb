@@ -59,7 +59,7 @@ public class InListExpression extends Expression {
   public InListExpression(ByteBuffer byteBuffer) {
     super(null);
     int size = ReadWriteIOUtils.readInt(byteBuffer);
-    this.values = new ArrayList<>();
+    this.values = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       values.add(Expression.deserialize(byteBuffer));
     }

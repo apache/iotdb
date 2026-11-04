@@ -17,6 +17,8 @@
 #
 # This file is part of the Apache IoTDB project.
 #
-# This file includes code modified from the uni2ts project (https://github.com/salesforce/uni2ts).
-# The original code is licensed under the Apache License 2.0.
+# This file includes code modified from the uni2ts project:
+# https://github.com/SalesforceAIResearch/uni2ts
+# Copyright (c) 2024, Salesforce, Inc.
+# SPDX-License-Identifier: Apache-2
 #

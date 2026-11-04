@@ -47,6 +47,10 @@ public class BasicInternalMNode extends BasicMNode implements IInternalMNode<IMe
   @SuppressWarnings("squid:S3077")
   private volatile IDeviceInfo<IMemMNode> deviceInfo = null;
 
+  // Direct children only. Snapshot loading rebuilds these counters through addChild.
+  private int measurementChildCount;
+  private int nonViewMeasurementChildCount;
+
   /** Constructor of MNode. */
   public BasicInternalMNode(IMemMNode parent, String name) {
     super(parent, name);
@@ -98,6 +102,9 @@ public class BasicInternalMNode extends BasicMNode implements IInternalMNode<IMe
     }
     child.setParent(this);
     IMemMNode existingChild = children.putIfAbsent(name, child);
+    if (existingChild == null) {
+      updateMeasurementChildCount(child, 1);
+    }
     return existingChild == null ? child : existingChild;
   }
 
@@ -114,21 +121,7 @@ public class BasicInternalMNode extends BasicMNode implements IInternalMNode<IMe
    */
   @Override
   public IMemMNode addChild(IMemMNode child) {
-    /* use cpu time to exchange memory
-     * measurementNode's children should be null to save memory
-     * add child method will only be called when writing MTree, which is not a frequent operation
-     */
-    if (children == null) {
-      // double check, children is volatile
-      synchronized (this) {
-        if (children == null) {
-          children = new MemMNodeContainer();
-        }
-      }
-    }
-
-    child.setParent(this);
-    children.putIfAbsent(child.getName(), child);
+    addChild(child.getName(), child);
     return child;
   }
 
@@ -136,7 +129,11 @@ public class BasicInternalMNode extends BasicMNode implements IInternalMNode<IMe
   @Override
   public IMemMNode deleteChild(String name) {
     if (children != null) {
-      return children.remove(name);
+      final IMemMNode child = children.remove(name);
+      if (child != null) {
+        updateMeasurementChildCount(child, -1);
+      }
+      return child;
     }
     return null;
   }
@@ -152,12 +149,39 @@ public class BasicInternalMNode extends BasicMNode implements IInternalMNode<IMe
   @Override
   public void setChildren(IMNodeContainer<IMemMNode> children) {
     this.children = children;
+    measurementChildCount = 0;
+    nonViewMeasurementChildCount = 0;
+    if (children != null) {
+      children.values().forEach(child -> updateMeasurementChildCount(child, 1));
+    }
   }
 
-  /** MNodeContainer reference and basic occupation, 8 + 80B. DeviceInfo reference and size. */
+  private void updateMeasurementChildCount(final IMemMNode child, final int delta) {
+    if (child.isMeasurement()) {
+      measurementChildCount += delta;
+      if (!child.getAsMeasurementMNode().isLogicalView()) {
+        nonViewMeasurementChildCount += delta;
+      }
+    }
+  }
+
+  public int getMeasurementChildCount() {
+    return measurementChildCount;
+  }
+
+  public int getNonViewMeasurementChildCount() {
+    return nonViewMeasurementChildCount;
+  }
+
+  /** MNodeContainer reference and basic occupation, 8 + 80B. Counters, 8B. DeviceInfo and size. */
   @Override
   public int estimateSize() {
-    return 8 + 80 + super.estimateSize() + 8 + (deviceInfo == null ? 0 : deviceInfo.estimateSize());
+    return 8
+        + 80
+        + 8
+        + super.estimateSize()
+        + 8
+        + (deviceInfo == null ? 0 : deviceInfo.estimateSize());
   }
 
   @Override

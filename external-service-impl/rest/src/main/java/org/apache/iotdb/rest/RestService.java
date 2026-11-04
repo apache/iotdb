@@ -16,6 +16,7 @@
  */
 package org.apache.iotdb.rest;
 
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceConfig;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.externalservice.api.IExternalService;
@@ -40,6 +41,7 @@ import org.slf4j.LoggerFactory;
 import jakarta.servlet.DispatcherType;
 
 import java.util.EnumSet;
+import java.util.regex.Pattern;
 
 public class RestService implements IExternalService {
 
@@ -79,6 +81,9 @@ public class RestService implements IExternalService {
             new HttpConnectionFactory(httpsConfig));
     httpsConnector.setPort(port);
     httpsConnector.setIdleTimeout(idleTime);
+    httpsConnector.addBean(
+        new TrustedChannelAuditHandshakeListener(
+            DNAuditLogger.getInstance()::recordTrustedChannelFailureAuditLogIfNecessary));
     server.addConnector(httpsConnector);
 
     server.setHandler(constructServletContextHandler());
@@ -147,8 +152,11 @@ public class RestService implements IExternalService {
     }
   }
 
-  private void configureSSL(SslContextFactory.Server sslContextFactory, String sslProtocol) {
+  void configureSSL(SslContextFactory.Server sslContextFactory, String sslProtocol) {
     String protocol = RpcSslUtils.normalizeProtocol(sslProtocol);
     sslContextFactory.setProtocol(protocol);
+    if (RpcSslUtils.requiresProtocolRestriction(protocol)) {
+      sslContextFactory.setIncludeProtocols("(?i)" + Pattern.quote(protocol));
+    }
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe;
 
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -29,6 +30,8 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -37,9 +40,15 @@ import static org.junit.Assert.assertTrue;
 public class ShowPipeTaskTest {
 
   @Test
-  public void testBuildTSBlockWritesDegradedColumn() throws Exception {
+  public void testBuildTSBlockWritesRuntimeColumns() throws Exception {
     final TShowPipeInfo degradedPipe = createPipeInfo("degraded_pipe");
+    degradedPipe.setState(PipeStatus.STOPPED.name());
+    degradedPipe.setExceptionMessage("nodeIds: [1], construction failed");
     degradedPipe.setIsDegraded(true);
+    final Map<String, Long> recentFailures = new HashMap<>();
+    recentFailures.put("network_timeout", 10L);
+    recentFailures.put("memory_timeout", 15L);
+    degradedPipe.setRecentFailures(recentFailures);
     final TShowPipeInfo normalPipe = createPipeInfo("normal_pipe");
     normalPipe.setIsDegraded(false);
     final TShowPipeInfo unknownPipe = createPipeInfo("unknown_pipe");
@@ -53,10 +62,19 @@ public class ShowPipeTaskTest {
     assertEquals(TSStatusCode.SUCCESS_STATUS, result.getStatusCode());
     assertEquals(
         ColumnHeaderConstant.IS_DEGRADED, result.getResultSetHeader().getRespColumns().get(9));
+    assertEquals(
+        ColumnHeaderConstant.RECENT_FAILURES, result.getResultSetHeader().getRespColumns().get(10));
     assertEquals(3, resultSet.getPositionCount());
+    assertEquals(PipeStatus.STOPPED.name(), resultSet.getColumn(2).getBinary(0).toString());
+    assertEquals(
+        "nodeIds: [1], construction failed", resultSet.getColumn(6).getBinary(0).toString());
+    assertEquals("", resultSet.getColumn(6).getBinary(1).toString());
     assertTrue(resultSet.getColumn(9).getBoolean(0));
     assertFalse(resultSet.getColumn(9).getBoolean(1));
     assertTrue(resultSet.getColumn(9).isNull(2));
+    assertEquals(
+        "{memory_timeout=15, network_timeout=10}", resultSet.getColumn(10).getBinary(0).toString());
+    assertEquals("{}", resultSet.getColumn(10).getBinary(1).toString());
   }
 
   private TShowPipeInfo createPipeInfo(final String pipeName) {

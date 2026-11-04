@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -49,6 +50,8 @@ public abstract class UDTFSelectK implements UDTF {
   protected PriorityQueue<Pair<Long, Float>> floatPQ;
   protected PriorityQueue<Pair<Long, Double>> doublePQ;
   protected PriorityQueue<Pair<Long, String>> stringPQ;
+  private TypeServices.SelectKRowTransformer rowTransformer;
+  private TypeServices.SelectKTerminator terminator;
 
   @Override
   public void validate(UDFParameterValidator validator) throws UDFException {
@@ -67,7 +70,8 @@ public abstract class UDTFSelectK implements UDTF {
         .validateRequiredAttribute("k")
         .validate(
             k -> 0 < (int) k && (int) k <= 1000,
-            "k has to be greater than 0 and less than or equal to 1000.",
+            CommonMessages
+                .EXCEPTION_K_HAS_TO_BE_GREATER_THAN_0_AND_LESS_THAN_OR_EQUAL_TO_1000_AFD17B03,
             validator.getParameters().getInt("k"));
   }
 
@@ -77,6 +81,10 @@ public abstract class UDTFSelectK implements UDTF {
     k = parameters.getInt("k");
     dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
     constructPQ();
+    org.apache.tsfile.read.common.type.Type type =
+        UDFDataTypeTransformer.transformUDFDataTypeToReadType(parameters.getDataType(0));
+    rowTransformer = TypeServices.SELECT_K_ROW_TRANSFORMER_SERVICE.call(type);
+    terminator = TypeServices.SELECT_K_TERMINATOR_SERVICE.call(type);
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
         .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(dataType));
@@ -87,42 +95,7 @@ public abstract class UDTFSelectK implements UDTF {
   @Override
   public void transform(Row row, PointCollector collector)
       throws UDFInputSeriesDataTypeNotValidException, IOException {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        transformInt(row.getTime(), row.getInt(0));
-        break;
-      case INT64:
-      case TIMESTAMP:
-        transformLong(row.getTime(), row.getLong(0));
-        break;
-      case FLOAT:
-        transformFloat(row.getTime(), row.getFloat(0));
-        break;
-      case DOUBLE:
-        transformDouble(row.getTime(), row.getDouble(0));
-        break;
-      case TEXT:
-      case STRING:
-        transformString(row.getTime(), row.getString(0));
-        break;
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      default:
-        // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            Type.INT32,
-            Type.INT64,
-            Type.FLOAT,
-            Type.DOUBLE,
-            Type.TEXT,
-            Type.DATE,
-            Type.TIMESTAMP,
-            Type.STRING);
-    }
+    rowTransformer.transform(this, row);
   }
 
   protected abstract void transformInt(long time, int value);
@@ -138,64 +111,41 @@ public abstract class UDTFSelectK implements UDTF {
   @Override
   public void terminate(PointCollector collector)
       throws UDFInputSeriesDataTypeNotValidException, IOException {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        for (Pair<Long, Integer> pair :
-            intPQ.stream().sorted(Comparator.comparing(p -> p.left)).collect(Collectors.toList())) {
-          collector.putInt(pair.left, pair.right);
-        }
-        break;
-      case INT64:
-      case TIMESTAMP:
-        for (Pair<Long, Long> pair :
-            longPQ.stream()
-                .sorted(Comparator.comparing(p -> p.left))
-                .collect(Collectors.toList())) {
-          collector.putLong(pair.left, pair.right);
-        }
-        break;
-      case FLOAT:
-        for (Pair<Long, Float> pair :
-            floatPQ.stream()
-                .sorted(Comparator.comparing(p -> p.left))
-                .collect(Collectors.toList())) {
-          collector.putFloat(pair.left, pair.right);
-        }
-        break;
-      case DOUBLE:
-        for (Pair<Long, Double> pair :
-            doublePQ.stream()
-                .sorted(Comparator.comparing(p -> p.left))
-                .collect(Collectors.toList())) {
-          collector.putDouble(pair.left, pair.right);
-        }
-        break;
-      case TEXT:
-      case STRING:
-        for (Pair<Long, String> pair :
-            stringPQ.stream()
-                .sorted(Comparator.comparing(p -> p.left))
-                .collect(Collectors.toList())) {
-          collector.putString(pair.left, pair.right);
-        }
-        break;
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      default:
-        // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            Type.INT32,
-            Type.INT64,
-            Type.FLOAT,
-            Type.DOUBLE,
-            Type.TEXT,
-            Type.DATE,
-            Type.TIMESTAMP,
-            Type.STRING);
+    terminator.terminate(this, collector);
+  }
+
+  void terminateInt(PointCollector collector) throws IOException {
+    for (Pair<Long, Integer> pair :
+        intPQ.stream().sorted(Comparator.comparing(p -> p.left)).collect(Collectors.toList())) {
+      collector.putInt(pair.left, pair.right);
+    }
+  }
+
+  void terminateLong(PointCollector collector) throws IOException {
+    for (Pair<Long, Long> pair :
+        longPQ.stream().sorted(Comparator.comparing(p -> p.left)).collect(Collectors.toList())) {
+      collector.putLong(pair.left, pair.right);
+    }
+  }
+
+  void terminateFloat(PointCollector collector) throws IOException {
+    for (Pair<Long, Float> pair :
+        floatPQ.stream().sorted(Comparator.comparing(p -> p.left)).collect(Collectors.toList())) {
+      collector.putFloat(pair.left, pair.right);
+    }
+  }
+
+  void terminateDouble(PointCollector collector) throws IOException {
+    for (Pair<Long, Double> pair :
+        doublePQ.stream().sorted(Comparator.comparing(p -> p.left)).collect(Collectors.toList())) {
+      collector.putDouble(pair.left, pair.right);
+    }
+  }
+
+  void terminateString(PointCollector collector) throws IOException {
+    for (Pair<Long, String> pair :
+        stringPQ.stream().sorted(Comparator.comparing(p -> p.left)).collect(Collectors.toList())) {
+      collector.putString(pair.left, pair.right);
     }
   }
 }

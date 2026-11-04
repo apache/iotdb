@@ -23,13 +23,17 @@ import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 
@@ -39,9 +43,14 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.utils.PathUtils.unQualifyDatabaseName;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 
 public class SchemaValidator {
 
@@ -71,18 +80,82 @@ public class SchemaValidator {
       final MPPQueryContext context,
       AccessControl accessControl) {
     try {
-      accessControl.checkCanInsertIntoTable(
-          context.getSession().getUserName(),
-          new QualifiedObjectName(
-              unQualifyDatabaseName(insertStatement.getDatabase()), insertStatement.getTableName()),
-          context);
+      final InsertBaseStatement innerInsertStatement = insertStatement.getInnerTreeStatement();
+      final boolean uniformTargets =
+          innerInsertStatement instanceof InsertRowsStatement
+              && ((InsertRowsStatement) innerInsertStatement).isUniformTargets();
+      for (final QualifiedObjectName targetTable :
+          resolveTargetTables(insertStatement, context, uniformTargets)) {
+        accessControl.checkCanInsertIntoTable(
+            context.getSession().getUserName(), targetTable, context);
+      }
       insertStatement.validateTableSchema(metadata, context);
       insertStatement.updateAfterSchemaValidation(context);
+      if (innerInsertStatement.hasFailedMeasurements()) {
+        final boolean hasValidFields;
+        if (innerInsertStatement instanceof InsertRowsStatement) {
+          final InsertRowsStatement rows = (InsertRowsStatement) innerInsertStatement;
+          final List<InsertRowStatement> validRows =
+              rows.getInsertRowStatementList().stream()
+                  .filter(InsertBaseStatement::hasValidMeasurements)
+                  .collect(Collectors.toList());
+          hasValidFields = !validRows.isEmpty();
+          if (hasValidFields) {
+            rows.setInsertRowStatementList(validRows);
+          }
+        } else {
+          hasValidFields = innerInsertStatement.hasValidMeasurements();
+        }
+        if (!hasValidFields) {
+          throw new SemanticException(
+              DataNodeQueryMessages.NO_COLUMN_OTHER_THAN_TIME_PRESENT_PLEASE_CHECK);
+        }
+      }
       insertStatement.validateDeviceSchema(metadata, context);
       insertStatement.removeAttributeColumns();
     } catch (final QueryProcessException e) {
       throw new SemanticException(e.getMessage());
     }
+  }
+
+  /**
+   * Resolves the target tables to check. When the statement is uniform, i.e. every row targets the
+   * same table and carries the same columns, the first row is representative; otherwise every row
+   * is considered, since the rows may target different tables.
+   */
+  private static Set<QualifiedObjectName> resolveTargetTables(
+      final WrappedInsertStatement insertStatement,
+      final MPPQueryContext context,
+      final boolean uniformTargets) {
+    if (!(insertStatement instanceof InsertRows)) {
+      return Collections.singleton(
+          new QualifiedObjectName(
+              unQualifyDatabaseName(insertStatement.getDatabase()),
+              insertStatement.getTableName()));
+    }
+
+    final List<InsertRowStatement> rowStatements =
+        ((InsertRows) insertStatement).getInnerTreeStatement().getInsertRowStatementList();
+    if (uniformTargets) {
+      return rowStatements.isEmpty()
+          ? Collections.emptySet()
+          : Collections.singleton(resolveTargetTable(rowStatements.get(0), context));
+    }
+
+    final Set<QualifiedObjectName> targetTables = new LinkedHashSet<>();
+    for (final InsertRowStatement rowStatement : rowStatements) {
+      targetTables.add(resolveTargetTable(rowStatement, context));
+    }
+    return targetTables;
+  }
+
+  private static QualifiedObjectName resolveTargetTable(
+      final InsertRowStatement rowStatement, final MPPQueryContext context) {
+    final String database = AnalyzeUtils.getDatabaseName(rowStatement, context);
+    if (database == null) {
+      throw new SemanticException(DATABASE_NOT_SPECIFIED);
+    }
+    return new QualifiedObjectName(unQualifyDatabaseName(database), rowStatement.getTableName());
   }
 
   public static ISchemaTree validate(
@@ -94,7 +167,37 @@ public class SchemaValidator {
       List<CompressionType[]> compressionTypes,
       List<Boolean> isAlignedList,
       MPPQueryContext context) {
-    return schemaFetcher.fetchSchemaListWithAutoCreate(
-        devicePaths, measurements, dataTypes, encodings, compressionTypes, isAlignedList, context);
+    return validate(
+        schemaFetcher,
+        devicePaths,
+        measurements,
+        dataTypes,
+        encodings,
+        compressionTypes,
+        isAlignedList,
+        true,
+        context);
+  }
+
+  public static ISchemaTree validate(
+      final ISchemaFetcher schemaFetcher,
+      final List<PartialPath> devicePaths,
+      final List<String[]> measurements,
+      final List<TSDataType[]> dataTypes,
+      final List<TSEncoding[]> encodings,
+      final List<CompressionType[]> compressionTypes,
+      final List<Boolean> isAlignedList,
+      final boolean autoCreateSchema,
+      final MPPQueryContext context) {
+    return autoCreateSchema
+        ? schemaFetcher.fetchSchemaListWithAutoCreate(
+            devicePaths,
+            measurements,
+            dataTypes,
+            encodings,
+            compressionTypes,
+            isAlignedList,
+            context)
+        : schemaFetcher.fetchSchemaList(devicePaths, measurements, context);
   }
 }

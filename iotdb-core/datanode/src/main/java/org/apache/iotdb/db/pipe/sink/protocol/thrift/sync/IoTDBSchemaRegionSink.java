@@ -178,7 +178,7 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
         pipeSchemaRegionWritePlanEvent.getPipeName(),
         pipeSchemaRegionWritePlanEvent.getCreationTime(),
         pipeSchemaRegionWritePlanEvent.getPlanNode().toString());
-    LOGGER.info(
+    LOGGER.debug(
         DataNodePipeMessages.SUCCESSFULLY_TRANSFERRED_SCHEMA_EVENT, pipeSchemaRegionWritePlanEvent);
   }
 
@@ -190,7 +190,7 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
         batch.getPipeName(),
         batch.getCreationTime(),
         planNode.toString());
-    LOGGER.info(
+    LOGGER.debug(
         DataNodePipeMessages
             .MESSAGE_SUCCESSFULLY_TRANSFERRED_BATCHED_SCHEMA_EVENTS_BATCH_SIZE_ARG_CF2E881C,
         batch.size());
@@ -241,8 +241,10 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
       receiverStatusHandler.handle(
           status,
           String.format(
-              "Transfer data node write plan %s error, result status %s.",
-              planNode.getType(), status),
+              DataNodePipeMessages
+                  .MESSAGE_TRANSFER_DATA_NODE_WRITE_PLAN_ARG_ERROR_RESULT_STATUS_ARG_2F546036,
+              planNode.getType(),
+              status),
           eventDescription,
           true);
     }
@@ -337,13 +339,17 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
       receiverStatusHandler.handle(
           resp.getStatus(),
           String.format(
-              "Seal file %s, %s and %s error, result status %s.",
-              mTreeSnapshotFile, tagLogSnapshotFile, attributeSnapshotFile, resp.getStatus()),
+              DataNodePipeMessages
+                  .MESSAGE_SEAL_FILE_ARG_ARG_AND_ARG_ERROR_RESULT_STATUS_ARG_3470FE87,
+              mTreeSnapshotFile,
+              tagLogSnapshotFile,
+              attributeSnapshotFile,
+              resp.getStatus()),
           snapshotEvent.toString(),
           true);
     }
 
-    LOGGER.info(
+    LOGGER.debug(
         DataNodePipeMessages.SUCCESSFULLY_TRANSFERRED_FILE_AND,
         mTreeSnapshotFile,
         tagLogSnapshotFile,

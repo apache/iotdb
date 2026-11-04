@@ -174,31 +174,31 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
       }
 
       final int size = ReadWriteIOUtils.readInt(buffer);
-      final List<String> measurements = new ArrayList<>();
+      final List<String> measurements = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
         measurements.add(ReadWriteIOUtils.readString(buffer));
       }
       createAlignedTimeSeriesPlan.setMeasurements(measurements);
 
-      final List<TSDataType> dataTypes = new ArrayList<>();
+      final List<TSDataType> dataTypes = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
         dataTypes.add(TSDataType.deserialize(buffer.get()));
       }
       createAlignedTimeSeriesPlan.setDataTypes(dataTypes);
 
-      final List<TSEncoding> encodings = new ArrayList<>();
+      final List<TSEncoding> encodings = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
         encodings.add(TSEncoding.deserialize(buffer.get()));
       }
       createAlignedTimeSeriesPlan.setEncodings(encodings);
 
-      final List<CompressionType> compressors = new ArrayList<>();
+      final List<CompressionType> compressors = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
         compressors.add(CompressionType.deserialize(buffer.get()));
       }
       createAlignedTimeSeriesPlan.setCompressors(compressors);
 
-      final List<Long> tagOffsets = new ArrayList<>();
+      final List<Long> tagOffsets = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
         tagOffsets.add(buffer.getLong());
       }
@@ -206,7 +206,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
 
       // alias
       if (buffer.get() == 1) {
-        List<String> aliasList = new ArrayList<>();
+        List<String> aliasList = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
           aliasList.add(ReadWriteIOUtils.readString(buffer));
         }
@@ -215,7 +215,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
 
       // tags
       if (buffer.get() == 1) {
-        List<Map<String, String>> tagsList = new ArrayList<>();
+        List<Map<String, String>> tagsList = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
           tagsList.add(ReadWriteIOUtils.readMap(buffer));
         }
@@ -224,7 +224,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
 
       // attributes
       if (buffer.get() == 1) {
-        List<Map<String, String>> attributesList = new ArrayList<>();
+        List<Map<String, String>> attributesList = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
           attributesList.add(ReadWriteIOUtils.readMap(buffer));
         }
@@ -287,7 +287,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
       int pathNumber = buffer.getInt();
 
       try {
-        List<PartialPath> deletePathList = new ArrayList<>();
+        List<PartialPath> deletePathList = new ArrayList<>(pathNumber);
         for (int i = 0; i < pathNumber; i++) {
           deletePathList.add(new PartialPath(ReadWriteIOUtils.readString(buffer)));
         }

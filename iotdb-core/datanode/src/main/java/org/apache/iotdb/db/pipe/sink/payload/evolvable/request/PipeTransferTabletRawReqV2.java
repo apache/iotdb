@@ -144,7 +144,8 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
 
     tabletReq.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
     tabletReq.type = PipeRequestType.TRANSFER_TABLET_RAW_V2.getType();
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    try (final PublicBAOS byteArrayOutputStream =
+            new PublicBAOS(calculateSerializedSize(tablet, dataBaseName));
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       tablet.serialize(outputStream);
       ReadWriteIOUtils.write(isAligned, outputStream);
@@ -173,7 +174,8 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
 
   public static byte[] toTPipeTransferBytes(
       final Tablet tablet, final boolean isAligned, final String dataBaseName) throws IOException {
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    try (final PublicBAOS byteArrayOutputStream =
+            new PublicBAOS(calculateAirGapSerializedSize(tablet, dataBaseName));
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBSinkRequestVersion.VERSION_1.getVersion(), outputStream);
       ReadWriteIOUtils.write(PipeRequestType.TRANSFER_TABLET_RAW_V2.getType(), outputStream);
@@ -182,6 +184,14 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
       ReadWriteIOUtils.write(dataBaseName, outputStream);
       return byteArrayOutputStream.toByteArray();
     }
+  }
+
+  static int calculateSerializedSize(final Tablet tablet, final String dataBaseName) {
+    return tablet.serializedSize() + Byte.BYTES + ReadWriteIOUtils.sizeToWrite(dataBaseName);
+  }
+
+  static int calculateAirGapSerializedSize(final Tablet tablet, final String dataBaseName) {
+    return Byte.BYTES + Short.BYTES + calculateSerializedSize(tablet, dataBaseName);
   }
 
   /////////////////////////////// Object ///////////////////////////////

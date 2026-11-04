@@ -24,6 +24,9 @@ import org.apache.iotdb.pipe.api.type.Binary;
 import java.time.LocalDate;
 import java.util.Objects;
 
+import static org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingTimeUtils.isTimeDistanceGreaterThanOrEqualTo;
+import static org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingTimeUtils.isTimeDistanceLessThanOrEqualTo;
+
 public class ChangingValueFilter<T> {
 
   private final ChangingValueSamplingProcessor processor;
@@ -59,12 +62,12 @@ public class ChangingValueFilter<T> {
   }
 
   private boolean tryFilter(final long timestamp, final T value) {
-    if (isTimeDistanceLessThanOrEqual(
+    if (isTimeDistanceLessThanOrEqualTo(
         timestamp, lastStoredTimestamp, processor.getCompressionMinTimeInterval())) {
       return false;
     }
 
-    if (isTimeDistanceGreaterThanOrEqual(
+    if (isTimeDistanceGreaterThanOrEqualTo(
         timestamp, lastStoredTimestamp, processor.getCompressionMaxTimeInterval())) {
       reset(timestamp, value);
       return true;
@@ -92,18 +95,6 @@ public class ChangingValueFilter<T> {
     }
 
     return false;
-  }
-
-  private boolean isTimeDistanceLessThanOrEqual(
-      final long left, final long right, final long maxDistance) {
-    final long distance = left >= right ? left - right : right - left;
-    return Long.compareUnsigned(distance, maxDistance) <= 0;
-  }
-
-  private boolean isTimeDistanceGreaterThanOrEqual(
-      final long left, final long right, final long minDistance) {
-    final long distance = left >= right ? left - right : right - left;
-    return Long.compareUnsigned(distance, minDistance) >= 0;
   }
 
   private void reset(final long timestamp, final T value) {

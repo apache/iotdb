@@ -83,12 +83,34 @@ public class TsFileMetrics implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricService metricService) {
     this.metricService.set(metricService);
+    // The cached gauges may have been dropped by the metric service, e.g. when it restarts, so
+    // recreate all of them from the recorded values.
+    Arrays.asList(seqFileCountMap, unseqFileCountMap)
+        .forEach(map -> map.values().forEach(TsFileMetrics::clearGauges));
+    Arrays.asList(seqFileSizeMap, unseqFileSizeMap)
+        .forEach(map -> map.values().forEach(TsFileMetrics::clearGauges));
+    Arrays.asList(seqLevelTsFileCountMap, unseqLevelTsFileCountMap)
+        .forEach(TsFileMetrics::clearGauges);
+    Arrays.asList(seqLevelTsFileSizeMap, unseqLevelTsFileSizeMap)
+        .forEach(TsFileMetrics::clearGauges);
+    hasRemainData.set(true);
     checkIfThereRemainingData();
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     // do nothing here
+  }
+
+  private static <K, V> void clearGauges(Map<K, Pair<V, Gauge>> map) {
+    for (K key : map.keySet()) {
+      map.computeIfPresent(
+          key,
+          (k, v) -> {
+            v.setRight(null);
+            return v;
+          });
+    }
   }
 
   // region external update tsfile related metrics

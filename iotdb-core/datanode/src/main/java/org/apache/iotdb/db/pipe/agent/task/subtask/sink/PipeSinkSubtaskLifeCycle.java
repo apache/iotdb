@@ -157,6 +157,16 @@ public class PipeSinkSubtaskLifeCycle implements AutoCloseable {
         registeredTaskCount);
   }
 
+  public synchronized void discardReceiverRuntimeSessions(
+      final String pipeName, final long creationTime) {
+    subtask.discardReceiverRuntimeSessions(pipeName, creationTime);
+  }
+
+  public synchronized void registerReceiverRuntimeSessions(
+      final String pipeName, final long creationTime) {
+    subtask.registerReceiverRuntimeSessions(pipeName, creationTime);
+  }
+
   @Override
   public synchronized void close() {
     executor.deregister(subtask.getTaskID());

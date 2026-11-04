@@ -19,21 +19,32 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.AuditEventType;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthChecker;
+import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthCheckerImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TableModelPrivilege;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
 
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -47,9 +58,13 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetad
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_ID;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 public class AuthTest {
 
@@ -107,6 +122,50 @@ public class AuthTest {
     } catch (Exception e) {
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void testInformationSchemaReceiversUseSameLocalAuthAsPipes() {
+    final ITableAuthChecker authChecker = Mockito.mock(ITableAuthChecker.class);
+
+    try {
+      analyzeSQL(
+          String.format(
+              "SELECT * FROM %s.%s",
+              InformationSchema.INFORMATION_DATABASE, InformationSchema.PIPES),
+          user1,
+          authChecker);
+      analyzeSQL(
+          String.format(
+              "SELECT * FROM %s.%s",
+              InformationSchema.INFORMATION_DATABASE, InformationSchema.RECEIVERS),
+          user1,
+          authChecker);
+    } catch (Exception e) {
+      fail("Unexpected exception : " + e.getMessage());
+    }
+
+    Mockito.verify(authChecker, Mockito.never()).checkGlobalPrivileges(any(), any(), any());
+  }
+
+  @Test
+  public void testTreeShowReceiversUsesSameLocalAuthAsShowPipes() {
+    final TreeAccessCheckVisitor visitor = new TreeAccessCheckVisitor();
+    final TreeAccessCheckContext showPipesContext =
+        new TreeAccessCheckContext(1, user1, "127.0.0.1");
+    final TreeAccessCheckContext showReceiversContext =
+        new TreeAccessCheckContext(1, user1, "127.0.0.1");
+
+    final TSStatus showPipesStatus =
+        visitor.visitShowPipes(new ShowPipesStatement(), showPipesContext);
+    final TSStatus showReceiversStatus =
+        visitor.visitShowReceivers(new ShowReceiversStatement(), showReceiversContext);
+
+    assertEquals(StatusUtils.OK.getCode(), showPipesStatus.getCode());
+    assertEquals(showPipesStatus.getCode(), showReceiversStatus.getCode());
+    assertEquals(AuditLogOperation.QUERY, showReceiversContext.getAuditLogOperation());
+    assertEquals(AuditEventType.OBJECT_AUTHENTICATION, showReceiversContext.getAuditEventType());
+    assertTrue(showReceiversContext.getResult());
   }
 
   @Test
@@ -204,6 +263,49 @@ public class AuthTest {
 
     // TODO alter database
 
+  }
+
+  @Test
+  public void testFunctionManagementAuditOperation() {
+    ITableAuthChecker authChecker = Mockito.mock(ITableAuthChecker.class);
+    String functionName = "test_function";
+
+    analyzeConfigTask(
+        String.format(
+            "CREATE FUNCTION %s AS 'org.apache.iotdb.db.query.udf.example.relational.AllSum'",
+            functionName),
+        user1,
+        authChecker);
+    analyzeConfigTask(String.format("DROP FUNCTION %s", functionName), user1, authChecker);
+
+    verify(authChecker, times(2))
+        .checkGlobalPrivilege(
+            eq(user1),
+            eq(TableModelPrivilege.SYSTEM),
+            eq(AuditLogOperation.DDL),
+            any(),
+            argThat(auditObject -> functionName.equals(auditObject.get())));
+  }
+
+  @Test
+  public void testExplicitGlobalPrivilegeAuditOperation() {
+    ITableAuthCheckerImpl authChecker = new ITableAuthCheckerImpl();
+    UserEntity auditEntity = new UserEntity(0, userRoot, "127.0.0.1");
+
+    authChecker.checkGlobalPrivilege(
+        userRoot,
+        TableModelPrivilege.SYSTEM,
+        AuditLogOperation.DDL,
+        auditEntity,
+        () -> "test_function");
+
+    assertEquals(AuditLogOperation.DDL, auditEntity.getAuditLogOperation());
+    assertEquals(Collections.singletonList(PrivilegeType.SYSTEM), auditEntity.getPrivilegeTypes());
+    assertTrue(auditEntity.getResult());
+
+    UserEntity defaultAuditEntity = new UserEntity(0, userRoot, "127.0.0.1");
+    authChecker.checkGlobalPrivilege(userRoot, TableModelPrivilege.SYSTEM, defaultAuditEntity);
+    assertEquals(AuditLogOperation.CONTROL, defaultAuditEntity.getAuditLogOperation());
   }
 
   private void analyzeSQL(String sql, String userName, ITableAuthChecker authChecker) {

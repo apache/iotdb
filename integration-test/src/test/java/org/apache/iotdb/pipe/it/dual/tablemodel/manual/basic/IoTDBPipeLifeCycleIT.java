@@ -539,7 +539,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
 
       TableModelUtils.insertData("test", "test", 200, 300, senderEnv);
 
-      TableModelUtils.assertCountData("test", "test", 200, receiverEnv, handleFailure);
+      // A stopped pipe must keep the receiver data unchanged.
+      TableModelUtils.assertCountDataAlwaysOnEnv("test", "test", 200, receiverEnv);
     }
   }
 

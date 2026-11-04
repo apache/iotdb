@@ -21,8 +21,12 @@ package org.apache.iotdb.db.queryengine.plan.scheduler;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.audit.DataNodeUserDataTransferAuditor;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
@@ -49,6 +53,7 @@ public class AsyncPlanNodeSender {
   private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
       asyncInternalServiceClientManager;
   private final List<FragmentInstance> instances;
+  private final TEndPoint localEndPoint;
 
   private final Map<TEndPoint, BatchRequestWithIndex> batchRequests;
   private final Map<Integer, TSendSinglePlanNodeResp> instanceId2RespMap;
@@ -65,6 +70,10 @@ public class AsyncPlanNodeSender {
     this.startSendTime = System.nanoTime();
     this.asyncInternalServiceClientManager = asyncInternalServiceClientManager;
     this.instances = instances;
+    this.localEndPoint =
+        new TEndPoint(
+            IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
+            IoTDBDescriptor.getInstance().getConfig().getInternalPort());
     this.batchRequests = new HashMap<>();
     for (int i = 0; i < instances.size(); i++) {
       this.batchRequests
@@ -76,7 +85,8 @@ public class AsyncPlanNodeSender {
               new TSendSinglePlanNodeReq(
                   new TPlanNode(
                       instances.get(i).getFragment().getPlanNodeTree().serializeToByteBuffer()),
-                  instances.get(i).getRegionReplicaSet().getRegionId()));
+                  instances.get(i).getRegionReplicaSet().getRegionId()),
+              containsUserData(instances.get(i)));
     }
     this.instanceId2RespMap = new ConcurrentHashMap<>(instances.size() + 1, 1);
     this.needRetryInstanceIndex = Collections.synchronizedList(new ArrayList<>());
@@ -91,7 +101,10 @@ public class AsyncPlanNodeSender {
               pendingNumber,
               instanceId2RespMap,
               needRetryInstanceIndex,
-              startSendTime);
+              startSendTime,
+              localEndPoint,
+              entry.getKey(),
+              entry.getValue().containsUserData());
       try {
         AsyncDataNodeInternalServiceClient client =
             asyncInternalServiceClientManager.borrowClient(entry.getKey());
@@ -188,7 +201,8 @@ public class AsyncPlanNodeSender {
                           .getFragment()
                           .getPlanNodeTree()
                           .serializeToByteBuffer()),
-                  instances.get(fragmentInstanceIndex).getRegionReplicaSet().getRegionId()));
+                  instances.get(fragmentInstanceIndex).getRegionReplicaSet().getRegionId()),
+              containsUserData(instances.get(fragmentInstanceIndex)));
     }
 
     // 2. reset the pendingNumber, needRetryInstanceIds and startSendTime
@@ -213,9 +227,13 @@ public class AsyncPlanNodeSender {
     private final List<Integer> indexes = new ArrayList<>();
     private final TSendBatchPlanNodeReq batchRequest = new TSendBatchPlanNodeReq();
 
-    void addSinglePlanNodeReq(int index, TSendSinglePlanNodeReq singleRequest) {
+    private boolean containsUserData;
+
+    void addSinglePlanNodeReq(
+        int index, TSendSinglePlanNodeReq singleRequest, boolean containsUserData) {
       indexes.add(index);
       batchRequest.addToRequests(singleRequest);
+      this.containsUserData |= containsUserData;
     }
 
     public List<Integer> getIndexes() {
@@ -225,5 +243,25 @@ public class AsyncPlanNodeSender {
     public TSendBatchPlanNodeReq getBatchRequest() {
       return batchRequest;
     }
+
+    public boolean containsUserData() {
+      return containsUserData;
+    }
+  }
+
+  private static boolean containsUserData(FragmentInstance instance) {
+    return containsUserData(
+        instance.getFragment().getPlanNodeTree(),
+        instance.getSessionInfo() == null ? null : instance.getSessionInfo().getUserName());
+  }
+
+  static boolean containsUserData(PlanNode node, String username) {
+    return DataNodeUserDataTransferAuditor.isEnabled()
+        && !User.BUILTIN_INTERNAL_AUDIT_LOG_USERNAME.equals(username)
+        && DataNodeUserDataTransferAuditor.containsUserData(node);
+  }
+
+  static boolean containsUserData(PlanNode node) {
+    return DataNodeUserDataTransferAuditor.containsUserData(node);
   }
 }

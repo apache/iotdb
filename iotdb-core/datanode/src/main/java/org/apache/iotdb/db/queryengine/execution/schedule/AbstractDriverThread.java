@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
+import org.apache.iotdb.db.exception.CorruptedTsFileException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -66,8 +67,11 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
         try {
           next = queue.poll();
         } catch (InterruptedException e) {
-          logger.warn(
-              DataNodeQueryMessages.EXECUTOR_FAILED_TO_POLL_DRIVER_TASK_FROM_QUEUE, this.getName());
+          if (!closed) {
+            logger.warn(
+                DataNodeQueryMessages.EXECUTOR_FAILED_TO_POLL_DRIVER_TASK_FROM_QUEUE,
+                this.getName());
+          }
           Thread.currentThread().interrupt();
           break;
         }
@@ -85,7 +89,39 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
           try (SetThreadName driverTaskName =
               new SetThreadName(next.getDriver().getDriverTaskId().getFullId())) {
             Throwable rootCause = ErrorHandlingCommonUtils.getRootCause(e);
-            if (rootCause instanceof IoTDBRuntimeException) {
+            if (closed && rootCause instanceof InterruptedException) {
+              Thread.currentThread().interrupt();
+              // Still abort the task below so that shutdown releases its query resources.
+              next.setAbortCause(
+                  new DriverTaskAbortedException(
+                      next.getDriverTaskId().getFullId(),
+                      DriverTaskAbortedException.BY_SCHEDULER_SHUTDOWN));
+            } else if (rootCause instanceof CorruptedTsFileException) {
+              // CorruptedTsFileException no longer chains the original IOException as its
+              // cause (it uses addSuppressed instead), so getRootCause returns the exception
+              // itself and we can match it here.
+              CorruptedTsFileException corruptedTsFileException =
+                  (CorruptedTsFileException) rootCause;
+              if (next.getDriver()
+                  .getDriverContext()
+                  .getFragmentInstanceContext()
+                  .isExternalTsFileScan()) {
+                logger.info(
+                    DataNodeQueryMessages
+                        .LOG_TSFILE_MAY_BE_CORRUPTED_DURING_QUERY_EXECUTION_FILE_ARG_STAGE_ARG_9F77E8B3,
+                    corruptedTsFileException.getTsFile(),
+                    corruptedTsFileException.getStage(),
+                    rootCause);
+              } else {
+                logger.warn(
+                    DataNodeQueryMessages
+                        .LOG_TSFILE_MAY_BE_CORRUPTED_DURING_QUERY_EXECUTION_FILE_ARG_STAGE_ARG_9F77E8B3,
+                    corruptedTsFileException.getTsFile(),
+                    corruptedTsFileException.getStage(),
+                    rootCause);
+              }
+              next.setAbortCause(rootCause);
+            } else if (rootCause instanceof IoTDBRuntimeException) {
               next.setAbortCause(rootCause);
             } else if (rootCause instanceof IoTDBException) {
               next.setAbortCause(rootCause);

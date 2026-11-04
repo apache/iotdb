@@ -46,12 +46,21 @@ public class SessionInfo {
 
   private ClientVersion version = ClientVersion.V_1_0;
 
+  // Only used during statement analysis on the coordinator. Analysis is complete before the
+  // SessionInfo is sent to execution nodes, so this field does not need serialization.
+  private final transient boolean enableAutoCreateSchema;
+
+  // Whether the session is opened by the database itself. Like enableAutoCreateSchema, this is
+  // only consulted during analysis and therefore does not need serialization.
+  private transient boolean internal;
+
   public SessionInfo(long sessionId, UserEntity userEntity, ZoneId zoneId) {
     this.sessionId = sessionId;
     this.userEntity = userEntity;
     this.zoneId = zoneId;
     this.databaseName = null;
     this.sqlDialect = SqlDialect.TREE;
+    this.enableAutoCreateSchema = true;
   }
 
   public SessionInfo(
@@ -60,7 +69,7 @@ public class SessionInfo {
       ZoneId zoneId,
       @Nullable String databaseName,
       SqlDialect sqlDialect) {
-    this(sessionId, userEntity, zoneId, ClientVersion.V_1_0, databaseName, sqlDialect);
+    this(sessionId, userEntity, zoneId, ClientVersion.V_1_0, databaseName, sqlDialect, true);
   }
 
   public SessionInfo(
@@ -70,12 +79,24 @@ public class SessionInfo {
       ClientVersion version,
       @Nullable String databaseName,
       SqlDialect sqlDialect) {
+    this(sessionId, userEntity, zoneId, version, databaseName, sqlDialect, true);
+  }
+
+  public SessionInfo(
+      long sessionId,
+      UserEntity userEntity,
+      ZoneId zoneId,
+      ClientVersion version,
+      @Nullable String databaseName,
+      SqlDialect sqlDialect,
+      boolean enableAutoCreateSchema) {
     this.sessionId = sessionId;
     this.userEntity = userEntity;
     this.zoneId = zoneId;
     this.version = version;
     this.databaseName = databaseName;
     this.sqlDialect = sqlDialect;
+    this.enableAutoCreateSchema = enableAutoCreateSchema;
   }
 
   @TestOnly
@@ -142,6 +163,19 @@ public class SessionInfo {
 
   public SqlDialect getSqlDialect() {
     return sqlDialect;
+  }
+
+  public boolean isEnableAutoCreateSchema() {
+    return enableAutoCreateSchema;
+  }
+
+  public boolean isInternal() {
+    return internal;
+  }
+
+  public SessionInfo setInternal(final boolean internal) {
+    this.internal = internal;
+    return this;
   }
 
   public static SessionInfo deserializeFrom(final ByteBuffer buffer) {

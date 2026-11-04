@@ -108,7 +108,10 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
               "root.ln.wf01.wt01.status,null,root.ln,BOOLEAN,PLAIN,ZSTD,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,"));
 
       TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "select * from root.ln.**", "Time,", Collections.emptySet());
+          receiverEnv,
+          "select * from root.ln.**",
+          "Time,root.ln.wf01.wt01.status,",
+          Collections.emptySet());
     }
   }
 
@@ -179,8 +182,12 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
               "insert into root.ln.wf01.wt01(time, status) values(now(), false)", "flush"),
           null);
 
+      // Keep the header independent of wildcard expansion order.
       TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "select * from root.ln.**", "Time,", Collections.emptySet());
+          receiverEnv,
+          "select wf01.wt01.status, wf02.wt01.status from root.ln",
+          "Time,root.ln.wf01.wt01.status,root.ln.wf02.wt01.status,",
+          Collections.emptySet());
     }
   }
 
@@ -254,7 +261,10 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
           null);
 
       TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "select * from root.ln.**", "Time,", Collections.emptySet());
+          receiverEnv,
+          "select * from root.ln.**",
+          "Time,root.ln.wf01.wt01.status,",
+          Collections.emptySet());
     }
   }
 
@@ -293,7 +303,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       TestUtils.executeNonQuery(senderEnv, "create user `ln_write_user` 'write_pwd123456'", null);
 
       TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "list user", "user,", Collections.singleton("root,"));
+          receiverEnv, "list user", "UserId,User,", Collections.singleton("0,root,"));
     }
   }
 
@@ -337,14 +347,14 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
               "GRANT READ_DATA, WRITE_DATA ON root.** TO USER ln_write_user;"),
           null);
 
-      TestUtils.assertDataAlwaysOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "LIST PRIVILEGES OF USER ln_write_user",
-          "ROLE,PATH,PRIVILEGES,GRANT OPTION,",
+          "Role,Scope,Privileges,GrantOption,",
           new HashSet<>(
               Arrays.asList(
-                  ",root.**,SYSTEM,true,",
-                  ",root.**,SECURITY,true,",
+                  ",,SYSTEM,true,",
+                  ",,SECURITY,true,",
                   ",root.ln.**,READ_DATA,false,",
                   ",root.ln.**,WRITE_DATA,false,")));
     }

@@ -22,6 +22,8 @@ package org.apache.iotdb;
 import org.apache.iotdb.session.Session;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.service.TypeService;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -40,6 +42,25 @@ import java.util.Map.Entry;
 public class TabletExample {
 
   private static final String TIME_STR = "time";
+  private static final TypeService<CsvValueParser> CSV_VALUE_PARSER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN -> Boolean::parseBoolean;
+            case DATE, INT32 -> Integer::parseInt;
+            case TIMESTAMP, INT64 -> Long::parseLong;
+            case FLOAT -> Float::parseFloat;
+            case DOUBLE -> Double::parseDouble;
+            case STRING, BLOB, TEXT -> BytesUtils::valueOf;
+            case VECTOR ->
+                value -> {
+                  throw new IOException(
+                      String.format("data type %s is not yet.", TSDataType.VECTOR));
+                };
+            default ->
+                value -> {
+                  throw new IOException("no type");
+                };
+          };
 
   /**
    * load csv data.
@@ -86,40 +107,19 @@ public class TabletExample {
           String measurement = entry.getKey();
           TSDataType dataType = entry.getValue();
           int idx = columnToIdMap.get(measurement);
-          switch (dataType) {
-            case BOOLEAN:
-              ret.get(measurement).add(Boolean.parseBoolean(items[idx]));
-              break;
-            case DATE:
-            case INT32:
-              ret.get(measurement).add(Integer.parseInt(items[idx]));
-              break;
-            case TIMESTAMP:
-            case INT64:
-              ret.get(measurement).add(Long.parseLong(items[idx]));
-              break;
-            case FLOAT:
-              ret.get(measurement).add(Float.parseFloat(items[idx]));
-              break;
-            case DOUBLE:
-              ret.get(measurement).add(Double.parseDouble(items[idx]));
-              break;
-            case STRING:
-            case BLOB:
-            case TEXT:
-              ret.get(measurement).add(BytesUtils.valueOf(items[idx]));
-              break;
-            case VECTOR:
-              throw new IOException(String.format("data type %s is not yet.", TSDataType.VECTOR));
-            default:
-              throw new IOException("no type");
-          }
+          ret.get(measurement)
+              .add(CSV_VALUE_PARSER_SERVICE.call(Type.fromTsDataType(dataType)).parse(items[idx]));
         }
       }
       return ret;
     } finally {
       measureTSTypeInfos.remove(TIME_STR);
     }
+  }
+
+  @FunctionalInterface
+  private interface CsvValueParser {
+    Object parse(String value) throws IOException;
   }
 
   /**

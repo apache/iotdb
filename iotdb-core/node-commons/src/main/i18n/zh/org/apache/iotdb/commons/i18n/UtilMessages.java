@@ -246,6 +246,8 @@ public final class UtilMessages {
   public static final String MESSAGE_MEET_ERROR_CLOSE_OPERATION_1C7D0589 = "关闭操作中发生错误。";
   public static final String MESSAGE_FAIL_DO_NON_QUERY_OPERATIONS_BECAUSE_SYSTEM_READ_ONLY_10CA1ED2 = "系统只读，无法执行非查询操作。";
   public static final String MESSAGE_DISK_SPACE_INSUFFICIENT_DF6205B0 = "磁盘空间不足。";
+  public static final String MESSAGE_FAILED_TO_WRITE_THE_TARGET_FILE_4C48CE25 =
+      "写入目标文件失败。";
   public static final String MESSAGE_MEET_ERROR_STARTING_UP_22A4CBFE = "启动时发生错误。";
   public static final String MESSAGE_USERNAME_PASSWORD_WRONG_C44C4AF0 = "用户名或密码错误。";
   public static final String MESSAGE_HAS_NOT_LOGGED_A2BA0267 = "尚未登录。";
@@ -258,4 +260,9 @@ public final class UtilMessages {
   public static final String LOG_ARG_COLON_ARG_DCE519A1 = "{}: {}";
   public static final String EMPTY_MESSAGE = "";
 
+  public static final String
+      EXCEPTION_IN_WINDOWS_SYSTEM_THE_PATH_SHALL_NOT_CONTAIN_ARG_OR_ASCII_CONTROL_CHARACTERS_EQUALS_ONE_OF_ARG_WITH_OR_WITHOUT_AN_EXTENSION_OR_ENDS_WITH_OR_B3B92470 =
+          "在 Windows 系统中，路径不能包含 %s 或 ASCII 控制字符，不能与 %s 中任一名称相同（无论是否带扩展名），也不能以 '.' 或 ' ' 结尾。";
+
+  public static final String EXCEPTION_FROM_ARG_TO_ARG_D2758D41 = "从 %s 到 %s";
 }

@@ -48,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntrySpillManager;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -158,6 +159,10 @@ public class QueryExecution implements IQueryExecution {
 
               this.cleanUpCoordinatorContextMapIfNeeded(cause);
             }
+            // Signal all ExternalTsFileQueryResource instances that the query has ended.
+            // Each resource closes only when its fragmentInstanceUsageCount reaches zero,
+            // preventing a premature close raced with late-scheduled FragmentInstances.
+            context.releaseExternalTsFileQueryResources();
             this.stop(cause);
           }
         });
@@ -174,7 +179,21 @@ public class QueryExecution implements IQueryExecution {
   public void start() {
     try {
       startInternal();
-    } catch (RuntimeException | Error e) {
+    } catch (RuntimeException e) {
+      finishAnalysisAttemptForCurrentState();
+      if (stateMachine.getState().isDone()) {
+        // The query has already reached a terminal state (e.g. killed by others), and the status
+        // recorded by the state machine is the authoritative result. An exception thrown here is
+        // usually caused by resources being released concurrently, so it must not override it.
+        LOGGER.warn(
+            DataNodeQueryMessages.IGNORE_EXCEPTION_AFTER_QUERY_DONE,
+            context.getQueryId(),
+            stateMachine.getState(),
+            e.getMessage());
+        return;
+      }
+      throw e;
+    } catch (Error e) {
       finishAnalysisAttemptForCurrentState();
       throw e;
     }
@@ -417,6 +436,7 @@ public class QueryExecution implements IQueryExecution {
 
   /** Release the resources that current QueryExecution hold with a specified exception */
   private void releaseResource(Throwable t) {
+    context.recordDeviceEntryDiskIOMetricsOnRelease();
     // close ResultHandle to unblock client's getResult request
     // Actually, we should not close the ResultHandle when the QueryExecution is Finished.
     // There are only two scenarios where the ResultHandle should be closed:
@@ -433,6 +453,17 @@ public class QueryExecution implements IQueryExecution {
       cleanUpResultHandle();
     }
     context.releaseExternalTsFileQueryResources();
+    if (context.isDeviceEntrySpilled()) {
+      try {
+        DeviceEntrySpillManager.getInstance().deregisterQuery(context.getQueryId().getId());
+      } catch (Exception e) {
+        LOGGER.warn(
+            String.format(
+                DataNodeQueryMessages
+                    .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
+                context.getQueryId().getId()));
+      }
+    }
   }
 
   /**
@@ -627,19 +658,29 @@ public class QueryExecution implements IQueryExecution {
     } catch (InterruptedException e) {
       // TODO: (xingtanzjr) use more accurate error handling
       Thread.currentThread().interrupt();
+      // Dispatch may already have converted an interruption to a failure status. Preserve its
+      // recorded origin without reclassifying an unrelated failure.
+      TSStatus failureStatus = stateMachine.getFailureStatus();
+      if (failureStatus != null) {
+        return new ExecutionResult(
+            context.getQueryId(),
+            failureStatus,
+            stateMachine.isFailureCausedByInterruption(failureStatus));
+      }
       return new ExecutionResult(
           context.getQueryId(),
-          stateMachine.getFailureStatus() == null
-              ? RpcUtils.getStatus(
-                  TSStatusCode.INTERNAL_SERVER_ERROR, stateMachine.getFailureMessage())
-              : stateMachine.getFailureStatus());
+          RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, stateMachine.getFailureMessage()),
+          // A terminal query may have failed with an exception that has no dedicated status code.
+          !stateMachine.getState().isDone());
     } catch (ExecutionException e) {
+      TSStatus failureStatus = stateMachine.getFailureStatus();
       return new ExecutionResult(
           context.getQueryId(),
-          stateMachine.getFailureStatus() == null
+          failureStatus == null
               ? RpcUtils.getStatus(
                   TSStatusCode.INTERNAL_SERVER_ERROR, stateMachine.getFailureMessage())
-              : stateMachine.getFailureStatus());
+              : failureStatus,
+          stateMachine.isFailureCausedByInterruption(failureStatus));
     }
   }
 
@@ -710,7 +751,8 @@ public class QueryExecution implements IQueryExecution {
         || IoTDBConstant.ClientVersion.V_1_0.equals(context.getSession().getVersion())) {
       planner.setRedirectInfo(analysis, CONFIG.getAddressAndPort(), tsstatus);
     }
-    return new ExecutionResult(context.getQueryId(), tsstatus);
+    return new ExecutionResult(
+        context.getQueryId(), tsstatus, stateMachine.isFailureCausedByInterruption(tsstatus));
   }
 
   public DistributedQueryPlan getDistributedPlan() {

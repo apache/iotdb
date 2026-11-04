@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.processor.aggregate.window.processor;
 
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.TimeSeriesWindow;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowOutput;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowState;
@@ -31,11 +32,13 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.apache.tsfile.utils.Pair;
 
+import java.math.BigInteger;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import static com.google.common.math.LongMath.saturatedAdd;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_SLIDING_BOUNDARY_TIME_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_SLIDING_BOUNDARY_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_SLIDING_SECONDS_DEFAULT_VALUE;
@@ -51,7 +54,9 @@ public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProce
     final PipeParameters parameters = validator.getParameters();
     validator.validate(
         args -> (long) args > 0,
-        String.format("The parameter %s must be greater than 0", PROCESSOR_SLIDING_SECONDS_KEY),
+        String.format(
+            DataNodePipeMessages.EXCEPTION_THE_PARAMETER_ARG_MUST_BE_GREATER_THAN_0_B9F6C794,
+            PROCESSOR_SLIDING_SECONDS_KEY),
         parameters.getLongOrDefault(
             PROCESSOR_SLIDING_SECONDS_KEY, PROCESSOR_SLIDING_SECONDS_DEFAULT_VALUE));
   }
@@ -80,10 +85,12 @@ public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProce
             ? slidingBoundaryTime
             : windowList.get(windowList.size() - 1).getTimestamp();
 
-    if (timeStamp >= (windowList.isEmpty() ? lastTime : lastTime + slidingInterval)) {
+    if (windowList.isEmpty()
+        ? timeStamp >= lastTime
+        : isTimestampAtOrAfterWindowEnd(timeStamp, lastTime, slidingInterval)) {
       final TimeSeriesWindow window = new TimeSeriesWindow(this, null);
       // Align to the last time + k * slidingInterval, k is a natural number
-      window.setTimestamp(((timeStamp - lastTime) / slidingInterval) * slidingInterval + lastTime);
+      window.setTimestamp(alignWindowStart(timeStamp, lastTime, slidingInterval));
       windowList.add(window);
       return Collections.singleton(window);
     }
@@ -96,12 +103,12 @@ public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProce
     if (timeStamp < window.getTimestamp()) {
       return new Pair<>(WindowState.IGNORE_VALUE, null);
     }
-    if (timeStamp >= window.getTimestamp() + slidingInterval) {
+    if (isTimestampAtOrAfterWindowEnd(timeStamp, window.getTimestamp(), slidingInterval)) {
       return new Pair<>(
           WindowState.EMIT_AND_PURGE_WITHOUT_COMPUTE,
           new WindowOutput()
               .setTimestamp(window.getTimestamp())
-              .setProgressTime(window.getTimestamp() + slidingInterval));
+              .setProgressTime(saturatedAdd(window.getTimestamp(), slidingInterval)));
     }
     return new Pair<>(WindowState.COMPUTE, null);
   }
@@ -110,6 +117,23 @@ public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProce
   public WindowOutput forceOutput(final TimeSeriesWindow window) {
     return new WindowOutput()
         .setTimestamp(window.getTimestamp())
-        .setProgressTime(window.getTimestamp() + slidingInterval);
+        .setProgressTime(saturatedAdd(window.getTimestamp(), slidingInterval));
+  }
+
+  private static boolean isTimestampAtOrAfterWindowEnd(
+      final long timestamp, final long windowStart, final long interval) {
+    return windowStart <= Long.MAX_VALUE - interval && timestamp >= windowStart + interval;
+  }
+
+  private static long alignWindowStart(
+      final long timestamp, final long baseTime, final long interval) {
+    final BigInteger base = BigInteger.valueOf(baseTime);
+    final BigInteger intervalValue = BigInteger.valueOf(interval);
+    return base.add(
+            BigInteger.valueOf(timestamp)
+                .subtract(base)
+                .divide(intervalValue)
+                .multiply(intervalValue))
+        .longValueExact();
   }
 }

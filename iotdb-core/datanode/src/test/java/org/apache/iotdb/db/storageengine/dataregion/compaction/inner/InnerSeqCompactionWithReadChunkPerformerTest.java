@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
@@ -1074,7 +1075,11 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
 
   @Test
   public void testCompactionWithDeletionsDuringCompactions()
-      throws MetadataException, IOException, DataRegionException, InterruptedException {
+      throws MetadataException,
+          IOException,
+          DataRegionException,
+          InterruptedException,
+          WriteProcessRejectException {
     // create source seq files
     List<TsFileResource> sourceResources = new ArrayList<>();
     List<List<Long>> chunkPagePointsNum = new ArrayList<>();

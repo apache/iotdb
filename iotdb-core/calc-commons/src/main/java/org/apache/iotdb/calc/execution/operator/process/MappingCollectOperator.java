@@ -45,37 +45,43 @@ public class MappingCollectOperator extends CollectOperator {
       List<List<Integer>> mappings) {
     super(operatorContext, children);
     this.mappings = mappings;
-    outputColumnsCount = mappings.get(0).size();
+    outputColumnsCount = mappings.isEmpty() ? 0 : mappings.get(0).size();
   }
 
   @Override
-  public TsBlock next() throws Exception {
-    if (children.get(currentIndex).hasNextWithTimer()) {
-      TsBlock tsBlock = children.get(currentIndex).nextWithTimer();
-      if (tsBlock == null) {
-        return null;
-      } else {
-        Column[] columns = new Column[outputColumnsCount];
-        List<Integer> mapping = mappings.get(currentIndex);
-        for (int i = 0; i < columns.length; i++) {
-          columns[i] = tsBlock.getColumn(mapping.get(i));
-        }
-        return TsBlock.wrapBlocksWithoutCopy(
-            tsBlock.getPositionCount(),
-            new RunLengthEncodedColumn(
-                CommonOperatorUtils.TIME_COLUMN_TEMPLATE, tsBlock.getPositionCount()),
-            columns);
-      }
-    } else {
-      closeCurrentChild(currentIndex);
-      currentIndex++;
-      return null;
+  protected TsBlock transformBlock(int childId, TsBlock tsBlock) {
+    Column[] columns = new Column[outputColumnsCount];
+    List<Integer> mapping = mappings.get(childId);
+    for (int i = 0; i < columns.length; i++) {
+      columns[i] = tsBlock.getColumn(mapping.get(i));
+    }
+    return TsBlock.wrapBlocksWithoutCopy(
+        tsBlock.getPositionCount(),
+        new RunLengthEncodedColumn(
+            CommonOperatorUtils.TIME_COLUMN_TEMPLATE, tsBlock.getPositionCount()),
+        columns);
+  }
+
+  @Override
+  protected void closeCurrentChild(int index) throws Exception {
+    try {
+      super.closeCurrentChild(index);
+    } finally {
+      mappings.set(index, null);
     }
   }
 
-  protected void closeCurrentChild(int index) throws Exception {
-    children.get(index).close();
-    children.set(index, null);
-    mappings.set(index, null);
+  @Override
+  public long ramBytesUsed() {
+    long size =
+        super.ramBytesUsed()
+            + INSTANCE_SIZE
+            - RamUsageEstimator.shallowSizeOfInstance(CollectOperator.class);
+    for (List<Integer> mapping : mappings) {
+      if (mapping != null) {
+        size += RamUsageEstimator.shallowSizeOf(mapping.toArray());
+      }
+    }
+    return size;
   }
 }

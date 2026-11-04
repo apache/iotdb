@@ -106,6 +106,9 @@ public final class CommonMessages {
       "比较时基准值不应为 null";
   public static final String SIZE_MUST_BE_POSITIVE = "Size 必须大于 0";
 
+  public static final String EXCEPTION_THREAD_COUNT_MUST_BE_GREATER_THAN_OR_EQUAL_TO_0_988EF69B =
+      "线程数必须大于或等于 0";
+
   // --- sync ---
   public static final String UNEXPECTED_SERIALIZATION_ERROR =
       "序列化 PipeInfo 时发生意外错误。";
@@ -114,17 +117,15 @@ public final class CommonMessages {
   public static final String ENCRYPT_PASSWORD_ERROR = "加密密码时出错。";
   public static final String CLASSLOADER_NOT_DETERMINED = "无法确定用于加载类的 ClassLoader。";
 
-  // --- binaryallocator ---
-  public static final String BINARY_ALLOCATOR_RUNNING_GC_EVICTION =
-      "二进制分配器正在执行 GC 驱逐";
-  public static final String BINARY_ALLOCATOR_SHUTTING_DOWN_HIGH_GC =
-      "由于 GC 时间百分比过高 ({}%)，二进制分配器正在关闭。";
-  public static final String AUTO_RELEASER_EXIT_INTERRUPTED =
-      "{} 因 InterruptedException 退出。";
-  public static final String STOPPING_COMPONENT = "正在停止 {}";
-  public static final String UNABLE_TO_STOP_AUTO_RELEASER =
-      "在 {} 毫秒后仍无法停止自动释放器";
-  public static final String UNABLE_TO_STOP_EVICTOR = "在 {} 毫秒后仍无法停止驱逐器";
+  // --- startcheck / system.properties ---
+  public static final String IOTDB_VERSION_TOO_OLD = "IoTDB 版本过旧";
+  public static final String REPAIR_SYSTEM_PROPERTIES = "修复 system.properties，缺少 {}";
+  public static final String PARAMETER_CANNOT_BE_MODIFIED_AFTER_FIRST_STARTUP_FMT =
+      "%s 首次启动后不能修改";
+  public static final String MISC_LOG_SERIALIZE_MUTABLE_SYSTEM_PROPERTIES_SUCCESSFULLY_WHICH_TAKES_4656A206 =
+      "成功序列化 mutable system properties，耗时 {} ms。";
+  public static final String MISC_LOG_DO_NOT_UPGRADE_IOTDB_FROM_V0_9_OR_LOWER_VERSION_TO_V1_0_9878EC88 =
+      "请勿将 IoTDB 从 v0.9 或更低版本直接升级到 v1.0！请先升级到 v0.10";
 
   private CommonMessages() {}
 
@@ -215,5 +216,115 @@ public final class CommonMessages {
   public static final String EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_DATA_ARGUMENT_MUST_CONTAIN_EXACTLY_THE_TIME_COLUMN_SPECIFIED_BY_THE_TIMECOL_ARGUMENT_4375BAE9 = "DATA 参数的 ORDER BY 子句必须仅包含 TIMECOL 参数指定的时间列。";
   public static final String EXCEPTION_UNSUPPORTED_M4_VALUE_TYPE_AF0EF286 = "不支持的 M4 值类型：";
   public static final String EXCEPTION_DISK_SPACE_WARNING_THRESHOLD_MUST_BE_IN_0_1_BUT_WAS_7B345766 = "disk_space_warning_threshold 必须在 [0, 1) 范围内，但实际为 ";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_CACHE_MEMORY_USAGE_PERCENTAGE_MUST_BE_IN_0_1_BUT_WAS_ARG_57FE2C66 =
+          "subscription_cache_memory_usage_percentage 必须在 [0, 1] 范围内，但实际为 %s。";
+  public static final String LOG_TRUSTED_CHANNEL_FUNCTION_FAILED_INITIATOR_ARG_TARGET_ARG_E4C28443 =
+      "可信信道功能失效：发起者=%s，目标端=%s";
+  public static final String
+      LOG_USER_DATA_TRANSFER_ATTEMPT_TIME_ARG_INITIATOR_ARG_SOURCE_ARG_TARGET_ARG_PROTECTION_METHOD_ARG_RESULT_ARG_ERROR_ARG_D3E9A1DF =
+          "用户数据传送尝试：时间=%d，发起者=%s，源端=%s，目标端=%s，保护方法=%s，结果=%s，错误=%s";
+  public static final String EXCEPTION_FILTER_FUNCTION_WPASS_VALIDATION = "wpass的取值范围应该位于(0, 1)";
+  public static final String EXCEPTION_NO_CALCULATE_COLUMNS = "没有找到可以计算的列.";
+  public static final String EXCEPTION_NOT_ALLOWED_COLUMNS = "只允许列类型为double, float, int32, int64参与函数计算, 当前列 %s 类型是 %s.";
+  public static final String EXCEPTION_FILTER_FUNCTION_ROW_INDEX_EXCEED_MAXIMUM = "分区行数超过了最大限制";
+  public static final String
+      EXCEPTION_XCORR_REQUIRES_EXACTLY_TWO_CALCULATION_COLUMNS_BUT_FOUND_ARG_2FF8EB0C =
+          "XCorr 要求必须正好有两列计算列，但实际找到 %d 列。";
+  public static final String EXCEPTION_COLUMN_LACK_OF_NAME = "表参数中列缺少名字";
+  public static final String
+      EXCEPTION_SNAPSHOT_BUFFER_SIZE_MUST_NOT_EXCEED_ARG_BYTES_BUT_WAS_ARG_D1DA6F7E =
+          "快照缓冲区大小不得超过 %d 字节，但实际为 %d。";
+  public static final String
+      EXCEPTION_THE_TABLE_ARG_ARG_IS_IN_THE_PRE_DELETE_STATE_PLEASE_WAIT_A_FEW_SECONDS_IF_THE_TABLE_IS_STILL_IN_THIS_STATE_PLEASE_DROP_IT_AGAIN_13B9D39F =
+          "表 %s.%s 处于预删除的状态，请稍等，如之后重试还是此状态，请输入sql再次删除";
+  public static final String EXCEPTION_MEMORY_BLOCK_ARG_IS_READ_ONLY_D10B3340 = "内存块 %s 为只读";
+  public static final String EXCEPTION_MEMORY_BLOCK_ARG_ALREADY_USES_MUTABLE_ACCOUNTING_6F7DCB3F =
+      "内存块 %s 已使用可变计量";
+  public static final String
+      EXCEPTION_COLUMN_ARG_IN_TABLE_ARG_ARG_IS_BEING_DELETED_PLEASE_WAIT_FOR_DELETION_TO_FINISH_OR_RETRY_DROPPING_THE_COLUMN_IF_IT_IS_STUCK_875DAFFE =
+          "列 '%s'（位于表 '%s.%s'）正在删除中。请等待删除完成；如果删除一直未完成，请重试删除该列。";
+  public static final String
+      EXCEPTION_COLUMN_ARG_IN_TABLE_ARG_ARG_IS_BEING_ALTERED_PLEASE_WAIT_FOR_ALTERATION_TO_FINISH_OR_RETRY_ALTERING_THE_COLUMN_IF_IT_IS_STUCK_11155B55 =
+          "列 '%s'（位于表 '%s.%s'）正在修改中。请等待修改完成；如果修改一直未完成，请重试修改该列。";
 
+  public static final String
+      EXCEPTION_UNTRUSTED_URI_ARG_CURRENT_TRUSTED_URI_PATTERN_IS_ARG_9C06C271 =
+          "不受信任的 URI %s，当前 trusted_uri_pattern 为 %s";
+
+  public static final String LOG_AN_ERROR_OCCURRED_WHILE_RUNNING_THE_COMMAND_ARG_ABA3D641 =
+      "运行命令时发生错误：%s";
+
+  public static final String EXCEPTION_CONDITION_WAS_NOT_MET_WITHIN_ARG_MS_60098C77 =
+      "在 %d ms 内未满足条件";
+
+  public static final String
+      EXCEPTION_K_HAS_TO_BE_GREATER_THAN_0_AND_LESS_THAN_OR_EQUAL_TO_1000_AFD17B03 =
+          "k 必须大于 0 且小于或等于 1000。";
+
+  public static final String EXCEPTION_PARAMETER_OMEGA_SHOULD_BE_NON_NEGATIVE_6154A6D7 =
+      "参数 omega 应为非负数。";
+
+  public static final String EXCEPTION_PARAMETER_ETA_SHOULD_BE_LARGER_THAN_0_022CA22F =
+      "参数 eta 应大于 0。";
+
+  public static final String EXCEPTION_PARAMETER_K_SHOULD_BE_A_POSITIVE_INTEGER_62AC8458 =
+      "参数 k 应为正整数。";
+
+  public static final String
+      EXCEPTION_PARAMETER_OUTPUT_COLUMN_SHOULD_BE_A_POSITIVE_INTEGER_A58CE07F =
+          "参数 output_column 应为正整数。";
+
+  public static final String EXCEPTION_UPPER_CAN_NOT_BE_SMALLER_THAN_LOWER_9041B33A =
+      "Upper 不能小于 lower。";
+
+  public static final String
+      EXCEPTION_ILLEGAL_SAMPLE_PROPORTION_PROPORTION_0_AND_PROPORTION_1_E96EE649 =
+          "采样比例无效，应满足 proportion > 0 且 proportion <= 1";
+
+  public static final String EXCEPTION_ILLEGAL_NUMBER_NUMBER_SHOULD_BE_GREATER_THAN_0_17FCD676 =
+      "数量无效，应大于 0。";
+
+  public static final String EXCEPTION_MAX_CAN_NOT_BE_SMALLER_THAN_MIN_D6EA3271 = "max 不能小于 min。";
+
+  public static final String EXCEPTION_MIN_CAN_NOT_BE_SMALLER_THAN_ARG_CBF3792E = "min 不能小于 %s。";
+
+  public static final String EXCEPTION_THE_GIVEN_VALUE_TYPE_IS_NOT_SUPPORTED_C2D711C3 =
+      "不支持给定的值类型。";
+
+  public static final String EXCEPTION_TARGET_SHOULD_NOT_BE_EMPTY_1B2C02C6 = "target 不应为空";
+
+  public static final String
+      EXCEPTION_LISTITERATORWRAPPER_DOES_NOT_SUPPORT_OPTIONAL_OPERATIONS_OF_LISTITERATOR_A5C61A70 =
+          "ListIteratorWrapper 不支持 ListIterator 的可选操作。";
+
+  public static final String EXCEPTION_CANNOT_REMOVE_ELEMENT_AT_INDEX_0_42A1988F =
+      "无法移除索引 {0} 处的元素。";
+
+  public static final String EXCEPTION_START_A_NEW_NODE_98ED9767 = "启动新节点";
+
+  public static final String
+      EXCEPTION_REMOVE_NODE_WITH_THE_GIVEN_NODEIDS_OR_THE_NODE_STARTED_ON_THE_CURRENT_MACHINE_IF_OMITTED_NOTE_THAT_THE_DATANODE_ALLOWS_FOR_THE_REMOVAL_OF_MULTIPLE_NODES_AT_ONCE_THE_CONFIGNODE_CAN_ONLY_REMOVE_ONE_NODE_AT_A_TIME_B784A43C =
+          "移除节点（指定 nodeId，省略时移除当前机器启动的节点）。DataNode 允许一次移除多个节点，ConfigNode 一次只能移除一个节点。";
+
+  public static final String EXCEPTION_NEW_FIXED_THREAD_POOL_ARG_THREAD_NUMBER_ARG_465A36AF =
+      "新建固定大小线程池：{}，线程数：{}";
+
+  public static final String EXCEPTION_NEW_SINGLE_THREAD_POOL_ARG_CB233F2A = "新建单线程池：{}";
+
+  public static final String EXCEPTION_NEW_CACHED_THREAD_POOL_ARG_3169566A = "新建缓存线程池：{}";
+
+  public static final String EXCEPTION_NEW_SINGLE_SCHEDULED_THREAD_POOL_ARG_4B7C159F =
+      "新建单线程调度线程池：{}";
+
+  public static final String EXCEPTION_NEW_SCHEDULED_THREAD_POOL_ARG_37283992 = "新建调度线程池：{}";
+
+  public static final String EXCEPTION_NEW_SYNCHRONOUSQUEUE_THREAD_POOL_ARG_F3261435 =
+      "新建 SynchronousQueue 线程池：{}";
+
+  public static final String EXCEPTION_NEW_THREAD_POOL_ARG_E17F65A1 = "新建线程池：{}";
+
+  public static final String
+      EXCEPTION_USER_ARG_ID_ARG_REQUESTS_AUTHORITY_ON_OBJECT_ARG_WITH_RESULT_ARG_F0A4B9C0 =
+          "用户 %s（ID=%d）请求对象 %s 的权限，结果为 %s";
 }

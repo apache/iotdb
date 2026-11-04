@@ -162,7 +162,7 @@ public class TransformAggregationToStreamable implements PlanOptimizer {
         TableFunctionProcessorNode node, GroupContext context) {
       if (node.getChildren().isEmpty()) {
         return ImmutableList.of();
-      } else if (node.isRowSemantic()) {
+      } else if (node.isRowSemantic() && TableFunctionOrdering.preservesInputOrder(node)) {
         return visitPlan(node, context);
       }
       Optional<DataOrganizationSpecification> dataOrganizationSpecification =
@@ -171,7 +171,8 @@ public class TransformAggregationToStreamable implements PlanOptimizer {
           .<List<Symbol>>map(
               organizationSpecification ->
                   organizationSpecification.getPartitionBy().stream()
-                      .filter(context.groupingKeys::contains)
+                      // A later partition column can recur under different earlier keys.
+                      .takeWhile(context.groupingKeys::contains)
                       .collect(Collectors.toList()))
           .orElseGet(ImmutableList::of);
     }

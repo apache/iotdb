@@ -32,6 +32,7 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -54,7 +55,7 @@ public class SchemaFileLogReader {
   }
 
   public List<byte[]> collectUpdatedEntries() throws IOException, SchemaFileLogCorruptedException {
-    if (inputStream == null || inputStream.getChannel().size() == 0) {
+    if (inputStream == null || Files.size(logFile.toPath()) == 0) {
       return Collections.emptyList();
     }
 

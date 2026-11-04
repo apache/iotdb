@@ -104,7 +104,7 @@ public class TimeoutExecutorThread<Env> extends StoppableThread {
             // procedure.
             LOGGER.warn(ProcedureMessages.FAILED_TO_UPDATE_PROCEDURE, procedure, e);
           }
-          executor.getScheduler().addFront(procedure);
+          executor.getScheduler(procedure).addFront(procedure);
         }
       }
     }

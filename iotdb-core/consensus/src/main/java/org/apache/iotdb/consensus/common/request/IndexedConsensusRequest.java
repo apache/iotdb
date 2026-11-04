@@ -47,11 +47,15 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   private final List<IConsensusRequest> requests;
   private final List<ByteBuffer> serializedRequests;
   private long memorySize = 0;
-  private AtomicLong referenceCnt = new AtomicLong();
+  private long retainedMemorySize = 0;
+  private boolean serializedRequestsBuilt = false;
+  private long queueReservedMemorySize = -1L;
+  private boolean containsUserData = false;
+  private final AtomicLong referenceCnt = new AtomicLong();
 
   public IndexedConsensusRequest(long searchIndex, List<IConsensusRequest> requests) {
     this.searchIndex = searchIndex;
-    this.requests = requests;
+    this.requests = new ArrayList<>(requests);
     this.syncIndex = -1L;
     this.serializedRequests = new ArrayList<>(requests.size());
   }
@@ -59,23 +63,33 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   public IndexedConsensusRequest(
       long searchIndex, long syncIndex, List<IConsensusRequest> requests) {
     this.searchIndex = searchIndex;
-    this.requests = requests;
+    this.requests = new ArrayList<>(requests);
     this.syncIndex = syncIndex;
     this.serializedRequests = new ArrayList<>(requests.size());
   }
 
-  public void buildSerializedRequests() {
+  public synchronized void buildSerializedRequests() {
+    if (serializedRequestsBuilt) {
+      return;
+    }
     this.requests.forEach(
         r -> {
           ByteBuffer buffer = r.serializeToByteBuffer();
           this.serializedRequests.add(buffer);
           this.memorySize += Long.max(buffer.capacity(), r.getMemorySize());
+          this.retainedMemorySize += buffer.capacity() + r.getMemorySize();
         });
+    serializedRequestsBuilt = true;
   }
 
   @Override
   public ByteBuffer serializeToByteBuffer() {
     throw new UnsupportedOperationException();
+  }
+
+  /** Returns whether any request of this entry materializes its bytes only when it is sent. */
+  public synchronized boolean hasDeferredRequests() {
+    return requests.stream().anyMatch(IConsensusRequest::isSerializationDeferred);
   }
 
   public List<IConsensusRequest> getRequests() {
@@ -88,6 +102,49 @@ public class IndexedConsensusRequest implements IConsensusRequest {
 
   public long getMemorySize() {
     return memorySize;
+  }
+
+  /**
+   * Returns the memory retained while this request object is alive.
+   *
+   * <p>Before replication serialization, the request only retains its original request objects.
+   * Afterwards it retains both the originals and the serialized buffers. Batch memory continues to
+   * use {@link #getMemorySize()} because a batch no longer owns the original requests.
+   */
+  public synchronized long getRetainedMemorySize() {
+    if (serializedRequestsBuilt) {
+      return retainedMemorySize;
+    }
+    return requests.stream().mapToLong(IConsensusRequest::getMemorySize).sum();
+  }
+
+  /**
+   * Returns the amount to reserve for this entry while it waits in the replication queues.
+   *
+   * <p>The amount is captured on the first call, because a request that deferred its serialization
+   * materializes its bytes only when it is sent and its serialized buffers are accounted for by the
+   * batch that carries them. Releasing an entry therefore has to return exactly what was reserved.
+   */
+  public synchronized long getQueueReservedMemorySize() {
+    if (queueReservedMemorySize < 0) {
+      queueReservedMemorySize = getRetainedMemorySize();
+    }
+    return queueReservedMemorySize;
+  }
+
+  /**
+   * Releases the original request objects after their serialized buffers have been materialized.
+   * Replication only needs the serialized buffers, while subscription delivery still needs the
+   * original objects and therefore must not call this method.
+   */
+  public synchronized void clearRequests() {
+    if (requests.isEmpty()) {
+      return;
+    }
+    if (serializedRequestsBuilt) {
+      retainedMemorySize -= requests.stream().mapToLong(IConsensusRequest::getMemorySize).sum();
+    }
+    requests.clear();
   }
 
   public long getSearchIndex() {
@@ -132,6 +189,15 @@ public class IndexedConsensusRequest implements IConsensusRequest {
 
   public IndexedConsensusRequest setNodeId(int nodeId) {
     this.nodeId = nodeId;
+    return this;
+  }
+
+  public boolean containsUserData() {
+    return containsUserData;
+  }
+
+  public IndexedConsensusRequest setContainsUserData(boolean containsUserData) {
+    this.containsUserData = containsUserData;
     return this;
   }
 

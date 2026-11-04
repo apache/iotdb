@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class InsertMultiTabletsStatement extends InsertBaseStatement {
 
@@ -96,6 +97,16 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
       result.addAll(insertTabletStatement.getPaths());
     }
     return result;
+  }
+
+  @Override
+  public Stream<PartialPath> getPathsStream() {
+    return insertTabletStatementList.stream().flatMap(InsertTabletStatement::getPathsStream);
+  }
+
+  @Override
+  public Stream<PartialPath> getDevicePathsStream() {
+    return insertTabletStatementList.stream().map(InsertTabletStatement::getDevicePath);
   }
 
   @Override

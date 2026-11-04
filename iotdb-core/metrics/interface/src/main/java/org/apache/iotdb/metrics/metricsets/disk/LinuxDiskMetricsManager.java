@@ -29,13 +29,17 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.function.LongSupplier;
 import java.util.stream.Collectors;
 
 /**
@@ -55,18 +59,17 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(LinuxDiskMetricsManager.class);
 
   @SuppressWarnings("squid:S1075")
-  private static final String DEFAULT_DISK_STATUS_FILE_PATH = "/proc/diskstats";
+  private static final String DISK_STATUS_FILE_PATH = "/proc/diskstats";
 
   @SuppressWarnings("squid:S1075")
-  private static final String DEFAULT_DISK_ID_PATH = "/sys/block";
+  private static final String DISK_ID_PATH = "/sys/block";
 
-  @SuppressWarnings("squid:S1075")
-  private static final String DEFAULT_DISK_SECTOR_SIZE_PATH = "/sys/block/%s/queue/hw_sector_size";
-
-  private final String diskStatusFilePath;
-  private final String diskIdPath;
-  private final String diskSectorSizePath;
-  private final String processIoStatusPath;
+  private final Path diskStatsPath;
+  private final Path diskIdPath;
+  private final Path processIoStatusPath;
+  private final LongSupplier clock;
+  private final FailureLogState diskInfoFailureLogState = new FailureLogState();
+  private final FailureLogState processInfoFailureLogState = new FailureLogState();
   private static final int DISK_ID_OFFSET = 3;
   private static final int DISK_READ_COUNT_OFFSET = 4;
   private static final int DISK_MERGED_READ_COUNT_OFFSET = 5;
@@ -81,12 +84,10 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   private static final int DEFAULT_SECTOR_SIZE = 512;
   private static final double BYTES_PER_KB = 1024.0;
   private static final long UPDATE_SMALLEST_INTERVAL = 10000L;
-  private Set<String> diskIdSet;
+  private Set<String> diskIdSet = Collections.emptySet();
   private final Map<String, Integer> diskSectorSizeMap;
   private long lastUpdateTime = 0L;
   private long updateInterval = 1L;
-  private final FailureLogState diskInfoFailureLogState = new FailureLogState();
-  private final FailureLogState processInfoFailureLogState = new FailureLogState();
 
   // Disk IO status structure
   private final Map<String, Long> lastReadOperationCountForDisk;
@@ -120,22 +121,20 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
 
   public LinuxDiskMetricsManager() {
     this(
-        DEFAULT_DISK_STATUS_FILE_PATH,
-        DEFAULT_DISK_ID_PATH,
-        DEFAULT_DISK_SECTOR_SIZE_PATH,
-        String.format(
-            "/proc/%s/io", MetricConfigDescriptor.getInstance().getMetricConfig().getPid()));
+        Paths.get(DISK_STATUS_FILE_PATH),
+        Paths.get(DISK_ID_PATH),
+        Paths.get(
+            String.format(
+                "/proc/%s/io", MetricConfigDescriptor.getInstance().getMetricConfig().getPid())),
+        System::currentTimeMillis);
   }
 
   LinuxDiskMetricsManager(
-      String diskStatusFilePath,
-      String diskIdPath,
-      String diskSectorSizePath,
-      String processIoStatusPath) {
-    this.diskStatusFilePath = diskStatusFilePath;
+      Path diskStatsPath, Path diskIdPath, Path processIoStatusPath, LongSupplier clock) {
+    this.diskStatsPath = diskStatsPath;
     this.diskIdPath = diskIdPath;
-    this.diskSectorSizePath = diskSectorSizePath;
     this.processIoStatusPath = processIoStatusPath;
+    this.clock = clock;
     collectDiskId();
     // leave one entry to avoid hashmap resizing
     diskSectorSizeMap = new HashMap<>(diskIdSet.size() + 1, 1);
@@ -163,7 +162,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   }
 
   @Override
-  public Map<String, Double> getReadDataSizeForDisk() {
+  public synchronized Map<String, Double> getReadDataSizeForDisk() {
     checkUpdate();
     Map<String, Double> readDataMap = new HashMap<>(diskIdSet.size());
     for (Map.Entry<String, Long> entry : lastReadSectorCountForDisk.entrySet()) {
@@ -174,7 +173,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   }
 
   @Override
-  public Map<String, Double> getWriteDataSizeForDisk() {
+  public synchronized Map<String, Double> getWriteDataSizeForDisk() {
     checkUpdate();
     Map<String, Double> writeDataMap = new HashMap<>(diskIdSet.size());
     for (Map.Entry<String, Long> entry : lastWriteSectorCountForDisk.entrySet()) {
@@ -185,28 +184,32 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   }
 
   @Override
-  public Map<String, Long> getReadOperationCountForDisk() {
+  public synchronized Map<String, Long> getReadOperationCountForDisk() {
     checkUpdate();
-    return lastReadOperationCountForDisk;
+    return new HashMap<>(lastReadOperationCountForDisk);
   }
 
   @Override
-  public Map<String, Long> getWriteOperationCountForDisk() {
-    return lastWriteOperationCountForDisk;
+  public synchronized Map<String, Long> getWriteOperationCountForDisk() {
+    checkUpdate();
+    return new HashMap<>(lastWriteOperationCountForDisk);
   }
 
   @Override
-  public Map<String, Long> getReadCostTimeForDisk() {
-    return lastReadTimeCostForDisk;
+  public synchronized Map<String, Long> getReadCostTimeForDisk() {
+    checkUpdate();
+    return new HashMap<>(lastReadTimeCostForDisk);
   }
 
   @Override
-  public Map<String, Long> getWriteCostTimeForDisk() {
-    return lastWriteTimeCostForDisk;
+  public synchronized Map<String, Long> getWriteCostTimeForDisk() {
+    checkUpdate();
+    return new HashMap<>(lastWriteTimeCostForDisk);
   }
 
   @Override
-  public Map<String, Double> getIoUtilsPercentage() {
+  public synchronized Map<String, Double> getIoUtilsPercentage() {
+    checkUpdate();
     Map<String, Double> utilsMap = new HashMap<>(diskIdSet.size());
     for (Map.Entry<String, Long> entry : incrementIoBusyTimeForDisk.entrySet()) {
       utilsMap.put(entry.getKey(), ((double) entry.getValue()) / updateInterval);
@@ -215,7 +218,8 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   }
 
   @Override
-  public Map<String, Double> getAvgReadCostTimeOfEachOpsForDisk() {
+  public synchronized Map<String, Double> getAvgReadCostTimeOfEachOpsForDisk() {
+    checkUpdate();
     Map<String, Double> avgReadTimeCostMap = new HashMap<>(diskIdSet.size());
     for (Map.Entry<String, Long> readCostEntry : incrementReadTimeCostForDisk.entrySet()) {
       // use Long.max to avoid NaN
@@ -232,7 +236,8 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   }
 
   @Override
-  public Map<String, Double> getAvgWriteCostTimeOfEachOpsForDisk() {
+  public synchronized Map<String, Double> getAvgWriteCostTimeOfEachOpsForDisk() {
+    checkUpdate();
     Map<String, Double> avgWriteTimeCostMap = new HashMap<>(diskIdSet.size());
     for (Map.Entry<String, Long> writeCostEntry : incrementWriteTimeCostForDisk.entrySet()) {
       // use Long.max to avoid NaN
@@ -249,7 +254,8 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   }
 
   @Override
-  public Map<String, Double> getAvgSizeOfEachReadForDisk() {
+  public synchronized Map<String, Double> getAvgSizeOfEachReadForDisk() {
+    checkUpdate();
     Map<String, Double> avgSizeOfReadMap = new HashMap<>(diskIdSet.size());
     for (Map.Entry<String, Long> readSectorSizeEntry : incrementReadSectorCountForDisk.entrySet()) {
       // use Long.max to avoid NaN
@@ -269,7 +275,8 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   }
 
   @Override
-  public Map<String, Double> getAvgSizeOfEachWriteForDisk() {
+  public synchronized Map<String, Double> getAvgSizeOfEachWriteForDisk() {
+    checkUpdate();
     Map<String, Double> avgSizeOfWriteMap = new HashMap<>(diskIdSet.size());
     for (Map.Entry<String, Long> writeSectorSizeEntry :
         incrementWriteSectorCountForDisk.entrySet()) {
@@ -290,17 +297,20 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   }
 
   @Override
-  public Map<String, Long> getMergedWriteOperationForDisk() {
-    return lastMergedWriteCountForDisk;
+  public synchronized Map<String, Long> getMergedWriteOperationForDisk() {
+    checkUpdate();
+    return new HashMap<>(lastMergedWriteCountForDisk);
   }
 
   @Override
-  public Map<String, Long> getMergedReadOperationForDisk() {
-    return lastMergedReadCountForDisk;
+  public synchronized Map<String, Long> getMergedReadOperationForDisk() {
+    checkUpdate();
+    return new HashMap<>(lastMergedReadCountForDisk);
   }
 
   @Override
-  public Map<String, Double> getQueueSizeForDisk() {
+  public synchronized Map<String, Double> getQueueSizeForDisk() {
+    checkUpdate();
     Map<String, Double> avgQueueSizeMap = new HashMap<>(diskIdSet.size());
     for (Map.Entry<String, Long> entry : incrementTimeInQueueForDisk.entrySet()) {
       avgQueueSizeMap.put(entry.getKey(), (((double) entry.getValue()) / updateInterval));
@@ -309,32 +319,38 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   }
 
   @Override
-  public double getActualReadDataSizeForProcess() {
+  public synchronized double getActualReadDataSizeForProcess() {
+    checkUpdate();
     return lastReallyReadSizeForProcess / BYTES_PER_KB;
   }
 
   @Override
-  public double getActualWriteDataSizeForProcess() {
+  public synchronized double getActualWriteDataSizeForProcess() {
+    checkUpdate();
     return lastReallyWriteSizeForProcess / BYTES_PER_KB;
   }
 
   @Override
-  public long getReadOpsCountForProcess() {
+  public synchronized long getReadOpsCountForProcess() {
+    checkUpdate();
     return lastReadOpsCountForProcess;
   }
 
   @Override
-  public long getWriteOpsCountForProcess() {
+  public synchronized long getWriteOpsCountForProcess() {
+    checkUpdate();
     return lastWriteOpsCountForProcess;
   }
 
   @Override
-  public double getAttemptReadSizeForProcess() {
+  public synchronized double getAttemptReadSizeForProcess() {
+    checkUpdate();
     return lastAttemptReadSizeForProcess / BYTES_PER_KB;
   }
 
   @Override
-  public double getAttemptWriteSizeForProcess() {
+  public synchronized double getAttemptWriteSizeForProcess() {
+    checkUpdate();
     return lastAttemptWriteSizeForProcess / BYTES_PER_KB;
   }
 
@@ -344,18 +360,12 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   }
 
   private void collectDiskId() {
-    File diskIdFolder = new File(diskIdPath);
+    File diskIdFolder = diskIdPath.toFile();
     if (!diskIdFolder.exists()) {
-      diskIdSet = Collections.emptySet();
-      return;
-    }
-    File[] diskIdFiles = diskIdFolder.listFiles();
-    if (diskIdFiles == null) {
-      diskIdSet = Collections.emptySet();
       return;
     }
     diskIdSet =
-        new ArrayList<>(Arrays.asList(diskIdFiles))
+        new ArrayList<>(Arrays.asList(Objects.requireNonNull(diskIdFolder.listFiles())))
             .stream()
                 .filter(x -> !x.getName().startsWith("loop") && !x.getName().startsWith("ram"))
                 .map(File::getName)
@@ -364,8 +374,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
 
   private void collectDiskInfo() {
     for (String diskId : diskIdSet) {
-      String currentDiskSectorSizePath = String.format(diskSectorSizePath, diskId);
-      File diskSectorSizeFile = new File(currentDiskSectorSizePath);
+      File diskSectorSizeFile = diskIdPath.resolve(diskId).resolve("queue/hw_sector_size").toFile();
       try (Scanner scanner = new Scanner(Files.newInputStream(diskSectorSizeFile.toPath()))) {
         if (scanner.hasNext()) {
           int sectorSize = Integer.parseInt(scanner.nextLine());
@@ -382,8 +391,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
     }
   }
 
-  private void updateInfo() {
-    long currentTime = System.currentTimeMillis();
+  private void updateInfo(long currentTime) {
     updateInterval = currentTime - lastUpdateTime;
     lastUpdateTime = currentTime;
     updateDiskInfo();
@@ -391,7 +399,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   }
 
   private void updateDiskInfo() {
-    File diskStatsFile = new File(diskStatusFilePath);
+    File diskStatsFile = diskStatsPath.toFile();
     if (!diskStatsFile.exists()) {
       logCannotFindDiskIoStatusFileIfNecessary();
       return;
@@ -445,7 +453,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
               diskId, diskInfo, offsetArray[index], lastMapArray[index], incrementMapArray[index]);
         }
       }
-      clearFailureLogState(diskInfoFailureLogState);
+      diskInfoFailureLogState.clear();
     } catch (IOException e) {
       logErrorUpdatingDiskIoInfoIfNecessary(e);
     }
@@ -470,7 +478,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   }
 
   private void updateProcessInfo() {
-    File processStatInfoFile = new File(processIoStatusPath);
+    File processStatInfoFile = processIoStatusPath.toFile();
     if (!processStatInfoFile.exists()) {
       logCannotFindProcessIoStatusFileIfNecessary();
       return;
@@ -494,52 +502,44 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
           lastAttemptWriteSizeForProcess = Long.parseLong(infoLine.split(":\\s")[1]);
         }
       }
-      clearFailureLogState(processInfoFailureLogState);
+      processInfoFailureLogState.clear();
     } catch (IOException e) {
       logErrorUpdatingProcessIoInfoIfNecessary(e);
     }
   }
 
   private void logCannotFindDiskIoStatusFileIfNecessary() {
-    if (shouldLogFailure(
-        diskInfoFailureLogState,
-        MetricsMessages.CANNOT_FIND_DISK_IO_STATUS_FILE + diskStatusFilePath)) {
-      LOGGER.warn(MetricsMessages.CANNOT_FIND_DISK_IO_STATUS_FILE, diskStatusFilePath);
+    if (diskInfoFailureLogState.shouldLog(
+        MetricsMessages.CANNOT_FIND_DISK_IO_STATUS_FILE + diskStatsPath)) {
+      LOGGER.warn(MetricsMessages.CANNOT_FIND_DISK_IO_STATUS_FILE, diskStatsPath);
     }
   }
 
   private void logErrorUpdatingDiskIoInfoIfNecessary(IOException e) {
-    if (shouldLogFailure(diskInfoFailureLogState, MetricsMessages.ERROR_UPDATING_DISK_IO_INFO)) {
+    if (diskInfoFailureLogState.shouldLog(MetricsMessages.ERROR_UPDATING_DISK_IO_INFO)) {
       LOGGER.error(MetricsMessages.ERROR_UPDATING_DISK_IO_INFO, e);
     }
   }
 
   private void logCannotFindProcessIoStatusFileIfNecessary() {
-    if (shouldLogFailure(
-        processInfoFailureLogState,
+    if (processInfoFailureLogState.shouldLog(
         MetricsMessages.CANNOT_FIND_PROCESS_IO_STATUS_FILE + processIoStatusPath)) {
       LOGGER.warn(MetricsMessages.CANNOT_FIND_PROCESS_IO_STATUS_FILE, processIoStatusPath);
     }
   }
 
   private void logErrorUpdatingProcessIoInfoIfNecessary(IOException e) {
-    if (shouldLogFailure(
-        processInfoFailureLogState, MetricsMessages.ERROR_UPDATING_PROCESS_IO_INFO)) {
+    if (processInfoFailureLogState.shouldLog(MetricsMessages.ERROR_UPDATING_PROCESS_IO_INFO)) {
       LOGGER.error(MetricsMessages.ERROR_UPDATING_PROCESS_IO_INFO, e);
     }
   }
 
-  static boolean shouldLogFailure(FailureLogState failureLogState, String failureMessage) {
-    return failureLogState.shouldLog(failureMessage);
-  }
-
-  static void clearFailureLogState(FailureLogState failureLogState) {
-    failureLogState.clear();
-  }
-
   private void checkUpdate() {
-    if (System.currentTimeMillis() - lastUpdateTime > UPDATE_SMALLEST_INTERVAL) {
-      updateInfo();
+    // Accessors hold this monitor throughout refresh and snapshot construction. Reuse the checked
+    // timestamp so another clock read cannot turn a valid interval into zero or a negative value.
+    long currentTime = clock.getAsLong();
+    if (currentTime - lastUpdateTime > UPDATE_SMALLEST_INTERVAL) {
+      updateInfo(currentTime);
     }
   }
 }

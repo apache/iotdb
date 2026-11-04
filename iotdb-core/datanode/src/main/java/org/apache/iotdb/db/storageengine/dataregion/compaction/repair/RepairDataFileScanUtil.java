@@ -60,6 +60,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -243,41 +244,42 @@ public class RepairDataFileScanUtil {
   private void checkTimeChunkInAlignedSeries(
       TsFileSequenceReader reader, IDeviceID device, ChunkMetadata timeChunkMetadata)
       throws IOException {
-    Chunk timeChunk = reader.readMemChunk(timeChunkMetadata);
-
-    CompactionChunkReader chunkReader = new CompactionChunkReader(timeChunk);
-    ByteBuffer chunkDataBuffer = timeChunk.getData();
-    ChunkHeader chunkHeader = timeChunk.getHeader();
-    long actualChunkStartTime = Long.MAX_VALUE;
-    long actualChunkEndTime = Long.MIN_VALUE;
-    while (chunkDataBuffer.hasRemaining()) {
-      // deserialize a PageHeader from chunkDataBuffer
-      PageHeader pageHeader = null;
-      if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
-        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, timeChunk.getChunkStatistic());
-      } else {
-        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
+    try (Chunk timeChunk = reader.readMemChunk(timeChunkMetadata)) {
+      CompactionChunkReader chunkReader = new CompactionChunkReader(timeChunk);
+      ByteBuffer chunkDataBuffer = timeChunk.getData();
+      ChunkHeader chunkHeader = timeChunk.getHeader();
+      long actualChunkStartTime = Long.MAX_VALUE;
+      long actualChunkEndTime = Long.MIN_VALUE;
+      int pageIndex = 0;
+      while (chunkDataBuffer.hasRemaining()) {
+        // deserialize a PageHeader from chunkDataBuffer
+        PageHeader pageHeader = null;
+        if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+          pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, timeChunk.getChunkStatistic());
+        } else {
+          pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
+        }
+        actualChunkStartTime = Math.min(actualChunkStartTime, pageHeader.getStartTime());
+        actualChunkEndTime = Math.max(actualChunkEndTime, pageHeader.getEndTime());
+        ByteBuffer pageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
+        IDecryptor decryptor = IDecryptor.getDecryptor(timeChunk.getEncryptParam());
+        ByteBuffer uncompressedPageData =
+            decodePage(timeChunk, pageHeader, pageData, decryptor, pageIndex++);
+        try {
+          validateTimeData(device, uncompressedPageData, pageHeader);
+        } finally {
+          wipePage(timeChunk, uncompressedPageData);
+        }
       }
-      actualChunkStartTime = Math.min(actualChunkStartTime, pageHeader.getStartTime());
-      actualChunkEndTime = Math.max(actualChunkEndTime, pageHeader.getEndTime());
-      ByteBuffer pageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
-      IDecryptor decryptor = IDecryptor.getDecryptor(timeChunk.getEncryptParam());
-      ByteBuffer uncompressedPageData =
-          decryptAndUncompressPageData(
-              pageHeader,
-              IUnCompressor.getUnCompressor(chunkHeader.getCompressionType()),
-              pageData,
-              decryptor);
-      validateTimeData(device, uncompressedPageData, pageHeader);
-    }
-    if (actualChunkStartTime > actualChunkEndTime) {
-      return;
-    }
-    TimeRange actualChunkTimeRange = new TimeRange(actualChunkStartTime, actualChunkEndTime);
-    if (!actualChunkTimeRange.equals(
-        new TimeRange(timeChunkMetadata.getStartTime(), timeChunkMetadata.getEndTime()))) {
-      throw new CompactionStatisticsCheckFailedException(
-          device, timeChunkMetadata, actualChunkTimeRange);
+      if (actualChunkStartTime > actualChunkEndTime) {
+        return;
+      }
+      TimeRange actualChunkTimeRange = new TimeRange(actualChunkStartTime, actualChunkEndTime);
+      if (!actualChunkTimeRange.equals(
+          new TimeRange(timeChunkMetadata.getStartTime(), timeChunkMetadata.getEndTime()))) {
+        throw new CompactionStatisticsCheckFailedException(
+            device, timeChunkMetadata, actualChunkTimeRange);
+      }
     }
   }
 
@@ -358,41 +360,68 @@ public class RepairDataFileScanUtil {
   private void checkChunkOfNonAlignedSeries(
       TsFileSequenceReader reader, IDeviceID deviceID, ChunkMetadata chunkMetadata)
       throws IOException {
-    Chunk chunk = reader.readMemChunk(chunkMetadata);
-    ChunkHeader chunkHeader = chunk.getHeader();
-    CompactionChunkReader chunkReader = new CompactionChunkReader(chunk);
-    ByteBuffer chunkDataBuffer = chunk.getData();
-    long actualChunkStartTime = Long.MAX_VALUE;
-    long actualChunkEndTime = Long.MIN_VALUE;
-    while (chunkDataBuffer.hasRemaining()) {
-      // deserialize a PageHeader from chunkDataBuffer
-      PageHeader pageHeader = null;
-      if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
-        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunk.getChunkStatistic());
-      } else {
-        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
+    try (Chunk chunk = reader.readMemChunk(chunkMetadata)) {
+      ChunkHeader chunkHeader = chunk.getHeader();
+      CompactionChunkReader chunkReader = new CompactionChunkReader(chunk);
+      ByteBuffer chunkDataBuffer = chunk.getData();
+      long actualChunkStartTime = Long.MAX_VALUE;
+      long actualChunkEndTime = Long.MIN_VALUE;
+      int pageIndex = 0;
+      while (chunkDataBuffer.hasRemaining()) {
+        // deserialize a PageHeader from chunkDataBuffer
+        PageHeader pageHeader = null;
+        if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+          pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunk.getChunkStatistic());
+        } else {
+          pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
+        }
+        actualChunkStartTime = Math.min(actualChunkStartTime, pageHeader.getStartTime());
+        actualChunkEndTime = Math.max(actualChunkEndTime, pageHeader.getEndTime());
+        ByteBuffer pageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
+        IDecryptor decryptor = IDecryptor.getDecryptor(chunk.getEncryptParam());
+        ByteBuffer uncompressedPageData =
+            decodePage(chunk, pageHeader, pageData, decryptor, pageIndex++);
+        try {
+          ByteBuffer timeBuffer = getTimeBufferFromNonAlignedPage(uncompressedPageData);
+          validateTimeData(deviceID, timeBuffer, pageHeader);
+        } finally {
+          wipePage(chunk, uncompressedPageData);
+        }
       }
-      actualChunkStartTime = Math.min(actualChunkStartTime, pageHeader.getStartTime());
-      actualChunkEndTime = Math.max(actualChunkEndTime, pageHeader.getEndTime());
-      ByteBuffer pageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
-      IDecryptor decryptor = IDecryptor.getDecryptor(chunk.getEncryptParam());
-      ByteBuffer uncompressedPageData =
-          decryptAndUncompressPageData(
-              pageHeader,
-              IUnCompressor.getUnCompressor(chunkHeader.getCompressionType()),
-              pageData,
-              decryptor);
-      ByteBuffer timeBuffer = getTimeBufferFromNonAlignedPage(uncompressedPageData);
-      validateTimeData(deviceID, timeBuffer, pageHeader);
+      if (actualChunkStartTime > actualChunkEndTime) {
+        return;
+      }
+      TimeRange actualChunkTimeRange = new TimeRange(actualChunkStartTime, actualChunkEndTime);
+      if (!actualChunkTimeRange.equals(
+          new TimeRange(chunkMetadata.getStartTime(), chunkMetadata.getEndTime()))) {
+        throw new CompactionStatisticsCheckFailedException(
+            deviceID, chunkMetadata, actualChunkTimeRange);
+      }
     }
-    if (actualChunkStartTime > actualChunkEndTime) {
-      return;
-    }
-    TimeRange actualChunkTimeRange = new TimeRange(actualChunkStartTime, actualChunkEndTime);
-    if (!actualChunkTimeRange.equals(
-        new TimeRange(chunkMetadata.getStartTime(), chunkMetadata.getEndTime()))) {
-      throw new CompactionStatisticsCheckFailedException(
-          deviceID, chunkMetadata, actualChunkTimeRange);
+  }
+
+  private static ByteBuffer decodePage(
+      Chunk chunk, PageHeader page, ByteBuffer body, IDecryptor decryptor, int pageIndex)
+      throws IOException {
+    IUnCompressor uncompressor =
+        IUnCompressor.getUnCompressor(chunk.getHeader().getCompressionType());
+    return chunk.getEncryptParam() != null && chunk.getEncryptParam().isTdePageAead()
+        ? decryptAndUncompressPageData(
+            page,
+            uncompressor,
+            body,
+            decryptor,
+            chunk.getEncryptParam(),
+            pageIndex,
+            chunk.getHeader().getChunkOrdinal())
+        : decryptAndUncompressPageData(page, uncompressor, body, decryptor);
+  }
+
+  private static void wipePage(Chunk chunk, ByteBuffer page) {
+    if (chunk.getEncryptParam() != null
+        && chunk.getEncryptParam().isTdePageAead()
+        && page.hasArray()) {
+      Arrays.fill(page.array(), (byte) 0);
     }
   }
 

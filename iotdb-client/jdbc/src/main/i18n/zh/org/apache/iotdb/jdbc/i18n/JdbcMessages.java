@@ -91,6 +91,7 @@ public final class JdbcMessages {
 
   // IoTDBAbstractDatabaseMetadata
   public static final String NO_DATA_TYPE_MATCHED = "没有匹配的数据类型：{}";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_B411C29E = "不支持的数据类型：%s";
   public static final String GET_READ_ONLY_ERROR = "获取只读模式错误：{}";
   public static final String CANNOT_GET_READ_ONLY_MODE = "无法获取只读模式";
   public static final String GET_SYSTEM_FUNCTIONS_ERROR = "获取系统函数错误：{}";
@@ -133,9 +134,6 @@ public final class JdbcMessages {
   // IoTDBDataSource
   public static final String GET_CONNECTION_ERROR = "获取连接错误：";
 
-  // IoTDBDataSourceFactory
-  public static final String REMAINING_PROPERTIES = "剩余属性 {}";
-
   // IoTDBJDBCResultSet
   public static final String CLOSE_SERVER_SIDE_ERROR =
       "服务端关闭操作时发生错误 ";
@@ -165,7 +163,6 @@ public final class JdbcMessages {
       "不支持 setTransactionIsolation";
   public static final String NOT_SUPPORT_GET_TYPE_MAP = "不支持 getTypeMap";
   public static final String NOT_SUPPORT_SET_TYPE_MAP = "不支持 setTypeMap";
-  public static final String NOT_SUPPORT_READ_ONLY = "不支持 readOnly";
   public static final String NOT_SUPPORT_NATIVE_SQL = "不支持 nativeSQL";
   public static final String NOT_SUPPORT_RELEASE_SAVEPOINT =
       "不支持 releaseSavepoint";
@@ -226,5 +223,61 @@ public final class JdbcMessages {
       "无法与 %s 建立连接：可能正在使用新版本客户端连接旧版本 IoTDB 实例："
       + "%s。";
   public static final String EXCEPTION_CAN_NOT_ESTABLISH_CONNECTION_ARG_ARG_D7246055 = "无法与 %s 建立连接：%s。";
+  public static final String EXCEPTION_TIMESTAMP_ARG_OUT_RANGE_TIME_PRECISION_ARG_E25E3001 = "时间戳 %s 超出了时间精度 %s 可表示的范围";
+  public static final String EXCEPTION_CANNOT_CONVERT_ARG_COLUMN_ARG_FBFBC158 = "无法将 %s 类型的列转换为 %s";
+  public static final String EXCEPTION_TARGET_TYPE_GETOBJECT_MUST_NOT_NULL_2E310BEC = "getObject 的目标类型不能为 null";
+  public static final String LOG_SHOW_TABLES_ERROR_ARG_068CF1BA = "查询表信息出错：{}";
+  public static final String EXCEPTION_UNKNOWN_COLUMN_NAME_ARG_F8369278 = "未知列名：%s";
+  public static final String EXCEPTION_CANNOT_BIND_ARG_IOTDB_SQL_HAS_NO_LITERAL_INFINITE_FLOATING_4068FF32 = "无法绑定 %s：IoTDB SQL 没有表示无穷大浮点数的字面量";
 
+  public static final String EXCEPTION_NOT_SUPPORT_EXECUTE_24A68DC9 = "不支持 execute";
+
+  public static final String EXCEPTION_NOT_SUPPORT_EXECUTEUPDATE_157D0E87 = "不支持 executeUpdate";
+
+  public static final String EXCEPTION_FOR_SQL_86DB3FB4 = "，SQL：\"";
+
+  public static final String EXCEPTION_EXECUTE_QUERY_F033E009 = "执行查询";
+
+  public static final String EXCEPTION_EXECUTE_UPDATE_0E5C5873 = "执行更新";
+
+  public static final String EXCEPTION_OBJECT_TYPE_ONLY_SUPPORT_GETSTRING_B4BD14B4 =
+      "OBJECT 类型仅支持 getString";
+
+  public static final String EXCEPTION_DOES_NOT_SUPPORT_PREPARECALL_2E958060 = "不支持 prepareCall";
+
+  public static final String EXCEPTION_DOES_NOT_SUPPORT_PREPARESTATEMENT_93B9FAF1 =
+      "不支持 prepareStatement";
+
+  public static final String EXCEPTION_YOUR_PASSWORD_WILL_EXPIRE_AT_49098220 = "密码将于以下时间过期：";
+
+  public static final String EXCEPTION_REQUIRED_FIELD_CLIENT_PROTOCOL_WAS_NOT_PRESENT_2059BC1E =
+      "缺少必需字段 'client_protocol'！";
+
+  public static final String EXCEPTION_CONVERT_TSBLOCK_ERROR_ARG_D9D4A78D = "转换 TsBlock 时出错：{}";
+
+  public static final String EXCEPTION_THE_PARAMETER_CANNOT_BE_NULL_6CD5B7DE = "参数不能为空";
+
+  public static final String
+      EXCEPTION_PARAMETER_ONLY_SUPPORTS_BOOLEAN_INT32_INT64_FLOAT_DOUBLE_TEXT_DATA_TYPE_58CD5656 =
+          "参数仅支持 BOOLEAN、INT32、INT64、FLOAT、DOUBLE、TEXT 数据类型";
+
+  public static final String EXCEPTION_NUM_OF_SERIES_PATHS_ARG_5AAACC65 = "* 时间序列路径数：%d";
+
+  public static final String EXCEPTION_NUM_OF_SEQUENCE_FILES_READ_ARG_002C1609 = "* 读取的顺序文件数：%d";
+
+  public static final String EXCEPTION_NUM_OF_UNSEQUENCE_FILES_READ_ARG_686A2478 = "* 读取的乱序文件数：%d";
+
+  public static final String EXCEPTION_NUM_OF_SEQUENCE_CHUNKS_ARG_AVG_POINTS_ARG_B119F7E6 =
+      "* 顺序 Chunk 数：%d，平均数据点数：%.1f";
+
+  public static final String EXCEPTION_NUM_OF_UNSEQUENCE_CHUNKS_ARG_AVG_POINTS_ARG_723DCD8F =
+      "* 乱序 Chunk 数：%d，平均数据点数：%.1f";
+
+  public static final String EXCEPTION_NUM_OF_PAGES_ARG_OVERLAPPED_PAGES_ARG_ARG_ARG_9F985997 =
+      "* Page 数：%d，重叠 Page 数：%d（%.1f%%）";
+
+  public static final String EXCEPTION_LINES_OF_RESULT_ARG_26F474C0 = "* 结果行数：%d";
+
+  public static final String EXCEPTION_NUM_OF_RPC_ARG_AVG_COST_ARG_MS_435D62C7 =
+      "* RPC 次数：%d，平均耗时：%d ms";
 }

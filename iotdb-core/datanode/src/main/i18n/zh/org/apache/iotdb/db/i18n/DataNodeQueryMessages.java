@@ -21,6 +21,100 @@ package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
 
+  public static final String EXCEPTION_UNSUPPORTED_JOIN_CRETERIA_ARG_AFTER_PREDICATE_PUSH_DOWN_92BDB23B =
+      "谓词下推后存在不支持的 Join 条件 [%s]";
+  public static final String EXCEPTION_QUERY_CHUNK_RESOURCES_ARE_ALREADY_CLOSED_CA6A0559 =
+      "查询 Chunk 资源已关闭";
+  public static final String LOG_FAILED_TO_RELEASE_QUERY_CHUNK_RESOURCES_91573FE5 =
+      "释放查询 Chunk 资源失败";
+  public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477 =
+      "将 TsFile %s 转换为 tablet 失败。状态：%s";
+  public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD =
+      "将 TsFile %s 转换为 tablet 失败：%s";
+  public static final String MESSAGE_TABLET_CONVERSION_RETURNED_NO_STATUS_88BAB5D3 =
+      "tablet 转换未返回状态";
+  public static final String EXCEPTION_FAILED_TO_READ_TSFILE_MODEL_INFORMATION_BEFORE_TABLET_CONVERSION_FOR_STATEMENT_ARG_ARG_F05C852A =
+      "执行语句 %s 时，在转换为 tablet 前读取 TsFile 模型信息失败：%s";
+  public static final String EXCEPTION_FAILED_TO_LOAD_TSFILES_AFTER_TABLET_CONVERSION_DETAILS_ARG_53647EC5 =
+      "将 TsFile 转换为 tablet 后加载仍失败。详情：%s";
+  public static final String LOG_LOAD_REJECTED_UUID_ARG_REGION_ARG_ENDPOINT_ARG_STATUS_ARG_8ED0679E =
+      "LOAD 被拒绝：uuid={}，region={}，endpoint={}，status={}";
+  public static final String MESSAGE_TARGET_NODE_REJECTED_LOAD_WITHOUT_A_STATUS_OR_A_MESSAGE_F4E4C645 =
+      "目标节点拒绝 LOAD，且未返回状态或消息";
+  public static final String MESSAGE_FAILED_TO_DISPATCH_LOAD_ARG_FOR_REGION_ARG_TO_NODE_ARG_ARG_57EFEC3A =
+      "分发 LOAD %s（region %s）到节点 %s 失败：%s";
+
+  public static final String MESSAGE_SCHEMA_REGION_IS_UNAVAILABLE_PLEASE_RETRY_LATER_D642510A =
+      "SchemaRegion 不可用，请稍后重试。";
+
+  public static final String EXCEPTION_FRAGMENT_INSTANCE_ARG_IS_ALREADY_ARG_B44984B4 =
+      "Fragment instance %s 已处于 %s 状态";
+
+  public static final String EXCEPTION_INVALID_THRIFT_MAXIMUM_FRAME_SIZE_ARG_FROM_ARG_A639588B =
+      "Thrift 最大帧大小 %d 无效，来源：%s";
+  public static final String EXCEPTION_CLIENTMANAGER_CANNOT_BE_NULL_FAF70317 =
+      "clientManager 不能为 null";
+  public static final String EXCEPTION_FAILED_TO_QUERY_FRAME_SIZE_FROM_ARG_4A82B38D =
+      "从 %s 查询帧大小失败";
+  public static final String EXCEPTION_BODYSIZELIMIT_MUST_BE_POSITIVE_EECFA175 =
+      "bodySizeLimit 必须为正数";
+  public static final String EXCEPTION_INVALID_SLICE_COUNT_ARGUMENTS_5ADCE8CC =
+      "分片数量参数无效";
+  public static final String EXCEPTION_FETCHER_CANNOT_BE_NULL_6C143C90 = "fetcher 不能为 null";
+  public static final String
+      EXCEPTION_FAILED_TO_RETRIEVE_PARTITION_FROM_FETCHER_PARTITION_RESULT_IS_NULL_9CD4434D =
+          "从 fetcher 获取分区失败：分区结果为 null";
+  public static final String
+      EXCEPTION_MISSING_DATA_REGION_REPLICA_SET_FOR_DEVICE_ARG_AT_PARTITION_ARG_18A9E160 =
+          "device %s 在分区 %s 上缺少 data region 副本集";
+  public static final String EXCEPTION_PARTITIONFETCHER_CANNOT_BE_NULL_5B709CA8 =
+      "partitionFetcher 不能为 null";
+  public static final String EXCEPTION_PARTITIONRESOLVER_CANNOT_BE_NULL_AD01EEB2 =
+      "partitionResolver 不能为 null";
+  public static final String EXCEPTION_CHUNKDATA_AT_INDEX_ARG_CANNOT_BE_NULL_72FCDB2B =
+      "索引 %d 处的 ChunkData 不能为 null";
+  public static final String EXCEPTION_CHUNK_DEVICE_CANNOT_BE_NULL_2EC887AC =
+      "chunk 的 device 不能为 null";
+  public static final String EXCEPTION_CHUNK_TIME_PARTITION_SLOT_CANNOT_BE_NULL_E5B04C6F =
+      "chunk 的时间分区槽不能为 null";
+  public static final String
+      EXCEPTION_PARTITION_FETCHER_RETURNED_MISMATCHED_REPLICA_SET_SIZE_EXPECTED_ARG_ACTUAL_ARG_B7A988CD =
+          "分区获取器返回的副本集数量不匹配：期望 %d，实际 %d";
+  public static final String
+      EXCEPTION_NULL_REPLICA_SET_RESOLVED_FOR_DEVICE_ARG_AT_PARTITION_ARG_19CA94B2 =
+          "device %s 在分区 %s 上解析到 null 副本集";
+  public static final String EXCEPTION_DISTRIBUTEDQUERYPLAN_CANNOT_BE_NULL_A54D99CB =
+      "distributedQueryPlan 不能为 null";
+  public static final String EXCEPTION_QUERYCONTEXT_CANNOT_BE_NULL_C2B25B22 =
+      "queryContext 不能为 null";
+  public static final String EXCEPTION_TSFILENODELIST_CANNOT_BE_NULL_7562FDB4 =
+      "tsFileNodeList 不能为 null";
+  public static final String EXCEPTION_FAILEDTSFILENODEINDEXES_CANNOT_BE_NULL_D1C0E7C6 =
+      "failedTsFileNodeIndexes 不能为 null";
+  public static final String EXCEPTION_STATEMACHINE_CANNOT_BE_NULL_4AF40790 =
+      "stateMachine 不能为 null";
+  public static final String LOG_ILLEGAL_FAILED_NODE_INDEX_ARG_OUT_OF_BOUNDS_0_ARG_285B9862 =
+      "非法的失败节点索引 {}，超出范围 [0, {})";
+  public static final String EXCEPTION_FRAGMENTID_CANNOT_BE_NULL_7726B33B =
+      "fragmentId 不能为 null";
+  public static final String EXCEPTION_DISPATCHER_CANNOT_BE_NULL_6118319E =
+      "dispatcher 不能为 null";
+  public static final String EXCEPTION_TSFILERESOURCE_CANNOT_BE_NULL_C63F7B08 =
+      "TsFileResource 不能为 null";
+  public static final String EXCEPTION_SINGLETSFILENODE_CANNOT_BE_NULL_4EA6CF51 =
+      "singleTsFileNode 不能为 null";
+  public static final String EXCEPTION_MEMORYBUFFER_CANNOT_BE_NULL_77101F0C =
+      "memoryBuffer 不能为 null";
+  public static final String EXCEPTION_DISPATCHCALLBACK_CANNOT_BE_NULL_C7A1AC6A =
+      "dispatchCallback 不能为 null";
+  public static final String EXCEPTION_BLOCK_CANNOT_BE_NULL_7E31451D = "block 不能为 null";
+  public static final String EXCEPTION_TSFILEDATA_CANNOT_BE_NULL_EE1DDEC2 =
+      "tsFileData 不能为 null";
+  public static final String EXCEPTION_FAILED_TO_OFFER_CHUNK_TO_DISPATCHER_0300D5DD =
+      "向 dispatcher 提交 chunk 失败";
+  public static final String MESSAGE_FAILED_TO_DISPATCH_LOAD_COMMAND_ARG_TO_NODE_ARG_BECAUSE_OF_EXCEPTION_ARG_2D8A483D =
+      "向节点派发 Load 命令失败，命令：%s，节点：%s，异常：%s";
+
   // --- Common ---
 
   public static final String NO_MATCHED_DATABASE_PLEASE_CHECK_THE_PATH =
@@ -38,6 +132,19 @@ public final class DataNodeQueryMessages {
       "未知的数据类型：";
   public static final String COUNT_IF_WITH_SLIDINGWINDOW_IS_NOT_SUPPORTED_NOW =
       "目前不支持 COUNT_IF 与滑动窗口组合使用";
+  public static final String EXCEPTION_TIME_DURATION_IS_OUT_OF_RANGE_A56B1A29 =
+      "时间间隔超出范围。";
+  public static final String EXCEPTION_GENERATED_TIME_COLUMN_IS_OUT_OF_RANGE_43AB0C2A =
+      "生成的时间列超出范围。";
+  public static final String
+      EXCEPTION_THE_TIME_PREDICATE_DOES_NOT_SELECT_ANY_TIME_RANGE_ARG_98DBCE32 =
+          "时间谓词未选择任何时间范围：%s";
+  public static final String
+      EXCEPTION_RIGHT_CLOSED_GROUP_BY_TIME_WITH_LONG_MAX_VALUE_END_TIME_CANNOT_BE_REPRESENTED_AS_A_SINGLE_RIGHT_OPEN_TIME_FILTER_772F893F =
+          "右闭 GROUP BY TIME 的结束时间为 Long.MAX_VALUE，无法表示为单个右开时间过滤器。";
+  public static final String EXCEPTION_DATE_EXPRESSION_IS_OUT_OF_RANGE_ARG_ED35A8A1 =
+      "日期表达式超出范围：%s";
+
   public static final String TIME_DURATION_WITH_SLIDINGWINDOW_IS_NOT_SUPPORTED_NOW =
       "目前不支持 TIME_DURATION 与滑动窗口组合使用";
   public static final String MODE_WITH_SLIDINGWINDOW_IS_NOT_SUPPORTED_NOW =
@@ -139,6 +246,8 @@ public final class DataNodeQueryMessages {
           + "原始错误：%s";
   public static final String RESULT_SET_COLUMNS_EXCEED_MEMORY_CAPACITY =
       "匹配的源列超过了当前估算内存容量，至少超出 %,d 列。";
+  public static final String RESULT_SET_COLUMN_MEMORY_SHORTAGE_EQUIVALENT =
+      "本次失败的内存申请超出可用内存，按已记录列的平均内存估算，至少超出相当于 %,d 列的容量。";
   public static final String SCHEMA_FETCH_METADATA_MEMORY_NOT_ENOUGH =
       "查询分析拉取元数据时内存不足。结果集可能包含过多列。"
           + "失败前，IoTDB 已从 schema 拉取结果中反序列化 %,d 个时间序列列。"
@@ -179,8 +288,13 @@ public final class DataNodeQueryMessages {
       "目标文件已存在：";
   public static final String FAILED_TO_CREATE_FILE =
       "创建文件失败：";
+  public static final String COPY_TO_TARGET_PATH_NOT_ALLOWED =
+      "COPY TO 目标路径不在允许的导出目录内（可通过 copy_to_allowed_export_dirs 配置）：";
   public static final String DATA_TYPE_OF_TARGET_TIME_COLUMN_IS_NOT =
       "目标时间列的数据类型不是 TIMESTAMP";
+  public static final String
+      EXCEPTION_SPECIFIED_TIME_COLUMN_ARG_DOES_NOT_EXIST_IN_THE_QUERY_RESULT_34791B26 =
+          "指定的 TIME 列 %s 在查询结果中不存在";
   public static final String DUPLICATE_COLUMN_NAMES_IN_QUERY_DATASET =
       "查询数据集中存在重复的列名。";
   public static final String SOME_SPECIFIED_TAG_COLUMNS_ARE_NOT_EXIST_IN =
@@ -205,6 +319,27 @@ public final class DataNodeQueryMessages {
       "扫描文件时发生错误";
   public static final String ERROR_HAPPENED_WHILE_SCANNING_THE_FILE =
       "扫描文件时发生错误";
+  public static final String
+      EXCEPTION_FAILED_TO_READ_TIMESERIES_METADATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_0B9E652E =
+          "读取时间序列元数据失败。TsFile 可能已损坏，请检查日志中的损坏文件路径。";
+  public static final String EXCEPTION_FAILED_TO_READ_TIMESERIES_METADATA_FROM_TSFILE_ARG_B07568F8 =
+      "从 TsFile 读取时间序列元数据失败：%s";
+  public static final String
+      EXCEPTION_FAILED_TO_READ_CHUNK_DATA_OR_LOAD_PAGE_READER_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_7F51AAB1 =
+          "读取 chunk 数据或加载 page reader 失败。TsFile 可能已损坏，请检查日志中的损坏文件路径。";
+  public static final String
+      EXCEPTION_FAILED_TO_READ_CHUNK_DATA_OR_LOAD_PAGE_READER_FROM_TSFILE_ARG_79127C70 =
+          "从 TsFile 读取 chunk 数据或加载 page reader 失败：%s";
+  public static final String
+      EXCEPTION_FAILED_TO_DECODE_PAGE_DATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_54D7C6D9 =
+          "解码 page 数据失败。TsFile 可能已损坏，请检查日志中的损坏文件路径。";
+  public static final String EXCEPTION_FAILED_TO_DECODE_PAGE_DATA_FROM_TSFILE_ARG_645F5377 =
+      "从 TsFile 解码 page 数据失败：%s";
+  public static final String EXCEPTION_FAILED_TO_READ_METADATA_INDEX_NODE_FROM_TSFILE_ARG_EC5B6633 =
+      "从 TsFile 读取元数据索引节点失败：%s";
+  public static final String
+      LOG_TSFILE_MAY_BE_CORRUPTED_DURING_QUERY_EXECUTION_FILE_ARG_STAGE_ARG_9F77E8B3 =
+          "查询执行期间 TsFile 可能已损坏，文件：{}，阶段：{}";
   public static final String ALL_CACHED_CHUNKS_SHOULD_BE_CONSUMED_FIRST =
       "所有缓存的 chunk 应先被消费";
   public static final String OVERLAPPED_DATA_SHOULD_BE_CONSUMED_FIRST =
@@ -217,6 +352,10 @@ public final class DataNodeQueryMessages {
       "此处不应调用 getPageReader()";
   public static final String UNSUPPORTED_COLUMN_TYPE =
       "不支持的列类型：";
+  public static final String UNSUPPORTED_COLUMN_PROPERTY =
+      "不支持的列属性：";
+  public static final String EXCEPTION_THE_COLUMN_PROPERTY_VALUE_MUST_BE_A_STRING_LITERAL_D6FA0250 =
+      "列属性值必须是字符串字面量。";
   public static final String FAIL_TO_CLOSE_CTEDATAREADER =
       "关闭 CteDataReader 失败";
   public static final String UNKNOWN_TABLE =
@@ -476,10 +615,20 @@ public final class DataNodeQueryMessages {
       "TIMESTAMP 不支持 REGEXP/NOT REGEXP";
   public static final String GROUPBYTIME_FILTER_CANNOT_EXIST_IN_VALUE_FILTER =
       "GroupByTime 过滤器不能存在于值过滤器中。";
+  public static final String EXCEPTION_ARG_CANNOT_BE_CAST_TO_ARG_28F0C5FC =
+      "\"%s\" 无法转换为 [%s]";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_751BF348 =
+      "不支持的数据类型 %s";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_MAXBY_MINBY_ARG_DD30FAB1 =
+      "MaxBy/MinBy 不支持的数据类型：%s";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EQUAL_EVENT_AGGREGATION_ARG_77E085EB =
+      "等值事件聚合不支持的数据类型：%s";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_VARIATION_EVENT_AGGREGATION_ARG_3D0F0388 =
+      "变化事件聚合不支持的数据类型：%s";
+  public static final String EXCEPTION_TIMESTAMP_IN_LIST_LITERAL_CAN_ONLY_BE_LONGLITERAL_DOUBLELITERAL_OR_GENERICLITERAL_ACTUAL_TYPE_ARG_D751BE79 =
+      "TIMESTAMP 的 IN 列表字面量只能是 LongLiteral、DoubleLiteral 或 GenericLiteral，实际类型为 %s";
   public static final String IS_NULL_CAN_BE_PUSHED_DOWN =
       "IS NULL 可以下推";
-  public static final String GROUP_BY_TIME_CANNOT_BE_REVERSED =
-      "GROUP BY TIME 不能反转";
 
   // --- Plan / Optimization ---
 
@@ -721,6 +870,12 @@ public final class DataNodeQueryMessages {
       "暂不支持 Show Index 语句。";
   public static final String UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS =
       "UPDATE 只能指定属性列。";
+  public static final String
+      EXCEPTION_CANNOT_UPDATE_ARG_COLUMN_ARG_UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS_F805D1A6 =
+          "无法更新 %s 列 '%s'。UPDATE 只能指定 ATTRIBUTE 列。";
+  public static final String
+      EXCEPTION_CANNOT_REFERENCE_ARG_COLUMN_ARG_IN_AN_UPDATE_VALUE_UPDATE_VALUES_CAN_ONLY_REFERENCE_ATTRIBUTE_OR_TAG_COLUMNS_C01BE71A =
+          "无法在 UPDATE 值中引用 %s 列 '%s'。UPDATE 值只能引用 ATTRIBUTE 或 TAG 列。";
   public static final String DROP_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
       "暂不支持 Drop Function 语句。";
   public static final String SHOW_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
@@ -781,6 +936,7 @@ public final class DataNodeQueryMessages {
       "重复的参数名：%s";
   public static final String SETTING_MONTHLY_INTERVALS_IS_NOT_SUPPORTED =
       "不支持设置按月间隔。";
+  public static final String THE_ARGUMENT_CANNOT_BE_NULL =  "参数 %s 不能主动填null值";
   public static final String FILTER_PUSH_DOWN_DOES_NOT_SUPPORT_CASE_WHEN =
       "过滤下推不支持 CASE WHEN";
   public static final String FILTER_PUSH_DOWN_DOES_NOT_SUPPORT_IF =
@@ -968,6 +1124,8 @@ public final class DataNodeQueryMessages {
       "意外的表达式：";
   public static final String FAILED_TO_FETCH_SUBQUERY_RESULT =
       "获取子查询结果失败。";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_FOR_SCALAR_SUBQUERY_RESULT_ARG_D58CBB00 =
+      "标量子查询结果的数据类型不受支持：%s";
 
   // --- Plan / Relational / Planner / Iterative ---
 
@@ -1090,6 +1248,7 @@ public final class DataNodeQueryMessages {
       "异步分发读取操作时被中断";
   public static final String INTERRUPTED_WHEN_DISPATCHING_WRITE_ASYNC =
       "异步分发写入操作时被中断";
+  public static final String MESSAGE_INTERRUPTED_ERRORS_ARG_876F1B4B = "中断错误：%s";
   public static final String DESERIALIZE_CONSENSUSGROUPID_FAILED =
       "反序列化 ConsensusGroupId 失败。";
   public static final String CAN_T_CONNECT_TO_NODE =
@@ -1120,6 +1279,9 @@ public final class DataNodeQueryMessages {
       "开始本地加载 TsFile {}。";
   public static final String LOAD_ALL_FAILED_TSFILES_ARE_CONVERTED_TO_TABLETS =
       "加载：所有失败的 TsFile 已转换为 Tablet 并插入。";
+  public static final String
+      LOG_LOAD_FAILED_TO_LOAD_SOME_TSFILES_BY_CONVERTING_THEM_INTO_TABLETS_FAILED_TSFILES_ARG_7D9DB9C3 =
+          "加载：部分 TsFile 通过转换为 Tablet 仍加载失败。失败的 TsFile：%s";
 
   // --- Plan / Statement ---
 
@@ -1341,6 +1503,8 @@ public final class DataNodeQueryMessages {
       "获取 UDF 访问策略时发生错误";
   public static final String TRANSFORMUTILS_SHOULD_NOT_BE_INSTANTIATED =
       "TransformUtils 不应被实例化。";
+  public static final String EXCEPTION_THE_DATA_TYPE_OF_THE_STATE_WINDOW_STRATEGY_IS_NOT_VALID_61F4E273 =
+      "状态窗口策略的数据类型无效。";
 
   // --- Execution / Exchange (additional) ---
 
@@ -1358,6 +1522,28 @@ public final class DataNodeQueryMessages {
       "{} 从 SinkHandle {} 的通道索引 {} 拉取 TsBlocks [{}] 到 [{}] 失败，";
   public static final String FAILED_TO_GET_DATA_BLOCK =
       "获取数据块 [{}, {}) 失败，尝试次数：{}";
+  public static final String EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33 =
+      "数据块响应数量异常。";
+  public static final String
+      EXCEPTION_INVALID_SERIALIZED_TSBLOCK_FRAGMENT_OFFSET_ARG_FOR_BLOCK_SIZE_ARG_53BC0284 =
+          "序列化 TsBlock 分片偏移量 %s 无效，块大小为 %s。";
+  public static final String
+      EXCEPTION_ACCUMULATED_TSBLOCK_FRAGMENT_LENGTH_ARG_DOES_NOT_MATCH_TOTALLENGTH_ARG_1B784303 =
+          "TsBlock 分片累计长度 %s 与 totalLength %s 不一致。";
+  public static final String
+      EXCEPTION_THE_FIRST_FRAGMENTED_DATA_BLOCK_RESPONSE_MUST_INCLUDE_TOTALLENGTH_C5C79BC2 =
+          "首个分片数据块响应必须包含 totalLength。";
+  public static final String
+      EXCEPTION_NEXT_SEQUENCE_ID_ARG_EXCEEDS_REQUESTED_END_SEQUENCE_ID_ARG_30B1726E =
+          "下一个 sequence ID %s 超过请求的结束 sequence ID %s。";
+  public static final String
+      EXCEPTION_A_COMPLETED_DATA_BLOCK_RESPONSE_RANGE_MUST_NOT_RETAIN_A_PARTIAL_TSBLOCK_85E5C287 =
+          "已完成的数据块响应区间不能保留未完成的 TsBlock。";
+  public static final String EXCEPTION_TSBLOCK_FRAGMENT_MUST_NOT_BE_EMPTY_C7D19863 =
+      "TsBlock 分片不能为空。";
+  public static final String
+      EXCEPTION_NEXT_FRAGMENT_OFFSET_ARG_MUST_BE_GREATER_THAN_CURRENT_OFFSET_ARG_AND_MATCH_ACCUMULATED_FRAGMENT_LENGTH_ARG_ECC31047 =
+          "下一分片偏移量 %s 必须大于当前偏移量 %s，并且等于分片累计长度 %s。";
   public static final String FAILED_TO_SEND_ACK_DATA_BLOCK_EVENT =
       "发送数据块确认事件 [{}, {}) 失败，尝试次数：{}";
   public static final String SEND_CLOSE_SINK_CHANNEL_EVENT_FAILED =
@@ -1479,6 +1665,8 @@ public final class DataNodeQueryMessages {
       "[清理查询]";
   public static final String RELEASE_QUERY_RESOURCE_STATE =
       "[释放查询资源] 状态为: {}";
+  public static final String IGNORE_EXCEPTION_AFTER_QUERY_DONE =
+      "[忽略异常] 查询 {} 已处于终态 {}，忽略并发清理资源导致的异常";
   public static final String SKIP_EXECUTE =
       "[跳过执行]";
   public static final String SKIP_EXECUTE_AFTER_LOGICAL_PLAN =
@@ -2421,9 +2609,10 @@ public final class DataNodeQueryMessages {
   public static final String OFFSET_ROW_COUNT_MUST_BE_GREATER_OR_EQUAL_TO_0_ACTUAL_VALUE_S =
 
       "OFFSET 行数必须大于或等于 0（实际值：%s）";
-  public static final String LIMIT_ROW_COUNT_MUST_BE_GREATER_OR_EQUAL_TO_0_ACTUAL_VALUE_S =
+  public static final String
+      EXCEPTION_LIMIT_ROW_COUNT_MUST_BE_GREATER_THAN_0_ACTUAL_VALUE_ARG_79F8F1A3 =
 
-      "LIMIT 行数必须大于或等于 0（实际值：%s）";
+          "LIMIT 行数必须大于 0（实际值：%s）";
   public static final String NON_CONSTANT_PARAMETER_VALUE_FOR_S_S =
 
       "%s 的参数值不是常量：%s";
@@ -2772,12 +2961,22 @@ public final class DataNodeQueryMessages {
   public static final String IS_NOT_SUPPORTED_FOR_PROPERTY_VALUE_OF_SET_CONFIGURATION =
 
       " 不支持作为 'set configuration' 的属性值。";
+  public static final String EXCEPTION_DEFAULT_IS_NOT_SUPPORTED_FOR_SET_CONFIGURATION_D76F13AD =
+      "DEFAULT 不支持用于 SET CONFIGURATION";
   public static final String NOTE_THAT_THE_SYNTAX_FOR_SET_CONFIGURATION_IN_THE_TREE_MODEL_IS_NOT_EXACTLY_THE_SAME_AS =
 
       "注意：树模型中的 'set configuration' 语法与表模型中的语法并不完全相同。";
   public static final String UNSUPPORTED_COPY_TO_FORMAT_S_SUPPORTED_FORMATS_S =
 
       "不支持 COPY_TO 格式 '%s'。支持的格式：%s";
+  public static final String EXCEPTION_DUPLICATE_TAG_COLUMN_IN_TAGS_CLAUSE_ARG_61FD5422 =
+      "TAGS 子句中存在重复的 TAG 列：%s";
+  public static final String EXCEPTION_DUPLICATE_OPTION_IN_COPY_TO_STATEMENT_ARG_99CFE09F =
+      "COPY TO 语句中存在重复的选项：%s";
+  public static final String EXCEPTION_FAILED_TO_WRITE_THE_TARGET_FILE_ARG_5AC3025D =
+      "写入目标文件失败：%s";
+  public static final String LOG_FAILED_TO_WRITE_THE_TARGET_FILE_DURING_COPY_TO_EE25EF37 =
+      "COPY TO 写入目标文件失败";
   public static final String SIMULTANEOUS_SETTING_OF_MONTHLY_AND_NON_MONTHLY_INTERVALS_IS_NOT_SUPPORTED =
       "不支持同时设置月级和非月级时间间隔。";
   public static final String DON_T_NEED_TO_SPECIFY_TIME_COLUMN_WHILE_EITHER_TIME_BOUND_OR_FILL_GROUP_PARAMETER_IS_NOT =
@@ -3134,6 +3333,19 @@ public final class DataNodeQueryMessages {
       "LoadTsFileScheduler：加载 TsFile {} 期间检测到 Region 迁移，将转换为 insertion 以避免数据丢失。";
   public static final String LOAD_TSFILE_ARG_SUCCESSFULLY_LOAD_PROCESS_ARG_ARG =
       "成功加载 TsFile {}，加载进度 [{}/{}]";
+  public static final String
+      LOG_LOAD_BATCH_FINISHED_DELETING_ARG_SOURCE_TSFILES_AFTER_LOAD_3A9E4F5B =
+          "LOAD 批次结束，加载完成后删除 {} 个源 TsFile";
+  public static final String LOG_FAILED_TO_CLEAN_UP_SOURCE_TSFILE_AFTER_LOADING_ARG_78E1FEEE =
+      "加载后清理源 TsFile 失败：{}";
+  public static final String
+      LOG_EXCEPTION_ENCOUNTERED_DURING_DEFERRED_SOURCE_FILE_DELETION_D4AE0D0B =
+          "延迟删除源 TsFile 时发生异常";
+  public static final String LOG_EXCEPTION_ENCOUNTERED_CLOSING_DISPATCHER_02FE15C1 =
+      "关闭 dispatcher 时发生异常";
+  public static final String
+      LOG_EXCEPTION_ENCOUNTERED_RELEASING_DATA_CACHE_MEMORY_BLOCK_3CD1873D =
+          "释放数据缓存内存块时发生异常";
   public static final String CAN_NOT_LOAD_TSFILE_ARG_LOAD_PROCESS_ARG_ARG =
 
       "无法加载 TsFile {}，加载进度 [{}/{}]。";
@@ -3149,6 +3361,8 @@ public final class DataNodeQueryMessages {
   public static final String DISPATCH_ONE_PIECE_TO_REPLICASET_ARG_ERROR_RESULT_STATUS_CODE_ARG =
 
       "分发 TsFile 片段到 ReplicaSet {} 出错。结果状态码 {}。 ";
+  public static final String LOG_LOAD_CONSENSUS_SUBMIT_TRANSIENT_FAILURE_RETRY_D7E1D9A6 =
+      "提交 LOAD 共识 {}（load {}）到 {} 时遇到瞬时失败，将重试（{}/{}）：{}";
   public static final String RESULT_STATUS_MESSAGE_ARG_DISPATCH_PIECE_NODE_ERROR_PERCENT_NARG =
 
       "结果状态消息 {}。分发片段节点出错：%n{}";
@@ -3158,6 +3372,10 @@ public final class DataNodeQueryMessages {
   public static final String WAIT_FOR_LOADING_S_TIME_OUT =
 
       "等待加载 %s 超时。";
+  public static final String LOG_THE_ROUTE_OF_REGION_ARG_CHANGED_FROM_ARG_TO_ARG_WHILE_THE_TASK_IS_BEING_LOADED_THE_TASK_FOLLOWS_IT_6182715B =
+      "任务加载期间 region {} 的路由已从 {} 变为 {}，任务将跟随新路由";
+  public static final String EXCEPTION_NO_ROUTE_IS_KNOWN_FOR_REGION_ARG_OF_THE_LOAD_TASK_BC8F698F =
+      "加载任务中 region %s 没有已知路由";
   public static final String DISPATCH_LOAD_COMMAND_ARG_OF_TSFILE_ARG_ERROR_TO_REPLICASETS_ARG_ERROR =
 
       "分发加载命令 {}（TsFile {}）到 replicaSets {} 时出错。 ";
@@ -3222,6 +3440,50 @@ public final class DataNodeQueryMessages {
   public static final String RULE_S_BEFORE_S_AFTER_S =
 
       "规则：{}\n之前：\n{}\n之后：\n{}";
+
+  public static final String
+      EXCEPTION_AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR_WHEN_EXECUTING_STATEMENT_ARG_DETAIL_ARG_B6C9E02E =
+          "执行语句 %s 时自动创建或验证元数据出错。详情：%s。";
+  public static final String EXCEPTION_CANNOT_USE_ARG_FOR_SUBSCRIPT_OF_ARG_15A147BC =
+      "无法将 %s 用作 %s 的下标";
+  public static final String EXCEPTION_EXPECTED_DATA_END_4C374AB5 = "预期数据结束位置";
+  public static final String EXCEPTION_LOADING_FILE_ARG_FAILED_DETAIL_ARG_C161A17F =
+      "加载文件 %s 失败。详情：%s";
+  public static final String EXCEPTION_PROGRESS_INDEX_1C50FE57 = "进度索引";
+  public static final String
+      LOG_FAILED_TO_GET_NEED_LAST_CACHE_INFO_FOR_DATABASE_ARG_WILL_PUT_CACHE_ANYWAY_EXCEPTION_ARG_D5D80E96 =
+          "获取数据库 {} 的 need_last_cache 信息失败，仍将放入缓存，异常：{}";
+  public static final String MESSAGE_CANNOT_APPLY_OPERATOR_ARG_ARG_ARG_CCA56AA9 =
+      "无法应用运算符：%s %s %s";
+  public static final String MESSAGE_CANNOT_CHECK_IF_ARG_IS_DISTINCT_FROM_ARG_E9974593 =
+      "无法检查 %s 是否与 %s 不同";
+  public static final String MESSAGE_CANNOT_NEGATE_ARG_FCF0C22A = "无法对 %s 取负";
+  public static final String
+      MESSAGE_CONTINUOUSSAMESEARCHINDEXSEPARATORNODE_NOT_SUPPORT_THIS_OPERATION_CC9BC84B =
+          "ContinuousSameSearchIndexSeparatorNode 不支持此操作";
+  public static final String MESSAGE_CREATE_DEVICE_OR_UPDATE_DEVICE_ATTRIBUTE_FOR_INSERT_BFA7C2DA =
+      "为插入创建设备或更新设备属性";
+  public static final String
+      MESSAGE_DATAPARTITIONMAP_IS_EMPTY_AFTER_PROCESSING_RESOURCE_FILE_21869447 =
+          "处理 resource 文件后 DataPartitionMap 为空";
+  public static final String
+      MESSAGE_DATA_TYPE_MISMATCH_FOR_COLUMN_ARG_IN_TABLE_ARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_ECAD0C63 =
+          "列 %s 在表 %s 中的数据类型不匹配，TsFile 中的类型：%s，IoTDB 中的类型：%s";
+  public static final String MESSAGE_FAILED_TO_PROCESS_DATA_REGION_ARG_507E9689 =
+      "处理 DataRegion 失败：%s";
+  public static final String MESSAGE_FETCH_DEVICE_FOR_INSERT_E0AF591F = "为插入获取设备";
+  public static final String MESSAGE_FETCH_DEVICE_FOR_QUERY_ARG_ARG_160027C4 = "为查询 %s 获取设备：%s";
+  public static final String MESSAGE_FETCH_SCHEMA_FOR_ARG_76B28DC3 = "为 %s 获取元数据";
+  public static final String MESSAGE_GENERATION_FAILED_ARG_E37A62C5 = "生成失败：%s";
+  public static final String MESSAGE_OPERATOR_ARG_ARG_CANNOT_BE_APPLIED_TO_ARG_FE836F93 =
+      "运算符 '%s'%s 无法应用于 %s";
+  public static final String MESSAGE_PIECE_REFERENCE_CA095411 = "分片引用";
+  public static final String MESSAGE_PROGRESS_INDEX_PAYLOAD_F5596925 = "进度索引载荷";
+  public static final String MESSAGE_PROGRESS_INDEX_PAYLOAD_LENGTH_0C4465A8 = "进度索引载荷长度";
+  public static final String MESSAGE_STAGED_DATA_28A8A2A9 = "暂存数据";
+  public static final String
+      MESSAGE_TSFILE_ENCRYPTION_IS_ENABLED_AND_THE_LOAD_TSFILE_FUNCTION_IS_DISABLED_7CB357EE =
+          "已启用 TsFile 加密，Load TsFile 功能不可用";
 
   private DataNodeQueryMessages() {}
   // ---------------------------------------------------------------------------
@@ -3633,6 +3895,9 @@ public final class DataNodeQueryMessages {
   public static final String QUERY_EXCEPTION_LOAD_TSFILE_SOURCE_PATH_S_IS_OUTSIDE_ALLOWED_DIRECTORIES_85A6019F =
 
       "加载 TsFile 的源路径 %s 位于允许目录 %s 之外。";
+  public static final String
+      QUERY_EXCEPTION_CANNOT_LOAD_FILES_BECAUSE_SPECIFIED_DIRECTORY_CONTAINS_IOTDB_DATA_B0A1B93D =
+          "指定目录包含 IoTDB 数据，无法加载文件。";
   public static final String QUERY_EXCEPTION_FAILED_TO_RESOLVE_CANONICAL_PATH_FOR_LOAD_TSFILE_SOURCE_09CC9AC6 =
       "无法解析 load TsFile source %s 的 canonical path：%s";
   public static final String QUERY_EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_S_REGISTERED_S_AE9DBDC0 =
@@ -3683,9 +3948,10 @@ public final class DataNodeQueryMessages {
   public static final String QUERY_EXCEPTION_GETOUTPUTCOLUMNNAMES_OF_ALTERLOGICALVIEWNODE_IS_NOT_IMPLEMENTED_D2294789 =
 
       "AlterLogicalViewNode 的 getOutputColumnNames 尚未实现";
-  public static final String QUERY_EXCEPTION_THE_DATABASE_S_IS_READ_ONLY_CB6732CE =
+  public static final String
+      EXCEPTION_APACHE_IOTDB_DOES_NOT_SUPPORT_THIS_OPERATION_ON_DATABASE_ARG_B09ADFD7 =
 
-      "数据库 '%s' 为只读。";
+          "Apache IoTDB 不支持对数据库 '%s' 执行此操作。";
   public static final String QUERY_EXCEPTION_THE_DATABASE_S_CAN_ONLY_BE_QUERIED_BY_AUDIT_ADMIN_4A510F66 =
 
       "数据库 '%s' 仅允许 AUDIT admin 查询。";
@@ -3913,6 +4179,7 @@ public final class DataNodeQueryMessages {
       "已经在取消中";
   public static final String DRIVER_TASK_ABORTED_BY_INTERNAL_ERROR_SCHEDULED =
       "内部错误调度";
+  public static final String EXCEPTION_SCHEDULER_SHUTDOWN_323938F5 = "调度器关闭";
   public static final String DRIVER_TASK_ABORTED_BY_MEMORY_NOT_ENOUGH =
       "内存不足，无法执行查询任务。";
   public static final String ROOT_FRAGMENT_INSTANCE_PLACEMENT_ERROR_FMT =
@@ -3960,18 +4227,7 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_ID_IS_EMPTY_28C94FC0 =
       "id 为空";
   public static final String EXCEPTION_EXECUTOR_IS_NULL_7FBE03A4 = "executor 不能为空";
-  public static final String EXCEPTION_INITIALSTATE_IS_NULL_8992A39F = "initialState 不能为空";
-  public static final String EXCEPTION_TERMINALSTATES_IS_NULL_E0FC2A93 = "terminalStates 不能为空";
-  public static final String EXCEPTION_EXPECTEDSTATE_IS_NULL_5E8C2F32 = "expectedState 不能为空";
   public static final String EXCEPTION_CURRENTSTATE_IS_NULL_AEDB20DB = "currentState 不能为空";
-  public static final String EXCEPTION_STATECHANGELISTENER_IS_NULL_635AE7D2 = "stateChangeListener 不能为空";
-  public static final String EXCEPTION_ARG_CANNOT_TRANSITION_FROM_ARG_TO_ARG_8C680D30 = "%s 无法从 %s 转换到 %s";
-  public static final String EXCEPTION_CANNOT_FIRE_STATE_CHANGE_EVENT_WHILE_HOLDING_THE_LOCK_35243BC4 =
-      "持有锁时无法触发状态变更事件。";
-  public static final String EXCEPTION_CANNOT_NOTIFY_WHILE_HOLDING_THE_LOCK_15625D48 =
-      "持有锁时无法通知。";
-  public static final String EXCEPTION_CANNOT_WAIT_FOR_STATE_CHANGE_WHILE_HOLDING_THE_LOCK_CBD9F784 =
-      "持有锁时无法等待状态变更。";
   public static final String EXCEPTION_DONESTATE_IS_NULL_D88F77E5 = "doneState 不能为空";
   public static final String EXCEPTION_DONESTATE_ARG_IS_NOT_A_DONE_STATE_8724C618 =
       "doneState %s 不是完成状态";
@@ -4402,6 +4658,8 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_UDFNAME_IS_NULL_83E9039B = "udfName 不能为空";
   public static final String EXCEPTION_URISTRING_IS_NULL_E7458C6A = "uriString 不能为空";
   public static final String EXCEPTION_FILEPATH_IS_NULL_84CE8A66 = "filePath 不能为空";
+  public static final String EXCEPTION_LOAD_TSFILE_PATH_CANNOT_BE_EMPTY_2B106181 =
+      "LOAD TSFILE 路径不能为空。";
   public static final String EXCEPTION_DETAILS_IS_NULL_8EDEEA03 = "details 不能为空";
   public static final String EXCEPTION_COLUMNCATEGORY_IS_NULL_0075924B = "columnCategory 不能为空";
   public static final String EXCEPTION_ARGUMENTNAME_IS_NULL_7F8F665F = "argumentName 不能为空";
@@ -4511,6 +4769,10 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_ONLY_HAVE_TWO_ARGUMENTS_3D12DCFD = "聚合函数 [%s] 应当只有两个参数";
   public static final String EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_HAVE_VALUE_COLUMN_AS_NUMERIC_TYPE_INT32_INT64_FLOAT_DOUBLE_TIMESTAMP_97A6CA87 = "聚合函数 [%s] 的值列应为数值类型 [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]";
   public static final String EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_HAVE_PERCENTAGE_AS_DECIMAL_TYPE_57033ADF = "聚合函数 [%s] 的百分比参数应为 decimal 类型";
+  public static final String EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_2_ARGUMENTS_VALUE_TIME_E2F55C08 = "聚合函数 [%s] 需要 2 个参数：value、time";
+  public static final String EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_4_ARGUMENTS_VALUE_TIME_WINDOW_START_WINDOW_END_FBEC794B = "聚合函数 [%s] 需要 4 个参数：value、time、window_start、window_end";
+  public static final String EXCEPTION_AGGREGATE_FUNCTION_ARG_ONLY_SUPPORTS_INT32_INT64_FLOAT_AND_DOUBLE_AS_THE_FIRST_ARGUMENT_8D201434 = "聚合函数 [%s] 的第一个参数仅支持 INT32、INT64、FLOAT 和 DOUBLE 类型";
+  public static final String EXCEPTION_THE_TIME_ARGUMENTS_OF_AGGREGATE_FUNCTION_ARG_SHOULD_BE_TIMESTAMP_OR_INT64_TYPE_9C736DE3 = "聚合函数 [%s] 的时间参数应为 TIMESTAMP 或 INT64 类型";
   public static final String EXCEPTION_CANNOT_NEST_AGGREGATIONS_INSIDE_AGGREGATION_ARG_ARG_6E5073A4 = "不能在聚合 '%s' 中嵌套聚合：%s";
   public static final String EXCEPTION_CANNOT_NEST_WINDOW_FUNCTIONS_INSIDE_AGGREGATION_ARG_ARG_8F94A897 = "不能在聚合 '%s' 中嵌套窗口函数：%s";
   public static final String EXCEPTION_PARTITION_BY_EXPRESSION_ARG_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_E3C696D6 = "PARTITION BY 表达式 '%s' 必须是聚合表达式或出现在 GROUP BY 子句中";
@@ -4527,6 +4789,16 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_THE_SECOND_ARGUMENT_OF_PERCENTILE_FUNCTION_PERCENTAGE_MUST_BE_A_DOUBLE_LITERAL_D9464B46 = "'percentile' 函数的第二个参数 percentage 必须是 double 字面量";
   public static final String EXCEPTION_DATA_TYPE_MISMATCH_FOR_MEASUREMENT_ARGARGARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_C5BA7DBD = "测点 %s%s%s 的数据类型不匹配，TsFile 中类型：%s，IoTDB 中类型：%s";
   public static final String MESSAGE_FAILED_TO_RELEASE_EXTERNAL_TSFILE_QUERY_RESOURCE_712EE978 = "释放外部 TsFile 查询资源失败";
+  public static final String EXCEPTION_UNKNOWN_LOADTSFILECONSENSUSOP_CODE_ARG_B62D2997 =
+      "未知的 LoadTsFileConsensusOp 编码：%s";
+  public static final String EXCEPTION_LOAD_CONSENSUS_ENTRY_DECLARES_A_NEGATIVE_ARG_COUNT_ARG_2DEADCCC =
+      "LOAD 共识条目声明的 %s 数量为负数：%d";
+  public static final String EXCEPTION_LOAD_CONSENSUS_ENTRY_ENDED_WHILE_READING_ARG_ARG_OF_ARG_BYTES_WERE_AVAILABLE_D927147B =
+      "读取 %s 时 LOAD 共识条目已结束：仅有 %d/%d 字节可用。";
+  public static final String LOG_THE_ROUTE_OF_REGION_ARG_CANNOT_BE_LOOKED_UP_AGAIN_THE_COMMAND_ARG_OF_THE_LOAD_TASK_ARG_IS_NOT_REPEATED_ON_THE_ROUTE_IT_FAILED_ON_02FFB468 =
+      "无法重新查询 region {} 的路由：LOAD 任务 {} 的 {} 不会在失败的路由上重试。";
+  public static final String LOG_THE_COMMIT_OUTCOME_OF_LOAD_TASK_ARG_IN_REGION_ARG_COULD_NOT_BE_RESOLVED_ARG_89B6F261 =
+      "LOAD 任务 {} 在 region {} 的提交结果无法确定：{}";
   public static final String EXCEPTION_OUTER_QUERY_TIMEOUT_EXCEEDED_BEFORE_IOTDBLOCAL_QUERY_STARTS_800BFA63 = "在 IoTDBLocal 查询开始前，外层查询已超时";
   public static final String MESSAGE_FAILED_TO_CLOSE_UDF_RESULT_SET_AT_INDEX_ARG_A293B7EC = "关闭索引 {} 处的 UDF 结果集失败";
   public static final String EXCEPTION_INTERNAL_QUERY_EXECUTION_NOT_FOUND_62642542 = "未找到内部查询执行";
@@ -4545,5 +4817,806 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_ALIAS_IS_NULL_862D23B1 = "alias 不能为空";
   public static final String EXCEPTION_REFERENCES_IS_NULL_25A7E3AF = "references 不能为空";
   public static final String EXCEPTION_VISIBLEALIASES_IS_NULL_630B27F1 = "visibleAliases 不能为空";
+  public static final String EXCEPTION_HAS_NO_PERMISSION_TO_EXECUTE_ARG_BECAUSE_ONLY_THE_SUPERUSER_CAN_ALTER_HIM_HERSELF_C5902893 =
+      "无权执行 %s，因为只有超级用户可以修改其自身。";
+  public static final String
+      LOG_FAILED_TO_CLEAN_DEVICEENTRY_DATA_SET_ASYNCHRONOUSLY_QUERYID_ARG_PLANNODEID_ARG_9106C4C5 =
+          "异步清理 DeviceEntry 数据集失败：queryId=%s，planNodeId=%s";
+  public static final String LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC =
+      "清理 query %s 的 DeviceEntry spill 目录失败";
+  public static final String
+      LOG_FAILED_TO_CLOSE_DEVICEENTRY_SPILL_WRITER_DURING_CLEANUP_ARG_EA7F7941 =
+          "清理过程中关闭 DeviceEntry spill writer 失败：%s";
+  public static final String
+      LOG_FAILED_TO_CLOSE_DEVICEENTRY_DATA_SET_AFTER_INDEX_SCAN_FAILURE_ARG_57F04319 =
+          "index scan 失败后关闭 DeviceEntry data set 失败：%s";
+  public static final String
+      EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_UNAVAILABLE_MAY_BE_DUE_TO_TIMEOUT_OR_KILL_ARG_B932D10D =
+          "DeviceEntry spill segment 不可用：%s。查询可能因超时或主动 kill 而终止。";
+  public static final String
+      EXCEPTION_DEVICEENTRY_SEGMENT_AND_ENTRY_COUNTS_MUST_BE_NON_NEGATIVE_7C6E569C =
+          "DeviceEntry segment count 和 entry count 不能为负数";
+  public static final String EXCEPTION_OPEN_CONSUMING_READER_IS_NOT_SUPPORTED_8B2A59A4 =
+      "不支持打开消费型读取器";
+  public static final String
+      EXCEPTION_DEVICEENTRY_MATERIALIZER_THRESHOLD_MUST_BE_POSITIVE_ARG_35CF53FD =
+          "DeviceEntry materializer 阈值必须为正数：%d";
+  public static final String
+      EXCEPTION_DEVICEENTRY_MATERIALIZATION_MEMORY_LIMIT_MUST_BE_POSITIVE_ARG_2EB63404 =
+          "DeviceEntry materialization 内存限制必须为正数：%d";
+  public static final String
+      EXCEPTION_DEVICEENTRY_DATA_SET_PATH_ESCAPES_THE_QUERY_DIRECTORY_ARG_394A9840 =
+          "DeviceEntry data set 路径超出 query 目录：%s";
+  public static final String EXCEPTION_DEVICEENTRY_SEGMENT_ID_MUST_BE_NON_NEGATIVE_ARG_F7653A57 =
+      "DeviceEntry segment ID 不能为负数：%d";
+  public static final String EXCEPTION_DEVICEENTRY_SEGMENT_HAS_INCOMPLETE_RECORD_LENGTH_0A282C19 =
+      "DeviceEntry segment 的记录长度不完整";
+  public static final String
+      EXCEPTION_INVALID_DEVICEENTRY_RECORD_LENGTH_ARG_REMAINING_BYTES_ARG_F1C43B72 =
+          "DeviceEntry 记录长度 %d 非法，剩余字节数为 %d";
+  public static final String EXCEPTION_DEVICEENTRY_MATERIALIZER_HAS_ALREADY_FINISHED_5538544E =
+      "DeviceEntry materializer 已结束";
+  public static final String
+      EXCEPTION_NO_MATERIALIZER_IS_AVAILABLE_TO_ENFORCE_THE_DEVICEENTRY_MEMORY_LIMIT_FD0604AF =
+          "没有可用于执行 DeviceEntry 内存限制的 materializer";
+  public static final String EXCEPTION_NO_MORE_DEVICEENTRY_RECORDS_ARE_AVAILABLE_8D51C199 =
+      "没有更多可用的 DeviceEntry 记录";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_DUPLICATE_ARG_ATTRIBUTES_ARE_NOT_ALLOWED_27315578 =
+          "\u521b\u5efa\u6216\u4fee\u6539 Topic \u5931\u8d25\uff0c\u4e0d\u5141\u8bb8\u91cd\u590d\u7684 %s \u5c5e\u6027";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_IS_ONLY_SUPPORTED_FOR_TABLE_TOPICS_A5126607 =
+          "\u521b\u5efa\u6216\u4fee\u6539 Topic \u5931\u8d25\uff0c%s \u4ec5\u652f\u6301\u8868\u6a21\u578b Topic";
+  public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
+      "只有 InMemoryDeviceEntryDataSet 支持获取内存中的设备条目";
+  public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_PIECE_REF_F3498507 =
+      "无效的 LOAD 共识分片引用：路径 %s，偏移 %d，大小 %d";
+  public static final String EXCEPTION_AUTO_SYNC_SCHEMA_IS_ONLY_SUPPORTED_BY_TREE_TO_TABLE_VIEWS_C6586215 =
+      "auto_sync_schema 仅支持树转表视图";
 
+  public static final String MESSAGE_COPYTO_ARG_38343199 = "CopyTo-%s";
+  public static final String MESSAGE_TARGETFILE_ARG_EC484B24 = "目标文件：%s";
+  public static final String MESSAGE_FORMAT_ARG_CE5DC4EE = "格式：%s";
+  public static final String MESSAGE_TARGETTABLE_ARG_00BE4714 = "目标表：%s";
+  public static final String MESSAGE_TIMECOLUMN_ARG_54F6A2A6 = "时间列：%s";
+  public static final String MESSAGE_TAGCOLUMNS_ARG_6520A0C2 = "TAG 列：%s";
+  public static final String MESSAGE_MEMORYTHRESHOLD_ARG_3676AB46 = "内存阈值：%s";
+
+  public static final String EXCEPTION_CHUNKDATA_CONTAINS_NO_PHYSICAL_CHUNK_607BCFC8 =
+      "ChunkData 中不包含任何物理 chunk";
+  public static final String EXCEPTION_DEVICE_CANNOT_BE_NULL_F1EB20B6 = "device 不能为 null";
+  public static final String EXCEPTION_CHUNK_CANNOT_BE_NULL_280ECF98 = "chunk 不能为 null";
+  public static final String EXCEPTION_CHUNKDATA_CANNOT_BE_NULL_7D931C4D = "chunkData 不能为 null";
+  public static final String EXCEPTION_FAILED_TO_COMPUTE_CHUNK_GROUP_HEADER_SIZE_E6B40B2C =
+      "计算 chunk group header 大小失败";
+  public static final String EXCEPTION_FAILED_TO_COMPUTE_CHUNK_HEADER_SIZE_2E88289A =
+      "计算 chunk header 大小失败";
+  public static final String LOG_DISPATCH_LOAD_PIECE_LOADID_ARG_REGIONID_ARG_PIECEINDEX_ARG_TSFILE_ARG_DATASIZE_ARG_REPLICASET_ARG_D9C87EB7 =
+      "下发 LOAD piece：loadId={}，regionId={}，pieceIndex={}，tsFile={}，dataSize={}，replicaSet={}";
+  public static final String LOG_DISPATCH_LOAD_PIECE_SUCCESS_LOADID_ARG_REGIONID_ARG_PIECEINDEX_ARG_DATASIZE_ARG_75F7AEFE =
+      "下发 LOAD piece 成功：loadId={}，regionId={}，pieceIndex={}，dataSize={}";
+  public static final String EXCEPTION_PLAN_NODE_ARG_IS_ALREADY_REGISTERED_ON_MEMORY_SIDE_ARG_NOT_ARG_4C1BB625 = "PlanNode %s 已注册到内存侧 %s，不能注册到 %s";
+  public static final String EXCEPTION_MEMORY_RESERVATION_IS_NOT_REGISTERED_FOR_QUERY_ARG_FRAGMENT_ARG_PLAN_NODE_ARG_67A4B81F = "查询 %s、Fragment %s、PlanNode %s 尚未注册内存账目";
+  public static final String LOG_SHARED_EXCHANGE_BUDGET_FOR_FI_ARG_INPUT_ARG_OUTPUT_ARG_98AE1109 = "FI {} 的共享 exchange 预算：INPUT={}，OUTPUT={}";
+
+  public static final String EXCEPTION_ANALYZE_COST_ARG_MS_222A306D = "分析耗时：%.3f ms";
+
+  public static final String EXCEPTION_FETCH_PARTITION_COST_ARG_MS_67861DDF = "获取分区耗时：%.3f ms";
+
+  public static final String EXCEPTION_FETCH_SCHEMA_COST_ARG_MS_67816EA5 = "获取元数据耗时：%.3f ms";
+
+  public static final String EXCEPTION_DISK_IO_SIZE_ARG_BYTES_CD6872DC = "磁盘 IO 大小：%d 字节";
+
+  public static final String EXCEPTION_DISK_IO_TIME_COST_ARG_MS_36FC3B10 = "磁盘 IO 耗时：%.3f ms";
+
+  public static final String EXCEPTION_DEVICEENTRY_COUNT_ARG_3CF4F4B6 = "DeviceEntry 数量：%d";
+
+  public static final String EXCEPTION_LOGICAL_PLAN_COST_ARG_MS_1A40B609 = "逻辑计划耗时：%.3f ms";
+
+  public static final String EXCEPTION_LOGICAL_OPTIMIZATION_COST_ARG_MS_1D48CF38 = "逻辑优化耗时：%.3f ms";
+
+  public static final String EXCEPTION_DISTRIBUTION_PLAN_COST_ARG_MS_EE261BB5 = "分布式计划耗时：%.3f ms";
+
+  public static final String EXCEPTION_DISPATCH_COST_ARG_MS_E2A08F90 = "分发耗时：%.3f ms";
+
+  public static final String EXCEPTION_FRAGMENT_INSTANCES_COUNT_ARG_2B7FA76E =
+      "FragmentInstance 数量：%s";
+
+  public static final String
+      EXCEPTION_FRAGMENT_INSTANCE_ID_ARG_IP_ARG_DATAREGION_ARG_STATE_ARG_32F467DE =
+          "FRAGMENT-INSTANCE[ID：%s][IP：%s][DataRegion：%s][状态：%s]";
+
+  public static final String EXCEPTION_TOTAL_WALL_TIME_ARG_MS_F65FF0B0 = "总经过时间：%s ms";
+
+  public static final String EXCEPTION_COST_OF_INITDATAQUERYSOURCE_ARG_MS_55A2E155 =
+      "initDataQuerySource 耗时：%.3f ms";
+
+  public static final String EXCEPTION_RETRY_COUNT_OF_INITDATAQUERYSOURCE_ARG_70E5C772 =
+      "initDataQuerySource 重试次数：%d";
+
+  public static final String EXCEPTION_SEQ_FILE_UNCLOSED_ARG_SEQ_FILE_CLOSED_ARG_CBB3422D =
+      "顺序文件（未关闭）：%s，顺序文件（已关闭）：%s";
+
+  public static final String EXCEPTION_UNSEQ_FILE_UNCLOSED_ARG_UNSEQ_FILE_CLOSED_ARG_61850A9D =
+      "乱序文件（未关闭）：%s，乱序文件（已关闭）：%s";
+
+  public static final String
+      EXCEPTION_READY_QUEUED_TIME_ARG_MS_BLOCKED_QUEUED_TIME_ARG_MS_24FB1E4C =
+          "就绪队列等待时间：%.3f ms，阻塞队列等待时间：%.3f ms";
+
+  public static final String EXCEPTION_CPU_TIME_ARG_MS_42555E8C = "CPU 时间：%.3f ms";
+
+  public static final String EXCEPTION_OUTPUT_ARG_ROWS_5EE0EF28 = "输出：%s 行";
+
+  public static final String EXCEPTION_HASNEXT_CALLED_COUNT_ARG_32D7AEBA = "HasNext() 调用次数：%s";
+
+  public static final String EXCEPTION_NEXT_CALLED_COUNT_ARG_1AD71747 = "Next() 调用次数：%s";
+
+  public static final String
+      EXCEPTION_TEMPLATE_IS_BEING_UNSETTING_FROM_PATH_ARG_PLEASE_TRY_ACTIVATING_LATER_4E3DABCA =
+          "正在从路径 %s 上解除模板设置。请稍后尝试激活。";
+
+  public static final String
+      EXCEPTION_TEMPLATE_IS_BEING_UNSETTING_FROM_PREFIX_PATH_OF_ARG_PLEASE_TRY_ACTIVATING_LATER_165C2E48 =
+          "正在从 %s 的前缀路径上解除模板设置。请稍后尝试激活。";
+
+  public static final String
+      EXCEPTION_ERROR_OCCURRED_WHILE_INSERTING_TABLETS_IN_SELECT_INTO_ARG_7238E6B9 =
+          "在 SELECT INTO 中插入 Tablet 时发生错误：%s";
+
+  public static final String EXCEPTION_ARG_MATERIALIZATION_TOTAL_COST_ARG_MS_75BFA6DA =
+      "  %s 物化总耗时：%.3f ms";
+
+  public static final String EXCEPTION_FAIL_TO_SEND_PLAN_NODE_EXCEPTION_MESSAGE_ARG_011028F9 =
+      "发送计划节点失败，异常信息：%s";
+
+  public static final String EXCEPTION_ERROR_OCCURRED_WHILE_EXECUTING_INFERENCE_ARG_14FC21CE =
+      "执行推理时发生错误：[%s]";
+
+  public static final String
+      EXCEPTION_FAILED_TO_EXECUTE_LOAD_TSFILE_STATEMENT_ARG_DETAIL_ARG_6B99B6D4 =
+          "执行 LOAD TSFILE 语句 %s 失败。详情：%s";
+
+  public static final String
+      EXCEPTION_THE_NUMBER_OF_TARGET_PATHS_ARG_AND_SOURCES_ARG_ARE_MISS_MATCHED_PLEASE_CHECK_YOUR_SQL_9C58A8AF =
+          "目标路径数（%d）与源路径数（%d）不匹配！请检查 SQL。";
+
+  public static final String EXCEPTION_PATH_ARG_IS_REDUNDANT_IN_TARGET_PATHS_D32B986C =
+      "目标路径中存在冗余路径 [%s]。";
+
+  public static final String EXCEPTION_ARG_IN_ARG_DF5B49C2 = "%s，所在表达式：%s";
+
+  public static final String EXCEPTION_FAIL_TO_INSERT_MEASUREMENTS_ARG_CAUSED_BY_ARG_B9858E6B =
+      "插入测点 %s 失败，原因：%s";
+
+  public static final String EXCEPTION_MISMATCHED_INPUT_ARG_EXPECTING_ARG_CC10F881 =
+      "输入 '%s' 不匹配。预期输入：%s";
+
+  public static final String
+      EXCEPTION_THE_TRIM_FUNCTION_MUST_HAVE_SPECIFICATION_CHAR_OR_BOTH_ARGUMENTS_WHEN_IT_TAKES_FROM_F0E51E3E =
+          "'trim' 函数使用 FROM 时必须指定 specification、char 或这两个参数";
+
+  public static final String EXCEPTION_INVALID_EXTRACT_FIELD_ARG_C1050A03 = "无效的 EXTRACT 字段：%s";
+
+  public static final String EXCEPTION_INVALID_HEXADECIMAL_DIGIT_ARG_1A042DF1 = "无效的十六进制数字：%s";
+
+  public static final String
+      EXCEPTION_INVALID_ESCAPED_CHARACTER_ARG_ESCAPED_CHARACTER_IS_A_SURROGATE_USE_123456_INSTEAD_AB5CFF96 =
+          "无效的转义字符：%s。转义字符为代理项。请改用 '\\+123456'。";
+
+  public static final String EXCEPTION_RELEASED_BYTES_HAS_BEEN_LARGER_THAN_RESERVED_69DE5487 =
+      "释放的字节数已大于预留的字节数！";
+
+  public static final String
+      EXCEPTION_ALL_REPLICAS_FOR_REGION_ARG_ARE_NOT_AVAILABLE_IN_THESE_DATANODES_ARG_598EFEC2 =
+          "Region [%s] 在这些 DataNode [%s] 上的所有副本均不可用";
+
+  public static final String EXCEPTION_TOPICNAME_IS_NULL_F3607D9A = "topicName 为空";
+
+  public static final String EXCEPTION_PIPENAME_IS_NULL_FC04F696 = "pipeName 为空";
+
+  public static final String EXCEPTION_DATABASE_IS_NULL_8B50DF60 = "database 为空";
+
+  public static final String EXCEPTION_OUTPUTFORMAT_IS_NULL_7D93060B = "outputFormat 为空";
+
+  public static final String EXCEPTION_TEMPROOT_IS_NULL_2A2A7F06 = "tempRoot 为空";
+
+  public static final String EXCEPTION_NO_CHILD_IS_ALLOWED_FOR_SHOWRECEIVERSNODE_CE3D9EE2 =
+      "ShowReceiversNode 不允许有子节点";
+
+  public static final String
+      EXCEPTION_ARG_VALUE_MUST_BE_A_BOOLEANLITERAL_BUT_NOW_IS_ARG_VALUE_ARG_25C5FFF0 =
+          "%s 的值必须为 BooleanLiteral，当前类型为 %s，值为：%s";
+
+  public static final String EXCEPTION_COLUMN_ALIAS_ARG_IS_AMBIGUOUS_AT_POSITIONS_ARG_F6FF2E93 =
+      "列别名 '%s' 在位置 %s 存在歧义";
+
+  public static final String
+      EXCEPTION_LATERAL_COLUMN_ALIAS_ARG_CONTAINING_WINDOW_FUNCTION_IS_NOT_SUPPORTED_13F5E6AD =
+          "不支持包含窗口函数的横向列别名 '%s'";
+
+  public static final String
+      EXCEPTION_LATERAL_COLUMN_ALIAS_IN_WINDOW_FUNCTION_ARGUMENTS_IS_NOT_SUPPORTED_ARG_10EB87DB =
+          "不支持窗口函数参数中的横向列别名：%s";
+
+  public static final String EXCEPTION_WINDOWSPECIFICATION_LOCATION_IS_MISSING_E9CE9D26 =
+      "缺少 WindowSpecification 的位置";
+
+  public static final String EXCEPTION_WINDOWFRAME_LOCATION_IS_MISSING_F46D64A5 =
+      "缺少 WindowFrame 的位置";
+
+  public static final String EXCEPTION_RESOLVED_GROUPING_EXPRESSION_IS_NULL_19A41A60 =
+      "已解析的分组表达式为空";
+
+  public static final String EXCEPTION_MATERIALIZE_QUERY_FOR_CTE_ARG_2D975E4F = "为 CTE '%s' 物化查询";
+
+  public static final String EXCEPTION_WHEN_CLAUSE_OPERAND_MUST_BE_BOOLEAN_ARG_16BDCAFD =
+      "WHEN 子句的操作数必须为布尔值：%s";
+
+  public static final String
+      EXCEPTION_THE_DATANODE_S_TO_BE_REMOVED_ARG_ARE_NOT_IN_THE_CLUSTER_OR_THE_INPUT_FORMAT_IS_INCORRECT_103B72A3 =
+          "待移除的 DataNode %s 不在集群中，或输入格式有误。";
+
+  public static final String EXCEPTION_INVALID_ID_ARG_4E38C37A = "无效的 ID %s";
+
+  public static final String EXCEPTION_NO_DETAILED_FAILURE_REASON_IN_QUERYSTATEMACHINE_6CE1C60A =
+      "QueryStateMachine 中没有详细的失败原因";
+
+  public static final String
+      EXCEPTION_CANNOT_CHECK_FINISHED_STATUS_WHILE_HOLDING_THE_DRIVER_LOCK_E3421709 =
+          "持有 Driver 锁时不能检查完成状态";
+
+  public static final String EXCEPTION_LOCK_MUST_BE_HELD_TO_CALL_ISFINISHEDINTERNAL_9D600B8D =
+      "调用 isFinishedInternal 时必须持有锁";
+
+  public static final String EXCEPTION_LOCK_CANNOT_BE_REACQUIRED_073CBCAD = "无法重新获取锁";
+
+  public static final String EXCEPTION_LOCK_MUST_BE_HELD_TO_CALL_DESTROYIFNECESSARY_A70D64C2 =
+      "调用 destroyIfNecessary 时必须持有锁";
+
+  public static final String EXCEPTION_ERROR_DESTROYING_DRIVER_FOR_TASK_ARG_D695D81F =
+      "销毁任务 %s 的 Driver 时出错";
+
+  public static final String EXCEPTION_ERROR_CLOSING_OPERATOR_ARG_FOR_DRIVER_TASK_ARG_4DE74330 =
+      "关闭操作算子 {} 时出错，Driver 任务为 {}";
+
+  public static final String EXCEPTION_METADATA_ERROR_ARG_7430F33B = "元数据错误：{}";
+
+  public static final String
+      EXCEPTION_FAILED_TO_GET_THE_LOCK_OF_THE_REGION_BECAUSE_THE_REGION_IS_NOT_EXISTED_91402E28 =
+          "Region 不存在，无法获取其锁。";
+
+  public static final String
+      EXCEPTION_EXCEPTION_ARG_ENCOUNTERED_DURING_REGION_REMOVAL_WILL_RETRY_MESSAGE_ARG_C52BF990 =
+          "移除 Region 时遇到异常 %s，将重试。消息：%s";
+
+  public static final String
+      EXCEPTION_FAIL_TO_DO_NON_QUERY_OPERATIONS_BECAUSE_SYSTEM_IS_READ_ONLY_10CA1ED2 =
+          "系统处于只读状态，无法执行非查询操作。";
+
+  public static final String
+      EXCEPTION_FAILED_TO_COMPLETE_THE_INSERTION_BECAUSE_TRIGGER_ERROR_BEFORE_THE_INSERTION_92602240 =
+          "插入前触发器出错，无法完成插入。";
+
+  public static final String
+      EXCEPTION_MEET_TRIGGER_ERROR_BEFORE_AFTER_THE_INSERTION_THE_INSERTION_ITSELF_IS_COMPLETED_BC0788FF =
+          "插入前或插入后触发器出错，插入操作本身已完成。";
+
+  public static final String EXCEPTION_THE_OBJECT_TYPE_SERIES_ARG_IS_NOT_SUPPORTED_788E0C8E =
+      "不支持 OBJECT 类型的时间序列 %s。";
+
+  public static final String EXCEPTION_READRESPONSE_IS_NULL_B51DD7E0 = "ReadResponse 为空";
+
+  public static final String EXCEPTION_EXECUTE_FRAGMENTINSTANCE_FAILED_ARG_311B4A77 =
+      "执行 FragmentInstance 失败：%s";
+
+  public static final String EXCEPTION_QUERY_STATISTICS_0F0FEAC4 = "查询统计：";
+
+  public static final String EXCEPTION_ESTIMATED_MEMORY_SIZE_27D7E3B5 = "预估内存大小";
+
+  public static final String EXCEPTION_INTERMEDIATE_RESULTS_OF_EXPLAIN_ANALYZE_D4A79BC4 =
+      "---------------------EXPLAIN ANALYZE 中间结果---------------------：";
+
+  public static final String EXCEPTION_LOGICAL_PLAN_COST_DB290604 = "逻辑计划耗时：";
+
+  public static final String
+      EXCEPTION_DATABASE_NOT_EXISTS_AND_FAILED_TO_CREATE_AUTOMATICALLY_BECAUSE_ENABLE_AUTO_CREATE_SCHEMA_IS_FALSE_C25F3F18 =
+          "数据库不存在，且 enable_auto_create_schema 为 FALSE，无法自动创建。";
+
+  public static final String
+      EXCEPTION_THE_OUTPUT_TYPE_OF_THE_EXPRESSION_IN_WHERE_CLAUSE_SHOULD_BE_BOOLEAN_ACTUAL_DATA_TYPE_ARG_BC9DD72F =
+          "WHERE 子句中表达式的输出类型应为 BOOLEAN，实际数据类型：%s。";
+
+  public static final String
+      EXCEPTION_COLUMNS_IN_THE_QUERY_STATEMENT_IS_EMPTY_PLEASE_CHECK_YOUR_SQL_A22B2A40 =
+          "查询语句中的列为空，请检查 SQL。";
+
+  public static final String
+      EXCEPTION_CAN_NOT_CREATE_A_VIEW_BASED_ON_EXISTING_VIEWS_CHECK_THE_QUERY_IN_YOUR_SQL_23D1E67A =
+          "无法基于已有视图创建视图，请检查 SQL 中的查询。";
+
+  public static final String EXCEPTION_THE_PATH_ARG_IS_ILLEGAL_E45C824B = "路径 %s 无效。";
+
+  public static final String
+      EXCEPTION_CAN_NOT_CREATE_A_VIEW_BASED_ON_NON_EXIST_TIME_SERIES_F912A900 = "无法基于不存在的时间序列创建视图。";
+
+  public static final String
+      EXCEPTION_PATH_ARG_DOES_NOT_EXIST_YOU_CAN_NOT_CREATE_A_VIEW_BASED_ON_NON_EXIST_TIME_SERIES_B6595781 =
+          "路径 %s 不存在！无法基于不存在的时间序列创建视图。";
+
+  public static final String EXCEPTION_CAN_NOT_CREATE_A_VIEW_BASED_ON_EXISTING_VIEWS_A9C5E78F =
+      "无法基于已有视图创建视图。";
+
+  public static final String EXCEPTION_CAN_NOT_CREATE_VIEW_UNDER_TEMPLATE_1D975F79 = "无法在模板下创建视图。";
+
+  public static final String
+      EXCEPTION_RAW_DATA_AND_AGGREGATION_RESULT_HYBRID_CALCULATION_IS_NOT_SUPPORTED_BAFD6B9E =
+          "不支持原始数据与聚合结果混合计算。";
+
+  public static final String EXCEPTION_CONSTANT_COLUMN_IS_NOT_SUPPORTED_95251D13 = "不支持常量列。";
+
+  public static final String EXCEPTION_CANNOT_CREATE_USER_HAS_SAME_NAME_WITH_ADMIN_USER_82BA70F7 =
+      "不能创建与管理员用户同名的用户";
+
+  public static final String EXCEPTION_CANNOT_DROP_ADMIN_USER_OR_YOURSELF_9D34698F =
+      "不能删除管理员用户或当前用户";
+
+  public static final String EXCEPTION_CANNOT_CREATE_ROLE_HAS_SAME_NAME_WITH_ADMIN_USER_E48B225D =
+      "不能创建与管理员用户同名的角色";
+
+  public static final String EXCEPTION_CANNOT_GRANT_REVOKE_PRIVILEGES_OF_ADMIN_USER_E5DE4709 =
+      "不能授予或撤销管理员用户的权限";
+
+  public static final String EXCEPTION_CANNOT_GRANT_OR_REVOKE_ANY_PRIVILEGES_TO_ARG_60E70A9B =
+      "不能对 %s 授予或撤销任何权限";
+
+  public static final String
+      EXCEPTION_THE_PARAMETER_OF_COUNT_TIME_AGGREGATION_CAN_ONLY_BE_299782B5 =
+          "count_time 聚合的参数只能为 '*'。";
+
+  public static final String EXCEPTION_DATABASE_IS_NOT_SPECIFIED_616923CA = "未指定数据库";
+
+  public static final String
+      EXCEPTION_RAW_DATA_AND_AGGREGATION_HYBRID_QUERY_IS_NOT_SUPPORTED_575B2166 =
+          "不支持原始数据与聚合数据混合查询。";
+
+  public static final String
+      EXCEPTION_COUNT_TIME_AGGREGATION_FUNCTION_USING_WITH_GROUP_BY_LEVEL_IS_NOT_SUPPORTED_0F498050 =
+          "count_time 聚合函数不支持与 GROUP BY LEVEL 一起使用。";
+
+  public static final String
+      EXCEPTION_COUNT_TIME_AGGREGATION_FUNCTION_USING_WITH_GROUP_BY_TAG_IS_NOT_SUPPORTED_45A91382 =
+          "count_time 聚合函数不支持与 GROUP BY TAG 一起使用。";
+
+  public static final String
+      EXCEPTION_COUNT_TIME_AGGREGATION_CAN_ONLY_EXIST_ALONE_AND_CANNOT_USED_WITH_OTHER_QUERIES_OR_AGGREGATIONS_E6B5D473 =
+          "count_time 聚合只能单独使用，不能与其他查询或聚合一起使用。";
+
+  public static final String
+      EXCEPTION_COUNT_TIME_AGGREGATION_FUNCTION_CAN_NOT_BE_USED_WITH_HAVING_CLAUSE_46FF9CE1 =
+          "count_time 聚合函数不能与 HAVING 子句一起使用。";
+
+  public static final String
+      EXCEPTION_SELECT_INTO_THE_CORRESPONDENCE_BETWEEN_THE_PLACEHOLDER_AND_THE_RAW_TIME_SERIES_COULD_NOT_BE_ESTABLISHED_650A8F14 =
+          "SELECT INTO：无法建立占位符与原始时间序列的对应关系。";
+
+  public static final String
+      EXCEPTION_SELECT_INTO_PLACEHOLDERS_CAN_ONLY_BE_USED_IN_RAW_TIME_SERIES_DATA_QUERIES_1C0D9C58 =
+          "SELECT INTO：占位符只能用于原始时间序列数据查询。";
+
+  public static final String
+      EXCEPTION_SELECT_INTO_THE_NUMBER_OF_SOURCE_DEVICES_AND_THE_NUMBER_OF_TARGET_DEVICES_SHOULD_BE_THE_SAME_BC612211 =
+          "SELECT INTO：源设备数与目标设备数应相同。";
+
+  public static final String
+      EXCEPTION_SELECT_INTO_THE_NUMBER_OF_SOURCE_COLUMNS_AND_THE_NUMBER_OF_TARGET_PATHS_SHOULD_BE_THE_SAME_57533A57 =
+          "SELECT INTO：源列数与目标路径数应相同。";
+
+  public static final String
+      EXCEPTION_SELECT_INTO_TARGET_PATHS_IN_INTO_CLAUSE_SHOULD_BE_DIFFERENT_A1674412 =
+          "SELECT INTO：INTO 子句中的目标路径应各不相同。";
+
+  public static final String
+      EXCEPTION_SELECT_INTO_ALIGNMENT_PROPERTY_MUST_BE_THE_SAME_FOR_THE_SAME_DEVICE_DCC52B89 =
+          "SELECT INTO：同一设备的对齐属性必须一致。";
+
+  public static final String
+      EXCEPTION_IS_ILLEGAL_UNQUOTED_NODE_NAME_CAN_ONLY_CONSIST_OF_DIGITS_CHARACTERS_AND_UNDERSCORE_OR_START_OR_END_WITH_WILDCARD_7239755D =
+          "无效，未加引号的节点名只能由数字、字母和下划线组成，或以通配符开头或结尾";
+
+  public static final String EXCEPTION_UNEXPECTED_ERRORS_E69A798F = "意外错误：";
+
+  public static final String
+      EXCEPTION_FOR_DELETE_STATEMENT_WHERE_CLAUSE_CAN_ONLY_CONTAIN_ATOMIC_EXPRESSIONS_LIKE_TIME_XXX_TIME_XXX_OR_TWO_ATOMIC_EXPRESSIONS_CONNECTED_BY_AND_13848FC7 =
+          "DELETE 语句的 WHERE 子句只能包含原子表达式，例如 time > XXX、time <= XXX，或使用 'AND' 连接的两个原子表达式";
+
+  public static final String
+      EXCEPTION_FOR_DELETE_STATEMENT_WHERE_CLAUSE_CAN_ONLY_CONTAIN_TIME_EXPRESSIONS_VALUE_FILTER_IS_NOT_CURRENTLY_SUPPORTED_CE1E768E =
+          "DELETE 语句的 WHERE 子句只能包含时间表达式，暂不支持值过滤。";
+
+  public static final String
+      EXCEPTION_ONLY_ONE_OF_GROUP_BY_TIME_OR_GROUP_BY_VARIATION_SERIES_SESSION_CAN_BE_SUPPORTED_AT_A_TIME_8B5E5251 =
+          "GROUP BY TIME 与 GROUP BY VARIATION/SERIES/SESSION 同时只能使用其中一种";
+
+  public static final String
+      EXCEPTION_LIMIT_CONFIGURATION_IS_NOT_ENABLED_PLEASE_ENABLE_IT_FIRST_C9926C20 =
+          "未启用限制配置，请先启用。";
+
+  public static final String
+      EXCEPTION_FOR_DELETE_STATEMENT_WHERE_CLAUSE_USE_A_RANGE_COMPARISON_ON_THE_SAME_FIELD_THE_LEFT_VALUE_OF_THE_RANGE_CANNOT_BE_GREATER_THAN_THE_RIGHT_VALUE_OF_THE_RANGE_IT_MUST_BE_WRITTEN_LIKE_THIS_TIME_5_AND_TIME_10_66891DD6 =
+          "DELETE 语句的 WHERE 子句对同一字段使用范围比较时，范围左值不能大于右值，必须按以下方式书写：time > 5 and time < 10";
+
+  public static final String EXCEPTION_UNSUPPORTED_DATATYPE_ARG_42D9A3BC = "不支持的数据类型：%s";
+
+  public static final String EXCEPTION_INCORRECT_DATA_TYPE_B7789C9F = "数据类型不正确";
+
+  public static final String EXCEPTION_SERVICE_MANAGEMENT_SQLS_ARE_NOT_SUPPORTED_NOW_ADD4A6D4 =
+      "暂不支持服务管理 SQL！";
+
+  public static final String EXCEPTION_NOT_ASSIGNED_F5DCFB95 = "未分配";
+
+  public static final String EXCEPTION_TOPN_OPT_D3D72301 = "TOPN 优化";
+
+  public static final String EXCEPTION_PARTITION_BY_ARG_4F7F521F = "分区键：[%s]";
+
+  public static final String EXCEPTION_ORDER_BY_ARG_D26FF4AA = "排序方式：%s";
+
+  public static final String EXCEPTION_NODEREWRITER_RETURNED_NULL_FOR_ARG_702AA2A4 =
+      "nodeRewriter 为 %s 返回了 null";
+
+  public static final String EXCEPTION_INVALID_NUMBER_OF_ARGUMENTS_FOR_IF_FUNCTION_4FFCACCE =
+      "'if' 函数的参数数量无效";
+
+  public static final String EXCEPTION_DISTINCT_NOT_VALID_FOR_IF_FUNCTION_DAABCB19 =
+      "'if' 函数不允许使用 DISTINCT";
+
+  public static final String
+      EXCEPTION_RUNNING_OR_FINAL_SEMANTICS_NOT_VALID_FOR_IF_FUNCTION_53CF9A7E =
+          "'if' 函数不允许使用 RUNNING 或 FINAL 语义";
+
+  public static final String EXCEPTION_NULL_TREATMENT_CLAUSE_NOT_VALID_FOR_IF_FUNCTION_42DE8DB5 =
+      "'if' 函数不允许使用空值处理子句";
+
+  public static final String EXCEPTION_INVALID_NUMBER_OF_ARGUMENTS_FOR_NULLIF_FUNCTION_DAFB26BF =
+      "'nullif' 函数的参数数量无效";
+
+  public static final String EXCEPTION_DISTINCT_NOT_VALID_FOR_NULLIF_FUNCTION_BC065363 =
+      "'nullif' 函数不允许使用 DISTINCT";
+
+  public static final String
+      EXCEPTION_RUNNING_OR_FINAL_SEMANTICS_NOT_VALID_FOR_NULLIF_FUNCTION_D2ADE7AD =
+          "'nullif' 函数不允许使用 RUNNING 或 FINAL 语义";
+
+  public static final String
+      EXCEPTION_NULL_TREATMENT_CLAUSE_NOT_VALID_FOR_NULLIF_FUNCTION_4D3234AA =
+          "'nullif' 函数不允许使用空值处理子句";
+
+  public static final String
+      EXCEPTION_THE_COALESCE_FUNCTION_MUST_HAVE_AT_LEAST_TWO_ARGUMENTS_D93EC8BF =
+          "'coalesce' 函数必须至少有两个参数";
+
+  public static final String EXCEPTION_DISTINCT_NOT_VALID_FOR_COALESCE_FUNCTION_0473D98C =
+      "'coalesce' 函数不允许使用 DISTINCT";
+
+  public static final String
+      EXCEPTION_RUNNING_OR_FINAL_SEMANTICS_NOT_VALID_FOR_COALESCE_FUNCTION_0D0143A2 =
+          "'coalesce' 函数不允许使用 RUNNING 或 FINAL 语义";
+
+  public static final String
+      EXCEPTION_NULL_TREATMENT_CLAUSE_NOT_VALID_FOR_COALESCE_FUNCTION_CCF1779B =
+          "'coalesce' 函数不允许使用空值处理子句";
+
+  public static final String EXCEPTION_EMPTY_UNICODE_ESCAPE_CHARACTER_2094672A = "Unicode 转义字符为空";
+
+  public static final String EXCEPTION_INVALID_UNICODE_ESCAPE_CHARACTER_ARG_C7E374D5 =
+      "无效的 Unicode 转义字符：%s";
+
+  public static final String EXCEPTION_INCOMPLETE_ESCAPE_SEQUENCE_ARG_9FC5CC3B = "不完整的转义序列：%s";
+
+  public static final String EXCEPTION_INVALID_ESCAPED_CHARACTER_ARG_A324BE13 = "无效的转义字符：%s";
+
+  public static final String EXCEPTION_UNEXPECTED_ESCAPE_SEQUENCE_LENGTH_ARG_2DAD5CAB =
+      "意外的转义序列长度：%s";
+
+  public static final String
+      EXCEPTION_THE_WORD_COPARTITION_IS_AMBIGUOUS_IN_THIS_CONTEXT_TO_ALIAS_AN_ARGUMENT_PRECEDE_THE_ALIAS_WITH_AS_TO_SPECIFY_CO_PARTITIONING_CHANGE_THE_ARGUMENT_ORDER_SO_THAT_THE_LAST_ARGUMENT_CANNOT_BE_ALIASED_EC31C71A =
+          "此上下文中的 \"COPARTITION\" 存在歧义。为参数指定别名时，请在别名前添加 \"AS\"。指定共同分区时，请调整参数顺序，使最后一个参数不能指定别名。";
+
+  public static final String EXCEPTION_CANNOT_DROP_ROLE_WITH_ADMIN_NAME_BB13543F = "不能删除与管理员同名的角色";
+
+  public static final String EXCEPTION_CANNOT_GRANT_ROLE_TO_ADMIN_C98C3A7A = "不能向管理员授予角色";
+
+  public static final String EXCEPTION_CANNOT_REVOKE_ROLE_FROM_ADMIN_249835A2 = "不能撤销管理员的角色";
+
+  public static final String EXCEPTION_CANNOT_GRANT_REVOKE_ALL_PRIVILEGES_OF_ADMIN_USER_85CE7A1D =
+      "不能授予或撤销管理员用户的所有权限";
+
+  public static final String
+      EXCEPTION_CANNOT_GRANT_OR_REVOKE_ANY_PRIVILEGES_TO_INFORMATION_SCHEMA_294F5703 =
+          "不能对 information_schema 授予或撤销任何权限";
+
+  public static final String
+      EXCEPTION_THE_JOIN_EXPRESSION_OF_ASOF_SHOULD_BE_SINGLE_COMPARISON_OR_LOGICAL_AND_02DC061A =
+          "ASOF 的连接表达式应为单个比较表达式或逻辑 'AND'";
+
+  public static final String
+      EXCEPTION_THE_MAIN_JOIN_EXPRESSION_OF_ASOF_SHOULD_ONLY_BE_COMPARISON_ACTUAL_IS_ARG_9A7F3C7F =
+          "ASOF 的主连接表达式只能为比较运算 '>, >=, <, <='，实际为 %s";
+
+  public static final String
+      EXCEPTION_FAILED_TO_MATERIALIZE_CTE_THE_MAIN_QUERY_FALLS_BACK_TO_INLINE_MODE_F03A778C =
+          "!!! CTE 物化失败，主查询回退到 INLINE 模式 !!!";
+
+  public static final String
+      EXCEPTION_USER_ARG_ID_ARG_REQUESTS_AUTHORITY_ON_THE_ARG_OPERATION_72418079 =
+          "用户 %s（ID=%d）请求 %s 操作的权限";
+
+  public static final String
+      EXCEPTION_HAS_NO_PERMISSION_TO_EXECUTE_ARG_PLEASE_ENSURE_YOU_HAVE_THESE_PRIVILEGES_AND_THE_GRANT_OPTION_IS_TRUE_WHEN_GRANTED_6E1AD125 =
+          "无权执行 %s，请确保具有这些权限，且被授予权限时的 grant option 为 TRUE";
+
+  public static final String EXCEPTION_NOT_SUPPORT_RELATION_STATEMENT_IN_TREE_SQL_DIALECT_088C9ADD =
+      "tree sql_dialect 不支持关系模型语句";
+
+  public static final String EXCEPTION_ONLY_THE_ADMIN_USER_CAN_PERFORM_THIS_OPERATION_D0C730B6 =
+      "仅管理员用户可执行此操作";
+
+  public static final String EXCEPTION_SCALAR_SUB_QUERY_HAS_RETURNED_MULTIPLE_ROWS_0C87D6E6 =
+      "标量子查询返回了多行。";
+
+  public static final String
+      EXCEPTION_ARG_THE_OPTIMIZER_EXHAUSTED_THE_TIME_LIMIT_OF_ARG_D_MS_454EB946 =
+          "%s：优化器超出 %%d ms 的时间限制";
+
+  public static final String EXCEPTION_NO_RULES_INVOKED_8E11FD30 = "：未调用任何规则";
+
+  public static final String EXCEPTION_TOP_RULES_ARG_31C182D1 = "：耗时最高的规则：%s";
+
+  public static final String
+      EXCEPTION_ALL_RESULT_TYPES_AND_DEFAULT_RESULT_TYPE_MUST_BE_THE_SAME_E84986E8 =
+          "所有结果类型与默认结果类型必须相同";
+
+  public static final String
+      EXCEPTION_SUBQUERY_MUST_RETURN_ONLY_ONE_COLUMN_FOR_NOW_ROW_TYPE_IS_NOT_SUPPORTED_FOR_NOW_A2D2C5AC =
+          "子查询目前只能返回一列，暂不支持 Row 类型。";
+
+  public static final String EXCEPTION_VALUE_OF_LOGICAL_NOT_EXPRESSION_00F6E838 = "逻辑 NOT 表达式的值";
+
+  public static final String EXCEPTION_LOGICAL_EXPRESSION_TERM_C65A7562 = "逻辑表达式项";
+
+  public static final String EXCEPTION_IF_CONDITION_70B1DBB9 = "IF 条件";
+
+  public static final String EXCEPTION_RESULT_TYPES_FOR_IF_MUST_BE_THE_SAME_71714769 =
+      "IF 的结果类型必须相同";
+
+  public static final String EXCEPTION_CASE_WHEN_CLAUSE_454D7201 = "CASE WHEN 子句";
+
+  public static final String EXCEPTION_ALL_CASE_RESULTS_09DB7E1B = "所有 CASE 结果";
+
+  public static final String EXCEPTION_ALL_COALESCE_OPERANDS_A5374A6A = "所有 COALESCE 操作数";
+
+  public static final String EXCEPTION_IN_VALUE_AND_LIST_ITEMS_5D5CF98A = "IN 的值和列表项";
+
+  public static final String EXCEPTION_CONSTANT_EXPRESSION_CANNOT_CONTAIN_A_SUBQUERY_60319D92 =
+      "常量表达式不能包含子查询";
+
+  public static final String
+      EXCEPTION_OPERATOR_OF_UPDATESTATTIME_SHOULD_ONLY_BE_GREATER_THAN_AND_GREATER_THAN_OR_EQUAL_NOW_IS_ARG_25D66791 =
+          "updateStatTime 的运算符只能为 GREATER_THAN 或 GREATER_THAN_OR_EQUAL，当前为 %s";
+
+  public static final String
+      EXCEPTION_OPERATOR_OF_UPDATEENDTIME_SHOULD_ONLY_BE_LESS_THAN_AND_LESS_THAN_OR_EQUAL_NOW_IS_ARG_BF20DCC9 =
+          "updateEndTime 的运算符只能为 LESS_THAN 或 LESS_THAN_OR_EQUAL，当前为 %s";
+
+  public static final String
+      EXCEPTION_COULD_NOT_INFER_STARTTIME_OR_ENDTIME_FROM_WHERE_CLAUSE_9F371997 =
+          "无法从 WHERE 子句推断 startTime 或 endTime";
+
+  public static final String
+      EXCEPTION_TRY_TO_FETCH_UNCORRELATED_SCALAR_SUBQUERY_RESULT_FOR_PREDICATE_9B832E16 =
+          "尝试获取用于谓词的非关联标量子查询结果";
+
+  public static final String EXCEPTION_ORDER_BY_IN_SUBQUERY_MAY_HAVE_NO_EFFECT_8A480B62 =
+      "子查询中的 ORDER BY 可能不生效";
+
+  public static final String EXCEPTION_WHERE_CLAUSE_6F66E904 = "WHERE 子句";
+
+  public static final String EXCEPTION_GROUP_BY_CLAUSE_25F779A7 = "GROUP BY 子句";
+
+  public static final String EXCEPTION_JOIN_CLAUSE_56FCD2FF = "JOIN 子句";
+
+  public static final String EXCEPTION_SERIES_ARG_F5564925 = "时间序列：%s";
+
+  public static final String EXCEPTION_LIMIT_ARG_C4FECCC2 = "行数限制：%s";
+
+  public static final String EXCEPTION_OFFSET_ARG_7D3690BE = "偏移量：%s";
+
+  public static final String EXCEPTION_PREDICATE_ARG_5DFE6605 = "谓词：%s";
+
+  public static final String EXCEPTION_SCANORDER_ARG_AB0CB81A = "扫描顺序：%s";
+
+  public static final String EXCEPTION_SERIES_ARG_ARG_4AD75872 = "时间序列：%s%s";
+
+  public static final String EXCEPTION_QUERYALLSENSORS_ARG_ADCB5FCA = "查询所有传感器：%s";
+
+  public static final String EXCEPTION_AGGREGATOR_ARG_ARG_ARG_8C1D8DC9 = "聚合器-%d：%s，%s";
+
+  public static final String EXCEPTION_DEVICENAME_ARG_59E457FD = "设备名：%s";
+
+  public static final String EXCEPTION_DEVICECOUNT_ARG_665654AC = "设备数：%d";
+
+  public static final String EXCEPTION_CHILDRENCOUNT_ARG_08EB5B4D = "子节点数：%d";
+
+  public static final String EXCEPTION_LIMITVALUE_ARG_A0AB58C2 = "行数限制值：%d";
+
+  public static final String EXCEPTION_POLICY_ARG_08266A9A = "策略：%s";
+
+  public static final String EXCEPTION_TIMEDURATIONTHRESHOLD_ARG_D521A764 = "时间间隔阈值：%s";
+
+  public static final String EXCEPTION_OUTPUT_ARG_1B85810F = "  输出：%s";
+
+  public static final String EXCEPTION_INPUT_ARG_C70AA19F = "  输入：%s";
+
+  public static final String EXCEPTION_TAG_KEYS_ARG_DFFA4DCF = "TAG 键：%s";
+
+  public static final String EXCEPTION_BUCKET_ARG_ARG_D52292C8 = "桶-%d：%s";
+
+  public static final String EXCEPTION_AGGREGATOR_ARG_NULL_B5E4F862 = "    聚合器-%d：NULL";
+
+  public static final String EXCEPTION_AGGREGATOR_ARG_ARG_ARG_C65C36A7 = "    聚合器-%d：%s，%s";
+
+  public static final String EXCEPTION_OUTPUT_ARG_893AC7DA = "      输出：%s";
+
+  public static final String EXCEPTION_INPUT_ARG_F57C6A9B = "      输入：%s";
+
+  public static final String EXCEPTION_VALUE_ARG_CD522509 = "值：%d";
+
+  public static final String EXCEPTION_ORDER_ARG_5AC5D051 = "顺序：%s";
+
+  public static final String EXCEPTION_COUNT_ARG_4716A93F = "数量：%d";
+
+  public static final String EXCEPTION_EXP_ARG_ARG_ARG_DA510DF0 = "表达式-%d[%s]：%s";
+
+  public static final String EXCEPTION_OUTPUTCOLUMN_ARG_ARG_E768E3E4 = "输出列-%d：%s";
+
+  public static final String EXCEPTION_ALIGNED_ARG_E48AEDF2 = "对齐：%s";
+
+  public static final String EXCEPTION_OUTPUTPATHS_ARG_0EC28B1F = "输出路径：%s";
+
+  public static final String EXCEPTION_VIEWPATH_ARG_066D73F6 = "视图路径：%s";
+
+  public static final String EXCEPTION_TARGETINDEX_ARG_38B82D51 = "目标索引：%d";
+
+  public static final String EXCEPTION_COLUMNGENERATORPARAMETERTYPE_ARG_74D7D221 = "列生成器参数类型：%s";
+
+  public static final String EXCEPTION_OUTPUTSYMBOLS_ARG_2CDA67EC = "输出符号：%s";
+
+  public static final String EXCEPTION_QUALIFIEDTABLENAME_ARG_111FC756 = "限定表名：%s";
+
+  public static final String EXCEPTION_DEVICENUMBER_ARG_446C345C = "设备数：%s";
+
+  public static final String EXCEPTION_TIMEPREDICATE_ARG_26915CBF = "时间谓词：%s";
+
+  public static final String EXCEPTION_TSFILENUMBER_ARG_0D17D680 = "TsFile 数：%s";
+
+  public static final String EXCEPTION_PUSHDOWNPREDICATE_ARG_196CC2DC = "下推谓词：%s";
+
+  public static final String EXCEPTION_PUSHDOWNOFFSET_ARG_00E1070C = "下推偏移量：%s";
+
+  public static final String EXCEPTION_PUSHDOWNLIMIT_ARG_E1420251 = "下推行数限制：%s";
+
+  public static final String EXCEPTION_PUSHDOWNLIMITTOEACHDEVICE_ARG_2DD716F0 = "按设备下推行数限制：%s";
+
+  public static final String EXCEPTION_TOPN_OPT_ARG_6358B1C6 = "TOPN 优化：%s";
+
+  public static final String EXCEPTION_REGIONID_ARG_190371FB = "Region ID：%s";
+
+  public static final String EXCEPTION_TREEDB_ARG_409FDB70 = "树模型数据库：%s";
+
+  public static final String EXCEPTION_MEASUREMENTTOCOLUMNNAME_ARG_E2BC3300 = "测点到列名的映射：%s";
+
+  public static final String EXCEPTION_AGGREGATOR_ARG_ARG_B03FFEF0 = "聚合器-%d：%s";
+
+  public static final String EXCEPTION_MASK_ARG_452DF02A = "  掩码：%s";
+
+  public static final String EXCEPTION_GROUPINGKEYS_ARG_4D5DC588 = "分组键：%s";
+
+  public static final String EXCEPTION_PREGROUPEDSYMBOLS_ARG_93C21065 = "预分组符号：%s";
+
+  public static final String EXCEPTION_STEP_ARG_ACB0A043 = "阶段：%s";
+
+  public static final String EXCEPTION_PROJECT_EXPRESSIONS_ARG_B86BB5E3 = "投影表达式：%s";
+
+  public static final String EXCEPTION_EXPRESSIONS_ARG_7A24068A = "表达式：%s";
+
+  public static final String EXCEPTION_CHILDPERMITTEDOUTPUTS_ARG_206350BD = "子节点允许的输出：%s";
+
+  public static final String EXCEPTION_STARTTIME_ARG_51654DAE = "开始时间：%s";
+
+  public static final String EXCEPTION_ENDTIME_ARG_BE3FB95D = "结束时间：%s";
+
+  public static final String EXCEPTION_INTERVAL_ARG_MO_73E81203 = "间隔：%smo";
+
+  public static final String EXCEPTION_INTERVAL_ARG_S_ARG_F9714CBA = "间隔：%%s%s";
+
+  public static final String EXCEPTION_GAPFILLCOLUMN_ARG_845A4BA2 = "GapFill 列：%s";
+
+  public static final String EXCEPTION_GAPFILLGROUPINGKEYS_ARG_DBA19008 = "GapFill 分组键：%s";
+
+  public static final String EXCEPTION_TIME_BOUND_ARG_DA9D4812 = "时间范围：%s";
+
+  public static final String EXCEPTION_TIME_COLUMN_ARG_3A2B0F89 = "时间列：%s";
+
+  public static final String EXCEPTION_FILL_GROUP_ARG_91675AC6 = "填充分组：%s";
+
+  public static final String EXCEPTION_FILLEDVALUE_ARG_E9F0E84D = "填充值：%s";
+
+  public static final String EXCEPTION_COUNT_ARG_1E0B36E2 = "数量：%s";
+
+  public static final String EXCEPTION_ORDERINGSCHEME_ARG_88E8678A = "排序方案：%s";
+
+  public static final String EXCEPTION_STREAMCOMPAREKEYENDINDEX_ARG_B0B5E239 = "流式比较键结束索引：%s";
+
+  public static final String EXCEPTION_ORDERBYALLIDSANDTIME_ARG_55959D0E = "按所有 ID 和时间排序：%s";
+
+  public static final String EXCEPTION_PARTITIONKEY_ARG_DD8CE0EC = "分区键：%s";
+
+  public static final String EXCEPTION_ORDERKEY_ARG_BAC08FCF = "排序键：%s";
+
+  public static final String EXCEPTION_JOINTYPE_ARG_971DC3F9 = "连接类型：%s";
+
+  public static final String EXCEPTION_CORRELATION_ARG_E71B97B0 = "关联：%s";
+
+  public static final String EXCEPTION_FILTER_ARG_DC936398 = "过滤条件：%s";
+
+  public static final String EXCEPTION_ASOF_JOINTYPE_ARG_1F69241C = "ASOF 连接类型：%s";
+
+  public static final String EXCEPTION_ASOF_JOINCRITERIA_ARG_E313FAAD = "ASOF 连接条件：%s";
+
+  public static final String EXCEPTION_JOINCRITERIA_ARG_EE225A01 = "连接条件：%s";
+
+  public static final String EXCEPTION_LEFTOUTPUTSYMBOLS_ARG_D2BE06AE = "左侧输出符号：%s";
+
+  public static final String EXCEPTION_RIGHTOUTPUTSYMBOLS_ARG_90AEAE8B = "右侧输出符号：%s";
+
+  public static final String EXCEPTION_SOURCEJOINSYMBOL_ARG_35F54565 = "源连接符号：%s";
+
+  public static final String EXCEPTION_FILTERINGSOURCEJOINSYMBOL_ARG_7A864AF7 = "过滤源连接符号：%s";
+
+  public static final String EXCEPTION_PARTITIONBY_ARG_E97DFDCD = "分区方式：%s";
+
+  public static final String EXCEPTION_HASHSYMBOL_ARG_CB1619A6 = "哈希符号：%s";
+
+  public static final String EXCEPTION_ROWSPERMATCH_ARG_CFCB6FAC = "每次匹配的行数：%s";
+
+  public static final String EXCEPTION_SKIPTOLABELS_ARG_27BC57E1 = "跳转目标标签：%s";
+
+  public static final String EXCEPTION_SKIPTOPOSITION_ARG_27FB2E49 = "跳转目标位置：%s";
+
+  public static final String EXCEPTION_PATTERN_ARG_F93B8CF0 = "模式：%s";
+
+  public static final String EXCEPTION_IDCOLUMNSYMBOL_ARG_E37ADCC7 = "ID 列符号：%s";
+
+  public static final String EXCEPTION_FUNCTION_ARG_D328EC66 = "函数：%s";
+
+  public static final String EXCEPTION_PROPEROUTPUTS_ARG_D9578E71 = "独立输出：%s";
+
+  public static final String EXCEPTION_REQUIREDSYMBOLS_ARG_111D7FC1 = "必需符号：%s";
+
+  public static final String EXCEPTION_ROWCOUNT_ARG_25F64C0A = "行数：%s";
+
+  public static final String EXCEPTION_ROWNUMBERSYMBOL_ARG_39FD3A50 = "行号符号：%s";
+
+  public static final String EXCEPTION_ISORDERINGSENSITIVE_ARG_96687CE9 = "是否对顺序敏感：%s";
+
+  public static final String EXCEPTION_RANKINGTYPE_ARG_48037AC8 = "排名类型：%s";
+
+  public static final String EXCEPTION_RANKINGSYMBOL_ARG_EC2D08FD = "排名符号：%s";
+
+  public static final String EXCEPTION_PARTITION_ARG_975DEE2D = "分区：%s";
+
+  public static final String EXCEPTION_ISDISTINCT_ARG_8F38F5E3 = "是否去重：%s";
+
+  public static final String EXCEPTION_ARG_ARG_MS_ARG_INVOCATIONS_ARG_APPLICATIONS_F056BD84 =
+      "%s：%s ms，调用 %s 次，应用 %s 次";
 }

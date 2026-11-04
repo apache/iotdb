@@ -35,8 +35,7 @@ public class ConsensusGroupCache extends AbstractLoadCache {
     this.currentStatistics.set(ConsensusGroupStatistics.generateDefaultConsensusGroupStatistics());
   }
 
-  @Override
-  public synchronized void updateCurrentStatistics(boolean forceUpdate) {
+  public synchronized void updateCurrentStatistics() {
     ConsensusGroupHeartbeatSample lastSample;
     synchronized (slidingWindow) {
       lastSample = (ConsensusGroupHeartbeatSample) getLastSample();

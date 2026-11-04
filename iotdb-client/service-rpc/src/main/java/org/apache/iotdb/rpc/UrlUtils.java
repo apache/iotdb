@@ -76,6 +76,14 @@ public class UrlUtils {
 
   /** Format host and port as host:port or [ipv6]:port. This method expects host without a port. */
   public static String formatTEndPointIpv4AndIpv6Url(String host, int port) {
+    return formatTEndPointIpv4AndIpv6Url(host, String.valueOf(port));
+  }
+
+  /**
+   * Format host and port as host:port or [ipv6]:port. This method expects host without a port and
+   * leaves port validation to the endpoint consumer.
+   */
+  public static String formatTEndPointIpv4AndIpv6Url(String host, String port) {
     String formattedHost = host;
     if (isIpv6Literal(host) && !isBracketedIpv6Literal(host)) {
       formattedHost = IPV6_BEGIN_MARK + host + IPV6_END_MARK;

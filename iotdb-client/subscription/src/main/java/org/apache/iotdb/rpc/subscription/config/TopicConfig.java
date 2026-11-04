@@ -28,14 +28,22 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class TopicConfig extends PipeParameters {
+
+  private static final AtomicLong NEXT_FILTER_VERSION = new AtomicLong();
+
+  // DataNode-local revision. It is not part of the serialized topic attributes.
+  private long filterVersion = NEXT_FILTER_VERSION.incrementAndGet();
 
   private static final Set<String> MODE_VALUE_SET;
   private static final Set<String> ORDER_MODE_VALUE_SET;
@@ -43,8 +51,8 @@ public class TopicConfig extends PipeParameters {
   static {
     final Set<String> modes = new HashSet<>(3);
     modes.add(TopicConstant.MODE_SNAPSHOT_VALUE);
-    modes.add(TopicConstant.MODE_LIVE_VALUE);
-    modes.add(TopicConstant.MODE_CONSENSUS_VALUE);
+    modes.add(TopicConstant.MODE_INITIAL_VALUE);
+    modes.add(TopicConstant.MODE_INCREMENTAL_VALUE);
     MODE_VALUE_SET = Collections.unmodifiableSet(modes);
 
     final Set<String> orderModes = new HashSet<>(3);
@@ -60,6 +68,37 @@ public class TopicConfig extends PipeParameters {
 
   public TopicConfig(final Map<String, String> attributes) {
     super(attributes);
+  }
+
+  public TopicConfig(final TopicConfig config) {
+    super(new HashMap<>(config.getAttribute()));
+    filterVersion = config.filterVersion;
+  }
+
+  public long getFilterVersion() {
+    return filterVersion;
+  }
+
+  /** Called before publishing replacement topic metadata on a DataNode. */
+  public void inheritFilterVersion(final TopicConfig previousConfig) {
+    if (previousConfig != null) {
+      filterVersion =
+          getFilteringAttributes().equals(previousConfig.getFilteringAttributes())
+              ? previousConfig.filterVersion
+              : NEXT_FILTER_VERSION.incrementAndGet();
+    }
+  }
+
+  private Map<TopicProperty, String> getFilteringAttributes() {
+    final Map<TopicProperty, String> result = new EnumMap<>(TopicProperty.class);
+    attributes.forEach(
+        (key, value) -> {
+          final TopicProperty property = TopicProperty.fromKey(key);
+          if (property != null && property.isFilteringProperty()) {
+            result.put(property, value);
+          }
+        });
+    return result;
   }
 
   // TODO: hide from the client
@@ -84,8 +123,10 @@ public class TopicConfig extends PipeParameters {
 
   private static final Map<String, String> SNAPSHOT_MODE_CONFIG =
       Collections.singletonMap("mode", TopicConstant.MODE_SNAPSHOT_VALUE);
-  private static final Map<String, String> LIVE_MODE_CONFIG =
-      Collections.singletonMap("mode", TopicConstant.MODE_LIVE_VALUE);
+  // Pipe source still uses the legacy "live" value for the initial (full + incremental) topic
+  // mode.
+  private static final Map<String, String> INITIAL_MODE_CONFIG =
+      Collections.singletonMap("mode", TopicConstant.LEGACY_MODE_LIVE_VALUE);
 
   private static final Map<String, String> STRICT_MODE_CONFIG =
       Collections.singletonMap("mode.strict", "true");
@@ -125,12 +166,36 @@ public class TopicConfig extends PipeParameters {
     return TopicConstant.MODE_SNAPSHOT_VALUE.equalsIgnoreCase(getMode());
   }
 
-  public boolean isLiveMode() {
-    return TopicConstant.MODE_LIVE_VALUE.equalsIgnoreCase(getMode());
+  public boolean isInitialMode() {
+    return TopicConstant.MODE_INITIAL_VALUE.equalsIgnoreCase(getMode());
   }
 
+  public boolean isIncrementalMode() {
+    return TopicConstant.MODE_INCREMENTAL_VALUE.equalsIgnoreCase(getMode());
+  }
+
+  public boolean isProgressRetainedAfterUnsubscribe() {
+    return Boolean.parseBoolean(
+        getStringIgnoreCase(
+                TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY,
+                TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_DEFAULT_VALUE)
+            .trim());
+  }
+
+  /**
+   * @deprecated Use {@link #isInitialMode()}.
+   */
+  @Deprecated
+  public boolean isLiveMode() {
+    return isInitialMode();
+  }
+
+  /**
+   * @deprecated Use {@link #isIncrementalMode()}.
+   */
+  @Deprecated
   public boolean isConsensusMode() {
-    return TopicConstant.MODE_CONSENSUS_VALUE.equalsIgnoreCase(getMode());
+    return isIncrementalMode();
   }
 
   public static boolean isValidMode(final String mode) {
@@ -138,7 +203,19 @@ public class TopicConfig extends PipeParameters {
   }
 
   public static String normalizeMode(final String mode) {
-    return mode == null ? TopicConstant.MODE_DEFAULT_VALUE : mode.trim().toLowerCase();
+    if (mode == null) {
+      return TopicConstant.MODE_DEFAULT_VALUE;
+    }
+
+    final String normalizedMode = mode.trim().toLowerCase(Locale.ROOT);
+    switch (normalizedMode) {
+      case TopicConstant.LEGACY_MODE_LIVE_VALUE:
+        return TopicConstant.MODE_INITIAL_VALUE;
+      case TopicConstant.LEGACY_MODE_CONSENSUS_VALUE:
+        return TopicConstant.MODE_INCREMENTAL_VALUE;
+      default:
+        return normalizedMode;
+    }
   }
 
   public String getOrderMode() {
@@ -149,6 +226,17 @@ public class TopicConfig extends PipeParameters {
 
   public static boolean isValidOrderMode(final String orderMode) {
     return ORDER_MODE_VALUE_SET.contains(normalizeOrderMode(orderMode));
+  }
+
+  /**
+   * Returns the topic's recycle timeout in milliseconds, or null to use the server config. A zero
+   * or negative timeout disables automatic recycling of uncommitted events.
+   */
+  public Long getRecycleUncommittedEventIntervalMs() {
+    return containsKeyIgnoreCase(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY)
+        ? Long.parseLong(
+            getStringIgnoreCase(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, "").trim())
+        : null;
   }
 
   public static String normalizeOrderMode(final String orderMode) {
@@ -204,6 +292,23 @@ public class TopicConfig extends PipeParameters {
     return TopicConstant.COLUMN_FILTER_DEFAULT_VALUE.equalsIgnoreCase(getColumnFilter().trim());
   }
 
+  public Map<String, String> getAttributesWithSourceTagFilter() {
+    return Collections.singletonMap(TopicConstant.TAG_FILTER_KEY, getTagFilter());
+  }
+
+  public String getTagFilter() {
+    return getStringIgnoreCase(
+        TopicConstant.TAG_FILTER_KEY, TopicConstant.TAG_FILTER_DEFAULT_VALUE);
+  }
+
+  public boolean hasTagFilter() {
+    return containsKeyIgnoreCase(TopicConstant.TAG_FILTER_KEY);
+  }
+
+  public boolean isTagFilterTrivial() {
+    return TopicConstant.TAG_FILTER_DEFAULT_VALUE.equalsIgnoreCase(getTagFilter().trim());
+  }
+
   public Map<String, String> getAttributesWithSourceTimeRange() {
     final Map<String, String> attributesWithTimeRange = new HashMap<>();
 
@@ -223,12 +328,12 @@ public class TopicConfig extends PipeParameters {
   }
 
   public Map<String, String> getAttributesWithSourceMode() {
-    if (isConsensusMode()) {
+    if (isIncrementalMode()) {
       throw new IllegalArgumentException(
           SubscriptionMessages
-              .EXCEPTION_CONSENSUS_MODE_TOPIC_SHOULD_NOT_GENERATE_PIPE_SOURCE_ATTRIBUTES_BBDFF732);
+              .EXCEPTION_INCREMENTAL_MODE_TOPIC_SHOULD_NOT_GENERATE_PIPE_SOURCE_ATTRIBUTES_09D75393);
     }
-    return isSnapshotMode() ? SNAPSHOT_MODE_CONFIG : LIVE_MODE_CONFIG;
+    return isSnapshotMode() ? SNAPSHOT_MODE_CONFIG : INITIAL_MODE_CONFIG;
   }
 
   public Map<String, String> getAttributesWithSourceLooseRangeOrStrict() {

@@ -87,6 +87,26 @@ public class ConsensusSubscriptionCommitStateTest {
   }
 
   @Test
+  public void testReverseAckWithLargeBacklogAdvancesToLatestProgress() {
+    final WriterId writerId = new WriterId("1_2", 7);
+    final ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState state =
+        new ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState(
+            "1_2", new SubscriptionConsensusProgress());
+    final int backlogSize = 2048;
+
+    for (int localSeq = 0; localSeq < backlogSize; localSeq++) {
+      state.recordMapping(writerId, new WriterProgress(1_000L + localSeq, localSeq));
+    }
+    for (int localSeq = backlogSize - 1; localSeq >= 0; localSeq--) {
+      assertTrue(state.commit(writerId, new WriterProgress(1_000L + localSeq, localSeq)));
+    }
+
+    assertEquals(
+        new WriterProgress(1_000L + backlogSize - 1, backlogSize - 1L),
+        state.getCommittedRegionProgress().getWriterPositions().get(writerId));
+  }
+
+  @Test
   public void testSerializeDeserializeWriterProgress() throws Exception {
     final ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState state =
         new ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState(
@@ -539,6 +559,41 @@ public class ConsensusSubscriptionCommitStateTest {
                       CommitProgressKeeper.generateKey("cg", "topic", region2Id, 11)))
               .getWriterPositions()
               .get(writer2));
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
+  public void testPersistedStateKeysAndRegionCleanup() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("persistedStateKeys");
+    try {
+      final ConsensusSubscriptionCommitManager manager = newCommitManager(systemDir);
+      final DataRegionId firstRegion = new DataRegionId(31);
+      final DataRegionId secondRegion = new DataRegionId(32);
+      manager.receiveProgressBroadcast(
+          "cg",
+          "topic",
+          firstRegion.toString(),
+          new WriterId(firstRegion.toString(), 7),
+          new WriterProgress(100L, 1L));
+      manager.receiveProgressBroadcast(
+          "cg",
+          "topic",
+          secondRegion.toString(),
+          new WriterId(secondRegion.toString(), 7),
+          new WriterProgress(200L, 2L));
+
+      assertEquals(2, manager.getPersistedStateKeys().size());
+      manager.removeAllStatesForRegion(firstRegion);
+
+      assertFalse(manager.hasPersistedState("cg", "topic", firstRegion));
+      assertTrue(manager.hasPersistedState("cg", "topic", secondRegion));
+      assertEquals(1, manager.getPersistedStateKeys().size());
+
+      manager.removeAllStatesForConsumerGroup("cg");
+      assertTrue(manager.getPersistedStateKeys().isEmpty());
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
     }

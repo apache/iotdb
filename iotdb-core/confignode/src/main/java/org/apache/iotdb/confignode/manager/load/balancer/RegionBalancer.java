@@ -84,17 +84,15 @@ public class RegionBalancer {
       throws NotEnoughDataNodeException, DatabaseNotExistsException {
 
     // Some new RegionGroups will have to occupy unknown DataNodes if the number of online
-    // DataNodes is insufficient (Unknown DataNodes are intentionally kept as candidates).
-    // However, DataNodes that an in-progress RemoveDataNodesProcedure is removing must be
-    // excluded: placing a new replica on a node that is about to disappear would strand that
-    // replica and stall the removal forever. A status filter is not enough here, because a
+    // DataNodes is insufficient (Unknown and Stopped DataNodes are intentionally kept as
+    // candidates). However, DataNodes that an in-progress RemoveDataNodesProcedure is removing
+    // must be excluded: placing a new replica on a node that is about to disappear would strand
+    // that replica and stall the removal forever. A status filter is not enough here, because a
     // DataNode killed (e.g. kill -9) before removal is reported as Unknown (not Removing) by the
     // failure detector, so we additionally drop every DataNode that is currently being removed.
     final Set<Integer> removingDataNodeIds = getProcedureManager().getRemovingDataNodeIds();
     final List<TDataNodeConfiguration> availableDataNodes =
-        getNodeManager()
-            .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.Unknown)
-            .stream()
+        getNodeManager().filterDataNodeThroughStatus(NodeStatus::isRegionCandidate).stream()
             .filter(
                 dataNode -> !removingDataNodeIds.contains(dataNode.getLocation().getDataNodeId()))
             .collect(Collectors.toList());

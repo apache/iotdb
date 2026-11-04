@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.exception.exchange.GetTsBlockFromClosedOrAbortedChannelException;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
@@ -43,11 +44,14 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntrySpillManager;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.MPPDataExchangeService;
 import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TCloseSinkChannelEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TEndOfDataBlockEvent;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchDeviceEntrySegmentReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchDeviceEntrySegmentResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockResponse;
@@ -62,6 +66,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -74,6 +80,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.common.FragmentInstanceId.createFullId;
 import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.GET_DATA_BLOCK_TASK_SERVER;
@@ -97,6 +104,59 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         DataExchangeCountMetricSet.getInstance();
 
     @Override
+    public TFetchDeviceEntrySegmentResp fetchDeviceEntrySegment(
+        TFetchDeviceEntrySegmentReq request) {
+      try {
+        DeviceEntrySpillManager spillManager = DeviceEntrySpillManager.getInstance();
+        byte[] payload =
+            spillManager.readSegment(
+                request.getQueryId(), request.getPlanNodeId(), request.getSegmentId());
+        if (request.getSegmentId() > 0) {
+          spillManager.deleteSegment(
+              request.getQueryId(), request.getPlanNodeId(), request.getSegmentId() - 1);
+        }
+        return new TFetchDeviceEntrySegmentResp(
+                new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+            .setPayload(payload);
+      } catch (NoSuchFileException | AccessDeniedException e) {
+        LOGGER.warn(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_UNAVAILABLE_MAY_BE_DUE_TO_TIMEOUT_OR_KILL_ARG_B932D10D,
+                e.getFile()));
+        return new TFetchDeviceEntrySegmentResp(
+            new TSStatus(TSStatusCode.DEVICE_ENTRY_SPILL_NOT_FOUND.getStatusCode())
+                .setMessage(
+                    String.format(
+                        DataNodeQueryMessages
+                            .EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_UNAVAILABLE_MAY_BE_DUE_TO_TIMEOUT_OR_KILL_ARG_B932D10D,
+                        e.getFile())));
+      } catch (IOException | RuntimeException e) {
+        return new TFetchDeviceEntrySegmentResp(
+            new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+                .setMessage(e.getMessage()));
+      }
+    }
+
+    @Override
+    public TSStatus finishDeviceEntrySegment(String queryId, String planNodeId) {
+      executorService.submit(
+          () -> {
+            try {
+              DeviceEntrySpillManager.getInstance().finishSegmentDataSet(queryId, planNodeId);
+            } catch (IOException | RuntimeException e) {
+              LOGGER.warn(
+                  String.format(
+                      DataNodeQueryMessages
+                          .LOG_FAILED_TO_CLEAN_DEVICEENTRY_DATA_SET_ASYNCHRONOUSLY_QUERYID_ARG_PLANNODEID_ARG_9106C4C5,
+                      queryId,
+                      planNodeId));
+            }
+          });
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+
+    @Override
     public TGetDataBlockResponse getDataBlock(TGetDataBlockRequest req) throws TException {
       long startTime = System.nanoTime();
       try (SetThreadName fragmentInstanceName =
@@ -118,6 +178,48 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         }
         // index of the channel must be a SinkChannel
         SinkChannel sinkChannel = (SinkChannel) (sinkHandle.getChannel(req.getIndex()));
+        if (req.isSetOffset()) {
+          int remainingPayloadSize =
+              IoTDBDescriptor.getInstance().getConfig().getMppDataExchangeMaxPayloadSizeInBytes();
+          int offset = req.getOffset();
+          for (int i = req.getStartSequenceId(); i < req.getEndSequenceId(); i++) {
+            try {
+              ByteBuffer serializedTsBlock = sinkChannel.getSerializedTsBlock(i);
+              int blockOffset = i == req.getStartSequenceId() ? offset : 0;
+              int serializedTsBlockSize = serializedTsBlock.remaining();
+              checkArgument(
+                  blockOffset >= 0 && blockOffset <= serializedTsBlockSize,
+                  DataNodeQueryMessages
+                      .EXCEPTION_INVALID_SERIALIZED_TSBLOCK_FRAGMENT_OFFSET_ARG_FOR_BLOCK_SIZE_ARG_53BC0284,
+                  blockOffset,
+                  serializedTsBlockSize);
+              int remainingBlockSize = serializedTsBlockSize - blockOffset;
+              ByteBuffer fragment = serializedTsBlock;
+              fragment.position(blockOffset);
+              if (remainingBlockSize <= remainingPayloadSize) {
+                fragment.limit(blockOffset + remainingBlockSize);
+                resp.addToTsBlocks(fragment.slice());
+                remainingPayloadSize -= remainingBlockSize;
+                if (remainingPayloadSize == 0) {
+                  break;
+                }
+              } else {
+                fragment.limit(blockOffset + remainingPayloadSize);
+                resp.addToTsBlocks(fragment.slice());
+                resp.setOffset(blockOffset + remainingPayloadSize);
+                if (blockOffset == 0) {
+                  resp.setTotalLength(serializedTsBlockSize);
+                }
+                break;
+              }
+            } catch (GetTsBlockFromClosedOrAbortedChannelException e) {
+              return new TGetDataBlockResponse(new ArrayList<>());
+            } catch (IllegalArgumentException | IllegalStateException | IOException e) {
+              throw new TException(e);
+            }
+          }
+          return resp;
+        }
         for (int i = req.getStartSequenceId(); i < req.getEndSequenceId(); i++) {
           try {
             ByteBuffer serializedTsBlock = sinkChannel.getSerializedTsBlock(i);
@@ -463,17 +565,21 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     private final AtomicInteger cnt;
 
+    private final AtomicBoolean hasChannelFailedOrAborted;
+
     private final AtomicBoolean hasDecremented = new AtomicBoolean(false);
 
     public ISinkChannelListenerImpl(
         TFragmentInstanceId localFragmentInstanceId,
         FragmentInstanceContext context,
         IMPPDataExchangeManagerCallback<Throwable> onFailureCallback,
-        AtomicInteger cnt) {
+        AtomicInteger cnt,
+        AtomicBoolean hasChannelFailedOrAborted) {
       this.shuffleSinkHandleId = localFragmentInstanceId;
       this.context = context;
       this.onFailureCallback = onFailureCallback;
       this.cnt = cnt;
+      this.hasChannelFailedOrAborted = hasChannelFailedOrAborted;
     }
 
     @Override
@@ -496,6 +602,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(DataNodeQueryMessages.SKH_LISTENER_ON_ABORT);
       }
+      hasChannelFailedOrAborted.set(true);
       decrementCnt();
       return context.getFailureCause();
     }
@@ -503,21 +610,25 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     @Override
     public void onFailure(ISink sink, Throwable t) {
       LOGGER.warn(DataNodeQueryMessages.ISINKCHANNEL_FAILED_DUE_TO, t);
-      decrementCnt();
-      if (onFailureCallback != null) {
-        onFailureCallback.call(t);
+      hasChannelFailedOrAborted.set(true);
+      try {
+        if (onFailureCallback != null) {
+          onFailureCallback.call(t);
+        }
+      } finally {
+        decrementCnt();
       }
     }
 
     private void decrementCnt() {
       if (hasDecremented.compareAndSet(false, true) && (cnt.decrementAndGet() == 0)) {
-        closeShuffleSinkHandle();
+        releaseShuffleSinkHandle();
       }
     }
 
-    private void closeShuffleSinkHandle() {
+    private void releaseShuffleSinkHandle() {
       ISinkHandle sinkHandle = shuffleSinkHandles.remove(shuffleSinkHandleId);
-      if (sinkHandle != null) {
+      if (sinkHandle != null && !hasChannelFailedOrAborted.get()) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(DataNodeQueryMessages.CLOSE_SHUFFLE_SINK_HANDLE, shuffleSinkHandleId);
         }
@@ -623,6 +734,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     return mppDataExchangeService;
   }
 
+  public IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
+      getMppDataExchangeServiceClientManager() {
+    return mppDataExchangeServiceClientManager;
+  }
+
   public void deRegisterFragmentInstanceFromMemoryPool(
       String queryId, String fragmentInstanceId, boolean forceDeregister) {
     localMemoryManager
@@ -651,7 +767,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       // TODO: replace with callbacks to decouple MPPDataExchangeManager from
       // FragmentInstanceContext
       FragmentInstanceContext instanceContext,
-      AtomicInteger cnt) {
+      AtomicInteger cnt,
+      AtomicBoolean hasChannelFailedOrAborted) {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
@@ -687,7 +804,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         localFragmentInstanceId,
         queue,
         new ISinkChannelListenerImpl(
-            localFragmentInstanceId, instanceContext, instanceContext::failed, cnt));
+            localFragmentInstanceId,
+            instanceContext,
+            instanceContext::failed,
+            cnt,
+            hasChannelFailedOrAborted));
   }
 
   /**
@@ -723,7 +844,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       // TODO: replace with callbacks to decouple MPPDataExchangeManager from
       // FragmentInstanceContext
       FragmentInstanceContext instanceContext,
-      AtomicInteger cnt) {
+      AtomicInteger cnt,
+      AtomicBoolean hasChannelFailedOrAborted) {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
@@ -743,7 +865,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         executorService,
         tsBlockSerdeFactory.get(),
         new ISinkChannelListenerImpl(
-            localFragmentInstanceId, instanceContext, instanceContext::failed, cnt),
+            localFragmentInstanceId,
+            instanceContext,
+            instanceContext::failed,
+            cnt,
+            hasChannelFailedOrAborted),
         instanceContext.isHighestPriority(),
         mppDataExchangeServiceClientManager);
   }
@@ -767,6 +893,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     int channelNum = downStreamChannelLocationList.size();
     AtomicInteger cnt = new AtomicInteger(channelNum);
+    AtomicBoolean hasChannelFailedOrAborted = new AtomicBoolean(false);
     List<ISinkChannel> downStreamChannelList =
         downStreamChannelLocationList.stream()
             .map(
@@ -776,7 +903,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
                         localPlanNodeId,
                         downStreamChannelLocation,
                         instanceContext,
-                        cnt))
+                        cnt,
+                        hasChannelFailedOrAborted))
             .collect(Collectors.toList());
 
     ShuffleSinkHandle shuffleSinkHandle =
@@ -795,7 +923,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       String localPlanNodeId,
       DownStreamChannelLocation downStreamChannelLocation,
       FragmentInstanceContext instanceContext,
-      AtomicInteger cnt) {
+      AtomicInteger cnt,
+      AtomicBoolean hasChannelFailedOrAborted) {
     if (isSameNode(downStreamChannelLocation.getRemoteEndpoint())) {
       return createLocalSinkChannel(
           localFragmentInstanceId,
@@ -803,7 +932,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           downStreamChannelLocation.getRemotePlanNodeId(),
           localPlanNodeId,
           instanceContext,
-          cnt);
+          cnt,
+          hasChannelFailedOrAborted);
     } else {
       return createSinkChannel(
           localFragmentInstanceId,
@@ -812,7 +942,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           downStreamChannelLocation.getRemotePlanNodeId(),
           localPlanNodeId,
           instanceContext,
-          cnt);
+          cnt,
+          hasChannelFailedOrAborted);
     }
   }
 

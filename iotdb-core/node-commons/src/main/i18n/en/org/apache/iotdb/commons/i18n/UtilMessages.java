@@ -248,6 +248,8 @@ public final class UtilMessages {
   public static final String MESSAGE_MEET_ERROR_CLOSE_OPERATION_1C7D0589 = "Meet error in close operation.";
   public static final String MESSAGE_FAIL_DO_NON_QUERY_OPERATIONS_BECAUSE_SYSTEM_READ_ONLY_10CA1ED2 = "Fail to do non-query operations because system is read-only.";
   public static final String MESSAGE_DISK_SPACE_INSUFFICIENT_DF6205B0 = "Disk space is insufficient.";
+  public static final String MESSAGE_FAILED_TO_WRITE_THE_TARGET_FILE_4C48CE25 =
+      "Failed to write the target file.";
   public static final String MESSAGE_MEET_ERROR_STARTING_UP_22A4CBFE = "Meet error while starting up.";
   public static final String MESSAGE_USERNAME_PASSWORD_WRONG_C44C4AF0 = "Username or password is wrong.";
   public static final String MESSAGE_HAS_NOT_LOGGED_A2BA0267 = "Has not logged in.";
@@ -260,4 +262,10 @@ public final class UtilMessages {
   public static final String LOG_ARG_COLON_ARG_DCE519A1 = "{}: {}";
   public static final String EMPTY_MESSAGE = "";
 
+  public static final String
+      EXCEPTION_IN_WINDOWS_SYSTEM_THE_PATH_SHALL_NOT_CONTAIN_ARG_OR_ASCII_CONTROL_CHARACTERS_EQUALS_ONE_OF_ARG_WITH_OR_WITHOUT_AN_EXTENSION_OR_ENDS_WITH_OR_B3B92470 =
+          "In Windows System, the path shall not contain %s or ASCII control characters, equals one"
+              + " of %s with or without an extension, or ends with '.' or ' '.";
+
+  public static final String EXCEPTION_FROM_ARG_TO_ARG_D2758D41 = "from %s to %s";
 }

@@ -61,6 +61,7 @@ import javax.management.ObjectName;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.OptionalInt;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -73,6 +74,46 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class FragmentInstanceContextTest {
+
+  @Test
+  public void testConcurrentQueryDataSourceStatistics() throws InterruptedException {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    ExecutorService workers =
+        IoTDBThreadPoolFactory.newFixedThreadPool(4, "test-query-data-source-statistics");
+    try {
+      FragmentInstanceContext context = newFragmentInstanceContext(instanceNotificationExecutor);
+      int workerCount = 4;
+      int updatesPerWorker = 10_000;
+      CountDownLatch startSignal = new CountDownLatch(1);
+      CountDownLatch completionSignal = new CountDownLatch(workerCount);
+
+      for (int i = 0; i < workerCount; i++) {
+        workers.submit(
+            () -> {
+              try {
+                startSignal.await();
+                for (int j = 0; j < updatesPerWorker; j++) {
+                  context.addInitQueryDataSourceCost(1);
+                  context.increaseInitQueryDataSourceRetryCount();
+                }
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+              } finally {
+                completionSignal.countDown();
+              }
+            });
+      }
+
+      startSignal.countDown();
+      assertTrue(completionSignal.await(10, TimeUnit.SECONDS));
+      assertEquals((long) workerCount * updatesPerWorker, context.getInitQueryDataSourceCost());
+      assertEquals(workerCount * updatesPerWorker, context.getInitQueryDataSourceRetryCount());
+    } finally {
+      workers.shutdownNow();
+      instanceNotificationExecutor.shutdownNow();
+    }
+  }
 
   @Test
   public void testDrainAggregationCostsSeparatelyOnce() {

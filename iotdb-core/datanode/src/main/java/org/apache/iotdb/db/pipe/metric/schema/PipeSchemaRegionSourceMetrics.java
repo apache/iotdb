@@ -48,7 +48,7 @@ public class PipeSchemaRegionSourceMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
+  public synchronized void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
     ImmutableSet.copyOf(sourceMap.keySet()).forEach(this::createMetrics);
   }
@@ -73,11 +73,11 @@ public class PipeSchemaRegionSourceMetrics implements IMetricSet {
   }
 
   @Override
-  public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(sourceMap.keySet()).forEach(this::deregister);
-    if (!sourceMap.isEmpty()) {
-      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_SCHEMA_REGION_1);
-    }
+  public synchronized void unbindFrom(final AbstractMetricService metricService) {
+    // Keep the sources registered: they register only once, so a metric service restart
+    // must be able to bind them again.
+    // Synchronized with the (de)registrations, which may remove a registration being unbound.
+    ImmutableSet.copyOf(sourceMap.keySet()).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final String taskID) {
@@ -100,7 +100,7 @@ public class PipeSchemaRegionSourceMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(final IoTDBSchemaRegionSource source) {
+  public synchronized void register(final IoTDBSchemaRegionSource source) {
     final String taskID = source.getTaskID();
     sourceMap.putIfAbsent(taskID, source);
     if (Objects.nonNull(metricService)) {
@@ -108,7 +108,7 @@ public class PipeSchemaRegionSourceMetrics implements IMetricSet {
     }
   }
 
-  public void deregister(final String taskID) {
+  public synchronized void deregister(final String taskID) {
     if (!sourceMap.containsKey(taskID)) {
       LOGGER.warn(DataNodePipeMessages.FAILED_TO_DEREGISTER_PIPE_SCHEMA_REGION_SOURCE, taskID);
       return;

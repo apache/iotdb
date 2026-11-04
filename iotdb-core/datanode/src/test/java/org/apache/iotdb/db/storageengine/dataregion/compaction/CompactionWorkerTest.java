@@ -95,6 +95,15 @@ public class CompactionWorkerTest {
             0);
     CrossSpaceCompactionTask taskMock = Mockito.spy(task);
     Mockito.doReturn(true).when(taskMock).start();
+    CountDownLatch statusResetLatch = new CountDownLatch(1);
+    Mockito.doAnswer(
+            invocation -> {
+              invocation.callRealMethod();
+              statusResetLatch.countDown();
+              return null;
+            })
+        .when(taskMock)
+        .resetCompactionCandidateStatusForAllSourceFiles();
     FixedPriorityBlockingQueue<AbstractCompactionTask> queue =
         new CompactionTaskQueue(50, new DefaultCompactionTaskComparatorImpl());
     queue.put(taskMock);
@@ -108,7 +117,9 @@ public class CompactionWorkerTest {
               }
             });
     thread.start();
-    thread.join(TimeUnit.SECONDS.toMillis(2));
+    Assert.assertTrue(
+        "source files should be reset to NORMAL after the cross-space task is dropped",
+        statusResetLatch.await(5, TimeUnit.SECONDS));
     Assert.assertEquals(
         0, SystemInfo.getInstance().getCompactionMemoryBlock().getUsedMemoryInBytes());
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
@@ -153,6 +164,15 @@ public class CompactionWorkerTest {
               0L, tsFileManager, sequenceFiles, unsequenceFiles, null, 1000, 0);
       CrossSpaceCompactionTask taskMock = Mockito.spy(task);
       Mockito.doReturn(true).when(taskMock).start();
+      CountDownLatch statusResetLatch = new CountDownLatch(1);
+      Mockito.doAnswer(
+              invocation -> {
+                invocation.callRealMethod();
+                statusResetLatch.countDown();
+                return null;
+              })
+          .when(taskMock)
+          .resetCompactionCandidateStatusForAllSourceFiles();
       FixedPriorityBlockingQueue<AbstractCompactionTask> queue =
           new CompactionTaskQueue(50, new DefaultCompactionTaskComparatorImpl());
       queue.put(taskMock);
@@ -165,7 +185,9 @@ public class CompactionWorkerTest {
                 }
               });
       thread.start();
-      thread.join(TimeUnit.SECONDS.toMillis(2));
+      Assert.assertTrue(
+          "source files should be reset to NORMAL after the cross-space task is dropped",
+          statusResetLatch.await(5, TimeUnit.SECONDS));
       Assert.assertEquals(
           0, SystemInfo.getInstance().getCompactionMemoryBlock().getUsedMemoryInBytes());
       Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
@@ -208,9 +230,19 @@ public class CompactionWorkerTest {
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0L, tsFileManager, sequenceFiles, unsequenceFiles, null, 1000, 0);
+    CrossSpaceCompactionTask taskMock = Mockito.spy(task);
+    CountDownLatch statusResetLatch = new CountDownLatch(1);
+    Mockito.doAnswer(
+            invocation -> {
+              invocation.callRealMethod();
+              statusResetLatch.countDown();
+              return null;
+            })
+        .when(taskMock)
+        .resetCompactionCandidateStatusForAllSourceFiles();
     FixedPriorityBlockingQueue<AbstractCompactionTask> queue =
         new CompactionTaskQueue(50, new DefaultCompactionTaskComparatorImpl());
-    queue.put(task);
+    queue.put(taskMock);
     Thread thread =
         new Thread(
             () -> {
@@ -220,7 +252,9 @@ public class CompactionWorkerTest {
               }
             });
     thread.start();
-    thread.join(TimeUnit.SECONDS.toMillis(2));
+    Assert.assertTrue(
+        "source files should be reset to NORMAL after the cross-space task is dropped",
+        statusResetLatch.await(5, TimeUnit.SECONDS));
     Assert.assertEquals(
         0, SystemInfo.getInstance().getCompactionMemoryBlock().getUsedMemoryInBytes());
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
@@ -248,9 +282,19 @@ public class CompactionWorkerTest {
     // fail to check valid when tsfile manager is not allowed to compaction in inner task
     InnerSpaceCompactionTask innerTask =
         new InnerSpaceCompactionTask(0L, tsFileManager, sequenceFiles, true, null, 0L);
+    InnerSpaceCompactionTask innerTaskMock = Mockito.spy(innerTask);
+    CountDownLatch statusResetLatch = new CountDownLatch(1);
+    Mockito.doAnswer(
+            invocation -> {
+              invocation.callRealMethod();
+              statusResetLatch.countDown();
+              return null;
+            })
+        .when(innerTaskMock)
+        .resetCompactionCandidateStatusForAllSourceFiles();
     FixedPriorityBlockingQueue<AbstractCompactionTask> queue =
         new CompactionTaskQueue(50, new DefaultCompactionTaskComparatorImpl());
-    queue.put(innerTask);
+    queue.put(innerTaskMock);
     Thread thread =
         new Thread(
             () -> {
@@ -260,7 +304,9 @@ public class CompactionWorkerTest {
               }
             });
     thread.start();
-    thread.join(TimeUnit.SECONDS.toMillis(2));
+    Assert.assertTrue(
+        "source files should be reset to NORMAL after the inner-space task is dropped",
+        statusResetLatch.await(5, TimeUnit.SECONDS));
     Assert.assertEquals(
         0, SystemInfo.getInstance().getCompactionMemoryBlock().getUsedMemoryInBytes());
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
