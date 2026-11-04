@@ -29,6 +29,8 @@ import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupFormat;
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupManifest;
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupWriter;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV2;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -66,6 +68,11 @@ import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 public class PipeLogicalBackupToolTest {
+
+  // CNSnapshotFileType.SCHEMA; ConfigNode is not a CLI dependency.
+  private static final String CONFIG_SCHEMA_FILE_TYPE = "4";
+  // ConfigPhysicalPlanType.CreateDatabase and CreateSchemaTemplate.
+  private static final String CONFIG_SCHEMA_PLAN_TYPES = "200,800";
 
   @Rule public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
@@ -574,7 +581,7 @@ public class PipeLogicalBackupToolTest {
       final Path checkpoint = temporaryFolder.getRoot().toPath().resolve(config + ".checkpoint");
       final PipeLogicalBackupTool.ImportCheckpoint state =
           PipeLogicalBackupTool.readCheckpoint(checkpoint, streams, "localhost", 6667, "root");
-      final IoTDBSyncClient firstConnection = snapshotClient(new AtomicBoolean());
+      final IoTDBSyncClient firstConnection = snapshotClient(new AtomicBoolean(), config);
       final List<TPipeTransferReq> sent = new ArrayList<>();
       try {
         PipeLogicalBackupTool.importStream(
@@ -599,7 +606,7 @@ public class PipeLogicalBackupToolTest {
       Assert.assertEquals(3, durableState.inProgress.nextRequestIndex);
       final AtomicBoolean applied = new AtomicBoolean();
       // A fresh handshake has no staged files from the first connection.
-      final IoTDBSyncClient freshConnection = snapshotClient(applied);
+      final IoTDBSyncClient freshConnection = snapshotClient(applied, config);
       final List<Boolean> replayPermissions = new ArrayList<>();
       Assert.assertEquals(
           1,
@@ -629,7 +636,7 @@ public class PipeLogicalBackupToolTest {
       final PipeLogicalBackupTool.ImportCheckpoint state =
           PipeLogicalBackupTool.readCheckpoint(checkpoint, streams, "localhost", 6667, "root");
       final AtomicBoolean applied = new AtomicBoolean();
-      final IoTDBSyncClient firstConnection = snapshotClient(applied);
+      final IoTDBSyncClient firstConnection = snapshotClient(applied, config);
       try {
         PipeLogicalBackupTool.importStream(
             checkpoint,
@@ -651,7 +658,7 @@ public class PipeLogicalBackupToolTest {
           PipeLogicalBackupTool.readCheckpoint(checkpoint, streams, "localhost", 6667, "root");
       Assert.assertEquals(4, interruptedState.inProgress.nextRequestIndex);
       Assert.assertTrue(interruptedState.inProgress.uncertain);
-      final IoTDBSyncClient interruptedConnection = snapshotClient(applied);
+      final IoTDBSyncClient interruptedConnection = snapshotClient(applied, config);
       try {
         PipeLogicalBackupTool.importStream(
             checkpoint,
@@ -677,7 +684,7 @@ public class PipeLogicalBackupToolTest {
           PipeLogicalBackupTool.readCheckpoint(checkpoint, streams, "localhost", 6667, "root");
       Assert.assertEquals(4, durableState.inProgress.nextRequestIndex);
       Assert.assertTrue(durableState.inProgress.uncertain);
-      final IoTDBSyncClient freshConnection = snapshotClient(applied);
+      final IoTDBSyncClient freshConnection = snapshotClient(applied, config);
       final List<Boolean> replayPermissions = new ArrayList<>();
       Assert.assertEquals(
           1,
@@ -698,71 +705,76 @@ public class PipeLogicalBackupToolTest {
 
   @Test
   public void testSnapshotResumeDoesNotReplayAcknowledgedSeal() throws Exception {
-    final Path source = temporaryFolder.newFolder().toPath().resolve("backup");
-    writeBackup(source, "snapshot", "schema", snapshotRequests(false));
-    final List<BackupStream> streams = new LogicalBackupArchiveReader().read(source, false);
-    final Path checkpoint = temporaryFolder.getRoot().toPath().resolve("snapshot.checkpoint");
-    final PipeLogicalBackupTool.ImportCheckpoint state =
-        PipeLogicalBackupTool.readCheckpoint(checkpoint, streams, "localhost", 6667, "root");
-    final AtomicBoolean applied = new AtomicBoolean();
-    final IoTDBSyncClient client = snapshotClient(applied);
-    try {
-      PipeLogicalBackupTool.importStream(
-          checkpoint,
-          state,
-          streams.get(0),
-          (request, allowIdempotentReplay) ->
-              PipeLogicalBackupTool.transfer(client, request, allowIdempotentReplay),
-          checkpointState -> {
-            if (checkpointState.inProgress == null) {
-              throw new IOException("group completion checkpoint interrupted");
-            }
-            PipeLogicalBackupTool.writeCheckpoint(checkpoint, checkpointState);
-          });
-      Assert.fail();
-    } catch (final IOException expected) {
-      Assert.assertTrue(applied.get());
-    }
-    final PipeLogicalBackupTool.ImportCheckpoint durableState =
-        PipeLogicalBackupTool.readCheckpoint(checkpoint, streams, "localhost", 6667, "root");
-    Assert.assertEquals(5, durableState.inProgress.nextRequestIndex);
-    Assert.assertFalse(durableState.inProgress.uncertain);
-    Assert.assertEquals(
-        1,
+    for (final boolean config : new boolean[] {false, true}) {
+      final Path source = temporaryFolder.newFolder().toPath().resolve("backup");
+      writeBackup(source, "snapshot", config ? "config" : "schema", snapshotRequests(config));
+      final List<BackupStream> streams = new LogicalBackupArchiveReader().read(source, false);
+      final Path checkpoint = temporaryFolder.getRoot().toPath().resolve(config + ".checkpoint");
+      final PipeLogicalBackupTool.ImportCheckpoint state =
+          PipeLogicalBackupTool.readCheckpoint(checkpoint, streams, "localhost", 6667, "root");
+      final AtomicBoolean applied = new AtomicBoolean();
+      final IoTDBSyncClient client = snapshotClient(applied, config);
+      try {
         PipeLogicalBackupTool.importStream(
             checkpoint,
-            durableState,
+            state,
             streams.get(0),
             (request, allowIdempotentReplay) ->
-                Assert.fail("an acknowledged seal must not be sent again"),
-            checkpointState -> PipeLogicalBackupTool.writeCheckpoint(checkpoint, checkpointState)));
-    Assert.assertNull(durableState.inProgress);
+                PipeLogicalBackupTool.transfer(client, request, allowIdempotentReplay),
+            checkpointState -> {
+              if (checkpointState.inProgress == null) {
+                throw new IOException("group completion checkpoint interrupted");
+              }
+              PipeLogicalBackupTool.writeCheckpoint(checkpoint, checkpointState);
+            });
+        Assert.fail();
+      } catch (final IOException expected) {
+        Assert.assertTrue(applied.get());
+      }
+      final PipeLogicalBackupTool.ImportCheckpoint durableState =
+          PipeLogicalBackupTool.readCheckpoint(checkpoint, streams, "localhost", 6667, "root");
+      Assert.assertEquals(5, durableState.inProgress.nextRequestIndex);
+      Assert.assertFalse(durableState.inProgress.uncertain);
+      Assert.assertEquals(
+          1,
+          PipeLogicalBackupTool.importStream(
+              checkpoint,
+              durableState,
+              streams.get(0),
+              (request, allowIdempotentReplay) ->
+                  Assert.fail("an acknowledged seal must not be sent again"),
+              checkpointState ->
+                  PipeLogicalBackupTool.writeCheckpoint(checkpoint, checkpointState)));
+      Assert.assertNull(durableState.inProgress);
+    }
   }
 
   private static List<TPipeTransferReq> snapshotRequests(final boolean config) throws IOException {
-    final List<TPipeTransferReq> requests =
-        Arrays.asList(
-            PipeTransferSchemaSnapshotPieceReq.toTPipeTransferReq("mtree", 0, new byte[] {1, 2}),
-            PipeTransferSchemaSnapshotPieceReq.toTPipeTransferReq("mtree", 2, new byte[] {3, 4}),
-            PipeTransferSchemaSnapshotPieceReq.toTPipeTransferReq("tags", 0, new byte[] {5}),
-            PipeTransferSchemaSnapshotPieceReq.toTPipeTransferReq("tags", 1, new byte[] {6}),
-            PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(
-                "root.**", ".*", ".*", true, false, "mtree", 4, "tags", 2, null, 0, "root.db", ""));
-    // Schema and config snapshots share the file-piece and file-seal wire formats.
     if (config) {
-      for (int index = 0; index < requests.size(); index++) {
-        requests
-            .get(index)
-            .setType(
-                index == requests.size() - 1
-                    ? PipeRequestType.TRANSFER_CONFIG_SNAPSHOT_SEAL.getType()
-                    : PipeRequestType.TRANSFER_CONFIG_SNAPSHOT_PIECE.getType());
-      }
+      return Arrays.asList(
+          configPiece("snapshot", 0, new byte[] {1, 2}),
+          configPiece("snapshot", 2, new byte[] {3, 4}),
+          configPiece("template", 0, new byte[] {5}),
+          configPiece("template", 1, new byte[] {6}),
+          ConfigSeal.create());
     }
-    return requests;
+    return Arrays.asList(
+        PipeTransferSchemaSnapshotPieceReq.toTPipeTransferReq("mtree", 0, new byte[] {1, 2}),
+        PipeTransferSchemaSnapshotPieceReq.toTPipeTransferReq("mtree", 2, new byte[] {3, 4}),
+        PipeTransferSchemaSnapshotPieceReq.toTPipeTransferReq("tags", 0, new byte[] {5}),
+        PipeTransferSchemaSnapshotPieceReq.toTPipeTransferReq("tags", 1, new byte[] {6}),
+        PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(
+            "root.**", ".*", ".*", true, false, "mtree", 4, "tags", 2, null, 0, "root.db", ""));
   }
 
-  private static IoTDBSyncClient snapshotClient(final AtomicBoolean applied) throws Exception {
+  private static TPipeTransferReq configPiece(
+      final String fileName, final long offset, final byte[] bytes) throws IOException {
+    return PipeTransferSchemaSnapshotPieceReq.toTPipeTransferReq(fileName, offset, bytes)
+        .setType(PipeRequestType.TRANSFER_CONFIG_SNAPSHOT_PIECE.getType());
+  }
+
+  private static IoTDBSyncClient snapshotClient(final AtomicBoolean applied, final boolean config)
+      throws Exception {
     final Map<String, ByteArrayOutputStream> stagedFiles = new LinkedHashMap<>();
     final IoTDBSyncClient client = Mockito.mock(IoTDBSyncClient.class);
     Mockito.when(client.pipeTransfer(Mockito.any()))
@@ -772,6 +784,12 @@ public class PipeLogicalBackupToolTest {
               if (request.getType() == PipeRequestType.TRANSFER_SCHEMA_SNAPSHOT_PIECE.getType()
                   || request.getType()
                       == PipeRequestType.TRANSFER_CONFIG_SNAPSHOT_PIECE.getType()) {
+                Assert.assertEquals(
+                    config
+                        ? PipeRequestType.TRANSFER_CONFIG_SNAPSHOT_PIECE.getType()
+                        : PipeRequestType.TRANSFER_SCHEMA_SNAPSHOT_PIECE.getType(),
+                    request.getType());
+                // Both piece types use the shared PipeTransferFilePieceReq encoding.
                 final PipeTransferSchemaSnapshotPieceReq piece =
                     PipeTransferSchemaSnapshotPieceReq.fromTPipeTransferReq(request.deepCopy());
                 final ByteArrayOutputStream file =
@@ -785,18 +803,50 @@ public class PipeLogicalBackupToolTest {
                 return new TPipeTransferResp(
                     new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
               }
-              final PipeTransferSchemaSnapshotSealReq seal =
-                  PipeTransferSchemaSnapshotSealReq.fromTPipeTransferReq(request.deepCopy());
-              for (int index = 0; index < seal.getFileNames().size(); index++) {
-                final ByteArrayOutputStream file = stagedFiles.get(seal.getFileNames().get(index));
-                if (file == null || file.size() != seal.getFileLengths().get(index)) {
+              final List<String> fileNames;
+              final List<Long> fileLengths;
+              if (config) {
+                Assert.assertEquals(
+                    PipeRequestType.TRANSFER_CONFIG_SNAPSHOT_SEAL.getType(), request.getType());
+                final PipeTransferFileSealReqV2 seal =
+                    new ConfigSeal().translateFromTPipeTransferReq(request.deepCopy());
+                Assert.assertEquals(CONFIG_SCHEMA_FILE_TYPE, seal.getParameters().get("fileType"));
+                Assert.assertEquals(
+                    CONFIG_SCHEMA_PLAN_TYPES, seal.getParameters().get(ColumnHeaderConstant.TYPE));
+                Assert.assertEquals(
+                    "root.**", seal.getParameters().get(ColumnHeaderConstant.PATH_PATTERN));
+                Assert.assertEquals(
+                    ".*", seal.getParameters().get(ColumnHeaderConstant.TABLE_NAME));
+                Assert.assertEquals(
+                    ".*", seal.getParameters().get(PipeTransferFileSealReqV2.DATABASE_PATTERN));
+                Assert.assertEquals("", seal.getParameters().get(PipeTransferFileSealReqV2.TREE));
+                Assert.assertFalse(
+                    seal.getParameters().containsKey(PipeTransferFileSealReqV2.TABLE));
+                Assert.assertEquals("", seal.getParameters().get("authUserName"));
+                fileNames = seal.getFileNames();
+                fileLengths = seal.getFileLengths();
+                Assert.assertEquals(Arrays.asList("snapshot", "template"), fileNames);
+                Assert.assertEquals(Arrays.asList(4L, 2L), fileLengths);
+              } else {
+                Assert.assertEquals(
+                    PipeRequestType.TRANSFER_SCHEMA_SNAPSHOT_SEAL.getType(), request.getType());
+                final PipeTransferSchemaSnapshotSealReq seal =
+                    PipeTransferSchemaSnapshotSealReq.fromTPipeTransferReq(request.deepCopy());
+                fileNames = seal.getFileNames();
+                fileLengths = seal.getFileLengths();
+              }
+              for (int index = 0; index < fileNames.size(); index++) {
+                final ByteArrayOutputStream file = stagedFiles.get(fileNames.get(index));
+                if (file == null || file.size() != fileLengths.get(index)) {
                   return new TPipeTransferResp(
                       new TSStatus(TSStatusCode.PIPE_TRANSFER_FILE_ERROR.getStatusCode()));
                 }
               }
               Assert.assertArrayEquals(
-                  new byte[] {1, 2, 3, 4}, stagedFiles.get("mtree").toByteArray());
-              Assert.assertArrayEquals(new byte[] {5, 6}, stagedFiles.get("tags").toByteArray());
+                  new byte[] {1, 2, 3, 4},
+                  stagedFiles.get(config ? "snapshot" : "mtree").toByteArray());
+              Assert.assertArrayEquals(
+                  new byte[] {5, 6}, stagedFiles.get(config ? "template" : "tags").toByteArray());
               return new TPipeTransferResp(
                   new TSStatus(
                       applied.getAndSet(true)
@@ -804,6 +854,28 @@ public class PipeLogicalBackupToolTest {
                           : TSStatusCode.SUCCESS_STATUS.getStatusCode()));
             });
     return client;
+  }
+
+  private static final class ConfigSeal extends PipeTransferFileSealReqV2 {
+    private static TPipeTransferReq create() throws IOException {
+      // Match PipeTransferConfigSnapshotSealReq without adding a ConfigNode dependency.
+      final Map<String, String> parameters = new LinkedHashMap<>();
+      parameters.put(ColumnHeaderConstant.PATH_PATTERN, "root.**");
+      parameters.put(DATABASE_PATTERN, ".*");
+      parameters.put(ColumnHeaderConstant.TABLE_NAME, ".*");
+      parameters.put(TREE, "");
+      parameters.put("fileType", CONFIG_SCHEMA_FILE_TYPE);
+      parameters.put(ColumnHeaderConstant.TYPE, CONFIG_SCHEMA_PLAN_TYPES);
+      parameters.put("authUserName", "");
+      return new ConfigSeal()
+          .convertToTPipeTransferReq(
+              Arrays.asList("snapshot", "template"), Arrays.asList(4L, 2L), parameters);
+    }
+
+    @Override
+    protected PipeRequestType getPlanType() {
+      return PipeRequestType.TRANSFER_CONFIG_SNAPSHOT_SEAL;
+    }
   }
 
   private static void writeBackup(final Path directory) throws Exception {
