@@ -358,6 +358,8 @@ public final class DataNodePipeMessages {
       "Successfully persisted all pipe's info to configNode.";
   public static final String THE_EXECUTOR_AND_HAS_BEEN_SUCCESSFULLY_SHUTDOWN =
       "The executor {} and {} has been successfully shutdown.";
+  public static final String LOG_THE_SHARED_CONSENSUS_EXECUTOR_HAS_BEEN_SHUT_DOWN_RECREATING_IT_C14080E3 =
+      "The shared consensus executor has been shut down. Recreating it.";
 
   // ===================== EVENT =====================
 

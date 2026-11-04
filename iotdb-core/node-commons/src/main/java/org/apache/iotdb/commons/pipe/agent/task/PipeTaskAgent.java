@@ -989,9 +989,40 @@ public abstract class PipeTaskAgent {
 
   private void startPipeTask(final int consensusGroupId, final PipeStaticMeta pipeStaticMeta) {
     final PipeTask pipeTask = pipeTaskManager.getPipeTask(pipeStaticMeta, consensusGroupId);
-    if (pipeTask != null) {
+    if (pipeTask == null) {
+      return;
+    }
+
+    try {
       pipeTask.start();
-      thawRate(pipeStaticMeta.getPipeName(), pipeStaticMeta.getCreationTime());
+    } catch (final Exception e) {
+      LOGGER.error(
+          PipeMessages
+              .LOG_FAILED_TO_START_THE_TASK_OF_CONSENSUS_GROUP_ARG_FOR_PIPE_ARG_THE_TASK_IS_DROPPED_AND_WILL_BE_RECREATED_BY_THE_FOLLOWING_META_SYNC_7594577C,
+          consensusGroupId,
+          pipeStaticMeta.getPipeName(),
+          e);
+
+      // A created task is never started again by the following meta sync. Drop it and remove its
+      // task meta so that the meta sync creates and starts the task again instead of keeping it
+      // "RUNNING" but dead until the node restarts.
+      rollbackPipeTask(consensusGroupId, pipeStaticMeta);
+      return;
+    }
+
+    thawRate(pipeStaticMeta.getPipeName(), pipeStaticMeta.getCreationTime());
+  }
+
+  private void rollbackPipeTask(final int consensusGroupId, final PipeStaticMeta pipeStaticMeta) {
+    try {
+      dropPipeTask(consensusGroupId, pipeStaticMeta);
+    } catch (final Exception e) {
+      LOGGER.warn(
+          PipeMessages
+              .LOG_FAILED_TO_DROP_THE_TASK_OF_CONSENSUS_GROUP_ARG_FOR_PIPE_ARG_AFTER_IT_FAILED_TO_START_394297EC,
+          consensusGroupId,
+          pipeStaticMeta.getPipeName(),
+          e);
     }
   }
 
