@@ -557,16 +557,20 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
-    // Notice that this is only called at realtime extraction, and the tsFile is always closed
-    // Thus we can use the end time to judge the overlap
+    // Only called during realtime extraction, after writer.endFile() has finalized the time bounds.
+    // The resource may not yet be marked closed, but its end time can already be used for overlap.
     return Objects.isNull(resource)
         || startTime <= resource.getFileEndTime() && resource.getFileStartTime() <= endTime;
   }
 
   @Override
   public boolean shouldParseTime() {
+    // Historical extraction may observe incomplete time bounds while an asynchronous close is in
+    // progress. Realtime TsFile events are published after writer.endFile(), when the bounds are
+    // final even if the resource's closed flag has not yet been updated by the close callbacks.
     if (!isTimeParsed
         && Objects.nonNull(resource)
+        && (!isGeneratedByHistoricalExtractor || resource.isClosed())
         && startTime <= resource.getFileStartTime()
         && resource.getFileEndTime() <= endTime) {
       isTimeParsed = true;
