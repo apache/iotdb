@@ -32,8 +32,11 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.mockito.Mockito.mock;
 
@@ -123,6 +126,94 @@ public class PipeSinkSubtaskExecutorTest extends PipeSubtaskExecutorTest {
       } catch (final RejectedExecutionException e) {
         // expected
       }
+    }
+  }
+
+  @Test
+  public void testStartWhileThePreviousCallIsStillRunning() throws Exception {
+    final AtomicInteger concurrentCallCount = new AtomicInteger(0);
+    final AtomicInteger maxConcurrentCallCount = new AtomicInteger(0);
+    final CountDownLatch firstCallEntered = new CountDownLatch(1);
+    final CountDownLatch firstCallReleased = new CountDownLatch(1);
+    final CountDownLatch secondCallEntered = new CountDownLatch(1);
+
+    final PipeSubtask blockedSubtask =
+        new PipeSinkSubtask(
+            "PipeConnectorSubtaskExecutorTest",
+            System.currentTimeMillis(),
+            "TestAttributeSortedString",
+            "TestAttributeSortedString",
+            0,
+            mock(UnboundedBlockingPendingQueue.class),
+            mock(PipeConnector.class)) {
+          @Override
+          protected boolean executeOnce() {
+            final int current = concurrentCallCount.incrementAndGet();
+            maxConcurrentCallCount.accumulateAndGet(current, Math::max);
+            if (current == 1) {
+              firstCallEntered.countDown();
+              try {
+                firstCallReleased.await(5, TimeUnit.SECONDS);
+              } catch (final InterruptedException e) {
+                Thread.currentThread().interrupt();
+              }
+            } else {
+              secondCallEntered.countDown();
+            }
+            concurrentCallCount.decrementAndGet();
+            return false;
+          }
+        };
+
+    executor.register(blockedSubtask);
+    executor.start(blockedSubtask.getTaskID());
+    Assert.assertTrue(firstCallEntered.await(5, TimeUnit.SECONDS));
+
+    // Stop and start while the first call is still running. The subtask must not be submitted
+    // again, because a PipeSubtask is not designed to run in parallel with itself.
+    executor.stop(blockedSubtask.getTaskID());
+    executor.start(blockedSubtask.getTaskID());
+
+    try {
+      Assert.assertFalse(
+          "The subtask must not be executed in parallel with itself",
+          secondCallEntered.await(1, TimeUnit.SECONDS));
+      Assert.assertEquals(1, maxConcurrentCallCount.get());
+    } finally {
+      executor.stop(blockedSubtask.getTaskID());
+      firstCallReleased.countDown();
+    }
+  }
+
+  @Test
+  public void testStartAfterShutdownWithPendingDelayedSubmission() {
+    final SinkWithSchedulingDelay sink = mock(SinkWithSchedulingDelay.class);
+    Mockito.when(sink.consumeSchedulingDelayMs()).thenReturn(60_000L);
+
+    final PipeSubtask delayedSubtask =
+        new PipeSinkSubtask(
+            "PipeConnectorSubtaskExecutorTest",
+            System.currentTimeMillis(),
+            "TestAttributeSortedString",
+            "TestAttributeSortedString",
+            0,
+            mock(UnboundedBlockingPendingQueue.class),
+            sink);
+
+    executor.register(delayedSubtask);
+
+    // The delayed submission is accepted and marks the subtask as submitted before it is
+    // dispatched.
+    executor.start(delayedSubtask.getTaskID());
+
+    // The delayed submission will never be dispatched to the shut-down worker pool, so a following
+    // start() must not take the "already submitted" branch and report a false success.
+    executor.shutdown();
+    try {
+      executor.start(delayedSubtask.getTaskID());
+      Assert.fail("The start of a subtask should fail if the executor is shut down");
+    } catch (final RejectedExecutionException e) {
+      // expected
     }
   }
 

@@ -385,6 +385,9 @@ public final class PipeMessages {
   public static final String SUBTASK_CLOSE_FAILED = "关闭子任务 {} 失败。";
   public static final String LOG_FAILED_TO_START_THE_SUBTASK_DD3FC1BA =
       "启动子任务 {} 失败。";
+  public static final String
+      EXCEPTION_THE_SUBTASK_CAN_NOT_BE_STARTED_BECAUSE_THE_EXECUTOR_HAS_BEEN_SHUT_DOWN_9989B212 =
+          "子任务无法启动，因为执行器已关闭。";
 
   // ===================== PipeReportableSubtask =====================
 

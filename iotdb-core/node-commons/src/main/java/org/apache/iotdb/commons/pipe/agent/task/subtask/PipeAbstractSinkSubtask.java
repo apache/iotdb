@@ -85,15 +85,6 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
   }
 
   @Override
-  protected synchronized void onDisallowSubmittingSelf() {
-    // The subtask is not submitting itself any more. The "isSubmitted" sign is cleared so that a
-    // later allowSubmittingSelf() + submitSelf() can really submit the subtask again, even if the
-    // previous submission was never dispatched to the worker pool, e.g., because the submission was
-    // rejected or scheduled on an executor that has been shut down.
-    isSubmitted = false;
-  }
-
-  @Override
   public void onSuccess(final Boolean hasAtLeastOneEventProcessed) {
     preScheduleLowPriorityTask(100);
 

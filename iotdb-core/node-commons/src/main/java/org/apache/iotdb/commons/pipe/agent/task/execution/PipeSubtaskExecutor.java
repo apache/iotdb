@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -139,6 +140,17 @@ public abstract class PipeSubtaskExecutor {
     }
 
     final PipeSubtask subtask = registeredIdSubtaskMapper.get(subTaskID);
+    if (isShutdown()) {
+      // A shut-down executor can never execute the subtask. Fail fast before touching the
+      // "submitting self" state, otherwise start() may report a false success and the subtask
+      // will be counted as running but never executed until the node restarts.
+      LOGGER.error(
+          PipeMessages.LOG_FAILED_TO_START_THE_SUBTASK_DD3FC1BA, subtask.getDisplayTaskID());
+      throw new RejectedExecutionException(
+          PipeMessages
+              .EXCEPTION_THE_SUBTASK_CAN_NOT_BE_STARTED_BECAUSE_THE_EXECUTOR_HAS_BEEN_SHUT_DOWN_9989B212);
+    }
+
     if (subtask.isSubmittingSelf()) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(PipeMessages.SUBTASK_ALREADY_RUNNING, subtask.getDisplayTaskID());

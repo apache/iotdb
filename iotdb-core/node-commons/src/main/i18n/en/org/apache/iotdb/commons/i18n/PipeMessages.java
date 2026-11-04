@@ -402,6 +402,9 @@ public final class PipeMessages {
   public static final String SUBTASK_CLOSE_FAILED = "Failed to close the subtask {}.";
   public static final String LOG_FAILED_TO_START_THE_SUBTASK_DD3FC1BA =
       "Failed to start the subtask {}.";
+  public static final String
+      EXCEPTION_THE_SUBTASK_CAN_NOT_BE_STARTED_BECAUSE_THE_EXECUTOR_HAS_BEEN_SHUT_DOWN_9989B212 =
+          "The subtask can not be started because the executor has been shut down.";
 
   // ===================== PipeReportableSubtask =====================
 

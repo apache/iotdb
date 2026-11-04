@@ -21,10 +21,18 @@ package org.apache.iotdb.db.pipe.agent.task.execution;
 
 import org.apache.iotdb.db.pipe.consensus.IoTConsensusV2SubtaskExecutor;
 
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
 public class PipeSubtaskExecutorManagerTest {
+
+  @After
+  public void tearDown() {
+    // Do not leave the node-wide shared consensus executor shut down for the other tests in the
+    // same JVM. getConsensusExecutor() recreates it if it has been shut down.
+    PipeSubtaskExecutorManager.getInstance().getConsensusExecutor();
+  }
 
   @Test
   public void testGetConsensusExecutor() {
