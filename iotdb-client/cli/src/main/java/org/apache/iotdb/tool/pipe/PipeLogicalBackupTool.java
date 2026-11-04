@@ -925,20 +925,6 @@ public final class PipeLogicalBackupTool {
         return 0;
       }
       (line.hasOption(OPTION_JSON) ? System.err : System.out).println(GSON.toJson(report));
-      final java.util.concurrent.atomic.AtomicBoolean uncertainRequest =
-          new java.util.concurrent.atomic.AtomicBoolean(
-              state.inProgress != null
-                  && state.inProgress.uncertain
-                  && streams.stream()
-                      .flatMap(stream -> stream.getEventGroups().stream())
-                      .anyMatch(
-                          group ->
-                              group
-                                      .getEventGroupId()
-                                      .toString()
-                                      .equals(state.inProgress.eventGroupId)
-                                  && state.inProgress.nextRequestIndex
-                                      < group.getRequests().size()));
       try {
         state.status = "RUNNING";
         state.lastError = null;
@@ -949,7 +935,8 @@ public final class PipeLogicalBackupTool {
                   checkpoint,
                   state,
                   stream,
-                  request -> transfer(client, request, uncertainRequest.getAndSet(false)),
+                  (request, allowIdempotentReplay) ->
+                      transfer(client, request, allowIdempotentReplay),
                   checkpointState -> writeCheckpoint(checkpoint, checkpointState));
         }
         state.status = "COMPLETED";
@@ -1032,11 +1019,15 @@ public final class PipeLogicalBackupTool {
       if (nextRequestIndex < 0 || nextRequestIndex > requests.size()) {
         throw invalidCheckpoint(checkpoint);
       }
+      final boolean uncertainRequest = checkpointState.inProgress.uncertain;
+      replaySnapshotPieces(requests, nextRequestIndex, requestTransfer);
       for (int index = nextRequestIndex; index < requests.size(); index++) {
         checkpointState.inProgress.uncertain = true;
         checkpointPersister.persist(checkpointState);
         try {
-          requestTransfer.transfer(requests.get(index).toTPipeTransferReq());
+          requestTransfer.transfer(
+              requests.get(index).toTPipeTransferReq(),
+              uncertainRequest && index == nextRequestIndex);
         } catch (final RestoreRequestRejectedException e) {
           checkpointState.inProgress.uncertain = false;
           throw e;
@@ -1052,6 +1043,37 @@ public final class PipeLogicalBackupTool {
       importedGroups++;
     }
     return importedGroups;
+  }
+
+  private static void replaySnapshotPieces(
+      final List<LogicalBackupRecord> requests,
+      final int nextRequestIndex,
+      final RequestTransfer requestTransfer)
+      throws Exception {
+    if (nextRequestIndex == requests.size()) {
+      return;
+    }
+    final short nextType = requests.get(nextRequestIndex).getRequestType();
+    final short pieceType;
+    if (nextType == PipeRequestType.TRANSFER_SCHEMA_SNAPSHOT_PIECE.getType()
+        || nextType == PipeRequestType.TRANSFER_SCHEMA_SNAPSHOT_SEAL.getType()) {
+      pieceType = PipeRequestType.TRANSFER_SCHEMA_SNAPSHOT_PIECE.getType();
+    } else if (nextType == PipeRequestType.TRANSFER_CONFIG_SNAPSHOT_PIECE.getType()
+        || nextType == PipeRequestType.TRANSFER_CONFIG_SNAPSHOT_SEAL.getType()) {
+      pieceType = PipeRequestType.TRANSFER_CONFIG_SNAPSHOT_PIECE.getType();
+    } else {
+      return;
+    }
+
+    // A new receiver session discards staged files. Recreate the preceding pieces without changing
+    // the durable checkpoint: another interruption must retain the original uncertain request.
+    int firstPieceIndex = nextRequestIndex;
+    while (firstPieceIndex > 0 && requests.get(firstPieceIndex - 1).getRequestType() == pieceType) {
+      firstPieceIndex--;
+    }
+    for (int index = firstPieceIndex; index < nextRequestIndex; index++) {
+      requestTransfer.transfer(requests.get(index).toTPipeTransferReq(), false);
+    }
   }
 
   private static List<BackupStream> read(final CommandLine line) throws IOException {
@@ -1516,7 +1538,7 @@ public final class PipeLogicalBackupTool {
 
   @FunctionalInterface
   interface RequestTransfer {
-    void transfer(TPipeTransferReq request) throws Exception;
+    void transfer(TPipeTransferReq request, boolean allowIdempotentReplay) throws Exception;
   }
 
   @FunctionalInterface
