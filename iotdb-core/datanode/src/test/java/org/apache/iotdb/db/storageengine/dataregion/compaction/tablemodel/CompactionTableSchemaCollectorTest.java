@@ -30,8 +30,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 public class CompactionTableSchemaCollectorTest {
@@ -106,55 +104,5 @@ public class CompactionTableSchemaCollectorTest {
     columnTypeList4.add(ColumnCategory.TAG);
     TableSchema tableSchema4 = new TableSchema("t1", measurementSchemaList4, columnTypeList4);
     Assert.assertFalse(compactionTableSchema.merge(tableSchema4));
-  }
-
-  @Test
-  public void testMergeTimeColumn() {
-    final CompactionTableSchema compactionTableSchema = new CompactionTableSchema("t1");
-    final TableSchema tableSchema =
-        new TableSchema(
-            "t1",
-            Arrays.asList(
-                new MeasurementSchema("time", TSDataType.INT64),
-                new MeasurementSchema("id1", TSDataType.STRING)),
-            Arrays.asList(ColumnCategory.TIME, ColumnCategory.TAG));
-
-    Assert.assertTrue(compactionTableSchema.merge(tableSchema));
-    Assert.assertEquals(2, compactionTableSchema.getColumnSchemas().size());
-    Assert.assertEquals(ColumnCategory.TIME, compactionTableSchema.getColumnTypes().get(0));
-    Assert.assertEquals(
-        "time", compactionTableSchema.getColumnSchemas().get(0).getMeasurementName());
-    Assert.assertEquals(ColumnCategory.TAG, compactionTableSchema.getColumnTypes().get(1));
-    Assert.assertEquals(
-        "id1", compactionTableSchema.getColumnSchemas().get(1).getMeasurementName());
-
-    // Merging another schema with the same TIME column must not duplicate it.
-    final TableSchema tableSchema2 =
-        new TableSchema(
-            "t1",
-            Arrays.asList(
-                new MeasurementSchema("time", TSDataType.INT64),
-                new MeasurementSchema("id1", TSDataType.STRING),
-                new MeasurementSchema("id2", TSDataType.STRING)),
-            Arrays.asList(ColumnCategory.TIME, ColumnCategory.TAG, ColumnCategory.TAG));
-    Assert.assertTrue(compactionTableSchema.merge(tableSchema2));
-    Assert.assertEquals(3, compactionTableSchema.getColumnSchemas().size());
-    Assert.assertEquals(ColumnCategory.TIME, compactionTableSchema.getColumnTypes().get(0));
-  }
-
-  @Test
-  public void testMergeTimeOnlyColumn() {
-    final CompactionTableSchema compactionTableSchema = new CompactionTableSchema("t2");
-    final TableSchema tableSchema =
-        new TableSchema(
-            "t2",
-            Collections.singletonList(new MeasurementSchema("time", TSDataType.INT64)),
-            Collections.singletonList(ColumnCategory.TIME));
-
-    Assert.assertTrue(compactionTableSchema.merge(tableSchema));
-    Assert.assertEquals(1, compactionTableSchema.getColumnSchemas().size());
-    Assert.assertEquals(ColumnCategory.TIME, compactionTableSchema.getColumnTypes().get(0));
-    Assert.assertEquals(
-        "time", compactionTableSchema.getColumnSchemas().get(0).getMeasurementName());
   }
 }

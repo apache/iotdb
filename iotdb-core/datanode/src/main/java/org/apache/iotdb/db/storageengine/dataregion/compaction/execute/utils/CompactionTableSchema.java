@@ -46,81 +46,37 @@ public class CompactionTableSchema extends TableSchema {
               tableName,
               tableSchema.getTableName()));
     }
-
-    final List<IMeasurementSchema> otherSchemaColumnSchemas = tableSchema.getColumnSchemas();
-    final List<ColumnCategory> otherSchemaColumnCategories = tableSchema.getColumnTypes();
-    final List<IMeasurementSchema> idColumnSchemasToMerge = new ArrayList<>();
-    IMeasurementSchema timeColumnToMerge = null;
+    // filter id columns
+    List<IMeasurementSchema> otherSchemaColumnSchemas = tableSchema.getColumnSchemas();
+    List<ColumnCategory> otherSchemaColumnCategories = tableSchema.getColumnTypes();
+    List<IMeasurementSchema> idColumnSchemasToMerge = new ArrayList<>();
 
     for (int i = 0; i < otherSchemaColumnCategories.size(); i++) {
-      final ColumnCategory columnCategory = otherSchemaColumnCategories.get(i);
-      if (columnCategory == ColumnCategory.TIME) {
-        // A TableSchema must contain at most one TIME column.  Keep it so that a
-        // time-only table remains recognizable as a table-model TsFile.
-        if (timeColumnToMerge != null) {
-          return false;
-        }
-        timeColumnToMerge = otherSchemaColumnSchemas.get(i);
-      } else if (columnCategory == ColumnCategory.TAG) {
-        idColumnSchemasToMerge.add(otherSchemaColumnSchemas.get(i));
+      ColumnCategory columnCategory = otherSchemaColumnCategories.get(i);
+      if (columnCategory != ColumnCategory.TAG) {
+        continue;
       }
-    }
-
-    if (timeColumnToMerge != null) {
-      final int existingTimeColumnIndex = findColumnIndex(ColumnCategory.TIME);
-      if (existingTimeColumnIndex < 0) {
-        // Keep TIME before the id columns, matching the schema order produced by
-        // TsFileTableSchemaUtil.
-        measurementSchemas.add(0, timeColumnToMerge);
-        columnCategories.add(0, ColumnCategory.TIME);
-      } else if (!isSameTimeColumn(
-          measurementSchemas.get(existingTimeColumnIndex), timeColumnToMerge)) {
-        return false;
-      }
-    }
-
-    // Only TAG columns are id columns.  Filter them out from the target schema so TIME
-    // (and any FIELD already appended by update()) does not participate in the prefix check.
-    final List<IMeasurementSchema> currentIdColumns = new ArrayList<>();
-    for (int i = 0; i < columnCategories.size(); i++) {
-      if (columnCategories.get(i) == ColumnCategory.TAG) {
-        currentIdColumns.add(measurementSchemas.get(i));
-      }
+      idColumnSchemasToMerge.add(otherSchemaColumnSchemas.get(i));
     }
 
     // check id column prefix
-    final int prefixLength = Math.min(currentIdColumns.size(), idColumnSchemasToMerge.size());
+    int prefixLength = Math.min(this.columnCategories.size(), idColumnSchemasToMerge.size());
     for (int i = 0; i < prefixLength; i++) {
-      final IMeasurementSchema idColumnToMerge = idColumnSchemasToMerge.get(i);
-      final IMeasurementSchema currentIdColumn = currentIdColumns.get(i);
+      IMeasurementSchema idColumnToMerge = idColumnSchemasToMerge.get(i);
+      IMeasurementSchema currentIdColumn = measurementSchemas.get(i);
       if (!idColumnToMerge.getMeasurementName().equals(currentIdColumn.getMeasurementName())) {
         return false;
       }
     }
 
     // add new id columns
-    final List<IMeasurementSchema> newIdColumns =
+    List<IMeasurementSchema> newIdColumns =
         idColumnSchemasToMerge.subList(prefixLength, idColumnSchemasToMerge.size());
     for (IMeasurementSchema newIdColumn : newIdColumns) {
       columnCategories.add(ColumnCategory.TAG);
       measurementSchemas.add(newIdColumn);
     }
     return true;
-  }
-
-  private int findColumnIndex(final ColumnCategory columnCategory) {
-    for (int i = 0; i < columnCategories.size(); i++) {
-      if (columnCategories.get(i) == columnCategory) {
-        return i;
-      }
-    }
-    return -1;
-  }
-
-  private boolean isSameTimeColumn(
-      final IMeasurementSchema current, final IMeasurementSchema incoming) {
-    return current.getMeasurementName().equalsIgnoreCase(incoming.getMeasurementName())
-        && current.getType() == incoming.getType();
   }
 
   public CompactionTableSchema copy() {
