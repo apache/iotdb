@@ -173,6 +173,8 @@ public class SessionPool implements ISessionPool {
 
   private INodeSupplier availableNodes;
 
+  private INodeSupplier internalNodeSupplier;
+
   // set to true, means that we will start a background thread to fetch all available (Status is
   // not Removing) datanodes in cluster, and these available nodes will be used in retrying stage
   private boolean enableAutoFetch = true;
@@ -526,15 +528,20 @@ public class SessionPool implements ISessionPool {
   }
 
   public SessionPool(AbstractSessionPoolBuilder builder) {
+    this(builder, null);
+  }
+
+  SessionPool(AbstractSessionPoolBuilder builder, INodeSupplier internalNodeSupplier) {
+    this.internalNodeSupplier = internalNodeSupplier;
     this.maxSize = builder.maxSize;
     this.user = builder.username;
-    this.password = builder.pw;
+    this.password = internalNodeSupplier == null ? builder.pw : null;
     this.fetchSize = builder.fetchSize;
     this.waitToGetSessionTimeoutInMs = builder.waitToGetSessionTimeoutInMs;
     this.enableThriftCompression = builder.isThriftRpcCompactionEnabled;
     this.enableIoTDBRpcCompression = builder.isIoTDBRpcCompressionEnabled;
     this.zoneId = builder.zoneId;
-    this.enableRedirection = builder.enableRedirection;
+    this.enableRedirection = internalNodeSupplier == null && builder.enableRedirection;
     if (this.enableRedirection) {
       deviceIdToEndpoint = new ConcurrentHashMap<>();
       tableModelDeviceIdToEndpoint = new ConcurrentHashMap<>();
@@ -544,7 +551,7 @@ public class SessionPool implements ISessionPool {
     this.version = builder.version;
     this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
     this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
-    this.enableAutoFetch = builder.enableAutoFetch;
+    this.enableAutoFetch = internalNodeSupplier == null && builder.enableAutoFetch;
     this.useSSL = builder.useSSL;
     this.trustStore = builder.trustStore;
     this.trustStorePwd = builder.trustStorePwd;
@@ -561,7 +568,13 @@ public class SessionPool implements ISessionPool {
     if (enableAutoFetch) {
       initThreadPool();
     }
-    if (builder.nodeUrls != null) {
+    if (internalNodeSupplier != null) {
+      this.host = null;
+      this.port = -1;
+      this.nodeUrls = null;
+      this.formattedNodeUrls = internalNodeSupplier.getClass().getSimpleName();
+      this.availableNodes = internalNodeSupplier;
+    } else if (builder.nodeUrls != null) {
       if (builder.nodeUrls.isEmpty()) {
         throw new IllegalArgumentException(SessionMessages.NODE_URLS_EMPTY);
       }
@@ -590,67 +603,40 @@ public class SessionPool implements ISessionPool {
   }
 
   private Session constructNewSession() {
-    Session session;
-    if (nodeUrls == null) {
-      // Construct custom Session
-      session =
-          new Session.Builder()
-              .host(host)
-              .port(port)
-              .username(user)
-              .password(password)
-              .fetchSize(fetchSize)
-              .zoneId(zoneId)
-              .thriftDefaultBufferSize(thriftDefaultBufferSize)
-              .thriftMaxFrameSize(thriftMaxFrameSize)
-              .enableRedirection(enableRedirection)
-              .enableRecordsAutoConvertTablet(enableRecordsAutoConvertTablet)
-              .version(version)
-              .useSSL(useSSL)
-              .trustStore(trustStore)
-              .trustStorePwd(trustStorePwd)
-              .keyStore(keyStore)
-              .keyStorePwd(keyStorePwd)
-              .sslProtocol(sslProtocol)
-              .maxRetryCount(maxRetryCount)
-              .retryIntervalInMs(retryIntervalInMs)
-              .sqlDialect(sqlDialect)
-              .database(database)
-              .enableAutoCreateSchema(enableAutoCreateSchema)
-              .timeOut(queryTimeoutInMs)
-              .enableIoTDBRpcCompression(enableIoTDBRpcCompression)
-              .enableThriftRpcCompression(enableThriftCompression)
-              .build();
-    } else {
-      // Construct redirect-able Session
-      session =
-          new Session.Builder()
-              .nodeUrls(nodeUrls)
-              .username(user)
-              .password(password)
-              .fetchSize(fetchSize)
-              .zoneId(zoneId)
-              .thriftDefaultBufferSize(thriftDefaultBufferSize)
-              .thriftMaxFrameSize(thriftMaxFrameSize)
-              .enableRedirection(enableRedirection)
-              .enableRecordsAutoConvertTablet(enableRecordsAutoConvertTablet)
-              .version(version)
-              .useSSL(useSSL)
-              .trustStore(trustStore)
-              .trustStorePwd(trustStorePwd)
-              .keyStore(keyStore)
-              .keyStorePwd(keyStorePwd)
-              .sslProtocol(sslProtocol)
-              .maxRetryCount(maxRetryCount)
-              .retryIntervalInMs(retryIntervalInMs)
-              .sqlDialect(sqlDialect)
-              .database(database)
-              .enableAutoCreateSchema(enableAutoCreateSchema)
-              .timeOut(queryTimeoutInMs)
-              .enableIoTDBRpcCompression(enableIoTDBRpcCompression)
-              .enableThriftRpcCompression(enableThriftCompression)
-              .build();
+    Session.Builder builder =
+        new Session.Builder()
+            .username(user)
+            .password(password)
+            .fetchSize(fetchSize)
+            .zoneId(zoneId)
+            .thriftDefaultBufferSize(thriftDefaultBufferSize)
+            .thriftMaxFrameSize(thriftMaxFrameSize)
+            .enableRedirection(enableRedirection)
+            .enableRecordsAutoConvertTablet(enableRecordsAutoConvertTablet)
+            .version(version)
+            .useSSL(useSSL)
+            .trustStore(trustStore)
+            .trustStorePwd(trustStorePwd)
+            .keyStore(keyStore)
+            .keyStorePwd(keyStorePwd)
+            .sslProtocol(sslProtocol)
+            .maxRetryCount(maxRetryCount)
+            .retryIntervalInMs(retryIntervalInMs)
+            .sqlDialect(sqlDialect)
+            .database(database)
+            .enableAutoCreateSchema(enableAutoCreateSchema)
+            .timeOut(queryTimeoutInMs)
+            .enableIoTDBRpcCompression(enableIoTDBRpcCompression)
+            .enableThriftRpcCompression(enableThriftCompression);
+    if (internalNodeSupplier != null) {
+      return builder.buildInternal(internalNodeSupplier);
     }
+    if (nodeUrls == null) {
+      builder.host(host).port(port);
+    } else {
+      builder.nodeUrls(nodeUrls);
+    }
+    Session session = builder.build();
     session.setEnableQueryRedirection(enableQueryRedirection);
     return session;
   }
@@ -849,7 +835,9 @@ public class SessionPool implements ISessionPool {
       this.executorService = null;
     }
     if (availableNodes != null) {
-      this.availableNodes.close();
+      if (internalNodeSupplier == null) {
+        this.availableNodes.close();
+      }
       this.availableNodes = null;
     }
     LOGGER.info(SessionMessages.CLOSING_SESSION_POOL);
@@ -3544,16 +3532,16 @@ public class SessionPool implements ISessionPool {
 
   @Override
   public void setEnableRedirection(boolean enableRedirection) {
-    this.enableRedirection = enableRedirection;
+    this.enableRedirection = internalNodeSupplier == null && enableRedirection;
     if (this.enableRedirection) {
       deviceIdToEndpoint = new ConcurrentHashMap<>();
       tableModelDeviceIdToEndpoint = new ConcurrentHashMap<>();
     }
     for (ISession session : queue) {
-      session.setEnableRedirection(enableRedirection);
+      session.setEnableRedirection(this.enableRedirection);
     }
     for (ISession session : occupied.keySet()) {
-      session.setEnableRedirection(enableRedirection);
+      session.setEnableRedirection(this.enableRedirection);
     }
   }
 
@@ -3564,12 +3552,12 @@ public class SessionPool implements ISessionPool {
 
   @Override
   public void setEnableQueryRedirection(boolean enableQueryRedirection) {
-    this.enableQueryRedirection = enableQueryRedirection;
+    this.enableQueryRedirection = internalNodeSupplier == null && enableQueryRedirection;
     for (ISession session : queue) {
-      session.setEnableQueryRedirection(enableQueryRedirection);
+      session.setEnableQueryRedirection(this.enableQueryRedirection);
     }
     for (ISession session : occupied.keySet()) {
-      session.setEnableQueryRedirection(enableQueryRedirection);
+      session.setEnableQueryRedirection(this.enableQueryRedirection);
     }
   }
 
