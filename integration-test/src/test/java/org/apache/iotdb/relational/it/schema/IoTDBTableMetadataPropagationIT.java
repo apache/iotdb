@@ -21,7 +21,6 @@ package org.apache.iotdb.relational.it.schema;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
-import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.SessionConfig;
@@ -193,11 +192,6 @@ public class IoTDBTableMetadataPropagationIT {
       }
     }
   }
-
-
-
-
-
 
   private void create(String name, int devices) throws Exception {
     database = name;
