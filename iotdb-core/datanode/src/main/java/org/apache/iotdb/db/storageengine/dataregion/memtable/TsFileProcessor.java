@@ -730,6 +730,10 @@ public class TsFileProcessor {
         int start = rangePair[0];
         int end = rangePair[1];
         try {
+          // Rows already marked out-of-ttl are not skipped here: the results are only forwarded
+          // when a previous fragment failed, so a device-grouped tablet can persist them. The query
+          // engine applies the ttl lower bound, so they stay invisible instead of being read back.
+          // See InsertTabletNode#checkTTLInternal.
           if (insertTabletNode.isAligned()) {
             pointInserted +=
                 workMemTable.insertAlignedTablet(
