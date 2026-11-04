@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.google.common.collect.Maps;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -38,7 +39,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -158,8 +158,9 @@ public class AlterLogicalViewNode extends PlanNode {
 
   public static AlterLogicalViewNode deserialize(final ByteBuffer byteBuffer) {
     // deserialize member variables
-    final Map<PartialPath, ViewExpression> viewPathToSourceMap = new HashMap<>();
     final int size = byteBuffer.getInt();
+    final Map<PartialPath, ViewExpression> viewPathToSourceMap =
+        Maps.newHashMapWithExpectedSize(size);
     PartialPath path;
     ViewExpression viewExpression;
     for (int i = 0; i < size; i++) {

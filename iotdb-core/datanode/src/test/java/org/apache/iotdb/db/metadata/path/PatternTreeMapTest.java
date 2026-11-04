@@ -182,6 +182,9 @@ public class PatternTreeMapTest {
     patternTreeMap.append(
         new PartialPath("root.sg1.d1.*.d3.s4"),
         new Deletion(new PartialPath("root.sg1.d1.*.d3.s4"), 3, 4, 6));
+    patternTreeMap.append(
+        new PartialPath("root.sg1.d1.t1.d*.s5"),
+        new Deletion(new PartialPath("root.sg1.d1.t1.d*.s5"), 4, 7, 10));
 
     checkOverlappedByDevice(
         patternTreeMap,
@@ -205,7 +208,8 @@ public class PatternTreeMapTest {
             new Deletion(new PartialPath("root.**.s1"), 10, 100, 200),
             new Deletion(new PartialPath("root.**"), 5, 10, 100),
             new Deletion(new PartialPath("root.sg1.d1.*.d3.s5"), 2, 4, 6),
-            new Deletion(new PartialPath("root.sg1.d1.*.d3.s4"), 3, 4, 6)));
+            new Deletion(new PartialPath("root.sg1.d1.*.d3.s4"), 3, 4, 6),
+            new Deletion(new PartialPath("root.sg1.d1.t1.d*.s5"), 4, 7, 10)));
   }
 
   private <T> void checkOverlapped(

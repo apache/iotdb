@@ -97,7 +97,7 @@ public class IoTConsensus implements IConsensus {
       new ConcurrentHashMap<>();
   private final IoTConsensusRPCService service;
   private final RegisterManager registerManager = new RegisterManager();
-  private volatile IoTConsensusConfig config;
+  private IoTConsensusConfig config;
   private final IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager;
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
   private final ScheduledExecutorService backgroundTaskService;
@@ -471,11 +471,6 @@ public class IoTConsensus implements IConsensus {
   @Override
   public void reloadConsensusConfig(ConsensusConfig consensusConfig) {
     config = consensusConfig.getIotConsensusConfig();
-
-    IoTConsensusMemoryManager.getInstance()
-        .init(
-            config.getReplication().getAllocateMemoryForConsensus(),
-            config.getReplication().getAllocateMemoryForQueue());
 
     for (IoTConsensusServerImpl impl : stateMachineMap.values()) {
       impl.reloadConsensusConfig(config);

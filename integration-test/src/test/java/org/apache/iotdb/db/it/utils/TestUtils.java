@@ -983,24 +983,34 @@ public class TestUtils {
       long consistentSeconds) {
     try (Connection connection = env.getConnection();
         Statement statement = connection.createStatement()) {
-      // Keep retrying if there are execution failures
-      await()
-          .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
-          .atMost(consistentSeconds, TimeUnit.SECONDS)
-          .failFast(
-              () -> {
-                try {
-                  TestUtils.assertResultSetEqual(
-                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
-                } catch (Exception e) {
-                  Assert.fail();
-                }
-              });
+      assertAlways(
+          consistentSeconds,
+          () -> {
+            try {
+              TestUtils.assertResultSetEqual(
+                  executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+            } catch (Exception e) {
+              Assert.fail();
+            }
+          });
     } catch (Exception e) {
       e.printStackTrace();
       fail();
+    }
+  }
+
+  /** Observe for a bounded period, including time spent executing and checking each query. */
+  private static void assertAlways(final long consistentSeconds, final Runnable assertion)
+      throws InterruptedException {
+    final long start = System.nanoTime();
+    final long duration = TimeUnit.SECONDS.toNanos(consistentSeconds);
+    while (true) {
+      assertion.run();
+      final long remaining = duration - (System.nanoTime() - start);
+      if (remaining <= 0) {
+        return;
+      }
+      TimeUnit.NANOSECONDS.sleep(Math.min(remaining, TimeUnit.SECONDS.toNanos(1)));
     }
   }
 

@@ -37,12 +37,14 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.LoadAnalyzeInvalidPathException;
 import org.apache.iotdb.db.exception.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.exception.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -111,6 +113,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.storageengine.load.LoadTsFilePathUtils.getValidatedDevicePath;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS_ASYNC_MOVE;
 
@@ -542,23 +545,43 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
         new LoadTsFileDataTypeConverter(context, isGeneratedByPipe);
-    final TSStatus status =
-        loadTsFileStatement.isConvertOnTypeMismatch()
-            ? loadTsFileDataTypeConverter.convertForTreeModel(loadTsFileStatement).orElse(null)
-            : null;
+    final String filePaths =
+        loadTsFileStatement.getTsFiles().stream()
+            .map(File::getPath)
+            .collect(Collectors.joining(", "));
+    try {
+      final TSStatus status =
+          loadTsFileStatement.isConvertOnTypeMismatch()
+              ? loadTsFileDataTypeConverter.convertForTreeModel(loadTsFileStatement).orElse(null)
+              : null;
 
-    if (status == null) {
-      LOGGER.warn(
-          "Load: Failed to convert to tablets from statement {}. Status is null.",
-          loadTsFileStatement);
-      analysis.setFailStatus(
-          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
-    } else if (!loadTsFileDataTypeConverter.isSuccessful(status)) {
-      LOGGER.warn(
-          "Load: Failed to convert to tablets from statement {}. Status: {}",
-          loadTsFileStatement,
-          status);
-      analysis.setFailStatus(status);
+      if (status == null) {
+        final String message =
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD,
+                filePaths,
+                DataNodeQueryMessages.MESSAGE_TABLET_CONVERSION_RETURNED_NO_STATUS_88BAB5D3);
+        LOGGER.warn(message);
+        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, message));
+      } else if (!loadTsFileDataTypeConverter.isSuccessful(status)) {
+        final String message =
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477,
+                filePaths,
+                status);
+        LOGGER.warn(message);
+        analysis.setFailStatus(status.deepCopy().setMessage(message));
+      }
+    } catch (final Exception conversionException) {
+      final String message =
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD,
+              filePaths,
+              conversionException);
+      LOGGER.warn(message, conversionException);
+      analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, message));
     }
 
     analysis.setFinishQueryAfterAnalyze(true);
@@ -611,8 +634,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   private boolean shouldSkipConversion(LoadAnalyzeException e) {
-    return (e instanceof LoadAnalyzeTypeMismatchException)
-        && !loadTsFileStatement.isConvertOnTypeMismatch();
+    return e instanceof LoadAnalyzeInvalidPathException
+        || (e instanceof LoadAnalyzeTypeMismatchException)
+            && !loadTsFileStatement.isConvertOnTypeMismatch();
   }
 
   @Override
@@ -642,6 +666,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
           device2TimeSeriesMetadataList.entrySet()) {
         final IDeviceID device = entry.getKey();
+
+        getValidatedDevicePath(device);
 
         try {
           if (schemaCache.isDeviceDeletedByMods(device)) {
@@ -706,10 +732,12 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     public void checkWritePermission(
         Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadataList)
-        throws AuthException {
+        throws AuthException, LoadAnalyzeInvalidPathException {
       for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
           device2TimeseriesMetadataList.entrySet()) {
         final IDeviceID device = entry.getKey();
+
+        getValidatedDevicePath(device);
 
         try {
           if (schemaCache.isDeviceDeletedByMods(device)) {
@@ -813,7 +841,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         if (isVerifySchema) {
           verifySchema(schemaTree);
         }
-      } catch (AuthException | LoadAnalyzeTypeMismatchException e) {
+      } catch (AuthException
+          | LoadAnalyzeInvalidPathException
+          | LoadAnalyzeTypeMismatchException e) {
         throw e;
       } catch (LoadAnalyzeMissingSchemaException e) {
         if (isTemporaryUnavailableDueToPipeSchemaNotReady(e)) {
@@ -858,18 +888,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final Set<PartialPath> databasesNeededToBeSet = new HashSet<>();
 
       for (final IDeviceID device : schemaCache.getDevice2TimeSeries().keySet()) {
-        final PartialPath devicePath;
-        try {
-          devicePath = new PartialPath(device);
-        } catch (final IllegalPathException e) {
-          throw new LoadAnalyzeException(e.getMessage());
-        }
+        final PartialPath devicePath = getValidatedDevicePath(device);
 
         final String[] devicePrefixNodes = devicePath.getNodes();
-        if (hasEmptyPathNode(devicePath)) {
-          throw new LoadAnalyzeException(
-              new IllegalPathException(devicePath.getFullPath()).getMessage());
-        }
         if (devicePrefixNodes.length < databasePrefixNodesLength) {
           throw new LoadAnalyzeException(
               String.format(

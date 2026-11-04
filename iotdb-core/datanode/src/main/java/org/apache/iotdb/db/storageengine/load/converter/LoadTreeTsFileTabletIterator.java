@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.storageengine.load.converter;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.db.exception.LoadAnalyzeInvalidPathException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.query.TsFileInsertionQueryDataContainer;
@@ -29,10 +31,12 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInserti
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileParserMemoryManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
+import org.apache.tsfile.exception.PathParseException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.TsFileSequenceReaderTimeseriesMetadataIterator;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -46,24 +50,36 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.storageengine.load.LoadTsFilePathUtils.getValidatedDevicePath;
 
 /**
  * Load uses scan parsing first for throughput. If scan parsing hits corruption, fall back to query
- * parsing for the remaining measurements and devices so later data can still be loaded.
+ * parsing for the remaining measurements and devices so later data can still be loaded. Report any
+ * unrecoverable query failure after exhausting the readable data so a partial load cannot succeed.
  */
 class LoadTreeTsFileTabletIterator
     implements Iterable<Pair<Tablet, Boolean>>, Iterator<Pair<Tablet, Boolean>>, AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTreeTsFileTabletIterator.class);
 
-  private static final PipePattern LOAD_TREE_PATTERN = new IoTDBPipePattern(null);
+  private static final PipePattern LOAD_TREE_PATTERN =
+      new IoTDBPipePattern(null) {
+        @Override
+        public boolean mayOverlapWithDevice(final String device) {
+          try {
+            getValidatedDevicePath(new PlainDeviceID(device));
+          } catch (final LoadAnalyzeInvalidPathException e) {
+            throw new IllegalArgumentException(e.getMessage(), e);
+          }
+          return super.mayOverlapWithDevice(device);
+        }
+      };
 
   private final File file;
   private final boolean isWithMod;
@@ -75,14 +91,9 @@ class LoadTreeTsFileTabletIterator
   private Iterator<Pair<Tablet, Boolean>> activeIterator;
   private boolean scanInitialized;
   private boolean fallbackTriggered;
+  private RuntimeException unrecoverableQueryFailure;
 
-  private IDeviceID lastEmittedDevice;
-  private List<String> lastEmittedMeasurements = Collections.emptyList();
-  private long lastEmittedTimestamp = Long.MIN_VALUE;
-
-  private IDeviceID lastScanTabletDevice;
-  private List<String> lastScanTabletMeasurements = Collections.emptyList();
-  private final Map<IDeviceID, Set<String>> fullyEmittedMeasurementsByDevice =
+  private final Map<IDeviceID, Map<String, Long>> lastEmittedTimestampsByDevice =
       new LinkedHashMap<>();
 
   LoadTreeTsFileTabletIterator(final File file, final boolean isWithMod) {
@@ -101,8 +112,7 @@ class LoadTreeTsFileTabletIterator
       try {
         ensureActiveIterator();
         if (Objects.isNull(activeIterator)) {
-          close();
-          return false;
+          return finishIteration();
         }
 
         if (activeIterator.hasNext()) {
@@ -110,8 +120,7 @@ class LoadTreeTsFileTabletIterator
         }
 
         if (!switchToNextIterator()) {
-          close();
-          return false;
+          return finishIteration();
         }
       } catch (final Exception e) {
         if (recoverFromIteratorFailure(e)) {
@@ -206,7 +215,7 @@ class LoadTreeTsFileTabletIterator
           activeQueryTask.measurements,
           file.getAbsolutePath(),
           e);
-      splitOrSkipActiveQueryTask();
+      splitOrSkipActiveQueryTask(e);
       return true;
     }
 
@@ -221,15 +230,10 @@ class LoadTreeTsFileTabletIterator
     fallbackTriggered = true;
     final IDeviceID currentDevice =
         Objects.nonNull(scanParser) ? scanParser.getCurrentDevice() : null;
-    final List<String> currentMeasurements =
-        Objects.nonNull(scanParser) ? scanParser.getCurrentMeasurements() : Collections.emptyList();
-
-    markLastScanMeasurementsAsCompletedIfNeeded(currentDevice, currentMeasurements);
-
     closeScanParser();
 
     try {
-      pendingQueryTasks.addAll(buildQueryTasks(currentDevice, currentMeasurements));
+      pendingQueryTasks.addAll(buildQueryTasks());
     } catch (final Exception queryInitException) {
       LOGGER.warn(
           "Load: Failed to initialize query fallback for TsFile {} after scan parser failure.",
@@ -247,8 +251,7 @@ class LoadTreeTsFileTabletIterator
     return true;
   }
 
-  private ArrayDeque<QueryTask> buildQueryTasks(
-      final IDeviceID currentDevice, final List<String> currentMeasurements) throws IOException {
+  private ArrayDeque<QueryTask> buildQueryTasks() throws IOException {
     final LinkedHashMap<IDeviceID, List<String>> deviceMeasurementsMap =
         readDeviceMeasurementsInOrder();
     if (deviceMeasurementsMap.isEmpty()) {
@@ -256,23 +259,10 @@ class LoadTreeTsFileTabletIterator
     }
 
     final ArrayDeque<QueryTask> tasks = new ArrayDeque<>();
-    boolean includeCurrentAndFollowingDevices =
-        Objects.isNull(currentDevice) || !deviceMeasurementsMap.containsKey(currentDevice);
-
+    // Devices and measurements can recur in later chunk groups. The metadata index order does
+    // not describe the scan position, so resume every series from its own emitted prefix.
     for (final Map.Entry<IDeviceID, List<String>> entry : deviceMeasurementsMap.entrySet()) {
-      final IDeviceID device = entry.getKey();
-      if (!includeCurrentAndFollowingDevices && device.equals(currentDevice)) {
-        includeCurrentAndFollowingDevices = true;
-      }
-      if (!includeCurrentAndFollowingDevices) {
-        continue;
-      }
-
-      if (device.equals(currentDevice)) {
-        addCurrentDeviceQueryTasks(tasks, device, entry.getValue(), currentMeasurements);
-      } else {
-        addQueryTaskIfNecessary(tasks, device, entry.getValue(), Long.MIN_VALUE, Long.MAX_VALUE);
-      }
+      addQueryTasks(tasks, entry.getKey(), entry.getValue(), Long.MIN_VALUE, Long.MAX_VALUE);
     }
 
     return tasks;
@@ -282,49 +272,65 @@ class LoadTreeTsFileTabletIterator
       throws IOException {
     final LinkedHashMap<IDeviceID, List<String>> deviceMeasurementsMap = new LinkedHashMap<>();
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath())) {
-      final Iterator<Pair<IDeviceID, List<TimeseriesMetadata>>> metadataIterator =
-          reader.iterAllTimeseriesMetadata(false, false);
+      // iterAllTimeseriesMetadata treats an IOException as the end of iteration. Use the
+      // throwing batch iterator so an incomplete metadata index cannot turn a partial load into a
+      // success without rereading every device's metadata separately.
+      final TsFileSequenceReaderTimeseriesMetadataIterator metadataIterator =
+          new TsFileSequenceReaderTimeseriesMetadataIterator(reader, false);
       while (metadataIterator.hasNext()) {
-        final Pair<IDeviceID, List<TimeseriesMetadata>> deviceMetadata = metadataIterator.next();
-        deviceMeasurementsMap.put(
-            deviceMetadata.getLeft(),
-            deviceMetadata.getRight().stream()
-                .map(TimeseriesMetadata::getMeasurementId)
-                .collect(Collectors.toList()));
+        for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> deviceMetadata :
+            metadataIterator.next().entrySet()) {
+          final Map<String, Long> emittedTimestamps =
+              lastEmittedTimestampsByDevice.getOrDefault(
+                  deviceMetadata.getKey(), Collections.emptyMap());
+          deviceMeasurementsMap
+              .computeIfAbsent(deviceMetadata.getKey(), key -> new ArrayList<>())
+              .addAll(
+                  deviceMetadata.getValue().stream()
+                      .filter(
+                          metadata -> {
+                            final Long emittedTimestamp =
+                                emittedTimestamps.get(metadata.getMeasurementId());
+                            return !metadata.getMeasurementId().isEmpty()
+                                && (emittedTimestamp == null
+                                    || emittedTimestamp < metadata.getStatistics().getEndTime());
+                          })
+                      .map(TimeseriesMetadata::getMeasurementId)
+                      .collect(Collectors.toList()));
+        }
       }
     }
     return deviceMeasurementsMap;
   }
 
-  private void addCurrentDeviceQueryTasks(
+  private void addQueryTasks(
       final ArrayDeque<QueryTask> tasks,
       final IDeviceID device,
-      final List<String> allMeasurements,
-      final List<String> currentMeasurements) {
-    final Set<String> completedMeasurements =
-        fullyEmittedMeasurementsByDevice.getOrDefault(device, Collections.emptySet());
-    final Set<String> currentMeasurementSet = new LinkedHashSet<>(currentMeasurements);
-
-    final List<String> currentMeasurementsToResume = new ArrayList<>();
-    final List<String> remainingMeasurements = new ArrayList<>();
-    for (final String measurement : allMeasurements) {
-      if (completedMeasurements.contains(measurement)) {
+      final List<String> measurements,
+      final long startTime,
+      final long endTime) {
+    final Map<String, Long> emittedTimestamps =
+        lastEmittedTimestampsByDevice.getOrDefault(device, Collections.emptyMap());
+    final Map<Long, List<String>> measurementsByStartTime = new LinkedHashMap<>();
+    for (final String measurement : measurements) {
+      final Long emittedTimestamp = emittedTimestamps.get(measurement);
+      if (emittedTimestamp != null && emittedTimestamp >= endTime) {
         continue;
       }
-      if (currentMeasurementSet.contains(measurement)) {
-        currentMeasurementsToResume.add(measurement);
-      } else {
-        remainingMeasurements.add(measurement);
+      // A missing checkpoint differs from a checkpoint at Long.MIN_VALUE. A start time of
+      // Long.MAX_VALUE is also valid when the last unconsumed point has that timestamp.
+      final long resumeStartTime =
+          emittedTimestamp == null ? startTime : Math.max(startTime, emittedTimestamp + 1);
+      if (resumeStartTime <= endTime) {
+        measurementsByStartTime
+            .computeIfAbsent(resumeStartTime, key -> new ArrayList<>())
+            .add(measurement);
       }
     }
 
-    addQueryTaskIfNecessary(
-        tasks,
-        device,
-        currentMeasurementsToResume,
-        determineTaskResumeStartTime(device, currentMeasurementsToResume, Long.MIN_VALUE),
-        Long.MAX_VALUE);
-    addQueryTaskIfNecessary(tasks, device, remainingMeasurements, Long.MIN_VALUE, Long.MAX_VALUE);
+    measurementsByStartTime.forEach(
+        (resumeStartTime, taskMeasurements) ->
+            tasks.addLast(new QueryTask(device, taskMeasurements, resumeStartTime, endTime)));
   }
 
   private boolean activateNextQueryParser() {
@@ -333,6 +339,7 @@ class LoadTreeTsFileTabletIterator
     while (!pendingQueryTasks.isEmpty()) {
       activeQueryTask = pendingQueryTasks.removeFirst();
       try {
+        getValidatedDevicePath(activeQueryTask.device);
         activeQueryParser =
             new TsFileInsertionQueryDataContainer(
                 file,
@@ -379,7 +386,7 @@ class LoadTreeTsFileTabletIterator
             activeQueryTask.measurements,
             file.getAbsolutePath(),
             e);
-        splitOrSkipActiveQueryTask();
+        splitOrSkipActiveQueryTask(e);
       }
     }
 
@@ -394,15 +401,12 @@ class LoadTreeTsFileTabletIterator
     }
 
     final IDeviceID device = new PlainDeviceID(tablet.deviceId);
-    final List<String> measurements = extractMeasurementNames(tablet);
-
-    if (Objects.isNull(activeQueryParser)) {
-      recordScanProgress(device, measurements);
+    final Map<String, Long> emittedTimestamps =
+        lastEmittedTimestampsByDevice.computeIfAbsent(device, key -> new LinkedHashMap<>());
+    final long timestamp = tablet.timestamps[tablet.rowSize - 1];
+    for (final String measurement : extractMeasurementNames(tablet)) {
+      emittedTimestamps.merge(measurement, timestamp, Math::max);
     }
-
-    lastEmittedDevice = device;
-    lastEmittedMeasurements = measurements;
-    lastEmittedTimestamp = tablet.timestamps[tablet.rowSize - 1];
   }
 
   private boolean shouldRethrow(final Exception e) {
@@ -412,6 +416,10 @@ class LoadTreeTsFileTabletIterator
     Throwable current = e;
     while (Objects.nonNull(current)) {
       if (current instanceof InterruptedException
+          // Invalid paths cannot be recovered by query parsing or splitting measurements.
+          || current instanceof PathParseException
+          || current instanceof IllegalPathException
+          || current instanceof LoadAnalyzeInvalidPathException
           || current instanceof PipeRuntimeOutOfMemoryCriticalException
           || current instanceof LoadRuntimeOutOfMemoryException) {
         return true;
@@ -422,6 +430,9 @@ class LoadTreeTsFileTabletIterator
   }
 
   private RuntimeException toRuntimeException(final Exception e) {
+    if (e instanceof LoadAnalyzeInvalidPathException) {
+      return new IllegalArgumentException(e.getMessage(), e);
+    }
     return e instanceof RuntimeException
         ? (RuntimeException) e
         : new IllegalStateException("Failed to iterate tablets while loading TsFile.", e);
@@ -454,67 +465,15 @@ class LoadTreeTsFileTabletIterator
     pendingQueryTasks.clear();
   }
 
-  private void recordScanProgress(final IDeviceID device, final List<String> measurements) {
-    if (Objects.nonNull(lastScanTabletDevice)
-        && (!lastScanTabletDevice.equals(device)
-            || !measurementsEqual(lastScanTabletMeasurements, measurements))) {
-      markMeasurementsFullyEmitted(lastScanTabletDevice, lastScanTabletMeasurements);
+  private boolean finishIteration() {
+    close();
+    if (Objects.nonNull(unrecoverableQueryFailure)) {
+      throw unrecoverableQueryFailure;
     }
-
-    lastScanTabletDevice = device;
-    lastScanTabletMeasurements = measurements;
+    return false;
   }
 
-  private void markLastScanMeasurementsAsCompletedIfNeeded(
-      final IDeviceID currentDevice, final List<String> currentMeasurements) {
-    if (Objects.isNull(lastScanTabletDevice) || lastScanTabletMeasurements.isEmpty()) {
-      return;
-    }
-
-    if (!lastScanTabletDevice.equals(currentDevice)
-        || !currentMeasurements.isEmpty()
-            && !measurementsEqual(lastScanTabletMeasurements, currentMeasurements)) {
-      markMeasurementsFullyEmitted(lastScanTabletDevice, lastScanTabletMeasurements);
-    }
-  }
-
-  private void markMeasurementsFullyEmitted(
-      final IDeviceID device, final List<String> measurements) {
-    if (Objects.isNull(device) || measurements.isEmpty()) {
-      return;
-    }
-
-    fullyEmittedMeasurementsByDevice
-        .computeIfAbsent(device, key -> new LinkedHashSet<>())
-        .addAll(measurements);
-  }
-
-  private long determineTaskResumeStartTime(
-      final IDeviceID device, final List<String> measurements, final long defaultStartTime) {
-    if (measurements.isEmpty()
-        || !device.equals(lastEmittedDevice)
-        || lastEmittedTimestamp == Long.MIN_VALUE
-        || !measurementsEqual(measurements, lastEmittedMeasurements)) {
-      return defaultStartTime;
-    }
-
-    return lastEmittedTimestamp == Long.MAX_VALUE ? Long.MAX_VALUE : lastEmittedTimestamp + 1;
-  }
-
-  private void addQueryTaskIfNecessary(
-      final ArrayDeque<QueryTask> tasks,
-      final IDeviceID device,
-      final List<String> measurements,
-      final long startTime,
-      final long endTime) {
-    if (measurements.isEmpty() || startTime == Long.MAX_VALUE) {
-      return;
-    }
-
-    tasks.addLast(new QueryTask(device, measurements, startTime, endTime));
-  }
-
-  private void splitOrSkipActiveQueryTask() {
+  private void splitOrSkipActiveQueryTask(final Exception failure) {
     final QueryTask failedTask = activeQueryTask;
     closeActiveQueryParser();
     if (Objects.isNull(failedTask)) {
@@ -522,15 +481,20 @@ class LoadTreeTsFileTabletIterator
     }
 
     if (failedTask.measurements.size() <= 1) {
+      // Keep salvaging later tasks, but retain the first failure so the caller preserves the
+      // source.
+      if (Objects.isNull(unrecoverableQueryFailure)) {
+        unrecoverableQueryFailure = toRuntimeException(failure);
+      }
       return;
     }
 
-    final long resumeStartTime =
-        determineTaskResumeStartTime(
-            failedTask.device, failedTask.measurements, failedTask.startTime);
-    final List<QueryTask> splitTasks = failedTask.split(resumeStartTime);
-    for (int i = splitTasks.size() - 1; i >= 0; --i) {
-      pendingQueryTasks.addFirst(splitTasks.get(i));
+    final ArrayDeque<QueryTask> splitTasks = new ArrayDeque<>();
+    for (final QueryTask task : failedTask.split(failedTask.startTime)) {
+      addQueryTasks(splitTasks, task.device, task.measurements, task.startTime, task.endTime);
+    }
+    while (!splitTasks.isEmpty()) {
+      pendingQueryTasks.addFirst(splitTasks.removeLast());
     }
   }
 
@@ -538,12 +502,6 @@ class LoadTreeTsFileTabletIterator
     return tablet.getSchemas().stream()
         .map(MeasurementSchema::getMeasurementId)
         .collect(Collectors.toList());
-  }
-
-  private boolean measurementsEqual(
-      final List<String> leftMeasurements, final List<String> rightMeasurements) {
-    return leftMeasurements.size() == rightMeasurements.size()
-        && new LinkedHashSet<>(leftMeasurements).equals(new LinkedHashSet<>(rightMeasurements));
   }
 
   private static class QueryTask {

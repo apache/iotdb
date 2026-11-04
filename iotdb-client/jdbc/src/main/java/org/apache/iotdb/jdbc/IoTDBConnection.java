@@ -68,6 +68,9 @@ public class IoTDBConnection implements Connection {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConnection.class);
   private static final TSProtocolVersion protocolVersion =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
+  // Match Thrift's fixed protocol text independently of the SQLException message.
+  private static final String MISSING_CLIENT_PROTOCOL_DIAGNOSTIC =
+      "Required field 'client_protocol' was not present!";
   private static final String NOT_SUPPORT_PREPARE_CALL = "Does not support prepareCall";
   private static final String NOT_SUPPORT_PREPARE_STATEMENT = "Does not support prepareStatement";
   private IClientRPCService.Iface client = null;
@@ -521,18 +524,18 @@ public class IoTDBConnection implements Connection {
 
     } catch (TException e) {
       transport.close();
-      if (e.getMessage().contains("Required field 'client_protocol' was not present!")) {
+      String message = e.getMessage();
+      if (message != null && message.contains(MISSING_CLIENT_PROTOCOL_DIAGNOSTIC)) {
         // the server is an old version (less than 0.10)
         throw new SQLException(
             String.format(
                 "Can not establish connection with %s : You may try to connect an old version IoTDB instance using a client with new version: %s. ",
-                params.getJdbcUriString(), e.getMessage()),
+                params.getJdbcUriString(), message),
             e);
       }
       throw new SQLException(
           String.format(
-              "Can not establish connection with %s : %s. ",
-              params.getJdbcUriString(), e.getMessage()),
+              "Can not establish connection with %s : %s. ", params.getJdbcUriString(), message),
           e);
     } catch (StatementExecutionException e) {
       // failed to connect, disconnect from the server

@@ -46,6 +46,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IDeleteLogic
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IRollbackPreDeleteLogicalViewPlan;
 
+import com.google.common.collect.Maps;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -155,31 +156,31 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
       }
 
       int size = ReadWriteIOUtils.readInt(buffer);
-      List<String> measurements = new ArrayList<>();
+      List<String> measurements = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
         measurements.add(ReadWriteIOUtils.readString(buffer));
       }
       createAlignedTimeSeriesPlan.setMeasurements(measurements);
 
-      List<TSDataType> dataTypes = new ArrayList<>();
+      List<TSDataType> dataTypes = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
         dataTypes.add(TSDataType.deserialize(buffer.get()));
       }
       createAlignedTimeSeriesPlan.setDataTypes(dataTypes);
 
-      List<TSEncoding> encodings = new ArrayList<>();
+      List<TSEncoding> encodings = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
         encodings.add(TSEncoding.deserialize(buffer.get()));
       }
       createAlignedTimeSeriesPlan.setEncodings(encodings);
 
-      List<CompressionType> compressors = new ArrayList<>();
+      List<CompressionType> compressors = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
         compressors.add(CompressionType.deserialize(buffer.get()));
       }
       createAlignedTimeSeriesPlan.setCompressors(compressors);
 
-      List<Long> tagOffsets = new ArrayList<>();
+      List<Long> tagOffsets = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
         tagOffsets.add(buffer.getLong());
       }
@@ -187,7 +188,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
 
       // alias
       if (buffer.get() == 1) {
-        List<String> aliasList = new ArrayList<>();
+        List<String> aliasList = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
           aliasList.add(ReadWriteIOUtils.readString(buffer));
         }
@@ -196,7 +197,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
 
       // tags
       if (buffer.get() == 1) {
-        List<Map<String, String>> tagsList = new ArrayList<>();
+        List<Map<String, String>> tagsList = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
           tagsList.add(ReadWriteIOUtils.readMap(buffer));
         }
@@ -205,7 +206,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
 
       // attributes
       if (buffer.get() == 1) {
-        List<Map<String, String>> attributesList = new ArrayList<>();
+        List<Map<String, String>> attributesList = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
           attributesList.add(ReadWriteIOUtils.readMap(buffer));
         }
@@ -267,7 +268,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
       int pathNumber = buffer.getInt();
 
       try {
-        List<PartialPath> deletePathList = new ArrayList<>();
+        List<PartialPath> deletePathList = new ArrayList<>(pathNumber);
         for (int i = 0; i < pathNumber; i++) {
           deletePathList.add(new PartialPath(ReadWriteIOUtils.readString(buffer)));
         }
@@ -349,7 +350,8 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
         ICreateLogicalViewPlan createLogicalViewPlan, ByteBuffer buffer) {
 
       int viewSize = buffer.getInt();
-      Map<PartialPath, ViewExpression> viewPathToSourceMap = new HashMap<>();
+      Map<PartialPath, ViewExpression> viewPathToSourceMap =
+          Maps.newHashMapWithExpectedSize(viewSize);
       for (int i = 0; i < viewSize; i++) {
         int byteSizeOfPath = buffer.getInt();
         byte[] bytesOfPath = new byte[byteSizeOfPath];

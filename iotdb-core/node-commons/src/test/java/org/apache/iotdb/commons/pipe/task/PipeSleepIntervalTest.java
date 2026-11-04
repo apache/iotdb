@@ -22,9 +22,11 @@ package org.apache.iotdb.commons.pipe.task;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeAbstractSinkSubtask;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 
 import org.junit.After;
@@ -64,6 +66,10 @@ public class PipeSleepIntervalTest {
 
     void sleepWithoutHighPriorityTask(final long sleepMillis) throws InterruptedException {
       sleepIfNoHighPriorityTask(sleepMillis);
+    }
+
+    void handle(final Event event, final Exception exception) {
+      handleException(event, exception);
     }
   }
 
@@ -134,6 +140,17 @@ public class PipeSleepIntervalTest {
       final long startTime = System.currentTimeMillis();
       subtask.sleepWithoutHighPriorityTask(20L);
       Assert.assertTrue(System.currentTimeMillis() - startTime >= 15L);
+    }
+  }
+
+  @Test
+  public void testMemoryTimeoutRetryWaits() {
+    try (final TestSinkSubtask subtask = new TestSinkSubtask()) {
+      final long startTime = System.currentTimeMillis();
+      subtask.handle(null, new PipeRuntimeOutOfMemoryCriticalException("memory unavailable"));
+      Assert.assertTrue(
+          System.currentTimeMillis() - startTime
+              >= PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs());
     }
   }
 }

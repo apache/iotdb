@@ -47,6 +47,10 @@ public class LoadConvertedInsertTabletStatement extends PipeConvertedInsertTable
       return originalCheckAndCastDataType(columnIndex, dataType);
     }
 
+    if (!isValidColumnForTypeConversion(columnIndex, dataType)) {
+      return false;
+    }
+
     LOGGER.info(
         "Load: Inserting tablet to {}.{}. Casting type from {} to {}.",
         devicePath,

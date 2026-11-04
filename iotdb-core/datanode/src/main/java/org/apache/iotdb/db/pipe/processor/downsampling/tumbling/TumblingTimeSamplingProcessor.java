@@ -134,4 +134,9 @@ public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
       }
     }
   }
+
+  private boolean isTimeDistanceGreaterThanOrEqual(long left, long right) {
+    long distance = left >= right ? left - right : right - left;
+    return Long.compareUnsigned(distance, intervalInCurrentPrecision) >= 0;
+  }
 }

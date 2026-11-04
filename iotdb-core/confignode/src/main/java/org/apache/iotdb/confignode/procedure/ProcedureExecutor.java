@@ -650,14 +650,29 @@ public class ProcedureExecutor<Env> {
    * @return procedure lock state
    */
   private ProcedureLockState executeRollback(Procedure<Env> procedure) {
+    boolean rollbackFailed = false;
     try {
       procedure.doRollback(this.environment);
     } catch (IOException e) {
+      rollbackFailed = true;
       LOG.error("Roll back failed for {}", procedure, e);
     } catch (InterruptedException e) {
+      rollbackFailed = true;
       LOG.warn("Interrupted exception occured for {}", procedure, e);
     } catch (Throwable t) {
+      rollbackFailed = true;
       LOG.error("CODE-BUG: runtime exception for {}", procedure, t);
+    }
+    if (rollbackFailed && procedure.getRollbackRetryTimeout() >= 0) {
+      procedure.setTimeout(procedure.getRollbackRetryTimeout());
+      procedure.setState(ProcedureState.WAITING_TIMEOUT);
+      try {
+        store.update(procedure);
+      } catch (Exception e) {
+        LOG.warn(procedure.toString(), e);
+      }
+      timeoutExecutor.add(procedure);
+      return ProcedureLockState.LOCK_EVENT_WAIT;
     }
     cleanupAfterRollback(procedure);
     return ProcedureLockState.LOCK_ACQUIRED;

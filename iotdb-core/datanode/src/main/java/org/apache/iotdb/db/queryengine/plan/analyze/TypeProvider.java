@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import com.google.common.collect.Maps;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -109,7 +110,7 @@ public class TypeProvider {
 
   public static TypeProvider deserialize(ByteBuffer byteBuffer) {
     int mapSize = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<String, TSDataType> typeMap = new HashMap<>();
+    Map<String, TSDataType> typeMap = Maps.newHashMapWithExpectedSize(mapSize);
     while (mapSize > 0) {
       typeMap.put(
           ReadWriteIOUtils.readString(byteBuffer),

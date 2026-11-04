@@ -333,9 +333,8 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
             LOGGER::info,
             e,
             "Temporarily out of memory in pipe event transferring, will wait for the memory to release.");
-      } else {
-        sleep4NonReportException();
       }
+      sleep4NonReportException();
     } else if (e instanceof PipeRuntimeSinkNonReportTimeConfigurableException) {
       if (lastExceptionTime == Long.MAX_VALUE) {
         lastExceptionTime = System.currentTimeMillis();

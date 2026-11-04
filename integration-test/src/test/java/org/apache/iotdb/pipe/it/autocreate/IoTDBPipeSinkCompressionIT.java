@@ -186,12 +186,12 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualAutoIT {
       TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              "insert into root.db.d1(time,s1) values (now(),3)",
-              "insert into root.db.d1(time,s1) values (now(),4)",
-              "insert into root.db.d1(time,s1) values (now(),5)",
-              "insert into root.db.d1(time,s1) values (now(),6)",
-              "insert into root.db.d1(time,s1) values (now(),7)",
-              "insert into root.db.d1(time,s1) values (now(),8)",
+              "insert into root.db.d1(time, s1) values (3, 3)",
+              "insert into root.db.d1(time, s1) values (4, 4)",
+              "insert into root.db.d1(time, s1) values (5, 5)",
+              "insert into root.db.d1(time, s1) values (6, 6)",
+              "insert into root.db.d1(time, s1) values (7, 7)",
+              "insert into root.db.d1(time, s1) values (8, 8)",
               "flush"),
           null);
 

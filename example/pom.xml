@@ -34,7 +34,6 @@
         <module>mqtt</module>
         <module>mqtt-customize</module>
         <module>pipe-count-point-processor</module>
-        <module>pipe-opc-ua-sink</module>
         <module>rest-java-example</module>
         <module>schema</module>
         <module>session</module>

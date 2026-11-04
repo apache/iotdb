@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.thrift.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -99,7 +100,8 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
 
     // tablet batch mode configuration
     if (isTabletBatchModeEnabled) {
-      tabletBatchBuilder = new PipeTransferBatchReqBuilder(parameters);
+      tabletBatchBuilder =
+          new PipeTransferBatchReqBuilder(parameters, clientManager::getLeaderEndPoint);
     }
 
     enableSendTsFileLimit =
@@ -143,7 +145,17 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
 
     try {
       if (isTabletBatchModeEnabled) {
-        tabletBatchBuilder.onEvent(tabletInsertionEvent);
+        try {
+          tabletBatchBuilder.onEvent(tabletInsertionEvent);
+        } catch (final PipeRuntimeOutOfMemoryCriticalException memoryException) {
+          try {
+            doTransferWrapper();
+          } catch (final Exception transferException) {
+            transferException.addSuppressed(memoryException);
+            throw transferException;
+          }
+          tabletBatchBuilder.onEvent(tabletInsertionEvent);
+        }
         doTransferWrapper();
       } else {
         if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
@@ -364,6 +376,10 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
       clientManager.updateLeaderCache(
           // pipeInsertNodeTabletInsertionEvent.getDeviceId() is null for InsertRowsNode
           pipeInsertNodeTabletInsertionEvent.getDeviceId(), status.getRedirectNode());
+    }
+    for (final Pair<String, TEndPoint> redirectPair :
+        LeaderCacheUtils.parseRecommendedRedirections(status)) {
+      clientManager.updateLeaderCache(redirectPair.getLeft(), redirectPair.getRight());
     }
   }
 

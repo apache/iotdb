@@ -54,6 +54,7 @@ import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
@@ -73,6 +74,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
+import org.apache.iotdb.db.storageengine.load.LoadTsFilePieceNodeAssembler;
 import org.apache.iotdb.db.storageengine.load.limiter.LoadTsFileRateLimiter;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.ThreadUtils;
@@ -88,6 +90,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -367,7 +370,7 @@ public class StorageEngine implements IService {
       if (dataRegion != null) {
         List<Callable<Void>> asyncTsFileResourceRecoverTasks =
             dataRegion.getAsyncTsFileResourceRecoverTaskList();
-        if (asyncTsFileResourceRecoverTasks != null) {
+        if (asyncTsFileResourceRecoverTasks != null && !asyncTsFileResourceRecoverTasks.isEmpty()) {
           Callable<Void> taskOfRegion =
               () -> {
                 for (Callable<Void> task : asyncTsFileResourceRecoverTasks) {
@@ -397,6 +400,7 @@ public class StorageEngine implements IService {
 
   @Override
   public void stop() {
+    stopIoTConsensusWrites();
     loadTsFileManager.stop();
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion != null) {
@@ -416,6 +420,7 @@ public class StorageEngine implements IService {
 
   @Override
   public void shutdown(long milliseconds) throws ShutdownException {
+    stopIoTConsensusWrites();
     loadTsFileManager.stop();
     try {
       for (DataRegion dataRegion : dataRegionMap.values()) {
@@ -481,6 +486,17 @@ public class StorageEngine implements IService {
   @TestOnly
   public synchronized void reset() {
     dataRegionMap.clear();
+  }
+
+  public void stopIoTConsensusWrites() {
+    if (!CONFIG.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+      return;
+    }
+    for (DataRegion dataRegion : dataRegionMap.values()) {
+      if (dataRegion != null) {
+        dataRegion.stopIoTConsensusWrites();
+      }
+    }
   }
 
   /** flush command Sync asyncCloseOneProcessor all file node processors. */
@@ -976,6 +992,40 @@ public class StorageEngine implements IService {
     }
 
     return RpcUtils.SUCCESS_STATUS;
+  }
+
+  public TSStatus writeLoadTsFileNodeSlice(
+      final DataRegionId dataRegionId,
+      final ByteBuffer body,
+      final String uuid,
+      final int sliceIndex,
+      final int sliceCount,
+      final int originBodySize) {
+    return loadTsFileManager.executeLoadTask(
+        uuid,
+        () -> {
+          final LoadTsFilePieceNodeAssembler.Result result =
+              loadTsFileManager.appendPieceNodeSlice(
+                  dataRegionId, uuid, body, sliceIndex, sliceCount, originBodySize);
+          if (!result.isValid()) {
+            return RpcUtils.getStatus(
+                TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR, result.getErrorMessage());
+          }
+          if (!result.isComplete()) {
+            return RpcUtils.SUCCESS_STATUS;
+          }
+
+          try {
+            final Object planNode = PlanNodeType.deserialize(result.getBody());
+            if (!(planNode instanceof LoadTsFilePieceNode)) {
+              return new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode());
+            }
+            return writeLoadTsFileNode(dataRegionId, (LoadTsFilePieceNode) planNode, uuid);
+          } catch (final Exception e) {
+            return new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode());
+          }
+        },
+        new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()));
   }
 
   public TSStatus executeLoadCommand(

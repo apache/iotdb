@@ -27,6 +27,14 @@ import java.lang.reflect.Field;
 public class SwingingDoorTrendingFilterTest {
 
   @Test
+  public void testExtremeTimestampDistanceReachesMaxInterval() throws Exception {
+    final SwingingDoorTrendingFilter<Integer> filter =
+        new SwingingDoorTrendingFilter<>(createProcessor(0, Long.MAX_VALUE, 0), Long.MIN_VALUE, 0);
+
+    Assert.assertTrue(filter.filter(Long.MAX_VALUE, 0));
+  }
+
+  @Test
   public void testDecreasingTrendIsCompressed() throws Exception {
     final SwingingDoorTrendingFilter<Integer> filter =
         new SwingingDoorTrendingFilter<>(createProcessor(0, Long.MAX_VALUE, 0), 0, 10);

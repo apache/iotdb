@@ -95,6 +95,9 @@ public class DataNodeShutdownHook extends Thread {
     // Reject write operations to make sure all tsfiles will be sealed
     CommonDescriptor.getInstance().getConfig().setStopping(true);
     CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+    // A pre-apply read-only check can race with this transition. Drain admitted IoTConsensus
+    // applies, including their WAL separators, and permanently reject new ones before flushing.
+    StorageEngine.getInstance().stopIoTConsensusWrites();
     // Wait all wal are flushed
     WALManager.getInstance().waitAllWALFlushed();
 

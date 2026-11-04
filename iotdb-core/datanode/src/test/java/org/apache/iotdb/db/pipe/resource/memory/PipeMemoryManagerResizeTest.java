@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class PipeMemoryManagerResizeTest {
 
   private static final long TOTAL_MEMORY_SIZE_IN_BYTES = 2000;
+  private static final long TABLET_MEMORY_SIZE_IN_BYTES = 901;
   private final CommonConfig config = CommonDescriptor.getInstance().getConfig();
 
   private boolean originalMemoryManagementEnabled;
@@ -132,6 +133,48 @@ public class PipeMemoryManagerResizeTest {
       manager.release(retainedTablet);
       manager.release(pendingTablet);
       manager.release(sinkBatch);
+    }
+
+    Assert.assertEquals(0, manager.getUsedMemorySizeInBytes());
+  }
+
+  @Test
+  public void testTryResizeRejectsImmediatelyWithoutChangingAccounting() {
+    final PipeMemoryManager manager = new PipeMemoryManager(TOTAL_MEMORY_SIZE_IN_BYTES, () -> 0);
+    final PipeTabletMemoryBlock retainedTablet =
+        manager.forceAllocateForTabletWithRetry(TABLET_MEMORY_SIZE_IN_BYTES);
+    final PipeTabletMemoryBlock pendingTablet = manager.forceAllocateForTabletWithRetry(0);
+
+    try {
+      Assert.assertFalse(manager.tryResize(pendingTablet, 1));
+      Assert.assertEquals(0, pendingTablet.getMemoryUsageInBytes());
+      Assert.assertEquals(TABLET_MEMORY_SIZE_IN_BYTES, manager.getUsedMemorySizeInBytes());
+      Assert.assertEquals(TABLET_MEMORY_SIZE_IN_BYTES, manager.getUsedMemorySizeInBytesOfTablets());
+
+      manager.release(retainedTablet);
+      Assert.assertTrue(manager.tryResize(pendingTablet, 1));
+      Assert.assertEquals(1, pendingTablet.getMemoryUsageInBytes());
+      Assert.assertEquals(1, manager.getUsedMemorySizeInBytesOfTablets());
+    } finally {
+      manager.release(retainedTablet);
+      manager.release(pendingTablet);
+    }
+
+    Assert.assertEquals(0, manager.getUsedMemorySizeInBytes());
+  }
+
+  @Test
+  public void testTryResizeRejectsNegativeTargetWithoutChangingAccounting() {
+    final PipeMemoryManager manager = new PipeMemoryManager(TOTAL_MEMORY_SIZE_IN_BYTES, () -> 0);
+    final PipeTabletMemoryBlock tablet = manager.forceAllocateForTabletWithRetry(10);
+
+    try {
+      Assert.assertFalse(manager.tryResize(tablet, -1));
+      Assert.assertEquals(10, tablet.getMemoryUsageInBytes());
+      Assert.assertEquals(10, manager.getUsedMemorySizeInBytes());
+      Assert.assertEquals(10, manager.getUsedMemorySizeInBytesOfTablets());
+    } finally {
+      manager.release(tablet);
     }
 
     Assert.assertEquals(0, manager.getUsedMemorySizeInBytes());

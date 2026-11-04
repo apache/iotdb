@@ -21,13 +21,13 @@ package org.apache.iotdb.commons.pipe.sink.payload.thrift.request;
 
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
+import com.google.common.collect.Maps;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -63,8 +63,8 @@ public abstract class PipeTransferHandshakeV2Req extends TPipeTransferReq {
 
   protected final PipeTransferHandshakeV2Req translateFromTPipeTransferReq(
       TPipeTransferReq transferReq) {
-    Map<String, String> params = new HashMap<>();
     final int size = ReadWriteIOUtils.readInt(transferReq.body);
+    Map<String, String> params = Maps.newHashMapWithExpectedSize(size);
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(transferReq.body);
       final String value = ReadWriteIOUtils.readString(transferReq.body);

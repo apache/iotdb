@@ -526,7 +526,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
     WritableMemChunk memChunk = new WritableMemChunk();
     memChunk.schema = MeasurementSchema.deserializeFrom(stream);
     int sortedListSize = stream.readInt();
-    memChunk.sortedList = new ArrayList<>();
+    memChunk.sortedList = new ArrayList<>(sortedListSize);
     for (int i = 0; i < sortedListSize; i++) {
       TVList tvList = TVList.deserialize(stream);
       memChunk.sortedList.add(tvList);

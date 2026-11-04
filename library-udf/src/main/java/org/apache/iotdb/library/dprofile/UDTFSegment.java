@@ -104,7 +104,7 @@ public class UDTFSegment implements UDTF {
     } else if (method.equals("swab")) { // haven't tested yet
       seg = Segment.swabAlg(v, maxError, windowSize);
     }
-    ArrayList<double[]> res = new ArrayList<>();
+    ArrayList<double[]> res = new ArrayList<>(seg.size());
     for (double[] doubles : seg) {
       res.add(Segment.approximatedSegment(doubles));
     }

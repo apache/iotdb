@@ -133,6 +133,7 @@ public class IoTDBDataRegionAirGapSinkTest {
     final Tablet tablet = new Tablet("root.db.d1", schemaList, 1);
     tablet.addTimestamp(0, value);
     tablet.addValue("s1", 0, value);
+    tablet.rowSize = 1;
     return new PipeRawTabletInsertionEvent(
         tablet, false, pipeName, creationTime, null, null, false);
   }

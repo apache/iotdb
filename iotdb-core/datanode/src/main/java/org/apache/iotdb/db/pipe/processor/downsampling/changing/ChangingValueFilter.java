@@ -97,6 +97,18 @@ public class ChangingValueFilter<T> {
     return false;
   }
 
+  private boolean isTimeDistanceLessThanOrEqual(
+      final long left, final long right, final long maxDistance) {
+    final long distance = left >= right ? left - right : right - left;
+    return Long.compareUnsigned(distance, maxDistance) <= 0;
+  }
+
+  private boolean isTimeDistanceGreaterThanOrEqual(
+      final long left, final long right, final long minDistance) {
+    final long distance = left >= right ? left - right : right - left;
+    return Long.compareUnsigned(distance, minDistance) >= 0;
+  }
+
   private void reset(final long timestamp, final T value) {
     lastStoredTimestamp = timestamp;
     lastStoredValue = value;

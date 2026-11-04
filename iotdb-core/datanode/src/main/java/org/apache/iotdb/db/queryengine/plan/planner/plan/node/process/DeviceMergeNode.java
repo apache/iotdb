@@ -112,7 +112,7 @@ public class DeviceMergeNode extends MultiChildProcessNode {
   public static DeviceMergeNode deserialize(ByteBuffer byteBuffer) {
     OrderByParameter mergeOrderParameter = OrderByParameter.deserialize(byteBuffer);
     int devicesSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> devices = new ArrayList<>();
+    List<String> devices = new ArrayList<>(devicesSize);
     while (devicesSize > 0) {
       devices.add(ReadWriteIOUtils.readString(byteBuffer));
       devicesSize--;

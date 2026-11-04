@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure;
 
 import org.apache.iotdb.confignode.procedure.entity.SimpleSTMProcedure;
 import org.apache.iotdb.confignode.procedure.env.TestProcEnv;
+import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.ProcedureState;
 import org.apache.iotdb.confignode.procedure.util.ProcedureTestUtil;
@@ -28,8 +29,17 @@ import org.apache.iotdb.confignode.procedure.util.ProcedureTestUtil;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class STMProcedureTest extends TestProcedureBase {
@@ -58,6 +68,104 @@ public class STMProcedureTest extends TestProcedureBase {
     System.out.println(success);
     System.out.println(rolledback);
     Assert.assertEquals(1 + success - rolledback, acc.get());
+  }
+
+  @Test
+  public void testFailedBeforeExecutionCanRollbackWithoutState() throws Exception {
+    final RetryingRollbackProcedure procedure = new RetryingRollbackProcedure();
+    procedure.setFailure(procedure.originalFailure);
+    procedure.doRollback(env);
+    Assert.assertEquals(Arrays.asList(0), procedure.attemptedStates);
+    Assert.assertSame(procedure.originalFailure, procedure.getException());
+  }
+
+  @Test
+  public void testFailedRollbackRetainsStateAfterSerialization() throws Exception {
+    final RetryingRollbackProcedure procedure = new RetryingRollbackProcedure();
+    procedure.setState(ProcedureState.RUNNABLE);
+    procedure.doExecute(env);
+    procedure.doExecute(env);
+    try {
+      procedure.doRollback(env);
+      Assert.fail("Compensation should fail while the Region is unavailable");
+    } catch (IOException expected) {
+      Assert.assertEquals(Arrays.asList(1), procedure.attemptedStates);
+    }
+    procedure.setTimeout(1000);
+    procedure.setState(ProcedureState.WAITING_TIMEOUT);
+    final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    procedure.serialize(new DataOutputStream(bytes));
+    final RetryingRollbackProcedure restored = new RetryingRollbackProcedure();
+    restored.deserialize(ByteBuffer.wrap(bytes.toByteArray()));
+    Assert.assertTrue(restored.isFailed());
+    Assert.assertEquals(
+        procedure.originalFailure.getMessage(), restored.getException().getMessage());
+    restored.attemptedStates.addAll(Arrays.asList(1, 1));
+    restored.doRollback(env);
+    restored.doRollback(env);
+    Assert.assertEquals(Arrays.asList(1, 1, 1, 0), restored.attemptedStates);
+  }
+
+  @Test
+  public void testFailedRollbackRetriesSameStateWithoutOverwritingFailure() throws Exception {
+    final RetryingRollbackProcedure procedure = new RetryingRollbackProcedure();
+    final long procId = procExecutor.submitProcedure(procedure);
+    Assert.assertTrue(procedure.firstFailure.await(5, TimeUnit.SECONDS));
+    Assert.assertTrue(procedure.completed.await(5, TimeUnit.SECONDS));
+    ProcedureTestUtil.waitForProcedure(procExecutor, procId);
+    Assert.assertTrue(procedure.isFinished());
+    Assert.assertEquals(Arrays.asList(1, 1, 1, 0), procedure.attemptedStates);
+    Assert.assertSame(procedure.originalFailure, procedure.getException());
+  }
+
+  private static class RetryingRollbackProcedure
+      extends StateMachineProcedure<TestProcEnv, Integer> {
+    private final CountDownLatch firstFailure = new CountDownLatch(1);
+    private final CountDownLatch completed = new CountDownLatch(1);
+    private final List<Integer> attemptedStates = new ArrayList<>();
+    private final ProcedureException originalFailure = new ProcedureException("Execution failed");
+
+    @Override
+    protected Flow executeFromState(TestProcEnv env, Integer state) {
+      if (state == 0) {
+        setNextState(1);
+        return Flow.HAS_MORE_STATE;
+      }
+      setFailure(originalFailure);
+      return Flow.NO_MORE_STATE;
+    }
+
+    @Override
+    protected void rollbackState(TestProcEnv env, Integer state) throws IOException {
+      attemptedStates.add(state);
+      if (state == 1 && attemptedStates.size() < 3) {
+        firstFailure.countDown();
+        throw new IOException("Region temporarily unavailable");
+      }
+      if (state == 0) {
+        completed.countDown();
+      }
+    }
+
+    @Override
+    protected long getRollbackRetryTimeout() {
+      return 50;
+    }
+
+    @Override
+    protected Integer getState(int stateId) {
+      return stateId;
+    }
+
+    @Override
+    protected int getStateId(Integer state) {
+      return state;
+    }
+
+    @Override
+    protected Integer getInitialState() {
+      return 0;
+    }
   }
 
   @Test

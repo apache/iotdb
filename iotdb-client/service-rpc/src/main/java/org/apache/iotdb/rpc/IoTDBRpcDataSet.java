@@ -111,8 +111,8 @@ public class IoTDBRpcDataSet {
     this.moreData = moreData;
     columnSize = columnNameList.size();
 
-    this.columnNameList = new ArrayList<>();
-    this.columnTypeList = new ArrayList<>();
+    this.columnNameList = new ArrayList<>(columnSize + (ignoreTimeStamp ? 0 : 1));
+    this.columnTypeList = new ArrayList<>(columnSize + (ignoreTimeStamp ? 0 : 1));
     if (!ignoreTimeStamp) {
       this.columnNameList.add(TIMESTAMP_STR);
       this.columnTypeList.add(String.valueOf(TSDataType.INT64));
@@ -205,8 +205,8 @@ public class IoTDBRpcDataSet {
     this.moreData = moreData;
     columnSize = columnNameList.size();
 
-    this.columnNameList = new ArrayList<>();
-    this.columnTypeList = new ArrayList<>();
+    this.columnNameList = new ArrayList<>(columnSize + (ignoreTimeStamp ? 0 : 1));
+    this.columnTypeList = new ArrayList<>(columnSize + (ignoreTimeStamp ? 0 : 1));
     if (!ignoreTimeStamp) {
       this.columnNameList.add(TIMESTAMP_STR);
       this.columnTypeList.add(String.valueOf(TSDataType.INT64));

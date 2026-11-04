@@ -190,7 +190,8 @@ public abstract class AbstractMemTable implements IMemTable {
     String[] measurements = insertRowNode.getMeasurements();
     Object[] values = insertRowNode.getValues();
 
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    List<IMeasurementSchema> schemaList =
+        new ArrayList<>(measurements == null ? 0 : measurements.length);
     List<TSDataType> dataTypes = new ArrayList<>();
     int pointsInserted = 0;
     for (int i = 0; measurements != null && i < measurements.length; i++) {
@@ -222,7 +223,8 @@ public abstract class AbstractMemTable implements IMemTable {
 
     String[] measurements = insertRowNode.getMeasurements();
     Object[] values = insertRowNode.getValues();
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    List<IMeasurementSchema> schemaList =
+        new ArrayList<>(measurements == null ? 0 : measurements.length);
     List<TSDataType> dataTypes = new ArrayList<>();
     int pointsInserted = 0;
     for (int i = 0; measurements != null && i < measurements.length; i++) {
@@ -333,7 +335,11 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   public void writeTabletNode(InsertTabletNode insertTabletNode, int start, int end) {
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    List<IMeasurementSchema> schemaList =
+        new ArrayList<>(
+            insertTabletNode.getMeasurements() == null
+                ? 0
+                : insertTabletNode.getMeasurements().length);
     for (int i = 0;
         insertTabletNode.getMeasurements() != null && i < insertTabletNode.getMeasurements().length;
         i++) {
@@ -356,7 +362,11 @@ public abstract class AbstractMemTable implements IMemTable {
 
   public void writeAlignedTablet(InsertTabletNode insertTabletNode, int start, int end) {
 
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    List<IMeasurementSchema> schemaList =
+        new ArrayList<>(
+            insertTabletNode.getMeasurements() == null
+                ? 0
+                : insertTabletNode.getMeasurements().length);
     for (int i = 0;
         insertTabletNode.getMeasurements() != null && i < insertTabletNode.getMeasurements().length;
         i++) {
