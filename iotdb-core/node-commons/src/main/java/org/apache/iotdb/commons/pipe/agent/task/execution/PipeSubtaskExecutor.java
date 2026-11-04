@@ -144,8 +144,22 @@ public abstract class PipeSubtaskExecutor {
         LOGGER.debug(PipeMessages.SUBTASK_ALREADY_RUNNING, subtask.getDisplayTaskID());
       }
     } else {
-      subtask.allowSubmittingSelf();
-      subtask.submitSelf();
+      try {
+        subtask.allowSubmittingSelf();
+        subtask.submitSelf();
+      } catch (final RuntimeException e) {
+        // The submission may be rejected, e.g., because the underlying thread pool has been shut
+        // down. The "submitting self" state must be reverted, otherwise this and all the following
+        // start() calls would take the "already running" branch above and report a false success,
+        // leaving the subtask never executed until the node restarts.
+        subtask.disallowSubmittingSelf();
+        LOGGER.error(
+            PipeMessages.LOG_FAILED_TO_START_THE_SUBTASK_DD3FC1BA, subtask.getDisplayTaskID(), e);
+        throw e;
+      } catch (final Error e) {
+        subtask.disallowSubmittingSelf();
+        throw e;
+      }
       ++runningSubtaskNumber;
       LOGGER.info(PipeMessages.SUBTASK_STARTED, subtask.getDisplayTaskID());
     }

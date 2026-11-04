@@ -24,8 +24,12 @@ import org.apache.iotdb.db.pipe.agent.task.execution.PipeSinkSubtaskExecutor;
 import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeSinkSubtask;
 import org.apache.iotdb.pipe.api.PipeConnector;
 
+import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Test;
 import org.mockito.Mockito;
+
+import java.util.concurrent.RejectedExecutionException;
 
 import static org.mockito.Mockito.mock;
 
@@ -45,5 +49,25 @@ public class PipeSinkSubtaskExecutorTest extends PipeSubtaskExecutorTest {
                 0,
                 mock(UnboundedBlockingPendingQueue.class),
                 mock(PipeConnector.class)));
+  }
+
+  @Test
+  public void testStartAfterShutdown() {
+    executor.register(subtask);
+    executor.shutdown();
+    Assert.assertTrue(executor.isShutdown());
+
+    // The submission is rejected by the shut-down executor, and the rejection must be reported
+    // instead of being swallowed as "started successfully"...
+    for (int i = 0; i < 2; ++i) {
+      try {
+        executor.start(subtask.getTaskID());
+        Assert.fail("The start of a subtask should fail if the executor is shut down");
+      } catch (final RejectedExecutionException e) {
+        // expected
+      }
+      // ... and the failed submission must not leave the subtask in the "submitting" state.
+      Assert.assertFalse(subtask.isSubmittingSelf());
+    }
   }
 }

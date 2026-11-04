@@ -340,6 +340,8 @@ public final class DataNodePipeMessages {
       "成功将所有 Pipe 信息持久化到 ConfigNode。";
   public static final String THE_EXECUTOR_AND_HAS_BEEN_SUCCESSFULLY_SHUTDOWN =
       "执行器 {} 和 {} 已成功关闭。";
+  public static final String LOG_THE_SHARED_CONSENSUS_EXECUTOR_HAS_BEEN_SHUT_DOWN_RECREATING_IT_C14080E3 =
+      "共享的共识执行器已被关闭，正在重新创建该执行器。";
 
   // ===================== EVENT =====================
 

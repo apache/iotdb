@@ -390,6 +390,8 @@ public final class PipeMessages {
   public static final String SUBTASK_STARTED = "The subtask {} is started to submit self.";
   public static final String SUBTASK_CLOSED = "The subtask {} is closed successfully.";
   public static final String SUBTASK_CLOSE_FAILED = "Failed to close the subtask {}.";
+  public static final String LOG_FAILED_TO_START_THE_SUBTASK_DD3FC1BA =
+      "Failed to start the subtask {}.";
 
   // ===================== PipeReportableSubtask =====================
 
