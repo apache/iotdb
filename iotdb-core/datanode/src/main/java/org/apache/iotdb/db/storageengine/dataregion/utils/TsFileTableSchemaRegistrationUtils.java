@@ -52,8 +52,12 @@ public final class TsFileTableSchemaRegistrationUtils {
   private TsFileTableSchemaRegistrationUtils() {}
 
   /**
-   * Records that the file being written belongs to the table model. This is one file property, so
-   * the write path pays no per-table cost.
+   * Records that the file being written belongs to the table model.
+   *
+   * <p>Call it once per file, when the file is sealed, that is, immediately before {@link
+   * TsFileIOWriter#endFile()}. The marker is a single entry of the in-memory file property map and
+   * is serialized together with the file metadata by {@code endFile()}, so it costs nothing on the
+   * write path and must never be called per record, per tablet or per chunk group.
    */
   public static void markTableModel(final TsFileIOWriter writer) {
     if (writer == null) {

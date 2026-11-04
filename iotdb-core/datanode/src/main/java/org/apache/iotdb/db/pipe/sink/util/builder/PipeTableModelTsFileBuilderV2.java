@@ -340,6 +340,8 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
         new MemTableFlushTask(memTable, writer, null, null, true);
     memTableFlushTask.syncFlushMemTable();
 
+    // The marker is written once, after the last tablet is flushed, so building the file pays
+    // nothing per tablet.
     TsFileTableSchemaRegistrationUtils.markTableModel(writer);
     writer.endFile();
   }

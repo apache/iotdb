@@ -2244,9 +2244,9 @@ public class TsFileProcessor {
     if (logger.isDebugEnabled()) {
       logger.debug(StorageEngineMessages.START_TO_END_FILE, tsFileResource);
     }
-    // Mark the file as a table-model TsFile. This is a single constant-time file property: the
-    // TableSchema entries themselves are registered on the write path by registerToTsFile(), and
-    // are repaired during recovery and compaction, so no per-device scan is needed at close.
+    // Mark the file as a table-model TsFile. Written once here, when the file is sealed: it is a
+    // single entry of the in-memory file property map serialized by endFile(), never a per-device
+    // or per-chunk operation.
     if (tableModelTsFile) {
       TsFileTableSchemaRegistrationUtils.markTableModel(writer);
     }
