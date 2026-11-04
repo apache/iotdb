@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.it.utils;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -1747,6 +1749,45 @@ public class TestUtils {
     env.startAllConfigNodes();
     env.startAllDataNodes();
     ((AbstractEnv) env).checkClusterStatusWithoutUnknown();
+    awaitAllRegionsRunning(env);
+  }
+
+  /**
+   * Waits until every Region listed by SHOW REGIONS is Running. Right after a restart the
+   * RegionGroups stay Disabled until their Regions report Running, and writes issued in that window
+   * are rejected with NO_AVAILABLE_REGION_GROUP.
+   */
+  public static void awaitAllRegionsRunning(final BaseEnv env) {
+    await()
+        .pollInSameThread()
+        .pollDelay(0L, TimeUnit.MILLISECONDS)
+        .pollInterval(100L, TimeUnit.MILLISECONDS)
+        .atMost(2, TimeUnit.MINUTES)
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              // SHOW REGIONS only lists the Databases of the dialect of the connection.
+              assertAllRegionsRunning(env, false);
+              assertAllRegionsRunning(env, true);
+            });
+  }
+
+  private static void assertAllRegionsRunning(final BaseEnv env, final boolean tableModel)
+      throws SQLException {
+    try (final Connection connection = tableModel ? env.getTableConnection() : env.getConnection();
+        final Statement statement = connection.createStatement();
+        final ResultSet regions = statement.executeQuery("show regions")) {
+      while (regions.next()) {
+        Assert.assertEquals(
+            "Region "
+                + regions.getInt(ColumnHeaderConstant.REGION_ID)
+                + " of database "
+                + regions.getString(ColumnHeaderConstant.DATABASE)
+                + " is not ready",
+            RegionStatus.Running.getStatus(),
+            regions.getString(ColumnHeaderConstant.STATUS));
+      }
+    }
   }
 
   public static void assertDataEventuallyOnEnv(
