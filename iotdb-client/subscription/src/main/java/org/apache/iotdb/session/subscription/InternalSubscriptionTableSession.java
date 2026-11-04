@@ -1,0 +1,83 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.session.subscription;
+
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.isession.INodeSupplier;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.session.AbstractSessionBuilder;
+import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionConnection;
+import org.apache.iotdb.session.i18n.SessionMessages;
+
+import java.time.ZoneId;
+import java.util.List;
+import java.util.Objects;
+
+/** Table subscription-management session using the caller's identity and internal endpoints. */
+public class InternalSubscriptionTableSession extends SubscriptionTableSession {
+
+  public InternalSubscriptionTableSession(
+      AbstractSessionBuilder builder, INodeSupplier nodeSupplier) {
+    super(new InternalSessionWrapper(builder, nodeSupplier));
+  }
+
+  private static class InternalSessionWrapper extends SubscriptionSessionWrapper {
+
+    private final INodeSupplier nodeSupplier;
+
+    private InternalSessionWrapper(AbstractSessionBuilder builder, INodeSupplier nodeSupplier) {
+      super(builder);
+      this.nodeSupplier =
+          Objects.requireNonNull(
+              nodeSupplier,
+              SessionMessages.EXCEPTION_INTERNAL_NODE_SUPPLIER_MUST_NOT_BE_NULL_C5CAF392);
+      password = null;
+      useEncryptedPassword = false;
+      enableAutoFetch = false;
+      enableRedirection = false;
+      enableQueryRedirection = false;
+    }
+
+    @Override
+    protected INodeSupplier createNodeSupplier(boolean enableRPCCompaction, int timeoutInMs) {
+      return nodeSupplier;
+    }
+
+    @Override
+    public SessionConnection constructSessionConnection(
+        Session session, TEndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
+      final List<TEndPoint> candidates = nodeSupplier.get();
+      if (candidates.isEmpty()) {
+        throw new IoTDBConnectionException(
+            SessionMessages.EXCEPTION_NO_DATANODE_INTERNAL_ENDPOINT_IS_AVAILABLE_249D1081);
+      }
+      defaultEndPoint =
+          candidates.contains(endpoint)
+              ? endpoint.deepCopy()
+              : nodeSupplier
+                  .getQueryEndPoint()
+                  .filter(candidates::contains)
+                  .orElse(candidates.get(0))
+                  .deepCopy();
+      return super.constructSessionConnection(session, defaultEndPoint, zoneId);
+    }
+  }
+}

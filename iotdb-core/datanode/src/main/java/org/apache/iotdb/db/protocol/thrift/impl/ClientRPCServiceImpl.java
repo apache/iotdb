@@ -1626,16 +1626,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
     Optional<String> database = parseDatabase(req);
     IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-    BasicOpenSessionResp openSessionResp =
-        SESSION_MANAGER.login(
-            SESSION_MANAGER.getCurrSession(),
-            req.username,
-            req.password,
-            req.zoneId,
-            req.client_protocol,
-            clientVersion,
-            sqlDialect,
-            parseUseEncryptedPassword(req));
+    BasicOpenSessionResp openSessionResp = login(clientSession, req, clientVersion, sqlDialect);
     TSStatus tsStatus = RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
 
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -1649,6 +1640,22 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     configuration.put(
         TIME_PRECISION, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     return resp.setSessionId(openSessionResp.getSessionId()).setConfiguration(configuration);
+  }
+
+  protected BasicOpenSessionResp login(
+      IClientSession session,
+      TSOpenSessionReq req,
+      IoTDBConstant.ClientVersion clientVersion,
+      SqlDialect sqlDialect) {
+    return SESSION_MANAGER.login(
+        session,
+        req.username,
+        req.password,
+        req.zoneId,
+        req.client_protocol,
+        clientVersion,
+        sqlDialect,
+        parseUseEncryptedPassword(req));
   }
 
   private IoTDBConstant.ClientVersion parseClientVersion(TSOpenSessionReq req) {

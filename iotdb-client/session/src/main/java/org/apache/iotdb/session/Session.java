@@ -21,6 +21,7 @@ package org.apache.iotdb.session;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.isession.IInternalSessionBuilder;
 import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
@@ -549,33 +550,7 @@ public class Session implements ISession {
       this.availableNodes = null;
     }
 
-    if (enableAutoFetch) {
-      initThreadPool();
-      this.availableNodes =
-          NodesSupplier.createNodeSupplier(
-              getNodeUrls(),
-              SessionUtils.parseSeedNodeUrls(initialNodeUrls),
-              executorService,
-              username,
-              password,
-              zoneId,
-              thriftDefaultBufferSize,
-              thriftMaxFrameSize,
-              connectionTimeoutInMs,
-              useSSL,
-              trustStore,
-              trustStorePwd,
-              keyStore,
-              keyStorePwd,
-              sslProtocol,
-              enableRPCCompaction,
-              version.toString());
-    } else {
-      // A static supplier has no separate seed tier. Keep every configured address after reopen.
-      Set<TEndPoint> staticNodes = new LinkedHashSet<>(getNodeUrls());
-      staticNodes.addAll(SessionUtils.parseSeedNodeUrls(initialNodeUrls));
-      this.availableNodes = new DummyNodesSupplier(new ArrayList<>(staticNodes));
-    }
+    this.availableNodes = createNodeSupplier(enableRPCCompaction, connectionTimeoutInMs);
 
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     setDefaultSessionConnection(constructSessionConnection(this, defaultEndPoint, zoneId));
@@ -586,6 +561,37 @@ public class Session implements ISession {
       tableModelDeviceIdToEndpoint = new ConcurrentHashMap<>();
       endPointToSessionConnection = new ConcurrentHashMap<>();
       endPointToSessionConnection.put(defaultEndPoint, getDefaultSessionConnection());
+    }
+  }
+
+  /** Creates the endpoint source used by initial connections and reconnects. */
+  protected INodeSupplier createNodeSupplier(
+      boolean enableRPCCompaction, int connectionTimeoutInMs) {
+    if (enableAutoFetch) {
+      initThreadPool();
+      return NodesSupplier.createNodeSupplier(
+          getNodeUrls(),
+          SessionUtils.parseSeedNodeUrls(initialNodeUrls),
+          executorService,
+          username,
+          password,
+          zoneId,
+          thriftDefaultBufferSize,
+          thriftMaxFrameSize,
+          connectionTimeoutInMs,
+          useSSL,
+          trustStore,
+          trustStorePwd,
+          keyStore,
+          keyStorePwd,
+          sslProtocol,
+          enableRPCCompaction,
+          version.toString());
+    } else {
+      // A static supplier has no separate seed tier. Keep every configured address after reopen.
+      Set<TEndPoint> staticNodes = new LinkedHashSet<>(getNodeUrls());
+      staticNodes.addAll(SessionUtils.parseSeedNodeUrls(initialNodeUrls));
+      return new DummyNodesSupplier(new ArrayList<>(staticNodes));
     }
   }
 
@@ -4445,7 +4451,8 @@ public class Session implements ISession {
     this.enableThriftRpcCompaction = enableThriftRpcCompaction;
   }
 
-  public static class Builder extends AbstractSessionBuilder {
+  public static class Builder extends AbstractSessionBuilder
+      implements IInternalSessionBuilder<InternalSession> {
 
     public Builder host(String host) {
       this.host = host;
@@ -4594,6 +4601,12 @@ public class Session implements ISession {
                 .EXCEPTION_YOU_SHOULD_SPECIFY_EITHER_NODEURLS_HOST_RPCPORT_BUT_NOT_BOTH_77E7B084);
       }
       return new Session(this);
+    }
+
+    /** Builds an unopened internal session using caller-supplied internal endpoints. */
+    @Override
+    public InternalSession buildInternal(INodeSupplier nodeSupplier) {
+      return new InternalSession(this, nodeSupplier);
     }
   }
 }

@@ -931,7 +931,7 @@ struct TFetchDeviceEntrySegmentResp {
 * END: Used for EXPLAIN ANALYZE
 **/
 
-service IDataNodeRPCService {
+service IDataNodeRPCService extends client.IClientRPCService {
 
   // -----------------------------------For Data Node-----------------------------------------------
 
@@ -1186,7 +1186,7 @@ service IDataNodeRPCService {
 
   common.TSStatus clearCache(set<i32> cacheClearOptions)
 
-  common.TShowConfigurationResp showConfiguration()
+  common.TShowConfigurationResp showConfigurationInternal()
 
   common.TShowAppliedConfigurationsResp showAppliedConfigurations()
 
@@ -1434,17 +1434,14 @@ service IDataNodeRPCService {
 
   common.TTestConnectionResp submitInternalTestConnectionTask(common.TNodeLocations nodeLocations)
 
-  /** Empty rpc, only for connection test */
-  common.TSStatus testConnectionEmptyRPC()
-
   /**
    * Push cluster topology to this DataNode.
    * Each DataNode receives only its own reachable set.
    */
   common.TSStatus updateClusterTopology(1:TUpdateClusterTopologyReq req)
 
-  /** to write audit log or other events as time series **/
-  common.TSStatus insertRecord(1:client.TSInsertRecordReq req);
+  /** Write internal audit records independently of client session identity. */
+  common.TSStatus insertRecordInternal(1:client.TSInsertRecordReq req);
 
   /**
    * Write an audit log entry to the DataNode's AuditEventLogger

@@ -77,6 +77,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -119,6 +120,7 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.partition.DataPartitionTableGenerator;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.cn.DnToCnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.db.protocol.client.cn.DnToCnRequestType;
@@ -350,6 +352,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 
@@ -416,7 +419,8 @@ import static org.apache.iotdb.db.service.RegionMigrateService.REGION_MIGRATE_PR
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
-public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface {
+public class DataNodeInternalRPCServiceImpl extends ClientRPCServiceImpl
+    implements IDataNodeRPCService.Iface {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(DataNodeInternalRPCServiceImpl.class);
 
@@ -473,6 +477,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private static final String SYSTEM = "system";
 
+  private long consensusWaitTimeoutSeconds = 30;
+
   public DataNodeInternalRPCServiceImpl(DataNodeContext dataNodeContext) {
     this(dataNodeContext, SystemMetrics.getInstance());
   }
@@ -484,8 +490,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     schemaFetcher = ClusterSchemaFetcher.getInstance();
     this.dataNodeContext = dataNodeContext;
   }
-
-  private long consensusWaitTimeoutSeconds = 30;
 
   private TSStatus waitForConsensusStarted() {
     if (dataNodeContext.isAllConsensusStarted()) {
@@ -506,6 +510,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   .EXCEPTION_CONSENSUS_HAS_NOT_BEEN_STARTED_AFTER_ARG_SECONDS_AC8147E7,
               Objects.toString(consensusWaitTimeoutSeconds)));
     }
+  }
+
+  @Override
+  protected BasicOpenSessionResp login(
+      IClientSession session,
+      TSOpenSessionReq req,
+      ClientVersion clientVersion,
+      SqlDialect sqlDialect) {
+    return SESSION_MANAGER.loginInternal(
+        session, req.username, req.zoneId, req.client_protocol, clientVersion, sqlDialect);
   }
 
   @Override
@@ -1839,9 +1853,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus executeCQ(TExecuteCQ req) {
 
+    IClientSession previousSession = SESSION_MANAGER.getCurrSession();
     IClientSession session = new InternalClientSession(req.cqId);
 
-    SESSION_MANAGER.registerSession(session);
+    SESSION_MANAGER.setCurrSession(session);
 
     SESSION_MANAGER.supplySession(
         session,
@@ -1923,8 +1938,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     } catch (Exception e) {
       return onQueryException(e, "\"" + executedSQL + "\". " + OperationType.EXECUTE_STATEMENT);
     } finally {
-      SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
-      SESSION_MANAGER.removeCurrSession();
+      try {
+        SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
+      } finally {
+        SESSION_MANAGER.restoreSession(previousSession, session);
+      }
     }
   }
 
@@ -2380,11 +2398,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus testConnectionEmptyRPC() throws TException {
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-  }
-
-  @Override
   public TSStatus updateClusterTopology(TUpdateClusterTopologyReq req) throws TException {
     clusterTopology.updateTopology(req.getDataNodes(), req.getTopology());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -2810,7 +2823,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TShowConfigurationResp showConfiguration() {
+  public TShowConfigurationResp showConfigurationInternal() {
     TShowConfigurationResp resp =
         new TShowConfigurationResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS), "");
     try {
@@ -3562,7 +3575,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus insertRecord(TSInsertRecordReq req) throws TException {
+  public TSStatus insertRecordInternal(TSInsertRecordReq req) {
     try {
       InsertRowStatement statement = StatementGenerator.createStatement(req);
       SessionInfo sessionInfo =
@@ -3604,10 +3617,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return onIoTDBException(e, OperationType.WRITE_AUDIT_LOG, e.getErrorCode());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-  }
-
-  public void handleClientExit() {
-    // Do nothing
   }
 
   // ====================================================
