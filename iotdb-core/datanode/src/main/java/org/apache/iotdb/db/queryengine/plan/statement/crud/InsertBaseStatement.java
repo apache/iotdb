@@ -53,6 +53,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -579,7 +580,10 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
   protected abstract void subRemoveAttributeColumns(List<Integer> columnsToKeep);
 
-  public static class FailedMeasurementInfo {
+  public static class FailedMeasurementInfo implements Accountable {
+    private static final long INSTANCE_SIZE =
+        RamUsageEstimator.shallowSizeOfInstance(FailedMeasurementInfo.class);
+
     protected String measurement;
     protected TSDataType dataType;
     protected Object value;
@@ -603,6 +607,21 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
     public Object getValue() {
       return value;
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      long size =
+          INSTANCE_SIZE
+              + RamUsageEstimator.sizeOf(measurement)
+              + RamUsageEstimator.sizeOfObject(value);
+      // Exceptions can retain additional copies of the failed input in their messages.
+      Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+      for (Throwable error = cause; error != null && visited.add(error); error = error.getCause()) {
+        size +=
+            RamUsageEstimator.sizeOfObject(error) + RamUsageEstimator.sizeOf(error.getMessage());
+      }
+      return size;
     }
   }
 
@@ -1015,6 +1034,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
             + RamUsageEstimator.sizeOf(measurements)
             + RamUsageEstimator.shallowSizeOf(dataTypes)
             + RamUsageEstimator.shallowSizeOf(columnCategories)
+            + RamUsageEstimator.sizeOfMap(failedMeasurementIndex2Info)
             // We assume that the integers are all cached by JVM
             + shallowSizeOfList(tagColumnIndices)
             + shallowSizeOfList(attrColumnIndices)
