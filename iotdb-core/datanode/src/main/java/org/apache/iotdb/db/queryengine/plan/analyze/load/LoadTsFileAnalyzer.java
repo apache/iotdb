@@ -27,6 +27,8 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.schema.SchemaConstant;
@@ -591,6 +593,18 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private boolean setTemporaryUnavailableStatusIfNecessary(
       final Analysis analysis, final Throwable throwable) {
+    // Region unavailability can persist beyond recovery. Retain the file for retry; permanent
+    // region loss still requires operator intervention.
+    if (throwable instanceof IoTDBRuntimeException
+        && ((IoTDBRuntimeException) throwable).getErrorCode()
+            == TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION, throwable.getMessage()));
+      analysis.setStatement(loadTsFileStatement);
+      return true;
+    }
     if (isTemporaryUnavailableDueToPipeSchemaNotReady(throwable)) {
       setFailAnalysisForTemporaryUnavailablePipeSchema(analysis, throwable);
       return true;
@@ -849,12 +863,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         if (isTemporaryUnavailableDueToPipeSchemaNotReady(e)) {
           throw e;
         }
+        rethrowIfUnavailableRegion(e);
         LOGGER.warn("Auto create or verify schema error.", e);
         throw new SemanticException(
             String.format(
                 "Auto create or verify schema error when executing statement %s.  Detail: %s.",
                 loadTsFileStatement, e.getMessage()));
       } catch (Exception e) {
+        rethrowIfUnavailableRegion(e);
         if (e.getCause() instanceof LoadAnalyzeTypeMismatchException && isConvertOnTypeMismatch) {
           throw (LoadAnalyzeTypeMismatchException) e.getCause();
         }
@@ -863,6 +879,27 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
             String.format(
                 "Auto create or verify schema error when executing statement %s.  Detail: %s.",
                 loadTsFileStatement, e.getMessage()));
+      }
+    }
+
+    private void rethrowIfUnavailableRegion(final Exception e) {
+      // Preserve retryable region errors through the analyzer's schema-error wrapper.
+      Throwable current = e;
+      while (current != null) {
+        if (current instanceof IoTDBRuntimeException
+            && ((IoTDBRuntimeException) current).getErrorCode()
+                == TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode()) {
+          throw (IoTDBRuntimeException) current;
+        }
+        if (current instanceof IoTDBException
+            && ((IoTDBException) current).getErrorCode()
+                == TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode()) {
+          throw new IoTDBRuntimeException(
+              current.getMessage(),
+              current,
+              TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode());
+        }
+        current = current.getCause();
       }
     }
 
