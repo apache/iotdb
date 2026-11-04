@@ -197,6 +197,9 @@ public final class UtilMessages {
   public static final String WRITE_T_PIPE_SINK_INFO_FAILED = "写入 TPipeSinkInfo 失败：";
   public static final String READ_T_PIPE_SINK_INFO_FAILED = "读取 TPipeSinkInfo 失败：";
 
+  public static final String EXCEPTION_LOG_INTERVAL_SHOULD_NOT_BE_NEGATIVE_7642B2EF =
+      "日志输出间隔不能为负数";
+
   private UtilMessages() {}
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages

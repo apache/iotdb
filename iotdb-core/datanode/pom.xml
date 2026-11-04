@@ -477,6 +477,10 @@
                         <ignoredDependency>org.apache.iotdb:isession</ignoredDependency>
                         <ignoredDependency>at.yawk.lz4:lz4-java</ignoredDependency>
                     </ignoredDependencies>
+                    <ignoredUsedUndeclaredDependencies>
+                        <ignoredUsedUndeclaredDependency>ch.qos.logback:logback-classic</ignoredUsedUndeclaredDependency>
+                        <ignoredUsedUndeclaredDependency>ch.qos.logback:logback-core</ignoredUsedUndeclaredDependency>
+                    </ignoredUsedUndeclaredDependencies>
                     <ignoredNonTestScopedDependencies>
                         <!-- Logback supplies the server's runtime SLF4J backend and LogbackMetrics.
                              Direct references in this module also support test log assertions. -->

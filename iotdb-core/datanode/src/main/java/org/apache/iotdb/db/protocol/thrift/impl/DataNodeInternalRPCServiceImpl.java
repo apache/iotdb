@@ -419,6 +419,8 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(DataNodeInternalRPCServiceImpl.class);
+  private static final long DISK_FULL_WARNING_PRINT_INTERVAL_MS = 3600 * 1000L;
+  private static final AtomicLong LAST_DISK_FULL_WARNING_LOG_TIME = new AtomicLong(0L);
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
@@ -2641,25 +2643,45 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       loadSample.setFreeDiskSpace(availableDisk);
       loadSample.setDiskUsageRate(1d - freeDiskRatio);
       // Reset NodeStatus if necessary
-      if (freeDiskRatio < commonConfig.getDiskSpaceWarningThreshold()) {
-        LOGGER.warn(
-            DataNodeMiscMessages
-                .MISC_LOG_THE_AVAILABLE_DISK_SPACE_IS_THE_TOTAL_DISK_SPACE_IS_AND_4506856F,
-            RamUsageEstimator.humanReadableUnits((long) availableDisk),
-            RamUsageEstimator.humanReadableUnits((long) totalDisk),
-            freeDiskRatio,
-            commonConfig.getDiskSpaceWarningThreshold());
-        commonConfig.setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
-      } else {
-        synchronized (commonConfig) {
-          // A concurrent Manual/Stopping/error transition must not be cleared by disk recovery.
-          if (NodeStatus.ReadOnly.equals(commonConfig.getNodeStatus())
-              && NodeStatus.DISK_FULL.equals(commonConfig.getStatusReason())) {
-            commonConfig.setNodeStatus(NodeStatus.Running);
-          }
+      updateDiskStatusAndMaybeLog(commonConfig, availableDisk, totalDisk, freeDiskRatio);
+    }
+  }
+
+  static void updateDiskStatusAndMaybeLog(
+      CommonConfig commonConfig, double availableDisk, double totalDisk, double freeDiskRatio) {
+    if (freeDiskRatio < commonConfig.getDiskSpaceWarningThreshold()) {
+      logDiskFullWarningIfNecessary(commonConfig, availableDisk, totalDisk, freeDiskRatio);
+      commonConfig.setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
+    } else {
+      resetDiskFullWarningLogTime();
+      synchronized (commonConfig) {
+        // A concurrent Manual/Stopping/error transition must not be cleared by disk recovery.
+        if (NodeStatus.ReadOnly.equals(commonConfig.getNodeStatus())
+            && NodeStatus.DISK_FULL.equals(commonConfig.getStatusReason())) {
+          commonConfig.setNodeStatus(NodeStatus.Running);
         }
       }
     }
+  }
+
+  private static void logDiskFullWarningIfNecessary(
+      CommonConfig commonConfig, double availableDisk, double totalDisk, double freeDiskRatio) {
+    long now = System.currentTimeMillis();
+    long lastLogTime = LAST_DISK_FULL_WARNING_LOG_TIME.get();
+    if ((lastLogTime == 0 || now - lastLogTime >= DISK_FULL_WARNING_PRINT_INTERVAL_MS)
+        && LAST_DISK_FULL_WARNING_LOG_TIME.compareAndSet(lastLogTime, now)) {
+      LOGGER.warn(
+          DataNodeMiscMessages
+              .MISC_LOG_THE_AVAILABLE_DISK_SPACE_IS_THE_TOTAL_DISK_SPACE_IS_AND_4506856F,
+          RamUsageEstimator.humanReadableUnits((long) availableDisk),
+          RamUsageEstimator.humanReadableUnits((long) totalDisk),
+          freeDiskRatio,
+          commonConfig.getDiskSpaceWarningThreshold());
+    }
+  }
+
+  static void resetDiskFullWarningLogTime() {
+    LAST_DISK_FULL_WARNING_LOG_TIME.set(0L);
   }
 
   @Override

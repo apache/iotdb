@@ -33,6 +33,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Single thread to execute pipe periodical jobs on DataNode or ConfigNode. This is for limiting the
@@ -42,6 +43,8 @@ public abstract class AbstractPipePeriodicalJobExecutor {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AbstractPipePeriodicalJobExecutor.class);
+
+  private static final long PERIODICAL_JOB_FAILURE_LOG_INTERVAL_MS = TimeUnit.HOURS.toMillis(1);
 
   private final ScheduledExecutorService executorService;
   private final long minIntervalSeconds;
@@ -61,21 +64,39 @@ public abstract class AbstractPipePeriodicalJobExecutor {
   public void register(String id, Runnable periodicalJob, long intervalInSeconds) {
     periodicalJobs.add(
         new Pair<>(
-            new WrappedRunnable() {
-              @Override
-              public void runMayThrow() {
-                try {
-                  periodicalJob.run();
-                } catch (Exception e) {
-                  LOGGER.warn(PipeMessages.PERIODICAL_JOB_FAILED, id, e);
-                }
-              }
-            },
+            wrapPeriodicalJobWithFailureLogThrottle(id, periodicalJob),
             Math.max(intervalInSeconds / minIntervalSeconds, 1)));
     LOGGER.info(
         PipeMessages.PERIODICAL_JOB_REGISTERED,
         id,
         Math.max(intervalInSeconds / minIntervalSeconds, 1) * minIntervalSeconds);
+  }
+
+  static WrappedRunnable wrapPeriodicalJobWithFailureLogThrottle(
+      String id, Runnable periodicalJob) {
+    return new WrappedRunnable() {
+      private final AtomicLong lastFailureLogTime = new AtomicLong(0L);
+
+      @Override
+      public void runMayThrow() {
+        try {
+          periodicalJob.run();
+          lastFailureLogTime.set(0L);
+        } catch (Exception e) {
+          logPeriodicalJobFailureIfNecessary(id, e, lastFailureLogTime);
+        }
+      }
+    };
+  }
+
+  private static void logPeriodicalJobFailureIfNecessary(
+      String id, Exception e, AtomicLong lastFailureLogTime) {
+    long now = System.currentTimeMillis();
+    long previousLogTime = lastFailureLogTime.get();
+    if ((previousLogTime == 0L || now - previousLogTime >= PERIODICAL_JOB_FAILURE_LOG_INTERVAL_MS)
+        && lastFailureLogTime.compareAndSet(previousLogTime, now)) {
+      LOGGER.warn(PipeMessages.PERIODICAL_JOB_FAILED, id, e);
+    }
   }
 
   public synchronized void start() {

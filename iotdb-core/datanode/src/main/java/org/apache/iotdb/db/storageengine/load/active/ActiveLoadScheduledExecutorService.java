@@ -36,11 +36,14 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class ActiveLoadScheduledExecutorService {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(ActiveLoadScheduledExecutorService.class);
+
+  private static final long ACTIVE_LOAD_JOB_FAILURE_LOG_INTERVAL_MS = TimeUnit.HOURS.toMillis(1);
 
   protected static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -64,17 +67,34 @@ public abstract class ActiveLoadScheduledExecutorService {
   public void register(Runnable runnable) {
     jobs.add(
         new Pair<>(
-            new WrappedRunnable() {
-              @Override
-              public void runMayThrow() {
-                try {
-                  runnable.run();
-                } catch (Exception e) {
-                  LOGGER.warn(StorageEngineMessages.ERROR_EXECUTING_ACTIVE_LOAD_JOB, e);
-                }
-              }
-            },
+            wrapRunnableWithFailureLogThrottle(runnable),
             Math.max(MIN_EXECUTION_INTERVAL_SECONDS, 1)));
+  }
+
+  static WrappedRunnable wrapRunnableWithFailureLogThrottle(Runnable runnable) {
+    return new WrappedRunnable() {
+      private final AtomicLong lastFailureLogTime = new AtomicLong(0L);
+
+      @Override
+      public void runMayThrow() {
+        try {
+          runnable.run();
+          lastFailureLogTime.set(0L);
+        } catch (Exception e) {
+          logActiveLoadJobFailureIfNecessary(e, lastFailureLogTime);
+        }
+      }
+    };
+  }
+
+  private static void logActiveLoadJobFailureIfNecessary(
+      Exception e, AtomicLong lastFailureLogTime) {
+    long now = System.currentTimeMillis();
+    long previousLogTime = lastFailureLogTime.get();
+    if ((previousLogTime == 0L || now - previousLogTime >= ACTIVE_LOAD_JOB_FAILURE_LOG_INTERVAL_MS)
+        && lastFailureLogTime.compareAndSet(previousLogTime, now)) {
+      LOGGER.warn(StorageEngineMessages.ERROR_EXECUTING_ACTIVE_LOAD_JOB, e);
+    }
   }
 
   public synchronized void start() {

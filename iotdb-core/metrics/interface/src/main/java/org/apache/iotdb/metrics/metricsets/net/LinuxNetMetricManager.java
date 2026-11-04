@@ -23,6 +23,7 @@ import org.apache.iotdb.metrics.MetricConstant;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.i18n.MetricsMessages;
+import org.apache.iotdb.metrics.utils.FailureLogState;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.slf4j.Logger;
@@ -91,6 +92,8 @@ public class LinuxNetMetricManager implements INetMetricManager {
   }
 
   private long lastUpdateTime = 0L;
+  private final FailureLogState netStatusFailureLogState = new FailureLogState();
+  private final FailureLogState socketNumFailureLogState = new FailureLogState();
 
   @Override
   public Set<String> getIfaceSet() {
@@ -213,8 +216,9 @@ public class LinuxNetMetricManager implements INetMetricManager {
         long transmittedPackets = Long.parseLong(statusInfoAsList.get(transmittedPacketsIndex));
         transmittedPacketsMapForIface.put(iface, transmittedPackets);
       }
+      clearFailureLogState(netStatusFailureLogState);
     } catch (IOException e) {
-      LOGGER.error(MetricsMessages.READ_NET_STATUS_FOR_NET_ERROR, NET_STATUS_PATH, e);
+      logReadNetStatusForNetErrorIfNecessary(e);
     }
 
     if (MetricLevel.higherOrEqual(MetricLevel.NORMAL, METRIC_CONFIG.getMetricLevel())) {
@@ -232,18 +236,53 @@ public class LinuxNetMetricManager implements INetMetricManager {
         }
         process.waitFor();
         this.connectionNum = Integer.parseInt(result.toString().trim());
+        clearFailureLogState(socketNumFailureLogState);
       } catch (IOException e) {
-        LOGGER.error(MetricsMessages.FAILED_TO_GET_SOCKET_NUM, e);
+        logFailedToGetSocketNumIfNecessary(e);
       } catch (InterruptedException e) {
-        LOGGER.error(MetricsMessages.INTERRUPTED_WHILE_WAITING_SOCKET_NUM, e);
+        logInterruptedWhileWaitingSocketNumIfNecessary(e);
         Thread.currentThread().interrupt();
       } catch (NumberFormatException e) {
-        LOGGER.error(MetricsMessages.FAILED_TO_PARSE_SOCKET_NUM, e.getMessage());
+        logFailedToParseSocketNumIfNecessary(e);
       } finally {
         if (process != null && process.isAlive()) {
           process.destroyForcibly();
         }
       }
     }
+  }
+
+  private void logReadNetStatusForNetErrorIfNecessary(IOException e) {
+    if (shouldLogFailure(netStatusFailureLogState, MetricsMessages.READ_NET_STATUS_FOR_NET_ERROR)) {
+      LOGGER.error(MetricsMessages.READ_NET_STATUS_FOR_NET_ERROR, NET_STATUS_PATH, e);
+    }
+  }
+
+  private void logFailedToGetSocketNumIfNecessary(IOException e) {
+    if (shouldLogFailure(socketNumFailureLogState, MetricsMessages.FAILED_TO_GET_SOCKET_NUM)) {
+      LOGGER.error(MetricsMessages.FAILED_TO_GET_SOCKET_NUM, e);
+    }
+  }
+
+  private void logInterruptedWhileWaitingSocketNumIfNecessary(InterruptedException e) {
+    if (shouldLogFailure(
+        socketNumFailureLogState, MetricsMessages.INTERRUPTED_WHILE_WAITING_SOCKET_NUM)) {
+      LOGGER.error(MetricsMessages.INTERRUPTED_WHILE_WAITING_SOCKET_NUM, e);
+    }
+  }
+
+  private void logFailedToParseSocketNumIfNecessary(NumberFormatException e) {
+    if (shouldLogFailure(
+        socketNumFailureLogState, MetricsMessages.FAILED_TO_PARSE_SOCKET_NUM + e.getMessage())) {
+      LOGGER.error(MetricsMessages.FAILED_TO_PARSE_SOCKET_NUM, e.getMessage());
+    }
+  }
+
+  static boolean shouldLogFailure(FailureLogState failureLogState, String failureMessage) {
+    return failureLogState.shouldLog(failureMessage);
+  }
+
+  static void clearFailureLogState(FailureLogState failureLogState) {
+    failureLogState.clear();
   }
 }

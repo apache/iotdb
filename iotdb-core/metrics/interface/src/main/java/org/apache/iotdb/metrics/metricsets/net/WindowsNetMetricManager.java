@@ -23,6 +23,7 @@ import org.apache.iotdb.metrics.MetricConstant;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.i18n.MetricsMessages;
+import org.apache.iotdb.metrics.utils.FailureLogState;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.slf4j.Logger;
@@ -44,6 +45,9 @@ public class WindowsNetMetricManager implements INetMetricManager {
       MetricConfigDescriptor.getInstance().getMetricConfig();
 
   private long lastUpdateTime = 0L;
+  private final FailureLogState interfacesFailureLogState = new FailureLogState();
+  private final FailureLogState statisticsFailureLogState = new FailureLogState();
+  private final FailureLogState connectionNumFailureLogState = new FailureLogState();
 
   private Set<String> ifaceSet = new HashSet<>();
 
@@ -131,13 +135,15 @@ public class WindowsNetMetricManager implements INetMetricManager {
       }
       int exitCode = process.waitFor();
       if (exitCode != 0) {
-        LOGGER.error(MetricsMessages.GET_INTERFACES_FAILED, exitCode);
+        logGetInterfacesFailedIfNecessary(exitCode);
+      } else {
+        clearFailureLogState(interfacesFailureLogState);
       }
     } catch (IOException | InterruptedException e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      LOGGER.error(MetricsMessages.UPDATE_INTERFACES_ERROR, e);
+      logUpdateInterfacesErrorIfNecessary(e);
       ifaceSet.clear();
     }
   }
@@ -178,13 +184,15 @@ public class WindowsNetMetricManager implements INetMetricManager {
       }
       int exitCode = process.waitFor();
       if (exitCode != 0) {
-        LOGGER.error(MetricsMessages.GET_STATISTICS_FAILED, exitCode);
+        logGetStatisticsFailedIfNecessary(exitCode);
+      } else {
+        clearFailureLogState(statisticsFailureLogState);
       }
     } catch (IOException | InterruptedException | NumberFormatException e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      LOGGER.error(MetricsMessages.UPDATE_STATISTICS_ERROR, e);
+      logUpdateStatisticsErrorIfNecessary(e);
     }
   }
 
@@ -206,13 +214,63 @@ public class WindowsNetMetricManager implements INetMetricManager {
       this.connectionNum = count;
       int exitCode = process.waitFor();
       if (exitCode != 0) {
-        LOGGER.error(MetricsMessages.GET_CONNECTION_NUM_FAILED, exitCode);
+        logGetConnectionNumFailedIfNecessary(exitCode);
+      } else {
+        clearFailureLogState(connectionNumFailureLogState);
       }
     } catch (IOException | InterruptedException e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
+      logUpdateConnectionNumErrorIfNecessary(e);
+    }
+  }
+
+  private void logGetInterfacesFailedIfNecessary(int exitCode) {
+    if (shouldLogFailure(
+        interfacesFailureLogState, MetricsMessages.GET_INTERFACES_FAILED + exitCode)) {
+      LOGGER.error(MetricsMessages.GET_INTERFACES_FAILED, exitCode);
+    }
+  }
+
+  private void logUpdateInterfacesErrorIfNecessary(Exception e) {
+    if (shouldLogFailure(interfacesFailureLogState, MetricsMessages.UPDATE_INTERFACES_ERROR)) {
+      LOGGER.error(MetricsMessages.UPDATE_INTERFACES_ERROR, e);
+    }
+  }
+
+  private void logGetStatisticsFailedIfNecessary(int exitCode) {
+    if (shouldLogFailure(
+        statisticsFailureLogState, MetricsMessages.GET_STATISTICS_FAILED + exitCode)) {
+      LOGGER.error(MetricsMessages.GET_STATISTICS_FAILED, exitCode);
+    }
+  }
+
+  private void logUpdateStatisticsErrorIfNecessary(Exception e) {
+    if (shouldLogFailure(statisticsFailureLogState, MetricsMessages.UPDATE_STATISTICS_ERROR)) {
+      LOGGER.error(MetricsMessages.UPDATE_STATISTICS_ERROR, e);
+    }
+  }
+
+  private void logGetConnectionNumFailedIfNecessary(int exitCode) {
+    if (shouldLogFailure(
+        connectionNumFailureLogState, MetricsMessages.GET_CONNECTION_NUM_FAILED + exitCode)) {
+      LOGGER.error(MetricsMessages.GET_CONNECTION_NUM_FAILED, exitCode);
+    }
+  }
+
+  private void logUpdateConnectionNumErrorIfNecessary(Exception e) {
+    if (shouldLogFailure(
+        connectionNumFailureLogState, MetricsMessages.UPDATE_CONNECTION_NUM_ERROR)) {
       LOGGER.error(MetricsMessages.UPDATE_CONNECTION_NUM_ERROR, e);
     }
+  }
+
+  static boolean shouldLogFailure(FailureLogState failureLogState, String failureMessage) {
+    return failureLogState.shouldLog(failureMessage);
+  }
+
+  static void clearFailureLogState(FailureLogState failureLogState) {
+    failureLogState.clear();
   }
 }

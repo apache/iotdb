@@ -69,6 +69,8 @@ import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -110,6 +112,76 @@ public class IoTDBInternalLocalReporterTest {
   private IoTDBInternalLocalReporter reporter;
   private Level originalLevel;
   private boolean originalStopping;
+
+  @Test
+  public void sameFailureLoggedOnlyAfterIntervalOrRecovery() {
+    IoTDBInternalLocalReporter.FailureLogState failureLogState =
+        new IoTDBInternalLocalReporter.FailureLogState();
+    long startTime = 1000L;
+
+    assertTrue(
+        IoTDBInternalLocalReporter.shouldLogFailure(failureLogState, "failure-status", startTime));
+    assertFalse(
+        IoTDBInternalLocalReporter.shouldLogFailure(
+            failureLogState, "failure-status", startTime + 1));
+    assertTrue(
+        IoTDBInternalLocalReporter.shouldLogFailure(
+            failureLogState,
+            "failure-status",
+            startTime + IoTDBInternalLocalReporter.FAILURE_LOG_INTERVAL));
+    assertFalse(
+        IoTDBInternalLocalReporter.shouldLogFailure(
+            failureLogState,
+            "failure-status",
+            startTime + IoTDBInternalLocalReporter.FAILURE_LOG_INTERVAL + 1));
+
+    IoTDBInternalLocalReporter.clearFailureLogState(failureLogState);
+    assertTrue(
+        IoTDBInternalLocalReporter.shouldLogFailure(
+            failureLogState, "failure-status", startTime + 2));
+  }
+
+  @Test
+  public void differentFailuresLoggedImmediately() {
+    IoTDBInternalLocalReporter.FailureLogState failureLogState =
+        new IoTDBInternalLocalReporter.FailureLogState();
+    long startTime = 1000L;
+
+    assertTrue(
+        IoTDBInternalLocalReporter.shouldLogFailure(
+            failureLogState, "failure-status-1", startTime));
+    assertFalse(
+        IoTDBInternalLocalReporter.shouldLogFailure(
+            failureLogState, "failure-status-1", startTime + 1));
+    assertTrue(
+        IoTDBInternalLocalReporter.shouldLogFailure(
+            failureLogState, "failure-status-2", startTime + 2));
+  }
+
+  @Test
+  public void failureLogStateIsIsolatedByMetricPrefix() {
+    Map<String, IoTDBInternalLocalReporter.FailureLogState> failureLogStateMap =
+        new ConcurrentHashMap<>();
+    long startTime = 1000L;
+
+    assertTrue(
+        IoTDBInternalLocalReporter.shouldLogFailure(
+            failureLogStateMap, "root.__system.metric1", "failure-status", startTime));
+    assertTrue(
+        IoTDBInternalLocalReporter.shouldLogFailure(
+            failureLogStateMap, "root.__system.metric2", "failure-status", startTime + 1));
+    assertFalse(
+        IoTDBInternalLocalReporter.shouldLogFailure(
+            failureLogStateMap, "root.__system.metric1", "failure-status", startTime + 2));
+
+    IoTDBInternalLocalReporter.clearFailureLogState(failureLogStateMap, "root.__system.metric2");
+    assertTrue(
+        IoTDBInternalLocalReporter.shouldLogFailure(
+            failureLogStateMap, "root.__system.metric2", "failure-status", startTime + 3));
+    assertFalse(
+        IoTDBInternalLocalReporter.shouldLogFailure(
+            failureLogStateMap, "root.__system.metric1", "failure-status", startTime + 4));
+  }
 
   @BeforeClass
   public static void initializeDataNodeId() {
@@ -163,6 +235,26 @@ public class IoTDBInternalLocalReporterTest {
     verify(service, never()).execute(any(Runnable.class));
     verifyZeroInteractions(coordinator);
     assertFalse(hasWarning());
+  }
+
+  @Test
+  public void testRepeatedWriteFailureLogsAgainAfterRecovery() {
+    execution()
+        .thenReturn(result(TSStatusCode.INTERNAL_SERVER_ERROR))
+        .thenReturn(result(TSStatusCode.INTERNAL_SERVER_ERROR))
+        .thenReturn(result(TSStatusCode.SUCCESS_STATUS))
+        .thenReturn(result(TSStatusCode.INTERNAL_SERVER_ERROR));
+
+    writeMetric();
+    writeMetric();
+    assertEquals(
+        1L, appender.list.stream().filter(event -> event.getLevel() == Level.WARN).count());
+
+    writeMetric();
+    writeMetric();
+    assertEquals(
+        2L, appender.list.stream().filter(event -> event.getLevel() == Level.WARN).count());
+    executedStatements(4);
   }
 
   @Test

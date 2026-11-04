@@ -19,11 +19,19 @@
 
 package org.apache.iotdb.metrics.metricsets.disk;
 
+import org.apache.iotdb.metrics.i18n.MetricsMessages;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -138,8 +146,76 @@ public class LinuxDiskMetricsManagerTest {
     }
   }
 
+  @Test
+  public void testDiskInfoFailureLoggedOnceUntilRecovery() throws Exception {
+    LinuxDiskMetricsManager manager = newManager(clock::get);
+    Logger logger = (Logger) LoggerFactory.getLogger(LinuxDiskMetricsManager.class);
+    Level previousLevel = logger.getLevel();
+    logger.setLevel(Level.WARN);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.setContext(logger.getLoggerContext());
+    appender.start();
+    logger.addAppender(appender);
+
+    try {
+      Files.delete(diskStats);
+      invokeUpdateInfo(manager);
+      invokeUpdateInfo(manager);
+      assertEquals(1L, countLogEvents(appender, MetricsMessages.CANNOT_FIND_DISK_IO_STATUS_FILE));
+
+      writeDiskStats(20, 100, 200);
+      invokeUpdateInfo(manager);
+
+      Files.delete(diskStats);
+      invokeUpdateInfo(manager);
+      assertEquals(2L, countLogEvents(appender, MetricsMessages.CANNOT_FIND_DISK_IO_STATUS_FILE));
+    } finally {
+      logger.detachAppender(appender);
+      logger.setLevel(previousLevel);
+      appender.stop();
+    }
+  }
+
+  @Test
+  public void testMissingProcessInfoDoesNotAlsoLogUpdateError() throws Exception {
+    LinuxDiskMetricsManager manager = newManager(clock::get);
+    Logger logger = (Logger) LoggerFactory.getLogger(LinuxDiskMetricsManager.class);
+    Level previousLevel = logger.getLevel();
+    logger.setLevel(Level.WARN);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.setContext(logger.getLoggerContext());
+    appender.start();
+    logger.addAppender(appender);
+
+    try {
+      Files.delete(processIo);
+      invokeUpdateInfo(manager);
+      invokeUpdateInfo(manager);
+
+      assertEquals(
+          1L, countLogEvents(appender, MetricsMessages.CANNOT_FIND_PROCESS_IO_STATUS_FILE));
+      assertEquals(0L, countLogEvents(appender, MetricsMessages.ERROR_UPDATING_PROCESS_IO_INFO));
+    } finally {
+      logger.detachAppender(appender);
+      logger.setLevel(previousLevel);
+      appender.stop();
+    }
+  }
+
   private LinuxDiskMetricsManager newManager(LongSupplier timeSupplier) {
     return new LinuxDiskMetricsManager(diskStats, diskIds, processIo, timeSupplier);
+  }
+
+  private void invokeUpdateInfo(LinuxDiskMetricsManager manager) throws Exception {
+    Method updateInfo = LinuxDiskMetricsManager.class.getDeclaredMethod("updateInfo", long.class);
+    updateInfo.setAccessible(true);
+    updateInfo.invoke(manager, clock.get());
+  }
+
+  private long countLogEvents(ListAppender<ILoggingEvent> appender, String messagePattern) {
+    return appender.list.stream()
+        .filter(event -> messagePattern.equals(event.getMessage()))
+        .count();
   }
 
   private void writeDiskStats(long reads, long busyTime, long queueTime) throws Exception {
