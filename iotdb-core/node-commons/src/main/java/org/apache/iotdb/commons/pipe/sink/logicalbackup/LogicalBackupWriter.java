@@ -286,19 +286,37 @@ public class LogicalBackupWriter implements Closeable {
       }
       throw e;
     }
-    if (forceIfNeeded()) {
-      manifest.lastDurableSequence = manifest.lastSequence;
+    try {
+      if (forceIfNeeded()) {
+        manifest.lastDurableSequence = manifest.lastSequence;
+      }
+      updateActiveSegmentManifest();
+      manifest.lastEventGroupId = eventGroupId.toString();
+      manifest.lastEventDigest = eventDigest;
+      manifest.lastEventFirstSequence = firstSequence;
+      writeManifest();
+    } catch (final IOException | RuntimeException e) {
+      try {
+        rollbackTo(eventStartPosition);
+      } catch (final IOException rollbackException) {
+        e.addSuppressed(rollbackException);
+      }
+      throw e;
     }
-    updateActiveSegmentManifest();
-    manifest.lastEventGroupId = eventGroupId.toString();
-    manifest.lastEventDigest = eventDigest;
-    manifest.lastEventFirstSequence = firstSequence;
-    writeManifest();
     return firstSequence;
   }
 
   public synchronized void writeControl(
       final LogicalBackupRecordType recordType, final long eventTime, final String metadata)
+      throws IOException {
+    writeControl(recordType, eventTime, metadata, false);
+  }
+
+  private void writeControl(
+      final LogicalBackupRecordType recordType,
+      final long eventTime,
+      final String metadata,
+      final boolean skippedEvent)
       throws IOException {
     ensureOpen();
     final String safeMetadata = metadata == null ? "" : metadata;
@@ -314,18 +332,28 @@ public class LogicalBackupWriter implements Closeable {
       }
       throw e;
     }
-    if (forceIfNeeded()) {
-      manifest.lastDurableSequence = manifest.lastSequence;
+    try {
+      if (forceIfNeeded()) {
+        manifest.lastDurableSequence = manifest.lastSequence;
+      }
+      updateActiveSegmentManifest();
+      if (skippedEvent) {
+        manifest.skippedEventCount++;
+      }
+      writeManifest();
+    } catch (final IOException | RuntimeException e) {
+      try {
+        rollbackTo(recordStartPosition);
+      } catch (final IOException rollbackException) {
+        e.addSuppressed(rollbackException);
+      }
+      throw e;
     }
-    updateActiveSegmentManifest();
-    writeManifest();
   }
 
   public synchronized void recordSkippedEvent(final long eventTime, final String metadata)
       throws IOException {
-    writeControl(LogicalBackupRecordType.SKIPPED_EVENT, eventTime, metadata);
-    manifest.skippedEventCount++;
-    writeManifest();
+    writeControl(LogicalBackupRecordType.SKIPPED_EVENT, eventTime, metadata, true);
   }
 
   public synchronized LogicalBackupManifest getManifest() {

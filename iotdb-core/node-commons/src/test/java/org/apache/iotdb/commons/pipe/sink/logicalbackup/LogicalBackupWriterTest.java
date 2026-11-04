@@ -27,11 +27,15 @@ import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.AbstractList;
@@ -89,6 +93,48 @@ public class LogicalBackupWriterTest {
         Assert.assertTrue(expected.getMessage().contains(eventId.toString()));
       }
     }
+  }
+
+  @Test
+  public void testRetryAfterEventFsyncFailureDoesNotDuplicateGroup() throws Exception {
+    final Path directory = temporaryFolder.newFolder().toPath().resolve("backup");
+    final UUID eventId = UUID.randomUUID();
+    final TPipeTransferReq request = replayableRequest(1);
+    try (final LogicalBackupWriter writer = writer(directory, 4096, false)) {
+      final IOException failure = failNextFsync(writer);
+      try {
+        writer.writeEvent(eventId, 1, Collections.singletonList(request), "metadata");
+        Assert.fail();
+      } catch (final IOException expected) {
+        Assert.assertSame(failure, expected);
+      }
+      writer.writeEvent(eventId, 1, Collections.singletonList(request), "metadata");
+    }
+    final List<LogicalBackupArchiveReader.BackupStream> streams =
+        new LogicalBackupArchiveReader().read(directory, false);
+    Assert.assertEquals(1, streams.get(0).getEventGroups().size());
+    Assert.assertEquals(
+        request, streams.get(0).getEventGroups().get(0).getRequests().get(0).toTPipeTransferReq());
+  }
+
+  @Test
+  public void testRetrySkippedEventAfterFsyncFailureKeepsManifestConsistent() throws Exception {
+    final Path directory = temporaryFolder.newFolder().toPath().resolve("backup");
+    try (final LogicalBackupWriter writer = writer(directory, 4096, false)) {
+      final IOException failure = failNextFsync(writer);
+      try {
+        writer.recordSkippedEvent(1, "unsupported-event");
+        Assert.fail();
+      } catch (final IOException expected) {
+        Assert.assertSame(failure, expected);
+      }
+      writer.recordSkippedEvent(1, "unsupported-event");
+    }
+    final List<LogicalBackupArchiveReader.BackupStream> streams =
+        new LogicalBackupArchiveReader().read(directory, true);
+    Assert.assertEquals(1, streams.get(0).getManifest().skippedEventCount);
+    Assert.assertEquals(
+        Long.valueOf(1), streams.get(0).getManifest().operationCounts.get("SKIPPED_EVENT"));
   }
 
   @Test
@@ -531,6 +577,40 @@ public class LogicalBackupWriterTest {
         1,
         1,
         append);
+  }
+
+  private static IOException failNextFsync(final LogicalBackupWriter writer) throws Exception {
+    final Field field = LogicalBackupWriter.class.getDeclaredField("channel");
+    field.setAccessible(true);
+    final FileChannel original = (FileChannel) field.get(writer);
+    final FileChannel failing =
+        Mockito.mock(
+            FileChannel.class,
+            Mockito.withSettings()
+                .useConstructor()
+                .defaultAnswer(
+                    invocation -> {
+                      if ("implCloseChannel".equals(invocation.getMethod().getName())) {
+                        original.close();
+                        return null;
+                      }
+                      try {
+                        return invocation.getMethod().invoke(original, invocation.getArguments());
+                      } catch (final InvocationTargetException e) {
+                        throw e.getCause();
+                      }
+                    }));
+    final IOException failure = new IOException("simulated fsync failure");
+    Mockito.doThrow(failure)
+        .doAnswer(
+            invocation -> {
+              original.force(true);
+              return null;
+            })
+        .when(failing)
+        .force(true);
+    field.set(writer, failing);
+    return failure;
   }
 
   private static LogicalBackupManifest manifest() {
