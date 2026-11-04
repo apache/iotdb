@@ -233,8 +233,12 @@ public class InsertRowsStatement extends InsertBaseStatement {
     return INSTANCE_SIZE
         + (Objects.nonNull(insertRowStatementList)
             ? UpdateDetailContainer.LIST_SIZE
+                + RamUsageEstimator.alignObjectSize(
+                    RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
+                        + (long) RamUsageEstimator.NUM_BYTES_OBJECT_REF
+                            * insertRowStatementList.size())
                 + insertRowStatementList.stream()
-                    .mapToLong(InsertRowStatement::calculateBytesUsed)
+                    .mapToLong(InsertRowStatement::ramBytesUsed)
                     .reduce(0L, Long::sum)
             : 0);
   }
