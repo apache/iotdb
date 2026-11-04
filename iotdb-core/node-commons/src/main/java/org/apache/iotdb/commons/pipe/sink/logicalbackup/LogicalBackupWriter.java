@@ -90,6 +90,8 @@ public class LogicalBackupWriter implements Closeable {
   private boolean closed;
   private boolean streamEnded;
   private boolean recoveredDuringOpen;
+  private long pendingRollbackPosition = -1;
+  private boolean segmentTransitionPending;
 
   public LogicalBackupWriter(
       final Path directory,
@@ -673,40 +675,50 @@ public class LogicalBackupWriter implements Closeable {
     if (channel == null || segmentRecordCount == 0) {
       return;
     }
-    final byte[] digest = segmentDigest.digest();
-    final ByteBuffer footer =
-        ByteBuffer.allocate(LogicalBackupFormat.SEGMENT_FOOTER_SIZE).order(ByteOrder.BIG_ENDIAN);
-    footer.putInt(LogicalBackupFormat.FOOTER_MAGIC);
-    footer.putLong(segmentId);
-    footer.putLong(segmentFirstSequence);
-    footer.putLong(segmentLastSequence);
-    footer.putLong(segmentRecordCount);
-    footer.putLong(channel.position());
-    footer.putLong(segmentCreatedAt);
-    footer.putLong(System.currentTimeMillis());
-    footer.put(digest);
-    footer.putInt(0);
-    final byte[] footerBytes = footer.array();
-    ByteBuffer.wrap(footerBytes)
-        .order(ByteOrder.BIG_ENDIAN)
-        .putInt(
-            LogicalBackupFormat.SEGMENT_FOOTER_SIZE - 4,
-            LogicalBackupFormat.crc32c(
-                footerBytes, 0, LogicalBackupFormat.SEGMENT_FOOTER_SIZE - 4));
-    writeFully(ByteBuffer.wrap(footerBytes));
-    channel.force(true);
-    final LogicalBackupManifest.Segment segment =
-        manifest.segments.get(manifest.segments.size() - 1);
-    segment.firstSequence = segmentFirstSequence;
-    segment.lastSequence = segmentLastSequence;
-    segment.recordCount = segmentRecordCount;
-    segment.sizeBytes = channel.position();
-    segment.sha256 = LogicalBackupFormat.toHex(digest);
-    segment.status = "SEALED";
-    manifest.lastDurableSequence = segmentLastSequence;
+    final long footerStartPosition = channel.position();
+    try {
+      final byte[] digest = segmentDigest.digest();
+      final ByteBuffer footer =
+          ByteBuffer.allocate(LogicalBackupFormat.SEGMENT_FOOTER_SIZE).order(ByteOrder.BIG_ENDIAN);
+      footer.putInt(LogicalBackupFormat.FOOTER_MAGIC);
+      footer.putLong(segmentId);
+      footer.putLong(segmentFirstSequence);
+      footer.putLong(segmentLastSequence);
+      footer.putLong(segmentRecordCount);
+      footer.putLong(footerStartPosition);
+      footer.putLong(segmentCreatedAt);
+      footer.putLong(System.currentTimeMillis());
+      footer.put(digest);
+      footer.putInt(0);
+      final byte[] footerBytes = footer.array();
+      ByteBuffer.wrap(footerBytes)
+          .order(ByteOrder.BIG_ENDIAN)
+          .putInt(
+              LogicalBackupFormat.SEGMENT_FOOTER_SIZE - 4,
+              LogicalBackupFormat.crc32c(
+                  footerBytes, 0, LogicalBackupFormat.SEGMENT_FOOTER_SIZE - 4));
+      writeFully(ByteBuffer.wrap(footerBytes));
+      channel.force(true);
+      final LogicalBackupManifest.Segment segment =
+          manifest.segments.get(manifest.segments.size() - 1);
+      segment.firstSequence = segmentFirstSequence;
+      segment.lastSequence = segmentLastSequence;
+      segment.recordCount = segmentRecordCount;
+      segment.sizeBytes = channel.position();
+      segment.sha256 = LogicalBackupFormat.toHex(digest);
+      segment.status = "SEALED";
+      manifest.lastDurableSequence = segmentLastSequence;
+      writeManifest();
+    } catch (final IOException | RuntimeException e) {
+      try {
+        rollbackTo(footerStartPosition);
+      } catch (final IOException rollbackException) {
+        e.addSuppressed(rollbackException);
+      }
+      throw e;
+    }
     channel.close();
     channel = null;
-    writeManifest();
   }
 
   private boolean forceIfNeeded() throws IOException {
@@ -932,6 +944,23 @@ public class LogicalBackupWriter implements Closeable {
   }
 
   private void ensureOpen() throws IOException {
+    if (!closed) {
+      // A failed rollback must finish before deduplication or another append can use writer state.
+      if (pendingRollbackPosition >= 0) {
+        rollbackTo(pendingRollbackPosition);
+      }
+      if (segmentTransitionPending) {
+        if (channel != null) {
+          channel.close();
+          channel = null;
+        }
+        openOrCreateSegment();
+        rebuildManifestFromSegments();
+        updateActiveSegmentManifest();
+        writeManifest();
+        segmentTransitionPending = false;
+      }
+    }
     if (closed || channel == null) {
       throw new IOException(
           LogicalBackupMessages.EXCEPTION_LOGICAL_BACKUP_WRITER_IS_CLOSED_EE463BBB);
@@ -944,12 +973,11 @@ public class LogicalBackupWriter implements Closeable {
       return;
     }
     try {
-      if (channel != null) {
-        if (!streamEnded) {
-          writeControl(LogicalBackupRecordType.STREAM_END, System.currentTimeMillis(), "");
-        }
-        sealSegment();
+      ensureOpen();
+      if (!streamEnded) {
+        writeControl(LogicalBackupRecordType.STREAM_END, System.currentTimeMillis(), "");
       }
+      sealSegment();
       manifest.status = manifest.skippedEventCount > 0 ? "INCOMPLETE" : "SEALED";
       manifest.closedAt = Instant.now().toString();
       manifest.sealedAt = manifest.closedAt;
@@ -979,9 +1007,7 @@ public class LogicalBackupWriter implements Closeable {
     if (channel.position() > LogicalBackupFormat.SEGMENT_HEADER_SIZE
         && channel.position() + requiredBytes + LogicalBackupFormat.SEGMENT_FOOTER_SIZE
             > segmentSizeBytes) {
-      sealSegment();
-      segmentId++;
-      openNewSegment();
+      rollSegment();
     }
   }
 
@@ -990,10 +1016,17 @@ public class LogicalBackupWriter implements Closeable {
     if (channel.position() > LogicalBackupFormat.SEGMENT_HEADER_SIZE
         && channel.position() + requiredBytes + LogicalBackupFormat.SEGMENT_FOOTER_SIZE
             > segmentSizeBytes) {
-      sealSegment();
-      segmentId++;
-      openNewSegment();
+      rollSegment();
     }
+  }
+
+  private void rollSegment() throws IOException {
+    // If either stage fails, reopen from the segment files before accepting another write.
+    segmentTransitionPending = true;
+    sealSegment();
+    segmentId++;
+    openNewSegment();
+    segmentTransitionPending = false;
   }
 
   private static long frameSize(final long metadataBytes, final long payloadBytes) {
@@ -1025,11 +1058,19 @@ public class LogicalBackupWriter implements Closeable {
   }
 
   private void rollbackTo(final long position) throws IOException {
+    pendingRollbackPosition = position;
     final Path segmentPath = currentSegmentPath();
+    if (channel == null || !channel.isOpen()) {
+      channel = FileChannel.open(segmentPath, StandardOpenOption.WRITE, StandardOpenOption.READ);
+    }
     channel.truncate(position);
     channel.force(true);
     channel.close();
     channel = null;
+    final LogicalBackupManifest.Segment segment =
+        manifest.segments.get(manifest.segments.size() - 1);
+    segment.status = "ACTIVE";
+    segment.sha256 = null;
     final LogicalBackupSegmentReader.ScanResult scan = reader.scan(segmentPath, false);
     openExistingSegment(segmentPath, scan);
     rebuildManifestFromSegments();
@@ -1040,6 +1081,7 @@ public class LogicalBackupWriter implements Closeable {
     lastFsyncAt = System.currentTimeMillis();
     updateActiveSegmentManifest();
     writeManifest();
+    pendingRollbackPosition = -1;
   }
 
   private void rebuildManifestFromSegments() throws IOException {

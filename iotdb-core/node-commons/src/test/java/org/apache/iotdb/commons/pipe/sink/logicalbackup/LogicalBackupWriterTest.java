@@ -43,6 +43,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class LogicalBackupWriterTest {
 
@@ -135,6 +136,70 @@ public class LogicalBackupWriterTest {
     Assert.assertEquals(1, streams.get(0).getManifest().skippedEventCount);
     Assert.assertEquals(
         Long.valueOf(1), streams.get(0).getManifest().operationCounts.get("SKIPPED_EVENT"));
+  }
+
+  @Test
+  public void testRetryAfterRollbackFsyncFailure() throws Exception {
+    final Path directory = temporaryFolder.newFolder().toPath().resolve("backup");
+    final UUID eventId = UUID.randomUUID();
+    try (final LogicalBackupWriter writer = writer(directory, 4096, false)) {
+      final IOException failure = failFsyncs(writer, 2);
+      try {
+        writer.writeEvent(eventId, 1, Collections.singletonList(replayableRequest(1)), "metadata");
+        Assert.fail();
+      } catch (final IOException expected) {
+        Assert.assertSame(failure, expected);
+        Assert.assertEquals(1, expected.getSuppressed().length);
+      }
+      Assert.assertEquals(
+          0,
+          writer.writeEvent(
+              eventId, 1, Collections.singletonList(replayableRequest(1)), "metadata"));
+    }
+    Assert.assertEquals(
+        1, new LogicalBackupArchiveReader().read(directory, false).get(0).getEventGroups().size());
+  }
+
+  @Test
+  public void testRetryAfterManifestAndRollbackFsyncFailure() throws Exception {
+    final Path directory = temporaryFolder.newFolder().toPath().resolve("backup");
+    final UUID eventId = UUID.randomUUID();
+    try (final LogicalBackupWriter writer =
+        new LogicalBackupWriter(
+            directory,
+            manifest(),
+            4096,
+            MAX_RECORD_BYTES,
+            LogicalBackupWriter.FsyncPolicy.NONE,
+            1,
+            1,
+            false)) {
+      final IOException rollbackFailure = failNextFsync(writer);
+      final Path blockedManifest =
+          directory.resolve(LogicalBackupFormat.MANIFEST_FILE_NAME + ".tmp");
+      Files.createDirectory(blockedManifest);
+      final Path blocker = Files.writeString(blockedManifest.resolve("blocker"), "blocker");
+      try {
+        writer.writeEvent(eventId, 1, Collections.singletonList(replayableRequest(1)), "metadata");
+        Assert.fail();
+      } catch (final java.nio.file.DirectoryNotEmptyException expected) {
+        Assert.assertEquals(blockedManifest, Path.of(expected.getFile()));
+        Assert.assertArrayEquals(new Throwable[] {rollbackFailure}, expected.getSuppressed());
+      } finally {
+        Files.delete(blocker);
+        Files.delete(blockedManifest);
+      }
+      Assert.assertEquals(
+          0,
+          writer.writeEvent(
+              eventId, 1, Collections.singletonList(replayableRequest(1)), "metadata"));
+    }
+    final LogicalBackupArchiveReader.BackupStream stream =
+        new LogicalBackupArchiveReader().read(directory, false).get(0);
+    Assert.assertEquals(1, stream.getEventGroups().size());
+    Assert.assertEquals(
+        replayableRequest(1),
+        stream.getEventGroups().get(0).getRequests().get(0).toTPipeTransferReq());
   }
 
   @Test
@@ -367,6 +432,114 @@ public class LogicalBackupWriterTest {
   }
 
   @Test
+  public void testRetryRolloverAfterFsyncFailure() throws Exception {
+    final Path directory = temporaryFolder.newFolder().toPath().resolve("backup");
+    final UUID eventId = UUID.randomUUID();
+    try (final LogicalBackupWriter writer = writer(directory, 500, false)) {
+      writer.writeEvent(
+          UUID.randomUUID(), 1, Collections.singletonList(replayableRequest(1)), "metadata");
+      final IOException failure = failNextFsync(writer);
+      try {
+        writer.writeEvent(eventId, 2, Collections.singletonList(replayableRequest(2)), "metadata");
+        Assert.fail();
+      } catch (final IOException expected) {
+        Assert.assertSame(failure, expected);
+      }
+      Assert.assertEquals(
+          3,
+          writer.writeEvent(
+              eventId, 2, Collections.singletonList(replayableRequest(2)), "metadata"));
+    }
+    final LogicalBackupArchiveReader.BackupStream stream =
+        new LogicalBackupArchiveReader().read(directory, false).get(0);
+    Assert.assertEquals(2, stream.getEventGroups().size());
+    Assert.assertEquals(
+        replayableRequest(2),
+        stream.getEventGroups().get(1).getRequests().get(0).toTPipeTransferReq());
+  }
+
+  @Test
+  public void testRetryRolloverAfterManifestFailure() throws Exception {
+    final Path directory = temporaryFolder.newFolder().toPath().resolve("backup");
+    final UUID eventId = UUID.randomUUID();
+    try (final LogicalBackupWriter writer = writer(directory, 500, false)) {
+      writer.writeEvent(
+          UUID.randomUUID(), 1, Collections.singletonList(replayableRequest(1)), "metadata");
+      final Path blockedManifest =
+          directory.resolve(LogicalBackupFormat.MANIFEST_FILE_NAME + ".tmp");
+      Files.createDirectory(blockedManifest);
+      final Path blocker = Files.writeString(blockedManifest.resolve("blocker"), "blocker");
+      try {
+        writer.writeEvent(eventId, 2, Collections.singletonList(replayableRequest(2)), "metadata");
+        Assert.fail();
+      } catch (final java.nio.file.DirectoryNotEmptyException expected) {
+        Assert.assertEquals(blockedManifest, Path.of(expected.getFile()));
+      } finally {
+        Files.delete(blocker);
+        Files.delete(blockedManifest);
+      }
+      Assert.assertEquals(
+          3,
+          writer.writeEvent(
+              eventId, 2, Collections.singletonList(replayableRequest(2)), "metadata"));
+    }
+    Assert.assertEquals(
+        2, new LogicalBackupArchiveReader().read(directory, false).get(0).getEventGroups().size());
+  }
+
+  @Test
+  public void testRetryRolloverAfterSegmentCreationFailure() throws Exception {
+    final Path directory = temporaryFolder.newFolder().toPath().resolve("backup");
+    final UUID eventId = UUID.randomUUID();
+    try (final LogicalBackupWriter writer = writer(directory, 500, false)) {
+      writer.writeEvent(
+          UUID.randomUUID(), 1, Collections.singletonList(replayableRequest(1)), "metadata");
+      final Path blockedSegment = directory.resolve(segmentFileName(1) + ".tmp");
+      Files.createDirectory(blockedSegment);
+      final Path blocker = Files.writeString(blockedSegment.resolve("blocker"), "blocker");
+      try {
+        writer.writeEvent(eventId, 2, Collections.singletonList(replayableRequest(2)), "metadata");
+        Assert.fail();
+      } catch (final java.nio.file.DirectoryNotEmptyException expected) {
+        Assert.assertEquals(blockedSegment, Path.of(expected.getFile()));
+      } finally {
+        Files.delete(blocker);
+        Files.delete(blockedSegment);
+      }
+      Assert.assertEquals(
+          3,
+          writer.writeEvent(
+              eventId, 2, Collections.singletonList(replayableRequest(2)), "metadata"));
+    }
+    Assert.assertEquals(
+        2, new LogicalBackupArchiveReader().read(directory, false).get(0).getEventGroups().size());
+  }
+
+  @Test
+  public void testRetryControlRolloverAfterFsyncFailure() throws Exception {
+    final Path directory = temporaryFolder.newFolder().toPath().resolve("backup");
+    try (final LogicalBackupWriter writer = writer(directory, 258, false)) {
+      writer.writeControl(LogicalBackupRecordType.HEARTBEAT, 1, "first");
+      final IOException failure = failNextFsync(writer);
+      try {
+        writer.writeControl(LogicalBackupRecordType.HEARTBEAT, 2, "second");
+        Assert.fail();
+      } catch (final IOException expected) {
+        Assert.assertSame(failure, expected);
+      }
+      writer.writeControl(LogicalBackupRecordType.HEARTBEAT, 2, "second");
+    }
+    Assert.assertEquals(
+        Long.valueOf(2),
+        new LogicalBackupArchiveReader()
+            .read(directory, false)
+            .get(0)
+            .getManifest()
+            .operationCounts
+            .get("HEARTBEAT"));
+  }
+
+  @Test
   public void testSealedSegmentAdvancesDurableSequenceWithFsyncNone() throws Exception {
     final Path directory = temporaryFolder.newFolder().toPath().resolve("backup");
     final LogicalBackupManifest manifest = manifest();
@@ -580,6 +753,11 @@ public class LogicalBackupWriterTest {
   }
 
   private static IOException failNextFsync(final LogicalBackupWriter writer) throws Exception {
+    return failFsyncs(writer, 1);
+  }
+
+  private static IOException failFsyncs(final LogicalBackupWriter writer, final int count)
+      throws Exception {
     final Field field = LogicalBackupWriter.class.getDeclaredField("channel");
     field.setAccessible(true);
     final FileChannel original = (FileChannel) field.get(writer);
@@ -601,9 +779,13 @@ public class LogicalBackupWriterTest {
                       }
                     }));
     final IOException failure = new IOException("simulated fsync failure");
-    Mockito.doThrow(failure)
-        .doAnswer(
+    final AtomicInteger attempts = new AtomicInteger();
+    Mockito.doAnswer(
             invocation -> {
+              final int attempt = attempts.getAndIncrement();
+              if (attempt < count) {
+                throw attempt == 0 ? failure : new IOException("simulated rollback fsync failure");
+              }
               original.force(true);
               return null;
             })
