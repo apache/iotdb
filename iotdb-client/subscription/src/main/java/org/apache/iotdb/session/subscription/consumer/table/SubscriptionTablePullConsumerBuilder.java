@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.session.subscription.consumer.table;
 
+import org.apache.iotdb.isession.IInternalSessionBuilder;
+import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.session.subscription.consumer.ISubscriptionTablePullConsumer;
 import org.apache.iotdb.session.subscription.consumer.base.AbstractSubscriptionPullConsumerBuilder;
 
 import java.util.List;
 
-public class SubscriptionTablePullConsumerBuilder extends AbstractSubscriptionPullConsumerBuilder {
+public class SubscriptionTablePullConsumerBuilder extends AbstractSubscriptionPullConsumerBuilder
+    implements IInternalSessionBuilder<ISubscriptionTablePullConsumer> {
 
   @Override
   public SubscriptionTablePullConsumerBuilder host(final String host) {
@@ -151,5 +154,11 @@ public class SubscriptionTablePullConsumerBuilder extends AbstractSubscriptionPu
 
   public ISubscriptionTablePullConsumer build() {
     return new SubscriptionTablePullConsumer(this);
+  }
+
+  /** Builds an unopened consumer using the caller's internal endpoint source and username. */
+  @Override
+  public ISubscriptionTablePullConsumer buildInternal(final INodeSupplier nodeSupplier) {
+    return new InternalSubscriptionTablePullConsumer(this, nodeSupplier);
   }
 }
