@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe;
 
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -39,6 +40,8 @@ public class ShowPipeTaskTest {
   @Test
   public void testBuildTSBlockWritesRecentFailures() throws Exception {
     final TShowPipeInfo failedPipe = createPipeInfo("failed_pipe");
+    failedPipe.setState(PipeStatus.STOPPED.name());
+    failedPipe.setExceptionMessage("nodeIds: [1], construction failed");
     final Map<String, Long> recentFailures = new HashMap<>();
     recentFailures.put("network_timeout", 10L);
     recentFailures.put("memory_timeout", 15L);
@@ -55,6 +58,10 @@ public class ShowPipeTaskTest {
     assertEquals(
         ColumnHeaderConstant.RECENT_FAILURES, result.getResultSetHeader().getRespColumns().get(9));
     assertEquals(2, resultSet.getPositionCount());
+    assertEquals(PipeStatus.STOPPED.name(), resultSet.getColumn(2).getBinary(0).toString());
+    assertEquals(
+        "nodeIds: [1], construction failed", resultSet.getColumn(6).getBinary(0).toString());
+    assertEquals("", resultSet.getColumn(6).getBinary(1).toString());
     assertEquals(
         "{memory_timeout=15, network_timeout=10}", resultSet.getColumn(9).getBinary(0).toString());
     assertEquals("{}", resultSet.getColumn(9).getBinary(1).toString());

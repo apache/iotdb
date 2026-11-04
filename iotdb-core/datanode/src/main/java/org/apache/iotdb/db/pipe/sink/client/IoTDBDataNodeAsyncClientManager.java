@@ -73,6 +73,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
   private static final Map<String, Integer> CLIENT_RESOURCE_REF_COUNT = new ConcurrentHashMap<>();
   private final String receiverAttributes;
   private final String clientResourceKey;
+  private final String receiverKey;
 
   // clientResourceKey -> IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>
   private static final Map<String, IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>>
@@ -114,6 +115,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
         shouldMarkAsPipeRequest);
 
     endPointSet = new HashSet<>(endPoints);
+    receiverKey = IoTDBDataNodeCacheLeaderClientManager.generateReceiverKey(endPoints);
 
     receiverAttributes =
         String.format(
@@ -180,7 +182,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       return borrowClient();
     }
 
-    return borrowClient(LEADER_CACHE_MANAGER.getLeaderEndPoint(deviceId));
+    return borrowClient(getLeaderEndPoint(deviceId));
   }
 
   public AsyncPipeDataTransferServiceClient borrowClient(final TEndPoint endPoint)
@@ -376,6 +378,11 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     }
   }
 
+  @Override
+  public TEndPoint getLeaderEndPoint(final String deviceId) {
+    return useLeaderCache ? LEADER_CACHE_MANAGER.getLeaderEndPoint(receiverKey, deviceId) : null;
+  }
+
   public void updateLeaderCache(final String deviceId, final TEndPoint endPoint) {
     if (!useLeaderCache || deviceId == null || endPoint == null) {
       return;
@@ -386,7 +393,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       endPointSet.add(endPoint);
     }
 
-    LEADER_CACHE_MANAGER.updateLeaderEndPoint(deviceId, endPoint);
+    LEADER_CACHE_MANAGER.updateLeaderEndPoint(receiverKey, deviceId, endPoint);
   }
 
   public ExecutorService getExecutor() {

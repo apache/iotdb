@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -51,6 +52,7 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeCo
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -590,8 +592,8 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
       return false;
     }
 
-    // Some resource may not be closed due to the control of PIPE_MIN_FLUSH_INTERVAL_IN_MS. We
-    // simply ignore them.
+    // Closing files may still have incomplete progress and time metadata. Select them
+    // conservatively; the event waits for the file to close before parsing or transfer.
     if (!resource.isClosed()
         && Optional.ofNullable(resource.getProcessor())
             .map(TsFileProcessor::alreadyMarkedClosing)
@@ -737,7 +739,10 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
   }
 
   private boolean isTsFileResourceCoveredByTimeRange(final TsFileResource resource) {
-    return historicalDataExtractionStartTime <= resource.getFileStartTime()
+    // In particular, a sequence file's end time is not final until it is closed. Do not disable
+    // row-level filtering based on the bounds observed while an asynchronous close is in flight.
+    return resource.isClosed()
+        && historicalDataExtractionStartTime <= resource.getFileStartTime()
         && historicalDataExtractionEndTime >= resource.getFileEndTime();
   }
 
@@ -770,8 +775,8 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
         return supplyTerminateEvent();
       }
 
-      pendingQueue.poll();
       if (!filteredTsFileResources.contains(resource)) {
+        pendingQueue.poll();
         if (shouldUseHistoricalTsFileQueryPriorityOrder()) {
           if (shouldReportHistoricalProgressAfterResource(resource)) {
             return supplyHistoricalProgressReportEvent(
@@ -783,6 +788,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
       }
 
       final Event event = supplyTsFileEvent(resource);
+      pendingQueue.poll();
       if (Objects.nonNull(event) && shouldReportHistoricalProgressAfterResource(resource)) {
         pendingHistoricalProgressIndexToReport = getHistoricalProgressIndexAfterResource(resource);
       }
@@ -853,7 +859,6 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
   }
 
   private Event supplyTsFileEvent(final TsFileResource resource) {
-    filteredTsFileResources.remove(resource);
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
             resource,
@@ -880,17 +885,22 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
       event.skipParsingTime();
     }
 
+    final boolean isReferenceCountIncreased =
+        event.increaseReferenceCount(PipeHistoricalDataRegionTsFileSource.class.getName());
+    if (!isReferenceCountIncreased) {
+      // Unlike realtime supply, which already holds a queued event reference, this is the
+      // event's first reference acquisition. The source's pin keeps the file available for retry.
+      // Keep the queue entry and pin until an event owns the resource. A failed reference
+      // acquisition must not advance historical progress past this file.
+      throw new PipeException(
+          String.format(
+              DataNodePipeMessages
+                  .EXCEPTION_INCREASE_REFERENCE_COUNT_ERROR_HOLDER_MESSAGE_ARG_7E1D032D,
+              event.coreReportMessage()));
+    }
+    filteredTsFileResources.remove(resource);
     try {
-      final boolean isReferenceCountIncreased =
-          event.increaseReferenceCount(PipeHistoricalDataRegionTsFileSource.class.getName());
-      if (!isReferenceCountIncreased) {
-        LOGGER.warn(
-            "Pipe {}@{}: failed to increase reference count for historical event {}, will discard it",
-            pipeName,
-            dataRegionId,
-            event);
-      }
-      return isReferenceCountIncreased ? event : null;
+      return event;
     } finally {
       try {
         PipeDataNodeResourceManager.tsfile()
