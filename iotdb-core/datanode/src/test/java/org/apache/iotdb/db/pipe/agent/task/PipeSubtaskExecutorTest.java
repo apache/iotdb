@@ -25,6 +25,9 @@ import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
+
+import java.util.concurrent.RejectedExecutionException;
 
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.times;
@@ -113,6 +116,27 @@ public abstract class PipeSubtaskExecutorTest {
     // test stop a stopped subtask
     executor.stop(subtask.getTaskID());
     Assert.assertFalse(subtask.isSubmittingSelf());
+  }
+
+  /**
+   * A rejected submission must be rolled back, otherwise the following start() calls would take the
+   * "already running" branch and report a false success.
+   */
+  @Test
+  public void testStartWithRejectedSubmission() {
+    executor.register(subtask);
+    Mockito.doThrow(new RejectedExecutionException()).when(subtask).submitSelf();
+
+    try {
+      executor.start(subtask.getTaskID());
+      Assert.fail("The start of a subtask should fail if the submission is rejected");
+    } catch (final RejectedExecutionException e) {
+      // expected
+    }
+
+    verify(subtask).allowSubmittingSelf();
+    verify(subtask).disallowSubmittingSelf();
+    Assert.assertFalse(executor.isShutdown());
   }
 
   @Test

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
+import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskManager;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
@@ -41,9 +42,11 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.awaitility.Awaitility;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -574,6 +577,43 @@ public class PipeDataNodeTaskAgentTest {
             .getConsensusGroupId2TaskMetaMap()
             .get(REGION_ID)
             .getProgressIndex());
+  }
+
+  /**
+   * A task that fails to start is dropped and unregistered, so the following meta sync creates it
+   * again.
+   */
+  @Test
+  public void testFailedTaskStartIsRolledBackForRetry() throws Exception {
+    final PipeDataNodeTaskAgent agent = newActiveTaskAgent();
+    final PipeMetaKeeper keeper = getField(agent, "pipeMetaKeeper");
+    final PipeTaskManager manager = getField(agent, "pipeTaskManager");
+
+    final int localNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    final PipeTaskMeta taskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, localNodeId);
+    final ConcurrentMap<Integer, PipeTaskMeta> taskMetaMap = new ConcurrentHashMap<>();
+    taskMetaMap.put(REGION_ID, taskMeta);
+    final PipeMeta pipeMeta =
+        new PipeMeta(
+            new PipeStaticMeta(
+                "failedStartPipe", 1L, new HashMap<>(), new HashMap<>(), new HashMap<>()),
+            new PipeRuntimeMeta(taskMetaMap));
+    pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+    keeper.addPipeMeta(pipeMeta);
+
+    final PipeTask failedTask = Mockito.mock(PipeTask.class);
+    Mockito.doThrow(new PipeException("failed to start the sink")).when(failedTask).start();
+    manager.addPipeTask(pipeMeta.getStaticMeta(), REGION_ID, failedTask);
+
+    final Method startPipeTask =
+        PipeTaskAgent.class.getDeclaredMethod("startPipeTask", int.class, PipeStaticMeta.class);
+    startPipeTask.setAccessible(true);
+    startPipeTask.invoke(agent, REGION_ID, pipeMeta.getStaticMeta());
+
+    Mockito.verify(failedTask).drop();
+    Assert.assertNull(manager.getPipeTask(pipeMeta.getStaticMeta(), REGION_ID));
+    Assert.assertNull(pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().get(REGION_ID));
+    Assert.assertEquals(PipeStatus.RUNNING, pipeMeta.getRuntimeMeta().getStatus().get());
   }
 
   private PipeStaticMeta createStaticMeta(final long creationTime, final boolean historyEnabled) {
