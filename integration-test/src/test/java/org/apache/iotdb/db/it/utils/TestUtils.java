@@ -983,12 +983,12 @@ public class TestUtils {
       long consistentSeconds) {
     try (Connection connection = env.getConnection();
         Statement statement = connection.createStatement()) {
-      // Keep retrying if there are execution failures
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.SECONDS)
           .pollInterval(1L, TimeUnit.SECONDS)
-          .atMost(consistentSeconds, TimeUnit.SECONDS)
+          .during(consistentSeconds, TimeUnit.SECONDS)
+          .atMost(consistentSeconds + 5, TimeUnit.SECONDS)
           .failFast(
               () -> {
                 try {
@@ -997,7 +997,8 @@ public class TestUtils {
                 } catch (Exception e) {
                   Assert.fail();
                 }
-              });
+              })
+          .until(() -> true);
     } catch (Exception e) {
       e.printStackTrace();
       fail();
