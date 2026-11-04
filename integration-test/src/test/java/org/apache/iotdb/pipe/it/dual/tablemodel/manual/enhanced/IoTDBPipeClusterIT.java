@@ -914,12 +914,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
     }
     TestUtils.executeNonQuery(senderEnv, "flush", null);
 
-    try {
-      TestUtils.restartCluster(senderEnv);
-    } catch (final Throwable e) {
-      e.printStackTrace();
-      return;
-    }
+    TestUtils.restartCluster(senderEnv);
 
     TableModelUtils.assertCountData("test", "test", succeedNum + 100, receiverEnv, handleFailure);
   }
