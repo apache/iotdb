@@ -170,7 +170,17 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       return false;
     }
     String trimmedSql = sql.trim().toUpperCase();
-    return trimmedSql.startsWith("SELECT") || trimmedSql.startsWith("WITH");
+    return trimmedSql.startsWith("SELECT")
+        || trimmedSql.startsWith("WITH")
+        || startsWithKeyword(trimmedSql, "PIVOT")
+        || startsWithKeyword(trimmedSql, "UNPIVOT");
+  }
+
+  private boolean startsWithKeyword(String sql, String keyword) {
+    return sql.startsWith(keyword)
+        && sql.length() > keyword.length()
+        && (Character.isWhitespace(sql.charAt(keyword.length()))
+            || sql.charAt(keyword.length()) == '(');
   }
 
   @Override

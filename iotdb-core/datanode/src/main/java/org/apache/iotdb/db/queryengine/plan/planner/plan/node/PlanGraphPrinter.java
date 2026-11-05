@@ -47,6 +47,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamS
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnpivotNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
@@ -144,6 +145,19 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   public static final String CHECK_ALL_FILES_IN_TSFILE_MANAGER_COST =
       "CheckAllFilesInTSFileManagerCost";
   public static final String READ_TSFILE_CACHE_VALUE_FILES_COST = "ReadTsFileCacheValueFilesCost";
+
+  @Override
+  public List<String> visitUnpivot(UnpivotNode node, GraphContext context) {
+    List<String> lines = new ArrayList<>();
+    lines.add(
+        String.format(
+            DataNodeQueryMessages.MESSAGE_UNPIVOT_ARG_8F0CF12D, node.getPlanNodeId().getId()));
+    lines.add(String.format(DataNodeQueryMessages.MESSAGE_SOURCES_ARG_C7AF5307, node.getNames()));
+    lines.add(
+        String.format(
+            DataNodeQueryMessages.MESSAGE_INCLUDENULLS_ARG_13BDAF67, node.isIncludeNulls()));
+    return render(node, lines, context);
+  }
 
   @Override
   public List<String> visitPlan(PlanNode node, GraphContext context) {

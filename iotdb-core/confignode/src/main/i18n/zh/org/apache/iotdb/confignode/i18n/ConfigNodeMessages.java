@@ -787,4 +787,6 @@ public final class ConfigNodeMessages {
   public static final String
       LOG_FAILED_TO_TRANSFER_CONFIGNODE_LEADERSHIP_BEFORE_SHUTDOWN_CONTINUING_SHUTDOWN_2B9364D5 =
           "关闭前转移 ConfigNode leader 失败，继续关闭。";
+  public static final String LOG_INVALID_PIVOT_CONFIGURATION_VALUE_FOR_ARG_ARG_KEEPING_ARG_FCB21FF0 =
+      "无效的 PIVOT 配置值 {}：{}；保留当前值 {}";
 }

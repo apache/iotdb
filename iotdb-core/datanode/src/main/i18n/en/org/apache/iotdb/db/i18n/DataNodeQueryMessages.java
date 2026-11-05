@@ -4094,4 +4094,61 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_PLAN_NODE_ARG_IS_ALREADY_REGISTERED_ON_MEMORY_SIDE_ARG_NOT_ARG_4C1BB625 = "Plan node %s is already registered on memory side %s, not %s";
   public static final String EXCEPTION_MEMORY_RESERVATION_IS_NOT_REGISTERED_FOR_QUERY_ARG_FRAGMENT_ARG_PLAN_NODE_ARG_67A4B81F = "Memory reservation is not registered for query %s, fragment %s, plan node %s";
   public static final String LOG_SHARED_EXCHANGE_BUDGET_FOR_FI_ARG_INPUT_ARG_OUTPUT_ARG_98AE1109 = "Shared exchange budget for FI {}: INPUT={}, OUTPUT={}";
+  public static final String EXCEPTION_COLUMNS_EXPRESSIONS_CANNOT_BE_USED_TO_INFER_SOURCE_COLUMN_GROUPS_IN_A_MULTI_VALUE_UNPIVOT_D780C590 =
+      "COLUMNS expressions cannot be used to infer source column groups in a multi-value UNPIVOT";
+  public static final String EXCEPTION_COLUMNS_EXPRESSION_IN_UNPIVOT_DID_NOT_SELECT_ANY_SOURCE_COLUMNS_933A605D =
+      "COLUMNS expression in UNPIVOT did not select any source columns";
+  public static final String EXCEPTION_ALL_SOURCE_COLUMN_GROUPS_IN_A_MULTI_VALUE_UNPIVOT_MUST_CONTAIN_THE_SAME_NUMBER_OF_COLUMNS_3B42B00F =
+      "All source column groups in a multi-value UNPIVOT must contain the same number of columns";
+  public static final String EXCEPTION_THE_NUMBER_OF_SOURCE_COLUMNS_IN_EACH_UNPIVOT_GROUP_MUST_MATCH_THE_NUMBER_OF_VALUE_COLUMNS_B6681F40 =
+      "The number of source columns in each UNPIVOT group must match the number of value columns";
+  public static final String EXCEPTION_SOURCE_COLUMN_GROUPS_IN_A_MULTI_VALUE_UNPIVOT_DO_NOT_SUPPORT_EXPRESSIONS_OR_CASTS_2234733C =
+      "Source column groups in a multi-value UNPIVOT do not support expressions or casts";
+  public static final String EXCEPTION_EACH_SOURCE_EXPRESSION_IN_A_SINGLE_VALUE_UNPIVOT_MUST_REFERENCE_EXACTLY_ONE_INPUT_COLUMN_8A926C8E =
+      "Each source expression in a single-value UNPIVOT must reference exactly one input column";
+  public static final String EXCEPTION_DUPLICATE_COLUMN_NAME_IN_UNPIVOT_OUTPUT_ARG_75EC57F1 =
+      "Duplicate column name in UNPIVOT output: %s";
+  public static final String EXCEPTION_UNPIVOT_SOURCE_TYPES_ARE_NOT_COMPATIBLE_C171107C =
+      "UNPIVOT source types are not compatible";
+  public static final String EXCEPTION_UNPIVOT_SOURCE_COLUMN_DOES_NOT_EXIST_ARG_F62BA0EC =
+      "UNPIVOT source column does not exist: %s";
+  public static final String EXCEPTION_UNPIVOT_SOURCE_COLUMN_IS_AMBIGUOUS_ARG_8533957A =
+      "UNPIVOT source column is ambiguous: %s";
+  public static final String EXCEPTION_INCLUDE_NULLS_IS_ONLY_SUPPORTED_IN_SQL_STYLE_UNPIVOT_055D9EEA =
+      "INCLUDE NULLS is only supported in SQL-style UNPIVOT";
+  public static final String EXCEPTION_UNPIVOT_SOURCE_EXPRESSIONS_CANNOT_CONTAIN_AGGREGATE_WINDOW_OR_SUBQUERY_EXPRESSIONS_D0BF754B =
+      "UNPIVOT source expressions cannot contain aggregate, window, or subquery expressions";
+  public static final String EXCEPTION_DYNAMIC_PIVOT_REQUIRES_INPUT_MATERIALIZATION_BEFORE_ANALYSIS_7867520A =
+      "Dynamic PIVOT requires input materialization before analysis";
+  public static final String EXCEPTION_PIVOT_ON_EXPRESSIONS_MUST_NOT_CONTAIN_AGGREGATES_WINDOW_FUNCTIONS_OR_SUBQUERIES_7871DB04 =
+      "PIVOT ON expressions must not contain aggregates, window functions or subqueries";
+  public static final String EXCEPTION_PIVOT_USING_MUST_CONTAIN_EXACTLY_ONE_AGGREGATE_WITHOUT_DISTINCT_WINDOW_FUNCTIONS_OR_SUBQUERIES_C8F1E226 =
+      "PIVOT USING must contain exactly one aggregate without DISTINCT, window functions or subqueries";
+  public static final String EXCEPTION_PIVOT_GROUP_BY_ACCEPTS_ONLY_INPUT_COLUMN_REFERENCES_4C143F37 =
+      "PIVOT GROUP BY accepts only input column references";
+  public static final String EXCEPTION_PIVOT_IN_VALUES_MUST_BE_CONSTANT_AND_CONVERTIBLE_TO_THE_ON_EXPRESSION_TYPE_760875BC =
+      "PIVOT IN values must be constant and convertible to the ON expression type";
+  public static final String EXCEPTION_DUPLICATE_VALUE_IN_PIVOT_IN_LIST_ARG_9051FEC2 =
+      "Duplicate value in PIVOT IN list: %s";
+  public static final String EXCEPTION_PIVOT_USING_CANNOT_REFERENCE_INPUT_COLUMNS_OUTSIDE_ITS_AGGREGATE_54DA6E29 =
+      "PIVOT USING cannot reference input columns outside its aggregate";
+  public static final String EXCEPTION_DYNAMIC_PIVOT_NESTING_DEPTH_EXCEEDS_EIGHT_A3F4F166 =
+      "Dynamic PIVOT nesting depth exceeds eight";
+  public static final String MESSAGE_DISCOVER_DYNAMIC_PIVOT_INPUT_5EBD15BB =
+      "Discover dynamic PIVOT input";
+  public static final String EXCEPTION_DYNAMIC_PIVOT_INPUT_SCHEMA_CHANGED_6A26E6B0 =
+      "Dynamic PIVOT input schema changed";
+  public static final String EXCEPTION_DYNAMIC_PIVOT_INPUT_EXCEEDS_PIVOT_INPUT_BUFFER_SIZE_IN_BYTES_9E2FA334 =
+      "Dynamic PIVOT input exceeds pivot_input_buffer_size_in_bytes";
+  public static final String EXCEPTION_DYNAMIC_PIVOT_INPUT_EXCEEDS_PIVOT_INPUT_MAX_ROWS_BC1F0F40 =
+      "Dynamic PIVOT input exceeds pivot_input_max_rows";
+  public static final String EXCEPTION_DYNAMIC_PIVOT_ON_TYPE_IS_NOT_SUPPORTED_A8F057D9 =
+      "Dynamic PIVOT ON type is not supported";
+  public static final String EXCEPTION_DYNAMIC_PIVOT_PRODUCED_NO_COLUMNS_AND_NO_ROW_DIMENSION_COLUMNS_ARE_AVAILABLE_25DD42E0 =
+      "Dynamic PIVOT produced no columns and no row dimension columns are available";
+  public static final String MESSAGE_UNPIVOT_ARG_8F0CF12D = "Unpivot-%s";
+  public static final String MESSAGE_SOURCES_ARG_C7AF5307 = "Sources: %s";
+  public static final String MESSAGE_INCLUDENULLS_ARG_13BDAF67 = "IncludeNulls: %s";
+  public static final String EXCEPTION_PIVOT_OUTPUT_COLUMN_COUNT_ARG_EXCEEDS_PIVOT_LIMIT_ARG_644AC9B8 =
+      "PIVOT output column count %d exceeds pivot_limit %d";
 }

@@ -56,6 +56,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFu
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnpivotNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
@@ -120,6 +121,10 @@ public interface ICoreQueryPlanVisitor<R, C> extends IPlanVisitor<R, C> {
   }
 
   default R visitLimit(LimitNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
+  default R visitUnpivot(UnpivotNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 

@@ -1593,4 +1593,6 @@ public final class DataNodeMiscMessages {
   public static final String EXCEPTION_BUFFER_SIZE_SHOULD_BE_GREATER_THAN_0_BB68B5C4 =
       "bufferSize 应大于 0";
 
+  public static final String LOG_INVALID_PIVOT_CONFIGURATION_VALUE_FOR_ARG_ARG_KEEPING_ARG_FCB21FF0 =
+      "无效的 PIVOT 配置值 {}：{}；保留当前值 {}";
 }

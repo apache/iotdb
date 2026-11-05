@@ -1055,6 +1055,8 @@ queryPrimary
     | VALUES expression (',' expression)*  #inlineTable
     | '(' queryNoWith ')'                  #subquery
     | fromFirstQuerySpecification          #fromFirstQueryPrimary
+    | PIVOT pivotInputRelation ON pivotOnItem (',' pivotOnItem)* USING pivotUsingItem (',' pivotUsingItem)* (GROUP BY pivotGroupItem (',' pivotGroupItem)*)? #pivotQueryBody
+    | UNPIVOT pivotInputRelation ON unpivotItem (',' unpivotItem)* (INCLUDE NULLS)? (INTO NAME identifier (VALUE | VALUES) identifier (',' identifier)*)? #unpivotQueryBody
     ;
 
 sortItem
@@ -1137,6 +1139,8 @@ relation
       | NATURAL joinType JOIN right=aliasedRelation
       | ASOF ('(' TOLERANCE timeDuration ')')? joinType JOIN rightRelation=relation joinCriteria
       )                                                     #joinRelation
+    | left=relation PIVOT '(' pivotUsingItem (',' pivotUsingItem)* FOR pivotStaticOnItem pivotStaticOnItem* (GROUP BY pivotGroupItem (',' pivotGroupItem)*)? ')' (AS identifier)? #pivotClauseRelation
+    | left=relation UNPIVOT (INCLUDE NULLS)? '(' unpivotValueSpec FOR identifier IN '(' unpivotItem (',' unpivotItem)* ')' ')' (AS identifier)? #unpivotClauseRelation
     | aliasedRelation                                       #relationDefault
     | patternRecognition                                    #patternRecognitionRelation
     ;
@@ -1199,6 +1203,45 @@ subsetDefinition
 
 variableDefinition
     : identifier AS expression
+    ;
+
+pivotInputRelation
+    : relationPrimary (AS identifier)?
+    ;
+
+pivotOnItem
+    : valueExpression (IN '(' pivotValue (',' pivotValue)* ')')?
+    ;
+
+pivotStaticOnItem
+    : valueExpression IN '(' pivotValue (',' pivotValue)* ')'
+    ;
+
+pivotValue
+    : valueExpression (AS identifier)?
+    ;
+
+pivotUsingItem
+    : valueExpression (AS identifier)?
+    ;
+
+pivotGroupItem
+    : expression
+    ;
+
+unpivotValueSpec
+    : identifier
+    | '(' identifier (',' identifier)+ ')'
+    ;
+
+unpivotItem
+    : unpivotColumnsSelector (AS identifier)?
+    | '(' expression (',' expression)+ ')' (AS identifier)?
+    | expression (AS identifier)?
+    ;
+
+unpivotColumnsSelector
+    : COLUMNS '(' ASTERISK (EXCLUDE '(' identifier (',' identifier)* ')')? ')'
     ;
 
 aliasedRelation
@@ -1523,24 +1566,24 @@ nonReserved
     | BEGIN | BERNOULLI | BOTH
     | CACHE | CALL | CALLED | CASCADE | CATALOG | CATALOGS | CHAR | CHARACTER | CHARSET | CLEAR | CLUSTER | CLUSTERID | COLUMN | COLUMNS | COMMENT | COMMIT | COMMITTED | CONDITION | CONDITIONAL | CONFIGNODES | CONFIGNODE | CONFIGURATION | CONNECTOR | CONSTANT | COPARTITION | COPY | COUNT | CURRENT
     | DATA | DATABASE | DATABASES | DATANODE | DATANODES | DATASET | DATE | DAY | DEBUG | DECLARE | DEFAULT | DEFINE | DEFINER | DENY | DESC | DESCRIPTOR | DETAILS| DETERMINISTIC | DEVICES | DISTRIBUTED | DO | DOUBLE
-    | ELSEIF | EMPTY | ENCODING | ERROR | EXCLUDING | EXPLAIN | EXTRACTOR
+    | ELSEIF | EMPTY | ENCODING | ERROR | EXCLUDE | EXCLUDING | EXPLAIN | EXTRACTOR
     | FETCH | FIELD | FILTER | FINAL | FIRST | FLUSH | FOLLOWING | FORCEDLY | FORMAT | FUNCTION | FUNCTIONS
     | GRACE | GRANT | GRANTED | GRANTS | GRAPHVIZ | GROUPS
     | HOUR | HYPERPARAMETERS
-    | INDEX | INDEXES | IF | IGNORE | IMMEDIATE | INCLUDING | INITIAL | INPUT | INTERVAL | INVOKER | IO | ITERATE | ISOLATION
+    | INDEX | INDEXES | IF | IGNORE | IMMEDIATE | INCLUDE | INCLUDING | INITIAL | INPUT | INTERVAL | INVOKER | IO | ITERATE | ISOLATION
     | JSON
     | KEEP | KEY | KEYS | KILL
     | LANGUAGE | LAST | LATERAL | LEADING | LEAVE | LEVEL | LIMIT | LINEAR | LOAD | LOCAL | LOGICAL | LOOP
     | MANAGE_ROLE | MANAGE_USER | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASURES | MEMORY | MEMORY_THRESHOLD | METHOD | MERGE | MICROSECOND | MIGRATE | MILLISECOND | MINUTE | MODEL | MODELS | MODIFY | MONTH
-    | NANOSECOND | NESTED | NEXT | NFC | NFD | NFKC | NFKD | NO | NODEID | NONE | NULLIF | NULLS
+    | NAME | NANOSECOND | NESTED | NEXT | NFC | NFD | NFKC | NFKD | NO | NODEID | NONE | NULLIF | NULLS
     | OBJECT | OF | OFFSET | OMIT | ONE | ONLY | OPTION | ORDINALITY | OUTPUT | OVER | OVERFLOW
-    | PARTITION | PARTITIONS | PASSING | PAST | PATH | PATTERN | PER | PERIOD | PERMUTE | PIPE | PIPEPLUGIN | PIPEPLUGINS | PIPES | PLAN | POSITION | PRECEDING | PRECISION | PRIVILEGES | PREVIOUS | PROCESSLIST | PROCESSOR | PROPERTIES | PRUNE
+    | PARTITION | PARTITIONS | PASSING | PAST | PATH | PATTERN | PER | PERIOD | PERMUTE | PIVOT | PIPE | PIPEPLUGIN | PIPEPLUGINS | PIPES | PLAN | POSITION | PRECEDING | PRECISION | PRIVILEGES | PREVIOUS | PROCESSLIST | PROCESSOR | PROPERTIES | PRUNE
     | QUERIES | QUERY | QUOTES
     | RANGE | READ | READONLY | RECEIVERS | RECONSTRUCT | REFRESH | REGION | REGIONID | REGIONS | REMOVE | RENAME | REPAIR | REPEAT | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | RETURN | RETURNING | RETURNS | REVOKE | ROLE | ROLES | ROLLBACK | ROOT | ROW | ROWS | RPR_FIRST | RPR_LAST | RUNNING
     | SERIESSLOTID | SERVICE | SERVICES | SCALAR | SCHEMA | SCHEMAS | SECOND | SECURITY | SEEK | SERIALIZABLE | SESSION | SET | SETS
     | SECURITY | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | STREAMS | SUBSCRIPTION | SUBSCRIPTIONS | SUBSET | SUBSTRING | SYSTEM
     | TABLES | TABLESAMPLE | TAG | TAGS | TEXT | TEXT_STRING | TIES | TIME | TIMEPARTITION | TIMER | TIMER_XL | TIMESERIES | TIMESLOTID | TIMESTAMP | TO | TOPIC | TOPICS | TRAILING | TRANSACTION | TRUNCATE | TRY_CAST | TYPE
-    | UNBOUNDED | UNCOMMITTED | UNCONDITIONAL | UNIQUE | UNKNOWN | UNMATCHED | UNTIL | UPDATE | URI | URLS | USE | USED | USER | UTF16 | UTF32 | UTF8
+    | UNBOUNDED | UNCOMMITTED | UNCONDITIONAL | UNPIVOT | UNIQUE | UNKNOWN | UNMATCHED | UNTIL | UPDATE | URI | URLS | USE | USED | USER | UTF16 | UTF32 | UTF8
     | VALIDATE | VALUE | VARIABLES | VARIATION | VERBOSE | VERSION | VIEW
     | WEEK | WHILE | WINDOW | WITHIN | WITHOUT | WORK | WRAPPER | WRITE
     | YEAR
@@ -1657,6 +1700,7 @@ END: 'END';
 ERROR: 'ERROR';
 ESCAPE: 'ESCAPE';
 EXCEPT: 'EXCEPT';
+EXCLUDE: 'EXCLUDE';
 EXCLUDING: 'EXCLUDING';
 EXECUTE: 'EXECUTE';
 EXISTS: 'EXISTS';
@@ -1698,6 +1742,7 @@ IF: 'IF';
 IGNORE: 'IGNORE';
 IMMEDIATE: 'IMMEDIATE';
 IN: 'IN';
+INCLUDE: 'INCLUDE';
 INCLUDING: 'INCLUDING';
 INFERENCE: 'INFERENCE';
 INITIAL: 'INITIAL';
@@ -1764,6 +1809,7 @@ MODEL: 'MODEL';
 MODELS: 'MODELS';
 MODIFY: 'MODIFY';
 MONTH: 'MONTH' | 'MO';
+NAME: 'NAME';
 NANOSECOND: 'NS';
 NATURAL: 'NATURAL';
 NESTED: 'NESTED';
@@ -1807,6 +1853,7 @@ PER: 'PER';
 PERIOD: 'PERIOD';
 PERMUTE: 'PERMUTE';
 PIPE: 'PIPE';
+PIVOT: 'PIVOT';
 PIPEPLUGIN: 'PIPEPLUGIN';
 PIPEPLUGINS: 'PIPEPLUGINS';
 PIPES: 'PIPES';
@@ -1929,6 +1976,7 @@ UNLOAD: 'UNLOAD';
 UNLOCK: 'UNLOCK';
 UNMATCHED: 'UNMATCHED';
 UNNEST: 'UNNEST';
+UNPIVOT: 'UNPIVOT';
 UNTIL: 'UNTIL';
 UPDATE: 'UPDATE';
 URI: 'URI';

@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNod
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnpivotNode;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -82,6 +83,13 @@ public class TransformSortToStreamSort implements PlanOptimizer {
         newNode.addChild(child.accept(this, context));
       }
       return newNode;
+    }
+
+    @Override
+    public PlanNode visitUnpivot(UnpivotNode node, Context context) {
+      context.setCanTransform(false);
+      return node.replaceChildren(
+          java.util.Collections.singletonList(node.getChild().accept(this, new Context())));
     }
 
     @Override

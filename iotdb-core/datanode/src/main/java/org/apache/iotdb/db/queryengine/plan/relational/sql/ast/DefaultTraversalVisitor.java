@@ -56,6 +56,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternAlter
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternConcatenation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternPermutation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternVariable;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PivotRelation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuantifiedPattern;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
@@ -74,6 +75,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Trim;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.UnpivotRelation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Values;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.With;
@@ -207,6 +209,18 @@ public abstract class DefaultTraversalVisitor<C> implements AstVisitor<Void, C> 
   public Void visitLimit(Limit node, C context) {
     process(node.getRowCount());
 
+    return null;
+  }
+
+  @Override
+  public Void visitPivotRelation(PivotRelation node, C context) {
+    node.getChildren().forEach(child -> process(child, context));
+    return null;
+  }
+
+  @Override
+  public Void visitUnpivotRelation(UnpivotRelation node, C context) {
+    node.getChildren().forEach(child -> process(child, context));
     return null;
   }
 

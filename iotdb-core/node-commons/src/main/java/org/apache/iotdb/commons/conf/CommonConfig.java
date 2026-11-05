@@ -565,6 +565,10 @@ public class CommonConfig {
   /** Max number of rows for cte materialization */
   private int maxRowsInCteBuffer = 1000;
 
+  private int pivotLimit = 100000;
+  private long pivotInputBufferSizeInBytes = 64L * 1024 * 1024;
+  private int pivotInputMaxRows = 1000000;
+
   CommonConfig() {
     // Empty constructor
   }
@@ -3313,5 +3317,29 @@ public class CommonConfig {
 
   public int getMaxRowsInCteBuffer() {
     return maxRowsInCteBuffer;
+  }
+
+  public int getPivotLimit() {
+    return pivotLimit;
+  }
+
+  public void setPivotLimit(int pivotLimit) {
+    this.pivotLimit = pivotLimit;
+  }
+
+  public long getPivotInputBufferSizeInBytes() {
+    return pivotInputBufferSizeInBytes;
+  }
+
+  public void setPivotInputBufferSizeInBytes(long pivotInputBufferSizeInBytes) {
+    this.pivotInputBufferSizeInBytes = pivotInputBufferSizeInBytes;
+  }
+
+  public int getPivotInputMaxRows() {
+    return pivotInputMaxRows;
+  }
+
+  public void setPivotInputMaxRows(int pivotInputMaxRows) {
+    this.pivotInputMaxRows = pivotInputMaxRows;
   }
 }

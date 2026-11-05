@@ -40,6 +40,7 @@ import org.apache.iotdb.calc.execution.operator.process.TableNextFillWithGroupOp
 import org.apache.iotdb.calc.execution.operator.process.TableSortOperator;
 import org.apache.iotdb.calc.execution.operator.process.TableStreamSortOperator;
 import org.apache.iotdb.calc.execution.operator.process.TableTopKOperator;
+import org.apache.iotdb.calc.execution.operator.process.UnpivotOperator;
 import org.apache.iotdb.calc.execution.operator.process.ValuesOperator;
 import org.apache.iotdb.calc.execution.operator.process.fill.IFill;
 import org.apache.iotdb.calc.execution.operator.process.fill.ILinearFill;
@@ -140,6 +141,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFu
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnpivotNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
@@ -697,6 +699,27 @@ public abstract class TableOperatorGenerator<
         addOperatorContext(context, node.getPlanNodeId(), LimitOperator.class.getSimpleName());
 
     return new LimitOperator(operatorContext, node.getCount(), child);
+  }
+
+  @Override
+  public Operator visitUnpivot(UnpivotNode node, C context) {
+    Operator child = node.getChild().accept(this, context);
+    CommonOperatorContext operatorContext =
+        addOperatorContext(context, node.getPlanNodeId(), UnpivotOperator.class.getSimpleName());
+    List<Symbol> input = node.getChild().getOutputSymbols();
+    int[] retained = node.getRetained().stream().mapToInt(input::indexOf).toArray();
+    int[][] sources =
+        node.getSources().stream()
+            .map(group -> group.stream().mapToInt(input::indexOf).toArray())
+            .toArray(int[][]::new);
+    return new UnpivotOperator(
+        operatorContext,
+        child,
+        retained,
+        sources,
+        node.getNames(),
+        node.isIncludeNulls(),
+        getOutputColumnTypes(node, context.getTableTypeProvider()));
   }
 
   @Override

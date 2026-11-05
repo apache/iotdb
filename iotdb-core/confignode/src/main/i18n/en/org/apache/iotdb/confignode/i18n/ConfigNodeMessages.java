@@ -745,4 +745,6 @@ public final class ConfigNodeMessages {
   public static final String
       LOG_FAILED_TO_TRANSFER_CONFIGNODE_LEADERSHIP_BEFORE_SHUTDOWN_CONTINUING_SHUTDOWN_2B9364D5 =
           "Failed to transfer ConfigNode leadership before shutdown; continuing shutdown.";
+  public static final String LOG_INVALID_PIVOT_CONFIGURATION_VALUE_FOR_ARG_ARG_KEEPING_ARG_FCB21FF0 =
+      "Invalid PIVOT configuration value for {}: {}; keeping {}";
 }

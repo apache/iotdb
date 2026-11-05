@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.OrderBy;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PivotRelation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuerySpecification;
@@ -52,6 +53,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TableFunctio
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TableFunctionTableArgument;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Union;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.UnpivotRelation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Values;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.commons.queryengine.plan.statement.component.FillPolicy;
@@ -386,6 +388,144 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
         QueryMessages.EXCEPTION_VISITROWPATTERN_SHOULD_ONLY_BE_CALLED_AT_ROOT_9DE9F574);
     builder.append(formatPattern(node));
     return null;
+  }
+
+  @Override
+  public Void visitPivotRelation(PivotRelation node, Integer indent) {
+    if (node.isSimplified()) {
+      builder.append("PIVOT ");
+      process(node.getInput(), indent);
+      builder.append(" ON ");
+    } else {
+      process(node.getInput(), indent);
+      builder.append(" PIVOT (");
+      appendPivotUsing(node);
+      builder.append(" FOR ");
+    }
+    for (int i = 0; i < node.getOnItems().size(); i++) {
+      if (i > 0) {
+        builder.append(node.isSimplified() ? ", " : " ");
+      }
+      PivotRelation.OnItem item = node.getOnItems().get(i);
+      builder.append(formatExpression(item.expression()));
+      item.values()
+          .ifPresent(
+              values -> {
+                builder.append(" IN (");
+                for (int j = 0; j < values.size(); j++) {
+                  if (j > 0) {
+                    builder.append(", ");
+                  }
+                  PivotRelation.Value value = values.get(j);
+                  builder.append(formatExpression(value.expression()));
+                  value
+                      .alias()
+                      .ifPresent(alias -> builder.append(" AS ").append(formatName(alias)));
+                }
+                builder.append(')');
+              });
+    }
+    if (node.isSimplified()) {
+      builder.append(" USING ");
+      appendPivotUsing(node);
+    }
+    node.getGroupBy()
+        .ifPresent(
+            groups -> {
+              builder.append(" GROUP BY ");
+              for (int i = 0; i < groups.size(); i++) {
+                if (i > 0) {
+                  builder.append(", ");
+                }
+                builder.append(formatExpression(groups.get(i)));
+              }
+            });
+    if (!node.isSimplified()) {
+      builder.append(')');
+    }
+    return null;
+  }
+
+  private void appendPivotUsing(PivotRelation node) {
+    for (int i = 0; i < node.getUsingItems().size(); i++) {
+      if (i > 0) {
+        builder.append(", ");
+      }
+      PivotRelation.UsingItem item = node.getUsingItems().get(i);
+      builder.append(formatExpression(item.expression()));
+      item.alias().ifPresent(alias -> builder.append(" AS ").append(formatName(alias)));
+    }
+  }
+
+  @Override
+  public Void visitUnpivotRelation(UnpivotRelation node, Integer indent) {
+    if (node.isSimplified()) {
+      builder.append("UNPIVOT ");
+      process(node.getInput(), indent);
+      builder.append(" ON ");
+    } else {
+      process(node.getInput(), indent);
+      builder.append(node.isIncludeNulls() ? " UNPIVOT INCLUDE NULLS (" : " UNPIVOT (");
+      if (node.getValueColumns().size() > 1) {
+        builder.append('(');
+      }
+      appendIdentifiers(node.getValueColumns());
+      if (node.getValueColumns().size() > 1) {
+        builder.append(')');
+      }
+      builder.append(" FOR ").append(formatName(node.getNameColumn())).append(" IN (");
+    }
+    for (int i = 0; i < node.getItems().size(); i++) {
+      if (i > 0) {
+        builder.append(", ");
+      }
+      UnpivotRelation.Item item = node.getItems().get(i);
+      if (item.excluded().isPresent()) {
+        builder.append("COLUMNS(*");
+        if (!item.excluded().get().isEmpty()) {
+          builder.append(" EXCLUDE (");
+          appendIdentifiers(item.excluded().get());
+          builder.append(')');
+        }
+        builder.append(')');
+      } else {
+        if (item.expressions().size() > 1) {
+          builder.append('(');
+        }
+        for (int j = 0; j < item.expressions().size(); j++) {
+          if (j > 0) {
+            builder.append(", ");
+          }
+          builder.append(formatExpression(item.expressions().get(j)));
+        }
+        if (item.expressions().size() > 1) {
+          builder.append(')');
+        }
+      }
+      item.alias().ifPresent(alias -> builder.append(" AS ").append(formatName(alias)));
+    }
+    if (node.isSimplified()) {
+      if (node.isIncludeNulls()) {
+        builder.append(" INCLUDE NULLS");
+      }
+      if (node.hasExplicitInto()) {
+        builder.append(" INTO NAME ").append(formatName(node.getNameColumn()));
+        builder.append(node.getValueColumns().size() > 1 ? " VALUES " : " VALUE ");
+        appendIdentifiers(node.getValueColumns());
+      }
+    } else {
+      builder.append("))");
+    }
+    return null;
+  }
+
+  private void appendIdentifiers(List<Identifier> identifiers) {
+    for (int i = 0; i < identifiers.size(); i++) {
+      if (i > 0) {
+        builder.append(", ");
+      }
+      builder.append(formatName(identifiers.get(i)));
+    }
   }
 
   @Override
