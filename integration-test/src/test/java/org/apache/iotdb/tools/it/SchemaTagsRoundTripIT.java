@@ -366,7 +366,13 @@ public class SchemaTagsRoundTripIT extends AbstractScriptIT {
       return null;
     }
     final Field field = fields.get(index);
-    return field == null ? null : field.getStringValue();
+    if (field == null) {
+      return null;
+    }
+    // A NULL field is rendered as the text "null" by getStringValue(), which is how the export
+    // tool distinguishes a missing value as well.
+    final String value = field.getStringValue();
+    return "null".equals(value) ? null : value;
   }
 
   /** Parses a JSON object cell into a map; an empty cell carries no tags and no attributes. */
