@@ -872,7 +872,7 @@ public class SessionPool implements ISessionPool {
 
   @SuppressWarnings({"squid:S2446"})
   private void tryConstructNewSession() {
-    Session session = constructNewSession();
+    ISession session = constructNewSession();
     try {
       session.open(
           enableThriftCompression,
