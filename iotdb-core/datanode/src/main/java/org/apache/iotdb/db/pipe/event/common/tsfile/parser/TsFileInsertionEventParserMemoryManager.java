@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.parser;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 
 /** Allocates parser working memory from the pool owned by the caller. */
 public interface TsFileInsertionEventParserMemoryManager {
@@ -41,7 +42,8 @@ public interface TsFileInsertionEventParserMemoryManager {
           public TsFileInsertionEventParserMemoryBlock forceAllocateForTabletWithRetry(
               final long sizeInBytes) {
             return new PipeBlock(
-                PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(sizeInBytes));
+                PipeDataNodeResourceManager.memory()
+                    .forceAllocateForTsFileParserWithRetry(sizeInBytes));
           }
 
           @Override
@@ -66,15 +68,10 @@ public interface TsFileInsertionEventParserMemoryManager {
     @Override
     public void forceResize(final long newSizeInBytes) {
       final long oldSize = delegate.getMemoryUsageInBytes();
-      if (!PipeDataNodeResourceManager.memory().tryResize(delegate, newSizeInBytes)) {
+      final PipeMemoryManager memoryManager = PipeDataNodeResourceManager.memory();
+      if (!memoryManager.tryResize(delegate, newSizeInBytes)) {
         throw new PipeRuntimeOutOfMemoryCriticalException(
-            String.format(
-                "forceResize: failed to allocate memory after %d retries, total memory size %d "
-                    + "bytes, used memory size %d bytes, requested memory size %d bytes",
-                0,
-                PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes(),
-                PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes(),
-                newSizeInBytes - oldSize));
+            memoryManager.getResizeFailureMessage(0, newSizeInBytes - oldSize));
       }
     }
 
