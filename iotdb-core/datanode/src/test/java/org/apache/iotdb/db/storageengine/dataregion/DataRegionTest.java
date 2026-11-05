@@ -56,6 +56,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
@@ -79,6 +80,8 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFil
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.NOP;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -244,9 +247,11 @@ public class DataRegionTest {
   @Test
   public void testLoadInstallationRetainsOrDeletesTheCompleteSourceGroup() throws Exception {
     for (boolean deleteOrigin : new boolean[] {false, true}) {
-      for (boolean withMods : new boolean[] {false, true}) {
+      for (int modsVersion : new int[] {0, 1, 2}) {
+        final boolean withMods = modsVersion != 0;
         final File sourceDir =
-            new File(TestConstant.OUTPUT_DATA_DIR, "load-source-" + deleteOrigin + "-" + withMods);
+            new File(
+                TestConstant.OUTPUT_DATA_DIR, "load-source-" + deleteOrigin + "-" + modsVersion);
         Files.createDirectories(sourceDir.toPath());
         final File source = new File(sourceDir, "1-1-0-0.tsfile");
         final MeasurementSchema schema = new MeasurementSchema(measurementId, TSDataType.INT32);
@@ -264,13 +269,24 @@ public class DataRegionTest {
         resource.updateStartTime(device, 1);
         resource.updateEndTime(device, 3);
         resource.serialize();
-        final File sourceMods = ModificationFile.getExclusiveMods(source);
-        if (withMods) {
+        final File sourceMods =
+            modsVersion == 1
+                ? ModificationFileV1.getNormalMods(source)
+                : ModificationFile.getExclusiveMods(source);
+        if (modsVersion == 1) {
+          try (ModificationFileV1 mods = ModificationFileV1.getNormalMods(resource)) {
+            mods.write(
+                new Deletion(
+                    new MeasurementPath(deviceId + "." + measurementId), Long.MAX_VALUE, 2, 2));
+          }
+        } else if (withMods) {
           try (ModificationFile mods = resource.getExclusiveModFile()) {
             mods.write(
                 new TreeDeletionEntry(new MeasurementPath(deviceId + "." + measurementId), 2, 2));
           }
         }
+        // Exercise rebinding even when the source handle was cached before installation.
+        resource.getExclusiveModFile();
         final byte[] data = Files.readAllBytes(source.toPath());
         final byte[] deletions = withMods ? Files.readAllBytes(sourceMods.toPath()) : null;
         final File sourceResource = new File(source + TsFileResource.RESOURCE_SUFFIX);
@@ -298,6 +314,8 @@ public class DataRegionTest {
           Files.move(savedResource.toPath(), sourceResource.toPath());
           resource.setFile(source);
         }
+        final int modFilesBeforeLoad = FileMetrics.getInstance().getModFileNum();
+        final long modSizeBeforeLoad = FileMetrics.getInstance().getModFileSize();
         dataRegion.loadNewTsFile(resource, deleteOrigin, false, true, Optional.empty());
         final File installed = resource.getTsFile();
         Assert.assertArrayEquals(data, Files.readAllBytes(installed.toPath()));
@@ -309,7 +327,12 @@ public class DataRegionTest {
             resource.getExclusiveModFile().getFile().getCanonicalFile());
         Assert.assertEquals(withMods ? 1 : 0, resource.getExclusiveModFile().getAllMods().size());
         Assert.assertEquals(withMods, installedMods.exists());
-        if (withMods) {
+        Assert.assertFalse(ModificationFileV1.getNormalMods(installed).exists());
+        Assert.assertEquals(
+            modFilesBeforeLoad + (withMods ? 1 : 0), FileMetrics.getInstance().getModFileNum());
+        Assert.assertEquals(
+            modSizeBeforeLoad + installedMods.length(), FileMetrics.getInstance().getModFileSize());
+        if (modsVersion == 2) {
           Assert.assertArrayEquals(deletions, Files.readAllBytes(installedMods.toPath()));
         }
         Assert.assertEquals(!deleteOrigin, source.exists());

@@ -4994,13 +4994,17 @@ public class DataRegion implements IDataRegionForQuery {
       } catch (IOException e) {
         throw new LoadFileException(e);
       }
-    } else if (newModFileToLoad.exists()) {
-      final File newTargetModFile = ModificationFile.getExclusiveMods(targetTsFile);
-      moveModFile(newModFileToLoad, newTargetModFile, deleteOriginFile);
+      // Discard any cached source-side handle and reuse the conversion result, which already
+      // records the installed mods in FileMetrics.
+      tsFileResource.setExclusiveModFile(null);
+    } else {
+      if (newModFileToLoad.exists()) {
+        final File newTargetModFile = ModificationFile.getExclusiveMods(targetTsFile);
+        moveModFile(newModFileToLoad, newTargetModFile, deleteOriginFile);
+      }
+      // Reads must use the installed deletions, including after source cleanup.
+      tsFileResource.setExclusiveModFile(ModificationFile.getExclusiveMods(tsFileResource));
     }
-    // The resource may have cached a source-side handle before its TsFile path was changed.
-    // Subsequent reads must use the installed deletions, including after source cleanup.
-    tsFileResource.setExclusiveModFile(ModificationFile.getExclusiveMods(tsFileResource));
     // force update mod file metrics
     tsFileResource.getExclusiveModFile();
   }
