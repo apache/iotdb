@@ -37,6 +37,7 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeResourceMetrics implements IMetricSet {
 
@@ -65,8 +66,9 @@ public class PipeResourceMetrics implements IMetricSet {
     }
   }
 
-  private volatile Map<TsFileParserAdmissionRejectReason, Counter>
-      tsFileParserAdmissionRejectCounters = Collections.emptyMap();
+  // Replaced as a whole on bind/unbind; the published map is never modified.
+  private final AtomicReference<Map<TsFileParserAdmissionRejectReason, Counter>>
+      tsFileParserAdmissionRejectCounters = new AtomicReference<>(Collections.emptyMap());
   private volatile Counter tsFileParserAdmissionYieldCounter =
       DoNothingMetricManager.DO_NOTHING_COUNTER;
   private volatile Timer tsFileParserAdmissionWaitTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
@@ -144,7 +146,7 @@ public class PipeResourceMetrics implements IMetricSet {
               Tag.REASON.toString(),
               reason.tag));
     }
-    tsFileParserAdmissionRejectCounters = rejectCounters;
+    tsFileParserAdmissionRejectCounters.set(Collections.unmodifiableMap(rejectCounters));
     tsFileParserAdmissionYieldCounter =
         metricService.getOrCreateCounter(
             Metric.PIPE_TSFILE_PARSER_ADMISSION_YIELD.toString(), MetricLevel.IMPORTANT);
@@ -210,7 +212,7 @@ public class PipeResourceMetrics implements IMetricSet {
     metricService.remove(MetricType.TIMER, Metric.PIPE_TSFILE_PARSER_ADMISSION_WAIT.toString());
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_TSFILE_PARSER_IN_FLIGHT.toString());
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_TSFILE_PARSER_WAITING.toString());
-    tsFileParserAdmissionRejectCounters = Collections.emptyMap();
+    tsFileParserAdmissionRejectCounters.set(Collections.emptyMap());
     tsFileParserAdmissionRejectCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
     tsFileParserAdmissionYieldCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
     tsFileParserAdmissionWaitTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
@@ -223,6 +225,7 @@ public class PipeResourceMetrics implements IMetricSet {
   public void recordTsFileParserAdmissionReject(final TsFileParserAdmissionRejectReason reason) {
     tsFileParserAdmissionRejectCounter.inc();
     tsFileParserAdmissionRejectCounters
+        .get()
         .getOrDefault(reason, DoNothingMetricManager.DO_NOTHING_COUNTER)
         .inc();
   }
