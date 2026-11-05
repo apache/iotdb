@@ -21,6 +21,7 @@ package org.apache.iotdb.pipe.it.dual.treemodel.manual;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
@@ -256,7 +257,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
           "list user",
-          "UserId,User,",
+          ColumnHeaderConstant.USER_ID + "," + ColumnHeaderConstant.USER + ",",
           new HashSet<>(Arrays.asList("0,root,", "10000,thulab,")));
     }
   }
