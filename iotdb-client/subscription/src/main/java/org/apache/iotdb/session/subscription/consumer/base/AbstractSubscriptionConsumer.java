@@ -20,6 +20,7 @@
 package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
@@ -147,6 +148,13 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   private final int connectionTimeoutInMs;
   private final int maxPollParallelism;
 
+  private final boolean useSSL;
+  private final String trustStore;
+  private final String trustStorePwd;
+  private final String keyStore;
+  private final String keyStorePwd;
+  private final String sslProtocol;
+
   /**
    * The latest watermark timestamp received from the server. Updated when WATERMARK events are
    * processed and stripped. Consumer users can query this to check timestamp progress.
@@ -251,6 +259,13 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
     this.connectionTimeoutInMs = builder.connectionTimeoutInMs;
     this.maxPollParallelism = builder.maxPollParallelism;
+
+    this.useSSL = builder.useSSL;
+    this.trustStore = builder.trustStore;
+    this.trustStorePwd = builder.trustStorePwd;
+    this.keyStore = builder.keyStore;
+    this.keyStorePwd = builder.keyStorePwd;
+    this.sslProtocol = builder.sslProtocol;
   }
 
   protected AbstractSubscriptionConsumer(
@@ -269,6 +284,18 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
                     properties.getOrDefault(
                         ConsumerConstant.PASSWORD_KEY, SessionConfig.DEFAULT_PASSWORD))
             .encryptedPassword((String) properties.get(ConsumerConstant.ENCRYPTED_PASSWORD_KEY))
+            .useSSL(
+                Boolean.parseBoolean(
+                    String.valueOf(
+                        properties.getOrDefault(ConsumerConstant.USE_SSL_KEY, Boolean.FALSE))))
+            .trustStore((String) properties.get(ConsumerConstant.TRUST_STORE_KEY))
+            .trustStorePwd((String) properties.get(ConsumerConstant.TRUST_STORE_PWD_KEY))
+            .keyStore((String) properties.get(ConsumerConstant.KEY_STORE_KEY))
+            .keyStorePwd((String) properties.get(ConsumerConstant.KEY_STORE_PWD_KEY))
+            .sslProtocol(
+                (String)
+                    properties.getOrDefault(
+                        ConsumerConstant.SSL_PROTOCOL_KEY, SessionConfig.DEFAULT_SSL_PROTOCOL))
             .consumerId((String) properties.get(ConsumerConstant.CONSUMER_ID_KEY))
             .consumerGroupId((String) properties.get(ConsumerConstant.CONSUMER_GROUP_ID_KEY))
             .ownerId((String) properties.get(ConsumerConstant.OWNER_ID_KEY))
@@ -572,6 +599,16 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// subscription provider ///////////////////////////////
 
+  /** Returns the complete internal endpoint source, or null to use server discovery. */
+  protected INodeSupplier getInternalNodeSupplier() {
+    return null;
+  }
+
+  /** Returns the multiplexed client RPC service name for internal providers. */
+  protected String getRpcServiceName() {
+    return null;
+  }
+
   protected abstract AbstractSubscriptionProvider constructSubscriptionProvider(
       final TEndPoint endPoint,
       final String username,
@@ -601,6 +638,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             this.heartbeatIntervalMs,
             this.connectionTimeoutInMs);
     provider.setConsumerInstanceId(consumerInstanceId);
+    provider.setRpcServiceName(getRpcServiceName());
+    provider.setSslConfig(useSSL, trustStore, trustStorePwd, keyStore, keyStorePwd, sslProtocol);
     try {
       provider.handshake();
     } catch (final Exception e) {

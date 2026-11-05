@@ -30,14 +30,14 @@ import org.apache.iotdb.session.SessionConnection;
 import java.time.ZoneId;
 import java.util.Objects;
 
-public final class SubscriptionSessionWrapper extends Session {
+public class SubscriptionSessionWrapper extends Session {
 
   public SubscriptionSessionWrapper(final AbstractSessionBuilder builder) {
     super(builder);
   }
 
   public void open() throws IoTDBConnectionException {
-    super.open(enableThriftRpcCompaction, connectionTimeoutInMs);
+    open(enableThriftRpcCompaction, connectionTimeoutInMs);
   }
 
   public void close() throws IoTDBConnectionException {
@@ -69,5 +69,25 @@ public final class SubscriptionSessionWrapper extends Session {
 
   public int getThriftMaxFrameSize() {
     return thriftMaxFrameSize;
+  }
+
+  @Override
+  public void setRpcServiceName(final String rpcServiceName) {
+    super.setRpcServiceName(rpcServiceName);
+  }
+
+  public void setSslConfig(
+      final boolean useSSL,
+      final String trustStore,
+      final String trustStorePwd,
+      final String keyStore,
+      final String keyStorePwd,
+      final String sslProtocol) {
+    this.useSSL = useSSL;
+    this.trustStore = trustStore;
+    this.trustStorePwd = trustStorePwd;
+    this.keyStore = keyStore;
+    this.keyStorePwd = keyStorePwd;
+    this.sslProtocol = sslProtocol;
   }
 }

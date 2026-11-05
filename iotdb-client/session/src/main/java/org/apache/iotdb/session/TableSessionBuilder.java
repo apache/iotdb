@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.session;
 
+import org.apache.iotdb.isession.IInternalSessionBuilder;
+import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -41,7 +43,8 @@ import static org.apache.iotdb.session.Session.TABLE;
  *
  * <p>All configurations have reasonable default values, which can be overridden as needed.
  */
-public class TableSessionBuilder extends AbstractSessionBuilder {
+public class TableSessionBuilder extends AbstractSessionBuilder
+    implements IInternalSessionBuilder<ITableSession> {
 
   private boolean enableCompression = false;
   private int connectionTimeoutInMs = SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS;
@@ -432,21 +435,40 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
    * @throws IoTDBConnectionException if an error occurs while establishing the connection.
    */
   public ITableSession build() throws IoTDBConnectionException {
+    return wrapTableSession(constructNewSession());
+  }
+
+  /** Builds and opens a table session using caller-supplied internal endpoints. */
+  @Override
+  public ITableSession buildInternal(INodeSupplier nodeSupplier) throws IoTDBConnectionException {
+    this.sqlDialect = TABLE;
+    return wrapTableSession(openSession(new InternalSession(this, nodeSupplier)));
+  }
+
+  protected Session constructNewSession() throws IoTDBConnectionException {
     if (nodeUrls == null) {
       this.nodeUrls =
           Collections.singletonList(SessionConfig.DEFAULT_HOST + ":" + SessionConfig.DEFAULT_PORT);
     }
     this.sqlDialect = TABLE;
-    Session newSession = new Session(this);
+    return openSession(new Session(this));
+  }
+
+  protected ITableSession wrapTableSession(Session session) {
+    return new TableSession(session);
+  }
+
+  private Session openSession(Session newSession) throws IoTDBConnectionException {
     newSession.enableIoTDBRpcCompression = isIoTDBRpcCompressionEnabled;
     newSession.tabletCompressionMinRowSize = tabletCompressionMinRowSize;
 
     try {
       newSession.open(isThriftRpcCompactionEnabled, connectionTimeoutInMs);
+      return newSession;
     } catch (IoTDBConnectionException e) {
       newSession.close();
       throw e;
     }
-    return new TableSession(newSession);
   }
+
 }

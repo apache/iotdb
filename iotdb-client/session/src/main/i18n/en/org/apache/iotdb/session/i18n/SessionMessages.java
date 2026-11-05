@@ -21,6 +21,12 @@ package org.apache.iotdb.session.i18n;
 
 public final class SessionMessages {
 
+  public static final String EXCEPTION_NO_DATANODE_INTERNAL_ENDPOINT_IS_AVAILABLE_249D1081 =
+      "No DataNode internal endpoint is available";
+
+  public static final String EXCEPTION_INTERNAL_NODE_SUPPLIER_MUST_NOT_BE_NULL_C5CAF392 =
+      "Internal node supplier must not be null";
+
   // Session
   public static final String NODE_URLS_EMPTY = "nodeUrls shouldn't be empty.";
   public static final String REDIRECT_TWICE_LOG = "redirect twice";

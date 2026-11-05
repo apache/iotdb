@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.session.pool;
 
+import org.apache.iotdb.isession.IInternalSessionBuilder;
+import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.pool.ITableSessionPool;
+import org.apache.iotdb.session.i18n.SessionMessages;
 
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * A builder class for constructing instances of {@link ITableSessionPool}.
@@ -34,7 +38,8 @@ import java.util.List;
  *
  * <p>All configurations have reasonable default values, which can be overridden as needed.
  */
-public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
+public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder
+    implements IInternalSessionBuilder<ITableSessionPool> {
 
   /**
    * Sets the list of node URLs for the IoTDB cluster.
@@ -345,5 +350,19 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
     this.sqlDialect = "table";
     SessionPool sessionPool = new SessionPool(this);
     return new TableSessionPool(sessionPool);
+  }
+
+  /** Builds a pool using caller-supplied internal endpoints; connections open lazily. */
+  @Override
+  public ITableSessionPool buildInternal(INodeSupplier nodeSupplier) {
+    Objects.requireNonNull(
+        nodeSupplier,
+        SessionMessages.EXCEPTION_INTERNAL_NODE_SUPPLIER_MUST_NOT_BE_NULL_C5CAF392);
+    this.sqlDialect = "table";
+    return createInternalTableSessionPool(nodeSupplier);
+  }
+
+  protected ITableSessionPool createInternalTableSessionPool(INodeSupplier nodeSupplier) {
+    return new InternalTableSessionPool(this, nodeSupplier);
   }
 }

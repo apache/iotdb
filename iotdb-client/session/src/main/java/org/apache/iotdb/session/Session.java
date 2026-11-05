@@ -21,6 +21,7 @@ package org.apache.iotdb.session;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.isession.IInternalSessionBuilder;
 import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
@@ -186,6 +187,9 @@ public class Session implements ISession {
   protected volatile ScheduledExecutorService executorService;
 
   protected INodeSupplier availableNodes;
+
+  /** Multiplexed Thrift service name used by internal sessions. */
+  protected String rpcServiceName;
 
   protected boolean enableQueryRedirection = false;
 
@@ -4437,6 +4441,10 @@ public class Session implements ISession {
     this.defaultSessionConnection = defaultSessionConnection;
   }
 
+  protected void setRpcServiceName(String rpcServiceName) {
+    this.rpcServiceName = rpcServiceName;
+  }
+
   public boolean isEnableThriftRpcCompaction() {
     return enableThriftRpcCompaction;
   }
@@ -4445,7 +4453,8 @@ public class Session implements ISession {
     this.enableThriftRpcCompaction = enableThriftRpcCompaction;
   }
 
-  public static class Builder extends AbstractSessionBuilder {
+  public static class Builder extends AbstractSessionBuilder
+      implements IInternalSessionBuilder<InternalSession> {
 
     public Builder host(String host) {
       this.host = host;
@@ -4594,6 +4603,16 @@ public class Session implements ISession {
                 .EXCEPTION_YOU_SHOULD_SPECIFY_EITHER_NODEURLS_HOST_RPCPORT_BUT_NOT_BOTH_77E7B084);
       }
       return new Session(this);
+    }
+
+    /** Builds an unopened internal session using caller-supplied internal endpoints. */
+    @Override
+    public InternalSession buildInternal(INodeSupplier nodeSupplier) {
+      return createInternalSession(nodeSupplier);
+    }
+
+    protected InternalSession createInternalSession(INodeSupplier nodeSupplier) {
+      return new InternalSession(this, nodeSupplier);
     }
   }
 }

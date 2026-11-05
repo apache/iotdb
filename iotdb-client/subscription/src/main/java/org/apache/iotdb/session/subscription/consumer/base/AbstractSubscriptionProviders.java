@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -91,6 +92,11 @@ final class AbstractSubscriptionProviders {
   void openProviders(final AbstractSubscriptionConsumer consumer) throws SubscriptionException {
     // close stale providers
     closeProviders(false);
+
+    if (consumer.getInternalNodeSupplier() != null) {
+      syncInternalProviders(consumer);
+      return;
+    }
 
     final Map<TEndPoint, String> connectionFailures = new LinkedHashMap<>();
     final List<Throwable> connectionFailureCauses = new ArrayList<>();
@@ -457,6 +463,16 @@ final class AbstractSubscriptionProviders {
     if (consumer.isClosed() || consumer.isFenced()) {
       return;
     }
+    if (consumer.getInternalNodeSupplier() != null) {
+      try {
+        syncInternalProviders(consumer);
+      } catch (final SubscriptionConsumerFencedException e) {
+        consumer.fence(e);
+      } catch (final Exception e) {
+        LOGGER.warn(SubscriptionMessages.FETCH_ENDPOINTS_FAILED, consumer, e, e);
+      }
+      return;
+    }
     if (hasNoAvailableProviders()) {
       try {
         openProviders(consumer);
@@ -564,6 +580,96 @@ final class AbstractSubscriptionProviders {
               e);
         }
       }
+    }
+  }
+
+  /** Reconciles providers against a complete endpoint list without server-side discovery. */
+  private void syncInternalProviders(final AbstractSubscriptionConsumer consumer) {
+    final Set<TEndPoint> endpoints =
+        consumer.getInternalNodeSupplier().get().stream()
+            .map(TEndPoint::deepCopy)
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+
+    for (final AbstractSubscriptionProvider provider : getAllProviders()) {
+      if (!provider.isAvailable() || !endpoints.contains(provider.getEndPoint())) {
+        try {
+          closeAndRemoveProvider(provider.getDataNodeId());
+        } catch (final Exception e) {
+          LOGGER.warn(SubscriptionMessages.PROVIDER_CLOSE_FAILED, provider, e, e);
+        }
+        continue;
+      }
+      try {
+        consumer.subscribedTopics = provider.heartbeat().getTopics();
+        provider.setAvailable();
+      } catch (final SubscriptionConsumerFencedException e) {
+        consumer.fence(e);
+        throw e;
+      } catch (final Exception e) {
+        LOGGER.warn(
+            SubscriptionMessages
+                .LOG_ARG_FAILED_SENDING_HEARTBEAT_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_SET_0B38FB1F,
+            consumer,
+            provider,
+            e,
+            e);
+        provider.setUnavailable();
+        try {
+          closeAndRemoveProvider(provider.getDataNodeId());
+        } catch (final Exception closeException) {
+          LOGGER.warn(
+              SubscriptionMessages.PROVIDER_CLOSE_FAILED, provider, closeException, closeException);
+        }
+      }
+    }
+
+    final Set<TEndPoint> connectedEndpoints =
+        getAllAvailableProviders().stream()
+            .map(AbstractSubscriptionProvider::getEndPoint)
+            .collect(Collectors.toSet());
+    Exception lastFailure = null;
+    for (final TEndPoint endpoint : endpoints) {
+      if (isClosing.get() || consumer.isFenced()) {
+        return;
+      }
+      if (connectedEndpoints.contains(endpoint)) {
+        continue;
+      }
+      try {
+        final AbstractSubscriptionProvider provider =
+            consumer.constructProviderAndHandshake(endpoint);
+        if (containsProvider(provider.getDataNodeId())) {
+          try {
+            closeAndRemoveProvider(provider.getDataNodeId());
+          } catch (final Exception e) {
+            LOGGER.warn(SubscriptionMessages.PROVIDER_CLOSE_FAILED, provider, e, e);
+          }
+        }
+        addProvider(provider.getDataNodeId(), provider);
+      } catch (final SubscriptionConsumerFencedException e) {
+        consumer.fence(e);
+        throw e;
+      } catch (final Exception e) {
+        lastFailure = e;
+        LOGGER.warn(
+            SubscriptionMessages.LOG_ARG_FAILED_CREATE_CONNECTION_ARG_BECAUSE_ARG_E536E22A,
+            consumer,
+            endpoint,
+            e,
+            e);
+      }
+    }
+
+    if (hasNoAvailableProviders()) {
+      throw new SubscriptionConnectionException(
+          String.format(
+              SubscriptionMessages
+                  .EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_CONNECT_INITIAL_ENDPOINTS_ARG_5DB83198,
+              endpoints),
+          lastFailure);
+    }
+    if (!subscriptionProviders.containsKey(nextDataNodeId)) {
+      nextDataNodeId = subscriptionProviders.firstKey();
     }
   }
 
