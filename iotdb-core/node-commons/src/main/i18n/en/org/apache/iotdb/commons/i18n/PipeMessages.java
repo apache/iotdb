@@ -27,6 +27,12 @@ public final class PipeMessages {
   public static final String LOG_AIR_GAP_HANDSHAKE_REQUEST_SENT_ON_SOCKET_ARG_WITHOUT_WAITING_FOR_ACKNOWLEDGEMENT_E1ECD582 =
       "Air gap handshake request sent on socket {} without waiting for acknowledgement.";
 
+  public static final String MESSAGE_SUBSCRIPTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_194CE431 =
+      "Subscription is disabled when data region consensus protocol is Ratis.";
+
+  public static final String MESSAGE_PIPE_DATA_INSERTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_7D669ECC =
+      "Pipe synchronization with data insertion is disabled when data region consensus protocol is Ratis.";
+
   // ===================== Common / Shared =====================
 
   public static final String UTILITY_CLASS = "Utility class";

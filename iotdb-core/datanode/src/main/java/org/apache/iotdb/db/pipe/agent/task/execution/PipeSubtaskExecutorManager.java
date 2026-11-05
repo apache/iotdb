@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.iotv2.container.IoTV2GlobalComponentCo
 import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskExecutor;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.consensus.IoTConsensusV2SubtaskExecutor;
 import org.apache.iotdb.db.subscription.task.execution.SubscriptionSubtaskExecutor;
 
@@ -86,7 +87,8 @@ public class PipeSubtaskExecutorManager {
   }
 
   public synchronized void ensureSubscriptionExecutors() {
-    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()
+        || !PipeDataNodeAgent.isSubscriptionFeatureEnabled()) {
       return;
     }
     if (subscriptionExecutor == null || subscriptionExecutor.isShutdown()) {
