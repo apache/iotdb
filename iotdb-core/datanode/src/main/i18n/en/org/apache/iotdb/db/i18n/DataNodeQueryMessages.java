@@ -3933,5 +3933,8 @@ public final class DataNodeQueryMessages {
       "No more DeviceEntry records are available";
   public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
       "Only InMemoryDeviceEntryDataSet supports get inline device entries";
+  public static final String MESSAGE_TOP_OPTIMIZER_RULES_B652C999 = "Top Optimizer Rules:";
+  public static final String MESSAGE_ARG_ARG_INVOCATIONS_ARG_APPLIED_ARG_US_095B7F79 =
+      "%s: %d invocations, %d applied, %d us";
 
 }

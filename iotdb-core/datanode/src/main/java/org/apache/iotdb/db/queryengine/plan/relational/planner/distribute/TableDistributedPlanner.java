@@ -153,6 +153,8 @@ public class TableDistributedPlanner {
     PlanNode distributedPlan = distributedPlanResult.get(0);
 
     if (analysis.isQuery()) {
+      PlanOptimizersStatsCollector planOptimizersStatsCollector =
+          mppQueryContext.getOrCreatePlanOptimizersStatsCollector();
       for (PlanOptimizer optimizer : optimizers) {
         distributedPlan =
             optimizer.optimize(
@@ -165,7 +167,7 @@ public class TableDistributedPlanner {
                     new SymbolAllocator(),
                     mppQueryContext.getQueryId(),
                     NOOP,
-                    PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
+                    planOptimizersStatsCollector));
       }
     }
 

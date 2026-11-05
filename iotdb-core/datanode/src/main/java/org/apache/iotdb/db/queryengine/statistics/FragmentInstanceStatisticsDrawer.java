@@ -20,9 +20,12 @@
 package org.apache.iotdb.db.queryengine.statistics;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
+import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.QueryPlanOptimizerStatistics;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatorStatistics;
 import org.apache.iotdb.mpp.rpc.thrift.TQueryStatistics;
@@ -37,6 +40,7 @@ public class FragmentInstanceStatisticsDrawer {
   private static final double EPSILON = 1e-10;
   private final List<StatisticLine> planHeader = new ArrayList<>();
   private static final double NS_TO_MS_FACTOR = 1.0 / 1000000;
+  private static final int TOP_RULE_STATS_LIMIT = 10;
 
   public void renderPlanStatistics(MPPQueryContext context) {
     addLine(
@@ -76,6 +80,7 @@ public class FragmentInstanceStatisticsDrawer {
         String.format(
             "Logical Optimization Cost: %.3f ms",
             context.getLogicalOptimizationCost() * NS_TO_MS_FACTOR));
+    renderPlanOptimizerRuleStatistics(context);
     addLine(
         planHeader,
         0,
@@ -93,6 +98,30 @@ public class FragmentInstanceStatisticsDrawer {
         String.format(
             "Disk IO Time Cost: %.3f ms",
             context.getDiskIOTimeCostForDeviceEntryDuringDistributionPlan() * NS_TO_MS_FACTOR));
+  }
+
+  private void renderPlanOptimizerRuleStatistics(MPPQueryContext context) {
+    PlanOptimizersStatsCollector collector = context.getPlanOptimizersStatsCollector();
+    if (collector == null) {
+      return;
+    }
+    List<QueryPlanOptimizerStatistics> topRuleStats =
+        collector.getTopRuleStats(TOP_RULE_STATS_LIMIT);
+    if (topRuleStats.isEmpty()) {
+      return;
+    }
+    addLine(planHeader, 0, DataNodeQueryMessages.MESSAGE_TOP_OPTIMIZER_RULES_B652C999);
+    for (QueryPlanOptimizerStatistics ruleStats : topRuleStats) {
+      addLine(
+          planHeader,
+          1,
+          String.format(
+              DataNodeQueryMessages.MESSAGE_ARG_ARG_INVOCATIONS_ARG_APPLIED_ARG_US_095B7F79,
+              ruleStats.simpleRule(),
+              ruleStats.invocations(),
+              ruleStats.applied(),
+              ruleStats.totalTime() / 1000));
+    }
   }
 
   public void renderDispatchCost(MPPQueryContext context) {

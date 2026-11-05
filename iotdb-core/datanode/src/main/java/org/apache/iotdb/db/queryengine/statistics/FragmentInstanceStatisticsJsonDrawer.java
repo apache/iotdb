@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
+import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.QueryPlanOptimizerStatistics;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatorStatistics;
 import org.apache.iotdb.mpp.rpc.thrift.TQueryStatistics;
@@ -76,6 +78,24 @@ public class FragmentInstanceStatisticsJsonDrawer {
         "diskIOTimeCostForDeviceEntryDuringDistributionPlanMs",
         formatMs(
             context.getDiskIOTimeCostForDeviceEntryDuringDistributionPlan() * NS_TO_MS_FACTOR));
+
+    PlanOptimizersStatsCollector collector = context.getPlanOptimizersStatsCollector();
+    if (collector != null) {
+      List<QueryPlanOptimizerStatistics> topRuleStats = collector.getTopRuleStats(10);
+      if (topRuleStats.size() > 0) {
+        JsonArray ruleStats = new JsonArray();
+        for (QueryPlanOptimizerStatistics ruleStat : topRuleStats) {
+          JsonObject ruleStatJson = new JsonObject();
+          ruleStatJson.addProperty("rule", ruleStat.simpleRule());
+          ruleStatJson.addProperty("invocations", ruleStat.invocations());
+          ruleStatJson.addProperty("applied", ruleStat.applied());
+          ruleStatJson.addProperty("totalTimeUs", ruleStat.totalTime() / 1000);
+          ruleStatJson.addProperty("failures", ruleStat.failures());
+          ruleStats.add(ruleStatJson);
+        }
+        planStatistics.add("optimizerRuleStats", ruleStats);
+      }
+    }
   }
 
   public void renderDispatchCost(MPPQueryContext context) {

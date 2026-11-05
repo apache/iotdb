@@ -4689,5 +4689,8 @@ public final class DataNodeQueryMessages {
       "没有更多可用的 DeviceEntry 记录";
   public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
       "只有 InMemoryDeviceEntryDataSet 支持获取内存中的设备条目";
+  public static final String MESSAGE_TOP_OPTIMIZER_RULES_B652C999 = "优化器规则耗时 Top:";
+  public static final String MESSAGE_ARG_ARG_INVOCATIONS_ARG_APPLIED_ARG_US_095B7F79 =
+      "%s：调用 %d 次，应用 %d 次，耗时 %d 微秒";
 
 }

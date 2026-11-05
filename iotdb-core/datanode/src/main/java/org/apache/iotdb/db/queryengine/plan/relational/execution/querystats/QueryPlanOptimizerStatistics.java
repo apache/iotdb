@@ -29,6 +29,7 @@ import static java.util.Objects.requireNonNull;
  */
 public class QueryPlanOptimizerStatistics {
   private final String rule;
+  private final String simpleRule;
   private final long invocations;
   private final long applied;
   private final long totalTime;
@@ -37,6 +38,7 @@ public class QueryPlanOptimizerStatistics {
   public QueryPlanOptimizerStatistics(
       String rule, long invocations, long applied, long totalTime, long failures) {
     this.rule = requireNonNull(rule, DataNodeQueryMessages.EXCEPTION_RULE_IS_NULL_5387C8CC);
+    this.simpleRule = rule.substring(rule.lastIndexOf('.') + 1);
     this.invocations = invocations;
     this.applied = applied;
     this.totalTime = totalTime;
@@ -45,6 +47,11 @@ public class QueryPlanOptimizerStatistics {
 
   public String rule() {
     return rule;
+  }
+
+  /** The rule's simple class name, suitable for rendering in query statistics. */
+  public String simpleRule() {
+    return simpleRule;
   }
 
   public long invocations() {

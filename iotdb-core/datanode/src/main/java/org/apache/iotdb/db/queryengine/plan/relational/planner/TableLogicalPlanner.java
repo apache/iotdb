@@ -183,6 +183,8 @@ public class TableLogicalPlanner {
       queryContext.setLogicalPlanCost(logicalPlanCostTime);
 
       startTime = System.nanoTime();
+      PlanOptimizersStatsCollector planOptimizersStatsCollector =
+          queryContext.getOrCreatePlanOptimizersStatsCollector();
       for (PlanOptimizer optimizer : planOptimizers) {
         planNode =
             optimizer.optimize(
@@ -195,7 +197,7 @@ public class TableLogicalPlanner {
                     symbolAllocator,
                     queryContext.getQueryId(),
                     warningCollector,
-                    PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
+                    planOptimizersStatsCollector));
       }
       long logicalOptimizationCost =
           System.nanoTime()

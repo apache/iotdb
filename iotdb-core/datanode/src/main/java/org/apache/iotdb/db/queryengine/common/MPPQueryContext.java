@@ -49,6 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.OperatorMemoryNotEnoughException;
+import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryResource;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryIOContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
@@ -135,6 +136,11 @@ public class MPPQueryContext implements IAuditEntity {
   private boolean verbose = false;
 
   private QueryPlanStatistics queryPlanStatistics = null;
+
+  // Collects per-rule statistics of the table-model iterative optimizer for this query. The
+  // statistics are rendered by EXPLAIN ANALYZE; the collector is null for queries that never
+  // went through the relational optimizer (e.g. tree-model queries).
+  private PlanOptimizersStatsCollector planOptimizersStatsCollector = null;
 
   private DeviceEntryIOContext deviceEntryIOContext;
   private final AtomicBoolean deviceEntryDiskIOMetricsRecorded = new AtomicBoolean();
@@ -538,6 +544,18 @@ public class MPPQueryContext implements IAuditEntity {
 
   public long getLogicalOptimizationCost() {
     return queryPlanStatistics.getLogicalOptimizationCost();
+  }
+
+  public PlanOptimizersStatsCollector getOrCreatePlanOptimizersStatsCollector() {
+    if (planOptimizersStatsCollector == null) {
+      planOptimizersStatsCollector =
+          PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector();
+    }
+    return planOptimizersStatsCollector;
+  }
+
+  public PlanOptimizersStatsCollector getPlanOptimizersStatsCollector() {
+    return planOptimizersStatsCollector;
   }
 
   public void recordDispatchCost(long dispatchCost) {
