@@ -470,5 +470,4 @@ public class TableSessionBuilder extends AbstractSessionBuilder
       throw e;
     }
   }
-
 }

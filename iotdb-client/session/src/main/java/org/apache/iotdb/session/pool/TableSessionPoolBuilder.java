@@ -356,8 +356,7 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder
   @Override
   public ITableSessionPool buildInternal(INodeSupplier nodeSupplier) {
     Objects.requireNonNull(
-        nodeSupplier,
-        SessionMessages.EXCEPTION_INTERNAL_NODE_SUPPLIER_MUST_NOT_BE_NULL_C5CAF392);
+        nodeSupplier, SessionMessages.EXCEPTION_INTERNAL_NODE_SUPPLIER_MUST_NOT_BE_NULL_C5CAF392);
     this.sqlDialect = "table";
     return createInternalTableSessionPool(nodeSupplier);
   }
