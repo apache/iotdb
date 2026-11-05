@@ -157,116 +157,73 @@ public class SessionManager implements SessionManagerMBean {
     final TSStatus loginStatus =
         AuthorityChecker.checkUser(username, password, useEncryptedPassword);
     if (loginStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      BasicOpenSessionResp response =
-          completeLogin(
-              session, userId, username, zoneId, tsProtocolVersion, clientVersion, sqlDialect);
-      if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() && enableLoginLock) {
-        loginLockManager.clearFailure(userId, session.getClientAddress());
+      // check the version compatibility
+      if (!tsProtocolVersion.equals(CURRENT_RPC_VERSION)) {
+        openSessionResp
+            .sessionId(-1)
+            .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode())
+            .setMessage(
+                DataNodeMiscMessages.VERSION_INCOMPATIBLE_PLEASE_UPGRADE_TO
+                    + IoTDBConstant.VERSION);
+      } else {
+        session.setSqlDialect(sqlDialect);
+        supplySession(session, userId, username, ZoneId.of(zoneId), clientVersion);
+        String logInMessage = DataNodeMiscMessages.EXCEPTION_LOGIN_SUCCESSFULLY_1C2EF670;
+        openSessionResp
+            .sessionId(session.getId())
+            .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+            .setMessage(logInMessage);
+        AUDIT_LOGGER.log(
+            new AuditLogFields(
+                userId,
+                username,
+                session.getClientAddress(),
+                AuditEventType.LOGIN,
+                AuditLogOperation.CONTROL,
+                true),
+            () ->
+                String.format(
+                    DataNodeMiscMessages
+                        .EXCEPTION_ARG_LOGIN_STATUS_ARG_USER_ARG_ID_ARG_OPENS_SESSION_ARG_70586F85,
+                    IoTDBConstant.GLOBAL_DB_NAME,
+                    openSessionResp.getMessage(),
+                    username,
+                    userId,
+                    session));
+        LOGGER.info(
+            DataNodeMiscMessages.LOGIN_STATUS,
+            IoTDBConstant.GLOBAL_DB_NAME,
+            openSessionResp.getMessage(),
+            username,
+            session);
+        updateIdleTime();
+        if (enableLoginLock) {
+          loginLockManager.clearFailure(userId, session.getClientAddress());
+        }
       }
-      return response;
     } else {
       openSessionResp.sessionId(-1).setMessage(loginStatus.message).setCode(loginStatus.code);
       if (enableLoginLock) {
         loginLockManager.recordFailure(userId, session.getClientAddress());
       }
-      logFailedLogin(session, userId, username, loginStatus);
+      AUDIT_LOGGER.log(
+          new AuditLogFields(
+              userId,
+              username,
+              session.getClientAddress(),
+              AuditEventType.LOGIN,
+              AuditLogOperation.CONTROL,
+              false),
+          () ->
+              String.format(
+                  DataNodeMiscMessages
+                      .EXCEPTION_USER_ARG_ID_ARG_LOGIN_FAILED_WITH_CODE_ARG_ARG_93FAE4FD,
+                  username,
+                  userId,
+                  loginStatus.getCode(),
+                  loginStatus.getMessage()));
     }
     return openSessionResp;
-  }
-
-  /** Opens a session for a trusted internal caller without checking a password. */
-  public BasicOpenSessionResp loginInternal(
-      IClientSession session,
-      String username,
-      String zoneId,
-      TSProtocolVersion tsProtocolVersion,
-      IoTDBConstant.ClientVersion clientVersion,
-      SqlDialect sqlDialect) {
-    final long userId = AuthorityChecker.getUserId(username).orElse(-1L);
-    if (userId == -1) {
-      BasicOpenSessionResp response = new BasicOpenSessionResp();
-      response
-          .sessionId(-1)
-          .setCode(TSStatusCode.USER_NOT_EXIST.getStatusCode())
-          .setMessage(
-              String.format(
-                  DataNodeMiscMessages.MISC_EXCEPTION_USER_S_DOES_NOT_EXIST_0CE725D8, username));
-      logFailedLogin(session, userId, username, response);
-      return response;
-    }
-    return completeLogin(
-        session, userId, username, zoneId, tsProtocolVersion, clientVersion, sqlDialect);
-  }
-
-  private BasicOpenSessionResp completeLogin(
-      IClientSession session,
-      long userId,
-      String username,
-      String zoneId,
-      TSProtocolVersion tsProtocolVersion,
-      IoTDBConstant.ClientVersion clientVersion,
-      SqlDialect sqlDialect) {
-    BasicOpenSessionResp response = new BasicOpenSessionResp();
-    if (!tsProtocolVersion.equals(CURRENT_RPC_VERSION)) {
-      response
-          .sessionId(-1)
-          .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode())
-          .setMessage(
-              DataNodeMiscMessages.VERSION_INCOMPATIBLE_PLEASE_UPGRADE_TO + IoTDBConstant.VERSION);
-      return response;
-    }
-
-    session.setSqlDialect(sqlDialect);
-    supplySession(session, userId, username, ZoneId.of(zoneId), clientVersion);
-    response
-        .sessionId(session.getId())
-        .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .setMessage(DataNodeMiscMessages.EXCEPTION_LOGIN_SUCCESSFULLY_1C2EF670);
-    AUDIT_LOGGER.log(
-        new AuditLogFields(
-            userId,
-            username,
-            session.getClientAddress(),
-            AuditEventType.LOGIN,
-            AuditLogOperation.CONTROL,
-            true),
-        () ->
-            String.format(
-                DataNodeMiscMessages
-                    .EXCEPTION_ARG_LOGIN_STATUS_ARG_USER_ARG_ID_ARG_OPENS_SESSION_ARG_70586F85,
-                IoTDBConstant.GLOBAL_DB_NAME,
-                response.getMessage(),
-                username,
-                userId,
-                session));
-    LOGGER.info(
-        DataNodeMiscMessages.LOGIN_STATUS,
-        IoTDBConstant.GLOBAL_DB_NAME,
-        response.getMessage(),
-        username,
-        session);
-    updateIdleTime();
-    return response;
-  }
-
-  private void logFailedLogin(
-      IClientSession session, long userId, String username, TSStatus status) {
-    AUDIT_LOGGER.log(
-        new AuditLogFields(
-            userId,
-            username,
-            session.getClientAddress(),
-            AuditEventType.LOGIN,
-            AuditLogOperation.CONTROL,
-            false),
-        () ->
-            String.format(
-                DataNodeMiscMessages
-                    .EXCEPTION_USER_ARG_ID_ARG_LOGIN_FAILED_WITH_CODE_ARG_ARG_93FAE4FD,
-                username,
-                userId,
-                status.getCode(),
-                status.getMessage()));
   }
 
   public boolean closeSession(IClientSession session, LongConsumer releaseByQueryId) {

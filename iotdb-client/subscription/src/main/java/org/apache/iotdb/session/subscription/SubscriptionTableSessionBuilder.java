@@ -19,13 +19,10 @@
 
 package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.isession.IInternalSessionBuilder;
-import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.AbstractSessionBuilder;
 
-public class SubscriptionTableSessionBuilder extends AbstractSessionBuilder
-    implements IInternalSessionBuilder<ISubscriptionTableSession> {
+public class SubscriptionTableSessionBuilder extends AbstractSessionBuilder {
 
   public SubscriptionTableSessionBuilder() {
     // use table model
@@ -74,25 +71,6 @@ public class SubscriptionTableSessionBuilder extends AbstractSessionBuilder
   public ISubscriptionTableSession build() throws IoTDBConnectionException {
     final ISubscriptionTableSession session = new SubscriptionTableSession(this);
     session.open();
-    return session;
-  }
-
-  /** Builds and opens a table subscription-management session on internal endpoints. */
-  @Override
-  public ISubscriptionTableSession buildInternal(INodeSupplier nodeSupplier)
-      throws IoTDBConnectionException {
-    final ISubscriptionTableSession session =
-        new InternalSubscriptionTableSession(this, nodeSupplier);
-    try {
-      session.open();
-    } catch (IoTDBConnectionException e) {
-      try {
-        session.close();
-      } catch (Exception closeException) {
-        e.addSuppressed(closeException);
-      }
-      throw e;
-    }
     return session;
   }
 }

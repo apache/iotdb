@@ -449,8 +449,7 @@ public class CnToDnInternalServiceAsyncRequestManager
     actionMapBuilder.put(
         CnToDnAsyncRequestType.INSERT_RECORD,
         (req, client, handler) ->
-            client.insertRecordInternal(
-                (TSInsertRecordReq) req, (DataNodeTSStatusRPCHandler) handler));
+            client.insertRecord((TSInsertRecordReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.UPDATE_TABLE,
         (req, client, handler) ->

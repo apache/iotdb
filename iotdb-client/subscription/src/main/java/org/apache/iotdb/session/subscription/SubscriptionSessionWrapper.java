@@ -30,7 +30,7 @@ import org.apache.iotdb.session.SessionConnection;
 import java.time.ZoneId;
 import java.util.Objects;
 
-public class SubscriptionSessionWrapper extends Session {
+public final class SubscriptionSessionWrapper extends Session {
 
   public SubscriptionSessionWrapper(final AbstractSessionBuilder builder) {
     super(builder);

@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.session.pool;
 
-import org.apache.iotdb.isession.IInternalSessionBuilder;
-import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.pool.ITableSessionPool;
 
@@ -36,8 +34,7 @@ import java.util.List;
  *
  * <p>All configurations have reasonable default values, which can be overridden as needed.
  */
-public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder
-    implements IInternalSessionBuilder<ITableSessionPool> {
+public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
 
   /**
    * Sets the list of node URLs for the IoTDB cluster.
@@ -348,12 +345,5 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder
     this.sqlDialect = "table";
     SessionPool sessionPool = new SessionPool(this);
     return new TableSessionPool(sessionPool);
-  }
-
-  /** Builds a pool using the caller's internal endpoints and username; connections open lazily. */
-  @Override
-  public ITableSessionPool buildInternal(INodeSupplier nodeSupplier) {
-    this.sqlDialect = "table";
-    return new InternalTableSessionPool(this, nodeSupplier);
   }
 }

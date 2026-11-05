@@ -78,7 +78,7 @@ public class DataNodeInternalRPCService extends ThriftService
                   config.getRpcMaxConcurrentClientNum(),
                   config.getThriftServerAwaitTimeForStopService(),
                   new TrustedChannelAuditServerEventHandler(
-                      new InternalServiceThriftHandler(getImpl()),
+                      new InternalServiceThriftHandler(),
                       new TEndPoint(getBindIP(), getBindPort()),
                       DNAuditLogger.getInstance()::recordTrustedChannelFailureAuditLogIfNecessary),
                   config.isRpcThriftCompressionEnable(),
@@ -95,7 +95,7 @@ public class DataNodeInternalRPCService extends ThriftService
                   getBindPort(),
                   config.getRpcMaxConcurrentClientNum(),
                   config.getThriftServerAwaitTimeForStopService(),
-                  new InternalServiceThriftHandler(getImpl()),
+                  new InternalServiceThriftHandler(),
                   config.isRpcThriftCompressionEnable(),
                   DeepCopyRpcTransportFactory.INSTANCE);
     } catch (RPCServiceException e) {

@@ -21,27 +21,19 @@ package org.apache.iotdb.db.protocol.thrift.handler;
 
 import org.apache.iotdb.commons.service.NoopServerContext;
 import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.db.protocol.session.ClientSession;
-import org.apache.iotdb.db.protocol.session.SessionManager;
-import org.apache.iotdb.db.protocol.thrift.impl.IClientRPCServiceWithHandler;
-import org.apache.iotdb.rpc.TElasticFramedTransport;
 
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
-import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 
-import java.net.Socket;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class InternalServiceThriftHandler implements TServerEventHandler {
 
   private AtomicLong thriftConnectionNumber = new AtomicLong(0);
-  private final IClientRPCServiceWithHandler eventHandler;
 
-  public InternalServiceThriftHandler(IClientRPCServiceWithHandler eventHandler) {
-    this.eventHandler = eventHandler;
+  public InternalServiceThriftHandler() {
     MetricService.getInstance()
         .addMetricSet(new InternalServiceThriftHandlerMetrics(thriftConnectionNumber));
   }
@@ -54,21 +46,13 @@ public class InternalServiceThriftHandler implements TServerEventHandler {
   @Override
   public ServerContext createContext(TProtocol tProtocol, TProtocol tProtocol1) {
     thriftConnectionNumber.incrementAndGet();
-    Socket socket =
-        ((TSocket) ((TElasticFramedTransport) tProtocol1.getTransport()).getSocket()).getSocket();
-    SessionManager.getInstance().registerSession(new ClientSession(socket));
     return NoopServerContext.INSTANCE;
   }
 
   @Override
   public void deleteContext(
       ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {
-    try {
-      eventHandler.handleClientExit();
-    } finally {
-      SessionManager.getInstance().removeCurrSession();
-      thriftConnectionNumber.decrementAndGet();
-    }
+    thriftConnectionNumber.decrementAndGet();
   }
 
   @Override
