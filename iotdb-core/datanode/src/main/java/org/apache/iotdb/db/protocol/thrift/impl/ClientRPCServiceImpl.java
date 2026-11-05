@@ -228,6 +228,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   public static final String ERROR_CODE = "error code: ";
+  private static final String USE_ENCRYPTED_PASSWORD_KEY = "use_encrypted_password";
 
   private static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
@@ -1244,7 +1245,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             req.password,
             req.zoneId,
             req.client_protocol,
-            clientVersion);
+            clientVersion,
+            parseUseEncryptedPassword(req));
     TSStatus tsStatus = RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
     return resp.setSessionId(openSessionResp.getSessionId());
@@ -1256,6 +1258,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return IoTDBConstant.ClientVersion.valueOf(configuration.get("version"));
     }
     return IoTDBConstant.ClientVersion.V_0_12;
+  }
+
+  private boolean parseUseEncryptedPassword(TSOpenSessionReq req) {
+    return req.configuration != null
+        && Boolean.parseBoolean(req.configuration.get(USE_ENCRYPTED_PASSWORD_KEY));
   }
 
   @Override

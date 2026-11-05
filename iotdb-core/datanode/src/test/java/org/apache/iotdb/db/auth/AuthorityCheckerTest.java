@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountLevelTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -48,6 +49,36 @@ public class AuthorityCheckerTest {
   @After
   public void teardown() {
     AuthorityChecker.getAuthorityFetcher().getAuthorCache().invalidAllCache();
+  }
+
+  @Test
+  public void testCachedUserWithEncryptedPassword() {
+    final String username = "encryptedLoginUser";
+    final String password = "password";
+    final String encryptedPassword = AuthUtils.encryptPassword(password);
+    AuthorityChecker.getAuthorityFetcher()
+        .getAuthorCache()
+        .putUserCache(username, new User(username, encryptedPassword));
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        AuthorityChecker.checkUser(username, password).getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        AuthorityChecker.checkUser(username, encryptedPassword, true).getCode());
+    Assert.assertEquals(
+        TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode(),
+        AuthorityChecker.checkUser(username, encryptedPassword).getCode());
+    Assert.assertEquals(
+        TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode(),
+        AuthorityChecker.checkUser(username, password, true).getCode());
+    Assert.assertEquals(
+        TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode(),
+        AuthorityChecker.checkUser(username, AuthUtils.encryptPassword("wrongPassword"), true)
+            .getCode());
+    Assert.assertEquals(
+        TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode(),
+        AuthorityChecker.checkUser(username, null, true).getCode());
   }
 
   @Test

@@ -89,6 +89,11 @@ public class AuthorityChecker {
     return authorityFetcher.get().checkUser(userName, password);
   }
 
+  public static TSStatus checkUser(
+      final String userName, final String password, final boolean useEncryptedPassword) {
+    return authorityFetcher.get().checkUser(userName, password, useEncryptedPassword);
+  }
+
   public static SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement) {
     return authorityFetcher.get().queryPermission(authorStatement);
   }
