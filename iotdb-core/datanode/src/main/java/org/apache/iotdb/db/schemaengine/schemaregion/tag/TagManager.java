@@ -326,7 +326,10 @@ public class TagManager {
           private void getNext() throws IOException {
             nextMatched = null;
             while (allMatchedNodes.hasNext()) {
-              IMeasurementMNode<?> node = allMatchedNodes.next();
+              final IMeasurementMNode<?> node = allMatchedNodes.next();
+              if (node.isPreDeleted()) {
+                continue;
+              }
               Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
                   readTagFile(node.getOffset());
               nextMatched =

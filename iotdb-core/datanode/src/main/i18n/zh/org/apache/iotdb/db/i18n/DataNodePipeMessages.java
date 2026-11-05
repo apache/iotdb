@@ -28,6 +28,9 @@ public final class DataNodePipeMessages {
           "forceResize 重试 %d 次后仍无法分配内存：total=%d bytes，used=%d bytes，"
               + "usedTablets=%d bytes，usedTsFiles=%d bytes，tabletLimit=%d bytes，tsFileLimit=%d bytes，"
               + "tabletAndTsFileLimit=%d bytes，protectedParserLimit=%d bytes，requested=%d bytes";
+
+  public static final String LOG_DECREASE_REFERENCE_COUNT_FOR_TSFILE_ARG_ERROR_8EF0D114 =
+      "减少 TsFile {} 的引用计数时发生错误。";
   public static final String EXCEPTION_INCREASE_REFERENCE_COUNT_ERROR_HOLDER_MESSAGE_ARG_7E1D032D =
       "增加引用计数失败。持有者信息：%s";
 
