@@ -28,6 +28,7 @@ import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -237,6 +238,53 @@ public class PipeTsFileResourceManagerTest {
     Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile, null));
     Assert.assertFalse(Files.exists(originFile.toPath()));
     Assert.assertFalse(Files.exists(originModFile.toPath()));
+  }
+
+  @Test
+  public void testUnpinAfterOriginalModsRemoved() throws Exception {
+    final TsFileResource resource = new TsFileResource(new File(TS_FILE_NAME));
+    final boolean pinnedModFile =
+        pipeTsFileResourceManager.pinTsFileResource(resource, true, PIPE_NAME);
+    Assert.assertTrue(pinnedModFile);
+    final File pipeTsFile =
+        PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile(), PIPE_NAME);
+    final File pipeMods = new File(pipeTsFile + ModificationFile.FILE_SUFFIX);
+    Assert.assertEquals(1, pipeTsFileResourceManager.getFileReferenceCount(pipeMods, PIPE_NAME));
+
+    Assert.assertTrue(resource.remove());
+    Assert.assertFalse(resource.modFileExists());
+    Assert.assertTrue(pipeMods.exists());
+    pipeTsFileResourceManager.unpinTsFileResource(resource, PIPE_NAME, pinnedModFile);
+
+    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeTsFile, PIPE_NAME));
+    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeMods, PIPE_NAME));
+    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeMods, null));
+    Assert.assertFalse(pipeMods.exists());
+  }
+
+  @Test
+  public void testUnpinDoesNotReleaseModsCreatedAfterPinning() throws Exception {
+    final TsFileResource resource = new TsFileResource(new File(TS_FILE_NAME));
+    resource.removeModFile();
+    final boolean pinnedModFile =
+        pipeTsFileResourceManager.pinTsFileResource(resource, true, PIPE_NAME);
+    Assert.assertFalse(pinnedModFile);
+
+    // An event can acquire mods created after historical selection pinned the TsFile alone.
+    resource
+        .getModFile()
+        .write(new Deletion(new PartialPath("root.lemming.**"), 0, 0, Long.MAX_VALUE));
+    resource.getModFile().close();
+    final File eventMods =
+        pipeTsFileResourceManager.increaseFileReference(
+            new File(resource.getModFile().getFilePath()), false, PIPE_NAME);
+    pipeTsFileResourceManager.unpinTsFileResource(resource, PIPE_NAME, pinnedModFile);
+
+    Assert.assertEquals(1, pipeTsFileResourceManager.getFileReferenceCount(eventMods, PIPE_NAME));
+    Assert.assertTrue(eventMods.exists());
+    pipeTsFileResourceManager.decreaseFileReference(eventMods, PIPE_NAME);
+    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(eventMods, PIPE_NAME));
+    Assert.assertFalse(eventMods.exists());
   }
 
   @Test

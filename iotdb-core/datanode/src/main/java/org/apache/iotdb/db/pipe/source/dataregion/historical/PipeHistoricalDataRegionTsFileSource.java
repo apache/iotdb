@@ -39,6 +39,7 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -111,6 +112,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
 
   private String pipeName;
   private long creationTime;
+  private String pipeNameWithCreationTime;
 
   private PipeTaskMeta pipeTaskMeta;
   private ProgressIndex startIndex;
@@ -143,6 +145,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
 
   private Queue<TsFileResource> pendingQueue;
   private final Set<TsFileResource> filteredTsFileResources = new HashSet<>();
+  private final Set<TsFileResource> resourcesWithPinnedModFile = new HashSet<>();
   private final Set<TsFileResource> historicalProgressReportResources = new HashSet<>();
   private ProgressIndex maxHistoricalProgressIndex = MinimumProgressIndex.INSTANCE;
   private ProgressIndex maxSuppliedHistoricalProgressReportIndex = MinimumProgressIndex.INSTANCE;
@@ -295,6 +298,8 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
 
     pipeName = environment.getPipeName();
     creationTime = environment.getCreationTime();
+    pipeNameWithCreationTime =
+        PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, creationTime);
     pipeTaskMeta = environment.getPipeTaskMeta();
     startIndex = environment.getPipeTaskMeta().getProgressIndex();
 
@@ -426,8 +431,10 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
               // Pin the resource, in case the file is removed by compaction or anything.
               // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
               try {
-                PipeDataNodeResourceManager.tsfile()
-                    .pinTsFileResource(resource, shouldTransferModFile, pipeName);
+                if (PipeDataNodeResourceManager.tsfile()
+                    .pinTsFileResource(resource, shouldTransferModFile, pipeNameWithCreationTime)) {
+                  resourcesWithPinnedModFile.add(resource);
+                }
                 return false;
               } catch (final IOException e) {
                 LOGGER.warn("Pipe: failed to pin TsFileResource {}", resource.getTsFilePath(), e);
@@ -896,7 +903,9 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
       return event;
     } finally {
       try {
-        PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource, pipeName);
+        PipeDataNodeResourceManager.tsfile()
+            .unpinTsFileResource(
+                resource, pipeNameWithCreationTime, resourcesWithPinnedModFile.remove(resource));
       } catch (final IOException e) {
         LOGGER.warn(
             "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
@@ -929,7 +938,11 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
       pendingQueue.forEach(
           resource -> {
             try {
-              PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource, pipeName);
+              PipeDataNodeResourceManager.tsfile()
+                  .unpinTsFileResource(
+                      resource,
+                      pipeNameWithCreationTime,
+                      resourcesWithPinnedModFile.remove(resource));
             } catch (final IOException e) {
               LOGGER.warn(
                   "Pipe {}@{}: failed to unpin TsFileResource after dropping pipe, original path: {}",
@@ -941,6 +954,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
       pendingQueue.clear();
       pendingQueue = null;
     }
+    resourcesWithPinnedModFile.clear();
     historicalProgressReportResources.clear();
     pendingHistoricalProgressIndexToReport = null;
   }
