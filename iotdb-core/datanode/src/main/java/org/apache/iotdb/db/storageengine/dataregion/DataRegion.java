@@ -4968,7 +4968,10 @@ public class DataRegion implements IDataRegionForQuery {
                 return null;
               });
         } catch (IOException e) {
-          throw new LoadFileException(e);
+          // The installed TsFile is already visible and registered; source cleanup cannot roll it
+          // back.
+          logger.warn(StorageEngineMessages.FAILED_TO_DELETE_FILE_OR_DIR, sourceFile, e);
+          break;
         }
       }
     }

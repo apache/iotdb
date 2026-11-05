@@ -27,6 +27,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFil
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
@@ -148,6 +149,90 @@ public class IoTDBLoadTsFileInstallIT {
   @Test
   public void testPublishedFileSurvivesCrashBeforeClientAcknowledgement() throws Exception {
     assertCrashBoundary(true, true);
+  }
+
+  @Test
+  public void testSourceCleanupFailureDoesNotFailCommittedLoad() throws Exception {
+    for (boolean failDataDeletion : new boolean[] {false, true}) {
+      for (boolean legacy : new boolean[] {false, true}) {
+        final String prefix = DATABASE + ".cleanup_data" + failDataDeletion + "_v" + legacy;
+        final File source =
+            new File(
+                directory, (200 + (failDataDeletion ? 2 : 0) + (legacy ? 1 : 0)) + "-0-0-0.tsfile");
+        writeSource(source, prefix, legacy);
+        final File sourceResource = new File(source + TsFileResource.RESOURCE_SUFFIX);
+        final File sourceMods =
+            legacy
+                ? ModificationFileV1.getNormalMods(source)
+                : ModificationFile.getExclusiveMods(source);
+        final byte[] sourceData = Files.readAllBytes(source.toPath());
+        final ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+          try (NodeDebugger debugger =
+              new NodeDebugger(debugPort, TsFileManager.class.getName(), "add")) {
+            final Future<?> request =
+                executor.submit(
+                    () -> {
+                      execute(load(source, true));
+                      return null;
+                    });
+            final StackFrame frame =
+                debugger.await(
+                    candidate -> {
+                      final ObjectReference resource =
+                          (ObjectReference) candidate.getArgumentValues().get(0);
+                      return NodeDebugger.filePath(
+                              resource.getValue(resource.referenceType().fieldByName("file")))
+                          .contains(File.separator + DATABASE + File.separator);
+                    });
+            final ObjectReference resource = (ObjectReference) frame.getArgumentValues().get(0);
+            final File target =
+                new File(
+                    NodeDebugger.filePath(
+                        resource.getValue(resource.referenceType().fieldByName("file"))));
+            debugger.pauseOnExit();
+            debugger.resume();
+            debugger.await(candidate -> true);
+            Assert.assertFalse(
+                "The original SQL must still be awaiting its response", request.isDone());
+            // Registration is complete, and DataRegion has not started source cleanup yet.
+            assertSource(source, legacy, true);
+            Assert.assertTrue(target.isFile());
+            Assert.assertTrue(new File(target + TsFileResource.RESOURCE_SUFFIX).isFile());
+            Assert.assertTrue(ModificationFile.getExclusiveMods(target).isFile());
+            Assert.assertFalse(new File(target + ".load-pending").exists());
+
+            // A nonempty directory makes deleteIfExists fail on every supported platform.
+            final File blocked = failDataDeletion ? source : sourceResource;
+            Files.delete(blocked.toPath());
+            Files.createDirectory(blocked.toPath());
+            Files.write(
+                blocked.toPath().resolve("retained"),
+                failDataDeletion ? sourceData : new byte[] {1});
+            debugger.resume();
+            request.get(30, TimeUnit.SECONDS);
+          }
+        } finally {
+          executor.shutdownNow();
+          Assert.assertTrue(executor.awaitTermination(30, TimeUnit.SECONDS));
+        }
+
+        if (failDataDeletion) {
+          Assert.assertTrue(source.isDirectory());
+          Assert.assertArrayEquals(
+              sourceData, Files.readAllBytes(source.toPath().resolve("retained")));
+          Assert.assertTrue(sourceResource.isFile());
+          Assert.assertTrue(sourceMods.isFile());
+        } else {
+          Assert.assertFalse(source.exists());
+          Assert.assertTrue(sourceResource.isDirectory());
+          Assert.assertTrue(new File(sourceResource, "retained").isFile());
+          // SQL batch cleanup can remove the remaining mods once the source data is gone.
+          Assert.assertFalse(sourceMods.exists());
+        }
+        assertRows(prefix);
+      }
+    }
   }
 
   private void assertCrashBoundary(boolean published, boolean deletionsInstalled) throws Exception {

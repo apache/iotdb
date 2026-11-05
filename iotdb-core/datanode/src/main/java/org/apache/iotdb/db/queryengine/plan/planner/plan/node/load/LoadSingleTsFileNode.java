@@ -245,21 +245,26 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     if (!deleteAfterLoad) {
       return;
     }
-    deleteFile(tsFile);
+    // A retained source TsFile still needs its sidecars for any later explicit LOAD.
+    if (!deleteFile(tsFile)) {
+      return;
+    }
     deleteFile(new File(LoadUtil.getTsFileResourcePath(tsFile.getAbsolutePath())));
     deleteFile(ModificationFile.getExclusiveMods(tsFile));
     deleteFile(new File(LoadUtil.getTsFileModsV1Path(tsFile.getAbsolutePath())));
   }
 
-  private void deleteFile(final File file) {
+  private boolean deleteFile(final File file) {
     try {
       RetryUtils.retryOnException(
           () -> {
             Files.deleteIfExists(file.toPath());
             return null;
           });
+      return true;
     } catch (final Exception e) {
       LOGGER.warn(DataNodeQueryMessages.DELETE_AFTER_LOADING_ERROR, file, e);
+      return false;
     }
   }
 
