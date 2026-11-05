@@ -157,6 +157,13 @@ public final class CliMessages {
       MESSAGE_THE_HEADER_OF_THE_CSV_FILE_TO_BE_IMPORTED_IS_ILLEGAL_THE_CORRECT_FORMAT_IS_TIMESERIES_ALIAS_DATATYPE_ENCODING_COMPRESSION_FB573E37 =
           "The header of the CSV file to be imported is illegal. The correct format is"
               + " \"Timeseries, Alias, DataType, Encoding, Compression\"!";
+  public static final String
+      MESSAGE_THE_HEADER_OF_THE_CSV_FILE_TO_BE_IMPORTED_IS_ILLEGAL_THE_CORRECT_FORMAT_IS_TIMESERIES_ALIAS_DATATYPE_ENCODING_COMPRESSION_TAGS_ATTRIBUTES_14EDBFB9 =
+          "The header of the CSV file to be imported is illegal. The correct format is"
+              + " \"Timeseries, Alias, DataType, Encoding, Compression, Tags, Attributes\"!";
+  public static final String
+      MESSAGE_FAILED_TO_PARSE_THE_ARG_COLUMN_OF_TIMESERIES_ARG_AS_JSON_THE_RECORD_IS_SKIPPED_ARG_35D898C8 =
+          "Failed to parse the %s column of timeseries %s as JSON, the record is skipped: %s";
 
   private CliMessages() {}
 
