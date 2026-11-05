@@ -853,24 +853,29 @@ public class CommonConfig {
     setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
   }
 
+  public synchronized boolean isReadOnlyForDiskFull() {
+    return status == NodeStatus.ReadOnly && NodeStatus.DISK_FULL.equals(statusReason);
+  }
+
+  /** Recheck the reason under the status lock before clearing disk-full recovery checks. */
+  public synchronized void setRunningIfDiskFull() {
+    if (isReadOnlyForDiskFull()) {
+      setNodeStatus(NodeStatus.Running);
+    }
+  }
+
   /** Called after the aggregate disk-space check passes. */
   public void tryRecoverFromDiskFull() {
     final List<BooleanSupplier> recoveryChecks;
     synchronized (this) {
-      if (status != NodeStatus.ReadOnly || !NodeStatus.DISK_FULL.equals(statusReason)) {
+      if (!isReadOnlyForDiskFull()) {
         return;
       }
       recoveryChecks = new ArrayList<>(diskFullRecoveryChecks.values());
     }
     // Do not hold the status monitor during filesystem I/O.
-    if (!recoveryChecks.stream().allMatch(BooleanSupplier::getAsBoolean)) {
-      return;
-    }
-    synchronized (this) {
-      // A concurrent Manual/Stopping/error transition must not be cleared by disk recovery.
-      if (status == NodeStatus.ReadOnly && NodeStatus.DISK_FULL.equals(statusReason)) {
-        setNodeStatus(NodeStatus.Running);
-      }
+    if (recoveryChecks.stream().allMatch(BooleanSupplier::getAsBoolean)) {
+      setRunningIfDiskFull();
     }
   }
 
