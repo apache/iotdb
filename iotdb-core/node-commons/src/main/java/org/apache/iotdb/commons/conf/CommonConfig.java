@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.commons.enums.PipeRateAverage;
 import org.apache.iotdb.commons.i18n.ConfigMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -179,14 +178,12 @@ public class CommonConfig {
   private volatile NodeStatus status = NodeStatus.Running;
 
   /**
-   * Maximum length of the error message embedded in the UnrecoverableError status reason, keeping
-   * the reason bounded in heartbeats and SHOW results.
+   * Reason reported in heartbeats and SHOW results. For unrecoverable errors, {@link
+   * HandleSystemErrorStrategy} formats the exception before setting this field.
    */
-  private static final int MAX_STATUS_REASON_LENGTH = 256;
+  private volatile String statusReason = null;
 
   private volatile boolean isStopping = false;
-
-  private volatile String statusReason = null;
 
   // Only failed sources are retained. Directory initialization uses its folder list as the key;
   // a live FolderManager uses its identity so its health restrictions are also checked.
@@ -798,26 +795,8 @@ public class CommonConfig {
     this.handleSystemErrorStrategy = handleSystemErrorStrategy;
   }
 
-  /**
-   * Handles an unrecoverable error with the given exception. The ReadOnly status reason is
-   * assembled here so that all call sites share one format: "UnrecoverableError, <timestamp>,
-   * <error message>". The error message is truncated to {@link #MAX_STATUS_REASON_LENGTH}
-   * characters so that the reason published in heartbeats and SHOW results stays bounded.
-   */
   public void handleUnrecoverableError(Throwable e) {
-    String errorMessage =
-        e.getMessage() == null || e.getMessage().isEmpty()
-            ? e.getClass().getSimpleName()
-            : e.getMessage();
-    if (errorMessage.length() > MAX_STATUS_REASON_LENGTH) {
-      errorMessage = errorMessage.substring(0, MAX_STATUS_REASON_LENGTH) + "...";
-    }
-    handleSystemErrorStrategy.handle(
-        NodeStatus.UNRECOVERABLE_ERROR
-            + ", "
-            + DateTimeUtils.convertLongToDate(System.currentTimeMillis(), "ms")
-            + ", "
-            + errorMessage);
+    handleSystemErrorStrategy.handle(NodeStatus.UNRECOVERABLE_ERROR, e);
   }
 
   public double getDiskSpaceWarningThreshold() {
