@@ -59,8 +59,11 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -275,13 +278,19 @@ public class ExportData extends AbstractDataTool {
           ioTPrinter.println(sql);
           String[] values = sql.trim().split(";");
           for (int i = 0; i < values.length; i++) {
-            dumpResult(values[i], i);
+            if (!dumpResult(values[i], i)) {
+              exitCode = CODE_ERROR;
+            }
           }
         } else {
-          dumpFromSqlFile(sqlFile);
+          if (!dumpFromSqlFile(sqlFile)) {
+            exitCode = CODE_ERROR;
+          }
         }
       } else {
-        dumpResult(queryCommand, 0);
+        if (!dumpResult(queryCommand, 0)) {
+          exitCode = CODE_ERROR;
+        }
       }
 
     } catch (IOException e) {
@@ -571,15 +580,17 @@ public class ExportData extends AbstractDataTool {
    * @param filePath sql file path
    * @throws IOException exception
    */
-  private static void dumpFromSqlFile(String filePath) throws IOException {
+  private static boolean dumpFromSqlFile(String filePath) throws IOException {
+    boolean succeeded = true;
     try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
       String sql;
       int index = 0;
       while ((sql = reader.readLine()) != null) {
-        dumpResult(sql, index);
+        succeeded &= dumpResult(sql, index);
         index++;
       }
     }
+    return succeeded;
   }
 
   /**
@@ -588,36 +599,36 @@ public class ExportData extends AbstractDataTool {
    * @param sql export the result of executing the sql
    * @param index used to create dump file name
    */
-  private static void dumpResult(String sql, int index) {
+  private static boolean dumpResult(String sql, int index) {
     if (EXPORT_SQL_TYPE_NAME.equalsIgnoreCase(exportType)) {
       legalCheck(sql);
     }
     final String path = targetDirectory + targetFile + index;
-    try {
-      SessionDataSet sessionDataSet = session.executeQueryStatement(sql, timeout);
+    try (SessionDataSet sessionDataSet = session.executeQueryStatement(sql, timeout)) {
       List<Object> headers = new ArrayList<>();
       List<String> names = sessionDataSet.getColumnNames();
       List<String> types = sessionDataSet.getColumnTypes();
       if (EXPORT_SQL_TYPE_NAME.equalsIgnoreCase(exportType)) {
         writeSqlFile(sessionDataSet, path, names);
       } else {
-        if (Boolean.TRUE.equals(needDataTypePrinted)) {
-          for (int i = 0; i < names.size(); i++) {
-            if (!"Time".equals(names.get(i)) && !"Device".equals(names.get(i))) {
-              headers.add(String.format("%s(%s)", names.get(i), types.get(i)));
-            } else {
-              headers.add(names.get(i));
-            }
+        for (int i = 0; i < names.size(); i++) {
+          String name = names.get(i);
+          if (Boolean.TRUE.equals(needDataTypePrinted)
+              && !"Time".equalsIgnoreCase(name)
+              && !"Device".equals(name)) {
+            headers.add(String.format("%s(%s)", name, types.get(i)));
+          } else {
+            headers.add(name);
           }
-        } else {
-          headers.addAll(names);
         }
         writeCsvFile(sessionDataSet, path, headers, linesPerFile);
       }
       sessionDataSet.closeOperationHandle();
       ioTPrinter.println("Export completely!");
+      return true;
     } catch (StatementExecutionException | IoTDBConnectionException | IOException e) {
       ioTPrinter.println("Cannot dump result because: " + e.getMessage());
+      return false;
     }
   }
 
@@ -728,41 +739,24 @@ public class ExportData extends AbstractDataTool {
     SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
     List<String> columnTypeList = iterator.getColumnTypeList();
     int totalColumns = columnTypeList.size();
-    String deviceName = null;
     int fileIndex = 0;
     int currentLines = 0;
     String filePathTemplate = filePath + "_%d" + ".sql";
     FileWriter writer = null;
     try {
       while (iterator.next()) {
-        if (writer == null) {
-          writer = new FileWriter(String.format(filePathTemplate, fileIndex));
-        }
-        deviceName = iterator.getString(2);
+        String deviceName = iterator.getString(2);
         if (deviceName.startsWith(SYSTEM_DATABASE + ".")) {
           continue;
+        }
+        if (writer == null) {
+          writer = new FileWriter(String.format(filePathTemplate, fileIndex));
         }
         List<String> values = new ArrayList<>();
         for (int index = 2; index < totalColumns; index++) {
           String dataType = columnTypeList.get(index);
-          String value = iterator.getString(index + 1);
-          if (value == null) {
-            values.add("null");
-            continue;
-          }
-          if ("TEXT".equalsIgnoreCase(dataType)
-              || "STRING".equalsIgnoreCase(dataType)
-              || "DATE".equalsIgnoreCase(dataType)) {
-            values.add(String.format("\"%s\"", value));
-          } else if ("BLOB".equalsIgnoreCase(dataType)) {
-            if (value.length() >= 2 && (value.startsWith("0x") || value.startsWith("0X"))) {
-              values.add(String.format("X'%s'", value.substring(2)));
-            } else {
-              values.add(String.format("X'%s'", value));
-            }
-          } else {
-            values.add(value);
-          }
+          String value = iterator.isNull(index + 1) ? null : iterator.getString(index + 1);
+          values.add(formatSqlValue(value, dataType));
         }
         long timestamp = iterator.getLong(1);
         writer.write(String.format(sqlPrefix, deviceName, timestamp, String.join(",", values)));
@@ -788,79 +782,61 @@ public class ExportData extends AbstractDataTool {
   private static void exportToSqlFileWithoutAlign(
       SessionDataSet sessionDataSet, String filePath, List<String> headers)
       throws IoTDBConnectionException, StatementExecutionException, IOException {
-
-    List<String> measurementNames = new ArrayList<>();
-    String deviceName = null;
     if (CollectionUtils.isEmpty(headers) || headers.size() <= 1) {
       return;
-    } else {
-      List<String> localHeaders = new ArrayList<>(headers);
-      localHeaders.remove("Time");
-      if (CollectionUtils.isEmpty(localHeaders)) {
-        return;
-      }
-      Path path = new Path(localHeaders.get(0), true);
-      deviceName = path.getDevice();
-      for (String header : localHeaders) {
-        path = new Path(header, true);
-        String meas = path.getMeasurement();
-        if (path.getDevice().equals(deviceName)) {
-          measurementNames.add(meas);
-        }
-      }
     }
-    if (deviceName.startsWith(SYSTEM_DATABASE + ".")) {
-      return;
+
+    Map<String, List<Integer>> deviceColumnIndices = new LinkedHashMap<>();
+    Map<Integer, String> measurements = new HashMap<>();
+    for (int i = 1; i < headers.size(); i++) {
+      Path path = new Path(headers.get(i), true);
+      String device = path.getDevice();
+      if (device.startsWith(SYSTEM_DATABASE + ".")) {
+        continue;
+      }
+      deviceColumnIndices.computeIfAbsent(device, key -> new ArrayList<>()).add(i);
+      measurements.put(i, path.getMeasurement());
     }
-    String sqlPrefix =
-        String.format(
-            "INSERT INTO %s(TIMESTAMP,%s) VALUES (%s);\n",
-            "%s", String.join(",", measurementNames), "%d,%s");
 
     SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
     List<String> columnTypeList = iterator.getColumnTypeList();
-    int totalColumns = measurementNames.size();
     int fileIndex = 0;
     int currentLines = 0;
-    String filePathTemplate = filePath + "_%d" + ".sql";
     FileWriter writer = null;
     try {
       while (iterator.next()) {
-        if (writer == null) {
-          writer = new FileWriter(String.format(filePathTemplate, fileIndex));
-        }
-        List<String> values = new ArrayList<>();
-        for (int index = 0; index < totalColumns; index++) {
-          String dataType = columnTypeList.get(index + 1);
-          String value = iterator.getString(index + 2);
-          if (value == null) {
-            values.add("null");
+        for (Map.Entry<String, List<Integer>> entry : deviceColumnIndices.entrySet()) {
+          List<String> names = new ArrayList<>();
+          List<String> values = new ArrayList<>();
+          for (int columnIndex : entry.getValue()) {
+            if (!iterator.isNull(columnIndex + 1)) {
+              names.add(measurements.get(columnIndex));
+              values.add(
+                  formatSqlValue(
+                      iterator.getString(columnIndex + 1), columnTypeList.get(columnIndex)));
+            }
+          }
+          // A timestamp present in another device must not create an empty record here.
+          if (values.isEmpty()) {
             continue;
           }
-          if ("TEXT".equalsIgnoreCase(dataType)
-              || "STRING".equalsIgnoreCase(dataType)
-              || "DATE".equalsIgnoreCase(dataType)) {
-            values.add(String.format("\"%s\"", value));
-          } else if ("BLOB".equalsIgnoreCase(dataType)) {
-            if (value.length() >= 2 && (value.startsWith("0x") || value.startsWith("0X"))) {
-              values.add(String.format("X'%s'", value.substring(2)));
-            } else {
-              values.add(String.format("X'%s'", value));
-            }
-          } else {
-            values.add(value);
+          if (writer == null) {
+            writer = new FileWriter(filePath + "_" + fileIndex + ".sql");
           }
-        }
-        long timestamp = iterator.getLong(1);
-        writer.write(String.format(sqlPrefix, deviceName, timestamp, String.join(",", values)));
-        currentLines += 1;
-
-        if (currentLines >= linesPerFile) {
-          writer.flush();
-          writer.close();
-          fileIndex += 1;
-          writer = null;
-          currentLines = 0;
+          writer.write(
+              String.format(
+                  "INSERT INTO %s(TIMESTAMP,%s) VALUES (%d,%s);\n",
+                  entry.getKey(),
+                  String.join(",", names),
+                  iterator.getLong(1),
+                  String.join(",", values)));
+          if (++currentLines >= linesPerFile) {
+            writer.flush();
+            writer.close();
+            writer = null;
+            fileIndex++;
+            currentLines = 0;
+          }
         }
       }
     } finally {
@@ -870,6 +846,23 @@ public class ExportData extends AbstractDataTool {
       }
     }
     ioTPrinter.print("\n");
+  }
+
+  private static String formatSqlValue(String value, String dataType) {
+    if (value == null) {
+      return "NULL";
+    }
+    if ("TEXT".equalsIgnoreCase(dataType)
+        || "STRING".equalsIgnoreCase(dataType)
+        || "DATE".equalsIgnoreCase(dataType)) {
+      return "'" + value.replace("'", "''") + "'";
+    }
+    if ("BLOB".equalsIgnoreCase(dataType)) {
+      String hexValue =
+          value.startsWith("0x") || value.startsWith("0X") ? value.substring(2) : value;
+      return "X'" + hexValue + "'";
+    }
+    return value;
   }
 
   public static void writeSqlFile(

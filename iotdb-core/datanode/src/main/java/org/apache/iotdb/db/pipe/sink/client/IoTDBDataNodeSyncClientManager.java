@@ -42,6 +42,8 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBDataNodeSyncClientManager.class);
 
+  private final String receiverKey;
+
   public IoTDBDataNodeSyncClientManager(
       final List<TEndPoint> endPoints,
       final String username,
@@ -68,6 +70,7 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
         loadTsFileStrategy,
         validateTsFile,
         shouldMarkAsPipeRequest);
+    receiverKey = IoTDBDataNodeCacheLeaderClientManager.generateReceiverKey(endPoints);
   }
 
   @Override
@@ -88,7 +91,7 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
   }
 
   public Pair<IoTDBSyncClient, Boolean> getClient(final String deviceId) {
-    final TEndPoint endPoint = LEADER_CACHE_MANAGER.getLeaderEndPoint(deviceId);
+    final TEndPoint endPoint = getLeaderEndPoint(deviceId);
     return useLeaderCache
             && endPoint != null
             && endPoint2ClientAndStatus.containsKey(endPoint)
@@ -108,6 +111,11 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
         : getClient();
   }
 
+  @Override
+  public TEndPoint getLeaderEndPoint(final String deviceId) {
+    return useLeaderCache ? LEADER_CACHE_MANAGER.getLeaderEndPoint(receiverKey, deviceId) : null;
+  }
+
   public void updateLeaderCache(final String deviceId, final TEndPoint endPoint) {
     if (!useLeaderCache || deviceId == null || endPoint == null) {
       return;
@@ -120,7 +128,7 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
         reconstructClient(endPoint);
       }
 
-      LEADER_CACHE_MANAGER.updateLeaderEndPoint(deviceId, endPoint);
+      LEADER_CACHE_MANAGER.updateLeaderEndPoint(receiverKey, deviceId, endPoint);
     } catch (final Exception e) {
       LOGGER.warn(
           "Failed to update leader cache for device {} with endpoint {}:{}.",

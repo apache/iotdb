@@ -26,20 +26,28 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimePartitionProgressIndex;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixPipePattern;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.junit.Assert;
 import org.junit.Test;
@@ -52,13 +60,252 @@ import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeHistoricalDataRegionTsFileSourceTest {
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testHistoricalSourceSuppliesPinnedModsAfterOriginalFileRemoval() throws Exception {
+    final File tempDir = Files.createTempDirectory("pipeHistoricalSourceMods").toFile();
+    final PipeHistoricalDataRegionTsFileSource source = new PipeHistoricalDataRegionTsFileSource();
+    final String pipeName = "historical_source_mods";
+    final long creationTime = 1L;
+    final String resourcePipeName =
+        PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, creationTime);
+    final PipeTsFileResourceManager manager = PipeDataNodeResourceManager.tsfile();
+    PipeTsFileInsertionEvent event = null;
+    try {
+      final PipeParameters parameters =
+          new PipeParameters(
+              new HashMap<>(
+                  Collections.singletonMap(
+                      PipeSourceConstant.SOURCE_MODS_ENABLE_KEY, Boolean.TRUE.toString())));
+      source.validate(new PipeParameterValidator(parameters));
+      source.customize(
+          parameters,
+          () ->
+              new PipeTaskSourceRuntimeEnvironment(
+                  pipeName, creationTime, 0, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 0)));
+      Assert.assertEquals(resourcePipeName, getPrivateField(source, "pipeNameWithCreationTime"));
+
+      final File dataDir = new File(tempDir, "unsequence/root.db/0/0");
+      Assert.assertTrue(dataDir.mkdirs());
+      final TsFileResource resource =
+          createClosedTsFileResourceWithDevices(dataDir, "1-1-0-0.tsfile", "root.db.d0");
+      resource.getModFile().write(new Deletion(new PartialPath("root.db.d0.s1"), 0, 0, 1));
+      resource.getModFile().close();
+      Assert.assertTrue(manager.pinTsFileResource(resource, true, resourcePipeName));
+      ((Set<TsFileResource>) getPrivateField(source, "resourcesWithPinnedModFile")).add(resource);
+      ((Set<TsFileResource>) getPrivateField(source, "filteredTsFileResources")).add(resource);
+      setPrivateField(source, "pendingQueue", new ArrayDeque<>(Collections.singleton(resource)));
+      setPrivateField(source, "hasBeenStarted", true);
+      setPrivateField(source, "sloppyPattern", true);
+      setPrivateField(source, "sloppyTimeRange", true);
+
+      Assert.assertTrue(resource.remove());
+      event = (PipeTsFileInsertionEvent) source.supply();
+      Assert.assertNotNull(event);
+      Assert.assertTrue(event.isWithMod());
+      final File pinnedTsFile =
+          PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+              resource.getTsFile(), resourcePipeName);
+      Assert.assertEquals(pinnedTsFile, event.getTsFile());
+      Assert.assertEquals(
+          new File(pinnedTsFile + ModificationFile.FILE_SUFFIX), event.getModFile());
+      Assert.assertEquals(1, manager.getFileReferenceCount(event.getModFile(), resourcePipeName));
+      Assert.assertTrue(event.getModFile().exists());
+    } finally {
+      source.close();
+      if (event != null) {
+        event.clearReferenceCount(getClass().getName());
+      }
+      manager.cleanPipeTsFileDir(resourcePipeName);
+      FileUtils.deleteFileOrDirectory(tempDir);
+    }
+  }
+
+  @Test
+  public void testClosingTsFileKeepsTimeFiltering() throws Exception {
+    // A closing sequence file can temporarily look wholly inside the extraction window even
+    // though the eventual file also contains rows outside it.
+    assertSuppliedTsFileTimeFiltering(false, 0, Long.MIN_VALUE, false, true);
+  }
+
+  @Test
+  public void testClosedTsFileTimeFiltering() throws Exception {
+    assertSuppliedTsFileTimeFiltering(true, -10, 10, false, false);
+    assertSuppliedTsFileTimeFiltering(true, -20, 20, false, true);
+  }
+
+  @Test
+  public void testClosingTsFileHonorsLooseTimeRange() throws Exception {
+    assertSuppliedTsFileTimeFiltering(false, 0, Long.MIN_VALUE, true, false);
+  }
+
+  @Test
+  public void testHistoricalTsFileReferenceFailureRetriesWithoutAdvancingProgress()
+      throws Exception {
+    assertHistoricalTsFileReferenceFailure(true);
+  }
+
+  @Test
+  public void testHistoricalTsFileReferenceFailureReleasesPinOnClose() throws Exception {
+    assertHistoricalTsFileReferenceFailure(false);
+  }
+
+  @SuppressWarnings("unchecked")
+  private void assertHistoricalTsFileReferenceFailure(final boolean retry) throws Exception {
+    final File tempDir = Files.createTempDirectory("pipeHistoricalReferenceFailure").toFile();
+    final String pipeName = "historical_reference_retry";
+    final String resourcePipeName =
+        PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, 1L);
+    final PipeTsFileResourceManager manager = PipeDataNodeResourceManager.tsfile();
+    final PipeHistoricalDataRegionTsFileSource source = new PipeHistoricalDataRegionTsFileSource();
+    final AtomicBoolean failPathResolution = new AtomicBoolean();
+    PipeTsFileInsertionEvent event = null;
+    try {
+      final File partitionDir = new File(tempDir, "sequence/root.db/2147483645/0");
+      Assert.assertTrue(partitionDir.mkdirs());
+      final TsFileResource resource = createTsFileResource(partitionDir, "1-1-0-0.tsfile");
+      resource.setFile(new CanonicalPathFailingFile(resource.getTsFilePath(), failPathResolution));
+      resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+      resource.updateProgressIndex(new SimpleProgressIndex(0, 1));
+
+      setPrivateField(source, "pipeName", pipeName);
+      setPrivateField(source, "creationTime", 1L);
+      setPrivateField(source, "pipeNameWithCreationTime", resourcePipeName);
+      setPrivateField(source, "dataRegionId", 2147483645);
+      setPrivateField(source, "hasBeenStarted", true);
+      setPrivateField(source, "shouldExtractInsertion", true);
+      setPrivateField(source, "shouldOrderHistoricalTsFileByQueryPriority", true);
+      setPrivateField(source, "isDbNameCoveredByPattern", true);
+      final Set<TsFileResource> selectedResources =
+          (Set<TsFileResource>) getPrivateField(source, "filteredTsFileResources");
+      selectedResources.add(resource);
+      final Set<TsFileResource> progressReportResources =
+          (Set<TsFileResource>) getPrivateField(source, "historicalProgressReportResources");
+      progressReportResources.add(resource);
+      setPrivateField(
+          source,
+          "pendingQueue",
+          new ArrayDeque<TsFileResource>(Collections.singletonList(resource)));
+
+      manager.pinTsFileResource(resource, false, resourcePipeName);
+      final File pinnedFile =
+          PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+              resource.getTsFile(), resourcePipeName);
+      failPathResolution.set(true);
+      Assert.assertThrows(PipeException.class, source::supply);
+      Assert.assertEquals(1, source.getPendingQueueSize());
+      Assert.assertTrue(selectedResources.contains(resource));
+      Assert.assertTrue(progressReportResources.contains(resource));
+      Assert.assertNull(getPrivateField(source, "pendingHistoricalProgressIndexToReport"));
+      Assert.assertEquals(1, manager.getFileReferenceCount(pinnedFile, resourcePipeName));
+
+      failPathResolution.set(false);
+      if (retry) {
+        event = (PipeTsFileInsertionEvent) source.supply();
+        Assert.assertNotNull(event);
+        final Field resourceField = PipeTsFileInsertionEvent.class.getDeclaredField("resource");
+        resourceField.setAccessible(true);
+        Assert.assertSame(resource, resourceField.get(event));
+        Assert.assertEquals(0, source.getPendingQueueSize());
+        Assert.assertFalse(selectedResources.contains(resource));
+        Assert.assertEquals(pinnedFile, event.getTsFile());
+        Assert.assertEquals(1, manager.getFileReferenceCount(pinnedFile, resourcePipeName));
+        final Event progressEvent = source.supply();
+        Assert.assertTrue(progressEvent instanceof ProgressReportEvent);
+        Assert.assertEquals(
+            new TimePartitionProgressIndex(
+                resource.getTimePartition(), resource.getMaxProgressIndex()),
+            ((ProgressReportEvent) progressEvent).getProgressIndex());
+      } else {
+        source.close();
+        Assert.assertEquals(0, manager.getFileReferenceCount(pinnedFile, resourcePipeName));
+      }
+    } finally {
+      failPathResolution.set(false);
+      if (event != null) {
+        event.clearReferenceCount(getClass().getName());
+      }
+      source.close();
+      manager.cleanPipeTsFileDir(pipeName);
+      manager.cleanPipeTsFileDir(resourcePipeName);
+      FileUtils.deleteFileOrDirectory(tempDir);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private void assertSuppliedTsFileTimeFiltering(
+      final boolean closed,
+      final long fileStartTime,
+      final long fileEndTime,
+      final boolean looseTimeRange,
+      final boolean shouldParseTime)
+      throws Exception {
+    final File tempDir = Files.createTempDirectory("pipeHistoricalClosingTimeFilter").toFile();
+    final String pipeName = "closing_time_filter";
+    final String resourcePipeName =
+        PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, 1L);
+    final PipeTsFileResourceManager manager = PipeDataNodeResourceManager.tsfile();
+    final PipeHistoricalDataRegionTsFileSource source = new PipeHistoricalDataRegionTsFileSource();
+    PipeTsFileInsertionEvent event = null;
+    try {
+      final File partitionDir = new File(tempDir, "sequence/root.db/2147483646/0");
+      Assert.assertTrue(partitionDir.mkdirs());
+      final TsFileResource resource = createTsFileResource(partitionDir, "1-1-0-0.tsfile");
+      final PlainDeviceID device = new PlainDeviceID("root.db.device1");
+      resource.updateStartTime(device, fileStartTime);
+      resource.updateEndTime(device, fileEndTime);
+      resource.setStatusForTest(
+          closed ? TsFileResourceStatus.NORMAL : TsFileResourceStatus.UNCLOSED);
+
+      setPrivateField(source, "pipeName", pipeName);
+      setPrivateField(source, "creationTime", 1L);
+      setPrivateField(source, "pipeNameWithCreationTime", resourcePipeName);
+      setPrivateField(source, "dataRegionId", 2147483646);
+      setPrivateField(source, "hasBeenStarted", true);
+      setPrivateField(source, "isDbNameCoveredByPattern", true);
+      setPrivateField(source, "historicalDataExtractionStartTime", -10L);
+      setPrivateField(source, "historicalDataExtractionEndTime", 10L);
+      setPrivateField(source, "sloppyTimeRange", looseTimeRange);
+      ((Set<TsFileResource>) getPrivateField(source, "filteredTsFileResources")).add(resource);
+      setPrivateField(
+          source,
+          "pendingQueue",
+          new ArrayDeque<TsFileResource>(Collections.singletonList(resource)));
+      manager.pinTsFileResource(resource, false, resourcePipeName);
+
+      event = (PipeTsFileInsertionEvent) source.supply();
+      Assert.assertNotNull(event);
+      // The collector must not send this entire file without filtering after its close completes.
+      Assert.assertEquals(shouldParseTime, event.shouldParseTime());
+      Assert.assertEquals(!shouldParseTime, PipeEventCollector.canSkipParsing4TsFileEvent(event));
+      if (!closed && !looseTimeRange) {
+        resource.updateStartTime(device, -20);
+        resource.updateEndTime(device, 20);
+        resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+        Assert.assertTrue(event.shouldParseTime());
+        Assert.assertFalse(PipeEventCollector.canSkipParsing4TsFileEvent(event));
+      }
+    } finally {
+      if (event != null) {
+        event.clearReferenceCount(getClass().getName());
+      }
+      source.close();
+      manager.cleanPipeTsFileDir(pipeName);
+      manager.cleanPipeTsFileDir(resourcePipeName);
+
+      FileUtils.deleteFileOrDirectory(tempDir);
+    }
+  }
 
   @Test
   public void testGlobalTimeRangeRespectsHistoryEnable() throws Exception {
@@ -104,21 +351,41 @@ public class PipeHistoricalDataRegionTsFileSourceTest {
           tempDir,
           "superset.tsfile",
           hybridProgressIndex(
-              new IoTProgressIndex(ImmutableMap.of(1, 100L, 2, 200L)),
+              iotProgressIndex(1, 100L, 2, 200L),
               new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 10))),
           hybridProgressIndex(
-              new IoTProgressIndex(1, 100L),
+              iotProgressIndex(1, 100L),
               new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 9))),
           false);
 
       assertMayTsFileContainUnprocessedData(
           tempDir,
           "missing-dimension.tsfile",
-          hybridProgressIndex(new IoTProgressIndex(1, 100L)),
+          hybridProgressIndex(iotProgressIndex(1, 100L)),
           hybridProgressIndex(
-              new IoTProgressIndex(1, 90L),
+              iotProgressIndex(1, 90L),
               new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 10))),
           true);
+
+      assertMayTsFileContainUnprocessedData(
+          tempDir,
+          "larger-iot.tsfile",
+          hybridProgressIndex(
+              iotProgressIndex(1, 100L, 2, 200L),
+              new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 10))),
+          hybridProgressIndex(
+              iotProgressIndex(1, 101L),
+              new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 10))),
+          true);
+
+      final ProgressIndex recoverProgressIndex =
+          new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 10));
+      assertMayTsFileContainUnprocessedData(
+          tempDir,
+          "old-sequence-recover.tsfile",
+          hybridProgressIndex(recoverProgressIndex, iotProgressIndex(1, 100L)),
+          recoverProgressIndex,
+          false);
     } finally {
       FileUtils.deleteFileOrDirectory(tempDir);
     }
@@ -443,6 +710,32 @@ public class PipeHistoricalDataRegionTsFileSourceTest {
     }
   }
 
+  private static class CanonicalPathFailingFile extends File {
+
+    private final AtomicBoolean failPathResolution;
+
+    private CanonicalPathFailingFile(final String path, final AtomicBoolean failPathResolution) {
+      super(path);
+      this.failPathResolution = failPathResolution;
+    }
+
+    @Override
+    public File getParentFile() {
+      final File parent = super.getParentFile();
+      return parent == null
+          ? null
+          : new CanonicalPathFailingFile(parent.getPath(), failPathResolution);
+    }
+
+    @Override
+    public String getCanonicalPath() throws IOException {
+      if (failPathResolution.get()) {
+        throw new IOException("mock path resolution failure");
+      }
+      return super.getCanonicalPath();
+    }
+  }
+
   private static void assertMayTsFileContainUnprocessedData(
       final File tempDir,
       final String fileName,
@@ -541,6 +834,16 @@ public class PipeHistoricalDataRegionTsFileSourceTest {
       result = result.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex);
     }
     return result;
+  }
+
+  private static IoTProgressIndex iotProgressIndex(
+      final int firstPeerId, final long firstSearchIndex, final long... peerIdAndSearchIndexPairs) {
+    final Map<Integer, Long> peerId2SearchIndex = new HashMap<>();
+    peerId2SearchIndex.put(firstPeerId, firstSearchIndex);
+    for (int i = 0; i < peerIdAndSearchIndexPairs.length; i += 2) {
+      peerId2SearchIndex.put((int) peerIdAndSearchIndexPairs[i], peerIdAndSearchIndexPairs[i + 1]);
+    }
+    return new IoTProgressIndex(peerId2SearchIndex);
   }
 
   private static void sortExtractedResources(
