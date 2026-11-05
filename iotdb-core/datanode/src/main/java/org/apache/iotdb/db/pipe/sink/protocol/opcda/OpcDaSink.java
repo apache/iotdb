@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.pipe.sink.protocol.opcda;
 
-import org.apache.iotdb.db.pipe.sink.protocol.opcua.OpcUaSink;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -29,6 +31,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -106,12 +109,72 @@ public class OpcDaSink implements PipeConnector {
 
   @Override
   public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
-    OpcUaSink.transferByTablet(tabletInsertionEvent, LOGGER, tablet -> handle.transfer(tablet));
+    transferByTablet(tabletInsertionEvent, LOGGER, tablet -> handle.transfer(tablet));
   }
 
   @Override
   public void transfer(final Event event) throws Exception {
     // Do nothing
+  }
+
+  private static void transferByTablet(
+      final TabletInsertionEvent tabletInsertionEvent,
+      final Logger logger,
+      final ThrowingConsumer<Tablet, Exception> transferTablet)
+      throws Exception {
+    // PipeProcessor can change the type of TabletInsertionEvent
+    if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
+        && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
+      logger.warn(
+          DataNodePipeMessages
+              .LOG_THIS_CONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTABLETINSERTIONEVENT_IGNORE_ARG_9D8780C0,
+          tabletInsertionEvent);
+      return;
+    }
+
+    if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+      transferTabletWrapper(
+          (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent, transferTablet);
+    } else {
+      transferTabletWrapper((PipeRawTabletInsertionEvent) tabletInsertionEvent, transferTablet);
+    }
+  }
+
+  private static void transferTabletWrapper(
+      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent,
+      final ThrowingConsumer<Tablet, Exception> transferTablet)
+      throws Exception {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(OpcDaSink.class.getName())) {
+      return;
+    }
+    try {
+      for (final Tablet tablet : pipeInsertNodeTabletInsertionEvent.convertToTablets()) {
+        transferTablet.accept(tablet);
+      }
+    } finally {
+      pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(OpcDaSink.class.getName(), false);
+    }
+  }
+
+  private static void transferTabletWrapper(
+      final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent,
+      final ThrowingConsumer<Tablet, Exception> transferTablet)
+      throws Exception {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeRawTabletInsertionEvent.increaseReferenceCount(OpcDaSink.class.getName())) {
+      return;
+    }
+    try {
+      transferTablet.accept(pipeRawTabletInsertionEvent.convertToTablet());
+    } finally {
+      pipeRawTabletInsertionEvent.decreaseReferenceCount(OpcDaSink.class.getName(), false);
+    }
+  }
+
+  @FunctionalInterface
+  private interface ThrowingConsumer<T, E extends Exception> {
+    void accept(final T t) throws E;
   }
 
   @Override

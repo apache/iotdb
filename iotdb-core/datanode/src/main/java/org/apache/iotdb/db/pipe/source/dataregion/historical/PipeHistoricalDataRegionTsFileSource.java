@@ -35,9 +35,11 @@ import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -50,6 +52,7 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeCo
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -109,6 +112,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
 
   private String pipeName;
   private long creationTime;
+  private String pipeNameWithCreationTime;
 
   private PipeTaskMeta pipeTaskMeta;
   private ProgressIndex startIndex;
@@ -141,6 +145,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
 
   private Queue<TsFileResource> pendingQueue;
   private final Set<TsFileResource> filteredTsFileResources = new HashSet<>();
+  private final Set<TsFileResource> resourcesWithPinnedModFile = new HashSet<>();
   private final Set<TsFileResource> historicalProgressReportResources = new HashSet<>();
   private ProgressIndex maxHistoricalProgressIndex = MinimumProgressIndex.INSTANCE;
   private ProgressIndex maxSuppliedHistoricalProgressReportIndex = MinimumProgressIndex.INSTANCE;
@@ -293,6 +298,8 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
 
     pipeName = environment.getPipeName();
     creationTime = environment.getCreationTime();
+    pipeNameWithCreationTime =
+        PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, creationTime);
     pipeTaskMeta = environment.getPipeTaskMeta();
     startIndex = environment.getPipeTaskMeta().getProgressIndex();
 
@@ -406,15 +413,17 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
             originalUnSequenceTsFileCount,
             startIndex);
 
+        final HistoricalTsFileExtractionStatistics statistics =
+            new HistoricalTsFileExtractionStatistics();
         final Collection<TsFileResource> sequenceTsFileResources =
             tsFileManager.getTsFileList(true).stream()
                 .peek(originalResourceList::add)
-                .filter(this::shouldExtractTsFileResource)
+                .filter(resource -> shouldExtractTsFileResource(resource, statistics))
                 .collect(Collectors.toList());
         final Collection<TsFileResource> unSequenceTsFileResources =
             tsFileManager.getTsFileList(false).stream()
                 .peek(originalResourceList::add)
-                .filter(this::shouldExtractTsFileResource)
+                .filter(resource -> shouldExtractTsFileResource(resource, statistics))
                 .collect(Collectors.toList());
         filteredTsFileResources.addAll(sequenceTsFileResources);
         filteredTsFileResources.addAll(unSequenceTsFileResources);
@@ -424,10 +433,13 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
               // Pin the resource, in case the file is removed by compaction or anything.
               // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
               try {
-                PipeDataNodeResourceManager.tsfile()
-                    .pinTsFileResource(resource, shouldTransferModFile, pipeName);
+                if (PipeDataNodeResourceManager.tsfile()
+                    .pinTsFileResource(resource, shouldTransferModFile, pipeNameWithCreationTime)) {
+                  resourcesWithPinnedModFile.add(resource);
+                }
                 return false;
               } catch (final IOException e) {
+                ++statistics.pinFailedCount;
                 LOGGER.warn("Pipe: failed to pin TsFileResource {}", resource.getTsFilePath(), e);
                 return true;
               }
@@ -456,6 +468,22 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
             filteredTsFileResources.size(),
             originalSequenceTsFileCount + originalUnSequenceTsFileCount,
             System.currentTimeMillis() - startHistoricalExtractionTime);
+        LOGGER.info(
+            "Pipe {}@{}: historical TsFile selection summary, selected by progress uncovered {}, "
+                + "selected by unclosed/closing {}, filtered by time/path {} (time {}, path {}), "
+                + "skipped covered {}, skipped deleted {}, skipped generated by pipe {}, "
+                + "pin failed {}",
+            pipeName,
+            dataRegionId,
+            statistics.selectedByProgressUncoveredCount,
+            statistics.selectedByUnclosedOrClosingCount,
+            statistics.filteredByTimeOrPathCount,
+            statistics.filteredByTimeCount,
+            statistics.filteredByPathCount,
+            statistics.skippedCoveredCount,
+            statistics.skippedDeletedCount,
+            statistics.skippedGeneratedByPipeCount,
+            statistics.pinFailedCount);
       } finally {
         tsFileManager.readUnlock();
       }
@@ -567,43 +595,53 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
     return resource1.getTsFilePath().compareTo(resource2.getTsFilePath());
   }
 
-  private boolean shouldExtractTsFileResource(final TsFileResource resource) {
+  private boolean shouldExtractTsFileResource(
+      final TsFileResource resource, final HistoricalTsFileExtractionStatistics statistics) {
     if (!isHistoricalSourceEnabled) {
       return false;
     }
 
     // Some resource is marked as deleted but not removed from the list.
     if (resource.isDeleted()) {
+      ++statistics.skippedDeletedCount;
       return false;
     }
 
     // Some resource is generated by pipe. We ignore them if the pipe should not transfer pipe
     // requests.
     if (resource.isGeneratedByPipe() && !isForwardingPipeRequests) {
+      ++statistics.skippedGeneratedByPipeCount;
       return false;
     }
 
-    // Some resource may not be closed due to the control of PIPE_MIN_FLUSH_INTERVAL_IN_MS. We
-    // simply ignore them.
+    // Closing files may still have incomplete progress and time metadata. Select them
+    // conservatively; the event waits for the file to close before parsing or transfer.
     if (!resource.isClosed()
         && Optional.ofNullable(resource.getProcessor())
             .map(TsFileProcessor::alreadyMarkedClosing)
             .orElse(true)) {
+      ++statistics.selectedByUnclosedOrClosingCount;
       return true;
     }
 
     if (!mayTsFileContainUnprocessedData(resource)) {
+      ++statistics.skippedCoveredCount;
       return false;
     }
 
     if (!isTsFileResourceOverlappedWithTimeRange(resource)) {
+      ++statistics.filteredByTimeOrPathCount;
+      ++statistics.filteredByTimeCount;
       return false;
     }
 
     if (!mayTsFileResourceOverlappedWithPattern(resource)) {
+      ++statistics.filteredByTimeOrPathCount;
+      ++statistics.filteredByPathCount;
       return false;
     }
 
+    ++statistics.selectedByProgressUncoveredCount;
     return true;
   }
 
@@ -678,6 +716,19 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
         : progressIndex.getProgressIndexByType(TimeWindowStateProgressIndex.class).orElse(null);
   }
 
+  private static class HistoricalTsFileExtractionStatistics {
+
+    private int selectedByProgressUncoveredCount;
+    private int selectedByUnclosedOrClosingCount;
+    private int filteredByTimeOrPathCount;
+    private int filteredByTimeCount;
+    private int filteredByPathCount;
+    private int skippedCoveredCount;
+    private int skippedDeletedCount;
+    private int skippedGeneratedByPipeCount;
+    private int pinFailedCount;
+  }
+
   private boolean mayTsFileResourceOverlappedWithPattern(final TsFileResource resource) {
     // Trimming to avoid unnecessary file device getter
     if (isDbNameCoveredByPattern) {
@@ -730,7 +781,10 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
   }
 
   private boolean isTsFileResourceCoveredByTimeRange(final TsFileResource resource) {
-    return historicalDataExtractionStartTime <= resource.getFileStartTime()
+    // In particular, a sequence file's end time is not final until it is closed. Do not disable
+    // row-level filtering based on the bounds observed while an asynchronous close is in flight.
+    return resource.isClosed()
+        && historicalDataExtractionStartTime <= resource.getFileStartTime()
         && historicalDataExtractionEndTime >= resource.getFileEndTime();
   }
 
@@ -763,8 +817,8 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
         return supplyTerminateEvent();
       }
 
-      pendingQueue.poll();
       if (!filteredTsFileResources.contains(resource)) {
+        pendingQueue.poll();
         if (shouldUseHistoricalTsFileQueryPriorityOrder()) {
           if (shouldReportHistoricalProgressAfterResource(resource)) {
             return supplyHistoricalProgressReportEvent(
@@ -776,6 +830,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
       }
 
       final Event event = supplyTsFileEvent(resource);
+      pendingQueue.poll();
       if (Objects.nonNull(event) && shouldReportHistoricalProgressAfterResource(resource)) {
         pendingHistoricalProgressIndexToReport = getHistoricalProgressIndexAfterResource(resource);
       }
@@ -846,7 +901,6 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
   }
 
   private Event supplyTsFileEvent(final TsFileResource resource) {
-    filteredTsFileResources.remove(resource);
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
             resource,
@@ -873,20 +927,27 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
       event.skipParsingTime();
     }
 
+    final boolean isReferenceCountIncreased =
+        event.increaseReferenceCount(PipeHistoricalDataRegionTsFileSource.class.getName());
+    if (!isReferenceCountIncreased) {
+      // Unlike realtime supply, which already holds a queued event reference, this is the
+      // event's first reference acquisition. The source's pin keeps the file available for retry.
+      // Keep the queue entry and pin until an event owns the resource. A failed reference
+      // acquisition must not advance historical progress past this file.
+      throw new PipeException(
+          String.format(
+              DataNodePipeMessages
+                  .EXCEPTION_INCREASE_REFERENCE_COUNT_ERROR_HOLDER_MESSAGE_ARG_7E1D032D,
+              event.coreReportMessage()));
+    }
+    filteredTsFileResources.remove(resource);
     try {
-      final boolean isReferenceCountIncreased =
-          event.increaseReferenceCount(PipeHistoricalDataRegionTsFileSource.class.getName());
-      if (!isReferenceCountIncreased) {
-        LOGGER.warn(
-            "Pipe {}@{}: failed to increase reference count for historical event {}, will discard it",
-            pipeName,
-            dataRegionId,
-            event);
-      }
-      return isReferenceCountIncreased ? event : null;
+      return event;
     } finally {
       try {
-        PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource, pipeName);
+        PipeDataNodeResourceManager.tsfile()
+            .unpinTsFileResource(
+                resource, pipeNameWithCreationTime, resourcesWithPinnedModFile.remove(resource));
       } catch (final IOException e) {
         LOGGER.warn(
             "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
@@ -919,7 +980,11 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
       pendingQueue.forEach(
           resource -> {
             try {
-              PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource, pipeName);
+              PipeDataNodeResourceManager.tsfile()
+                  .unpinTsFileResource(
+                      resource,
+                      pipeNameWithCreationTime,
+                      resourcesWithPinnedModFile.remove(resource));
             } catch (final IOException e) {
               LOGGER.warn(
                   "Pipe {}@{}: failed to unpin TsFileResource after dropping pipe, original path: {}",
@@ -931,6 +996,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
       pendingQueue.clear();
       pendingQueue = null;
     }
+    resourcesWithPinnedModFile.clear();
     historicalProgressReportResources.clear();
     pendingHistoricalProgressIndexToReport = null;
   }

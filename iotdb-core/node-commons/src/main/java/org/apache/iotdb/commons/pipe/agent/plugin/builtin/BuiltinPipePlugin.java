@@ -38,7 +38,6 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTD
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTDBThriftSslSink;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTDBThriftSyncSink;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.opcda.OpcDaSink;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.opcua.OpcUaSink;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.websocket.WebSocketSink;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.writeback.WriteBackSink;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.source.donothing.DoNothingSource;
@@ -85,7 +84,6 @@ public enum BuiltinPipePlugin {
   PIPE_CONSENSUS_ASYNC_CONNECTOR("pipe-consensus-async-connector", PipeConsensusAsyncSink.class),
 
   WEBSOCKET_CONNECTOR("websocket-connector", WebSocketSink.class),
-  OPC_UA_CONNECTOR("opc-ua-connector", OpcUaSink.class),
   OPC_DA_CONNECTOR("opc-da-connector", OpcDaSink.class),
   WRITE_BACK_CONNECTOR("write-back-connector", WriteBackSink.class),
 
@@ -97,7 +95,6 @@ public enum BuiltinPipePlugin {
   IOTDB_LEGACY_PIPE_SINK("iotdb-legacy-pipe-sink", IoTDBLegacyPipeSink.class),
   IOTDB_AIR_GAP_SINK("iotdb-air-gap-sink", IoTDBAirGapSink.class),
   WEBSOCKET_SINK("websocket-sink", WebSocketSink.class),
-  OPC_UA_SINK("opc-ua-sink", OpcUaSink.class),
   OPC_DA_SINK("opc-da-sink", OpcDaSink.class),
   WRITE_BACK_SINK("write-back-sink", WriteBackSink.class),
   SUBSCRIPTION_SINK("subscription-sink", DoNothingSink.class),
@@ -150,7 +147,6 @@ public enum BuiltinPipePlugin {
                   IOTDB_AIR_GAP_CONNECTOR.getPipePluginName().toLowerCase(),
                   PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName().toLowerCase(),
                   WEBSOCKET_CONNECTOR.getPipePluginName().toLowerCase(),
-                  OPC_UA_CONNECTOR.getPipePluginName().toLowerCase(),
                   OPC_DA_CONNECTOR.getPipePluginName().toLowerCase(),
                   WRITE_BACK_CONNECTOR.getPipePluginName().toLowerCase(),
                   DO_NOTHING_SINK.getPipePluginName().toLowerCase(),
@@ -161,7 +157,6 @@ public enum BuiltinPipePlugin {
                   IOTDB_LEGACY_PIPE_SINK.getPipePluginName().toLowerCase(),
                   IOTDB_AIR_GAP_SINK.getPipePluginName().toLowerCase(),
                   WEBSOCKET_SINK.getPipePluginName().toLowerCase(),
-                  OPC_UA_SINK.getPipePluginName().toLowerCase(),
                   OPC_DA_SINK.getPipePluginName().toLowerCase(),
                   WRITE_BACK_SINK.getPipePluginName().toLowerCase(),
                   SUBSCRIPTION_SINK.getPipePluginName().toLowerCase(),
@@ -195,7 +190,6 @@ public enum BuiltinPipePlugin {
                   IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName().toUpperCase(),
                   IOTDB_AIR_GAP_CONNECTOR.getPipePluginName().toUpperCase(),
                   WEBSOCKET_CONNECTOR.getPipePluginName().toUpperCase(),
-                  OPC_UA_CONNECTOR.getPipePluginName().toUpperCase(),
                   OPC_DA_CONNECTOR.getPipePluginName().toUpperCase(),
                   WRITE_BACK_CONNECTOR.getPipePluginName().toUpperCase(),
                   PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName().toUpperCase(),
@@ -204,7 +198,6 @@ public enum BuiltinPipePlugin {
                   IOTDB_THRIFT_ASYNC_SINK.getPipePluginName().toUpperCase(),
                   IOTDB_LEGACY_PIPE_SINK.getPipePluginName().toUpperCase(),
                   WEBSOCKET_SINK.getPipePluginName().toUpperCase(),
-                  OPC_UA_SINK.getPipePluginName().toUpperCase(),
                   OPC_DA_SINK.getPipePluginName().toUpperCase(),
                   SUBSCRIPTION_SINK.getPipePluginName().toUpperCase(),
                   PIPE_CONSENSUS_ASYNC_SINK.getPipePluginName().toUpperCase())));

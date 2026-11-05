@@ -24,6 +24,7 @@ public enum Tag {
   NAME("name"),
   REGION("region"),
   STATUS("status"),
+  REASON("reason"),
   DATABASE("database"),
   FROM("from"),
   STAGE("stage"),

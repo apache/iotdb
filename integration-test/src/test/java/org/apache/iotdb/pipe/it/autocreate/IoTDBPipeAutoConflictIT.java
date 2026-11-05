@@ -275,12 +275,25 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
             "set device template t1 to root.db"),
         null);
 
+    // Prevent receiver writes from creating ordinary timeseries before the template binding
+    // arrives.
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "show paths set device template t1",
+        "Paths,",
+        Collections.singleton("root.db,"));
+
     for (int i = 0; i < 200; ++i) {
       TestUtils.executeNonQuery(
           senderEnv, String.format("insert into root.db.d1(time,s1) values (%s,1)", i), null);
     }
 
-    for (int i = 200; i < 400; ++i) {
+    // SHOW PATHS can expose a pre-set binding before the DataNodes can use the template.
+    // Retry the first idempotent write until the receiver can activate and extend the template.
+    TestUtils.executeNonQueryWithRetry(
+        receiverEnv, "insert into root.db.d1(time, s1) values (200, 1)");
+
+    for (int i = 201; i < 400; ++i) {
       TestUtils.executeNonQuery(
           receiverEnv, String.format("insert into root.db.d1(time,s1) values (%s,1)", i), null);
     }

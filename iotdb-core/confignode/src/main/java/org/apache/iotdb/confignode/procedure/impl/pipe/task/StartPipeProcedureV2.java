@@ -21,14 +21,15 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -39,8 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
@@ -106,8 +106,26 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     final long exceptionsClearTime = System.currentTimeMillis();
     final boolean isStoppedByRuntimeException =
         pipeTaskInfo.get().isStoppedByRuntimeException(pipeName);
-    final String exceptionMessage =
-        parsePushPipeMetaExceptionForPipe(pipeName, pushSinglePipeMetaToDataNodes(pipeName, env));
+    final boolean hadPendingPipeMetaExceptions =
+        pipeTaskInfo.get().hasPendingPipeMetaExceptionPersistence();
+    if (hadPendingPipeMetaExceptions) {
+      persistPendingPipeMetaExceptions(env);
+    }
+    final PipeMeta pipeMeta = pipeTaskInfo.get().getPipeMetaByPipeName(pipeName);
+    // A previous attempt may already have recorded a runtime stop before a failed consensus write
+    // or procedure recovery. Persist that state without treating a STOPPED meta push as a start.
+    if (pipeMeta.getRuntimeMeta().getStatus().get() != PipeStatus.RUNNING) {
+      if (!hadPendingPipeMetaExceptions) {
+        writePipeMetaChangesToConfigNodeConsensus(env);
+      }
+      return;
+    }
+    final PipeStaticMeta pipeStaticMeta = pipeMeta.getStaticMeta();
+    final Map<Integer, TPushPipeMetaResp> respMap = pushSinglePipeMetaToDataNodes(pipeName, env);
+    if (pipeTaskInfo.get().recordDataNodePushPipeMetaExceptions(respMap, pipeStaticMeta)) {
+      writePipeMetaChangesToConfigNodeConsensus(env);
+    }
+    final String exceptionMessage = parsePushPipeMetaExceptionForPipe(pipeName, respMap);
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
           "Failed to start pipe {}, details: {}, metadata will be synchronized later.",
@@ -124,28 +142,6 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
     if (isStoppedByRuntimeException) {
       writePipeMetaChangesToConfigNodeConsensus(env);
-    }
-  }
-
-  private void writePipeMetaChangesToConfigNodeConsensus(final ConfigNodeProcedureEnv env) {
-    final List<PipeMeta> pipeMetaList = new ArrayList<>();
-    for (final PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
-      pipeMetaList.add(pipeMeta);
-    }
-
-    TSStatus response;
-    try {
-      response =
-          env.getConfigManager()
-              .getConsensusManager()
-              .write(new PipeHandleMetaChangePlan(pipeMetaList));
-    } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
-      response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      response.setMessage(e.getMessage());
-    }
-    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(response.getMessage());
     }
   }
 
