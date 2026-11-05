@@ -135,6 +135,15 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
 
+  private static final TPipeSubscribeResp SUBSCRIPTION_CONNECTION_REPLACED_RESP =
+      new TPipeSubscribeResp(
+          RpcUtils.getStatus(
+              TSStatusCode.SUBSCRIPTION_CONNECTION_REPLACED,
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_CONNECTION_WAS_REPLACED_BY_A_RECONNECTION_FROM_THE_SAME_CONSUMER_INSTANCE_RETRY_ON_THE_CURRENT_CONNECTION_687C78B4),
+          PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+          PipeSubscribeResponseType.ACK.getType());
+
   private static final TPipeSubscribeResp SUBSCRIPTION_SLICE_ACK_RESP =
       new TPipeSubscribeResp(
           new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
@@ -147,6 +156,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private volatile ConsumerConfig sharedConsumerConfig;
   private volatile boolean consumerInvalidated;
   private volatile boolean consumerFenced;
+  private volatile boolean connectionReplaced;
   private volatile long lastActivityTimeMs = System.currentTimeMillis();
   private final AtomicLong inFlightRequestCount = new AtomicLong(0);
   private final int maxReassembledRequestBodySize = getMaxReassembledRequestBodySize();
@@ -162,10 +172,12 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     if (PipeSubscribeRequestType.SLICE.getType() != reqType) {
       sliceReqHandler.clear();
     }
-    final boolean isFencedRequest = beforeHandle(reqType);
+    final boolean isObsoleteRequest = beforeHandle(reqType);
     try {
-      if (isFencedRequest) {
-        return SUBSCRIPTION_CONSUMER_FENCED_RESP;
+      if (isObsoleteRequest) {
+        return consumerFenced
+            ? SUBSCRIPTION_CONSUMER_FENCED_RESP
+            : SUBSCRIPTION_CONNECTION_REPLACED_RESP;
       }
       if (PipeSubscribeRequestType.isValidatedRequestType(reqType)) {
         switch (PipeSubscribeRequestType.valueOf(reqType)) {
@@ -248,6 +260,15 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   public void invalidateConsumer() {
     synchronized (this) {
       consumerFenced = true;
+      sliceReqHandler.clear();
+      clearSharedConsumerState();
+    }
+  }
+
+  @Override
+  public void invalidateConnection() {
+    synchronized (this) {
+      connectionReplaced = true;
       sliceReqHandler.clear();
       clearSharedConsumerState();
     }
@@ -1529,20 +1550,19 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private boolean beforeHandle(final short reqType) {
     synchronized (this) {
       final boolean isHandshake = PipeSubscribeRequestType.HANDSHAKE.getType() == reqType;
-      // A receiver fenced by a newer connection is terminal. In particular, do not allow the old
-      // connection to handshake again and reclaim the consumer identity. A normal disconnected
-      // receiver remains recoverable through the existing consumerInvalidated handshake path.
-      final boolean isFencedRequest = consumerFenced;
+      // Replaced connections are terminal, even when the consumer instance itself is still valid.
+      // An old connection must not handshake again and replace the current connection in turn.
+      final boolean isObsoleteRequest = consumerFenced || connectionReplaced;
       if (consumerInvalidated) {
         consumerConfigThreadLocal.remove();
         pollTimerThreadLocal.remove();
-        if (isHandshake && !consumerFenced) {
+        if (isHandshake && !isObsoleteRequest) {
           consumerInvalidated = false;
         }
       }
       inFlightRequestCount.incrementAndGet();
       lastActivityTimeMs = System.currentTimeMillis();
-      return isFencedRequest;
+      return isObsoleteRequest;
     }
   }
 
