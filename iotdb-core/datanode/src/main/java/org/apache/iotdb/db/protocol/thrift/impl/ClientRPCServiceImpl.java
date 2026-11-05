@@ -1655,7 +1655,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         session,
         req.username,
         req.password,
-        null,
         req.zoneId,
         req.client_protocol,
         clientVersion,
