@@ -19,9 +19,19 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
+import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeInvalidPathException;
@@ -33,9 +43,14 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.ITableCache;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -59,11 +74,20 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class LoadTsFileAnalyzerTest {
 
@@ -78,6 +102,228 @@ public class LoadTsFileAnalyzerTest {
   @After
   public void tearDown() {
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(dataNodeId);
+  }
+
+  @Test
+  public void testTableLoadDoesNotAutoCreateSchemaWhenRequestDisablesIt() throws Exception {
+    for (final boolean tableModelStatement : new boolean[] {true, false}) {
+      assertTableLoadDoesNotAutoCreateSchema(tableModelStatement, true, false, true);
+    }
+  }
+
+  @Test
+  public void testTableLoadDoesNotAutoCreateSchemaWhenGlobalConfigDisablesIt() throws Exception {
+    for (final boolean tableModelStatement : new boolean[] {true, false}) {
+      assertTableLoadDoesNotAutoCreateSchema(tableModelStatement, false, true, true);
+    }
+  }
+
+  @Test
+  public void testTableLoadDoesNotAutoCreateSchemaWhenSessionDisablesIt() throws Exception {
+    for (final boolean tableModelStatement : new boolean[] {true, false}) {
+      assertTableLoadDoesNotAutoCreateSchema(tableModelStatement, true, true, false);
+    }
+  }
+
+  @Test
+  public void testTableTsFileAnalysisPreservesSessionAutoCreateSchemaSetting() throws Exception {
+    final boolean originalAutoCreateSchemaEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    final long originalTabletConversionThresholdBytes =
+        IoTDBDescriptor.getInstance().getConfig().getLoadTabletConversionThresholdBytes();
+    final File tsFile = File.createTempFile("table-load-session-schema", ".tsfile");
+    writeTableTsFileWithMixedDevices(tsFile);
+
+    try {
+      IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(true);
+      IoTDBDescriptor.getInstance().getConfig().setLoadTabletConversionThresholdBytes(-1);
+      for (final boolean tableModelStatement : new boolean[] {true, false}) {
+        final String database = "load_session_schema_" + tableModelStatement;
+        final MPPQueryContext context =
+            createLoadQueryContext(
+                "load_session_schema_" + tableModelStatement,
+                database,
+                tableModelStatement ? SqlDialect.TABLE : SqlDialect.TREE,
+                false);
+        final LoadTsFile tableStatement =
+            LoadTsFile.createUnchecked(null, tsFile.getAbsolutePath(), Collections.emptyMap())
+                .setDatabase(database);
+        tableStatement.setAutoCreateDatabase(false);
+        final LoadTsFileStatement treeStatement =
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
+        treeStatement.setDatabase(database);
+        treeStatement.setAutoCreateSchema(true);
+        treeStatement.setAutoCreateDatabase(false);
+        final boolean[] schemaCreationEnabledDuringValidation = {true};
+        final SqlDialect[] validationDialect = {SqlDialect.TREE};
+        final Metadata metadata = mock(Metadata.class);
+        when(metadata.validateTableHeaderSchema4TsFile(
+                anyString(),
+                any(
+                    org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema
+                        .class),
+                any(MPPQueryContext.class),
+                anyBoolean(),
+                anyBoolean(),
+                any(AtomicBoolean.class)))
+            .thenAnswer(
+                invocation -> {
+                  final MPPQueryContext validationContext = invocation.getArgument(2);
+                  schemaCreationEnabledDuringValidation[0] =
+                      validationContext.getSession().isEnableAutoCreateSchema();
+                  validationDialect[0] = validationContext.getSession().getSqlDialect();
+                  return java.util.Optional.empty();
+                });
+
+        try (final LoadTsFileAnalyzer analyzer =
+            tableModelStatement
+                ? new LoadTsFileAnalyzer(tableStatement, false, context)
+                : new LoadTsFileAnalyzer(treeStatement, false, context)) {
+          final Field metadataField = LoadTsFileAnalyzer.class.getDeclaredField("metadata");
+          metadataField.setAccessible(true);
+          metadataField.set(analyzer, metadata);
+          final Method analyzeSingleTsFileMethod =
+              LoadTsFileAnalyzer.class.getDeclaredMethod(
+                  "analyzeSingleTsFile", File.class, int.class);
+          analyzeSingleTsFileMethod.setAccessible(true);
+          final InvocationTargetException exception =
+              Assert.assertThrows(
+                  InvocationTargetException.class,
+                  () -> analyzeSingleTsFileMethod.invoke(analyzer, tsFile, 0));
+          Assert.assertTrue(exception.getCause() instanceof LoadAnalyzeException);
+        } finally {
+          DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
+        }
+
+        Assert.assertFalse(schemaCreationEnabledDuringValidation[0]);
+        Assert.assertEquals(SqlDialect.TABLE, validationDialect[0]);
+        Assert.assertFalse(context.getSession().isEnableAutoCreateSchema());
+      }
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setAutoCreateSchemaEnabled(originalAutoCreateSchemaEnabled);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setLoadTabletConversionThresholdBytes(originalTabletConversionThresholdBytes);
+      Assert.assertTrue(tsFile.delete());
+    }
+  }
+
+  private void assertTableLoadDoesNotAutoCreateSchema(
+      final boolean tableModelStatement,
+      final boolean globalAutoCreateSchemaEnabled,
+      final boolean requestAutoCreateSchema,
+      final boolean sessionAutoCreateSchemaEnabled)
+      throws Exception {
+    final boolean originalAutoCreateSchemaEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    final boolean originalEnablePartialInsert =
+        IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert();
+    final File tsFile = File.createTempFile("table-load-auto-create-schema", ".tsfile");
+    final String database = "load_auto_create_schema_test";
+    final MPPQueryContext context =
+        createTableQueryContext(
+            "load_auto_create_schema", database, sessionAutoCreateSchemaEnabled);
+    final ITableCache tableCache = DataNodeTableCache.getInstance();
+
+    try {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setAutoCreateSchemaEnabled(globalAutoCreateSchemaEnabled);
+      IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(false);
+      tableCache.invalid(database);
+      final TsTable existingTable = new TsTable("table1");
+      existingTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+      existingTable.addColumnSchema(new FieldColumnSchema("s1", TSDataType.INT64));
+      tableCache.preUpdateTable(database, existingTable, null);
+      tableCache.commitUpdateTable(database, "table1", null, null);
+
+      final LoadTsFile tableStatement =
+          LoadTsFile.createUnchecked(
+                  null,
+                  tsFile.getAbsolutePath(),
+                  requestAutoCreateSchema
+                      ? Collections.emptyMap()
+                      : Collections.singletonMap("auto-create-schema", "false"))
+              .setDatabase(database);
+      tableStatement.setAutoCreateDatabase(false);
+      final LoadTsFileStatement treeStatement =
+          LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
+      treeStatement.setAutoCreateSchema(requestAutoCreateSchema);
+      treeStatement.setAutoCreateDatabase(false);
+
+      try (final LoadTsFileAnalyzer analyzer =
+          tableModelStatement
+              ? new LoadTsFileAnalyzer(tableStatement, false, context)
+              : new LoadTsFileAnalyzer(treeStatement, false, context)) {
+        final Method getOrCreateTableSchemaCacheMethod =
+            LoadTsFileAnalyzer.class.getDeclaredMethod("getOrCreateTableSchemaCache");
+        getOrCreateTableSchemaCacheMethod.setAccessible(true);
+        final LoadTsFileTableSchemaCache schemaCache =
+            (LoadTsFileTableSchemaCache) getOrCreateTableSchemaCacheMethod.invoke(analyzer);
+        schemaCache.setDatabase(database);
+
+        schemaCache.setTableSchemaMap(
+            new HashMap<>(
+                Collections.singletonMap(
+                    "missing_table", createTsFileTableSchema("missing_table", false))));
+        final SemanticException missingTableException =
+            Assert.assertThrows(
+                SemanticException.class,
+                () -> schemaCache.createTableAndDatabaseIfNecessary("missing_table"));
+        Assert.assertTrue(missingTableException.getCause() instanceof TableNotExistsException);
+        Assert.assertNull(tableCache.getTableInCache(database, "missing_table"));
+
+        schemaCache.setTableSchemaMap(
+            new HashMap<>(
+                Collections.singletonMap("table1", createTsFileTableSchema("table1", true))));
+        final SemanticException missingColumnException =
+            Assert.assertThrows(
+                SemanticException.class,
+                () -> schemaCache.createTableAndDatabaseIfNecessary("table1"));
+        Assert.assertEquals(
+            TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode(), missingColumnException.getErrorCode());
+        Assert.assertNull(tableCache.getTableInCache(database, "table1").getColumnSchema("s2"));
+
+        // Existing partial-insert behavior still applies without creating the missing field.
+        IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(true);
+        schemaCache.setTableSchemaMap(
+            new HashMap<>(
+                Collections.singletonMap("table1", createTsFileTableSchema("table1", true))));
+        schemaCache.createTableAndDatabaseIfNecessary("table1");
+        Assert.assertNull(tableCache.getTableInCache(database, "table1").getColumnSchema("s2"));
+
+        schemaCache.setTableSchemaMap(
+            new HashMap<>(
+                Collections.singletonMap("table1", createTsFileTableSchema("table1", false))));
+        schemaCache.createTableAndDatabaseIfNecessary("table1");
+      }
+    } finally {
+      DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
+      tableCache.invalid(database);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setAutoCreateSchemaEnabled(originalAutoCreateSchemaEnabled);
+      IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(originalEnablePartialInsert);
+      Assert.assertTrue(tsFile.delete());
+    }
+  }
+
+  private TableSchema createTsFileTableSchema(final String tableName, final boolean extraField) {
+    return new TableSchema(
+        tableName,
+        extraField
+            ? Arrays.asList(
+                new MeasurementSchema("tag1", TSDataType.STRING),
+                new MeasurementSchema("s1", TSDataType.INT64),
+                new MeasurementSchema("s2", TSDataType.DOUBLE))
+            : Arrays.asList(
+                new MeasurementSchema("tag1", TSDataType.STRING),
+                new MeasurementSchema("s1", TSDataType.INT64)),
+        extraField
+            ? Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD)
+            : Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD));
   }
 
   @Test
@@ -488,6 +734,29 @@ public class LoadTsFileAnalyzerTest {
   private boolean containsDevice(final Set<IDeviceID> devices, final String... expectedSegments) {
     return devices.stream()
         .anyMatch(device -> Arrays.equals(device.getSegments(), expectedSegments));
+  }
+
+  private MPPQueryContext createTableQueryContext(
+      final String queryId, final String database, final boolean enableAutoCreateSchema) {
+    return createLoadQueryContext(queryId, database, SqlDialect.TABLE, enableAutoCreateSchema);
+  }
+
+  private MPPQueryContext createLoadQueryContext(
+      final String queryId,
+      final String database,
+      final SqlDialect dialect,
+      final boolean enableAutoCreateSchema) {
+    final MPPQueryContext context = new MPPQueryContext(new QueryId(queryId));
+    context.setSession(
+        new SessionInfo(
+            0,
+            new UserEntity(AuthorityChecker.SUPER_USER_ID, AuthorityChecker.SUPER_USER, ""),
+            ZoneId.systemDefault(),
+            IoTDBConstant.ClientVersion.V_1_0,
+            database,
+            dialect,
+            enableAutoCreateSchema));
+    return context;
   }
 
   private static class TrackingLoadTsFileTableSchemaCache extends LoadTsFileTableSchemaCache {

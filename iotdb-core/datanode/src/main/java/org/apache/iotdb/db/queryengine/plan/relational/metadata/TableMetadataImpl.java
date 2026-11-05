@@ -1705,7 +1705,7 @@ public class TableMetadataImpl implements Metadata {
       final String database,
       final TableSchema tableSchema,
       final MPPQueryContext context,
-      final boolean allowCreateTable,
+      final boolean allowAutoCreateSchema,
       final boolean isStrictTagColumn,
       final AtomicBoolean needDecode4DifferentTimeColumn)
       throws LoadAnalyzeTableColumnDisorderException {
@@ -1714,7 +1714,7 @@ public class TableMetadataImpl implements Metadata {
             database,
             tableSchema,
             context,
-            allowCreateTable,
+            allowAutoCreateSchema,
             isStrictTagColumn,
             needDecode4DifferentTimeColumn);
   }

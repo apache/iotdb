@@ -100,6 +100,7 @@ public class LoadTsFileTableSchemaCache {
   private final Metadata metadata;
   private final MPPQueryContext context;
   private final boolean shouldVerifyDataType;
+  private final boolean allowAutoCreateSchema;
 
   private Map<String, Set<IDeviceID>> currentBatchTable2Devices;
 
@@ -123,12 +124,23 @@ public class LoadTsFileTableSchemaCache {
       final boolean needToCreateDatabase,
       final boolean shouldVerifyDataType)
       throws LoadRuntimeOutOfMemoryException {
+    this(metadata, context, needToCreateDatabase, shouldVerifyDataType, true);
+  }
+
+  public LoadTsFileTableSchemaCache(
+      final Metadata metadata,
+      final MPPQueryContext context,
+      final boolean needToCreateDatabase,
+      final boolean shouldVerifyDataType,
+      final boolean allowAutoCreateSchema)
+      throws LoadRuntimeOutOfMemoryException {
     this.block =
         LoadTsFileMemoryManager.getInstance()
             .allocateMemoryBlock(ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES);
     this.metadata = metadata;
     this.context = context;
     this.shouldVerifyDataType = shouldVerifyDataType;
+    this.allowAutoCreateSchema = allowAutoCreateSchema;
     this.currentBatchTable2Devices = new HashMap<>();
     this.currentModifications = PatternTreeMapFactory.getModsPatternTreeMap();
     this.needToCreateDatabase = needToCreateDatabase;
@@ -316,7 +328,12 @@ public class LoadTsFileTableSchemaCache {
     final TableSchema realSchema =
         metadata
             .validateTableHeaderSchema4TsFile(
-                database, fileSchema, context, true, true, needDecode4DifferentTimeColumn)
+                database,
+                fileSchema,
+                context,
+                allowAutoCreateSchema,
+                true,
+                needDecode4DifferentTimeColumn)
             .orElse(null);
     if (Objects.isNull(realSchema)) {
       throw new LoadAnalyzeException(
