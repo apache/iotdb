@@ -192,7 +192,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
                   final ResultSet resultSet = statement.executeQuery("list user")) {
                 boolean found = false;
                 while (resultSet.next()) {
-                  if (username.equals(resultSet.getString("User"))) {
+                  if (username.equals(resultSet.getString(ColumnHeaderConstant.USER))) {
                     found = true;
                     break;
                   }

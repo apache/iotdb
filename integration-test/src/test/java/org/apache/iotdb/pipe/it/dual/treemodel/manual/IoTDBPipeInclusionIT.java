@@ -354,7 +354,14 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "LIST PRIVILEGES OF USER ln_write_user",
-          "Role,Scope,Privileges,GrantOption,",
+          ColumnHeaderConstant.ROLE
+              + ","
+              + ColumnHeaderConstant.SCOPE
+              + ","
+              + ColumnHeaderConstant.PRIVILEGES
+              + ","
+              + ColumnHeaderConstant.GRANT_OPTION
+              + ",",
           new HashSet<>(
               Arrays.asList(
                   ",,SYSTEM,true,",
