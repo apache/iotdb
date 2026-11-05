@@ -19,21 +19,22 @@
 
 package org.apache.iotdb.session.subscription.consumer.base;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.session.AbstractSessionBuilder;
 import org.apache.iotdb.session.subscription.SubscriptionSessionWrapper;
 import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
+import org.apache.iotdb.session.subscription.SubscriptionTreeSessionBuilder;
 import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePullConsumerBuilder;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 
 import org.junit.Test;
-import org.powermock.reflect.Whitebox;
 
+import java.lang.reflect.Field;
 import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 
 public class SubscriptionSslConfigTest {
 
@@ -54,17 +55,20 @@ public class SubscriptionSslConfigTest {
             .keyStorePwd("key-password")
             .sslProtocol("TLSv1.2");
     final AbstractSubscriptionConsumer consumer = (AbstractSubscriptionConsumer) builder.build();
-    final AbstractSubscriptionProvider provider = mock(AbstractSubscriptionProvider.class);
+    final RecordingProvider provider = new RecordingProvider();
 
     consumer.configureProvider(provider);
 
-    verify(provider)
-        .setSslConfig(
-            true, "trust-store", "trust-password", "key-store", "key-password", "TLSv1.2");
+    assertTrue(provider.useSSL);
+    assertEquals("trust-store", provider.trustStore);
+    assertEquals("trust-password", provider.trustStorePwd);
+    assertEquals("key-store", provider.keyStore);
+    assertEquals("key-password", provider.keyStorePwd);
+    assertEquals("TLSv1.2", provider.sslProtocol);
   }
 
   @Test
-  public void testConsumerPropertiesPopulateSslConfig() {
+  public void testConsumerPropertiesPopulateSslConfig() throws Exception {
     final Properties properties = new Properties();
     properties.put(ConsumerConstant.HOST_KEY, "127.0.0.1");
     properties.put(ConsumerConstant.PORT_KEY, 6667);
@@ -82,16 +86,16 @@ public class SubscriptionSslConfigTest {
     final AbstractSubscriptionConsumer consumer =
         (AbstractSubscriptionConsumer) new SubscriptionTreePullConsumer(properties);
 
-    assertTrue((Boolean) Whitebox.getInternalState(consumer, "useSSL"));
-    assertEquals("trust-store", Whitebox.getInternalState(consumer, "trustStore"));
-    assertEquals("trust-password", Whitebox.getInternalState(consumer, "trustStorePwd"));
-    assertEquals("key-store", Whitebox.getInternalState(consumer, "keyStore"));
-    assertEquals("key-password", Whitebox.getInternalState(consumer, "keyStorePwd"));
-    assertEquals("TLSv1.2", Whitebox.getInternalState(consumer, "sslProtocol"));
+    assertTrue((Boolean) getField(consumer, "useSSL"));
+    assertEquals("trust-store", getField(consumer, "trustStore"));
+    assertEquals("trust-password", getField(consumer, "trustStorePwd"));
+    assertEquals("key-store", getField(consumer, "keyStore"));
+    assertEquals("key-password", getField(consumer, "keyStorePwd"));
+    assertEquals("TLSv1.2", getField(consumer, "sslProtocol"));
   }
 
   @Test
-  public void testSubscriptionSessionWrapperRetainsSslConfigBeforeOpen() {
+  public void testSubscriptionSessionWrapperRetainsSslConfigBeforeOpen() throws Exception {
     final SubscriptionTableSessionBuilder builder =
         new SubscriptionTableSessionBuilder()
             .host("127.0.0.1")
@@ -103,11 +107,89 @@ public class SubscriptionSslConfigTest {
     session.setSslConfig(
         true, "trust-store", "trust-password", "key-store", "key-password", "TLSv1.2");
 
-    assertTrue((Boolean) Whitebox.getInternalState(session, "useSSL"));
-    assertEquals("trust-store", Whitebox.getInternalState(session, "trustStore"));
-    assertEquals("trust-password", Whitebox.getInternalState(session, "trustStorePwd"));
-    assertEquals("key-store", Whitebox.getInternalState(session, "keyStore"));
-    assertEquals("key-password", Whitebox.getInternalState(session, "keyStorePwd"));
-    assertEquals("TLSv1.2", Whitebox.getInternalState(session, "sslProtocol"));
+    assertTrue((Boolean) getField(session, "useSSL"));
+    assertEquals("trust-store", getField(session, "trustStore"));
+    assertEquals("trust-password", getField(session, "trustStorePwd"));
+    assertEquals("key-store", getField(session, "keyStore"));
+    assertEquals("key-password", getField(session, "keyStorePwd"));
+    assertEquals("TLSv1.2", getField(session, "sslProtocol"));
+  }
+
+  private static Object getField(final Object target, final String fieldName) throws Exception {
+    for (Class<?> type = target.getClass(); type != null; type = type.getSuperclass()) {
+      try {
+        final Field field = type.getDeclaredField(fieldName);
+        field.setAccessible(true);
+        return field.get(target);
+      } catch (NoSuchFieldException ignored) {
+        // Search the superclass.
+      }
+    }
+    throw new NoSuchFieldException(fieldName);
+  }
+
+  private static final class RecordingProvider extends AbstractSubscriptionProvider {
+
+    private boolean useSSL;
+    private String trustStore;
+    private String trustStorePwd;
+    private String keyStore;
+    private String keyStorePwd;
+    private String sslProtocol;
+
+    private RecordingProvider() {
+      super(
+          new TEndPoint("127.0.0.1", 6667),
+          "root",
+          "root",
+          null,
+          "consumer",
+          "group",
+          null,
+          null,
+          1024 * 1024,
+          1000,
+          1000);
+    }
+
+    @Override
+    protected AbstractSessionBuilder constructSubscriptionSessionBuilder(
+        final String host,
+        final int port,
+        final String username,
+        final String password,
+        final String encryptedPassword,
+        final int thriftMaxFrameSize,
+        final int connectionTimeoutInMs) {
+      return new SubscriptionTreeSessionBuilder()
+          .host(host)
+          .port(port)
+          .username(username)
+          .password(password)
+          .thriftMaxFrameSize(thriftMaxFrameSize)
+          .connectionTimeoutInMs(connectionTimeoutInMs);
+    }
+
+    @Override
+    void setRpcServiceName(final String rpcServiceName) {}
+
+    @Override
+    void setSslConfig(
+        final boolean useSSL,
+        final String trustStore,
+        final String trustStorePwd,
+        final String keyStore,
+        final String keyStorePwd,
+        final String sslProtocol) {
+      this.useSSL = useSSL;
+      this.trustStore = trustStore;
+      this.trustStorePwd = trustStorePwd;
+      this.keyStore = keyStore;
+      this.keyStorePwd = keyStorePwd;
+      this.sslProtocol = sslProtocol;
+    }
+
+    @Override
+    void setConsumerInstanceId(final String consumerInstanceId) {}
   }
 }
