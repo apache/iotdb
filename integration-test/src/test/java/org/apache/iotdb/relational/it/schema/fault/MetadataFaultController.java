@@ -197,6 +197,11 @@ public final class MetadataFaultController implements AutoCloseable {
       return Long.parseLong(request("count", hook, "", "").get("count"));
     }
 
+    public Map<String, String> cacheAttribute(
+        String database, String table, String device, String attribute) throws IOException {
+      return request("cache", database, table, device, attribute);
+    }
+
     public void awaitHeld(String hook) {
       Awaitility.await()
           .atMost(30, TimeUnit.SECONDS)

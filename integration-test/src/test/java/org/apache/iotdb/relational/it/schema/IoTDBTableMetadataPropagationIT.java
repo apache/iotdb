@@ -186,6 +186,11 @@ public class IoTDBTableMetadataPropagationIT {
         target.release(FILL);
         inFlight.get(30, TimeUnit.SECONDS);
         assertEquals("1", target.status(FILL).get("finished"));
+        Map<String, String> cachedAttribute =
+            target.cacheAttribute(database, TABLE, "d1", "changing");
+        assertEquals(cachedAttribute.toString(), "true", cachedAttribute.get("deviceCached"));
+        assertEquals(cachedAttribute.toString(), "true", cachedAttribute.get("attributePresent"));
+        assertEquals(cachedAttribute.toString(), "current", cachedAttribute.get("value"));
         // No extra UPDATE or cache clearing is allowed to repair the old fill.
         assertTwoDevices("old-0", "current", false);
         assertLease(target, lease);
