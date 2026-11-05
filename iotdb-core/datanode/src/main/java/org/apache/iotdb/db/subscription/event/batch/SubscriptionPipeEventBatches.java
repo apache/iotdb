@@ -31,9 +31,9 @@ import com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -45,7 +45,7 @@ public class SubscriptionPipeEventBatches {
   protected final int maxDelayInMs;
   protected final long maxBatchSizeInBytes;
 
-  private final Map<Integer, SubscriptionPipeEventBatch> regionIdToBatch;
+  private final ConcurrentMap<Integer, SubscriptionPipeEventBatch> regionIdToBatch;
   private final SubscriptionPipeEventBatchSegmentLock segmentLock;
 
   public SubscriptionPipeEventBatches(
@@ -56,7 +56,7 @@ public class SubscriptionPipeEventBatches {
     this.maxDelayInMs = maxDelayInMs;
     this.maxBatchSizeInBytes = maxBatchSizeInBytes;
 
-    this.regionIdToBatch = new HashMap<>();
+    this.regionIdToBatch = new ConcurrentHashMap<>();
     this.segmentLock = new SubscriptionPipeEventBatchSegmentLock();
   }
 
