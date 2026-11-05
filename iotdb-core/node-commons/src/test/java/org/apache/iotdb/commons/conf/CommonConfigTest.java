@@ -294,10 +294,11 @@ public class CommonConfigTest {
     String originalStatusReason = config.getStatusReason();
     try {
       config.setNodeStatus(NodeStatus.Running);
-      config.handleUnrecoverableError(new IOException("disk broken"));
+      config.handleUnrecoverableError(
+          new IOException(" \r\n  disk\t broken\r\n\t|\u00a0page\u2028fault\u0085at\b42 \t"));
       Assert.assertEquals(NodeStatus.ReadOnly, config.getNodeStatus());
       Assert.assertTrue(config.getStatusReason().startsWith(NodeStatus.UNRECOVERABLE_ERROR + ", "));
-      Assert.assertTrue(config.getStatusReason().contains("disk broken"));
+      Assert.assertTrue(config.getStatusReason().endsWith(", disk broken | page fault at 42"));
     } finally {
       config.setNodeStatus(NodeStatus.Running);
       config.setNodeStatusWithReason(originalStatus, originalStatusReason);
@@ -349,7 +350,10 @@ public class CommonConfigTest {
       config.setNodeStatus(NodeStatus.Running);
       config.handleUnrecoverableError(new RuntimeException());
       Assert.assertEquals(NodeStatus.ReadOnly, config.getNodeStatus());
-      Assert.assertTrue(config.getStatusReason().contains("RuntimeException"));
+      Assert.assertTrue(config.getStatusReason().endsWith(", RuntimeException"));
+      config.setNodeStatus(NodeStatus.Running);
+      config.handleUnrecoverableError(new IOException("\t\r\n\u3000"));
+      Assert.assertTrue(config.getStatusReason().endsWith(", IOException"));
     } finally {
       config.setNodeStatus(NodeStatus.Running);
       config.setNodeStatusWithReason(originalStatus, originalStatusReason);
@@ -363,15 +367,18 @@ public class CommonConfigTest {
     String originalStatusReason = config.getStatusReason();
     try {
       config.setNodeStatus(NodeStatus.Running);
-      StringBuilder longMessage = new StringBuilder();
-      for (int i = 0; i < 300; i++) {
-        longMessage.append('x');
-      }
-      config.handleUnrecoverableError(new IOException(longMessage.toString()));
-      String statusReason = config.getStatusReason();
-      Assert.assertTrue(statusReason.endsWith("..."));
-      Assert.assertTrue(
-          statusReason.substring(statusReason.lastIndexOf(", ") + 2).length() <= 256 + 3);
+      String prefix = "x".repeat(254);
+      String exactFit = prefix + " y";
+      config.handleUnrecoverableError(new IOException(prefix + "\t".repeat(300) + "y \n"));
+      Assert.assertTrue(config.getStatusReason().endsWith(", " + exactFit));
+
+      config.setNodeStatus(NodeStatus.Running);
+      config.handleUnrecoverableError(new IOException(exactFit + "z"));
+      Assert.assertTrue(config.getStatusReason().endsWith(", " + exactFit + "..."));
+
+      config.setNodeStatus(NodeStatus.Running);
+      config.handleUnrecoverableError(new IOException(prefix + "x\uD83D\uDE00"));
+      Assert.assertTrue(config.getStatusReason().endsWith(", " + prefix + "x..."));
     } finally {
       config.setNodeStatus(NodeStatus.Running);
       config.setNodeStatusWithReason(originalStatus, originalStatusReason);
