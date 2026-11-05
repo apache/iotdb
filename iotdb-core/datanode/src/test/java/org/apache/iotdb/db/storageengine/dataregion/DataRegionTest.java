@@ -264,7 +264,7 @@ public class DataRegionTest {
           }
           writer.writeAligned(tablet);
         }
-        final TsFileResource resource = new TsFileResource(source);
+        final TsFileResource resource = Mockito.spy(new TsFileResource(source));
         resource.setStatus(TsFileResourceStatus.NORMAL);
         resource.updateStartTime(device, 1);
         resource.updateEndTime(device, 3);
@@ -316,6 +316,89 @@ public class DataRegionTest {
         }
         final int modFilesBeforeLoad = FileMetrics.getInstance().getModFileNum();
         final long modSizeBeforeLoad = FileMetrics.getInstance().getModFileSize();
+        if (withMods) {
+          // A nonempty destination directory rejects atomic publication on Windows and Unix.
+          Mockito.doAnswer(
+                  invocation -> {
+                    invocation.callRealMethod();
+                    final File file = invocation.getArgument(0);
+                    if (!file.getParentFile()
+                        .getCanonicalFile()
+                        .equals(sourceDir.getCanonicalFile())) {
+                      Files.createDirectories(file.toPath());
+                      Files.write(file.toPath().resolve("block-publication"), new byte[] {1});
+                    }
+                    return null;
+                  })
+              .when(resource)
+              .setFile(Mockito.any(File.class));
+          File rejectedTarget = null;
+          try {
+            Assert.assertThrows(
+                LoadFileException.class,
+                () ->
+                    dataRegion.loadNewTsFile(
+                        resource, deleteOrigin, false, true, Optional.empty()));
+            rejectedTarget = resource.getTsFile();
+            Assert.assertTrue(rejectedTarget.isDirectory());
+            Assert.assertTrue(new File(rejectedTarget + TsFileResource.RESOURCE_SUFFIX).isFile());
+            Assert.assertTrue(ModificationFile.getExclusiveMods(rejectedTarget).isFile());
+            Assert.assertFalse(new File(rejectedTarget + ".load-pending").exists());
+            Assert.assertEquals(modFilesBeforeLoad, FileMetrics.getInstance().getModFileNum());
+            Assert.assertEquals(modSizeBeforeLoad, FileMetrics.getInstance().getModFileSize());
+            Assert.assertArrayEquals(data, Files.readAllBytes(source.toPath()));
+            Assert.assertArrayEquals(deletions, Files.readAllBytes(sourceMods.toPath()));
+            Assert.assertTrue(sourceResource.isFile());
+          } finally {
+            Mockito.doCallRealMethod().when(resource).setFile(Mockito.any(File.class));
+            if (rejectedTarget != null) {
+              // Rollback preserves sidecars at an occupied target; remove this test's
+              // blocker/group.
+              Files.delete(rejectedTarget.toPath().resolve("block-publication"));
+              Files.delete(rejectedTarget.toPath());
+              Files.deleteIfExists(
+                  new File(rejectedTarget + TsFileResource.RESOURCE_SUFFIX).toPath());
+              Files.deleteIfExists(ModificationFileV1.getNormalMods(rejectedTarget).toPath());
+              Files.deleteIfExists(ModificationFile.getExclusiveMods(rejectedTarget).toPath());
+            }
+            resource.setFile(source);
+          }
+        }
+        if (modsVersion == 1) {
+          Mockito.doAnswer(
+                  invocation -> {
+                    invocation.callRealMethod();
+                    throw new IOException("injected conversion completion failure");
+                  })
+              .when(resource)
+              .upgradeModFile(Mockito.isNull(), Mockito.anyBoolean());
+          try {
+            final LoadFileException failure =
+                Assert.assertThrows(
+                    LoadFileException.class,
+                    () ->
+                        dataRegion.loadNewTsFile(
+                            resource, deleteOrigin, false, true, Optional.empty()));
+            Assert.assertTrue(
+                failure.getMessage().contains("injected conversion completion failure"));
+            final File rejectedTarget = resource.getTsFile();
+            Assert.assertFalse(rejectedTarget.exists());
+            Assert.assertFalse(new File(rejectedTarget + ".load-pending").exists());
+            Assert.assertFalse(new File(rejectedTarget + TsFileResource.RESOURCE_SUFFIX).exists());
+            Assert.assertFalse(ModificationFileV1.getNormalMods(rejectedTarget).exists());
+            Assert.assertFalse(ModificationFile.getExclusiveMods(rejectedTarget).exists());
+            Assert.assertEquals(modFilesBeforeLoad, FileMetrics.getInstance().getModFileNum());
+            Assert.assertEquals(modSizeBeforeLoad, FileMetrics.getInstance().getModFileSize());
+            Assert.assertArrayEquals(data, Files.readAllBytes(source.toPath()));
+            Assert.assertArrayEquals(deletions, Files.readAllBytes(sourceMods.toPath()));
+            Assert.assertTrue(sourceResource.isFile());
+          } finally {
+            Mockito.doCallRealMethod()
+                .when(resource)
+                .upgradeModFile(Mockito.isNull(), Mockito.anyBoolean());
+            resource.setFile(source);
+          }
+        }
         dataRegion.loadNewTsFile(resource, deleteOrigin, false, true, Optional.empty());
         final File installed = resource.getTsFile();
         Assert.assertArrayEquals(data, Files.readAllBytes(installed.toPath()));

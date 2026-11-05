@@ -4947,6 +4947,9 @@ public class DataRegion implements IDataRegionForQuery {
       }
     }
 
+    // Only published mods belong in FileMetrics. Also replace any cached source-side handle.
+    tsFileResource.setExclusiveModFile(ModificationFile.getExclusiveMods(tsFileResource));
+
     // Listen before the tsFile is added into tsFile manager to avoid it being compacted
     PipeInsertionDataNodeListener.getInstance()
         .listenToTsFile(dataRegionId.getId(), databaseName, tsFileResource, true);
@@ -4990,23 +4993,14 @@ public class DataRegion implements IDataRegionForQuery {
       try {
         // Publishing must wait for a successful conversion; a background failure must not be
         // swallowed by getExclusiveModFile and expose an incomplete deletion set after restart.
-        tsFileResource.upgradeModFile(null);
+        tsFileResource.upgradeModFile(null, false);
       } catch (IOException e) {
         throw new LoadFileException(e);
       }
-      // Discard any cached source-side handle and reuse the conversion result, which already
-      // records the installed mods in FileMetrics.
-      tsFileResource.setExclusiveModFile(null);
-    } else {
-      if (newModFileToLoad.exists()) {
-        final File newTargetModFile = ModificationFile.getExclusiveMods(targetTsFile);
-        moveModFile(newModFileToLoad, newTargetModFile, deleteOriginFile);
-      }
-      // Reads must use the installed deletions, including after source cleanup.
-      tsFileResource.setExclusiveModFile(ModificationFile.getExclusiveMods(tsFileResource));
+    } else if (newModFileToLoad.exists()) {
+      final File newTargetModFile = ModificationFile.getExclusiveMods(targetTsFile);
+      moveModFile(newModFileToLoad, newTargetModFile, deleteOriginFile);
     }
-    // force update mod file metrics
-    tsFileResource.getExclusiveModFile();
   }
 
   @SuppressWarnings("java:S2139")
