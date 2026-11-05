@@ -95,7 +95,8 @@
         <dependency>
             <groupId>org.ow2.asm</groupId>
             <artifactId>asm</artifactId>
-            <scope>test</scope>
+            <!-- Child node templates also need ASM for cglib; test scope would omit it. -->
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.javassist</groupId>

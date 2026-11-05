@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.relational.it.schema.fault;
 
-import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
+import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 
 import org.awaitility.Awaitility;
@@ -28,7 +28,6 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Field;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -53,11 +52,13 @@ import java.util.stream.Stream;
 public final class MetadataFaultController implements AutoCloseable {
   private final Path directory;
   private final List<Node> nodes = new ArrayList<>();
-  private final boolean hadPreviousJavaToolOptions;
-  private final String previousJavaToolOptions;
+  private final MppJVMConfig dataNodeJvmConfig;
+  private final List<String> previousJvmOptions;
   private boolean launchEnvironmentRestored;
 
-  public MetadataFaultController() throws Exception {
+  public MetadataFaultController(MppJVMConfig dataNodeJvmConfig) throws Exception {
+    this.dataNodeJvmConfig = dataNodeJvmConfig;
+    previousJvmOptions = new ArrayList<>(dataNodeJvmConfig.getJvmOptions());
     directory = Files.createTempDirectory(Paths.get("target").toAbsolutePath(), "metadata-fault-");
     Path jar = directory.resolve("agent.jar");
     Manifest manifest = new Manifest();
@@ -80,23 +81,9 @@ public final class MetadataFaultController implements AutoCloseable {
         }
       }
     }
-    Field environmentField =
-        AbstractNodeWrapper.class.getDeclaredField("NODE_ENVIRONMENT_VARIABLES");
-    environmentField.setAccessible(true);
-    @SuppressWarnings("unchecked")
-    Map<String, String> nodeEnvironment = (Map<String, String>) environmentField.get(null);
-    hadPreviousJavaToolOptions = nodeEnvironment.containsKey("JAVA_TOOL_OPTIONS");
-    previousJavaToolOptions = nodeEnvironment.get("JAVA_TOOL_OPTIONS");
-    String inherited =
-        hadPreviousJavaToolOptions ? previousJavaToolOptions : System.getenv("JAVA_TOOL_OPTIONS");
-    AbstractNodeWrapper.setNodeEnvironmentVariable(
-        "JAVA_TOOL_OPTIONS",
-        (inherited == null ? "" : inherited + " ")
-            + "\"-javaagent:"
-            + jar
-            + "="
-            + directory
-            + "\"");
+    List<String> launchOptions = new ArrayList<>(previousJvmOptions);
+    launchOptions.add("-javaagent:" + jar + "=" + directory);
+    dataNodeJvmConfig.setJvmOptions(launchOptions);
   }
 
   /** Called immediately after cluster startup, also on startup failure. */
@@ -104,11 +91,7 @@ public final class MetadataFaultController implements AutoCloseable {
     if (launchEnvironmentRestored) {
       return;
     }
-    if (hadPreviousJavaToolOptions) {
-      AbstractNodeWrapper.setNodeEnvironmentVariable("JAVA_TOOL_OPTIONS", previousJavaToolOptions);
-    } else {
-      AbstractNodeWrapper.removeNodeEnvironmentVariable("JAVA_TOOL_OPTIONS");
-    }
+    dataNodeJvmConfig.setJvmOptions(previousJvmOptions);
     launchEnvironmentRestored = true;
   }
 

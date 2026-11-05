@@ -26,6 +26,7 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.config.MppCommonConfig;
+import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -105,7 +106,9 @@ public class IoTDBTableMetadataPropagationIT {
     properties.setProperty("detail_container_min_degrade_memory_in_bytes", "8192");
     ((MppCommonConfig) EnvFactory.getEnv().getConfig().getDataNodeCommonConfig())
         .updateProperties(properties);
-    faults = new MetadataFaultController();
+    faults =
+        new MetadataFaultController(
+            (MppJVMConfig) EnvFactory.getEnv().getConfig().getDataNodeJVMConfig());
     try {
       EnvFactory.getEnv().initClusterEnvironment(1, 2);
       for (DataNodeWrapper wrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
