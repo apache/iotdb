@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.utils;
 
 import org.apache.iotdb.commons.schema.table.TsFileTableSchemaUtil;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import org.apache.tsfile.file.metadata.TsFileMetadata;
@@ -87,12 +86,16 @@ public final class TsFileTableSchemaRegistrationUtils {
    * <p>A table that no longer exists is skipped instead of being written with an empty schema: the
    * storage path does not describe tables it cannot read, and the file property already tells
    * readers that the file is a table-model one.
+   *
+   * <p>The caller invokes this only for a table-model DataRegion, so {@code databaseName} is used
+   * here solely as a cache key and is never inspected to guess the model. Inside this method the
+   * table cache is the only source of truth: a table that no longer exists has no entry and is
+   * skipped, and a tree-model database never owns a {@link TsTable} at all.
    */
   public static void registerTableSchemaIfAbsent(
       final TsFileIOWriter writer, final String databaseName, final String tableName) {
     if (Objects.isNull(writer)
         || Objects.isNull(tableName)
-        || !PathUtils.isTableModelDatabase(databaseName)
         || writer.getSchema().getTableSchemaMap().containsKey(tableName)) {
       return;
     }

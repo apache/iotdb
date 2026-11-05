@@ -125,17 +125,27 @@ public class TsFileTableSchemaRegistrationUtilsTest {
   }
 
   @Test
-  public void testTreeModelDatabaseIsNotTouched() {
-    final String tableName = "tree_table";
-    final Schema schema = new Schema();
-    final TsFileIOWriter writer = mockWriter(schema, tableName);
+  public void testDatabaseNameIsOnlyUsedAsCacheKey() {
+    // The model of the region is known by the caller (the owning DataRegion), so this method must
+    // not guess it from the name: a database whose name looks like a tree-model one, but that does
+    // own the table, has to be described as well.
+    final String database = "root.tree_named_db";
+    final String tableName = "table_on_root_named_db";
+    final TsTable table = new TsTable(tableName);
+    table.addColumnSchema(new TimeColumnSchema("time", TSDataType.TIMESTAMP));
+    table.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    DataNodeTableCache.getInstance().preUpdateTable(database, table, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database, tableName, null, null);
+    try {
+      final Schema schema = new Schema();
 
-    TsFileTableSchemaRegistrationUtils.registerTableSchemaIfAbsent(
-        writer, "root.tree_db", tableName);
+      TsFileTableSchemaRegistrationUtils.registerTableSchemaIfAbsent(
+          mockWriter(schema, tableName), database, tableName);
 
-    assertTrue(schema.getTableSchemaMap().isEmpty());
-    Mockito.verify(writer, Mockito.never())
-        .addTsFileProperty(Mockito.anyString(), Mockito.any(byte[].class));
+      assertNotNull(schema.getTableSchemaMap().get(tableName));
+    } finally {
+      DataNodeTableCache.getInstance().invalid(database);
+    }
   }
 
   @Test

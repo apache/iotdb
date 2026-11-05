@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -90,11 +89,12 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
   public UnsealedTsFileRecoverPerformer(
       TsFileResource tsFileResource,
       boolean sequence,
+      boolean isTableModel,
       Consumer<UnsealedTsFileRecoverPerformer> callbackAfterUnsealedTsFileRecovered) {
     super(tsFileResource);
     this.databaseName = tsFileResource.getDatabaseName();
     this.dataRegionId = tsFileResource.getDataRegionId();
-    this.isTableModel = PathUtils.isTableModelDatabase(databaseName);
+    this.isTableModel = isTableModel;
     this.sequence = sequence;
     this.callbackAfterUnsealedTsFileRecovered = callbackAfterUnsealedTsFileRecovered;
     this.walRedoer = new TsFilePlanRedoer(tsFileResource);
@@ -252,6 +252,12 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
   }
 
   private void registerToTsFile(String tableName) {
+    // Only a table-model DataRegion owns TsTables, so only its recovered file may carry a
+    // TableSchema entry. The model comes from the owning DataRegion instead of being derived from
+    // the database name here.
+    if (!isTableModel) {
+      return;
+    }
     TsFileTableSchemaRegistrationUtils.registerTableSchemaIfAbsent(writer, databaseName, tableName);
   }
 
