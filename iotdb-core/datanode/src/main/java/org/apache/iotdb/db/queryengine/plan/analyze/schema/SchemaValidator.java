@@ -56,6 +56,12 @@ public class SchemaValidator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SchemaValidator.class);
 
+  static boolean isAutoCreateSchemaAllowed(final MPPQueryContext context) {
+    return context == null
+        || context.getSession() == null
+        || context.getSession().isEnableAutoCreateSchema();
+  }
+
   public static void validate(
       ISchemaFetcher schemaFetcher, InsertBaseStatement insertStatement, MPPQueryContext context) {
     try {

@@ -543,12 +543,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                   .convertForTableModel(createTableConversionStatement(tsFiles.get(i)))
                   .orElse(null)
               : loadTsFileDataTypeConverter
-                  .convertForTreeModel(
-                      (isGeneratedByPipe
-                              ? LoadTsFileStatement.createForPipe(tsFiles.get(i).getPath())
-                              : LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath()))
-                          .setDeleteAfterLoad(isDeleteAfterLoad)
-                          .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
+                  .convertForTreeModel(createTreeConversionStatement(tsFiles.get(i)))
                   .orElse(null);
 
       if (status == null || !loadTsFileDataTypeConverter.isSuccessful(status)) {
@@ -840,12 +835,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                     .convertForTableModel(createTableConversionStatement(tsFiles.get(i)))
                     .orElse(null)
                 : loadTsFileDataTypeConverter
-                    .convertForTreeModel(
-                        (isGeneratedByPipe
-                                ? LoadTsFileStatement.createForPipe(tsFiles.get(i).getPath())
-                                : LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath()))
-                            .setDeleteAfterLoad(isDeleteAfterLoad)
-                            .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
+                    .convertForTreeModel(createTreeConversionStatement(tsFiles.get(i)))
                     .orElse(null);
 
         if (status == null) {
@@ -889,6 +879,18 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     analysis.setFinishQueryAfterAnalyze(true);
     setRealStatement(analysis);
+  }
+
+  private LoadTsFileStatement createTreeConversionStatement(final File tsFile)
+      throws FileNotFoundException {
+    final LoadTsFileStatement statement =
+        (isGeneratedByPipe
+                ? LoadTsFileStatement.createForPipe(tsFile.getPath())
+                : LoadTsFileStatement.createUnchecked(tsFile.getPath()))
+            .setDeleteAfterLoad(isDeleteAfterLoad)
+            .setConvertOnTypeMismatch(isConvertOnTypeMismatch);
+    statement.setAutoCreateSchema(isAutoCreateSchemaRequested);
+    return statement;
   }
 
   private LoadTsFile createTableConversionStatement(final File tsFile) {

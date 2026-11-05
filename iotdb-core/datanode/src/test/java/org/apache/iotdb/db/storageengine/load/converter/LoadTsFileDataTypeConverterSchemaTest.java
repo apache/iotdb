@@ -32,18 +32,25 @@ import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
+import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
+import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
+import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.schema.Schema;
@@ -69,6 +76,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -82,9 +90,11 @@ public class LoadTsFileDataTypeConverterSchemaTest {
   @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   private final List<SessionInfo> conversionSessions = new ArrayList<>();
+  private final List<SessionInfo> treeConversionSessions = new ArrayList<>();
   private InternalClientSession session;
   private int originalDataNodeId;
   private File tsFile;
+  private File treeTsFile;
 
   @Before
   public void setUp() throws Exception {
@@ -121,6 +131,33 @@ public class LoadTsFileDataTypeConverterSchemaTest {
             });
     tsFile = new File(temporaryFolder.getRoot(), "table.tsfile");
     writeTableTsFile();
+    when(coordinator.executeForTreeModel(
+            any(Statement.class),
+            anyLong(),
+            any(SessionInfo.class),
+            anyString(),
+            any(IPartitionFetcher.class),
+            any(ISchemaFetcher.class),
+            anyLong(),
+            anyBoolean(),
+            anyBoolean()))
+        .thenAnswer(
+            invocation -> {
+              treeConversionSessions.add(invocation.getArgument(2));
+              return new ExecutionResult(
+                  new QueryId("tree_load_schema_conversion"),
+                  new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+            });
+    treeTsFile = new File(temporaryFolder.getRoot(), "tree.tsfile");
+    final List<IMeasurementSchema> measurements =
+        Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT64));
+    try (final TsFileWriter writer = new TsFileWriter(treeTsFile)) {
+      writer.registerTimeseries(new Path("root.load_schema.d1"), measurements.get(0));
+      final Tablet tablet = new Tablet("root.load_schema.d1", measurements, 1);
+      tablet.addTimestamp(0, -1);
+      tablet.addValue("s1", 0, 1L);
+      writer.writeTree(tablet);
+    }
   }
 
   @After
@@ -168,6 +205,81 @@ public class LoadTsFileDataTypeConverterSchemaTest {
     assertConversionFlagWithoutClientSession(converter);
 
     Assert.assertNull(SessionManager.getInstance().getCurrSession());
+  }
+
+  @Test
+  public void testTreeConversionHonorsRequestWithoutChangingClientSession() throws Exception {
+    for (final boolean generatedByPipe : new boolean[] {false, true}) {
+      final MPPQueryContext context = new MPPQueryContext(new QueryId("tree_load_schema"));
+      final LoadTsFileDataTypeConverter converter =
+          new LoadTsFileDataTypeConverter(context, generatedByPipe);
+      try {
+        for (final boolean requested : new boolean[] {false, true, false}) {
+          assertTreeConversionSchemaFlag(converter, requested, requested);
+          Assert.assertTrue(session.isEnableAutoCreateSchema());
+          Assert.assertEquals(SqlDialect.TREE, session.getSqlDialect());
+          Assert.assertSame(session, SessionManager.getInstance().getCurrSession());
+        }
+      } finally {
+        DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
+      }
+    }
+  }
+
+  @Test
+  public void testTreeConversionPreservesDisabledClientSession() throws Exception {
+    session.setEnableAutoCreateSchema(false);
+    final MPPQueryContext context = new MPPQueryContext(new QueryId("tree_load_schema"));
+    try {
+      assertTreeConversionSchemaFlag(new LoadTsFileDataTypeConverter(context, false), true, false);
+      Assert.assertFalse(session.isEnableAutoCreateSchema());
+    } finally {
+      DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
+    }
+  }
+
+  @Test
+  public void testTreeConversionPreservesDisabledQuerySession() throws Exception {
+    final MPPQueryContext context = new MPPQueryContext(new QueryId("tree_load_schema"));
+    context.setSession(
+        new SessionInfo(
+            session.getId(),
+            new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()),
+            ZoneOffset.UTC,
+            session.getClientVersion(),
+            null,
+            SqlDialect.TREE,
+            false));
+    try {
+      final LoadTsFileDataTypeConverter converter = new LoadTsFileDataTypeConverter(context, false);
+      assertTreeConversionSchemaFlag(converter, true, false);
+      Assert.assertTrue(session.isEnableAutoCreateSchema());
+      SessionManager.getInstance().removeCurrSession();
+      assertTreeConversionSchemaFlag(converter, true, false);
+      Assert.assertNull(SessionManager.getInstance().getCurrSession());
+    } finally {
+      DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
+    }
+  }
+
+  private void assertTreeConversionSchemaFlag(
+      final LoadTsFileDataTypeConverter converter, final boolean requested, final boolean expected)
+      throws Exception {
+    treeConversionSessions.clear();
+    final LoadTsFileStatement statement =
+        LoadTsFileStatement.createUnchecked(treeTsFile.getAbsolutePath());
+    statement.setAutoCreateSchema(requested);
+    final Optional<TSStatus> status = converter.convertForTreeModel(statement);
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    Assert.assertFalse(treeConversionSessions.isEmpty());
+    for (final SessionInfo conversionSession : treeConversionSessions) {
+      Assert.assertEquals(expected, conversionSession.isEnableAutoCreateSchema());
+      Assert.assertEquals(SqlDialect.TREE, conversionSession.getSqlDialect());
+      Assert.assertEquals("root", conversionSession.getUserName());
+    }
+    Assert.assertEquals(requested, statement.isAutoCreateSchema());
+    Assert.assertTrue(treeTsFile.exists());
   }
 
   private void assertConversionSchemaFlag(

@@ -158,16 +158,11 @@ public class LoadTsFileDataTypeConverter {
   private final MPPQueryContext context;
 
   private final SqlParser relationalSqlParser = new SqlParser();
-  private final LoadTreeStatementDataTypeConvertExecutionVisitor
-      treeStatementDataTypeConvertExecutionVisitor;
 
   public LoadTsFileDataTypeConverter(
       final MPPQueryContext context, final boolean isGeneratedByPipe) {
     this.context = context;
     this.isGeneratedByPipe = isGeneratedByPipe;
-
-    treeStatementDataTypeConvertExecutionVisitor =
-        new LoadTreeStatementDataTypeConvertExecutionVisitor(this::executeForTreeModel);
   }
 
   public Optional<TSStatus> convertForTableModel(final LoadTsFile loadTsFileTableStatement) {
@@ -288,7 +283,11 @@ public class LoadTsFileDataTypeConverter {
     try {
       getTabletConversionSemaphore().acquire();
       isPermitAcquired = true;
-      return loadTsFileTreeStatement.accept(treeStatementDataTypeConvertExecutionVisitor, null);
+      return loadTsFileTreeStatement.accept(
+          new LoadTreeStatementDataTypeConvertExecutionVisitor(
+              statement ->
+                  executeForTreeModel(statement, loadTsFileTreeStatement.isAutoCreateSchema())),
+          null);
     } catch (final InterruptedException e) {
       return getInterruptedConversionStatus(e);
     } catch (Exception e) {
@@ -311,7 +310,8 @@ public class LoadTsFileDataTypeConverter {
     }
   }
 
-  private TSStatus executeForTreeModel(final Statement statement) {
+  private TSStatus executeForTreeModel(
+      final Statement statement, final boolean allowAutoCreateSchema) {
     final IClientSession currentSession = SESSION_MANAGER.getCurrSession();
     final boolean needToCreateSession = Objects.isNull(currentSession);
     final IClientSession session =
@@ -322,7 +322,19 @@ public class LoadTsFileDataTypeConverter {
           .executeForTreeModel(
               isGeneratedByPipe ? new PipeEnrichedStatement(statement) : statement,
               SESSION_MANAGER.requestQueryId(),
-              SESSION_MANAGER.getSessionInfoOfTreeModel(session),
+              new SessionInfo(
+                  session.getId(),
+                  new UserEntity(
+                      session.getUserId(), session.getUsername(), session.getClientAddress()),
+                  ZoneId.systemDefault(),
+                  session.getClientVersion(),
+                  session.getDatabaseName(),
+                  SqlDialect.TREE,
+                  allowAutoCreateSchema
+                      && session.isEnableAutoCreateSchema()
+                      && (Objects.isNull(context)
+                          || Objects.isNull(context.getSession())
+                          || context.getSession().isEnableAutoCreateSchema())),
               "",
               ClusterPartitionFetcher.getInstance(),
               ClusterSchemaFetcher.getInstance(),

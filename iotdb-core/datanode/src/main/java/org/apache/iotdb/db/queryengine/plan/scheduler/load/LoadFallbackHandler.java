@@ -219,6 +219,7 @@ public class LoadFallbackHandler {
     final String database = LoadTsFileScheduler.getPartitionQueryDatabase(node, isGeneratedByPipe);
     final LoadTsFileStatement statement =
         buildRetryTreeLoadStatement(filePath, deleteAfterLoad, database, isGeneratedByPipe);
+    statement.setAutoCreateSchema(node.isAutoCreateSchema());
 
     return converter.convertForTreeModel(statement).orElse(null);
   }

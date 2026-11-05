@@ -155,6 +155,40 @@ public class LoadFallbackHandlerTest {
     assertTableConversionPreservesRequestSchemaCreationSetting(true);
   }
 
+  @Test
+  public void testTreeFallbackPreservesRequestSchemaCreationSetting() throws Exception {
+    when(converter.convertForTreeModel(any())).thenReturn(Optional.of(RpcUtils.SUCCESS_STATUS));
+    final File file = temporaryFolder.newFile("tree-schema.tsfile");
+    for (final boolean tableModelRequest : new boolean[] {false, true}) {
+      for (final boolean generatedByPipe : new boolean[] {false, true}) {
+        for (final boolean requested : new boolean[] {false, true, false}) {
+          clearInvocations(converter);
+          final LoadSingleTsFileNode node =
+              splitLoadNode(file, tableModelRequest, generatedByPipe, requested, false);
+          final List<Integer> failedIndexes = new ArrayList<>(Collections.singletonList(0));
+          final QueryStateMachine stateMachine = newStateMachine();
+          new LoadFallbackHandler(
+                  mock(MPPQueryContext.class),
+                  generatedByPipe,
+                  Collections.singletonList(node),
+                  failedIndexes,
+                  stateMachine)
+              .convertFailedTsFilesToTablets();
+          Assert.assertEquals(QueryState.FINISHED, stateMachine.getState());
+          Assert.assertTrue(failedIndexes.isEmpty());
+          final ArgumentCaptor<LoadTsFileStatement> statement =
+              ArgumentCaptor.forClass(LoadTsFileStatement.class);
+          verify(converter).convertForTreeModel(statement.capture());
+          Assert.assertEquals(requested, statement.getValue().isAutoCreateSchema());
+          Assert.assertEquals(generatedByPipe, statement.getValue().isGeneratedByPipe());
+          Assert.assertTrue(statement.getValue().isDeleteAfterLoad());
+          Assert.assertEquals(Collections.singletonList(file), statement.getValue().getTsFiles());
+          Assert.assertTrue(file.exists());
+        }
+      }
+    }
+  }
+
   private void assertTableConversionPreservesRequestSchemaCreationSetting(final boolean rewrite)
       throws Exception {
     when(converter.convertForTableModel(any())).thenReturn(Optional.of(RpcUtils.SUCCESS_STATUS));
@@ -164,7 +198,7 @@ public class LoadFallbackHandlerTest {
         for (final boolean requested : new boolean[] {false, true, false}) {
           clearInvocations(converter);
           final LoadSingleTsFileNode node =
-              splitTableLoadNode(file, tableModelRequest, generatedByPipe, requested);
+              splitLoadNode(file, tableModelRequest, generatedByPipe, requested, true);
           if (rewrite) {
             Assert.assertTrue(
                 new TabletRewriteLoadStrategy(
@@ -195,11 +229,12 @@ public class LoadFallbackHandlerTest {
     }
   }
 
-  private LoadSingleTsFileNode splitTableLoadNode(
+  private LoadSingleTsFileNode splitLoadNode(
       final File file,
       final boolean tableModelRequest,
       final boolean generatedByPipe,
-      final boolean requested)
+      final boolean requested,
+      final boolean tableModelFile)
       throws Exception {
     final IAnalysis analysis;
     if (tableModelRequest) {
@@ -232,8 +267,8 @@ public class LoadFallbackHandlerTest {
         new LoadTsFileNode(
             new PlanNodeId("load_schema"),
             Collections.singletonList(new TsFileResource(file)),
-            Collections.singletonList(true),
-            "test",
+            Collections.singletonList(tableModelFile),
+            tableModelFile ? "test" : "root.test",
             false);
     return (LoadSingleTsFileNode) loadNode.splitByPartition(analysis).get(0);
   }

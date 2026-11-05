@@ -331,6 +331,65 @@ public class LoadTsFileAnalyzerDiagnosticsTest {
   }
 
   @Test
+  public void testMiniFileTreeConversionPreservesAutoCreateSchema() throws Exception {
+    assertTreeConversionPreservesAutoCreateSchema(true);
+  }
+
+  @Test
+  public void testFallbackTreeConversionPreservesAutoCreateSchema() throws Exception {
+    assertTreeConversionPreservesAutoCreateSchema(false);
+  }
+
+  private void assertTreeConversionPreservesAutoCreateSchema(final boolean miniFile)
+      throws Exception {
+    when(converter.convertForTreeModel(any()))
+        .thenReturn(Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
+    final File file = temporaryFolder.newFile("tree-conversion.tsfile");
+    for (final boolean tableModelRequest : new boolean[] {false, true}) {
+      for (final boolean requested : new boolean[] {false, true, false}) {
+        for (final boolean generatedByPipe : new boolean[] {false, true}) {
+          clearInvocations(converter);
+          final Map<String, String> attributes =
+              Collections.singletonMap(AUTO_CREATE_SCHEMA_KEY, String.valueOf(requested));
+          final LoadTsFile tableStatement =
+              LoadTsFile.createUnchecked(null, file.getAbsolutePath(), attributes);
+          final LoadTsFileStatement treeStatement =
+              LoadTsFileStatement.createUnchecked(file.getAbsolutePath());
+          treeStatement.setAutoCreateSchema(requested);
+          final MPPQueryContext context = new MPPQueryContext(new QueryId("tree_conversion"));
+          try (final LoadTsFileAnalyzer analyzer =
+              tableModelRequest
+                  ? new LoadTsFileAnalyzer(tableStatement, generatedByPipe, context)
+                  : new LoadTsFileAnalyzer(treeStatement, generatedByPipe, context)) {
+            final List<Boolean> tableModelFiles =
+                Whitebox.getInternalState(analyzer, "isTableModelTsFile");
+            tableModelFiles.set(0, false);
+            Whitebox.setInternalState(analyzer, "isTableModelTsFileReliableIndex", 0);
+            if (miniFile) {
+              Assert.assertTrue(
+                  (Boolean) Whitebox.invokeMethod(analyzer, "handleSingleMiniFile", 0));
+            } else {
+              final Analysis analysis = new Analysis();
+              Whitebox.invokeMethod(
+                  analyzer,
+                  "executeTabletConversionOnException",
+                  (IAnalysis) analysis,
+                  new LoadAnalyzeException("original analysis failure"));
+              Assert.assertTrue(analysis.isFinishQueryAfterAnalyze());
+              Assert.assertFalse(analysis.isFailed());
+            }
+            final ArgumentCaptor<LoadTsFileStatement> statement =
+                ArgumentCaptor.forClass(LoadTsFileStatement.class);
+            verify(converter).convertForTreeModel(statement.capture());
+            Assert.assertEquals(requested, statement.getValue().isAutoCreateSchema());
+            Assert.assertEquals(Collections.singletonList(file), statement.getValue().getTsFiles());
+          }
+        }
+      }
+    }
+  }
+
+  @Test
   public void testAsyncTableSqlLoadPreservesSessionSchemaCreationSetting() throws Exception {
     assertAsyncLoadPreservesSessionSchemaCreationSetting(true);
   }
