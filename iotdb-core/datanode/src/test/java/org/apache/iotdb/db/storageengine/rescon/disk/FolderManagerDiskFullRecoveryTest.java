@@ -39,8 +39,10 @@ import org.powermock.reflect.Whitebox;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 @RunWith(PowerMockRunner.class)
@@ -62,31 +64,35 @@ public class FolderManagerDiskFullRecoveryTest {
   @Test
   public void testFullSnapshotDirectoryDoesNotRecoverWhileFull() throws Exception {
     commonConfig.setNodeStatus(NodeStatus.Running);
-    String snapshot = "bounded-data/snapshot";
+    List<String> snapshots =
+        Arrays.asList("bounded-data/snapshot", "second-disk/snapshot", "third-disk/snapshot");
     for (int i = 0; i < 3; i++) {
       // Constructor failure must be remembered even though no FolderManager is returned.
       Assert.assertThrows(
           DiskSpaceInsufficientException.class,
-          () ->
-              new FolderManager(
-                  Collections.singletonList(snapshot), DirectoryStrategyType.SEQUENCE_STRATEGY));
+          () -> new FolderManager(snapshots, DirectoryStrategyType.SEQUENCE_STRATEGY));
       commonConfig.tryRecoverFromDiskFull();
       Assert.assertEquals(NodeStatus.ReadOnly, commonConfig.getNodeStatus());
       Assert.assertEquals(NodeStatus.DISK_FULL, commonConfig.getStatusReason());
     }
 
-    when(JVMCommonUtils.hasSpace(snapshot)).thenReturn(true);
+    // Each failed construction uses the retrying write-path probe. Each recovery checks once.
+    for (String snapshot : snapshots) {
+      PowerMockito.verifyStatic(JVMCommonUtils.class, times(3));
+      JVMCommonUtils.hasSpace(snapshot);
+      PowerMockito.verifyStatic(JVMCommonUtils.class, times(3));
+      JVMCommonUtils.hasSpaceWithoutRetry(snapshot);
+    }
+    when(JVMCommonUtils.hasSpaceWithoutRetry(snapshots.get(0))).thenReturn(true);
     commonConfig.tryRecoverFromDiskFull();
     Assert.assertEquals(NodeStatus.Running, commonConfig.getNodeStatus());
     Assert.assertNull(commonConfig.getStatusReason());
 
     // A later business operation must still trigger protection if the directory becomes full again.
-    when(JVMCommonUtils.hasSpace(snapshot)).thenReturn(false);
+    when(JVMCommonUtils.hasSpaceWithoutRetry(snapshots.get(0))).thenReturn(false);
     Assert.assertThrows(
         DiskSpaceInsufficientException.class,
-        () ->
-            new FolderManager(
-                Collections.singletonList(snapshot), DirectoryStrategyType.SEQUENCE_STRATEGY));
+        () -> new FolderManager(snapshots, DirectoryStrategyType.SEQUENCE_STRATEGY));
     commonConfig.tryRecoverFromDiskFull();
     Assert.assertEquals(NodeStatus.ReadOnly, commonConfig.getNodeStatus());
     Assert.assertEquals(NodeStatus.DISK_FULL, commonConfig.getStatusReason());
@@ -99,12 +105,12 @@ public class FolderManagerDiskFullRecoveryTest {
           DiskSpaceInsufficientException.class,
           () -> new FolderManager(Arrays.asList(group), DirectoryStrategyType.SEQUENCE_STRATEGY));
     }
-    when(JVMCommonUtils.hasSpace("tier0-spare/sequence")).thenReturn(true);
+    when(JVMCommonUtils.hasSpaceWithoutRetry("tier0-spare/sequence")).thenReturn(true);
     commonConfig.tryRecoverFromDiskFull();
     Assert.assertEquals(NodeStatus.ReadOnly, commonConfig.getNodeStatus());
     Assert.assertEquals(NodeStatus.DISK_FULL, commonConfig.getStatusReason());
 
-    when(JVMCommonUtils.hasSpace("wal")).thenReturn(true);
+    when(JVMCommonUtils.hasSpaceWithoutRetry("wal")).thenReturn(true);
     commonConfig.tryRecoverFromDiskFull();
     Assert.assertEquals(NodeStatus.Running, commonConfig.getNodeStatus());
     Assert.assertNull(commonConfig.getStatusReason());
@@ -121,12 +127,13 @@ public class FolderManagerDiskFullRecoveryTest {
     manager.updateFolderState(abnormal, FolderManager.FolderState.ABNORMAL);
     when(JVMCommonUtils.hasSpace(full)).thenReturn(false);
     Assert.assertThrows(DiskSpaceInsufficientException.class, manager::getNextFolder);
+    when(JVMCommonUtils.hasSpaceWithoutRetry(abnormal)).thenReturn(true);
 
     commonConfig.tryRecoverFromDiskFull();
     Assert.assertEquals(NodeStatus.ReadOnly, commonConfig.getNodeStatus());
     Assert.assertEquals(NodeStatus.DISK_FULL, commonConfig.getStatusReason());
 
-    when(JVMCommonUtils.hasSpace(full)).thenReturn(true);
+    when(JVMCommonUtils.hasSpaceWithoutRetry(full)).thenReturn(true);
     commonConfig.tryRecoverFromDiskFull();
     Assert.assertEquals(NodeStatus.Running, commonConfig.getNodeStatus());
     Assert.assertNull(commonConfig.getStatusReason());
