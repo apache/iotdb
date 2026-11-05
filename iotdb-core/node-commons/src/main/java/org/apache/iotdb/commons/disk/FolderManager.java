@@ -119,7 +119,7 @@ public class FolderManager {
                 foldersStates.getOrDefault(folder, FolderState.ABNORMAL) == FolderState.HEALTHY);
   }
 
-  public boolean hasFolderWithAvailableDiskSpace() {
+  private boolean hasFolderWithAvailableDiskSpace() {
     return folders.stream()
         .anyMatch(
             folder ->
