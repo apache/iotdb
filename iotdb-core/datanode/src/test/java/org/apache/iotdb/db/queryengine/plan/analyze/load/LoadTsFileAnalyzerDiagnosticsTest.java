@@ -23,6 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -32,6 +35,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
+import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
@@ -39,8 +43,11 @@ import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConver
 import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -56,6 +63,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import org.powermock.reflect.Whitebox;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.time.ZoneOffset;
 import java.util.Collections;
@@ -79,7 +87,7 @@ import static org.mockito.Mockito.when;
 
 @RunWith(PowerMockRunner.class)
 @PowerMockIgnore({"com.sun.org.apache.xerces.*", "javax.xml.*", "org.xml.*", "javax.management.*"})
-@PrepareForTest({LoadTsFileAnalyzer.class, LoadUtil.class})
+@PrepareForTest({LoadTsFileAnalyzer.class, LoadUtil.class, SchemaValidator.class})
 public class LoadTsFileAnalyzerDiagnosticsTest {
 
   @Rule public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -101,6 +109,120 @@ public class LoadTsFileAnalyzerDiagnosticsTest {
   @After
   public void tearDown() {
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(originalDataNodeId);
+  }
+
+  @Test
+  public void testUnavailableSchemaRegionsShouldRemainRetryable() throws Exception {
+    final TSStatus status = analyzeAfterSchemaFailure(TSStatusCode.NO_AVAILABLE_REGION_GROUP);
+
+    Assert.assertEquals(
+        TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode(), status.getCode());
+    Assert.assertTrue(status.getMessage().contains("schema request failed"));
+  }
+
+  @Test
+  public void testPermanentSchemaErrorShouldNotBecomeRetryable() throws Exception {
+    final TSStatus status = analyzeAfterSchemaFailure(TSStatusCode.METADATA_ERROR);
+
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.getCode());
+    Assert.assertTrue(status.getMessage().contains("schema request failed"));
+  }
+
+  @Test
+  public void testWrappedUnavailableSchemaRegionsShouldRemainRetryable() throws Exception {
+    // Template activation preserves the status in a checked exception wrapped by SemanticException.
+    final TSStatus status =
+        analyzeAfterSchemaFailure(
+            new SemanticException(
+                new IoTDBException(
+                    "schema request failed",
+                    TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode())));
+
+    Assert.assertEquals(
+        TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode(), status.getCode());
+    Assert.assertTrue(status.getMessage().contains("schema request failed"));
+  }
+
+  @Test
+  public void testWrappedPermanentSchemaErrorShouldNotBecomeRetryable() throws Exception {
+    final TSStatus status =
+        analyzeAfterSchemaFailure(
+            new SemanticException(
+                new IoTDBException(
+                    "schema request failed", TSStatusCode.METADATA_ERROR.getStatusCode())));
+
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.getCode());
+    Assert.assertTrue(status.getMessage().contains("schema request failed"));
+  }
+
+  @Test
+  public void testUnavailableRegionsDuringSingleFileAnalysisShouldRetry() throws Exception {
+    final File file = temporaryFolder.newFile("regions-recovering.tsfile");
+    try (final FileOutputStream output = new FileOutputStream(file)) {
+      output.write(1);
+    }
+    PowerMockito.whenNew(TsFileSequenceReader.class)
+        .withArguments(file.getAbsolutePath())
+        .thenThrow(
+            new IoTDBRuntimeException(
+                "region request failed", TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode()));
+
+    try (final LoadTsFileAnalyzer analyzer =
+        new LoadTsFileAnalyzer(
+            LoadTsFileStatement.createUnchecked(file.getPath()),
+            false,
+            new MPPQueryContext(new QueryId("load_region_recovery")))) {
+      final IAnalysis analysis = analyzer.analyzeFileByFile(new Analysis());
+
+      Assert.assertTrue(analysis.isFinishQueryAfterAnalyze());
+      Assert.assertEquals(
+          analysis.getFailStatus().getMessage(),
+          TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode(),
+          analysis.getFailStatus().getCode());
+      Assert.assertEquals("region request failed", analysis.getFailStatus().getMessage());
+      Assert.assertTrue(file.exists());
+    }
+  }
+
+  private TSStatus analyzeAfterSchemaFailure(final TSStatusCode code) throws Exception {
+    return analyzeAfterSchemaFailure(
+        new IoTDBRuntimeException("schema request failed", code.getStatusCode()));
+  }
+
+  private TSStatus analyzeAfterSchemaFailure(final RuntimeException exception) throws Exception {
+    PowerMockito.mockStatic(SchemaValidator.class);
+    when(SchemaValidator.validate(
+            any(),
+            anyList(),
+            anyList(),
+            anyList(),
+            anyList(),
+            anyList(),
+            anyList(),
+            anyBoolean(),
+            any()))
+        .thenThrow(exception);
+    final File file = temporaryFolder.newFile("schema-failure.tsfile");
+    final LoadTsFileStatement statement = LoadTsFileStatement.createUnchecked(file.getPath());
+    statement.setAutoCreateDatabase(false);
+
+    try (final LoadTsFileAnalyzer analyzer =
+        new LoadTsFileAnalyzer(
+            statement, false, new MPPQueryContext(new QueryId("load_schema_recovery")))) {
+      // Model a batch whose metadata was accumulated before the final schema flush.
+      final TreeSchemaAutoCreatorAndVerifier verifier =
+          new TreeSchemaAutoCreatorAndVerifier(analyzer);
+      final LoadTsFileTreeSchemaCache cache = Whitebox.getInternalState(verifier, "schemaCache");
+      final IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d");
+      cache.addTimeSeries(device, new MeasurementSchema("s", TSDataType.INT64));
+      cache.addIsAlignedCache(device, false, true);
+      Whitebox.setInternalState(analyzer, "treeSchemaAutoCreatorAndVerifier", verifier);
+
+      final IAnalysis analysis = analyzer.analyzeFileByFile(new Analysis());
+      Assert.assertTrue(analysis.isFinishQueryAfterAnalyze());
+      Assert.assertTrue(file.exists());
+      return analysis.getFailStatus();
+    }
   }
 
   @Test

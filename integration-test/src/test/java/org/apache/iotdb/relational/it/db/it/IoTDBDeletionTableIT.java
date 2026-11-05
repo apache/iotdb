@@ -3251,7 +3251,9 @@ public class IoTDBDeletionTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use deletion");
 
-      statement.execute("DROP TABLE vehicle" + testNum);
+      // Wait for the asynchronous drop, or the flush below may race with its data deletion and
+      // leave a mod-deleted TsFile that only a later settle compaction removes.
+      TestUtils.dropTable(connection, "deletion", "vehicle" + testNum);
 
       statement.execute("flush");
 
@@ -3361,7 +3363,9 @@ public class IoTDBDeletionTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use deletion");
 
-      statement.execute("DROP TABLE vehicle" + testNum);
+      // Wait for the asynchronous drop, or the flush below may race with its data deletion and
+      // leave a mod-deleted TsFile that only a later settle compaction removes.
+      TestUtils.dropTable(connection, "deletion", "vehicle" + testNum);
 
       statement.execute("flush");
 
