@@ -266,10 +266,16 @@ public class ImportSchemaTree extends AbstractImportSchema {
               dataTypes.clear();
               encodings.clear();
               compressors.clear();
+              pathsWithAlias.clear();
+              dataTypesWithAlias.clear();
+              encodingsWithAlias.clear();
+              compressorsWithAlias.clear();
               measurementAlias.clear();
               if (v2) {
                 tags.clear();
                 attributes.clear();
+                tagsWithAlias.clear();
+                attributesWithAlias.clear();
               }
               pointSize.set(0);
             }
@@ -278,10 +284,16 @@ public class ImportSchemaTree extends AbstractImportSchema {
             dataTypes.clear();
             encodings.clear();
             compressors.clear();
+            pathsWithAlias.clear();
+            dataTypesWithAlias.clear();
+            encodingsWithAlias.clear();
+            compressorsWithAlias.clear();
             measurementAlias.clear();
             if (v2) {
               tags.clear();
               attributes.clear();
+              tagsWithAlias.clear();
+              attributesWithAlias.clear();
             }
           }
           String path = recordObj.get(headerNames.indexOf(Constants.HEAD_COLUMNS.get(0)));
