@@ -23,6 +23,7 @@ import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tool.common.Constants;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.collections4.CollectionUtils;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.junit.After;
@@ -35,6 +36,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +45,7 @@ import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -58,6 +61,7 @@ public class SchemaTagsImportTest {
   public void reset() {
     ImportSchemaTree.sessionPool = null;
     ImportSchemaTree.aligned = false;
+    ImportSchemaTree.batchPointSize = Constants.BATCH_POINT_SIZE;
   }
 
   @Test
@@ -195,9 +199,85 @@ public class SchemaTagsImportTest {
         .createMultiTimeseries(any(), any(), any(), any(), any(), any(), any(), any());
   }
 
+  /**
+   * Guards the batch-flush boundary: every aliased list must be emptied together, otherwise the
+   * next batch pairs the aliases still buffered with the wrong paths.
+   */
+  @Test
+  public void batchedAliasedRecordsKeepAliasTagsAndPathsPaired() throws Exception {
+    SessionPool pool = mock(SessionPool.class);
+    ImportSchemaTree.sessionPool = pool;
+    ImportSchemaTree.batchPointSize = 2;
+    List<List<List<?>>> calls = new ArrayList<>();
+    doAnswer(
+            call -> {
+              List<List<?>> snapshot = new ArrayList<>();
+              for (int i = 0; i < call.getArguments().length; i++) {
+                List<?> argument = call.getArgument(i);
+                snapshot.add(argument == null ? null : new ArrayList<>(argument));
+              }
+              calls.add(snapshot);
+              return null;
+            })
+        .when(pool)
+        .createMultiTimeseries(any(), any(), any(), any(), any(), any(), any(), any());
+
+    File csv = temporaryFolder.newFile("batch.csv");
+    AbstractSchemaTool.CSVPrinterWrapper printer =
+        new AbstractSchemaTool.CSVPrinterWrapper(csv.getAbsolutePath());
+    printer.printRecord(Constants.HEAD_COLUMNS_V2);
+    for (int i = 1; i <= 5; i++) {
+      printer.print("root.sg.d.s" + i);
+      printer.print("alias" + i);
+      printer.print("INT64");
+      printer.print("TS_2DIFF");
+      printer.print("SNAPPY");
+      printer.print(AbstractSchemaTool.toJsonCell(Collections.singletonMap("k", "v" + i)));
+      printer.print("");
+      printer.println();
+    }
+    printer.close();
+    runImportCsv(csv);
+
+    // 3 flushes with batchPointSize 2: [s1,s2], [s3,s4], [s5]
+    assertEquals(3, calls.size());
+    List<String> sentPaths = new ArrayList<>();
+    for (List<List<?>> call : calls) {
+      List<?> paths = call.get(0);
+      List<?> dataTypes = call.get(1);
+      List<?> encodings = call.get(2);
+      List<?> compressors = call.get(3);
+      List<?> tags = call.get(5);
+      List<?> attributes = call.get(6);
+      List<?> measurementAlias = call.get(7);
+      assertTrue(CollectionUtils.isNotEmpty(paths));
+      // every list that is indexed by the path position must have the same length
+      for (List<?> parallel :
+          Arrays.asList(dataTypes, encodings, compressors, tags, attributes, measurementAlias)) {
+        assertEquals("lists must stay positionally aligned", paths.size(), parallel.size());
+      }
+      for (int i = 0; i < paths.size(); i++) {
+        String path = (String) paths.get(i);
+        String seq = path.substring(path.length() - 1);
+        sentPaths.add(path);
+        // s<n> must travel with alias<n> and with the tag built from the same n
+        assertEquals(path, "alias" + seq, measurementAlias.get(i));
+        assertEquals("v" + seq, ((Map<?, ?>) tags.get(i)).get("k"));
+      }
+    }
+    assertEquals(
+        Arrays.asList(
+            "root.sg.d.s1", "root.sg.d.s2", "root.sg.d.s3", "root.sg.d.s4", "root.sg.d.s5"),
+        sentPaths);
+  }
+
   private void runImport(String csvContent) throws Exception {
     File csv = temporaryFolder.newFile("schema_" + System.nanoTime() + ".csv");
     Files.write(csv.toPath(), csvContent.getBytes(StandardCharsets.UTF_8));
+    runImportCsv(csv);
+  }
+
+  private void runImportCsv(File csv) throws Exception {
     String failedFilePath = temporaryFolder.getRoot().getAbsolutePath() + "/failed";
     try (Stream<org.apache.commons.csv.CSVRecord> records =
         ImportSchemaTree.readCsvFile(csv.getAbsolutePath()).stream()) {
