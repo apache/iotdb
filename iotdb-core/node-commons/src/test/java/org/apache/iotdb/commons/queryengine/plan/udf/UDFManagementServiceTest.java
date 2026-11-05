@@ -35,6 +35,7 @@ import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -79,7 +80,7 @@ public class UDFManagementServiceTest {
           queryScope,
           () -> {
             ScalarFunction function = service.reflect(functionName, ScalarFunction.class);
-            classLoader.markAsDeprecated();
+            markAsDeprecated(classLoader);
             classLoaderManager.finalizeUDFQuery(queryScope);
 
             assertFalse(isClosed(classLoader));
@@ -171,9 +172,21 @@ public class UDFManagementServiceTest {
     return (UDFTable) field.get(service);
   }
 
-  private static boolean isClosed(UDFClassLoader classLoader) throws Exception {
-    Field field = UDFClassLoader.class.getDeclaredField("closed");
-    field.setAccessible(true);
-    return field.getBoolean(classLoader);
+  private static void markAsDeprecated(UDFClassLoader classLoader) {
+    try {
+      classLoader.markAsDeprecated();
+    } catch (IOException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  private static boolean isClosed(UDFClassLoader classLoader) {
+    try {
+      Field field = UDFClassLoader.class.getDeclaredField("closed");
+      field.setAccessible(true);
+      return field.getBoolean(classLoader);
+    } catch (ReflectiveOperationException e) {
+      throw new IllegalStateException(e);
+    }
   }
 }

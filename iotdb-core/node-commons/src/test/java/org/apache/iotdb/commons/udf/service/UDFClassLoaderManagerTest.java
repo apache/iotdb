@@ -83,9 +83,13 @@ public class UDFClassLoaderManagerTest {
     return (Set<UDFClassLoader>) field.get(queryScope);
   }
 
-  private static boolean isClosed(UDFClassLoader classLoader) throws Exception {
-    Field field = UDFClassLoader.class.getDeclaredField("closed");
-    field.setAccessible(true);
-    return field.getBoolean(classLoader);
+  private static boolean isClosed(UDFClassLoader classLoader) {
+    try {
+      Field field = UDFClassLoader.class.getDeclaredField("closed");
+      field.setAccessible(true);
+      return field.getBoolean(classLoader);
+    } catch (ReflectiveOperationException e) {
+      throw new IllegalStateException(e);
+    }
   }
 }
