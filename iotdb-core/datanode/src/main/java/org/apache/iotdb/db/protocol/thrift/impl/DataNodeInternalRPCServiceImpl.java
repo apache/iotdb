@@ -97,6 +97,7 @@ import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -528,9 +529,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     // We deserialize here instead of the underlying state machine because parallelism is possible
     // here but not at the underlying state machine
-    final FragmentInstance fragmentInstance;
+    final FragmentInstanceId fragmentInstanceId;
     try {
-      fragmentInstance = FragmentInstance.deserializeFrom(req.fragmentInstance.body);
+      fragmentInstanceId = FragmentInstanceId.deserialize(req.fragmentInstance.body);
     } catch (final Exception e) {
       LOGGER.warn(DataNodeMiscMessages.DESERIALIZE_FRAGMENT_INSTANCE_FAILED, e);
       TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
@@ -538,27 +539,57 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return resp;
     }
 
-    RegionExecutionResult executionResult = null;
-    if (Objects.nonNull(groupId)) {
-      // For schema query, there may be a "write" before "read"
-      // the result is not null iff the "write" has failed
-      executionResult =
-          new TableSchemaQueryWriteVisitor().processFragment(fragmentInstance, groupId);
-    }
-    if (Objects.isNull(executionResult)) {
-      final RegionReadExecutor executor = new RegionReadExecutor();
-      executionResult =
-          groupId == null
-              ? executor.execute(fragmentInstance)
-              : executor.execute(groupId, fragmentInstance);
+    final UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
+    final UDFClassLoaderManager.QueryScope queryScope =
+        classLoaderManager == null
+            ? null
+            : classLoaderManager.openQueryScope(fragmentInstanceId.getFullId());
+    final FragmentInstance fragmentInstance;
+    try {
+      fragmentInstance =
+          queryScope == null
+              ? FragmentInstance.deserializeFrom(fragmentInstanceId, req.fragmentInstance.body)
+              : classLoaderManager.withQueryScope(
+                  queryScope,
+                  () ->
+                      FragmentInstance.deserializeFrom(
+                          fragmentInstanceId, req.fragmentInstance.body));
+      fragmentInstance.attachUDFQueryScope(queryScope);
+    } catch (final Exception e) {
+      if (classLoaderManager != null && queryScope != null) {
+        classLoaderManager.finalizeUDFQuery(queryScope);
+      }
+      LOGGER.warn(DataNodeMiscMessages.DESERIALIZE_FRAGMENT_INSTANCE_FAILED, e);
+      TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
+      resp.setMessage(DataNodeMiscMessages.DESERIALIZE_FRAGMENT_INSTANCE_FAILED + e.getMessage());
+      return resp;
     }
 
-    final TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp();
-    resp.setAccepted(executionResult.isAccepted());
-    resp.setMessage(executionResult.getMessage());
-    resp.setNeedRetry(executionResult.isReadNeedRetry());
-    resp.setStatus(executionResult.getStatus());
-    return resp;
+    try {
+      RegionExecutionResult executionResult = null;
+      if (Objects.nonNull(groupId)) {
+        // For schema query, there may be a "write" before "read"
+        // the result is not null iff the "write" has failed
+        executionResult =
+            new TableSchemaQueryWriteVisitor().processFragment(fragmentInstance, groupId);
+      }
+      if (Objects.isNull(executionResult)) {
+        final RegionReadExecutor executor = new RegionReadExecutor();
+        executionResult =
+            groupId == null
+                ? executor.execute(fragmentInstance)
+                : executor.execute(groupId, fragmentInstance);
+      }
+
+      final TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp();
+      resp.setAccepted(executionResult.isAccepted());
+      resp.setMessage(executionResult.getMessage());
+      resp.setNeedRetry(executionResult.isReadNeedRetry());
+      resp.setStatus(executionResult.getStatus());
+      return resp;
+    } finally {
+      fragmentInstance.closeUDFQueryScopeIfPresent();
+    }
   }
 
   @Override

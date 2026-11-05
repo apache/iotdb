@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -105,6 +106,21 @@ public class LocalExecutionPlanner {
       FragmentInstanceContext instanceContext,
       DataNodeQueryContext dataNodeQueryContext)
       throws MemoryNotEnoughException {
+    UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
+    UDFClassLoaderManager.QueryScope queryScope = instanceContext.getOrCreateUDFQueryScope();
+    if (classLoaderManager == null || queryScope == null) {
+      return planInternal(plan, types, instanceContext, dataNodeQueryContext);
+    }
+    return classLoaderManager.withQueryScope(
+        queryScope, () -> planInternal(plan, types, instanceContext, dataNodeQueryContext));
+  }
+
+  private List<PipelineDriverFactory> planInternal(
+      PlanNode plan,
+      TypeProvider types,
+      FragmentInstanceContext instanceContext,
+      DataNodeQueryContext dataNodeQueryContext)
+      throws MemoryNotEnoughException {
     if (Objects.isNull(plan)) {
       throw new IoTDBRuntimeException(
           DataNodeQueryMessages
@@ -140,6 +156,21 @@ public class LocalExecutionPlanner {
   }
 
   public List<PipelineDriverFactory> plan(
+      PlanNode plan,
+      TypeProvider types,
+      FragmentInstanceContext instanceContext,
+      ISchemaRegion schemaRegion)
+      throws MemoryNotEnoughException {
+    UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
+    UDFClassLoaderManager.QueryScope queryScope = instanceContext.getOrCreateUDFQueryScope();
+    if (classLoaderManager == null || queryScope == null) {
+      return planInternal(plan, types, instanceContext, schemaRegion);
+    }
+    return classLoaderManager.withQueryScope(
+        queryScope, () -> planInternal(plan, types, instanceContext, schemaRegion));
+  }
+
+  private List<PipelineDriverFactory> planInternal(
       PlanNode plan,
       TypeProvider types,
       FragmentInstanceContext instanceContext,

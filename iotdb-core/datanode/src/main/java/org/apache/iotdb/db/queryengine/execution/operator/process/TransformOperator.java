@@ -25,8 +25,6 @@ import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.commons.queryengine.common.NodeRef;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.commons.queryengine.plan.udf.UDFManagementService;
-import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
@@ -136,27 +134,20 @@ public class TransformOperator implements ProcessOperator {
       Map<String, List<InputLocation>> inputLocations,
       Expression[] outputExpressions,
       Map<NodeRef<Expression>, TSDataType> expressionTypes) {
-    UDFManagementService.getInstance().acquireReadLock();
-    try {
-      // This statement must be surrounded by the registration lock.
-      UDFClassLoaderManager.getInstance().initializeUDFQuery(udtfQueryId);
-      // UDF executors will be initialized at the same time
-      transformers =
-          new EvaluationDAGBuilder(
-                  udtfQueryId,
-                  inputLayer,
-                  inputLocations,
-                  outputExpressions,
-                  expressionTypes,
-                  udtfContext,
-                  udfTransformerMemoryBudgetInMB + udfCollectorMemoryBudgetInMB)
-              .buildLayerMemoryAssigner()
-              .bindInputLayerColumnIndexWithExpression()
-              .buildResultColumnPointReaders()
-              .getOutputReaders();
-    } finally {
-      UDFManagementService.getInstance().releaseReadLock();
-    }
+    // UDF executors will be initialized at the same time
+    transformers =
+        new EvaluationDAGBuilder(
+                udtfQueryId,
+                inputLayer,
+                inputLocations,
+                outputExpressions,
+                expressionTypes,
+                udtfContext,
+                udfTransformerMemoryBudgetInMB + udfCollectorMemoryBudgetInMB)
+            .buildLayerMemoryAssigner()
+            .bindInputLayerColumnIndexWithExpression()
+            .buildResultColumnPointReaders()
+            .getOutputReaders();
   }
 
   protected YieldableState iterateAllColumnsToNextValid() throws Exception {

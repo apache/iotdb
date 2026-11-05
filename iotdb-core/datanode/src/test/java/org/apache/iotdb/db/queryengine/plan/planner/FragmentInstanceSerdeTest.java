@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
@@ -86,7 +87,10 @@ public class FragmentInstanceSerdeTest {
             ImmutableList.of(dataNodeLocation));
     fragmentInstance.setExecutorAndHost(new StorageExecutor(regionReplicaSet));
     ByteBuffer byteBuffer = fragmentInstance.serializeToByteBuffer();
-    FragmentInstance deserializeFragmentInstance = FragmentInstance.deserializeFrom(byteBuffer);
+    FragmentInstanceId fragmentInstanceId = FragmentInstanceId.deserialize(byteBuffer);
+    FragmentInstance deserializeFragmentInstance =
+        FragmentInstance.deserializeFrom(fragmentInstanceId, byteBuffer);
+    assertNull(deserializeFragmentInstance.claimUDFQueryScope());
     assertNull(deserializeFragmentInstance.getExecutorType());
     // Because the ExecutorType won't be considered in serialization, we need to set it
     // from original object before comparison.

@@ -304,7 +304,11 @@ public class DataRegionStateMachine extends BaseStateMachine {
         logger.error(DataNodeMiscMessages.GET_FRAGMENT_INSTANCE_FAILED, e);
         return null;
       }
-      return QUERY_INSTANCE_MANAGER.execDataQueryFragmentInstance(fragmentInstance, region);
+      try {
+        return QUERY_INSTANCE_MANAGER.execDataQueryFragmentInstance(fragmentInstance, region);
+      } finally {
+        fragmentInstance.closeUDFQueryScopeIfPresent();
+      }
     }
   }
 
