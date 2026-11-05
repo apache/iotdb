@@ -171,7 +171,7 @@ public class QueryExecution implements IQueryExecution {
             // preventing a premature close raced with late-scheduled FragmentInstances.
             context.releaseExternalTsFileQueryResources();
             this.stop(cause);
-            if (context.isQuery()) {
+            if (context.isQuery() || state != QueryState.FINISHED) {
               finalizeUDFClassLoader();
             }
           }
@@ -220,7 +220,9 @@ public class QueryExecution implements IQueryExecution {
       finishAnalysisAttemptForCurrentState();
       throw e;
     } finally {
-      if (failed || !context.isQuery()) {
+      if (failed
+          || (!context.isQuery()
+              && stateMachine.getState() != QueryState.PENDING_RETRY)) {
         finalizeUDFClassLoader();
       }
     }
