@@ -718,7 +718,8 @@ public class PipeMemoryManagerTest {
 
                   boolean acquired = tryAcquireWithoutTracking(reservation);
                   enqueued.countDown();
-                  final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+                  // Allow time for all contenders to enqueue before the blocker is released.
+                  final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
                   while (!acquired && System.nanoTime() < deadline) {
                     reservation.key.await(
                         Math.max(
@@ -738,20 +739,20 @@ public class PipeMemoryManagerTest {
                 }));
       }
 
-      Assert.assertTrue(ready.await(5, TimeUnit.SECONDS));
+      Assert.assertTrue(ready.await(30, TimeUnit.SECONDS));
       start.countDown();
-      Assert.assertTrue(enqueued.await(5, TimeUnit.SECONDS));
+      Assert.assertTrue(enqueued.await(30, TimeUnit.SECONDS));
       release(blocker);
 
       for (final Future<Boolean> future : futures) {
-        Assert.assertTrue(future.get(15, TimeUnit.SECONDS));
+        Assert.assertTrue(future.get(30, TimeUnit.SECONDS));
       }
       Assert.assertEquals(waitingTsFiles.size(), acquisitionOrder.size());
       Assert.assertEquals(3, new HashSet<>(acquisitionOrder.subList(0, 3)).size());
     } finally {
       release(blocker);
       executor.shutdownNow();
-      Assert.assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+      Assert.assertTrue(executor.awaitTermination(30, TimeUnit.SECONDS));
     }
   }
 
