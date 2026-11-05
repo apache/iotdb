@@ -218,7 +218,14 @@ public class InsertEventSorter {
   protected void sortTimestamps() {
     // Index is sorted stably because it is Integer[]
     Arrays.sort(this.index, Comparator.comparingLong(dataAdapter::getTimestamp));
+    // The index already describes the sorted order, so rearranging the timestamps with it is O(N);
+    // sorting the timestamps again would be O(N log N).
     final long[] timestamps = dataAdapter.getTimestamps();
-    Arrays.sort(timestamps, 0, dataAdapter.getRowSize());
+    final int rowSize = dataAdapter.getRowSize();
+    final long[] sortedTimestamps = new long[timestamps.length];
+    for (int i = 0; i < rowSize; i++) {
+      sortedTimestamps[i] = timestamps[index[i]];
+    }
+    dataAdapter.setTimestamps(sortedTimestamps);
   }
 }
