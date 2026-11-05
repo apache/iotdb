@@ -19,15 +19,24 @@
 
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.exception.InconsistentDataException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -53,6 +62,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
@@ -69,7 +79,12 @@ public class IoTDBLoadTsFileActiveScanIT {
 
   @BeforeClass
   public static void setUpClass() {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(10_000);
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setTimePartitionInterval(10_000)
+        .setDataReplicationFactor(3)
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
     EnvFactory.getEnv()
         .getConfig()
         .getDataNodeConfig()
@@ -148,6 +163,216 @@ public class IoTDBLoadTsFileActiveScanIT {
         device, new Object[][] {{9999L, 41L, "first"}, {10000L, 42L, null}, {20000L, 43L, "last"}});
     awaitSourceDeleted(source);
     assertNoFailedFiles();
+  }
+
+  /** P1-14: an online read-only coordinator can still route LOAD to writable target replicas. */
+  @Test
+  public void testReadOnlyCoordinatorLoadsThroughWritableTargets() throws Exception {
+    final String device = "root.p1readonly.routed.d";
+    final File directory = listeningDirectory("ext/load/readonly-sources");
+    final File source = new File(directory, "730-0-0-0.tsfile");
+    try (TsFileWriter ignored = openIncompleteSource(source, device)) {
+      // Close publishes a complete source outside all listening directories.
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create database root.p1readonly");
+      statement.execute("create aligned timeseries " + device + "(s INT64,txt TEXT)");
+      statement.execute("create aligned timeseries root.p1readonly.routing.d(s INT64,txt TEXT)");
+      for (long timestamp : new long[] {9999, 10000, 20000}) {
+        statement.execute(
+            "insert into root.p1readonly.routing.d(time,s,txt) values("
+                + timestamp
+                + ",1,'route')");
+      }
+    }
+    final DataNodeWrapper coordinator = EnvFactory.getEnv().getDataNodeWrapper(0);
+    try {
+      setNodeStatus(coordinator, NodeStatus.ReadOnly);
+      assertWritableDataRegionReplicas("root.p1readonly", coordinator);
+      try (Connection connection =
+              EnvFactory.getEnv().getConnectionWithSpecifiedDataNode(coordinator);
+          Statement statement = connection.createStatement()) {
+        statement.execute(
+            "load '"
+                + source.getAbsolutePath()
+                + "' with ('on-success'='none','auto-create-schema'='false',"
+                + "'tablet-conversion-threshold'='-1')");
+      }
+      assertRows(
+          device,
+          new Object[][] {{9999L, 41L, "first"}, {10000L, 42L, null}, {20000L, 43L, "last"}});
+      Assert.assertTrue(source.isFile());
+      // Confirm this was a LOAD through a still-online read-only node, rather than connection
+      // discovery silently selecting another coordinator.
+      EnvFactory.getEnv()
+          .ensureNodeStatus(
+              Collections.singletonList(coordinator),
+              Collections.singletonList(NodeStatus.ReadOnly));
+    } finally {
+      try {
+        setNodeStatus(coordinator, NodeStatus.Running);
+      } finally {
+        deleteSourceGroup(source);
+      }
+    }
+  }
+
+  /**
+   * P1-14: scanner pause is observable, and the original publication resumes without re-copying.
+   */
+  @Test
+  public void testReadOnlyScannerPreservesPublicationUntilWritable() throws Exception {
+    final String device = "root.p1scan.readonly.d";
+    final String relative = "ext/load/readonly-pending";
+    final File directory = listeningDirectory(relative);
+    setListeningDirectory(relative);
+    final DataNodeWrapper node = EnvFactory.getEnv().getDataNodeWrapper(0);
+    final File source = new File(directory, "740-0-0-0.tsfile");
+    final String readyDevice = device + "_scanner_ready";
+    publishCanary(directory, "739-0-0-0.tsfile", readyDevice, 73);
+    awaitRows(readyDevice, new Object[][] {{1L, 73L, "canary"}});
+    awaitSourceDeleted(new File(directory, "739-0-0-0.tsfile"));
+    final int oldReadOnlyScanLogs =
+        logCount(
+            node, org.apache.iotdb.db.i18n.StorageEngineMessages.SYSTEM_READ_ONLY_SKIP_ACTIVE_SCAN);
+    try {
+      try {
+        setNodeStatus(node, NodeStatus.ReadOnly);
+        assertWritableDataRegionReplicas("root.p1scan", node);
+        Awaitility.await()
+            .atMost(30, TimeUnit.SECONDS)
+            .untilAsserted(
+                () ->
+                    Assert.assertTrue(
+                        logCount(
+                                node,
+                                org.apache.iotdb.db.i18n.StorageEngineMessages
+                                    .SYSTEM_READ_ONLY_SKIP_ACTIVE_SCAN)
+                            > oldReadOnlyScanLogs));
+        publishCanary(directory, source.getName(), device, 74);
+        Awaitility.await()
+            .pollInterval(200, TimeUnit.MILLISECONDS)
+            .during(2, TimeUnit.SECONDS)
+            .atMost(10, TimeUnit.SECONDS)
+            .untilAsserted(
+                () -> {
+                  Assert.assertTrue(source.isFile());
+                  assertRows(device, new Object[0][]);
+                });
+        assertNoFailedFiles();
+      } finally {
+        setNodeStatus(node, NodeStatus.Running);
+      }
+      awaitRows(device, new Object[][] {{1L, 74L, "canary"}});
+      awaitSourceDeleted(source);
+      publishCanary(directory, "741-0-0-0.tsfile", device + "_next", 75);
+      awaitRows(device + "_next", new Object[][] {{1L, 75L, "canary"}});
+      assertNoFailedFiles();
+    } finally {
+      try {
+        setNodeStatus(node, NodeStatus.Running);
+      } finally {
+        deleteSourceGroup(source);
+      }
+    }
+  }
+
+  private static void assertWritableDataRegionReplicas(String database, DataNodeWrapper coordinator)
+      throws Exception {
+    int coordinatorId = -1;
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet nodes = statement.executeQuery("show datanodes")) {
+      while (nodes.next()) {
+        if (nodes.getInt(ColumnHeaderConstant.RPC_PORT) == coordinator.getPort()) {
+          coordinatorId = nodes.getInt(ColumnHeaderConstant.NODE_ID);
+          break;
+        }
+      }
+    }
+    Assert.assertNotEquals("Coordinator must be registered", -1, coordinatorId);
+    final int registeredCoordinatorId = coordinatorId;
+
+    Awaitility.await()
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(200, TimeUnit.MILLISECONDS)
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              final java.util.Map<Integer, String> coordinatorRegionStatus =
+                  new java.util.HashMap<>();
+              final java.util.Map<Integer, Boolean> hasWritableTarget = new java.util.HashMap<>();
+              try (Connection connection = EnvFactory.getEnv().getConnection();
+                  Statement statement = connection.createStatement();
+                  ResultSet regions = statement.executeQuery("show regions")) {
+                while (regions.next()) {
+                  if (!database.equals(regions.getString(ColumnHeaderConstant.DATABASE))
+                      || !"DataRegion".equals(regions.getString(ColumnHeaderConstant.TYPE))) {
+                    continue;
+                  }
+                  final int regionId = regions.getInt(ColumnHeaderConstant.REGION_ID);
+                  final int dataNodeId = regions.getInt(ColumnHeaderConstant.DATA_NODE_ID);
+                  final String status = regions.getString(ColumnHeaderConstant.STATUS);
+                  if (dataNodeId == registeredCoordinatorId) {
+                    coordinatorRegionStatus.put(regionId, status);
+                  } else {
+                    hasWritableTarget.merge(
+                        regionId,
+                        NodeStatus.Running.getStatus().equals(status),
+                        Boolean::logicalOr);
+                  }
+                }
+              }
+              Assert.assertFalse(
+                  "No preallocated DataRegion for " + database, coordinatorRegionStatus.isEmpty());
+              Assert.assertEquals(
+                  "Coordinator and targets must report the same DataRegions",
+                  coordinatorRegionStatus.keySet(),
+                  hasWritableTarget.keySet());
+              for (java.util.Map.Entry<Integer, String> region :
+                  coordinatorRegionStatus.entrySet()) {
+                Assert.assertEquals(
+                    "Coordinator DataRegion " + region.getKey() + " must be read-only",
+                    NodeStatus.ReadOnly.getStatus(),
+                    region.getValue());
+                Assert.assertTrue(
+                    "DataRegion "
+                        + region.getKey()
+                        + " has no writable replica outside the coordinator",
+                    hasWritableTarget.get(region.getKey()));
+              }
+            });
+  }
+
+  private static int logCount(DataNodeWrapper node, String message) throws Exception {
+    try (Stream<String> lines =
+        Files.lines(new File(node.getLogDirPath(), node.getId() + ".log").toPath())) {
+      return (int) lines.filter(line -> line.contains(message)).count();
+    }
+  }
+
+  private static void deleteSourceGroup(File source) throws Exception {
+    Files.deleteIfExists(source.toPath());
+    Files.deleteIfExists(new File(source + TsFileResource.RESOURCE_SUFFIX).toPath());
+    Files.deleteIfExists(new File(source + ModificationFile.FILE_SUFFIX).toPath());
+  }
+
+  private static void setNodeStatus(DataNodeWrapper node, NodeStatus status) throws Exception {
+    final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> manager =
+        new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+            .createClientManager(
+                new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
+    try (SyncDataNodeInternalServiceClient client =
+        manager.borrowClient(new TEndPoint(node.getIp(), node.getInternalPort()))) {
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client.setSystemStatus(status.getStatus()).getCode());
+    } finally {
+      manager.close();
+    }
+    EnvFactory.getEnv()
+        .ensureNodeStatus(Collections.singletonList(node), Collections.singletonList(status));
   }
 
   private static File listeningDirectory(final String relativePath) throws Exception {
