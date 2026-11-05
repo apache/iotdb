@@ -98,6 +98,7 @@ import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionR
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.confignode.consensus.statemachine.ConfigRegionStateMachine;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
@@ -1584,6 +1585,31 @@ public class ConfigManager implements IManager {
         : new TGetJarInListResp(status, Collections.emptyList());
   }
 
+  private TSStatus confirmSubscriptionFeatureAvailability() {
+    final TSStatus status = confirmLeader();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        || PipeConfigNodeAgent.isSubscriptionFeatureEnabled()) {
+      return status;
+    }
+    return RpcUtils.getStatus(
+        TSStatusCode.UNSUPPORTED_OPERATION,
+        ConfigNodeMessages
+            .MESSAGE_SUBSCRIPTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_194CE431);
+  }
+
+  private TSStatus confirmPipeDataInsertionAvailability(
+      final Map<String, String> sourceAttributes) {
+    final TSStatus status = confirmLeader();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        || PipeConfigNodeAgent.isPipeDataInsertionEnabled(sourceAttributes)) {
+      return status;
+    }
+    return RpcUtils.getStatus(
+        TSStatusCode.UNSUPPORTED_OPERATION,
+        ConfigNodeMessages
+            .MESSAGE_PIPE_DATA_INSERTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_7D669ECC);
+  }
+
   @Override
   public TSStatus merge() {
     TSStatus status = confirmLeader();
@@ -2154,7 +2180,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus createPipe(TCreatePipeReq req) {
-    TSStatus status = confirmLeader();
+    TSStatus status = confirmPipeDataInsertionAvailability(req.getExtractorAttributes());
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? pipeManager.getPipeTaskCoordinator().createPipe(req)
         : status;
@@ -2210,7 +2236,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus createTopic(TCreateTopicReq req) {
-    TSStatus status = confirmLeader();
+    TSStatus status = confirmSubscriptionFeatureAvailability();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? subscriptionManager.getSubscriptionCoordinator().createTopic(req)
         : status;
@@ -2242,7 +2268,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus createConsumer(TCreateConsumerReq req) {
-    TSStatus status = confirmLeader();
+    TSStatus status = confirmSubscriptionFeatureAvailability();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? subscriptionManager.getSubscriptionCoordinator().createConsumer(req)
         : status;
@@ -2258,7 +2284,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus createSubscription(TSubscribeReq req) {
-    TSStatus status = confirmLeader();
+    TSStatus status = confirmSubscriptionFeatureAvailability();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? subscriptionManager.getSubscriptionCoordinator().createSubscription(req)
         : status;

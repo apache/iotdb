@@ -50,7 +50,9 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMult
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusWithStoppedByRuntimeExceptionPlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
@@ -178,6 +180,13 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   private boolean checkBeforeCreatePipeInternal(final TCreatePipeReq createPipeRequest)
       throws PipeException {
+    checkPipeDataInsertionAvailability(
+        new PipeStaticMeta(
+            createPipeRequest.getPipeName(),
+            System.currentTimeMillis(),
+            createPipeRequest.getExtractorAttributes(),
+            createPipeRequest.getProcessorAttributes(),
+            createPipeRequest.getConnectorAttributes()));
     if (!isPipeExisted(createPipeRequest.getPipeName())) {
       return true;
     }
@@ -283,6 +292,14 @@ public class PipeTaskInfo implements SnapshotProcessor {
       }
     }
 
+    checkPipeDataInsertionAvailability(
+        new PipeStaticMeta(
+            alterPipeRequest.getPipeName(),
+            System.currentTimeMillis(),
+            alterPipeRequest.getExtractorAttributes(),
+            alterPipeRequest.getProcessorAttributes(),
+            alterPipeRequest.getConnectorAttributes()));
+
     return true;
   }
 
@@ -303,6 +320,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
       throw new PipeException(exceptionMessage);
     }
 
+    checkPipeDataInsertionAvailability(getPipeMetaByPipeName(pipeName).getStaticMeta());
     final PipeStatus pipeStatus = getPipeStatus(pipeName);
     if (pipeStatus == PipeStatus.DROPPED) {
       final String exceptionMessage =
@@ -315,6 +333,16 @@ public class PipeTaskInfo implements SnapshotProcessor {
           String.format("Failed to start pipe %s, the pipe is being dropped", pipeName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
+    }
+  }
+
+  private void checkPipeDataInsertionAvailability(final PipeStaticMeta staticMeta) {
+    // Procedures call these validators while holding the coordinator lock. Recheck the merged
+    // source parameters here because concurrent ALTER requests can change the RPC-time snapshot.
+    if (!PipeConfigNodeAgent.isPipeDataInsertionEnabled(staticMeta.getExtractorParameters())) {
+      throw new PipeException(
+          ConfigNodeMessages
+              .MESSAGE_PIPE_DATA_INSERTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_7D669ECC);
     }
   }
 

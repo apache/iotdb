@@ -1256,7 +1256,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TPushTopicMetaResp pushTopicMeta(TPushTopicMetaReq req) {
-    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+    if (!isSubscriptionFeatureEnabled()) {
       return new TPushTopicMetaResp()
           .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     }
@@ -1284,7 +1284,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TPushTopicMetaResp pushSingleTopicMeta(TPushSingleTopicMetaReq req) {
-    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+    if (!isSubscriptionFeatureEnabled()) {
       return new TPushTopicMetaResp()
           .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     }
@@ -1317,7 +1317,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TPushTopicMetaResp pushMultiTopicMeta(TPushMultiTopicMetaReq req) {
-    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+    if (!isSubscriptionFeatureEnabled()) {
       return new TPushTopicMetaResp()
           .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     }
@@ -1369,7 +1369,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TPushConsumerGroupMetaResp pushConsumerGroupMeta(TPushConsumerGroupMetaReq req) {
-    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+    if (!isSubscriptionFeatureEnabled()) {
       return new TPushConsumerGroupMetaResp()
           .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     }
@@ -1398,7 +1398,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TPushConsumerGroupMetaResp pushSingleConsumerGroupMeta(
       TPushSingleConsumerGroupMetaReq req) {
-    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+    if (!isSubscriptionFeatureEnabled()) {
       return new TPushConsumerGroupMetaResp()
           .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     }
@@ -2489,6 +2489,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return nodeLocation.getDataRegionConsensusEndPoint();
     }
     return nodeLocation.getSchemaRegionConsensusEndPoint();
+  }
+
+  private boolean isSubscriptionFeatureEnabled() {
+    return SubscriptionConfig.getInstance().getSubscriptionEnabled()
+        && PipeDataNodeAgent.isSubscriptionFeatureEnabled();
   }
 
   @Override
