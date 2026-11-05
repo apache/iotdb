@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.exception.query;
 
+import com.google.common.math.LongMath;
+
 /** This class is used to throw run time exception when query is time out. */
 public class QueryTimeoutRuntimeException extends RuntimeException {
   public static final String QUERY_TIMEOUT_EXCEPTION_MESSAGE =
@@ -27,7 +29,10 @@ public class QueryTimeoutRuntimeException extends RuntimeException {
   public QueryTimeoutRuntimeException(long startTime, long currentTime, long timeout) {
     super(
         String.format(
-            QUERY_TIMEOUT_EXCEPTION_MESSAGE, startTime, startTime + timeout, currentTime));
+            QUERY_TIMEOUT_EXCEPTION_MESSAGE,
+            startTime,
+            LongMath.saturatedAdd(startTime, timeout),
+            currentTime));
   }
 
   public QueryTimeoutRuntimeException(String message) {

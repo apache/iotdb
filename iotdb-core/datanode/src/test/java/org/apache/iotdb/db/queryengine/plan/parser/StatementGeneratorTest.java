@@ -21,12 +21,14 @@ package org.apache.iotdb.db.queryengine.plan.parser;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterEqualExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterThanExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LessThanExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
@@ -87,6 +89,7 @@ import org.junit.Test;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -103,6 +106,36 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 
 public class StatementGeneratorTest {
+
+  @Test
+  public void testDateSubtractionNearTimestampUpperBound() {
+    String originalPrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
+    try {
+      CommonDescriptor.getInstance().getConfig().setTimestampPrecision("ns");
+      String prefix = "select s1 from root.sg.d1 where time > 2262-04-11T23:47:16.854775806";
+      QueryStatement compoundDuration =
+          (QueryStatement)
+              StatementGenerator.createStatement(prefix + " - 1s1ns", ZoneId.of("UTC"));
+      QueryStatement singleDuration =
+          (QueryStatement)
+              StatementGenerator.createStatement(prefix + " - 1000000001ns", ZoneId.of("UTC"));
+
+      assertEquals(
+          new GreaterThanExpression(
+              new TimestampOperand(), new ConstantOperand(TSDataType.INT64, "9223372035854775805")),
+          compoundDuration.getWhereCondition().getPredicate());
+      assertEquals(
+          singleDuration.getWhereCondition().getPredicate(),
+          compoundDuration.getWhereCondition().getPredicate());
+      SemanticException exception =
+          assertThrows(
+              SemanticException.class,
+              () -> StatementGenerator.createStatement(prefix + " + 1s1ns", ZoneId.of("UTC")));
+      Assert.assertTrue(exception.getMessage().contains("Date expression is out of range"));
+    } finally {
+      CommonDescriptor.getInstance().getConfig().setTimestampPrecision(originalPrecision);
+    }
+  }
 
   @Test
   public void testRawDataQuery() throws IllegalPathException {

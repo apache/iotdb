@@ -30,6 +30,20 @@ public class FixedIntervalFillFilterTest {
 
     Assert.assertTrue(filter.needFill(Long.MIN_VALUE, Long.MIN_VALUE + 1));
     Assert.assertFalse(filter.needFill(Long.MIN_VALUE, Long.MAX_VALUE));
+    Assert.assertFalse(
+        new FixedIntervalFillFilter(Long.MAX_VALUE).needFill(Long.MAX_VALUE, Long.MIN_VALUE));
+  }
+
+  @Test
+  public void needFillComparesLargeIntervalExactly() {
+    long interval = 15_552_000_000_000_000L;
+    long previousTime = 1_700_000_000_000_000_000L;
+    FixedIntervalFillFilter filter = new FixedIntervalFillFilter(interval);
+
+    Assert.assertTrue(filter.needFill(previousTime + interval, previousTime));
+    Assert.assertTrue(filter.needFill(previousTime, previousTime + interval));
+    Assert.assertFalse(filter.needFill(previousTime + interval + 1, previousTime));
+    Assert.assertFalse(filter.needFill(previousTime, previousTime + interval + 1));
   }
 
   @Test

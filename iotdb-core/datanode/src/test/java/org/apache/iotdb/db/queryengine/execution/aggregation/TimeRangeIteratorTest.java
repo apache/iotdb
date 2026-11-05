@@ -67,6 +67,133 @@ public class TimeRangeIteratorTest {
   }
 
   @Test
+  public void testNotSplitTimeRangeWithLongBoundaries() {
+    TimeDuration interval = new TimeDuration(0, 2);
+    TimeDuration slidingStep = new TimeDuration(0, 1);
+
+    String[] maxLeftClosedRightOpenRes = {
+      "[ 9223372036854775805 : 9223372036854775806 ]",
+      "[ 9223372036854775806 : 9223372036854775806 ]"
+    };
+    checkRes(
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            Long.MAX_VALUE - 2,
+            Long.MAX_VALUE,
+            interval,
+            slidingStep,
+            true,
+            true,
+            false,
+            ZoneId.systemDefault()),
+        maxLeftClosedRightOpenRes);
+    checkRes(
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            Long.MAX_VALUE - 2,
+            Long.MAX_VALUE,
+            interval,
+            slidingStep,
+            false,
+            true,
+            false,
+            ZoneId.systemDefault()),
+        maxLeftClosedRightOpenRes);
+
+    String[] maxLeftOpenRightClosedRes = {
+      "[ 9223372036854775806 : 9223372036854775807 ]",
+      "[ 9223372036854775807 : 9223372036854775807 ]"
+    };
+    checkRes(
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            Long.MAX_VALUE - 2,
+            Long.MAX_VALUE,
+            interval,
+            slidingStep,
+            true,
+            false,
+            false,
+            ZoneId.systemDefault()),
+        maxLeftOpenRightClosedRes);
+    checkRes(
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            Long.MAX_VALUE - 2,
+            Long.MAX_VALUE,
+            interval,
+            slidingStep,
+            false,
+            false,
+            false,
+            ZoneId.systemDefault()),
+        maxLeftOpenRightClosedRes);
+
+    String[] minLeftClosedRightOpenRes = {
+      "[ -9223372036854775808 : -9223372036854775807 ]",
+      "[ -9223372036854775807 : -9223372036854775807 ]"
+    };
+    checkRes(
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            Long.MIN_VALUE,
+            Long.MIN_VALUE + 2,
+            interval,
+            slidingStep,
+            true,
+            true,
+            false,
+            ZoneId.systemDefault()),
+        minLeftClosedRightOpenRes);
+    checkRes(
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            Long.MIN_VALUE,
+            Long.MIN_VALUE + 2,
+            interval,
+            slidingStep,
+            false,
+            true,
+            false,
+            ZoneId.systemDefault()),
+        minLeftClosedRightOpenRes);
+
+    String[] maxSplitLeftClosedRightOpenRes = {
+      "[ 9223372036854775805 : 9223372036854775805 ]",
+      "[ 9223372036854775806 : 9223372036854775806 ]"
+    };
+    checkRes(
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            Long.MAX_VALUE - 2,
+            Long.MAX_VALUE,
+            interval,
+            slidingStep,
+            true,
+            true,
+            true,
+            ZoneId.systemDefault()),
+        maxSplitLeftClosedRightOpenRes);
+    checkRes(
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            Long.MAX_VALUE - 2,
+            Long.MAX_VALUE,
+            interval,
+            slidingStep,
+            false,
+            true,
+            true,
+            ZoneId.systemDefault()),
+        maxSplitLeftClosedRightOpenRes);
+
+    Assert.assertEquals(
+        Long.MAX_VALUE,
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+                Long.MIN_VALUE,
+                Long.MAX_VALUE,
+                new TimeDuration(0, 1),
+                new TimeDuration(0, 1),
+                true,
+                true,
+                false,
+                ZoneId.systemDefault())
+            .getTotalIntervalNum());
+  }
+
+  @Test
   public void testSplitTimeRange() {
     String[] res4_1 = {
       "[ 0 : 0 ]",

@@ -32,16 +32,14 @@ public class FixedIntervalFillFilter implements IFillFilter {
 
   @Override
   public boolean needFill(long time, long previousTime) {
-    // the reason that we use Math.abs is that we may use order by time desc which will cause
-    // previousTime is larger than time
     return isTimeDistanceLessThanOrEqual(time, previousTime, timeInterval);
   }
 
-  private boolean isTimeDistanceLessThanOrEqual(long left, long right, long maxDistance) {
+  private static boolean isTimeDistanceLessThanOrEqual(long left, long right, long maxDistance) {
     if (maxDistance < 0) {
       return false;
     }
-    long distance = left >= right ? left - right : right - left;
-    return Long.compareUnsigned(distance, maxDistance) <= 0;
+    final long difference = left >= right ? left - right : right - left;
+    return Long.compareUnsigned(difference, maxDistance) <= 0;
   }
 }

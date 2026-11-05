@@ -36,6 +36,13 @@ import static org.junit.Assert.fail;
 
 public class DateTimeUtilsTest {
 
+  @Test
+  public void convertFixedDurationNearTimestampUpperBound() {
+    assertEquals(
+        1_000_000_001L,
+        DateTimeUtils.convertDurationStrToLong(Long.MAX_VALUE - 1, "1s1ns", "ns", false));
+  }
+
   private ZoneOffset zoneOffset;
   private ZoneId zoneId;
   // 1546413207689

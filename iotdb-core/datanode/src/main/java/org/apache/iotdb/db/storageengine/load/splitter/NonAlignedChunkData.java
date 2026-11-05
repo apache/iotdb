@@ -175,11 +175,7 @@ public class NonAlignedChunkData implements ChunkData {
       throws IOException {
     pageNumber += 1;
     final long startTime = timePartitionSlot.getStartTime();
-    // beware of overflow
-    long endTime = startTime + TimePartitionUtils.getTimePartitionInterval() - 1;
-    if (endTime <= startTime) {
-      endTime = Long.MAX_VALUE;
-    }
+    final long endTime = TimePartitionUtils.getTimePartitionEndTime(startTime);
     dataSize += ReadWriteIOUtils.write(true, stream);
     dataSize += ReadWriteIOUtils.write(satisfiedLength, stream);
 
