@@ -38,11 +38,13 @@ import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -58,7 +60,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE;
 public class ImportSchemaTree extends AbstractImportSchema {
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
-  private static SessionPool sessionPool;
+  static SessionPool sessionPool;
 
   public void init()
       throws InterruptedException, IoTDBConnectionException, StatementExecutionException {
@@ -131,18 +133,65 @@ public class ImportSchemaTree extends AbstractImportSchema {
     }
   }
 
-  private static CSVParser readCsvFile(String path) throws IOException {
-    return CSVFormat.Builder.create(CSVFormat.DEFAULT)
-        .setHeader()
-        .setSkipHeaderRecord(true)
-        .setQuote('`')
-        .setEscape('\\')
-        .setIgnoreEmptyLines(true)
-        .build()
-        .parse(new InputStreamReader(new FileInputStream(path)));
+  static CSVParser readCsvFile(String path) throws IOException {
+    CSVFormat.Builder builder =
+        CSVFormat.Builder.create(CSVFormat.DEFAULT)
+            .setHeader()
+            .setSkipHeaderRecord(true)
+            .setIgnoreEmptyLines(true);
+    if (isV2Format(readHeaderNames(path))) {
+      builder.setQuote('"');
+    } else {
+      builder.setQuote('`').setEscape('\\');
+    }
+    return builder.build().parse(new InputStreamReader(new FileInputStream(path)));
   }
 
-  private static boolean checkHeader(List<String> headerNames) {
+  /**
+   * Reads the column names of a schema file without parsing it, so that the CSV settings of the
+   * file can be selected before it is read.
+   */
+  static List<String> readHeaderNames(String path) throws IOException {
+    try (BufferedReader reader =
+        new BufferedReader(new InputStreamReader(new FileInputStream(path)))) {
+      String headerLine = reader.readLine();
+      if (headerLine == null) {
+        return Collections.emptyList();
+      }
+      return Arrays.stream(headerLine.split(","))
+          .map(ImportSchemaTree::unquoteColumnName)
+          .collect(Collectors.toList());
+    }
+  }
+
+  /** Accepts a header written by a spreadsheet tool, which quotes every column name. */
+  private static String unquoteColumnName(String columnName) {
+    String name = columnName.trim();
+    if (name.length() > 1 && name.startsWith("\"") && name.endsWith("\"")) {
+      return name.substring(1, name.length() - 1).trim();
+    }
+    return name;
+  }
+
+  /**
+   * A file whose header carries a Tags or an Attributes column is a v2 file, which is RFC4180 and
+   * holds JSON cells. Everything else is a legacy file and keeps the settings it was written with.
+   */
+  static boolean isV2Format(List<String> headerNames) {
+    return headerNames.contains(Constants.HEADER_TAGS)
+        || headerNames.contains(Constants.HEADER_ATTRIBUTES);
+  }
+
+  static boolean checkHeader(List<String> headerNames) {
+    if (isV2Format(headerNames)) {
+      if (headerNames.containsAll(Constants.HEAD_COLUMNS_V2)) {
+        return true;
+      }
+      ioTPrinter.println(
+          CliMessages
+              .MESSAGE_THE_HEADER_OF_THE_CSV_FILE_TO_BE_IMPORTED_IS_ILLEGAL_THE_CORRECT_FORMAT_IS_TIMESERIES_ALIAS_DATATYPE_ENCODING_COMPRESSION_TAGS_ATTRIBUTES_14EDBFB9);
+      return false;
+    }
     if (CollectionUtils.isNotEmpty(headerNames)
         && new HashSet<>(headerNames).size() == Constants.HEAD_COLUMNS.size()) {
       List<String> strangers =
@@ -159,18 +208,25 @@ public class ImportSchemaTree extends AbstractImportSchema {
     return true;
   }
 
-  private static void writeScheme(
+  static void writeScheme(
       String fileName, List<String> headerNames, Stream<CSVRecord> records, String failedFilePath)
       throws IllegalPathException {
+    boolean v2 = isV2Format(headerNames);
+    int tagsIndex = headerNames.indexOf(Constants.HEADER_TAGS);
+    int attributesIndex = headerNames.indexOf(Constants.HEADER_ATTRIBUTES);
     List<String> paths = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     List<TSEncoding> encodings = new ArrayList<>();
     List<CompressionType> compressors = new ArrayList<>();
+    List<Map<String, String>> tags = v2 ? new ArrayList<>() : null;
+    List<Map<String, String>> attributes = v2 ? new ArrayList<>() : null;
     List<String> pathsWithAlias = new ArrayList<>();
     List<TSDataType> dataTypesWithAlias = new ArrayList<>();
     List<TSEncoding> encodingsWithAlias = new ArrayList<>();
     List<CompressionType> compressorsWithAlias = new ArrayList<>();
     List<String> measurementAlias = new ArrayList<>();
+    List<Map<String, String>> tagsWithAlias = v2 ? new ArrayList<>() : null;
+    List<Map<String, String>> attributesWithAlias = v2 ? new ArrayList<>() : null;
 
     AtomicReference<Boolean> hasStarted = new AtomicReference<>(false);
     AtomicInteger pointSize = new AtomicInteger(0);
@@ -185,7 +241,7 @@ public class ImportSchemaTree extends AbstractImportSchema {
               try {
                 if (CollectionUtils.isNotEmpty(paths)) {
                   writeAndEmptyDataSet(
-                      paths, dataTypes, encodings, compressors, null, null, null, null, 3);
+                      paths, dataTypes, encodings, compressors, null, tags, attributes, null, 3);
                 }
               } catch (Exception e) {
                 paths.forEach(t -> failedRecords.add(Collections.singletonList(t)));
@@ -198,8 +254,8 @@ public class ImportSchemaTree extends AbstractImportSchema {
                       encodingsWithAlias,
                       compressorsWithAlias,
                       null,
-                      null,
-                      null,
+                      tagsWithAlias,
+                      attributesWithAlias,
                       measurementAlias,
                       3);
                 }
@@ -211,6 +267,10 @@ public class ImportSchemaTree extends AbstractImportSchema {
               encodings.clear();
               compressors.clear();
               measurementAlias.clear();
+              if (v2) {
+                tags.clear();
+                attributes.clear();
+              }
               pointSize.set(0);
             }
           } else {
@@ -219,6 +279,10 @@ public class ImportSchemaTree extends AbstractImportSchema {
             encodings.clear();
             compressors.clear();
             measurementAlias.clear();
+            if (v2) {
+              tags.clear();
+              attributes.clear();
+            }
           }
           String path = recordObj.get(headerNames.indexOf(Constants.HEAD_COLUMNS.get(0)));
           String alias = recordObj.get(headerNames.indexOf(Constants.HEAD_COLUMNS.get(1)));
@@ -230,6 +294,23 @@ public class ImportSchemaTree extends AbstractImportSchema {
           String compressionTypeRaw =
               recordObj.get(headerNames.indexOf(Constants.HEAD_COLUMNS.get(4)));
           CompressionType compressionType = compressInfer(compressionTypeRaw);
+          Map<String, String> recordTags = null;
+          Map<String, String> recordAttributes = null;
+          boolean tagsParsed = true;
+          if (v2) {
+            try {
+              recordTags = parseJsonCell(recordObj.get(tagsIndex));
+            } catch (RuntimeException e) {
+              ioTPrinter.println(invalidJsonMessage(Constants.HEADER_TAGS, path, e));
+              tagsParsed = false;
+            }
+            try {
+              recordAttributes = parseJsonCell(recordObj.get(attributesIndex));
+            } catch (RuntimeException e) {
+              ioTPrinter.println(invalidJsonMessage(Constants.HEADER_ATTRIBUTES, path, e));
+              tagsParsed = false;
+            }
+          }
           if (StringUtils.isBlank(path)
               || path.trim().startsWith(SYSTEM_DATABASE)
               || path.trim().startsWith(AUDIT_DATABASE)) {
@@ -268,31 +349,56 @@ public class ImportSchemaTree extends AbstractImportSchema {
                     compressionTypeRaw));
             failedRecords.add(recordObj.stream().collect(Collectors.toList()));
             failed = true;
+          } else if (!tagsParsed) {
+            failedRecords.add(recordObj.stream().collect(Collectors.toList()));
+            failed = true;
           } else {
             if (StringUtils.isBlank(alias)) {
               paths.add(path);
               dataTypes.add(dataType);
               encodings.add(encodingType);
               compressors.add(compressionType);
+              if (v2) {
+                tags.add(recordTags);
+                attributes.add(recordAttributes);
+              }
             } else {
               pathsWithAlias.add(path);
               dataTypesWithAlias.add(dataType);
               encodingsWithAlias.add(encodingType);
               compressorsWithAlias.add(compressionType);
               measurementAlias.add(alias);
+              if (v2) {
+                tagsWithAlias.add(recordTags);
+                attributesWithAlias.add(recordAttributes);
+              }
             }
             pointSize.getAndIncrement();
           }
           if (!failed && aligned) {
             String deviceId = path.substring(0, path.lastIndexOf("."));
             paths.add(0, path.substring(deviceId.length() + 1));
+            if (v2) {
+              // keep the maps aligned with the measurements list, whose head now holds this one
+              tags.add(0, recordTags);
+              attributes.add(0, recordAttributes);
+            }
             writeAndEmptyDataSetAligned(
-                deviceId, paths, dataTypes, encodings, compressors, measurementAlias, 3);
+                deviceId,
+                paths,
+                dataTypes,
+                encodings,
+                compressors,
+                measurementAlias,
+                tags,
+                attributes,
+                3);
           }
         });
     try {
       if (CollectionUtils.isNotEmpty(paths)) {
-        writeAndEmptyDataSet(paths, dataTypes, encodings, compressors, null, null, null, null, 3);
+        writeAndEmptyDataSet(
+            paths, dataTypes, encodings, compressors, null, tags, attributes, null, 3);
       }
     } catch (Exception e) {
       paths.forEach(t -> failedRecords.add(Collections.singletonList(t)));
@@ -305,8 +411,8 @@ public class ImportSchemaTree extends AbstractImportSchema {
             encodingsWithAlias,
             compressorsWithAlias,
             null,
-            null,
-            null,
+            tagsWithAlias,
+            attributesWithAlias,
             measurementAlias,
             3);
       }
@@ -380,10 +486,24 @@ public class ImportSchemaTree extends AbstractImportSchema {
       List<TSEncoding> encodings,
       List<CompressionType> compressors,
       List<String> measurementAliasList,
+      List<Map<String, String>> tagsList,
+      List<Map<String, String>> attributesList,
       int retryTime) {
     try {
-      sessionPool.createAlignedTimeseries(
-          deviceId, measurements, dataTypes, encodings, compressors, measurementAliasList);
+      if (tagsList == null && attributesList == null) {
+        sessionPool.createAlignedTimeseries(
+            deviceId, measurements, dataTypes, encodings, compressors, measurementAliasList);
+      } else {
+        sessionPool.createAlignedTimeseries(
+            deviceId,
+            measurements,
+            dataTypes,
+            encodings,
+            compressors,
+            measurementAliasList,
+            tagsList,
+            attributesList);
+      }
     } catch (IoTDBConnectionException e) {
       if (retryTime > 0) {
         writeAndEmptyDataSetAligned(
@@ -393,6 +513,8 @@ public class ImportSchemaTree extends AbstractImportSchema {
             encodings,
             compressors,
             measurementAliasList,
+            tagsList,
+            attributesList,
             --retryTime);
       }
     } catch (StatementExecutionException e) {
@@ -405,7 +527,22 @@ public class ImportSchemaTree extends AbstractImportSchema {
       encodings.clear();
       compressors.clear();
       measurementAliasList.clear();
+      if (tagsList != null) {
+        tagsList.clear();
+      }
+      if (attributesList != null) {
+        attributesList.clear();
+      }
     }
+  }
+
+  private static String invalidJsonMessage(String column, String path, Exception e) {
+    return String.format(
+        CliMessages
+            .MESSAGE_FAILED_TO_PARSE_THE_ARG_COLUMN_OF_TIMESERIES_ARG_AS_JSON_THE_RECORD_IS_SKIPPED_ARG_35D898C8,
+        column,
+        path,
+        String.valueOf(e.getMessage()));
   }
 
   private static TSDataType typeInfer(String typeStr) {
