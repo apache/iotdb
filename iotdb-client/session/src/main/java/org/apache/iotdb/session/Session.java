@@ -154,6 +154,7 @@ public class Session implements ISession {
   protected ZoneId zoneId;
   protected int thriftDefaultBufferSize;
   protected int thriftMaxFrameSize;
+  protected int thriftMaxReusableBufferSize = Integer.MAX_VALUE;
   protected TEndPoint defaultEndPoint;
   protected SessionConnection defaultSessionConnection;
   private boolean isClosed = true;
@@ -487,6 +488,7 @@ public class Session implements ISession {
     this.zoneId = builder.zoneId;
     this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
     this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
+    this.thriftMaxReusableBufferSize = builder.thriftMaxReusableBufferSize;
     this.connectionTimeoutInMs = builder.connectionTimeoutInMs;
     this.version = builder.version;
     this.useSSL = builder.useSSL;
@@ -570,7 +572,8 @@ public class Session implements ISession {
               keyStorePwd,
               sslProtocol,
               enableRPCCompaction,
-              version.toString());
+              version.toString(),
+              thriftMaxReusableBufferSize);
     } else {
       // A static supplier has no separate seed tier. Keep every configured address after reopen.
       Set<TEndPoint> staticNodes = new LinkedHashSet<>(getNodeUrls());
@@ -4531,6 +4534,17 @@ public class Session implements ISession {
 
     public Builder thriftMaxFrameSize(int thriftMaxFrameSize) {
       this.thriftMaxFrameSize = thriftMaxFrameSize;
+      return this;
+    }
+
+    /**
+     * Buffer requests larger than this number of bytes use temporary arrays and reset reusable
+     * buffers to {@code thriftDefaultBufferSize}. Applies to compressed and uncompressed
+     * transports. The default {@link Integer#MAX_VALUE} keeps the original reuse policy; zero makes
+     * every nonempty buffer request use temporary storage.
+     */
+    public Builder thriftMaxReusableBufferSize(int thriftMaxReusableBufferSize) {
+      this.thriftMaxReusableBufferSize = thriftMaxReusableBufferSize;
       return this;
     }
 
