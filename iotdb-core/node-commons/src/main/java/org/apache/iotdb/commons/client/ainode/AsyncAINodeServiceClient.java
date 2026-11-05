@@ -130,7 +130,7 @@ public class AsyncAINodeServiceClient extends IAINodeRPCService.AsyncClient
           new AsyncAINodeServiceClient(
               thriftClientProperty,
               endPoint,
-              tManagers[clientCnt.incrementAndGet() % tManagers.length],
+              tManagers[Math.floorMod(clientCnt.incrementAndGet(), tManagers.length)],
               clientManager));
     }
 

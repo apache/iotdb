@@ -129,6 +129,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(response.getMessage());
     }
+    pipeTaskInfo.get().markPipeMetaExceptionsPersisted();
   }
 
   @Override
@@ -136,8 +137,11 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
       throws PipeException, IOException {
     LOGGER.debug("PipeMetaSyncProcedure: executeFromOperateOnDataNodes");
 
+    persistPendingPipeMetaExceptions(env);
+
     Map<Integer, TPushPipeMetaResp> respMap = pushPipeMetaToDataNodesBestEffortAndGetResponse(env);
     if (pipeTaskInfo.get().recordDataNodePushPipeMetaExceptions(respMap)) {
+      writePipeMetaChangesToConfigNodeConsensus(env);
       throw new PipeException(
           String.format(
               "Failed to push pipe meta to dataNodes, details: %s",

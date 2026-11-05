@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
@@ -317,18 +318,39 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCl
         for (final TTsFilePieceReq loadTsFileReq : loadTsFileReqs) {
           final TLoadResp loadResp = client.sendTsFilePieceNode(loadTsFileReq);
           if (!loadResp.isAccepted()) {
-            LOGGER.warn(loadResp.message);
-            throw new FragmentInstanceDispatchException(loadResp.status);
+            final TSStatus failureStatus =
+                loadResp.isSetStatus()
+                    ? loadResp.getStatus()
+                    : RpcUtils.getStatus(
+                        TSStatusCode.DISPATCH_ERROR,
+                        loadResp.isSetMessage()
+                            ? loadResp.getMessage()
+                            : DataNodeQueryMessages
+                                .MESSAGE_TARGET_NODE_REJECTED_LOAD_WITHOUT_A_STATUS_OR_A_MESSAGE_F4E4C645);
+            LOGGER.warn(
+                DataNodeQueryMessages
+                    .LOG_LOAD_REJECTED_UUID_ARG_REGION_ARG_ENDPOINT_ARG_STATUS_ARG_8ED0679E,
+                uuid,
+                consensusGroupId,
+                endPoint,
+                failureStatus);
+            throw new FragmentInstanceDispatchException(failureStatus);
           }
         }
       }
+    } catch (final FragmentInstanceDispatchException e) {
+      throw e;
     } catch (Exception e) {
       adjustTimeoutIfNecessary(e);
 
       final String exceptionMessage =
           String.format(
-              "failed to dispatch load command %s to node %s because of exception: %s",
-              uuid, endPoint, e);
+              DataNodeQueryMessages
+                  .MESSAGE_FAILED_TO_DISPATCH_LOAD_ARG_FOR_REGION_ARG_TO_NODE_ARG_ARG_57EFEC3A,
+              uuid,
+              consensusGroupId,
+              endPoint,
+              e);
       LOGGER.warn(exceptionMessage, e);
       throw new FragmentInstanceDispatchException(
           new TSStatus()
@@ -413,16 +435,35 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCl
 
       final TLoadResp loadResp = client.sendLoadCommand(loadCommandReq);
       if (!loadResp.isAccepted()) {
-        LOGGER.warn(loadResp.message);
-        throw new FragmentInstanceDispatchException(loadResp.status);
+        final TSStatus failureStatus =
+            loadResp.isSetStatus()
+                ? loadResp.getStatus()
+                : RpcUtils.getStatus(
+                    TSStatusCode.DISPATCH_ERROR,
+                    loadResp.isSetMessage()
+                        ? loadResp.getMessage()
+                        : DataNodeQueryMessages
+                            .MESSAGE_TARGET_NODE_REJECTED_LOAD_WITHOUT_A_STATUS_OR_A_MESSAGE_F4E4C645);
+        LOGGER.warn(
+            DataNodeQueryMessages
+                .LOG_LOAD_COMMAND_REJECTED_UUID_ARG_ENDPOINT_ARG_STATUS_ARG_E8D0031C,
+            loadCommandReq.uuid,
+            endPoint,
+            failureStatus);
+        throw new FragmentInstanceDispatchException(failureStatus);
       }
+    } catch (final FragmentInstanceDispatchException e) {
+      throw e;
     } catch (Exception e) {
       adjustTimeoutIfNecessary(e);
 
       final String exceptionMessage =
           String.format(
-              "failed to dispatch load command %s to node %s because of exception: %s",
-              loadCommandReq, endPoint, e);
+              DataNodeQueryMessages
+                  .MESSAGE_FAILED_TO_DISPATCH_LOAD_COMMAND_ARG_TO_NODE_ARG_ARG_53D2BF0B,
+              loadCommandReq,
+              endPoint,
+              e);
       LOGGER.warn(exceptionMessage, e);
       throw new FragmentInstanceDispatchException(
           new TSStatus()

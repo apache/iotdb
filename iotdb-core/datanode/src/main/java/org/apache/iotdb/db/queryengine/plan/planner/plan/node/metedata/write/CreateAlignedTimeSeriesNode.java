@@ -151,7 +151,7 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode
   @Override
   public List<Long> getTagOffsets() {
     if (tagOffsets == null) {
-      tagOffsets = new ArrayList<>();
+      tagOffsets = new ArrayList<>(measurements.size());
       for (int i = 0; i < measurements.size(); i++) {
         tagOffsets.add(Long.parseLong("-1"));
       }
@@ -217,30 +217,30 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode
       throw new IllegalArgumentException("Can not deserialize CreateAlignedTimeSeriesNode", e);
     }
 
-    measurements = new ArrayList<>();
     int size = byteBuffer.getInt();
+    measurements = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       measurements.add(ReadWriteIOUtils.readString(byteBuffer));
     }
 
-    dataTypes = new ArrayList<>();
+    dataTypes = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       dataTypes.add(TSDataType.values()[byteBuffer.get()]);
     }
 
-    encodings = new ArrayList<>();
+    encodings = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       encodings.add(TSEncoding.values()[byteBuffer.get()]);
     }
 
-    compressors = new ArrayList<>();
+    compressors = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       compressors.add(CompressionType.deserialize(byteBuffer.get()));
     }
 
     byte label = byteBuffer.get();
     if (label >= 0) {
-      aliasList = new ArrayList<>();
+      aliasList = new ArrayList<>(label == 1 ? size : 0);
       if (label == 1) {
         for (int i = 0; i < size; i++) {
           aliasList.add(ReadWriteIOUtils.readString(byteBuffer));
@@ -250,7 +250,7 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode
 
     label = byteBuffer.get();
     if (label >= 0) {
-      tagsList = new ArrayList<>();
+      tagsList = new ArrayList<>(label == 1 ? size : 0);
       if (label == 1) {
         for (int i = 0; i < size; i++) {
           tagsList.add(ReadWriteIOUtils.readMap(byteBuffer));
@@ -260,7 +260,7 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode
 
     label = byteBuffer.get();
     if (label >= 0) {
-      attributesList = new ArrayList<>();
+      attributesList = new ArrayList<>(label == 1 ? size : 0);
       if (label == 1) {
         for (int i = 0; i < size; i++) {
           attributesList.add(ReadWriteIOUtils.readMap(byteBuffer));

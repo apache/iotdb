@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.GetSourcePathsVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogicalViewPlan;
 
+import com.google.common.collect.Maps;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -85,7 +86,7 @@ public class CreateLogicalViewNode extends WritePlanNode implements ICreateLogic
     if (paths.size() != expressions.size()) {
       return null;
     }
-    Map<PartialPath, ViewExpression> result = new HashMap<>();
+    Map<PartialPath, ViewExpression> result = Maps.newHashMapWithExpectedSize(paths.size());
     for (int i = 0; i < paths.size(); i++) {
       result.put(paths.get(i), expressions.get(i));
     }
@@ -205,8 +206,8 @@ public class CreateLogicalViewNode extends WritePlanNode implements ICreateLogic
 
   public static CreateLogicalViewNode deserialize(ByteBuffer byteBuffer) {
     // deserialize member variables
-    Map<PartialPath, ViewExpression> viewPathToSourceMap = new HashMap<>();
     int size = byteBuffer.getInt();
+    Map<PartialPath, ViewExpression> viewPathToSourceMap = Maps.newHashMapWithExpectedSize(size);
     PartialPath path;
     ViewExpression viewExpression;
     for (int i = 0; i < size; i++) {

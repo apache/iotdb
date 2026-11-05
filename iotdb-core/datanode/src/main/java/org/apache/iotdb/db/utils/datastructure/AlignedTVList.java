@@ -54,6 +54,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -497,22 +498,30 @@ public abstract class AlignedTVList extends TVList {
   }
 
   public void extendColumn(TSDataType dataType) {
-    List<Object> columnValue = new ArrayList<>();
-    for (int i = 0; i < timestamps.size(); i++) {
-      columnValue.add(null);
-    }
-    if (bitMaps != null) {
-      bitMaps.add(null);
-    }
-    this.values.add(columnValue);
-    this.dataTypes.add(dataType);
-    materializedValueArrayCounts = Arrays.copyOf(materializedValueArrayCounts, dataTypes.size());
-    refreshArrayMemCostWithoutIndex();
+    extendColumns(Collections.singletonList(dataType));
+  }
 
-    long[] tmpValueChunkRawSize = memoryBinaryChunkSize;
-    memoryBinaryChunkSize = new long[dataTypes.size()];
-    System.arraycopy(
-        tmpValueChunkRawSize, 0, memoryBinaryChunkSize, 0, tmpValueChunkRawSize.length);
+  /** Add columns with implicit nulls for existing rows, resizing accounting arrays once. */
+  public void extendColumns(List<TSDataType> newDataTypes) {
+    if (newDataTypes.isEmpty()) {
+      return;
+    }
+    for (TSDataType dataType : newDataTypes) {
+      List<Object> columnValue = new ArrayList<>(timestamps.size());
+      for (int i = 0; i < timestamps.size(); i++) {
+        // New columns contain only implicit nulls until their first non-null write.
+        columnValue.add(null);
+      }
+      if (bitMaps != null) {
+        bitMaps.add(null);
+      }
+      values.add(columnValue);
+      dataTypes.add(dataType);
+    }
+    // Recompute the full-width memory estimate only once for the entire batch.
+    refreshArrayMemCostWithoutIndex();
+    memoryBinaryChunkSize = Arrays.copyOf(memoryBinaryChunkSize, dataTypes.size());
+    materializedValueArrayCounts = Arrays.copyOf(materializedValueArrayCounts, dataTypes.size());
   }
 
   /**
@@ -617,12 +626,16 @@ public abstract class AlignedTVList extends TVList {
     if (columnIndex < 0 || columnIndex >= values.size() || values.get(columnIndex) == null) {
       return true;
     }
+    int arrayIndex = unsortedRowIndex / ARRAY_SIZE;
+    // A lazy value block contains only implicit nulls, even when a bitmap already exists.
+    if (values.get(columnIndex).get(arrayIndex) == null) {
+      return true;
+    }
     if (bitMaps == null
         || bitMaps.get(columnIndex) == null
-        || bitMaps.get(columnIndex).get(unsortedRowIndex / ARRAY_SIZE) == null) {
-      return values.get(columnIndex).get(unsortedRowIndex / ARRAY_SIZE) == null;
+        || bitMaps.get(columnIndex).get(arrayIndex) == null) {
+      return false;
     }
-    int arrayIndex = unsortedRowIndex / ARRAY_SIZE;
     int elementIndex = unsortedRowIndex % ARRAY_SIZE;
     List<BitMap> columnBitMaps = bitMaps.get(columnIndex);
     return columnBitMaps.get(arrayIndex).isMarked(elementIndex);
@@ -1748,8 +1761,14 @@ public abstract class AlignedTVList extends TVList {
         case TEXT:
         case BLOB:
         case STRING:
+          List<Object> columnValues = values.get(columnIndex);
           for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
-            size += ReadWriteIOUtils.sizeToWrite(getBinaryByValueIndex(rowIdx, columnIndex));
+            Binary value =
+                columnValues == null || columnValues.get(rowIdx / ARRAY_SIZE) == null
+                    ? null
+                    : getBinaryByValueIndex(rowIdx, columnIndex);
+            // Null blocks and null Binary entries use an empty Binary placeholder in the WAL.
+            size += value == null ? Integer.BYTES : ReadWriteIOUtils.sizeToWrite(value);
           }
           break;
         case FLOAT:
@@ -1796,12 +1815,14 @@ public abstract class AlignedTVList extends TVList {
       for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
         int arrayIndex = rowIndex / ARRAY_SIZE;
         int elementIndex = rowIndex % ARRAY_SIZE;
+        // Keep the WAL layout unchanged without materializing lazy all-null value blocks.
+        Object valueArray = columnValues == null ? null : columnValues.get(arrayIndex);
         // value
         switch (dataTypes.get(columnIndex)) {
           case TEXT:
           case BLOB:
           case STRING:
-            Binary valueT = ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
+            Binary valueT = valueArray == null ? null : ((Binary[]) valueArray)[elementIndex];
             // In some scenario, the Binary in AlignedTVList will be null if this field is empty in
             // current row. We need to handle this scenario to get rid of NPE. See the similar issue
             // here: https://github.com/apache/iotdb/pull/9884
@@ -1815,25 +1836,25 @@ public abstract class AlignedTVList extends TVList {
             }
             break;
           case FLOAT:
-            float valueF = ((float[]) columnValues.get(arrayIndex))[elementIndex];
+            float valueF = valueArray == null ? 0 : ((float[]) valueArray)[elementIndex];
             buffer.putFloat(valueF);
             break;
           case INT32:
           case DATE:
-            int valueI = ((int[]) columnValues.get(arrayIndex))[elementIndex];
+            int valueI = valueArray == null ? 0 : ((int[]) valueArray)[elementIndex];
             buffer.putInt(valueI);
             break;
           case INT64:
           case TIMESTAMP:
-            long valueL = ((long[]) columnValues.get(arrayIndex))[elementIndex];
+            long valueL = valueArray == null ? 0 : ((long[]) valueArray)[elementIndex];
             buffer.putLong(valueL);
             break;
           case DOUBLE:
-            double valueD = ((double[]) columnValues.get(arrayIndex))[elementIndex];
+            double valueD = valueArray == null ? 0 : ((double[]) valueArray)[elementIndex];
             buffer.putDouble(valueD);
             break;
           case BOOLEAN:
-            boolean valueB = ((boolean[]) columnValues.get(arrayIndex))[elementIndex];
+            boolean valueB = valueArray != null && ((boolean[]) valueArray)[elementIndex];
             WALWriteUtils.write(valueB, buffer);
             break;
           default:

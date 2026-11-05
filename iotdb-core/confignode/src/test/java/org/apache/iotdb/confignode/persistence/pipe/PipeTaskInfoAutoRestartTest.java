@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
@@ -72,6 +73,60 @@ public class PipeTaskInfoAutoRestartTest {
   }
 
   @Test
+  public void testRecordDataNodePushPipeMetaExceptionsUsesFallbackForEmptyDetails() {
+    final String pipeName = "emptyDetailsPipe";
+    createPipe(pipeName, PipeStatus.RUNNING);
+    final PipeStaticMeta staticMeta = pipeTaskInfo.getPipeMetaByPipeName(pipeName).getStaticMeta();
+    final TPushPipeMetaResp response =
+        new TPushPipeMetaResp()
+            .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
+            .setExceptionMessages(Collections.emptyList());
+
+    Assert.assertTrue(
+        pipeTaskInfo.recordDataNodePushPipeMetaExceptions(
+            Collections.singletonMap(DATA_NODE_ID, response), staticMeta));
+
+    final PipeRuntimeMeta runtimeMeta =
+        pipeTaskInfo.getPipeMetaByPipeName(pipeName).getRuntimeMeta();
+    Assert.assertEquals(PipeStatus.STOPPED, runtimeMeta.getStatus().get());
+    Assert.assertTrue(runtimeMeta.getIsStoppedByRuntimeException());
+    Assert.assertTrue(
+        runtimeMeta
+            .getNodeId2PipeRuntimeExceptionMap()
+            .get(DATA_NODE_ID)
+            .getMessage()
+            .contains(
+                ProcedureMessages
+                    .EXCEPTION_INTERNAL_ERROR_WHILE_PROCESSING_PUSHPIPEMETA_ON_DATANODE_5983BD5F));
+  }
+
+  @Test
+  public void testRecordDataNodePushPipeMetaExceptionsUsesFallbackForEmptyPipeName() {
+    final String pipeName = "emptyPipeNamePipe";
+    createPipe(pipeName, PipeStatus.RUNNING);
+    final PipeStaticMeta staticMeta = pipeTaskInfo.getPipeMetaByPipeName(pipeName).getStaticMeta();
+    final TPushPipeMetaRespExceptionMessage exceptionMessage =
+        new TPushPipeMetaRespExceptionMessage(
+            "", "failed to close schema listening queue", System.currentTimeMillis());
+    final TPushPipeMetaResp response =
+        new TPushPipeMetaResp()
+            .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
+            .setExceptionMessages(Collections.singletonList(exceptionMessage));
+
+    Assert.assertTrue(
+        pipeTaskInfo.recordDataNodePushPipeMetaExceptions(
+            Collections.singletonMap(DATA_NODE_ID, response), staticMeta));
+
+    final PipeRuntimeMeta runtimeMeta =
+        pipeTaskInfo.getPipeMetaByPipeName(pipeName).getRuntimeMeta();
+    Assert.assertEquals(PipeStatus.STOPPED, runtimeMeta.getStatus().get());
+    Assert.assertTrue(runtimeMeta.getIsStoppedByRuntimeException());
+    Assert.assertEquals(
+        "failed to close schema listening queue",
+        runtimeMeta.getNodeId2PipeRuntimeExceptionMap().get(DATA_NODE_ID).getMessage());
+  }
+
+  @Test
   public void testRecordDataNodePushPipeMetaExceptionsKeepsUserStoppedPipeOutOfAutoRestart() {
     final String pipeName = "stoppedPipe";
     createPipe(pipeName, PipeStatus.STOPPED);
@@ -85,6 +140,7 @@ public class PipeTaskInfoAutoRestartTest {
     Assert.assertEquals(PipeStatus.STOPPED, runtimeMeta.getStatus().get());
     Assert.assertFalse(runtimeMeta.getIsStoppedByRuntimeException());
     Assert.assertTrue(pipeTaskInfo.isPipeStoppedByUser(pipeName));
+    Assert.assertTrue(runtimeMeta.getNodeId2PipeRuntimeExceptionMap().containsKey(DATA_NODE_ID));
 
     Assert.assertFalse(pipeTaskInfo.autoRestart());
     Assert.assertEquals(PipeStatus.STOPPED, runtimeMeta.getStatus().get());

@@ -91,8 +91,8 @@ public class FetchCombineResultRequest extends TPipeTransferReq {
   private FetchCombineResultRequest translateFromTPipeTransferReq(TPipeTransferReq transferReq) {
     pipeName = ReadWriteIOUtils.readString(transferReq.body);
     creationTime = ReadWriteIOUtils.readLong(transferReq.body);
-    combineIdList = new ArrayList<>();
     final int combineIdListSize = ReadWriteIOUtils.readInt(transferReq.body);
+    combineIdList = new ArrayList<>(combineIdListSize);
     for (int i = 0; i < combineIdListSize; i++) {
       combineIdList.add(ReadWriteIOUtils.readString(transferReq.body));
     }

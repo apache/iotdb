@@ -45,6 +45,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.BasicInternalMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MNodeCollector;
@@ -374,6 +375,7 @@ public class MTreeBelowSGMemoryImpl {
       throws MetadataException {
     final List<IMeasurementMNode<IMemMNode>> measurementMNodeList = new ArrayList<>();
     MetaFormatUtils.checkSchemaMeasurementNames(measurements);
+    MetaFormatUtils.checkSchemaMeasurementAliases(devicePath, measurements, aliasList);
     final IMemMNode deviceParent = checkAndAutoCreateInternalPath(devicePath);
 
     // synchronize check and add, we need addChild operation be atomic.
@@ -607,28 +609,13 @@ public class MTreeBelowSGMemoryImpl {
   public void deleteEmptyInternalMNode(IDeviceMNode<IMemMNode> entityMNode) {
     IMemMNode curNode = entityMNode.getAsMNode();
     if (!entityMNode.isUseTemplate()) {
-      boolean hasMeasurement = false;
-      boolean hasNonViewMeasurement = false;
-      IMemMNode child;
-      try (final IMNodeIterator<IMemMNode> iterator = store.getChildrenIterator(curNode)) {
-        while (iterator.hasNext()) {
-          child = iterator.next();
-          if (child.isMeasurement()) {
-            hasMeasurement = true;
-            if (!child.getAsMeasurementMNode().isLogicalView()) {
-              hasNonViewMeasurement = true;
-              break;
-            }
-          }
-        }
-      }
-
-      if (!hasMeasurement) {
+      final BasicInternalMNode internalNode = (BasicInternalMNode) curNode.getBasicMNode();
+      if (internalNode.getMeasurementChildCount() == 0) {
         synchronized (this) {
           curNode = store.setToInternal(entityMNode);
         }
         refreshAncestorsHavingDeviceDescendant(curNode.getParent());
-      } else if (!hasNonViewMeasurement) {
+      } else if (internalNode.getNonViewMeasurementChildCount() == 0) {
         // has some measurement but they are all logical view
         entityMNode.setAligned(null);
       }

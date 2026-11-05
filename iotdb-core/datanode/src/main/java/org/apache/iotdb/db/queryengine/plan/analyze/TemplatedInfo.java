@@ -390,14 +390,14 @@ public class TemplatedInfo {
   public static TemplatedInfo deserialize(ByteBuffer byteBuffer) {
 
     int measurementSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> measurementList = new ArrayList<>();
+    List<String> measurementList = new ArrayList<>(measurementSize);
     int cnt = measurementSize;
     while (cnt-- > 0) {
       measurementList.add(ReadWriteIOUtils.readString(byteBuffer));
     }
 
     cnt = measurementSize;
-    List<IMeasurementSchema> measurementSchemaList = new ArrayList<>();
+    List<IMeasurementSchema> measurementSchemaList = new ArrayList<>(measurementSize);
     while (cnt-- > 0) {
       // MeasurementSchema is ok?
       measurementSchemaList.add(MeasurementSchema.deserializeFrom(byteBuffer));

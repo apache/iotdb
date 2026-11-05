@@ -271,6 +271,10 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     // and the worker will be submitted to the executor
   }
 
+  void setWorkerWakeUpCallback(final Runnable wakeUpCallback) {
+    executionGuard.setWorkerWakeUpCallback(wakeUpCallback);
+  }
+
   @Override
   protected void onAllowSubmittingSelf() {
     executionGuard.start();
@@ -287,6 +291,12 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
   public boolean isStoppedByException() {
     return lastEvent instanceof EnrichedEvent && retryCount.get() > MAX_RETRY_TIMES;
+  }
+
+  boolean isWaitingForTsFileParserMemory() {
+    final Event event = lastEvent;
+    return event instanceof PipeTsFileInsertionEvent
+        && ((PipeTsFileInsertionEvent) event).isWaitingForTsFileParserMemory();
   }
 
   @Override

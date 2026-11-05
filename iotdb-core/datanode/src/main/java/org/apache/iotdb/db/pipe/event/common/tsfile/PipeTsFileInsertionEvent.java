@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.task.subtask.processor.PipeProcessorSubtaskExecutionGuard;
 import org.apache.iotdb.db.pipe.agent.task.subtask.processor.PipeProcessorSubtaskYieldException;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
@@ -189,7 +190,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     this.tsFile = Objects.isNull(tsFile) ? resource.getTsFile() : tsFile;
 
     final ModificationFile modFile = resource.getModFile();
-    this.isWithMod = isWithMod && modFile.exists();
+    // Historical files and their mods have already been pinned. Compaction may have removed
+    // the original resource before this event is created, so inspect the pinned mods later.
+    this.isWithMod = isWithMod && (isGeneratedByHistoricalExtractor || modFile.exists());
     this.modFile = this.isWithMod ? new File(modFile.getFilePath()) : null;
 
     this.isLoaded = isLoaded;
@@ -364,9 +367,22 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
         PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, creationTime);
     final File originalTsFile = tsFile;
     final File originalModFile = modFile;
+    final boolean originalIsWithMod = isWithMod;
     File increasedTsFile = null;
     boolean increased = false;
     try {
+      if (isGeneratedByHistoricalExtractor) {
+        tsFile =
+            PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+                tsFile, pipeTsFileResourcePipeName);
+        if (isWithMod) {
+          modFile = new File(tsFile + ModificationFile.FILE_SUFFIX);
+          isWithMod = modFile.exists();
+          if (!isWithMod) {
+            modFile = null;
+          }
+        }
+      }
       increasedTsFile =
           PipeDataNodeResourceManager.tsfile()
               .increaseFileReference(tsFile, true, pipeTsFileResourcePipeName);
@@ -389,6 +405,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       }
       tsFile = originalTsFile;
       modFile = originalModFile;
+      isWithMod = originalIsWithMod;
       LOGGER.warn(
           String.format(
               "Increase reference count for TsFile %s or modFile %s error. Holder Message: %s",
@@ -556,16 +573,20 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
-    // Notice that this is only called at realtime extraction, and the tsFile is always closed
-    // Thus we can use the end time to judge the overlap
+    // Only called during realtime extraction, after writer.endFile() has finalized the time bounds.
+    // The resource may not yet be marked closed, but its end time can already be used for overlap.
     return Objects.isNull(resource)
         || startTime <= resource.getFileEndTime() && resource.getFileStartTime() <= endTime;
   }
 
   @Override
   public boolean shouldParseTime() {
+    // Historical extraction may observe incomplete time bounds while an asynchronous close is in
+    // progress. Realtime TsFile events are published after writer.endFile(), when the bounds are
+    // final even if the resource's closed flag has not yet been updated by the close callbacks.
     if (!isTimeParsed
         && Objects.nonNull(resource)
+        && (!isGeneratedByHistoricalExtractor || resource.isClosed())
         && startTime <= resource.getFileStartTime()
         && resource.getFileEndTime() <= endTime) {
       isTimeParsed = true;
@@ -923,6 +944,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       final PipeProcessorSubtaskExecutionGuard processorExecutionGuard,
       final long expectedParserStateGeneration)
       throws InterruptedException {
+    // Register before enqueueing: memory may be released as soon as admission fails, before this
+    // invocation yields or its worker enters the idle wait.
+    tsFileParserMemoryReservationKey.setWakeUpCallback(
+        processorExecutionGuard.getWorkerWakeUpCallback());
     if (!processorExecutionGuard.isEnabled()) {
       return waitForResourceEnough4Parsing(
           (long) ((1 + Math.random()) * 20 * 1000), expectedParserStateGeneration);
@@ -1056,6 +1081,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     }
   }
 
+  public boolean isWaitingForTsFileParserMemory() {
+    return tsFileParserMemoryReservationKey.isWaitingForSignal();
+  }
+
   public void cancelTsFileParserMemoryReservationIfPending() {
     synchronized (isTsFileParserMemoryReserved) {
       if (!isTsFileParserMemoryReserved.get()) {
@@ -1134,12 +1163,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   /** Release the resource of {@link TsFileInsertionDataContainer}. */
   @Override
   public void close() {
-    try {
-      cancelTsFileParserMemoryReservationIfPending();
-    } catch (final Exception e) {
-      LOGGER.warn("Decrease reference count for TsFile {} error.", tsFile, e);
-    }
-
+    // Every cleanup step is best effort and independent.  A parser/reader close failure must not
+    // strand its reservation or the pending tablet event.
     final PipeRawTabletInsertionEvent detachedPendingEvent;
     final boolean pendingEventIsBeingConsumed;
     final TsFileInsertionDataContainer containerToClose;
@@ -1158,6 +1183,18 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       if (pendingEventIsBeingConsumed) {
         pendingTabletReleaseDeferred = true;
       }
+    }
+
+    // Invalidate old invocations before cancelling: an invocation that passed its generation
+    // check can enqueue while close waits for dataContainer. It must either be removed here or
+    // observe the new generation and cancel its own request.
+    try {
+      cancelTsFileParserMemoryReservationIfPending();
+    } catch (final Exception e) {
+      LOGGER.warn(
+          DataNodePipeMessages.LOG_DECREASE_REFERENCE_COUNT_FOR_TSFILE_ARG_ERROR_8EF0D114,
+          tsFile,
+          e);
     }
 
     if (detachedPendingEvent != null && !pendingEventIsBeingConsumed) {

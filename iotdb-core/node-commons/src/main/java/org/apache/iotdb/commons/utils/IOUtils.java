@@ -234,7 +234,7 @@ public class IOUtils {
       throws IOException, IllegalPathException {
     role.setSysPrivilegeSet(0);
     int pathPriNum = inputStream.readInt();
-    List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
+    List<PathPrivilege> pathPrivilegeList = new ArrayList<>(pathPriNum);
     for (int i = 0; i < pathPriNum; i++) {
       String path = IOUtils.readString(inputStream, encoding, strBufferLocal);
       PartialPath ppath = new PartialPath(path);

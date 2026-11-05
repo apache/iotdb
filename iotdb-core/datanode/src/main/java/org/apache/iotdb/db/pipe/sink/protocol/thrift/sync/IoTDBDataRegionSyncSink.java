@@ -100,7 +100,8 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
 
     // tablet batch mode configuration
     if (isTabletBatchModeEnabled) {
-      tabletBatchBuilder = new PipeTransferBatchReqBuilder(parameters);
+      tabletBatchBuilder =
+          new PipeTransferBatchReqBuilder(parameters, clientManager::getLeaderEndPoint);
     }
 
     enableSendTsFileLimit =
@@ -375,6 +376,10 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
       clientManager.updateLeaderCache(
           // pipeInsertNodeTabletInsertionEvent.getDeviceId() is null for InsertRowsNode
           pipeInsertNodeTabletInsertionEvent.getDeviceId(), status.getRedirectNode());
+    }
+    for (final Pair<String, TEndPoint> redirectPair :
+        LeaderCacheUtils.parseRecommendedRedirections(status)) {
+      clientManager.updateLeaderCache(redirectPair.getLeft(), redirectPair.getRight());
     }
   }
 

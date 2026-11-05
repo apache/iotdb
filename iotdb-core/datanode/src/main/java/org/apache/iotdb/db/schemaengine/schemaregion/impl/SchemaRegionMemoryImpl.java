@@ -37,6 +37,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
@@ -109,8 +110,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
-
 /**
  * This class takes the responsibility of serialization of all the metadata info of one certain
  * schema region and persistent it into files. This class contains the interfaces to modify the
@@ -125,7 +124,7 @@ import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
  * <p>The codes are divided into the following code regions:
  *
  * <ol>
- *   <li>Interfaces and Implementation for initialization、recover and clear
+ *   <li>Interfaces and Implementation for initialization, recover and clear
  *   <li>Interfaces and Implementation for schema region Info query and operation
  *   <li>Interfaces and Implementation for Timeseries operation
  *   <li>Interfaces for auto create device
@@ -148,6 +147,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private boolean isRecovering = true;
   private volatile boolean initialized = false;
+  private boolean ratisLogAppenderBufferReserved = false;
 
   private final String storageGroupDirPath;
   private final String schemaRegionDirPath;
@@ -166,7 +166,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private MTreeBelowSGMemoryImpl mtree;
   private TagManager tagManager;
 
-  // region Interfaces and Implementation of initialization、snapshot、recover and clear
+  // region Interfaces and Implementation of initialization, snapshot, recover and clear
   public SchemaRegionMemoryImpl(final ISchemaRegionParams schemaRegionParams)
       throws MetadataException {
 
@@ -198,7 +198,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       return;
     }
 
-    if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (!ratisLogAppenderBufferReserved
+        && config
+            .getSchemaRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       final long memCost = config.getSchemaRatisConsensusLogAppenderBufferSizeMax();
       if (!SystemInfo.getInstance().addDirectBufferMemoryCost(memCost)) {
         throw new MetadataException(
@@ -207,6 +210,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                 + ", which is greater than limit mem cost: "
                 + SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
       }
+      ratisLogAppenderBufferReserved = true;
     }
 
     initDir();
@@ -425,9 +429,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
     // delete all the schema region files
     SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
-    if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (ratisLogAppenderBufferReserved) {
       SystemInfo.getInstance()
           .decreaseDirectBufferMemoryCost(config.getSchemaRatisConsensusLogAppenderBufferSizeMax());
+      ratisLogAppenderBufferReserved = false;
     }
   }
 
@@ -508,9 +513,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                   tagManager.recoverIndex(measurementMNode.getOffset(), measurementMNode);
                 } catch (IOException e) {
                   logger.error(
-                      "Failed to recover tagIndex for {} in schemaRegion {}.",
-                      storageGroupFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
-                      schemaRegionId);
+                      DataNodeSchemaMessages.FAILED_TO_RECOVER_TAG_INDEX,
+                      measurementMNode.getName(),
+                      storageGroupFullPath,
+                      schemaRegionId,
+                      measurementMNode.getOffset(),
+                      e);
                 }
               },
               deviceMNode -> {
@@ -766,11 +774,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
-    try {
-      return mtree.checkMeasurementExistence(devicePath, measurementList, aliasList);
-    } catch (final Exception e) {
-      return Collections.emptyMap();
-    }
+    return mtree.checkMeasurementExistence(devicePath, measurementList, aliasList);
   }
 
   @Override

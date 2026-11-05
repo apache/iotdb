@@ -137,7 +137,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
       if (oldVersion) {
         IOUtils.loadRolePrivilege(user, dataInputStream, STRING_ENCODING, strBufferLocal);
         int roleNum = dataInputStream.readInt();
-        List<String> roleList = new ArrayList<>();
+        List<String> roleList = new ArrayList<>(roleNum);
         for (int i = 0; i < roleNum; i++) {
           String roleName = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
           roleList.add(roleName);
