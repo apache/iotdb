@@ -27,6 +27,20 @@ import org.junit.Test;
 public class InferenceOperatorTest {
 
   @Test
+  public void testGeneratedTimeAllowsOverflowingIntermediateProduct() {
+    long interval =
+        InferenceOperator.calculateGeneratedTimeInterval(
+            -6_000_000_000_000_000_000L, -4_000_000_000_000_000_000L, 2);
+    Assert.assertEquals(1_000_000_000_000_000_000L, interval);
+    Assert.assertEquals(
+        6_000_000_000_000_000_000L,
+        InferenceOperator.calculateGeneratedTime(-4_000_000_000_000_000_000L, interval, 10));
+    Assert.assertThrows(
+        ModelInferenceProcessException.class,
+        () -> InferenceOperator.calculateGeneratedTime(-4_000_000_000_000_000_000L, interval, 14));
+  }
+
+  @Test
   public void testGeneratedTimeRejectsOverflow() {
     Assert.assertEquals(
         Long.MAX_VALUE, InferenceOperator.calculateGeneratedTime(Long.MAX_VALUE - 2, 1, 2));
