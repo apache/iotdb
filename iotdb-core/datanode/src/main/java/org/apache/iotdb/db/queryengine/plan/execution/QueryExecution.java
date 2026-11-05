@@ -220,9 +220,7 @@ public class QueryExecution implements IQueryExecution {
       finishAnalysisAttemptForCurrentState();
       throw e;
     } finally {
-      if (failed
-          || (!context.isQuery()
-              && stateMachine.getState() != QueryState.PENDING_RETRY)) {
+      if (failed || (!context.isQuery() && stateMachine.getState() != QueryState.PENDING_RETRY)) {
         finalizeUDFClassLoader();
       }
     }

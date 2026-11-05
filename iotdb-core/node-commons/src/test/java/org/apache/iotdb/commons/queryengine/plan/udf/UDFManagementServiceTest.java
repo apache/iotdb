@@ -145,8 +145,7 @@ public class UDFManagementServiceTest {
             helperSource.toString()));
 
     Path jarPath = temporaryFolder.newFile("lazy-udf.jar").toPath();
-    try (JarOutputStream outputStream =
-        new JarOutputStream(Files.newOutputStream(jarPath));
+    try (JarOutputStream outputStream = new JarOutputStream(Files.newOutputStream(jarPath));
         Stream<Path> paths = Files.walk(classesDir)) {
       paths
           .filter(Files::isRegularFile)

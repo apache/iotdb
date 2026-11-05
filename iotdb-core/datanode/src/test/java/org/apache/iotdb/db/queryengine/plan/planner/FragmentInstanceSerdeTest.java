@@ -191,8 +191,7 @@ public class FragmentInstanceSerdeTest {
 
     FragmentInstance deserializedFragmentInstance =
         classLoaderManager.withQueryScope(
-            queryScope,
-            () -> FragmentInstance.deserializeFrom(fragmentInstanceId, byteBuffer));
+            queryScope, () -> FragmentInstance.deserializeFrom(fragmentInstanceId, byteBuffer));
     deserializedFragmentInstance.attachUDFQueryScope(queryScope);
 
     assertSame(queryScope, deserializedFragmentInstance.claimUDFQueryScope());
@@ -202,5 +201,4 @@ public class FragmentInstanceSerdeTest {
         IllegalStateException.class,
         () -> classLoaderManager.withQueryScope(queryScope, () -> null));
   }
-
 }
