@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performe
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.MetadataUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -76,6 +77,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   private Schema schema = null;
 
   private EncryptParameter firstEncryptParameter;
+  private boolean tableModel;
 
   @TestOnly
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles, TsFileResource targetFile) {
@@ -138,6 +140,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
           StorageEngineException,
           PageException {
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(seqFiles)) {
+      tableModel = PathUtils.isTableModelDatabase(deviceIterator.getDatabaseName());
       schema =
           CompactionTableSchemaCollector.collectSchema(
               seqFiles,
@@ -218,6 +221,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
             memoryBudgetForFileWriter,
             CompactionType.INNER_SEQ_COMPACTION,
             firstEncryptParameter);
+    currentWriter.setTableModel(tableModel);
     summary.recordTargetTsFileTableSizeMap(
         targetResources.get(currentTargetFileIndex), currentWriter.getTableSizeMap());
     currentWriter.setSchema(CompactionTableSchemaCollector.copySchema(schema));

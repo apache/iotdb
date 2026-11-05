@@ -24,6 +24,7 @@ import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionIoDataType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileTableSchemaRegistrationUtils;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.encrypt.EncryptParameter;
@@ -55,6 +56,7 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
   private volatile boolean isWritingAligned = false;
   private boolean isEmptyTargetFile = true;
   private IDeviceID currentDeviceId;
+  private boolean tableModel;
 
   private EncryptParameter firstEncryptParameter;
 
@@ -89,6 +91,10 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     } finally {
       EncryptDBUtils.closeFileEncryptionParameter(parameter);
     }
+  }
+
+  public void setTableModel(final boolean tableModel) {
+    this.tableModel = tableModel;
   }
 
   public void markStartingWritingAligned() {
@@ -173,6 +179,11 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
 
   @Override
   public void endFile() throws IOException {
+    // Every table-model TsFile carries the marker, whether or not its TableSchema map keeps an
+    // entry, so readers do not have to infer the model from the schema map.
+    if (tableModel) {
+      TsFileTableSchemaRegistrationUtils.markTableModel(this);
+    }
     removeUnusedTableSchema();
     long beforeSize = this.getPos();
     super.endFile();
