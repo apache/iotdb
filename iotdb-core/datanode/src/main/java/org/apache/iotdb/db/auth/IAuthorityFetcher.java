@@ -32,7 +32,11 @@ import java.util.List;
 
 public interface IAuthorityFetcher {
 
-  TSStatus checkUser(String username, String password);
+  default TSStatus checkUser(String username, String password) {
+    return checkUser(username, password, false);
+  }
+
+  TSStatus checkUser(String username, String password, boolean useEncryptedPassword);
 
   boolean checkRole(String username, String rolename);
 

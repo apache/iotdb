@@ -1232,9 +1232,14 @@ public class ConfigManager implements IManager {
 
   @Override
   public TPermissionInfoResp login(String username, String password) {
+    return login(username, password, false);
+  }
+
+  public TPermissionInfoResp login(
+      final String username, final String password, final boolean useEncryptedPassword) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return permissionManager.login(username, password);
+      return permissionManager.login(username, password, useEncryptedPassword);
     } else {
       TPermissionInfoResp resp = AuthUtils.generateEmptyPermissionInfoResp();
       resp.setStatus(status);

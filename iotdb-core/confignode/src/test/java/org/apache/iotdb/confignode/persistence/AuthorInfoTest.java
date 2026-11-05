@@ -1046,5 +1046,21 @@ public class AuthorInfoTest {
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     TPermissionInfoResp result = authorInfo.login("testuser", "password");
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.getStatus().getCode());
+    final String encryptedPassword = AuthUtils.encryptPassword("password");
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorInfo.login("testuser", encryptedPassword, true).getStatus().getCode());
+    Assert.assertEquals(
+        TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode(),
+        authorInfo.login("testuser", encryptedPassword).getStatus().getCode());
+    Assert.assertEquals(
+        TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode(),
+        authorInfo.login("testuser", "password", true).getStatus().getCode());
+    Assert.assertEquals(
+        TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode(),
+        authorInfo
+            .login("testuser", AuthUtils.encryptPassword("wrongPassword"), true)
+            .getStatus()
+            .getCode());
   }
 }

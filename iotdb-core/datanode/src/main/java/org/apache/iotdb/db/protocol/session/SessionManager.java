@@ -104,10 +104,21 @@ public class SessionManager implements SessionManagerMBean {
       String zoneId,
       TSProtocolVersion tsProtocolVersion,
       IoTDBConstant.ClientVersion clientVersion) {
+    return login(session, username, password, zoneId, tsProtocolVersion, clientVersion, false);
+  }
+
+  public BasicOpenSessionResp login(
+      IClientSession session,
+      String username,
+      String password,
+      String zoneId,
+      TSProtocolVersion tsProtocolVersion,
+      IoTDBConstant.ClientVersion clientVersion,
+      boolean useEncryptedPassword) {
     TSStatus loginStatus;
     BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
 
-    loginStatus = AuthorityChecker.checkUser(username, password);
+    loginStatus = AuthorityChecker.checkUser(username, password, useEncryptedPassword);
     if (loginStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // check the version compatibility
       if (!tsProtocolVersion.equals(CURRENT_RPC_VERSION)) {

@@ -40,6 +40,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_WATERMARK_INTERVAL_KEY;
+
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2AutoCreateSchema.class})
 public class IoTDBPipeTwoStageAggregateIT extends AbstractPipeDualAutoIT {
@@ -76,10 +78,7 @@ public class IoTDBPipeTwoStageAggregateIT extends AbstractPipeDualAutoIT {
     final String sourceUser = "countPointUser";
     final String sourcePassword = "StrngPsWd@623454";
     final String sourceDevice = "root.twostage_source.d1";
-    final String processorOutputSeries = "root.twostage_source.result.point_count";
-    // The processor uses the configured output series as the tablet device and its measurement
-    // node as the tablet measurement.
-    final String outputDevice = processorOutputSeries;
+    final String outputDevice = "root.twostage_source.result";
     final String outputSeries = outputDevice + ".point_count";
 
     TestUtils.executeNonQueries(
@@ -100,13 +99,13 @@ public class IoTDBPipeTwoStageAggregateIT extends AbstractPipeDualAutoIT {
 
     final Map<String, String> sourceAttributes = new HashMap<>();
     sourceAttributes.put("source.path", sourceDevice + ".s1");
-    sourceAttributes.put("source.watermark.interval-ms", "500");
+    sourceAttributes.put(SOURCE_WATERMARK_INTERVAL_KEY, "500");
     sourceAttributes.put("user", sourceUser);
     sourceAttributes.put("password", sourcePassword);
 
     final Map<String, String> processorAttributes = new HashMap<>();
     processorAttributes.put("processor", "count-point-processor");
-    processorAttributes.put("processor.output.series", processorOutputSeries);
+    processorAttributes.put("processor.output.series", outputSeries);
 
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final Map<String, String> sinkAttributes = new HashMap<>();
