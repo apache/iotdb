@@ -41,10 +41,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.KB;
@@ -184,6 +187,10 @@ public class CommonConfig {
   private volatile boolean isStopping = false;
 
   private volatile String statusReason = null;
+
+  // Only failed sources are retained. Directory initialization uses its folder list as the key;
+  // a live FolderManager uses its identity so its health restrictions are also checked.
+  private final Map<Object, BooleanSupplier> diskFullRecoveryChecks = new HashMap<>();
 
   private final int TTimePartitionSlotTransmitLimit = 1000;
 
@@ -861,6 +868,33 @@ public class CommonConfig {
     setNodeStatusWithReason(newStatus, null);
   }
 
+  /** Records the recovery condition together with the disk-full transition. */
+  public synchronized void setReadOnlyForDiskFull(Object source, BooleanSupplier recoveryCheck) {
+    diskFullRecoveryChecks.put(source, recoveryCheck);
+    setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
+  }
+
+  /** Called after the aggregate disk-space check passes. */
+  public void tryRecoverFromDiskFull() {
+    final List<BooleanSupplier> recoveryChecks;
+    synchronized (this) {
+      if (status != NodeStatus.ReadOnly || !NodeStatus.DISK_FULL.equals(statusReason)) {
+        return;
+      }
+      recoveryChecks = new ArrayList<>(diskFullRecoveryChecks.values());
+    }
+    // Do not hold the status monitor during filesystem I/O.
+    if (!recoveryChecks.stream().allMatch(BooleanSupplier::getAsBoolean)) {
+      return;
+    }
+    synchronized (this) {
+      // A concurrent Manual/Stopping/error transition must not be cleared by disk recovery.
+      if (status == NodeStatus.ReadOnly && NodeStatus.DISK_FULL.equals(statusReason)) {
+        setNodeStatus(NodeStatus.Running);
+      }
+    }
+  }
+
   /**
    * Sets the node status and reason together. ReadOnly-to-ReadOnly updates select the reason
    * through {@link NodeStatus#transitionReadOnlyReason(String, String)}. Other statuses clear the
@@ -868,6 +902,7 @@ public class CommonConfig {
    */
   public synchronized void setNodeStatusWithReason(NodeStatus newStatus, String newReason) {
     if (newStatus != NodeStatus.ReadOnly) {
+      diskFullRecoveryChecks.clear();
       newReason = null;
     } else if (status == NodeStatus.ReadOnly) {
       newReason = NodeStatus.transitionReadOnlyReason(statusReason, newReason);

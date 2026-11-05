@@ -96,8 +96,8 @@ public class TsFileNameGenerator {
       int tierLevel,
       String customSuffix)
       throws DiskSpaceInsufficientException, IOException {
-    FolderManager folderManager = TierManager.getInstance().getFolderManager(tierLevel, sequence);
     try {
+      FolderManager folderManager = TierManager.getInstance().getFolderManager(tierLevel, sequence);
       return folderManager.getNextWithRetry(
           baseDir -> {
             String tsFileDir =

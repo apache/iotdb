@@ -25,6 +25,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -154,6 +156,134 @@ public class CommonConfigTest {
     config.setNodeStatusWithReason(NodeStatus.ReadOnly, null);
     Assert.assertEquals(
         "UnrecoverableError, 2026-09-02 10:00:00.000, broken", config.getStatusReason());
+  }
+
+  @Test
+  public void testDiskFullRecoveryRequiresEverySourceToRecover() {
+    CommonConfig config = new CommonConfig();
+    AtomicBoolean dataAvailable = new AtomicBoolean(true);
+    AtomicBoolean snapshotAvailable = new AtomicBoolean(false);
+    AtomicInteger dataChecks = new AtomicInteger();
+    AtomicInteger snapshotChecks = new AtomicInteger();
+    config.setReadOnlyForDiskFull(
+        "data",
+        () -> {
+          dataChecks.incrementAndGet();
+          return dataAvailable.get();
+        });
+    config.setReadOnlyForDiskFull(
+        "snapshot",
+        () -> {
+          snapshotChecks.incrementAndGet();
+          return snapshotAvailable.get();
+        });
+
+    config.tryRecoverFromDiskFull();
+    Assert.assertEquals(1, snapshotChecks.get());
+    Assert.assertEquals(NodeStatus.ReadOnly, config.getNodeStatus());
+    Assert.assertEquals(NodeStatus.DISK_FULL, config.getStatusReason());
+
+    dataAvailable.set(false);
+    snapshotAvailable.set(true);
+    int previousDataChecks = dataChecks.get();
+    config.tryRecoverFromDiskFull();
+    Assert.assertEquals(previousDataChecks + 1, dataChecks.get());
+    Assert.assertEquals(NodeStatus.ReadOnly, config.getNodeStatus());
+    Assert.assertEquals(NodeStatus.DISK_FULL, config.getStatusReason());
+
+    dataAvailable.set(true);
+    previousDataChecks = dataChecks.get();
+    int previousSnapshotChecks = snapshotChecks.get();
+    config.tryRecoverFromDiskFull();
+    Assert.assertEquals(previousDataChecks + 1, dataChecks.get());
+    Assert.assertEquals(previousSnapshotChecks + 1, snapshotChecks.get());
+    Assert.assertEquals(NodeStatus.Running, config.getNodeStatus());
+    Assert.assertNull(config.getStatusReason());
+  }
+
+  @Test
+  public void testRepeatedDiskFullSourceReplacesItsRecoveryCheck() {
+    CommonConfig config = new CommonConfig();
+    Object source = new Object();
+    AtomicInteger previousChecks = new AtomicInteger();
+    AtomicInteger latestChecks = new AtomicInteger();
+    config.setReadOnlyForDiskFull(
+        source,
+        () -> {
+          previousChecks.incrementAndGet();
+          return false;
+        });
+    config.setReadOnlyForDiskFull(
+        source,
+        () -> {
+          latestChecks.incrementAndGet();
+          return true;
+        });
+
+    config.tryRecoverFromDiskFull();
+
+    Assert.assertEquals(0, previousChecks.get());
+    Assert.assertEquals(1, latestChecks.get());
+    Assert.assertEquals(NodeStatus.Running, config.getNodeStatus());
+    Assert.assertNull(config.getStatusReason());
+  }
+
+  @Test
+  public void testDiskRecoveryCannotClearConcurrentHigherPriorityReason() {
+    for (String reason :
+        new String[] {NodeStatus.MANUAL, NodeStatus.UNRECOVERABLE_ERROR + ", broken"}) {
+      CommonConfig config = new CommonConfig();
+      AtomicInteger checks = new AtomicInteger();
+      config.setReadOnlyForDiskFull(
+          "data",
+          () -> {
+            checks.incrementAndGet();
+            config.setNodeStatusWithReason(NodeStatus.ReadOnly, reason);
+            return true;
+          });
+
+      config.tryRecoverFromDiskFull();
+      Assert.assertEquals(1, checks.get());
+      Assert.assertEquals(NodeStatus.ReadOnly, config.getNodeStatus());
+      Assert.assertEquals(reason, config.getStatusReason());
+
+      config.tryRecoverFromDiskFull();
+      Assert.assertEquals(1, checks.get());
+      Assert.assertEquals(NodeStatus.ReadOnly, config.getNodeStatus());
+      Assert.assertEquals(reason, config.getStatusReason());
+    }
+  }
+
+  @Test
+  public void testManualRunningClearsPreviousDiskRecoveryChecks() {
+    CommonConfig config = new CommonConfig();
+    AtomicInteger previousChecks = new AtomicInteger();
+    AtomicInteger currentChecks = new AtomicInteger();
+    config.setReadOnlyForDiskFull(
+        "old data",
+        () -> {
+          previousChecks.incrementAndGet();
+          return false;
+        });
+    config.tryRecoverFromDiskFull();
+    Assert.assertEquals(1, previousChecks.get());
+    Assert.assertEquals(NodeStatus.ReadOnly, config.getNodeStatus());
+
+    config.setNodeStatus(NodeStatus.Running);
+    Assert.assertEquals(NodeStatus.Running, config.getNodeStatus());
+    Assert.assertNull(config.getStatusReason());
+    config.setReadOnlyForDiskFull(
+        "new data",
+        () -> {
+          currentChecks.incrementAndGet();
+          return true;
+        });
+    config.tryRecoverFromDiskFull();
+
+    Assert.assertEquals(1, previousChecks.get());
+    Assert.assertEquals(1, currentChecks.get());
+    Assert.assertEquals(NodeStatus.Running, config.getNodeStatus());
+    Assert.assertNull(config.getStatusReason());
   }
 
   @Test
