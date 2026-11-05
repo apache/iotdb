@@ -42,6 +42,7 @@ import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -77,6 +78,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.NOP;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -105,7 +107,9 @@ import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
+import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
@@ -120,11 +124,13 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -233,6 +239,85 @@ public class DataRegionTest {
             false);
     insertRowNode.setMeasurementSchemas(measurementSchemas);
     return insertRowNode;
+  }
+
+  @Test
+  public void testLoadInstallationRetainsOrDeletesTheCompleteSourceGroup() throws Exception {
+    for (boolean deleteOrigin : new boolean[] {false, true}) {
+      for (boolean withMods : new boolean[] {false, true}) {
+        final File sourceDir =
+            new File(TestConstant.OUTPUT_DATA_DIR, "load-source-" + deleteOrigin + "-" + withMods);
+        Files.createDirectories(sourceDir.toPath());
+        final File source = new File(sourceDir, "1-1-0-0.tsfile");
+        final MeasurementSchema schema = new MeasurementSchema(measurementId, TSDataType.INT32);
+        try (TsFileWriter writer = new TsFileWriter(source)) {
+          writer.registerAlignedTimeseries(deviceId, Collections.singletonList(schema));
+          final Tablet tablet = new Tablet(deviceId, Collections.singletonList(schema), 3);
+          for (int row = 0; row < 3; row++) {
+            tablet.addTimestamp(row, row + 1L);
+            tablet.addValue(row, measurementId, row);
+          }
+          writer.writeAligned(tablet);
+        }
+        final TsFileResource resource = new TsFileResource(source);
+        resource.setStatus(TsFileResourceStatus.NORMAL);
+        resource.updateStartTime(device, 1);
+        resource.updateEndTime(device, 3);
+        resource.serialize();
+        final File sourceMods = ModificationFile.getExclusiveMods(source);
+        if (withMods) {
+          try (ModificationFile mods = resource.getExclusiveModFile()) {
+            mods.write(
+                new TreeDeletionEntry(new MeasurementPath(deviceId + "." + measurementId), 2, 2));
+          }
+        }
+        final byte[] data = Files.readAllBytes(source.toPath());
+        final byte[] deletions = withMods ? Files.readAllBytes(sourceMods.toPath()) : null;
+        final File sourceResource = new File(source + TsFileResource.RESOURCE_SUFFIX);
+        final File savedResource = new File(sourceDir, "saved-resource");
+        Files.move(sourceResource.toPath(), savedResource.toPath());
+        try {
+          final LoadFileException failure =
+              Assert.assertThrows(
+                  LoadFileException.class,
+                  () ->
+                      dataRegion.loadNewTsFile(
+                          resource, deleteOrigin, false, true, Optional.empty()));
+          Assert.assertTrue(
+              failure.getMessage(),
+              failure.getMessage().contains(sourceResource.getAbsolutePath()));
+          final File rejectedTarget = resource.getTsFile();
+          Assert.assertNotEquals(source.getAbsolutePath(), rejectedTarget.getAbsolutePath());
+          Assert.assertFalse(rejectedTarget.exists());
+          Assert.assertFalse(new File(rejectedTarget + ".load-pending").exists());
+          Assert.assertFalse(new File(rejectedTarget + TsFileResource.RESOURCE_SUFFIX).exists());
+          Assert.assertFalse(ModificationFile.getExclusiveMods(rejectedTarget).exists());
+          Assert.assertArrayEquals(data, Files.readAllBytes(source.toPath()));
+          Assert.assertEquals(withMods, sourceMods.exists());
+        } finally {
+          Files.move(savedResource.toPath(), sourceResource.toPath());
+          resource.setFile(source);
+        }
+        dataRegion.loadNewTsFile(resource, deleteOrigin, false, true, Optional.empty());
+        final File installed = resource.getTsFile();
+        Assert.assertArrayEquals(data, Files.readAllBytes(installed.toPath()));
+        Assert.assertTrue(new File(installed + TsFileResource.RESOURCE_SUFFIX).isFile());
+        Assert.assertFalse(new File(installed + ".load-pending").exists());
+        final File installedMods = ModificationFile.getExclusiveMods(installed);
+        Assert.assertEquals(
+            installedMods.getCanonicalFile(),
+            resource.getExclusiveModFile().getFile().getCanonicalFile());
+        Assert.assertEquals(withMods ? 1 : 0, resource.getExclusiveModFile().getAllMods().size());
+        Assert.assertEquals(withMods, installedMods.exists());
+        if (withMods) {
+          Assert.assertArrayEquals(deletions, Files.readAllBytes(installedMods.toPath()));
+        }
+        Assert.assertEquals(!deleteOrigin, source.exists());
+        Assert.assertEquals(
+            !deleteOrigin, new File(source + TsFileResource.RESOURCE_SUFFIX).exists());
+        Assert.assertEquals(withMods && !deleteOrigin, sourceMods.exists());
+      }
+    }
   }
 
   @Test
