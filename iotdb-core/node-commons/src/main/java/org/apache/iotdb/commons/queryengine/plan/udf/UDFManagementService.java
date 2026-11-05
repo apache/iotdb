@@ -305,6 +305,18 @@ public class UDFManagementService {
     }
   }
 
+  /** Check a registered function class without instantiating it or acquiring a query scope. */
+  public boolean isRegisteredFunctionAssignableTo(
+      Model model, String functionName, Class<?> expectedType) {
+    try {
+      acquireReadLock();
+      Class<?> functionClass = udfTable.getFunctionClass(model, functionName);
+      return functionClass != null && expectedType.isAssignableFrom(functionClass);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
   public UDFInformation[] getUDFInformation(Model model) {
     return udfTable.getUDFInformationList(model).toArray(new UDFInformation[0]);
   }

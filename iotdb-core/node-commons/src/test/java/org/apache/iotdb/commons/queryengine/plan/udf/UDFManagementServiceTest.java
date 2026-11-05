@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.udf.UDFTable;
 import org.apache.iotdb.commons.udf.UDFType;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
+import org.apache.iotdb.udf.api.UDAF;
+import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 
 import org.junit.Rule;
@@ -56,6 +58,17 @@ public class UDFManagementServiceTest {
   private static final String FUNCTION_CLASS = PACKAGE_NAME + ".LazyScalarFunction";
 
   @Rule public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+  @Test
+  public void testRegisteredFunctionTypeCheckDoesNotRequireQueryScope() {
+    UDFManagementService service = UDFManagementService.getInstance();
+    String functionName = BuiltinTimeSeriesGeneratingFunction.values()[0].getFunctionName();
+
+    assertTrue(
+        service.isRegisteredFunctionAssignableTo(Model.TREE, functionName, UDTF.class));
+    assertFalse(
+        service.isRegisteredFunctionAssignableTo(Model.TREE, functionName, UDAF.class));
+  }
 
   @Test
   public void testReflectPinsDefiningClassLoaderForLazyDependency() throws Exception {
