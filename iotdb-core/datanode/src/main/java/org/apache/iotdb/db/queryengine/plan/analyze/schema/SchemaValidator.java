@@ -195,7 +195,7 @@ public class SchemaValidator {
       final List<Boolean> isAlignedList,
       final boolean autoCreateSchema,
       final MPPQueryContext context) {
-    return autoCreateSchema
+    return autoCreateSchema && isAutoCreateSchemaAllowed(context)
         ? schemaFetcher.fetchSchemaListWithAutoCreate(
             devicePaths,
             measurements,

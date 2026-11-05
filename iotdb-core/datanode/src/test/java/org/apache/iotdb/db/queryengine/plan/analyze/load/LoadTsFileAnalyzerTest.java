@@ -43,7 +43,9 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
@@ -59,8 +61,11 @@ import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.TsFileSequenceReaderTimeseriesMetadataIterator;
+import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.type.TypeFactory;
+import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
+import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.schema.Schema;
@@ -69,6 +74,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -85,8 +91,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class LoadTsFileAnalyzerTest {
@@ -199,6 +210,80 @@ public class LoadTsFileAnalyzerTest {
         Assert.assertEquals(SqlDialect.TABLE, validationDialect[0]);
         Assert.assertFalse(context.getSession().isEnableAutoCreateSchema());
       }
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setAutoCreateSchemaEnabled(originalAutoCreateSchemaEnabled);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setLoadTabletConversionThresholdBytes(originalTabletConversionThresholdBytes);
+      Assert.assertTrue(tsFile.delete());
+    }
+  }
+
+  @Test
+  public void testTreeTsFileAnalysisPreservesSessionAutoCreateSchemaSetting() throws Exception {
+    final boolean originalAutoCreateSchemaEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    final long originalTabletConversionThresholdBytes =
+        IoTDBDescriptor.getInstance().getConfig().getLoadTabletConversionThresholdBytes();
+    final File tsFile = File.createTempFile("tree-load-session-schema", ".tsfile");
+    final List<IMeasurementSchema> schemas =
+        Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT64));
+    try (TsFileWriter writer = new TsFileWriter(tsFile)) {
+      writer.registerTimeseries(new Path("root.load_session_schema.d1"), schemas.get(0));
+      final Tablet tablet = new Tablet("root.load_session_schema.d1", schemas, 1);
+      tablet.addTimestamp(0, 1);
+      tablet.addValue("s1", 0, 1L);
+      writer.writeTree(tablet);
+    }
+
+    try {
+      IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(true);
+      IoTDBDescriptor.getInstance().getConfig().setLoadTabletConversionThresholdBytes(-1);
+      final MPPQueryContext context =
+          spy(
+              createLoadQueryContext(
+                  "tree_load_session_schema", "root.load_session_schema", SqlDialect.TREE, false));
+      final LoadTsFileStatement statement =
+          LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
+      statement.setAutoCreateSchema(true);
+      statement.setAutoCreateDatabase(false);
+      statement.setVerifySchema(false);
+
+      final ISchemaFetcher schemaFetcher = mock(ISchemaFetcher.class);
+      when(schemaFetcher.fetchSchemaList(anyList(), anyList(), any(MPPQueryContext.class)))
+          .thenReturn(new ClusterSchemaTree());
+
+      try (final LoadTsFileAnalyzer analyzer = new LoadTsFileAnalyzer(statement, false, context)) {
+        final Field schemaFetcherField = LoadTsFileAnalyzer.class.getDeclaredField("schemaFetcher");
+        schemaFetcherField.setAccessible(true);
+        schemaFetcherField.set(analyzer, schemaFetcher);
+        final Analysis analysis = new Analysis();
+        analyzer.analyzeFileByFile(analysis);
+        Assert.assertFalse(analysis.isFailed());
+      } finally {
+        DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
+      }
+
+      verify(schemaFetcher).fetchSchemaList(anyList(), anyList(), any(MPPQueryContext.class));
+      verify(schemaFetcher, never())
+          .fetchSchemaListWithAutoCreate(
+              anyList(),
+              anyList(),
+              anyList(),
+              anyList(),
+              anyList(),
+              anyList(),
+              any(MPPQueryContext.class));
+      final ArgumentCaptor<SessionInfo> analysisSessions =
+          ArgumentCaptor.forClass(SessionInfo.class);
+      verify(context, atLeastOnce()).setSession(analysisSessions.capture());
+      for (final SessionInfo session : analysisSessions.getAllValues()) {
+        Assert.assertFalse(session.isEnableAutoCreateSchema());
+        Assert.assertEquals(SqlDialect.TREE, session.getSqlDialect());
+      }
+      Assert.assertFalse(context.getSession().isEnableAutoCreateSchema());
     } finally {
       IoTDBDescriptor.getInstance()
           .getConfig()

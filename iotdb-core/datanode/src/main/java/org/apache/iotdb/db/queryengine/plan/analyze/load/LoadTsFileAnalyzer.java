@@ -498,8 +498,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                 sessionInfo.getSessionId(),
                 sessionInfo.getUserEntity(),
                 sessionInfo.getZoneId(),
+                sessionInfo.getVersion(),
                 sessionInfo.getDatabaseName().orElse(null),
-                SqlDialect.TREE);
+                SqlDialect.TREE,
+                sessionInfo.isEnableAutoCreateSchema());
         context.setSession(newSessionInfo);
         doAnalyzeSingleTreeFile(tsFile, reader, timeseriesMetadataIterator);
       }
