@@ -42,7 +42,6 @@ import org.apache.tsfile.utils.Pair;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 
@@ -161,14 +160,68 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     return false;
   }
 
+  /**
+   * Renders a tag/attribute map as a JSON object (RFC 8259). Keys and values are escaped as JSON
+   * strings, while non-ASCII characters are kept raw for readability.
+   *
+   * @return the JSON object text, or {@code null} when the map is null or empty
+   */
   public static String mapToString(Map<String, String> map) {
     if (map == null || map.isEmpty()) {
       return null;
     }
-    String content =
-        map.entrySet().stream()
-            .map(e -> "\"" + e.getKey() + "\"" + ":" + "\"" + e.getValue() + "\"")
-            .collect(Collectors.joining(","));
-    return "{" + content + "}";
+    final StringBuilder builder = new StringBuilder("{");
+    boolean first = true;
+    for (final Map.Entry<String, String> entry : map.entrySet()) {
+      if (!first) {
+        builder.append(',');
+      }
+      first = false;
+      appendJsonString(builder, entry.getKey());
+      builder.append(':');
+      appendJsonString(builder, entry.getValue());
+    }
+    return builder.append('}').toString();
+  }
+
+  private static final char[] HEX_DIGITS = "0123456789abcdef".toCharArray();
+
+  private static void appendJsonString(final StringBuilder builder, final String raw) {
+    // a null key or value is rendered as the literal text "null", as before
+    final String value = raw == null ? "null" : raw;
+    builder.append('"');
+    for (int i = 0, length = value.length(); i < length; i++) {
+      final char c = value.charAt(i);
+      switch (c) {
+        case '"':
+          builder.append("\\\"");
+          break;
+        case '\\':
+          builder.append("\\\\");
+          break;
+        case '\b':
+          builder.append("\\b");
+          break;
+        case '\f':
+          builder.append("\\f");
+          break;
+        case '\n':
+          builder.append("\\n");
+          break;
+        case '\r':
+          builder.append("\\r");
+          break;
+        case '\t':
+          builder.append("\\t");
+          break;
+        default:
+          if (c < 0x20) {
+            builder.append("\\u00").append(HEX_DIGITS[(c >> 4) & 0xF]).append(HEX_DIGITS[c & 0xF]);
+          } else {
+            builder.append(c);
+          }
+      }
+    }
+    builder.append('"');
   }
 }
