@@ -44,6 +44,7 @@ import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.RpcServiceConstants;
 
 import org.apache.thrift.TMultiplexedProcessor;
+import org.apache.thrift.TProcessor;
 
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -70,12 +71,9 @@ public class DataNodeInternalRPCService extends ThriftService
     DataNodeInternalRPCServiceImpl service = getImpl();
     IClientRPCServiceWithHandler clientService = getClientImpl();
     initSyncedServiceImpl(null);
-    TMultiplexedProcessor multiplexedProcessor = new TMultiplexedProcessor();
-    multiplexedProcessor.registerProcessor(
-        RpcServiceConstants.INTERNAL_CLIENT_RPC_SERVICE,
-        new InternalClientRPCServiceProcessor(clientService));
-    multiplexedProcessor.registerDefault(new Processor<>(service));
-    processor = multiplexedProcessor;
+    processor =
+        createMultiplexedProcessor(
+            new Processor<>(service), new InternalClientRPCServiceProcessor(clientService));
   }
 
   @Override
@@ -133,6 +131,15 @@ public class DataNodeInternalRPCService extends ThriftService
   public DataNodeInternalRPCServiceImpl getImpl() {
     impl.compareAndSet(null, new DataNodeInternalRPCServiceImpl(dataNodeContext));
     return impl.get();
+  }
+
+  static TProcessor createMultiplexedProcessor(
+      final TProcessor controlProcessor, final TProcessor clientProcessor) {
+    final TMultiplexedProcessor multiplexedProcessor = new TMultiplexedProcessor();
+    multiplexedProcessor.registerProcessor(
+        RpcServiceConstants.INTERNAL_CLIENT_RPC_SERVICE, clientProcessor);
+    multiplexedProcessor.registerDefault(controlProcessor);
+    return multiplexedProcessor;
   }
 
   protected IClientRPCServiceWithHandler getClientImpl() {

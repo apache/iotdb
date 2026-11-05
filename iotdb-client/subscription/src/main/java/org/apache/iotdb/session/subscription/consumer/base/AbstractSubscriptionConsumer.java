@@ -622,6 +622,12 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       final long heartbeatIntervalMs,
       final int connectionTimeoutInMs);
 
+  void configureProvider(final AbstractSubscriptionProvider provider) {
+    provider.setConsumerInstanceId(consumerInstanceId);
+    provider.setRpcServiceName(getRpcServiceName());
+    provider.setSslConfig(useSSL, trustStore, trustStorePwd, keyStore, keyStorePwd, sslProtocol);
+  }
+
   AbstractSubscriptionProvider constructProviderAndHandshake(final TEndPoint endPoint)
       throws SubscriptionException {
     final AbstractSubscriptionProvider provider =
@@ -637,9 +643,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             this.thriftMaxFrameSize,
             this.heartbeatIntervalMs,
             this.connectionTimeoutInMs);
-    provider.setConsumerInstanceId(consumerInstanceId);
-    provider.setRpcServiceName(getRpcServiceName());
-    provider.setSslConfig(useSSL, trustStore, trustStorePwd, keyStore, keyStorePwd, sslProtocol);
+    configureProvider(provider);
     try {
       provider.handshake();
     } catch (final Exception e) {
