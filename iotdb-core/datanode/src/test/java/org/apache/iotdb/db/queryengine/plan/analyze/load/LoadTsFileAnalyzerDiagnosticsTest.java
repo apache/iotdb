@@ -38,6 +38,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
@@ -241,7 +242,7 @@ public class LoadTsFileAnalyzerDiagnosticsTest {
             Mockito.mock(ISchemaFetcher.class))) {
       final Object verifier = Whitebox.getInternalState(analyzer, "schemaAutoCreatorAndVerifier");
       final Object schemaCache = Whitebox.getInternalState(verifier, "schemaCache");
-      final IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d");
+      final IDeviceID device = new PlainDeviceID("root.sg.d");
       final Method addTimeSeries =
           schemaCache
               .getClass()
