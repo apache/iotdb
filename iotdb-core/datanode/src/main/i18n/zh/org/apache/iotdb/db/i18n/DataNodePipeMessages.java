@@ -336,6 +336,8 @@ public final class DataNodePipeMessages {
   public static final String SUBTASK_IS_CLOSED_IGNORE_EXCEPTION =
       "subtask {} 已关闭，忽略异常";
   public static final String SUBTASK_WORKER_IS_INTERRUPTED = "子任务工作线程被中断";
+  public static final String LOG_FAILED_TO_SUBMIT_PIPE_PROCESSOR_WORKER_BECAUSE_THE_WORKER_THREAD_POOL_HAS_BEEN_SHUT_DOWN_CA28ED14 =
+      "工作线程池已被关闭，无法提交 Pipe processor 工作线程";
   public static final String SUCCESSFULLY_PERSISTED_ALL_PIPE_S_INFO_TO =
       "成功将所有 Pipe 信息持久化到 ConfigNode。";
   public static final String THE_EXECUTOR_AND_HAS_BEEN_SUCCESSFULLY_SHUTDOWN =
