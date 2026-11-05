@@ -596,10 +596,36 @@ public class SubscriptionInfoTopicValidationTest {
   }
 
   @Test
-  public void testRejectRetainingProgressOnInitialTopic() {
+  public void testAcceptRetainingProgressOnInitialTopic() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    for (final String value : new String[] {"true", " FALSE "}) {
+      final Map<String, String> attributes = newInitialTableTopicAttributes();
+      attributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, value);
+
+      Assert.assertTrue(
+          subscriptionInfo.validateBeforeCreatingTopic(
+              new TCreateTopicReq("initial_topic").setTopicAttributes(attributes)));
+    }
+  }
+
+  @Test
+  public void testAcceptRetainingProgressOnSnapshotTopic() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    attributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_SNAPSHOT_VALUE);
+    attributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "true");
+
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("snapshot_topic").setTopicAttributes(attributes)));
+  }
+
+  @Test
+  public void testInitialRetainProgressDoesNotAllowIncrementalRetentionAttributes() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
     final Map<String, String> attributes = newInitialTableTopicAttributes();
     attributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "true");
+    attributes.put(TopicConstant.RETENTION_BYTES_KEY, "1024");
 
     assertCreateRejected(subscriptionInfo, attributes, "only supported for incremental topics");
   }
@@ -607,10 +633,17 @@ public class SubscriptionInfoTopicValidationTest {
   @Test
   public void testRejectIllegalRetainProgressValue() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> attributes = newIncrementalTableTopicAttributes();
-    attributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "yes");
-
-    assertCreateRejected(subscriptionInfo, attributes, "expected true or false");
+    for (final String mode :
+        new String[] {
+          TopicConstant.MODE_INITIAL_VALUE,
+          TopicConstant.MODE_SNAPSHOT_VALUE,
+          TopicConstant.MODE_INCREMENTAL_VALUE
+        }) {
+      final Map<String, String> attributes = newIncrementalTableTopicAttributes();
+      attributes.put(TopicConstant.MODE_KEY, mode);
+      attributes.put(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "yes");
+      assertCreateRejected(subscriptionInfo, attributes, "expected true or false");
+    }
   }
 
   @Test

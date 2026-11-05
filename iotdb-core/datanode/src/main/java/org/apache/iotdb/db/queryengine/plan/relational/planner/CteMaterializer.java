@@ -138,7 +138,9 @@ public class CteMaterializer {
               sessionManager.getCurrSession(),
               queryId,
               sessionManager.getSessionInfoOfTableModel(sessionManager.getCurrSession()),
-              String.format("Materialize query for CTE '%s'", table.getName()),
+              String.format(
+                  DataNodeQueryMessages.EXCEPTION_MATERIALIZE_QUERY_FOR_CTE_ARG_2D975E4F,
+                  table.getName()),
               LocalExecutionPlanner.getInstance().metadata,
               context.getCteQueries(),
               context.getExplainType(),
@@ -180,7 +182,8 @@ public class CteMaterializer {
                 context,
                 queryId,
                 table,
-                "!!! Failed to materialize CTE. The main query falls back to INLINE mode !!!");
+                DataNodeQueryMessages
+                    .EXCEPTION_FAILED_TO_MATERIALIZE_CTE_THE_MAIN_QUERY_FALLS_BACK_TO_INLINE_MODE_F03A778C);
           }
           context.releaseMemoryReservedForFrontEnd(cteDataStore.ramBytesUsed());
           cteDataStore.clear();

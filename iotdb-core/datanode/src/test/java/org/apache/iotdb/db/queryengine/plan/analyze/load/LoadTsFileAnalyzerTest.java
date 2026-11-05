@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileTableSchemaRegistrationUtils;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -59,10 +60,12 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class LoadTsFileAnalyzerTest {
@@ -483,6 +486,52 @@ public class LoadTsFileAnalyzerTest {
                 "tag1", TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.TAG),
             new ColumnSchema(
                 "s1", TypeFactory.getType(fieldType), false, TsTableColumnCategory.FIELD)));
+  }
+
+  @Test
+  public void testDetectTableModelTsFile() throws Exception {
+    final File dir = Files.createTempDirectory("detect-table-model").toFile();
+    final File markedFile = new File(dir, "marked.tsfile");
+    final File treeFile = new File(dir, "tree.tsfile");
+    final File legacyTableFile = new File(dir, "legacy-table.tsfile");
+    try {
+      // A table-model file without any TableSchema entry is still recognized by its file property
+      try (final TsFileIOWriter writer = new TsFileIOWriter(markedFile)) {
+        TsFileTableSchemaRegistrationUtils.markTableModel(writer);
+        writer.endFile();
+      }
+      try (final TsFileSequenceReader reader = new TsFileSequenceReader(markedFile.getPath())) {
+        final Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
+        Assert.assertTrue(tableSchemaMap.isEmpty());
+        Assert.assertTrue(LoadTsFileAnalyzer.detectTableModelTsFile(reader, tableSchemaMap));
+      }
+
+      // A tree-model file has neither the property nor a TableSchema map
+      try (final TsFileIOWriter writer = new TsFileIOWriter(treeFile)) {
+        writer.endFile();
+      }
+      try (final TsFileSequenceReader reader = new TsFileSequenceReader(treeFile.getPath())) {
+        final Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
+        Assert.assertFalse(LoadTsFileAnalyzer.detectTableModelTsFile(reader, tableSchemaMap));
+      }
+
+      // A table-model file written before the property existed falls back to the TableSchema map
+      try (final TsFileIOWriter writer = new TsFileIOWriter(legacyTableFile)) {
+        writer.getSchema().registerTableSchema(new TableSchema("t1"));
+        writer.endFile();
+      }
+      try (final TsFileSequenceReader reader =
+          new TsFileSequenceReader(legacyTableFile.getPath())) {
+        final Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
+        Assert.assertFalse(tableSchemaMap.isEmpty());
+        Assert.assertTrue(LoadTsFileAnalyzer.detectTableModelTsFile(reader, tableSchemaMap));
+      }
+    } finally {
+      Files.deleteIfExists(markedFile.toPath());
+      Files.deleteIfExists(treeFile.toPath());
+      Files.deleteIfExists(legacyTableFile.toPath());
+      Files.deleteIfExists(dir.toPath());
+    }
   }
 
   private boolean containsDevice(final Set<IDeviceID> devices, final String... expectedSegments) {

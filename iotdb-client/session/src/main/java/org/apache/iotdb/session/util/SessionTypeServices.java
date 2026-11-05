@@ -20,6 +20,7 @@ package org.apache.iotdb.session.util;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.i18n.SessionMessages;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.encoding.encoder.Encoder;
@@ -395,7 +396,7 @@ final class SessionTypeServices {
 
   private static UnSupportedDataTypeException unsupportedTabletDataType(Object dataType) {
     return new UnSupportedDataTypeException(
-        String.format("Data type %s is not supported.", dataType));
+        String.format(SessionMessages.EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160, dataType));
   }
 
   private static UnSupportedDataTypeException unsupportedValueListDataType(Object dataType) {

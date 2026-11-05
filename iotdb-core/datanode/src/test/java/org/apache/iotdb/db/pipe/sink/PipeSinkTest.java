@@ -461,6 +461,37 @@ public class PipeSinkTest {
   }
 
   @Test
+  public void testWriteBackSinkDatabaseValidationAfterCloningParameters() throws Exception {
+    for (final String databaseKey : Arrays.asList("sink.database", "connector.database")) {
+      final PipeParameters parameters =
+          new PipeParameters(Collections.singletonMap(databaseKey, "root.target"))
+              .addOrReplaceEquivalentAttributesWithClone(
+                  new PipeParameters(
+                      Collections.singletonMap(
+                          PipeSinkConstant.SINK_ENABLE_SEND_TSFILE_LIMIT, "true")));
+
+      try (final WriteBackSink sink = new WriteBackSink()) {
+        sink.validate(new PipeParameterValidator(parameters));
+        sink.customize(
+            parameters,
+            new PipeTaskRuntimeConfiguration(new PipeTaskSinkRuntimeEnvironment("pipe", 1L, 1)));
+        Assert.assertEquals(
+            "root.target", getWriteBackSinkDatabaseName(sink, "targetTreeModelDatabaseName"));
+      }
+    }
+
+    final HashMap<String, String> conflictingAttributes = new HashMap<>();
+    conflictingAttributes.put("connector.database", "root.connectorTarget");
+    conflictingAttributes.put("sink.database", "root.sinkTarget");
+    try (final WriteBackSink sink = new WriteBackSink()) {
+      Assert.assertThrows(
+          PipeException.class,
+          () ->
+              sink.validate(new PipeParameterValidator(new PipeParameters(conflictingAttributes))));
+    }
+  }
+
+  @Test
   public void testWriteBackSinkTargetDatabaseCustomization() throws Exception {
     try (final WriteBackSink sink = createCustomizedWriteBackSink("TestTarget")) {
       Assert.assertEquals(

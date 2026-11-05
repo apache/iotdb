@@ -89,9 +89,11 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
     ++totalRoundInAdjustmentInterval;
 
     boolean canSleepBeforeNextRound = true;
-
     for (final PipeProcessorSubtask subtask : subtasks) {
-      if (subtask.isClosed() || !subtask.isSubmittingSelf() || subtask.isStoppedByException()) {
+      if (subtask.isClosed()
+          || !subtask.isSubmittingSelf()
+          || subtask.isStoppedByException()
+          || subtask.isWaitingForTsFileParserMemory()) {
         continue;
       }
 

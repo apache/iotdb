@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 import jakarta.servlet.DispatcherType;
 
 import java.util.EnumSet;
+import java.util.regex.Pattern;
 
 public class RestService implements IExternalService {
 
@@ -151,8 +152,11 @@ public class RestService implements IExternalService {
     }
   }
 
-  private void configureSSL(SslContextFactory.Server sslContextFactory, String sslProtocol) {
+  void configureSSL(SslContextFactory.Server sslContextFactory, String sslProtocol) {
     String protocol = RpcSslUtils.normalizeProtocol(sslProtocol);
     sslContextFactory.setProtocol(protocol);
+    if (RpcSslUtils.requiresProtocolRestriction(protocol)) {
+      sslContextFactory.setIncludeProtocols("(?i)" + Pattern.quote(protocol));
+    }
   }
 }

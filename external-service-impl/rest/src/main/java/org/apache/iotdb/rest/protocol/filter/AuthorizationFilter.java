@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.rest.IoTDBRestServiceConfig;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.protocol.session.RestClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.rest.i18n.RestMessages;
 import org.apache.iotdb.rest.protocol.model.ExecutionStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -44,6 +45,7 @@ import java.io.IOException;
 import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.util.Base64;
+import java.util.Objects;
 import java.util.UUID;
 
 @WebFilter("/*")
@@ -133,7 +135,8 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
               .entity(
                   new ExecutionStatus()
                       .code(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode())
-                      .message("Illegal format of authorization header."))
+                      .message(
+                          RestMessages.EXCEPTION_ILLEGAL_FORMAT_OF_AUTHORIZATION_HEADER_D34F8A26))
               .build();
       containerRequestContext.abortWith(resp);
       return null;
@@ -183,7 +186,10 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
               .entity(
                   new ExecutionStatus()
                       .code(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode())
-                      .message("Invalid time zone: " + timeZoneHeader))
+                      .message(
+                          String.format(
+                              RestMessages.EXCEPTION_INVALID_TIME_ZONE_ARG_43D4C03A,
+                              Objects.toString(timeZoneHeader))))
               .build();
       requestContext.abortWith(resp);
       return null;

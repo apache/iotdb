@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.PreAlterColumnD
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
@@ -411,5 +412,183 @@ public class ClusterSchemaManagerTest {
         Mockito.mock(IManager.class),
         clusterSchemaInfo,
         Mockito.mock(ClusterSchemaQuotaStatistics.class));
+  }
+
+  private static ClusterSchemaManager managerOf(
+      final ClusterSchemaInfo clusterSchemaInfo, final String existingDatabase) {
+    final IManager configManager = Mockito.mock(IManager.class);
+    final PartitionManager partitionManager = Mockito.mock(PartitionManager.class);
+    Mockito.when(configManager.getPartitionManager()).thenReturn(partitionManager);
+    Mockito.when(partitionManager.isDatabaseExist(existingDatabase)).thenReturn(true);
+    return new ClusterSchemaManager(
+        configManager, clusterSchemaInfo, Mockito.mock(ClusterSchemaQuotaStatistics.class));
+  }
+
+  @Test
+  public void testResetTableTtlUsesFiniteDatabaseDefault() throws Exception {
+    final long day = 86400000L;
+    final String database = "ttl_default_finite_test";
+    for (final String initialTtl :
+        new String[] {null, String.valueOf(7 * day), String.valueOf(day)}) {
+      final ClusterSchemaInfo schemaInfo = new ClusterSchemaInfo();
+      schemaInfo.createDatabase(
+          new DatabaseSchemaPlan(
+              ConfigPhysicalPlanType.CreateDatabase,
+              new TDatabaseSchema(database).setIsTableModel(true)));
+      final TsTable table = new TsTable(TABLE);
+      if (initialTtl != null) {
+        table.addProp(TsTable.TTL_PROPERTY, initialTtl);
+      }
+      schemaInfo.preCreateTable(new PreCreateTablePlan(database, table));
+      schemaInfo.commitCreateTable(new CommitCreateTablePlan(database, TABLE));
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          schemaInfo
+              .alterDatabase(
+                  new DatabaseSchemaPlan(
+                      ConfigPhysicalPlanType.AlterDatabase,
+                      new TDatabaseSchema(database).setIsTableModel(true).setTTL(day)))
+              .getCode());
+      final ClusterSchemaManager manager = managerOf(schemaInfo, database);
+      final Map<String, String> originalProperties = new HashMap<>();
+      final Map<String, String> updatedProperties = new HashMap<>();
+      updatedProperties.put(TsTable.TTL_PROPERTY, null);
+
+      final Pair<TSStatus, TsTable> result =
+          manager.updateTableProperties(
+              database, TABLE, originalProperties, updatedProperties, false);
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.getLeft().getCode());
+      if (String.valueOf(day).equals(initialTtl)) {
+        Assert.assertNull(result.getRight());
+        Assert.assertTrue(updatedProperties.isEmpty());
+        continue;
+      }
+      Assert.assertNotNull(result.getRight());
+      Assert.assertEquals(String.valueOf(day), updatedProperties.get(TsTable.TTL_PROPERTY));
+      Assert.assertEquals(initialTtl, originalProperties.get(TsTable.TTL_PROPERTY));
+      Assert.assertEquals(day, result.getRight().getTableTTL());
+      Assert.assertEquals(
+          initialTtl,
+          manager
+              .getTableIfExists(database, TABLE)
+              .get()
+              .getPropValue(TsTable.TTL_PROPERTY)
+              .orElse(null));
+      // A concurrent database update must not change the TTL already sent to DataNodes.
+      schemaInfo.alterDatabase(
+          new DatabaseSchemaPlan(
+              ConfigPhysicalPlanType.AlterDatabase,
+              new TDatabaseSchema(database).setIsTableModel(true).setTTL(2 * day)));
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          schemaInfo
+              .setTableProperties(new SetTablePropertiesPlan(database, TABLE, updatedProperties))
+              .getCode());
+      Assert.assertEquals(
+          manager.getTableIfExists(database, TABLE).get().getPropValue(TsTable.TTL_PROPERTY),
+          result.getRight().getPropValue(TsTable.TTL_PROPERTY));
+    }
+  }
+
+  @Test
+  public void testResetTableTtlUsesInfiniteDatabaseDefault() throws Exception {
+    final String database = "ttl_default_infinite_test";
+    for (final boolean explicitInfinite : new boolean[] {false, true}) {
+      final ClusterSchemaInfo schemaInfo = new ClusterSchemaInfo();
+      final TDatabaseSchema schema = new TDatabaseSchema(database).setIsTableModel(true);
+      if (explicitInfinite) {
+        schema.setTTL(Long.MAX_VALUE);
+      }
+      schemaInfo.createDatabase(
+          new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, schema));
+      final TsTable table = new TsTable(TABLE);
+      table.addProp(TsTable.TTL_PROPERTY, "86400000");
+      schemaInfo.preCreateTable(new PreCreateTablePlan(database, table));
+      schemaInfo.commitCreateTable(new CommitCreateTablePlan(database, TABLE));
+      final ClusterSchemaManager manager = managerOf(schemaInfo, database);
+      final Map<String, String> originalProperties = new HashMap<>();
+      final Map<String, String> updatedProperties = new HashMap<>();
+      updatedProperties.put(TsTable.TTL_PROPERTY, null);
+
+      final Pair<TSStatus, TsTable> result =
+          manager.updateTableProperties(
+              database, TABLE, originalProperties, updatedProperties, false);
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.getLeft().getCode());
+      Assert.assertNotNull(result.getRight());
+      Assert.assertEquals("86400000", originalProperties.get(TsTable.TTL_PROPERTY));
+      Assert.assertEquals(Long.MAX_VALUE, result.getRight().getTableTTL());
+      Assert.assertEquals("INF", updatedProperties.get(TsTable.TTL_PROPERTY));
+      Assert.assertEquals(
+          "86400000",
+          manager
+              .getTableIfExists(database, TABLE)
+              .get()
+              .getPropValue(TsTable.TTL_PROPERTY)
+              .orElse(null));
+      // The validated infinite default must not change after a concurrent database update.
+      schemaInfo.alterDatabase(
+          new DatabaseSchemaPlan(
+              ConfigPhysicalPlanType.AlterDatabase,
+              new TDatabaseSchema(database).setIsTableModel(true).setTTL(172800000L)));
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          schemaInfo
+              .setTableProperties(new SetTablePropertiesPlan(database, TABLE, updatedProperties))
+              .getCode());
+      Assert.assertEquals(
+          Long.MAX_VALUE, manager.getTableIfExists(database, TABLE).get().getTableTTL());
+      Assert.assertEquals(
+          "INF",
+          manager
+              .getTableIfExists(database, TABLE)
+              .get()
+              .getPropValue(TsTable.TTL_PROPERTY)
+              .orElse(null));
+      Assert.assertEquals(
+          manager.getTableIfExists(database, TABLE).get().getPropValue(TsTable.TTL_PROPERTY),
+          result.getRight().getPropValue(TsTable.TTL_PROPERTY));
+    }
+  }
+
+  @Test
+  public void testResetTableTtlWithInfiniteDefaultIsNoOp() throws Exception {
+    final String database = "ttl_default_no_op_test";
+    for (final boolean explicitInfinite : new boolean[] {false, true}) {
+      for (final String initialTtl : new String[] {null, "INF", String.valueOf(Long.MAX_VALUE)}) {
+        final ClusterSchemaInfo schemaInfo = new ClusterSchemaInfo();
+        final TDatabaseSchema schema = new TDatabaseSchema(database).setIsTableModel(true);
+        if (explicitInfinite) {
+          schema.setTTL(Long.MAX_VALUE);
+        }
+        schemaInfo.createDatabase(
+            new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, schema));
+        final TsTable table = new TsTable(TABLE);
+        if (initialTtl != null) {
+          table.addProp(TsTable.TTL_PROPERTY, initialTtl);
+        }
+        schemaInfo.preCreateTable(new PreCreateTablePlan(database, table));
+        schemaInfo.commitCreateTable(new CommitCreateTablePlan(database, TABLE));
+        final ClusterSchemaManager manager = managerOf(schemaInfo, database);
+        final Map<String, String> originalProperties = new HashMap<>();
+        final Map<String, String> updatedProperties = new HashMap<>();
+        updatedProperties.put(TsTable.TTL_PROPERTY, null);
+
+        final Pair<TSStatus, TsTable> result =
+            manager.updateTableProperties(
+                database, TABLE, originalProperties, updatedProperties, false);
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.getLeft().getCode());
+        Assert.assertNull(result.getRight());
+        Assert.assertTrue(updatedProperties.isEmpty());
+        Assert.assertTrue(originalProperties.isEmpty());
+        Assert.assertEquals(
+            initialTtl,
+            manager
+                .getTableIfExists(database, TABLE)
+                .get()
+                .getPropValue(TsTable.TTL_PROPERTY)
+                .orElse(null));
+      }
+    }
   }
 }

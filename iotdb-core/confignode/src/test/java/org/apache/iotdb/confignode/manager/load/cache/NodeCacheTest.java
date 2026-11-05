@@ -132,6 +132,27 @@ public class NodeCacheTest {
   }
 
   @Test
+  public void testNewerStoppingHeartbeatCannotReviveStoppedNode() {
+    DataNodeHeartbeatCache cache = new DataNodeHeartbeatCache(1);
+    cache.trySetNodeStatus(NodeStatus.Stopped, null, false);
+    NodeHeartbeatSample stoppingSample =
+        new NodeHeartbeatSample(
+            new TDataNodeHeartbeatResp()
+                .setHeartbeatTimestamp(cache.getLastSample().getSampleLogicalTimestamp() + 1)
+                .setStatus(NodeStatus.ReadOnly.getStatus())
+                .setStatusReason(NodeStatus.STOPPING));
+    cache.cacheHeartbeatSample(stoppingSample);
+    // Exercise the transition rule, not the filter for heartbeats older than the shutdown report.
+    Assert.assertSame(stoppingSample, cache.getLastSample());
+    for (int i = 0; i < 2; i++) {
+      cache.updateNodeStatistics();
+      Assert.assertEquals(NodeStatus.Stopped, cache.getNodeStatus());
+      Assert.assertNull(cache.getNodeStatusReason());
+      Assert.assertEquals(Long.MAX_VALUE, cache.getLoadScore());
+    }
+  }
+
+  @Test
   public void testConnectionFailureIsNotUndoneByPreviousRunningHeartbeat() {
     for (BaseNodeCache cache :
         new BaseNodeCache[] {

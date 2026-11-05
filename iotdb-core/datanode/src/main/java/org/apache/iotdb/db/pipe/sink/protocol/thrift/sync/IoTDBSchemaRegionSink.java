@@ -241,8 +241,10 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
       receiverStatusHandler.handle(
           status,
           String.format(
-              "Transfer data node write plan %s error, result status %s.",
-              planNode.getType(), status),
+              DataNodePipeMessages
+                  .MESSAGE_TRANSFER_DATA_NODE_WRITE_PLAN_ARG_ERROR_RESULT_STATUS_ARG_2F546036,
+              planNode.getType(),
+              status),
           eventDescription,
           true);
     }
@@ -337,8 +339,12 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
       receiverStatusHandler.handle(
           resp.getStatus(),
           String.format(
-              "Seal file %s, %s and %s error, result status %s.",
-              mTreeSnapshotFile, tagLogSnapshotFile, attributeSnapshotFile, resp.getStatus()),
+              DataNodePipeMessages
+                  .MESSAGE_SEAL_FILE_ARG_ARG_AND_ARG_ERROR_RESULT_STATUS_ARG_3470FE87,
+              mTreeSnapshotFile,
+              tagLogSnapshotFile,
+              attributeSnapshotFile,
+              resp.getStatus()),
           snapshotEvent.toString(),
           true);
     }

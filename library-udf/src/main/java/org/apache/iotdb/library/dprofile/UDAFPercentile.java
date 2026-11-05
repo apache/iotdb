@@ -21,6 +21,7 @@ package org.apache.iotdb.library.dprofile;
 
 import org.apache.iotdb.library.dprofile.util.ExactOrderStatistics;
 import org.apache.iotdb.library.dprofile.util.GKArray;
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.TypeServices;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -54,11 +55,13 @@ public class UDAFPercentile implements UDTF {
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             error -> (double) error >= 0 && (double) error < 1,
-            "error has to be greater than or equal to 0 and less than 1.",
+            LibraryUdfMessages
+                .EXCEPTION_ERROR_HAS_TO_BE_GREATER_THAN_OR_EQUAL_TO_0_AND_LESS_THAN_1_2A840865,
             validator.getParameters().getDoubleOrDefault("error", 0))
         .validate(
             rank -> (double) rank > 0 && (double) rank <= 1,
-            "rank has to be greater than 0 and less than or equal to 1.",
+            LibraryUdfMessages
+                .EXCEPTION_RANK_HAS_TO_BE_GREATER_THAN_0_AND_LESS_THAN_OR_EQUAL_TO_1_0F16AF94,
             validator.getParameters().getDoubleOrDefault("rank", 0.5));
   }
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool.schema;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -78,12 +79,16 @@ public class ImportSchema extends AbstractSchemaTool {
       sqlDialectTree = false;
       if (StringUtils.isBlank(database)) {
         ioTPrinter.println(
-            String.format("The database param is required when sql_dialect is table "));
+            String.format(
+                CliMessages
+                    .MESSAGE_THE_DATABASE_PARAM_IS_REQUIRED_WHEN_SQL_DIALECT_IS_TABLE_1EFE6DAF));
         System.exit(Constants.CODE_ERROR);
       } else if (StringUtils.isNotBlank(database)
           && "information_schema".equalsIgnoreCase(database)) {
         ioTPrinter.println(
-            String.format("Does not support exporting system databases %s", database));
+            String.format(
+                CliMessages.MESSAGE_DOES_NOT_SUPPORT_EXPORTING_SYSTEM_DATABASES_ARG_D86F9100,
+                database));
         System.exit(Constants.CODE_ERROR);
       }
     }
@@ -105,7 +110,9 @@ public class ImportSchema extends AbstractSchemaTool {
     try {
       commandLine = parser.parse(options, args);
     } catch (org.apache.commons.cli.ParseException e) {
-      ioTPrinter.println("Parse error: " + e.getMessage());
+      ioTPrinter.println(
+          String.format(
+              CliMessages.EXCEPTION_PARSE_ERROR_ARG_DA103556, String.valueOf(e.getMessage())));
       hf.printHelp(Constants.IMPORT_SCHEMA_CLI_PREFIX, options, true);
       System.exit(Constants.CODE_ERROR);
     }
@@ -122,10 +129,15 @@ public class ImportSchema extends AbstractSchemaTool {
       }
       parseSpecialParams(commandLine);
     } catch (ArgsErrorException e) {
-      ioTPrinter.println("Args error: " + e.getMessage());
+      ioTPrinter.println(
+          String.format(
+              CliMessages.EXCEPTION_ARGS_ERROR_ARG_E49DCA27, String.valueOf(e.getMessage())));
       System.exit(Constants.CODE_ERROR);
     } catch (Exception e) {
-      ioTPrinter.println("Encounter an error, because: " + e.getMessage());
+      ioTPrinter.println(
+          String.format(
+              CliMessages.EXCEPTION_ENCOUNTER_AN_ERROR_BECAUSE_ARG_49284363,
+              String.valueOf(e.getMessage())));
       System.exit(Constants.CODE_ERROR);
     }
     System.exit(importFromTargetPath());
@@ -151,11 +163,13 @@ public class ImportSchema extends AbstractSchemaTool {
       AbstractImportSchema.init(importSchema);
       return Constants.CODE_OK;
     } catch (InterruptedException e) {
-      ioTPrinter.println(String.format("Import schema fail: %s", e.getMessage()));
+      ioTPrinter.println(
+          String.format(CliMessages.MESSAGE_IMPORT_SCHEMA_FAIL_ARG_609A6D30, e.getMessage()));
       Thread.currentThread().interrupt();
       return Constants.CODE_ERROR;
     } catch (Exception e) {
-      ioTPrinter.println(String.format("Import schema fail: %s", e.getMessage()));
+      ioTPrinter.println(
+          String.format(CliMessages.MESSAGE_IMPORT_SCHEMA_FAIL_ARG_609A6D30, e.getMessage()));
       return Constants.CODE_ERROR;
     }
   }

@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.table.ColumnInAlterException;
 import org.apache.iotdb.commons.exception.table.ColumnInDeletionException;
@@ -190,7 +191,9 @@ public class ClusterSchemaManager {
     if (getPartitionManager().isDatabasePreDeleted(schema.getName())) {
       return RpcUtils.getStatus(
           TSStatusCode.METADATA_ERROR,
-          String.format("Some other task is deleting database %s", schema.getName()));
+          String.format(
+              ManagerMessages.MESSAGE_SOME_OTHER_TASK_IS_DELETING_DATABASE_ARG_7BDB2C0F,
+              schema.getName()));
     }
 
     createDatabaseLock.lock();
@@ -1025,8 +1028,13 @@ public class ClusterSchemaManager {
       return new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
           .setMessage(
               String.format(
-                  "Failed to %s database. The %s can only be set when %s_region_group_extension_policy is CUSTOM.",
-                  isCreate ? "create" : "alter", configKey, isSchemaRegion ? "schema" : "data"));
+                  ManagerMessages
+                      .MESSAGE_FAILED_TO_ARG_DATABASE_THE_ARG_CAN_ONLY_BE_SET_WHEN_ARG_REGION_GROUP_EXTENSION_POLICY_IS_CUSTOM_F90B15BA,
+                  isCreate
+                      ? ManagerMessages.MESSAGE_CREATE_76EA0BEB
+                      : ManagerMessages.MESSAGE_ALTER_5667DA2F,
+                  configKey,
+                  isSchemaRegion ? "schema" : "data"));
     }
 
     final int defaultRegionGroupNum =
@@ -1037,8 +1045,11 @@ public class ClusterSchemaManager {
       return new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
           .setMessage(
               String.format(
-                  "%s should be greater than or equal to default %sRegionGroupNum: %d.",
-                  fieldName, isSchemaRegion ? "Schema" : "Data", defaultRegionGroupNum));
+                  ManagerMessages
+                      .MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_DEFAULT_ARGREGIONGROUPNUM_ARG_4C00E92C,
+                  fieldName,
+                  isSchemaRegion ? "Schema" : "Data",
+                  defaultRegionGroupNum));
     }
 
     return StatusUtils.OK;
@@ -1148,7 +1159,8 @@ public class ClusterSchemaManager {
         return new Pair<>(
             RpcUtils.getStatus(
                 TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode(),
-                String.format("Undefined template name: %s", templateName)),
+                String.format(
+                    ManagerMessages.MESSAGE_UNDEFINED_TEMPLATE_NAME_ARG_35357209, templateName)),
             null);
       }
     } else {
@@ -1175,7 +1187,7 @@ public class ClusterSchemaManager {
         return new Pair<>(
             RpcUtils.getStatus(
                 TSStatusCode.TEMPLATE_NOT_SET.getStatusCode(),
-                String.format("No template on %s", path)),
+                String.format(ManagerMessages.MESSAGE_NO_TEMPLATE_ON_ARG_C7AA69D1, path)),
             null);
       } else {
         return new Pair<>(templateResp.getStatus(), templateResp.getTemplateList().get(0));
@@ -1242,7 +1254,8 @@ public class ClusterSchemaManager {
         || templateInfoResp.getTemplateList().isEmpty()) {
       return RpcUtils.getStatus(
           TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode(),
-          String.format("Undefined template name: %s", templateName));
+          String.format(
+              ManagerMessages.MESSAGE_UNDEFINED_TEMPLATE_NAME_ARG_35357209, templateName));
     }
 
     // check is template set on some path, block all template set operation
@@ -1264,7 +1277,9 @@ public class ClusterSchemaManager {
       return RpcUtils.getStatus(
           TSStatusCode.METADATA_ERROR.getStatusCode(),
           String.format(
-              "Template [%s] has been set on MTree, cannot be dropped now.", templateName));
+              ManagerMessages
+                  .MESSAGE_TEMPLATE_ARG_HAS_BEEN_SET_ON_MTREE_CANNOT_BE_DROPPED_NOW_B8AC5437,
+              templateName));
     }
 
     // execute drop template
@@ -1309,8 +1324,10 @@ public class ClusterSchemaManager {
         return RpcUtils.getStatus(
             TSStatusCode.MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE,
             String.format(
-                "Measurement %s already exist in schemaengine template %s",
-                intersectionMeasurements, template.getName()));
+                ManagerMessages
+                    .MESSAGE_MEASUREMENT_ARG_ALREADY_EXIST_IN_SCHEMAENGINE_TEMPLATE_ARG_26339B5F,
+                intersectionMeasurements,
+                template.getName()));
       }
     }
 
@@ -1361,8 +1378,10 @@ public class ClusterSchemaManager {
         return RpcUtils.getStatus(
             TSStatusCode.EXECUTE_STATEMENT_ERROR,
             String.format(
-                "Failed to sync template %s extension info to DataNode %s",
-                template.getName(), dataNodeLocationMap.get(entry.getKey())));
+                ManagerMessages
+                    .MESSAGE_FAILED_TO_SYNC_TEMPLATE_ARG_EXTENSION_INFO_TO_DATANODE_ARG_66326847,
+                template.getName(),
+                dataNodeLocationMap.get(entry.getKey())));
       }
     }
 
@@ -1372,8 +1391,10 @@ public class ClusterSchemaManager {
       return RpcUtils.getStatus(
           TSStatusCode.MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE,
           String.format(
-              "Measurement %s already exist in schemaengine template %s",
-              intersectionMeasurements, template.getName()));
+              ManagerMessages
+                  .MESSAGE_MEASUREMENT_ARG_ALREADY_EXIST_IN_SCHEMAENGINE_TEMPLATE_ARG_26339B5F,
+              intersectionMeasurements,
+              template.getName()));
     }
   }
 
@@ -1666,7 +1687,10 @@ public class ClusterSchemaManager {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.TABLE_NOT_EXISTS,
-              String.format("Table '%s.%s' does not exist", database, tableName)),
+              String.format(
+                  ManagerMessages.MESSAGE_TABLE_ARG_ARG_DOES_NOT_EXIST_8D6D421C,
+                  database,
+                  tableName)),
           null);
     }
 
@@ -1679,7 +1703,7 @@ public class ClusterSchemaManager {
     // the table read above is a copy, which this check expands and returns
     final String errorMsg =
         String.format(
-            "Column '%s' already exist",
+            ManagerMessages.MESSAGE_COLUMN_ARG_ALREADY_EXIST_92F91B6A,
             columnSchemaList.stream()
                 .map(TsTableColumnSchema::getColumnName)
                 .collect(Collectors.joining(", ")));
@@ -1730,14 +1754,12 @@ public class ClusterSchemaManager {
     columnSchemaList.removeIf(
         columnSchema -> {
           if (existingColumnNames.contains(columnSchema.getColumnName())) {
-            // todo log
             return true;
           }
 
           // The original time series can only be referenced once.
           final String originalName = TreeViewSchema.getSourceName(columnSchema);
           if (originalNames.contains(originalName)) {
-            // todo log
             return true;
           }
 
@@ -1766,7 +1788,10 @@ public class ClusterSchemaManager {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.TABLE_NOT_EXISTS,
-              String.format("Table '%s.%s' does not exist", database, tableName)),
+              String.format(
+                  ManagerMessages.MESSAGE_TABLE_ARG_ARG_DOES_NOT_EXIST_8D6D421C,
+                  database,
+                  tableName)),
           null);
     }
 
@@ -1804,7 +1829,10 @@ public class ClusterSchemaManager {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.TABLE_NOT_EXISTS,
-              String.format("Table '%s.%s' does not exist", database, tableName)),
+              String.format(
+                  ManagerMessages.MESSAGE_TABLE_ARG_ARG_DOES_NOT_EXIST_8D6D421C,
+                  database,
+                  tableName)),
           null);
     }
 
@@ -1818,7 +1846,8 @@ public class ClusterSchemaManager {
     if (Objects.isNull(schema)) {
       return new Pair<>(
           RpcUtils.getStatus(
-              TSStatusCode.COLUMN_NOT_EXISTS, String.format("Column '%s' does not exist", oldName)),
+              TSStatusCode.COLUMN_NOT_EXISTS,
+              String.format(ManagerMessages.MESSAGE_COLUMN_ARG_DOES_NOT_EXIST_FF67AE82, oldName)),
           null);
     }
 
@@ -1826,7 +1855,7 @@ public class ClusterSchemaManager {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.COLUMN_CATEGORY_MISMATCH,
-              "The renaming for time column is not supported."),
+              ManagerMessages.MESSAGE_THE_RENAMING_FOR_TIME_COLUMN_IS_NOT_SUPPORTED_409B946E),
           null);
     }
 
@@ -1834,7 +1863,9 @@ public class ClusterSchemaManager {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.COLUMN_ALREADY_EXISTS,
-              "The new column name " + newName + " already exists"),
+              String.format(
+                  ManagerMessages.MESSAGE_THE_NEW_COLUMN_NAME_ARG_ALREADY_EXISTS_726B75C0,
+                  String.valueOf(newName))),
           null);
     }
 
@@ -1856,7 +1887,10 @@ public class ClusterSchemaManager {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.TABLE_NOT_EXISTS,
-              String.format("Table '%s.%s' does not exist", database, tableName)),
+              String.format(
+                  ManagerMessages.MESSAGE_TABLE_ARG_ARG_DOES_NOT_EXIST_8D6D421C,
+                  database,
+                  tableName)),
           null);
     }
 
@@ -1935,13 +1969,17 @@ public class ClusterSchemaManager {
       final Map<String, String> updatedProperties,
       final boolean isTableView)
       throws MetadataException {
-    final TsTable originalTable = getTableWithUsingStatusIfExists(database, tableName).orElse(null);
+    final TsTable originalTable =
+        getTableWithUsingStatusIfExists(database, tableName).map(TsTable::new).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.TABLE_NOT_EXISTS,
-              String.format("Table '%s.%s' does not exist", database, tableName)),
+              String.format(
+                  ManagerMessages.MESSAGE_TABLE_ARG_ARG_DOES_NOT_EXIST_8D6D421C,
+                  database,
+                  tableName)),
           null);
     }
 
@@ -1958,12 +1996,32 @@ public class ClusterSchemaManager {
           null);
     }
 
+    // Resolve DEFAULT before comparing properties and preparing the table sent to DataNodes.
+    if (updatedProperties.containsKey(TsTable.TTL_PROPERTY)
+        && Objects.isNull(updatedProperties.get(TsTable.TTL_PROPERTY))) {
+      try {
+        final TDatabaseSchema schema = getDatabaseSchemaByName(database);
+        updatedProperties.put(
+            TsTable.TTL_PROPERTY,
+            schema.isSetTTL() && schema.getTTL() != Long.MAX_VALUE
+                ? String.valueOf(schema.getTTL())
+                : IoTDBConstant.TTL_INFINITE);
+      } catch (final DatabaseNotExistsException e) {
+        throw new MetadataException(e);
+      }
+    }
+
     updatedProperties
         .keySet()
         .removeIf(
-            key ->
-                Objects.equals(
-                    updatedProperties.get(key), originalTable.getPropValue(key).orElse(null)));
+            key -> {
+              if (TsTable.TTL_PROPERTY.equals(key)
+                  && IoTDBConstant.TTL_INFINITE.equalsIgnoreCase(updatedProperties.get(key))) {
+                return originalTable.getTableTTL() == Long.MAX_VALUE;
+              }
+              return Objects.equals(
+                  updatedProperties.get(key), originalTable.getPropValue(key).orElse(null));
+            });
     if (updatedProperties.isEmpty()) {
       return new Pair<>(RpcUtils.SUCCESS_STATUS, null);
     }
@@ -2009,7 +2067,10 @@ public class ClusterSchemaManager {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.TABLE_NOT_EXISTS,
-              String.format("Table '%s.%s' does not exist", database, tableName)),
+              String.format(
+                  ManagerMessages.MESSAGE_TABLE_ARG_ARG_DOES_NOT_EXIST_8D6D421C,
+                  database,
+                  tableName)),
           null);
     }
 
@@ -2023,7 +2084,8 @@ public class ClusterSchemaManager {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.COLUMN_NOT_EXISTS,
-              String.format("Column '%s' does not exist", columnName)),
+              String.format(
+                  ManagerMessages.MESSAGE_COLUMN_ARG_DOES_NOT_EXIST_FF67AE82, columnName)),
           null);
     }
 
@@ -2064,7 +2126,8 @@ public class ClusterSchemaManager {
             (dataNodeId, status) -> {
               if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                 LOGGER.warn(
-                    "Failed to invalidate last cache of database {} on DataNode {}, status: {}",
+                    ManagerMessages
+                        .LOG_FAILED_TO_INVALIDATE_LAST_CACHE_OF_DATABASE_ARG_ON_DATANODE_ARG_STATUS_ARG_E0B53CBD,
                     database,
                     dataNodeId,
                     status);
@@ -2080,8 +2143,10 @@ public class ClusterSchemaManager {
               RpcUtils.getStatus(
                   TSStatusCode.SEMANTIC_ERROR,
                   String.format(
-                      "Table '%s.%s' is a tree view table, does not support alter table",
-                      database, table.getTableName())),
+                      ManagerMessages
+                          .MESSAGE_TABLE_ARG_ARG_IS_A_TREE_VIEW_TABLE_DOES_NOT_SUPPORT_ALTER_TABLE_931AAA09,
+                      database,
+                      table.getTableName())),
               null));
     }
 
@@ -2091,8 +2156,10 @@ public class ClusterSchemaManager {
               RpcUtils.getStatus(
                   TSStatusCode.SEMANTIC_ERROR,
                   String.format(
-                      "Table '%s.%s' is a base table, does not support alter view",
-                      database, table.getTableName())),
+                      ManagerMessages
+                          .MESSAGE_TABLE_ARG_ARG_IS_A_BASE_TABLE_DOES_NOT_SUPPORT_ALTER_VIEW_75E0E7D2,
+                      database,
+                      table.getTableName())),
               null));
     }
 

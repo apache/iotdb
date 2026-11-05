@@ -25,7 +25,6 @@ import org.apache.iotdb.calc.utils.ObjectTypeUtils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -73,6 +72,7 @@ import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.exception.runtime.TableLostRuntimeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource.Status;
@@ -1020,7 +1020,8 @@ public class DataRegion implements IDataRegionForQuery {
   private WALRecoverListener recoverUnsealedTsFile(
       TsFileResource unsealedTsFile, DataRegionRecoveryContext context, boolean isSeq) {
     UnsealedTsFileRecoverPerformer recoverPerformer =
-        new UnsealedTsFileRecoverPerformer(unsealedTsFile, isSeq, context.recoverPerformers::add);
+        new UnsealedTsFileRecoverPerformer(
+            unsealedTsFile, isSeq, isTableModel, context.recoverPerformers::add);
     // remember to close UnsealedTsFileRecoverPerformer
     return WALRecoverManager.getInstance().addRecoverPerformer(recoverPerformer);
   }
@@ -1691,7 +1692,7 @@ public class DataRegion implements IDataRegionForQuery {
         logger.debug(
             StorageEngineMessages.STORAGE_LOG_WON_T_INSERT_TABLET_BECAUSE_C2DC8032,
             insertTabletNode.getSearchIndex(),
-            "insertTabletNode allMeasurementFailed");
+            StorageEngineMessages.MESSAGE_INSERTTABLETNODE_ALLMEASUREMENTFAILED_A147C989);
       }
       return true;
     }
@@ -2237,9 +2238,6 @@ public class DataRegion implements IDataRegionForQuery {
             StorageEngineMessages
                 .STORAGE_LOG_DISK_SPACE_IS_INSUFFICIENT_WHEN_CREATING_TSFILE_PROCESSOR_4032BAF0,
             e);
-        CommonDescriptor.getInstance()
-            .getConfig()
-            .setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
         throw new WriteProcessException(e.getMessage(), e.getErrorCode(), true);
       } catch (IOException e) {
         if (retryCnt < 3) {
@@ -4838,7 +4836,7 @@ public class DataRegion implements IDataRegionForQuery {
           targetFile.getAbsolutePath());
     }
 
-    LoadTsFileRateLimiter.getInstance().acquire(tsFileResource.getTsFile().length());
+    LoadTsFileRateLimiter.getInstance().acquire(tsFileToLoad.length());
 
     // move file from sync dir to data dir
     if (!targetFile.getParentFile().exists()) {
@@ -5166,7 +5164,7 @@ public class DataRegion implements IDataRegionForQuery {
                   RpcUtils.getStatus(
                       TSStatusCode.OUT_OF_TTL.getStatusCode(),
                       String.format(
-                          "Insertion time [%s] is less than ttl time bound [%s]",
+                          DataNodeQueryMessages.OUT_OF_TTL_FMT,
                           DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
                           DateTimeUtils.convertLongToDate(CommonUtils.getTTLLowerBound(ttl)))));
           continue;
@@ -5284,7 +5282,7 @@ public class DataRegion implements IDataRegionForQuery {
                   RpcUtils.getStatus(
                       TSStatusCode.OUT_OF_TTL.getStatusCode(),
                       String.format(
-                          "Insertion time [%s] is less than ttl time bound [%s]",
+                          DataNodeQueryMessages.OUT_OF_TTL_FMT,
                           DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
                           DateTimeUtils.convertLongToDate(CommonUtils.getTTLLowerBound(ttl)))));
           insertRowNode.setFailedMeasurementNumber(

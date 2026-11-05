@@ -19,19 +19,21 @@
 
 package org.apache.iotdb.confignode.procedure.impl.subscription;
 
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+
 public enum SubscriptionOperation {
-  CREATE_TOPIC("create topic"),
-  DROP_TOPIC("drop topic"),
-  ALTER_TOPIC("alter topic"),
-  CREATE_CONSUMER("create consumer"),
-  DROP_CONSUMER("drop consumer"),
-  ALTER_CONSUMER_GROUP("alter consumer group"),
-  CREATE_SUBSCRIPTION("create subscription"),
-  DROP_SUBSCRIPTION("drop subscription"),
-  HANDLE_LEADER_CHANGE("handle leader change"),
-  SYNC_CONSUMER_GROUP_META("sync consumer group meta"),
-  SYNC_TOPIC_META("sync topic meta"),
-  SYNC_COMMIT_PROGRESS("sync commit progress"),
+  CREATE_TOPIC(ProcedureMessages.MESSAGE_CREATE_TOPIC_1E58E34B),
+  DROP_TOPIC(ProcedureMessages.MESSAGE_DROP_TOPIC_DE9EC653),
+  ALTER_TOPIC(ProcedureMessages.MESSAGE_ALTER_TOPIC_9A77D5DF),
+  CREATE_CONSUMER(ProcedureMessages.MESSAGE_CREATE_CONSUMER_6E8AB994),
+  DROP_CONSUMER(ProcedureMessages.MESSAGE_DROP_CONSUMER_22F524DC),
+  ALTER_CONSUMER_GROUP(ProcedureMessages.MESSAGE_ALTER_CONSUMER_GROUP_91CA211B),
+  CREATE_SUBSCRIPTION(ProcedureMessages.MESSAGE_CREATE_SUBSCRIPTION_2230F05D),
+  DROP_SUBSCRIPTION(ProcedureMessages.MESSAGE_DROP_SUBSCRIPTION_43CE36A6),
+  HANDLE_LEADER_CHANGE(ProcedureMessages.MESSAGE_HANDLE_LEADER_CHANGE_206848AB),
+  SYNC_CONSUMER_GROUP_META(ProcedureMessages.MESSAGE_SYNC_CONSUMER_GROUP_META_5EBCB050),
+  SYNC_TOPIC_META(ProcedureMessages.MESSAGE_SYNC_TOPIC_META_C7ECFD37),
+  SYNC_COMMIT_PROGRESS(ProcedureMessages.MESSAGE_SYNC_COMMIT_PROGRESS_72F4012C),
   ;
 
   private final String name;

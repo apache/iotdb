@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 
 /** General RPC handler for TSStatus response type. */
@@ -78,12 +79,11 @@ public class AsyncTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<TSSt
   @Override
   public void onError(Exception e) {
     String errorMsg =
-        "Failed to "
-            + requestType
-            + " on DataNode: "
-            + formattedTargetLocation
-            + ", exception: "
-            + e.getMessage();
+        String.format(
+            DataNodeMiscMessages.EXCEPTION_FAILED_TO_ARG_ON_DATANODE_ARG_EXCEPTION_ARG_87B8946D,
+            Objects.toString(requestType),
+            Objects.toString(formattedTargetLocation),
+            Objects.toString(e.getMessage()));
     if (!keepSilent) {
       LOGGER.error(errorMsg);
     }

@@ -1593,6 +1593,374 @@ public final class DataNodeMiscMessages {
   public static final String EXCEPTION_BUFFER_SIZE_SHOULD_BE_GREATER_THAN_0_BB68B5C4 =
       "bufferSize 应大于 0";
 
+  public static final String
+      EXCEPTION_STATUS_CODE_ARG_QUERY_STATEMENT_ARG_FAILED_BECAUSE_ARG_3BC781BF =
+          "状态码：%s，查询语句 %s 失败，原因：%s";
+
+  public static final String EXCEPTION_ARG_EXCEPTION_OCCURRED_ARG_FAILED_ARG_16CE5428 =
+      "[%s] 发生异常：%s 失败。%s";
+
+  public static final String
+      EXCEPTION_REQUEST_NAME_TSRAWDATAQUERYREQ_PATHS_SIZE_ARG_STARTIME_ARG_ENDTIME_ARG_SOME_PATHS_ARG_92B722A4 =
+          "请求名称：TSRawDataQueryReq，路径数：%s，开始时间：%s，结束时间：%s，部分路径：%s";
+
+  public static final String
+      EXCEPTION_REQUEST_NAME_TSLASTDATAQUERYREQ_PATHS_SIZE_ARG_SOME_PATHS_ARG_46D12DFF =
+          "请求名称：TSLastDataQueryReq，路径数：%s，部分路径：%s";
+
+  public static final String
+      EXCEPTION_REQUEST_NAME_TSAGGREGATIONQUERYREQ_STARTTIME_ARG_ENDTIME_ARG_PATHS_SIZE_ARG_SOME_PATHS_ARG_9E59CBB8 =
+          "请求名称：TSAggregationQueryReq，开始时间：%s，结束时间：%s，路径数：%s，部分路径：%s";
+
+  public static final String
+      EXCEPTION_REQUEST_NAME_TSFETCHRESULTSREQ_QUERYID_ARG_OUTPUT_VALUE_COLUMN_COUNT_ARG_FETCHSIZE_ARG_SOME_RESPONSE_HEADERS_ARG_15468822 =
+          "请求名称：TSFetchResultsReq，queryId：%s，输出值列数：%s，fetchSize：%s，部分响应表头：%s";
+
+  public static final String
+      EXCEPTION_REQUEST_NAME_TSFASTLASTDATAQUERYFORONEDEVICEREQ_DB_ARG_DEVICEID_ARG_SENSORSIZE_ARG_SENSORS_ARG_D1F9A498 =
+          "请求名称：TSFastLastDataQueryForOneDeviceReq，数据库：%s，deviceId：%s，传感器数：%s，传感器：%s";
+
+  public static final String LOG_NODE_TOOL_ARG_076E307A = "node-tool：%s";
+
+  public static final String LOG_SEE_NODE_TOOL_HELP_OR_NODE_TOOL_HELP_COMMAND_BB9F5146 =
+      "参见 'node-tool help' 或 'node-tool help <command>'。";
+
+  public static final String LOG_ERROR_ARG_76028BAA = "错误：%s";
+
+  public static final String LOG_STACKTRACE_131CBB85 = "-- 堆栈跟踪 --";
+
+  public static final String
+      EXCEPTION_FAILED_TO_REGISTERED_TRIGGER_ARG_BECAUSE_EXISTED_MD5_OF_JAR_FILE_FOR_TRIGGER_ARG_IS_DIFFERENT_FROM_THE_NEW_JAR_FILE_4069F2F9 =
+          "注册触发器 %s 失败，因为触发器 %s 已有的 jar 文件 md5 与新 jar 文件不同。 ";
+
+  public static final String
+      EXCEPTION_FAILED_TO_REGISTERED_TRIGGER_ARG_BECAUSE_ERROR_OCCURRED_WHEN_TRYING_TO_COMPUTE_MD5_OF_JAR_FILE_FOR_TRIGGER_ARG_27F35B86 =
+          "注册触发器 %s 失败，因为计算触发器 %s 的 jar 文件 md5 时发生错误 ";
+
+  public static final String
+      EXCEPTION_FAILED_TO_REGISTER_TRIGGER_ARG_WITH_CLASSNAME_ARG_THE_CAUSE_IS_ARG_D08E9589 =
+          "注册触发器 %s 失败，className：%s。原因：%s";
+
+  public static final String
+      EXCEPTION_ERROR_OCCURRED_DURING_EXECUTING_TRIGGER_ARG_ARG_ARG_PLEASE_CHECK_WHETHER_THE_IMPLEMENTATION_OF_TRIGGER_IS_CORRECT_ACCORDING_TO_THE_TRIGGER_API_DESCRIPTION_98708501 =
+          "执行 Trigger(%s)#%s 时发生错误：%s，请根据 trigger-api 描述检查触发器的实现是否正确。";
+
+  public static final String
+      LOG_PLEASE_INPUT_CORRECT_PARAM_WHICH_IS_PATH_OF_DATA_DIR_PD_PRINT_DETAILS_OR_NOT_F_PATH_OF_OUTFILE_EG_XXX_IOTDB_DATA_DATA_PD_TRUE_F_XXX_TSFILE_VALIDATION_VIEW_TXT_19739CB5 =
+          "请输入正确参数：[数据目录路径] [-pd = 是否打印详情] [-f = 输出文件路径]。例如：xxx/iotdb/data/data -pd=true"
+              + " -f=xxx/TsFile_validation_view.txt";
+
+  public static final String LOG_ARG_IS_NOT_A_CORRECT_DATA_DIRECTORY_OR_TSFILE_OF_IOTDB_CD028542 =
+      "%s 不是正确的 IoTDB 数据目录或 TsFile。";
+
+  public static final String LOG_PLEASE_INPUT_SEQUENCE_DATA_DIR_PATH_6B8E0450 = "请输入顺序数据目录路径。";
+
+  public static final String LOG_TIMEPARTITIONS_WHICH_HAVE_OVERLAP_FILES_B50DEB6C =
+      "包含重叠文件的 TimePartition：";
+
+  public static final String LOG_OVERLAP_TSFILE_NUM_IS_ARG_TOTAL_TSFILE_NUM_IS_ARG_892F7267 =
+      "重叠 TsFile 数为 %d，TsFile 总数为 %d\n";
+
+  public static final String LOG_REPAIR_OVERLAP_TSFILES_Y_N_D8587D19 = "修复重叠的 TsFile（y/n）";
+
+  public static final String LOG_ARG_DOES_NOT_EXIST_WHEN_REPAIRING_763A5B2F = "修复时 %s 不存在";
+
+  public static final String LOG_FAILED_TO_REPAIR_ARG_6522A1E2 = "修复 %s 失败";
+
+  public static final String LOG_REPAIR_FILE_ARG_BEFC61E6 = "修复文件 %s";
+
+  public static final String LOG_ARG_IS_NOT_A_CORRECT_PATH_F2B497AA = "%s 不是正确的路径";
+
+  public static final String LOG_TIMEPARTITION_ARG_HAS_OVERLAP_FILE_DIR_IS_ARG_3F69AA70 =
+      "TimePartition %s 存在重叠文件，目录为 %s";
+
+  public static final String
+      LOG_PREVIOUS_FILE_ARG_CURRENT_FILE_ARG_DEVICE_ARG_IN_PREVIOUS_FILE_END_TIME_IS_ARG_DEVICE_IN_CURRENT_FILE_START_TIME_IS_ARG_6AB6F44C =
+          "前一个文件：%s，当前文件：%s，前一个文件中设备 %s 的结束时间为 %d，当前文件中该设备的开始时间为 %d\n";
+
+  public static final String
+      LOG_TIME_PARTITION_ARG_IS_SKIPPED_BECAUSE_A_COMPACTION_IS_NOT_FINISHED_4A775D07 =
+          "跳过时间分区 %s，因为有合并尚未完成";
+
+  public static final String LOG_ARG_IS_SKIPPED_BECAUSE_RESOURCE_FILE_IS_NOT_EXIST_24044E7F =
+      "跳过 %s，因为 resource 文件不存在。";
+
+  public static final String LOG_SERIES_DATA_TYPE_COUNT_ARG_4D78B18F = "时间序列数据类型计数：%s";
+
+  public static final String
+      LOG_INT64_SERIES_STATISTICS_OVERPRECISED_ARG_JUSTPRECISED_ARG_SMALLRANGE_ARG_LARGERANGE_ARG_29005700 =
+          "Int64 时间序列统计：精度过高 %s，精度恰当 %s，范围较小 %s，范围较大 %s";
+
+  public static final String LOG_DATA_TYPE_SIZE_ARG_3003BCA0 = "数据类型 -> 大小：%s";
+
+  public static final String LOG_DATA_TYPE_POINT_COUNT_ARG_37821A36 = "数据类型 -> 数据点数：%s";
+
+  public static final String LOG_DATA_TYPE_CHUNK_COUNT_ARG_15B8F1E4 = "数据类型 -> Chunk 数：%s";
+
+  public static final String LOG_AVERAGE_DISTINCT_BINARY_VALUE_NUM_ARG_E12BEF2A = "不重复二进制值的平均数量：%s";
+
+  public static final String LOG_BEFORE_REWRITE_ARG_AFTER_REWRITE_ARG_RATIO_ARG_ARG_5D6B0081 =
+      "重写前 %d，重写后 %d，比率 %f%n";
+
+  public static final String LOG_PROCESSED_A_CHUNK_OF_ARG_ARG_C6C93E9E = "已处理 %s.%s 的一个 Chunk";
+
+  public static final String LOG_TSFILE_PATH_ARG_5BCB5137 = "TsFile 路径：%s";
+
+  public static final String LOG_SKETCH_SAVE_PATH_ARG_9586FA20 = "概览保存路径：%s";
+
+  public static final String LOG_ANALYZING_THE_RESOURCE_FILE_FOLDER_ARG_FINISHED_75334FCE =
+      "分析资源文件夹 %s 完成。";
+
+  public static final String LOG_ANALYZING_THE_RESOURCE_FILE_ARG_FINISHED_95367812 =
+      "分析资源文件 %s 完成。";
+
+  public static final String LOG_ANALYZING_ARG_ARG_0AFCE795 = "正在分析 %s ...%n";
+
+  public static final String LOG_TIME_INDEX_TYPE_ARG_63B81EC5 = "时间索引类型：%s";
+
+  public static final String LOG_RESOURCE_PLAN_INDEX_RANGE_ARG_ARG_ARG_BB9E5A74 =
+      "资源计划索引范围 [%d, %d]%n";
+
+  public static final String LOG_DEVICE_ARG_START_TIME_ARG_ARG_END_TIME_ARG_ARG_ARG_7CC98253 =
+      "设备 %s，开始时间 %d（%s），结束时间 %d（%s）%n";
+
+  public static final String LOG_OUTPUT_SAVE_PATH_ARG_1876448C = "输出保存路径：%s";
+
+  public static final String LOG_DATA_DIR_NUM_ARG_5D16D696 = "数据目录数：%s";
+
+  public static final String EXCEPTION_DEVICE_ARG_START_TIME_IS_NULL_0A1A37C4 =
+      "|  |  |  |  |  |--设备 %s，开始时间为空";
+
+  public static final String EXCEPTION_DEVICE_ARG_END_TIME_IS_NULL_60C3310D =
+      "|  |  |  |  |  |--设备 %s，结束时间为空";
+
+  public static final String EXCEPTION_DEVICE_ARG_START_TIME_ARG_ARG_END_TIME_ARG_ARG_00865978 =
+      "|  |  |  |  |  |--设备 %s，开始时间 %d（%s），结束时间 %d（%s）";
+
+  public static final String
+      EXCEPTION_DELAYANALYZER_STATISTICS_SAMPLES_ARG_ARG_P50_ARG_MS_P95_ARG_MS_P99_ARG_MS_MAX_ARG_MS_F0EBB575 =
+          "DelayAnalyzer 统计 -> 样本：%d/%d，P50：%dms，P95：%dms，P99：%dms，最大值：%dms";
+
+  public static final String EXCEPTION_ARG_METADATA_ERROR_69A34C2E = "%s：元数据错误：";
+
+  public static final String
+      EXCEPTION_FAILED_TO_RESOLVE_CANONICAL_PATH_FOR_LOAD_TSFILE_ALLOWED_DIRECTORY_ARG_ARG_9BD3ABDA =
+          "无法解析 Load TsFile 允许目录 %s 的规范路径：%s";
+
+  public static final String
+      EXCEPTION_CANNOT_SET_MULTI_DIR_STRATEGY_TO_ARG_BECAUSE_CLUSTER_MODE_ONLY_ALLOWS_ARG_B0E64F6D =
+          "无法将 multi_dir_strategy 设置为 %s，因为集群模式仅允许 %s。";
+
+  public static final String EXCEPTION_DATANODE_ARG_EXITING_75D198C4 = "DataNode %s 正在退出...";
+
+  public static final String
+      EXCEPTION_SUCCESSFULLY_START_THE_AUDIT_SERVICE_WITH_CONFIGURATIONS_AUDITABLEOPERATIONTYPE_ARG_AUDITABLEOPERATIONLEVEL_ARG_AUDITABLEOPERATIONRESULT_ARG_IN_DATANODE_ARG_5BC6AC7D =
+          "成功启动审计服务，配置为（auditableOperationType %s，auditableOperationLevel"
+              + " %s，auditableOperationResult %s），所在 DataNode：%s";
+
+  public static final String
+      EXCEPTION_FAILED_TO_CONNECT_TO_AINODE_AFTER_ARG_RETRIES_PLEASE_CHECK_THE_STATUS_OF_AINODE_C93D40BE =
+          "重试 %d 次后仍无法连接到 AINode，请检查 AINode 的状态";
+
+  public static final String
+      EXCEPTION_ARG_LOGIN_STATUS_ARG_USER_ARG_ID_ARG_OPENS_SESSION_ARG_70586F85 =
+          "%s：登录状态：%s。用户 %s（ID=%d）打开 Session-%s";
+
+  public static final String EXCEPTION_USER_ARG_ID_ARG_LOGIN_FAILED_WITH_CODE_ARG_ARG_93FAE4FD =
+      "用户 %s（ID=%d）登录失败，错误码：%d，%s";
+
+  public static final String EXCEPTION_EXCEPTION_OCCURRED_WHILE_PROCESSING_NON_READ_2EEBCBDC =
+      "处理非读取操作时发生异常。 ";
+
+  public static final String EXCEPTION_DATATYPE_NOT_CONSISTENT_27AE280F = "数据类型不一致";
+
+  public static final String EXCEPTION_TRIGGER_FIRES_SUCCESSFULLY_FACD095E = "触发器触发成功";
+
+  public static final String
+      EXCEPTION_EXCEPTION_OCCURRED_WHEN_FIRING_AN_TRIGGER_WITH_OPTIMISTIC_STRATEGY_623857A6 =
+          "使用乐观策略触发触发器时发生异常";
+
+  public static final String
+      EXCEPTION_EXCEPTION_OCCURRED_WHEN_FIRING_AN_TRIGGER_WITH_PESSIMISTIC_STRATEGY_ED052363 =
+          "使用悲观策略触发触发器时发生异常";
+
+  public static final String EXCEPTION_START_CHECKING_SEQ_FILES_8AE84FCD = "开始检查顺序文件 ...";
+
+  public static final String EXCEPTION_CHECK_FILES_IN_DATABASE_ARG_34C82099 = "- 检查数据库中的文件：%s";
+
+  public static final String
+      EXCEPTION_FINISH_CHECKING_SUCCESSFULLY_TOTALLY_FIND_ARG_BAD_FILES_70EE9E55 =
+          "检查完成，共发现 %s 个损坏文件。";
+
+  public static final String
+      EXCEPTION_USAGE_ISGENERATEDBYPIPE_TRUE_FALSE_RESETPROGRESSINDEX_DIRS_DIR1_DIR2_ISGENERATEDBYPIPE_WHETHER_THE_TSFILERESOURCE_IS_ISGENERATEDBYPIPE_TO_BE_GENERATED_BY_PIPE_RESETPROGRESSINDEX_WHETHER_TO_RESET_THE_TSFILERESOURCES_PROGRESSINDEXES_DIRS_LIST_OF_DATA_DIRECTORIES_TO_VALIDATE_AND_REPAIR_2C27E522 =
+          "用法：[--isGeneratedByPipe true|false] [--resetProgressIndex] --dirs <dir1> <dir2> ...\n"
+              + "  --isGeneratedByPipe：TsFileResource 是否由 Pipe 生成\n"
+              + "  --resetProgressIndex：是否重置 TsFileResource 的 progressIndex\n"
+              + "  --dirs：待验证和修复的数据目录列表";
+
+  public static final String
+      EXCEPTION_MEET_ERRORS_IN_READING_FILE_ARG_TSFILE_MAY_BE_CORRUPTED_35B0E30A =
+          "-- 读取文件 %s 时发生错误，TsFile 可能已损坏。";
+
+  public static final String EXCEPTION_TSFILE_SKETCH_1EC1BE8B =
+      "-------------------------------- TsFile 概览 --------------------------------";
+
+  public static final String EXCEPTION_FILE_PATH_ARG_24A369C1 = "文件路径：%s";
+
+  public static final String EXCEPTION_FILE_LENGTH_ARG_D908AA1C = "文件长度：%s";
+
+  public static final String EXCEPTION_ARG_END_OF_TSFILE_119E234F = "%s|\tTsFile 结束";
+
+  public static final String EXCEPTION_INDEXOFTIMERSERIESINDEX_TREE_D0E6F25B =
+      "---------------------------- IndexOfTimerseriesIndex 树 -----------------------------";
+
+  public static final String EXCEPTION_TSFILE_SKETCH_END_8C796669 =
+      "---------------------------------- TsFile 概览结束 ----------------------------------";
+
+  public static final String EXCEPTION_ARG_META_OFFSET_ARG_4D94DFFD = "%s|\t[元数据偏移量] %s";
+
+  public static final String
+      EXCEPTION_ARG_BLOOM_FILTER_BIT_VECTOR_BYTE_ARRAY_LENGTH_ARG_FILTERSIZE_ARG_HASHFUNCTIONSIZE_ARG_9F9959F5 =
+          "%s|\t[布隆过滤器] 位向量字节数组长度=%s，filterSize=%s，hashFunctionSize=%s";
+
+  public static final String EXCEPTION_ARG_MAGIC_TAIL_ARG_5A49658F = "%s|\t[文件尾魔数] %s";
+
+  public static final String EXCEPTION_ARG_INDEXOFTIMERSERIESINDEX_NODE_TYPE_ARG_D0FE344F =
+      "%s|\t[IndexOfTimerseriesIndex 节点] 类型=%s";
+
+  public static final String EXCEPTION_ARG_MAGIC_HEAD_ARG_BD711EBD = "%s|\t[文件头魔数] %s";
+
+  public static final String EXCEPTION_ARG_VERSION_NUMBER_ARG_0FBD10B6 = "%s|\t[版本号] %s";
+
+  public static final String EXCEPTION_ARG_CHUNK_GROUP_OF_ARG_NUM_OF_CHUNKS_ARG_52E5BE1A =
+      "%s [ChunkGroup]，所属设备 %s，Chunk 数：%s";
+
+  public static final String EXCEPTION_ARG_CHUNK_GROUP_HEADER_7D173A5C = "%s|\t[ChunkGroup 头]";
+
+  public static final String
+      EXCEPTION_ARG_CHUNK_HEADER_MARKER_ARG_MEASUREMENTID_ARG_DATASIZE_ARG_DATATYPE_ARG_COMPRESSIONTYPE_ARG_ENCODINGTYPE_ARG_5831221F =
+          "%s|\t\t[Chunk 头]"
+              + " marker=%s，measurementID=%s，dataSize=%s，dataType=%s，compressionType=%s，encodingType=%s";
+
+  public static final String EXCEPTION_ARG_CHUNK_GROUP_OF_ARG_ENDS_F5B5A51D =
+      "%s [ChunkGroup]，所属设备 %s，结束";
+
+  public static final String EXCEPTION_FILE_PATHS_8A252140 = "文件路径";
+
+  public static final String EXCEPTION_HOST_NAME_OPTIONAL_DEFAULT_127_0_0_1_A3013008 =
+      "主机名（可选，默认为 127.0.0.1";
+
+  public static final String EXCEPTION_FILE_PATHS_REQUIRED_09CF75D5 = "文件路径（必需）";
+
+  public static final String EXCEPTION_DELAYANALYZER_NO_DATA_COLLECTED_YET_A237116F =
+      "[DelayAnalyzer] 尚未收集到数据";
+
+  public static final String EXCEPTION_FAILED_TO_CONNECT_TO_CONFIG_NODE_DE88B1B7 =
+      "连接 ConfigNode 失败。";
+
+  public static final String EXCEPTION_AUTHENTICATION_FAILED_802B207B = "身份验证失败。";
+
+  public static final String
+      EXCEPTION_NO_PERMISSIONS_FOR_THIS_OPERATION_ONLY_ROOT_USER_IS_ALLOWED_550785E7 =
+          "无权执行此操作，仅允许 root 用户执行";
+
+  public static final String
+      EXCEPTION_NO_PERMISSIONS_FOR_THIS_OPERATION_PLEASE_ADD_PRIVILEGE_428F7542 = "无权执行此操作，请添加权限 ";
+
+  public static final String
+      EXCEPTION_NO_PERMISSIONS_FOR_THIS_OPERATION_PLEASE_ADD_GRANT_OPTION_TO_PRIVILEGE_52CAE93E =
+          "无权执行此操作，请为以下权限添加授权选项 ";
+
+  public static final String
+      EXCEPTION_SOME_DATA_DIRS_ARE_REMOVED_FROM_DATA_DIRS_PARAMETER_PLEASE_ADD_THEM_BACK_7BF4DBFE =
+          "部分数据目录已从 data_dirs 参数中移除，请将其添加回来。";
+
+  public static final String EXCEPTION_EXECUTE_SUCCESSFULLY_BF983B59 = "执行成功";
+
+  public static final String EXCEPTION_CONSENSUS_HAS_NOT_BEEN_STARTED_AFTER_ARG_SECONDS_AC8147E7 =
+      "%s 秒后共识仍未启动";
+
+  public static final String EXCEPTION_THIS_OPERATION_TYPE_IS_NOT_SUPPORTED_DD44BACE = "不支持此操作类型";
+
+  public static final String EXCEPTION_PREVIOUS_REPAIR_TASK_IS_STILL_STOPPING_F6FAD84A =
+      "上一个修复任务仍在停止中";
+
+  public static final String EXCEPTION_ALREADY_HAVE_A_RUNNING_REPAIR_TASK_826E4880 = "已有正在运行的修复任务";
+
+  public static final String
+      EXCEPTION_CHANGEREGIONLEADER_THE_CURRENT_DATANODE_ARG_IS_ALREADY_THE_LEADER_OF_REGIONGROUP_ARG_SKIP_LEADER_TRANSFER_68699742 =
+          "[ChangeRegionLeader] 当前 DataNode：%s 已是 RegionGroup：%s 的 Leader，跳过 Leader 转移。";
+
+  public static final String EXCEPTION_UNKNOWN_TASK_STATUS_ARG_62ED14CA = "未知的任务状态：%s";
+
+  public static final String
+      EXCEPTION_QUERY_IS_NOT_FOUND_IT_MAY_BE_KILLED_BY_OTHERS_TIMEOUT_OR_SOME_OTHER_RUNTIME_ERRORS_YOU_CAN_SEE_MORE_DETAILS_IN_SERVER_LOG_90BD085E =
+          "未找到查询，可能已被其他用户终止、超时或发生其他运行时错误，更多详情请查看服务器日志。";
+
+  public static final String EXCEPTION_CANCELLATION_IS_NOT_IMPLEMENTED_91FA6607 = "尚未实现取消操作";
+
+  public static final String EXCEPTION_FAILED_TO_PARSE_SQL_ARG_20075759 = "解析 SQL 失败：%s";
+
+  public static final String EXCEPTION_UNKNOWN_TIME_ZONE_D224D82D = "未知的时区";
+
+  public static final String EXCEPTION_FETCH_METADATA_IS_NOT_SUPPORTED_20489A74 = "不支持获取元数据。";
+
+  public static final String EXCEPTION_EXECUTE_BATCH_STATEMENTS_SUCCESSFULLY_38422BA6 = "批量执行语句成功";
+
+  public static final String EXCEPTION_MODIFY_TEMPLATE_HAS_NOT_BEEN_SUPPORTED_976B19DE =
+      "尚不支持修改模板。";
+
+  public static final String EXCEPTION_ARG_HAS_NOT_BEEN_SUPPORTED_F90BAF99 = "尚不支持 %s。";
+
+  public static final String EXCEPTION_LOGIN_SUCCESSFULLY_1C2EF670 = "登录成功";
+
+  public static final String EXCEPTION_STATEMENT_ID_NOT_SET_BY_CLIENT_BDA3B354 =
+      "客户端未设置 statement ID。";
+
+  public static final String EXCEPTION_FAILED_TO_ARG_ON_DATANODE_ARG_EXCEPTION_ARG_87B8946D =
+      "执行 %s 失败，DataNode：%s，异常：%s";
+
+  public static final String EXCEPTION_FAILED_TO_ARG_ON_CONFIGNODE_ARG_EXCEPTION_ARG_CD279F8B =
+      "执行 %s 失败，ConfigNode：%s，异常：%s";
+
+  public static final String
+      EXCEPTION_FAIL_TO_CONNECT_TO_AINODE_FROM_DATANODE_ARG_WHEN_EXECUTING_ARG_2DE6EA1D =
+          "从 DataNode %s 执行 %s 时连接 AINode 失败。";
+
+  public static final String
+      EXCEPTION_EXTERNAL_SERVICE_INSTANCE_IS_NULL_WHEN_STATE_IS_RUNNING_B062C897 =
+          "状态为 RUNNING 时外部服务实例为空！";
+
+  public static final String EXCEPTION_STACK_TRACE_OF_SHUTDOWN_HOOK_2EB9D12F = "关闭钩子的堆栈跟踪：\n";
+
+  public static final String
+      EXCEPTION_UNEXPECTED_INTERRUPTION_WHEN_WAITING_TO_REGISTER_TO_THE_CLUSTER_DD7A0BEC =
+          "等待注册到集群时被意外中断";
+
+  public static final String EXCEPTION_STACK_TRACE_OF_MAIN_THREAD_0B7EC78B = "主线程的堆栈跟踪：\n";
+
+  public static final String LOG_FIND_THE_BAD_FILE_ARG_OVERLAP_WITH_LATTER_FILES_ECF50A14 =
+      "-- 发现异常文件 %s，与后续文件重叠。";
+
+  public static final String LOG_FIND_THE_BAD_FILE_ARG_4251BC8D = "-- 发现异常文件 %s";
+
+  public static final String LOG_DEVICE_ARG_OVERLAP_BETWEEN_FILES_WITH_PREVIOUS_FILE_ARG_781B1DA1 =
+      "---- 设备 %s 存在跨文件重叠，前一文件为 %s";
+
+  public static final String
+      LOG_TIMESERIES_ARG_OVERLAP_BETWEEN_FILES_WITH_PREVIOUS_FILE_ARG_6DF56DE2 =
+          "-------- 时间序列 %s 存在跨文件重叠，前一文件为 %s";
+
+  public static final String LOG_TIMESERIES_ARG_OVERLAP_BETWEEN_CHUNKS_99A2EA3F =
+      "-------- 时间序列 %s 存在 Chunk 间重叠";
+
+  public static final String LOG_TIMESERIES_ARG_OVERLAP_BETWEEN_PAGES_E7D98B39 =
+      "-------- 时间序列 %s 存在 Page 间重叠";
+
+  public static final String LOG_TIMESERIES_ARG_OVERLAP_WITHIN_ONE_PAGE_A712F779 =
+      "-------- 时间序列 %s 在同一 Page 内存在重叠";
+
   public static final String LOG_INVALID_PIVOT_CONFIGURATION_VALUE_FOR_ARG_ARG_KEEPING_ARG_FCB21FF0 =
       "无效的 PIVOT 配置值 {}：{}；保留当前值 {}";
 }

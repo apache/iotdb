@@ -260,4 +260,9 @@ public final class UtilMessages {
   public static final String LOG_ARG_COLON_ARG_DCE519A1 = "{}: {}";
   public static final String EMPTY_MESSAGE = "";
 
+  public static final String
+      EXCEPTION_IN_WINDOWS_SYSTEM_THE_PATH_SHALL_NOT_CONTAIN_ARG_OR_ASCII_CONTROL_CHARACTERS_EQUALS_ONE_OF_ARG_WITH_OR_WITHOUT_AN_EXTENSION_OR_ENDS_WITH_OR_B3B92470 =
+          "在 Windows 系统中，路径不能包含 %s 或 ASCII 控制字符，不能与 %s 中任一名称相同（无论是否带扩展名），也不能以 '.' 或 ' ' 结尾。";
+
+  public static final String EXCEPTION_FROM_ARG_TO_ARG_D2758D41 = "从 %s 到 %s";
 }
