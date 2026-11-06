@@ -23,6 +23,7 @@ import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TTransportException;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 /**
  * Note that this class is mainly copied from class {@link
@@ -32,10 +33,18 @@ import java.io.IOException;
 public class AutoScalingBufferWriteTransport extends NonOpenTransport {
 
   private final AutoResizingBuffer buf;
+  private final int maxReusableBufferSize;
+  private byte[] temporaryBuffer;
   private int pos;
 
   public AutoScalingBufferWriteTransport(int initialCapacity) throws IOException {
+    this(initialCapacity, Integer.MAX_VALUE);
+  }
+
+  AutoScalingBufferWriteTransport(int initialCapacity, int maxReusableBufferSize)
+      throws IOException {
     this.buf = new AutoResizingBuffer(initialCapacity);
+    this.maxReusableBufferSize = maxReusableBufferSize;
     this.pos = 0;
   }
 
@@ -49,11 +58,11 @@ public class AutoScalingBufferWriteTransport extends NonOpenTransport {
     try {
       // A small prefix during serialization does not indicate a small frame. Only the complete
       // frame size, supplied after flushing, may trigger shrinking.
-      buf.ensureCapacity(pos + len);
+      ensureCapacity(pos + len);
     } catch (IOException e) {
       throw new TTransportException(e);
     }
-    System.arraycopy(toWrite, off, buf.array(), pos, len);
+    System.arraycopy(toWrite, off, getBuffer(), pos, len);
     pos += len;
   }
 
@@ -63,21 +72,55 @@ public class AutoScalingBufferWriteTransport extends NonOpenTransport {
 
   public void reset() {
     pos = 0;
+    temporaryBuffer = null;
+  }
+
+  void resetAndResize() throws IOException {
+    int length = pos;
+    reset();
+    // A completed large frame must not recreate the temporary array just released by reset().
+    if (length <= maxReusableBufferSize) {
+      buf.resizeIfNecessary(length);
+    }
   }
 
   @Override
   public void close() {
     super.close();
+    reset();
     buf.close();
   }
 
   public void resizeIfNecessary(int size) throws IOException {
-    buf.resizeIfNecessary(size);
+    if (size > maxReusableBufferSize) {
+      ensureCapacity(size);
+    } else {
+      buf.resizeIfNecessary(size);
+      temporaryBuffer = null;
+    }
+  }
+
+  private void ensureCapacity(int size) throws IOException {
+    if (size > maxReusableBufferSize) {
+      if (temporaryBuffer == null || temporaryBuffer.length < size) {
+        // Preserve an unfinished frame when incremental serialization crosses the threshold.
+        // Keep amortized growth for subsequent small writes within the same temporary frame.
+        int capacity =
+            temporaryBuffer == null
+                ? size
+                : Math.max(size, temporaryBuffer.length + (temporaryBuffer.length >> 1));
+        byte[] newBuffer = Arrays.copyOf(getBuffer(), capacity);
+        buf.resetToInitialCapacity();
+        temporaryBuffer = newBuffer;
+      }
+    } else {
+      buf.ensureCapacity(size);
+    }
   }
 
   @Override
   public byte[] getBuffer() {
-    return buf.array();
+    return temporaryBuffer == null ? buf.array() : temporaryBuffer;
   }
 
   @Override

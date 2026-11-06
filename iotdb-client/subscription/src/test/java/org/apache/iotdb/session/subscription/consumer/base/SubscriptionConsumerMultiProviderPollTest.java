@@ -429,6 +429,79 @@ public class SubscriptionConsumerMultiProviderPollTest {
   }
 
   @Test(timeout = 20_000)
+  public void testSyncCommitRetriesObsoleteProviderFencingAndPreservesConfirmedBatches()
+      throws Exception {
+    assertObsoleteProviderFencingRecovery(false);
+  }
+
+  @Test(timeout = 20_000)
+  public void testAutoCommitRetainsUnconfirmedBatchesAfterObsoleteProviderFencing()
+      throws Exception {
+    assertObsoleteProviderFencingRecovery(true);
+  }
+
+  @SuppressWarnings("unchecked")
+  private void assertObsoleteProviderFencingRecovery(final boolean automatic) throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer(1, 0, false, false, 3, true);
+    TestSubscriptionProvider obsolete = null;
+    try {
+      consumer.open();
+      obsolete = consumer.createdProviders.get(0);
+      final TestSubscriptionProvider oldProvider = obsolete;
+      final TestSubscriptionProvider replacement =
+          (TestSubscriptionProvider)
+              consumer.constructProviderAndHandshake(new TEndPoint(HOST, FIRST_PORT));
+      final Field field =
+          AbstractSubscriptionProviders.class.getDeclaredField("subscriptionProviders");
+      field.setAccessible(true);
+      final Map<Integer, AbstractSubscriptionProvider> providers =
+          (Map<Integer, AbstractSubscriptionProvider>) field.get(getProviders(consumer));
+      final SubscriptionCommitContext first = batchCommitContext(1L, false);
+      final SubscriptionCommitContext second = batchCommitContext(2L, false);
+      enableCommitBatching(oldProvider, first);
+      replacement.committedProgressByTopic = Collections.singletonMap(TOPIC, batchProgress(second));
+      oldProvider.commitAction =
+          () -> {
+            if (oldProvider.commitBatches.size() == 2) {
+              // Model the late response from a provider whose replacement is already registered.
+              providers.put(1, replacement);
+              throw new SubscriptionConsumerFencedException("obsolete connection fenced");
+            }
+          };
+      final Set<SubscriptionCommitContext> pending = ConcurrentHashMap.newKeySet();
+      pending.addAll(Arrays.asList(first, second));
+      getUncommittedCommitContexts(consumer).put(0L, pending);
+
+      if (automatic) {
+        final Class<?> worker =
+            Class.forName(AbstractSubscriptionPullConsumer.class.getName() + "$AutoCommitWorker");
+        final java.lang.reflect.Constructor<?> constructor =
+            worker.getDeclaredConstructor(AbstractSubscriptionPullConsumer.class);
+        constructor.setAccessible(true);
+        ((Runnable) constructor.newInstance(consumer)).run();
+        Assert.assertFalse(consumer.isFenced());
+        Assert.assertEquals(Collections.singleton(second), pending);
+        consumer.commitSync(new SubscriptionMessage(second, 2L));
+      } else {
+        consumer.commitSync(
+            Arrays.asList(new SubscriptionMessage(first, 1L), new SubscriptionMessage(second, 2L)));
+      }
+
+      Assert.assertFalse(consumer.isFenced());
+      Assert.assertTrue(getUncommittedCommitContexts(consumer).isEmpty());
+      Assert.assertEquals(2, oldProvider.commitBatches.size());
+      Assert.assertEquals(1, replacement.commitCount.get());
+      Assert.assertEquals(Collections.singletonList(second), replacement.committed);
+      Assert.assertEquals(2, consumer.committedPositions(TOPIC).getRegionProgress().size());
+    } finally {
+      consumer.close();
+      if (obsolete != null) {
+        obsolete.closeSession();
+      }
+    }
+  }
+
+  @Test(timeout = 20_000)
   public void testSyncCommitRecoversAlreadyUnavailableProvider() throws Exception {
     final TestPullConsumer consumer = new TestPullConsumer(1, 0);
     try {

@@ -488,6 +488,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
             "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=127.0.0.1:"
                 + jvmConfig.getDebugPort());
       }
+      startCmd.addAll(jvmConfig.getJvmOptions());
       if (!SystemUtils.IS_JAVA_1_8) {
         startCmd.add("--add-opens=java.base/java.util.concurrent=ALL-UNNAMED");
         startCmd.add("--add-opens=java.base/java.lang=ALL-UNNAMED");

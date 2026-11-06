@@ -23,6 +23,10 @@ import org.apache.iotdb.itbase.env.JVMConfig;
 
 import javax.annotation.Nullable;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 public class MppJVMConfig implements JVMConfig {
 
   private int initHeapSize;
@@ -30,6 +34,7 @@ public class MppJVMConfig implements JVMConfig {
   private int maxDirectMemorySize;
   private String timezone;
   private int debugPort;
+  private List<String> jvmOptions = Collections.emptyList();
 
   /** Enables loopback-only JDWP for tests that need to observe an exact node execution stage. */
   public void setDebugPort(int debugPort) {
@@ -38,6 +43,15 @@ public class MppJVMConfig implements JVMConfig {
 
   public int getDebugPort() {
     return debugPort;
+  }
+
+  /** Additional arguments for child test-node JVMs, for example a test-only Java agent. */
+  public void setJvmOptions(List<String> options) {
+    this.jvmOptions = new ArrayList<>(options);
+  }
+
+  public List<String> getJvmOptions() {
+    return Collections.unmodifiableList(jvmOptions);
   }
 
   @Override
@@ -105,6 +119,7 @@ public class MppJVMConfig implements JVMConfig {
     this.setMaxDirectMemorySize(config.getMaxDirectMemorySize());
     this.setTimezone(config.getTimezone());
     this.setDebugPort(config.getDebugPort());
+    this.setJvmOptions(config.getJvmOptions());
   }
 
   public static Builder builder() {
