@@ -154,6 +154,9 @@ public final class IoTConsensusMessages {
   public static final String THREAD_INTERRUPTED_WAITING_SYNC_LOG =
       "等待 %s 完成 SyncLog 时线程被中断。%s";
 
+  public static final String EXCEPTION_TIMED_OUT_AFTER_ARG_MS_WAITING_FOR_ARG_TO_REPLICATE_THROUGH_INDEX_ARG_CURRENT_SYNC_INDEX_ARG_11DCFE73 =
+      "等待 %s ms 后，%s 仍未复制到 index %s（当前同步 index：%s）。";
+
   // ===================== Index 控制器 =====================
 
   public static final String UPDATE_INDEX =
