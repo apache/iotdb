@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
@@ -43,6 +44,9 @@ import java.util.Map;
 import java.util.Objects;
 
 public class InternalCreateMultiTimeSeriesNode extends WritePlanNode {
+
+  private static final int SPLIT_SIZE =
+      IoTDBDescriptor.getInstance().getConfig().getMaxMeasurementNumOfInternalRequest();
 
   // <DevicePath, <IsAligned, MeasurementGroup>>
   private Map<PartialPath, Pair<Boolean, MeasurementGroup>> deviceMap;
@@ -161,10 +165,54 @@ public class InternalCreateMultiTimeSeriesNode extends WritePlanNode {
     List<WritePlanNode> result = new ArrayList<>();
     for (Map.Entry<TRegionReplicaSet, Map<PartialPath, Pair<Boolean, MeasurementGroup>>> entry :
         splitMap.entrySet()) {
-      result.add(
-          new InternalCreateMultiTimeSeriesNode(getPlanNodeId(), entry.getValue(), entry.getKey()));
+      for (Map<PartialPath, Pair<Boolean, MeasurementGroup>> measurementGroupMap :
+          splitAndRegroupMeasurements(entry.getValue())) {
+        result.add(
+            new InternalCreateMultiTimeSeriesNode(
+                getPlanNodeId(), measurementGroupMap, entry.getKey()));
+      }
     }
 
+    return result;
+  }
+
+  private static List<Map<PartialPath, Pair<Boolean, MeasurementGroup>>>
+      splitAndRegroupMeasurements(Map<PartialPath, Pair<Boolean, MeasurementGroup>> deviceMap) {
+    List<Map<PartialPath, Pair<Boolean, MeasurementGroup>>> result = new ArrayList<>();
+    int measurementCount = 0;
+    Map<PartialPath, Pair<Boolean, MeasurementGroup>> currentMap = new HashMap<>();
+    for (Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> entry : deviceMap.entrySet()) {
+      final Pair<Boolean, MeasurementGroup> device = entry.getValue();
+      if (device.right.size() > SPLIT_SIZE) {
+        for (MeasurementGroup splitMeasurementGroup : device.right.split(SPLIT_SIZE)) {
+          if (splitMeasurementGroup.size() == SPLIT_SIZE) {
+            Map<PartialPath, Pair<Boolean, MeasurementGroup>> singletonMap = new HashMap<>();
+            singletonMap.put(entry.getKey(), new Pair<>(device.left, splitMeasurementGroup));
+            result.add(singletonMap);
+          } else {
+            if (measurementCount + splitMeasurementGroup.size() > SPLIT_SIZE) {
+              result.add(currentMap);
+              currentMap = new HashMap<>();
+              measurementCount = 0;
+            }
+            measurementCount += splitMeasurementGroup.size();
+            currentMap.put(entry.getKey(), new Pair<>(device.left, splitMeasurementGroup));
+          }
+        }
+      } else {
+        if (measurementCount + device.right.size() > SPLIT_SIZE) {
+          result.add(currentMap);
+          currentMap = new HashMap<>();
+          measurementCount = 0;
+        }
+        measurementCount += device.right.size();
+        currentMap.put(entry.getKey(), device);
+      }
+    }
+
+    if (!currentMap.isEmpty()) {
+      result.add(currentMap);
+    }
     return result;
   }
 

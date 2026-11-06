@@ -436,6 +436,19 @@ public class SessionConnection {
     RpcUtils.verifySuccess(status);
   }
 
+  protected void createMultiTimeseries(
+      TSCreateMultiTimeseriesReq request, List<Boolean> isAlignedList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    final TSStatus status =
+        callWithRetryAndReconnect(
+                () -> {
+                  request.setSessionId(sessionId);
+                  return client.createMultiTimeseriesWithAlignment(request, isAlignedList);
+                })
+            .getResult();
+    RpcUtils.verifySuccess(status);
+  }
+
   protected boolean checkTimeseriesExists(String path, long timeout)
       throws IoTDBConnectionException, StatementExecutionException {
     SessionDataSet dataSet = null;

@@ -24,6 +24,7 @@ import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
@@ -40,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.GroupByTimeComponent;
@@ -53,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDevice
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
@@ -637,6 +640,97 @@ public class StatementGenerator {
     statement.setAliasList(req.measurementAliasList);
     PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
     return statement;
+  }
+
+  public static InternalCreateMultiTimeSeriesStatement createStatement(
+      TSCreateMultiTimeseriesReq req, List<Boolean> isAlignedList) throws IllegalPathException {
+    final long startTime = System.nanoTime();
+    final int size = req.getPathsSize();
+    if (size == 0) {
+      throw new SemanticException(
+          DataNodeQueryMessages.EXCEPTION_THE_PATHS_LIST_MUST_NOT_BE_EMPTY_950C8343);
+    }
+    checkCreateTimeseriesListSize("dataTypes", req.getDataTypes(), size);
+    checkCreateTimeseriesListSize("encodings", req.getEncodings(), size);
+    checkCreateTimeseriesListSize("compressors", req.getCompressors(), size);
+    checkCreateTimeseriesListSize("isAlignedList", isAlignedList, size);
+    if (req.isSetPropsList()) {
+      checkCreateTimeseriesListSize("propsList", req.getPropsList(), size);
+    }
+    if (req.isSetTagsList()) {
+      checkCreateTimeseriesListSize("tagsList", req.getTagsList(), size);
+    }
+    if (req.isSetAttributesList()) {
+      checkCreateTimeseriesListSize("attributesList", req.getAttributesList(), size);
+    }
+    if (req.isSetMeasurementAliasList()) {
+      checkCreateTimeseriesListSize("measurementAliasList", req.getMeasurementAliasList(), size);
+    }
+
+    final Map<PartialPath, Pair<Boolean, MeasurementGroup>> deviceMap = new LinkedHashMap<>();
+    for (int i = 0; i < size; i++) {
+      final MeasurementPath path = new MeasurementPath(req.getPaths().get(i));
+      if (path.getNodeLength() < 3) {
+        throw new IllegalPathException(path.getFullPath());
+      }
+      final Boolean isAligned = isAlignedList.get(i);
+      if (isAligned == null) {
+        throw new SemanticException(
+            DataNodeQueryMessages.EXCEPTION_ALIGNMENT_FLAGS_MUST_NOT_BE_NULL_5FAC3B71);
+      }
+      final Pair<Boolean, MeasurementGroup> device =
+          deviceMap.computeIfAbsent(
+              path.getDevicePath(), key -> new Pair<>(isAligned, new MeasurementGroup()));
+      if (!device.left.equals(isAligned)) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_TIME_SERIES_UNDER_DEVICE_ARG_MUST_USE_THE_SAME_ALIGNMENT_64142589,
+                path.getDevicePath()));
+      }
+      final MeasurementGroup group = device.right;
+      if (!group.addMeasurement(
+          path.getMeasurement(),
+          TSDataType.deserialize(req.getDataTypes().get(i).byteValue()),
+          TSEncoding.deserialize(req.getEncodings().get(i).byteValue()),
+          CompressionType.deserialize(req.getCompressors().get(i).byteValue()))) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_DUPLICATE_TIME_SERIES_IN_BATCH_ARG_C81567AE, path));
+      }
+      if (req.isSetPropsList()) {
+        final Map<String, String> props = req.getPropsList().get(i);
+        if (isAligned && props != null && !props.isEmpty()) {
+          throw new SemanticException(
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_PROPERTIES_ARE_NOT_SUPPORTED_FOR_ALIGNED_TIME_SERIES_ARG_695D2CD7,
+                  path));
+        }
+        group.addProps(props);
+      }
+      if (req.isSetTagsList()) {
+        group.addTags(req.getTagsList().get(i));
+      }
+      if (req.isSetAttributesList()) {
+        group.addAttributes(req.getAttributesList().get(i));
+      }
+      if (req.isSetMeasurementAliasList()) {
+        group.addAlias(req.getMeasurementAliasList().get(i));
+      }
+    }
+    PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
+    return new InternalCreateMultiTimeSeriesStatement(deviceMap);
+  }
+
+  private static void checkCreateTimeseriesListSize(String name, List<?> values, int size) {
+    if (values == null || values.size() != size) {
+      throw new SemanticException(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_THE_ARG_LIST_MUST_CONTAIN_ARG_ENTRIES_8545AC0F,
+              name,
+              size));
+    }
   }
 
   public static DeleteDatabaseStatement createStatement(List<String> databases)
