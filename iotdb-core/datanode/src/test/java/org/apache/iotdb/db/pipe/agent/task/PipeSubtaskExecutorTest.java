@@ -29,7 +29,7 @@ import org.mockito.Mockito;
 
 import java.util.concurrent.RejectedExecutionException;
 
-import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -74,12 +74,7 @@ public abstract class PipeSubtaskExecutorTest {
     // test start a subtask which is in the map
     executor.register(subtask);
     executor.start(subtask.getTaskID());
-    try {
-      Thread.sleep(1000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-    verify(subtask, atLeast(2)).call();
+    verify(subtask, timeout(10_000).atLeast(2)).call();
     Assert.assertTrue(subtask.isSubmittingSelf());
 
     // test start a subtask which is in the map and is already running
