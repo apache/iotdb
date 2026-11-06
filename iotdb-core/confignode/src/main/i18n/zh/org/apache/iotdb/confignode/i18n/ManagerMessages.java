@@ -124,6 +124,8 @@ public final class ManagerMessages {
       "修改 pipe {} 失败。结果状态：{}。";
   public static final String FAILED_TO_CHECK_AND_REPAIR_CONSENSUS_PIPES =
       "检查并修复 consensus pipe 失败";
+  public static final String LOG_FAILED_TO_PROBE_THE_NUMBER_OF_CONSENSUS_PIPES_FALL_BACK_TO_THE_PERIODIC_CONSENSUS_PIPE_CHECK_E3E527AF =
+      "探测 consensus pipe 数量失败，将回退到定期检查 consensus pipe。";
   public static final String FAILED_TO_CHECK_PASSWORD_FOR_PIPE =
       "检查 pipe %s 的密码失败。";
   public static final String FAILED_TO_CLOSE_CONSUMER_IN_CONSUMER_GROUP_RESULT_STATUS =

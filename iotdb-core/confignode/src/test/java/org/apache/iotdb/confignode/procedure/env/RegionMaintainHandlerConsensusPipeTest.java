@@ -373,6 +373,45 @@ public class RegionMaintainHandlerConsensusPipeTest {
     verify(procedureManager, never()).startConsensusPipe(any());
   }
 
+  @Test
+  public void testConsensusPipeCountMismatchWhenRegionHasNoPipe() {
+    // A 2-replica region requires 2 consensus pipes. Having none of them is the exact degradation
+    // the cheap probe has to detect, without building any pipe name.
+    when(partitionManager.getReplicaPairCount(TConsensusGroupType.DataRegion)).thenReturn(2L);
+    when(pipeTaskCoordinator.getConsensusPipeCount()).thenReturn(0);
+
+    assertTrue(handler.hasConsensusPipeCountMismatch());
+  }
+
+  @Test
+  public void testNoConsensusPipeCountMismatchWhenAllPipesExist() {
+    when(partitionManager.getReplicaPairCount(TConsensusGroupType.DataRegion)).thenReturn(2L);
+    when(pipeTaskCoordinator.getConsensusPipeCount()).thenReturn(2);
+
+    assertFalse(handler.hasConsensusPipeCountMismatch());
+  }
+
+  @Test
+  public void testNoConsensusPipeCountMismatchForSingleReplicaRegion() {
+    // A single-replica region has no follower and therefore expects no consensus pipe at all, so a
+    // single-replica cluster must never be reported as degraded.
+    when(partitionManager.getReplicaPairCount(TConsensusGroupType.DataRegion)).thenReturn(0L);
+    when(pipeTaskCoordinator.getConsensusPipeCount()).thenReturn(0);
+
+    assertFalse(handler.hasConsensusPipeCountMismatch());
+  }
+
+  @Test
+  public void testConsensusPipeCountProbeIsSkippedWhenNotIoTConsensusV2() {
+    ConfigNodeDescriptor.getInstance()
+        .getConf()
+        .setDataRegionConsensusProtocolClass("org.apache.iotdb.consensus.ratis.RatisConsensus");
+
+    assertFalse(handler.hasConsensusPipeCountMismatch());
+
+    verify(partitionManager, never()).getReplicaPairCount(any());
+  }
+
   private static class TestRegionMaintainHandler extends RegionMaintainHandler {
     private boolean lastUseFullRetry;
     private TEndPoint lastEndPoint;

@@ -741,6 +741,23 @@ public class PartitionInfo implements SnapshotProcessor {
   /**
    * Only leader use this interface.
    *
+   * @param type The specified TConsensusGroupType
+   * @return The number of ordered replica pairs of all Regions with the specified
+   *     TConsensusGroupType, i.e. the sum of N * (N - 1) over those Regions
+   */
+  public long getReplicaPairCount(TConsensusGroupType type) {
+    long count = 0;
+    for (DatabasePartitionTable databasePartitionTable : databasePartitionTables.values()) {
+      if (databasePartitionTable.isNotPreDeleted()) {
+        count += databasePartitionTable.getReplicaPairCount(type);
+      }
+    }
+    return count;
+  }
+
+  /**
+   * Only leader use this interface.
+   *
    * @param database The specified Database
    * @return All Regions' RegionReplicaSet of the specified Database
    */

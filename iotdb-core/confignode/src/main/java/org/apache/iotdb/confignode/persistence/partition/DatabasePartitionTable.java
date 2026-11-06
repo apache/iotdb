@@ -141,6 +141,25 @@ public class DatabasePartitionTable {
   }
 
   /**
+   * Counts the ordered replica pairs of all Regions with the specified TConsensusGroupType, i.e.
+   * the sum of N * (N - 1) over those Regions, without copying any replica set. Callers use it to
+   * probe, on a hot path, how many consensus pipes the partition table requires.
+   *
+   * @param type The specified TConsensusGroupType
+   * @return The number of ordered replica pairs of the specified Region type
+   */
+  public long getReplicaPairCount(TConsensusGroupType type) {
+    long count = 0;
+    for (RegionGroup regionGroup : regionGroupMap.values()) {
+      if (type.equals(regionGroup.getId().getType())) {
+        final long replicaNum = regionGroup.getReplicaNum();
+        count += replicaNum * (replicaNum - 1);
+      }
+    }
+    return count;
+  }
+
+  /**
    * Get all RegionGroups currently owned by the specified Database.
    *
    * @param dataNodeId The specified dataNodeId

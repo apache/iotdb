@@ -118,7 +118,11 @@ public class PipeMetaSyncer {
       pipeAutoRestartRoundCounter.set(0);
     }
 
-    if (consensusPipeCheckRoundCounter.incrementAndGet() >= CONSENSUS_PIPE_CHECK_INTERVAL_ROUND) {
+    // A count mismatch means a region lost its replication channel, so reconcile now instead of
+    // waiting for the periodic round. Equal counts are not proof of correctness, so the periodic
+    // round is kept.
+    if (hasConsensusPipeCountMismatch()
+        || consensusPipeCheckRoundCounter.incrementAndGet() >= CONSENSUS_PIPE_CHECK_INTERVAL_ROUND) {
       consensusPipeCheckRoundCounter.set(0);
       checkAndRepairConsensusPipes();
     }
@@ -173,6 +177,24 @@ public class PipeMetaSyncer {
       return pipeTaskInfo.get().autoRestart();
     } finally {
       configManager.getPipeManager().getPipeTaskCoordinator().unlock();
+    }
+  }
+
+  private boolean hasConsensusPipeCountMismatch() {
+    try {
+      return configManager
+          .getProcedureManager()
+          .getEnv()
+          .getRegionMaintainHandler()
+          .hasConsensusPipeCountMismatch();
+    } catch (Exception e) {
+      // The probe must never break the syncer; the periodic check still runs.
+      PipeLogger.log(
+          LOGGER::warn,
+          e,
+          ManagerMessages
+              .LOG_FAILED_TO_PROBE_THE_NUMBER_OF_CONSENSUS_PIPES_FALL_BACK_TO_THE_PERIODIC_CONSENSUS_PIPE_CHECK_E3E527AF);
+      return false;
     }
   }
 

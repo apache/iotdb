@@ -620,6 +620,26 @@ public class RegionMaintainHandler {
   }
 
   /**
+   * Cheap probe used by PipeMetaSyncer on every round to decide whether a full {@link
+   * #checkAndRepairConsensusPipes()} is needed. It only compares how many consensus pipes the
+   * replica sets require (N * (N - 1) per region) with how many actually exist, so it neither
+   * builds a pipe name nor copies a replica set. A mismatch is a sufficient reason to reconcile
+   * immediately; equal counts are still reconciled periodically to catch same-size but different
+   * pipe sets.
+   *
+   * <p>Regions with a single replica expect no pipe at all, so single-replica clusters never report
+   * a mismatch.
+   */
+  public boolean hasConsensusPipeCountMismatch() {
+    if (!isIoTConsensusV2Configured()) {
+      return false;
+    }
+
+    return configManager.getPartitionManager().getReplicaPairCount(TConsensusGroupType.DataRegion)
+        != configManager.getPipeManager().getPipeTaskCoordinator().getConsensusPipeCount();
+  }
+
+  /**
    * Periodically called by PipeMetaSyncer to reconcile expected consensus pipes (derived from
    * PartitionManager replica sets) with actually existing consensus pipes (from PipeTaskInfo).
    * Creates missing pipes, drops unexpected pipes, and restarts stopped pipes.
