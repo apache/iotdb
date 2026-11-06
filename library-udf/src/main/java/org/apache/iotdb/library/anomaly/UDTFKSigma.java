@@ -34,6 +34,8 @@ import org.apache.iotdb.udf.api.type.Type;
 
 /** This function detects outliers which lies over average +/- k * sigma. */
 public class UDTFKSigma implements UDTF {
+  private static final int DEFAULT_WINDOW_SIZE = 10000;
+
   private double mean = 0.0;
   private double variance = 0.0;
   private double sumX2 = 0.0;
@@ -55,10 +57,10 @@ public class UDTFKSigma implements UDTF {
         .validate(
             x -> (int) x > 0,
             LibraryUdfMessages.EXCEPTION_WINDOW_SIZE_SHOULD_BE_LARGER_THAN_0_F4C2184C,
-            validator.getParameters().getIntOrDefault("window", 10))
+            validator.getParameters().getIntOrDefault("window", DEFAULT_WINDOW_SIZE))
         .validate(
-            x -> (double) x > 0,
-            LibraryUdfMessages.EXCEPTION_PARAMETER_K_SHOULD_BE_LARGER_THAN_0_9F12BFC9,
+            x -> Double.isFinite((double) x) && (double) x > 0,
+            LibraryUdfMessages.EXCEPTION_PARAMETER_K_SHOULD_BE_FINITE_AND_LARGER_THAN_0_ECE1B163,
             validator.getParameters().getDoubleOrDefault("k", 3));
   }
 
@@ -73,13 +75,20 @@ public class UDTFKSigma implements UDTF {
     valueReader = TypeServices.ROW_VALUE_READER_SERVICE.call(TypeServices.toReadType(dataType));
     numericReader = TypeServices.NUMERIC_ROW_READER_SERVICE.call(TypeServices.toReadType(dataType));
     valueWriter = TypeServices.rowValueWriter(dataType);
-    this.windowSize = udfParameters.getIntOrDefault("window", 10000);
+    this.windowSize = udfParameters.getIntOrDefault("window", DEFAULT_WINDOW_SIZE);
+    this.mean = 0.0;
+    this.variance = 0.0;
+    this.sumX1 = 0.0;
+    this.sumX2 = 0.0;
     this.v = new CircularQueue<>(windowSize);
     this.t = new LongCircularQueue(windowSize);
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     double value = numericReader.read(row);
     long timestamp = row.getTime();
     if (Double.isFinite(value) && !Double.isNaN(value)) {

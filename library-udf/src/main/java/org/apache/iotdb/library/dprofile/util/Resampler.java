@@ -43,6 +43,7 @@ public class Resampler {
   private final String aggregator; // method to aggregate
   private final String interpolator; // method to interpolate
   private long currentTime; // start time of the window, left close & right open
+  private boolean hasCurrentTime;
   private long startTime;
   private long endTime; // start time (contained) and end time (not contained) of resampling
   private boolean outer = true; // if to use outer interpolate
@@ -59,6 +60,7 @@ public class Resampler {
     this.startTime = startTime;
     this.endTime = endTime;
     this.currentTime = this.startTime;
+    this.hasCurrentTime = startTime >= 0;
   }
 
   /** 加入新的数据点 insert new datapoint. */
@@ -68,8 +70,9 @@ public class Resampler {
         || (endTime > 0 && time >= endTime)) {
       return;
     }
-    if (currentTime < 0) {
+    if (!hasCurrentTime) {
       currentTime = time;
+      hasCurrentTime = true;
     }
     while (time >= currentTime + newPeriod) {
       downSample();

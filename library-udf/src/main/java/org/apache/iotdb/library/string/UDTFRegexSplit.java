@@ -34,6 +34,8 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.utils.Binary;
 
 import java.io.IOException;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 /** This function splits string from an input series according to given regex. */
 public class UDTFRegexSplit implements UDTF {
@@ -56,6 +58,9 @@ public class UDTFRegexSplit implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     String[] splitResult = row.getString(0).split(regex);
     if (index == -1) {
       collector.putInt(row.getTime(), splitResult.length);
@@ -126,14 +131,24 @@ public class UDTFRegexSplit implements UDTF {
     validator
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(0, Type.TEXT)
+        .validateRequiredAttribute("regex")
         .validate(
-            regex -> ((String) regex).length() > 0,
+            regex -> ((String) regex).length() > 0 && isValidRegex((String) regex),
             LibraryUdfMessages.EXCEPTION_REGEXP_HAS_TO_BE_A_VALID_REGULAR_EXPRESSION_FA012C63,
-            validator.getParameters().getStringOrDefault("regex", ""))
+            validator.getParameters().getString("regex"))
         .validate(
             index -> (int) index >= -1,
             LibraryUdfMessages
                 .EXCEPTION_INDEX_MUST_A_NON_NEGATIVE_INTEGER_TO_FETCH_SPLIT_RESULTS_OR_1_TO_GET_LENGTH_ABAF4445,
             validator.getParameters().getIntOrDefault("index", -1));
+  }
+
+  private static boolean isValidRegex(String regex) {
+    try {
+      Pattern.compile(regex);
+      return true;
+    } catch (PatternSyntaxException e) {
+      return false;
+    }
   }
 }

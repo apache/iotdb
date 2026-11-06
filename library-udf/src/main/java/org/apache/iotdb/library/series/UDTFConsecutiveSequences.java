@@ -40,10 +40,9 @@ public class UDTFConsecutiveSequences implements UDTF {
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
     validator.validate(
-        x -> (long) x > 0,
+        x -> Util.isPositiveTime((String) x, validator.getParameters()),
         LibraryUdfMessages.EXCEPTION_GAP_SHOULD_BE_A_TIME_PERIOD_WHOSE_UNIT_IS_MS_S_M_H_EDAA139C,
-        Util.parseTime(
-            validator.getParameters().getStringOrDefault("gap", "1ms"), validator.getParameters()));
+        validator.getParameters().getStringOrDefault("gap", "1ms"));
   }
 
   @Override

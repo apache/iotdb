@@ -72,6 +72,8 @@ public class UDTFCluster implements UDTF {
     validator
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
+        .validateRequiredAttribute("l")
+        .validateRequiredAttribute("k")
         .validate(
             x -> (int) x > 0,
             LibraryUdfMessages.EXCEPTION_PARAMETER_L_MUST_BE_A_POSITIVE_INTEGER_1DBBDE06,
@@ -132,8 +134,11 @@ public class UDTFCluster implements UDTF {
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
     if (!row.isNull(0)) {
-      timestamps.add(row.getTime());
-      values.add(Util.getValueAsDouble(row));
+      double value = Util.getValueAsDouble(row);
+      if (Double.isFinite(value)) {
+        timestamps.add(row.getTime());
+        values.add(value);
+      }
     }
   }
 
