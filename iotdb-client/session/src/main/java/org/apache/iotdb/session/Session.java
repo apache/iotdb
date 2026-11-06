@@ -4468,10 +4468,6 @@ public class Session implements ISession {
     this.defaultSessionConnection = defaultSessionConnection;
   }
 
-  protected void setRpcServiceName(String rpcServiceName) {
-    this.rpcServiceName = rpcServiceName;
-  }
-
   /** Applies the common transport and authentication settings for server internal sessions. */
   protected final void configureInternalSession() {
     password = null;

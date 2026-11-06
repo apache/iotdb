@@ -640,7 +640,7 @@ public class SessionPool implements ISessionPool {
     return session;
   }
 
-  protected void openSession(final ISession session) throws IoTDBConnectionException {
+  private void openSession(final ISession session) throws IoTDBConnectionException {
     if (internalSessionPool) {
       session.open(enableThriftCompression, connectionTimeoutInMs);
     } else {
@@ -651,10 +651,6 @@ public class SessionPool implements ISessionPool {
           tableModelDeviceIdToEndpoint,
           availableNodes);
     }
-  }
-
-  protected final boolean isInternalSessionPool() {
-    return internalSessionPool;
   }
 
   private void initThreadPool() {

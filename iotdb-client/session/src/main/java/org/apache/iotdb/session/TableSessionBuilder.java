@@ -432,7 +432,7 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
    * @throws IoTDBConnectionException if an error occurs while establishing the connection.
    */
   public ITableSession build() throws IoTDBConnectionException {
-    return wrapTableSession(constructNewSession());
+    return new TableSession(constructNewSession());
   }
 
   protected Session constructNewSession() throws IoTDBConnectionException {
@@ -442,10 +442,6 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
     }
     this.sqlDialect = TABLE;
     return openSession(new Session(this));
-  }
-
-  protected ITableSession wrapTableSession(Session session) {
-    return new TableSession(session);
   }
 
   protected Session openSession(Session newSession) throws IoTDBConnectionException {

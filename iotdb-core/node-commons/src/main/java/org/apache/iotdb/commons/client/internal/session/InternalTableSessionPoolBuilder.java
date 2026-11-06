@@ -20,9 +20,11 @@
 package org.apache.iotdb.commons.client.internal.session;
 
 import org.apache.iotdb.isession.INodeSupplier;
+import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.i18n.SessionMessages;
 import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.session.pool.TableSessionPool;
 import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 
 import java.util.Objects;
@@ -44,8 +46,16 @@ public class InternalTableSessionPoolBuilder extends TableSessionPoolBuilder {
   }
 
   @Override
-  protected SessionPool createSessionPool() {
-    return new InternalSessionPool(this, getNodeSupplier());
+  protected ITableSessionPool createSessionPool() {
+    return new InternalTableSessionPool(this, getNodeSupplier());
+  }
+
+  private static final class InternalTableSessionPool extends TableSessionPool {
+
+    private InternalTableSessionPool(
+        final InternalTableSessionPoolBuilder builder, final INodeSupplier nodeSupplier) {
+      super(new InternalSessionPool(builder, nodeSupplier));
+    }
   }
 
   private static final class InternalSessionPool extends SessionPool {

@@ -73,7 +73,7 @@ public class SubscriptionSessionWrapper extends Session {
 
   @Override
   public void setRpcServiceName(final String rpcServiceName) {
-    super.setRpcServiceName(rpcServiceName);
+    this.rpcServiceName = rpcServiceName;
   }
 
   public void setSslConfig(
