@@ -322,6 +322,8 @@ public final class CommonMessages {
           "subscription_cache_memory_usage_percentage must be in [0, 1], but was %s.";
   public static final String EXCEPTION_FILTER_FUNCTION_WPASS_VALIDATION =
       "the value of wpass should be in (0, 1)";
+  public static final String EXCEPTION_SAMPLE_FUNCTION_N_VALIDATION =
+      "N must be a positive integer.";
   public static final String EXCEPTION_NO_CALCULATE_COLUMNS = "No columns could be calculated.";
   public static final String EXCEPTION_NOT_ALLOWED_COLUMNS =
       "Only column with double, float, int32, int64 can be calculated by the function, %s is the %s.";

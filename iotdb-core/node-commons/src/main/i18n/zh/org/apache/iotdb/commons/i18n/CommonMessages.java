@@ -225,6 +225,7 @@ public final class CommonMessages {
       LOG_USER_DATA_TRANSFER_ATTEMPT_TIME_ARG_INITIATOR_ARG_SOURCE_ARG_TARGET_ARG_PROTECTION_METHOD_ARG_RESULT_ARG_ERROR_ARG_D3E9A1DF =
           "用户数据传送尝试：时间=%d，发起者=%s，源端=%s，目标端=%s，保护方法=%s，结果=%s，错误=%s";
   public static final String EXCEPTION_FILTER_FUNCTION_WPASS_VALIDATION = "wpass的取值范围应该位于(0, 1)";
+  public static final String EXCEPTION_SAMPLE_FUNCTION_N_VALIDATION = "N 要求是正整数";
   public static final String EXCEPTION_NO_CALCULATE_COLUMNS = "没有找到可以计算的列.";
   public static final String EXCEPTION_NOT_ALLOWED_COLUMNS = "只允许列类型为double, float, int32, int64参与函数计算, 当前列 %s 类型是 %s.";
   public static final String EXCEPTION_FILTER_FUNCTION_ROW_INDEX_EXCEED_MAXIMUM = "分区行数超过了最大限制";

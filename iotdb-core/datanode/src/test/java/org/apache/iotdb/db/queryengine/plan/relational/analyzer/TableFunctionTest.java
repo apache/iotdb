@@ -647,6 +647,17 @@ public class TableFunctionTest {
         "No numeric columns found for FFT calculation.");
   }
 
+  @Test
+  public void testSampleSizeInt32Range() {
+    analyzeSQL(
+        "SELECT * FROM TABLE(SAMPLE(DATA => TABLE(table1), N => 10))",
+        TEST_MATADATA,
+        QUERY_CONTEXT);
+    assertAnalyzeFails(
+        "SELECT * FROM TABLE(SAMPLE(DATA => TABLE(table1), N => 4294967297))",
+        "Invalid scalar argument 'N'. Value out of range for INT32");
+  }
+
   private void assertAnalyzeFails(String sql, String message) {
     try {
       analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);

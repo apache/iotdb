@@ -6069,7 +6069,8 @@ public class StatementAnalyzer {
           || TableBuiltinTableFunction.LOWPASS.getFunctionName().equalsIgnoreCase(functionName)
           || TableBuiltinTableFunction.HIGHPASS.getFunctionName().equalsIgnoreCase(functionName)
           || TableBuiltinTableFunction.XCORR.getFunctionName().equalsIgnoreCase(functionName)
-          || TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(functionName);
+          || TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(functionName)
+          || TableBuiltinTableFunction.SAMPLE.getFunctionName().equalsIgnoreCase(functionName);
     }
 
     private void tryAppendFFTInternalArguments(
@@ -6548,7 +6549,15 @@ public class StatementAnalyzer {
           constantValue = ((Binary) constantValue).getStringValue(TSFileConfig.STRING_CHARSET);
         } else if (argumentSpecification.getType().equals(org.apache.iotdb.udf.api.type.Type.INT32)
             && constantValue instanceof Long) {
-          constantValue = ((Long) constantValue).intValue();
+          try {
+            constantValue = toIntExact((Long) constantValue);
+          } catch (ArithmeticException e) {
+            throw new SemanticException(
+                String.format(
+                    DataNodeQueryMessages
+                        .INVALID_SCALAR_ARGUMENT_S_VALUE_OUT_OF_RANGE_FOR_INT32_A865664C,
+                    argumentSpecification.getName()));
+          }
         } else {
           throw new SemanticException(
               String.format(

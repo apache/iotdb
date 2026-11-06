@@ -175,17 +175,6 @@ public class WindowTVFUtils {
     return calculationIndexes;
   }
 
-  public static String joinTypes(List<Type> types) {
-    StringBuilder builder = new StringBuilder();
-    for (int i = 0; i < types.size(); i++) {
-      if (i > 0) {
-        builder.append(',');
-      }
-      builder.append(types.get(i).name());
-    }
-    return builder.toString();
-  }
-
   /** check the order by column is the timeColumn */
   public static int checkOrderByColumn(
       Map<String, Argument> arguments, String dataParameterName, String timeParameterName) {
@@ -201,6 +190,17 @@ public class WindowTVFUtils {
         findColumnIndex(tableArgument, timeColumn, Collections.singleton(Type.TIMESTAMP));
     WindowTVFUtils.validateOrderBy(tableArgument, timeColumn);
     return timeColumnIndex;
+  }
+
+  public static String joinTypes(List<Type> types) {
+    StringBuilder builder = new StringBuilder();
+    for (int i = 0; i < types.size(); i++) {
+      if (i > 0) {
+        builder.append(',');
+      }
+      builder.append(types.get(i).name());
+    }
+    return builder.toString();
   }
 
   public static Type[] parseTypes(String value) {

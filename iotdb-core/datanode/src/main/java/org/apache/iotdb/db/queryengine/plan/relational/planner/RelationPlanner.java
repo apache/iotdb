@@ -1613,7 +1613,8 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
         && !TableBuiltinTableFunction.LOWPASS.getFunctionName().equalsIgnoreCase(functionName)
         && !TableBuiltinTableFunction.HIGHPASS.getFunctionName().equalsIgnoreCase(functionName)
         && !TableBuiltinTableFunction.XCORR.getFunctionName().equalsIgnoreCase(functionName)
-        && !TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(functionName);
+        && !TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(functionName)
+        && !TableBuiltinTableFunction.SAMPLE.getFunctionName().equalsIgnoreCase(functionName);
   }
 
   private RelationPlan planExternalTsFileScan(

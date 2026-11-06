@@ -201,8 +201,8 @@ public class FFTTableFunction implements TableFunction {
                         .getValue())
             .addProperty(N_PARAMETER_NAME, transformLength)
             .addProperty(NORM_PARAMETER_NAME, norm)
-            .addProperty(PARTITION_TYPES_PROPERTY, joinTypes(partitionTypes))
-            .addProperty(VALUE_TYPES_PROPERTY, joinTypes(valueTypes))
+            .addProperty(PARTITION_TYPES_PROPERTY, WindowTVFUtils.joinTypes(partitionTypes))
+            .addProperty(VALUE_TYPES_PROPERTY, WindowTVFUtils.joinTypes(valueTypes))
             .addProperty(VALUE_NAMES_PROPERTY, encodeStrings(valueNames))
             .build();
 
@@ -233,8 +233,10 @@ public class FFTTableFunction implements TableFunction {
     long sampleInterval = (long) handle.getProperty(SAMPLE_INTERVAL_PARAMETER_NAME);
     long transformLength = (long) handle.getProperty(N_PARAMETER_NAME);
     String norm = (String) handle.getProperty(NORM_PARAMETER_NAME);
-    Type[] partitionTypes = parseTypes((String) handle.getProperty(PARTITION_TYPES_PROPERTY));
-    Type[] valueTypes = parseTypes((String) handle.getProperty(VALUE_TYPES_PROPERTY));
+    Type[] partitionTypes =
+        WindowTVFUtils.parseTypes((String) handle.getProperty(PARTITION_TYPES_PROPERTY));
+    Type[] valueTypes =
+        WindowTVFUtils.parseTypes((String) handle.getProperty(VALUE_TYPES_PROPERTY));
     String[] valueNames = decodeStrings((String) handle.getProperty(VALUE_NAMES_PROPERTY));
 
     return new TableFunctionProcessorProvider() {
@@ -291,29 +293,6 @@ public class FFTTableFunction implements TableFunction {
     if (!NORM_BACKWARD.equals(norm) && !NORM_FORWARD.equals(norm) && !NORM_ORTHO.equals(norm)) {
       throw new SemanticException(QueryMessages.FFT_INVALID_NORM);
     }
-  }
-
-  private static String joinTypes(List<Type> types) {
-    StringBuilder builder = new StringBuilder();
-    for (int i = 0; i < types.size(); i++) {
-      if (i > 0) {
-        builder.append(',');
-      }
-      builder.append(types.get(i).name());
-    }
-    return builder.toString();
-  }
-
-  private static Type[] parseTypes(String value) {
-    if (value.isEmpty()) {
-      return new Type[0];
-    }
-    String[] values = value.split(",");
-    Type[] types = new Type[values.length];
-    for (int i = 0; i < values.length; i++) {
-      types[i] = Type.valueOf(values[i]);
-    }
-    return types;
   }
 
   private static String encodeStrings(List<String> values) {
