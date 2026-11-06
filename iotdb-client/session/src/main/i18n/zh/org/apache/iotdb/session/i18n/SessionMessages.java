@@ -21,9 +21,6 @@ package org.apache.iotdb.session.i18n;
 
 public final class SessionMessages {
 
-  public static final String EXCEPTION_NO_DATANODE_INTERNAL_ENDPOINT_IS_AVAILABLE_249D1081 =
-      "没有可用的 DataNode 内部端点";
-
   public static final String EXCEPTION_INTERNAL_NODE_SUPPLIER_MUST_NOT_BE_NULL_C5CAF392 =
       "内部节点 supplier 不能为空";
 
@@ -308,8 +305,6 @@ public final class SessionMessages {
           "times、measurementsList 和 valuesList 的大小应相等";
 
   public static final String EXCEPTION_SESSION_CAN_NOT_CONNECT_TO_ARG_226FBA66 = "Session 无法连接到 {}";
-
-  public static final String EXCEPTION_END_POINT_MUST_NOT_BE_NULL_908A4B27 = "Endpoint 不能为空。";
 
   public static final String
       EXCEPTION_ALL_VALUES_ARE_NULL_AND_THIS_SUBMISSION_IS_IGNORED_DEVICEID_IS_ARG_TIME_IS_ARG_MEASUREMENTS_IS_ARG_5524221C =
