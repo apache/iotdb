@@ -3529,7 +3529,7 @@ public class DataRegion implements IDataRegionForQuery {
           targetFile.getAbsolutePath());
     }
 
-    LoadTsFileRateLimiter.getInstance().acquire(tsFileResource.getTsFile().length());
+    LoadTsFileRateLimiter.getInstance().acquire(tsFileToLoad.length());
 
     // move file from sync dir to data dir
     if (!targetFile.getParentFile().exists()) {
