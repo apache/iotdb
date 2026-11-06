@@ -53,10 +53,10 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
-import org.powermock.reflect.Whitebox;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.Optional;
@@ -258,8 +258,13 @@ public class LoadTsFileAnalyzerDiagnosticsTest {
             new MPPQueryContext(new QueryId("load_schema_recovery")),
             Mockito.mock(IPartitionFetcher.class),
             Mockito.mock(ISchemaFetcher.class))) {
-      final Object verifier = Whitebox.getInternalState(analyzer, "schemaAutoCreatorAndVerifier");
-      final Object schemaCache = Whitebox.getInternalState(verifier, "schemaCache");
+      final Field verifierField =
+          analyzer.getClass().getDeclaredField("schemaAutoCreatorAndVerifier");
+      verifierField.setAccessible(true);
+      final Object verifier = verifierField.get(analyzer);
+      final Field schemaCacheField = verifier.getClass().getDeclaredField("schemaCache");
+      schemaCacheField.setAccessible(true);
+      final Object schemaCache = schemaCacheField.get(verifier);
       final IDeviceID device = new PlainDeviceID("root.sg.d");
       final Method addTimeSeries =
           schemaCache
