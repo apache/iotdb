@@ -217,7 +217,6 @@ public class TreeDeviceSchemaCacheManagerTest {
         new TimeValuePair[] {
           new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
         },
-        false,
         new MeasurementSchema[] {s1});
     treeDeviceSchemaCacheManager.invalidateLastCache(
         database, new MeasurementPath(device.concatNode("s1"), s1));
@@ -229,7 +228,6 @@ public class TreeDeviceSchemaCacheManagerTest {
             StringArrayDeviceID.splitDeviceIdString(device.getNodes())),
         new String[] {"s2"},
         new TimeValuePair[] {tv1},
-        false,
         new MeasurementSchema[] {s2});
 
     treeDeviceSchemaCacheManager.updateLastCacheIfExists(
@@ -238,7 +236,6 @@ public class TreeDeviceSchemaCacheManagerTest {
             StringArrayDeviceID.splitDeviceIdString(device.getNodes())),
         new String[] {"s3"},
         new TimeValuePair[] {tv1},
-        false,
         new MeasurementSchema[] {s3});
 
     Assert.assertNull(
@@ -260,7 +257,6 @@ public class TreeDeviceSchemaCacheManagerTest {
           new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
           new TimeValuePair(2, new TsPrimitiveType.TsInt(2))
         },
-        false,
         measurementSchemas);
 
     Assert.assertNull(
@@ -275,6 +271,91 @@ public class TreeDeviceSchemaCacheManagerTest {
 
     treeDeviceSchemaCacheManager.cleanUp();
     Assert.assertEquals(0, TableDeviceSchemaCache.getInstance().getMemoryUsage());
+  }
+
+  @Test
+  public void testLastCacheDoesNotRestoreDeletedSchema() throws IllegalPathException {
+    final String database = "root.db";
+    for (boolean aligned : new boolean[] {false, true}) {
+      final PartialPath device = new PartialPath("root.db.d" + aligned);
+      final MeasurementSchema schema = new MeasurementSchema("s1", TSDataType.INT32);
+      final MeasurementPath path = new MeasurementPath(device.concatNode("s1"), schema, aligned);
+      final ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+      schemaTree.appendSingleMeasurementPath(path);
+      schemaTree.setDatabases(Collections.singleton(database));
+      treeDeviceSchemaCacheManager.put(schemaTree);
+      Assert.assertFalse(treeDeviceSchemaCacheManager.getMatchedNormalSchema(path).isEmpty());
+
+      treeDeviceSchemaCacheManager.invalidate(Collections.singletonList(path));
+      Assert.assertTrue(treeDeviceSchemaCacheManager.getMatchedNormalSchema(path).isEmpty());
+      treeDeviceSchemaCacheManager.declareLastCache(database, path);
+      Assert.assertTrue(
+          "LAST initialization must not restore deleted schema",
+          treeDeviceSchemaCacheManager.getMatchedNormalSchema(path).isEmpty());
+
+      final TimeValuePair value = new TimeValuePair(1, new TsPrimitiveType.TsInt(1));
+      treeDeviceSchemaCacheManager.updateLastCacheIfExists(
+          database,
+          path.getIDeviceID(),
+          new String[] {"s1"},
+          new TimeValuePair[] {value},
+          new MeasurementSchema[] {schema});
+      Assert.assertEquals(value, treeDeviceSchemaCacheManager.getLastCache(path));
+      Assert.assertTrue(treeDeviceSchemaCacheManager.getMatchedNormalSchema(path).isEmpty());
+      Assert.assertTrue(treeDeviceSchemaCacheManager.get(device, new String[] {"s1"}).isEmpty());
+
+      treeDeviceSchemaCacheManager.invalidateLastCache(database, path);
+      Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(path));
+      Assert.assertTrue(treeDeviceSchemaCacheManager.getMatchedNormalSchema(path).isEmpty());
+    }
+  }
+
+  @Test
+  public void testLastCacheUpdateDoesNotRestoreDeletedSchema() throws IllegalPathException {
+    final String database = "root.db";
+    for (boolean aligned : new boolean[] {false, true}) {
+      final PartialPath device = new PartialPath("root.db.d" + aligned);
+      final MeasurementSchema deletedSchema = new MeasurementSchema("s1", TSDataType.INT32);
+      final MeasurementPath deletedPath =
+          new MeasurementPath(device.concatNode("s1"), deletedSchema, aligned);
+      final MeasurementPath remainingPath =
+          new MeasurementPath(
+              device.concatNode("s2"), new MeasurementSchema("s2", TSDataType.INT64), aligned);
+      final ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+      schemaTree.appendSingleMeasurementPath(deletedPath);
+      schemaTree.appendSingleMeasurementPath(remainingPath);
+      schemaTree.setDatabases(Collections.singleton(database));
+      treeDeviceSchemaCacheManager.put(schemaTree);
+      treeDeviceSchemaCacheManager.declareLastCache(database, deletedPath);
+
+      treeDeviceSchemaCacheManager.invalidate(Collections.singletonList(deletedPath));
+      final ClusterSchemaTree remainingSchema = new ClusterSchemaTree();
+      remainingSchema.appendSingleMeasurementPath(remainingPath);
+      remainingSchema.setDatabases(Collections.singleton(database));
+      treeDeviceSchemaCacheManager.put(remainingSchema);
+
+      treeDeviceSchemaCacheManager.updateLastCacheIfExists(
+          database,
+          deletedPath.getIDeviceID(),
+          new String[] {"s1"},
+          new TimeValuePair[] {new TimeValuePair(1, new TsPrimitiveType.TsInt(1))},
+          new MeasurementSchema[] {deletedSchema});
+      Assert.assertTrue(
+          "LAST completion must not restore deleted schema in a recreated device entry",
+          treeDeviceSchemaCacheManager.getMatchedNormalSchema(deletedPath).isEmpty());
+      Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(deletedPath));
+
+      treeDeviceSchemaCacheManager.invalidateLastCache(database, deletedPath);
+      Assert.assertTrue(treeDeviceSchemaCacheManager.getMatchedNormalSchema(deletedPath).isEmpty());
+      Assert.assertEquals(
+          remainingPath.getMeasurementSchema(),
+          treeDeviceSchemaCacheManager
+              .getMatchedNormalSchema(remainingPath)
+              .searchMeasurementPaths(remainingPath)
+              .left
+              .get(0)
+              .getMeasurementSchema());
+    }
   }
 
   @Test
@@ -293,7 +374,6 @@ public class TreeDeviceSchemaCacheManagerTest {
             StringArrayDeviceID.splitDeviceIdString(device.getNodes())),
         new String[] {"s1"},
         new TimeValuePair[] {tv1},
-        false,
         new MeasurementSchema[] {s1});
     Assert.assertEquals(tv1, treeDeviceSchemaCacheManager.getLastCache(measurementPath));
 
@@ -341,6 +421,7 @@ public class TreeDeviceSchemaCacheManagerTest {
     insertRowNode.updateLastCache(database);
 
     Assert.assertEquals(1, composedValueCount.get());
+    Assert.assertTrue(treeDeviceSchemaCacheManager.getMatchedNormalSchema(s1Path).isEmpty());
     Assert.assertEquals(
         new TimeValuePair(1L, new TsPrimitiveType.TsInt(1)),
         treeDeviceSchemaCacheManager.getLastCache(
@@ -398,7 +479,6 @@ public class TreeDeviceSchemaCacheManagerTest {
             StringArrayDeviceID.splitDeviceIdString(devicePath.getNodes())),
         new String[] {path.getMeasurement()},
         new TimeValuePair[] {timeValuePair},
-        false,
         new MeasurementSchema[] {schema});
   }
 

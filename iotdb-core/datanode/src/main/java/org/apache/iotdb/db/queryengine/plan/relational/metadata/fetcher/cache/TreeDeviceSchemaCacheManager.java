@@ -350,14 +350,13 @@ public class TreeDeviceSchemaCacheManager {
       final IDeviceID deviceID,
       final String[] measurements,
       final @Nonnull TimeValuePair[] timeValuePairs,
-      final boolean isAligned,
       final IMeasurementSchema[] measurementSchemas) {
     if (!ClusterPartitionFetcher.getInstance().needLastCache(database)) {
       return;
     }
 
     tableDeviceSchemaCache.updateLastCache(
-        database, deviceID, measurements, timeValuePairs, isAligned, measurementSchemas, false);
+        database, deviceID, measurements, timeValuePairs, measurementSchemas, false);
   }
 
   public void updateLastCacheIfExists(
@@ -365,10 +364,9 @@ public class TreeDeviceSchemaCacheManager {
       final IDeviceID deviceID,
       final String[] measurements,
       final LastCacheUpdateSource updateSource,
-      final boolean isAligned,
       final IMeasurementSchema[] measurementSchemas) {
     tableDeviceSchemaCache.updateLastCache(
-        database, deviceID, measurements, updateSource, isAligned, measurementSchemas);
+        database, deviceID, measurements, updateSource, measurementSchemas);
   }
 
   /**
@@ -382,9 +380,9 @@ public class TreeDeviceSchemaCacheManager {
    * is written, but it won't affect the eventual consistency.
    *
    * <p>- Second time put the calculated {@link TimeValuePair}, and use {@link
-   * #updateLastCacheIfExists(String, IDeviceID, String[], TimeValuePair[], boolean,
-   * IMeasurementSchema[])}. The input {@link TimeValuePair} shall never be or contain {@code null},
-   * if the measurement is with all {@code null}s, its {@link TimeValuePair} shall be {@link
+   * #updateLastCacheIfExists(String, IDeviceID, String[], TimeValuePair[], IMeasurementSchema[])}.
+   * The input {@link TimeValuePair} shall never be or contain {@code null}, if the measurement is
+   * with all {@code null}s, its {@link TimeValuePair} shall be {@link
    * TableDeviceLastCache#PLACEHOLDER_EMPTY_COLUMN}. This method is not supposed to update time
    * column.
    *
@@ -401,8 +399,7 @@ public class TreeDeviceSchemaCacheManager {
         measurementPath.getIDeviceID(),
         new String[] {measurementPath.getMeasurement()},
         null,
-        measurementPath.isUnderAlignedEntity(),
-        new IMeasurementSchema[] {measurementPath.getMeasurementSchema()},
+        null,
         true);
   }
 
@@ -421,8 +418,7 @@ public class TreeDeviceSchemaCacheManager {
         measurementPath.getIDeviceID(),
         new String[] {measurementPath.getMeasurement()},
         new TimeValuePair[] {null},
-        measurementPath.isUnderAlignedEntity(),
-        new IMeasurementSchema[] {measurementPath.getMeasurementSchema()},
+        null,
         true);
   }
 

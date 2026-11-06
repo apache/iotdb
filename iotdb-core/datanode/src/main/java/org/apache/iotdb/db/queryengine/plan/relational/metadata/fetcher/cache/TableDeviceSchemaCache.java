@@ -493,35 +493,30 @@ public class TableDeviceSchemaCache {
     return Objects.nonNull(entry) ? entry.getDeviceSchema() : null;
   }
 
+  /**
+   * Update tree-model last values without populating schema. Query plans and storage-engine writes
+   * may carry schema that has already been deleted; only schema fetches may populate that cache.
+   */
   void updateLastCache(
       final String database,
       final IDeviceID deviceID,
       final String[] measurements,
       final @Nullable TimeValuePair[] timeValuePairs,
-      final boolean isAligned,
       final IMeasurementSchema[] measurementSchemas,
       final boolean initOrInvalidate) {
-    final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
-    final String database2Use = Objects.nonNull(previousDatabase) ? previousDatabase : database;
-
     dualKeyCache.update(
         new TableId(null, deviceID.getTableName()),
         deviceID,
         Objects.isNull(timeValuePairs) ? new TableDeviceCacheEntry() : null,
         initOrInvalidate
             ? entry ->
-                entry.setMeasurementSchema(
-                        database2Use, isAligned, measurements, measurementSchemas)
-                    + entry.initOrInvalidateLastCache(
-                        database,
-                        deviceID.getTableName(),
-                        measurements,
-                        Objects.nonNull(timeValuePairs),
-                        false)
-            : entry ->
-                entry.setMeasurementSchema(
-                        database2Use, isAligned, measurements, measurementSchemas)
-                    + entry.tryUpdateLastCache(measurements, measurementSchemas, timeValuePairs),
+                entry.initOrInvalidateLastCache(
+                    database,
+                    deviceID.getTableName(),
+                    measurements,
+                    Objects.nonNull(timeValuePairs),
+                    false)
+            : entry -> entry.tryUpdateLastCache(measurements, measurementSchemas, timeValuePairs),
         Objects.isNull(timeValuePairs));
   }
 
@@ -530,18 +525,12 @@ public class TableDeviceSchemaCache {
       final IDeviceID deviceID,
       final String[] measurements,
       final LastCacheUpdateSource updateSource,
-      final boolean isAligned,
       final IMeasurementSchema[] measurementSchemas) {
-    final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
-    final String database2Use = Objects.nonNull(previousDatabase) ? previousDatabase : database;
-
     dualKeyCache.update(
         new TableId(null, deviceID.getTableName()),
         deviceID,
         null,
-        entry ->
-            entry.setMeasurementSchema(database2Use, isAligned, measurements, measurementSchemas)
-                + entry.tryUpdateLastCache(measurements, measurementSchemas, updateSource),
+        entry -> entry.tryUpdateLastCache(measurements, measurementSchemas, updateSource),
         false);
   }
 
