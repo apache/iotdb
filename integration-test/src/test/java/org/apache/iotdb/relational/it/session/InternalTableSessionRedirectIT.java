@@ -93,6 +93,8 @@ public class InternalTableSessionRedirectIT {
       setupSession.executeNonQueryStatement("CREATE DATABASE " + DATABASE);
       setupSession.executeNonQueryStatement(
           "CREATE TABLE " + DATABASE + "." + TABLE + " (tag1 STRING TAG, value INT64 FIELD)");
+      // DataRegionGroups are allocated on the first data write, not when the database is created.
+      setupSession.insert(createTablet(1L));
       leaderEndPoints =
           InternalSessionITUtils.awaitDataRegionLeaderInternalEndPoints(
               InternalSessionITUtils.getUnderlyingSession(setupSession), DATABASE);
@@ -108,7 +110,7 @@ public class InternalTableSessionRedirectIT {
             .password(SessionConfig.DEFAULT_PASSWORD)
             .database(DATABASE)
             .build()) {
-      session.insert(createTablet());
+      session.insert(createTablet(2L));
 
       final Session underlyingSession = InternalSessionITUtils.getUnderlyingSession(session);
       final Map<?, TEndPoint> tableModelDeviceIdToEndpoint =
@@ -118,7 +120,7 @@ public class InternalTableSessionRedirectIT {
     }
   }
 
-  private static Tablet createTablet() {
+  private static Tablet createTablet(final long timestamp) {
     final List<IMeasurementSchema> schemas =
         Arrays.asList(
             new MeasurementSchema("tag1", TSDataType.STRING),
@@ -130,7 +132,7 @@ public class InternalTableSessionRedirectIT {
             IMeasurementSchema.getDataTypeList(schemas),
             Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD),
             1);
-    tablet.addTimestamp(0, 1L);
+    tablet.addTimestamp(0, timestamp);
     tablet.addValue("tag1", 0, "d1");
     tablet.addValue("value", 0, 42L);
     return tablet;
