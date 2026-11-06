@@ -4408,6 +4408,39 @@ public class IoTDBTableAggregationIT {
   }
 
   @Test
+  public void blobGroupedApproxMostFrequentTest() {
+    // Groups whose BLOB column is entirely NULL must yield NULL instead of an empty map.
+    // Under a PARTIAL -> FINAL aggregation the partial side emits NULL for these groups and
+    // the final side never initializes their state, so evaluateFinal must handle that too.
+    tableResultSetEqualTest(
+        "select time,province,approx_most_frequent(s8, 1, 10) from table1 group by 1,2 order by 2,1",
+        new String[] {"time", "province", "_col2"},
+        new String[] {
+          "2024-09-24T06:15:30.000Z,beijing,{\"0xcafebabe30\":2},",
+          "2024-09-24T06:15:31.000Z,beijing,{\"0xcafebabe31\":2},",
+          "2024-09-24T06:15:35.000Z,beijing,null,",
+          "2024-09-24T06:15:36.000Z,beijing,null,",
+          "2024-09-24T06:15:40.000Z,beijing,null,",
+          "2024-09-24T06:15:41.000Z,beijing,{\"0xcafebabe41\":2},",
+          "2024-09-24T06:15:46.000Z,beijing,null,",
+          "2024-09-24T06:15:50.000Z,beijing,{\"0xcafebabe50\":2},",
+          "2024-09-24T06:15:51.000Z,beijing,null,",
+          "2024-09-24T06:15:55.000Z,beijing,{\"0xcafebabe55\":4},",
+          "2024-09-24T06:15:30.000Z,shanghai,{\"0xcafebabe30\":2},",
+          "2024-09-24T06:15:31.000Z,shanghai,{\"0xcafebabe31\":2},",
+          "2024-09-24T06:15:35.000Z,shanghai,null,",
+          "2024-09-24T06:15:36.000Z,shanghai,null,",
+          "2024-09-24T06:15:40.000Z,shanghai,null,",
+          "2024-09-24T06:15:41.000Z,shanghai,{\"0xcafebabe41\":2},",
+          "2024-09-24T06:15:46.000Z,shanghai,null,",
+          "2024-09-24T06:15:50.000Z,shanghai,{\"0xcafebabe50\":2},",
+          "2024-09-24T06:15:51.000Z,shanghai,null,",
+          "2024-09-24T06:15:55.000Z,shanghai,{\"0xcafebabe55\":4},",
+        },
+        DATABASE_NAME);
+  }
+
+  @Test
   public void approxAggregationEmptyInputTest() {
     // No block reaches the aggregation operator, so the accumulator state is never created
     tableResultSetEqualTest(
