@@ -58,20 +58,22 @@ import java.util.stream.Collectors;
 public class TierManager {
   private static final Logger logger = LoggerFactory.getLogger(TierManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private DirectoryStrategyType directoryStrategyType = DirectoryStrategyType.SEQUENCE_STRATEGY;
 
   /**
    * seq folder manager of each storage tier, managing both data directories and multi-dir strategy
    */
-  private volatile List<FolderManager> seqTiers = new ArrayList<>();
+  private volatile List<MemoizedCheckedSupplier<FolderManager, DiskSpaceInsufficientException>>
+      seqTiers = new ArrayList<>();
 
   /**
    * unSeq folder manager of each storage tier, managing both data directories and multi-dir
    * strategy
    */
-  private volatile List<FolderManager> unSeqTiers = new ArrayList<>();
+  private volatile List<MemoizedCheckedSupplier<FolderManager, DiskSpaceInsufficientException>>
+      unSeqTiers = new ArrayList<>();
 
-  private volatile List<FolderManager> objectTiers = new ArrayList<>();
+  private volatile List<MemoizedCheckedSupplier<FolderManager, DiskSpaceInsufficientException>>
+      objectTiers = new ArrayList<>();
 
   /** seq file folder's rawFsPath path -> tier level */
   private volatile Map<String, Integer> seqDir2TierLevel = new HashMap<>();
@@ -80,10 +82,6 @@ public class TierManager {
   private volatile Map<String, Integer> unSeqDir2TierLevel = new HashMap<>();
 
   private List<String> objectDirs;
-
-  private List<String> copyToTargetDirs;
-
-  //  private FolderManager copyToFolderManager;
 
   private MemoizedCheckedSupplier<FolderManager, DiskSpaceInsufficientException>
       copyToFolderManager;
@@ -100,12 +98,12 @@ public class TierManager {
   }
 
   private void initFolders(
-      List<FolderManager> seqTiers,
-      List<FolderManager> unSeqTiers,
-      List<FolderManager> objectTiers,
+      List<MemoizedCheckedSupplier<FolderManager, DiskSpaceInsufficientException>> seqTiers,
+      List<MemoizedCheckedSupplier<FolderManager, DiskSpaceInsufficientException>> unSeqTiers,
+      List<MemoizedCheckedSupplier<FolderManager, DiskSpaceInsufficientException>> objectTiers,
       Map<String, Integer> seqDir2TierLevel,
       Map<String, Integer> unSeqDir2TierLevel) {
-    directoryStrategyType =
+    DirectoryStrategyType directoryStrategyType =
         DirectoryStrategyType.fromClassName(config.getMultiDirStrategyClassName());
 
     config.updatePath();
@@ -140,11 +138,7 @@ public class TierManager {
                           .getPath())
               .collect(Collectors.toList());
       mkDataDirs(seqDirs);
-      try {
-        seqTiers.add(new FolderManager(seqDirs, directoryStrategyType));
-      } catch (DiskSpaceInsufficientException e) {
-        logger.error(StorageEngineMessages.ALL_DISKS_OF_TIER_FULL, tierLevel, e);
-      }
+      addFolderManager(seqTiers, seqDirs, directoryStrategyType, tierLevel);
       for (String dir : seqDirs) {
         seqDir2TierLevel.put(dir, tierLevel);
       }
@@ -159,17 +153,13 @@ public class TierManager {
                           .getPath())
               .collect(Collectors.toList());
       mkDataDirs(unSeqDirs);
-      try {
-        unSeqTiers.add(new FolderManager(unSeqDirs, directoryStrategyType));
-      } catch (DiskSpaceInsufficientException e) {
-        logger.error(StorageEngineMessages.ALL_DISKS_OF_TIER_FULL, tierLevel, e);
-      }
+      addFolderManager(unSeqTiers, unSeqDirs, directoryStrategyType, tierLevel);
       for (String dir : unSeqDirs) {
         unSeqDir2TierLevel.put(dir, tierLevel);
       }
 
       if (tierLevel == 0) {
-        copyToTargetDirs =
+        List<String> copyToTargetDirs =
             Arrays.stream(tierDirs[tierLevel])
                 .filter(Objects::nonNull)
                 .map(
@@ -183,7 +173,7 @@ public class TierManager {
                 () -> new FolderManager(copyToTargetDirs, directoryStrategyType));
       }
 
-      objectDirs =
+      List<String> tierObjectDirs =
           Arrays.stream(tierDirs[tierLevel])
               .filter(Objects::nonNull)
               .map(
@@ -193,11 +183,8 @@ public class TierManager {
                           .getPath())
               .collect(Collectors.toList());
 
-      try {
-        objectTiers.add(new FolderManager(objectDirs, directoryStrategyType));
-      } catch (DiskSpaceInsufficientException e) {
-        logger.error(StorageEngineMessages.ALL_DISKS_OF_TIER_FULL, tierLevel, e);
-      }
+      objectDirs = tierObjectDirs;
+      addFolderManager(objectTiers, tierObjectDirs, directoryStrategyType, tierLevel);
       // try to remove empty objectDirs
       for (String dir : objectDirs) {
         File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
@@ -213,11 +200,29 @@ public class TierManager {
     tierDiskTotalSpace = getTierDiskSpace(DiskSpaceType.TOTAL);
   }
 
+  private void addFolderManager(
+      List<MemoizedCheckedSupplier<FolderManager, DiskSpaceInsufficientException>> tiers,
+      List<String> folders,
+      DirectoryStrategyType directoryStrategyType,
+      int tierLevel) {
+    MemoizedCheckedSupplier<FolderManager, DiskSpaceInsufficientException> supplier =
+        MemoizedCheckedSupplier.valueOf(() -> new FolderManager(folders, directoryStrategyType));
+    tiers.add(supplier);
+    try {
+      supplier.get();
+    } catch (DiskSpaceInsufficientException e) {
+      logger.error(StorageEngineMessages.ALL_DISKS_OF_TIER_FULL, tierLevel, e);
+    }
+  }
+
   public synchronized void resetFolders() {
     long startTime = System.currentTimeMillis();
-    List<FolderManager> newSeqTiers = new ArrayList<>();
-    List<FolderManager> newUnSeqTiers = new ArrayList<>();
-    List<FolderManager> newObjectTiers = new ArrayList<>();
+    List<MemoizedCheckedSupplier<FolderManager, DiskSpaceInsufficientException>> newSeqTiers =
+        new ArrayList<>();
+    List<MemoizedCheckedSupplier<FolderManager, DiskSpaceInsufficientException>> newUnSeqTiers =
+        new ArrayList<>();
+    List<MemoizedCheckedSupplier<FolderManager, DiskSpaceInsufficientException>> newObjectTiers =
+        new ArrayList<>();
     Map<String, Integer> newSeqDir2TierLevel = new HashMap<>();
     Map<String, Integer> newUnSeqDir2TierLevel = new HashMap<>();
 
@@ -252,8 +257,8 @@ public class TierManager {
   public String getNextFolderForTsFile(int tierLevel, boolean sequence)
       throws DiskSpaceInsufficientException {
     return sequence
-        ? seqTiers.get(tierLevel).getNextFolder()
-        : unSeqTiers.get(tierLevel).getNextFolder();
+        ? seqTiers.get(tierLevel).get().getNextFolder()
+        : unSeqTiers.get(tierLevel).get().getNextFolder();
   }
 
   public String getNextFolderForCopyToTargetFile() throws DiskSpaceInsufficientException {
@@ -261,11 +266,12 @@ public class TierManager {
   }
 
   public String getNextFolderForObjectFile() throws DiskSpaceInsufficientException {
-    return objectTiers.get(0).getNextFolder();
+    return objectTiers.get(0).get().getNextFolder();
   }
 
-  public FolderManager getFolderManager(int tierLevel, boolean sequence) {
-    return sequence ? seqTiers.get(tierLevel) : unSeqTiers.get(tierLevel);
+  public FolderManager getFolderManager(int tierLevel, boolean sequence)
+      throws DiskSpaceInsufficientException {
+    return sequence ? seqTiers.get(tierLevel).get() : unSeqTiers.get(tierLevel).get();
   }
 
   public List<String> getAllFilesFolders() {
