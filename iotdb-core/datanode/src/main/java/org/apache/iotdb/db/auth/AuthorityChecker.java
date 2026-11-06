@@ -229,7 +229,7 @@ public class AuthorityChecker {
                             auditEntity.getUserId(),
                             auditEntity.getUsername(),
                             auditEntity.getCliHostname())
-                        .setInternal(auditEntity.isInternal())
+                        .setDatabaseInternalSession(auditEntity.isDatabaseInternalSession())
                         .setSqlString(auditEntity.getSqlString()));
       }
       return status;

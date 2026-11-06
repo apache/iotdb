@@ -41,4 +41,12 @@ public interface INodeSupplier extends Supplier<List<TEndPoint>> {
   default void requestRefresh() {
     // Suppliers without automatic discovery have nothing to refresh.
   }
+
+  /**
+   * Whether this supplier's lifecycle is managed externally and must not be closed by IoTDB
+   * clients.
+   */
+  default boolean isExternalLifeCycleNodeSupplier() {
+    return false;
+  }
 }

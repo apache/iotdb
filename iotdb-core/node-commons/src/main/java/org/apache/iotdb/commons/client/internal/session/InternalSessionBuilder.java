@@ -25,7 +25,13 @@ import org.apache.iotdb.session.i18n.SessionMessages;
 
 import java.util.Objects;
 
-/** Server-side builder for tree-model internal sessions. */
+/**
+ * Server-side builder for tree-model internal sessions.
+ *
+ * <p>Callers sharing an external {@link INodeSupplier} must return {@code true} from {@link
+ * INodeSupplier#isExternalLifeCycleNodeSupplier()}; otherwise the created session may close it
+ * during its lifecycle, including when the session is reopened.
+ */
 public class InternalSessionBuilder extends Session.Builder {
 
   private final INodeSupplier nodeSupplier;

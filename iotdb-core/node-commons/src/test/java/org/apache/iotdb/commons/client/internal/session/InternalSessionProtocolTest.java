@@ -21,19 +21,23 @@ package org.apache.iotdb.commons.client.internal.session;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.internal.subscription.InternalSubscriptionTableSessionBuilder;
 import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.RpcServiceConstants;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.session.DummyNodesSupplier;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.SessionConnection;
+import org.apache.iotdb.session.subscription.ISubscriptionTableSession;
 
+import org.apache.thrift.TException;
 import org.apache.thrift.TMultiplexedProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.server.TThreadPoolServer;
@@ -42,7 +46,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.lang.reflect.Field;
 import java.net.ServerSocket;
 import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
@@ -83,18 +86,19 @@ public class InternalSessionProtocolTest {
             .username("root")
             .build()) {
       session.open();
-
-      final SessionConnection connection =
-          (SessionConnection) getField(session, "defaultSessionConnection");
-      assertTrue(connection.reconnect());
+      session.executeNonQueryStatement("SET CONFIGURATION 'force_reconnect'='true'");
       assertEquals(2, openSessionCalls.get());
     }
   }
 
-  private static Object getField(final Object target, final String fieldName) throws Exception {
-    final Field field = Session.class.getDeclaredField(fieldName);
-    field.setAccessible(true);
-    return field.get(target);
+  @Test
+  public void testInternalSubscriptionSessionUsesSuppliedEndpoint() throws Exception {
+    final INodeSupplier nodeSupplier =
+        new DummyNodesSupplier(Collections.singletonList(server.endpoint));
+    try (ISubscriptionTableSession session =
+        new InternalSubscriptionTableSessionBuilder(nodeSupplier).username("root").build()) {
+      assertEquals(1, openSessionCalls.get());
+    }
   }
 
   private static final class TestServer implements AutoCloseable {
@@ -121,6 +125,11 @@ public class InternalSessionProtocolTest {
               });
       when(handler.closeSession(any(TSCloseSessionReq.class)))
           .thenReturn(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      when(handler.executeUpdateStatementV2(any(TSExecuteStatementReq.class)))
+          .thenThrow(new TException("force reconnect"))
+          .thenReturn(
+              new TSExecuteStatementResp(
+                  new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
 
       final TMultiplexedProcessor processor = new TMultiplexedProcessor();
       processor.registerProcessor(

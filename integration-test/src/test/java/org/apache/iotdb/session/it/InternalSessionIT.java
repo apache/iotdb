@@ -19,17 +19,20 @@
 
 package org.apache.iotdb.session.it;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.internal.session.InternalSessionBuilder;
+import org.apache.iotdb.commons.client.internal.session.InternalSessionPoolBuilder;
 import org.apache.iotdb.isession.INodeSupplier;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.it.utils.InternalSessionITUtils;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.session.DummyNodesSupplier;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.pool.SessionPool;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.junit.After;
@@ -62,16 +65,14 @@ public class InternalSessionIT {
   @Test
   public void testInternalSessionUsesInternalPort() throws Exception {
     final DataNodeWrapper dataNode = EnvFactory.getEnv().getDataNodeWrapper(0);
-    final INodeSupplier nodeSupplier =
-        new DummyNodesSupplier(
-            Collections.singletonList(
-                new TEndPoint(dataNode.getInternalAddress(), dataNode.getInternalPort())));
+    final INodeSupplier nodeSupplier = InternalSessionITUtils.createInternalNodeSupplier();
 
     try (Session session =
         new InternalSessionBuilder(nodeSupplier)
             .host(dataNode.getInternalAddress())
             .port(dataNode.getInternalPort())
-            .username("root")
+            .username(SessionConfig.DEFAULT_USER)
+            .password(SessionConfig.DEFAULT_PASSWORD)
             .build()) {
       session.open();
       try {
@@ -84,12 +85,85 @@ public class InternalSessionIT {
             Collections.singletonList("s1"),
             Collections.singletonList(TSDataType.INT64),
             Collections.singletonList(1L));
+        session.insertRecord(
+            DATABASE + ".d1",
+            1L,
+            Collections.singletonList("s1"),
+            Collections.singletonList(TSDataType.INT64),
+            Collections.singletonList(1L));
 
         try (SessionDataSet dataSet =
             session.executeQueryStatement("SELECT s1 FROM " + DATABASE + ".d1")) {
           assertTrue(dataSet.hasNext());
           assertEquals(1L, dataSet.next().getFields().get(0).getLongV());
         }
+      } finally {
+        session.executeNonQueryStatement("DELETE DATABASE " + DATABASE);
+      }
+    }
+  }
+
+  @Test
+  public void testInternalSessionPoolUsesInternalPort() throws Exception {
+    final DataNodeWrapper dataNode = EnvFactory.getEnv().getDataNodeWrapper(0);
+    final INodeSupplier nodeSupplier = InternalSessionITUtils.createInternalNodeSupplier();
+
+    final SessionPool sessionPool =
+        new InternalSessionPoolBuilder(nodeSupplier)
+            .host(dataNode.getInternalAddress())
+            .port(dataNode.getInternalPort())
+            .user(SessionConfig.DEFAULT_USER)
+            .password(SessionConfig.DEFAULT_PASSWORD)
+            .maxSize(1)
+            .build();
+    try {
+      sessionPool.executeNonQueryStatement("CREATE DATABASE " + DATABASE);
+      try {
+        sessionPool.executeNonQueryStatement(
+            "CREATE TIMESERIES " + DATABASE + ".d1.s1 WITH DATATYPE=INT64, ENCODING=RLE");
+        sessionPool.insertRecord(
+            DATABASE + ".d1",
+            1L,
+            Collections.singletonList("s1"),
+            Collections.singletonList(TSDataType.INT64),
+            Collections.singletonList(1L));
+        sessionPool.insertRecord(
+            DATABASE + ".d1",
+            1L,
+            Collections.singletonList("s1"),
+            Collections.singletonList(TSDataType.INT64),
+            Collections.singletonList(1L));
+
+        try (SessionDataSetWrapper dataSet =
+            sessionPool.executeQueryStatement("SELECT s1 FROM " + DATABASE + ".d1")) {
+          assertTrue(dataSet.hasNext());
+          assertEquals(1L, dataSet.next().getFields().get(0).getLongV());
+        }
+      } finally {
+        sessionPool.executeNonQueryStatement("DELETE DATABASE " + DATABASE);
+      }
+    } finally {
+      sessionPool.close();
+    }
+  }
+
+  @Test
+  public void testInternalSessionWithoutAutoFetchUsesConfiguredInternalEndpoint() throws Exception {
+    final DataNodeWrapper dataNode = EnvFactory.getEnv().getDataNodeWrapper(0);
+
+    try (Session session =
+        new InternalSessionBuilder()
+            .enableAutoFetch(false)
+            .host(dataNode.getInternalAddress())
+            .port(dataNode.getInternalPort())
+            .username(SessionConfig.DEFAULT_USER)
+            .password(SessionConfig.DEFAULT_PASSWORD)
+            .build()) {
+      session.open();
+      session.executeNonQueryStatement("CREATE DATABASE " + DATABASE);
+      try {
+        session.executeNonQueryStatement(
+            "CREATE TIMESERIES " + DATABASE + ".d1.s1 WITH DATATYPE=INT64, ENCODING=RLE");
       } finally {
         session.executeNonQueryStatement("DELETE DATABASE " + DATABASE);
       }

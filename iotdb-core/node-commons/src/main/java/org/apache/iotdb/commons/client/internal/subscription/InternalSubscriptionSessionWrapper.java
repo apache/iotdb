@@ -20,6 +20,8 @@
 package org.apache.iotdb.commons.client.internal.subscription;
 
 import org.apache.iotdb.isession.INodeSupplier;
+import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcServiceConstants;
 import org.apache.iotdb.session.AbstractSessionBuilder;
 import org.apache.iotdb.session.subscription.SubscriptionSessionWrapper;
@@ -27,16 +29,34 @@ import org.apache.iotdb.session.subscription.SubscriptionSessionWrapper;
 final class InternalSubscriptionSessionWrapper extends SubscriptionSessionWrapper {
 
   private final INodeSupplier nodeSupplier;
+  private final boolean endpointConfigured;
 
   InternalSubscriptionSessionWrapper(
       final AbstractSessionBuilder builder, final INodeSupplier nodeSupplier) {
     super(builder);
     this.nodeSupplier = nodeSupplier;
+    this.endpointConfigured =
+        builder.nodeUrls != null
+            || !SessionConfig.DEFAULT_HOST.equals(builder.host)
+            || builder.rpcPort != SessionConfig.DEFAULT_PORT;
   }
 
   @Override
   protected String getRpcServiceName() {
     return RpcServiceConstants.INTERNAL_CLIENT_RPC_SERVICE;
+  }
+
+  @Override
+  public void open() throws IoTDBConnectionException {
+    if (nodeSupplier != null) {
+      enableAutoFetch = true;
+      if (!endpointConfigured) {
+        nodeSupplier
+            .getQueryEndPoint()
+            .ifPresent(endpoint -> defaultEndPoint = endpoint.deepCopy());
+      }
+    }
+    super.open();
   }
 
   @Override

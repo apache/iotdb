@@ -27,7 +27,13 @@ import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
 import java.util.List;
 import java.util.Objects;
 
-/** Server-side builder for table subscription-management sessions. */
+/**
+ * Server-side builder for table subscription-management sessions.
+ *
+ * <p>Callers sharing an external {@link INodeSupplier} must return {@code true} from {@link
+ * INodeSupplier#isExternalLifeCycleNodeSupplier()}; otherwise the created session may close it
+ * during its lifecycle, including when the session is reopened.
+ */
 public class InternalSubscriptionTableSessionBuilder extends SubscriptionTableSessionBuilder {
 
   private final INodeSupplier nodeSupplier;

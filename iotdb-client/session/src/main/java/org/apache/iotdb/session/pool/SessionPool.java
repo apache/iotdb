@@ -853,7 +853,9 @@ public class SessionPool implements ISessionPool {
       this.executorService = null;
     }
     if (availableNodes != null) {
-      this.availableNodes.close();
+      if (!this.availableNodes.isExternalLifeCycleNodeSupplier()) {
+        this.availableNodes.close();
+      }
       this.availableNodes = null;
     }
     LOGGER.info(SessionMessages.CLOSING_SESSION_POOL);

@@ -26,7 +26,12 @@ import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePul
 
 import java.util.Objects;
 
-/** Server-side builder for table subscription pull consumers. */
+/**
+ * Server-side builder for table subscription pull consumers.
+ *
+ * <p>Callers sharing an external {@link INodeSupplier} must return {@code true} from {@link
+ * INodeSupplier#isExternalLifeCycleNodeSupplier()}.
+ */
 public class InternalSubscriptionTablePullConsumerBuilder
     extends SubscriptionTablePullConsumerBuilder {
 
