@@ -105,8 +105,11 @@ public class IoTDBPipeTransferRecoveryIT {
     MultiEnvFactory.createEnv(2);
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
-    configure(senderEnv);
-    configure(receiverEnv);
+    for (final BaseEnv env : List.of(senderEnv, receiverEnv)) {
+      configure(env);
+      // Both clusters have one DataNode, including when CI selects a multi-replica preset.
+      env.getConfig().getCommonConfig().setSchemaReplicationFactor(1).setDataReplicationFactor(1);
+    }
     // Acknowledged source writes must survive the forced process exits in the progress cases.
     senderEnv.getConfig().getCommonConfig().setWalMode("SYNC");
     // Admission control uses one source region and one sink worker throughout these cases.
