@@ -19,25 +19,25 @@
 
 package org.apache.iotdb.commons.client.internal.session;
 
-import org.apache.iotdb.isession.ITableSession;
-import org.apache.iotdb.isession.pool.ITableSessionPool;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.session.pool.TableSessionPool;
 
-final class InternalTableSessionPool extends SessionPool implements ITableSessionPool {
+final class InternalTableSessionPool extends TableSessionPool {
 
   InternalTableSessionPool(final InternalTableSessionPoolBuilder builder) {
-    super(builder);
+    super(new InternalTableSessionPoolDelegate(builder));
   }
 
-  @Override
-  public ITableSession getSession() throws IoTDBConnectionException {
-    return getPooledTableSession();
-  }
+  private static final class InternalTableSessionPoolDelegate extends SessionPool {
 
-  @Override
-  protected Session.Builder createSessionBuilder() {
-    return new InternalTableSessionBuilder();
+    private InternalTableSessionPoolDelegate(final InternalTableSessionPoolBuilder builder) {
+      super(builder);
+    }
+
+    @Override
+    protected Session.Builder createSessionBuilder() {
+      return new InternalTableSessionBuilder();
+    }
   }
 }
