@@ -40,6 +40,8 @@ import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
+import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -62,8 +64,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -131,6 +135,149 @@ public class ConsensusPrefetchingQueueSeekTest {
   public void testMultiWriterSeekReplaysAfterResettingOrderedReaders() throws Exception {
     assertBeginningReplay(
         Arrays.asList(createRequest(1L, 1L, 7), createRequest(-1L, 10L, 8)), 2L, 0L, true);
+  }
+
+  @Test(timeout = 20_000L)
+  public void testResolvedSeekDoesNotMaskNewerConfigNodeProgress() throws Exception {
+    assertActivationProgress(false, false);
+  }
+
+  @Test(timeout = 20_000L)
+  public void testActivationSeekPreservesConcurrentProgressBroadcast() throws Exception {
+    assertActivationProgress(false, true);
+  }
+
+  @Test(timeout = 20_000L)
+  public void testExplicitSeekSurvivesActivationQueueReset() throws Exception {
+    assertActivationProgress(true, false);
+  }
+
+  private void assertActivationProgress(
+      final boolean explicitSeek, final boolean broadcastDuringActivation) throws Exception {
+    final int originalPrefetchThreads =
+        config.getSubscriptionConsensusPrefetchExecutorMaxThreadNum();
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder();
+    ConsensusSubscriptionPrefetchExecutor executor = null;
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      config.setSubscriptionConsensusPrefetchExecutorMaxThreadNum(1);
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(systemDir.getAbsolutePath());
+      executor = new ConsensusSubscriptionPrefetchExecutor();
+      when(manager.getExecutor()).thenReturn(executor);
+      when(walNode.getCurrentSearchIndex()).thenReturn(10L);
+      when(walNode.getLogDirectory()).thenReturn(systemDir);
+      when(server.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+      final DataRegionId regionId = new DataRegionId(1);
+      final WriterId writerId = new WriterId(regionId.toString(), 7);
+      final RegionProgress emptyProgress = new RegionProgress(Collections.emptyMap());
+      final RegionProgress initialProgress =
+          broadcastDuringActivation || explicitSeek
+              ? new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(100L, 1L)))
+              : emptyProgress;
+      final AtomicReference<RegionProgress> configNodeProgress =
+          new AtomicReference<>(initialProgress);
+      final ConsensusSubscriptionCommitManager commitManager =
+          new ConsensusSubscriptionCommitManager(
+              (consumerGroupId, topicName, ignored) ->
+                  ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.available(
+                      configNodeProgress.get()));
+      commitManager.getOrCreateState("consumerGroup", "topic", regionId);
+      final AtomicReference<Runnable> duringReplayLookup = new AtomicReference<>();
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              regionId,
+              server,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              converter,
+              commitManager,
+              initialProgress,
+              1L,
+              1L,
+              true) {
+            @Override
+            protected ReplayLocateDecision locateReplayStartForRegionProgress(
+                final RegionProgress progress, final boolean seekAfter) {
+              final Runnable callback = duringReplayLookup.getAndSet(null);
+              if (callback != null) {
+                callback.run();
+              }
+              final long startSearchIndex =
+                  progress.getWriterPositions().values().stream()
+                          .mapToLong(WriterProgress::getLocalSeq)
+                          .max()
+                          .orElse(0L)
+                      + 1L;
+              return ReplayLocateDecision.found(startSearchIndex, progress, "activation replay");
+            }
+
+            @Override
+            protected ProgressWALIterator createSubscriptionWALIterator(
+                final long startSearchIndex) {
+              return new ProgressWALIterator(systemDir, startSearchIndex) {
+                @Override
+                boolean hasNext(final ScanBudget scanBudget) {
+                  return false;
+                }
+              };
+            }
+          };
+      queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(16L * 1024 * 1024));
+      queue.poll("consumer");
+      queue.setActive(false);
+      // A seek while inactive initializes the cursor, so activation must apply a worker seek.
+      if (broadcastDuringActivation) {
+        queue.seekAfterRegionProgress(initialProgress);
+      } else {
+        queue.seekToBeginning();
+      }
+      final RegionProgress broadcastProgress =
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(200L, 2L)));
+      if (broadcastDuringActivation) {
+        // Advance after the manager's activation refresh, before the worker applies the seek.
+        duringReplayLookup.set(
+            () ->
+                commitManager.receiveProgressBroadcast(
+                    "consumerGroup",
+                    "topic",
+                    regionId.toString(),
+                    writerId,
+                    broadcastProgress.getWriterPositions().get(writerId)));
+      }
+      queue.applyRuntimeState(
+          new ConsensusRegionRuntimeState(2L, 7, true, Collections.singleton(7)));
+      assertNull(duringReplayLookup.get());
+      assertEquals(
+          explicitSeek
+              ? emptyProgress
+              : broadcastDuringActivation ? broadcastProgress : initialProgress,
+          commitManager.getCommittedRegionProgress("consumerGroup", "topic", regionId));
+
+      final RegionProgress newerConfigNodeProgress =
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(300L, 3L)));
+      configNodeProgress.set(newerConfigNodeProgress);
+      queue.setActive(false);
+      queue.applyRuntimeState(
+          new ConsensusRegionRuntimeState(3L, 7, true, Collections.singleton(7)));
+      assertEquals(
+          explicitSeek ? emptyProgress : newerConfigNodeProgress,
+          commitManager.getCommittedRegionProgress("consumerGroup", "topic", regionId));
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      if (executor != null) {
+        executor.shutdown();
+      }
+      config.setSubscriptionConsensusPrefetchExecutorMaxThreadNum(originalPrefetchThreads);
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
   }
 
   private void assertBeginningReplay(

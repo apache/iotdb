@@ -837,6 +837,15 @@ public class ConsensusSubscriptionCommitManager {
       final String topicName,
       final ConsensusGroupId regionId,
       final RegionProgress regionProgress) {
+    resetState(consumerGroupId, topicName, regionId, regionProgress, true);
+  }
+
+  RegionProgress resetState(
+      final String consumerGroupId,
+      final String topicName,
+      final ConsensusGroupId regionId,
+      final RegionProgress regionProgress,
+      final boolean explicitSeek) {
     final CommitStateKey stateKey =
         getCommitStateKey(consumerGroupId, topicName, regionId.toString());
     synchronized (getTopicPersistLock(stateKey.topicFileKey)) {
@@ -848,11 +857,23 @@ public class ConsensusSubscriptionCommitManager {
             consumerGroupId,
             topicName,
             regionId);
-        return;
+        return copyRegionProgress(regionProgress);
       }
-      state.resetForSeek(regionProgress);
-      explicitSeekResetKeys.add(stateKey.encodedStateKey);
+      final RegionProgress resetProgress;
+      synchronized (state) {
+        // Activation applies its seek asynchronously, after the authoritative refresh. Preserve
+        // committed progress received since that refresh; only a user seek may rewind it.
+        resetProgress =
+            explicitSeek
+                ? copyRegionProgress(regionProgress)
+                : mergeRegionProgress(state.getCommittedRegionProgress(), regionProgress);
+        state.resetForSeek(resetProgress);
+        if (explicitSeek) {
+          explicitSeekResetKeys.add(stateKey.encodedStateKey);
+        }
+      }
       persistRegionProgress(stateKey, state);
+      return resetProgress;
     }
   }
 

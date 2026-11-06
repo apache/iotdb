@@ -602,6 +602,7 @@ public class ConsensusPrefetchingQueue {
     private final long targetSearchIndex;
     private final RegionProgress committedRegionProgress;
     private final String seekReason;
+    private final boolean explicitSeek;
     private final boolean previousPrefetchInitialized;
     private final long previousSeekGeneration;
     private final long targetSeekGeneration;
@@ -613,12 +614,14 @@ public class ConsensusPrefetchingQueue {
         final long targetSearchIndex,
         final RegionProgress committedRegionProgress,
         final String seekReason,
+        final boolean explicitSeek,
         final boolean previousPrefetchInitialized,
         final long previousSeekGeneration,
         final long targetSeekGeneration) {
       this.targetSearchIndex = targetSearchIndex;
       this.committedRegionProgress = committedRegionProgress;
       this.seekReason = seekReason;
+      this.explicitSeek = explicitSeek;
       this.previousPrefetchInitialized = previousPrefetchInitialized;
       this.previousSeekGeneration = previousSeekGeneration;
       this.targetSeekGeneration = targetSeekGeneration;
@@ -4384,15 +4387,27 @@ public class ConsensusPrefetchingQueue {
    * denotes an empty WAL. If old files have been reclaimed, replay may start at a later index.
    */
   public void seekToBeginning() {
+    seekToBeginning(true);
+  }
+
+  private void seekToBeginning(final boolean explicitSeek) {
     seekToResolvedPosition(
-        FIRST_CONSENSUS_SEARCH_INDEX, new RegionProgress(Collections.emptyMap()), "beginning");
+        FIRST_CONSENSUS_SEARCH_INDEX,
+        new RegionProgress(Collections.emptyMap()),
+        "beginning",
+        explicitSeek);
   }
 
   /**
    * Seeks to the current WAL write position. After this, only newly written data will be consumed.
    */
   public void seekToEnd() {
-    seekToResolvedPosition(nextSearchIndexAfterCurrent(), computeTailRegionProgress(), "end");
+    seekToEnd(true);
+  }
+
+  private void seekToEnd(final boolean explicitSeek) {
+    seekToResolvedPosition(
+        nextSearchIndexAfterCurrent(), computeTailRegionProgress(), "end", explicitSeek);
   }
 
   public void seekToRegionProgress(final RegionProgress regionProgress) {
@@ -4422,7 +4437,8 @@ public class ConsensusPrefetchingQueue {
         seekToResolvedPosition(
             replayTarget.getStartSearchIndex(),
             replayTarget.getRecoveryRegionProgress(),
-            "regionProgress");
+            "regionProgress",
+            true);
         return;
       case RETRY_LATER:
       case LOCATE_MISS:
@@ -4438,12 +4454,17 @@ public class ConsensusPrefetchingQueue {
   }
 
   public void seekAfterRegionProgress(final RegionProgress regionProgress) {
+    seekAfterRegionProgress(regionProgress, true);
+  }
+
+  private void seekAfterRegionProgress(
+      final RegionProgress regionProgress, final boolean explicitSeek) {
     if (!(consensusReqReader instanceof WALNode)) {
       LOGGER.warn(
           DataNodePipeMessages
               .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_SEEKAFTERREGIONPROGRESS_NOT_SUPPORTED_55F36BE8,
           this);
-      seekToEnd();
+      seekToEnd(explicitSeek);
       return;
     }
     final WALNode walNode = (WALNode) consensusReqReader;
@@ -4464,7 +4485,8 @@ public class ConsensusPrefetchingQueue {
         seekToResolvedPosition(
             replayTarget.getStartSearchIndex(),
             replayTarget.getRecoveryRegionProgress(),
-            "regionProgressAfter");
+            "regionProgressAfter",
+            explicitSeek);
         return;
       case RETRY_LATER:
       case LOCATE_MISS:
@@ -4482,7 +4504,8 @@ public class ConsensusPrefetchingQueue {
   private synchronized void seekToResolvedPosition(
       final long targetSearchIndex,
       final RegionProgress committedRegionProgress,
-      final String seekReason) {
+      final String seekReason,
+      final boolean explicitSeek) {
     final PendingSeekRequest request;
 
     acquireWriteLock();
@@ -4500,6 +4523,7 @@ public class ConsensusPrefetchingQueue {
               targetSearchIndex,
               committedRegionProgress,
               seekReason,
+              explicitSeek,
               previousPrefetchInitialized,
               previousSeekGeneration,
               targetSeekGeneration);
@@ -4650,9 +4674,15 @@ public class ConsensusPrefetchingQueue {
     writerStates.clear();
     clearRecoveryWriterProgress();
     materializedProgressByWriter.clear();
-    if (Objects.nonNull(request.committedRegionProgress)
-        && !request.committedRegionProgress.getWriterPositions().isEmpty()) {
-      installRecoveryWriterProgress(request.committedRegionProgress);
+    final RegionProgress committedRegionProgress =
+        commitManager.resetState(
+            consumerGroupId,
+            topicName,
+            consensusGroupId,
+            request.committedRegionProgress,
+            request.explicitSeek);
+    if (!committedRegionProgress.getWriterPositions().isEmpty()) {
+      installRecoveryWriterProgress(committedRegionProgress);
     }
 
     // 4. Reset WAL read position. The target has been normalized by replay lookup: if the
@@ -4668,10 +4698,7 @@ public class ConsensusPrefetchingQueue {
     walGapWaitStartTimeMs = 0L;
     lastWalGapWaitLogTimeMs = 0L;
 
-    // 5. Reset commit state to the writer progress immediately before the first re-delivered
-    // entry so seek/rebind resumes from the intended frontier.
-    commitManager.resetState(
-        consumerGroupId, topicName, consensusGroupId, request.committedRegionProgress);
+    // 5. Refresh WAL retention from the installed committed frontier.
     refreshCommittedWalRetentionBoundAndNotify();
 
     LOGGER.info(
@@ -4680,9 +4707,7 @@ public class ConsensusPrefetchingQueue {
         this,
         request.seekReason,
         request.targetSearchIndex,
-        Objects.nonNull(request.committedRegionProgress)
-            ? request.committedRegionProgress.getWriterPositions().size()
-            : 0,
+        committedRegionProgress.getWriterPositions().size(),
         seekGeneration.get());
   }
 
@@ -5873,9 +5898,9 @@ public class ConsensusPrefetchingQueue {
       final RegionProgress authoritativeProgress = queryResult.getRegionProgress();
       if (prefetchInitialized) {
         if (authoritativeProgress.getWriterPositions().isEmpty()) {
-          seekToBeginning();
+          seekToBeginning(false);
         } else {
-          seekAfterRegionProgress(authoritativeProgress);
+          seekAfterRegionProgress(authoritativeProgress, false);
         }
       }
       pendingActivationRuntimeState = null;
