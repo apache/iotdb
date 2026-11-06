@@ -57,9 +57,11 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -74,6 +76,10 @@ import static org.junit.Assert.assertTrue;
  * Proves that the tree model schema tools restore the tags and attributes of every time series:
  * {@code export-schema} writes them as RFC4180 quoted JSON, {@code import-schema} reads that format
  * back, and awkward characters survive the round trip unchanged.
+ *
+ * <p>The schema of one database and one exported file mixes everything the tools have to keep
+ * apart: every data type/encoding/compression combination, all four tag/attribute combinations on
+ * different devices, and several combinations across the measurements of one device.
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -104,27 +110,61 @@ public class SchemaTagsRoundTripIT extends AbstractScriptIT {
   private static final Map<String, Series> CREATED = new LinkedHashMap<>();
 
   static {
-    // one tag value per device, because tags belong to the device rather than to the measurement
-    singleTag("v1", "v1");
-    singleTag("comma", "a,b");
-    singleTag("quote", "a\"b");
-    singleTag("backslash", "a\\b");
-    singleTag("backslashn", "a\\nb");
-    singleTag("tab", "a\tb");
-    singleTag("newline", "a\nb");
-    singleTag("cjk", "中文😀");
-    singleTag("nulllit", "null");
-    singleTag("empty", "");
-    singleTag("backtick", "`x`");
-    tagged("spacedkey", "k e y", "v");
-    CREATED.put(
-        DATABASE + ".multi.s1",
-        new Series(mapOf("a", "1", "b", "a,b", "c", "a\"b"), NO_VALUES, null));
-    CREATED.put(
-        DATABASE + ".attr.s1",
-        new Series(NO_VALUES, mapOf("note", "he said \"hi\"", "plain", "v"), null));
-    CREATED.put(NO_ATTRIBUTES_ROW, new Series(NO_VALUES, NO_VALUES, null));
-    CREATED.put(DATABASE + ".alias.s1", new Series(mapOf("aliasTag", "v"), NO_VALUES, ALIAS));
+    // Awkward tag values, one device per value because tags belong to the device.
+    singleTag("v1", "v1", Format.BOOLEAN_PLAIN_SNAPPY);
+    singleTag("comma", "a,b", Format.INT32_TS_2DIFF_SNAPPY);
+    singleTag("quote", "a\"b", Format.DOUBLE_GORILLA_LZ4);
+    singleTag("backslash", "a\\b", Format.INT64_GORILLA_LZ4);
+    singleTag("backslashn", "a\\nb", Format.FLOAT_GORILLA_GZIP);
+    singleTag("tab", "a\tb", Format.DOUBLE_GORILLA_LZ4);
+    singleTag("newline", "a\nb", Format.TEXT_DICTIONARY_SNAPPY);
+    singleTag("cjk", "中文😀", Format.INT64_GORILLA_LZ4);
+    singleTag("nulllit", "null", Format.BOOLEAN_PLAIN_SNAPPY);
+    singleTag("empty", "", Format.INT32_TS_2DIFF_SNAPPY);
+    singleTag("backtick", "`x`", Format.FLOAT_GORILLA_GZIP);
+    tagged("spacedkey", "k e y", "v", Format.TEXT_DICTIONARY_SNAPPY);
+
+    // The four tag/attribute combinations, each on a device of its own.
+    series(
+        "both",
+        "s1",
+        Format.BOOLEAN_PLAIN_SNAPPY,
+        mapOf("t1", "v1", "t2", "a,b"),
+        mapOf("a1", "one", "a2", "he said \"hi\""),
+        null);
+    series(
+        "multi",
+        "s1",
+        Format.TEXT_DICTIONARY_SNAPPY,
+        mapOf("a", "1", "b", "a,b", "c", "a\"b"),
+        NO_VALUES,
+        null);
+    series(
+        "attr",
+        "s1",
+        Format.TEXT_DICTIONARY_SNAPPY,
+        NO_VALUES,
+        mapOf("note", "he said \"hi\"", "plain", "v"),
+        null);
+    series("none", "s1", Format.TEXT_DICTIONARY_SNAPPY, NO_VALUES, NO_VALUES, null);
+    series("alias", "s1", Format.FLOAT_GORILLA_GZIP, mapOf("aliasTag", "v"), NO_VALUES, ALIAS);
+
+    // One device mixing three of the combinations across its measurements.
+    series(
+        "mixed",
+        "tagsOnly",
+        Format.INT32_TS_2DIFF_SNAPPY,
+        mapOf("m1", "x", "m2", "y"),
+        NO_VALUES,
+        null);
+    series(
+        "mixed",
+        "attrsOnly",
+        Format.INT64_GORILLA_LZ4,
+        NO_VALUES,
+        mapOf("m1", "x", "m2", "y"),
+        null);
+    series("mixed", "neither", Format.DOUBLE_GORILLA_LZ4, NO_VALUES, NO_VALUES, null);
   }
 
   @Rule public TemporaryFolder folder = new TemporaryFolder();
@@ -215,9 +255,9 @@ public class SchemaTagsRoundTripIT extends AbstractScriptIT {
         // character that the export or the import tool mangles.
         session.createTimeseries(
             entry.getKey(),
-            TSDataType.DOUBLE,
-            TSEncoding.GORILLA,
-            CompressionType.LZ4,
+            series.format.dataType,
+            series.format.encoding,
+            series.format.compression,
             null,
             series.tags.isEmpty() ? null : series.tags,
             series.attributes.isEmpty() ? null : series.attributes,
@@ -295,25 +335,66 @@ public class SchemaTagsRoundTripIT extends AbstractScriptIT {
       assertEquals(
           "unexpected number of exported rows: " + records, CREATED.size(), records.size());
 
+      final Set<Format> formats = EnumSet.noneOf(Format.class);
       for (Map.Entry<String, Series> entry : CREATED.entrySet()) {
         final String path = entry.getKey();
         final Series series = entry.getValue();
         final CSVRecord record = records.get(path);
         assertNotNull("the export is missing " + path, record);
-        assertEquals(path + " DataType", "DOUBLE", record.get("DataType"));
-        assertEquals(path + " Encoding", "GORILLA", record.get("Encoding"));
-        assertEquals(path + " Compression", "LZ4", record.get("Compression"));
+        assertEquals(path + " DataType", series.format.dataType.name(), record.get("DataType"));
+        assertEquals(path + " Encoding", series.format.encoding.name(), record.get("Encoding"));
+        assertEquals(
+            path + " Compression", series.format.compression.name(), record.get("Compression"));
         assertEquals(
             path + " Alias", series.alias == null ? "" : series.alias, record.get("Alias"));
         assertEquals(path + " Tags", series.tags, parseJsonObject(record.get("Tags")));
         assertEquals(
             path + " Attributes", series.attributes, parseJsonObject(record.get("Attributes")));
+        // The three assertions above proved that the file carries this combination.
+        formats.add(series.format);
       }
+      assertEquals(
+          "the file must carry every data type, encoding and compression combination",
+          EnumSet.allOf(Format.class),
+          formats);
 
       // Nothing to write is written as an empty cell, not as {} and not as null.
       assertEquals("", records.get(NO_ATTRIBUTES_ROW).get("Tags"));
       assertEquals("", records.get(NO_ATTRIBUTES_ROW).get("Attributes"));
+
+      assertPresenceCombinations(records);
     }
+  }
+
+  /**
+   * The one exported file must carry all four tag/attribute combinations, spread over several
+   * devices, and at least one device must mix several of them across its measurements.
+   */
+  private static void assertPresenceCombinations(Map<String, CSVRecord> records) {
+    final Set<Presence> presences = EnumSet.noneOf(Presence.class);
+    final Map<String, Set<Presence>> presencesByDevice = new TreeMap<>();
+    for (Map.Entry<String, CSVRecord> entry : records.entrySet()) {
+      final String path = entry.getKey();
+      final CSVRecord record = entry.getValue();
+      final Presence presence =
+          Presence.of(
+              parseJsonObject(record.get("Tags")), parseJsonObject(record.get("Attributes")));
+      presences.add(presence);
+      presencesByDevice
+          .computeIfAbsent(
+              path.substring(0, path.lastIndexOf('.')), device -> EnumSet.noneOf(Presence.class))
+          .add(presence);
+    }
+    assertEquals(
+        "the file must carry every tag/attribute combination",
+        EnumSet.allOf(Presence.class),
+        presences);
+    assertTrue(
+        "the combinations must be spread over at least four devices: " + presencesByDevice,
+        presencesByDevice.size() >= 4);
+    assertTrue(
+        "one device must mix several combinations across its measurements: " + presencesByDevice,
+        presencesByDevice.values().stream().mapToInt(Set::size).max().orElse(0) >= 3);
   }
 
   private static void assertSchemaRestored()
@@ -324,6 +405,7 @@ public class SchemaTagsRoundTripIT extends AbstractScriptIT {
       final String path = entry.getKey();
       final Series expected = entry.getValue();
       final Series actual = restored.get(path);
+      assertEquals(path + " data type/encoding/compression", expected.format, actual.format);
       assertEquals(path + " tags", expected.tags, actual.tags);
       assertEquals(path + " attributes", expected.attributes, actual.attributes);
       assertEquals(path + " alias", expected.alias, actual.alias);
@@ -340,18 +422,32 @@ public class SchemaTagsRoundTripIT extends AbstractScriptIT {
       final List<String> columns = dataSet.getColumnNames();
       final int timeseriesIndex = columns.indexOf("Timeseries");
       final int aliasIndex = columns.indexOf("Alias");
+      final int dataTypeIndex = columns.indexOf("DataType");
+      final int encodingIndex = columns.indexOf("Encoding");
+      final int compressionIndex = columns.indexOf("Compression");
       final int tagsIndex = columns.indexOf("Tags");
       final int attributesIndex = columns.indexOf("Attributes");
       assertTrue(
-          "SHOW TIMESERIES must expose the Timeseries, Alias, Tags and Attributes columns: "
+          "SHOW TIMESERIES must expose the Timeseries, Alias, DataType, Encoding, Compression, "
+              + "Tags and Attributes columns: "
               + columns,
-          timeseriesIndex >= 0 && aliasIndex >= 0 && tagsIndex >= 0 && attributesIndex >= 0);
+          timeseriesIndex >= 0
+              && aliasIndex >= 0
+              && dataTypeIndex >= 0
+              && encodingIndex >= 0
+              && compressionIndex >= 0
+              && tagsIndex >= 0
+              && attributesIndex >= 0);
       while (dataSet.hasNext()) {
         final List<Field> fields = dataSet.next().getFields();
         final String path = cell(fields, timeseriesIndex);
         schema.put(
             path,
             new Series(
+                Format.of(
+                    cell(fields, dataTypeIndex),
+                    cell(fields, encodingIndex),
+                    cell(fields, compressionIndex)),
                 parseJsonObject(cell(fields, tagsIndex)),
                 parseJsonObject(cell(fields, attributesIndex)),
                 cell(fields, aliasIndex)));
@@ -458,12 +554,23 @@ public class SchemaTagsRoundTripIT extends AbstractScriptIT {
     return builder;
   }
 
-  private static void singleTag(String device, String value) {
-    tagged(device, "k", value);
+  private static void singleTag(String device, String value, Format format) {
+    tagged(device, "k", value, format);
   }
 
-  private static void tagged(String device, String key, String value) {
-    CREATED.put(DATABASE + "." + device + ".s1", new Series(mapOf(key, value), NO_VALUES, null));
+  private static void tagged(String device, String key, String value, Format format) {
+    series(device, "s1", format, mapOf(key, value), NO_VALUES, null);
+  }
+
+  private static void series(
+      String device,
+      String measurement,
+      Format format,
+      Map<String, String> tags,
+      Map<String, String> attributes,
+      String alias) {
+    CREATED.put(
+        DATABASE + "." + device + "." + measurement, new Series(format, tags, attributes, alias));
   }
 
   private static Map<String, String> mapOf(String... keysAndValues) {
@@ -474,13 +581,72 @@ public class SchemaTagsRoundTripIT extends AbstractScriptIT {
     return map;
   }
 
-  /** The tags, attributes and alias created for one time series. */
+  /**
+   * A data type, encoding and compression combination of the test schema. Every combination has to
+   * appear in the exported file, and the server renders them with these names.
+   */
+  private enum Format {
+    BOOLEAN_PLAIN_SNAPPY(TSDataType.BOOLEAN, TSEncoding.PLAIN, CompressionType.SNAPPY),
+    INT32_TS_2DIFF_SNAPPY(TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.SNAPPY),
+    INT64_GORILLA_LZ4(TSDataType.INT64, TSEncoding.GORILLA, CompressionType.LZ4),
+    DOUBLE_GORILLA_LZ4(TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.LZ4),
+    FLOAT_GORILLA_GZIP(TSDataType.FLOAT, TSEncoding.GORILLA, CompressionType.GZIP),
+    TEXT_DICTIONARY_SNAPPY(TSDataType.TEXT, TSEncoding.DICTIONARY, CompressionType.SNAPPY);
+
+    private final TSDataType dataType;
+    private final TSEncoding encoding;
+    private final CompressionType compression;
+
+    Format(TSDataType dataType, TSEncoding encoding, CompressionType compression) {
+      this.dataType = dataType;
+      this.encoding = encoding;
+      this.compression = compression;
+    }
+
+    /** Resolves the combination rendered by {@code SHOW TIMESERIES}, i.e. by the export. */
+    private static Format of(String dataType, String encoding, String compression) {
+      for (Format format : values()) {
+        if (format.dataType.name().equals(dataType)
+            && format.encoding.name().equals(encoding)
+            && format.compression.name().equals(compression)) {
+          return format;
+        }
+      }
+      throw new AssertionError(
+          "unexpected data type/encoding/compression combination: "
+              + dataType
+              + "/"
+              + encoding
+              + "/"
+              + compression);
+    }
+  }
+
+  /** Whether a time series carries tags and attributes; all four must coexist in one file. */
+  private enum Presence {
+    BOTH,
+    TAGS_ONLY,
+    ATTRIBUTES_ONLY,
+    NEITHER;
+
+    private static Presence of(Map<String, String> tags, Map<String, String> attributes) {
+      if (!tags.isEmpty()) {
+        return attributes.isEmpty() ? TAGS_ONLY : BOTH;
+      }
+      return attributes.isEmpty() ? NEITHER : ATTRIBUTES_ONLY;
+    }
+  }
+
+  /** One time series of the test schema, i.e. one row of the exported file. */
   private static final class Series {
+    private final Format format;
     private final Map<String, String> tags;
     private final Map<String, String> attributes;
     private final String alias;
 
-    private Series(Map<String, String> tags, Map<String, String> attributes, String alias) {
+    private Series(
+        Format format, Map<String, String> tags, Map<String, String> attributes, String alias) {
+      this.format = format;
       this.tags = tags;
       this.attributes = attributes;
       this.alias = alias;
