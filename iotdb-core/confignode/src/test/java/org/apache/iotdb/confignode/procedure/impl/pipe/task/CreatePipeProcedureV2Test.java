@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
@@ -51,10 +52,40 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class CreatePipeProcedureV2Test {
+
+  @Test
+  public void testNormalizeCreatePipeRequestEnablesCompactionForNewUserPipe() {
+    final TCreatePipeReq request =
+        CreatePipeProcedureV2.normalizeCreatePipeRequest(
+            new TCreatePipeReq("testPipe", new HashMap<>()));
+
+    assertEquals(
+        Boolean.TRUE.toString(),
+        request.getConnectorAttributes().get(PipeSinkConstant.SINK_ENABLE_COMPACTION_KEY));
+  }
+
+  @Test
+  public void testNormalizeCreatePipeRequestKeepsExplicitCompactionValue() {
+    final Map<String, String> connectorAttributes = new HashMap<>();
+    connectorAttributes.put(
+        PipeSinkConstant.CONNECTOR_ENABLE_COMPACTION_KEY, Boolean.FALSE.toString());
+
+    final TCreatePipeReq request =
+        CreatePipeProcedureV2.normalizeCreatePipeRequest(
+            new TCreatePipeReq("testPipe", connectorAttributes));
+
+    assertEquals(
+        Boolean.FALSE.toString(),
+        request.getConnectorAttributes().get(PipeSinkConstant.CONNECTOR_ENABLE_COMPACTION_KEY));
+    assertFalse(
+        request.getConnectorAttributes().containsKey(PipeSinkConstant.SINK_ENABLE_COMPACTION_KEY));
+  }
+
   @Test
   public void testDataNodeConstructionFailureIsRecorded() throws Exception {
     final String pipeName = "failedHistoryPipe";
