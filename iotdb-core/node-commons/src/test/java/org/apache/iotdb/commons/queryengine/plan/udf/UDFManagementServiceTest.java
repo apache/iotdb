@@ -36,6 +36,7 @@ import org.junit.rules.TemporaryFolder;
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -143,18 +144,21 @@ public class UDFManagementServiceTest {
     Path classesDir = temporaryFolder.newFolder("classes").toPath();
     JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
     assertNotNull(compiler);
-    assertEquals(
-        0,
+    String testClassPath =
+        System.getProperty("surefire.test.class.path", System.getProperty("java.class.path"));
+    ByteArrayOutputStream compilerOutput = new ByteArrayOutputStream();
+    int compilerExitCode =
         compiler.run(
             null,
-            null,
-            null,
+            compilerOutput,
+            compilerOutput,
             "-classpath",
-            System.getProperty("java.class.path"),
+            testClassPath,
             "-d",
             classesDir.toString(),
             functionSource.toString(),
-            helperSource.toString()));
+            helperSource.toString());
+    assertEquals(compilerOutput.toString(StandardCharsets.UTF_8), 0, compilerExitCode);
 
     Path jarPath = temporaryFolder.newFile("lazy-udf.jar").toPath();
     try (JarOutputStream outputStream = new JarOutputStream(Files.newOutputStream(jarPath));

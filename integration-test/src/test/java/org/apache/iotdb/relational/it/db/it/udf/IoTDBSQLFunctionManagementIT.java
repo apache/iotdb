@@ -144,7 +144,7 @@ public class IoTDBSQLFunctionManagementIT {
           "create function udsf as 'org.apache.iotdb.db.query.udf.example.relational.ContainNull'");
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select function_type from information_schema.functions where function_name = 'UDSF'")) {
+              "select function_type from information_schema.functions where function_table = 'UDSF'")) {
         assertTrue(resultSet.next());
         assertEquals(FUNCTION_TYPE_USER_DEFINED_SCALAR_FUNC, resultSet.getString(1));
         assertFalse(resultSet.next());
