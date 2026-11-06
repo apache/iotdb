@@ -365,15 +365,32 @@ public abstract class TableMetadataPropagationTestBase {
   }
 
   protected void assertAttributeFilter(int device, String attribute) {
-    String predicate =
-        "device='d"
-            + device
-            + "' AND "
-            + (attribute == null ? "changing IS NULL" : "changing='" + attribute + "'");
+    assertAttributePredicate(
+        device, attribute == null ? "changing IS NULL" : "changing='" + attribute + "'", true);
+    if (attribute == null) {
+      for (String predicate :
+          new String[] {
+            "changing <> 'unmatched'",
+            "changing > 'unmatched'",
+            "changing IN ('unmatched')",
+            "changing NOT IN ('unmatched')",
+            "changing LIKE 'unmatched%'",
+            "changing NOT LIKE 'unmatched%'",
+            "changing <> 'unmatched' OR kept='absent'"
+          }) {
+        assertAttributePredicate(device, predicate, false);
+      }
+      assertAttributePredicate(
+          device, "changing <> 'unmatched' OR kept='keep-" + device + "'", true);
+    }
+  }
+
+  private void assertAttributePredicate(int device, String attributePredicate, boolean matches) {
+    String predicate = "device='d" + device + "' AND (" + attributePredicate + ")";
     TestUtils.tableResultSetEqualTestUnordered(
         "COUNT DEVICES FROM sensor WHERE " + predicate,
         new String[] {"count(devices)"},
-        new String[] {"1,"},
+        new String[] {matches ? "1," : "0,"},
         database);
     // Check nullable data predicates after the complete fault/recovery sequence. A query failure
     // must still fail the test, without preventing the delayed batch or later DDL from being
@@ -381,7 +398,9 @@ public abstract class TableMetadataPropagationTestBase {
     TestUtils.tableResultSetEqualTestUnordered(
         "SELECT device, kept, reading FROM sensor WHERE " + predicate,
         new String[] {"device", "kept", "reading"},
-        new String[] {"d" + device + ",keep-" + device + "," + (device + 10) + ","},
+        matches
+            ? new String[] {"d" + device + ",keep-" + device + "," + (device + 10) + ","}
+            : new String[0],
         database);
   }
 

@@ -82,11 +82,13 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
+import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.storageengine.rescon.memory.MemTableManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.storageengine.rescon.memory.WriteMemoryBlock;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -105,7 +107,9 @@ import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
+import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
@@ -120,11 +124,13 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -233,6 +239,55 @@ public class DataRegionTest {
             false);
     insertRowNode.setMeasurementSchemas(measurementSchemas);
     return insertRowNode;
+  }
+
+  @Test
+  public void testLoadRateLimiterAccountsForSourceFileBeforeTransfer() throws Exception {
+    final LoadTsFileCostMetricsSet metrics = LoadTsFileCostMetricsSet.getInstance();
+    final Field counterField = LoadTsFileCostMetricsSet.class.getDeclaredField("diskIOCounter");
+    counterField.setAccessible(true);
+    final Counter originalCounter = (Counter) counterField.get(metrics);
+    final double originalThroughput = config.getLoadWriteThroughputBytesPerSecond();
+    try {
+      config.setLoadWriteThroughputBytesPerSecond(0);
+      for (boolean deleteOrigin : new boolean[] {false, true}) {
+        final File sourceDir =
+            new File(TestConstant.OUTPUT_DATA_DIR, "load-rate-source-" + deleteOrigin);
+        Files.createDirectories(sourceDir.toPath());
+        final File source = new File(sourceDir, "1-1-0-0.tsfile");
+        final MeasurementSchema schema = new MeasurementSchema(measurementId, TSDataType.INT32);
+        try (TsFileWriter writer = new TsFileWriter(source)) {
+          writer.registerAlignedTimeseries(deviceId, Collections.singletonList(schema));
+          final Tablet tablet = new Tablet(deviceId, Collections.singletonList(schema), 1);
+          tablet.addTimestamp(0, 1);
+          tablet.addValue(0, measurementId, 42);
+          writer.writeAligned(tablet);
+        }
+        final TsFileResource resource = new TsFileResource(source);
+        resource.setStatus(TsFileResourceStatus.NORMAL);
+        resource.updateStartTime(device, 1);
+        resource.updateEndTime(device, 1);
+        resource.serialize();
+        final byte[] sourceBytes = Files.readAllBytes(source.toPath());
+        Assert.assertTrue(sourceBytes.length > 0);
+        // acquire records the same byte count in this counter, without a timing-based assertion.
+        final Counter counter = Mockito.mock(Counter.class);
+        counterField.set(metrics, counter);
+
+        dataRegion.loadNewTsFile(resource, deleteOrigin, false, true, Optional.empty());
+
+        Mockito.verify(counter).inc(sourceBytes.length);
+        Mockito.verifyNoMoreInteractions(counter);
+        Assert.assertNotEquals(source.getAbsolutePath(), resource.getTsFile().getAbsolutePath());
+        Assert.assertArrayEquals(sourceBytes, Files.readAllBytes(resource.getTsFile().toPath()));
+        Assert.assertEquals(!deleteOrigin, source.exists());
+        Assert.assertEquals(
+            !deleteOrigin, new File(source + TsFileResource.RESOURCE_SUFFIX).exists());
+      }
+    } finally {
+      counterField.set(metrics, originalCounter);
+      config.setLoadWriteThroughputBytesPerSecond(originalThroughput);
+    }
   }
 
   @Test

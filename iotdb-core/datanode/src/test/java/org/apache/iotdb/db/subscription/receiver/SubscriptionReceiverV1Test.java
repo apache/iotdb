@@ -205,6 +205,29 @@ public class SubscriptionReceiverV1Test {
   }
 
   @Test
+  public void testReplacedConnectionReturnsRetryableStatusForAllRequests() throws Exception {
+    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+    setField(receiver, "sharedConsumerConfig", consumerConfig);
+
+    receiver.invalidateConnection();
+
+    for (final PipeSubscribeRequestType requestType : PipeSubscribeRequestType.values()) {
+      Assert.assertEquals(
+          requestType.name(),
+          TSStatusCode.SUBSCRIPTION_CONNECTION_REPLACED.getStatusCode(),
+          receiver
+              .handle(new TPipeSubscribeReq((byte) 1, requestType.getType()))
+              .getStatus()
+              .getCode());
+    }
+    Assert.assertFalse(receiver.hasActiveConsumer());
+    Assert.assertFalse((boolean) getField(receiver, "consumerFenced"));
+    Assert.assertTrue((boolean) getField(receiver, "consumerInvalidated"));
+    Assert.assertEquals(0L, ((AtomicLong) getField(receiver, "inFlightRequestCount")).get());
+  }
+
+  @Test
   public void testFencedConsumerCannotHandshakeAgain() throws Exception {
     final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
     final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);

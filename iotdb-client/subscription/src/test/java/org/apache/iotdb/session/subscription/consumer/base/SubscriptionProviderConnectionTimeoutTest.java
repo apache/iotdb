@@ -132,6 +132,11 @@ public class SubscriptionProviderConnectionTimeoutTest {
   }
 
   @Test
+  public void testReplacedConnectionIsRetryableForPollAndCommit() throws Exception {
+    assertPollError(TSStatusCode.SUBSCRIPTION_CONNECTION_REPLACED, "connection replaced", true);
+  }
+
+  @Test
   public void testMissingBrokerPollErrorMarksProviderUnavailable() throws Exception {
     assertPollError(
         "Subscription: no broker bound to consumer group [group]", true /* broker missing */);
@@ -165,6 +170,12 @@ public class SubscriptionProviderConnectionTimeoutTest {
   }
 
   private void assertPollError(final String message, final boolean brokerMissing) throws Exception {
+    assertPollError(TSStatusCode.SUBSCRIPTION_POLL_ERROR, message, brokerMissing);
+  }
+
+  private void assertPollError(
+      final TSStatusCode errorStatus, final String message, final boolean brokerMissing)
+      throws Exception {
     final AtomicInteger subscriptionCloseCount = new AtomicInteger();
     final AtomicInteger sessionCloseCount = new AtomicInteger();
     final ServerSocket socket = new ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"));
@@ -191,15 +202,16 @@ public class SubscriptionProviderConnectionTimeoutTest {
                         return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
                             successStatus(), 1, "consumer", "group");
                       }
-                      if (request.getType() != PipeSubscribeRequestType.POLL.getType()) {
+                      if (request.getType() != PipeSubscribeRequestType.POLL.getType()
+                          && !(errorStatus == TSStatusCode.SUBSCRIPTION_CONNECTION_REPLACED
+                              && request.getType() == PipeSubscribeRequestType.COMMIT.getType())) {
                         if (request.getType() == PipeSubscribeRequestType.CLOSE.getType()) {
                           subscriptionCloseCount.incrementAndGet();
                         }
                         return new TPipeSubscribeResp(successStatus(), (byte) 1, (short) 6);
                       }
                       return new TPipeSubscribeResp(
-                          new TSStatus(TSStatusCode.SUBSCRIPTION_POLL_ERROR.getStatusCode())
-                              .setMessage(message),
+                          new TSStatus(errorStatus.getStatusCode()).setMessage(message),
                           (byte) 1,
                           (short) 6);
                     case "closeSession":
@@ -226,6 +238,13 @@ public class SubscriptionProviderConnectionTimeoutTest {
       final SubscriptionCommitContext context =
           new SubscriptionCommitContext(1, 0, "topic", "group", 1L);
 
+      if (errorStatus == TSStatusCode.SUBSCRIPTION_CONNECTION_REPLACED) {
+        Assert.assertTrue(provider.isAvailable());
+        Assert.assertThrows(
+            SubscriptionConnectionException.class,
+            () -> provider.commit(Collections.singletonList(context), false));
+        Assert.assertFalse(provider.isAvailable());
+      }
       if (brokerMissing) {
         Assert.assertThrows(
             SubscriptionConnectionException.class,

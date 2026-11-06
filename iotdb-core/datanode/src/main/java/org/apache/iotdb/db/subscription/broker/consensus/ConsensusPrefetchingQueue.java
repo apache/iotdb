@@ -2177,7 +2177,7 @@ public class ConsensusPrefetchingQueue {
     }
     maybeInjectWatermark();
     if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
-      return PrefetchRoundResult.dormant();
+      return computeIdleRoundResult(walScanBudget);
     }
     if (walScanBudget.hasYielded()
         || remainingEntryBudget[0] <= 0
@@ -2591,7 +2591,10 @@ public class ConsensusPrefetchingQueue {
       return PrefetchRoundResult.dormant();
     }
     if (hasReachedPrefetchLimit()) {
-      return PrefetchRoundResult.dormant();
+      // Backpressure is temporary: writes may have stopped, and another queue releasing its
+      // memory quota does not wake this queue. Keep a delayed retry without scanning more WAL
+      // or immediately rescheduling while the delivery queue is still full.
+      return PrefetchRoundResult.rescheduleAfter(MEMORY_RETRY_SLEEP_MS);
     }
     if (hasImmediatePrefetchableWork(walScanBudget)) {
       return PrefetchRoundResult.rescheduleNow();

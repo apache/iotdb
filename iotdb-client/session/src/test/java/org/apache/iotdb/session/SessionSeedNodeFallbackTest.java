@@ -22,9 +22,12 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.isession.INodeSupplier;
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
+import org.apache.iotdb.rpc.AutoScalingBufferWriteTransport;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.UrlUtils;
@@ -33,6 +36,7 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 
 import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
@@ -71,6 +75,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -83,6 +88,8 @@ import static org.mockito.Mockito.when;
  * Exercise discovery and reconnection over real Thrift connections with controlled availability.
  */
 public class SessionSeedNodeFallbackTest {
+  private static final String LARGE_QUERY = "SHOW AVAILABLE URLS" + " ".repeat(4096);
+
   private final List<TestNode> nodes = new ArrayList<>();
   private final List<TEndPoint> attempts = new CopyOnWriteArrayList<>();
   private final List<TEndPoint> queries = new CopyOnWriteArrayList<>();
@@ -455,6 +462,136 @@ public class SessionSeedNodeFallbackTest {
     } finally {
       pool.close();
     }
+  }
+
+  // TableSession must pass the default, finite and zero thresholds into its opened transport;
+  // a large request retains its write buffer only with the default reuse policy.
+  @Test
+  public void testTableSessionBufferReuseThreshold() throws Exception {
+    for (int threshold : new int[] {Integer.MAX_VALUE, 128, 0}) {
+      TableSessionBuilder builder =
+          new TableSessionBuilder()
+              .nodeUrls(Collections.singletonList(url(0)))
+              .thriftDefaultBufferSize(32)
+              .enableAutoFetch(false);
+      if (threshold != Integer.MAX_VALUE) {
+        builder.thriftMaxReusableBufferSize(threshold);
+      }
+      try (ITableSession tableSession = builder.build()) {
+        Session session = Whitebox.getInternalState(tableSession, "session");
+        try (SessionDataSet result = tableSession.executeQueryStatement(LARGE_QUERY)) {
+          assertTrue(result.hasNext());
+          assertLargeRequestBuffer(session, threshold);
+        }
+        assertTrue(reconnect(session.defaultSessionConnection));
+        try (SessionDataSet result = tableSession.executeQueryStatement(LARGE_QUERY)) {
+          assertTrue(result.hasNext());
+          assertLargeRequestBuffer(session, threshold);
+        }
+      }
+    }
+  }
+
+  // Both host/port and seed-list pools must configure every lazily opened Session and their
+  // background discovery connection, preserving the default policy when no threshold is supplied.
+  @Test
+  public void testSessionPoolBufferReuseThreshold() throws Exception {
+    // Keep queries on the default connection whose retained buffer is checked below.
+    advertised = endpoints(0);
+    for (boolean singleHost : new boolean[] {true, false}) {
+      for (int threshold : new int[] {Integer.MAX_VALUE, 128, 0}) {
+        SessionPool.Builder builder =
+            new SessionPool.Builder().maxSize(2).thriftDefaultBufferSize(32);
+        if (singleHost) {
+          builder.host(nodes.get(0).endpoint.getIp()).port(nodes.get(0).endpoint.getPort());
+        } else {
+          builder.nodeUrls(Collections.singletonList(url(0)));
+        }
+        if (threshold != Integer.MAX_VALUE) {
+          builder.thriftMaxReusableBufferSize(threshold);
+        }
+        SessionPool pool = builder.build();
+        try {
+          try (SessionDataSetWrapper first = pool.executeQueryStatement(LARGE_QUERY);
+              SessionDataSetWrapper second = pool.executeQueryStatement(LARGE_QUERY)) {
+            assertTrue(first.hasNext());
+            assertTrue(second.hasNext());
+            assertNotSame(first.getSession(), second.getSession());
+            assertLargeRequestBuffer((Session) first.getSession(), threshold);
+            assertLargeRequestBuffer((Session) second.getSession(), threshold);
+          }
+          assertDiscoveryBufferThreshold(pool, threshold);
+        } finally {
+          pool.close();
+        }
+      }
+    }
+  }
+
+  // Holding two table sessions forces the pool to open two connections. Both connections and
+  // discovery must inherit the default, finite or zero threshold from TableSessionPoolBuilder.
+  @Test
+  public void testTableSessionPoolBufferReuseThreshold() throws Exception {
+    advertised = endpoints(0);
+    for (int threshold : new int[] {Integer.MAX_VALUE, 128, 0}) {
+      TableSessionPoolBuilder builder =
+          new TableSessionPoolBuilder()
+              .nodeUrls(Collections.singletonList(url(0)))
+              .maxSize(2)
+              .thriftDefaultBufferSize(32);
+      if (threshold != Integer.MAX_VALUE) {
+        builder.thriftMaxReusableBufferSize(threshold);
+      }
+      try (ITableSessionPool pool = builder.build()) {
+        try (ITableSession first = pool.getSession();
+            ITableSession second = pool.getSession()) {
+          Session firstSession = Whitebox.getInternalState(first, "session");
+          Session secondSession = Whitebox.getInternalState(second, "session");
+          assertNotSame(firstSession, secondSession);
+          try (SessionDataSet result = first.executeQueryStatement(LARGE_QUERY)) {
+            assertTrue(result.hasNext());
+            assertLargeRequestBuffer(firstSession, threshold);
+          }
+          try (SessionDataSet result = second.executeQueryStatement(LARGE_QUERY)) {
+            assertTrue(result.hasNext());
+            assertLargeRequestBuffer(secondSession, threshold);
+          }
+        }
+        assertDiscoveryBufferThreshold(Whitebox.getInternalState(pool, "sessionPool"), threshold);
+      }
+    }
+  }
+
+  private void assertLargeRequestBuffer(Session session, int threshold) {
+    // Check before closing the result: closeOperation sends a small frame that can grow reuse
+    // again.
+    AutoScalingBufferWriteTransport output =
+        assertTransportBufferThreshold(session.defaultSessionConnection, threshold);
+    if (threshold == Integer.MAX_VALUE) {
+      assertTrue(output.getBuffer().length >= LARGE_QUERY.length());
+    } else {
+      assertEquals(32, output.getBuffer().length);
+    }
+  }
+
+  private void assertDiscoveryBufferThreshold(SessionPool pool, int threshold) {
+    NodesSupplier current = Whitebox.getInternalState(pool, "availableNodes");
+    current.run();
+    ThriftConnection connection = Whitebox.getInternalState(current, "client");
+    AutoScalingBufferWriteTransport output = assertTransportBufferThreshold(connection, threshold);
+    if (threshold == 0) {
+      assertEquals(32, output.getBuffer().length);
+    }
+  }
+
+  private AutoScalingBufferWriteTransport assertTransportBufferThreshold(
+      Object connection, int threshold) {
+    TTransport transport = Whitebox.getInternalState(connection, "transport");
+    AutoScalingBufferWriteTransport output = Whitebox.getInternalState(transport, "writeBuffer");
+    Object input = Whitebox.getInternalState(transport, "readBuffer");
+    assertEquals(threshold, (int) Whitebox.getInternalState(output, "maxReusableBufferSize"));
+    assertEquals(threshold, (int) Whitebox.getInternalState(input, "maxReusableBufferSize"));
+    return output;
   }
 
   @Test

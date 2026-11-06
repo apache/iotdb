@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.commons.enums.PipeRateAverage;
 import org.apache.iotdb.commons.i18n.ConfigMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -41,10 +40,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.KB;
@@ -176,14 +178,16 @@ public class CommonConfig {
   private volatile NodeStatus status = NodeStatus.Running;
 
   /**
-   * Maximum length of the error message embedded in the UnrecoverableError status reason, keeping
-   * the reason bounded in heartbeats and SHOW results.
+   * Reason reported in heartbeats and SHOW results. For unrecoverable errors, {@link
+   * HandleSystemErrorStrategy} formats the exception before setting this field.
    */
-  private static final int MAX_STATUS_REASON_LENGTH = 256;
+  private volatile String statusReason = null;
 
   private volatile boolean isStopping = false;
 
-  private volatile String statusReason = null;
+  // Only failed sources are retained. Directory initialization uses its folder list as the key;
+  // a live FolderManager uses its identity so its health restrictions are also checked.
+  private final Map<Object, BooleanSupplier> diskFullRecoveryChecks = new HashMap<>();
 
   private final int TTimePartitionSlotTransmitLimit = 1000;
 
@@ -791,26 +795,8 @@ public class CommonConfig {
     this.handleSystemErrorStrategy = handleSystemErrorStrategy;
   }
 
-  /**
-   * Handles an unrecoverable error with the given exception. The ReadOnly status reason is
-   * assembled here so that all call sites share one format: "UnrecoverableError, <timestamp>,
-   * <error message>". The error message is truncated to {@link #MAX_STATUS_REASON_LENGTH}
-   * characters so that the reason published in heartbeats and SHOW results stays bounded.
-   */
   public void handleUnrecoverableError(Throwable e) {
-    String errorMessage =
-        e.getMessage() == null || e.getMessage().isEmpty()
-            ? e.getClass().getSimpleName()
-            : e.getMessage();
-    if (errorMessage.length() > MAX_STATUS_REASON_LENGTH) {
-      errorMessage = errorMessage.substring(0, MAX_STATUS_REASON_LENGTH) + "...";
-    }
-    handleSystemErrorStrategy.handle(
-        NodeStatus.UNRECOVERABLE_ERROR
-            + ", "
-            + DateTimeUtils.convertLongToDate(System.currentTimeMillis(), "ms")
-            + ", "
-            + errorMessage);
+    handleSystemErrorStrategy.handle(NodeStatus.UNRECOVERABLE_ERROR, e);
   }
 
   public double getDiskSpaceWarningThreshold() {
@@ -861,6 +847,38 @@ public class CommonConfig {
     setNodeStatusWithReason(newStatus, null);
   }
 
+  /** Records the recovery condition together with the disk-full transition. */
+  public synchronized void setReadOnlyForDiskFull(Object source, BooleanSupplier recoveryCheck) {
+    diskFullRecoveryChecks.put(source, recoveryCheck);
+    setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
+  }
+
+  public synchronized boolean isReadOnlyForDiskFull() {
+    return status == NodeStatus.ReadOnly && NodeStatus.DISK_FULL.equals(statusReason);
+  }
+
+  /** Recheck the reason under the status lock before clearing disk-full recovery checks. */
+  public synchronized void setRunningIfDiskFull() {
+    if (isReadOnlyForDiskFull()) {
+      setNodeStatus(NodeStatus.Running);
+    }
+  }
+
+  /** Called after the aggregate disk-space check passes. */
+  public void tryRecoverFromDiskFull() {
+    final List<BooleanSupplier> recoveryChecks;
+    synchronized (this) {
+      if (!isReadOnlyForDiskFull()) {
+        return;
+      }
+      recoveryChecks = new ArrayList<>(diskFullRecoveryChecks.values());
+    }
+    // Do not hold the status monitor during filesystem I/O.
+    if (recoveryChecks.stream().allMatch(BooleanSupplier::getAsBoolean)) {
+      setRunningIfDiskFull();
+    }
+  }
+
   /**
    * Sets the node status and reason together. ReadOnly-to-ReadOnly updates select the reason
    * through {@link NodeStatus#transitionReadOnlyReason(String, String)}. Other statuses clear the
@@ -868,6 +886,7 @@ public class CommonConfig {
    */
   public synchronized void setNodeStatusWithReason(NodeStatus newStatus, String newReason) {
     if (newStatus != NodeStatus.ReadOnly) {
+      diskFullRecoveryChecks.clear();
       newReason = null;
     } else if (status == NodeStatus.ReadOnly) {
       newReason = NodeStatus.transitionReadOnlyReason(statusReason, newReason);
