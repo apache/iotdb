@@ -37,7 +37,7 @@ final class InternalTableSessionPool extends TableSessionPool {
 
     @Override
     protected Session.Builder createSessionBuilder() {
-      return new InternalTableSessionBuilder();
+      return new InternalSessionBuilder();
     }
   }
 }
