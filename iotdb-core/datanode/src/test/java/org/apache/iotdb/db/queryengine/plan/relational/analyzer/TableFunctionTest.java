@@ -36,6 +36,7 @@ import com.google.common.collect.ImmutableSet;
 import org.junit.Test;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.function.Consumer;
 
 import static org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.ForecastTableFunction.DEFAULT_OUTPUT_INTERVAL;
@@ -224,6 +225,199 @@ public class TableFunctionTest {
         tableFunctionProcessor(tableFunctionMatcher, mergeSort(exchange(), exchange())));
     assertPlan(planTester.getFragmentPlan(4), tableScan);
     assertPlan(planTester.getFragmentPlan(5), tableScan);
+  }
+
+  private static final String NESTED_SESSION_SQL =
+      "SELECT * FROM SESSION(DATA => (SELECT * FROM SESSION(DATA => table1 "
+          + "PARTITION BY (tag1, tag2, tag3) ORDER BY time, GAP => 1m)) "
+          + "PARTITION BY (tag3, tag2, tag1) ORDER BY time, GAP => 2m)";
+
+  private static Consumer<TableFunctionProcessorMatcher.Builder> sessionMatcher(
+      String windowStart, String windowEnd, long gap) {
+    return builder ->
+        builder
+            .name("session")
+            .properOutputs(windowStart, windowEnd)
+            .requiredSymbols("time")
+            .handle(new MapTableFunctionHandle.Builder().addProperty("GAP", gap).build());
+  }
+
+  private static PlanMatchPattern scanAllColumns() {
+    return tableScan(
+        "testdb.table1",
+        ImmutableList.of("time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"),
+        ImmutableSet.of("time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"));
+  }
+
+  private static List<PlanMatchPattern.Ordering> orderBy(String... fields) {
+    ImmutableList.Builder<PlanMatchPattern.Ordering> result = ImmutableList.builder();
+    for (String field : fields) {
+      result.add(sort(field, ASCENDING, LAST));
+    }
+    return result.build();
+  }
+
+  @Test
+  public void testNestedSetSemanticPermutedPartitionsKeepBothGroups() {
+    PlanTester planTester = new PlanTester();
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(NESTED_SESSION_SQL);
+    Consumer<TableFunctionProcessorMatcher.Builder> outer =
+        sessionMatcher("window_start", "window_end", 120_000L);
+    Consumer<TableFunctionProcessorMatcher.Builder> inner =
+        sessionMatcher("window_start_0", "window_end_1", 60_000L);
+    // PARTITION BY columns are the same set in a different order and ORDER BY matches, so both
+    // grouping nodes survive: the outer keeps its declared order, the inner keeps its own.
+    assertPlan(
+        logicalQueryPlan,
+        anyTree(
+            tableFunctionProcessor(
+                outer,
+                group(
+                    orderBy("tag3", "tag2", "tag1", "time"),
+                    3,
+                    tableFunctionProcessor(
+                        inner,
+                        group(orderBy("tag1", "tag2", "tag3", "time"), 3, scanAllColumns()))))));
+    // Both levels are split per region; only regions with several devices need a merged stream.
+    assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
+    assertPlan(
+        planTester.getFragmentPlan(1),
+        tableFunctionProcessor(outer, tableFunctionProcessor(inner, scanAllColumns())));
+    assertPlan(
+        planTester.getFragmentPlan(2),
+        tableFunctionProcessor(outer, tableFunctionProcessor(inner, scanAllColumns())));
+    assertPlan(
+        planTester.getFragmentPlan(3),
+        tableFunctionProcessor(
+            outer,
+            tableFunctionProcessor(
+                inner,
+                mergeSort(orderBy("tag3", "tag2", "tag1", "time"), exchange(), exchange()))));
+    assertPlan(planTester.getFragmentPlan(4), scanAllColumns());
+    assertPlan(planTester.getFragmentPlan(5), scanAllColumns());
+  }
+
+  @Test
+  public void testNestedSetSemanticDifferentOrderByKeepsOuterGroup() {
+    PlanTester planTester = new PlanTester();
+    String sql =
+        "SELECT * FROM SESSION(DATA => (SELECT * FROM SESSION(DATA => table1 "
+            + "PARTITION BY (tag1, tag2, tag3) ORDER BY time, GAP => 1m)) "
+            + "PARTITION BY (tag3, tag2, tag1) ORDER BY s1, GAP => 2m)";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    Consumer<TableFunctionProcessorMatcher.Builder> outer =
+        sessionMatcher("window_start", "window_end", 120_000L);
+    Consumer<TableFunctionProcessorMatcher.Builder> inner =
+        sessionMatcher("window_start_0", "window_end_1", 60_000L);
+    // Only the partition prefix has to be clustered: the outer group re-establishes its s1 order
+    // inside every partition, so a different ORDER BY does not degrade it to a full sort.
+    assertPlan(
+        logicalQueryPlan,
+        anyTree(
+            tableFunctionProcessor(
+                outer,
+                group(
+                    orderBy("tag3", "tag2", "tag1", "s1"),
+                    3,
+                    tableFunctionProcessor(
+                        inner,
+                        group(orderBy("tag1", "tag2", "tag3", "time"), 3, scanAllColumns()))))));
+    // Both levels are still split per region.
+    assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
+  }
+
+  @Test
+  public void testNestedSetSemanticGlobalOrderByDeclaredOrder() {
+    PlanTester planTester = new PlanTester();
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(NESTED_SESSION_SQL + " ORDER BY tag3, tag2, tag1, time");
+    Consumer<TableFunctionProcessorMatcher.Builder> outer =
+        sessionMatcher("window_start", "window_end", 120_000L);
+    Consumer<TableFunctionProcessorMatcher.Builder> inner =
+        sessionMatcher("window_start_0", "window_end_1", 60_000L);
+    // The requested global order equals the outer declared order, so no per-region sort is needed
+    // and the cross-region merge uses exactly that order.
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(
+            mergeSort(
+                orderBy("tag3", "tag2", "tag1", "time"), exchange(), exchange(), exchange())));
+    assertPlan(
+        planTester.getFragmentPlan(1),
+        tableFunctionProcessor(outer, tableFunctionProcessor(inner, scanAllColumns())));
+    assertPlan(
+        planTester.getFragmentPlan(3),
+        tableFunctionProcessor(
+            outer,
+            tableFunctionProcessor(
+                inner,
+                mergeSort(orderBy("tag3", "tag2", "tag1", "time"), exchange(), exchange()))));
+  }
+
+  @Test
+  public void testNestedSetSemanticGlobalOrderByPermutesPartitionColumns() {
+    PlanTester planTester = new PlanTester();
+    // The global order permutes the partition columns again; the distributed planner must prove it
+    // by rewriting grouping/device comparators instead of reusing the TVF declared order.
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(NESTED_SESSION_SQL + " ORDER BY tag2, tag3, tag1, time");
+    Consumer<TableFunctionProcessorMatcher.Builder> outer =
+        sessionMatcher("window_start", "window_end", 120_000L);
+    Consumer<TableFunctionProcessorMatcher.Builder> inner =
+        sessionMatcher("window_start_0", "window_end_1", 60_000L);
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(
+            mergeSort(
+                orderBy("tag2", "tag3", "tag1", "time"), exchange(), exchange(), exchange())));
+    assertPlan(
+        planTester.getFragmentPlan(1),
+        tableFunctionProcessor(outer, tableFunctionProcessor(inner, scanAllColumns())));
+    assertPlan(
+        planTester.getFragmentPlan(3),
+        tableFunctionProcessor(
+            outer,
+            tableFunctionProcessor(
+                inner,
+                mergeSort(orderBy("tag2", "tag3", "tag1", "time"), exchange(), exchange()))));
+  }
+
+  @Test
+  public void testThreeLevelNestedSetSemanticPermutedPartitions() {
+    PlanTester planTester = new PlanTester();
+    String sql =
+        "SELECT * FROM SESSION(DATA => (SELECT * FROM SESSION(DATA => (SELECT * FROM SESSION(DATA => table1 "
+            + "PARTITION BY (tag1, tag2, tag3) ORDER BY time, GAP => 1m)) "
+            + "PARTITION BY (tag3, tag2, tag1) ORDER BY time, GAP => 2m)) "
+            + "PARTITION BY (tag2, tag1, tag3) ORDER BY time, GAP => 3m)";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    Consumer<TableFunctionProcessorMatcher.Builder> outerMost =
+        sessionMatcher("window_start", "window_end", 180_000L);
+    Consumer<TableFunctionProcessorMatcher.Builder> middle =
+        sessionMatcher("window_start_0", "window_end_1", 120_000L);
+    Consumer<TableFunctionProcessorMatcher.Builder> inner =
+        sessionMatcher("window_start_2", "window_end_3", 60_000L);
+    // Every level lists the same PARTITION BY columns in a different order, so all three groups
+    // survive and are executed in parallel per region.
+    assertPlan(
+        logicalQueryPlan,
+        anyTree(
+            tableFunctionProcessor(
+                outerMost,
+                group(
+                    orderBy("tag2", "tag1", "tag3", "time"),
+                    3,
+                    tableFunctionProcessor(
+                        middle,
+                        group(
+                            orderBy("tag3", "tag2", "tag1", "time"),
+                            3,
+                            tableFunctionProcessor(
+                                inner,
+                                group(
+                                    orderBy("tag1", "tag2", "tag3", "time"),
+                                    3,
+                                    scanAllColumns()))))))));
   }
 
   @Test
