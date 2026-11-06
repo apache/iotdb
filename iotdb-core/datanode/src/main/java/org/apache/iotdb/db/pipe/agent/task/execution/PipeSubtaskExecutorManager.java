@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.agent.task.execution;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.consensus.PipeConsensusSubtaskExecutor;
 import org.apache.iotdb.db.subscription.task.execution.SubscriptionSubtaskExecutor;
 
@@ -58,6 +59,7 @@ public class PipeSubtaskExecutorManager {
     connectorExecutorSupplier = PipeSinkSubtaskExecutor::new;
     subscriptionExecutor =
         SubscriptionConfig.getInstance().getSubscriptionEnabled()
+                && PipeDataNodeAgent.isSubscriptionFeatureEnabled()
             ? new SubscriptionSubtaskExecutor()
             : null;
     consensusExecutorSupplier = PipeConsensusSubtaskExecutor::new;

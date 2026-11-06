@@ -145,6 +145,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   @Override
+  protected boolean isPipeDataInsertionEnabled(final PipeStaticMeta pipeStaticMeta) {
+    return PipeDataNodeAgent.isPipeDataInsertionEnabled(pipeStaticMeta.getExtractorParameters());
+  }
+
+  @Override
   protected Map<Integer, PipeTask> buildPipeTasks(final PipeMeta pipeMetaFromConfigNode)
       throws IllegalPathException {
     return new PipeDataNodeBuilder(pipeMetaFromConfigNode).build();
