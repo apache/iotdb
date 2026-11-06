@@ -608,6 +608,10 @@ public final class ConfigNodeMessages {
   public static final String EXCEPTION_AVAILABLE_ONLY_DATA_REPLICATION_FACTOR_SET_1_71748D3D =
       "仅在 data_replication_factor 设置为 1 时可用";
   public static final String EXCEPTION_ARG_ARG_6E068B23 = "%s 或 %s";
+  public static final String EXCEPTION_ARG_ARG_ARG_OR_ARG_E950ED19 = "%s、%s、%s 或 %s";
+  public static final String
+      EXCEPTION_UNRECOGNIZED_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_IS_SET_DAB37EAF =
+          "设置了无法识别的 data_region_consensus_protocol_class";
   public static final String
       EXCEPTION_SCHEMAREGION_DOESN_T_SUPPORT_ORG_APACHE_IOTDB_CONSENSUS_IOT_IOTCONSENSUS_84350FD1 =
           "SchemaRegion 不支持 org.apache.iotdb.consensus.iot.IoTConsensus";
