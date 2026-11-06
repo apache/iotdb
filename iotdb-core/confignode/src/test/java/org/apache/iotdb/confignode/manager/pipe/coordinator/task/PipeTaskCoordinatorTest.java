@@ -126,7 +126,7 @@ public class PipeTaskCoordinatorTest {
   @Test
   public void testStartHandlesConcurrentDrop() {
     Assert.assertEquals(
-        TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), coordinator.startPipe("p").getCode());
+        TSStatusCode.PIPE_ERROR.getStatusCode(), coordinator.startPipe("p").getCode());
     verifyNoMoreInteractions(configManager);
     Assert.assertFalse(pipeTaskInfo.isPipeExisted("p"));
   }

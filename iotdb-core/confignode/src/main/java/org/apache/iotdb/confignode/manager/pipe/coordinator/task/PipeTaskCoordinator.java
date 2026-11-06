@@ -150,7 +150,7 @@ public class PipeTaskCoordinator {
     final PipeMeta pipeMeta = pipeTaskInfo.getPipeMetaByPipeName(pipeName);
     if (pipeMeta == null) {
       return RpcUtils.getStatus(
-          TSStatusCode.PIPE_NOT_EXIST_ERROR,
+          TSStatusCode.PIPE_ERROR,
           String.format(
               ConfigNodeMessages
                   .MESSAGE_FAILED_TO_START_PIPE_ARG_FAILURES_ARG_DOES_NOT_EXIST_F13A63EE,
