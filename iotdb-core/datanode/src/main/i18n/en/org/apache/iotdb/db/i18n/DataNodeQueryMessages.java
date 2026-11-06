@@ -23,6 +23,13 @@ public final class DataNodeQueryMessages {
 
   private DataNodeQueryMessages() {}
 
+  public static final String EXCEPTION_STATECHANGELISTENER_IS_NULL_B030E8A0 =
+      "stateChangeListener is null";
+  public static final String LOG_ERROR_NOTIFYING_STATE_CHANGE_LISTENER_FOR_ARG_00D668A9 =
+      "Error notifying state change listener for {}";
+  public static final String LOG_RELEASEMEMORY_RELEASE_ARG_CURRENT_REMAINING_MEMORY_ARG_4E7B461E =
+      "[ReleaseMemory] release: {}, current remaining memory: {}";
+
   public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477 =
       "Failed to convert TsFile %s to tablets. Status: %s";
   public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD =

@@ -23,6 +23,13 @@ public final class DataNodeQueryMessages {
 
   private DataNodeQueryMessages() {}
 
+  public static final String EXCEPTION_STATECHANGELISTENER_IS_NULL_B030E8A0 =
+      "stateChangeListener 为空";
+  public static final String LOG_ERROR_NOTIFYING_STATE_CHANGE_LISTENER_FOR_ARG_00D668A9 =
+      "通知 {} 的状态变更监听器时出错";
+  public static final String LOG_RELEASEMEMORY_RELEASE_ARG_CURRENT_REMAINING_MEMORY_ARG_4E7B461E =
+      "[ReleaseMemory] 释放：{}，当前剩余内存：{}";
+
   public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477 =
       "将 TsFile %s 转换为 tablet 失败。状态：%s";
   public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_ARG_96358FDD =

@@ -167,25 +167,38 @@ public class LocalExecutionPlanner {
     }
     FragmentInstanceStateMachine stateMachine = instanceContext.getStateMachine();
     if (reservedBytes > 0) {
-      stateMachine.addStateChangeListener(
-          newState -> {
-            if (newState.isDone()) {
-              try (SetThreadName fragmentInstanceName =
-                  new SetThreadName(stateMachine.getFragmentInstanceId().getFullId())) {
-                synchronized (this) {
-                  this.freeMemoryForOperators += reservedBytes;
-                  if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug(
-                        "[ReleaseMemory] release: {}, current remaining memory: {}",
-                        reservedBytes,
-                        freeMemoryForOperators);
-                  }
-                }
-              }
-            }
-          });
+      registerOperatorsMemoryRelease(reservedBytes, stateMachine);
     }
     return reservedBytes;
+  }
+
+  private void registerOperatorsMemoryRelease(
+      long reservedBytes, FragmentInstanceStateMachine stateMachine) {
+    // Regular state listeners share a bounded executor and can be delayed by driver cleanup.
+    // Return this admission reservation in the transition thread so consecutive fast failures
+    // cannot exhaust the operators memory pool.
+    stateMachine.addFinalStateChangeListener(
+        ignored -> {
+          try (SetThreadName fragmentInstanceName =
+              new SetThreadName(stateMachine.getFragmentInstanceId().getFullId())) {
+            synchronized (this) {
+              this.freeMemoryForOperators += reservedBytes;
+              if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug(
+                    DataNodeQueryMessages
+                        .LOG_RELEASEMEMORY_RELEASE_ARG_CURRENT_REMAINING_MEMORY_ARG_4E7B461E,
+                    reservedBytes,
+                    freeMemoryForOperators);
+              }
+            }
+          }
+        });
+  }
+
+  @TestOnly
+  void registerOperatorsMemoryReleaseForTest(
+      long reservedBytes, FragmentInstanceStateMachine stateMachine) {
+    registerOperatorsMemoryRelease(reservedBytes, stateMachine);
   }
 
   /**
