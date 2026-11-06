@@ -33,6 +33,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingDatabaseException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
@@ -106,6 +107,7 @@ public class LoadTsFileTableSchemaCache {
   private final Metadata metadata;
   private final MPPQueryContext context;
   private final boolean shouldVerifyDataType;
+  private final boolean allowAutoCreateSchema;
 
   private Map<String, Set<IDeviceID>> currentBatchTable2Devices;
 
@@ -129,12 +131,28 @@ public class LoadTsFileTableSchemaCache {
       final boolean needToCreateDatabase,
       final boolean shouldVerifyDataType)
       throws LoadRuntimeOutOfMemoryException {
+    this(metadata, context, needToCreateDatabase, shouldVerifyDataType, true);
+  }
+
+  public LoadTsFileTableSchemaCache(
+      final Metadata metadata,
+      final MPPQueryContext context,
+      final boolean needToCreateDatabase,
+      final boolean shouldVerifyDataType,
+      final boolean allowAutoCreateSchema)
+      throws LoadRuntimeOutOfMemoryException {
     this.block =
         LoadTsFileMemoryManager.getInstance()
             .allocateMemoryBlock(ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES);
     this.metadata = metadata;
     this.context = context;
     this.shouldVerifyDataType = shouldVerifyDataType;
+    this.allowAutoCreateSchema =
+        allowAutoCreateSchema
+            && IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
+            && (context == null
+                || context.getSession() == null
+                || context.getSession().isEnableAutoCreateSchema());
     this.currentBatchTable2Devices = new HashMap<>();
     this.currentModifications = PatternTreeMapFactory.getModsPatternTreeMap();
     this.needToCreateDatabase = needToCreateDatabase;
@@ -358,7 +376,12 @@ public class LoadTsFileTableSchemaCache {
     final TableSchema realSchema =
         metadata
             .validateTableHeaderSchema4TsFile(
-                database, fileSchema, context, true, true, needDecode4DifferentTimeColumn)
+                database,
+                fileSchema,
+                context,
+                allowAutoCreateSchema,
+                true,
+                needDecode4DifferentTimeColumn)
             .orElse(null);
     if (Objects.isNull(realSchema)) {
       throw new LoadAnalyzeException(
@@ -394,11 +417,11 @@ public class LoadTsFileTableSchemaCache {
       return;
     }
 
-    if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
-      throw new LoadAnalyzeException(
+    if (!allowAutoCreateSchema) {
+      throw new LoadAnalyzeMissingDatabaseException(
           String.format(
               DataNodeQueryMessages
-                  .QUERY_EXCEPTION_THE_DATABASE_S_DOES_NOT_EXIST_PLEASE_ENABLE_ENABLE_AUTO_B6683D0E,
+                  .EXCEPTION_THE_DATABASE_ARG_DOES_NOT_EXIST_AND_AUTO_CREATE_SCHEMA_IS_DISABLED_28F8D49A,
               database));
     }
 
