@@ -184,6 +184,75 @@ public class IoTDBRestartIT {
   }
 
   @Test
+  public void testDeleteIsolationWithinSharedTsFile() throws Exception {
+    final String database = "root.shared_delete";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE " + database);
+      statement.execute("CREATE TIMESERIES " + database + ".d1.s1 WITH DATATYPE=INT64");
+      statement.execute("CREATE TIMESERIES " + database + ".d1.s2 WITH DATATYPE=INT64");
+      statement.execute("CREATE TIMESERIES " + database + ".d2.s1 WITH DATATYPE=INT64");
+      statement.execute("CREATE TIMESERIES " + database + ".d2.s2 WITH DATATYPE=INT64");
+      statement.execute("INSERT INTO " + database + ".d1(time,s1,s2) VALUES(1,11,101),(2,12,102)");
+      statement.execute("INSERT INTO " + database + ".d2(time,s1,s2) VALUES(1,21,201),(2,22,202)");
+      statement.execute("FLUSH");
+
+      // One flushed TsFile contains both devices, so the following checks exercise object-level
+      // deletion instead of relying on a separate-file fixture.
+      DeletionTestUtils.assertSharedTsFile(
+          database,
+          IDeviceID.Factory.DEFAULT_FACTORY.create(database + ".d1"),
+          IDeviceID.Factory.DEFAULT_FACTORY.create(database + ".d2"));
+      statement.execute("DELETE FROM " + database + ".d1.s1 WHERE time <= 1");
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s1,s2 FROM " + database + ".d1 ORDER BY time")) {
+        assertTrue(resultSet.next());
+        assertEquals(1, resultSet.getLong(1));
+        assertNull(resultSet.getObject(2));
+        assertEquals(101, resultSet.getLong(3));
+        assertTrue(resultSet.next());
+        assertEquals(2, resultSet.getLong(1));
+        assertEquals(12, resultSet.getLong(2));
+        assertEquals(102, resultSet.getLong(3));
+        assertFalse(resultSet.next());
+      }
+
+      statement.execute("DELETE FROM " + database + ".d1.**");
+      try (ResultSet rows = statement.executeQuery("SELECT s1,s2 FROM " + database + ".d1")) {
+        assertFalse(rows.next());
+      }
+      statement.execute("INSERT INTO " + database + ".d1(time,s1) VALUES(1,1101)");
+      statement.execute("FLUSH");
+    }
+
+    TestUtils.stopForciblyAndRestartDataNodes();
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s1,s2 FROM " + database + ".d1 ORDER BY time")) {
+        assertTrue(resultSet.next());
+        assertEquals(1, resultSet.getLong(1));
+        assertEquals(1101, resultSet.getLong(2));
+        assertNull(resultSet.getObject(3));
+        assertFalse(resultSet.next());
+      }
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT s1,s2 FROM " + database + ".d2 ORDER BY time")) {
+        assertTrue(resultSet.next());
+        assertEquals(1, resultSet.getLong(1));
+        assertEquals(21, resultSet.getLong(2));
+        assertEquals(201, resultSet.getLong(3));
+        assertTrue(resultSet.next());
+        assertEquals(2, resultSet.getLong(1));
+        assertEquals(22, resultSet.getLong(2));
+        assertEquals(202, resultSet.getLong(3));
+        assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  @Test
   public void testDeleteAndRewriteSurviveForcedRestart() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

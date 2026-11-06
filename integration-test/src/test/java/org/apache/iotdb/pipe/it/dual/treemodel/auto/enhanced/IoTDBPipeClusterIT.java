@@ -24,7 +24,11 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
@@ -32,6 +36,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
@@ -39,18 +44,24 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoEnhanced;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.pipe.it.dual.PipeTransferObserver;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
 import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.enums.TSDataType;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -64,12 +75,19 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.apache.iotdb.pipe.it.dual.PipeRecoveryTestUtils.assertInt32Schema;
+import static org.apache.iotdb.pipe.it.dual.PipeRecoveryTestUtils.awaitDrained;
+import static org.apache.iotdb.pipe.it.dual.PipeRecoveryTestUtils.awaitRows;
+import static org.apache.iotdb.pipe.it.dual.PipeRecoveryTestUtils.batchDevices;
+import static org.apache.iotdb.pipe.it.dual.PipeRecoveryTestUtils.createPipe;
+import static org.apache.iotdb.pipe.it.dual.PipeRecoveryTestUtils.execute;
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeAutoEnhanced.class})
 public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
+  @Rule public final TestName testName = new TestName();
 
   private static final double SYNC_LAG_DELTA = 0.001;
 
@@ -116,6 +134,22 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
     receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+
+    if ("testReceiverRedirectRefreshesAfterTargetRegionLeaderChanges"
+        .equals(testName.getMethodName())) {
+      // One source region produces a single multi-device event. Two receiver regions make
+      // device-specific redirect hints observable without changing the other cluster scenarios.
+      senderEnv
+          .getConfig()
+          .getCommonConfig()
+          .setDataRegionGroupExtensionPolicy("CUSTOM")
+          .setDefaultDataRegionGroupNumPerDatabase(1);
+      receiverEnv
+          .getConfig()
+          .getCommonConfig()
+          .setDataRegionGroupExtensionPolicy("CUSTOM")
+          .setDefaultDataRegionGroupNumPerDatabase(2);
+    }
 
     senderEnv.initClusterEnvironment(3, 3, 180);
     receiverEnv.initClusterEnvironment(3, 3, 180);
@@ -1157,6 +1191,272 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(successCount.get(), showPipeResult.size());
     }
+  }
+
+  @Test
+  public void testReceiverRedirectRefreshesAfterTargetRegionLeaderChanges() throws Exception {
+    // A7: a real multi-device batch populates per-device routes across two receiver regions.
+    // Stop the cached leader and send while it is still down; no endpoint/pipe replacement is used.
+    final String database = "root.pipe_receiver_routes";
+    execute(receiverEnv, "create database " + database + " with max_data_region_group_num=2");
+    execute(senderEnv, "create database " + database + " with max_data_region_group_num=1");
+    final Map<Integer, String> regionDevices = new HashMap<>();
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) receiverEnv.getLeaderConfigNodeConnection()) {
+      // Allocate actual device partitions, rather than inferring placement from node count.
+      for (int i = 0; i < 32 && regionDevices.size() < 2; ++i) {
+        final String device = database + ".d" + i;
+        execute(
+            receiverEnv,
+            "create timeseries " + device + ".s1 INT32 encoding=RLE",
+            "insert into " + device + "(time,s1) values(0," + (1000 + i) + ")");
+        final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        new PartialPath(device).getIDeviceID().serialize(bytes);
+        final TGetRegionIdResp response =
+            client.getRegionId(
+                new TGetRegionIdReq(TConsensusGroupType.DataRegion).setDevice(bytes.toByteArray()));
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+        Assert.assertEquals(1, response.getDataRegionIdListSize());
+        regionDevices.putIfAbsent(response.getDataRegionIdList().get(0).getId(), device);
+      }
+    }
+    Assert.assertEquals(
+        "Devices must occupy two distinct receiver DataRegions", 2, regionDevices.size());
+    final List<String> devices = new ArrayList<>(regionDevices.values());
+    Collections.sort(devices);
+    final String a = devices.get(0);
+    final String b = devices.get(1);
+    final int regionA =
+        regionDevices.entrySet().stream()
+            .filter(e -> e.getValue().equals(a))
+            .findFirst()
+            .orElseThrow()
+            .getKey();
+    final TRegionInfo oldLeader = routeLeader(database, regionA);
+    final List<Integer> targetRegionPorts;
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) receiverEnv.getLeaderConfigNodeConnection()) {
+      targetRegionPorts =
+          showTreeDataRegions(Collections.singletonList(database), client).stream()
+              .filter(info -> info.getConsensusGroupId().getId() == regionA)
+              .map(TRegionInfo::getClientRpcPort)
+              .toList();
+    }
+    Assert.assertEquals(2, targetRegionPorts.size());
+    final DataNodeWrapper entry =
+        receiverEnv.getDataNodeWrapperList().stream()
+            // The entry must not become the replacement leader, which would suppress its hint.
+            .filter(node -> !targetRegionPorts.contains(node.getPort()))
+            .findFirst()
+            .orElseThrow();
+    execute(
+        senderEnv,
+        "create timeseries " + a + ".s1 INT32 encoding=RLE",
+        "create timeseries " + b + ".s1 INT32 encoding=RLE");
+    final String name = "receiver_region_redirect";
+    try (final PipeTransferObserver observer = new PipeTransferObserver(entry)) {
+      createPipe(
+          senderEnv,
+          name,
+          database,
+          observer.getEndpoint(),
+          Map.of(),
+          Map.of(),
+          Map.of(
+              "sink.leader-cache.enable",
+              "true",
+              // A missing or stale route must use the observed entry, never another cached node.
+              "sink.load-balance-strategy",
+              "priority",
+              "sink.batch.enable",
+              "true",
+              "sink.batch.size-bytes",
+              "1048576",
+              "sink.batch.max-delay-ms",
+              "3000"));
+      try {
+        insertRouteRows(a, b, 100, 11, 21);
+        await()
+            .atMost(60, TimeUnit.SECONDS)
+            .untilAsserted(
+                () -> {
+                  boolean mixed = false;
+                  boolean redirected = false;
+                  for (final PipeTransferObserver.Transfer transfer : observer.getTransfers()) {
+                    if (transfer.request.getType()
+                            == PipeRequestType.TRANSFER_TABLET_BATCH_V2.getType()
+                        && batchDevices(transfer.request).containsAll(Arrays.asList(a, b))) {
+                      mixed = true;
+                      redirected |=
+                          hasDeviceRedirect(
+                              transfer.response.getStatus(), a, oldLeader.getClientRpcPort());
+                    }
+                  }
+                  Assert.assertTrue("No real batch contained both region devices", mixed);
+                  Assert.assertTrue(
+                      "No receiver response supplied the target's initial leader route",
+                      redirected);
+                });
+        awaitDrained(senderEnv, name);
+        final int beforeInitialProbe = observer.getRequests().size();
+        execute(senderEnv, "insert into " + a + "(time,s1) values(150,15)");
+        awaitRows(
+            receiverEnv,
+            "select s1 from " + a + " where time = 150",
+            "Time," + a + ".s1,",
+            "150,15,");
+        awaitDrained(senderEnv, name);
+        assertDeviceUsesCachedRoute(observer, beforeInitialProbe, a);
+        // Re-read immediately before the fault: an earlier observation is insufficient.
+        Assert.assertEquals(
+            oldLeader.getClientRpcPort(), routeLeader(database, regionA).getClientRpcPort());
+        final int oldIndex = findDataNodeIndexByPort(receiverEnv, oldLeader.getClientRpcPort());
+        final int beforeFailover = observer.getTransfers().size();
+        receiverEnv.shutdownDataNode(oldIndex);
+        try {
+          await()
+              .atMost(90, TimeUnit.SECONDS)
+              .untilAsserted(
+                  () ->
+                      Assert.assertNotEquals(
+                          oldLeader.getClientRpcPort(),
+                          routeLeader(database, regionA).getClientRpcPort()));
+          final TRegionInfo newLeader = routeLeader(database, regionA);
+          // Single-device events consult the routes learned from the preceding multi-device batch.
+          execute(
+              senderEnv,
+              "insert into " + a + "(time,s1) values(200,12)",
+              "insert into " + b + "(time,s1) values(200,22)");
+          // Pin the query to a live node while the cached endpoint remains unavailable.
+          await()
+              .pollInSameThread()
+              .atMost(90, TimeUnit.SECONDS)
+              .untilAsserted(
+                  () -> {
+                    try (final Connection connection = receiverEnv.getConnection(entry);
+                        final java.sql.Statement statement = connection.createStatement();
+                        final java.sql.ResultSet rows =
+                            statement.executeQuery(
+                                "select s1 from " + a + "," + b + " where time >= 100")) {
+                      TestUtils.assertResultSetEqualUnordered(
+                          rows,
+                          "Time," + a + ".s1," + b + ".s1,",
+                          Arrays.asList("100,11,21,", "150,15,null,", "200,12,22,"));
+                    }
+                  });
+          awaitDrained(senderEnv, name);
+          Assert.assertTrue(
+              "No receiver response supplied the target's replacement leader route",
+              observer.getTransfers().stream()
+                  .skip(beforeFailover)
+                  .anyMatch(
+                      transfer ->
+                          hasDeviceRedirect(
+                              transfer.response.getStatus(), a, newLeader.getClientRpcPort())));
+          final int beforeRefreshedProbe = observer.getRequests().size();
+          execute(senderEnv, "insert into " + a + "(time,s1) values(250,25)");
+          await()
+              .pollInSameThread()
+              .atMost(60, TimeUnit.SECONDS)
+              .untilAsserted(
+                  () -> {
+                    try (final Connection connection = receiverEnv.getConnection(entry);
+                        final java.sql.Statement statement = connection.createStatement();
+                        final java.sql.ResultSet rows =
+                            statement.executeQuery("select s1 from " + a + " where time = 250")) {
+                      TestUtils.assertResultSetEqualUnordered(
+                          rows, "Time," + a + ".s1,", Collections.singletonList("250,25,"));
+                    }
+                  });
+          awaitDrained(senderEnv, name);
+          assertDeviceUsesCachedRoute(observer, beforeRefreshedProbe, a);
+        } finally {
+          receiverEnv.startDataNode(oldIndex);
+          ((AbstractEnv) receiverEnv).checkClusterStatusWithoutUnknown();
+        }
+        insertRouteRows(a, b, 300, 13, 23);
+        awaitRows(
+            receiverEnv,
+            "select s1 from " + a + "," + b + " where time >= 100",
+            "Time," + a + ".s1," + b + ".s1,",
+            "100,11,21,",
+            "150,15,null,",
+            "200,12,22,",
+            "250,25,null,",
+            "300,13,23,");
+        assertInt32Schema(receiverEnv, a);
+        assertInt32Schema(receiverEnv, b);
+        awaitDrained(senderEnv, name);
+      } finally {
+        execute(senderEnv, "drop pipe if exists " + name);
+      }
+    }
+  }
+
+  private static void assertDeviceUsesCachedRoute(
+      final PipeTransferObserver observer, final int fromRequest, final String device)
+      throws Exception {
+    // The receiver query has observed this probe. Attempts are recorded before forwarding, so
+    // even an unfinished or failed RPC cannot hide a fallback behind receiver query visibility.
+    // Priority balancing sends every fallback through this observer.
+    for (final TPipeTransferReq request :
+        observer.getRequests().stream().skip(fromRequest).toList()) {
+      if (request.getType() == PipeRequestType.TRANSFER_TABLET_BATCH_V2.getType()) {
+        Assert.assertFalse(
+            "The device used the fallback entry instead of its cached leader: " + device,
+            batchDevices(request).contains(device));
+      }
+    }
+  }
+
+  private TRegionInfo routeLeader(final String database, final int regionId) throws Exception {
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) receiverEnv.getLeaderConfigNodeConnection()) {
+      final List<TRegionInfo> leaders =
+          showTreeDataRegionLeaders(Collections.singletonList(database), client).stream()
+              .filter(info -> info.getConsensusGroupId().getId() == regionId)
+              .toList();
+      Assert.assertEquals(
+          "The target region must have exactly one known leader", 1, leaders.size());
+      return leaders.get(0);
+    }
+  }
+
+  private void insertRouteRows(
+      final String a, final String b, final long time, final int x, final int y) throws Exception {
+    // Both rows use the source's single region, yielding one multi-device InsertRows event.
+    try (final ISession session = senderEnv.getSessionConnection()) {
+      session.insertRecords(
+          Arrays.asList(a, b),
+          Arrays.asList(time, time),
+          Arrays.asList(Collections.singletonList("s1"), Collections.singletonList("s1")),
+          Arrays.asList(
+              Collections.singletonList(TSDataType.INT32),
+              Collections.singletonList(TSDataType.INT32)),
+          Arrays.asList(
+              Collections.singletonList((Object) x), Collections.singletonList((Object) y)));
+    }
+  }
+
+  private static boolean hasDeviceRedirect(
+      final TSStatus status, final String device, final int port) {
+    return (status.isSetRedirectNode()
+            && status.getRedirectNode().getPort() == port
+            && device.equals(status.getMessage()))
+        || (status.isSetSubStatus()
+            && status.getSubStatus().stream()
+                .anyMatch(child -> hasDeviceRedirect(child, device, port)));
+  }
+
+  private int findDataNodeIndexByPort(final BaseEnv env, final int port) {
+    for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
+      if (env.getDataNodeWrapper(i).getPort() == port) {
+        return i;
+      }
+    }
+    fail("Failed to find DataNodeWrapper index for client rpc port " + port);
+    return -1;
   }
 
   @Test

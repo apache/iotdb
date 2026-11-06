@@ -147,9 +147,38 @@ public final class MetadataFaultAgent {
         return updaterState(match);
       case "count":
         return Collections.singletonMap("count", Long.toString(count(hook)));
+      case "cache":
+        return cacheState(hook, mode, match, attributes);
       default:
         throw new IllegalArgumentException(command);
     }
+  }
+
+  private static Map<String, String> cacheState(
+      String database, String table, String device, String attribute) throws Exception {
+    Class<?> cacheType =
+        Class.forName((FETCHER + "cache/TableDeviceSchemaCache").replace('/', '.'));
+    Object cache = cacheType.getMethod("getInstance").invoke(null);
+    Class<?> fetcherType = Class.forName((FETCHER + "TableDeviceSchemaFetcher").replace('/', '.'));
+    Object deviceId =
+        fetcherType
+            .getMethod("convertTagValuesToDeviceID", String.class, String[].class)
+            .invoke(null, table, new String[] {device});
+    Class<?> deviceIdType = Class.forName("org.apache.tsfile.file.metadata.IDeviceID");
+    Map<?, ?> cachedAttributes =
+        (Map<?, ?>)
+            cacheType
+                .getMethod("getDeviceAttribute", String.class, deviceIdType)
+                .invoke(cache, database, deviceId);
+    Map<String, String> state = new HashMap<>();
+    state.put("deviceCached", Boolean.toString(cachedAttributes != null));
+    state.put(
+        "attributePresent",
+        Boolean.toString(cachedAttributes != null && cachedAttributes.containsKey(attribute)));
+    state.put(
+        "value",
+        cachedAttributes == null ? "<cache-miss>" : binaryString(cachedAttributes.get(attribute)));
+    return state;
   }
 
   private static long count(String hook) {
