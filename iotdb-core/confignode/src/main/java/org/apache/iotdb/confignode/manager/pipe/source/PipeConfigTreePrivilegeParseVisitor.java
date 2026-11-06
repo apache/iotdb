@@ -416,13 +416,12 @@ public class PipeConfigTreePrivilegeParseVisitor
     userEntity.setPrivilegeType(PrivilegeType.READ_SCHEMA);
     final String auditObject = Arrays.toString(setTTLPlan.getPathPattern());
     try {
+      final PartialPath originalPath = new PartialPath(setTTLPlan.getPathPattern());
       final List<PartialPath> paths =
-          getAllIntersectedPatterns(
-              new PartialPath(setTTLPlan.getPathPattern()), userEntity, setTTLPlan);
-      // The intersectionList is either a singleton list or an empty list, because the pipe
-      // pattern and TTL path are each either a prefix path or a full path
-      final boolean result =
-          !paths.isEmpty() && paths.get(0).getNodeLength() == setTTLPlan.getPathPattern().length;
+          getAllIntersectedPatterns(originalPath, userEntity, setTTLPlan);
+      // A SetTTLPlan represents one path, so only a single authorization intersection can be
+      // transferred without dropping another authorized path or widening the requested path.
+      final boolean result = paths.size() == 1 && originalPath.include(paths.get(0));
       logger.recordObjectAuthenticationAuditLog(userEntity.setResult(result), () -> auditObject);
       return result
           ? Optional.of(new SetTTLPlan(paths.get(0).getNodes(), setTTLPlan.getTTL()))
@@ -479,8 +478,19 @@ public class PipeConfigTreePrivilegeParseVisitor
     final PathPatternTree thisPatternTree = new PathPatternTree();
     thisPatternTree.appendPathPattern(partialPath);
     thisPatternTree.constructTree();
-    final PathPatternTree intersectedTree =
-        thisPatternTree.intersectWithFullPathPrefixTree(getAuthorizedPTree(userEntity));
+    final PathPatternTree intersectedTree = new PathPatternTree();
+    // Intersect each authorization separately so an unmatched prefix cannot leave an ancestor
+    // path in the result tree.
+    for (final PartialPath authorizedPath : getAuthorizedPTree(userEntity).getAllPathPatterns()) {
+      if (authorizedPath.endWithMultiLevelWildcard()) {
+        partialPath
+            .intersectWithPrefixPattern(authorizedPath)
+            .forEach(intersectedTree::appendPathPattern);
+      } else if (partialPath.matchFullPath(authorizedPath)) {
+        intersectedTree.appendPathPattern(authorizedPath);
+      }
+    }
+    intersectedTree.constructTree();
     if (!skip && !thisPatternTree.equals(intersectedTree)) {
       throw new AccessDeniedException(ManagerMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + plan);
     }

@@ -278,6 +278,55 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
   }
 
   @Test
+  public void testTTLTrimToNarrowerAuthorizedPath() {
+    final SetTTLPlan trimmedPlan =
+        (SetTTLPlan)
+            skipVisitor
+                .visitTTL(new SetTTLPlan(new String[] {"root", "db", "**"}, 100), FAKE_USER_ENTITY)
+                .orElseThrow(AssertionError::new);
+
+    Assert.assertArrayEquals(
+        new String[] {"root", "db", "device", "**"}, trimmedPlan.getPathPattern());
+    Assert.assertEquals(100, trimmedPlan.getTTL());
+  }
+
+  @Test
+  public void testTTLSkipsMultipleAuthorizedPaths() {
+    permissionManager.setAuthorizedPaths(
+        List.of(
+            new PartialPath(new String[] {"root", "db", "device1"}),
+            new PartialPath(new String[] {"root", "db", "device2"})));
+
+    Assert.assertFalse(
+        skipVisitor
+            .visitTTL(new SetTTLPlan(new String[] {"root", "db", "**"}, 100), FAKE_USER_ENTITY)
+            .isPresent());
+  }
+
+  @Test
+  public void testTTLSkipsAncestorOfAuthorizedPath() {
+    final SetTTLPlan plan = new SetTTLPlan(new String[] {"root", "db"}, 100);
+
+    Assert.assertFalse(skipVisitor.visitTTL(plan, FAKE_USER_ENTITY).isPresent());
+    Assert.assertThrows(
+        AccessDeniedException.class, () -> throwVisitor.visitTTL(plan, FAKE_USER_ENTITY));
+  }
+
+  @Test
+  public void testTTLWithFullPathAuthorization() {
+    final String[] path = new String[] {"root", "db", "device"};
+    permissionManager.setAuthorizedPaths(Collections.singletonList(new PartialPath(path)));
+    final SetTTLPlan plan = new SetTTLPlan(path, 100);
+
+    for (final PipeConfigTreePrivilegeParseVisitor visitor : List.of(skipVisitor, throwVisitor)) {
+      final SetTTLPlan authorizedPlan =
+          (SetTTLPlan) visitor.visitTTL(plan, FAKE_USER_ENTITY).orElseThrow(AssertionError::new);
+      Assert.assertArrayEquals(path, authorizedPlan.getPathPattern());
+      Assert.assertEquals(100, authorizedPlan.getTTL());
+    }
+  }
+
+  @Test
   public void testSourcePrivilegeTrimDoesNotFallbackToTableDefaultForTreePlan() throws Exception {
     final PipeConfigRegionWritePlanEvent unauthorizedTreeEvent =
         new PipeConfigRegionWritePlanEvent(
@@ -322,6 +371,8 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
 
     private BiFunction<String, PrivilegeUnion, Boolean> checkUserPrivileges =
         (userName, privilegeUnion) -> true;
+    private List<PartialPath> authorizedPaths =
+        Collections.singletonList(new PartialPath(new String[] {"root", "db", "device", "**"}));
 
     public TestPermissionManager() {
       super(null, null);
@@ -344,9 +395,13 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
     public PathPatternTree fetchRawAuthorizedPTree(
         final String userName, final PrivilegeType type) {
       final PathPatternTree tree = new PathPatternTree();
-      tree.appendPathPattern(new PartialPath(new String[] {"root", "db", "device", "**"}));
+      authorizedPaths.forEach(tree::appendPathPattern);
       tree.constructTree();
       return tree;
+    }
+
+    private void setAuthorizedPaths(final List<PartialPath> authorizedPaths) {
+      this.authorizedPaths = authorizedPaths;
     }
 
     @Override
