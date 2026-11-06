@@ -815,6 +815,8 @@ public class StorageEngine implements IService {
       return tsStatus;
     }
 
+    CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    boolean wasReadOnlyForDiskFull = commonConfig.isReadOnlyForDiskFull();
     try {
       ConfigurationFileUtils.updateConfiguration(
           new File(configFileUrl.getFile()),
@@ -831,6 +833,10 @@ public class StorageEngine implements IService {
         Thread.currentThread().interrupt();
       }
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    // A SET can apply in memory and still fail when persisting the configuration file.
+    if (wasReadOnlyForDiskFull) {
+      commonConfig.setRunningIfDiskFull();
     }
     return tsStatus;
   }

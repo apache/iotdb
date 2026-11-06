@@ -164,7 +164,7 @@ public class EncryptedUnsealedTsFileRecoverPerformerTest {
     resource = new TsFileResource(file);
     byte[] recoveredFileId;
     try (UnsealedTsFileRecoverPerformer performer =
-        new UnsealedTsFileRecoverPerformer(resource, true, ignored -> {})) {
+        new UnsealedTsFileRecoverPerformer(resource, true, false, ignored -> {})) {
       performer.startRecovery();
       assertTrue(performer.hasCrashed());
       EncryptParameter parameter = performer.getWriter().getEncryptParameter();
@@ -191,7 +191,7 @@ public class EncryptedUnsealedTsFileRecoverPerformerTest {
       Files.write(file.toPath(), original);
       resource = new TsFileResource(file);
       try (UnsealedTsFileRecoverPerformer performer =
-          new UnsealedTsFileRecoverPerformer(resource, true, ignored -> {})) {
+          new UnsealedTsFileRecoverPerformer(resource, true, false, ignored -> {})) {
         assertThrows(RuntimeException.class, performer::startRecovery);
         assertNull(performer.getWriter());
       }
@@ -212,7 +212,7 @@ public class EncryptedUnsealedTsFileRecoverPerformerTest {
       Files.write(file.toPath(), original);
       resource = new TsFileResource(file);
       try (UnsealedTsFileRecoverPerformer performer =
-          new UnsealedTsFileRecoverPerformer(resource, true, ignored -> {})) {
+          new UnsealedTsFileRecoverPerformer(resource, true, false, ignored -> {})) {
         assertThrows(Exception.class, performer::startRecovery);
       }
       assertArrayEquals(original, Files.readAllBytes(file.toPath()));
@@ -236,7 +236,7 @@ public class EncryptedUnsealedTsFileRecoverPerformerTest {
     }
     resource = new TsFileResource(file);
     try (UnsealedTsFileRecoverPerformer performer =
-        new UnsealedTsFileRecoverPerformer(resource, true, ignored -> {})) {
+        new UnsealedTsFileRecoverPerformer(resource, true, false, ignored -> {})) {
       performer.startRecovery();
       assertArrayEquals(oldFileId, performer.getWriter().getEncryptParameter().getFileCryptoId());
       performer.redoLog(firstEntry(false, false));
@@ -368,7 +368,7 @@ public class EncryptedUnsealedTsFileRecoverPerformerTest {
 
     resource = new TsFileResource(file);
     try (UnsealedTsFileRecoverPerformer performer =
-        new UnsealedTsFileRecoverPerformer(resource, true, ignored -> {})) {
+        new UnsealedTsFileRecoverPerformer(resource, true, false, ignored -> {})) {
       performer.startRecovery();
       assertTrue(performer.hasCrashed());
       assertArrayEquals(

@@ -36,10 +36,28 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
       int thriftMaxFrameSize,
       boolean copyBinary)
       throws TTransportException {
-    super(underlying, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
+    this(underlying, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary, Integer.MAX_VALUE);
+  }
+
+  /**
+   * @param maxReusableBufferSize requests larger than this number of bytes use temporary arrays in
+   *     all four buffers and reset their reusable storage to {@code thriftDefaultBufferSize};
+   *     {@link Integer#MAX_VALUE} preserves the original resizing policy
+   */
+  protected TCompressedElasticFramedTransport(
+      TTransport underlying,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean copyBinary,
+      int maxReusableBufferSize)
+      throws TTransportException {
+    super(
+        underlying, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary, maxReusableBufferSize);
     try {
-      writeCompressBuffer = new AutoScalingBufferWriteTransport(thriftDefaultBufferSize);
-      readCompressBuffer = new AutoScalingBufferReadTransport(thriftDefaultBufferSize);
+      writeCompressBuffer =
+          new AutoScalingBufferWriteTransport(thriftDefaultBufferSize, maxReusableBufferSize);
+      readCompressBuffer =
+          new AutoScalingBufferReadTransport(thriftDefaultBufferSize, maxReusableBufferSize);
     } catch (IOException e) {
       closeAllocatedBuffers();
       throw new TTransportException(e);
@@ -97,11 +115,13 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
       underlying.write(writeCompressBuffer.getBuffer(), 0, compressedLength);
     } catch (IOException e) {
       throw new TTransportException(e);
+    } finally {
+      // The compressed output has been handed to the underlying transport, so do not retain it.
+      writeCompressBuffer.reset();
     }
 
-    writeBuffer.reset();
     try {
-      writeBuffer.resizeIfNecessary(length);
+      writeBuffer.resetAndResize();
     } catch (IOException e) {
       throw new TTransportException(e);
     }

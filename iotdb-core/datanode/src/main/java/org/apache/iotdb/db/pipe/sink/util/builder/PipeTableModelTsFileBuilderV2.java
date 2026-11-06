@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileTableSchemaRegistrationUtils;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.encrypt.EncryptUtils;
@@ -339,6 +340,9 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
         new MemTableFlushTask(memTable, writer, null, null, true);
     memTableFlushTask.syncFlushMemTable();
 
+    // The marker is written once, after the last tablet is flushed, so building the file pays
+    // nothing per tablet.
+    TsFileTableSchemaRegistrationUtils.markTableModel(writer);
     writer.endFile();
   }
 }

@@ -49,6 +49,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFil
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileTableSchemaRegistrationUtils;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
 import org.apache.iotdb.db.storageengine.load.converter.PipeTsFileConversionTaskManager;
@@ -437,7 +438,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       // check whether the tsfile is tree-model or not
       final Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
-      final boolean isTableModelFile = Objects.nonNull(tableSchemaMap) && !tableSchemaMap.isEmpty();
+      final boolean isTableModelFile = detectTableModelTsFile(reader, tableSchemaMap);
       if (isGeneratedByPipe) {
         LOGGER.debug(
             DataNodeQueryMessages.TSFILE_ARG_IS_A_ARG_MODEL_FILE,
@@ -519,6 +520,19 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       // reset the session info to the original one
       context.setSession(sessionInfo);
     }
+  }
+
+  /**
+   * Whether the TsFile is a table-model file. The explicit file property is authoritative, so a
+   * table-model file whose TableSchema map is empty is not mistaken for a tree-model file. Files
+   * written before the property existed fall back to the non-empty TableSchema map.
+   */
+  static boolean detectTableModelTsFile(
+      final TsFileSequenceReader reader, final Map<String, TableSchema> tableSchemaMap)
+      throws IOException {
+    // Keep the cheap map check first so that a normal file never reads the metadata again.
+    return (Objects.nonNull(tableSchemaMap) && !tableSchemaMap.isEmpty())
+        || TsFileTableSchemaRegistrationUtils.isTableModel(reader.readFileMetadata());
   }
 
   private void deleteFile(final File file) {
@@ -959,7 +973,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       try (final TsFileSequenceReader reader =
           new TsFileSequenceReader(tsFiles.get(i).getAbsolutePath(), true)) {
         final Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
-        isTableModelTsFile.set(i, Objects.nonNull(tableSchemaMap) && !tableSchemaMap.isEmpty());
+        isTableModelTsFile.set(i, detectTableModelTsFile(reader, tableSchemaMap));
         isTableModelTsFileReliableIndex = i;
       }
     }

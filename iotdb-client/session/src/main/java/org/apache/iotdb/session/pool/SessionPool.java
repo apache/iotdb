@@ -143,6 +143,7 @@ public class SessionPool implements ISessionPool {
 
   private int thriftDefaultBufferSize;
   private int thriftMaxFrameSize;
+  private int thriftMaxReusableBufferSize = Integer.MAX_VALUE;
 
   /**
    * Timeout of query can be set by users. A negative number means using the default configuration
@@ -544,6 +545,7 @@ public class SessionPool implements ISessionPool {
     this.version = builder.version;
     this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
     this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
+    this.thriftMaxReusableBufferSize = builder.thriftMaxReusableBufferSize;
     this.enableAutoFetch = builder.enableAutoFetch;
     this.useSSL = builder.useSSL;
     this.trustStore = builder.trustStore;
@@ -603,6 +605,7 @@ public class SessionPool implements ISessionPool {
               .zoneId(zoneId)
               .thriftDefaultBufferSize(thriftDefaultBufferSize)
               .thriftMaxFrameSize(thriftMaxFrameSize)
+              .thriftMaxReusableBufferSize(thriftMaxReusableBufferSize)
               .enableRedirection(enableRedirection)
               .enableRecordsAutoConvertTablet(enableRecordsAutoConvertTablet)
               .version(version)
@@ -632,6 +635,7 @@ public class SessionPool implements ISessionPool {
               .zoneId(zoneId)
               .thriftDefaultBufferSize(thriftDefaultBufferSize)
               .thriftMaxFrameSize(thriftMaxFrameSize)
+              .thriftMaxReusableBufferSize(thriftMaxReusableBufferSize)
               .enableRedirection(enableRedirection)
               .enableRecordsAutoConvertTablet(enableRecordsAutoConvertTablet)
               .version(version)
@@ -676,6 +680,7 @@ public class SessionPool implements ISessionPool {
     this.availableNodes =
         NodesSupplier.createNodeSupplier(
             endPointList,
+            endPointList,
             executorService,
             user,
             password,
@@ -690,7 +695,8 @@ public class SessionPool implements ISessionPool {
             keyStorePwd,
             sslProtocol,
             enableThriftCompression,
-            version.toString());
+            version.toString(),
+            thriftMaxReusableBufferSize);
   }
 
   // if this method throws an exception, either the server is broken, or the ip/port/user/password
@@ -3744,6 +3750,20 @@ public class SessionPool implements ISessionPool {
 
     public Builder thriftMaxFrameSize(int thriftMaxFrameSize) {
       this.thriftMaxFrameSize = thriftMaxFrameSize;
+      return this;
+    }
+
+    /**
+     * Buffer requests larger than this threshold use temporary arrays and reset reusable buffers to
+     * {@code thriftDefaultBufferSize}. Applies to compressed and uncompressed transports for all
+     * sessions and background node discovery. The default {@link Integer#MAX_VALUE} keeps the
+     * original reuse policy; zero makes every nonempty buffer request use temporary storage.
+     *
+     * @param thriftMaxReusableBufferSize the buffer reuse threshold in bytes
+     * @return this builder
+     */
+    public Builder thriftMaxReusableBufferSize(int thriftMaxReusableBufferSize) {
+      this.thriftMaxReusableBufferSize = thriftMaxReusableBufferSize;
       return this;
     }
 
