@@ -258,16 +258,16 @@ public class LoadTsFileDataTypeConverter {
               session,
               SESSION_MANAGER.requestQueryId(),
               new SessionInfo(
-                  session.getId(),
-                  new UserEntity(
-                      session.getUserId(), session.getUsername(), session.getClientAddress()),
-                  ZoneId.systemDefault(),
-                  session.getClientVersion(),
-                  databaseName,
-                  SqlDialect.TABLE,
-                  allowAutoCreateSchema && session.isEnableAutoCreateSchema())
-              .setDatabaseInternalSession(isDatabaseInternalSessionContext())
-              .setInternalRpcSession(isInternalRpcSessionContext()),
+                      session.getId(),
+                      new UserEntity(
+                          session.getUserId(), session.getUsername(), session.getClientAddress()),
+                      ZoneId.systemDefault(),
+                      session.getClientVersion(),
+                      databaseName,
+                      SqlDialect.TABLE,
+                      allowAutoCreateSchema && session.isEnableAutoCreateSchema())
+                  .setDatabaseInternalSession(isDatabaseInternalSessionContext())
+                  .setInternalRpcSession(isInternalRpcSessionContext()),
               "",
               LocalExecutionPlanner.getInstance().metadata,
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
@@ -325,20 +325,20 @@ public class LoadTsFileDataTypeConverter {
               isGeneratedByPipe ? new PipeEnrichedStatement(statement) : statement,
               SESSION_MANAGER.requestQueryId(),
               new SessionInfo(
-                  session.getId(),
-                  new UserEntity(
-                      session.getUserId(), session.getUsername(), session.getClientAddress()),
-                  ZoneId.systemDefault(),
-                  session.getClientVersion(),
-                  session.getDatabaseName(),
-                  SqlDialect.TREE,
-                  allowAutoCreateSchema
-                      && session.isEnableAutoCreateSchema()
-                      && (Objects.isNull(context)
-                          || Objects.isNull(context.getSession())
-                          || context.getSession().isEnableAutoCreateSchema()))
-              .setDatabaseInternalSession(isDatabaseInternalSessionContext())
-              .setInternalRpcSession(isInternalRpcSessionContext()),
+                      session.getId(),
+                      new UserEntity(
+                          session.getUserId(), session.getUsername(), session.getClientAddress()),
+                      ZoneId.systemDefault(),
+                      session.getClientVersion(),
+                      session.getDatabaseName(),
+                      SqlDialect.TREE,
+                      allowAutoCreateSchema
+                          && session.isEnableAutoCreateSchema()
+                          && (Objects.isNull(context)
+                              || Objects.isNull(context.getSession())
+                              || context.getSession().isEnableAutoCreateSchema()))
+                  .setDatabaseInternalSession(isDatabaseInternalSessionContext())
+                  .setInternalRpcSession(isInternalRpcSessionContext()),
               "",
               ClusterPartitionFetcher.getInstance(),
               ClusterSchemaFetcher.getInstance(),

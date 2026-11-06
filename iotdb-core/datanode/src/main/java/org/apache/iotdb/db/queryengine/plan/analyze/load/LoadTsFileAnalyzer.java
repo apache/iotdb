@@ -486,13 +486,13 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       if (isTableModelFile) {
         final SessionInfo newSessionInfo =
             new SessionInfo(
-                sessionInfo.getSessionId(),
-                sessionInfo.getUserEntity(),
-                sessionInfo.getZoneId(),
-                sessionInfo.getVersion(),
-                sessionInfo.getDatabaseName().orElse(null),
-                SqlDialect.TABLE,
-                sessionInfo.isEnableAutoCreateSchema())
+                    sessionInfo.getSessionId(),
+                    sessionInfo.getUserEntity(),
+                    sessionInfo.getZoneId(),
+                    sessionInfo.getVersion(),
+                    sessionInfo.getDatabaseName().orElse(null),
+                    SqlDialect.TABLE,
+                    sessionInfo.isEnableAutoCreateSchema())
                 .setDatabaseInternalSession(sessionInfo.isDatabaseInternalSession())
                 .setInternalRpcSession(sessionInfo.isInternalRpcSession());
         context.setSession(newSessionInfo);
@@ -500,13 +500,13 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       } else {
         final SessionInfo newSessionInfo =
             new SessionInfo(
-                sessionInfo.getSessionId(),
-                sessionInfo.getUserEntity(),
-                sessionInfo.getZoneId(),
-                sessionInfo.getVersion(),
-                sessionInfo.getDatabaseName().orElse(null),
-                SqlDialect.TREE,
-                sessionInfo.isEnableAutoCreateSchema())
+                    sessionInfo.getSessionId(),
+                    sessionInfo.getUserEntity(),
+                    sessionInfo.getZoneId(),
+                    sessionInfo.getVersion(),
+                    sessionInfo.getDatabaseName().orElse(null),
+                    SqlDialect.TREE,
+                    sessionInfo.isEnableAutoCreateSchema())
                 .setDatabaseInternalSession(sessionInfo.isDatabaseInternalSession())
                 .setInternalRpcSession(sessionInfo.isInternalRpcSession());
         context.setSession(newSessionInfo);
