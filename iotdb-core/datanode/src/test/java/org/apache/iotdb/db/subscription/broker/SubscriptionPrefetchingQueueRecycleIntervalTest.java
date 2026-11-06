@@ -33,14 +33,23 @@ import org.junit.Test;
 
 import java.lang.reflect.Field;
 import java.util.Collections;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 public class SubscriptionPrefetchingQueueRecycleIntervalTest {
@@ -53,6 +62,89 @@ public class SubscriptionPrefetchingQueueRecycleIntervalTest {
   @Test
   public void testRecycleIntervalForV2Queue() throws Exception {
     verifyRecycleInterval(true);
+  }
+
+  @Test
+  public void testConcurrentPollsRespectInFlightLimitForV1Queue() throws Exception {
+    verifyConcurrentPollLimit(false);
+  }
+
+  @Test
+  public void testConcurrentPollsRespectInFlightLimitForV2Queue() throws Exception {
+    verifyConcurrentPollLimit(true);
+  }
+
+  private static void verifyConcurrentPollLimit(final boolean useV2) throws Exception {
+    final int limit =
+        CommonDescriptor.getInstance()
+            .getConfig()
+            .getSubscriptionPrefetchEventLocalCountThreshold();
+    final SubscriptionPrefetchingQueue queue =
+        new SubscriptionPrefetchingTabletQueue(
+            "concurrent_group",
+            "concurrent_poll_topic",
+            mock(SubscriptionBlockingPendingQueue.class),
+            new AtomicLong());
+    final ExecutorService executor = Executors.newFixedThreadPool(2);
+    final CountDownLatch claiming = new CountDownLatch(1);
+    final CountDownLatch releaseClaim = new CountDownLatch(1);
+    try {
+      for (int index = 1; index <= limit + 1; index++) {
+        final SubscriptionEvent event =
+            new SubscriptionEvent(
+                SubscriptionPollResponseType.TERMINATION.getType(),
+                new TerminationPayload(),
+                new SubscriptionCommitContext(
+                    1, 1, "concurrent_poll_topic", "concurrent_group", index));
+        if (index == limit) {
+          final SubscriptionEvent blockedEvent = spy(event);
+          doAnswer(
+                  invocation -> {
+                    claiming.countDown();
+                    assertTrue(releaseClaim.await(5, TimeUnit.SECONDS));
+                    return invocation.callRealMethod();
+                  })
+              .when(blockedEvent)
+              .recordLastPolledTimestamp();
+          queue.prefetchEvent(blockedEvent);
+        } else {
+          queue.prefetchEvent(event);
+        }
+      }
+      for (int index = 1; index < limit; index++) {
+        assertNotNull(poll(queue, useV2));
+      }
+      final Future<SubscriptionEvent> first = executor.submit(() -> poll(queue, useV2));
+      assertTrue(claiming.await(5, TimeUnit.SECONDS));
+      final AtomicReference<Thread> secondThread = new AtomicReference<>();
+      final Future<SubscriptionEvent> second =
+          executor.submit(
+              () -> {
+                secondThread.set(Thread.currentThread());
+                return poll(queue, useV2);
+              });
+      final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+      while (!second.isDone()
+          && (secondThread.get() == null || secondThread.get().getState() != Thread.State.BLOCKED)
+          && System.nanoTime() < deadline) {
+        Thread.yield();
+      }
+      assertTrue(
+          second.isDone()
+              || (secondThread.get() != null
+                  && secondThread.get().getState() == Thread.State.BLOCKED));
+      releaseClaim.countDown();
+      assertNotNull(first.get(5, TimeUnit.SECONDS));
+      assertNull(second.get(5, TimeUnit.SECONDS));
+      assertEquals(limit, queue.getSubscriptionUncommittedEventCount());
+      assertEquals(limit + 1L, queue.getSubscriptionRetainedEventCount());
+      assertEquals(1, queue.getPrefetchedEventCount());
+    } finally {
+      releaseClaim.countDown();
+      executor.shutdownNow();
+      executor.awaitTermination(5, TimeUnit.SECONDS);
+      queue.cleanUp();
+    }
   }
 
   private static void verifyRecycleInterval(final boolean useV2) throws Exception {
