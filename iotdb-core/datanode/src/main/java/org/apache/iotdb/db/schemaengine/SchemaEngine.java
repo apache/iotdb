@@ -366,20 +366,26 @@ public class SchemaEngine {
     return schemaRegion;
   }
 
-  public synchronized boolean deleteSchemaRegion(SchemaRegionId schemaRegionId)
+  public synchronized boolean deleteSchemaRegion(final SchemaRegionId schemaRegionId)
       throws MetadataException {
-    ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
+    // Remove the region before teardown so concurrent writes observe it as unavailable.
+    final ISchemaRegion schemaRegion = schemaRegionMap.remove(schemaRegionId);
     if (schemaRegion == null) {
       logger.warn(DataNodeSchemaMessages.SCHEMA_REGION_ALREADY_DELETED, schemaRegionId);
       return false;
     }
-    schemaRegion.deleteSchemaRegion();
+    try {
+      schemaRegion.deleteSchemaRegion();
+    } catch (final MetadataException | RuntimeException | Error e) {
+      // Keep failed deletions retryable and do not lose the in-memory region handle.
+      schemaRegionMap.put(schemaRegionId, schemaRegion);
+      throw e;
+    }
     schemaMetricManager.removeSchemaRegionMetric(schemaRegionId.getId());
-    schemaRegionMap.remove(schemaRegionId);
 
     // check whether the sg dir is empty
-    File sgDir = new File(config.getSchemaDir(), schemaRegion.getDatabaseFullPath());
-    File[] regionDirList =
+    final File sgDir = new File(config.getSchemaDir(), schemaRegion.getDatabaseFullPath());
+    final File[] regionDirList =
         sgDir.listFiles(
             (dir, name) -> {
               try {
