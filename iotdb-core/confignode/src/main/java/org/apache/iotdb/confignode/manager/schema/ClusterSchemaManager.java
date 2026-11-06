@@ -1703,7 +1703,8 @@ public class ClusterSchemaManager {
     // the table read above is a copy, which this check expands and returns
     final String errorMsg =
         String.format(
-            ManagerMessages.MESSAGE_COLUMN_ARG_ALREADY_EXIST_92F91B6A,
+            ManagerMessages
+                .MESSAGE_COLUMN_ARG_ALREADY_EXISTS_OR_ITS_SOURCE_MEASUREMENT_IS_ALREADY_MAPPED_8421FEAD,
             columnSchemaList.stream()
                 .map(TsTableColumnSchema::getColumnName)
                 .collect(Collectors.joining(", ")));

@@ -643,7 +643,9 @@ public final class ManagerMessages {
   public static final String
       MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_DEFAULT_ARGREGIONGROUPNUM_ARG_4C00E92C =
           "%s 应大于或等于默认的 %sRegionGroupNum：%d。";
-  public static final String MESSAGE_COLUMN_ARG_ALREADY_EXIST_92F91B6A = "列 '%s' 已存在";
+  public static final String
+      MESSAGE_COLUMN_ARG_ALREADY_EXISTS_OR_ITS_SOURCE_MEASUREMENT_IS_ALREADY_MAPPED_8421FEAD =
+          "列 '%s' 已存在，或它引用的源测点已被映射";
   public static final String MESSAGE_COLUMN_ARG_DOES_NOT_EXIST_FF67AE82 = "列 '%s' 不存在";
   public static final String
       MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_CLUSTER_HEARTBEAT_SAMPLING_EDB0331F =

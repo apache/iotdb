@@ -414,7 +414,9 @@ public class IoTDBTableIT {
       try {
         statement.execute("alter table table2 add column speed DOUBLE FIELD");
       } catch (final SQLException e) {
-        assertEquals("552: Column 'speed' already exist", e.getMessage());
+        assertEquals(
+            "552: Column 'speed' already exists or its source measurement is already mapped",
+            e.getMessage());
       }
 
       statement.execute("alter table table2 add column if not exists speed DOUBLE FIELD");
