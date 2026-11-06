@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
 import org.apache.iotdb.commons.utils.TestOnly;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
@@ -78,6 +79,21 @@ public abstract class PipeSubtaskExecutor {
       final String workingThreadName,
       final @Nullable String callbackThreadName,
       final boolean disableLogInThreadPool) {
+    this(
+        corePoolSize,
+        workingThreadName,
+        callbackThreadName,
+        disableLogInThreadPool,
+        WORKER_THREAD_KEEP_ALIVE_TIME_IN_SECONDS);
+  }
+
+  @VisibleForTesting
+  protected PipeSubtaskExecutor(
+      final int corePoolSize,
+      final String workingThreadName,
+      final @Nullable String callbackThreadName,
+      final boolean disableLogInThreadPool,
+      final long workerThreadKeepAliveTimeInSeconds) {
     this.workingThreadName = workingThreadName;
     this.callbackThreadName =
         Objects.nonNull(callbackThreadName)
@@ -87,7 +103,7 @@ public abstract class PipeSubtaskExecutor {
         (WrappedThreadPoolExecutor)
             IoTDBThreadPoolFactory.newFixedThreadPoolWithIdleThreadTimeout(
                 corePoolSize,
-                WORKER_THREAD_KEEP_ALIVE_TIME_IN_SECONDS,
+                workerThreadKeepAliveTimeInSeconds,
                 TimeUnit.SECONDS,
                 workingThreadName);
     if (disableLogInThreadPool) {
@@ -210,6 +226,11 @@ public abstract class PipeSubtaskExecutor {
   @TestOnly
   public final int getRegisteredSubtaskNumber() {
     return registeredIdSubtaskMapper.size();
+  }
+
+  @TestOnly
+  public final int getWorkerThreadPoolSize() {
+    return underlyingThreadPool.getPoolSize();
   }
 
   /////////////////////// executor management  ///////////////////////
