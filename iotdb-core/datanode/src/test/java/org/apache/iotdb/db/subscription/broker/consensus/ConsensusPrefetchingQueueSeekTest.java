@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.broker.consensus;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
@@ -65,8 +66,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -157,15 +161,29 @@ public class ConsensusPrefetchingQueueSeekTest {
     assertActivationProgress(false, false, true);
   }
 
+  @Test(timeout = 20_000L)
+  public void testWorkerResetInstallsRecoveryFrontierAtomicallyWithBroadcast() throws Exception {
+    assertActivationProgress(false, false, false, true);
+  }
+
   private void assertActivationProgress(
       final boolean explicitSeek, final boolean broadcastDuringActivation) throws Exception {
-    assertActivationProgress(explicitSeek, broadcastDuringActivation, false);
+    assertActivationProgress(explicitSeek, broadcastDuringActivation, false, false);
   }
 
   private void assertActivationProgress(
       final boolean explicitSeek,
       final boolean broadcastDuringActivation,
       final boolean seekDuringActivation)
+      throws Exception {
+    assertActivationProgress(explicitSeek, broadcastDuringActivation, seekDuringActivation, false);
+  }
+
+  private void assertActivationProgress(
+      final boolean explicitSeek,
+      final boolean broadcastDuringActivation,
+      final boolean seekDuringActivation,
+      final boolean broadcastDuringWorkerReset)
       throws Exception {
     final int originalPrefetchThreads =
         config.getSubscriptionConsensusPrefetchExecutorMaxThreadNum();
@@ -185,16 +203,64 @@ public class ConsensusPrefetchingQueueSeekTest {
       final WriterId writerId = new WriterId(regionId.toString(), 7);
       final RegionProgress emptyProgress = new RegionProgress(Collections.emptyMap());
       final RegionProgress initialProgress =
-          broadcastDuringActivation || explicitSeek || seekDuringActivation
+          broadcastDuringActivation
+                  || explicitSeek
+                  || seekDuringActivation
+                  || broadcastDuringWorkerReset
               ? new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(100L, 1L)))
               : emptyProgress;
       final AtomicReference<RegionProgress> configNodeProgress =
           new AtomicReference<>(initialProgress);
+      final RegionProgress broadcastProgress =
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(200L, 2L)));
+      final AtomicReference<ConsensusPrefetchingQueue> queueReference = new AtomicReference<>();
+      final AtomicReference<RegionProgress> recoveryProgressAtReset = new AtomicReference<>();
+      final AtomicReference<Thread> resetBroadcastThread = new AtomicReference<>();
       final ConsensusSubscriptionCommitManager commitManager =
           new ConsensusSubscriptionCommitManager(
               (consumerGroupId, topicName, ignored) ->
                   ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.available(
-                      configNodeProgress.get()));
+                      configNodeProgress.get())) {
+            @Override
+            RegionProgress resetState(
+                final String consumerGroupId,
+                final String topicName,
+                final ConsensusGroupId regionId,
+                final RegionProgress regionProgress,
+                final boolean explicitSeek,
+                final Consumer<RegionProgress> afterReset) {
+              return super.resetState(
+                  consumerGroupId,
+                  topicName,
+                  regionId,
+                  regionProgress,
+                  explicitSeek,
+                  progress -> {
+                    afterReset.accept(progress);
+                    if (!explicitSeek && broadcastDuringWorkerReset) {
+                      recoveryProgressAtReset.set(progress);
+                      assertEquals(
+                          "1", queueReference.get().coreReportMessage().get("recoveryWriterCount"));
+                      final Thread broadcastThread =
+                          new Thread(
+                              () ->
+                                  receiveProgressBroadcast(
+                                      "consumerGroup",
+                                      "topic",
+                                      regionId.toString(),
+                                      writerId,
+                                      broadcastProgress.getWriterPositions().get(writerId)));
+                      broadcastThread.setDaemon(true);
+                      resetBroadcastThread.set(broadcastThread);
+                      broadcastThread.start();
+                      await()
+                          .pollInterval(1L, TimeUnit.MILLISECONDS)
+                          .atMost(5L, TimeUnit.SECONDS)
+                          .until(() -> broadcastThread.getState() == Thread.State.BLOCKED);
+                    }
+                  });
+            }
+          };
       commitManager.getOrCreateState("consumerGroup", "topic", regionId);
       final AtomicReference<Runnable> duringReplayLookup = new AtomicReference<>();
       queue =
@@ -241,17 +307,16 @@ public class ConsensusPrefetchingQueueSeekTest {
               };
             }
           };
+      queueReference.set(queue);
       queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(16L * 1024 * 1024));
       queue.poll("consumer");
       queue.setActive(false);
       // A seek while inactive initializes the cursor, so activation must apply a worker seek.
-      if (broadcastDuringActivation || seekDuringActivation) {
+      if (broadcastDuringActivation || seekDuringActivation || broadcastDuringWorkerReset) {
         queue.seekAfterRegionProgress(initialProgress);
       } else {
         queue.seekToBeginning();
       }
-      final RegionProgress broadcastProgress =
-          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(200L, 2L)));
       if (broadcastDuringActivation) {
         // Advance after the manager's activation refresh, before the worker applies the seek.
         duringReplayLookup.set(
@@ -272,10 +337,18 @@ public class ConsensusPrefetchingQueueSeekTest {
       queue.applyRuntimeState(
           new ConsensusRegionRuntimeState(2L, 7, true, Collections.singleton(7)));
       assertNull(duringReplayLookup.get());
+      if (broadcastDuringWorkerReset) {
+        final Thread broadcastThread = resetBroadcastThread.get();
+        broadcastThread.join(TimeUnit.SECONDS.toMillis(5L));
+        assertFalse(broadcastThread.isAlive());
+        assertEquals(initialProgress, recoveryProgressAtReset.get());
+      }
       assertEquals(
           explicitSeek || seekDuringActivation
               ? emptyProgress
-              : broadcastDuringActivation ? broadcastProgress : initialProgress,
+              : broadcastDuringActivation || broadcastDuringWorkerReset
+                  ? broadcastProgress
+                  : initialProgress,
           commitManager.getCommittedRegionProgress("consumerGroup", "topic", regionId));
       if (seekDuringActivation) {
         assertEquals(1L, queue.getCurrentReadSearchIndex());
