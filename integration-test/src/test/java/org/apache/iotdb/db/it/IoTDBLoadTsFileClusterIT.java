@@ -364,18 +364,26 @@ public class IoTDBLoadTsFileClusterIT {
       awaitPointCount(statement, expectedPointCount);
     }
 
+    final Map<String, Map<Long, Long>> expectedPoints =
+        readTsFiles(
+            Arrays.asList(
+                new File(tmpDir, "sync-first.tsfile"), new File(tmpDir, "sync-second.tsfile")));
+    Assert.assertEquals(
+        expectedPointCount, expectedPoints.values().stream().mapToLong(Map::size).sum());
+
     restartedDataNode.start();
     Assert.assertTrue(restartedDataNode.isAlive());
 
-    // A pinned connection may still read from another replica, so check the restarted node's own
-    // replicas before letting it answer the query.
-    awaitRestartedLocalReplicasHaveTheLoadedFile(restartedDataNode);
+    // A pinned connection may still read from another replica. Check the restarted node's local
+    // points against both input files, independently of file layout or duplicate LOAD replays.
+    awaitRestartedLocalReplicasHaveTheLoadedFile(restartedDataNode, expectedPoints);
     awaitPointCount(restartedDataNode, expectedPointCount);
   }
 
   /**
    * Waits until every data region replica on the given DataNode holds as many points as the other
-   * replicas of that region.
+   * replicas of that region. The restarted DataNode's points must also match both input files
+   * exactly.
    *
    * <p>A replica that did not replay the LOAD keeps its pre-LOAD data, but the replicas that stayed
    * up may keep the same points in more physical TsFiles than the restarted one, so on-disk sizes
@@ -383,7 +391,7 @@ public class IoTDBLoadTsFileClusterIT {
    * back point by point instead.
    */
   private static void awaitRestartedLocalReplicasHaveTheLoadedFile(
-      final DataNodeWrapper restartedDataNode) {
+      final DataNodeWrapper restartedDataNode, final Map<String, Map<Long, Long>> expectedPoints) {
     Awaitility.await()
         .atMost(5, TimeUnit.MINUTES)
         .pollInterval(5, TimeUnit.SECONDS)
@@ -428,11 +436,75 @@ public class IoTDBLoadTsFileClusterIT {
                   }
                   assertSamePointCounts(region.getKey(), pointCounts);
                 }
+                final List<File> restartedFiles = new ArrayList<>();
+                for (final int regionId : regionReplicas.keySet()) {
+                  collectTsFiles(
+                      new File(
+                          new File(snapshotRoot, String.valueOf(regionId)),
+                          restartedDataNode.getId()),
+                      restartedFiles);
+                }
+                final Map<String, Map<Long, Long>> actualPoints = readTsFiles(restartedFiles);
+                Assert.assertEquals(
+                    "loaded timeseries", expectedPoints.keySet(), actualPoints.keySet());
+                for (final Map.Entry<String, Map<Long, Long>> series : expectedPoints.entrySet()) {
+                  final Map<Long, Long> actualSeries = actualPoints.get(series.getKey());
+                  Assert.assertEquals(
+                      "point count in " + series.getKey(),
+                      series.getValue().size(),
+                      actualSeries.size());
+                  for (final Map.Entry<Long, Long> point : series.getValue().entrySet()) {
+                    Assert.assertEquals(
+                        series.getKey() + " at " + point.getKey(),
+                        point.getValue(),
+                        actualSeries.get(point.getKey()));
+                  }
+                }
               } finally {
                 Assert.assertTrue(
                     "cannot delete the TsFile snapshots", deleteRecursively(snapshotRoot));
               }
             });
+  }
+
+  /** Reads logical INT64 points, checking that repeated physical copies agree. */
+  private static Map<String, Map<Long, Long>> readTsFiles(final List<File> files) throws Exception {
+    final List<String> devices = new ArrayList<>(DEVICES);
+    devices.addAll(ALIGNED_DEVICES);
+    final Map<String, Map<Long, Long>> points = new HashMap<>();
+    for (final File file : files) {
+      try (final TsFileReader reader = new TsFileReader(file)) {
+        // Readers may update their selected paths, so build a fresh query for every file.
+        final List<Path> paths = new ArrayList<>();
+        for (final String device : devices) {
+          for (final String measurement : MEASUREMENTS) {
+            paths.add(new Path(device, measurement, true));
+          }
+        }
+        final QueryDataSet dataSet = reader.query(QueryExpression.create(paths, null));
+        while (dataSet.hasNext()) {
+          final RowRecord row = dataSet.next();
+          for (int index = 0; index < row.getFields().size(); index++) {
+            final Field field = row.getField(index);
+            if (field == null || field.getDataType() == null) {
+              continue;
+            }
+            final String series = dataSet.getPaths().get(index).getFullPath();
+            final Long previous =
+                points
+                    .computeIfAbsent(series, key -> new HashMap<>())
+                    .put(row.getTimestamp(), field.getLongV());
+            if (previous != null) {
+              Assert.assertEquals(
+                  "conflicting copies of " + series + " at " + row.getTimestamp(),
+                  previous.longValue(),
+                  field.getLongV());
+            }
+          }
+        }
+      }
+    }
+    return points;
   }
 
   /** The DataRegion rows of `show regions`, mapped to the DataNodes that hold a replica. */
