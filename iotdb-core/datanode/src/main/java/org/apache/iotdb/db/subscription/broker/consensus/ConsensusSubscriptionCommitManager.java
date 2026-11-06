@@ -525,7 +525,7 @@ public class ConsensusSubscriptionCommitManager {
     }
   }
 
-  /** Refreshes an exact authoritative frontier for preferred-writer activation. */
+  /** Refreshes the activation frontier without regressing newer locally replicated progress. */
   public ConfigNodeProgressQueryResult refreshAuthoritativeProgress(
       final String consumerGroupId, final String topicName, final ConsensusGroupId regionId) {
     final CommitStateKey stateKey =
@@ -545,17 +545,19 @@ public class ConsensusSubscriptionCommitManager {
       if (!queryResult.isAvailable() && !startNewRegionFromBeginning) {
         return queryResult;
       }
-      final RegionProgress authoritativeProgress =
-          startNewRegionFromBeginning
-              ? new RegionProgress(Collections.emptyMap())
-              : queryResult.getRegionProgress();
       final ConsensusSubscriptionCommitState state =
           commitStates.computeIfAbsent(
               stateKey.encodedStateKey,
               ignored ->
                   new ConsensusSubscriptionCommitState(
                       stateKey.regionIdStr, new SubscriptionConsensusProgress()));
-      state.resetForSeek(authoritativeProgress);
+      final RegionProgress refreshedProgress =
+          mergeRegionProgress(
+              state.getCommittedRegionProgress(),
+              startNewRegionFromBeginning
+                  ? new RegionProgress(Collections.emptyMap())
+                  : queryResult.getRegionProgress());
+      state.resetForSeek(refreshedProgress);
       persistRegionProgress(stateKey, state);
       pendingInitialProgressKeys.remove(stateKey.encodedStateKey);
       if (!startNewRegionFromBeginning) {
@@ -563,7 +565,7 @@ public class ConsensusSubscriptionCommitManager {
       }
       configNodeProgressAvailableKeys.add(stateKey.encodedStateKey);
       tailProposalInitializedKeys.add(stateKey.encodedStateKey);
-      return ConfigNodeProgressQueryResult.available(authoritativeProgress);
+      return ConfigNodeProgressQueryResult.available(refreshedProgress);
     }
   }
 
@@ -1576,6 +1578,39 @@ public class ConsensusSubscriptionCommitManager {
         Objects.nonNull(regionProgress)
             ? new LinkedHashMap<>(regionProgress.getWriterPositions())
             : Collections.emptyMap());
+  }
+
+  private static RegionProgress mergeRegionProgress(
+      final RegionProgress currentProgress, final RegionProgress refreshedProgress) {
+    final Map<WriterId, WriterProgress> mergedWriterPositions = new LinkedHashMap<>();
+    mergeWriterPositions(mergedWriterPositions, currentProgress);
+    mergeWriterPositions(mergedWriterPositions, refreshedProgress);
+    return new RegionProgress(mergedWriterPositions);
+  }
+
+  private static void mergeWriterPositions(
+      final Map<WriterId, WriterProgress> mergedWriterPositions,
+      final RegionProgress regionProgress) {
+    if (Objects.isNull(regionProgress)) {
+      return;
+    }
+    regionProgress
+        .getWriterPositions()
+        .forEach(
+            (writerId, writerProgress) -> {
+              if (Objects.isNull(writerId) || Objects.isNull(writerProgress)) {
+                return;
+              }
+              mergedWriterPositions.merge(
+                  writerId,
+                  writerProgress,
+                  (current, refreshed) ->
+                      new ProgressKey(writerId, refreshed)
+                                  .compareTo(new ProgressKey(writerId, current))
+                              > 0
+                          ? refreshed
+                          : current);
+            });
   }
 
   @FunctionalInterface

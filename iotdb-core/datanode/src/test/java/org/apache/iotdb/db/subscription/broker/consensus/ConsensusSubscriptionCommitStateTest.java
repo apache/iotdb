@@ -331,6 +331,39 @@ public class ConsensusSubscriptionCommitStateTest {
   }
 
   @Test
+  public void testAuthoritativeRefreshPreservesReplicatedProgressWhenConfigNodeIsEmpty()
+      throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("refreshDoesNotRegressReplicatedProgress");
+    try {
+      final DataRegionId regionId = new DataRegionId(27);
+      final WriterId writerId = new WriterId(regionId.toString(), 7);
+      final WriterProgress replicatedProgress = new WriterProgress(200L, 2L);
+      final ConsensusSubscriptionCommitManager manager =
+          newCommitManager(
+              systemDir,
+              (consumerGroupId, topicName, ignoredRegionId) ->
+                  ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.available(
+                      new RegionProgress(Collections.emptyMap())));
+      manager.receiveProgressBroadcast(
+          "cg", "topic", regionId.toString(), writerId, replicatedProgress);
+
+      final RegionProgress refreshedProgress =
+          manager.refreshAuthoritativeProgress("cg", "topic", regionId).getRegionProgress();
+
+      assertEquals(replicatedProgress, refreshedProgress.getWriterPositions().get(writerId));
+      assertEquals(
+          replicatedProgress,
+          manager
+              .getCommittedRegionProgress("cg", "topic", regionId)
+              .getWriterPositions()
+              .get(writerId));
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
   public void testNewRegionWaitsThroughUnavailableConfigNodeThenAcceptsExplicitAbsence()
       throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
