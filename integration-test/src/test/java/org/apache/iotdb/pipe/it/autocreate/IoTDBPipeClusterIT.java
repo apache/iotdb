@@ -164,9 +164,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       receiverEnv.getDataNodeWrapper(0).stop();
-
-      // Ensure that the kill -9 operation is completed
-      Thread.sleep(5000);
+      // stop() waits for process exit; verify it succeeded before checking failover.
+      Assert.assertFalse(receiverEnv.getDataNodeWrapper(0).isAlive());
       for (DataNodeWrapper nodeWrapper : receiverEnv.getDataNodeWrapperList()) {
         if (!nodeWrapper.isAlive()) {
           continue;
