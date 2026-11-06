@@ -67,6 +67,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
+import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
@@ -1449,11 +1450,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
           TSStatus tsstatus = new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
           tsstatus.setRedirectNode(
-              regionReplicaSets
-                  .get(regionReplicaSets.size() - 1)
-                  .dataNodeLocations
-                  .get(0)
-                  .clientRpcEndPoint);
+              DataNodeEndPoints.getRedirectEndPoint(
+                  regionReplicaSets.get(regionReplicaSets.size() - 1).dataNodeLocations.get(0),
+                  clientSession.isInternalRpcSession()));
           resp.setStatus(tsstatus);
           finished = SELECT_RESULT.apply(resp, queryExecution, req.fetchSize);
           resp.setMoreData(!finished);

@@ -3573,7 +3573,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       AuthorityChecker.SUPER_USER,
                       IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
                   ZoneId.systemDefault())
-              .setInternal(true);
+              .setDatabaseInternalSession(true)
+              .setInternalRpcSession(true);
 
       long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =

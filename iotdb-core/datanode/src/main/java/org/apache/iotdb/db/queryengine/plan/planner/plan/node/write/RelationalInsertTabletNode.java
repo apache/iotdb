@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -266,7 +266,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   protected Map<TRegionReplicaSet, List<Integer>> splitByReplicaSet(
       final Map<IDeviceID, PartitionSplitInfo> deviceIDSplitInfoMap, final IAnalysis analysis) {
     final Map<TRegionReplicaSet, List<Integer>> splitMap = new HashMap<>();
-    final Map<IDeviceID, TEndPoint> endPointMap = new HashMap<>();
+    final Map<IDeviceID, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
 
     for (final Map.Entry<IDeviceID, PartitionSplitInfo> entry : deviceIDSplitInfoMap.entrySet()) {
       final IDeviceID deviceID = entry.getKey();
@@ -278,13 +278,8 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
                   deviceID, splitInfo.timePartitionSlots, analysis.getDatabaseName());
       splitInfo.replicaSets = replicaSets;
       // collect redirectInfo
-      endPointMap.put(
-          deviceID,
-          replicaSets
-              .get(replicaSets.size() - 1)
-              .getDataNodeLocations()
-              .get(0)
-              .getClientRpcEndPoint());
+      dataNodeLocationMap.put(
+          deviceID, replicaSets.get(replicaSets.size() - 1).getDataNodeLocations().get(0));
       for (int i = 0; i < replicaSets.size(); i++) {
         final List<Integer> subRanges =
             splitMap.computeIfAbsent(replicaSets.get(i), x -> new ArrayList<>());
@@ -292,12 +287,12 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
         subRanges.add(splitInfo.ranges.get(2 * i + 1));
       }
     }
-    final List<TEndPoint> redirectNodeList = new ArrayList<>(times.length);
+    final List<TDataNodeLocation> redirectNodeList = new ArrayList<>(times.length);
     for (int i = 0; i < times.length; i++) {
       final IDeviceID deviceId = getDeviceID(i);
-      redirectNodeList.add(endPointMap.get(deviceId));
+      redirectNodeList.add(dataNodeLocationMap.get(deviceId));
     }
-    analysis.setRedirectNodeList(redirectNodeList);
+    analysis.setRedirectNodeListFromDataNodeLocations(redirectNodeList);
     return splitMap;
   }
 

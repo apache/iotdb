@@ -39,6 +39,8 @@ public class InternalClientSession extends IClientSession {
 
   public InternalClientSession(String clientID) {
     this.clientID = clientID;
+    setDatabaseInternalSession(true);
+    setInternalRpcSession(true);
   }
 
   @Override

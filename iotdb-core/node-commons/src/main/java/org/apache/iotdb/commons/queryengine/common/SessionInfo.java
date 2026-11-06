@@ -52,7 +52,11 @@ public class SessionInfo {
 
   // Whether the session is opened by the database itself. Like enableAutoCreateSchema, this is
   // only consulted during analysis and therefore does not need serialization.
-  private transient boolean internal;
+  private transient boolean databaseInternalSession;
+
+  // Whether the session uses the internal RPC endpoint family. Used to select internal redirect
+  // endpoints without changing the meaning of internal database sessions.
+  private transient boolean internalRpcSession;
 
   public SessionInfo(long sessionId, UserEntity userEntity, ZoneId zoneId) {
     this.sessionId = sessionId;
@@ -169,12 +173,21 @@ public class SessionInfo {
     return enableAutoCreateSchema;
   }
 
-  public boolean isInternal() {
-    return internal;
+  public boolean isDatabaseInternalSession() {
+    return databaseInternalSession;
   }
 
-  public SessionInfo setInternal(final boolean internal) {
-    this.internal = internal;
+  public SessionInfo setDatabaseInternalSession(final boolean databaseInternalSession) {
+    this.databaseInternalSession = databaseInternalSession;
+    return this;
+  }
+
+  public boolean isInternalRpcSession() {
+    return internalRpcSession;
+  }
+
+  public SessionInfo setInternalRpcSession(final boolean internalRpcSession) {
+    this.internalRpcSession = internalRpcSession;
     return this;
   }
 
