@@ -160,6 +160,9 @@ public class ConsensusSubscriptionCommitManager {
   /** New regions that may start from the beginning once ConfigNode explicitly reports no entry. */
   private final Set<String> pendingNewRegionProgressKeys = ConcurrentHashMap.newKeySet();
 
+  /** Explicit seeks take precedence over stale, higher progress retained by ConfigNode. */
+  private final Set<String> explicitSeekResetKeys = ConcurrentHashMap.newKeySet();
+
   /**
    * Regions whose latest initialization/refresh obtained an authoritative ConfigNode resolution.
    * This includes an explicitly present field and explicit absence for a newly-created region.
@@ -280,7 +283,8 @@ public class ConsensusSubscriptionCommitManager {
                   pendingInitialProgressKeys.contains(entry.getKey()),
                   pendingNewRegionProgressKeys.contains(entry.getKey()),
                   configNodeProgressAvailableKeys.contains(entry.getKey()),
-                  tailProposalInitializedKeys.contains(entry.getKey())));
+                  tailProposalInitializedKeys.contains(entry.getKey()),
+                  explicitSeekResetKeys.contains(entry.getKey())));
         }
         topicSnapshots.put(topicName, new TopicSetupSnapshot(topicFileKey, stateSnapshots));
       }
@@ -347,6 +351,8 @@ public class ConsensusSubscriptionCommitManager {
               tailProposalInitializedKeys,
               stateKey.encodedStateKey,
               stateSnapshot.tailProposalInitialized);
+          restoreSetupMarker(
+              explicitSeekResetKeys, stateKey.encodedStateKey, stateSnapshot.explicitSeekReset);
           stateKeyForRewrite = stateKey;
         }
 
@@ -385,6 +391,7 @@ public class ConsensusSubscriptionCommitManager {
       pendingNewRegionProgressKeys.remove(entry.getKey());
       configNodeProgressAvailableKeys.remove(entry.getKey());
       tailProposalInitializedKeys.remove(entry.getKey());
+      explicitSeekResetKeys.remove(entry.getKey());
       keyIterator.remove();
     }
   }
@@ -557,12 +564,21 @@ public class ConsensusSubscriptionCommitManager {
               : queryResult.getRegionProgress();
       final RegionProgress refreshedProgress;
       synchronized (state) {
-        // A pending local-tail proposal is not a committed checkpoint. ConfigNode must resolve it
-        // exactly before activation can preserve subsequent replicated progress.
-        refreshedProgress =
-            pendingInitialProgressKeys.contains(stateKey.encodedStateKey)
-                ? authoritativeProgress
-                : mergeRegionProgress(state.getCommittedRegionProgress(), authoritativeProgress);
+        final RegionProgress localProgress = state.getCommittedRegionProgress();
+        if (explicitSeekResetKeys.contains(stateKey.encodedStateKey)) {
+          // Explicit seek is an intentional reset; ConfigNode can retain a higher pre-seek
+          // checkpoint until every DataNode has reported the replayed progress.
+          refreshedProgress = localProgress;
+          if (isRegionProgressAtLeast(localProgress, authoritativeProgress)) {
+            explicitSeekResetKeys.remove(stateKey.encodedStateKey);
+          }
+        } else if (pendingInitialProgressKeys.contains(stateKey.encodedStateKey)) {
+          // A pending local-tail proposal is not a committed checkpoint. ConfigNode must resolve
+          // it exactly before activation can preserve subsequent replicated progress.
+          refreshedProgress = authoritativeProgress;
+        } else {
+          refreshedProgress = mergeRegionProgress(localProgress, authoritativeProgress);
+        }
         // Keep the snapshot, merge, and reset atomic with respect to progress broadcasts and ACKs.
         state.resetForSeek(refreshedProgress);
       }
@@ -742,6 +758,7 @@ public class ConsensusSubscriptionCommitManager {
     pendingNewRegionProgressKeys.remove(stateKey.encodedStateKey);
     configNodeProgressAvailableKeys.remove(stateKey.encodedStateKey);
     tailProposalInitializedKeys.remove(stateKey.encodedStateKey);
+    explicitSeekResetKeys.remove(stateKey.encodedStateKey);
     rewriteTopicProgressFiles(stateKey);
   }
 
@@ -764,6 +781,7 @@ public class ConsensusSubscriptionCommitManager {
         pendingNewRegionProgressKeys.remove(entry.getKey());
         configNodeProgressAvailableKeys.remove(entry.getKey());
         tailProposalInitializedKeys.remove(entry.getKey());
+        explicitSeekResetKeys.remove(entry.getKey());
         keyIterator.remove();
       }
     }
@@ -819,20 +837,23 @@ public class ConsensusSubscriptionCommitManager {
       final String topicName,
       final ConsensusGroupId regionId,
       final RegionProgress regionProgress) {
-    final String key = generateKey(consumerGroupId, topicName, regionId);
-    final ConsensusSubscriptionCommitState state = commitStates.get(key);
-    if (state == null) {
-      LOGGER.warn(
-          DataNodePipeMessages
-              .PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITMANAGER_CANNOT_RESET_UNKNOWN_C469052F,
-          consumerGroupId,
-          topicName,
-          regionId);
-      return;
+    final CommitStateKey stateKey =
+        getCommitStateKey(consumerGroupId, topicName, regionId.toString());
+    synchronized (getTopicPersistLock(stateKey.topicFileKey)) {
+      final ConsensusSubscriptionCommitState state = commitStates.get(stateKey.encodedStateKey);
+      if (state == null) {
+        LOGGER.warn(
+            DataNodePipeMessages
+                .PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITMANAGER_CANNOT_RESET_UNKNOWN_C469052F,
+            consumerGroupId,
+            topicName,
+            regionId);
+        return;
+      }
+      state.resetForSeek(regionProgress);
+      explicitSeekResetKeys.add(stateKey.encodedStateKey);
+      persistRegionProgress(stateKey, state);
     }
-    state.resetForSeek(regionProgress);
-    persistRegionProgress(
-        getCommitStateKey(consumerGroupId, topicName, regionId.toString()), state);
   }
 
   /** Persists all states. Should be called during graceful shutdown. */
@@ -1596,6 +1617,31 @@ public class ConsensusSubscriptionCommitManager {
     return new RegionProgress(mergedWriterPositions);
   }
 
+  private static boolean isRegionProgressAtLeast(
+      final RegionProgress candidateProgress, final RegionProgress baselineProgress) {
+    if (Objects.isNull(baselineProgress)) {
+      return true;
+    }
+    final Map<WriterId, WriterProgress> candidatePositions =
+        Objects.nonNull(candidateProgress)
+            ? candidateProgress.getWriterPositions()
+            : Collections.emptyMap();
+    for (final Map.Entry<WriterId, WriterProgress> entry :
+        baselineProgress.getWriterPositions().entrySet()) {
+      if (Objects.isNull(entry.getKey()) || Objects.isNull(entry.getValue())) {
+        continue;
+      }
+      final WriterProgress candidate = candidatePositions.get(entry.getKey());
+      if (Objects.isNull(candidate)
+          || new ProgressKey(entry.getKey(), candidate)
+                  .compareTo(new ProgressKey(entry.getKey(), entry.getValue()))
+              < 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   private static void mergeWriterPositions(
       final Map<WriterId, WriterProgress> mergedWriterPositions,
       final RegionProgress regionProgress) {
@@ -1725,17 +1771,21 @@ public class ConsensusSubscriptionCommitManager {
 
     private final boolean tailProposalInitialized;
 
+    private final boolean explicitSeekReset;
+
     private StateSetupSnapshot(
         final SubscriptionConsensusProgress progress,
         final boolean initialProgressPending,
         final boolean newRegionProgressPending,
         final boolean configNodeProgressAvailable,
-        final boolean tailProposalInitialized) {
+        final boolean tailProposalInitialized,
+        final boolean explicitSeekReset) {
       this.progress = progress;
       this.initialProgressPending = initialProgressPending;
       this.newRegionProgressPending = newRegionProgressPending;
       this.configNodeProgressAvailable = configNodeProgressAvailable;
       this.tailProposalInitialized = tailProposalInitialized;
+      this.explicitSeekReset = explicitSeekReset;
     }
   }
 

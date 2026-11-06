@@ -470,11 +470,13 @@ public class ConsensusSubscriptionCommitStateTest {
     try {
       final DataRegionId regionId = new DataRegionId(30);
       final WriterId writerId = new WriterId(regionId.toString(), 7);
+      final RegionProgress staleConfigNodeProgress =
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(200L, 2L)));
       final AtomicReference<ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult>
           queryResult =
               new AtomicReference<>(
                   ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.available(
-                      new RegionProgress(Collections.emptyMap())));
+                      staleConfigNodeProgress));
       final ConsensusSubscriptionCommitManager manager =
           newCommitManager(systemDir, (consumerGroupId, topicName, ignored) -> queryResult.get());
       manager.receiveProgressBroadcast(
@@ -488,7 +490,7 @@ public class ConsensusSubscriptionCommitStateTest {
         assertEquals(seekProgress, manager.getCommittedRegionProgress("cg", "topic", regionId));
         queryResult.set(
             ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.available(
-                seekProgress));
+                staleConfigNodeProgress));
         assertEquals(
             seekProgress,
             manager.refreshAuthoritativeProgress("cg", "topic", regionId).getRegionProgress());
