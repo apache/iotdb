@@ -64,10 +64,8 @@ public class UDFManagementServiceTest {
     UDFManagementService service = UDFManagementService.getInstance();
     String functionName = BuiltinTimeSeriesGeneratingFunction.values()[0].getFunctionName();
 
-    assertTrue(
-        service.isRegisteredFunctionAssignableTo(Model.TREE, functionName, UDTF.class));
-    assertFalse(
-        service.isRegisteredFunctionAssignableTo(Model.TREE, functionName, UDAF.class));
+    assertTrue(service.isRegisteredFunctionAssignableTo(Model.TREE, functionName, UDTF.class));
+    assertFalse(service.isRegisteredFunctionAssignableTo(Model.TREE, functionName, UDAF.class));
   }
 
   @Test
