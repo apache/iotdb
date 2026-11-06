@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String MESSAGE_FAIL_TO_INSERT_MEASUREMENTS_ARG_CAUSED_BY_ARG_B9858E6B =
+      "测点 %s 插入失败，原因：%s";
 
   public static final String EXCEPTION_UNSUPPORTED_JOIN_CRETERIA_ARG_AFTER_PREDICATE_PUSH_DOWN_92BDB23B =
       "谓词下推后存在不支持的 Join 条件 [%s]";
