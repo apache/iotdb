@@ -27,6 +27,12 @@ public final class PipeMessages {
   public static final String LOG_AIR_GAP_HANDSHAKE_REQUEST_SENT_ON_SOCKET_ARG_WITHOUT_WAITING_FOR_ACKNOWLEDGEMENT_E1ECD582 =
       "已通过 socket {} 发送 air-gap 握手请求，不等待确认。";
 
+  public static final String MESSAGE_SUBSCRIPTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_194CE431 =
+      "当数据区域共识协议为 Ratis 时，Subscription 功能不可用。";
+
+  public static final String MESSAGE_PIPE_DATA_INSERTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_7D669ECC =
+      "当数据区域共识协议为 Ratis 时，包含 data.insert 的 Pipe 同步不可用。";
+
   // ===================== Common / Shared =====================
 
   public static final String UTILITY_CLASS = "工具类";
@@ -349,6 +355,12 @@ public final class PipeMessages {
       "Pipe %s（创建时间 = %s）将因 connector %s 中的严重异常（发生时间 %s）而停止。";
   public static final String PIPE_WAS_STOPPED_CRITICAL_EXCEPTION =
       "Pipe %s（创建时间 = %s）已因严重异常（发生时间 %s）而停止。";
+  public static final String
+      LOG_FAILED_TO_START_THE_TASK_OF_CONSENSUS_GROUP_ARG_FOR_PIPE_ARG_THE_TASK_IS_DROPPED_AND_WILL_BE_RECREATED_BY_THE_FOLLOWING_META_SYNC_7594577C =
+          "启动共识组 {} 的 Pipe {} 任务失败。该任务已被丢弃，将由下一次元数据同步重新创建。";
+  public static final String
+      LOG_FAILED_TO_DROP_THE_TASK_OF_CONSENSUS_GROUP_ARG_FOR_PIPE_ARG_AFTER_IT_FAILED_TO_START_394297EC =
+          "启动失败后，丢弃共识组 {} 的 Pipe {} 任务时出错。";
 
   // ===================== PipeEventCommitManager =====================
 
@@ -373,7 +385,15 @@ public final class PipeMessages {
   public static final String SUBTASK_ALREADY_RUNNING = "子任务 {} 已在运行。";
   public static final String SUBTASK_STARTED = "子任务 {} 已开始自提交。";
   public static final String SUBTASK_CLOSED = "子任务 {} 已成功关闭。";
+  public static final String
+      LOG_FAILED_TO_SUBMIT_THE_SUBTASK_ARG_BECAUSE_THE_EXECUTOR_HAS_BEEN_SHUT_DOWN_198335BE =
+          "执行器已关闭，提交子任务 {} 失败。";
   public static final String SUBTASK_CLOSE_FAILED = "关闭子任务 {} 失败。";
+  public static final String LOG_FAILED_TO_START_THE_SUBTASK_DD3FC1BA =
+      "启动子任务 {} 失败。";
+  public static final String
+      EXCEPTION_THE_SUBTASK_CAN_NOT_BE_STARTED_BECAUSE_THE_EXECUTOR_HAS_BEEN_SHUT_DOWN_9989B212 =
+          "子任务无法启动，因为执行器已关闭。";
 
   // ===================== PipeReportableSubtask =====================
 

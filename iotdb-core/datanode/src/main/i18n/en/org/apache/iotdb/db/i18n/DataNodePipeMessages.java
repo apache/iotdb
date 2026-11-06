@@ -358,6 +358,8 @@ public final class DataNodePipeMessages {
       "Successfully persisted all pipe's info to configNode.";
   public static final String THE_EXECUTOR_AND_HAS_BEEN_SUCCESSFULLY_SHUTDOWN =
       "The executor {} and {} has been successfully shutdown.";
+  public static final String LOG_THE_SHARED_CONSENSUS_EXECUTOR_HAS_BEEN_SHUT_DOWN_RECREATING_IT_C14080E3 =
+      "The shared consensus executor has been shut down. Recreating it.";
 
   // ===================== EVENT =====================
 
@@ -3085,6 +3087,9 @@ public final class DataNodePipeMessages {
 
   public static final String MESSAGE_MISSING_CONSUMER_CONFIG_PLEASE_HANDSHAKE_FIRST_CE588329 =
       "Missing consumer config, please handshake first.";
+  public static final String
+      MESSAGE_SUBSCRIPTION_CONNECTION_WAS_REPLACED_BY_A_RECONNECTION_FROM_THE_SAME_CONSUMER_INSTANCE_RETRY_ON_THE_CURRENT_CONNECTION_687C78B4 =
+          "Subscription connection was replaced by a reconnection from the same consumer instance. Retry on the current connection.";
   public static final String MESSAGE_UNKNOWN_PIPESUBSCRIBEREQUESTTYPE_ARG_7EBB93F8 =
       "Unknown PipeSubscribeRequestType %s.";
   public static final String

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
@@ -57,6 +58,7 @@ import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
@@ -100,7 +102,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   private final PipeMetaKeeper pipeMetaKeeper;
 
   // Tracks runtime exception changes that have not yet been persisted through consensus.
-  private volatile boolean pipeMetaExceptionPersistencePending;
+  private final AtomicBoolean pipeMetaExceptionPersistencePending = new AtomicBoolean(false);
 
   // Pure in-memory object, not involved in snapshot serialization and deserialization.
   private final PipeTaskInfoVersion pipeTaskInfoVersion;
@@ -198,6 +200,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
             createPipeRequest.getExtractorAttributes(),
             createPipeRequest.getProcessorAttributes(),
             createPipeRequest.getConnectorAttributes());
+    checkPipeDataInsertionAvailability(pipeStaticMeta);
     if (!pipeMetaKeeper.containsPipeMetaOverlapped(pipeStaticMeta)) {
       return true;
     }
@@ -315,6 +318,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
             alterPipeRequest.getExtractorAttributes(),
             alterPipeRequest.getProcessorAttributes(),
             alterPipeRequest.getConnectorAttributes());
+    checkPipeDataInsertionAvailability(updatedPipeStaticMeta);
     if (pipeMetaKeeper.containsPipeMetaOverlapped(
         updatedPipeStaticMeta, pipeStaticMetaFromCoordinator)) {
       final String exceptionMessage =
@@ -381,6 +385,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
       throw new PipeException(exceptionMessage);
     }
 
+    checkPipeDataInsertionAvailability(getPipeMetaByPipeName(pipeName).getStaticMeta());
     final PipeStatus pipeStatus = getPipeStatus(pipeName);
     if (pipeStatus == PipeStatus.DROPPED) {
       final String exceptionMessage =
@@ -410,6 +415,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
       throw new PipeException(exceptionMessage);
     }
 
+    checkPipeDataInsertionAvailability(
+        getPipeMetaByPipeName(pipeName, isTableModel).getStaticMeta());
     final PipeStatus pipeStatus = getPipeStatus(pipeName, isTableModel);
     if (pipeStatus == PipeStatus.DROPPED) {
       final String exceptionMessage =
@@ -426,6 +433,16 @@ public class PipeTaskInfo implements SnapshotProcessor {
               pipeName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
+    }
+  }
+
+  private void checkPipeDataInsertionAvailability(final PipeStaticMeta staticMeta) {
+    // Procedures call these validators while holding the coordinator lock. Recheck the merged
+    // source parameters here because concurrent ALTER requests can change the RPC-time snapshot.
+    if (!PipeConfigNodeAgent.isPipeDataInsertionEnabled(staticMeta.getSourceParameters())) {
+      throw new PipeException(
+          PipeMessages
+              .MESSAGE_PIPE_DATA_INSERTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_7D669ECC);
     }
   }
 
@@ -1171,7 +1188,9 @@ public class PipeTaskInfo implements SnapshotProcessor {
     try {
       final boolean hasException =
           recordDataNodePushPipeMetaExceptionsInternal(respMap, fallbackPipeStaticMeta);
-      pipeMetaExceptionPersistencePending |= hasException;
+      if (hasException) {
+        pipeMetaExceptionPersistencePending.set(true);
+      }
       return hasException;
     } finally {
       releaseWriteLock();
@@ -1179,11 +1198,11 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   public boolean hasPendingPipeMetaExceptionPersistence() {
-    return pipeMetaExceptionPersistencePending;
+    return pipeMetaExceptionPersistencePending.get();
   }
 
   public void markPipeMetaExceptionsPersisted() {
-    pipeMetaExceptionPersistencePending = false;
+    pipeMetaExceptionPersistencePending.set(false);
   }
 
   private boolean recordDataNodePushPipeMetaExceptionsInternal(

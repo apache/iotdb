@@ -19,17 +19,37 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql;
 
+import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.session.ClientSession;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
+import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.PreparedStatementHelper;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Prepare;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.ITableCache;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.time.ZoneId;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 public class AstMemoryEstimatorTest {
@@ -754,6 +774,154 @@ public class AstMemoryEstimatorTest {
     Statement statement = parseSQL("PREPARE myquery FROM SELECT * FROM table1 WHERE a > 10");
     long memorySize = estimateMemorySize(statement);
     assertTrue("Memory size should be positive", memorySize > 0);
+  }
+
+  @Test
+  public void testPreparedInsertValuesMemoryAccounting() {
+    TsTable table = new TsTable("insert_memory");
+    table.addColumnSchema(new TimeColumnSchema("time", TSDataType.TIMESTAMP));
+    table.addColumnSchema(new TagColumnSchema("device", TSDataType.STRING));
+    table.addColumnSchema(new FieldColumnSchema("value", TSDataType.STRING));
+    ITableCache cache = DataNodeTableCache.getInstance();
+    cache.preUpdateTable("testdb", table, null);
+    cache.commitUpdateTable("testdb", "insert_memory", null, null);
+    ClientSession session = new ClientSession(null);
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    int originalDataNodeId = config.getDataNodeId();
+    config.setDataNodeId(0);
+    try {
+      IMemoryBlock memory = Coordinator.getCoordinatorMemoryBlock();
+      long initialUsage = memory.getUsedMemoryInBytes();
+      Prepare prepare =
+          (Prepare)
+              parseSQL(
+                  "PREPARE insert_values FROM INSERT INTO insert_memory(time,device,value) "
+                      + "VALUES(1,'d1','small'),(2,'d2',null)");
+      InsertRows insert = (InsertRows) prepare.getSql();
+      long size = insert.ramBytesUsed();
+      long rowSizes =
+          insert.getInnerTreeStatement().getInsertRowStatementList().stream()
+              .mapToLong(row -> row.ramBytesUsed())
+              .sum();
+      assertTrue(size > rowSizes);
+      assertTrue(prepare.ramBytesUsed() > size);
+      assertEquals(size, insert.ramBytesUsed());
+
+      Statement singleRow =
+          parseSQL("INSERT INTO insert_memory(time,device,value) VALUES(1,'d1','small')");
+      Statement largeValue =
+          parseSQL(
+              "INSERT INTO insert_memory(time,device,value) VALUES(1,'d1','"
+                  + "x".repeat(4096)
+                  + "')");
+      assertTrue(size > singleRow.ramBytesUsed());
+      assertTrue(largeValue.ramBytesUsed() > singleRow.ramBytesUsed() + 4000);
+
+      PreparedStatementInfo info =
+          PreparedStatementHelper.register(session, "insert_values", insert);
+      assertSame(insert, info.getSql());
+      assertEquals(size, info.getMemorySizeInBytes());
+      assertEquals(initialUsage + size, memory.getUsedMemoryInBytes());
+      PreparedStatementHelper.unregister(session, "insert_values");
+      assertNull(session.getPreparedStatement("insert_values"));
+      assertEquals(initialUsage, memory.getUsedMemoryInBytes());
+    } finally {
+      if (session.getPreparedStatement("insert_values") != null) {
+        PreparedStatementHelper.unregister(session, "insert_values");
+      }
+      cache.invalid("testdb");
+      config.setDataNodeId(originalDataNodeId);
+    }
+  }
+
+  @Test
+  public void testPreparedInsertValuesParseFailureMemoryAccounting() {
+    TsTable table = new TsTable("insert_failure_memory");
+    table.addColumnSchema(new TimeColumnSchema("time", TSDataType.TIMESTAMP));
+    table.addColumnSchema(new TagColumnSchema("device", TSDataType.STRING));
+    table.addColumnSchema(new FieldColumnSchema("valid", TSDataType.INT32));
+    table.addColumnSchema(new FieldColumnSchema("invalid", TSDataType.INT32));
+    ITableCache cache = DataNodeTableCache.getInstance();
+    cache.preUpdateTable("testdb", table, null);
+    cache.commitUpdateTable("testdb", "insert_failure_memory", null, null);
+    ClientSession session = new ClientSession(null);
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    boolean originalPartialInsert = config.isEnablePartialInsert();
+    int originalDataNodeId = config.getDataNodeId();
+    config.setEnablePartialInsert(true);
+    config.setDataNodeId(0);
+    try {
+      InsertRows small =
+          (InsertRows) parseSQL("INSERT INTO insert_failure_memory VALUES(1,'d1',11,'bad')");
+      InsertRows large =
+          (InsertRows)
+              parseSQL(
+                  "INSERT INTO insert_failure_memory VALUES(1,'d1',11,'" + "x".repeat(4096) + "')");
+      InsertRowStatement row = large.getInnerTreeStatement().getInsertRowStatementList().get(0);
+      assertEquals(1, row.getFailedMeasurementNumber());
+      assertNull(row.getValues()[2]);
+      assertTrue(large.ramBytesUsed() > small.ramBytesUsed() + 4000);
+
+      IMemoryBlock memory = Coordinator.getCoordinatorMemoryBlock();
+      long initialUsage = memory.getUsedMemoryInBytes();
+      PreparedStatementInfo info =
+          PreparedStatementHelper.register(session, "insert_failure", large);
+      assertEquals(large.ramBytesUsed(), info.getMemorySizeInBytes());
+      assertEquals(initialUsage + large.ramBytesUsed(), memory.getUsedMemoryInBytes());
+      PreparedStatementHelper.unregister(session, "insert_failure");
+      assertEquals(initialUsage, memory.getUsedMemoryInBytes());
+    } finally {
+      if (session.getPreparedStatement("insert_failure") != null) {
+        PreparedStatementHelper.unregister(session, "insert_failure");
+      }
+      cache.invalid("testdb");
+      config.setEnablePartialInsert(originalPartialInsert);
+      config.setDataNodeId(originalDataNodeId);
+    }
+  }
+
+  @Test
+  public void testPreparedInsertValuesPreservesParseFailures() {
+    TsTable table = new TsTable("insert_partial");
+    table.addColumnSchema(new TimeColumnSchema("time", TSDataType.TIMESTAMP));
+    table.addColumnSchema(new TagColumnSchema("device", TSDataType.STRING));
+    table.addColumnSchema(new FieldColumnSchema("valid", TSDataType.INT32));
+    table.addColumnSchema(new FieldColumnSchema("invalid", TSDataType.INT32));
+    ITableCache cache = DataNodeTableCache.getInstance();
+    cache.preUpdateTable("testdb", table, null);
+    cache.commitUpdateTable("testdb", "insert_partial", null, null);
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    boolean originalPartialInsert = config.isEnablePartialInsert();
+    config.setEnablePartialInsert(true);
+    try {
+      Prepare prepare =
+          (Prepare)
+              parseSQL(
+                  "PREPARE insert_partial FROM INSERT INTO insert_partial "
+                      + "VALUES(1,'d1',11,'invalid integer')");
+      InsertRows original = (InsertRows) prepare.getSql();
+      InsertRowStatement originalRow =
+          original.getInnerTreeStatement().getInsertRowStatementList().get(0);
+      assertEquals(1, originalRow.getFailedMeasurementNumber());
+      for (int i = 0; i < 2; i++) {
+        InsertRows execution = original.copyForPreparedExecution();
+        InsertRowStatement executionRow =
+            execution.getInnerTreeStatement().getInsertRowStatementList().get(0);
+        execution.getInnerTreeStatement().semanticCheck();
+        assertEquals(originalRow.getFailedMeasurements(), executionRow.getFailedMeasurements());
+        assertEquals(originalRow.getFailedMessages(), executionRow.getFailedMessages());
+        assertEquals(11, executionRow.getValues()[1]);
+        assertNotSame(
+            originalRow.getFailedMeasurementInfoMap(), executionRow.getFailedMeasurementInfoMap());
+        executionRow.removeAllFailedMeasurementMarks();
+        assertEquals(1, originalRow.getFailedMeasurementNumber());
+        assertNull(originalRow.getMeasurements()[2]);
+        assertNull(originalRow.getValues()[2]);
+      }
+    } finally {
+      cache.invalid("testdb");
+      config.setEnablePartialInsert(originalPartialInsert);
+    }
   }
 
   @Test

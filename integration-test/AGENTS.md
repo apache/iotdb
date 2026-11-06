@@ -104,6 +104,11 @@ These instructions apply to `integration-test/` and supplement the repository-le
   changed state or configuration using the repository's test helpers. Wait for asynchronous
   cleanup effects, such as quota accounting after schema deletion, before the next method's setup;
   successful cleanup SQL alone does not prove that dependent cluster state has converged.
+- Do not use global database-count statements such as `COUNT DATABASE` or `COUNT DATABASE root.**`
+  in ITs, including helper methods and wait conditions. Limit counts to an explicit test-owned
+  database path or test-specific path pattern, or assert the existence or absence of the specific
+  test databases. Do not assume that the cluster's total database count equals the number created
+  by the test; pre-existing databases can vary across test environments.
 - Close sessions, pools, and result sets; shut down test-owned executors and clean the cluster
   even when assertions fail. Use try-with-resources and `finally` as appropriate.
 - Assert the behavior under test and its recovery result. Only tolerate expected cleanup errors

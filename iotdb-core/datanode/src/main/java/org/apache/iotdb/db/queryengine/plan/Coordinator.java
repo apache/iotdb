@@ -103,6 +103,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadModel;
@@ -815,6 +816,10 @@ public class Coordinator {
 
       org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement resolvedSql =
           preparedInfo.getSql();
+      if (resolvedSql instanceof InsertRows) {
+        resolvedSql = ((InsertRows) resolvedSql).copyForPreparedExecution();
+      }
+      innerStatement = resolvedSql;
       parameterLookup =
           ParameterExtractor.bindParameters(resolvedSql, executeStatement.getParameters());
       parameters = new ArrayList<>(executeStatement.getParameters());
@@ -838,6 +843,7 @@ public class Coordinator {
 
       org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement resolvedSql =
           sqlParser.createStatement(sql, clientSession.getZoneId(), clientSession);
+      innerStatement = resolvedSql;
 
       if (!literalParameters.isEmpty()) {
         parameterLookup = ParameterExtractor.bindParameters(resolvedSql, literalParameters);
@@ -856,8 +862,8 @@ public class Coordinator {
       }
     }
 
-    if (statement instanceof WrappedInsertStatement) {
-      ((WrappedInsertStatement) statement).setContext(queryContext);
+    if (innerStatement instanceof WrappedInsertStatement) {
+      ((WrappedInsertStatement) innerStatement).setContext(queryContext);
     }
 
     // Create QueryExecution with TableModelPlanner
