@@ -171,9 +171,7 @@ public class SessionPool implements ISessionPool {
   @SuppressWarnings("java:S3077")
   private volatile ScheduledExecutorService executorService;
 
-  protected INodeSupplier availableNodes;
-
-  protected final AbstractSessionPoolBuilder sessionPoolBuilder;
+  private INodeSupplier availableNodes;
 
   // set to true, means that we will start a background thread to fetch all available (Status is
   // not Removing) datanodes in cluster, and these available nodes will be used in retrying stage
@@ -528,7 +526,6 @@ public class SessionPool implements ISessionPool {
   }
 
   public SessionPool(AbstractSessionPoolBuilder builder) {
-    this.sessionPoolBuilder = builder;
     this.maxSize = builder.maxSize;
     this.user = builder.username;
     this.password = builder.pw;
@@ -561,9 +558,11 @@ public class SessionPool implements ISessionPool {
     this.queryTimeoutInMs = builder.timeOut;
     this.enableAutoCreateSchema = builder.enableAutoCreateSchema;
 
-    if (enableAutoFetch) {
+    final INodeSupplier suppliedNodes = builder.nodeSupplier;
+    if (enableAutoFetch && suppliedNodes == null) {
       initThreadPool();
     }
+    final List<TEndPoint> endPointList;
     if (builder.nodeUrls != null) {
       if (builder.nodeUrls.isEmpty()) {
         throw new IllegalArgumentException(SessionMessages.NODE_URLS_EMPTY);
@@ -572,23 +571,21 @@ public class SessionPool implements ISessionPool {
       this.host = null;
       this.port = -1;
       this.formattedNodeUrls = builder.nodeUrls.toString();
-      if (enableAutoFetch) {
-        initAvailableNodes(SessionUtils.parseSeedNodeUrls(nodeUrls));
-      } else {
-        this.availableNodes = new DummyNodesSupplier(SessionUtils.parseSeedNodeUrls(nodeUrls));
-      }
-
+      endPointList = SessionUtils.parseSeedNodeUrls(nodeUrls);
     } else {
       this.host = builder.host;
       this.port = builder.rpcPort;
       this.nodeUrls = null;
       this.formattedNodeUrls = UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port);
-      if (enableAutoFetch) {
-        initAvailableNodes(Collections.singletonList(new TEndPoint(host, port)));
-      } else {
-        this.availableNodes =
-            new DummyNodesSupplier(Collections.singletonList(new TEndPoint(host, port)));
-      }
+      endPointList = Collections.singletonList(new TEndPoint(host, port));
+    }
+
+    if (suppliedNodes != null) {
+      this.availableNodes = suppliedNodes;
+    } else if (enableAutoFetch) {
+      initAvailableNodes(endPointList);
+    } else {
+      this.availableNodes = new DummyNodesSupplier(endPointList);
     }
   }
 
@@ -662,7 +659,7 @@ public class SessionPool implements ISessionPool {
     return new Session.Builder();
   }
 
-  protected void initThreadPool() {
+  private void initThreadPool() {
     this.executorService =
         Executors.newSingleThreadScheduledExecutor(
             r -> {
@@ -679,7 +676,7 @@ public class SessionPool implements ISessionPool {
             });
   }
 
-  protected void initAvailableNodes(List<TEndPoint> endPointList) {
+  private void initAvailableNodes(List<TEndPoint> endPointList) {
     this.availableNodes =
         NodesSupplier.createNodeSupplier(
             endPointList,
