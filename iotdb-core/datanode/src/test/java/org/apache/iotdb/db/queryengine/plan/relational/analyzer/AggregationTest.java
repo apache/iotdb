@@ -55,6 +55,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.singleGroupingSet;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 // This test covers the remaining DistributionPlan cases that TSBSTest doesn't cover
 public class AggregationTest {
@@ -513,6 +515,30 @@ public class AggregationTest {
                     "testdb.table1",
                     ImmutableList.of("tag3", "count"),
                     ImmutableSet.of("s2", "tag3")))));
+  }
+
+  @Test
+  public void integralTimeUnitSyntaxTest() {
+    PlanTester planTester = new PlanTester();
+
+    // a bare duration and an integer number of ticks are both accepted
+    planTester.createPlan("SELECT integral(s1, 1s) FROM table1");
+    planTester.createPlan("SELECT integral(s1, 1s, time) FROM table1");
+    planTester.createPlan("SELECT integral(s1, 1000) FROM table1");
+
+    // a string literal is no longer accepted, and the unit has to be positive
+    assertIntegralTimeUnitFails(planTester, "SELECT integral(s1, '1s') FROM table1");
+    assertIntegralTimeUnitFails(planTester, "SELECT integral(s1, 0s) FROM table1");
+    assertIntegralTimeUnitFails(planTester, "SELECT integral(s1, -1) FROM table1");
+  }
+
+  private static void assertIntegralTimeUnitFails(PlanTester planTester, String sql) {
+    try {
+      planTester.createPlan(sql);
+      fail();
+    } catch (Throwable e) {
+      assertTrue(e.getMessage().contains("should be a positive duration literal"));
+    }
   }
 
   @Test

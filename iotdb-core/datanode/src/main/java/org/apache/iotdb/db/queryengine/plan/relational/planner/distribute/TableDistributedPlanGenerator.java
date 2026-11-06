@@ -169,6 +169,7 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.DELTA;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.INCREASE;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.INTEGRAL;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.IRATE;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.RATE;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
@@ -2439,6 +2440,9 @@ public class TableDistributedPlanGenerator
         || IRATE.equalsIgnoreCase(functionName)
         || DELTA.equalsIgnoreCase(functionName)) {
       return 1;
+    }
+    if (INTEGRAL.equalsIgnoreCase(functionName)) {
+      return 2;
     }
     return -1;
   }

@@ -3701,6 +3701,31 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getLocation(ctx), QualifiedName.of(DATE_BIN.getFunctionName()), arguments);
   }
 
+  @Override
+  public Node visitIntegralCall(RelationalSqlParser.IntegralCallContext ctx) {
+    TimeDuration timeUnit =
+        DataNodeDateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
+    if (timeUnit.monthDuration != 0 || timeUnit.nonMonthDuration <= 0) {
+      throw new SemanticException(
+          String.format(
+              DataNodeQueryMessages
+                  .SECOND_ARGUMENT_OF_AGGREGATE_FUNCTIONS_S_SHOULD_BE_A_POSITIVE_DURATION_LITERAL_OR_INTEGER_498530E4,
+              "integral"));
+    }
+
+    // normalize the bare duration to ticks of the current timestamp precision, so that the call
+    // is identical to the one produced by the string form integral(x, '1s')
+    List<Expression> arguments = new ArrayList<>();
+    arguments.add((Expression) visit(ctx.expression(0)));
+    arguments.add(
+        new LongLiteral(
+            getLocation(ctx.timeDuration()), String.valueOf(timeUnit.nonMonthDuration)));
+    if (ctx.expression().size() > 1) {
+      arguments.add((Expression) visit(ctx.expression(1)));
+    }
+    return new FunctionCall(getLocation(ctx), QualifiedName.of("integral"), arguments);
+  }
+
   private long parseTimeValue(RelationalSqlParser.TimeValueContext ctx, long currentTime) {
     if (ctx.INTEGER_VALUE() != null) {
       try {

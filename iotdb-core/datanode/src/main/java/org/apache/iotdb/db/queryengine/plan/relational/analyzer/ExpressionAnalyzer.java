@@ -88,6 +88,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.commons.queryengine.plan.udf.UDFManagementService;
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -131,6 +132,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -150,6 +152,7 @@ import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils
 import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isTwoTypeComparable;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.FIRST_AGGREGATION;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.INTEGRAL;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.LAST_AGGREGATION;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DereferenceExpression.isQualifiedAllFieldsReference;
@@ -1185,6 +1188,47 @@ public class ExpressionAnalyzer {
                       functionName));
             }
           }
+          break;
+        case INTEGRAL:
+          // Syntactic sugar: integral(c1) => integral(c1, <1s in ticks>, time)
+          //                 integral(c1, time_unit) => integral(c1, time_unit, time)
+          if (argumentsNum == 1) {
+            node.getArguments()
+                .add(
+                    new LongLiteral(
+                        String.valueOf(
+                            TimestampPrecisionUtils.currPrecision.convert(1, TimeUnit.SECONDS))));
+            addTimeArgument(node.getArguments(), getActualTimeFieldName(relationType));
+          } else if (argumentsNum == 2) {
+            addTimeArgument(node.getArguments(), getActualTimeFieldName(relationType));
+          } else if (argumentsNum == 3) {
+            if (!checkArgumentIsTimestamp(
+                node.getArguments().get(2), (List<Field>) relationType.getVisibleFields())) {
+              throw new SemanticException(
+                  String.format(
+                      DataNodeQueryMessages
+                          .THE_THIRD_ARGUMENT_OF_S_FUNCTION_MUST_BE_ACTUAL_TIME_NAME,
+                      functionName));
+            }
+          } else {
+            throw new SemanticException(
+                String.format(
+                    DataNodeQueryMessages
+                        .AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_ONE_TWO_OR_THREE_ARGUMENTS_C1ADA261,
+                    functionName));
+          }
+          // The bare duration form has already been normalized to ticks of the current timestamp
+          // precision by the parser; a string literal is not accepted.
+          Expression timeUnitArgument = node.getArguments().get(1);
+          if (!(timeUnitArgument instanceof LongLiteral)
+              || ((LongLiteral) timeUnitArgument).getParsedValue() <= 0) {
+            throw new SemanticException(
+                String.format(
+                    DataNodeQueryMessages
+                        .SECOND_ARGUMENT_OF_AGGREGATE_FUNCTIONS_S_SHOULD_BE_A_POSITIVE_DURATION_LITERAL_OR_INTEGER_498530E4,
+                    functionName));
+          }
+          break;
       }
 
       List<Type> argumentTypes = getCallArgumentTypes(node.getArguments(), context);
@@ -1338,6 +1382,7 @@ public class ExpressionAnalyzer {
                           .MISSING_VALID_TIME_COLUMN_THE_TABLE_MUST_CONTAIN_EITHER_A_COLUMN_WITH_THE_TIME_CATEGORY));
     }
 
+    /** Parses the time unit and converts it to ticks of the current timestamp precision. */
     private Type analyzeMatchNumber(
         FunctionCall node, StackableAstVisitorContext<Context> context) {
       if (!node.getArguments().isEmpty()) {
