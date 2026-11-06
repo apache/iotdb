@@ -40,6 +40,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.LoadAnalyzeInvalidPathException;
+import org.apache.iotdb.db.exception.LoadAnalyzeMissingDatabaseException;
 import org.apache.iotdb.db.exception.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.exception.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
@@ -191,7 +192,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.isAutoCreateSchemaRequested = loadTsFileStatement.isAutoCreateSchema();
     this.isAutoCreateSchemaEnabled =
         IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
-            && isAutoCreateSchemaRequested;
+            && isAutoCreateSchemaRequested
+            && (context == null
+                || context.getSession() == null
+                || context.getSession().isEnableAutoCreateSchema());
     this.isAutoCreateDatabase = loadTsFileStatement.isAutoCreateDatabase();
     this.isDeleteAfterLoad = loadTsFileStatement.isDeleteAfterLoad();
     this.isConvertOnTypeMismatch = loadTsFileStatement.isConvertOnTypeMismatch();
@@ -275,7 +279,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
               databaseLevel,
               isConvertOnTypeMismatch,
               isVerifySchema,
-              isAutoCreateSchemaRequested,
+              isAutoCreateSchemaEnabled,
               tabletConversionThresholdBytes,
               isGeneratedByPipe,
               context.getSession().getUserName());
@@ -416,10 +420,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
       final TSStatus status =
           loadTsFileDataTypeConverter
-              .convertForTreeModel(
-                  LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath())
-                      .setDeleteAfterLoad(isDeleteAfterLoad)
-                      .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
+              .convertForTreeModel(createTreeConversionStatement(tsFiles.get(i)))
               .orElse(null);
 
       if (status == null || !loadTsFileDataTypeConverter.isSuccessful(status)) {
@@ -591,6 +592,19 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     return analysis;
   }
 
+  private LoadTsFileStatement createTreeConversionStatement(final File tsFile)
+      throws FileNotFoundException {
+    final LoadTsFileStatement statement =
+        LoadTsFileStatement.createUnchecked(tsFile.getPath())
+            .setDeleteAfterLoad(isDeleteAfterLoad)
+            .setConvertOnTypeMismatch(isConvertOnTypeMismatch);
+    statement.setAutoCreateSchema(isAutoCreateSchemaRequested);
+    if (isGeneratedByPipe) {
+      statement.markIsGeneratedByPipe();
+    }
+    return statement;
+  }
+
   private boolean setTemporaryUnavailableStatusIfNecessary(
       final Analysis analysis, final Throwable throwable) {
     // Region unavailability can persist beyond recovery. Retain the file for retry; permanent
@@ -649,6 +663,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private boolean shouldSkipConversion(LoadAnalyzeException e) {
     return e instanceof LoadAnalyzeInvalidPathException
+        || e instanceof LoadAnalyzeMissingDatabaseException
         || (e instanceof LoadAnalyzeTypeMismatchException)
             && !loadTsFileStatement.isConvertOnTypeMismatch();
   }
@@ -961,6 +976,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       }
       databasesNeededToBeSet.removeAll(schemaCache.getAlreadySetDatabases());
 
+      if (!databasesNeededToBeSet.isEmpty() && !isAutoCreateSchemaEnabled) {
+        throw new LoadAnalyzeMissingDatabaseException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_THE_DATABASE_ARG_DOES_NOT_EXIST_AND_AUTO_CREATE_SCHEMA_IS_DISABLED_28F8D49A,
+                databasesNeededToBeSet.iterator().next()));
+      }
+
       // 2. create the databases that do not exist
       for (final PartialPath databasePath : databasesNeededToBeSet) {
         final DatabaseSchemaStatement statement =
@@ -1084,7 +1107,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           encodingsList,
           compressionTypesList,
           isAlignedList,
-          isAutoCreateSchemaRequested,
+          isAutoCreateSchemaEnabled,
           context);
     }
 

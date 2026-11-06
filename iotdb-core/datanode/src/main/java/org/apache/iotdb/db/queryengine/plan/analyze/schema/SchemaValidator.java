@@ -37,6 +37,12 @@ import java.util.List;
 
 public class SchemaValidator {
 
+  static boolean isAutoCreateSchemaAllowed(final MPPQueryContext context) {
+    return context == null
+        || context.getSession() == null
+        || context.getSession().isEnableAutoCreateSchema();
+  }
+
   public static void validate(
       ISchemaFetcher schemaFetcher, InsertBaseStatement insertStatement, MPPQueryContext context) {
     try {
@@ -86,7 +92,7 @@ public class SchemaValidator {
       final List<Boolean> isAlignedList,
       final boolean autoCreateSchema,
       final MPPQueryContext context) {
-    return autoCreateSchema
+    return autoCreateSchema && isAutoCreateSchemaAllowed(context)
         ? schemaFetcher.fetchSchemaListWithAutoCreate(
             devicePaths,
             measurements,

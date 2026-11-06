@@ -569,11 +569,11 @@ public class LoadTsFileScheduler implements IScheduler {
       final String filePath = failedNode.getTsFileResource().getTsFilePath();
 
       try {
+        final LoadTsFileStatement statement =
+            buildRetryTreeLoadStatement(filePath, failedNode.isDeleteAfterLoad());
+        statement.setAutoCreateSchema(failedNode.isAutoCreateSchema());
         final TSStatus status =
-            loadTsFileDataTypeConverter
-                .convertForTreeModel(
-                    buildRetryTreeLoadStatement(filePath, failedNode.isDeleteAfterLoad()))
-                .orElse(null);
+            loadTsFileDataTypeConverter.convertForTreeModel(statement).orElse(null);
 
         if (loadTsFileDataTypeConverter.isSuccessful(status)) {
           iterator.remove();

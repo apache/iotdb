@@ -103,7 +103,8 @@ public class LoadTsFileNode extends WritePlanNode {
               getPlanNodeId(),
               resources.get(i),
               statement.isDeleteAfterLoad(),
-              statement.getWritePointCount(i)));
+              statement.getWritePointCount(i),
+              statement.isAutoCreateSchema()));
     }
     return res;
   }
