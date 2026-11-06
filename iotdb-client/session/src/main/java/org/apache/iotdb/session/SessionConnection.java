@@ -237,8 +237,9 @@ public class SessionConnection {
         session.enableThriftRpcCompaction
             ? new TCompactProtocol(transport)
             : new TBinaryProtocol(transport);
-    if (session.rpcServiceName != null) {
-      protocol = new TMultiplexedProtocol(protocol, session.rpcServiceName);
+    final String rpcServiceName = session.getRpcServiceName();
+    if (rpcServiceName != null) {
+      protocol = new TMultiplexedProtocol(protocol, rpcServiceName);
     }
     client = new IClientRPCService.Client(protocol);
     client = RpcUtils.newSynchronizedClient(client);

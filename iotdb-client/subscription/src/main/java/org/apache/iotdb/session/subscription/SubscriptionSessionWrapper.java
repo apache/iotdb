@@ -32,6 +32,8 @@ import java.util.Objects;
 
 public class SubscriptionSessionWrapper extends Session {
 
+  private String rpcServiceName;
+
   public SubscriptionSessionWrapper(final AbstractSessionBuilder builder) {
     super(builder);
   }
@@ -71,9 +73,13 @@ public class SubscriptionSessionWrapper extends Session {
     return thriftMaxFrameSize;
   }
 
-  @Override
   public void setRpcServiceName(final String rpcServiceName) {
-    super.setRpcServiceName(rpcServiceName);
+    this.rpcServiceName = rpcServiceName;
+  }
+
+  @Override
+  protected String getRpcServiceName() {
+    return rpcServiceName;
   }
 
   public void setSslConfig(

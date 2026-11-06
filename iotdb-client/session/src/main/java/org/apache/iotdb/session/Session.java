@@ -187,9 +187,6 @@ public class Session implements ISession {
 
   protected INodeSupplier availableNodes;
 
-  /** Multiplexed Thrift service name used by internal sessions. */
-  protected String rpcServiceName;
-
   protected boolean enableQueryRedirection = false;
 
   // The version number of the client which used for compatibility in the server
@@ -552,7 +549,14 @@ public class Session implements ISession {
       this.availableNodes = null;
     }
 
-    this.availableNodes = getNodeSupplier(enableRPCCompaction, connectionTimeoutInMs);
+    if (enableAutoFetch) {
+      this.availableNodes = getNodeSupplier(enableRPCCompaction, connectionTimeoutInMs);
+    } else {
+      // A static supplier has no separate seed tier. Keep every configured address after reopen.
+      Set<TEndPoint> staticNodes = new LinkedHashSet<>(getNodeUrls());
+      staticNodes.addAll(SessionUtils.parseSeedNodeUrls(initialNodeUrls));
+      this.availableNodes = new DummyNodesSupplier(new ArrayList<>(staticNodes));
+    }
 
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     setDefaultSessionConnection(constructSessionConnection(this, defaultEndPoint, zoneId));
@@ -584,36 +588,30 @@ public class Session implements ISession {
   }
 
   /**
-   * Creates the endpoint source used by this session. Subclasses may override this hook to provide
-   * a server-managed endpoint source without exposing it through the client builder API.
+   * Creates the auto-fetch endpoint source used by this session. Subclasses may override this hook
+   * to provide a server-managed endpoint source without exposing it through the client API.
    */
   protected INodeSupplier getNodeSupplier(
       final boolean enableRPCCompaction, final int connectionTimeoutInMs) {
-    if (enableAutoFetch) {
-      initThreadPool();
-      return NodesSupplier.createNodeSupplier(
-          getNodeUrls(),
-          SessionUtils.parseSeedNodeUrls(initialNodeUrls),
-          executorService,
-          username,
-          password,
-          zoneId,
-          thriftDefaultBufferSize,
-          thriftMaxFrameSize,
-          connectionTimeoutInMs,
-          useSSL,
-          trustStore,
-          trustStorePwd,
-          keyStore,
-          keyStorePwd,
-          sslProtocol,
-          enableRPCCompaction,
-          version.toString());
-    }
-    // A static supplier has no separate seed tier. Keep every configured address after reopen.
-    Set<TEndPoint> staticNodes = new LinkedHashSet<>(getNodeUrls());
-    staticNodes.addAll(SessionUtils.parseSeedNodeUrls(initialNodeUrls));
-    return new DummyNodesSupplier(new ArrayList<>(staticNodes));
+    initThreadPool();
+    return NodesSupplier.createNodeSupplier(
+        getNodeUrls(),
+        SessionUtils.parseSeedNodeUrls(initialNodeUrls),
+        executorService,
+        username,
+        password,
+        zoneId,
+        thriftDefaultBufferSize,
+        thriftMaxFrameSize,
+        connectionTimeoutInMs,
+        useSSL,
+        trustStore,
+        trustStorePwd,
+        keyStore,
+        keyStorePwd,
+        sslProtocol,
+        enableRPCCompaction,
+        version.toString());
   }
 
   private static List<String> shuffleNodeUrls(List<String> endPoints) {
@@ -4447,8 +4445,8 @@ public class Session implements ISession {
     this.defaultSessionConnection = defaultSessionConnection;
   }
 
-  protected void setRpcServiceName(final String rpcServiceName) {
-    this.rpcServiceName = rpcServiceName;
+  protected String getRpcServiceName() {
+    return null;
   }
 
   public boolean isEnableThriftRpcCompaction() {

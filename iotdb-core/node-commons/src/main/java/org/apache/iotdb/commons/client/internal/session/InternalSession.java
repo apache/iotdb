@@ -32,8 +32,12 @@ public class InternalSession extends Session {
   protected InternalSession(
       final AbstractSessionBuilder builder, final INodeSupplier nodeSupplier) {
     super(builder);
-    setRpcServiceName(RpcServiceConstants.INTERNAL_CLIENT_RPC_SERVICE);
     this.nodeSupplier = nodeSupplier;
+  }
+
+  @Override
+  protected String getRpcServiceName() {
+    return RpcServiceConstants.INTERNAL_CLIENT_RPC_SERVICE;
   }
 
   @Override
