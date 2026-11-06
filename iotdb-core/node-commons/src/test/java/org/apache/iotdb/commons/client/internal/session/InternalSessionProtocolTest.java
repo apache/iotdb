@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.session;
+package org.apache.iotdb.commons.client.internal.session;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -30,6 +30,9 @@ import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.session.DummyNodesSupplier;
+import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionConnection;
 
 import org.apache.thrift.TMultiplexedProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -38,8 +41,8 @@ import org.apache.thrift.transport.TServerSocket;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.powermock.reflect.Whitebox;
 
+import java.lang.reflect.Field;
 import java.net.ServerSocket;
 import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
@@ -73,19 +76,25 @@ public class InternalSessionProtocolTest {
   public void testReconnectRetainsMultiplexedClientServiceName() throws Exception {
     final INodeSupplier nodeSupplier =
         new DummyNodesSupplier(Collections.singletonList(server.endpoint));
-    try (InternalSession session =
-        new Session.Builder()
+    try (Session session =
+        new InternalSessionBuilder(nodeSupplier)
             .host(server.endpoint.getIp())
             .port(server.endpoint.getPort())
             .username("root")
-            .buildInternal(nodeSupplier)) {
+            .build()) {
       session.open();
 
       final SessionConnection connection =
-          Whitebox.getInternalState(session, "defaultSessionConnection");
-      assertTrue(Whitebox.invokeMethod(connection, "reconnect"));
+          (SessionConnection) getField(session, "defaultSessionConnection");
+      assertTrue(connection.reconnect());
       assertEquals(2, openSessionCalls.get());
     }
+  }
+
+  private static Object getField(final Object target, final String fieldName) throws Exception {
+    final Field field = Session.class.getDeclaredField(fieldName);
+    field.setAccessible(true);
+    return field.get(target);
   }
 
   private static final class TestServer implements AutoCloseable {

@@ -17,23 +17,35 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.pool;
+package org.apache.iotdb.commons.client.internal.session;
 
 import org.apache.iotdb.isession.INodeSupplier;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.TableSessionBuilder;
 import org.apache.iotdb.session.i18n.SessionMessages;
 
 import java.util.Objects;
 
-/** Table session pool using caller-supplied internal endpoints and the caller's username. */
-public class InternalTableSessionPool extends TableSessionPool {
+/** Server-side builder for table-model internal sessions. */
+public class InternalTableSessionBuilder extends TableSessionBuilder {
 
-  protected InternalTableSessionPool(
-      AbstractSessionPoolBuilder builder, INodeSupplier nodeSupplier) {
-    super(
-        new SessionPool(
-            builder,
-            Objects.requireNonNull(
-                nodeSupplier,
-                SessionMessages.EXCEPTION_INTERNAL_NODE_SUPPLIER_MUST_NOT_BE_NULL_C5CAF392)));
+  private final INodeSupplier nodeSupplier;
+
+  public InternalTableSessionBuilder(final INodeSupplier nodeSupplier) {
+    this.nodeSupplier =
+        Objects.requireNonNull(
+            nodeSupplier,
+            SessionMessages.EXCEPTION_INTERNAL_NODE_SUPPLIER_MUST_NOT_BE_NULL_C5CAF392);
+  }
+
+  protected final INodeSupplier getNodeSupplier() {
+    return nodeSupplier;
+  }
+
+  @Override
+  protected Session constructNewSession() throws IoTDBConnectionException {
+    this.sqlDialect = "table";
+    return openSession(new InternalSession(this, getNodeSupplier()));
   }
 }

@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.session;
 
-import org.apache.iotdb.isession.IInternalSessionBuilder;
-import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -43,8 +41,7 @@ import static org.apache.iotdb.session.Session.TABLE;
  *
  * <p>All configurations have reasonable default values, which can be overridden as needed.
  */
-public class TableSessionBuilder extends AbstractSessionBuilder
-    implements IInternalSessionBuilder<ITableSession> {
+public class TableSessionBuilder extends AbstractSessionBuilder {
 
   private boolean enableCompression = false;
   private int connectionTimeoutInMs = SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS;
@@ -438,13 +435,6 @@ public class TableSessionBuilder extends AbstractSessionBuilder
     return wrapTableSession(constructNewSession());
   }
 
-  /** Builds and opens a table session using caller-supplied internal endpoints. */
-  @Override
-  public ITableSession buildInternal(INodeSupplier nodeSupplier) throws IoTDBConnectionException {
-    this.sqlDialect = TABLE;
-    return wrapTableSession(openSession(new InternalSession(this, nodeSupplier)));
-  }
-
   protected Session constructNewSession() throws IoTDBConnectionException {
     if (nodeUrls == null) {
       this.nodeUrls =
@@ -458,7 +448,7 @@ public class TableSessionBuilder extends AbstractSessionBuilder
     return new TableSession(session);
   }
 
-  private Session openSession(Session newSession) throws IoTDBConnectionException {
+  protected Session openSession(Session newSession) throws IoTDBConnectionException {
     newSession.enableIoTDBRpcCompression = isIoTDBRpcCompressionEnabled;
     newSession.tabletCompressionMinRowSize = tabletCompressionMinRowSize;
 

@@ -17,59 +17,53 @@
  * under the License.
  */
 
-package org.apache.iotdb.session;
+package org.apache.iotdb.commons.client.internal.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.RpcServiceConstants;
+import org.apache.iotdb.session.AbstractSessionBuilder;
 import org.apache.iotdb.session.i18n.SessionMessages;
+import org.apache.iotdb.session.subscription.SubscriptionSessionWrapper;
 
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Objects;
 
-/** Session using caller-supplied internal endpoints and the caller's username. */
-public class InternalSession extends Session {
+final class InternalSubscriptionSessionWrapper extends SubscriptionSessionWrapper {
 
   private final INodeSupplier nodeSupplier;
 
-  public InternalSession(AbstractSessionBuilder builder, INodeSupplier nodeSupplier) {
+  InternalSubscriptionSessionWrapper(
+      final AbstractSessionBuilder builder, final INodeSupplier nodeSupplier) {
     super(builder);
+    configureInternalSession();
     this.nodeSupplier =
         Objects.requireNonNull(
             nodeSupplier,
             SessionMessages.EXCEPTION_INTERNAL_NODE_SUPPLIER_MUST_NOT_BE_NULL_C5CAF392);
-    password = null;
-    useEncryptedPassword = false;
-    enableAutoFetch = false;
-    enableRedirection = false;
-    enableQueryRedirection = false;
-    rpcServiceName = RpcServiceConstants.INTERNAL_CLIENT_RPC_SERVICE;
   }
 
   @Override
-  public synchronized void open(boolean enableRPCCompaction, int connectionTimeoutInMs)
+  protected INodeSupplier getNodeSupplier(
+      final boolean enableRPCCompaction, final int connectionTimeoutInMs) {
+    return nodeSupplier;
+  }
+
+  @Override
+  protected TEndPoint resolveDefaultEndPoint(
+      final TEndPoint requestedEndPoint, final INodeSupplier availableNodes)
       throws IoTDBConnectionException {
-    super.open(enableRPCCompaction, connectionTimeoutInMs, null, null, nodeSupplier);
-  }
-
-  @Override
-  public SessionConnection constructSessionConnection(
-      Session session, TEndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
-    final List<TEndPoint> candidates = nodeSupplier.get();
+    final List<TEndPoint> candidates = availableNodes.get();
     if (candidates.isEmpty()) {
       throw new IoTDBConnectionException(
           SessionMessages.EXCEPTION_NO_DATANODE_INTERNAL_ENDPOINT_IS_AVAILABLE_249D1081);
     }
-    defaultEndPoint =
-        candidates.contains(endpoint)
-            ? endpoint.deepCopy()
-            : nodeSupplier
-                .getQueryEndPoint()
-                .filter(candidates::contains)
-                .orElse(candidates.get(0))
-                .deepCopy();
-    return super.constructSessionConnection(session, defaultEndPoint, zoneId);
+    return candidates.contains(requestedEndPoint)
+        ? requestedEndPoint.deepCopy()
+        : availableNodes
+            .getQueryEndPoint()
+            .filter(candidates::contains)
+            .orElse(candidates.get(0))
+            .deepCopy();
   }
 }

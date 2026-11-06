@@ -20,6 +20,7 @@
 package org.apache.iotdb.session.it;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.internal.session.InternalSessionBuilder;
 import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -67,11 +68,11 @@ public class InternalSessionIT {
                 new TEndPoint(dataNode.getInternalAddress(), dataNode.getInternalPort())));
 
     try (Session session =
-        new Session.Builder()
+        new InternalSessionBuilder(nodeSupplier)
             .host(dataNode.getInternalAddress())
             .port(dataNode.getInternalPort())
             .username("root")
-            .buildInternal(nodeSupplier)) {
+            .build()) {
       session.open();
       try {
         session.executeNonQueryStatement("CREATE DATABASE " + DATABASE);

@@ -22,15 +22,12 @@ package org.apache.iotdb.session.subscription.consumer.base;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.session.AbstractSessionBuilder;
-import org.apache.iotdb.session.subscription.SubscriptionSessionWrapper;
-import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
 import org.apache.iotdb.session.subscription.SubscriptionTreeSessionBuilder;
 import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePullConsumerBuilder;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 
 import org.junit.Test;
 
-import java.lang.reflect.Field;
 import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
@@ -59,16 +56,11 @@ public class SubscriptionSslConfigTest {
 
     consumer.configureProvider(provider);
 
-    assertTrue(provider.useSSL);
-    assertEquals("trust-store", provider.trustStore);
-    assertEquals("trust-password", provider.trustStorePwd);
-    assertEquals("key-store", provider.keyStore);
-    assertEquals("key-password", provider.keyStorePwd);
-    assertEquals("TLSv1.2", provider.sslProtocol);
+    assertSslConfig(provider);
   }
 
   @Test
-  public void testConsumerPropertiesPopulateSslConfig() throws Exception {
+  public void testConsumerPropertiesPropagateSslConfigToProvider() {
     final Properties properties = new Properties();
     properties.put(ConsumerConstant.HOST_KEY, "127.0.0.1");
     properties.put(ConsumerConstant.PORT_KEY, 6667);
@@ -85,47 +77,20 @@ public class SubscriptionSslConfigTest {
 
     final AbstractSubscriptionConsumer consumer =
         (AbstractSubscriptionConsumer) new SubscriptionTreePullConsumer(properties);
+    final RecordingProvider provider = new RecordingProvider();
 
-    assertTrue((Boolean) getField(consumer, "useSSL"));
-    assertEquals("trust-store", getField(consumer, "trustStore"));
-    assertEquals("trust-password", getField(consumer, "trustStorePwd"));
-    assertEquals("key-store", getField(consumer, "keyStore"));
-    assertEquals("key-password", getField(consumer, "keyStorePwd"));
-    assertEquals("TLSv1.2", getField(consumer, "sslProtocol"));
+    consumer.configureProvider(provider);
+
+    assertSslConfig(provider);
   }
 
-  @Test
-  public void testSubscriptionSessionWrapperRetainsSslConfigBeforeOpen() throws Exception {
-    final SubscriptionTableSessionBuilder builder =
-        new SubscriptionTableSessionBuilder()
-            .host("127.0.0.1")
-            .port(6667)
-            .username("root")
-            .password("root");
-    final SubscriptionSessionWrapper session = new SubscriptionSessionWrapper(builder);
-
-    session.setSslConfig(
-        true, "trust-store", "trust-password", "key-store", "key-password", "TLSv1.2");
-
-    assertTrue((Boolean) getField(session, "useSSL"));
-    assertEquals("trust-store", getField(session, "trustStore"));
-    assertEquals("trust-password", getField(session, "trustStorePwd"));
-    assertEquals("key-store", getField(session, "keyStore"));
-    assertEquals("key-password", getField(session, "keyStorePwd"));
-    assertEquals("TLSv1.2", getField(session, "sslProtocol"));
-  }
-
-  private static Object getField(final Object target, final String fieldName) throws Exception {
-    for (Class<?> type = target.getClass(); type != null; type = type.getSuperclass()) {
-      try {
-        final Field field = type.getDeclaredField(fieldName);
-        field.setAccessible(true);
-        return field.get(target);
-      } catch (NoSuchFieldException ignored) {
-        // Search the superclass.
-      }
-    }
-    throw new NoSuchFieldException(fieldName);
+  private static void assertSslConfig(final RecordingProvider provider) {
+    assertTrue(provider.useSSL);
+    assertEquals("trust-store", provider.trustStore);
+    assertEquals("trust-password", provider.trustStorePwd);
+    assertEquals("key-store", provider.keyStore);
+    assertEquals("key-password", provider.keyStorePwd);
+    assertEquals("TLSv1.2", provider.sslProtocol);
   }
 
   private static final class RecordingProvider extends AbstractSubscriptionProvider {
@@ -169,9 +134,6 @@ public class SubscriptionSslConfigTest {
           .thriftMaxFrameSize(thriftMaxFrameSize)
           .connectionTimeoutInMs(connectionTimeoutInMs);
     }
-
-    @Override
-    void setRpcServiceName(final String rpcServiceName) {}
 
     @Override
     void setSslConfig(

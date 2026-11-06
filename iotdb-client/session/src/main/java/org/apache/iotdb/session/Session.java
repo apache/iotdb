@@ -21,7 +21,6 @@ package org.apache.iotdb.session;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.isession.IInternalSessionBuilder;
 import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
@@ -32,6 +31,7 @@ import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.NoValidValueException;
 import org.apache.iotdb.rpc.RedirectException;
+import org.apache.iotdb.rpc.RpcServiceConstants;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
@@ -544,42 +544,23 @@ public class Session implements ISession {
       return;
     }
 
+    final boolean closeAvailableNodes = executorService != null;
     if (this.executorService != null) {
       this.executorService.shutdown();
       this.executorService = null;
     }
     if (this.availableNodes != null) {
-      this.availableNodes.close();
+      if (closeAvailableNodes) {
+        this.availableNodes.close();
+      }
       this.availableNodes = null;
     }
 
     if (enableAutoFetch) {
       initThreadPool();
-      this.availableNodes =
-          NodesSupplier.createNodeSupplier(
-              getNodeUrls(),
-              SessionUtils.parseSeedNodeUrls(initialNodeUrls),
-              executorService,
-              username,
-              password,
-              zoneId,
-              thriftDefaultBufferSize,
-              thriftMaxFrameSize,
-              connectionTimeoutInMs,
-              useSSL,
-              trustStore,
-              trustStorePwd,
-              keyStore,
-              keyStorePwd,
-              sslProtocol,
-              enableRPCCompaction,
-              version.toString());
-    } else {
-      // A static supplier has no separate seed tier. Keep every configured address after reopen.
-      Set<TEndPoint> staticNodes = new LinkedHashSet<>(getNodeUrls());
-      staticNodes.addAll(SessionUtils.parseSeedNodeUrls(initialNodeUrls));
-      this.availableNodes = new DummyNodesSupplier(new ArrayList<>(staticNodes));
     }
+    this.availableNodes = getNodeSupplier(enableRPCCompaction, connectionTimeoutInMs);
+    this.defaultEndPoint = resolveDefaultEndPoint(this.defaultEndPoint, this.availableNodes);
 
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     setDefaultSessionConnection(constructSessionConnection(this, defaultEndPoint, zoneId));
@@ -608,6 +589,48 @@ public class Session implements ISession {
               }
               return t;
             });
+  }
+
+  /**
+   * Creates the endpoint source used by this session. Subclasses may override this hook to provide
+   * a server-managed endpoint source without exposing it through the client builder API.
+   */
+  protected INodeSupplier getNodeSupplier(
+      final boolean enableRPCCompaction, final int connectionTimeoutInMs) {
+    if (enableAutoFetch) {
+      return NodesSupplier.createNodeSupplier(
+          getNodeUrls(),
+          SessionUtils.parseSeedNodeUrls(initialNodeUrls),
+          executorService,
+          username,
+          password,
+          zoneId,
+          thriftDefaultBufferSize,
+          thriftMaxFrameSize,
+          connectionTimeoutInMs,
+          useSSL,
+          trustStore,
+          trustStorePwd,
+          keyStore,
+          keyStorePwd,
+          sslProtocol,
+          enableRPCCompaction,
+          version.toString());
+    }
+    // A static supplier has no separate seed tier. Keep every configured address after reopen.
+    Set<TEndPoint> staticNodes = new LinkedHashSet<>(getNodeUrls());
+    staticNodes.addAll(SessionUtils.parseSeedNodeUrls(initialNodeUrls));
+    return new DummyNodesSupplier(new ArrayList<>(staticNodes));
+  }
+
+  /**
+   * Selects the endpoint used for the initial connection. Internal sessions that support endpoint
+   * discovery override this hook so a stale builder endpoint cannot be used.
+   */
+  protected TEndPoint resolveDefaultEndPoint(
+      final TEndPoint requestedEndPoint, final INodeSupplier nodeSupplier)
+      throws IoTDBConnectionException {
+    return requestedEndPoint;
   }
 
   private static List<String> shuffleNodeUrls(List<String> endPoints) {
@@ -692,12 +715,16 @@ public class Session implements ISession {
       getDefaultSessionConnection().close();
       setDefaultSessionConnection(null);
     } finally {
-      // if executorService is null, it means that availableNodes is got from SessionPool and we
-      // shouldn't clean that
+      // A node supplier created outside this session, such as one from SessionPool or a server
+      // internal session, is not owned by this transport.
       if (this.executorService != null) {
         this.executorService.shutdown();
         this.executorService = null;
-        this.availableNodes.close();
+        if (this.availableNodes != null) {
+          this.availableNodes.close();
+          this.availableNodes = null;
+        }
+      } else {
         this.availableNodes = null;
       }
       isClosed = true;
@@ -4445,6 +4472,16 @@ public class Session implements ISession {
     this.rpcServiceName = rpcServiceName;
   }
 
+  /** Applies the common transport and authentication settings for server internal sessions. */
+  protected final void configureInternalSession() {
+    password = null;
+    useEncryptedPassword = false;
+    enableAutoFetch = false;
+    enableRedirection = false;
+    enableQueryRedirection = false;
+    rpcServiceName = RpcServiceConstants.INTERNAL_CLIENT_RPC_SERVICE;
+  }
+
   public boolean isEnableThriftRpcCompaction() {
     return enableThriftRpcCompaction;
   }
@@ -4453,8 +4490,7 @@ public class Session implements ISession {
     this.enableThriftRpcCompaction = enableThriftRpcCompaction;
   }
 
-  public static class Builder extends AbstractSessionBuilder
-      implements IInternalSessionBuilder<InternalSession> {
+  public static class Builder extends AbstractSessionBuilder {
 
     public Builder host(String host) {
       this.host = host;
@@ -4602,17 +4638,11 @@ public class Session implements ISession {
             SessionMessages
                 .EXCEPTION_YOU_SHOULD_SPECIFY_EITHER_NODEURLS_HOST_RPCPORT_BUT_NOT_BOTH_77E7B084);
       }
+      return createSession();
+    }
+
+    protected Session createSession() {
       return new Session(this);
-    }
-
-    /** Builds an unopened internal session using caller-supplied internal endpoints. */
-    @Override
-    public InternalSession buildInternal(INodeSupplier nodeSupplier) {
-      return createInternalSession(nodeSupplier);
-    }
-
-    protected InternalSession createInternalSession(INodeSupplier nodeSupplier) {
-      return new InternalSession(this, nodeSupplier);
     }
   }
 }

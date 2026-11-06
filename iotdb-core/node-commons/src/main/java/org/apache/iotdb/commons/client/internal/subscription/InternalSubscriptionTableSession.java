@@ -17,16 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.isession;
+package org.apache.iotdb.commons.client.internal.subscription;
 
-import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.isession.INodeSupplier;
+import org.apache.iotdb.session.AbstractSessionBuilder;
+import org.apache.iotdb.session.subscription.SubscriptionTableSession;
 
-/** Capability implemented by builders that can construct sessions on internal endpoints. */
-public interface IInternalSessionBuilder<T> {
+final class InternalSubscriptionTableSession extends SubscriptionTableSession {
 
-  /**
-   * Builds a session using the caller-provided internal node supplier. Whether the returned session
-   * is already open follows the builder's ordinary build contract.
-   */
-  T buildInternal(INodeSupplier nodeSupplier) throws IoTDBConnectionException;
+  InternalSubscriptionTableSession(
+      final AbstractSessionBuilder builder, final INodeSupplier nodeSupplier) {
+    super(new InternalSubscriptionSessionWrapper(builder, nodeSupplier));
+  }
 }
