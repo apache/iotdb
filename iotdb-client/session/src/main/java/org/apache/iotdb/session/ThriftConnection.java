@@ -56,6 +56,7 @@ public class ThriftConnection {
   protected final int thriftDefaultBufferSize;
 
   protected final int thriftMaxFrameSize;
+  private final int thriftMaxReusableBufferSize;
 
   protected final int connectionTimeoutInMs;
 
@@ -75,9 +76,24 @@ public class ThriftConnection {
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
       int connectionTimeoutInMs) {
+    this(
+        endPoint,
+        thriftDefaultBufferSize,
+        thriftMaxFrameSize,
+        connectionTimeoutInMs,
+        Integer.MAX_VALUE);
+  }
+
+  ThriftConnection(
+      TEndPoint endPoint,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      int connectionTimeoutInMs,
+      int thriftMaxReusableBufferSize) {
     this.endPoint = endPoint;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
+    this.thriftMaxReusableBufferSize = thriftMaxReusableBufferSize;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
   }
 
@@ -207,7 +223,8 @@ public class ThriftConnection {
       String sslProtocol)
       throws TTransportException {
     DeepCopyRpcTransportFactory factory =
-        DeepCopyRpcTransportFactory.getInstance(thriftDefaultBufferSize, thriftMaxFrameSize);
+        DeepCopyRpcTransportFactory.getInstance(
+            thriftDefaultBufferSize, thriftMaxFrameSize, thriftMaxReusableBufferSize);
     return useSSL
         ? factory.getTransport(
             endPoint.getIp(),

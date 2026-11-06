@@ -202,7 +202,9 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException {
     DeepCopyRpcTransportFactory transportFactory =
         DeepCopyRpcTransportFactory.getInstance(
-            session.thriftDefaultBufferSize, session.thriftMaxFrameSize);
+            session.thriftDefaultBufferSize,
+            session.thriftMaxFrameSize,
+            session.thriftMaxReusableBufferSize);
     try {
       if (transport != null && transport.isOpen()) {
         close();
