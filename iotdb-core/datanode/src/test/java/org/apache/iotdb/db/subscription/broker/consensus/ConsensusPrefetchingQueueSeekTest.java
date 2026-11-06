@@ -152,8 +152,21 @@ public class ConsensusPrefetchingQueueSeekTest {
     assertActivationProgress(true, false);
   }
 
+  @Test(timeout = 20_000L)
+  public void testExplicitSeekDuringActivationOverridesLocatedFrontier() throws Exception {
+    assertActivationProgress(false, false, true);
+  }
+
   private void assertActivationProgress(
       final boolean explicitSeek, final boolean broadcastDuringActivation) throws Exception {
+    assertActivationProgress(explicitSeek, broadcastDuringActivation, false);
+  }
+
+  private void assertActivationProgress(
+      final boolean explicitSeek,
+      final boolean broadcastDuringActivation,
+      final boolean seekDuringActivation)
+      throws Exception {
     final int originalPrefetchThreads =
         config.getSubscriptionConsensusPrefetchExecutorMaxThreadNum();
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
@@ -172,7 +185,7 @@ public class ConsensusPrefetchingQueueSeekTest {
       final WriterId writerId = new WriterId(regionId.toString(), 7);
       final RegionProgress emptyProgress = new RegionProgress(Collections.emptyMap());
       final RegionProgress initialProgress =
-          broadcastDuringActivation || explicitSeek
+          broadcastDuringActivation || explicitSeek || seekDuringActivation
               ? new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(100L, 1L)))
               : emptyProgress;
       final AtomicReference<RegionProgress> configNodeProgress =
@@ -232,7 +245,7 @@ public class ConsensusPrefetchingQueueSeekTest {
       queue.poll("consumer");
       queue.setActive(false);
       // A seek while inactive initializes the cursor, so activation must apply a worker seek.
-      if (broadcastDuringActivation) {
+      if (broadcastDuringActivation || seekDuringActivation) {
         queue.seekAfterRegionProgress(initialProgress);
       } else {
         queue.seekToBeginning();
@@ -250,14 +263,23 @@ public class ConsensusPrefetchingQueueSeekTest {
                     writerId,
                     broadcastProgress.getWriterPositions().get(writerId)));
       }
+      if (seekDuringActivation) {
+        // Complete a user seek after activation captured its frontier, before it queues the
+        // automatic worker reset. The older lookup must not supersede this cursor and progress.
+        final ConsensusPrefetchingQueue activatedQueue = queue;
+        duringReplayLookup.set(activatedQueue::seekToBeginning);
+      }
       queue.applyRuntimeState(
           new ConsensusRegionRuntimeState(2L, 7, true, Collections.singleton(7)));
       assertNull(duringReplayLookup.get());
       assertEquals(
-          explicitSeek
+          explicitSeek || seekDuringActivation
               ? emptyProgress
               : broadcastDuringActivation ? broadcastProgress : initialProgress,
           commitManager.getCommittedRegionProgress("consumerGroup", "topic", regionId));
+      if (seekDuringActivation) {
+        assertEquals(1L, queue.getCurrentReadSearchIndex());
+      }
 
       final RegionProgress newerConfigNodeProgress =
           new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(300L, 3L)));
@@ -266,7 +288,7 @@ public class ConsensusPrefetchingQueueSeekTest {
       queue.applyRuntimeState(
           new ConsensusRegionRuntimeState(3L, 7, true, Collections.singleton(7)));
       assertEquals(
-          explicitSeek ? emptyProgress : newerConfigNodeProgress,
+          explicitSeek || seekDuringActivation ? emptyProgress : newerConfigNodeProgress,
           commitManager.getCommittedRegionProgress("consumerGroup", "topic", regionId));
     } finally {
       if (queue != null) {

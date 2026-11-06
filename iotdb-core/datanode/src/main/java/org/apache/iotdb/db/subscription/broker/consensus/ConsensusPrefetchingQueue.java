@@ -4387,27 +4387,32 @@ public class ConsensusPrefetchingQueue {
    * denotes an empty WAL. If old files have been reclaimed, replay may start at a later index.
    */
   public void seekToBeginning() {
-    seekToBeginning(true);
+    seekToBeginning(true, -1L);
   }
 
-  private void seekToBeginning(final boolean explicitSeek) {
+  private void seekToBeginning(final boolean explicitSeek, final long expectedSeekGeneration) {
     seekToResolvedPosition(
         FIRST_CONSENSUS_SEARCH_INDEX,
         new RegionProgress(Collections.emptyMap()),
         "beginning",
-        explicitSeek);
+        explicitSeek,
+        expectedSeekGeneration);
   }
 
   /**
    * Seeks to the current WAL write position. After this, only newly written data will be consumed.
    */
   public void seekToEnd() {
-    seekToEnd(true);
+    seekToEnd(true, -1L);
   }
 
-  private void seekToEnd(final boolean explicitSeek) {
+  private void seekToEnd(final boolean explicitSeek, final long expectedSeekGeneration) {
     seekToResolvedPosition(
-        nextSearchIndexAfterCurrent(), computeTailRegionProgress(), "end", explicitSeek);
+        nextSearchIndexAfterCurrent(),
+        computeTailRegionProgress(),
+        "end",
+        explicitSeek,
+        expectedSeekGeneration);
   }
 
   public void seekToRegionProgress(final RegionProgress regionProgress) {
@@ -4438,7 +4443,8 @@ public class ConsensusPrefetchingQueue {
             replayTarget.getStartSearchIndex(),
             replayTarget.getRecoveryRegionProgress(),
             "regionProgress",
-            true);
+            true,
+            -1L);
         return;
       case RETRY_LATER:
       case LOCATE_MISS:
@@ -4454,17 +4460,19 @@ public class ConsensusPrefetchingQueue {
   }
 
   public void seekAfterRegionProgress(final RegionProgress regionProgress) {
-    seekAfterRegionProgress(regionProgress, true);
+    seekAfterRegionProgress(regionProgress, true, -1L);
   }
 
   private void seekAfterRegionProgress(
-      final RegionProgress regionProgress, final boolean explicitSeek) {
+      final RegionProgress regionProgress,
+      final boolean explicitSeek,
+      final long expectedSeekGeneration) {
     if (!(consensusReqReader instanceof WALNode)) {
       LOGGER.warn(
           DataNodePipeMessages
               .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_SEEKAFTERREGIONPROGRESS_NOT_SUPPORTED_55F36BE8,
           this);
-      seekToEnd(explicitSeek);
+      seekToEnd(explicitSeek, expectedSeekGeneration);
       return;
     }
     final WALNode walNode = (WALNode) consensusReqReader;
@@ -4486,7 +4494,8 @@ public class ConsensusPrefetchingQueue {
             replayTarget.getStartSearchIndex(),
             replayTarget.getRecoveryRegionProgress(),
             "regionProgressAfter",
-            explicitSeek);
+            explicitSeek,
+            expectedSeekGeneration);
         return;
       case RETRY_LATER:
       case LOCATE_MISS:
@@ -4505,12 +4514,18 @@ public class ConsensusPrefetchingQueue {
       final long targetSearchIndex,
       final RegionProgress committedRegionProgress,
       final String seekReason,
-      final boolean explicitSeek) {
+      final boolean explicitSeek,
+      final long expectedSeekGeneration) {
     final PendingSeekRequest request;
 
     acquireWriteLock();
     try {
       if (isClosed || closeRequested) {
+        return;
+      }
+      // A user seek completed after activation captured its frontier. Its cursor and recovery
+      // progress supersede this older lookup, even if that lookup resolved to a higher checkpoint.
+      if (!explicitSeek && seekGeneration.get() != expectedSeekGeneration) {
         return;
       }
       // Fence old commit contexts immediately. The grouped reset itself is applied later by the
@@ -5889,8 +5904,16 @@ public class ConsensusPrefetchingQueue {
       if (Objects.isNull(pendingActivationRuntimeState)) {
         return true;
       }
-      final ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult queryResult =
-          commitManager.refreshAuthoritativeProgress(consumerGroupId, topicName, consensusGroupId);
+      final long activationSeekGeneration;
+      final ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult queryResult;
+      synchronized (this) {
+        // Wait for an already submitted user seek to finish before capturing the activation
+        // snapshot. A later user seek is detected again when the resolved lookup is submitted.
+        activationSeekGeneration = seekGeneration.get();
+        queryResult =
+            commitManager.refreshAuthoritativeProgress(
+                consumerGroupId, topicName, consensusGroupId);
+      }
       if (!queryResult.isAvailable()) {
         return false;
       }
@@ -5898,9 +5921,9 @@ public class ConsensusPrefetchingQueue {
       final RegionProgress authoritativeProgress = queryResult.getRegionProgress();
       if (prefetchInitialized) {
         if (authoritativeProgress.getWriterPositions().isEmpty()) {
-          seekToBeginning(false);
+          seekToBeginning(false, activationSeekGeneration);
         } else {
-          seekAfterRegionProgress(authoritativeProgress, false);
+          seekAfterRegionProgress(authoritativeProgress, false, activationSeekGeneration);
         }
       }
       pendingActivationRuntimeState = null;
