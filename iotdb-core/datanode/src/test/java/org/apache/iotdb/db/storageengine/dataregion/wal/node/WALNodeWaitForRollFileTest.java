@@ -157,7 +157,8 @@ public class WALNodeWaitForRollFileTest {
       InsertTabletNode insertTabletNode = getInsertTabletNode(devicePath, new long[] {i});
       insertTabletNode.setSearchIndex(i);
       waitForFlush(
-          walNode.log(memTable.getMemTableId(), insertTabletNode, 0, insertTabletNode.getRowCount()));
+          walNode.log(
+              memTable.getMemTableId(), insertTabletNode, 0, insertTabletNode.getRowCount()));
     }
 
     // roll the WAL file so the data is in a closed file readable by the iterator
@@ -185,7 +186,8 @@ public class WALNodeWaitForRollFileTest {
         walNode.log(memTable.getMemTableId(), insertTabletNode, 0, insertTabletNode.getRowCount()));
     waitForFlush(
         walNode.log(
-            memTable.getMemTableId(), new ContinuousSameSearchIndexSeparatorNode(new PlanNodeId(""))));
+            memTable.getMemTableId(),
+            new ContinuousSameSearchIndexSeparatorNode(new PlanNodeId(""))));
 
     ConsensusReqReader.ReqIterator iterator = walNode.getReqIterator(1);
 
@@ -286,7 +288,8 @@ public class WALNodeWaitForRollFileTest {
         walNode.log(memTable.getMemTableId(), insertTabletNode, 0, insertTabletNode.getRowCount()));
     waitForFlush(
         walNode.log(
-            memTable.getMemTableId(), new ContinuousSameSearchIndexSeparatorNode(new PlanNodeId(""))));
+            memTable.getMemTableId(),
+            new ContinuousSameSearchIndexSeparatorNode(new PlanNodeId(""))));
 
     // iterator cannot read the active WAL file, so hasNext() should be false
     ConsensusReqReader.ReqIterator iterator = walNode.getReqIterator(1);
