@@ -592,7 +592,6 @@ public class SessionManager implements SessionManagerMBean {
             session.getDatabaseName(),
             session.getSqlDialect(),
             session.isEnableAutoCreateSchema())
-        .setDatabaseInternalSession(session.isDatabaseInternalSession())
         .setInternalRpcSession(session.isInternalRpcSession());
   }
 
@@ -618,7 +617,6 @@ public class SessionManager implements SessionManagerMBean {
             session.getClientVersion(),
             session.getDatabaseName(),
             SqlDialect.TREE)
-        .setDatabaseInternalSession(session.isDatabaseInternalSession())
         .setInternalRpcSession(session.isInternalRpcSession());
   }
 
@@ -630,7 +628,6 @@ public class SessionManager implements SessionManagerMBean {
             session.getClientVersion(),
             session.getDatabaseName(),
             SqlDialect.TABLE)
-        .setDatabaseInternalSession(session.isDatabaseInternalSession())
         .setInternalRpcSession(session.isInternalRpcSession());
   }
 
@@ -642,7 +639,6 @@ public class SessionManager implements SessionManagerMBean {
             session.getClientVersion(),
             databaseName,
             SqlDialect.TABLE)
-        .setDatabaseInternalSession(session.isDatabaseInternalSession())
         .setInternalRpcSession(session.isInternalRpcSession());
   }
 

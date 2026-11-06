@@ -53,9 +53,6 @@ public abstract class IClientSession {
 
   private boolean login = false;
 
-  // Session opened by the database itself for internal operations.
-  private boolean databaseInternalSession = false;
-
   // Session uses the internal RPC endpoint family for redirects.
   private boolean internalRpcSession = false;
 
@@ -126,14 +123,6 @@ public abstract class IClientSession {
 
   public void setLogin(boolean login) {
     this.login = login;
-  }
-
-  public boolean isDatabaseInternalSession() {
-    return databaseInternalSession;
-  }
-
-  public void setDatabaseInternalSession(final boolean databaseInternalSession) {
-    this.databaseInternalSession = databaseInternalSession;
   }
 
   public boolean isInternalRpcSession() {
