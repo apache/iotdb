@@ -3247,17 +3247,9 @@ public class Session implements ISession {
   public void insertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     if (enableRedirection) {
-      insertTabletsWithLeaderCache(tablets, sorted, false);
+      insertTabletsWithLeaderCache(tabletMapToList(tablets), sorted, false);
     } else {
-      TSInsertTabletsReq request =
-          genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted, false);
-      if (request == null) {
-        return;
-      }
-      try {
-        getDefaultSessionConnection().insertTablets(request);
-      } catch (RedirectException ignored) {
-      }
+      insertTabletsWithDefaultConnection(new ArrayList<>(tablets.values()), sorted, false);
     }
   }
 
@@ -3286,29 +3278,86 @@ public class Session implements ISession {
   public void insertAlignedTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     if (enableRedirection) {
-      insertTabletsWithLeaderCache(tablets, sorted, true);
+      insertTabletsWithLeaderCache(tabletMapToList(tablets), sorted, true);
     } else {
-      TSInsertTabletsReq request =
-          genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted, true);
-      if (request == null) {
-        return;
-      }
-      try {
-        getDefaultSessionConnection().insertTablets(request);
-      } catch (RedirectException ignored) {
-      }
+      insertTabletsWithDefaultConnection(new ArrayList<>(tablets.values()), sorted, true);
     }
   }
 
+  /**
+   * Inserts several tablets of possibly the same device in one request. With redirection enabled,
+   * each tablet is routed by its own device id, so tablets whose devices have the same leader are
+   * sent to that leader together.
+   *
+   * @param tablets data batch, possibly several tablets per device
+   */
+  @Override
+  public void insertTablets(List<Tablet> tablets)
+      throws IoTDBConnectionException, StatementExecutionException {
+    insertTabletList(tablets, false);
+  }
+
+  /**
+   * Inserts several tablets of possibly the same aligned device in one request. With redirection
+   * enabled, each tablet is routed by its own device id, so tablets whose devices have the same
+   * leader are sent to that leader together.
+   *
+   * @param tablets data batch, possibly several tablets per device
+   */
+  @Override
+  public void insertAlignedTablets(List<Tablet> tablets)
+      throws IoTDBConnectionException, StatementExecutionException {
+    insertTabletList(tablets, true);
+  }
+
+  private void insertTabletList(List<Tablet> tablets, boolean isAligned)
+      throws IoTDBConnectionException, StatementExecutionException {
+    if (enableRedirection) {
+      List<KeyedTablet> keyedTablets = new ArrayList<>(tablets.size());
+      for (Tablet tablet : tablets) {
+        keyedTablets.add(new KeyedTablet(tablet.getDeviceId(), tablet));
+      }
+      insertTabletsWithLeaderCache(keyedTablets, false, isAligned);
+    } else {
+      insertTabletsWithDefaultConnection(tablets, false, isAligned);
+    }
+  }
+
+  private void insertTabletsWithDefaultConnection(
+      List<Tablet> tablets, boolean sorted, boolean isAligned)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSInsertTabletsReq request = genTSInsertTabletsReq(tablets, sorted, isAligned);
+    if (request == null) {
+      return;
+    }
+    try {
+      getDefaultSessionConnection().insertTablets(request);
+    } catch (RedirectException ignored) {
+    }
+  }
+
+  /** A tablet and the key under which its leader is looked up in the leader cache. */
+  private record KeyedTablet(String leaderCacheKey, Tablet tablet) {}
+
+  /** Keys each tablet by its map key, which callers of the map methods may choose freely. */
+  private static List<KeyedTablet> tabletMapToList(Map<String, Tablet> tablets) {
+    return tablets.entrySet().stream()
+        .map(entry -> new KeyedTablet(entry.getKey(), entry.getValue()))
+        .toList();
+  }
+
+  /**
+   * @param tablets the tablets to insert; the same leader cache key may occur several times
+   */
   private void insertTabletsWithLeaderCache(
-      Map<String, Tablet> tablets, boolean sorted, boolean isAligned)
+      List<KeyedTablet> tablets, boolean sorted, boolean isAligned)
       throws IoTDBConnectionException, StatementExecutionException {
     Map<SessionConnection, TSInsertTabletsReq> tabletGroup = new HashMap<>();
-    for (Entry<String, Tablet> entry : tablets.entrySet()) {
-      final SessionConnection connection = getSessionConnection(entry.getKey());
+    for (KeyedTablet keyedTablet : tablets) {
+      final SessionConnection connection = getSessionConnection(keyedTablet.leaderCacheKey());
       TSInsertTabletsReq request =
           tabletGroup.computeIfAbsent(connection, k -> new TSInsertTabletsReq());
-      updateTSInsertTabletsReq(request, entry.getValue(), sorted, isAligned);
+      updateTSInsertTabletsReq(request, keyedTablet.tablet(), sorted, isAligned);
     }
 
     tabletGroup.entrySet().removeIf(e -> e.getValue().getPrefixPathsSize() == 0);
