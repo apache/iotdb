@@ -551,13 +551,21 @@ public class ConsensusSubscriptionCommitManager {
               ignored ->
                   new ConsensusSubscriptionCommitState(
                       stateKey.regionIdStr, new SubscriptionConsensusProgress()));
-      final RegionProgress refreshedProgress =
-          mergeRegionProgress(
-              state.getCommittedRegionProgress(),
-              startNewRegionFromBeginning
-                  ? new RegionProgress(Collections.emptyMap())
-                  : queryResult.getRegionProgress());
-      state.resetForSeek(refreshedProgress);
+      final RegionProgress authoritativeProgress =
+          startNewRegionFromBeginning
+              ? new RegionProgress(Collections.emptyMap())
+              : queryResult.getRegionProgress();
+      final RegionProgress refreshedProgress;
+      synchronized (state) {
+        // A pending local-tail proposal is not a committed checkpoint. ConfigNode must resolve it
+        // exactly before activation can preserve subsequent replicated progress.
+        refreshedProgress =
+            pendingInitialProgressKeys.contains(stateKey.encodedStateKey)
+                ? authoritativeProgress
+                : mergeRegionProgress(state.getCommittedRegionProgress(), authoritativeProgress);
+        // Keep the snapshot, merge, and reset atomic with respect to progress broadcasts and ACKs.
+        state.resetForSeek(refreshedProgress);
+      }
       persistRegionProgress(stateKey, state);
       pendingInitialProgressKeys.remove(stateKey.encodedStateKey);
       if (!startNewRegionFromBeginning) {
