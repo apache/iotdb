@@ -256,9 +256,7 @@ public class TierManager {
 
   public String getNextFolderForTsFile(int tierLevel, boolean sequence)
       throws DiskSpaceInsufficientException {
-    return sequence
-        ? seqTiers.get(tierLevel).get().getNextFolder()
-        : unSeqTiers.get(tierLevel).get().getNextFolder();
+    return getFolderManager(tierLevel, sequence).getNextFolder();
   }
 
   public String getNextFolderForCopyToTargetFile() throws DiskSpaceInsufficientException {
@@ -266,12 +264,29 @@ public class TierManager {
   }
 
   public String getNextFolderForObjectFile() throws DiskSpaceInsufficientException {
-    return objectTiers.get(0).get().getNextFolder();
+    MemoizedCheckedSupplier<FolderManager, DiskSpaceInsufficientException> supplier =
+        objectTiers.get(0);
+    if (supplier.isInitialized()) {
+      return supplier.getUnchecked().getNextFolder();
+    }
+    FolderManager manager;
+    synchronized (this) {
+      manager = objectTiers.get(0).get();
+    }
+    return manager.getNextFolder();
   }
 
   public FolderManager getFolderManager(int tierLevel, boolean sequence)
       throws DiskSpaceInsufficientException {
-    return sequence ? seqTiers.get(tierLevel).get() : unSeqTiers.get(tierLevel).get();
+    MemoizedCheckedSupplier<FolderManager, DiskSpaceInsufficientException> supplier =
+        (sequence ? seqTiers : unSeqTiers).get(tierLevel);
+    if (supplier.isInitialized()) {
+      return supplier.getUnchecked();
+    }
+    // Construct against the current tier configuration, serialized with resetFolders().
+    synchronized (this) {
+      return (sequence ? seqTiers : unSeqTiers).get(tierLevel).get();
+    }
   }
 
   public List<String> getAllFilesFolders() {
