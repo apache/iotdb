@@ -483,6 +483,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       File stdoutFile = new File(getLogPath());
       List<String> startCmd = new ArrayList<>();
       startCmd.add(JAVA_CMD);
+      startCmd.addAll(jvmConfig.getJvmOptions());
       if (!SystemUtils.IS_JAVA_1_8) {
         startCmd.add("--add-opens=java.base/java.util.concurrent=ALL-UNNAMED");
         startCmd.add("--add-opens=java.base/java.lang=ALL-UNNAMED");

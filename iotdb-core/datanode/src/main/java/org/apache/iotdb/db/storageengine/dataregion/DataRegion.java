@@ -25,7 +25,6 @@ import org.apache.iotdb.calc.utils.ObjectTypeUtils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -1021,7 +1020,8 @@ public class DataRegion implements IDataRegionForQuery {
   private WALRecoverListener recoverUnsealedTsFile(
       TsFileResource unsealedTsFile, DataRegionRecoveryContext context, boolean isSeq) {
     UnsealedTsFileRecoverPerformer recoverPerformer =
-        new UnsealedTsFileRecoverPerformer(unsealedTsFile, isSeq, context.recoverPerformers::add);
+        new UnsealedTsFileRecoverPerformer(
+            unsealedTsFile, isSeq, isTableModel, context.recoverPerformers::add);
     // remember to close UnsealedTsFileRecoverPerformer
     return WALRecoverManager.getInstance().addRecoverPerformer(recoverPerformer);
   }
@@ -2238,9 +2238,6 @@ public class DataRegion implements IDataRegionForQuery {
             StorageEngineMessages
                 .STORAGE_LOG_DISK_SPACE_IS_INSUFFICIENT_WHEN_CREATING_TSFILE_PROCESSOR_4032BAF0,
             e);
-        CommonDescriptor.getInstance()
-            .getConfig()
-            .setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
         throw new WriteProcessException(e.getMessage(), e.getErrorCode(), true);
       } catch (IOException e) {
         if (retryCnt < 3) {
@@ -4839,7 +4836,7 @@ public class DataRegion implements IDataRegionForQuery {
           targetFile.getAbsolutePath());
     }
 
-    LoadTsFileRateLimiter.getInstance().acquire(tsFileResource.getTsFile().length());
+    LoadTsFileRateLimiter.getInstance().acquire(tsFileToLoad.length());
 
     // move file from sync dir to data dir
     if (!targetFile.getParentFile().exists()) {

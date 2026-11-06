@@ -172,6 +172,21 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
   }
 
   /**
+   * Buffer requests larger than this threshold use temporary arrays and reset reusable buffers to
+   * {@code thriftDefaultBufferSize}. Applies to compressed and uncompressed transports for all
+   * sessions and background node discovery. Zero makes every nonempty buffer request use temporary
+   * storage.
+   *
+   * @param thriftMaxReusableBufferSize the buffer reuse threshold in bytes.
+   * @return the current {@link TableSessionPoolBuilder} instance.
+   * @defaultValue Integer.MAX_VALUE (keeps the original reuse policy)
+   */
+  public TableSessionPoolBuilder thriftMaxReusableBufferSize(int thriftMaxReusableBufferSize) {
+    this.thriftMaxReusableBufferSize = thriftMaxReusableBufferSize;
+    return this;
+  }
+
+  /**
    * Enables or disables rpc compression for the connection.
    *
    * @param enableCompression whether to enable compression.

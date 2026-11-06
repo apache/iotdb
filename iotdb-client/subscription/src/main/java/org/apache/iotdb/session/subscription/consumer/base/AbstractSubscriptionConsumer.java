@@ -1682,15 +1682,15 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       checkIfFenced();
       AbstractSubscriptionProvider.CommitResult result =
           AbstractSubscriptionProvider.CommitResult.empty();
-      SubscriptionConnectionException connectionFailure = null;
+      SubscriptionException connectionFailure = null;
       SubscriptionException failure = null;
       try {
         result = commitInternal(dataNodeId, remainingCommitContexts, nack);
       } catch (final SubscriptionException e) {
         failure = getCommitFailure(e);
         result = getCompletedCommitResult(e);
-        if (failure instanceof SubscriptionConnectionException) {
-          connectionFailure = (SubscriptionConnectionException) failure;
+        if (isRetryableCommitFailure(failure)) {
+          connectionFailure = failure;
         }
       }
 
@@ -1744,6 +1744,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     return e instanceof AbstractSubscriptionProvider.CommitException
         ? ((AbstractSubscriptionProvider.CommitException) e).getFailure()
         : e;
+  }
+
+  private boolean isRetryableCommitFailure(final SubscriptionException failure) {
+    return failure instanceof SubscriptionConnectionException
+        || (failure instanceof SubscriptionConsumerFencedException && !isFenced());
   }
 
   private AbstractSubscriptionProvider.CommitResult getCompletedCommitResult(
@@ -1806,7 +1811,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         final Set<SubscriptionCommitContext> acceptedBeforeFailure =
             new HashSet<>(completedResult.getAcceptedCommitContexts());
         removableCommitContexts.addAll(acceptedBeforeFailure);
-        if (!(failure instanceof SubscriptionConnectionException)) {
+        if (!isRetryableCommitFailure(failure)) {
           // The caller cannot receive the removable set when an error propagates. Remove confirmed
           // contexts from every completed group before leaving the automatic/close-time ACK path.
           onAckedCommitContexts(removableCommitContexts);
@@ -1901,9 +1906,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         return provider.commit(subscriptionCommitContexts, nack);
       } catch (final SubscriptionException e) {
         final SubscriptionException failure = getCommitFailure(e);
-        if (failure instanceof SubscriptionConsumerFencedException) {
+        if (failure instanceof SubscriptionConsumerFencedException
+            && providers.containsProvider(provider)) {
           fence((SubscriptionConsumerFencedException) failure);
-        } else if (failure instanceof SubscriptionConnectionException) {
+        } else if (isRetryableCommitFailure(failure)) {
           providers.syncIfUnavailable(this);
         }
         throw e;

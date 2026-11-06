@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -157,20 +158,11 @@ public class LoadTsFileDataTypeConverter {
   private final MPPQueryContext context;
 
   private final SqlParser relationalSqlParser = new SqlParser();
-  private final LoadTableStatementDataTypeConvertExecutionVisitor
-      tableStatementDataTypeConvertExecutionVisitor;
-  private final LoadTreeStatementDataTypeConvertExecutionVisitor
-      treeStatementDataTypeConvertExecutionVisitor;
 
   public LoadTsFileDataTypeConverter(
       final MPPQueryContext context, final boolean isGeneratedByPipe) {
     this.context = context;
     this.isGeneratedByPipe = isGeneratedByPipe;
-
-    tableStatementDataTypeConvertExecutionVisitor =
-        new LoadTableStatementDataTypeConvertExecutionVisitor(this::executeForTableModel);
-    treeStatementDataTypeConvertExecutionVisitor =
-        new LoadTreeStatementDataTypeConvertExecutionVisitor(this::executeForTreeModel);
   }
 
   public Optional<TSStatus> convertForTableModel(final LoadTsFile loadTsFileTableStatement) {
@@ -179,7 +171,11 @@ public class LoadTsFileDataTypeConverter {
       getTabletConversionSemaphore().acquire();
       isPermitAcquired = true;
       return loadTsFileTableStatement.accept(
-          tableStatementDataTypeConvertExecutionVisitor, loadTsFileTableStatement.getDatabase());
+          new LoadTableStatementDataTypeConvertExecutionVisitor(
+              (statement, databaseName) ->
+                  executeForTableModel(
+                      statement, databaseName, loadTsFileTableStatement.isAutoCreateSchema())),
+          loadTsFileTableStatement.getDatabase());
     } catch (final InterruptedException e) {
       return getInterruptedConversionStatus(e);
     } catch (Exception e) {
@@ -240,12 +236,16 @@ public class LoadTsFileDataTypeConverter {
     session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
     session.setZoneId(ZoneId.systemDefault());
     session.setSqlDialect(sqlDialect);
+    if (Objects.nonNull(context) && Objects.nonNull(context.getSession())) {
+      session.setEnableAutoCreateSchema(context.getSession().isEnableAutoCreateSchema());
+    }
 
     SESSION_MANAGER.registerSession(session);
     return session;
   }
 
-  private TSStatus executeForTableModel(final Statement statement, final String databaseName) {
+  private TSStatus executeForTableModel(
+      final Statement statement, final String databaseName, final boolean allowAutoCreateSchema) {
     final IClientSession currentSession = SESSION_MANAGER.getCurrSession();
     final boolean needToCreateSession = Objects.isNull(currentSession);
     final IClientSession session =
@@ -257,7 +257,15 @@ public class LoadTsFileDataTypeConverter {
               relationalSqlParser,
               session,
               SESSION_MANAGER.requestQueryId(),
-              SESSION_MANAGER.getSessionInfoOfPipeReceiver(session, databaseName),
+              new SessionInfo(
+                  session.getId(),
+                  new UserEntity(
+                      session.getUserId(), session.getUsername(), session.getClientAddress()),
+                  ZoneId.systemDefault(),
+                  session.getClientVersion(),
+                  databaseName,
+                  SqlDialect.TABLE,
+                  allowAutoCreateSchema && session.isEnableAutoCreateSchema()),
               "",
               LocalExecutionPlanner.getInstance().metadata,
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
@@ -275,7 +283,11 @@ public class LoadTsFileDataTypeConverter {
     try {
       getTabletConversionSemaphore().acquire();
       isPermitAcquired = true;
-      return loadTsFileTreeStatement.accept(treeStatementDataTypeConvertExecutionVisitor, null);
+      return loadTsFileTreeStatement.accept(
+          new LoadTreeStatementDataTypeConvertExecutionVisitor(
+              statement ->
+                  executeForTreeModel(statement, loadTsFileTreeStatement.isAutoCreateSchema())),
+          null);
     } catch (final InterruptedException e) {
       return getInterruptedConversionStatus(e);
     } catch (Exception e) {
@@ -298,7 +310,8 @@ public class LoadTsFileDataTypeConverter {
     }
   }
 
-  private TSStatus executeForTreeModel(final Statement statement) {
+  private TSStatus executeForTreeModel(
+      final Statement statement, final boolean allowAutoCreateSchema) {
     final IClientSession currentSession = SESSION_MANAGER.getCurrSession();
     final boolean needToCreateSession = Objects.isNull(currentSession);
     final IClientSession session =
@@ -309,7 +322,19 @@ public class LoadTsFileDataTypeConverter {
           .executeForTreeModel(
               isGeneratedByPipe ? new PipeEnrichedStatement(statement) : statement,
               SESSION_MANAGER.requestQueryId(),
-              SESSION_MANAGER.getSessionInfoOfTreeModel(session),
+              new SessionInfo(
+                  session.getId(),
+                  new UserEntity(
+                      session.getUserId(), session.getUsername(), session.getClientAddress()),
+                  ZoneId.systemDefault(),
+                  session.getClientVersion(),
+                  session.getDatabaseName(),
+                  SqlDialect.TREE,
+                  allowAutoCreateSchema
+                      && session.isEnableAutoCreateSchema()
+                      && (Objects.isNull(context)
+                          || Objects.isNull(context.getSession())
+                          || context.getSession().isEnableAutoCreateSchema())),
               "",
               ClusterPartitionFetcher.getInstance(),
               ClusterSchemaFetcher.getInstance(),

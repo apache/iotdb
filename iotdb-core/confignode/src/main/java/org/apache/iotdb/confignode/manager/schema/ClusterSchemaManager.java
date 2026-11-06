@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.table.ColumnInAlterException;
 import org.apache.iotdb.commons.exception.table.ColumnInDeletionException;
@@ -1702,7 +1703,8 @@ public class ClusterSchemaManager {
     // the table read above is a copy, which this check expands and returns
     final String errorMsg =
         String.format(
-            ManagerMessages.MESSAGE_COLUMN_ARG_ALREADY_EXIST_92F91B6A,
+            ManagerMessages
+                .MESSAGE_COLUMN_ARG_ALREADY_EXISTS_OR_ITS_SOURCE_MEASUREMENT_IS_ALREADY_MAPPED_8421FEAD,
             columnSchemaList.stream()
                 .map(TsTableColumnSchema::getColumnName)
                 .collect(Collectors.joining(", ")));
@@ -1968,7 +1970,8 @@ public class ClusterSchemaManager {
       final Map<String, String> updatedProperties,
       final boolean isTableView)
       throws MetadataException {
-    final TsTable originalTable = getTableWithUsingStatusIfExists(database, tableName).orElse(null);
+    final TsTable originalTable =
+        getTableWithUsingStatusIfExists(database, tableName).map(TsTable::new).orElse(null);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(
@@ -1994,12 +1997,32 @@ public class ClusterSchemaManager {
           null);
     }
 
+    // Resolve DEFAULT before comparing properties and preparing the table sent to DataNodes.
+    if (updatedProperties.containsKey(TsTable.TTL_PROPERTY)
+        && Objects.isNull(updatedProperties.get(TsTable.TTL_PROPERTY))) {
+      try {
+        final TDatabaseSchema schema = getDatabaseSchemaByName(database);
+        updatedProperties.put(
+            TsTable.TTL_PROPERTY,
+            schema.isSetTTL() && schema.getTTL() != Long.MAX_VALUE
+                ? String.valueOf(schema.getTTL())
+                : IoTDBConstant.TTL_INFINITE);
+      } catch (final DatabaseNotExistsException e) {
+        throw new MetadataException(e);
+      }
+    }
+
     updatedProperties
         .keySet()
         .removeIf(
-            key ->
-                Objects.equals(
-                    updatedProperties.get(key), originalTable.getPropValue(key).orElse(null)));
+            key -> {
+              if (TsTable.TTL_PROPERTY.equals(key)
+                  && IoTDBConstant.TTL_INFINITE.equalsIgnoreCase(updatedProperties.get(key))) {
+                return originalTable.getTableTTL() == Long.MAX_VALUE;
+              }
+              return Objects.equals(
+                  updatedProperties.get(key), originalTable.getPropValue(key).orElse(null));
+            });
     if (updatedProperties.isEmpty()) {
       return new Pair<>(RpcUtils.SUCCESS_STATUS, null);
     }

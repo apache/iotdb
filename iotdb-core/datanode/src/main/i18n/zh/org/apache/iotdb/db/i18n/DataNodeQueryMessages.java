@@ -503,6 +503,9 @@ public final class DataNodeQueryMessages {
       "自动创建或验证 schema 出错。";
   public static final String LOAD_TSFILE_DEVICE_SCHEMA_MISSING_AUTO_CREATE_DISABLED =
       "设备 %s 在 IoTDB 中不存在且无法被创建。请检查是否启用了 auto-create-schema。";
+  public static final String
+      EXCEPTION_THE_DATABASE_ARG_DOES_NOT_EXIST_AND_AUTO_CREATE_SCHEMA_IS_DISABLED_28F8D49A =
+          "数据库 %s 不存在，且 auto-create-schema 已禁用。";
   public static final String LOAD_TSFILE_MEASUREMENT_SCHEMA_MISSING_AUTO_CREATE_DISABLED =
       "时间序列 %s 在 IoTDB 中不存在且无法被创建。请检查是否启用了 auto-create-schema。";
   public static final String PIPE_GENERATED_LOAD_TSFILE_WAITING_FOR_SCHEMA_METADATA =
@@ -3171,6 +3174,12 @@ public final class DataNodeQueryMessages {
   public static final String COLUMN_ARG_IN_TABLE_ARG_IS_NOT_FOUND_IN_IOTDB_WHILE_LOADING_TSFILE =
 
       "加载 TsFile 时，表 {} 中的列 {} 在 IoTDB 中未找到。";
+  public static final String EXCEPTION_THE_SCHEMA_OF_TABLE_ARG_IS_MISSING_IN_THE_TSFILE_AND_THE_TABLE_DOES_NOT_EXIST_IN_DATABASE_ARG_SO_THE_FILE_CANNOT_BE_LOADED_D910A1AA =
+      "TsFile 中缺少表 %s 的 schema，且数据库 %s 中不存在该表，无法加载该文件。";
+  public static final String LOG_TABLE_ARG_HAS_NO_SCHEMA_ENTRY_IN_THE_TSFILE_WILL_USE_THE_SCHEMA_OF_THE_TABLE_IN_IOTDB_F7ED883F =
+      "TsFile 中缺少表 {} 的 schema，将使用 IoTDB 中该表的 schema。";
+  public static final String LOG_TABLE_ARG_HAS_NO_COLUMN_OTHER_THAN_TIME_IN_ITS_SCHEMA_ENTRY_IN_THE_TSFILE_WILL_USE_THE_SCHEMA_OF_THE_TABLE_IN_IOTDB_EB6C0BE1 =
+      "TsFile 中表 {} 的 schema 只有 Time 列，将使用 IoTDB 中该表的 schema。";
   public static final String DEVICE_ARG_IS_NOT_IN_THE_TSFILEDEVICE2ISALIGNED_CACHE_ARG =
 
       "设备 {} 不在 tsFileDevice2IsAligned 缓存 {} 中。";

@@ -340,6 +340,8 @@ public final class DataNodePipeMessages {
       "成功将所有 Pipe 信息持久化到 ConfigNode。";
   public static final String THE_EXECUTOR_AND_HAS_BEEN_SUCCESSFULLY_SHUTDOWN =
       "执行器 {} 和 {} 已成功关闭。";
+  public static final String LOG_THE_SHARED_CONSENSUS_EXECUTOR_HAS_BEEN_SHUT_DOWN_RECREATING_IT_C14080E3 =
+      "共享的共识执行器已被关闭，正在重新创建该执行器。";
 
   // ===================== EVENT =====================
 
@@ -2859,6 +2861,9 @@ public final class DataNodePipeMessages {
       MESSAGE_SUBSCRIPTION_REQUEST_BODY_SIZE_ARG_BYTES_EXCEEDS_THE_RECEIVER_LIMIT_OF_ARG_BYTES_SPLIT_THE_OPERATION_INTO_SMALLER_REQUESTS_C9513027 =
           "Subscription：请求体大小为 %d 字节，超过接收端上限 %d 字节。请将操作拆分为更小的请求。";
 
+  public static final String
+      MESSAGE_SUBSCRIPTION_CONNECTION_WAS_REPLACED_BY_A_RECONNECTION_FROM_THE_SAME_CONSUMER_INSTANCE_RETRY_ON_THE_CURRENT_CONNECTION_687C78B4 =
+          "订阅连接已被同一 consumer 实例的重连替换，请在当前连接上重试。";
   public static final String MESSAGE_MISSING_CONSUMER_CONFIG_PLEASE_HANDSHAKE_FIRST_CE588329 =
       "缺少 consumer 配置，请先完成 handshake。";
   public static final String MESSAGE_UNKNOWN_PIPESUBSCRIBEREQUESTTYPE_ARG_7EBB93F8 =

@@ -655,8 +655,9 @@ public final class ManagerMessages {
   public static final String
       MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_DEFAULT_ARGREGIONGROUPNUM_ARG_4C00E92C =
           "%s should be greater than or equal to default %sRegionGroupNum: %d.";
-  public static final String MESSAGE_COLUMN_ARG_ALREADY_EXIST_92F91B6A =
-      "Column '%s' already exist";
+  public static final String
+      MESSAGE_COLUMN_ARG_ALREADY_EXISTS_OR_ITS_SOURCE_MEASUREMENT_IS_ALREADY_MAPPED_8421FEAD =
+          "Column '%s' already exists or its source measurement is already mapped";
   public static final String MESSAGE_COLUMN_ARG_DOES_NOT_EXIST_FF67AE82 =
       "Column '%s' does not exist";
   public static final String

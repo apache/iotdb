@@ -185,6 +185,12 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getDataNodeCommonConfig().setSortBufferSize(1024 * 1024L);
+    // Under the default PROACTIVE extension policy, the number of DataRegionGroups follows the
+    // CPU cores of the DataNodes, and with it the number of FragmentInstances of
+    // fourTableJoinTest, many of which reserve up to the 1 MB sort buffer. Pin the DataRegions per
+    // DataNode so that the region layout matches a 4-core CI runner on every machine and the
+    // instances fit into the operator memory of the default DataNode heap.
+    EnvFactory.getEnv().getConfig().getCommonConfig().setDataRegionPerDataNode(2);
     EnvFactory.getEnv().initClusterEnvironment();
     EnvFactory.getEnv()
         .getConfig()

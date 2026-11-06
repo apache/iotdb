@@ -42,14 +42,28 @@ public class DeepCopyRpcTransportFactory extends BaseRpcTransportFactory {
     return create(USE_SNAPPY, thriftDefaultBufferSize, thriftMaxFrameSize);
   }
 
+  /** Creates a client factory whose reusable-buffer threshold is independent of other clients. */
+  public static DeepCopyRpcTransportFactory getInstance(
+      int thriftDefaultBufferSize, int thriftMaxFrameSize, int maxReusableBufferSize) {
+    return create(USE_SNAPPY, thriftDefaultBufferSize, thriftMaxFrameSize, maxReusableBufferSize);
+  }
+
   private static DeepCopyRpcTransportFactory create(
       boolean useSnappy, int thriftDefaultBufferSize, int thriftMaxFrameSize) {
+    return create(useSnappy, thriftDefaultBufferSize, thriftMaxFrameSize, Integer.MAX_VALUE);
+  }
+
+  private static DeepCopyRpcTransportFactory create(
+      boolean useSnappy,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      int maxReusableBufferSize) {
     return useSnappy
         ? new DeepCopyRpcTransportFactory(
             new TimeoutChangeableTSnappyFramedTransport.Factory(
-                thriftDefaultBufferSize, thriftMaxFrameSize, true))
+                thriftDefaultBufferSize, thriftMaxFrameSize, true, maxReusableBufferSize))
         : new DeepCopyRpcTransportFactory(
             new TimeoutChangeableTFastFramedTransport.Factory(
-                thriftDefaultBufferSize, thriftMaxFrameSize, true));
+                thriftDefaultBufferSize, thriftMaxFrameSize, true, maxReusableBufferSize));
   }
 }

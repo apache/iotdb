@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.it.regionmigration.pass.commit;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
+import org.apache.iotdb.itbase.exception.InconsistentDataException;
 
 import org.awaitility.Awaitility;
 import org.junit.Assert;
@@ -67,8 +68,10 @@ final class RegionMigrateFileAssertions {
 
   static void awaitRegionReplicas(
       Statement statement, int dataRegionId, Set<Integer> expectedReplicaDataNodeIds) {
+    // Parallel SHOW REGIONS queries can observe different stages of the migration.
     Awaitility.await()
         .atMost(10, TimeUnit.MINUTES)
+        .ignoreException(InconsistentDataException.class)
         .pollDelay(1, TimeUnit.SECONDS)
         .pollInterval(2, TimeUnit.SECONDS)
         .untilAsserted(

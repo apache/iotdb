@@ -21,13 +21,16 @@ package org.apache.iotdb.relational.it.schema;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -52,6 +55,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableDetailsColumnHeaders;
@@ -77,6 +81,91 @@ public class IoTDBTableIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Test
+  public void testResetTableTtlUsesDatabaseDefault() throws Exception {
+    final String database = "ttl_default_reset";
+    final long day = TimeUnit.DAYS.toMillis(1);
+    final long old = System.currentTimeMillis() - 2 * day;
+    final long recent = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(1);
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      try {
+        statement.execute("CREATE DATABASE " + database + " WITH (ttl=" + 7 * day + ")");
+        statement.execute("USE " + database);
+        statement.execute("CREATE TABLE inherited(dev STRING TAG,v INT32 FIELD)");
+        statement.execute(
+            "CREATE TABLE overridden(dev STRING TAG,v INT32 FIELD) WITH (ttl=" + 30 * day + ")");
+        for (final String table : new String[] {"inherited", "overridden"}) {
+          statement.execute(
+              "INSERT INTO "
+                  + table
+                  + "(time,dev,v) VALUES("
+                  + old
+                  + ",'d',1),("
+                  + recent
+                  + ",'d',2)");
+          TestUtils.assertDataEventuallyOnEnv(
+              EnvFactory.getEnv(),
+              "SELECT v FROM " + table + " ORDER BY time",
+              "v,",
+              new HashSet<>(Arrays.asList("1,", "2,")),
+              30,
+              database,
+              null);
+        }
+
+        statement.execute("ALTER DATABASE " + database + " SET PROPERTIES ttl=" + day);
+        statement.execute("ALTER TABLE inherited SET PROPERTIES ttl=DEFAULT");
+        TestUtils.tableResultSetEqualTestUnordered(
+            "SHOW TABLES",
+            new String[] {"TableName", "TTL(ms)"},
+            new String[] {"inherited," + day + ",", "overridden," + 30 * day + ","},
+            database);
+        TestUtils.tableResultSetEqualTestUnordered(
+            "SELECT v FROM inherited", new String[] {"v"}, new String[] {"2,"}, database);
+        TestUtils.tableResultSetEqualTestUnordered(
+            "SELECT v FROM overridden", new String[] {"v"}, new String[] {"1,", "2,"}, database);
+        for (final DataNodeWrapper node : EnvFactory.getEnv().getDataNodeWrapperList()) {
+          try (final Connection writer =
+                  EnvFactory.getEnv()
+                      .getConnection(
+                          node,
+                          SessionConfig.DEFAULT_USER,
+                          SessionConfig.DEFAULT_PASSWORD,
+                          BaseEnv.TABLE_SQL_DIALECT);
+              final Statement write = writer.createStatement()) {
+            final SQLException exception =
+                Assert.assertThrows(
+                    SQLException.class,
+                    () ->
+                        write.execute(
+                            "INSERT INTO "
+                                + database
+                                + ".inherited(time,dev,v) VALUES("
+                                + (old + 1)
+                                + ",'d',3)"));
+            assertEquals(TSStatusCode.OUT_OF_TTL.getStatusCode(), exception.getErrorCode());
+          }
+        }
+
+        statement.execute("ALTER DATABASE " + database + " SET PROPERTIES ttl='INF'");
+        statement.execute("ALTER TABLE inherited SET PROPERTIES ttl=DEFAULT");
+        statement.execute("INSERT INTO inherited(time,dev,v) VALUES(" + (old + 1) + ",'d',3)");
+        TestUtils.assertDataEventuallyOnEnv(
+            EnvFactory.getEnv(),
+            "SELECT v FROM inherited WHERE v=3",
+            "v,",
+            Collections.singleton("3,"),
+            30,
+            database,
+            null);
+      } finally {
+        statement.execute("DROP DATABASE IF EXISTS " + database);
+      }
+    }
   }
 
   @Test
@@ -325,7 +414,9 @@ public class IoTDBTableIT {
       try {
         statement.execute("alter table table2 add column speed DOUBLE FIELD");
       } catch (final SQLException e) {
-        assertEquals("552: Column 'speed' already exist", e.getMessage());
+        assertEquals(
+            "552: Column 'speed' already exists or its source measurement is already mapped",
+            e.getMessage());
       }
 
       statement.execute("alter table table2 add column if not exists speed DOUBLE FIELD");
