@@ -870,10 +870,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                 "Auto create or verify schema error when executing statement %s.  Detail: %s.",
                 loadTsFileStatement, e.getMessage()));
       } catch (Exception e) {
-        rethrowIfUnavailableRegion(e);
         if (e.getCause() instanceof LoadAnalyzeTypeMismatchException && isConvertOnTypeMismatch) {
           throw (LoadAnalyzeTypeMismatchException) e.getCause();
         }
+        rethrowIfUnavailableRegion(e);
         LOGGER.warn("Auto create or verify schema error.", e);
         throw new SemanticException(
             String.format(

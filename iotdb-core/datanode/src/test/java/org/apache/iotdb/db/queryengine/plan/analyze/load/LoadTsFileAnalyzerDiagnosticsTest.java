@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.exception.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -180,6 +181,23 @@ public class LoadTsFileAnalyzerDiagnosticsTest {
 
     Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.getCode());
     Assert.assertTrue(status.getMessage().contains("schema request failed"));
+  }
+
+  @Test
+  public void testWrappedTypeMismatchShouldKeepConversionPriority() throws Exception {
+    final LoadAnalyzeTypeMismatchException mismatch =
+        new LoadAnalyzeTypeMismatchException("schema type mismatch");
+    mismatch.initCause(
+        new IoTDBRuntimeException(
+            "schema request failed", TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode()));
+    when(converter.convertForTreeModel(any()))
+        .thenReturn(Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
+
+    final TSStatus status = analyzeAfterSchemaFailure(new SemanticException(mismatch));
+
+    // Successful conversion leaves the analysis failure status unset in 1.3.
+    Assert.assertNull(status);
+    Mockito.verify(converter).convertForTreeModel(any());
   }
 
   @Test
