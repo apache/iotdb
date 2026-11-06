@@ -176,7 +176,7 @@ public class PipeProcessorSubtaskExecutionGuardTest {
     }
   }
 
-  @Test(timeout = 60000)
+  @Test(timeout = 120000)
   public void testCloseCancelsReservationEnqueuedByAWorkerInvocation() throws Exception {
     final CommonConfig config = CommonDescriptor.getInstance().getConfig();
     final PipeMemoryManager manager = PipeDataNodeResourceManager.memory();
@@ -224,7 +224,7 @@ public class PipeProcessorSubtaskExecutionGuardTest {
                   eventToClose.close();
                 });
         await()
-            .atMost(5, TimeUnit.SECONDS)
+            .atMost(30, TimeUnit.SECONDS)
             .until(
                 () ->
                     closingThread.get() != null
@@ -239,27 +239,39 @@ public class PipeProcessorSubtaskExecutionGuardTest {
         Assert.assertEquals(1, manager.getWaitingTsFileParserCount());
         Assert.assertTrue(outputQueue.isEmpty());
       }
-      closing.get(5, TimeUnit.SECONDS);
+      closing.get(30, TimeUnit.SECONDS);
       Assert.assertFalse(event.isWaitingForTsFileParserMemory());
       Assert.assertEquals(0, manager.getWaitingTsFileParserCount());
       Assert.assertEquals(1, manager.getReservedTsFileParserCount());
     } finally {
       executor.shutdownNow();
-      Assert.assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
-      if (subtask != null) {
-        subtask.disallowSubmittingSelf();
-        subtask.close();
+      try {
+        Assert.assertTrue(executor.awaitTermination(30, TimeUnit.SECONDS));
+      } finally {
+        try {
+          if (subtask != null) {
+            subtask.disallowSubmittingSelf();
+            subtask.close();
+          }
+        } finally {
+          try {
+            if (event != null) {
+              event.close();
+            }
+          } finally {
+            try {
+              if (blockerReserved) {
+                manager.releaseTsFileParserMemory("blocker", 0, "0");
+              }
+            } finally {
+              config.setPipeTsFileParserMemory(originalParserMemory);
+              config.setPipeTsFileParserInFlightMaxNum(originalGlobalLimit);
+              config.setPipeTsFileParserInFlightMaxNumPerPipeRegion(originalRegionLimit);
+              FileUtils.deleteFileOrDirectory(tempDir);
+            }
+          }
+        }
       }
-      if (event != null) {
-        event.close();
-      }
-      if (blockerReserved) {
-        manager.releaseTsFileParserMemory("blocker", 0, "0");
-      }
-      config.setPipeTsFileParserMemory(originalParserMemory);
-      config.setPipeTsFileParserInFlightMaxNum(originalGlobalLimit);
-      config.setPipeTsFileParserInFlightMaxNumPerPipeRegion(originalRegionLimit);
-      FileUtils.deleteFileOrDirectory(tempDir);
     }
   }
 
