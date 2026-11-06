@@ -30,6 +30,6 @@ public final class InternalSessionPool extends SessionPool {
 
   @Override
   protected Session.Builder createSessionBuilder() {
-    return new InternalSessionBuilder();
+    return new InternalSessionBuilder().enableAutoFetch(false);
   }
 }

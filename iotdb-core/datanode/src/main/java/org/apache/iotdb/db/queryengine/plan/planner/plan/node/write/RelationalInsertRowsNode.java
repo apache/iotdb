@@ -224,7 +224,7 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
         splitMap.put(dataRegionReplicaSet, tmpNode);
       }
     }
-    analysis.setRedirectNodeListFromDataNodeLocations(redirectInfo);
+    analysis.setRedirectNodeList(redirectInfo);
     writePlanNodeList.addAll(splitMap.values());
 
     return writePlanNodeList;

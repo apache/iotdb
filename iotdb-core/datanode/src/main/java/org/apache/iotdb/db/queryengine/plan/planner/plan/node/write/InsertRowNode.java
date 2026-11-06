@@ -135,7 +135,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, LastCach
             .getDataRegionReplicaSetForWriting(
                 getDeviceID(), timePartitionSlot, analysis.getDatabaseName());
     // collect redirectInfo
-    analysis.setRedirectNodeListFromDataNodeLocations(
+    analysis.setRedirectNodeList(
         Collections.singletonList(dataRegionReplicaSet.getDataNodeLocations().get(0)));
     return Collections.singletonList(this);
   }

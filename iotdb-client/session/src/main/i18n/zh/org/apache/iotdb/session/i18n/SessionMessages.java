@@ -27,6 +27,9 @@ public final class SessionMessages {
   public static final String EXCEPTION_INTERNAL_NODE_SUPPLIER_MUST_NOT_BE_NULL_C5CAF392 =
       "内部节点 supplier 不能为空";
 
+  public static final String EXCEPTION_INTERNAL_AUTO_FETCH_REQUIRES_NODE_SUPPLIER_9CB6BA02 =
+      "启用自动发现时，内部节点 supplier 不能为空";
+
   // Session
   public static final String NODE_URLS_EMPTY = "nodeUrls 不能为空。";
   public static final String REDIRECT_TWICE_LOG = "重定向了两次";

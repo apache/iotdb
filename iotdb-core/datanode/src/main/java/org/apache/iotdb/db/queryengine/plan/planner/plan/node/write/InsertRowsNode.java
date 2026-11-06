@@ -331,7 +331,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
         splitMap.put(dataRegionReplicaSet, tmpNode);
       }
     }
-    analysis.setRedirectNodeListFromDataNodeLocations(redirectInfo);
+    analysis.setRedirectNodeList(redirectInfo);
 
     return new ArrayList<>(splitMap.values());
   }

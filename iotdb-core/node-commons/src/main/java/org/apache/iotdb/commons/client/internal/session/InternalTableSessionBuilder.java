@@ -42,8 +42,16 @@ public class InternalTableSessionBuilder extends TableSessionBuilder {
             SessionMessages.EXCEPTION_INTERNAL_NODE_SUPPLIER_MUST_NOT_BE_NULL_C5CAF392);
   }
 
+  INodeSupplier getNodeSupplier() {
+    return nodeSupplier;
+  }
+
   @Override
   protected Session createSession() {
-    return new InternalSession(this, nodeSupplier);
+    if (enableAutoFetch && nodeSupplier == null) {
+      throw new IllegalArgumentException(
+          SessionMessages.EXCEPTION_INTERNAL_AUTO_FETCH_REQUIRES_NODE_SUPPLIER_9CB6BA02);
+    }
+    return new InternalSession(this);
   }
 }

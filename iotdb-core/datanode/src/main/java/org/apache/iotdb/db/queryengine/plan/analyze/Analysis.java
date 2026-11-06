@@ -438,8 +438,7 @@ public class Analysis implements IAnalysis {
   }
 
   @Override
-  public void setRedirectNodeListFromDataNodeLocations(
-      final List<TDataNodeLocation> dataNodeLocations) {
+  public void setRedirectNodeList(final List<TDataNodeLocation> dataNodeLocations) {
     redirectNodeList = new ArrayList<>(dataNodeLocations.size());
     for (final TDataNodeLocation dataNodeLocation : dataNodeLocations) {
       redirectNodeList.add(
@@ -448,7 +447,7 @@ public class Analysis implements IAnalysis {
   }
 
   @Override
-  public void addDataNodeLocationToRedirectNodeList(final TDataNodeLocation dataNodeLocation) {
+  public void addEndPointToRedirectNodeList(final TDataNodeLocation dataNodeLocation) {
     if (redirectNodeList == null) {
       redirectNodeList = new ArrayList<>();
     }

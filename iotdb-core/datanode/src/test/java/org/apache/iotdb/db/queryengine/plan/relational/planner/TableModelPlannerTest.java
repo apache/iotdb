@@ -45,7 +45,7 @@ public class TableModelPlannerTest {
         new Analysis(new InsertRows(insertRowsStatement, null), Collections.emptyMap());
     final TEndPoint localEndPoint = new TEndPoint("127.0.0.1", 6667);
     final TEndPoint remoteEndPoint = new TEndPoint("127.0.0.2", 6667);
-    analysis.setRedirectNodeListFromDataNodeLocations(
+    analysis.setRedirectNodeList(
         Arrays.asList(
             new TDataNodeLocation(
                 0, localEndPoint, localEndPoint, localEndPoint, localEndPoint, localEndPoint),

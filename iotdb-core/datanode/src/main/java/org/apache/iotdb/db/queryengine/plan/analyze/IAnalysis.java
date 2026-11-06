@@ -69,9 +69,9 @@ public interface IAnalysis {
 
   List<TEndPoint> getRedirectNodeList();
 
-  void setRedirectNodeListFromDataNodeLocations(List<TDataNodeLocation> dataNodeLocations);
+  void setRedirectNodeList(List<TDataNodeLocation> dataNodeLocations);
 
-  void addDataNodeLocationToRedirectNodeList(TDataNodeLocation dataNodeLocation);
+  void addEndPointToRedirectNodeList(TDataNodeLocation dataNodeLocation);
 
   TimePredicate getConvertedTimePredicate();
 

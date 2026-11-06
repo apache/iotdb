@@ -25,12 +25,19 @@ import org.apache.iotdb.session.AbstractSessionBuilder;
 import org.apache.iotdb.session.Session;
 
 /** Base session for trusted server-to-server client RPC connections. */
-public class InternalSession extends Session {
+final class InternalSession extends Session {
 
   private final INodeSupplier nodeSupplier;
 
-  protected InternalSession(
-      final AbstractSessionBuilder builder, final INodeSupplier nodeSupplier) {
+  InternalSession(final InternalSessionBuilder builder) {
+    this(builder, builder.getNodeSupplier());
+  }
+
+  InternalSession(final InternalTableSessionBuilder builder) {
+    this(builder, builder.getNodeSupplier());
+  }
+
+  private InternalSession(final AbstractSessionBuilder builder, final INodeSupplier nodeSupplier) {
     super(builder);
     this.nodeSupplier = nodeSupplier;
   }

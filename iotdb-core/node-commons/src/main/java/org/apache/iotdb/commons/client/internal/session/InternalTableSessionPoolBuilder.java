@@ -40,6 +40,10 @@ public class InternalTableSessionPoolBuilder extends TableSessionPoolBuilder {
 
   @Override
   protected ITableSessionPool createSessionPool() {
+    if (enableAutoFetch && nodeSupplier == null) {
+      throw new IllegalArgumentException(
+          SessionMessages.EXCEPTION_INTERNAL_AUTO_FETCH_REQUIRES_NODE_SUPPLIER_9CB6BA02);
+    }
     return new InternalTableSessionPool(this);
   }
 }

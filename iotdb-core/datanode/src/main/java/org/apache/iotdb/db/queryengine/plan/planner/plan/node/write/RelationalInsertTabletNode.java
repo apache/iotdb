@@ -292,7 +292,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
       final IDeviceID deviceId = getDeviceID(i);
       redirectNodeList.add(dataNodeLocationMap.get(deviceId));
     }
-    analysis.setRedirectNodeListFromDataNodeLocations(redirectNodeList);
+    analysis.setRedirectNodeList(redirectNodeList);
     return splitMap;
   }
 

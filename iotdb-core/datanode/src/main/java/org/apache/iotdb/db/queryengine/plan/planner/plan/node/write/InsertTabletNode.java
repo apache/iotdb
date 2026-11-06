@@ -294,7 +294,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
                   deviceID, splitInfo.timePartitionSlots, analysis.getDatabaseName());
       splitInfo.replicaSets = replicaSets;
       // collect redirectInfo
-      analysis.addDataNodeLocationToRedirectNodeList(
+      analysis.addEndPointToRedirectNodeList(
           replicaSets.get(replicaSets.size() - 1).getDataNodeLocations().get(0));
       for (int i = 0; i < replicaSets.size(); i++) {
         List<Integer> subRanges =
