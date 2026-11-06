@@ -22,10 +22,7 @@ package org.apache.iotdb.commons.client.internal.session;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.pool.ITableSessionPool;
-import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.i18n.SessionMessages;
-import org.apache.iotdb.session.pool.SessionPool;
-import org.apache.iotdb.session.pool.TableSessionPool;
 import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 
 import java.util.Objects;
@@ -56,36 +53,8 @@ public class InternalTableSessionPoolBuilder extends TableSessionPoolBuilder {
     return this;
   }
 
-  protected final INodeSupplier getNodeSupplier() {
-    return nodeSupplier;
-  }
-
   @Override
   protected ITableSessionPool createSessionPool() {
-    return new InternalTableSessionPool(this, getNodeSupplier());
-  }
-
-  private static final class InternalTableSessionPool extends TableSessionPool {
-
-    private InternalTableSessionPool(
-        final InternalTableSessionPoolBuilder builder, final INodeSupplier nodeSupplier) {
-      super(new InternalSessionPool(builder, nodeSupplier));
-    }
-  }
-
-  private static final class InternalSessionPool extends SessionPool {
-
-    private final INodeSupplier nodeSupplier;
-
-    private InternalSessionPool(
-        final InternalTableSessionPoolBuilder builder, final INodeSupplier nodeSupplier) {
-      super(builder, nodeSupplier);
-      this.nodeSupplier = nodeSupplier;
-    }
-
-    @Override
-    protected Session constructNewSession() {
-      return new InternalSession(createSessionBuilder(), nodeSupplier);
-    }
+    return new InternalTableSessionPool(new InternalSessionPoolBuilder(this, nodeSupplier));
   }
 }

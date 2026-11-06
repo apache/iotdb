@@ -59,12 +59,8 @@ public class InternalSubscriptionTableSessionBuilder extends SubscriptionTableSe
     return this;
   }
 
-  protected final INodeSupplier getNodeSupplier() {
-    return nodeSupplier;
-  }
-
   @Override
   protected ISubscriptionTableSession createSubscriptionSession() {
-    return new InternalSubscriptionTableSession(this, getNodeSupplier());
+    return new InternalSubscriptionTableSession(this, nodeSupplier);
   }
 }

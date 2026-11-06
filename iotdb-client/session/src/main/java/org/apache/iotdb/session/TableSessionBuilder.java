@@ -432,28 +432,25 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
    * @throws IoTDBConnectionException if an error occurs while establishing the connection.
    */
   public ITableSession build() throws IoTDBConnectionException {
-    return new TableSession(constructNewSession());
-  }
-
-  protected Session constructNewSession() throws IoTDBConnectionException {
     if (nodeUrls == null) {
       this.nodeUrls =
           Collections.singletonList(SessionConfig.DEFAULT_HOST + ":" + SessionConfig.DEFAULT_PORT);
     }
     this.sqlDialect = TABLE;
-    return openSession(new Session(this));
-  }
-
-  protected Session openSession(Session newSession) throws IoTDBConnectionException {
+    Session newSession = createSession();
     newSession.enableIoTDBRpcCompression = isIoTDBRpcCompressionEnabled;
     newSession.tabletCompressionMinRowSize = tabletCompressionMinRowSize;
 
     try {
       newSession.open(isThriftRpcCompactionEnabled, connectionTimeoutInMs);
-      return newSession;
     } catch (IoTDBConnectionException e) {
       newSession.close();
       throw e;
     }
+    return new TableSession(newSession);
+  }
+
+  protected Session createSession() {
+    return new Session(this);
   }
 }

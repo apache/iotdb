@@ -171,7 +171,7 @@ public class SessionPool implements ISessionPool {
   @SuppressWarnings("java:S3077")
   private volatile ScheduledExecutorService executorService;
 
-  protected INodeSupplier availableNodes;
+  private INodeSupplier availableNodes;
 
   // set to true, means that we will start a background thread to fetch all available (Status is
   // not Removing) datanodes in cluster, and these available nodes will be used in retrying stage
@@ -602,47 +602,77 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  protected Session.Builder createSessionBuilder() {
-    return new Session.Builder()
-        .username(user)
-        .password(password)
-        .fetchSize(fetchSize)
-        .zoneId(zoneId)
-        .thriftDefaultBufferSize(thriftDefaultBufferSize)
-        .thriftMaxFrameSize(thriftMaxFrameSize)
-        .enableRedirection(enableRedirection)
-        .enableRecordsAutoConvertTablet(enableRecordsAutoConvertTablet)
-        .version(version)
-        .useSSL(useSSL)
-        .trustStore(trustStore)
-        .trustStorePwd(trustStorePwd)
-        .keyStore(keyStore)
-        .keyStorePwd(keyStorePwd)
-        .sslProtocol(sslProtocol)
-        .maxRetryCount(maxRetryCount)
-        .retryIntervalInMs(retryIntervalInMs)
-        .sqlDialect(sqlDialect)
-        .database(database)
-        .enableAutoCreateSchema(enableAutoCreateSchema)
-        .timeOut(queryTimeoutInMs)
-        .enableIoTDBRpcCompression(enableIoTDBRpcCompression)
-        .enableThriftRpcCompression(enableThriftCompression);
-  }
-
-  protected Session constructNewSession() {
-    final Session.Builder builder = createSessionBuilder();
+  private Session constructNewSession() {
+    Session session;
     if (nodeUrls == null) {
-      builder.host(host).port(port);
+      // Construct custom Session
+      session =
+          createSessionBuilder()
+              .host(host)
+              .port(port)
+              .username(user)
+              .password(password)
+              .fetchSize(fetchSize)
+              .zoneId(zoneId)
+              .thriftDefaultBufferSize(thriftDefaultBufferSize)
+              .thriftMaxFrameSize(thriftMaxFrameSize)
+              .enableRedirection(enableRedirection)
+              .enableRecordsAutoConvertTablet(enableRecordsAutoConvertTablet)
+              .version(version)
+              .useSSL(useSSL)
+              .trustStore(trustStore)
+              .trustStorePwd(trustStorePwd)
+              .keyStore(keyStore)
+              .keyStorePwd(keyStorePwd)
+              .sslProtocol(sslProtocol)
+              .maxRetryCount(maxRetryCount)
+              .retryIntervalInMs(retryIntervalInMs)
+              .sqlDialect(sqlDialect)
+              .database(database)
+              .enableAutoCreateSchema(enableAutoCreateSchema)
+              .timeOut(queryTimeoutInMs)
+              .enableIoTDBRpcCompression(enableIoTDBRpcCompression)
+              .enableThriftRpcCompression(enableThriftCompression)
+              .build();
     } else {
-      builder.nodeUrls(nodeUrls);
+      // Construct redirect-able Session
+      session =
+          createSessionBuilder()
+              .nodeUrls(nodeUrls)
+              .username(user)
+              .password(password)
+              .fetchSize(fetchSize)
+              .zoneId(zoneId)
+              .thriftDefaultBufferSize(thriftDefaultBufferSize)
+              .thriftMaxFrameSize(thriftMaxFrameSize)
+              .enableRedirection(enableRedirection)
+              .enableRecordsAutoConvertTablet(enableRecordsAutoConvertTablet)
+              .version(version)
+              .useSSL(useSSL)
+              .trustStore(trustStore)
+              .trustStorePwd(trustStorePwd)
+              .keyStore(keyStore)
+              .keyStorePwd(keyStorePwd)
+              .sslProtocol(sslProtocol)
+              .maxRetryCount(maxRetryCount)
+              .retryIntervalInMs(retryIntervalInMs)
+              .sqlDialect(sqlDialect)
+              .database(database)
+              .enableAutoCreateSchema(enableAutoCreateSchema)
+              .timeOut(queryTimeoutInMs)
+              .enableIoTDBRpcCompression(enableIoTDBRpcCompression)
+              .enableThriftRpcCompression(enableThriftCompression)
+              .build();
     }
-    final Session session = builder.build();
     session.setEnableQueryRedirection(enableQueryRedirection);
     return session;
   }
 
-  /** Creates the thread pool used to refresh the available node list. */
-  protected void initThreadPool() {
+  protected Session.Builder createSessionBuilder() {
+    return new Session.Builder();
+  }
+
+  private void initThreadPool() {
     this.executorService =
         Executors.newSingleThreadScheduledExecutor(
             r -> {
@@ -659,8 +689,7 @@ public class SessionPool implements ISessionPool {
             });
   }
 
-  /** Initializes the auto-fetch endpoint source used by this pool. */
-  protected void initAvailableNodes(final List<TEndPoint> endPointList) {
+  private void initAvailableNodes(List<TEndPoint> endPointList) {
     this.availableNodes =
         NodesSupplier.createNodeSupplier(
             endPointList,

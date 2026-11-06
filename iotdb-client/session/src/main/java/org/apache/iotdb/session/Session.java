@@ -571,7 +571,6 @@ public class Session implements ISession {
     }
   }
 
-  /** Creates the thread pool used to refresh the available node list. */
   protected void initThreadPool() {
     this.executorService =
         Executors.newSingleThreadScheduledExecutor(
@@ -589,7 +588,6 @@ public class Session implements ISession {
             });
   }
 
-  /** Initializes the auto-fetch endpoint source used by this session. */
   protected void initAvailableNodes(
       final boolean enableRPCCompaction, final int connectionTimeoutInMs) {
     this.availableNodes =
@@ -695,11 +693,11 @@ public class Session implements ISession {
       getDefaultSessionConnection().close();
       setDefaultSessionConnection(null);
     } finally {
+      // if executorService is null, it means that availableNodes is got from SessionPool and we
+      // shouldn't clean that
       if (this.executorService != null) {
         this.executorService.shutdown();
         this.executorService = null;
-      }
-      if (this.availableNodes != null) {
         this.availableNodes.close();
         this.availableNodes = null;
       }

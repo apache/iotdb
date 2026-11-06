@@ -52,12 +52,8 @@ public class InternalSessionBuilder extends Session.Builder {
     return this;
   }
 
-  protected final INodeSupplier getNodeSupplier() {
-    return nodeSupplier;
-  }
-
   @Override
   protected Session createSession() {
-    return new InternalSession(this, getNodeSupplier());
+    return new InternalSession(this, nodeSupplier);
   }
 }

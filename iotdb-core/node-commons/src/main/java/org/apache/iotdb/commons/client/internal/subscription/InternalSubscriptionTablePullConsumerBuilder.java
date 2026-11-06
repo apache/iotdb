@@ -54,12 +54,8 @@ public class InternalSubscriptionTablePullConsumerBuilder
     return this;
   }
 
-  protected final INodeSupplier getNodeSupplier() {
-    return nodeSupplier;
-  }
-
   @Override
   protected ISubscriptionTablePullConsumer createConsumer() {
-    return new InternalSubscriptionTablePullConsumer(this, getNodeSupplier());
+    return new InternalSubscriptionTablePullConsumer(this, nodeSupplier);
   }
 }

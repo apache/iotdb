@@ -21,7 +21,6 @@ package org.apache.iotdb.commons.client.internal.session;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.INodeSupplier;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.TableSessionBuilder;
 import org.apache.iotdb.session.i18n.SessionMessages;
@@ -54,13 +53,8 @@ public class InternalTableSessionBuilder extends TableSessionBuilder {
     return this;
   }
 
-  protected final INodeSupplier getNodeSupplier() {
-    return nodeSupplier;
-  }
-
   @Override
-  protected Session constructNewSession() throws IoTDBConnectionException {
-    this.sqlDialect = "table";
-    return openSession(new InternalSession(this, getNodeSupplier()));
+  protected Session createSession() {
+    return new InternalSession(this, nodeSupplier);
   }
 }
