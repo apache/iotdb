@@ -73,7 +73,6 @@ import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.base.Predicates.instanceOf;
-import static com.google.common.base.Throwables.throwIfInstanceOf;
 import static com.google.common.base.Verify.verify;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Iterables.getOnlyElement;
@@ -84,6 +83,11 @@ import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Arith
 import static org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator.isDeterministic;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.isEffectivelyLiteral;
+import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
+import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
+import static org.apache.tsfile.read.common.type.IntType.INT32;
+import static org.apache.tsfile.read.common.type.LongType.INT64;
+import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 public class IrExpressionInterpreter {
 
@@ -422,17 +426,21 @@ public class IrExpressionInterpreter {
         // optimization
         if (!inListCache.containsKey(valueList)) {
           if (valueList.getValues().stream().allMatch(Literal.class::isInstance)
-              && valueList.getValues().stream().noneMatch(NullLiteral.class::isInstance)) {
+              && valueList.getValues().stream().noneMatch(NullLiteral.class::isInstance)
+              && valueList.getValues().stream()
+                  .allMatch(item -> type(item).equals(type(node.getValue())))) {
             set =
                 valueList.getValues().stream()
                     .map(expr -> processWithExceptionHandling(expr, context))
+                    // INT32 literals and folded arithmetic may use different Java containers.
+                    .map(item -> normalizeArithmeticValue(item, type(node.getValue())))
                     .collect(Collectors.toSet());
           }
           inListCache.put(valueList, set);
         }
 
         if (set != null) {
-          return set.contains(value);
+          return set.contains(normalizeArithmeticValue(value, type(node.getValue())));
         }
       }
 
@@ -467,7 +475,11 @@ public class IrExpressionInterpreter {
         if (inValue == null) {
           hasNullValue = true;
         } else {
-          Boolean result = value.equals(inValue);
+          Boolean result =
+              value instanceof Number && inValue instanceof Number
+                  ? evaluateNumericComparison(
+                      ComparisonExpression.Operator.EQUAL, (Number) value, (Number) inValue)
+                  : value.equals(inValue);
           if (result == null) {
             hasNullValue = true;
           } else if (!found && result) {
@@ -528,23 +540,13 @@ public class IrExpressionInterpreter {
       }
 
       if (node.getSign() == PLUS) {
-        return value;
+        return normalizeArithmeticValue(value, type(node));
       } else {
-        try {
-          Expression valueExpression = toExpression(value, type(node.getValue()));
-          if (valueExpression instanceof ArithmeticUnaryExpression
-              && ((ArithmeticUnaryExpression) valueExpression).getSign().equals(MINUS)) {
-            return ((ArithmeticUnaryExpression) valueExpression).getValue();
-          }
-          return new ArithmeticUnaryExpression(MINUS, valueExpression);
-          // TODO use the following after we implement InterpretedFunctionInvoker
-          //          return invokeOperator(OperatorType.NEGATION, types(node.getValue()),
-          // Collections.singletonList(value));
-        } catch (Throwable throwable) {
-          throwIfInstanceOf(throwable, RuntimeException.class);
-          throwIfInstanceOf(throwable, Error.class);
-          throw new RuntimeException(throwable.getMessage(), throwable);
+        Type returnType = type(node);
+        if (isSupportedArithmeticUnaryType(returnType)) {
+          return evaluateArithmeticNegation(value, returnType);
         }
+        return new ArithmeticUnaryExpression(MINUS, toExpression(value, type(node.getValue())));
       }
     }
 
@@ -564,16 +566,21 @@ public class IrExpressionInterpreter {
             node.getOperator(),
             toExpression(left, type(node.getLeft())),
             toExpression(right, type(node.getRight())));
-      } else {
-        return new ArithmeticBinaryExpression(
-            node.getOperator(),
-            toExpression(left, type(node.getLeft())),
-            toExpression(right, type(node.getRight())));
-        // TODO use the following after we implement InterpretedFunctionInvoker
-        //        return invokeOperator(OperatorType.valueOf(node.getOperator().name()),
-        // types(node.getLeft(), node.getRight()),
-        //            ImmutableList.of(left, right));
       }
+
+      Type leftType = type(node.getLeft());
+      Type rightType = type(node.getRight());
+      Type returnType = type(node);
+      if (isSupportedArithmeticBinaryType(leftType)
+          && isSupportedArithmeticBinaryType(rightType)
+          && isSupportedArithmeticBinaryType(returnType)) {
+        return evaluateArithmeticBinary(node.getOperator(), left, leftType, right, returnType);
+      }
+
+      return new ArithmeticBinaryExpression(
+          node.getOperator(),
+          toExpression(left, type(node.getLeft())),
+          toExpression(right, type(node.getRight())));
     }
 
     @Override
@@ -585,19 +592,8 @@ public class IrExpressionInterpreter {
       if (operator == ComparisonExpression.Operator.IS_DISTINCT_FROM) {
         return processIsDistinctFrom(context, left, right);
       }
-      // Execution engine does not have not equal and greater than operators, so interpret with
-      // equal or less than, but do not flip operator in result, as many optimizers depend on
-      // operators not flipping
-      if (node.getOperator() == ComparisonExpression.Operator.NOT_EQUAL) {
-        Object result = visitComparisonExpression(flipComparison(node), context);
-        if (result == null) {
-          return null;
-        }
-        if (result instanceof ComparisonExpression) {
-          return flipComparison((ComparisonExpression) result);
-        }
-        return !(Boolean) result;
-      }
+      // Interpret greater-than comparisons with operands swapped, but preserve the original
+      // operator in unresolved results, as many optimizers depend on operators not flipping.
       if (node.getOperator() == ComparisonExpression.Operator.GREATER_THAN
           || node.getOperator() == ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL) {
         Object result = visitComparisonExpression(flipComparison(node), context);
@@ -657,67 +653,12 @@ public class IrExpressionInterpreter {
             toExpression(left, type(leftExpression)),
             toExpression(right, type(rightExpression)));
       } else {
-        if (!(left instanceof Number) || !(right instanceof Number)) {
-          throw new IllegalArgumentException(
-              DataNodeQueryMessages.BOTH_OBJECT_MUST_BE_TYPE_OF_NUMBER);
+        if (left instanceof Number && right instanceof Number) {
+          return evaluateNumericComparison(operator, (Number) left, (Number) right);
         }
 
-        if (left instanceof Integer && right instanceof Integer) {
-          Integer leftNum = (Integer) left;
-          Integer rightNum = (Integer) right;
-          if (operator == ComparisonExpression.Operator.LESS_THAN) {
-            return leftNum < rightNum;
-          } else if (operator == ComparisonExpression.Operator.LESS_THAN_OR_EQUAL) {
-            return leftNum <= rightNum;
-          } else if (operator == ComparisonExpression.Operator.EQUAL) {
-            return leftNum.equals(rightNum);
-          }
-        }
-
-        if (left instanceof Long && right instanceof Long) {
-          Long leftNum = (Long) left;
-          Long rightNum = (Long) right;
-          if (operator == ComparisonExpression.Operator.LESS_THAN) {
-            return leftNum < rightNum;
-          } else if (operator == ComparisonExpression.Operator.LESS_THAN_OR_EQUAL) {
-            return leftNum <= rightNum;
-          } else if (operator == ComparisonExpression.Operator.EQUAL) {
-            return leftNum.equals(rightNum);
-          }
-        }
-
-        if (left instanceof Float && right instanceof Float) {
-          Float leftNum = (Float) left;
-          Float rightNum = (Float) right;
-          if (operator == ComparisonExpression.Operator.LESS_THAN) {
-            return leftNum < rightNum;
-          } else if (operator == ComparisonExpression.Operator.LESS_THAN_OR_EQUAL) {
-            return leftNum <= rightNum;
-          } else if (operator == ComparisonExpression.Operator.EQUAL) {
-            return leftNum.equals(rightNum);
-          }
-        }
-
-        if (left instanceof Double && right instanceof Double) {
-          Double leftNum = (Double) left;
-          Double rightNum = (Double) right;
-          if (operator == ComparisonExpression.Operator.LESS_THAN) {
-            return leftNum < rightNum;
-          } else if (operator == ComparisonExpression.Operator.LESS_THAN_OR_EQUAL) {
-            return leftNum <= rightNum;
-          } else if (operator == ComparisonExpression.Operator.EQUAL) {
-            return leftNum.equals(rightNum);
-          }
-        }
-
-        return new ComparisonExpression(
-            operator,
-            toExpression(left, type(leftExpression)),
-            toExpression(right, type(rightExpression)));
-        // TODO use the following after we implement InterpretedFunctionInvoker
-        //        return invokeOperator(OperatorType.valueOf(operator.name()), types(leftExpression,
-        // rightExpression),
-        //            ImmutableList.of(left, right));
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.BOTH_OBJECT_MUST_BE_TYPE_OF_NUMBER);
       }
     }
 
@@ -979,6 +920,218 @@ public class IrExpressionInterpreter {
 
     private boolean hasUnresolvedValue(List<Object> values) {
       return values.stream().anyMatch(instanceOf(Expression.class));
+    }
+
+    private boolean isSupportedArithmeticBinaryType(Type type) {
+      return type.equals(INT32) || type.equals(INT64) || type.equals(FLOAT) || type.equals(DOUBLE);
+    }
+
+    private boolean isSupportedArithmeticUnaryType(Type type) {
+      return isSupportedArithmeticBinaryType(type) || type.equals(TIMESTAMP);
+    }
+
+    private Object evaluateArithmeticNegation(Object value, Type returnType) {
+      if (returnType.equals(INT32)) {
+        int intValue = toInt(value);
+        if (intValue == Integer.MIN_VALUE) {
+          throw new SemanticException(
+              String.format(
+                  DataNodeQueryMessages.EXCEPTION_THE_ARG_IS_OUT_OF_RANGE_OF_INT_F8E58471,
+                  intValue));
+        }
+        return -intValue;
+      }
+      if (returnType.equals(INT64) || returnType.equals(TIMESTAMP)) {
+        long longValue = toLong(value);
+        if (longValue == Long.MIN_VALUE) {
+          throw new SemanticException(
+              String.format(
+                  DataNodeQueryMessages.EXCEPTION_THE_ARG_IS_OUT_OF_RANGE_OF_LONG_9B1C872A,
+                  longValue));
+        }
+        return -longValue;
+      }
+      if (returnType.equals(FLOAT)) {
+        return -toFloat(value);
+      }
+      if (returnType.equals(DOUBLE)) {
+        return -toDouble(value);
+      }
+      throw new SemanticException(DataNodeQueryMessages.UNKNOWN_TYPE_2 + returnType);
+    }
+
+    private Object evaluateArithmeticBinary(
+        ArithmeticBinaryExpression.Operator operator,
+        Object left,
+        Type leftType,
+        Object right,
+        Type returnType) {
+      if (returnType.equals(INT32)) {
+        return evaluateIntArithmetic(operator, toInt(left), toInt(right));
+      }
+      if (returnType.equals(INT64)) {
+        return evaluateLongArithmetic(operator, toLong(left), leftType, toLong(right));
+      }
+      if (returnType.equals(FLOAT)) {
+        return evaluateFloatArithmetic(operator, toFloat(left), toFloat(right));
+      }
+      if (returnType.equals(DOUBLE)) {
+        return evaluateDoubleArithmetic(operator, toDouble(left), toDouble(right));
+      }
+      throw new SemanticException(DataNodeQueryMessages.UNKNOWN_TYPE_2 + returnType);
+    }
+
+    private int evaluateIntArithmetic(
+        ArithmeticBinaryExpression.Operator operator, int left, int right) {
+      try {
+        switch (operator) {
+          case ADD:
+            return Math.addExact(left, right);
+          case SUBTRACT:
+            return Math.subtractExact(left, right);
+          case MULTIPLY:
+            return Math.multiplyExact(left, right);
+          case DIVIDE:
+            if (left == Integer.MIN_VALUE && right == -1) {
+              throw new SemanticException(
+                  String.format(
+                      DataNodeQueryMessages.EXCEPTION_INT_OVERFLOW_ARG_ARG_BB287017, left, right));
+            }
+            return left / right;
+          case MODULUS:
+            return left % right;
+          default:
+            throw new UnsupportedOperationException(
+                DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + operator);
+        }
+      } catch (ArithmeticException e) {
+        throw new SemanticException(e.getMessage());
+      }
+    }
+
+    private long evaluateLongArithmetic(
+        ArithmeticBinaryExpression.Operator operator, long left, Type leftType, long right) {
+      try {
+        switch (operator) {
+          case ADD:
+            return Math.addExact(left, right);
+          case SUBTRACT:
+            return Math.subtractExact(left, right);
+          case MULTIPLY:
+            return Math.multiplyExact(left, right);
+          case DIVIDE:
+            if ((leftType.equals(INT32) && left == Integer.MIN_VALUE && right == -1)
+                || (leftType.equals(INT64) && left == Long.MIN_VALUE && right == -1)) {
+              throw new SemanticException(
+                  String.format(
+                      DataNodeQueryMessages.EXCEPTION_LONG_OVERFLOW_ARG_ARG_46CC95E2, left, right));
+            }
+            return left / right;
+          case MODULUS:
+            return left % right;
+          default:
+            throw new UnsupportedOperationException(
+                DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + operator);
+        }
+      } catch (ArithmeticException e) {
+        throw new SemanticException(e.getMessage());
+      }
+    }
+
+    private float evaluateFloatArithmetic(
+        ArithmeticBinaryExpression.Operator operator, float left, float right) {
+      switch (operator) {
+        case ADD:
+          return left + right;
+        case SUBTRACT:
+          return left - right;
+        case MULTIPLY:
+          return left * right;
+        case DIVIDE:
+          return left / right;
+        case MODULUS:
+          return left % right;
+        default:
+          throw new UnsupportedOperationException(
+              DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + operator);
+      }
+    }
+
+    private double evaluateDoubleArithmetic(
+        ArithmeticBinaryExpression.Operator operator, double left, double right) {
+      switch (operator) {
+        case ADD:
+          return left + right;
+        case SUBTRACT:
+          return left - right;
+        case MULTIPLY:
+          return left * right;
+        case DIVIDE:
+          return left / right;
+        case MODULUS:
+          return left % right;
+        default:
+          throw new UnsupportedOperationException(
+              DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + operator);
+      }
+    }
+
+    private Object normalizeArithmeticValue(Object value, Type type) {
+      if (type.equals(INT32)) {
+        return toInt(value);
+      }
+      if (type.equals(INT64) || type.equals(TIMESTAMP)) {
+        return toLong(value);
+      }
+      if (type.equals(FLOAT)) {
+        return toFloat(value);
+      }
+      if (type.equals(DOUBLE)) {
+        return toDouble(value);
+      }
+      return value;
+    }
+
+    private Boolean evaluateNumericComparison(
+        ComparisonExpression.Operator operator, Number left, Number right) {
+      if (Double.isNaN(left.doubleValue()) || Double.isNaN(right.doubleValue())) {
+        return false;
+      }
+      int comparison =
+          (left instanceof Float
+                  || left instanceof Double
+                  || right instanceof Float
+                  || right instanceof Double)
+              ? Double.compare(left.doubleValue(), right.doubleValue())
+              : Long.compare(left.longValue(), right.longValue());
+      switch (operator) {
+        case LESS_THAN:
+          return comparison < 0;
+        case LESS_THAN_OR_EQUAL:
+          return comparison <= 0;
+        case EQUAL:
+          return comparison == 0;
+        case NOT_EQUAL:
+          return comparison != 0;
+        default:
+          return null;
+      }
+    }
+
+    private int toInt(Object value) {
+      return ((Number) value).intValue();
+    }
+
+    private long toLong(Object value) {
+      return ((Number) value).longValue();
+    }
+
+    private float toFloat(Object value) {
+      return ((Number) value).floatValue();
+    }
+
+    private double toDouble(Object value) {
+      return ((Number) value).doubleValue();
     }
 
     private Object invokeOperator(
