@@ -587,7 +587,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
             "delete timeseries root.sg_nonAligned.非对齐序列带有encoding和压缩方式.s0",
             String.format(
                 "create pipe test with source ('source.realtime.mode'='stream','inclusion'='data','path'='root.sg_nonAligned.非对齐序列带有encoding和压缩方式.**','source.realtime.enable'='true','mods.enable'='true') with sink ('sink'='iotdb-thrift-sink', 'sink.node-urls'='%s')",
-                receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString())));
+                receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString())),
+        null);
 
     awaitHistoricalPipeCompletion("test");
     TestUtils.assertDataEventuallyOnEnv(
@@ -598,9 +599,10 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
 
     TestUtils.executeNonQueries(
         senderEnv,
-        Arrays.asList("drop pipe if exists test_history", "drop pipe if exists test_realtime"));
+        Arrays.asList("drop pipe if exists test_history", "drop pipe if exists test_realtime"),
+        null);
 
-    TestUtils.executeNonQuery(receiverEnv, "drop database root.**");
+    TestUtils.executeNonQuery(receiverEnv, "drop database root.**", null);
 
     TestUtils.executeNonQueries(
         senderEnv,
@@ -608,7 +610,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
             "delete timeseries root.sg_nonAligned.非对齐序列带有encoding和压缩方式.s1",
             String.format(
                 "create pipe test with source ('source.realtime.mode'='stream','inclusion'='data','path'='root.sg_nonAligned.非对齐序列带有encoding和压缩方式.**','source.realtime.enable'='true','mods.enable'='true') with sink ('sink'='iotdb-thrift-sink', 'sink.node-urls'='%s')",
-                receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString())));
+                receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString())),
+        null);
 
     awaitHistoricalPipeCompletion("test");
     TestUtils.assertDataEventuallyOnEnv(
