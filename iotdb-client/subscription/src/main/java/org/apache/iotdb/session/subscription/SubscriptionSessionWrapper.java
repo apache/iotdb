@@ -71,7 +71,6 @@ public class SubscriptionSessionWrapper extends Session {
     return thriftMaxFrameSize;
   }
 
-  @Override
   public void setRpcServiceName(final String rpcServiceName) {
     this.rpcServiceName = rpcServiceName;
   }

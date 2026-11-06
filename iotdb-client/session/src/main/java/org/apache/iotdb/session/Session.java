@@ -556,9 +556,6 @@ public class Session implements ISession {
       this.availableNodes = null;
     }
 
-    if (enableAutoFetch) {
-      initThreadPool();
-    }
     this.availableNodes = getNodeSupplier(enableRPCCompaction, connectionTimeoutInMs);
     this.defaultEndPoint = resolveDefaultEndPoint(this.defaultEndPoint, this.availableNodes);
 
@@ -598,6 +595,7 @@ public class Session implements ISession {
   protected INodeSupplier getNodeSupplier(
       final boolean enableRPCCompaction, final int connectionTimeoutInMs) {
     if (enableAutoFetch) {
+      initThreadPool();
       return NodesSupplier.createNodeSupplier(
           getNodeUrls(),
           SessionUtils.parseSeedNodeUrls(initialNodeUrls),
@@ -4472,9 +4470,6 @@ public class Session implements ISession {
   protected final void configureInternalSession() {
     password = null;
     useEncryptedPassword = false;
-    enableAutoFetch = false;
-    enableRedirection = false;
-    enableQueryRedirection = false;
     rpcServiceName = RpcServiceConstants.INTERNAL_CLIENT_RPC_SERVICE;
   }
 

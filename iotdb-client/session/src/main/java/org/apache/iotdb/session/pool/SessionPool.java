@@ -157,7 +157,6 @@ public class SessionPool implements ISessionPool {
   private final int connectionTimeoutInMs;
   private final boolean enableIoTDBRpcCompression;
   private final boolean enableThriftCompression;
-  private final boolean internalSessionPool;
 
   // whether the queue is closed.
   private boolean closed;
@@ -173,6 +172,7 @@ public class SessionPool implements ISessionPool {
   private volatile ScheduledExecutorService executorService;
 
   private INodeSupplier availableNodes;
+  private boolean nodeSupplierInitialized;
 
   // set to true, means that we will start a background thread to fetch all available (Status is
   // not Removing) datanodes in cluster, and these available nodes will be used in retrying stage
@@ -432,8 +432,7 @@ public class SessionPool implements ISessionPool {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.formattedNodeUrls = UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port);
-    initThreadPool();
-    initAvailableNodes(Collections.singletonList(new TEndPoint(host, port)));
+    initializeNodeSupplier();
   }
 
   public SessionPool(
@@ -479,8 +478,7 @@ public class SessionPool implements ISessionPool {
     this.trustStore = trustStore;
     this.trustStorePwd = trustStorePwd;
     this.sslProtocol = SessionConfig.DEFAULT_SSL_PROTOCOL;
-    initThreadPool();
-    initAvailableNodes(Collections.singletonList(new TEndPoint(host, port)));
+    initializeNodeSupplier();
   }
 
   @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
@@ -522,26 +520,19 @@ public class SessionPool implements ISessionPool {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.formattedNodeUrls = this.nodeUrls.toString();
-    initThreadPool();
-    initAvailableNodes(SessionUtils.parseSeedNodeUrls(this.nodeUrls));
+    initializeNodeSupplier();
   }
 
   public SessionPool(AbstractSessionPoolBuilder builder) {
-    this(builder, false);
-  }
-
-  protected SessionPool(
-      final AbstractSessionPoolBuilder builder, final boolean internalSessionPool) {
-    this.internalSessionPool = internalSessionPool;
     this.maxSize = builder.maxSize;
     this.user = builder.username;
-    this.password = internalSessionPool ? null : builder.pw;
+    this.password = builder.pw;
     this.fetchSize = builder.fetchSize;
     this.waitToGetSessionTimeoutInMs = builder.waitToGetSessionTimeoutInMs;
     this.enableThriftCompression = builder.isThriftRpcCompactionEnabled;
     this.enableIoTDBRpcCompression = builder.isIoTDBRpcCompressionEnabled;
     this.zoneId = builder.zoneId;
-    this.enableRedirection = !internalSessionPool && builder.enableRedirection;
+    this.enableRedirection = builder.enableRedirection;
     if (this.enableRedirection) {
       deviceIdToEndpoint = new ConcurrentHashMap<>();
       tableModelDeviceIdToEndpoint = new ConcurrentHashMap<>();
@@ -551,7 +542,7 @@ public class SessionPool implements ISessionPool {
     this.version = builder.version;
     this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
     this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
-    this.enableAutoFetch = !internalSessionPool && builder.enableAutoFetch;
+    this.enableAutoFetch = builder.enableAutoFetch;
     this.useSSL = builder.useSSL;
     this.trustStore = builder.trustStore;
     this.trustStorePwd = builder.trustStorePwd;
@@ -565,15 +556,7 @@ public class SessionPool implements ISessionPool {
     this.queryTimeoutInMs = builder.timeOut;
     this.enableAutoCreateSchema = builder.enableAutoCreateSchema;
 
-    if (enableAutoFetch) {
-      initThreadPool();
-    }
-    if (internalSessionPool) {
-      this.host = null;
-      this.port = -1;
-      this.nodeUrls = null;
-      this.formattedNodeUrls = builder.getClass().getSimpleName();
-    } else if (builder.nodeUrls != null) {
+    if (builder.nodeUrls != null) {
       if (builder.nodeUrls.isEmpty()) {
         throw new IllegalArgumentException(SessionMessages.NODE_URLS_EMPTY);
       }
@@ -581,23 +564,11 @@ public class SessionPool implements ISessionPool {
       this.host = null;
       this.port = -1;
       this.formattedNodeUrls = builder.nodeUrls.toString();
-      if (enableAutoFetch) {
-        initAvailableNodes(SessionUtils.parseSeedNodeUrls(nodeUrls));
-      } else {
-        this.availableNodes = new DummyNodesSupplier(SessionUtils.parseSeedNodeUrls(nodeUrls));
-      }
-
     } else {
       this.host = builder.host;
       this.port = builder.rpcPort;
       this.nodeUrls = null;
       this.formattedNodeUrls = UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port);
-      if (enableAutoFetch) {
-        initAvailableNodes(Collections.singletonList(new TEndPoint(host, port)));
-      } else {
-        this.availableNodes =
-            new DummyNodesSupplier(Collections.singletonList(new TEndPoint(host, port)));
-      }
     }
   }
 
@@ -640,17 +611,14 @@ public class SessionPool implements ISessionPool {
     return session;
   }
 
-  private void openSession(final ISession session) throws IoTDBConnectionException {
-    if (internalSessionPool) {
-      session.open(enableThriftCompression, connectionTimeoutInMs);
-    } else {
-      session.open(
-          enableThriftCompression,
-          connectionTimeoutInMs,
-          deviceIdToEndpoint,
-          tableModelDeviceIdToEndpoint,
-          availableNodes);
-    }
+  protected void openSession(final ISession session) throws IoTDBConnectionException {
+    initializeNodeSupplier();
+    session.open(
+        enableThriftCompression,
+        connectionTimeoutInMs,
+        deviceIdToEndpoint,
+        tableModelDeviceIdToEndpoint,
+        availableNodes);
   }
 
   private void initThreadPool() {
@@ -670,25 +638,40 @@ public class SessionPool implements ISessionPool {
             });
   }
 
-  private void initAvailableNodes(List<TEndPoint> endPointList) {
-    this.availableNodes =
-        NodesSupplier.createNodeSupplier(
-            endPointList,
-            executorService,
-            user,
-            password,
-            zoneId,
-            thriftDefaultBufferSize,
-            thriftMaxFrameSize,
-            connectionTimeoutInMs,
-            useSSL,
-            trustStore,
-            trustStorePwd,
-            keyStore,
-            keyStorePwd,
-            sslProtocol,
-            enableThriftCompression,
-            version.toString());
+  private synchronized void initializeNodeSupplier() {
+    if (nodeSupplierInitialized) {
+      return;
+    }
+    final List<TEndPoint> endPointList =
+        nodeUrls == null
+            ? Collections.singletonList(new TEndPoint(host, port))
+            : SessionUtils.parseSeedNodeUrls(nodeUrls);
+    this.availableNodes = createNodeSupplier(endPointList);
+    this.nodeSupplierInitialized = true;
+  }
+
+  protected INodeSupplier createNodeSupplier(final List<TEndPoint> endPointList) {
+    if (enableAutoFetch) {
+      initThreadPool();
+      return NodesSupplier.createNodeSupplier(
+          endPointList,
+          executorService,
+          user,
+          password,
+          zoneId,
+          thriftDefaultBufferSize,
+          thriftMaxFrameSize,
+          connectionTimeoutInMs,
+          useSSL,
+          trustStore,
+          trustStorePwd,
+          keyStore,
+          keyStorePwd,
+          sslProtocol,
+          enableThriftCompression,
+          version.toString());
+    }
+    return new DummyNodesSupplier(endPointList);
   }
 
   // if this method throws an exception, either the server is broken, or the ip/port/user/password
@@ -3532,16 +3515,16 @@ public class SessionPool implements ISessionPool {
 
   @Override
   public void setEnableRedirection(boolean enableRedirection) {
-    this.enableRedirection = !internalSessionPool && enableRedirection;
+    this.enableRedirection = enableRedirection;
     if (this.enableRedirection) {
       deviceIdToEndpoint = new ConcurrentHashMap<>();
       tableModelDeviceIdToEndpoint = new ConcurrentHashMap<>();
     }
     for (ISession session : queue) {
-      session.setEnableRedirection(this.enableRedirection);
+      session.setEnableRedirection(enableRedirection);
     }
     for (ISession session : occupied.keySet()) {
-      session.setEnableRedirection(this.enableRedirection);
+      session.setEnableRedirection(enableRedirection);
     }
   }
 
@@ -3552,12 +3535,12 @@ public class SessionPool implements ISessionPool {
 
   @Override
   public void setEnableQueryRedirection(boolean enableQueryRedirection) {
-    this.enableQueryRedirection = !internalSessionPool && enableQueryRedirection;
+    this.enableQueryRedirection = enableQueryRedirection;
     for (ISession session : queue) {
-      session.setEnableQueryRedirection(this.enableQueryRedirection);
+      session.setEnableQueryRedirection(enableQueryRedirection);
     }
     for (ISession session : occupied.keySet()) {
-      session.setEnableQueryRedirection(this.enableQueryRedirection);
+      session.setEnableQueryRedirection(enableQueryRedirection);
     }
   }
 
