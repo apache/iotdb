@@ -1423,6 +1423,11 @@ public class IoTConsensusServerImpl {
   }
 
   public void cleanupSnapshot(String snapshotId) throws ConsensusGroupModifyPeerException {
+    cleanupSnapshotWithoutLock(snapshotId);
+  }
+
+  private void cleanupSnapshotWithoutLock(String snapshotId)
+      throws ConsensusGroupModifyPeerException {
     snapshotReceiveFolderMap.remove(snapshotId);
     List<String> allDirs = new ArrayList<>(Collections.singletonList(storageDir));
     allDirs.addAll(recvFolderManager.getFolders());

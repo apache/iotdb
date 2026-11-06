@@ -56,18 +56,21 @@ public class ModsOperationUtil {
    */
   public static PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>
       loadModificationsFromTsFile(File tsFile) {
-    PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications =
-        PatternTreeMapFactory.getModsPatternTreeMap();
-
     try {
-      ModificationFile.readAllModifications(tsFile, true)
-          .forEach(
-              modification -> modifications.append(modification.keyOfPatternTree(), modification));
+      return buildModificationsPatternTreeMap(ModificationFile.readAllModifications(tsFile, true));
     } catch (Exception e) {
       throw new PipeException(
           DataNodePipeMessages.FAILED_TO_LOAD_MODIFICATIONS_FROM_TSFILE + tsFile.getPath(), e);
     }
+  }
 
+  public static PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>
+      buildModificationsPatternTreeMap(final List<ModEntry> modEntries) {
+    final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications =
+        PatternTreeMapFactory.getModsPatternTreeMap();
+    for (final ModEntry modEntry : modEntries) {
+      modifications.append(modEntry.keyOfPatternTree(), modEntry);
+    }
     return modifications;
   }
 

@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.PipeResourceFailureType;
 import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
+import org.apache.iotdb.commons.pipe.sink.protocol.PipeBatchMetricsSettable;
 import org.apache.iotdb.commons.pipe.sink.protocol.PipeConnectorWithEventDiscard;
 import org.apache.iotdb.commons.pipe.sink.protocol.PipeSinkWithSchedulingDelay;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -648,8 +649,9 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   }
 
   public void setTabletBatchSizeHistogram(Histogram tabletBatchSizeHistogram) {
-    if (outputPipeSink instanceof IoTDBSink) {
-      ((IoTDBSink) outputPipeSink).setTabletBatchSizeHistogram(tabletBatchSizeHistogram);
+    if (outputPipeSink instanceof PipeBatchMetricsSettable) {
+      ((PipeBatchMetricsSettable) outputPipeSink)
+          .setTabletBatchSizeHistogram(tabletBatchSizeHistogram);
     }
   }
 
@@ -660,14 +662,15 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   }
 
   public void setTsFileBatchSizeHistogram(Histogram tsFileBatchSizeHistogram) {
-    if (outputPipeSink instanceof IoTDBSink) {
-      ((IoTDBSink) outputPipeSink).setTsFileBatchSizeHistogram(tsFileBatchSizeHistogram);
+    if (outputPipeSink instanceof PipeBatchMetricsSettable) {
+      ((PipeBatchMetricsSettable) outputPipeSink)
+          .setTsFileBatchSizeHistogram(tsFileBatchSizeHistogram);
     }
   }
 
   public void setTabletBatchTimeIntervalHistogram(Histogram tabletBatchTimeIntervalHistogram) {
-    if (outputPipeSink instanceof IoTDBSink) {
-      ((IoTDBSink) outputPipeSink)
+    if (outputPipeSink instanceof PipeBatchMetricsSettable) {
+      ((PipeBatchMetricsSettable) outputPipeSink)
           .setTabletBatchTimeIntervalHistogram(tabletBatchTimeIntervalHistogram);
     }
   }
@@ -680,15 +683,15 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   }
 
   public void setTsFileBatchTimeIntervalHistogram(Histogram tsFileBatchTimeIntervalHistogram) {
-    if (outputPipeSink instanceof IoTDBSink) {
-      ((IoTDBSink) outputPipeSink)
+    if (outputPipeSink instanceof PipeBatchMetricsSettable) {
+      ((PipeBatchMetricsSettable) outputPipeSink)
           .setTsFileBatchTimeIntervalHistogram(tsFileBatchTimeIntervalHistogram);
     }
   }
 
   public void setEventSizeHistogram(Histogram eventSizeHistogram) {
-    if (outputPipeSink instanceof IoTDBSink) {
-      ((IoTDBSink) outputPipeSink).setBatchEventSizeHistogram(eventSizeHistogram);
+    if (outputPipeSink instanceof PipeBatchMetricsSettable) {
+      ((PipeBatchMetricsSettable) outputPipeSink).setBatchEventSizeHistogram(eventSizeHistogram);
     }
   }
 
