@@ -42,6 +42,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableS
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 
+import com.google.common.collect.ImmutableSet;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -117,25 +119,33 @@ public class ParallelizeGrouping implements PlanOptimizer {
               .collect(Collectors.toList()));
     }
 
-    /** We need to make sure: context#partitionKey can match the prefix of childOrderSchema */
+    /**
+     * We need to make sure: context#partitionKey can be satisfied by the prefix of childOrder.
+     *
+     * <p>The prefix is compared as a column set: partition columns are identified by their values,
+     * so a different writing order still clusters rows into the same partitions. This lets nested
+     * set-semantic table functions reuse their input clustering when the same PARTITION BY columns
+     * are listed in a different order.
+     *
+     * <p>The ORDER BY part of the requirement needs no check here. A group node sorts within every
+     * partition run by its full ordering scheme, so the input only has to be clustered; whatever
+     * order rows have inside a partition is re-established locally by the group's own sort.
+     */
     private void checkPrefixMatch(Context context, List<Symbol> childOrder) {
       if (context.canSkip()) {
         return;
       }
-      if (context.partitionKeyCount > childOrder.size()) {
+      int partitionKeyCount = context.partitionKeyCount;
+      if (partitionKeyCount > childOrder.size()) {
         context.canOptimized = TO_SORT;
         return;
       }
-      OrderingScheme prefix = context.sortKey;
-      for (int i = 0; i < context.partitionKeyCount; i++) {
-        Symbol lhs = prefix.getOrderBy().get(i);
-        Symbol rhs = childOrder.get(i);
-        if (!lhs.equals(rhs)) {
-          context.canOptimized = TO_SORT;
-          return;
-        }
-      }
-      context.canOptimized = ENABLE_PARALLEL;
+      List<Symbol> requiredPrefix = context.sortKey.getOrderBy().subList(0, partitionKeyCount);
+      List<Symbol> actualPrefix = childOrder.subList(0, partitionKeyCount);
+      context.canOptimized =
+          ImmutableSet.copyOf(requiredPrefix).equals(ImmutableSet.copyOf(actualPrefix))
+              ? ENABLE_PARALLEL
+              : TO_SORT;
     }
 
     @Override
