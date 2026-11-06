@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.persistence.schema.TreeDeviceViewFieldDetector;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -127,7 +128,7 @@ public class AddViewColumnProcedure extends AddTableColumnProcedure {
 
   @Override
   protected String getActionMessage() {
-    return "add view column";
+    return ProcedureMessages.MESSAGE_ADD_VIEW_COLUMN_69FF810F;
   }
 
   @Override

@@ -257,6 +257,17 @@ public class PipeInclusionOptions {
     return options;
   }
 
+  public static boolean isDataInsertionIncluded(final PipeParameters parameters)
+      throws IllegalPathException {
+    // Match the data-region listening filter, including prefixes longer than the concrete option
+    // that the existing option validator accepts.
+    final PartialPath insertion = new PartialPath(EXTRACTOR_INCLUSION_DEFAULT_VALUE);
+    return parseOptions(getInclusionString(parameters)).stream()
+            .anyMatch(insertion::overlapWithFullPathPrefix)
+        && parseOptions(getExclusionString(parameters)).stream()
+            .noneMatch(insertion::overlapWithFullPathPrefix);
+  }
+
   public static boolean areOptionsEnabled(final PipeParameters parameters, final String... options)
       throws IllegalPathException {
     final Set<PartialPath> inclusionOptions = parseOptions(getInclusionString(parameters));

@@ -77,6 +77,7 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALException;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALFormatException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.storageengine.load.LoadTsFilePieceNodeAssembler;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadAgent;
@@ -231,6 +232,13 @@ public class StorageEngine implements IService {
         WALRecoverManager.getInstance().recover();
       } catch (WALException e) {
         LOGGER.error(StorageEngineMessages.FAIL_TO_RECOVER_WAL, e);
+        if (WALFormatException.isFatal(e)) {
+          cachedThreadPool.shutdownNow();
+          StartupException failure =
+              new StartupException(StorageEngineMessages.FAIL_TO_RECOVER_WAL);
+          failure.initCause(e);
+          throw failure;
+        }
       }
     }
 
@@ -285,7 +293,11 @@ public class StorageEngine implements IService {
 
   void handleDataRegionRecoverFailure(
       String sgName, DataRegionId dataRegionId, DataRegionException e) throws DataRegionException {
-    LOGGER.error("Failed to recover data region {}[{}]", sgName, dataRegionId.getId(), e);
+    LOGGER.error(
+        StorageEngineMessages.STORAGE_LOG_FAILED_TO_RECOVER_DATA_REGION_804B162D,
+        sgName,
+        dataRegionId.getId(),
+        e);
     WALRecoverManager.getInstance()
         .getAllDataRegionScannedLatch()
         .countDownWithException(e.getMessage());
@@ -430,7 +442,9 @@ public class StorageEngine implements IService {
     Thread recoverEndTrigger =
         new Thread(
             () -> {
-              checkResults(futures, "async recover tsfile resource meets error.");
+              checkResults(
+                  futures,
+                  StorageEngineMessages.MESSAGE_ASYNC_RECOVER_TSFILE_RESOURCE_MEETS_ERROR_EE1393F9);
               recoverRepairData();
               isReadyForNonReadWriteFunctions.set(true);
               LOGGER.info(
@@ -564,7 +578,7 @@ public class StorageEngine implements IService {
                 }));
       }
     }
-    checkResults(tasks, "Failed to sync close processor.");
+    checkResults(tasks, StorageEngineMessages.MESSAGE_FAILED_TO_SYNC_CLOSE_PROCESSOR_3816A67C);
   }
 
   public void forceCloseAllProcessor() throws TsFileProcessorException {
@@ -580,7 +594,7 @@ public class StorageEngine implements IService {
                 }));
       }
     }
-    checkResults(tasks, "Failed to force close processor.");
+    checkResults(tasks, StorageEngineMessages.MESSAGE_FAILED_TO_FORCE_CLOSE_PROCESSOR_E380BB3C);
   }
 
   public void syncCloseProcessorsInDatabase(String databaseName) {
@@ -595,7 +609,7 @@ public class StorageEngine implements IService {
                 }));
       }
     }
-    checkResults(tasks, "Failed to sync close processor.");
+    checkResults(tasks, StorageEngineMessages.MESSAGE_FAILED_TO_SYNC_CLOSE_PROCESSOR_3816A67C);
   }
 
   public void syncCloseProcessorsInRegion(List<String> dataRegionIds) {
@@ -610,7 +624,7 @@ public class StorageEngine implements IService {
                 }));
       }
     }
-    checkResults(tasks, "Failed to sync close processor.");
+    checkResults(tasks, StorageEngineMessages.MESSAGE_FAILED_TO_SYNC_CLOSE_PROCESSOR_3816A67C);
   }
 
   public boolean containsDatabase(final String database) {
@@ -630,7 +644,7 @@ public class StorageEngine implements IService {
                 }));
       }
     }
-    checkResults(tasks, "Failed to close database processor.");
+    checkResults(tasks, StorageEngineMessages.MESSAGE_FAILED_TO_CLOSE_DATABASE_PROCESSOR_BCBC9A66);
   }
 
   private <V> void checkResults(List<Future<V>> tasks, String errorMsg) {
@@ -752,7 +766,9 @@ public class StorageEngine implements IService {
           noExistDB.forEach(database -> sb.append(database).append(","));
           return RpcUtils.getStatus(
               TSStatusCode.DATABASE_NOT_EXIST,
-              "Database " + sb.subSequence(0, sb.length() - 1) + " does not exist on local");
+              String.format(
+                  StorageEngineMessages.MESSAGE_DATABASE_ARG_DOES_NOT_EXIST_ON_LOCAL_CC032648,
+                  String.valueOf(sb.subSequence(0, sb.length() - 1))));
         }
       }
       for (String databaseName : req.storageGroups) {
@@ -786,7 +802,8 @@ public class StorageEngine implements IService {
     if (configFileUrl == null || !(new File(configFileUrl.getFile()).exists())) {
       // configuration file not exist, update in mem
       String msg =
-          "Unable to find the configuration file. Some modifications are made only in memory.";
+          StorageEngineMessages
+              .MESSAGE_UNABLE_TO_FIND_THE_CONFIGURATION_FILE_SOME_MODIFICATIONS_ARE_MADE_ONLY_IN_MEMORY_70BB69F5;
       tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, msg);
       LOGGER.warn(msg);
       try {
@@ -798,6 +815,8 @@ public class StorageEngine implements IService {
       return tsStatus;
     }
 
+    CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    boolean wasReadOnlyForDiskFull = commonConfig.isReadOnlyForDiskFull();
     try {
       ConfigurationFileUtils.updateConfiguration(
           new File(configFileUrl.getFile()),
@@ -814,6 +833,10 @@ public class StorageEngine implements IService {
         Thread.currentThread().interrupt();
       }
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    // A SET can apply in memory and still fail when persisting the configuration file.
+    if (wasReadOnlyForDiskFull) {
+      commonConfig.setRunningIfDiskFull();
     }
     return tsStatus;
   }

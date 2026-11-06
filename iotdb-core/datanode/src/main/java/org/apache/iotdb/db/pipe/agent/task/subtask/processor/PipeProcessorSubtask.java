@@ -312,7 +312,11 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       } else {
         LOGGER.info(
             DataNodePipeMessages.EXCEPTION_IN_PIPE_EVENT_PROCESSING_IGNORED_BECAUSE,
-            e.getMessage() != null ? " Message: " + e.getMessage() : "");
+            e.getMessage() != null
+                ? String.format(
+                    DataNodePipeMessages.MESSAGE_MESSAGE_ARG_F49E6C85,
+                    String.valueOf(e.getMessage()))
+                : "");
         clearReferenceCountAndReleaseLastEvent(event);
       }
     } finally {
@@ -349,6 +353,12 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
   public boolean isStoppedByException() {
     return lastEvent instanceof EnrichedEvent && retryCount.get() > MAX_RETRY_TIMES;
+  }
+
+  boolean isWaitingForTsFileParserMemory() {
+    final Event event = lastEvent;
+    return event instanceof PipeTsFileInsertionEvent
+        && ((PipeTsFileInsertionEvent) event).isWaitingForTsFileParserMemory();
   }
 
   @Override

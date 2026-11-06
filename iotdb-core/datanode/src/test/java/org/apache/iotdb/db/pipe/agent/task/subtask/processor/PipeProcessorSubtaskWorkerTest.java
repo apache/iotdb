@@ -52,6 +52,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -99,6 +100,8 @@ public class PipeProcessorSubtaskWorkerTest {
         final TsFileParserMemoryReservation request = new TsFileParserMemoryReservation();
         requests.add(request);
         final PipeProcessorSubtask subtask = createRunnableSubtask(pipeName);
+        when(subtask.isWaitingForTsFileParserMemory())
+            .thenAnswer(ignored -> request.isWaitingForSignal());
         doAnswer(
                 invocation -> {
                   request.setWakeUpCallback(invocation.getArgument(0));
@@ -179,6 +182,59 @@ public class PipeProcessorSubtaskWorkerTest {
   }
 
   @Test(timeout = 10000)
+  public void testWaitingParserIsSkippedUntilAdmissionNotification() throws Exception {
+    final CommonConfig config = CommonDescriptor.getInstance().getConfig();
+    final PipeMemoryManager memoryManager = PipeDataNodeResourceManager.memory();
+    final long originalParserMemory = config.getPipeTsFileParserMemory();
+    final int originalGlobalLimit = config.getPipeTsFileParserInFlightMaxNum();
+    final int originalRegionLimit = config.getPipeTsFileParserInFlightMaxNumPerPipeRegion();
+    final TsFileParserMemoryReservation blocker = new TsFileParserMemoryReservation();
+    final TsFileParserMemoryReservation request = new TsFileParserMemoryReservation();
+    boolean blockerReserved = false;
+    try {
+      config.setPipeTsFileParserMemory(1);
+      config.setPipeTsFileParserInFlightMaxNum(1);
+      config.setPipeTsFileParserInFlightMaxNumPerPipeRegion(1);
+      blockerReserved = memoryManager.tryReserveTsFileParserMemory("blocker", 0, "0", blocker);
+      Assert.assertTrue(blockerReserved);
+      final PipeProcessorSubtaskWorker worker =
+          new PipeProcessorSubtaskWorker(new LinkedHashSet<>());
+      final PipeProcessorSubtask subtask = createRunnableSubtask("waitingPipe");
+      when(subtask.isWaitingForTsFileParserMemory())
+          .thenAnswer(ignored -> request.isWaitingForSignal());
+      when(subtask.call())
+          .thenAnswer(
+              ignored -> {
+                if (!memoryManager.tryReserveTsFileParserMemory("waitingPipe", 0, "0", request)) {
+                  throw PipeProcessorSubtaskYieldException.parserNotAdmitted();
+                }
+                memoryManager.releaseTsFileParserMemory("waitingPipe", 0, "0");
+                return true;
+              });
+      worker.schedule(subtask);
+      Assert.assertTrue(worker.runSubtasks());
+      for (int i = 0; i < 100; i++) {
+        Assert.assertTrue(worker.runSubtasks());
+      }
+      verify(subtask, times(1)).call();
+      memoryManager.releaseTsFileParserMemory("blocker", 0, "0");
+      blockerReserved = false;
+      Assert.assertFalse(worker.runSubtasks());
+      verify(subtask, times(2)).call();
+      Assert.assertEquals(0, memoryManager.getWaitingTsFileParserCount());
+      Assert.assertEquals(0, memoryManager.getReservedTsFileParserCount());
+    } finally {
+      memoryManager.cancelTsFileParserMemoryReservation("waitingPipe", 0, "0", request);
+      if (blockerReserved) {
+        memoryManager.releaseTsFileParserMemory("blocker", 0, "0");
+      }
+      config.setPipeTsFileParserMemory(originalParserMemory);
+      config.setPipeTsFileParserInFlightMaxNum(originalGlobalLimit);
+      config.setPipeTsFileParserInFlightMaxNumPerPipeRegion(originalRegionLimit);
+    }
+  }
+
+  @Test(timeout = 10000)
   public void testNotificationBeforeIdleWaitIsNotLost() throws Exception {
     final PipeProcessorSubtaskWorker worker = new PipeProcessorSubtaskWorker(new LinkedHashSet<>());
     worker.setSleepingTimeInMilliSecond(60000L);
@@ -200,6 +256,131 @@ public class PipeProcessorSubtaskWorkerTest {
     } finally {
       executor.shutdownNow();
       Assert.assertTrue(executor.awaitTermination(3, TimeUnit.SECONDS));
+    }
+  }
+
+  @Test(timeout = 15000)
+  public void testBusyFirstWorkerDoesNotSerializeOtherEligibleWorker() throws Exception {
+    final CommonConfig config = CommonDescriptor.getInstance().getConfig();
+    final PipeMemoryManager manager = PipeDataNodeResourceManager.memory();
+    final long originalParserMemory = config.getPipeTsFileParserMemory();
+    final int originalGlobalLimit = config.getPipeTsFileParserInFlightMaxNum();
+    final int originalRegionLimit = config.getPipeTsFileParserInFlightMaxNumPerPipeRegion();
+    final boolean[] reservedBlockers = new boolean[2];
+    final TsFileParserMemoryReservation first = new TsFileParserMemoryReservation();
+    final TsFileParserMemoryReservation second = new TsFileParserMemoryReservation();
+    final PipeProcessorSubtaskWorker firstWorker =
+        new PipeProcessorSubtaskWorker(new LinkedHashSet<>());
+    final PipeProcessorSubtaskWorker secondWorker =
+        new PipeProcessorSubtaskWorker(new LinkedHashSet<>());
+    final CountDownLatch firstWorkerBusy = new CountDownLatch(1);
+    final CountDownLatch unblockFirstWorker = new CountDownLatch(1);
+    final CountDownLatch secondAdmitted = new CountDownLatch(1);
+    final AtomicBoolean blockFirstWorker = new AtomicBoolean();
+    final AtomicBoolean secondProcessed = new AtomicBoolean();
+    final ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      config.setPipeTsFileParserMemory(1);
+      config.setPipeTsFileParserInFlightMaxNum(2);
+      config.setPipeTsFileParserInFlightMaxNumPerPipeRegion(1);
+      for (int i = 0; i < reservedBlockers.length; i++) {
+        reservedBlockers[i] =
+            manager.tryReserveTsFileParserMemory(
+                "blocker" + i, 0, "0", new TsFileParserMemoryReservation());
+        Assert.assertTrue(reservedBlockers[i]);
+      }
+      final PipeProcessorSubtask busySubtask = createRunnableSubtask("busy");
+      when(busySubtask.call())
+          .thenAnswer(
+              ignored -> {
+                if (blockFirstWorker.get()) {
+                  firstWorkerBusy.countDown();
+                  Assert.assertTrue(unblockFirstWorker.await(5, TimeUnit.SECONDS));
+                }
+                return false;
+              });
+      firstWorker.schedule(busySubtask);
+      final PipeProcessorSubtask firstSubtask = createRunnableSubtask("first");
+      final PipeProcessorSubtask secondSubtask = createRunnableSubtask("second");
+      when(firstSubtask.isWaitingForTsFileParserMemory())
+          .thenAnswer(ignored -> first.isWaitingForSignal());
+      when(secondSubtask.isWaitingForTsFileParserMemory())
+          .thenAnswer(ignored -> second.isWaitingForSignal());
+      doAnswer(
+              invocation -> {
+                first.setWakeUpCallback(invocation.getArgument(0));
+                return null;
+              })
+          .when(firstSubtask)
+          .setWorkerWakeUpCallback(any());
+      doAnswer(
+              invocation -> {
+                second.setWakeUpCallback(invocation.getArgument(0));
+                return null;
+              })
+          .when(secondSubtask)
+          .setWorkerWakeUpCallback(any());
+      when(firstSubtask.call())
+          .thenAnswer(
+              ignored -> {
+                if (!manager.tryReserveTsFileParserMemory("first", 0, "0", first)) {
+                  throw PipeProcessorSubtaskYieldException.parserNotAdmitted();
+                }
+                manager.releaseTsFileParserMemory("first", 0, "0");
+                return true;
+              });
+      when(secondSubtask.call())
+          .thenAnswer(
+              ignored -> {
+                if (secondProcessed.get()) {
+                  return false;
+                }
+                if (!manager.tryReserveTsFileParserMemory("second", 0, "0", second)) {
+                  throw PipeProcessorSubtaskYieldException.parserNotAdmitted();
+                }
+                manager.releaseTsFileParserMemory("second", 0, "0");
+                secondProcessed.set(true);
+                secondAdmitted.countDown();
+                return true;
+              });
+      firstWorker.schedule(firstSubtask);
+      secondWorker.schedule(secondSubtask);
+      Assert.assertTrue(firstWorker.runSubtasks());
+      Assert.assertTrue(secondWorker.runSubtasks());
+      blockFirstWorker.set(true);
+      final Future<?> busyRound = executor.submit(firstWorker::runSubtasks);
+      Assert.assertTrue(firstWorkerBusy.await(3, TimeUnit.SECONDS));
+      for (int i = 0; i < reservedBlockers.length; i++) {
+        manager.releaseTsFileParserMemory("blocker" + i, 0, "0");
+        reservedBlockers[i] = false;
+      }
+      executor.submit(
+          () -> {
+            while (!Thread.currentThread().isInterrupted() && !secondProcessed.get()) {
+              secondWorker.sleepIfNecessary(secondWorker.runSubtasks());
+            }
+          });
+      Assert.assertTrue(secondAdmitted.await(3, TimeUnit.SECONDS));
+      verify(firstSubtask, times(1)).call();
+      Assert.assertFalse(busyRound.isDone());
+      unblockFirstWorker.countDown();
+      busyRound.get(3, TimeUnit.SECONDS);
+      Assert.assertEquals(0, manager.getWaitingTsFileParserCount());
+      Assert.assertEquals(0, manager.getReservedTsFileParserCount());
+    } finally {
+      unblockFirstWorker.countDown();
+      executor.shutdownNow();
+      Assert.assertTrue(executor.awaitTermination(3, TimeUnit.SECONDS));
+      manager.cancelTsFileParserMemoryReservation("first", 0, "0", first);
+      manager.cancelTsFileParserMemoryReservation("second", 0, "0", second);
+      for (int i = 0; i < reservedBlockers.length; i++) {
+        if (reservedBlockers[i]) {
+          manager.releaseTsFileParserMemory("blocker" + i, 0, "0");
+        }
+      }
+      config.setPipeTsFileParserMemory(originalParserMemory);
+      config.setPipeTsFileParserInFlightMaxNum(originalGlobalLimit);
+      config.setPipeTsFileParserInFlightMaxNumPerPipeRegion(originalRegionLimit);
     }
   }
 

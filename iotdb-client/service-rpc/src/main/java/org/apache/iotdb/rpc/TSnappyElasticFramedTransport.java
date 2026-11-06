@@ -29,6 +29,8 @@ public class TSnappyElasticFramedTransport extends TCompressedElasticFramedTrans
 
   public static class Factory extends TElasticFramedTransport.Factory {
 
+    private final int maxReusableBufferSize;
+
     public Factory() {
       this(RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY, RpcUtils.THRIFT_FRAME_MAX_SIZE, true);
     }
@@ -38,13 +40,25 @@ public class TSnappyElasticFramedTransport extends TCompressedElasticFramedTrans
     }
 
     public Factory(int thriftDefaultBufferSize, int thriftMaxFrameSize, boolean copyBinary) {
+      this(thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary, Integer.MAX_VALUE);
+    }
+
+    /**
+     * @param maxReusableBufferSize buffer requests above this size in bytes use temporary arrays
+     */
+    public Factory(
+        int thriftDefaultBufferSize,
+        int thriftMaxFrameSize,
+        boolean copyBinary,
+        int maxReusableBufferSize) {
       super(thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
+      this.maxReusableBufferSize = maxReusableBufferSize;
     }
 
     @Override
     public TTransport getTransport(TTransport trans) throws TTransportException {
       return new TSnappyElasticFramedTransport(
-          trans, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
+          trans, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary, maxReusableBufferSize);
     }
   }
 
@@ -59,6 +73,20 @@ public class TSnappyElasticFramedTransport extends TCompressedElasticFramedTrans
       boolean copyBinary)
       throws TTransportException {
     super(underlying, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
+  }
+
+  /**
+   * @param maxReusableBufferSize buffer requests above this size in bytes use temporary arrays
+   */
+  public TSnappyElasticFramedTransport(
+      TTransport underlying,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean copyBinary,
+      int maxReusableBufferSize)
+      throws TTransportException {
+    super(
+        underlying, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary, maxReusableBufferSize);
   }
 
   @Override

@@ -19,18 +19,59 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.thrift.transport.TMemoryBuffer;
 import org.apache.thrift.transport.TMemoryInputTransport;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
+import java.util.Random;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 public class DeepCopyRpcTransportFactoryTest {
+
+  // Two client factories use different thresholds in the same JVM. Both plain and Snappy frames
+  // must round-trip, while only the configured client releases its large reusable buffers.
+  @Test
+  public void testIndependentReusableBufferThresholds() throws Exception {
+    boolean previousUseSnappy = BaseRpcTransportFactory.USE_SNAPPY;
+    try {
+      for (boolean snappy : new boolean[] {false, true}) {
+        BaseRpcTransportFactory.setUseSnappy(snappy);
+        try (TElasticFramedTransport temporary =
+                (TElasticFramedTransport)
+                    DeepCopyRpcTransportFactory.getInstance(32, 4096, 256)
+                        .getTransport(new TMemoryBuffer(0));
+            TElasticFramedTransport reusable =
+                (TElasticFramedTransport)
+                    DeepCopyRpcTransportFactory.getInstance(32, 4096)
+                        .getTransport(new TMemoryBuffer(0))) {
+          byte[] payload = new byte[1024];
+          new Random(0).nextBytes(payload);
+          for (TElasticFramedTransport transport :
+              new TElasticFramedTransport[] {temporary, reusable}) {
+            transport.write(payload);
+            transport.flush();
+            byte[] actual = new byte[payload.length];
+            transport.readAll(actual, 0, actual.length);
+            assertArrayEquals(payload, actual);
+          }
+          assertEquals(32, temporary.writeBuffer.getBuffer().length);
+          assertEquals(32, temporary.readBuffer.getBuffer().length);
+          assertTrue(reusable.writeBuffer.getBuffer().length >= payload.length);
+          assertTrue(reusable.readBuffer.getBuffer().length >= payload.length);
+        }
+      }
+    } finally {
+      BaseRpcTransportFactory.setUseSnappy(previousUseSnappy);
+    }
+  }
 
   @Test
   public void testGetInstanceReturnsIndependentClientFactories() {

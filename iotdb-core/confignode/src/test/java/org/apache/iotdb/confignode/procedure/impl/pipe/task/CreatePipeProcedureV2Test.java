@@ -20,28 +20,174 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.PermissionManager;
+import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class CreatePipeProcedureV2Test {
+  @Test
+  public void testDataNodeConstructionFailureIsRecorded() throws Exception {
+    final String pipeName = "failedHistoryPipe";
+    final TCreatePipeReq request = createPipeRequest(pipeName);
+    final PipeTaskInfo taskInfo = new PipeTaskInfo();
+    final CreatePipeProcedureV2 procedure =
+        new CreatePipeProcedureV2(request, new AtomicReference<>(taskInfo));
+    procedure.executeFromCalculateInfoForTask(Mockito.mock(ConfigNodeProcedureEnv.class));
+    taskInfo.createPipe(procedure.constructPlan());
+
+    final String error = "Failed to construct PipeConnector";
+    final TPushPipeMetaRespExceptionMessage exceptionMessage =
+        new TPushPipeMetaRespExceptionMessage(request.getPipeName(), error, 1L)
+            .setCreationTime(procedure.getPipeStaticMeta().getCreationTime());
+    final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);
+    final ConsensusManager consensusManager = mockSuccessfulConsensusWrite(env);
+    Mockito.when(env.pushSinglePipeMetaToDataNodes(Mockito.any(ByteBuffer.class), Mockito.any()))
+        .thenReturn(
+            Collections.singletonMap(
+                1,
+                new TPushPipeMetaResp(
+                        new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
+                    .setExceptionMessages(Collections.singletonList(exceptionMessage))));
+
+    procedure.executeFromOperateOnDataNodes(env);
+
+    final PipeRuntimeMeta runtimeMeta =
+        taskInfo.getPipeMetaByPipeName(request.getPipeName()).getRuntimeMeta();
+    assertEquals(PipeStatus.STOPPED, runtimeMeta.getStatus().get());
+    assertTrue(runtimeMeta.getIsStoppedByRuntimeException());
+    assertEquals(error, runtimeMeta.getNodeId2PipeRuntimeExceptionMap().get(1).getMessage());
+    assertPipeMetaChangeWasWritten(consensusManager, request.getPipeName(), error);
+  }
+
+  @Test
+  public void testRetriesFailurePersistenceBeforeSuccessfulMetaPush() throws Exception {
+    final String pipeName = "failedHistoryPipePersistenceRetry";
+    final TCreatePipeReq request = createPipeRequest(pipeName);
+    final PipeTaskInfo taskInfo = new PipeTaskInfo();
+    final CreatePipeProcedureV2 procedure =
+        new CreatePipeProcedureV2(request, new AtomicReference<>(taskInfo));
+    procedure.executeFromCalculateInfoForTask(Mockito.mock(ConfigNodeProcedureEnv.class));
+    taskInfo.createPipe(procedure.constructPlan());
+
+    final String error = "DataNode failed before returning pipe-specific details";
+    final TPushPipeMetaRespExceptionMessage exceptionMessage =
+        new TPushPipeMetaRespExceptionMessage(request.getPipeName(), error, 1L)
+            .setCreationTime(procedure.getPipeStaticMeta().getCreationTime());
+    final Map<Integer, TPushPipeMetaResp> responses = new HashMap<>();
+    responses.put(
+        1,
+        new TPushPipeMetaResp(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
+            .setExceptionMessages(Collections.singletonList(exceptionMessage)));
+
+    final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);
+    final ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    final ConsensusManager consensusManager = Mockito.mock(ConsensusManager.class);
+    Mockito.when(env.getConfigManager()).thenReturn(configManager);
+    Mockito.when(configManager.getConsensusManager()).thenReturn(consensusManager);
+    Mockito.when(consensusManager.write(Mockito.any(ConfigPhysicalPlan.class)))
+        .thenReturn(new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()))
+        .thenReturn(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    Mockito.when(env.pushSinglePipeMetaToDataNodes(Mockito.any(ByteBuffer.class), Mockito.any()))
+        .thenReturn(responses);
+
+    try {
+      procedure.executeFromOperateOnDataNodes(env);
+      fail("Expected the first attempt to fail its ConfigNode consensus write");
+    } catch (final org.apache.iotdb.pipe.api.exception.PipeException expected) {
+      // The procedure retries this state after the persistence failure.
+    }
+
+    responses.put(
+        1, new TPushPipeMetaResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
+    procedure.executeFromOperateOnDataNodes(env);
+
+    final ArgumentCaptor<ConfigPhysicalPlan> planCaptor =
+        ArgumentCaptor.forClass(ConfigPhysicalPlan.class);
+    Mockito.verify(consensusManager, Mockito.times(2)).write(planCaptor.capture());
+    assertTrue(planCaptor.getAllValues().get(1) instanceof PipeHandleMetaChangePlan);
+    final PipeRuntimeMeta persistedRuntimeMeta =
+        ((PipeHandleMetaChangePlan) planCaptor.getAllValues().get(1))
+            .getPipeMetaList().stream()
+                .filter(meta -> request.getPipeName().equals(meta.getStaticMeta().getPipeName()))
+                .findFirst()
+                .orElseThrow(AssertionError::new)
+                .getRuntimeMeta();
+    assertEquals(PipeStatus.STOPPED, persistedRuntimeMeta.getStatus().get());
+    assertTrue(persistedRuntimeMeta.getIsStoppedByRuntimeException());
+    assertEquals(
+        error, persistedRuntimeMeta.getNodeId2PipeRuntimeExceptionMap().get(1).getMessage());
+  }
+
+  private static ConsensusManager mockSuccessfulConsensusWrite(final ConfigNodeProcedureEnv env)
+      throws Exception {
+    final ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    final ConsensusManager consensusManager = Mockito.mock(ConsensusManager.class);
+    Mockito.when(env.getConfigManager()).thenReturn(configManager);
+    Mockito.when(configManager.getConsensusManager()).thenReturn(consensusManager);
+    Mockito.when(consensusManager.write(Mockito.any(ConfigPhysicalPlan.class)))
+        .thenReturn(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    return consensusManager;
+  }
+
+  private static void assertPipeMetaChangeWasWritten(
+      final ConsensusManager consensusManager, final String pipeName, final String error)
+      throws Exception {
+    final ArgumentCaptor<ConfigPhysicalPlan> planCaptor =
+        ArgumentCaptor.forClass(ConfigPhysicalPlan.class);
+    Mockito.verify(consensusManager).write(planCaptor.capture());
+    assertTrue(planCaptor.getValue() instanceof PipeHandleMetaChangePlan);
+    final PipeRuntimeMeta persistedRuntimeMeta =
+        ((PipeHandleMetaChangePlan) planCaptor.getValue())
+            .getPipeMetaList().stream()
+                .filter(meta -> pipeName.equals(meta.getStaticMeta().getPipeName()))
+                .findFirst()
+                .orElseThrow(AssertionError::new)
+                .getRuntimeMeta();
+    assertEquals(PipeStatus.STOPPED, persistedRuntimeMeta.getStatus().get());
+    assertTrue(persistedRuntimeMeta.getIsStoppedByRuntimeException());
+    assertEquals(
+        error, persistedRuntimeMeta.getNodeId2PipeRuntimeExceptionMap().get(1).getMessage());
+  }
+
+  private static TCreatePipeReq createPipeRequest(final String pipeName) {
+    final Map<String, String> extractorAttributes = new HashMap<>();
+    extractorAttributes.put(PipeSourceConstant.EXTRACTOR_CONSENSUS_GROUP_ID_KEY, "DataRegion[1]");
+    extractorAttributes.put(PipeSourceConstant.EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY, "1");
+    return new TCreatePipeReq(PipeStaticMeta.CONSENSUS_PIPE_PREFIX + pipeName, new HashMap<>())
+        .setExtractorAttributes(extractorAttributes)
+        .setProcessorAttributes(new HashMap<>());
+  }
+
   @Test
   public void serializeDeserializeTest() {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();

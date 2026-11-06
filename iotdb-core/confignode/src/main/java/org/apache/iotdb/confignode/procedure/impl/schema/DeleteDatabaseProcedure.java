@@ -172,13 +172,15 @@ public class DeleteDatabaseProcedure
                 asyncClientHandler.getResponseMap().entrySet()) {
               if (entry.getValue().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                 LOG.info(
-                    "[DeleteDatabaseProcedure] Successfully delete SchemaRegion[{}] on {}",
+                    ProcedureMessages
+                        .LOG_DELETEDATABASEPROCEDURE_SUCCESSFULLY_DELETE_SCHEMAREGION_ARG_ARG_BA0535DA,
                     asyncClientHandler.getRequest(entry.getKey()),
                     schemaRegionDeleteTaskMap.get(entry.getKey()).getTargetDataNode());
                 schemaRegionDeleteTaskMap.remove(entry.getKey());
               } else {
                 LOG.warn(
-                    "[DeleteDatabaseProcedure] Failed to delete SchemaRegion[{}] on {}. Submit to async deletion.",
+                    ProcedureMessages
+                        .LOG_DELETEDATABASEPROCEDURE_FAILED_DELETE_SCHEMAREGION_ARG_ARG_SUBMIT_ASYNC_DELETION_8C3E6DE3,
                     asyncClientHandler.getRequest(entry.getKey()),
                     schemaRegionDeleteTaskMap.get(entry.getKey()).getTargetDataNode());
               }

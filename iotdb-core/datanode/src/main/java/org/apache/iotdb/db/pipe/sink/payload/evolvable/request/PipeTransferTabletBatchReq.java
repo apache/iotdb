@@ -178,9 +178,13 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     final TabletStringInternPool tabletStringInternPool = new TabletStringInternPool();
 
     // Legacy 1.3.x batch bodies may carry WAL binary requests before insert nodes and tablets.
-    int size = readNonNegativeSize(transferReq.body, "binary request count");
+    int size =
+        readNonNegativeSize(
+            transferReq.body, DataNodePipeMessages.MESSAGE_BINARY_REQUEST_COUNT_517CF38D);
     for (int i = 0; i < size; ++i) {
-      final int length = readNonNegativeSize(transferReq.body, "binary request body length");
+      final int length =
+          readNonNegativeSize(
+              transferReq.body, DataNodePipeMessages.MESSAGE_BINARY_REQUEST_BODY_LENGTH_718123BB);
       if (length > transferReq.body.remaining()) {
         throw new IllegalArgumentException(
             String.format(
@@ -195,7 +199,9 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
           PipeTransferTabletBinaryReq.toTPipeTransferReq(ByteBuffer.wrap(body)));
     }
 
-    size = readNonNegativeSize(transferReq.body, "insert node count");
+    size =
+        readNonNegativeSize(
+            transferReq.body, DataNodePipeMessages.MESSAGE_INSERT_NODE_COUNT_EAA93423);
     for (int i = 0; i < size; ++i) {
       final int startPosition = transferReq.body.position();
       try {
@@ -215,7 +221,9 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
       }
     }
 
-    size = readNonNegativeSize(transferReq.body, "raw tablet count");
+    size =
+        readNonNegativeSize(
+            transferReq.body, DataNodePipeMessages.MESSAGE_RAW_TABLET_COUNT_BB427E83);
     for (int i = 0; i < size; ++i) {
       final int startPosition = transferReq.body.position();
       try {

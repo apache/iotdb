@@ -340,7 +340,8 @@ public abstract class SubscriptionPrefetchingQueue {
     return null;
   }
 
-  private SubscriptionEvent pollInternalV2(final String consumerId) {
+  private synchronized SubscriptionEvent pollInternalV2(final String consumerId) {
+    // Keep the queue-to-in-flight transition atomic with the snapshot completion check.
     if (prefetchingQueue.isEmpty()) {
       onEvent();
     }
@@ -849,7 +850,10 @@ public abstract class SubscriptionPrefetchingQueue {
       return false;
     }
 
-    if (!prefetchingQueue.isEmpty() || !inFlightEvents.isEmpty()) {
+    // Requeue adds to prefetchingQueue before removing from inFlightEvents. Check in-flight first
+    // so a concurrent requeue cannot make both collections appear empty across that transition.
+    // Polling takes this monitor while moving events in the opposite direction.
+    if (!inFlightEvents.isEmpty() || !prefetchingQueue.isEmpty()) {
       return false;
     }
 
@@ -905,6 +909,13 @@ public abstract class SubscriptionPrefetchingQueue {
    * <p>This is used when the server polled the event but cannot fit it in the current response.
    */
   public boolean requeue(final String consumerId, final SubscriptionCommitContext commitContext) {
+    return requeue(consumerId, commitContext, false);
+  }
+
+  private boolean requeue(
+      final String consumerId,
+      final SubscriptionCommitContext commitContext,
+      final boolean resetResponse) {
     acquireReadLock();
     try {
       if (isClosed()) {
@@ -921,7 +932,13 @@ public abstract class SubscriptionPrefetchingQueue {
               ev.cleanUp(false);
               return null;
             }
-            ev.resetLastPolledTimestamp();
+            if (resetResponse) {
+              // A new connection starts a fresh transfer and cannot interpret FILE_PIECE/FILE_SEAL
+              // as its initial poll response. Local response-size control must preserve that state.
+              ev.resetForRedelivery();
+            } else {
+              ev.resetLastPolledTimestamp();
+            }
             prefetchEvent(ev);
             requeued.set(true);
             return null;
@@ -936,11 +953,44 @@ public abstract class SubscriptionPrefetchingQueue {
     int requeuedCount = 0;
     for (final Pair<String, SubscriptionCommitContext> key :
         ImmutableSet.copyOf(inFlightEvents.keySet())) {
-      if (Objects.equals(consumerId, key.left) && requeue(consumerId, key.right)) {
+      if (Objects.equals(consumerId, key.left) && requeue(consumerId, key.right, true)) {
         requeuedCount++;
       }
     }
     return requeuedCount;
+  }
+
+  /** Replays every uncommitted delivery when the last subscriber leaves a retained topic. */
+  public void resetAndRequeueInFlightEvents() {
+    acquireWriteLock();
+    try {
+      if (isClosed()) {
+        return;
+      }
+      // Receiver disconnects and takeovers can release deliveries before the last unsubscribe.
+      // Rewind those too, but leave never-delivered events (including batch continuations) alone.
+      for (final SubscriptionEvent event : prefetchingQueue) {
+        if (!event.isCommitted() && Objects.nonNull(event.getLastPolledConsumerId())) {
+          event.resetForRedelivery();
+        }
+      }
+      for (final Pair<String, SubscriptionCommitContext> key :
+          ImmutableSet.copyOf(inFlightEvents.keySet())) {
+        inFlightEvents.computeIfPresent(
+            key,
+            (ignored, event) -> {
+              if (event.isCommitted()) {
+                event.cleanUp(false);
+              } else {
+                event.resetForRedelivery();
+                prefetchEvent(event);
+              }
+              return null;
+            });
+      }
+    } finally {
+      releaseWriteLock();
+    }
   }
 
   /**

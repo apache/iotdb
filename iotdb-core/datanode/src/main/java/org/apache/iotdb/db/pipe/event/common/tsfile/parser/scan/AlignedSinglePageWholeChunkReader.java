@@ -63,37 +63,61 @@ public class AlignedSinglePageWholeChunkReader extends AbstractChunkReader
   // deleted intervals of all the sub sensors
   private final List<List<TimeRange>> valueDeleteIntervalsList = new ArrayList<>();
   private final long pageEstimatedMemoryUsageInBytes;
+  private final Chunk ownedTimeChunk;
+  private final List<Chunk> ownedValueChunks;
 
   public AlignedSinglePageWholeChunkReader(
       Chunk timeChunk, List<Chunk> valueChunkList, LongConsumer filteredRowsRecord)
       throws IOException {
     super(Long.MIN_VALUE, null, filteredRowsRecord);
+    ownedTimeChunk = timeChunk;
+    ownedValueChunks = new ArrayList<>(valueChunkList);
     this.timeChunkHeader = timeChunk.getHeader();
     this.timeChunkDataBuffer = timeChunk.getData();
     this.encryptParam = timeChunk.getEncryptParam();
-    this.pageEstimatedMemoryUsageInBytes =
-        calculateMaxPageEstimatedMemoryUsageInBytesWithBatchData(timeChunk, valueChunkList);
+    try {
+      this.pageEstimatedMemoryUsageInBytes =
+          calculateMaxPageEstimatedMemoryUsageInBytesWithBatchData(timeChunk, valueChunkList);
 
-    valueChunkList.forEach(
-        chunk -> {
-          this.valueChunkHeaderList.add(chunk == null ? null : chunk.getHeader());
-          this.valueChunkDataBufferList.add(chunk == null ? null : chunk.getData());
-          this.valueDeleteIntervalsList.add(chunk == null ? null : chunk.getDeleteIntervalList());
-        });
+      valueChunkList.forEach(
+          chunk -> {
+            this.valueChunkHeaderList.add(chunk == null ? null : chunk.getHeader());
+            this.valueChunkDataBufferList.add(chunk == null ? null : chunk.getData());
+            this.valueDeleteIntervalsList.add(chunk == null ? null : chunk.getDeleteIntervalList());
+          });
 
-    initAllPageReaders();
+      initAllPageReaders();
+    } catch (IOException | RuntimeException | Error e) {
+      try {
+        close();
+      } catch (RuntimeException failure) {
+        e.addSuppressed(failure);
+      }
+      throw e;
+    }
+  }
+
+  @Override
+  public void close() {
+    ownedTimeChunk.close();
+    for (Chunk chunk : ownedValueChunks) {
+      if (chunk != null) {
+        chunk.close();
+      }
+    }
   }
 
   private void initAllPageReaders() throws IOException {
+    int pageIndex = 0;
     while (timeChunkDataBuffer.remaining() > 0) {
-      AlignedPageReader alignedPageReader = deserializeFromSinglePageChunk();
+      AlignedPageReader alignedPageReader = deserializeFromSinglePageChunk(pageIndex++);
       if (alignedPageReader != null) {
         pageReaderList.add(alignedPageReader);
       }
     }
   }
 
-  private AlignedPageReader deserializeFromSinglePageChunk() throws IOException {
+  private AlignedPageReader deserializeFromSinglePageChunk(int pageIndex) throws IOException {
     PageHeader timePageHeader =
         PageHeader.deserializeFrom(timeChunkDataBuffer, (Statistics<? extends Serializable>) null);
     List<PageHeader> valuePageHeaderList = new ArrayList<>();
@@ -115,7 +139,7 @@ public class AlignedSinglePageWholeChunkReader extends AbstractChunkReader
       skipCurrentPage(timePageHeader, valuePageHeaderList);
       return null;
     }
-    return constructAlignedPageReader(timePageHeader, valuePageHeaderList);
+    return constructAlignedPageReader(timePageHeader, valuePageHeaderList, pageIndex);
   }
 
   private void skipCurrentPage(PageHeader timePageHeader, List<PageHeader> valuePageHeader) {
@@ -133,11 +157,17 @@ public class AlignedSinglePageWholeChunkReader extends AbstractChunkReader
   }
 
   private AlignedPageReader constructAlignedPageReader(
-      PageHeader timePageHeader, List<PageHeader> rawValuePageHeaderList) throws IOException {
+      PageHeader timePageHeader, List<PageHeader> rawValuePageHeaderList, int pageIndex)
+      throws IOException {
     IDecryptor decryptor = IDecryptor.getDecryptor(encryptParam);
     ByteBuffer timePageData =
         ChunkReader.deserializePageData(
-            timePageHeader, timeChunkDataBuffer, timeChunkHeader, decryptor);
+            timePageHeader,
+            timeChunkDataBuffer,
+            timeChunkHeader,
+            decryptor,
+            encryptParam,
+            pageIndex);
 
     List<PageHeader> valuePageHeaderList = new ArrayList<>();
     LazyLoadPageData[] valuePageDataArray = new LazyLoadPageData[rawValuePageHeaderList.size()];
@@ -166,7 +196,9 @@ public class AlignedSinglePageWholeChunkReader extends AbstractChunkReader
                 valueChunkDataBufferList.get(i).array(),
                 currentPagePosition,
                 IUnCompressor.getUnCompressor(valueChunkHeader.getCompressionType()),
-                encryptParam);
+                encryptParam,
+                pageIndex,
+                valueChunkHeader.getChunkOrdinal());
         valueDataTypeList.add(valueChunkHeader.getDataType());
         valueDecoderList.add(
             Decoder.getDecoderByType(

@@ -21,6 +21,7 @@ package org.apache.iotdb.pipe.it.dual.treemodel.manual;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -303,7 +304,10 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       TestUtils.executeNonQuery(senderEnv, "create user `ln_write_user` 'write_pwd123456'", null);
 
       TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "list user", "UserId,User,", Collections.singleton("0,root,"));
+          receiverEnv,
+          "list user",
+          ColumnHeaderConstant.USER_ID + "," + ColumnHeaderConstant.USER + ",",
+          Collections.singleton("0,root,"));
     }
   }
 
@@ -350,7 +354,14 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "LIST PRIVILEGES OF USER ln_write_user",
-          "Role,Scope,Privileges,GrantOption,",
+          ColumnHeaderConstant.ROLE
+              + ","
+              + ColumnHeaderConstant.SCOPE
+              + ","
+              + ColumnHeaderConstant.PRIVILEGES
+              + ","
+              + ColumnHeaderConstant.GRANT_OPTION
+              + ",",
           new HashSet<>(
               Arrays.asList(
                   ",,SYSTEM,true,",

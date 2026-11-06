@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.load;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
@@ -48,6 +49,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFil
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileTableSchemaRegistrationUtils;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
 import org.apache.iotdb.db.storageengine.load.converter.PipeTsFileConversionTaskManager;
@@ -250,7 +252,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       }
       final String exceptionMessage =
           String.format(
-              "Auto create or verify schema error when executing statement %s. Detail: %s.",
+              DataNodeQueryMessages
+                  .EXCEPTION_AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR_WHEN_EXECUTING_STATEMENT_ARG_DETAIL_ARG_B6C9E02E,
               getStatementString(),
               e.getMessage() == null ? e.getClass().getName() : e.getMessage());
       LOGGER.warn(exceptionMessage, e);
@@ -287,7 +290,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.LOAD_FILE_ERROR,
-              "TsFile encryption is enabled, and the Load TsFile function is disabled"));
+              DataNodeQueryMessages
+                  .MESSAGE_TSFILE_ENCRYPTION_IS_ENABLED_AND_THE_LOAD_TSFILE_FUNCTION_IS_DISABLED_7CB357EE));
       return false;
     }
 
@@ -323,7 +327,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
               isAutoCreateSchemaRequested,
               tabletConversionThresholdBytes,
               isGeneratedByPipe,
-              Objects.nonNull(context) ? context.getUsername() : null);
+              Objects.nonNull(context) && Objects.nonNull(context.getSession())
+                  ? context.getUsername()
+                  : null);
 
       if (LoadUtil.loadTsFileAsyncToActiveDir(tsFiles, activeLoadAttributes, isDeleteAfterLoad)) {
         analysis.setFinishQueryAfterAnalyze(true);
@@ -378,8 +384,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         }
         final String exceptionMessage =
             String.format(
-                "Loading file %s failed. Detail: %s",
-                tsFile.getPath(), e.getMessage() == null ? e.getClass().getName() : e.getMessage());
+                DataNodeQueryMessages.EXCEPTION_LOADING_FILE_ARG_FAILED_DETAIL_ARG_C161A17F,
+                tsFile.getPath(),
+                e.getMessage() == null ? e.getClass().getName() : e.getMessage());
         LOGGER.warn(exceptionMessage, e);
         analysis.setFinishQueryAfterAnalyze(true);
         analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
@@ -424,7 +431,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       // check whether the tsfile is tree-model or not
       final Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
-      final boolean isTableModelFile = Objects.nonNull(tableSchemaMap) && !tableSchemaMap.isEmpty();
+      final boolean isTableModelFile = detectTableModelTsFile(reader, tableSchemaMap);
       if (isGeneratedByPipe) {
         LOGGER.debug(
             DataNodeQueryMessages.TSFILE_ARG_IS_A_ARG_MODEL_FILE,
@@ -502,6 +509,19 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       // reset the session info to the original one
       context.setSession(sessionInfo);
     }
+  }
+
+  /**
+   * Whether the TsFile is a table-model file. The explicit file property is authoritative, so a
+   * table-model file whose TableSchema map is empty is not mistaken for a tree-model file. Files
+   * written before the property existed fall back to the non-empty TableSchema map.
+   */
+  static boolean detectTableModelTsFile(
+      final TsFileSequenceReader reader, final Map<String, TableSchema> tableSchemaMap)
+      throws IOException {
+    // Keep the cheap map check first so that a normal file never reads the metadata again.
+    return (Objects.nonNull(tableSchemaMap) && !tableSchemaMap.isEmpty())
+        || TsFileTableSchemaRegistrationUtils.isTableModel(reader.readFileMetadata());
   }
 
   private void deleteFile(final File file) {
@@ -893,6 +913,18 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private boolean setTemporaryUnavailableStatusIfNecessary(
       final IAnalysis analysis, final Throwable throwable) {
+    // Region unavailability can persist beyond recovery. Retain the file for retry; permanent
+    // region loss still requires operator intervention.
+    if (throwable instanceof IoTDBRuntimeException
+        && ((IoTDBRuntimeException) throwable).getErrorCode()
+            == TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION, throwable.getMessage()));
+      setRealStatement(analysis);
+      return true;
+    }
     if (isTemporaryUnavailableDueToPipeSchemaNotReady(throwable)) {
       setFailAnalysisForTemporaryUnavailablePipeSchema(analysis, throwable);
       return true;
@@ -931,7 +963,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       try (final TsFileSequenceReader reader =
           new TsFileSequenceReader(tsFiles.get(i).getAbsolutePath(), true)) {
         final Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
-        isTableModelTsFile.set(i, Objects.nonNull(tableSchemaMap) && !tableSchemaMap.isEmpty());
+        isTableModelTsFile.set(i, detectTableModelTsFile(reader, tableSchemaMap));
         isTableModelTsFileReliableIndex = i;
       }
     }

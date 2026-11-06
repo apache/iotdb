@@ -35,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.github.benmanes.caffeine.cache.Weigher;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -95,6 +96,14 @@ public class ChunkCache {
                     (key, chunk) ->
                         (int) (key.getRetainedSizeInBytes() + chunk.getRetainedSizeInBytes()))
             .recordStats()
+            .removalListener(
+                (ChunkCacheKey key, Chunk chunk, RemovalCause cause) -> {
+                  if (chunk != null) {
+                    synchronized (chunk) {
+                      chunk.close();
+                    }
+                  }
+                })
             .build();
 
     // add metrics
@@ -162,8 +171,9 @@ public class ChunkCache {
     ChunkLoader chunkLoader = new ChunkLoader(ioSizeRecorder, externalTsFile);
     try {
       if (!CACHE_ENABLE || externalTsFile) {
-        Chunk chunk = chunkLoader.apply(chunkCacheKey);
-        return constructChunk(chunk, timeRangeList, chunkStatistic);
+        try (Chunk chunk = chunkLoader.apply(chunkCacheKey)) {
+          return constructChunk(chunk, timeRangeList, chunkStatistic);
+        }
       }
 
       Chunk chunk = lruCache.get(chunkCacheKey, chunkLoader);
@@ -172,7 +182,15 @@ public class ChunkCache {
         DEBUG_LOGGER.info(StorageEngineMessages.GET_CHUNK_FROM_CACHE, chunkCacheKey);
       }
 
-      return constructChunk(chunk, timeRangeList, chunkStatistic);
+      synchronized (chunk) {
+        if (chunk.getEncryptParam() == null || !chunk.getEncryptParam().isDestroyed()) {
+          return constructChunk(chunk, timeRangeList, chunkStatistic);
+        }
+      }
+      // Eviction can race with a cache hit. Reload instead of retaining a closed parameter.
+      try (Chunk reloaded = chunkLoader.apply(chunkCacheKey)) {
+        return constructChunk(reloaded, timeRangeList, chunkStatistic);
+      }
     } catch (IoTDBIORuntimeException e) {
       throw e.getCause();
     } finally {

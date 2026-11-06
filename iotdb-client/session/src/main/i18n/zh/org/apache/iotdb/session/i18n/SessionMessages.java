@@ -284,4 +284,31 @@ public final class SessionMessages {
   public static final String EXCEPTION_RETRY_EXECUTE_STATEMENT_ARG_FAILED_ARG_TIMES_ARG_216C6873 = "在 %s 上重试执行语句失败 %d 次：%s";
   public static final String EXCEPTION_SESSIONPOOL_DOESN_T_SUPPORT_EXECUTING_ARG_DIRECTLY_B778F701 = "SessionPool 不支持直接执行 %s";
 
+  public static final String
+      EXCEPTION_FAIL_TO_RECONNECT_TO_SERVER_PLEASE_CHECK_SERVER_STATUS_D9A2790F =
+          "重新连接服务器失败，请检查服务器状态。";
+
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_07BE17C0 = "不支持的数据类型：";
+
+  public static final String
+      EXCEPTION_QUERY_DO_NOT_ENABLE_REDIRECT_PLEASE_CONFIRM_THE_SESSION_AND_SERVER_CONF_AE321ADB =
+          "查询未启用重定向，请确认 Session 和服务器配置。";
+
+  public static final String
+      EXCEPTION_TIMES_MEASUREMENTSLIST_AND_VALUESLIST_S_SIZE_SHOULD_BE_EQUAL_626B0CD6 =
+          "times、measurementsList 和 valuesList 的大小应相等";
+
+  public static final String EXCEPTION_SESSION_CAN_NOT_CONNECT_TO_ARG_226FBA66 = "Session 无法连接到 {}";
+
+  public static final String
+      EXCEPTION_ALL_VALUES_ARE_NULL_AND_THIS_SUBMISSION_IS_IGNORED_DEVICEID_IS_ARG_TIME_IS_ARG_MEASUREMENTS_IS_ARG_5524221C =
+          "所有值均为空，本次提交被忽略，deviceId 为 [{}]，time 为 [{}]，measurements 为 [{}]";
+
+  public static final String
+      EXCEPTION_ALL_VALUES_ARE_NULL_AND_THIS_SUBMISSION_IS_IGNORED_DEVICEID_IS_ARG_TIMES_ARE_ARG_MEASUREMENTS_ARE_ARG_12C45858 =
+          "所有值均为空，本次提交被忽略，deviceId 为 [{}]，times 为 [{}]，measurements 为 [{}]";
+
+  public static final String
+      EXCEPTION_ALL_VALUES_ARE_NULL_AND_THIS_SUBMISSION_IS_IGNORED_DEVICEIDS_ARE_ARG_TIMES_ARE_ARG_MEASUREMENTS_ARE_ARG_6A993BCB =
+          "所有值均为空，本次提交被忽略，deviceIds 为 [{}]，times 为 [{}]，measurements 为 [{}]";
 }

@@ -621,6 +621,33 @@ public final class DataNodeSchemaMessages {
 
   public static final String ILLEGAL_PATH_LOG = "illegal path {}";
 
+  public static final String LOG_ARG_TIMESERIES_ARG_IS_REMOVED_FROM_TAG_INVERTED_INDEX_01BC0CE1 =
+      "%s : TimeSeries %s is removed from tag inverted index, ";
+  public static final String
+      LOG_ARG_TIMESERIES_ARG_S_TAG_INFO_HAS_BEEN_REMOVED_FROM_TAG_INVERTED_INDEX_C6DAD2DF =
+          "%s: TimeSeries %s's tag info has been removed from tag inverted index ";
+  public static final String
+      LOG_BEFORE_DELETING_IT_TAG_KEY_IS_ARG_TAG_VALUE_IS_ARG_TLOG_OFFSET_IS_ARG_CONTAINS_KEY_B_BE8C6CBC =
+          "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b";
+  public static final String LOG_TAG_KEY_IS_ARG_TAG_VALUE_IS_ARG_TLOG_OFFSET_IS_ARG_C1DB5214 =
+      "tag key is %s, tag value is %s, tlog offset is %d";
+  public static final String MESSAGE_COULD_SPECIFY_THE_OUTPUT_FILE_AFTER_PARSE_OPTIONAL_9907C287 =
+      "Could specify the output file after parse (optional)";
+  public static final String MESSAGE_DISPLAY_HELP_INFORMATION_3BBD4899 = "Display help information";
+  public static final String MESSAGE_MLOG_FILE_47096EDD = "mlog file";
+  public static final String MESSAGE_NEED_TO_SPECIFY_A_BINARY_MLOG_FILE_TO_PARSE_REQUIRED_2F43690B =
+      "Need to specify a binary mlog file to parse (required)";
+  public static final String MESSAGE_NEED_TO_SPECIFY_A_PBTREE_FILE_TO_SKETCH_REQUIRED_D40FA676 =
+      "Need to specify a pbtree file to sketch (required)";
+  public static final String MESSAGE_OUTPUT_TXT_FILE_261FEB25 = "output txt file";
+  public static final String MESSAGE_PBTREE_FILE_493CA5AD = "pbtree file";
+  public static final String MESSAGE_REQUIRED_VALUES_FOR_OPTION_ARG_NOT_PROVIDED_86467CA2 =
+      "Required values for option '%s' not provided";
+  public static final String
+      MESSAGE_TAG_ATTRIBUTE_EXCEEDS_THE_MAX_LENGTH_LIMIT_PLEASE_ENLARGE_TAG_ATTRIBUTE_TOTAL_SIZE_IN_IOTDB_SYSTEM_PROPERTIES_996EA890 =
+          "Tag/Attribute exceeds the max length limit. Please enlarge tag_attribute_total_size in"
+              + " iotdb-system.properties";
+
   private DataNodeSchemaMessages() {}
   // ---------------------------------------------------------------------------
   // Additional log messages
@@ -744,8 +771,8 @@ public final class DataNodeSchemaMessages {
   public static final String EXCEPTION_COMMA_50AD1C01 = ", ";
   public static final String MESSAGE_SKIP_ROLLBACK_RENAMING_OLD_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_664F2456 = "Skip rollback renaming old table {}.{} because it has been handled.";
   public static final String MESSAGE_SKIP_COMMIT_UPDATE_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_31362A1C = "Skip commit-update table {}.{} because it has been handled.";
-  public static final String LOG_ADD_VIEW_COLUMN_CN_FAILED_FE4F10AC = "Failed to add columns to the tree to table views for operation {}, ConfigNode returned {}.";
   public static final String LOG_ADD_VIEW_COLUMN_FAILED_FOR_VIEW_B3EB8144 = "Failed to add a column to the view {}.{} for operation {}, ConfigNode returned {}.";
+  public static final String LOG_ADD_VIEW_COLUMN_ALREADY_EXISTS_FOR_VIEW_EDFF86E8 = "The columns to be added to the view {}.{} for operation {} already exist and are skipped, ConfigNode returned {}.";
   public static final String LOG_ADD_VIEW_COLUMN_EMPTY_RESPONSE_B9502E26 = "Failed to add columns to the tree to table views for operation {}, ConfigNode returned an empty response.";
   public static final String LOG_ADD_VIEW_COLUMN_CN_UNREACHABLE_E9BC7652 = "Failed to add columns to the tree to table views for operation {}, because ConfigNode is not reachable.";
   public static final String LOG_TRIGGER_ADD_VIEW_COLUMN_FAILED_B909817F = "Failed to trigger the view column addition of the tree to table views for plan node {}, the schema write is not affected.";
@@ -765,4 +792,33 @@ public final class DataNodeSchemaMessages {
       LOG_THE_METADATA_LEASE_IS_FENCED_WHILE_ADDING_VIEW_COLUMNS_GIVING_UP_THIS_ROUND_THE_MEASUREMENTS_ARE_ARG_5D1B2D44 =
           "The metadata lease is fenced while adding view columns, giving up this round; the measurements are {}";
 
+  public static final String
+      EXCEPTION_PBTREE_FILE_SKETCH_TOOL_NOTICE_INTERNAL_ENTITY_PRESENTS_AS_NAME_IS_ALIGNED_CHILD_SEGMENT_ADDRESS_MEASUREMENT_PRESENTS_AS_NAME_DATA_TYPE_ENCODING_COMPRESSOR_ALIAS_IF_EXIST_BELONG_TO_STORAGEGROUP_ARG_SEGMENT_OF_SG_ARG_TOTAL_PAGES_ARG_006AFD00 =
+          "=============================\n"
+              + "== PBTree File Sketch Tool ==\n"
+              + "=============================\n"
+              + "== Notice: \n"
+              + "==  Internal/Entity presents as (name, is_aligned, child_segment_address)\n"
+              + "==  Measurement presents as (name, data_type, encoding, compressor,"
+              + " alias_if_exist)\n"
+              + "=============================\n"
+              + "Belong to StorageGroup: [%s], segment of SG:%s, total pages:%d\n";
+
+  public static final String EXCEPTION_ALIAS_ARG_EA404C75 = "alias: %s, ";
+
+  public static final String EXCEPTION_TYPE_ARG_EBFECBD8 = "type: %s, ";
+
+  public static final String EXCEPTION_ENCODING_ARG_C3BBB084 = "encoding: %s, ";
+
+  public static final String EXCEPTION_COMPRESSOR_ARG_313D1482 = "compressor: %s]";
+
+  public static final String EXCEPTION_NOT_SPECIFIED_022755C1 = "NOT SPECIFIED";
+
+  public static final String EXCEPTION_ALIGNED_IS_NULL_1EFBFBEC = "aligned is null, ";
+
+  public static final String EXCEPTION_NOT_ALIGNED_EED2E48F = "not aligned, ";
+
+  public static final String EXCEPTION_USING_TEMPLATE_07534BF6 = "using template.]";
+
+  public static final String EXCEPTION_NOT_USING_TEMPLATE_9E135BEE = "not using template.]";
 }

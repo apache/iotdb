@@ -136,7 +136,10 @@ public abstract class AbstractImportData extends AbstractDataTool implements Run
             } catch (InterruptedException e) {
               importFailed.set(true);
               Thread.currentThread().interrupt();
-              ioTPrinter.println("ImportData thread join interrupted: " + e.getMessage());
+              ioTPrinter.println(
+                  String.format(
+                      CliMessages.EXCEPTION_IMPORTDATA_THREAD_JOIN_INTERRUPTED_ARG_B94FC04B,
+                      Objects.toString(e.getMessage())));
             }
           });
       if (!importFailed.get()) {
@@ -163,14 +166,17 @@ public abstract class AbstractImportData extends AbstractDataTool implements Run
       try {
         processingFile(file, true);
         processingLoadSuccessfulFileSuccessfulNum.increment();
-        ioTPrinter.println("Processed success file [ " + file + " ] successfully!");
+        ioTPrinter.println(
+            String.format(
+                CliMessages.LOG_PROCESSED_SUCCESS_FILE_ARG_SUCCESSFULLY_B2CCF2E5,
+                Objects.toString(file)));
       } catch (final Exception processSuccessException) {
         importFailed.set(true);
         ioTPrinter.println(
-            "Failed to process success file [ "
-                + file
-                + " ]: "
-                + processSuccessException.getMessage());
+            String.format(
+                CliMessages.LOG_FAILED_TO_PROCESS_SUCCESS_FILE_ARG_ARG_8E0E4B9C,
+                Objects.toString(file),
+                Objects.toString(processSuccessException.getMessage())));
       }
     }
   }
@@ -186,31 +192,47 @@ public abstract class AbstractImportData extends AbstractDataTool implements Run
     try {
       if (Objects.nonNull(e.getMessage()) && e.getMessage().contains("memory")) {
         ioTPrinter.println(
-            "Rejecting file [ " + filePath + " ] due to memory constraints, will retry later.");
+            String.format(
+                CliMessages
+                    .LOG_REJECTING_FILE_ARG_DUE_TO_MEMORY_CONSTRAINTS_WILL_RETRY_LATER_AE83A15F,
+                Objects.toString(filePath)));
         ImportTsFileScanTool.putToQueue(filePath);
         return;
       }
 
       loadFileFailedNum.increment();
       importFailed.set(true);
-      ioTPrinter.println("Failed to import [ " + filePath + " ] file: " + e.getMessage());
+      ioTPrinter.println(
+          String.format(
+              CliMessages.LOG_FAILED_TO_IMPORT_ARG_FILE_ARG_F085D907,
+              Objects.toString(filePath),
+              Objects.toString(e.getMessage())));
 
       try {
         processingFile(filePath, false);
         processingLoadFailedFileSuccessfulNum.increment();
-        ioTPrinter.println("Processed fail file [ " + filePath + " ] successfully!");
+        ioTPrinter.println(
+            String.format(
+                CliMessages.LOG_PROCESSED_FAIL_FILE_ARG_SUCCESSFULLY_B430F7F0,
+                Objects.toString(filePath)));
       } catch (final Exception processFailException) {
         ioTPrinter.println(
-            "Failed to process fail file [ "
-                + filePath
-                + " ]: "
-                + processFailException.getMessage());
+            String.format(
+                CliMessages.LOG_FAILED_TO_PROCESS_FAIL_FILE_ARG_ARG_D01A0F75,
+                Objects.toString(filePath),
+                Objects.toString(processFailException.getMessage())));
       }
     } catch (final InterruptedException e1) {
-      ioTPrinter.println("Unexpected error occurred: " + e1.getMessage());
+      ioTPrinter.println(
+          String.format(
+              CliMessages.EXCEPTION_UNEXPECTED_ERROR_OCCURRED_ARG_402FA331,
+              Objects.toString(e1.getMessage())));
       Thread.currentThread().interrupt();
     } catch (final Exception e1) {
-      ioTPrinter.println("Unexpected error occurred: " + e1.getMessage());
+      ioTPrinter.println(
+          String.format(
+              CliMessages.EXCEPTION_UNEXPECTED_ERROR_OCCURRED_ARG_402FA331,
+              Objects.toString(e1.getMessage())));
     }
   }
 }

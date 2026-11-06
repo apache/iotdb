@@ -47,6 +47,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 
 public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser {
+  private TsFileInsertionEventTableParserTabletIterator activeTabletIterator;
 
   private final long startTime;
   private final long endTime;
@@ -291,6 +292,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                             currentModifications,
                             startTime,
                             endTime);
+                    activeTabletIterator = tabletIterator;
                   }
 
                   while (tabletIterator.hasNext()) {
@@ -374,22 +376,29 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
 
   @Override
   public void close() {
-    super.close();
+    try {
+      if (activeTabletIterator != null) {
+        activeTabletIterator.close();
+        activeTabletIterator = null;
+      }
+    } finally {
+      super.close();
 
-    if (allocatedMemoryBlockForBatchData != null) {
-      allocatedMemoryBlockForBatchData.close();
-    }
+      if (allocatedMemoryBlockForBatchData != null) {
+        allocatedMemoryBlockForBatchData.close();
+      }
 
-    if (allocatedMemoryBlockForChunk != null) {
-      allocatedMemoryBlockForChunk.close();
-    }
+      if (allocatedMemoryBlockForChunk != null) {
+        allocatedMemoryBlockForChunk.close();
+      }
 
-    if (allocatedMemoryBlockForChunkMeta != null) {
-      allocatedMemoryBlockForChunkMeta.close();
-    }
+      if (allocatedMemoryBlockForChunkMeta != null) {
+        allocatedMemoryBlockForChunkMeta.close();
+      }
 
-    if (allocatedMemoryBlockForTableSchemas != null) {
-      allocatedMemoryBlockForTableSchemas.close();
+      if (allocatedMemoryBlockForTableSchemas != null) {
+        allocatedMemoryBlockForTableSchemas.close();
+      }
     }
   }
 }

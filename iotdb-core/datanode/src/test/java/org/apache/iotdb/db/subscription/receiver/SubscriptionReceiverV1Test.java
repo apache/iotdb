@@ -205,6 +205,29 @@ public class SubscriptionReceiverV1Test {
   }
 
   @Test
+  public void testReplacedConnectionReturnsRetryableStatusForAllRequests() throws Exception {
+    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+    setField(receiver, "sharedConsumerConfig", consumerConfig);
+
+    receiver.invalidateConnection();
+
+    for (final PipeSubscribeRequestType requestType : PipeSubscribeRequestType.values()) {
+      Assert.assertEquals(
+          requestType.name(),
+          TSStatusCode.SUBSCRIPTION_CONNECTION_REPLACED.getStatusCode(),
+          receiver
+              .handle(new TPipeSubscribeReq((byte) 1, requestType.getType()))
+              .getStatus()
+              .getCode());
+    }
+    Assert.assertFalse(receiver.hasActiveConsumer());
+    Assert.assertFalse((boolean) getField(receiver, "consumerFenced"));
+    Assert.assertTrue((boolean) getField(receiver, "consumerInvalidated"));
+    Assert.assertEquals(0L, ((AtomicLong) getField(receiver, "inFlightRequestCount")).get());
+  }
+
+  @Test
   public void testFencedConsumerCannotHandshakeAgain() throws Exception {
     final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
     final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
@@ -219,6 +242,39 @@ public class SubscriptionReceiverV1Test {
             .getStatus()
             .getCode());
     Assert.assertTrue((boolean) getField(receiver, "consumerFenced"));
+  }
+
+  @Test
+  public void testHandshakeRepairsMissingBrokerWithoutChangingConsumerMetadata() throws Exception {
+    final String consumerGroupId = "group-" + UUID.randomUUID();
+    final String consumerId = "consumer-" + UUID.randomUUID();
+    final ConsumerConfig consumerConfig =
+        createConsumerConfig(1_000L, null, null, consumerId, consumerGroupId);
+    final ConsumerGroupMeta consumerGroupMeta =
+        new ConsumerGroupMeta(
+            consumerGroupId,
+            System.currentTimeMillis(),
+            new ConsumerMeta(
+                consumerId, System.currentTimeMillis(), consumerConfig.getAttribute()));
+    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    Assert.assertNull(
+        SubscriptionAgent.consumer().handleSingleConsumerGroupMetaChanges(consumerGroupMeta));
+    try {
+      Assert.assertTrue(SubscriptionAgent.broker().dropBroker(consumerGroupId));
+      Assert.assertFalse(SubscriptionAgent.broker().isBrokerExist(consumerGroupId));
+
+      final TSStatus status =
+          receiver
+              .handle(PipeSubscribeHandshakeReq.toTPipeSubscribeReq(consumerConfig))
+              .getStatus();
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertTrue(SubscriptionAgent.broker().isBrokerExist(consumerGroupId));
+      Assert.assertTrue(
+          SubscriptionAgent.consumer().isConsumerExisted(consumerGroupId, consumerId));
+    } finally {
+      SubscriptionAgent.consumer().handleDropConsumerGroup(consumerGroupId);
+    }
   }
 
   @Test

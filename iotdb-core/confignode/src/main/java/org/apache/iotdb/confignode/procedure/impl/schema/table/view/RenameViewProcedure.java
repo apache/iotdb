@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 
 import org.apache.iotdb.commons.schema.table.TreeToTableViewTrieOperationType;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -60,7 +61,7 @@ public class RenameViewProcedure extends RenameTableProcedure {
 
   @Override
   protected String getActionMessage() {
-    return "rename view";
+    return ProcedureMessages.MESSAGE_RENAME_VIEW_2A0DD1B0;
   }
 
   @Override

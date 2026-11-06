@@ -604,4 +604,5 @@ public final class QueryMessages {
       EXCEPTION_INPUT_ARRAY_LENGTH_MUST_BE_AT_LEAST_2_FFT_LENGTH_31DF6A25 =
           "输入数组长度必须至少为 FFT 长度的 2 倍。";
 
+  public static final String EXCEPTION_LINE_ARG_ARG_ARG_B222E08B = "第 %s 行第 %s 列：%s";
 }

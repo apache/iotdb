@@ -114,7 +114,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
 
   private void useNewWriter() throws IOException {
     fileWriter =
-        new CompactionTsFileWriter(
+        CompactionTsFileWriter.create(
             targetResources.get(currentFileIndex).getTsFile(),
             memoryBudgetForFileWriter,
             targetResources.get(currentFileIndex).isSeq()
@@ -137,6 +137,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   @Override
   public void endMeasurement(int subTaskId) throws IOException {
     sealChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
+    clearChunkWriterFactory(subTaskId);
   }
 
   @Override
@@ -189,6 +190,6 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
 
   @Override
   public EncryptParameter getEncryptParameter() {
-    return encryptParameter;
+    return fileWriter == null ? encryptParameter : fileWriter.getEncryptParameter();
   }
 }

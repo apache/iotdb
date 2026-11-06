@@ -87,6 +87,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -114,9 +115,11 @@ public class Session implements ISession {
   private static final Logger logger = LoggerFactory.getLogger(Session.class);
   protected static final TSProtocolVersion protocolVersion =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
-  public static final String MSG_UNSUPPORTED_DATA_TYPE = "Unsupported data type:";
+  public static final String MSG_UNSUPPORTED_DATA_TYPE =
+      SessionMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_07BE17C0;
   public static final String MSG_DONOT_ENABLE_REDIRECT =
-      "Query do not enable redirect," + " please confirm the session and server conf.";
+      SessionMessages
+          .EXCEPTION_QUERY_DO_NOT_ENABLE_REDIRECT_PLEASE_CONFIRM_THE_SESSION_AND_SERVER_CONF_AE321ADB;
   private static final ThreadPoolExecutor OPERATION_EXECUTOR =
       new ThreadPoolExecutor(
           SessionConfig.DEFAULT_SESSION_EXECUTOR_THREAD_NUM,
@@ -151,6 +154,7 @@ public class Session implements ISession {
   protected ZoneId zoneId;
   protected int thriftDefaultBufferSize;
   protected int thriftMaxFrameSize;
+  protected int thriftMaxReusableBufferSize = Integer.MAX_VALUE;
   protected TEndPoint defaultEndPoint;
   protected SessionConnection defaultSessionConnection;
   private boolean isClosed = true;
@@ -209,17 +213,22 @@ public class Session implements ISession {
   protected volatile boolean enableAutoCreateSchema = true;
 
   private static final String VALUES_SIZE_SHOULD_BE_EQUAL =
-      "times, measurementsList and valuesList's size should be equal";
+      SessionMessages
+          .EXCEPTION_TIMES_MEASUREMENTSLIST_AND_VALUESLIST_S_SIZE_SHOULD_BE_EQUAL_626B0CD6;
 
-  private static final String SESSION_CANNOT_CONNECT = "Session can not connect to {}";
+  private static final String SESSION_CANNOT_CONNECT =
+      SessionMessages.EXCEPTION_SESSION_CAN_NOT_CONNECT_TO_ARG_226FBA66;
 
   private static final String ALL_VALUES_ARE_NULL =
-      "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements is [{}]";
+      SessionMessages
+          .EXCEPTION_ALL_VALUES_ARE_NULL_AND_THIS_SUBMISSION_IS_IGNORED_DEVICEID_IS_ARG_TIME_IS_ARG_MEASUREMENTS_IS_ARG_5524221C;
 
   private static final String ALL_VALUES_ARE_NULL_WITH_TIME =
-      "All values are null and this submission is ignored,deviceId is [{}],times are [{}],measurements are [{}]";
+      SessionMessages
+          .EXCEPTION_ALL_VALUES_ARE_NULL_AND_THIS_SUBMISSION_IS_IGNORED_DEVICEID_IS_ARG_TIMES_ARE_ARG_MEASUREMENTS_ARE_ARG_12C45858;
   private static final String ALL_VALUES_ARE_NULL_MULTI_DEVICES =
-      "All values are null and this submission is ignored,deviceIds are [{}],times are [{}],measurements are [{}]";
+      SessionMessages
+          .EXCEPTION_ALL_VALUES_ARE_NULL_AND_THIS_SUBMISSION_IS_IGNORED_DEVICEIDS_ARE_ARG_TIMES_ARE_ARG_MEASUREMENTS_ARE_ARG_6A993BCB;
   private static final String ALL_INSERT_DATA_IS_NULL = SessionMessages.ALL_INSERT_DATA_IS_NULL;
 
   protected static final String TABLE = "table";
@@ -479,6 +488,7 @@ public class Session implements ISession {
     this.zoneId = builder.zoneId;
     this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
     this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
+    this.thriftMaxReusableBufferSize = builder.thriftMaxReusableBufferSize;
     this.connectionTimeoutInMs = builder.connectionTimeoutInMs;
     this.version = builder.version;
     this.useSSL = builder.useSSL;
@@ -562,7 +572,8 @@ public class Session implements ISession {
               keyStorePwd,
               sslProtocol,
               enableRPCCompaction,
-              version.toString());
+              version.toString(),
+              thriftMaxReusableBufferSize);
     } else {
       // A static supplier has no separate seed tier. Keep every configured address after reopen.
       Set<TEndPoint> staticNodes = new LinkedHashSet<>(getNodeUrls());
@@ -668,19 +679,48 @@ public class Session implements ISession {
 
   @Override
   public synchronized void close() throws IoTDBConnectionException {
+    Throwable closeException = null;
     try {
       if (isClosed) {
         return;
       }
-      if (enableRedirection) {
+
+      Set<SessionConnection> closedConnections = Collections.newSetFromMap(new IdentityHashMap<>());
+      if (endPointToSessionConnection != null) {
         for (SessionConnection sessionConnection : endPointToSessionConnection.values()) {
-          sessionConnection.close();
+          if (sessionConnection != null && closedConnections.add(sessionConnection)) {
+            try {
+              sessionConnection.close();
+            } catch (IoTDBConnectionException | RuntimeException e) {
+              if (closeException == null) {
+                closeException = e;
+              } else if (closeException != e) {
+                closeException.addSuppressed(e);
+              }
+            }
+          }
         }
-        endPointToSessionConnection.clear();
       }
-      getDefaultSessionConnection().close();
-      setDefaultSessionConnection(null);
+
+      SessionConnection defaultSessionConnection = getDefaultSessionConnection();
+      if (defaultSessionConnection != null && closedConnections.add(defaultSessionConnection)) {
+        try {
+          defaultSessionConnection.close();
+        } catch (IoTDBConnectionException | RuntimeException e) {
+          if (closeException == null) {
+            closeException = e;
+          } else if (closeException != e) {
+            closeException.addSuppressed(e);
+          }
+        }
+      }
     } finally {
+      if (!isClosed) {
+        if (endPointToSessionConnection != null) {
+          endPointToSessionConnection.clear();
+        }
+        setDefaultSessionConnection(null);
+      }
       // if executorService is null, it means that availableNodes is got from SessionPool and we
       // shouldn't clean that
       if (this.executorService != null) {
@@ -690,6 +730,13 @@ public class Session implements ISession {
         this.availableNodes = null;
       }
       isClosed = true;
+    }
+
+    if (closeException instanceof IoTDBConnectionException) {
+      throw (IoTDBConnectionException) closeException;
+    }
+    if (closeException instanceof RuntimeException) {
+      throw (RuntimeException) closeException;
     }
   }
 
@@ -4487,6 +4534,17 @@ public class Session implements ISession {
 
     public Builder thriftMaxFrameSize(int thriftMaxFrameSize) {
       this.thriftMaxFrameSize = thriftMaxFrameSize;
+      return this;
+    }
+
+    /**
+     * Buffer requests larger than this number of bytes use temporary arrays and reset reusable
+     * buffers to {@code thriftDefaultBufferSize}. Applies to compressed and uncompressed
+     * transports. The default {@link Integer#MAX_VALUE} keeps the original reuse policy; zero makes
+     * every nonempty buffer request use temporary storage.
+     */
+    public Builder thriftMaxReusableBufferSize(int thriftMaxReusableBufferSize) {
+      this.thriftMaxReusableBufferSize = thriftMaxReusableBufferSize;
       return this;
     }
 
