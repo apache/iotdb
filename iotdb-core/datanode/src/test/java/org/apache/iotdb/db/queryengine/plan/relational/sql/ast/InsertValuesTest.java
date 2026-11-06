@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
@@ -37,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.enums.TSDataType;
 import org.junit.After;
 import org.junit.Before;
@@ -162,7 +164,9 @@ public class InsertValuesTest {
   }
 
   private void cacheTable(TsTable table) {
-    DataNodeTableCache.getInstance().preUpdateTable(DATABASE, table, null);
-    DataNodeTableCache.getInstance().commitUpdateTable(DATABASE, TABLE, null);
+    DataNodeTableCache.getInstance()
+        .init(
+            TsTableInternalRPCUtil.serializeTableInitializationInfo(
+                ImmutableMap.of(DATABASE, ImmutableList.of(table)), ImmutableMap.of()));
   }
 }
