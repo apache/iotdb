@@ -29,8 +29,9 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -55,8 +56,8 @@ public class IoTDBDatabaseMaxRegionGroupNumIT {
   private static final String TABLE_NAME = "table1";
   private static final BKDRHashExecutor PARTITION_EXECUTOR = new BKDRHashExecutor(SERIES_SLOT_NUM);
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUpCluster() throws Exception {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -70,9 +71,14 @@ public class IoTDBDatabaseMaxRegionGroupNumIT {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDownCluster() {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @After
+  public void tearDown() throws SQLException {
+    TestUtils.clearAllDatabases(EnvFactory.getEnv());
   }
 
   @Test

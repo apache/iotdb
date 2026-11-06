@@ -22,6 +22,7 @@ package org.apache.iotdb.relational.it.schema;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -29,9 +30,11 @@ import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
+import org.awaitility.Awaitility;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -41,11 +44,13 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showDBColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showDBDetailsColumnHeaders;
@@ -59,8 +64,8 @@ import static org.junit.Assert.fail;
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBDatabaseIT {
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUpCluster() throws Exception {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -78,9 +83,64 @@ public class IoTDBDatabaseIT {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDownCluster() {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @After
+  public void tearDown() throws SQLException {
+    dropAllPipes(BaseEnv.TABLE_SQL_DIALECT);
+    dropAllPipes(BaseEnv.TREE_SQL_DIALECT);
+    TestUtils.clearAllDatabases(EnvFactory.getEnv());
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      final List<String> users = new ArrayList<>();
+      try (final ResultSet resultSet = statement.executeQuery("LIST USER")) {
+        while (resultSet.next()) {
+          final String user = resultSet.getString("User");
+          if (!SessionConfig.DEFAULT_USER.equals(user)) {
+            users.add(user);
+          }
+        }
+      }
+      for (final String user : users) {
+        statement.execute("DROP USER \"" + user.replace("\"", "\"\"") + "\"");
+      }
+    }
+  }
+
+  private static void dropAllPipes(final String sqlDialect) throws SQLException {
+    try (final Connection connection = EnvFactory.getEnv().getConnection(sqlDialect);
+        final Statement statement = connection.createStatement()) {
+      final List<String> pipes = new ArrayList<>();
+      try (final ResultSet resultSet = statement.executeQuery("SHOW PIPES")) {
+        while (resultSet.next()) {
+          pipes.add(resultSet.getString("ID"));
+        }
+      }
+      for (final String pipe : pipes) {
+        if (pipe.startsWith("__consensus")) {
+          continue;
+        }
+        final String quotedPipe =
+            BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect)
+                ? "\"" + pipe.replace("\"", "\"\"") + "\""
+                : "`" + pipe.replace("`", "``") + "`";
+        statement.execute("DROP PIPE " + quotedPipe);
+      }
+      Awaitility.await()
+          .atMost(60, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                try (final ResultSet resultSet = statement.executeQuery("SHOW PIPES")) {
+                  while (resultSet.next()) {
+                    assertTrue(resultSet.getString("ID").startsWith("__consensus"));
+                  }
+                }
+              });
+    }
   }
 
   @Test

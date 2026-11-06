@@ -35,8 +35,9 @@ import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
 import org.apache.tsfile.read.query.dataset.ResultSet;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -51,10 +52,8 @@ import java.util.concurrent.atomic.AtomicReference;
 @Category({LocalStandaloneIT.class})
 public class IoTDBSubscriptionTopicOwnerIT extends AbstractSubscriptionIT {
 
-  @Override
-  @Before
-  public void setUp() throws Exception {
-    super.setUp();
+  @BeforeClass
+  public static void setUpCluster() throws Exception {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -65,11 +64,19 @@ public class IoTDBSubscriptionTopicOwnerIT extends AbstractSubscriptionIT {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
+  @AfterClass
+  public static void tearDownCluster() {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
   @Override
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-    super.tearDown();
+    try {
+      clearSubscriptionState(EnvFactory.getEnv());
+    } finally {
+      super.tearDown();
+    }
   }
 
   @Test

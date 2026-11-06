@@ -32,7 +32,7 @@ import org.apache.iotdb.subscription.it.consensus.local.AbstractSubscriptionCons
 import org.apache.tsfile.read.query.dataset.ResultSet;
 import org.awaitility.Awaitility;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -48,16 +48,15 @@ import java.util.Set;
 public class IoTDBConsensusSubscriptionRecoveryTableIT
     extends AbstractSubscriptionConsensusLocalIT {
 
-  @Override
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUpCluster() throws Exception {
     // Persist each acknowledged batch before restarting the servers.
     final Properties properties = new Properties();
     properties.setProperty("subscription_consensus_commit_persist_interval", "1");
     properties.setProperty("subscription_consensus_commit_fsync_enabled", "true");
     ((MppCommonConfig) EnvFactory.getEnv().getConfig().getDataNodeCommonConfig())
         .updateProperties(properties);
-    super.setUp();
+    AbstractSubscriptionConsensusLocalIT.setUpCluster();
   }
 
   @Test

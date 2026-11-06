@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -38,7 +39,10 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.awaitility.Awaitility;
+import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -47,13 +51,65 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT1.class})
-public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
+public class IoTDBShowReceiversIT {
+
+  private static BaseEnv env;
+  private boolean resetClusterAfterTest;
+
+  @BeforeClass
+  public static void setUpCluster() {
+    MultiEnvFactory.createEnv(1);
+    env = MultiEnvFactory.getEnv(0);
+    env.getConfig()
+        .getCommonConfig()
+        .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(false);
+    env.initClusterEnvironment();
+  }
+
+  @AfterClass
+  public static void tearDownCluster() {
+    env.cleanClusterEnvironment();
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    if (resetClusterAfterTest) {
+      // A restarted node can leave stale internal clients in the surviving nodes. Isolate lifecycle
+      // tests so that the next method does not inherit their topology or broken connections.
+      env.cleanClusterEnvironment();
+      setUpCluster();
+      return;
+    }
+    TestUtils.dropAllPipes(env);
+    TestUtils.clearAllDatabases(env);
+    try (final Connection connection = env.getConnection();
+        final Statement statement = connection.createStatement()) {
+      final List<String> users = new ArrayList<>();
+      try (final ResultSet resultSet = statement.executeQuery("LIST USER")) {
+        while (resultSet.next()) {
+          final String user = resultSet.getString("User");
+          if (!SessionConfig.DEFAULT_USER.equals(user)) {
+            users.add(user);
+          }
+        }
+      }
+      for (final String user : users) {
+        statement.execute("DROP USER " + user);
+      }
+    }
+  }
 
   @Test
   public void testShowReceiversInTreeAndTableModel() {
@@ -655,6 +711,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
   }
 
   private void ensureDataNodeCount(final int dataNodeCount) {
+    resetClusterAfterTest = true;
     while (env.getDataNodeWrapperList().size() < dataNodeCount) {
       env.registerNewDataNode(true);
     }

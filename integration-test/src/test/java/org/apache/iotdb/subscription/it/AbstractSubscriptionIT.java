@@ -19,7 +19,13 @@
 
 package org.apache.iotdb.subscription.it;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.session.subscription.ISubscriptionTableSession;
+import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
+import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
 import org.apache.iotdb.session.subscription.consumer.base.SubscriptionExecutorServiceManager;
+import org.apache.iotdb.session.subscription.model.Topic;
 
 import org.junit.After;
 import org.junit.Before;
@@ -47,4 +53,25 @@ public abstract class AbstractSubscriptionIT {
 
   @After
   public void tearDown() throws Exception {}
+
+  protected static void clearSubscriptionState(final BaseEnv env) throws Exception {
+    try (final SubscriptionTreeSession session =
+        new SubscriptionTreeSession(env.getIP(), Integer.parseInt(env.getPort()))) {
+      session.open();
+      for (final Topic topic : session.getTopics()) {
+        session.dropTopic(topic.getTopicName());
+      }
+    }
+    try (final ISubscriptionTableSession session =
+        new SubscriptionTableSessionBuilder()
+            .host(env.getIP())
+            .port(Integer.parseInt(env.getPort()))
+            .build()) {
+      session.open();
+      for (final Topic topic : session.getTopics()) {
+        session.dropTopic(topic.getTopicName());
+      }
+    }
+    TestUtils.clearAllDatabases(env);
+  }
 }

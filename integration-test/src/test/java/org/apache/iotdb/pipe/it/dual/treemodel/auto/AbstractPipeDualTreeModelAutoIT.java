@@ -80,7 +80,7 @@ public abstract class AbstractPipeDualTreeModelAutoIT {
   }
 
   @After
-  public final void tearDown() {
+  public void tearDown() {
     senderEnv.cleanClusterEnvironment();
     receiverEnv.cleanClusterEnvironment();
   }
