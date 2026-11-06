@@ -927,7 +927,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, LastCach
   public void updateLastCache(String databaseName) {
     TreeDeviceSchemaCacheManager.getInstance()
         .updateLastCacheIfExists(
-            databaseName, getDeviceID(), measurements, this, isAligned, measurementSchemas);
+            databaseName, getDeviceID(), measurements, this, measurementSchemas);
   }
 
   @Override

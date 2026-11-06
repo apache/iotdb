@@ -4745,10 +4745,8 @@ public class DataRegion implements IDataRegionForQuery {
           TableDeviceSchemaCache.getInstance()
               .updateLastCacheIfExists(databaseName, deviceID, measurements, timeValuePairs);
         } else {
-          // we do not update schema here, so aligned is not relevant
           TreeDeviceSchemaCacheManager.getInstance()
-              .updateLastCacheIfExists(
-                  databaseName, deviceID, measurements, timeValuePairs, false, null);
+              .updateLastCacheIfExists(databaseName, deviceID, measurements, timeValuePairs, null);
         }
       }
       newTsFileResource.setLastValues(null);
@@ -4766,10 +4764,8 @@ public class DataRegion implements IDataRegionForQuery {
           TableDeviceSchemaCache.getInstance()
               .updateLastCacheIfExists(databaseName, deviceID, measurements, timeValuePairs);
         } else {
-          // we do not update schema here, so aligned is not relevant
           TreeDeviceSchemaCacheManager.getInstance()
-              .updateLastCacheIfExists(
-                  databaseName, deviceID, measurements, timeValuePairs, false, null);
+              .updateLastCacheIfExists(databaseName, deviceID, measurements, timeValuePairs, null);
         }
       }
     } else {

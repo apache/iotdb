@@ -131,33 +131,6 @@ public class TableDeviceCacheEntry {
     }
   }
 
-  int setMeasurementSchema(
-      final String database,
-      final boolean isAligned,
-      final String[] measurements,
-      final IMeasurementSchema[] schemas) {
-    if (schemas == null) {
-      return 0;
-    }
-    // Safe here because tree schema is invalidated by the whole entry
-    IDeviceSchema schema = deviceSchema.get();
-    int result = 0;
-    if (schema == null) {
-      final TreeDeviceNormalSchema newSchema = new TreeDeviceNormalSchema(database, isAligned);
-      if (deviceSchema.compareAndSet(null, newSchema)) {
-        schema = newSchema;
-        result = TreeDeviceNormalSchema.INSTANCE_SIZE;
-      } else {
-        schema = deviceSchema.get();
-      }
-    }
-    if (!(schema instanceof TreeDeviceNormalSchema)) {
-      return 0;
-    }
-    result += ((TreeDeviceNormalSchema) schema).update(measurements, schemas);
-    return deviceSchema.get() == schema ? result : 0;
-  }
-
   IDeviceSchema getDeviceSchema() {
     return deviceSchema.get();
   }

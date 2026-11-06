@@ -129,7 +129,6 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
                   ? new TimeValuePair(time, value)
                   : needUpdateNullEntry ? TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN : null
             },
-            fullPath.isUnderAlignedEntity(),
             new IMeasurementSchema[] {fullPath.getMeasurementSchema()});
         return;
       }
@@ -149,7 +148,6 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
             fullPath.getIDeviceID(),
             new String[] {fullPath.getMeasurement()},
             new TimeValuePair[] {seriesScanInfo.right},
-            fullPath.isUnderAlignedEntity(),
             new IMeasurementSchema[] {fullPath.getMeasurementSchema()});
       }
     } finally {
