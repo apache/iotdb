@@ -68,6 +68,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.WatermarkPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
+import org.apache.iotdb.session.subscription.util.PollTimer;
 
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
@@ -978,12 +979,36 @@ public class ConsensusPrefetchingQueue {
   }
 
   public SubscriptionEvent poll(final String consumerId, final RegionProgress regionProgress) {
-    if (!retryPendingRuntimeActivation()) {
+    return poll(
+        consumerId,
+        regionProgress,
+        new PollTimer(System.currentTimeMillis(), SubscriptionAgent.receiver().remainingMs()));
+  }
+
+  public SubscriptionEvent poll(
+      final String consumerId, final RegionProgress regionProgress, final PollTimer timer) {
+    timer.update();
+    if (timer.isExpired() || !retryPendingRuntimeActivation()) {
       return null;
     }
-    acquireReadLock();
     try {
-      if (isClosed || closeRequested || !isActive) {
+      timer.update();
+      if (timer.isExpired()
+          || !lock.readLock().tryLock(timer.remainingMs(), TimeUnit.MILLISECONDS)) {
+        return null;
+      }
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn(
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_INTERRUPTED_WHILE_POLLING_B7CFF5FD,
+          this,
+          e);
+      return null;
+    }
+    try {
+      timer.update();
+      if (timer.isExpired() || isClosed || closeRequested || !isActive) {
         return null;
       }
       final String walReplayError = pendingWalReplayError.getAndSet(null);
@@ -1001,7 +1026,7 @@ public class ConsensusPrefetchingQueue {
         if (shouldThrottlePollByInFlightEvents()) {
           return null;
         }
-        event = pollInternal(consumerId);
+        event = pollInternal(consumerId, timer);
       }
       if (Objects.nonNull(event) && hasAvailableEventSlot() && !hasReachedPrefetchLimit()) {
         requestPrefetch();
@@ -1556,7 +1581,7 @@ public class ConsensusPrefetchingQueue {
     return buildWriterFrontiers(realtimeEntriesByWriter, this::peekRealtimeEntry);
   }
 
-  private SubscriptionEvent pollInternal(final String consumerId) {
+  private SubscriptionEvent pollInternal(final String consumerId, final PollTimer timer) {
     final long size = prefetchingQueue.size();
     if (size == 0) {
       LOGGER.debug(
@@ -1582,12 +1607,20 @@ public class ConsensusPrefetchingQueue {
 
     SubscriptionEvent event;
     try {
-      while (count++ < size
-          && Objects.nonNull(
-              event =
-                  prefetchingQueue.poll(
-                      SubscriptionConfig.getInstance().getSubscriptionPollMaxBlockingTimeMs(),
-                      TimeUnit.MILLISECONDS))) {
+      while (count++ < size) {
+        timer.update();
+        if (timer.isExpired()) {
+          break;
+        }
+        event =
+            prefetchingQueue.poll(
+                Math.min(
+                    SubscriptionConfig.getInstance().getSubscriptionPollMaxBlockingTimeMs(),
+                    timer.remainingMs()),
+                TimeUnit.MILLISECONDS);
+        if (Objects.isNull(event)) {
+          break;
+        }
         // Metadata events (currently WATERMARK) are fire-and-forget:
         // skip inFlightEvents tracking so they are not recycled and re-delivered indefinitely.
         if (event.getCurrentResponse().getResponseType()
