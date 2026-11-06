@@ -33,6 +33,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingDatabaseException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
@@ -146,7 +147,12 @@ public class LoadTsFileTableSchemaCache {
     this.metadata = metadata;
     this.context = context;
     this.shouldVerifyDataType = shouldVerifyDataType;
-    this.allowAutoCreateSchema = allowAutoCreateSchema;
+    this.allowAutoCreateSchema =
+        allowAutoCreateSchema
+            && IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
+            && (context == null
+                || context.getSession() == null
+                || context.getSession().isEnableAutoCreateSchema());
     this.currentBatchTable2Devices = new HashMap<>();
     this.currentModifications = PatternTreeMapFactory.getModsPatternTreeMap();
     this.needToCreateDatabase = needToCreateDatabase;
@@ -411,11 +417,11 @@ public class LoadTsFileTableSchemaCache {
       return;
     }
 
-    if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
-      throw new LoadAnalyzeException(
+    if (!allowAutoCreateSchema) {
+      throw new LoadAnalyzeMissingDatabaseException(
           String.format(
               DataNodeQueryMessages
-                  .QUERY_EXCEPTION_THE_DATABASE_S_DOES_NOT_EXIST_PLEASE_ENABLE_ENABLE_AUTO_B6683D0E,
+                  .EXCEPTION_THE_DATABASE_ARG_DOES_NOT_EXIST_AND_AUTO_CREATE_SCHEMA_IS_DISABLED_28F8D49A,
               database));
     }
 

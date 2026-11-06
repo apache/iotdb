@@ -22,27 +22,39 @@ package org.apache.iotdb.db.queryengine.plan.analyze.load;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingDatabaseException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
+import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
 import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
@@ -82,12 +94,21 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 @RunWith(PowerMockRunner.class)
 @PowerMockIgnore({"com.sun.org.apache.xerces.*", "javax.xml.*", "org.xml.*", "javax.management.*"})
-@PrepareForTest({LoadTsFileAnalyzer.class, LoadUtil.class, SchemaValidator.class})
+@PrepareForTest({
+  LoadTsFileAnalyzer.class,
+  LoadUtil.class,
+  SchemaValidator.class,
+  DataNodeTableCache.class,
+  Coordinator.class,
+  ClusterConfigTaskExecutor.class
+})
 public class LoadTsFileAnalyzerDiagnosticsTest {
 
   @Rule public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -390,6 +411,161 @@ public class LoadTsFileAnalyzerDiagnosticsTest {
   }
 
   @Test
+  public void testMissingDatabaseDoesNotTryTabletConversion() throws Exception {
+    final File file = temporaryFolder.newFile("missing-database-conversion.tsfile");
+    final LoadTsFileStatement statement = LoadTsFileStatement.createUnchecked(file.getPath());
+    statement.setAutoCreateSchema(false);
+    final String message =
+        String.format(
+            DataNodeQueryMessages
+                .EXCEPTION_THE_DATABASE_ARG_DOES_NOT_EXIST_AND_AUTO_CREATE_SCHEMA_IS_DISABLED_28F8D49A,
+            "missing_db");
+    try (final LoadTsFileAnalyzer analyzer =
+        new LoadTsFileAnalyzer(
+            statement, false, new MPPQueryContext(new QueryId("missing_database_conversion")))) {
+      final Analysis analysis = new Analysis();
+      Whitebox.invokeMethod(
+          analyzer,
+          "executeTabletConversionOnException",
+          (IAnalysis) analysis,
+          new LoadAnalyzeMissingDatabaseException(message));
+      Assert.assertTrue(analysis.isFinishQueryAfterAnalyze());
+      Assert.assertEquals(
+          TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), analysis.getFailStatus().getCode());
+      Assert.assertEquals(message, analysis.getFailStatus().getMessage());
+      verifyZeroInteractions(converter);
+      Assert.assertTrue(file.exists());
+    }
+  }
+
+  @Test
+  public void testDatabaseAutoCreationHonorsRequestPolicy() throws Exception {
+    assertDatabaseAutoCreationDisabled(true, false, true);
+  }
+
+  @Test
+  public void testDatabaseAutoCreationHonorsSessionPolicy() throws Exception {
+    assertDatabaseAutoCreationDisabled(true, true, false);
+  }
+
+  @Test
+  public void testDatabaseAutoCreationHonorsGlobalPolicy() throws Exception {
+    assertDatabaseAutoCreationDisabled(false, true, true);
+  }
+
+  private void assertDatabaseAutoCreationDisabled(
+      final boolean globalEnabled, final boolean requested, final boolean sessionEnabled)
+      throws Exception {
+    final boolean originalGlobalEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    final IClientManager<ConfigRegionId, ConfigNodeClient> originalClientManager =
+        Whitebox.getInternalState(
+            TreeSchemaAutoCreatorAndVerifier.class, "CONFIG_NODE_CLIENT_MANAGER");
+    final IClientManager<ConfigRegionId, ConfigNodeClient> clientManager =
+        mock(IClientManager.class);
+    final ConfigNodeClient client = mock(ConfigNodeClient.class);
+    when(clientManager.borrowClient(any())).thenReturn(client);
+    when(client.showDatabase(any()))
+        .thenReturn(new TShowDatabaseResp().setDatabaseInfoMap(Collections.emptyMap()));
+    final DataNodeTableCache tableCache = mock(DataNodeTableCache.class);
+    PowerMockito.mockStatic(DataNodeTableCache.class);
+    when(DataNodeTableCache.getInstance()).thenReturn(tableCache);
+    final ClusterConfigTaskExecutor executor = mock(ClusterConfigTaskExecutor.class);
+    PowerMockito.mockStatic(ClusterConfigTaskExecutor.class);
+    when(ClusterConfigTaskExecutor.getInstance()).thenReturn(executor);
+    final Coordinator coordinator = mock(Coordinator.class);
+    PowerMockito.mockStatic(Coordinator.class);
+    when(Coordinator.getInstance()).thenReturn(coordinator);
+    final Metadata metadata = mock(Metadata.class);
+    try {
+      IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(globalEnabled);
+      Whitebox.setInternalState(
+          TreeSchemaAutoCreatorAndVerifier.class, "CONFIG_NODE_CLIENT_MANAGER", clientManager);
+      for (final boolean tableModelRequest : new boolean[] {false, true}) {
+        final File file =
+            temporaryFolder.newFile("missing-database-" + tableModelRequest + ".tsfile");
+        final Map<String, String> attributes =
+            Collections.singletonMap(AUTO_CREATE_SCHEMA_KEY, String.valueOf(requested));
+        final LoadTsFile tableStatement =
+            LoadTsFile.createUnchecked(null, file.getAbsolutePath(), attributes);
+        final LoadTsFileStatement treeStatement =
+            LoadTsFileStatement.createUnchecked(file.getAbsolutePath());
+        treeStatement.setAutoCreateSchema(requested);
+        // Leave the database-creation path enabled, as it is by default with global creation on.
+        tableStatement.setAutoCreateDatabase(true);
+        treeStatement.setAutoCreateDatabase(true);
+        final MPPQueryContext context = new MPPQueryContext(new QueryId("missing_database"));
+        context.setSession(
+            new SessionInfo(
+                0,
+                new UserEntity(0, "root", ""),
+                ZoneOffset.UTC,
+                IoTDBConstant.ClientVersion.V_1_0,
+                "missing_db",
+                tableModelRequest ? SqlDialect.TABLE : SqlDialect.TREE,
+                sessionEnabled));
+        try (final LoadTsFileAnalyzer analyzer =
+            tableModelRequest
+                ? new LoadTsFileAnalyzer(tableStatement, false, context)
+                : new LoadTsFileAnalyzer(treeStatement, false, context)) {
+          Assert.assertFalse(analyzer.isAutoCreateSchemaEnabled());
+          Whitebox.setInternalState(analyzer, "metadata", metadata);
+          final LoadTsFileTableSchemaCache tableSchemaCache =
+              Whitebox.invokeMethod(analyzer, "getOrCreateTableSchemaCache");
+          tableSchemaCache.setDatabase("missing_db");
+          tableSchemaCache.setTableSchemaMap(
+              new HashMap<>(
+                  Collections.singletonMap(
+                      "table1",
+                      new TableSchema(
+                          "table1",
+                          Collections.singletonList(new MeasurementSchema("s", TSDataType.INT64)),
+                          Collections.singletonList(ColumnCategory.FIELD)))));
+          final LoadAnalyzeMissingSchemaException tableFailure =
+              Assert.assertThrows(
+                  LoadAnalyzeMissingSchemaException.class,
+                  () -> tableSchemaCache.createTableAndDatabaseIfNecessary("table1"));
+          Assert.assertEquals(
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_THE_DATABASE_ARG_DOES_NOT_EXIST_AND_AUTO_CREATE_SCHEMA_IS_DISABLED_28F8D49A,
+                  "missing_db"),
+              tableFailure.getMessage());
+          final TreeSchemaAutoCreatorAndVerifier verifier =
+              Whitebox.invokeMethod(analyzer, "getOrCreateTreeSchemaVerifier");
+          final LoadTsFileTreeSchemaCache treeCache =
+              Whitebox.getInternalState(verifier, "schemaCache");
+          treeCache.addTimeSeries(
+              IDeviceID.Factory.DEFAULT_FACTORY.create("root.missing_db.d"),
+              new MeasurementSchema("s", TSDataType.INT64));
+          final LoadAnalyzeMissingSchemaException treeFailure =
+              Assert.assertThrows(
+                  LoadAnalyzeMissingSchemaException.class,
+                  () -> Whitebox.invokeMethod(verifier, "autoCreateDatabase"));
+          Assert.assertEquals(
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_THE_DATABASE_ARG_DOES_NOT_EXIST_AND_AUTO_CREATE_SCHEMA_IS_DISABLED_28F8D49A,
+                  "root.missing_db"),
+              treeFailure.getMessage());
+          // An existing database remains usable under the same disabled policy.
+          treeCache.addAlreadySetDatabase(new PartialPath("root.missing_db"));
+          Whitebox.invokeMethod(verifier, "autoCreateDatabase");
+          Assert.assertEquals(sessionEnabled, context.getSession().isEnableAutoCreateSchema());
+        }
+      }
+      verifyZeroInteractions(executor, metadata, coordinator);
+      verify(client, never()).setDatabase(any());
+    } finally {
+      Whitebox.setInternalState(
+          TreeSchemaAutoCreatorAndVerifier.class,
+          "CONFIG_NODE_CLIENT_MANAGER",
+          originalClientManager);
+      IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(originalGlobalEnabled);
+    }
+  }
+
+  @Test
   public void testAsyncTableSqlLoadPreservesSessionSchemaCreationSetting() throws Exception {
     assertAsyncLoadPreservesSessionSchemaCreationSetting(true);
   }
@@ -411,60 +587,71 @@ public class LoadTsFileAnalyzerDiagnosticsTest {
             });
     final File file = temporaryFolder.newFile("async-schema.tsfile");
     final File pendingDir = temporaryFolder.newFolder("pending");
-    for (final boolean sessionEnabled : new boolean[] {false, true, false}) {
-      for (final boolean requested : new boolean[] {false, true, false}) {
-        handedOffAttributes.set(null);
-        final Map<String, String> attributes = new HashMap<>();
-        attributes.put(ASYNC_LOAD_KEY, "true");
-        attributes.put(DATABASE_NAME_KEY, "db");
-        if (!requested) {
-          attributes.put(AUTO_CREATE_SCHEMA_KEY, "false");
-        }
-        final LoadTsFile tableStatement =
-            LoadTsFile.createUnchecked(null, file.getAbsolutePath(), attributes);
-        final LoadTsFileStatement treeStatement =
-            LoadTsFileStatement.createUnchecked(file.getAbsolutePath());
-        treeStatement.setLoadAttributes(attributes);
-        final SessionInfo sessionInfo =
-            new SessionInfo(
-                0,
-                new UserEntity(0, "root", ""),
-                ZoneOffset.UTC,
-                IoTDBConstant.ClientVersion.V_1_0,
-                "db",
-                tableModelRequest ? SqlDialect.TABLE : SqlDialect.TREE,
-                sessionEnabled);
-        final MPPQueryContext context = new MPPQueryContext(new QueryId("async_load_schema"));
-        context.setSession(sessionInfo);
-        try (final LoadTsFileAnalyzer analyzer =
-            tableModelRequest
-                ? new LoadTsFileAnalyzer(tableStatement, false, context)
-                : new LoadTsFileAnalyzer(treeStatement, false, context)) {
-          final Analysis analysis = new Analysis();
-          analyzer.analyzeFileByFile(analysis);
-          Assert.assertTrue(analysis.isFinishQueryAfterAnalyze());
-          Assert.assertFalse(analysis.isFailed());
-        }
+    final boolean originalGlobalEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    try {
+      for (final boolean globalEnabled : new boolean[] {true, false}) {
+        IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(globalEnabled);
+        for (final boolean sessionEnabled : new boolean[] {false, true, false}) {
+          for (final boolean requested : new boolean[] {false, true, false}) {
+            handedOffAttributes.set(null);
+            final Map<String, String> attributes = new HashMap<>();
+            attributes.put(ASYNC_LOAD_KEY, "true");
+            attributes.put(DATABASE_NAME_KEY, "db");
+            if (!requested) {
+              attributes.put(AUTO_CREATE_SCHEMA_KEY, "false");
+            }
+            final LoadTsFile tableStatement =
+                LoadTsFile.createUnchecked(null, file.getAbsolutePath(), attributes);
+            final LoadTsFileStatement treeStatement =
+                LoadTsFileStatement.createUnchecked(file.getAbsolutePath());
+            treeStatement.setLoadAttributes(attributes);
+            final SessionInfo sessionInfo =
+                new SessionInfo(
+                    0,
+                    new UserEntity(0, "root", ""),
+                    ZoneOffset.UTC,
+                    IoTDBConstant.ClientVersion.V_1_0,
+                    "db",
+                    tableModelRequest ? SqlDialect.TABLE : SqlDialect.TREE,
+                    sessionEnabled);
+            final MPPQueryContext context = new MPPQueryContext(new QueryId("async_load_schema"));
+            context.setSession(sessionInfo);
+            try (final LoadTsFileAnalyzer analyzer =
+                tableModelRequest
+                    ? new LoadTsFileAnalyzer(tableStatement, false, context)
+                    : new LoadTsFileAnalyzer(treeStatement, false, context)) {
+              final Analysis analysis = new Analysis();
+              analyzer.analyzeFileByFile(analysis);
+              Assert.assertTrue(analysis.isFinishQueryAfterAnalyze());
+              Assert.assertFalse(analysis.isFailed());
+            }
 
-        Assert.assertNotNull(handedOffAttributes.get());
-        // Reconstruct the request as the active loader does with its own internal session.
-        final File queuedFile =
-            new File(
-                ActiveLoadPathHelper.resolveTargetDir(pendingDir, handedOffAttributes.get()),
-                file.getName());
-        final Map<String, String> parsedAttributes =
-            ActiveLoadPathHelper.parseAttributes(queuedFile, pendingDir);
-        final LoadTsFileStatement activeStatement =
-            LoadTsFileStatement.createUnchecked(file.getAbsolutePath());
-        ActiveLoadPathHelper.applyAttributesToStatement(parsedAttributes, activeStatement, false);
-        Assert.assertEquals(requested && sessionEnabled, activeStatement.isAutoCreateSchema());
-        Assert.assertEquals("db", activeStatement.getDatabase());
-        Assert.assertSame(sessionInfo, context.getSession());
-        Assert.assertEquals(sessionEnabled, sessionInfo.isEnableAutoCreateSchema());
-        Assert.assertEquals(requested, tableStatement.isAutoCreateSchema());
-        Assert.assertEquals(requested, treeStatement.isAutoCreateSchema());
-        Assert.assertTrue(file.exists());
+            Assert.assertNotNull(handedOffAttributes.get());
+            // Reconstruct the request as the active loader does with its own internal session.
+            final File queuedFile =
+                new File(
+                    ActiveLoadPathHelper.resolveTargetDir(pendingDir, handedOffAttributes.get()),
+                    file.getName());
+            final Map<String, String> parsedAttributes =
+                ActiveLoadPathHelper.parseAttributes(queuedFile, pendingDir);
+            final LoadTsFileStatement activeStatement =
+                LoadTsFileStatement.createUnchecked(file.getAbsolutePath());
+            ActiveLoadPathHelper.applyAttributesToStatement(
+                parsedAttributes, activeStatement, false);
+            Assert.assertEquals(
+                globalEnabled && requested && sessionEnabled, activeStatement.isAutoCreateSchema());
+            Assert.assertEquals("db", activeStatement.getDatabase());
+            Assert.assertSame(sessionInfo, context.getSession());
+            Assert.assertEquals(sessionEnabled, sessionInfo.isEnableAutoCreateSchema());
+            Assert.assertEquals(requested, tableStatement.isAutoCreateSchema());
+            Assert.assertEquals(requested, treeStatement.isAutoCreateSchema());
+            Assert.assertTrue(file.exists());
+          }
+        }
       }
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(originalGlobalEnabled);
     }
   }
 

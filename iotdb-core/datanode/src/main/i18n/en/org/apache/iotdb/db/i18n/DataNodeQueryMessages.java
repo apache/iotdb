@@ -523,6 +523,9 @@ public final class DataNodeQueryMessages {
       "Auto create or verify schema error.";
   public static final String LOAD_TSFILE_DEVICE_SCHEMA_MISSING_AUTO_CREATE_DISABLED =
       "Device %s does not exist in IoTDB and can not be created. Please check whether auto-create-schema is enabled.";
+  public static final String
+      EXCEPTION_THE_DATABASE_ARG_DOES_NOT_EXIST_AND_AUTO_CREATE_SCHEMA_IS_DISABLED_28F8D49A =
+          "The database %s does not exist and auto-create-schema is disabled.";
   public static final String LOAD_TSFILE_MEASUREMENT_SCHEMA_MISSING_AUTO_CREATE_DISABLED =
       "Measurement %s does not exist in IoTDB and can not be created. Please check whether auto-create-schema is enabled.";
   public static final String PIPE_GENERATED_LOAD_TSFILE_WAITING_FOR_SCHEMA_METADATA =

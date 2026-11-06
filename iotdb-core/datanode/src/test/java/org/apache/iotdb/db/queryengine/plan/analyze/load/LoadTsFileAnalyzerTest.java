@@ -252,11 +252,19 @@ public class LoadTsFileAnalyzerTest {
           LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
       statement.setAutoCreateSchema(true);
       statement.setAutoCreateDatabase(false);
-      statement.setVerifySchema(false);
+      statement.setVerifySchema(true);
 
       final ISchemaFetcher schemaFetcher = mock(ISchemaFetcher.class);
+      final ClusterSchemaTree existingSchema = new ClusterSchemaTree();
+      existingSchema.appendSingleMeasurement(
+          new PartialPath("root.load_session_schema.d1.s1"),
+          schemas.get(0),
+          null,
+          null,
+          null,
+          false);
       when(schemaFetcher.fetchSchemaList(anyList(), anyList(), any(MPPQueryContext.class)))
-          .thenReturn(new ClusterSchemaTree());
+          .thenReturn(existingSchema);
 
       try (final LoadTsFileAnalyzer analyzer = new LoadTsFileAnalyzer(statement, false, context)) {
         final Field schemaFetcherField = LoadTsFileAnalyzer.class.getDeclaredField("schemaFetcher");
@@ -335,11 +343,11 @@ public class LoadTsFileAnalyzerTest {
                       ? Collections.emptyMap()
                       : Collections.singletonMap("auto-create-schema", "false"))
               .setDatabase(database);
-      tableStatement.setAutoCreateDatabase(false);
+      tableStatement.setAutoCreateDatabase(true);
       final LoadTsFileStatement treeStatement =
           LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
       treeStatement.setAutoCreateSchema(requestAutoCreateSchema);
-      treeStatement.setAutoCreateDatabase(false);
+      treeStatement.setAutoCreateDatabase(true);
 
       try (final LoadTsFileAnalyzer analyzer =
           tableModelStatement

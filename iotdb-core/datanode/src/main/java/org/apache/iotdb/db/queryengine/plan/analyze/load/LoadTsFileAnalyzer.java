@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeInvalidPathException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingDatabaseException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
@@ -153,7 +154,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.isAutoCreateSchemaRequested = loadTsFileStatement.isAutoCreateSchema();
     this.isAutoCreateSchemaEnabled =
         IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
-            && isAutoCreateSchemaRequested;
+            && isAutoCreateSchemaRequested
+            && (context == null
+                || context.getSession() == null
+                || context.getSession().isEnableAutoCreateSchema());
     this.isAutoCreateDatabase = loadTsFileStatement.isAutoCreateDatabase();
     this.isDeleteAfterLoad = loadTsFileStatement.isDeleteAfterLoad();
     this.isConvertOnTypeMismatch = loadTsFileStatement.isConvertOnTypeMismatch();
@@ -181,7 +185,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.isAutoCreateSchemaRequested = loadTsFileTableStatement.isAutoCreateSchema();
     this.isAutoCreateSchemaEnabled =
         IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
-            && isAutoCreateSchemaRequested;
+            && isAutoCreateSchemaRequested
+            && (context == null
+                || context.getSession() == null
+                || context.getSession().isEnableAutoCreateSchema());
     this.isAutoCreateDatabase = loadTsFileTableStatement.isAutoCreateDatabase();
     this.isDeleteAfterLoad = loadTsFileTableStatement.isDeleteAfterLoad();
     this.isConvertOnTypeMismatch = loadTsFileTableStatement.isConvertOnTypeMismatch();
@@ -319,19 +326,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       } else {
         databaseName = null;
       }
-      // The active loader uses a new session, so carry the request session's restriction with it.
-      final boolean allowAutoCreateSchema =
-          isAutoCreateSchemaRequested
-              && (Objects.isNull(context)
-                  || Objects.isNull(context.getSession())
-                  || context.getSession().isEnableAutoCreateSchema());
+      // The active loader uses a new session, so carry the effective policy with it.
       final Map<String, String> activeLoadAttributes =
           ActiveLoadPathHelper.buildAttributes(
               databaseName,
               databaseLevel,
               isConvertOnTypeMismatch,
               isVerifySchema,
-              allowAutoCreateSchema,
+              isAutoCreateSchemaEnabled,
               tabletConversionThresholdBytes,
               isGeneratedByPipe,
               Objects.nonNull(context) && Objects.nonNull(context.getSession())
@@ -727,7 +729,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     if (tableSchemaCache == null) {
       tableSchemaCache =
           new LoadTsFileTableSchemaCache(
-              metadata, context, isAutoCreateDatabase, isVerifySchema, isAutoCreateSchemaRequested);
+              metadata, context, isAutoCreateDatabase, isVerifySchema, isAutoCreateSchemaEnabled);
     }
     return tableSchemaCache;
   }
@@ -965,6 +967,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private boolean shouldSkipConversion(LoadAnalyzeException e) {
     return e instanceof LoadAnalyzeInvalidPathException
+        || e instanceof LoadAnalyzeMissingDatabaseException
         || (e instanceof LoadAnalyzeTypeMismatchException) && !isConvertOnTypeMismatch;
   }
 
