@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.client.internal.subscription;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.session.i18n.SessionMessages;
 import org.apache.iotdb.session.subscription.consumer.ISubscriptionTablePullConsumer;
@@ -32,11 +33,25 @@ public class InternalSubscriptionTablePullConsumerBuilder
 
   private final INodeSupplier nodeSupplier;
 
+  public InternalSubscriptionTablePullConsumerBuilder() {
+    this.nodeSupplier = null;
+  }
+
   public InternalSubscriptionTablePullConsumerBuilder(final INodeSupplier nodeSupplier) {
     this.nodeSupplier =
         Objects.requireNonNull(
             nodeSupplier,
             SessionMessages.EXCEPTION_INTERNAL_NODE_SUPPLIER_MUST_NOT_BE_NULL_C5CAF392);
+  }
+
+  public InternalSubscriptionTablePullConsumerBuilder endPoint(final TEndPoint endPoint) {
+    final TEndPoint endpoint =
+        Objects.requireNonNull(
+            endPoint, SessionMessages.EXCEPTION_END_POINT_MUST_NOT_BE_NULL_908A4B27);
+    this.host = endpoint.getIp();
+    this.port = endpoint.getPort();
+    this.nodeUrls = null;
+    return this;
   }
 
   protected final INodeSupplier getNodeSupplier() {

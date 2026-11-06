@@ -36,11 +36,25 @@ public class InternalTableSessionPoolBuilder extends TableSessionPoolBuilder {
 
   private final INodeSupplier nodeSupplier;
 
+  public InternalTableSessionPoolBuilder() {
+    this.nodeSupplier = null;
+  }
+
   public InternalTableSessionPoolBuilder(final INodeSupplier nodeSupplier) {
     this.nodeSupplier =
         Objects.requireNonNull(
             nodeSupplier,
             SessionMessages.EXCEPTION_INTERNAL_NODE_SUPPLIER_MUST_NOT_BE_NULL_C5CAF392);
+  }
+
+  public InternalTableSessionPoolBuilder endPoint(final TEndPoint endPoint) {
+    final TEndPoint endpoint =
+        Objects.requireNonNull(
+            endPoint, SessionMessages.EXCEPTION_END_POINT_MUST_NOT_BE_NULL_908A4B27);
+    this.host = endpoint.getIp();
+    this.rpcPort = endpoint.getPort();
+    this.nodeUrls = null;
+    return this;
   }
 
   protected final INodeSupplier getNodeSupplier() {
@@ -76,8 +90,8 @@ public class InternalTableSessionPoolBuilder extends TableSessionPoolBuilder {
     }
 
     @Override
-    protected INodeSupplier createNodeSupplier(final List<TEndPoint> ignored) {
-      return nodeSupplier;
+    protected INodeSupplier createNodeSupplier(final List<TEndPoint> endPointList) {
+      return nodeSupplier != null ? nodeSupplier : super.createNodeSupplier(endPointList);
     }
   }
 }

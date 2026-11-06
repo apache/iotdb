@@ -31,7 +31,6 @@ import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.NoValidValueException;
 import org.apache.iotdb.rpc.RedirectException;
-import org.apache.iotdb.rpc.RpcServiceConstants;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
@@ -554,7 +553,6 @@ public class Session implements ISession {
     }
 
     this.availableNodes = getNodeSupplier(enableRPCCompaction, connectionTimeoutInMs);
-    this.defaultEndPoint = resolveDefaultEndPoint(this.defaultEndPoint, this.availableNodes);
 
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     setDefaultSessionConnection(constructSessionConnection(this, defaultEndPoint, zoneId));
@@ -618,16 +616,6 @@ public class Session implements ISession {
     return new DummyNodesSupplier(new ArrayList<>(staticNodes));
   }
 
-  /**
-   * Selects the endpoint used for the initial connection. Internal sessions that support endpoint
-   * discovery override this hook so a stale builder endpoint cannot be used.
-   */
-  protected TEndPoint resolveDefaultEndPoint(
-      final TEndPoint requestedEndPoint, final INodeSupplier nodeSupplier)
-      throws IoTDBConnectionException {
-    return requestedEndPoint;
-  }
-
   private static List<String> shuffleNodeUrls(List<String> endPoints) {
     try {
       Collections.shuffle(endPoints);
@@ -656,7 +644,6 @@ public class Session implements ISession {
     }
 
     this.availableNodes = nodesSupplier;
-    this.defaultEndPoint = resolveDefaultEndPoint(this.defaultEndPoint, this.availableNodes);
     this.enableThriftRpcCompaction = enableThriftRpcCompaction;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     setDefaultSessionConnection(constructSessionConnection(this, defaultEndPoint, zoneId));
@@ -683,7 +670,6 @@ public class Session implements ISession {
     }
 
     this.availableNodes = nodesSupplier;
-    this.defaultEndPoint = resolveDefaultEndPoint(this.defaultEndPoint, this.availableNodes);
     this.enableThriftRpcCompaction = enableThriftRpcCompaction;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     setDefaultSessionConnection(constructSessionConnection(this, defaultEndPoint, zoneId));
@@ -4461,11 +4447,8 @@ public class Session implements ISession {
     this.defaultSessionConnection = defaultSessionConnection;
   }
 
-  /** Applies the common transport and authentication settings for server internal sessions. */
-  protected final void configureInternalSession() {
-    password = null;
-    useEncryptedPassword = false;
-    rpcServiceName = RpcServiceConstants.INTERNAL_CLIENT_RPC_SERVICE;
+  protected void setRpcServiceName(final String rpcServiceName) {
+    this.rpcServiceName = rpcServiceName;
   }
 
   public boolean isEnableThriftRpcCompaction() {

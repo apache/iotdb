@@ -22,12 +22,9 @@ package org.apache.iotdb.commons.client.internal.subscription;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.rpc.RpcServiceConstants;
-import org.apache.iotdb.session.i18n.SessionMessages;
 import org.apache.iotdb.session.subscription.consumer.base.AbstractSubscriptionProvider;
 import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePullConsumer;
 import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePullConsumerBuilder;
-
-import java.util.Objects;
 
 final class InternalSubscriptionTablePullConsumer extends SubscriptionTablePullConsumer {
 
@@ -36,10 +33,7 @@ final class InternalSubscriptionTablePullConsumer extends SubscriptionTablePullC
   InternalSubscriptionTablePullConsumer(
       final SubscriptionTablePullConsumerBuilder builder, final INodeSupplier nodeSupplier) {
     super(builder);
-    this.nodeSupplier =
-        Objects.requireNonNull(
-            nodeSupplier,
-            SessionMessages.EXCEPTION_INTERNAL_NODE_SUPPLIER_MUST_NOT_BE_NULL_C5CAF392);
+    this.nodeSupplier = nodeSupplier;
   }
 
   @Override

@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.commons.client.internal.subscription;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.session.i18n.SessionMessages;
 import org.apache.iotdb.session.subscription.ISubscriptionTableSession;
 import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
 
+import java.util.List;
 import java.util.Objects;
 
 /** Server-side builder for table subscription-management sessions. */
@@ -31,11 +33,30 @@ public class InternalSubscriptionTableSessionBuilder extends SubscriptionTableSe
 
   private final INodeSupplier nodeSupplier;
 
+  public InternalSubscriptionTableSessionBuilder() {
+    this.nodeSupplier = null;
+  }
+
   public InternalSubscriptionTableSessionBuilder(final INodeSupplier nodeSupplier) {
     this.nodeSupplier =
         Objects.requireNonNull(
             nodeSupplier,
             SessionMessages.EXCEPTION_INTERNAL_NODE_SUPPLIER_MUST_NOT_BE_NULL_C5CAF392);
+  }
+
+  public InternalSubscriptionTableSessionBuilder endPoint(final TEndPoint endPoint) {
+    final TEndPoint endpoint =
+        Objects.requireNonNull(
+            endPoint, SessionMessages.EXCEPTION_END_POINT_MUST_NOT_BE_NULL_908A4B27);
+    this.host = endpoint.getIp();
+    this.rpcPort = endpoint.getPort();
+    this.nodeUrls = null;
+    return this;
+  }
+
+  public InternalSubscriptionTableSessionBuilder nodeUrls(final List<String> nodeUrls) {
+    this.nodeUrls = nodeUrls;
+    return this;
   }
 
   protected final INodeSupplier getNodeSupplier() {

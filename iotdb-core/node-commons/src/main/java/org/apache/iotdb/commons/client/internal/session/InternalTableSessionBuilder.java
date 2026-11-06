@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.client.internal.session;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.Session;
@@ -32,11 +33,25 @@ public class InternalTableSessionBuilder extends TableSessionBuilder {
 
   private final INodeSupplier nodeSupplier;
 
+  public InternalTableSessionBuilder() {
+    this.nodeSupplier = null;
+  }
+
   public InternalTableSessionBuilder(final INodeSupplier nodeSupplier) {
     this.nodeSupplier =
         Objects.requireNonNull(
             nodeSupplier,
             SessionMessages.EXCEPTION_INTERNAL_NODE_SUPPLIER_MUST_NOT_BE_NULL_C5CAF392);
+  }
+
+  public InternalTableSessionBuilder endPoint(final TEndPoint endPoint) {
+    final TEndPoint endpoint =
+        Objects.requireNonNull(
+            endPoint, SessionMessages.EXCEPTION_END_POINT_MUST_NOT_BE_NULL_908A4B27);
+    this.host = endpoint.getIp();
+    this.rpcPort = endpoint.getPort();
+    this.nodeUrls = null;
+    return this;
   }
 
   protected final INodeSupplier getNodeSupplier() {

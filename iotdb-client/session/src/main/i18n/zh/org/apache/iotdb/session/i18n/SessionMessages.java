@@ -306,6 +306,8 @@ public final class SessionMessages {
 
   public static final String EXCEPTION_SESSION_CAN_NOT_CONNECT_TO_ARG_226FBA66 = "Session 无法连接到 {}";
 
+  public static final String EXCEPTION_END_POINT_MUST_NOT_BE_NULL_908A4B27 = "Endpoint 不能为空。";
+
   public static final String
       EXCEPTION_ALL_VALUES_ARE_NULL_AND_THIS_SUBMISSION_IS_IGNORED_DEVICEID_IS_ARG_TIME_IS_ARG_MEASUREMENTS_IS_ARG_5524221C =
           "所有值均为空，本次提交被忽略，deviceId 为 [{}]，time 为 [{}]，measurements 为 [{}]";

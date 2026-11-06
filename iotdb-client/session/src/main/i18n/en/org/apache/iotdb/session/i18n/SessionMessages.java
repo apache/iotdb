@@ -309,6 +309,9 @@ public final class SessionMessages {
   public static final String EXCEPTION_SESSION_CAN_NOT_CONNECT_TO_ARG_226FBA66 =
       "Session can not connect to {}";
 
+  public static final String EXCEPTION_END_POINT_MUST_NOT_BE_NULL_908A4B27 =
+      "Endpoint must not be null.";
+
   public static final String
       EXCEPTION_ALL_VALUES_ARE_NULL_AND_THIS_SUBMISSION_IS_IGNORED_DEVICEID_IS_ARG_TIME_IS_ARG_MEASUREMENTS_IS_ARG_5524221C =
           "All values are null and this submission is ignored,deviceId is [{}],time is"
