@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.StateMachine;
 import org.apache.iotdb.db.queryengine.execution.StateMachine.StateChangeListener;
@@ -68,6 +69,10 @@ public class FragmentInstanceStateMachine {
 
   @GuardedBy("this")
   private final List<FragmentInstanceFailureListener> sourceInstanceFailureListeners =
+      new ArrayList<>();
+
+  @GuardedBy("finalStateChangeListeners")
+  private final List<StateChangeListener<FragmentInstanceState>> finalStateChangeListeners =
       new ArrayList<>();
 
   public FragmentInstanceStateMachine(FragmentInstanceId fragmentInstanceId, Executor executor) {
@@ -140,7 +145,41 @@ public class FragmentInstanceStateMachine {
     requireNonNull(doneState, "doneState is null");
     checkArgument(doneState.isDone(), "doneState %s is not a done state", doneState);
 
-    instanceState.setIf(doneState, currentState -> !currentState.isDone());
+    List<StateChangeListener<FragmentInstanceState>> listeners;
+    RuntimeException stateChangeFailure = null;
+    Error stateChangeError = null;
+    synchronized (finalStateChangeListeners) {
+      boolean stateChanged;
+      try {
+        stateChanged = instanceState.setIf(doneState, currentState -> !currentState.isDone());
+      } catch (RuntimeException e) {
+        // StateMachine updates its state before submitting asynchronous notifications. Preserve
+        // the final-state callback guarantee if notification submission is rejected afterwards.
+        if (!instanceState.get().isDone()) {
+          throw e;
+        }
+        stateChanged = true;
+        stateChangeFailure = e;
+      } catch (Error e) {
+        if (!instanceState.get().isDone()) {
+          throw e;
+        }
+        stateChanged = true;
+        stateChangeError = e;
+      }
+      if (!stateChanged) {
+        return;
+      }
+      listeners = ImmutableList.copyOf(finalStateChangeListeners);
+      finalStateChangeListeners.clear();
+    }
+    listeners.forEach(listener -> fireFinalStateChangeListener(doneState, listener));
+    if (stateChangeFailure != null) {
+      throw stateChangeFailure;
+    }
+    if (stateChangeError != null) {
+      throw stateChangeError;
+    }
   }
 
   /**
@@ -152,6 +191,42 @@ public class FragmentInstanceStateMachine {
   public void addStateChangeListener(
       StateChangeListener<FragmentInstanceState> stateChangeListener) {
     instanceState.addStateChangeListener(stateChangeListener);
+  }
+
+  /**
+   * Adds a listener that is notified synchronously when this state machine first reaches a terminal
+   * state. If the state is already terminal, the listener is notified before this method returns.
+   *
+   * <p>This is intended only for short, non-blocking bookkeeping that must be completed before the
+   * state transition method returns. Other cleanup should use {@link #addStateChangeListener}.
+   */
+  public void addFinalStateChangeListener(
+      StateChangeListener<FragmentInstanceState> stateChangeListener) {
+    requireNonNull(
+        stateChangeListener, DataNodeQueryMessages.EXCEPTION_STATECHANGELISTENER_IS_NULL_B030E8A0);
+
+    FragmentInstanceState currentState;
+    synchronized (finalStateChangeListeners) {
+      currentState = instanceState.get();
+      if (!currentState.isDone()) {
+        finalStateChangeListeners.add(stateChangeListener);
+        return;
+      }
+    }
+    fireFinalStateChangeListener(currentState, stateChangeListener);
+  }
+
+  @SuppressWarnings("squid:S1181")
+  private void fireFinalStateChangeListener(
+      FragmentInstanceState state, StateChangeListener<FragmentInstanceState> stateChangeListener) {
+    try {
+      stateChangeListener.stateChanged(state);
+    } catch (Throwable t) {
+      LOGGER.error(
+          DataNodeQueryMessages.LOG_ERROR_NOTIFYING_STATE_CHANGE_LISTENER_FOR_ARG_00D668A9,
+          instanceId,
+          t);
+    }
   }
 
   public void addSourceTaskFailureListener(FragmentInstanceFailureListener listener) {
