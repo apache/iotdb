@@ -550,7 +550,8 @@ public class Session implements ISession {
     }
 
     if (enableAutoFetch) {
-      this.availableNodes = getNodeSupplier(enableRPCCompaction, connectionTimeoutInMs);
+      initThreadPool();
+      initAvailableNodes(enableRPCCompaction, connectionTimeoutInMs);
     } else {
       // A static supplier has no separate seed tier. Keep every configured address after reopen.
       Set<TEndPoint> staticNodes = new LinkedHashSet<>(getNodeUrls());
@@ -570,7 +571,8 @@ public class Session implements ISession {
     }
   }
 
-  private void initThreadPool() {
+  /** Creates the thread pool used to refresh the available node list. */
+  protected void initThreadPool() {
     this.executorService =
         Executors.newSingleThreadScheduledExecutor(
             r -> {
@@ -587,31 +589,28 @@ public class Session implements ISession {
             });
   }
 
-  /**
-   * Creates the auto-fetch endpoint source used by this session. Subclasses may override this hook
-   * to provide a server-managed endpoint source without exposing it through the client API.
-   */
-  protected INodeSupplier getNodeSupplier(
+  /** Initializes the auto-fetch endpoint source used by this session. */
+  protected void initAvailableNodes(
       final boolean enableRPCCompaction, final int connectionTimeoutInMs) {
-    initThreadPool();
-    return NodesSupplier.createNodeSupplier(
-        getNodeUrls(),
-        SessionUtils.parseSeedNodeUrls(initialNodeUrls),
-        executorService,
-        username,
-        password,
-        zoneId,
-        thriftDefaultBufferSize,
-        thriftMaxFrameSize,
-        connectionTimeoutInMs,
-        useSSL,
-        trustStore,
-        trustStorePwd,
-        keyStore,
-        keyStorePwd,
-        sslProtocol,
-        enableRPCCompaction,
-        version.toString());
+    this.availableNodes =
+        NodesSupplier.createNodeSupplier(
+            getNodeUrls(),
+            SessionUtils.parseSeedNodeUrls(initialNodeUrls),
+            executorService,
+            username,
+            password,
+            zoneId,
+            thriftDefaultBufferSize,
+            thriftMaxFrameSize,
+            connectionTimeoutInMs,
+            useSSL,
+            trustStore,
+            trustStorePwd,
+            keyStore,
+            keyStorePwd,
+            sslProtocol,
+            enableRPCCompaction,
+            version.toString());
   }
 
   private static List<String> shuffleNodeUrls(List<String> endPoints) {

@@ -28,10 +28,9 @@ import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.session.pool.TableSessionPool;
 import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 
-import java.util.List;
 import java.util.Objects;
 
-/** Server-side builder for lazily-created table-model internal session pools. */
+/** Server-side builder for table-model internal session pools. */
 public class InternalTableSessionPoolBuilder extends TableSessionPoolBuilder {
 
   private final INodeSupplier nodeSupplier;
@@ -80,18 +79,13 @@ public class InternalTableSessionPoolBuilder extends TableSessionPoolBuilder {
 
     private InternalSessionPool(
         final InternalTableSessionPoolBuilder builder, final INodeSupplier nodeSupplier) {
-      super(builder);
+      super(builder, nodeSupplier);
       this.nodeSupplier = nodeSupplier;
     }
 
     @Override
     protected Session constructNewSession() {
       return new InternalSession(createSessionBuilder(), nodeSupplier);
-    }
-
-    @Override
-    protected INodeSupplier createNodeSupplier(final List<TEndPoint> endPointList) {
-      return nodeSupplier != null ? nodeSupplier : super.createNodeSupplier(endPointList);
     }
   }
 }

@@ -171,8 +171,7 @@ public class SessionPool implements ISessionPool {
   @SuppressWarnings("java:S3077")
   private volatile ScheduledExecutorService executorService;
 
-  private INodeSupplier availableNodes;
-  private boolean nodeSupplierInitialized;
+  protected INodeSupplier availableNodes;
 
   // set to true, means that we will start a background thread to fetch all available (Status is
   // not Removing) datanodes in cluster, and these available nodes will be used in retrying stage
@@ -432,7 +431,8 @@ public class SessionPool implements ISessionPool {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.formattedNodeUrls = UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port);
-    initializeNodeSupplier();
+    initThreadPool();
+    initAvailableNodes(Collections.singletonList(new TEndPoint(host, port)));
   }
 
   public SessionPool(
@@ -478,7 +478,8 @@ public class SessionPool implements ISessionPool {
     this.trustStore = trustStore;
     this.trustStorePwd = trustStorePwd;
     this.sslProtocol = SessionConfig.DEFAULT_SSL_PROTOCOL;
-    initializeNodeSupplier();
+    initThreadPool();
+    initAvailableNodes(Collections.singletonList(new TEndPoint(host, port)));
   }
 
   @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
@@ -520,10 +521,16 @@ public class SessionPool implements ISessionPool {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.formattedNodeUrls = this.nodeUrls.toString();
-    initializeNodeSupplier();
+    initThreadPool();
+    initAvailableNodes(SessionUtils.parseSeedNodeUrls(this.nodeUrls));
   }
 
   public SessionPool(AbstractSessionPoolBuilder builder) {
+    this(builder, null);
+  }
+
+  protected SessionPool(
+      final AbstractSessionPoolBuilder builder, final INodeSupplier suppliedNodes) {
     this.maxSize = builder.maxSize;
     this.user = builder.username;
     this.password = builder.pw;
@@ -556,6 +563,9 @@ public class SessionPool implements ISessionPool {
     this.queryTimeoutInMs = builder.timeOut;
     this.enableAutoCreateSchema = builder.enableAutoCreateSchema;
 
+    if (enableAutoFetch && suppliedNodes == null) {
+      initThreadPool();
+    }
     if (builder.nodeUrls != null) {
       if (builder.nodeUrls.isEmpty()) {
         throw new IllegalArgumentException(SessionMessages.NODE_URLS_EMPTY);
@@ -564,11 +574,31 @@ public class SessionPool implements ISessionPool {
       this.host = null;
       this.port = -1;
       this.formattedNodeUrls = builder.nodeUrls.toString();
+      if (enableAutoFetch) {
+        if (suppliedNodes == null) {
+          initAvailableNodes(SessionUtils.parseSeedNodeUrls(nodeUrls));
+        } else {
+          this.availableNodes = suppliedNodes;
+        }
+      } else {
+        this.availableNodes = new DummyNodesSupplier(SessionUtils.parseSeedNodeUrls(nodeUrls));
+      }
+
     } else {
       this.host = builder.host;
       this.port = builder.rpcPort;
       this.nodeUrls = null;
       this.formattedNodeUrls = UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port);
+      if (enableAutoFetch) {
+        if (suppliedNodes == null) {
+          initAvailableNodes(Collections.singletonList(new TEndPoint(host, port)));
+        } else {
+          this.availableNodes = suppliedNodes;
+        }
+      } else {
+        this.availableNodes =
+            new DummyNodesSupplier(Collections.singletonList(new TEndPoint(host, port)));
+      }
     }
   }
 
@@ -611,17 +641,8 @@ public class SessionPool implements ISessionPool {
     return session;
   }
 
-  protected void openSession(final ISession session) throws IoTDBConnectionException {
-    initializeNodeSupplier();
-    session.open(
-        enableThriftCompression,
-        connectionTimeoutInMs,
-        deviceIdToEndpoint,
-        tableModelDeviceIdToEndpoint,
-        availableNodes);
-  }
-
-  private void initThreadPool() {
+  /** Creates the thread pool used to refresh the available node list. */
+  protected void initThreadPool() {
     this.executorService =
         Executors.newSingleThreadScheduledExecutor(
             r -> {
@@ -638,40 +659,26 @@ public class SessionPool implements ISessionPool {
             });
   }
 
-  private synchronized void initializeNodeSupplier() {
-    if (nodeSupplierInitialized) {
-      return;
-    }
-    final List<TEndPoint> endPointList =
-        nodeUrls == null
-            ? Collections.singletonList(new TEndPoint(host, port))
-            : SessionUtils.parseSeedNodeUrls(nodeUrls);
-    this.availableNodes = createNodeSupplier(endPointList);
-    this.nodeSupplierInitialized = true;
-  }
-
-  protected INodeSupplier createNodeSupplier(final List<TEndPoint> endPointList) {
-    if (enableAutoFetch) {
-      initThreadPool();
-      return NodesSupplier.createNodeSupplier(
-          endPointList,
-          executorService,
-          user,
-          password,
-          zoneId,
-          thriftDefaultBufferSize,
-          thriftMaxFrameSize,
-          connectionTimeoutInMs,
-          useSSL,
-          trustStore,
-          trustStorePwd,
-          keyStore,
-          keyStorePwd,
-          sslProtocol,
-          enableThriftCompression,
-          version.toString());
-    }
-    return new DummyNodesSupplier(endPointList);
+  /** Initializes the auto-fetch endpoint source used by this pool. */
+  protected void initAvailableNodes(final List<TEndPoint> endPointList) {
+    this.availableNodes =
+        NodesSupplier.createNodeSupplier(
+            endPointList,
+            executorService,
+            user,
+            password,
+            zoneId,
+            thriftDefaultBufferSize,
+            thriftMaxFrameSize,
+            connectionTimeoutInMs,
+            useSSL,
+            trustStore,
+            trustStorePwd,
+            keyStore,
+            keyStorePwd,
+            sslProtocol,
+            enableThriftCompression,
+            version.toString());
   }
 
   // if this method throws an exception, either the server is broken, or the ip/port/user/password
@@ -745,7 +752,12 @@ public class SessionPool implements ISessionPool {
       session = constructNewSession();
 
       try {
-        openSession(session);
+        session.open(
+            enableThriftCompression,
+            connectionTimeoutInMs,
+            deviceIdToEndpoint,
+            tableModelDeviceIdToEndpoint,
+            availableNodes);
         // avoid someone has called close() the session pool
         synchronized (this) {
           if (closed) {
@@ -854,7 +866,12 @@ public class SessionPool implements ISessionPool {
   private void tryConstructNewSession() {
     Session session = constructNewSession();
     try {
-      openSession(session);
+      session.open(
+          enableThriftCompression,
+          connectionTimeoutInMs,
+          deviceIdToEndpoint,
+          tableModelDeviceIdToEndpoint,
+          availableNodes);
       // avoid someone has called close() the session pool
       synchronized (this) {
         if (closed) {

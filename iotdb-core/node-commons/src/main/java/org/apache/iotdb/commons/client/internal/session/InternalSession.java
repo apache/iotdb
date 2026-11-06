@@ -41,10 +41,19 @@ public class InternalSession extends Session {
   }
 
   @Override
-  protected final INodeSupplier getNodeSupplier(
+  protected void initThreadPool() {
+    if (nodeSupplier == null) {
+      super.initThreadPool();
+    }
+  }
+
+  @Override
+  protected void initAvailableNodes(
       final boolean enableRPCCompaction, final int connectionTimeoutInMs) {
-    return nodeSupplier != null
-        ? nodeSupplier
-        : super.getNodeSupplier(enableRPCCompaction, connectionTimeoutInMs);
+    if (nodeSupplier == null) {
+      super.initAvailableNodes(enableRPCCompaction, connectionTimeoutInMs);
+    } else {
+      this.availableNodes = nodeSupplier;
+    }
   }
 }
