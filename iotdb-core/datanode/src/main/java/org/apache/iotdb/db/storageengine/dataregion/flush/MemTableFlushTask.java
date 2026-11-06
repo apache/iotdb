@@ -141,15 +141,30 @@ public class MemTableFlushTask {
         writer.getFile().getName());
   }
 
+  /**
+   * Temporary memory of a flush: the bounded IO queue holds up to {@code ioTaskQueueSize} encoded
+   * series of average size. With no more series than queue slots the queue can't hold more than the
+   * memtable, so the estimate is capped at {@code memSize}. Without the cap a memtable of 3 series
+   * reserved 3.3 times its size, which can exceed the whole MemTable budget and make the reject
+   * threshold negative.
+   */
+  static long estimateTemporaryMemory(
+      long memSize, int seriesNumber, int ioTaskQueueSize, boolean encodingFasterThanIo) {
+    if (!encodingFasterThanIo || seriesNumber == 0) {
+      return 0;
+    }
+    return seriesNumber <= ioTaskQueueSize ? memSize : memSize / seriesNumber * ioTaskQueueSize;
+  }
+
   /** the function for flushing memtable. */
   @SuppressWarnings("squid:S3776")
   public void syncFlushMemTable() throws ExecutionException, InterruptedException {
     long estimatedBytes =
-        encodingFasterThanIo && memTable.getSeriesNumber() != 0
-            ? memTable.memSize()
-                / memTable.getSeriesNumber()
-                * config.getIoTaskQueueSizeForFlushing()
-            : 0;
+        estimateTemporaryMemory(
+            memTable.memSize(),
+            memTable.getSeriesNumber(),
+            config.getIoTaskQueueSizeForFlushing(),
+            encodingFasterThanIo);
     try (SystemInfo.FlushMemoryReservation ignored =
         SystemInfo.getInstance()
             .reserveTemporaryMemoryForFlushing(
