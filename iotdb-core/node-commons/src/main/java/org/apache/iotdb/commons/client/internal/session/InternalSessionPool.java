@@ -19,23 +19,45 @@
 
 package org.apache.iotdb.commons.client.internal.session;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.pool.SessionPool;
 
-final class InternalSessionPool extends SessionPool {
+import java.util.List;
 
-  private final INodeSupplier nodeSupplier;
+public final class InternalSessionPool extends SessionPool {
 
   InternalSessionPool(final InternalSessionPoolBuilder builder) {
-    super(builder.getSessionPoolBuilder(), builder.getNodeSupplier());
-    this.nodeSupplier = builder.getNodeSupplier();
+    super(builder);
+  }
+
+  @Override
+  protected void initThreadPool() {
+    if (getInternalBuilder().getNodeSupplier() == null) {
+      super.initThreadPool();
+    }
+  }
+
+  @Override
+  protected void initAvailableNodes(final List<TEndPoint> endPointList) {
+    final INodeSupplier nodeSupplier = getInternalBuilder().getNodeSupplier();
+    if (nodeSupplier == null) {
+      super.initAvailableNodes(endPointList);
+    } else {
+      this.availableNodes = nodeSupplier;
+    }
   }
 
   @Override
   protected Session.Builder createSessionBuilder() {
+    final INodeSupplier nodeSupplier = getInternalBuilder().getNodeSupplier();
     return nodeSupplier == null
         ? new InternalSessionBuilder()
         : new InternalSessionBuilder(nodeSupplier);
+  }
+
+  private InternalSessionPoolBuilder getInternalBuilder() {
+    return (InternalSessionPoolBuilder) sessionPoolBuilder;
   }
 }

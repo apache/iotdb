@@ -19,27 +19,45 @@
 
 package org.apache.iotdb.commons.client.internal.session;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.INodeSupplier;
-import org.apache.iotdb.session.pool.AbstractSessionPoolBuilder;
+import org.apache.iotdb.session.i18n.SessionMessages;
+import org.apache.iotdb.session.pool.SessionPool;
 
 import java.util.Objects;
 
-final class InternalSessionPoolBuilder {
+/** Server-side builder for tree-model internal session pools. */
+public class InternalSessionPoolBuilder extends SessionPool.Builder {
 
-  private final AbstractSessionPoolBuilder sessionPoolBuilder;
   private final INodeSupplier nodeSupplier;
 
-  InternalSessionPoolBuilder(
-      final AbstractSessionPoolBuilder sessionPoolBuilder, final INodeSupplier nodeSupplier) {
-    this.sessionPoolBuilder = Objects.requireNonNull(sessionPoolBuilder);
-    this.nodeSupplier = nodeSupplier;
+  public InternalSessionPoolBuilder() {
+    this.nodeSupplier = null;
   }
 
-  AbstractSessionPoolBuilder getSessionPoolBuilder() {
-    return sessionPoolBuilder;
+  public InternalSessionPoolBuilder(final INodeSupplier nodeSupplier) {
+    this.nodeSupplier =
+        Objects.requireNonNull(
+            nodeSupplier,
+            SessionMessages.EXCEPTION_INTERNAL_NODE_SUPPLIER_MUST_NOT_BE_NULL_C5CAF392);
+  }
+
+  public InternalSessionPoolBuilder endPoint(final TEndPoint endPoint) {
+    final TEndPoint endpoint =
+        Objects.requireNonNull(
+            endPoint, SessionMessages.EXCEPTION_END_POINT_MUST_NOT_BE_NULL_908A4B27);
+    this.host = endpoint.getIp();
+    this.rpcPort = endpoint.getPort();
+    this.nodeUrls = null;
+    return this;
   }
 
   INodeSupplier getNodeSupplier() {
     return nodeSupplier;
+  }
+
+  @Override
+  public InternalSessionPool build() {
+    return new InternalSessionPool(this);
   }
 }
