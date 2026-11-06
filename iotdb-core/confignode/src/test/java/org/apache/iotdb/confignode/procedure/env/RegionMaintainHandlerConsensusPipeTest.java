@@ -184,9 +184,7 @@ public class RegionMaintainHandlerConsensusPipeTest {
 
   @Test
   public void testCreatesMissingPipesWhenLegacyConsensusProtocolAliasConfigured() {
-    // iotdb-system.properties may keep the pre-rename IoTConsensusV2 class name. ConfigNode must
-    // treat it exactly like the canonical name; otherwise the periodic self-healing entry point
-    // never creates the consensus pipes that V2 replication depends on.
+    // The pre-rename class name must create pipes exactly like the canonical name.
     ConfigNodeDescriptor.getInstance()
         .getConf()
         .setDataRegionConsensusProtocolClass(LEGACY_IOT_CONSENSUS_V2);
@@ -209,8 +207,7 @@ public class RegionMaintainHandlerConsensusPipeTest {
 
   @Test
   public void testCreatesInitialPipesWhenImplementationClassNameConfigured() {
-    // Writing the implementation class name into the configuration is a supported way to select
-    // IoTConsensusV2, so database creation must also create the initial consensus pipes.
+    // Selecting V2 by its implementation class name must also create the initial pipes.
     ConfigNodeDescriptor.getInstance()
         .getConf()
         .setDataRegionConsensusProtocolClass(REAL_IOT_CONSENSUS_V2);
@@ -375,8 +372,7 @@ public class RegionMaintainHandlerConsensusPipeTest {
 
   @Test
   public void testConsensusPipeCountMismatchWhenRegionHasNoPipe() {
-    // A 2-replica region requires 2 consensus pipes. Having none of them is the exact degradation
-    // the cheap probe has to detect, without building any pipe name.
+    // A 2-replica region requires 2 pipes; having none is the degradation the probe must detect.
     when(partitionManager.getReplicaPairCount(TConsensusGroupType.DataRegion)).thenReturn(2L);
     when(pipeTaskCoordinator.getConsensusPipeCount()).thenReturn(0);
 
@@ -385,6 +381,7 @@ public class RegionMaintainHandlerConsensusPipeTest {
 
   @Test
   public void testNoConsensusPipeCountMismatchWhenAllPipesExist() {
+    // 2 required, 2 present.
     when(partitionManager.getReplicaPairCount(TConsensusGroupType.DataRegion)).thenReturn(2L);
     when(pipeTaskCoordinator.getConsensusPipeCount()).thenReturn(2);
 
@@ -393,8 +390,7 @@ public class RegionMaintainHandlerConsensusPipeTest {
 
   @Test
   public void testNoConsensusPipeCountMismatchForSingleReplicaRegion() {
-    // A single-replica region has no follower and therefore expects no consensus pipe at all, so a
-    // single-replica cluster must never be reported as degraded.
+    // A single-replica region has no follower and expects no pipe, so it is never degraded.
     when(partitionManager.getReplicaPairCount(TConsensusGroupType.DataRegion)).thenReturn(0L);
     when(pipeTaskCoordinator.getConsensusPipeCount()).thenReturn(0);
 
@@ -403,6 +399,7 @@ public class RegionMaintainHandlerConsensusPipeTest {
 
   @Test
   public void testConsensusPipeCountProbeIsSkippedWhenNotIoTConsensusV2() {
+    // A non-V2 cluster must not even pay for the probe.
     ConfigNodeDescriptor.getInstance()
         .getConf()
         .setDataRegionConsensusProtocolClass("org.apache.iotdb.consensus.ratis.RatisConsensus");

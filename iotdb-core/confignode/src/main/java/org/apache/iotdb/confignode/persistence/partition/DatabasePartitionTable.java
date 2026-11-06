@@ -141,12 +141,9 @@ public class DatabasePartitionTable {
   }
 
   /**
-   * Counts the ordered replica pairs of all Regions with the specified TConsensusGroupType, i.e.
-   * the sum of N * (N - 1) over those Regions, without copying any replica set. Callers use it to
-   * probe, on a hot path, how many consensus pipes the partition table requires.
-   *
    * @param type The specified TConsensusGroupType
-   * @return The number of ordered replica pairs of the specified Region type
+   * @return Sum of N * (N - 1) over the Regions of the specified type, i.e. their ordered replica
+   *     pairs, without copying any replica set
    */
   public long getReplicaPairCount(TConsensusGroupType type) {
     long count = 0;

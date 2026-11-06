@@ -44,6 +44,7 @@ public class ConfigNodeStartupCheckTest {
 
   @Test
   public void testAcceptsEverySupportedConsensusProtocolClass() throws ConfigurationException {
+    // The four supported classes must all pass the startup check.
     for (final String protocolClass :
         new String[] {
           ConsensusFactory.SIMPLE_CONSENSUS,
@@ -58,8 +59,7 @@ public class ConfigNodeStartupCheckTest {
 
   @Test
   public void testAcceptsLegacyAliasesBecauseTheyAreNormalized() throws ConfigurationException {
-    // Both aliases used to be accepted by DataNode but silently ignored by ConfigNode, so they must
-    // keep passing this check: the value is normalized before it is compared.
+    // Both aliases must pass and be stored in canonical form.
     for (final String alias :
         new String[] {
           ConsensusFactory.LEGACY_IOT_CONSENSUS_V2, ConsensusFactory.REAL_IOT_CONSENSUS_V2
@@ -73,8 +73,7 @@ public class ConfigNodeStartupCheckTest {
 
   @Test
   public void testRejectsUnrecognizedConsensusProtocolClass() {
-    // An unknown class name used to be accepted silently and then degraded the whole cluster to one
-    // replica, so startup must fail and point at the accepted values.
+    // An unknown class must fail with a message that names the accepted values.
     conf.setDataRegionConsensusProtocolClass("org.apache.iotdb.consensus.pipe.PipeConsensusV3");
     try {
       ConfigNodeStartupCheck.checkDataRegionConsensusProtocolClass();

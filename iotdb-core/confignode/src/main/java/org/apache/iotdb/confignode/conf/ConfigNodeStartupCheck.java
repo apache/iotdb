@@ -173,11 +173,7 @@ public class ConfigNodeStartupCheck extends StartupChecks {
               .EXCEPTION_SCHEMAREGION_DOESN_T_SUPPORT_ORG_APACHE_IOTDB_CONSENSUS_IOT_IOTCONSENSUSV2_BA353C6D);
     }
 
-    // The data region consensus protocol is limited. An unrecognized value is not cosmetic:
-    // ConfigNode compares this value to decide whether it has to create consensus pipes, so a class
-    // name it does not know silently disables IoTConsensusV2 replication. Fail fast and print the
-    // accepted values; IoTConsensusV2 must be written as
-    // org.apache.iotdb.consensus.iot.IoTConsensusV2.
+    // An unrecognized class silently disables IoTConsensusV2 replication, so fail fast.
     checkDataRegionConsensusProtocolClass();
 
     // The leader distribution policy is limited
@@ -233,10 +229,7 @@ public class ConfigNodeStartupCheck extends StartupChecks {
     }
   }
 
-  /**
-   * Rejects a data_region_consensus_protocol_class that this release cannot act on. Package-private
-   * so that the accepted / rejected values can be unit tested without booting a ConfigNode.
-   */
+  /** Rejects a data_region_consensus_protocol_class that this release cannot act on. */
   static void checkDataRegionConsensusProtocolClass() throws ConfigurationException {
     final String dataRegionConsensusProtocolClass = CONF.getDataRegionConsensusProtocolClass();
     if (ConsensusFactory.SIMPLE_CONSENSUS.equals(dataRegionConsensusProtocolClass)

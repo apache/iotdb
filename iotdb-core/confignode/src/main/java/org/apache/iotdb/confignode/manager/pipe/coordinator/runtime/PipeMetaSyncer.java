@@ -122,7 +122,8 @@ public class PipeMetaSyncer {
     // waiting for the periodic round. Equal counts are not proof of correctness, so the periodic
     // round is kept.
     if (hasConsensusPipeCountMismatch()
-        || consensusPipeCheckRoundCounter.incrementAndGet() >= CONSENSUS_PIPE_CHECK_INTERVAL_ROUND) {
+        || consensusPipeCheckRoundCounter.incrementAndGet()
+            >= CONSENSUS_PIPE_CHECK_INTERVAL_ROUND) {
       consensusPipeCheckRoundCounter.set(0);
       checkAndRepairConsensusPipes();
     }

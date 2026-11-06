@@ -620,15 +620,11 @@ public class RegionMaintainHandler {
   }
 
   /**
-   * Cheap probe used by PipeMetaSyncer on every round to decide whether a full {@link
-   * #checkAndRepairConsensusPipes()} is needed. It only compares how many consensus pipes the
-   * replica sets require (N * (N - 1) per region) with how many actually exist, so it neither
-   * builds a pipe name nor copies a replica set. A mismatch is a sufficient reason to reconcile
-   * immediately; equal counts are still reconciled periodically to catch same-size but different
-   * pipe sets.
-   *
-   * <p>Regions with a single replica expect no pipe at all, so single-replica clusters never report
-   * a mismatch.
+   * Cheap probe: compares how many consensus pipes the replica sets require (N * (N - 1) per
+   * region) with how many exist, without building a pipe name. A mismatch means a region lost its
+   * replication channel, so PipeMetaSyncer reconciles immediately; equal counts are still
+   * reconciled periodically, because a same-size but different pipe set cannot be detected by
+   * counting.
    */
   public boolean hasConsensusPipeCountMismatch() {
     if (!isIoTConsensusV2Configured()) {

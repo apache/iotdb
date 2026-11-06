@@ -878,9 +878,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   /**
-   * Counts the consensus pipes without materializing their names. Callers use this to probe whether
-   * a consensus pipe reconciliation is needed: building {@link #getConsensusPipeStatusMap()} is far
-   * more expensive than counting, and the probe runs on every pipe meta sync round.
+   * Counts the consensus pipes without materializing their names. It is called on every pipe meta
+   * sync round, where building {@link #getConsensusPipeStatusMap()} would be far too expensive.
    */
   public int getConsensusPipeCount() {
     acquireReadLock();
