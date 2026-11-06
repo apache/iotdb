@@ -544,15 +544,12 @@ public class Session implements ISession {
       return;
     }
 
-    final boolean closeAvailableNodes = executorService != null;
     if (this.executorService != null) {
       this.executorService.shutdown();
       this.executorService = null;
     }
     if (this.availableNodes != null) {
-      if (closeAvailableNodes) {
-        this.availableNodes.close();
-      }
+      this.availableNodes.close();
       this.availableNodes = null;
     }
 
@@ -659,6 +656,7 @@ public class Session implements ISession {
     }
 
     this.availableNodes = nodesSupplier;
+    this.defaultEndPoint = resolveDefaultEndPoint(this.defaultEndPoint, this.availableNodes);
     this.enableThriftRpcCompaction = enableThriftRpcCompaction;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     setDefaultSessionConnection(constructSessionConnection(this, defaultEndPoint, zoneId));
@@ -685,6 +683,7 @@ public class Session implements ISession {
     }
 
     this.availableNodes = nodesSupplier;
+    this.defaultEndPoint = resolveDefaultEndPoint(this.defaultEndPoint, this.availableNodes);
     this.enableThriftRpcCompaction = enableThriftRpcCompaction;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     setDefaultSessionConnection(constructSessionConnection(this, defaultEndPoint, zoneId));
@@ -713,16 +712,12 @@ public class Session implements ISession {
       getDefaultSessionConnection().close();
       setDefaultSessionConnection(null);
     } finally {
-      // A node supplier created outside this session, such as one from SessionPool or a server
-      // internal session, is not owned by this transport.
       if (this.executorService != null) {
         this.executorService.shutdown();
         this.executorService = null;
-        if (this.availableNodes != null) {
-          this.availableNodes.close();
-          this.availableNodes = null;
-        }
-      } else {
+      }
+      if (this.availableNodes != null) {
+        this.availableNodes.close();
         this.availableNodes = null;
       }
       isClosed = true;

@@ -19,16 +19,16 @@
 
 package org.apache.iotdb.commons.client.internal.session;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.INodeSupplier;
-import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.pool.ITableSessionPool;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.i18n.SessionMessages;
 import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.session.pool.TableSessionPool;
 import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 
+import java.util.List;
 import java.util.Objects;
 
 /** Server-side builder for lazily-created table-model internal session pools. */
@@ -76,8 +76,8 @@ public class InternalTableSessionPoolBuilder extends TableSessionPoolBuilder {
     }
 
     @Override
-    protected void openSession(final ISession session) throws IoTDBConnectionException {
-      session.open(isEnableThriftCompression(), getConnectionTimeoutInMs());
+    protected INodeSupplier createNodeSupplier(final List<TEndPoint> ignored) {
+      return nodeSupplier;
     }
   }
 }
