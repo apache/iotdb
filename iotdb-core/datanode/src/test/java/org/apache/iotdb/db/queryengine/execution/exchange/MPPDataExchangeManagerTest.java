@@ -41,17 +41,23 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateM
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
 import org.apache.iotdb.db.queryengine.execution.memory.MemorySide;
+import org.apache.iotdb.mpp.rpc.thrift.TCloseSinkChannelEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent;
 
+import com.google.common.util.concurrent.MoreExecutors;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 
 public class MPPDataExchangeManagerTest {
   @Test
@@ -253,6 +259,228 @@ public class MPPDataExchangeManagerTest {
         localFragmentInstanceId,
         remoteFragmentInstanceId,
         localPlanNodeId);
+  }
+
+  @Test
+  public void testConsumerCloseAfterNoMoreTsBlocksFinishesShuffleSinkHandle() {
+    final TFragmentInstanceId producerId = new TFragmentInstanceId("q0", 1, "0");
+    final TFragmentInstanceId consumerId = new TFragmentInstanceId("q0", 0, "0");
+    final FragmentInstanceContext producerContext = Mockito.mock(FragmentInstanceContext.class);
+    final MPPDataExchangeManager mppDataExchangeManager = createMPPDataExchangeManager();
+    final ISinkHandle shuffleSinkHandle =
+        createShuffleSinkHandle(
+            mppDataExchangeManager,
+            producerId,
+            Collections.singletonList(localChannelLocation(consumerId)),
+            producerContext);
+    final ISourceHandle localSourceHandle =
+        createLocalSourceHandle(mppDataExchangeManager, consumerId, producerId, 0);
+
+    // The consumer takes every block before the producer signals the end of data.
+    localSourceHandle.isBlocked();
+    shuffleSinkHandle.send(Utils.createMockTsBlock(256));
+    Assert.assertTrue(localSourceHandle.isBlocked().isDone());
+    Assert.assertNotNull(localSourceHandle.receive());
+
+    // The consumer closes as soon as the queue reports that it is finished, before the producer's
+    // own LocalSinkChannel#checkAndInvokeOnFinished() runs. This is the order seen when a finished
+    // query's result handle is closed.
+    localSourceHandle.isBlocked().addListener(localSourceHandle::close, directExecutor());
+    shuffleSinkHandle.setNoMoreTsBlocks();
+
+    Assert.assertTrue(shuffleSinkHandle.isChannelClosed(0));
+    Assert.assertTrue(
+        "ShuffleSinkHandle did not finish after the consumer closed its only channel",
+        shuffleSinkHandle.isClosed());
+    Mockito.verify(producerContext).finished();
+  }
+
+  @Test
+  public void testConsumerCloseBeforeNoMoreTsBlocksFinishesShuffleSinkHandle() {
+    final TFragmentInstanceId producerId = new TFragmentInstanceId("q0", 1, "0");
+    final TFragmentInstanceId consumerId = new TFragmentInstanceId("q0", 0, "0");
+    final FragmentInstanceContext producerContext = Mockito.mock(FragmentInstanceContext.class);
+    final MPPDataExchangeManager mppDataExchangeManager = createMPPDataExchangeManager();
+    final ISinkHandle shuffleSinkHandle =
+        createShuffleSinkHandle(
+            mppDataExchangeManager,
+            producerId,
+            Collections.singletonList(localChannelLocation(consumerId)),
+            producerContext);
+    final ISourceHandle localSourceHandle =
+        createLocalSourceHandle(mppDataExchangeManager, consumerId, producerId, 0);
+
+    localSourceHandle.isBlocked();
+    shuffleSinkHandle.send(Utils.createMockTsBlock(256));
+    // The consumer stops reading early, for example because a LIMIT is satisfied.
+    localSourceHandle.close();
+
+    Assert.assertTrue(shuffleSinkHandle.isChannelClosed(0));
+    Assert.assertTrue(
+        "ShuffleSinkHandle did not finish after the consumer closed its only channel",
+        shuffleSinkHandle.isClosed());
+    Mockito.verify(producerContext).finished();
+
+    // The producer's driver may still be running; its later calls must be harmless.
+    shuffleSinkHandle.send(Utils.createMockTsBlock(256));
+    shuffleSinkHandle.setNoMoreTsBlocks();
+    Mockito.verify(producerContext, Mockito.times(1)).finished();
+  }
+
+  @Test
+  public void testConsumerCloseOfRemoteChannelFinishesShuffleSinkHandle() throws Exception {
+    final TFragmentInstanceId producerId = new TFragmentInstanceId("q0", 1, "0");
+    final TFragmentInstanceId consumerId = new TFragmentInstanceId("q0", 0, "0");
+    final FragmentInstanceContext producerContext = Mockito.mock(FragmentInstanceContext.class);
+    final MPPDataExchangeManager mppDataExchangeManager = createMPPDataExchangeManager();
+    final ISinkHandle shuffleSinkHandle =
+        createShuffleSinkHandle(
+            mppDataExchangeManager,
+            producerId,
+            Collections.singletonList(
+                new DownStreamChannelLocation(
+                    new TEndPoint("remote-exchange", 10740), consumerId, "exchange_0")),
+            producerContext);
+
+    // The remote consumer closes its source handle before the producer signals the end of data.
+    mppDataExchangeManager
+        .getOrCreateMPPDataExchangeServiceImpl()
+        .onCloseSinkChannelEvent(new TCloseSinkChannelEvent(producerId, 0));
+
+    Assert.assertTrue(shuffleSinkHandle.isChannelClosed(0));
+    Assert.assertTrue(shuffleSinkHandle.isClosed());
+    Mockito.verify(producerContext).finished();
+  }
+
+  @Test
+  public void testConsumerCloseOfAllLocalChannelsFinishesShuffleSinkHandle() {
+    final TFragmentInstanceId producerId = new TFragmentInstanceId("q0", 1, "0");
+    final TFragmentInstanceId firstConsumerId = new TFragmentInstanceId("q0", 0, "0");
+    final TFragmentInstanceId secondConsumerId = new TFragmentInstanceId("q0", 2, "0");
+    final FragmentInstanceContext producerContext = Mockito.mock(FragmentInstanceContext.class);
+    final MPPDataExchangeManager mppDataExchangeManager = createMPPDataExchangeManager();
+    final ISinkHandle shuffleSinkHandle =
+        createShuffleSinkHandle(
+            mppDataExchangeManager,
+            producerId,
+            Arrays.asList(
+                localChannelLocation(firstConsumerId), localChannelLocation(secondConsumerId)),
+            producerContext);
+    final ISourceHandle firstSourceHandle =
+        createLocalSourceHandle(mppDataExchangeManager, firstConsumerId, producerId, 0);
+    final ISourceHandle secondSourceHandle =
+        createLocalSourceHandle(mppDataExchangeManager, secondConsumerId, producerId, 1);
+
+    firstSourceHandle.close();
+    Assert.assertFalse(shuffleSinkHandle.isClosed());
+    Mockito.verify(producerContext, Mockito.never()).finished();
+
+    secondSourceHandle.close();
+    Assert.assertTrue(shuffleSinkHandle.isChannelClosed(0));
+    Assert.assertTrue(shuffleSinkHandle.isChannelClosed(1));
+    Assert.assertTrue(
+        "ShuffleSinkHandle did not finish after the consumers closed all of its channels",
+        shuffleSinkHandle.isClosed());
+    Mockito.verify(producerContext).finished();
+  }
+
+  @Test
+  public void testAbortedLocalChannelKeepsShuffleSinkHandleFromFinishing() {
+    final TFragmentInstanceId producerId = new TFragmentInstanceId("q0", 1, "0");
+    final TFragmentInstanceId consumerId = new TFragmentInstanceId("q0", 0, "0");
+    final FragmentInstanceContext producerContext = Mockito.mock(FragmentInstanceContext.class);
+    final MPPDataExchangeManager mppDataExchangeManager = createMPPDataExchangeManager();
+    final ShuffleSinkHandle shuffleSinkHandle =
+        (ShuffleSinkHandle)
+            createShuffleSinkHandle(
+                mppDataExchangeManager,
+                producerId,
+                Collections.singletonList(localChannelLocation(consumerId)),
+                producerContext);
+    createLocalSourceHandle(mppDataExchangeManager, consumerId, producerId, 0);
+
+    Assert.assertTrue(shuffleSinkHandle.getChannel(0).abort());
+
+    Assert.assertFalse(
+        "ShuffleSinkHandle must not finish when its channel was aborted",
+        shuffleSinkHandle.close());
+    Assert.assertFalse(shuffleSinkHandle.isClosed());
+    Mockito.verify(producerContext, Mockito.never()).finished();
+  }
+
+  @Test
+  public void testAbortedLocalChannelKeepsShuffleSinkHandleFromFinishingOnConsumerClose() {
+    final TFragmentInstanceId producerId = new TFragmentInstanceId("q0", 1, "0");
+    final TFragmentInstanceId firstConsumerId = new TFragmentInstanceId("q0", 0, "0");
+    final TFragmentInstanceId secondConsumerId = new TFragmentInstanceId("q0", 2, "0");
+    final FragmentInstanceContext producerContext = Mockito.mock(FragmentInstanceContext.class);
+    final MPPDataExchangeManager mppDataExchangeManager = createMPPDataExchangeManager();
+    final ShuffleSinkHandle shuffleSinkHandle =
+        (ShuffleSinkHandle)
+            createShuffleSinkHandle(
+                mppDataExchangeManager,
+                producerId,
+                Arrays.asList(
+                    localChannelLocation(firstConsumerId), localChannelLocation(secondConsumerId)),
+                producerContext);
+    createLocalSourceHandle(mppDataExchangeManager, firstConsumerId, producerId, 0);
+    final ISourceHandle secondSourceHandle =
+        createLocalSourceHandle(mppDataExchangeManager, secondConsumerId, producerId, 1);
+
+    Assert.assertTrue(shuffleSinkHandle.getChannel(0).abort());
+    secondSourceHandle.close();
+
+    Assert.assertTrue(shuffleSinkHandle.isChannelClosed(1));
+    Assert.assertFalse(
+        "ShuffleSinkHandle must not finish when one of its channels was aborted",
+        shuffleSinkHandle.isClosed());
+    Mockito.verify(producerContext, Mockito.never()).finished();
+  }
+
+  private static MPPDataExchangeManager createMPPDataExchangeManager() {
+    LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
+    MemoryManager memoryManager = Mockito.spy(new MemoryManager(10240L));
+    MemoryPool spyMemoryPool = Mockito.spy(new MemoryPool("test", memoryManager, 5120L));
+    Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(spyMemoryPool);
+    return new MPPDataExchangeManager(
+        mockLocalMemoryManager,
+        new TsBlockSerdeFactory(),
+        MoreExecutors.newDirectExecutorService(),
+        new IClientManager.Factory<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>()
+            .createClientManager(
+                new ClientPoolFactory.SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
+  }
+
+  private static DownStreamChannelLocation localChannelLocation(TFragmentInstanceId consumerId) {
+    return new DownStreamChannelLocation(
+        new TEndPoint(
+            IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
+            IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort()),
+        consumerId,
+        "exchange_0");
+  }
+
+  private static ISinkHandle createShuffleSinkHandle(
+      MPPDataExchangeManager mppDataExchangeManager,
+      TFragmentInstanceId producerId,
+      List<DownStreamChannelLocation> channelLocations,
+      FragmentInstanceContext producerContext) {
+    return mppDataExchangeManager.createShuffleSinkHandle(
+        channelLocations,
+        new DownStreamChannelIndex(0),
+        ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
+        producerId,
+        "shuffleSink_0",
+        producerContext);
+  }
+
+  private static ISourceHandle createLocalSourceHandle(
+      MPPDataExchangeManager mppDataExchangeManager,
+      TFragmentInstanceId consumerId,
+      TFragmentInstanceId producerId,
+      int channelIndex) {
+    return mppDataExchangeManager.createLocalSourceHandleForFragment(
+        consumerId, "exchange_0", "shuffleSink_0", producerId, channelIndex, t -> {});
   }
 
   private static void assertProducerOwnsQueue(
