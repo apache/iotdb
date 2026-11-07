@@ -1634,4 +1634,223 @@ public class SessionPoolTest {
 
     return Collections.singletonList(tsBlock);
   }
+
+  @Test
+  public void test_CurrentOccupiedSize_WhenInsertIsRunning_CountsItsSession()
+      throws IoTDBConnectionException, StatementExecutionException {
+    int[] occupiedDuringInsert = {-1};
+    Mockito.doAnswer(
+            invocation -> {
+              occupiedDuringInsert[0] = sessionPool.currentOccupiedSize();
+              return null;
+            })
+        .when(session)
+        .insertTablet(any(Tablet.class), Mockito.anyBoolean());
+
+    sessionPool.insertTablet(createBooleanTablet());
+
+    assertEquals(1, occupiedDuringInsert[0]);
+    assertEquals(0, sessionPool.currentOccupiedSize());
+    assertEquals(1, sessionPool.currentAvailableSize());
+  }
+
+  @Test
+  public void test_CurrentOccupiedSize_WhenNonQueryIsRunning_CountsItsSession()
+      throws IoTDBConnectionException, StatementExecutionException {
+    int[] occupiedDuringNonQuery = {-1};
+    Mockito.doAnswer(
+            invocation -> {
+              occupiedDuringNonQuery[0] = sessionPool.currentOccupiedSize();
+              return null;
+            })
+        .when(session)
+        .executeNonQueryStatement(any(String.class));
+
+    sessionPool.executeNonQueryStatement("flush");
+
+    assertEquals(1, occupiedDuringNonQuery[0]);
+    assertEquals(0, sessionPool.currentOccupiedSize());
+  }
+
+  @Test
+  public void test_CurrentOccupiedSize_WhenInsertWasRejected_IsZero()
+      throws IoTDBConnectionException, StatementExecutionException {
+    doThrow(new StatementExecutionException("rejected"))
+        .when(session)
+        .insertTablet(any(Tablet.class), Mockito.anyBoolean());
+
+    try {
+      sessionPool.insertTablet(createBooleanTablet());
+      Assert.fail("expected StatementExecutionException");
+    } catch (StatementExecutionException e) {
+      // expected
+    }
+
+    assertEquals(0, sessionPool.currentOccupiedSize());
+    assertEquals(1, sessionPool.currentAvailableSize());
+  }
+
+  @Test
+  public void test_CurrentOccupiedSize_WhenBrokenSessionWasCleanedUp_IsZero()
+      throws IoTDBConnectionException, StatementExecutionException {
+    doThrow(new IoTDBConnectionException("broken"))
+        .when(session)
+        .insertTablet(any(Tablet.class), Mockito.anyBoolean());
+
+    try {
+      sessionPool.insertTablet(createBooleanTablet());
+      Assert.fail("expected IoTDBConnectionException");
+    } catch (IoTDBConnectionException e) {
+      // expected
+    }
+
+    assertEquals(0, sessionPool.currentOccupiedSize());
+  }
+
+  @Test
+  public void test_CurrentOccupiedSize_WhenResultSetIsOpen_CountsItsSessionUntilClosed()
+      throws IoTDBConnectionException, StatementExecutionException {
+    SessionDataSet dataSet = Mockito.mock(SessionDataSet.class);
+    Mockito.when(session.executeQueryStatement(any(String.class))).thenReturn(dataSet);
+
+    SessionDataSetWrapper wrapper = sessionPool.executeQueryStatement("select * from root.**");
+    assertEquals(1, sessionPool.currentOccupiedSize());
+
+    sessionPool.closeResultSet(wrapper);
+    assertEquals(0, sessionPool.currentOccupiedSize());
+    assertEquals(1, sessionPool.currentAvailableSize());
+  }
+
+  @Test
+  public void test_CloseResultSet_WhenCalledTwice_PutsSessionBackIntoPoolOnlyOnce()
+      throws IoTDBConnectionException, StatementExecutionException {
+    SessionDataSet dataSet = Mockito.mock(SessionDataSet.class);
+    Mockito.when(session.executeQueryStatement(any(String.class))).thenReturn(dataSet);
+
+    SessionDataSetWrapper wrapper = sessionPool.executeQueryStatement("select * from root.**");
+    sessionPool.closeResultSet(wrapper);
+    sessionPool.closeResultSet(wrapper);
+
+    assertEquals(0, sessionPool.currentOccupiedSize());
+    assertEquals(1, sessionPool.currentAvailableSize());
+  }
+
+  @Test
+  public void test_CloseResultSet_WhenCalledAgainAfterNextQueryTookSession_LeavesItToNextQuery()
+      throws IoTDBConnectionException, StatementExecutionException {
+    SessionDataSet firstDataSet = Mockito.mock(SessionDataSet.class);
+    SessionDataSet secondDataSet = Mockito.mock(SessionDataSet.class);
+    Mockito.when(session.executeQueryStatement(any(String.class)))
+        .thenReturn(firstDataSet, secondDataSet);
+
+    SessionDataSetWrapper first = sessionPool.executeQueryStatement("select * from root.a");
+    sessionPool.closeResultSet(first); // as SessionDataSetWrapper.hasNext() does when exhausted
+    SessionDataSetWrapper second = sessionPool.executeQueryStatement("select * from root.b");
+    Assert.assertSame(first.getSession(), second.getSession());
+
+    sessionPool.closeResultSet(first); // e.g. in the caller's finally block
+
+    assertEquals(0, sessionPool.currentAvailableSize());
+    assertEquals(1, sessionPool.currentOccupiedSize());
+    Mockito.verify(secondDataSet, Mockito.never()).closeOperationHandle();
+
+    sessionPool.closeResultSet(second);
+    assertEquals(0, sessionPool.currentOccupiedSize());
+    assertEquals(1, sessionPool.currentAvailableSize());
+  }
+
+  @Test
+  public void test_CloseResultSet_WhenClosingOperationHandleFails_ClosesSessionAndStopsCountingIt()
+      throws IoTDBConnectionException, StatementExecutionException {
+    SessionDataSet dataSet = Mockito.mock(SessionDataSet.class);
+    doThrow(new IoTDBConnectionException("broken")).when(dataSet).closeOperationHandle();
+    Mockito.when(session.executeQueryStatement(any(String.class))).thenReturn(dataSet);
+
+    SessionDataSetWrapper wrapper = sessionPool.executeQueryStatement("select * from root.**");
+    sessionPool.closeResultSet(wrapper);
+
+    assertEquals(0, sessionPool.currentOccupiedSize());
+    assertEquals(0, sessionPool.currentAvailableSize());
+    Mockito.verify(session).close();
+  }
+
+  @Test
+  public void test_CloseResultSet_WhenCalledAgainAfterFailedClose_DoesNotRetryClose()
+      throws IoTDBConnectionException, StatementExecutionException {
+    SessionDataSet dataSet = Mockito.mock(SessionDataSet.class);
+    doThrow(new IoTDBConnectionException("broken")).when(dataSet).closeOperationHandle();
+    Mockito.when(session.executeQueryStatement(any(String.class))).thenReturn(dataSet);
+
+    SessionDataSetWrapper wrapper = sessionPool.executeQueryStatement("select * from root.**");
+    sessionPool.closeResultSet(wrapper);
+    sessionPool.closeResultSet(wrapper);
+
+    // a failed close leaves the data set open, so a second attempt would send the close request
+    // again over the broken session and open a second replacement session for it
+    Mockito.verify(dataSet, Mockito.times(1)).closeOperationHandle();
+  }
+
+  @Test
+  public void test_CloseResultSet_WhenWrapperHasNoSession_DoesNothing() {
+    SessionDataSet dataSet = Mockito.mock(SessionDataSet.class);
+
+    sessionPool.closeResultSet(new SessionDataSetWrapper(dataSet, null, sessionPool));
+
+    assertEquals(0, sessionPool.currentOccupiedSize());
+    assertEquals(1, sessionPool.currentAvailableSize());
+  }
+
+  @Test
+  public void test_Setters_WhenCalledWhileInsertIsRunning_ReachSessionExecutingInsert()
+      throws IoTDBConnectionException, StatementExecutionException {
+    // setTimeZone first sends the new zone to the server, through an idle session
+    Session idleSession = Mockito.mock(Session.class);
+    ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue"))
+        .add(idleSession);
+    Mockito.doAnswer(
+            invocation -> {
+              sessionPool.setTimeZone("+02:00");
+              sessionPool.setFetchSize(4321);
+              sessionPool.setEnableRedirection(false);
+              sessionPool.setEnableQueryRedirection(true);
+              sessionPool.setVersion(Version.V_0_13);
+              sessionPool.setQueryTimeout(1234);
+              return null;
+            })
+        .when(session)
+        .insertTablet(any(Tablet.class), Mockito.anyBoolean());
+
+    sessionPool.insertTablet(createBooleanTablet());
+
+    Mockito.verify(session).setFetchSize(4321);
+    Mockito.verify(session).setEnableRedirection(false);
+    Mockito.verify(session).setEnableQueryRedirection(true);
+    Mockito.verify(session).setVersion(Version.V_0_13);
+    Mockito.verify(session).setQueryTimeout(1234);
+    Mockito.verify(session).setTimeZoneOfSession("+02:00");
+  }
+
+  @Test
+  public void test_Close_WhenInsertIsRunning_ClosesSessionExecutingInsert()
+      throws IoTDBConnectionException, StatementExecutionException {
+    Mockito.doAnswer(
+            invocation -> {
+              sessionPool.close();
+              return null;
+            })
+        .when(session)
+        .insertTablet(any(Tablet.class), Mockito.anyBoolean());
+
+    sessionPool.insertTablet(createBooleanTablet());
+
+    Mockito.verify(session).close();
+  }
+
+  private static Tablet createBooleanTablet() {
+    List<IMeasurementSchema> schemas = new ArrayList<>();
+    schemas.add(new MeasurementSchema("pressure", TSDataType.BOOLEAN));
+    long[] timestamp = new long[] {1L, 2L};
+    boolean[][] values = new boolean[][] {{true, false}};
+    return new Tablet("device1", schemas, timestamp, values, new BitMap[1], 2);
+  }
 }
