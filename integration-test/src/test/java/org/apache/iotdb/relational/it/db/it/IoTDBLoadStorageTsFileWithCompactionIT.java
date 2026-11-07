@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.relational.it.db.it;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic;
@@ -44,10 +45,10 @@ import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @RunWith(IoTDBTestRunner.class)
@@ -194,59 +195,67 @@ public class IoTDBLoadStorageTsFileWithCompactionIT {
     try (final TsFileSequenceReader reader =
         new TsFileSequenceReader(tsFile.toAbsolutePath().toString())) {
       final Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
-      Assert.assertNotNull("TsFile has no table schema map", tableSchemaMap);
+      Assert.assertNotNull("TsFile " + tsFile + " has no table schema map", tableSchemaMap);
       Assert.assertTrue(
-          "TsFile has no schema entry for table " + TABLE + ": " + tableSchemaMap,
+          "TsFile " + tsFile + " has no schema entry for table " + TABLE + ": " + tableSchemaMap,
           tableSchemaMap.containsKey(TABLE));
       Assert.assertFalse(
-          "The storage path must not synthesize a TIME column: " + tableSchemaMap.get(TABLE),
+          "The storage path must not synthesize a TIME column: " + tsFile,
           tableSchemaMap.get(TABLE).getColumnTypes().contains(ColumnCategory.TIME));
       Assert.assertTrue(
-          "A table-model TsFile must carry the " + TABLE_MODEL_PROPERTY + " property",
+          "A table-model TsFile must carry the "
+              + TABLE_MODEL_PROPERTY
+              + " property, but "
+              + tsFile
+              + " does not",
           reader.readFileMetadata().getTsFileProperties().containsKey(TABLE_MODEL_PROPERTY));
     }
   }
 
   private static void assertAllTsFilesHaveTableSchema(final BaseEnv env) throws IOException {
-    final Path dataPath = Paths.get(env.getDataNodeWrapper(0).getDataPath());
-    try (final Stream<Path> paths = Files.walk(dataPath)) {
-      final List<Path> tsFiles =
-          paths
-              .filter(Files::isRegularFile)
-              .filter(path -> path.getFileName().toString().endsWith(TsFileConstant.TSFILE_SUFFIX))
-              .collect(Collectors.toList());
-      Assert.assertFalse("No TsFile was produced", tsFiles.isEmpty());
-      for (final Path tsFile : tsFiles) {
-        assertTableSchemaRegistered(tsFile);
-      }
+    final List<Path> tsFiles = listDatabaseTsFiles(env);
+    Assert.assertFalse("No TsFile was produced for database " + DATABASE, tsFiles.isEmpty());
+    for (final Path tsFile : tsFiles) {
+      assertTableSchemaRegistered(tsFile);
     }
   }
 
   private static long countTsFiles(final BaseEnv env) throws IOException {
-    final Path dataPath = Paths.get(env.getDataNodeWrapper(0).getDataPath());
-    if (!Files.exists(dataPath)) {
-      return 0;
-    }
-    try (final Stream<Path> paths = Files.walk(dataPath)) {
-      return paths
-          .filter(Files::isRegularFile)
-          .filter(path -> path.getFileName().toString().endsWith(TsFileConstant.TSFILE_SUFFIX))
-          .count();
-    }
+    return listDatabaseTsFiles(env).size();
   }
 
   private static Path findSingleTsFile(final BaseEnv env) throws IOException {
+    final List<Path> tsFiles = listDatabaseTsFiles(env);
+    Assert.assertEquals(
+        "Expected exactly one compacted TsFile, but got " + tsFiles, 1, tsFiles.size());
+    return tsFiles.get(0);
+  }
+
+  /**
+   * Lists the TsFiles of the database owned by this test only.
+   *
+   * <p>The DataNode data directory is shared by every database of the node, including the internal
+   * ones that store system records. Those databases are tree-model databases whose TsFiles
+   * legitimately carry no table schema at all, so scanning the whole data directory would mix
+   * unrelated TsFiles into the table-schema assertions of this test.
+   */
+  private static List<Path> listDatabaseTsFiles(final BaseEnv env) throws IOException {
     final Path dataPath = Paths.get(env.getDataNodeWrapper(0).getDataPath());
-    try (final Stream<Path> paths = Files.walk(dataPath)) {
-      final List<Path> tsFiles =
-          paths
-              .filter(Files::isRegularFile)
-              .filter(path -> path.getFileName().toString().endsWith(TsFileConstant.TSFILE_SUFFIX))
-              .collect(Collectors.toList());
-      Assert.assertEquals(
-          "Expected exactly one compacted TsFile, but got " + tsFiles, 1, tsFiles.size());
-      return tsFiles.get(0);
+    final List<Path> tsFiles = new ArrayList<>();
+    for (final String folder :
+        new String[] {IoTDBConstant.SEQUENCE_FOLDER_NAME, IoTDBConstant.UNSEQUENCE_FOLDER_NAME}) {
+      final Path databaseDir = dataPath.resolve(folder).resolve(DATABASE);
+      if (!Files.isDirectory(databaseDir)) {
+        continue;
+      }
+      try (final Stream<Path> paths = Files.walk(databaseDir)) {
+        paths
+            .filter(Files::isRegularFile)
+            .filter(path -> path.getFileName().toString().endsWith(TsFileConstant.TSFILE_SUFFIX))
+            .forEach(tsFiles::add);
+      }
     }
+    return tsFiles;
   }
 
   private static void deleteRecursively(final Path path) throws IOException {
