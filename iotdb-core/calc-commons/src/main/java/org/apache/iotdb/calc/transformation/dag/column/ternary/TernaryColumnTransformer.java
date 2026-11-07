@@ -25,6 +25,8 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
+import java.util.function.Consumer;
+
 public abstract class TernaryColumnTransformer extends ColumnTransformer {
 
   protected ColumnTransformer firstColumnTransformer;
@@ -48,12 +50,13 @@ public abstract class TernaryColumnTransformer extends ColumnTransformer {
   @Override
   public void evaluate() {
     firstColumnTransformer.tryEvaluate();
-    secondColumnTransformer.tryEvaluate();
-    thirdColumnTransformer.tryEvaluate();
-    int positionCount = firstColumnTransformer.getColumnCachePositionCount();
     Column firstColumn = firstColumnTransformer.getColumn();
+    secondColumnTransformer.tryEvaluate();
     Column secondColumn = secondColumnTransformer.getColumn();
+    thirdColumnTransformer.tryEvaluate();
     Column thirdColumn = thirdColumnTransformer.getColumn();
+    // Later children may clear shared caches; the retained columns keep their values and size.
+    int positionCount = firstColumn.getPositionCount();
     ColumnBuilder columnBuilder = returnType.createColumnBuilder(positionCount);
     doTransform(firstColumn, secondColumn, thirdColumn, columnBuilder, positionCount);
     initializeColumnCache(columnBuilder.build());
@@ -62,12 +65,13 @@ public abstract class TernaryColumnTransformer extends ColumnTransformer {
   @Override
   public void evaluateWithSelection(boolean[] selection) {
     firstColumnTransformer.evaluateWithSelection(selection);
-    secondColumnTransformer.evaluateWithSelection(selection);
-    thirdColumnTransformer.evaluateWithSelection(selection);
-    int positionCount = firstColumnTransformer.getColumnCachePositionCount();
     Column firstColumn = firstColumnTransformer.getColumn();
+    secondColumnTransformer.evaluateWithSelection(selection);
     Column secondColumn = secondColumnTransformer.getColumn();
+    thirdColumnTransformer.evaluateWithSelection(selection);
     Column thirdColumn = thirdColumnTransformer.getColumn();
+    // Later children may clear shared caches; the retained columns keep their values and size.
+    int positionCount = firstColumn.getPositionCount();
     ColumnBuilder columnBuilder = returnType.createColumnBuilder(positionCount);
     doTransform(firstColumn, secondColumn, thirdColumn, columnBuilder, positionCount, selection);
     initializeColumnCache(columnBuilder.build());
@@ -117,5 +121,12 @@ public abstract class TernaryColumnTransformer extends ColumnTransformer {
     firstColumnTransformer.close();
     secondColumnTransformer.close();
     thirdColumnTransformer.close();
+  }
+
+  @Override
+  protected void forEachChild(Consumer<ColumnTransformer> action) {
+    action.accept(firstColumnTransformer);
+    action.accept(secondColumnTransformer);
+    action.accept(thirdColumnTransformer);
   }
 }

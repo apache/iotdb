@@ -24,6 +24,8 @@ import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.Type;
 
+import java.util.function.Consumer;
+
 public abstract class LeafColumnTransformer extends ColumnTransformer {
   protected TsBlock input;
 
@@ -38,5 +40,10 @@ public abstract class LeafColumnTransformer extends ColumnTransformer {
 
   public void initFromTsBlock(TsBlock input) {
     this.input = input;
+  }
+
+  @Override
+  protected void forEachChild(Consumer<ColumnTransformer> action) {
+    // Leaf transformers have no children.
   }
 }
