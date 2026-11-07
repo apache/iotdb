@@ -831,4 +831,7 @@ public final class ConfigNodeMessages {
       "Get error when serialize pattern tree.";
 
   public static final String EXCEPTION_NO_SUCH_USER_9F8AB2B7 = "No such user : ";
+
+  public static final String LOG_INVALID_PIVOT_CONFIGURATION_VALUE_FOR_ARG_ARG_KEEPING_ARG_FCB21FF0 =
+      "Invalid PIVOT configuration value for {}: {}; keeping {}";
 }

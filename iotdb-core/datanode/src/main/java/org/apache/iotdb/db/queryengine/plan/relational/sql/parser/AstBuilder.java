@@ -96,6 +96,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternQuant
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternRecognitionRelation.RowsPerMatch;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternVariable;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PivotRelation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ProcessingMode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
@@ -129,6 +130,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TimeDuration
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TypeParameter;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Union;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.UnpivotRelation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Values;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.VariableDefinition;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
@@ -2924,6 +2926,121 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     }
 
     return result;
+  }
+
+  // PIVOT and UNPIVOT use the same relation AST in both query-body and FROM forms.
+  private Relation pivotInput(RelationalSqlParser.PivotInputRelationContext ctx) {
+    Relation input = (Relation) visit(ctx.relationPrimary());
+    return ctx.identifier() == null
+        ? input
+        : new AliasedRelation(getLocation(ctx), input, (Identifier) visit(ctx.identifier()), null);
+  }
+
+  private PivotRelation.Value pivotValue(RelationalSqlParser.PivotValueContext ctx) {
+    return new PivotRelation.Value(
+        (Expression) visit(ctx.valueExpression()),
+        Optional.ofNullable(ctx.identifier()).map(identifier -> (Identifier) visit(identifier)));
+  }
+
+  private PivotRelation.OnItem pivotOnItem(RelationalSqlParser.PivotOnItemContext ctx) {
+    return new PivotRelation.OnItem(
+        (Expression) visit(ctx.valueExpression()),
+        ctx.IN() == null
+            ? Optional.empty()
+            : Optional.of(ctx.pivotValue().stream().map(this::pivotValue).collect(toList())));
+  }
+
+  private PivotRelation.OnItem pivotOnItem(RelationalSqlParser.PivotStaticOnItemContext ctx) {
+    return new PivotRelation.OnItem(
+        (Expression) visit(ctx.valueExpression()),
+        Optional.of(ctx.pivotValue().stream().map(this::pivotValue).collect(toList())));
+  }
+
+  private PivotRelation.UsingItem pivotUsingItem(RelationalSqlParser.PivotUsingItemContext ctx) {
+    return new PivotRelation.UsingItem(
+        (Expression) visit(ctx.valueExpression()),
+        Optional.ofNullable(ctx.identifier()).map(identifier -> (Identifier) visit(identifier)));
+  }
+
+  private Optional<List<Expression>> pivotGroupBy(
+      List<RelationalSqlParser.PivotGroupItemContext> items) {
+    return items.isEmpty()
+        ? Optional.empty()
+        : Optional.of(
+            items.stream().map(item -> (Expression) visit(item.expression())).collect(toList()));
+  }
+
+  @Override
+  public Node visitPivotQueryBody(RelationalSqlParser.PivotQueryBodyContext ctx) {
+    return new PivotRelation(
+        getLocation(ctx),
+        pivotInput(ctx.pivotInputRelation()),
+        ctx.pivotOnItem().stream().map(this::pivotOnItem).collect(toList()),
+        ctx.pivotUsingItem().stream().map(this::pivotUsingItem).collect(toList()),
+        pivotGroupBy(ctx.pivotGroupItem()),
+        true);
+  }
+
+  @Override
+  public Node visitPivotClauseRelation(RelationalSqlParser.PivotClauseRelationContext ctx) {
+    PivotRelation pivot =
+        new PivotRelation(
+            getLocation(ctx),
+            (Relation) visit(ctx.left),
+            ctx.pivotStaticOnItem().stream().map(this::pivotOnItem).collect(toList()),
+            ctx.pivotUsingItem().stream().map(this::pivotUsingItem).collect(toList()),
+            pivotGroupBy(ctx.pivotGroupItem()),
+            false);
+    return ctx.identifier() == null
+        ? pivot
+        : new AliasedRelation(getLocation(ctx), pivot, (Identifier) visit(ctx.identifier()), null);
+  }
+
+  private UnpivotRelation.Item unpivotItem(RelationalSqlParser.UnpivotItemContext ctx) {
+    Optional<List<Identifier>> excluded = Optional.empty();
+    if (ctx.unpivotColumnsSelector() != null) {
+      excluded = Optional.of(visit(ctx.unpivotColumnsSelector().identifier(), Identifier.class));
+    }
+    List<Expression> expressions = visit(ctx.expression(), Expression.class);
+    return new UnpivotRelation.Item(
+        expressions,
+        excluded,
+        Optional.ofNullable(ctx.identifier()).map(identifier -> (Identifier) visit(identifier)));
+  }
+
+  @Override
+  public Node visitUnpivotQueryBody(RelationalSqlParser.UnpivotQueryBodyContext ctx) {
+    List<Identifier> columns = visit(ctx.identifier(), Identifier.class);
+    boolean explicitInto = ctx.INTO() != null;
+    return new UnpivotRelation(
+        getLocation(ctx),
+        pivotInput(ctx.pivotInputRelation()),
+        explicitInto
+            ? columns.subList(1, columns.size())
+            : ImmutableList.of(new Identifier("value")),
+        explicitInto ? columns.get(0) : new Identifier("name"),
+        ctx.unpivotItem().stream().map(this::unpivotItem).collect(toList()),
+        ctx.INCLUDE() != null,
+        true,
+        explicitInto);
+  }
+
+  @Override
+  public Node visitUnpivotClauseRelation(RelationalSqlParser.UnpivotClauseRelationContext ctx) {
+    UnpivotRelation unpivot =
+        new UnpivotRelation(
+            getLocation(ctx),
+            (Relation) visit(ctx.left),
+            visit(ctx.unpivotValueSpec().identifier(), Identifier.class),
+            (Identifier) visit(ctx.identifier(0)),
+            ctx.unpivotItem().stream().map(this::unpivotItem).collect(toList()),
+            ctx.INCLUDE() != null,
+            false,
+            true);
+    return ctx.identifier().size() == 1
+        ? unpivot
+        : new AliasedRelation(
+            getLocation(ctx), unpivot, (Identifier) visit(ctx.identifier(1)), null);
   }
 
   // *************** from clause *****************

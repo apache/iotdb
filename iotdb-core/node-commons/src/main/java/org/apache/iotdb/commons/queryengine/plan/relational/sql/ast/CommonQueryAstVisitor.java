@@ -362,6 +362,14 @@ public interface CommonQueryAstVisitor<R, C> extends IAstVisitor<R, C> {
     return visitQueryBody(node, context);
   }
 
+  default R visitPivotRelation(PivotRelation node, C context) {
+    return visitQueryBody(node, context);
+  }
+
+  default R visitUnpivotRelation(UnpivotRelation node, C context) {
+    return visitQueryBody(node, context);
+  }
+
   default R visitQuerySpecification(QuerySpecification node, C context) {
     return visitQueryBody(node, context);
   }

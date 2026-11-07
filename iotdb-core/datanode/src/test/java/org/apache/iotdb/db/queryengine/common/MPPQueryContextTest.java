@@ -20,7 +20,14 @@
 package org.apache.iotdb.db.queryengine.common;
 
 import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PivotRelation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.OperatorMemoryNotEnoughException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -28,9 +35,95 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class MPPQueryContextTest {
 
   private static final long MEMORY_BATCH_THRESHOLD = 1024L * 1024L;
+
+  @Test
+  public void cancellationPropagatesToDiscoveryContextAndListenersRegisteredAfterCancel() {
+    MPPQueryContext parent = new MPPQueryContext(new QueryId("pivot_cancel_parent"));
+    MPPQueryContext discovery = new MPPQueryContext(new QueryId("pivot_cancel_discovery"));
+    AtomicInteger listenerCalls = new AtomicInteger();
+    discovery.setParentQueryContext(parent);
+
+    parent.cancelQuery();
+    discovery.addCancellationListener(listenerCalls::incrementAndGet);
+
+    Assert.assertTrue(discovery.isCancellationRequested());
+    Assert.assertEquals(1, listenerCalls.get());
+    IoTDBRuntimeException exception =
+        Assert.assertThrows(IoTDBRuntimeException.class, discovery::checkTimeOut);
+    Assert.assertEquals(TSStatusCode.QUERY_WAS_KILLED.getStatusCode(), exception.getErrorCode());
+  }
+
+  @Test
+  public void cancellationListenerIsInvokedOnceWhenRacingWithRegistration() {
+    MPPQueryContext context = new MPPQueryContext(new QueryId("pivot_cancel_listener"));
+    AtomicInteger listenerCalls = new AtomicInteger();
+
+    context.addCancellationListener(listenerCalls::incrementAndGet);
+    context.cancelQuery();
+    context.cancelQuery();
+
+    Assert.assertEquals(1, listenerCalls.get());
+  }
+
+  @Test
+  public void borrowedDynamicPivotInputSurvivesChildQueryCleanup() {
+    Assume.assumeTrue(LocalExecutionPlanner.getInstance().getFreeMemoryForOperators() >= 128);
+    MPPQueryContext owner = new MPPQueryContext(new QueryId("pivot_owner"));
+    MPPQueryContext child = new MPPQueryContext(new QueryId("pivot_child"));
+    PivotRelation pivot =
+        new PivotRelation(
+            null,
+            new Table(QualifiedName.of("readings")),
+            List.of(new PivotRelation.OnItem(new Identifier("region"), Optional.empty())),
+            List.of(),
+            Optional.empty(),
+            true);
+    NotThreadSafeMemoryReservationManager reservation =
+        new NotThreadSafeMemoryReservationManager(owner.getQueryId(), "borrowed-pivot-test");
+    reservation.reserveMemoryCumulatively(128);
+    reservation.reserveMemoryImmediately();
+    PivotInputStore store =
+        new PivotInputStore(
+            new CteDataStore(null, List.of(), 1024, 1), List.of(), List.of(), 0, reservation);
+    owner.addPivotInputStore(pivot, store);
+    child.borrowPivotInputStores(owner.getPivotInputStores());
+    Assert.assertSame(store, child.getPivotInputStore(pivot));
+    child.releasePivotInputStores();
+    Assert.assertNull(child.getPivotInputStore(pivot));
+    Assert.assertSame(store, owner.getPivotInputStore(pivot));
+    Assert.assertEquals(128, reservation.getReservedBytesInTotalForTest());
+    owner.releasePivotInputStores();
+    Assert.assertNull(owner.getPivotInputStore(pivot));
+    Assert.assertEquals(0, reservation.getReservedBytesInTotalForTest());
+  }
+
+  @Test
+  public void dynamicPivotInputReservationOutlivesCoordinatorFrontEndCleanup() {
+    Assume.assumeTrue(LocalExecutionPlanner.getInstance().getFreeMemoryForOperators() >= 128);
+    MPPQueryContext owner = new MPPQueryContext(new QueryId("pivot_reservation"));
+    NotThreadSafeMemoryReservationManager reservation =
+        new NotThreadSafeMemoryReservationManager(owner.getQueryId(), "pivot-input-test");
+    reservation.reserveMemoryCumulatively(128);
+    reservation.reserveMemoryImmediately();
+    PivotInputStore store =
+        new PivotInputStore(
+            new CteDataStore(null, List.of(), 1024, 1), List.of(), List.of(), 0, reservation);
+    try {
+      owner.releaseAllMemoryReservedForFrontEnd();
+      Assert.assertEquals(128, reservation.getReservedBytesInTotalForTest());
+    } finally {
+      store.clear();
+    }
+    store.clear();
+    Assert.assertEquals(0, reservation.getReservedBytesInTotalForTest());
+  }
 
   @Test
   public void resultSetColumnMemoryNotEnoughExceptionContainsColumnDiagnostics() {

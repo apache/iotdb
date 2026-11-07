@@ -111,6 +111,11 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
         }
       }
 
+      // Masked PIVOT aggregates must remain single-stage; a table scan cannot evaluate masks.
+      if (node.getAggregations().values().stream().anyMatch(AggregationNode.Aggregation::hasMask)) {
+        return node;
+      }
+
       // only optimize AggregationNode with raw DeviceTableScanNode
       if (tableScanNode == null
           || tableScanNode instanceof AggregationTableScanNode) { // no need to optimize

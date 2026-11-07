@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PivotRelation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
@@ -46,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
+import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.OperatorMemoryNotEnoughException;
@@ -53,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryIOContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -62,6 +65,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.file.Paths;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -86,6 +90,9 @@ public class MPPQueryContext implements IAuditEntity {
   private String sql;
   private String auditSqlString;
   private final QueryId queryId;
+  private final List<Runnable> cancellationListeners = new ArrayList<>();
+  private boolean cancellationRequested;
+  private IQueryExecution queryExecution;
 
   /** The type of explanation for a query. */
   public enum ExplainType {
@@ -182,6 +189,10 @@ public class MPPQueryContext implements IAuditEntity {
 
   private Map<NodeRef<Table>, Query> cteQueries = new HashMap<>();
 
+  // These stores are owned by this query, not by any internal discovery query.
+  private final Map<NodeRef<PivotRelation>, PivotInputStore> pivotInputStores = new HashMap<>();
+  private final Set<NodeRef<PivotRelation>> borrowedPivotInputStores = new HashSet<>();
+
   // Stores the EXPLAIN/EXPLAIN ANALYZE results for Common Table Expressions (CTEs)
   // Key: CTE table reference
   // Value: Pair containing (max line length of the explain output, list of formatted explain lines)
@@ -277,6 +288,7 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   public void prepareForRetry() {
+    releasePivotInputStores();
     if (!isInnerTriggeredQuery()) {
       cleanUpCte();
     }
@@ -373,9 +385,67 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   public void checkTimeOut() {
+    if (isCancellationRequested()) {
+      throw new org.apache.iotdb.commons.exception.IoTDBRuntimeException(
+          DataNodeQueryMessages.QUERY_KILLED_BY_OTHERS,
+          TSStatusCode.QUERY_WAS_KILLED.getStatusCode(),
+          true);
+    }
     long currentTime = System.currentTimeMillis();
     if (currentTime - startTime >= timeOut) {
       throw new QueryTimeoutRuntimeException(startTime, currentTime, timeOut);
+    }
+  }
+
+  public synchronized boolean isCancellationRequested() {
+    return cancellationRequested;
+  }
+
+  public void cancelQuery() {
+    List<Runnable> listeners;
+    IQueryExecution execution;
+    synchronized (this) {
+      if (cancellationRequested) {
+        return;
+      }
+      cancellationRequested = true;
+      listeners = new ArrayList<>(cancellationListeners);
+      cancellationListeners.clear();
+      execution = queryExecution;
+    }
+    listeners.forEach(Runnable::run);
+    if (execution != null) {
+      execution.cancel();
+    }
+  }
+
+  public void addCancellationListener(Runnable listener) {
+    boolean runImmediately;
+    synchronized (this) {
+      runImmediately = cancellationRequested;
+      if (!runImmediately) {
+        cancellationListeners.add(listener);
+      }
+    }
+    if (runImmediately) {
+      listener.run();
+    }
+  }
+
+  public void setParentQueryContext(MPPQueryContext parent) {
+    if (parent != null) {
+      parent.addCancellationListener(this::cancelQuery);
+    }
+  }
+
+  public void setQueryExecution(IQueryExecution execution) {
+    boolean cancelImmediately;
+    synchronized (this) {
+      queryExecution = execution;
+      cancelImmediately = cancellationRequested;
+    }
+    if (cancelImmediately) {
+      execution.cancel();
     }
   }
 
@@ -1030,6 +1100,44 @@ public class MPPQueryContext implements IAuditEntity {
 
   public void addCteQuery(Table table, Query query) {
     cteQueries.put(NodeRef.of(table), query);
+  }
+
+  public PivotInputStore getPivotInputStore(PivotRelation relation) {
+    return pivotInputStores.get(NodeRef.of(relation));
+  }
+
+  public Map<NodeRef<PivotRelation>, PivotInputStore> getPivotInputStores() {
+    return Map.copyOf(pivotInputStores);
+  }
+
+  // A discovery query can read already prepared inner PIVOTs but must not own their buffers.
+  public void borrowPivotInputStores(Map<NodeRef<PivotRelation>, PivotInputStore> stores) {
+    stores.forEach(
+        (key, store) -> {
+          if (!pivotInputStores.containsKey(key)) {
+            pivotInputStores.put(key, store);
+            borrowedPivotInputStores.add(key);
+          }
+        });
+  }
+
+  public void addPivotInputStore(PivotRelation relation, PivotInputStore store) {
+    NodeRef<PivotRelation> key = NodeRef.of(relation);
+    PivotInputStore previous = pivotInputStores.put(key, store);
+    if (previous != null && !borrowedPivotInputStores.remove(key)) {
+      previous.clear();
+    }
+  }
+
+  public void releasePivotInputStores() {
+    pivotInputStores.forEach(
+        (key, store) -> {
+          if (!borrowedPivotInputStores.contains(key)) {
+            store.clear();
+          }
+        });
+    pivotInputStores.clear();
+    borrowedPivotInputStores.clear();
   }
 
   public Map<NodeRef<Table>, Query> getCteQueries() {

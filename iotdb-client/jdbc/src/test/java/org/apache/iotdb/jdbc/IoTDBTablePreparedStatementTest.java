@@ -126,6 +126,24 @@ public class IoTDBTablePreparedStatementTest {
     return count;
   }
 
+  @SuppressWarnings("resource")
+  @Test
+  public void testPivotAndUnpivotAreServerSidePreparedQueries() throws Exception {
+    for (String sql :
+        new String[] {
+          "PIVOT (SELECT region,temp FROM readings WHERE temp >= ?) " + "ON region USING SUM(temp)",
+          "unpivot\n(SELECT a FROM readings WHERE a >= ?) ON a",
+          "PIVOT(SELECT region,temp FROM readings WHERE temp >= ?) ON region USING SUM(temp)"
+        }) {
+      IoTDBTablePreparedStatement statement =
+          new IoTDBTablePreparedStatement(connection, client, sessionId, sql, zoneId);
+      statement.setInt(1, 20);
+      statement.execute();
+    }
+    verify(client, times(3)).prepareStatement(any(TSPrepareReq.class));
+    verify(client, times(3)).executePreparedStatement(any(TSExecutePreparedReq.class));
+  }
+
   // ========== Table Model SQL Injection Prevention Tests ==========
 
   @SuppressWarnings("resource")

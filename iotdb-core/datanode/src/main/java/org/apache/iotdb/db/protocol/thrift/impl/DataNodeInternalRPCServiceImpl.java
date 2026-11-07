@@ -2854,16 +2854,31 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               iQueryExecution ->
                   allowedUsername == null || allowedUsername.equals(iQueryExecution.getUser()))
           .forEach(IQueryExecution::cancel);
+      coordinator.getAllQueryContexts().stream()
+          .filter(
+              queryContext ->
+                  allowedUsername == null || allowedUsername.equals(queryContext.getUsername()))
+          .forEach(org.apache.iotdb.db.queryengine.common.MPPQueryContext::cancelQuery);
     } else {
       Optional<IQueryExecution> queryExecution =
           coordinator.getAllQueryExecutions().stream()
               .filter(iQueryExecution -> iQueryExecution.getQueryId().equals(queryId))
               .findAny();
-      if (queryExecution.isPresent()) {
-        if (allowedUsername != null && !allowedUsername.equals(queryExecution.get().getUser())) {
+      org.apache.iotdb.db.queryengine.common.MPPQueryContext queryContext =
+          coordinator.getQueryContext(queryId);
+      if (queryExecution.isPresent() || queryContext != null) {
+        String queryUser =
+            queryExecution.isPresent()
+                ? queryExecution.get().getUser()
+                : queryContext.getUsername();
+        if (allowedUsername != null && !allowedUsername.equals(queryUser)) {
           return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode());
         }
-        queryExecution.get().cancel();
+        if (queryContext != null) {
+          queryContext.cancelQuery();
+        } else {
+          queryExecution.ifPresent(IQueryExecution::cancel);
+        }
       } else {
         return new TSStatus(TSStatusCode.NO_SUCH_QUERY.getStatusCode())
             .setMessage(DataNodeMiscMessages.NO_SUCH_QUERY);

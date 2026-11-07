@@ -143,6 +143,9 @@ public class CommonPlanNodeDeserializer implements IPlanNodeDeserializer {
         return ValuesNode.deserialize(buffer);
       case 1043:
         return NextFillNode.deserialize(buffer);
+      case 1046:
+        return org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnpivotNode
+            .deserialize(buffer);
       default:
         throw new IllegalArgumentException(QueryMessages.INVALID_NODE_TYPE + nodeType);
     }

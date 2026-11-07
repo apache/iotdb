@@ -139,7 +139,8 @@ public class TableModelPlanner implements IPlanner {
             parameters,
             parameterLookup,
             statementRewrite,
-            warningCollector)
+            warningCollector,
+            new CoordinatorPivotInputPreparer())
         .analyze(statement);
   }
 

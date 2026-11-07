@@ -436,6 +436,7 @@ public class QueryExecution implements IQueryExecution {
 
   /** Release the resources that current QueryExecution hold with a specified exception */
   private void releaseResource(Throwable t) {
+    context.releasePivotInputStores();
     context.recordDeviceEntryDiskIOMetricsOnRelease();
     // close ResultHandle to unblock client's getResult request
     // Actually, we should not close the ResultHandle when the QueryExecution is Finished.

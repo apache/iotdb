@@ -45,6 +45,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.OrderBy;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Parameter;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PivotRelation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
@@ -57,6 +58,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubqueryExpr
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubsetDefinition;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.UnpivotRelation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.commons.queryengine.plan.statement.component.FillPolicy;
@@ -141,6 +143,26 @@ public class Analysis implements IAnalysis {
   // We need to track this separately because there's no node we can attach it to.
   private final Map<NodeRef<QuerySpecification>, Scope> implicitFromScopes = new LinkedHashMap<>();
   private final Map<NodeRef<Node>, Scope> scopes = new LinkedHashMap<>();
+  private final Map<NodeRef<PivotRelation>, PivotBinding> pivotBindings = new LinkedHashMap<>();
+
+  public void setPivotBinding(PivotRelation relation, PivotBinding binding) {
+    pivotBindings.put(NodeRef.of(relation), binding);
+  }
+
+  public PivotBinding getPivotBinding(PivotRelation relation) {
+    return pivotBindings.get(NodeRef.of(relation));
+  }
+
+  private final Map<NodeRef<UnpivotRelation>, UnpivotBinding> unpivotBindings =
+      new LinkedHashMap<>();
+
+  public void setUnpivotBinding(UnpivotRelation relation, UnpivotBinding binding) {
+    unpivotBindings.put(NodeRef.of(relation), binding);
+  }
+
+  public UnpivotBinding getUnpivotBinding(UnpivotRelation relation) {
+    return unpivotBindings.get(NodeRef.of(relation));
+  }
 
   private final Map<NodeRef<Expression>, ResolvedField> columnReferences = new LinkedHashMap<>();
 
@@ -434,8 +456,12 @@ public class Analysis implements IAnalysis {
   }
 
   public boolean noAggregates() {
-    return aggregates.isEmpty()
-        || (aggregates.size() == 1 && aggregates.entrySet().iterator().next().getValue().isEmpty());
+    // PIVOT aggregates are bound to a relation rather than a QuerySpecification. An empty
+    // table scan must still run through the aggregation (not finish during partition lookup).
+    return pivotBindings.isEmpty()
+        && (aggregates.isEmpty()
+            || (aggregates.size() == 1
+                && aggregates.entrySet().iterator().next().getValue().isEmpty()));
   }
 
   public void setOrderByAggregates(OrderBy node, List<Expression> aggregates) {

@@ -42,6 +42,7 @@ import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.ANAL
 public class Analyzer {
 
   private final StatementAnalyzerFactory statementAnalyzerFactory;
+  private final PivotInputPreparer pivotInputPreparer;
 
   private final MPPQueryContext context;
   private final SessionInfo session;
@@ -61,6 +62,27 @@ public class Analyzer {
       final Map<NodeRef<Parameter>, Expression> parameterLookup,
       final StatementRewrite statementRewrite,
       final WarningCollector warningCollector) {
+    this(
+        context,
+        session,
+        statementAnalyzerFactory,
+        parameters,
+        parameterLookup,
+        statementRewrite,
+        warningCollector,
+        PivotInputPreparer.NOOP);
+  }
+
+  public Analyzer(
+      final MPPQueryContext context,
+      final SessionInfo session,
+      final StatementAnalyzerFactory statementAnalyzerFactory,
+      final List<Expression> parameters,
+      final Map<NodeRef<Parameter>, Expression> parameterLookup,
+      final StatementRewrite statementRewrite,
+      final WarningCollector warningCollector,
+      final PivotInputPreparer pivotInputPreparer) {
+    this.pivotInputPreparer = requireNonNull(pivotInputPreparer);
     this.context = context;
     this.session =
         requireNonNull(session, DataNodeQueryMessages.EXCEPTION_SESSION_IS_NULL_6CF0F47D);
@@ -86,43 +108,62 @@ public class Analyzer {
             parameterLookup,
             warningCollector);
 
-    Analysis analysis = new Analysis(rewrittenStatement, parameterLookup);
-    analysis.setSqlParser(statementAnalyzerFactory.getSqlParser());
-    // Register CTE passed by parent query.
-    context
-        .getCteQueries()
-        .forEach((tableRef, query) -> analysis.registerNamedQuery(tableRef.getNode(), query));
+    try {
+      pivotInputPreparer.prepare(
+          rewrittenStatement,
+          statementAnalyzerFactory,
+          context,
+          session,
+          parameters,
+          parameterLookup,
+          warningCollector);
+    } catch (RuntimeException | Error failure) {
+      context.releasePivotInputStores();
+      throw failure;
+    }
 
-    Statement innerStatement =
-        rewrittenStatement instanceof PipeEnriched
-            ? ((PipeEnriched) rewrittenStatement).getInnerStatement()
-            : rewrittenStatement;
-    if (innerStatement instanceof WrappedInsertStatement) {
-      WrappedInsertStatement insertStatement = (WrappedInsertStatement) innerStatement;
-      if (insertStatement.getDatabase() != null) {
-        analysis.setDatabaseName(insertStatement.getDatabase());
+    try {
+      Analysis analysis = new Analysis(rewrittenStatement, parameterLookup);
+      analysis.setSqlParser(statementAnalyzerFactory.getSqlParser());
+      // Register CTE passed by parent query.
+      context
+          .getCteQueries()
+          .forEach((tableRef, query) -> analysis.registerNamedQuery(tableRef.getNode(), query));
+
+      Statement innerStatement =
+          rewrittenStatement instanceof PipeEnriched
+              ? ((PipeEnriched) rewrittenStatement).getInnerStatement()
+              : rewrittenStatement;
+      if (innerStatement instanceof WrappedInsertStatement) {
+        WrappedInsertStatement insertStatement = (WrappedInsertStatement) innerStatement;
+        if (insertStatement.getDatabase() != null) {
+          analysis.setDatabaseName(insertStatement.getDatabase());
+        } else if (session.getDatabaseName().isPresent()) {
+          analysis.setDatabaseName(session.getDatabaseName().get());
+        } else {
+          throw new SemanticException(
+              DataNodeQueryMessages.DATABASE_IS_NOT_SPECIFIED_FOR_INSERT + statement);
+        }
       } else if (session.getDatabaseName().isPresent()) {
         analysis.setDatabaseName(session.getDatabaseName().get());
-      } else {
-        throw new SemanticException(
-            DataNodeQueryMessages.DATABASE_IS_NOT_SPECIFIED_FOR_INSERT + statement);
       }
-    } else if (session.getDatabaseName().isPresent()) {
-      analysis.setDatabaseName(session.getDatabaseName().get());
+
+      long startTime = System.nanoTime();
+      StatementAnalyzer analyzer =
+          statementAnalyzerFactory.createStatementAnalyzer(
+              analysis, context, session, warningCollector, CorrelationSupport.ALLOWED);
+
+      analyzer.analyze(rewrittenStatement);
+      if (analysis.isQuery()) {
+        long analyzeCost = System.nanoTime() - startTime;
+        QueryPlanCostMetricSet.getInstance().recordTablePlanCost(ANALYZER, analyzeCost);
+        context.setAnalyzeCost(analyzeCost);
+      }
+
+      return analysis;
+    } catch (RuntimeException | Error failure) {
+      context.releasePivotInputStores();
+      throw failure;
     }
-
-    long startTime = System.nanoTime();
-    StatementAnalyzer analyzer =
-        statementAnalyzerFactory.createStatementAnalyzer(
-            analysis, context, session, warningCollector, CorrelationSupport.ALLOWED);
-
-    analyzer.analyze(rewrittenStatement);
-    if (analysis.isQuery()) {
-      long analyzeCost = System.nanoTime() - startTime;
-      QueryPlanCostMetricSet.getInstance().recordTablePlanCost(ANALYZER, analyzeCost);
-      context.setAnalyzeCost(analyzeCost);
-    }
-
-    return analysis;
   }
 }

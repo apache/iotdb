@@ -1866,8 +1866,38 @@ public class ConfigManager implements IManager {
         : status;
   }
 
+  static TSStatus validatePivotConfiguration(Map<String, String> configs) {
+    // Reject malformed and overflowing limits before modifying the file or broadcasting.
+    for (String key :
+        new String[] {"pivot_limit", "pivot_input_max_rows", "pivot_input_buffer_size_in_bytes"}) {
+      String value = configs.get(key);
+      if (value == null) {
+        continue;
+      }
+      try {
+        if ("pivot_input_buffer_size_in_bytes".equals(key)) {
+          Long.parseLong(value.trim());
+        } else {
+          Integer.parseInt(value.trim());
+        }
+      } catch (NumberFormatException e) {
+        return RpcUtils.getStatus(
+            TSStatusCode.EXECUTE_STATEMENT_ERROR,
+            String.format(
+                ManagerMessages.MESSAGE_INVALID_PIVOT_CONFIGURATION_VALUE_FOR_ARG_ARG_AB194F23,
+                key,
+                value));
+      }
+    }
+    return null;
+  }
+
   @Override
   public TSStatus setConfiguration(TSetConfigurationReq req) {
+    TSStatus invalidPivotConfig = validatePivotConfiguration(req.getConfigs());
+    if (invalidPivotConfig != null) {
+      return invalidPivotConfig;
+    }
     for (String key : WAL_THROTTLE_THRESHOLD_KEYS) {
       String value = req.getConfigs().get(key);
       if (value == null) {

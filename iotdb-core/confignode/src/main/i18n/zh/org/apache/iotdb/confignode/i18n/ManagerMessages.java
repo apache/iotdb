@@ -20,6 +20,8 @@
 package org.apache.iotdb.confignode.i18n;
 
 public final class ManagerMessages {
+  public static final String MESSAGE_INVALID_PIVOT_CONFIGURATION_VALUE_FOR_ARG_ARG_AB194F23 =
+      "无效的 PIVOT 配置值 %s：%s";
 
   public static final String ACTIVATEDATAALLOTTABLE_ACTIVATE_SERIESPARTITIONSLOT =
       "[ActivateDataAllotTable] 激活 SeriesPartitionSlot {} ";

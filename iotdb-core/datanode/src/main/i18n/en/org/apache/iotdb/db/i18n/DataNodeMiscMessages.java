@@ -2011,4 +2011,7 @@ public final class DataNodeMiscMessages {
 
   public static final String LOG_TIMESERIES_ARG_OVERLAP_WITHIN_ONE_PAGE_A712F779 =
       "-------- Timeseries %s overlap within one page";
+
+  public static final String LOG_INVALID_PIVOT_CONFIGURATION_VALUE_FOR_ARG_ARG_KEEPING_ARG_FCB21FF0 =
+      "Invalid PIVOT configuration value for {}: {}; keeping {}";
 }

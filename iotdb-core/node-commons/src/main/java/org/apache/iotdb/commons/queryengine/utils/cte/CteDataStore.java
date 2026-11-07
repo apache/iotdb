@@ -21,7 +21,6 @@
 
 package org.apache.iotdb.commons.queryengine.utils.cte;
 
-import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -44,6 +43,15 @@ public class CteDataStore implements Accountable {
   private final List<TsBlock> cachedData;
   private long cachedBytes;
   private int cachedRows;
+  private final long maxBytes;
+  private final int maxRows;
+  private final boolean inclusiveLimit;
+
+  public enum AddResult {
+    SUCCESS,
+    BYTES_EXCEEDED,
+    ROWS_EXCEEDED
+  }
 
   // reference count by CteScanReader
   private final AtomicInteger count;
@@ -55,26 +63,69 @@ public class CteDataStore implements Accountable {
   private long actualReservedBytes;
 
   public CteDataStore(TableSchema tableSchema, List<Integer> columnIndex2TsBlockColumnIndexList) {
+    this(
+        tableSchema,
+        columnIndex2TsBlockColumnIndexList,
+        CommonDescriptor.getInstance().getConfig().getCteBufferSize(),
+        CommonDescriptor.getInstance().getConfig().getMaxRowsInCteBuffer(),
+        false);
+  }
+
+  /** A query-level PIVOT input store uses independent, inclusive budgets fixed at creation. */
+  public CteDataStore(
+      TableSchema tableSchema,
+      List<Integer> columnIndex2TsBlockColumnIndexList,
+      long maxBytes,
+      int maxRows) {
+    this(tableSchema, columnIndex2TsBlockColumnIndexList, maxBytes, maxRows, true);
+  }
+
+  private CteDataStore(
+      TableSchema tableSchema,
+      List<Integer> columnIndex2TsBlockColumnIndexList,
+      long maxBytes,
+      int maxRows,
+      boolean inclusiveLimit) {
     this.tableSchema = tableSchema;
     this.columnIndex2TsBlockColumnIndexList = columnIndex2TsBlockColumnIndexList;
+    this.maxBytes = maxBytes;
+    this.maxRows = maxRows;
+    this.inclusiveLimit = inclusiveLimit;
     this.cachedData = new ArrayList<>();
-    this.cachedBytes = 0L;
-    this.cachedRows = 0;
     this.count = new AtomicInteger(0);
   }
 
-  public boolean addTsBlock(TsBlock tsBlock) {
-    CommonConfig config = CommonDescriptor.getInstance().getConfig();
-    long bytesSize = tsBlock.getRetainedSizeInBytes();
+  public AddResult tryAddTsBlock(TsBlock tsBlock) {
+    long bytes = tsBlock.getRetainedSizeInBytes();
     int rows = tsBlock.getPositionCount();
-    if (bytesSize + cachedBytes >= config.getCteBufferSize()
-        || rows + cachedRows >= config.getMaxRowsInCteBuffer()) {
-      return false;
+    // Compare against the remaining budget rather than adding counters, to avoid overflow.
+    if (bytes > maxBytes - cachedBytes || (!inclusiveLimit && bytes == maxBytes - cachedBytes)) {
+      return AddResult.BYTES_EXCEEDED;
+    }
+    if (rows > maxRows - cachedRows || (!inclusiveLimit && rows == maxRows - cachedRows)) {
+      return AddResult.ROWS_EXCEEDED;
     }
     cachedData.add(tsBlock);
-    cachedBytes += bytesSize;
+    cachedBytes += bytes;
     cachedRows += rows;
+    return AddResult.SUCCESS;
+  }
+
+  /**
+   * Charges memory held outside cached TsBlocks, such as discovered dynamic PIVOT values, to the
+   * same byte budget. Only stores with an inclusive limit use this path.
+   */
+  public boolean tryReserveExtraBytes(long bytes) {
+    // Compare against the remaining budget rather than adding counters, to avoid overflow.
+    if (bytes > maxBytes - cachedBytes || (!inclusiveLimit && bytes == maxBytes - cachedBytes)) {
+      return false;
+    }
+    cachedBytes += bytes;
     return true;
+  }
+
+  public boolean addTsBlock(TsBlock tsBlock) {
+    return tryAddTsBlock(tsBlock) == AddResult.SUCCESS;
   }
 
   public void clear() {

@@ -204,6 +204,7 @@ public enum PlanNodeType {
   TABLE_NEXT_FILL_NODE((short) 1043),
   SESSION_SCAN_NODE((short) 1044),
   EVENT_SCAN_NODE((short) 1045),
+  TABLE_UNPIVOT_NODE((short) 1046),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
