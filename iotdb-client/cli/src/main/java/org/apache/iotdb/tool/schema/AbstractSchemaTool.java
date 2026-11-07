@@ -30,6 +30,9 @@ import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 import org.apache.iotdb.tool.common.Constants;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
@@ -41,8 +44,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.Type;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.atomic.LongAdder;
 
 public abstract class AbstractSchemaTool {
@@ -76,6 +82,9 @@ public abstract class AbstractSchemaTool {
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSchemaTool.class);
+
+  private static final Gson JSON_GSON = new GsonBuilder().disableHtmlEscaping().create();
+  private static final Type JSON_CELL_TYPE = new TypeToken<Map<String, String>>() {}.getType();
 
   protected AbstractSchemaTool() {}
 
@@ -218,6 +227,51 @@ public abstract class AbstractSchemaTool {
     }
   }
 
+  /**
+   * The RFC4180 CSV layout of the schema files, i.e. the delimiter is {@code ','}, the quote char
+   * is {@code '"'} and no escape char is configured. A JSON object cell is therefore always quoted
+   * and its inner quotes are doubled, which is exactly what RFC4180 asks for.
+   */
+  static CSVFormat.Builder createRfc4180CsvFormat() {
+    return CSVFormat.Builder.create(CSVFormat.DEFAULT)
+        .setQuote('"')
+        .setQuoteMode(QuoteMode.MINIMAL)
+        .setRecordSeparator('\n');
+  }
+
+  /**
+   * Serializes tags or attributes into the compact JSON object cell of the schema file. Keys are
+   * sorted so that repeated exports of the same schema are identical, and HTML escaping is disabled
+   * so that printable characters such as {@code '}, {@code =}, {@code <} and {@code &} stay
+   * readable.
+   *
+   * @return an empty string when there is nothing to write, never {@code {}} or {@code null}
+   */
+  static String toJsonCell(Map<String, String> values) {
+    if (values == null || values.isEmpty()) {
+      return "";
+    }
+    return JSON_GSON.toJson(new TreeMap<>(values));
+  }
+
+  /**
+   * Parses a Tags / Attributes cell written by {@link #toJsonCell(Map)}.
+   *
+   * @return {@code null} when the cell carries no value, never an empty map
+   * @throws com.google.gson.JsonParseException when the cell is not a JSON object
+   */
+  static Map<String, String> parseJsonCell(String cell) {
+    if (cell == null) {
+      return null;
+    }
+    String trimmed = cell.trim();
+    if (trimmed.isEmpty() || "null".equals(trimmed)) {
+      return null;
+    }
+    Map<String, String> parsed = JSON_GSON.fromJson(trimmed, JSON_CELL_TYPE);
+    return parsed == null || parsed.isEmpty() ? null : new TreeMap<>(parsed);
+  }
+
   static class CSVPrinterWrapper {
     private final String filePath;
     private final CSVFormat csvFormat;
@@ -225,13 +279,7 @@ public abstract class AbstractSchemaTool {
 
     public CSVPrinterWrapper(String filePath) {
       this.filePath = filePath;
-      this.csvFormat =
-          CSVFormat.Builder.create(CSVFormat.DEFAULT)
-              .setHeader()
-              .setSkipHeaderRecord(true)
-              .setEscape('\\')
-              .setQuoteMode(QuoteMode.NONE)
-              .build();
+      this.csvFormat = createRfc4180CsvFormat().setHeader().setSkipHeaderRecord(true).build();
     }
 
     public void printRecord(final Iterable<?> values) throws IOException {
