@@ -371,6 +371,7 @@ public class TableFunctionOperatorTest {
           new TableFunctionOperator(
               operatorContext,
               provider,
+              0L,
               singleRowChild,
               Collections.singletonList(TSDataType.INT64),
               withPassThrough
@@ -444,6 +445,7 @@ public class TableFunctionOperatorTest {
           new TableFunctionOperator(
               operatorContext,
               provider,
+              0L,
               twoPartitionChild,
               Collections.singletonList(TSDataType.INT64),
               Collections.singletonList(TSDataType.INT64),
@@ -516,6 +518,7 @@ public class TableFunctionOperatorTest {
           new TableFunctionOperator(
               operatorContext,
               provider,
+              0L,
               child,
               Collections.singletonList(TSDataType.INT64),
               Collections.singletonList(TSDataType.INT64),
