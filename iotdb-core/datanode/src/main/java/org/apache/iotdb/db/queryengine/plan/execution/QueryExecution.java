@@ -75,6 +75,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Throwables.throwIfUnchecked;
 import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.WAIT_FOR_RESULT;
 import static org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils.getRootCause;
+import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.getLocalRedirectEndPoint;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.rpc.TSStatusCode.DATE_OUT_OF_RANGE;
 
@@ -749,7 +750,8 @@ public class QueryExecution implements IQueryExecution {
     // info to client
     if (!CONFIG.isEnable13DataInsertAdapt()
         || IoTDBConstant.ClientVersion.V_1_0.equals(context.getSession().getVersion())) {
-      planner.setRedirectInfo(analysis, CONFIG.getAddressAndPort(), tsstatus);
+      planner.setRedirectInfo(
+          analysis, getLocalRedirectEndPoint(context.isInternalRpcSession()), tsstatus);
     }
     return new ExecutionResult(
         context.getQueryId(), tsstatus, stateMachine.isFailureCausedByInterruption(tsstatus));

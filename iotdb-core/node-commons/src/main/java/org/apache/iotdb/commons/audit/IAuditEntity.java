@@ -59,8 +59,8 @@ public interface IAuditEntity {
 
   IAuditEntity setSqlString(String sqlString);
 
-  /** Whether the caller is a dedicated internal writer of the database itself. */
-  default boolean isInternal() {
+  /** Whether the caller is a database-internal session used for dedicated internal writes. */
+  default boolean isDatabaseInternalSession() {
     return false;
   }
 }

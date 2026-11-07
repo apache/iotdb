@@ -548,32 +548,15 @@ public class Session implements ISession {
       this.executorService = null;
     }
     if (this.availableNodes != null) {
-      this.availableNodes.close();
+      if (!this.availableNodes.isExternalLifeCycleNodeSupplier()) {
+        this.availableNodes.close();
+      }
       this.availableNodes = null;
     }
 
     if (enableAutoFetch) {
       initThreadPool();
-      this.availableNodes =
-          NodesSupplier.createNodeSupplier(
-              getNodeUrls(),
-              SessionUtils.parseSeedNodeUrls(initialNodeUrls),
-              executorService,
-              username,
-              password,
-              zoneId,
-              thriftDefaultBufferSize,
-              thriftMaxFrameSize,
-              connectionTimeoutInMs,
-              useSSL,
-              trustStore,
-              trustStorePwd,
-              keyStore,
-              keyStorePwd,
-              sslProtocol,
-              enableRPCCompaction,
-              version.toString(),
-              thriftMaxReusableBufferSize);
+      initAvailableNodes(enableRPCCompaction, connectionTimeoutInMs);
     } else {
       // A static supplier has no separate seed tier. Keep every configured address after reopen.
       Set<TEndPoint> staticNodes = new LinkedHashSet<>(getNodeUrls());
@@ -593,7 +576,7 @@ public class Session implements ISession {
     }
   }
 
-  private void initThreadPool() {
+  protected void initThreadPool() {
     this.executorService =
         Executors.newSingleThreadScheduledExecutor(
             r -> {
@@ -608,6 +591,30 @@ public class Session implements ISession {
               }
               return t;
             });
+  }
+
+  protected void initAvailableNodes(
+      final boolean enableRPCCompaction, final int connectionTimeoutInMs) {
+    this.availableNodes =
+        NodesSupplier.createNodeSupplier(
+            getNodeUrls(),
+            SessionUtils.parseSeedNodeUrls(initialNodeUrls),
+            executorService,
+            username,
+            password,
+            zoneId,
+            thriftDefaultBufferSize,
+            thriftMaxFrameSize,
+            connectionTimeoutInMs,
+            useSSL,
+            trustStore,
+            trustStorePwd,
+            keyStore,
+            keyStorePwd,
+            sslProtocol,
+            enableRPCCompaction,
+            version.toString(),
+            thriftMaxReusableBufferSize);
   }
 
   private static List<String> shuffleNodeUrls(List<String> endPoints) {
@@ -726,7 +733,9 @@ public class Session implements ISession {
       if (this.executorService != null) {
         this.executorService.shutdown();
         this.executorService = null;
-        this.availableNodes.close();
+        if (!this.availableNodes.isExternalLifeCycleNodeSupplier()) {
+          this.availableNodes.close();
+        }
         this.availableNodes = null;
       }
       isClosed = true;
@@ -4477,6 +4486,10 @@ public class Session implements ISession {
     this.defaultSessionConnection = defaultSessionConnection;
   }
 
+  protected String getRpcServiceName() {
+    return null;
+  }
+
   public boolean isEnableThriftRpcCompaction() {
     return enableThriftRpcCompaction;
   }
@@ -4644,6 +4657,10 @@ public class Session implements ISession {
             SessionMessages
                 .EXCEPTION_YOU_SHOULD_SPECIFY_EITHER_NODEURLS_HOST_RPCPORT_BUT_NOT_BOTH_77E7B084);
       }
+      return createSession();
+    }
+
+    protected Session createSession() {
       return new Session(this);
     }
   }

@@ -32,12 +32,19 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.thrift.InternalClientRPCServiceProcessor;
 import org.apache.iotdb.db.protocol.thrift.handler.InternalServiceThriftHandler;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeInternalRPCServiceImpl;
+import org.apache.iotdb.db.protocol.thrift.impl.IClientRPCServiceWithHandler;
+import org.apache.iotdb.db.protocol.thrift.impl.InternalClientRPCServiceImpl;
 import org.apache.iotdb.db.service.DataNode.DataNodeContext;
 import org.apache.iotdb.db.service.metrics.DataNodeInternalRPCServiceMetrics;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService.Processor;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
+import org.apache.iotdb.rpc.RpcServiceConstants;
+
+import org.apache.thrift.TMultiplexedProcessor;
+import org.apache.thrift.TProcessor;
 
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -48,9 +55,11 @@ public class DataNodeInternalRPCService extends ThriftService
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   protected final AtomicReference<DataNodeInternalRPCServiceImpl> impl = new AtomicReference<>();
+  protected final AtomicReference<IClientRPCServiceWithHandler> clientImpl =
+      new AtomicReference<>();
   protected DataNodeContext dataNodeContext;
 
-  private DataNodeInternalRPCService() {}
+  protected DataNodeInternalRPCService() {}
 
   @Override
   public ServiceType getID() {
@@ -60,8 +69,11 @@ public class DataNodeInternalRPCService extends ThriftService
   @Override
   public void initTProcessor() {
     DataNodeInternalRPCServiceImpl service = getImpl();
+    IClientRPCServiceWithHandler clientService = getClientImpl();
     initSyncedServiceImpl(null);
-    processor = new Processor<>(service);
+    processor =
+        createMultiplexedProcessor(
+            new Processor<>(service), new InternalClientRPCServiceProcessor(clientService));
   }
 
   @Override
@@ -78,7 +90,7 @@ public class DataNodeInternalRPCService extends ThriftService
                   config.getRpcMaxConcurrentClientNum(),
                   config.getThriftServerAwaitTimeForStopService(),
                   new TrustedChannelAuditServerEventHandler(
-                      new InternalServiceThriftHandler(),
+                      new InternalServiceThriftHandler(getClientImpl()),
                       new TEndPoint(getBindIP(), getBindPort()),
                       DNAuditLogger.getInstance()::recordTrustedChannelFailureAuditLogIfNecessary),
                   config.isRpcThriftCompressionEnable(),
@@ -95,7 +107,7 @@ public class DataNodeInternalRPCService extends ThriftService
                   getBindPort(),
                   config.getRpcMaxConcurrentClientNum(),
                   config.getThriftServerAwaitTimeForStopService(),
-                  new InternalServiceThriftHandler(),
+                  new InternalServiceThriftHandler(getClientImpl()),
                   config.isRpcThriftCompressionEnable(),
                   DeepCopyRpcTransportFactory.INSTANCE);
     } catch (RPCServiceException e) {
@@ -119,6 +131,20 @@ public class DataNodeInternalRPCService extends ThriftService
   public DataNodeInternalRPCServiceImpl getImpl() {
     impl.compareAndSet(null, new DataNodeInternalRPCServiceImpl(dataNodeContext));
     return impl.get();
+  }
+
+  static TProcessor createMultiplexedProcessor(
+      final TProcessor controlProcessor, final TProcessor clientProcessor) {
+    final TMultiplexedProcessor multiplexedProcessor = new TMultiplexedProcessor();
+    multiplexedProcessor.registerProcessor(
+        RpcServiceConstants.INTERNAL_CLIENT_RPC_SERVICE, clientProcessor);
+    multiplexedProcessor.registerDefault(controlProcessor);
+    return multiplexedProcessor;
+  }
+
+  protected IClientRPCServiceWithHandler getClientImpl() {
+    clientImpl.compareAndSet(null, new InternalClientRPCServiceImpl());
+    return clientImpl.get();
   }
 
   private static class DataNodeInternalRPCServiceHolder {

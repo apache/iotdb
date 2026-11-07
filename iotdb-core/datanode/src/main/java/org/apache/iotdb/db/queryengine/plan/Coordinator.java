@@ -439,12 +439,14 @@ public class Coordinator {
       final SessionInfo session = queryContext.getSession();
       queryContext.setSession(
           new SessionInfo(
-              session.getSessionId(),
-              session.getUserEntity(),
-              session.getZoneId(),
-              session.getVersion(),
-              session.getDatabaseName().orElse(null),
-              SqlDialect.TABLE));
+                  session.getSessionId(),
+                  session.getUserEntity(),
+                  session.getZoneId(),
+                  session.getVersion(),
+                  session.getDatabaseName().orElse(null),
+                  SqlDialect.TABLE)
+              .setDatabaseInternalSession(session.isDatabaseInternalSession())
+              .setInternalRpcSession(session.isInternalRpcSession()));
       return createQueryExecutionForTableModel(
           statement,
           new SqlParser(),

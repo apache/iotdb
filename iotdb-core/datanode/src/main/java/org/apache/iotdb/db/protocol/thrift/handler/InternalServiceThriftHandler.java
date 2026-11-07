@@ -21,6 +21,9 @@ package org.apache.iotdb.db.protocol.thrift.handler;
 
 import org.apache.iotdb.commons.service.NoopServerContext;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.protocol.thrift.impl.IClientRPCServiceWithHandler;
 
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
@@ -31,9 +34,11 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class InternalServiceThriftHandler implements TServerEventHandler {
 
-  private AtomicLong thriftConnectionNumber = new AtomicLong(0);
+  private final AtomicLong thriftConnectionNumber = new AtomicLong(0);
+  private final IClientRPCServiceWithHandler eventHandler;
 
-  public InternalServiceThriftHandler() {
+  public InternalServiceThriftHandler(IClientRPCServiceWithHandler eventHandler) {
+    this.eventHandler = eventHandler;
     MetricService.getInstance()
         .addMetricSet(new InternalServiceThriftHandlerMetrics(thriftConnectionNumber));
   }
@@ -52,7 +57,15 @@ public class InternalServiceThriftHandler implements TServerEventHandler {
   @Override
   public void deleteContext(
       ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {
-    thriftConnectionNumber.decrementAndGet();
+    try {
+      IClientSession session = SessionManager.getInstance().getCurrSession();
+      if (session != null) {
+        eventHandler.handleClientExit();
+      }
+    } finally {
+      SessionManager.getInstance().removeCurrSession();
+      thriftConnectionNumber.decrementAndGet();
+    }
   }
 
   @Override

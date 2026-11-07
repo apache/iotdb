@@ -53,6 +53,9 @@ public abstract class IClientSession {
 
   private boolean login = false;
 
+  // Session uses the internal RPC endpoint family for redirects.
+  private boolean internalRpcSession = false;
+
   private long logInTime;
 
   private SqlDialect sqlDialect = SqlDialect.TREE;
@@ -120,6 +123,14 @@ public abstract class IClientSession {
 
   public void setLogin(boolean login) {
     this.login = login;
+  }
+
+  public boolean isInternalRpcSession() {
+    return internalRpcSession;
+  }
+
+  public void setInternalRpcSession(final boolean internalRpcSession) {
+    this.internalRpcSession = internalRpcSession;
   }
 
   public void setLogInTime(long logInTime) {

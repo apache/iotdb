@@ -235,15 +235,25 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private final ISchemaFetcher schemaFetcher;
   private final IModelFetcher modelFetcher;
   private final TreeAnalysisMutationJournal mutationJournal;
+  private final boolean internalRpcSession;
 
   public AnalyzeVisitor(
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
       TreeAnalysisMutationJournal mutationJournal) {
+    this(partitionFetcher, schemaFetcher, mutationJournal, false);
+  }
+
+  public AnalyzeVisitor(
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher,
+      TreeAnalysisMutationJournal mutationJournal,
+      final boolean internalRpcSession) {
     this.partitionFetcher = partitionFetcher;
     this.schemaFetcher = schemaFetcher;
     this.modelFetcher = ModelFetcher.getInstance();
     this.mutationJournal = mutationJournal;
+    this.internalRpcSession = internalRpcSession;
   }
 
   @Override
@@ -282,7 +292,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   @Override
   public Analysis visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setLastLevelUseWildcard(queryStatement.isLastLevelUseWildcard());
 
     try {
@@ -2651,7 +2661,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     }
 
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(createTimeSeriesStatement);
 
     checkIsTemplateCompatible(
@@ -2749,7 +2759,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               .MEASUREMENT_UNDER_AN_ALIGNED_DEVICE_IS_NOT_ALLOWED_TO_HAVE_THE_SAME_MEASUREMENT_NAME);
     }
 
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(createAlignedTimeSeriesStatement);
 
     checkIsTemplateCompatible(
@@ -2777,7 +2787,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       MPPQueryContext context) {
     context.setQueryType(QueryType.OTHER);
 
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(internalCreateTimeSeriesStatement);
     checkIsTemplateCompatible(
         internalCreateTimeSeriesStatement.getDevicePath(),
@@ -2805,7 +2815,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       final MPPQueryContext context) {
     context.setQueryType(QueryType.OTHER);
 
-    final Analysis analysis = new Analysis();
+    final Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(internalCreateMultiTimeSeriesStatement);
 
     final PathPatternTree pathPatternTree = new PathPatternTree();
@@ -2829,7 +2839,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       final CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement,
       final MPPQueryContext context) {
     context.setQueryType(QueryType.OTHER);
-    final Analysis analysis = new Analysis();
+    final Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(createMultiTimeSeriesStatement);
 
     analyzeSchemaProps(createMultiTimeSeriesStatement.getPropsList());
@@ -2857,7 +2867,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitAlterTimeSeries(
       AlterTimeSeriesStatement alterTimeSeriesStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.OTHER);
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(alterTimeSeriesStatement);
 
     Pair<Template, PartialPath> templateInfo =
@@ -2884,7 +2894,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitInsertTablet(
       InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     AnalyzeUtils.analyzeInsert(
         context,
         insertTabletStatement,
@@ -2900,7 +2910,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     insertRowStatement.semanticCheck();
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     validateSchema(
         analysis,
         insertRowStatement,
@@ -2940,7 +2950,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       InsertRowsStatement insertRowsStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     insertRowsStatement.semanticCheck();
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     validateSchema(
         analysis,
         insertRowsStatement,
@@ -2965,7 +2975,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       InsertMultiTabletsStatement insertMultiTabletsStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     insertMultiTabletsStatement.semanticCheck();
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     validateSchema(
         analysis,
         insertMultiTabletsStatement,
@@ -2991,7 +3001,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     insertRowsOfOneDeviceStatement.semanticCheck();
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     validateSchema(
         analysis,
         insertRowsOfOneDeviceStatement,
@@ -3050,7 +3060,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     try (final LoadTsFileAnalyzer loadTsFileAnalyzer =
         new LoadTsFileAnalyzer(
             loadTsFileStatement, loadTsFileStatement.isGeneratedByPipe(), context)) {
-      return (Analysis) loadTsFileAnalyzer.analyzeFileByFile(new Analysis());
+      return (Analysis) loadTsFileAnalyzer.analyzeFileByFile(new Analysis(internalRpcSession));
     } catch (final Exception e) {
       final String exceptionMessage =
           String.format(
@@ -3059,7 +3069,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               loadTsFileStatement,
               e.getMessage() == null ? e.getClass().getName() : e.getMessage());
       logger.warn(exceptionMessage, e);
-      final Analysis analysis = new Analysis();
+      final Analysis analysis = new Analysis(internalRpcSession);
       analysis.setFinishQueryAfterAnalyze(true);
       analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
       return analysis;
@@ -3281,7 +3291,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitShowTimeSeries(
       ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(showTimeSeriesStatement);
 
     if (showTimeSeriesStatement.getPathPattern().getNodeLength() <= 1) {
@@ -3350,7 +3360,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   @Override
   public Analysis visitShowTTL(ShowTTLStatement showTTLStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(showTTLStatement);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowTTLHeader());
     return analysis;
@@ -3422,7 +3432,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitShowDevices(
       ShowDevicesStatement showDevicesStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(showDevicesStatement);
 
     if (showDevicesStatement.hasTimeCondition()) {
@@ -3451,7 +3461,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitShowCluster(
       ShowClusterStatement showClusterStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(showClusterStatement);
     if (showClusterStatement.isDetails()) {
       analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowClusterDetailsHeader());
@@ -3464,7 +3474,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitCountDatabase(
       CountDatabaseStatement countDatabaseStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(countDatabaseStatement);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getCountStorageGroupHeader());
     return analysis;
@@ -3473,7 +3483,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitSeriesSchemaFetch(
       SeriesSchemaFetchStatement seriesSchemaFetchStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(seriesSchemaFetchStatement);
 
     SchemaPartition schemaPartition =
@@ -3493,7 +3503,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitDeviceSchemaFetch(
       DeviceSchemaFetchStatement deviceSchemaFetchStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(deviceSchemaFetchStatement);
 
     PathPatternTree patternTree = new PathPatternTree();
@@ -3516,7 +3526,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitCountDevices(
       CountDevicesStatement countDevicesStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(countDevicesStatement);
 
     if (countDevicesStatement.hasTimeCondition()) {
@@ -3543,7 +3553,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitCountTimeSeries(
       CountTimeSeriesStatement countTimeSeriesStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(countTimeSeriesStatement);
 
     PathPatternTree patternTree = new PathPatternTree();
@@ -3584,7 +3594,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitCountLevelTimeSeries(
       CountLevelTimeSeriesStatement countLevelTimeSeriesStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(countLevelTimeSeriesStatement);
 
     PathPatternTree patternTree = new PathPatternTree();
@@ -3603,7 +3613,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   @Override
   public Analysis visitCountNodes(CountNodesStatement countStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(countStatement);
 
     PathPatternTree patternTree = new PathPatternTree();
@@ -3651,7 +3661,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitShowVersion(
       ShowVersionStatement showVersionStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(showVersionStatement);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowVersionHeader());
     analysis.setFinishQueryAfterAnalyze(true);
@@ -3660,7 +3670,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private Analysis visitSchemaNodeManagementPartition(
       ShowStatement statement, PartialPath path, PathPatternTree scope, DatasetHeader header) {
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(statement);
 
     PathPatternTree patternTree = new PathPatternTree();
@@ -3686,7 +3696,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitDeleteData(
       DeleteDataStatement deleteDataStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.OTHER);
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(deleteDataStatement);
 
     PathPatternTree patternTree = new PathPatternTree();
@@ -3782,7 +3792,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           DataNodeQueryMessages
               .MEASUREMENT_UNDER_TEMPLATE_IS_NOT_ALLOWED_TO_HAVE_THE_SAME_MEASUREMENT_NAME);
     }
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(createTemplateStatement);
     return analysis;
   }
@@ -3791,7 +3801,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitSetSchemaTemplate(
       SetSchemaTemplateStatement setSchemaTemplateStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.OTHER);
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(setSchemaTemplateStatement);
     return analysis;
   }
@@ -3800,7 +3810,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitActivateTemplate(
       ActivateTemplateStatement activateTemplateStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.OTHER);
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(activateTemplateStatement);
 
     PartialPath activatePath = activateTemplateStatement.getPath();
@@ -3831,7 +3841,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitBatchActivateTemplate(
       BatchActivateTemplateStatement batchActivateTemplateStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.OTHER);
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(batchActivateTemplateStatement);
 
     Map<PartialPath, Pair<Template, PartialPath>> deviceTemplateSetInfoMap =
@@ -3868,7 +3878,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       InternalBatchActivateTemplateStatement internalBatchActivateTemplateStatement,
       MPPQueryContext context) {
     context.setQueryType(QueryType.OTHER);
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(internalBatchActivateTemplateStatement);
 
     PathPatternTree patternTree = new PathPatternTree();
@@ -3889,7 +3899,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitShowPathsUsingTemplate(
       ShowPathsUsingTemplateStatement showPathsUsingTemplateStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(showPathsUsingTemplateStatement);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowPathsUsingTemplateHeader());
 
@@ -3936,7 +3946,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitShowQueries(
       ShowQueriesStatement showQueriesStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(showQueriesStatement);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowQueriesHeader());
     analysis.setVirtualSource(true);
@@ -3973,7 +3983,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitShowReceivers(
       ShowReceiversStatement showReceiversStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(showReceiversStatement);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowReceiversHeader());
     analysis.setVirtualSource(true);
@@ -4001,7 +4011,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitShowDiskUsage(
       ShowDiskUsageStatement showDiskUsageStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(showDiskUsageStatement);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowDiskUsageHeader());
     analysis.setVirtualSource(true);
@@ -4078,7 +4088,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitCreateLogicalView(
       CreateLogicalViewStatement createLogicalViewStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     context.setQueryType(QueryType.OTHER);
     analysis.setRealStatement(createLogicalViewStatement);
 
@@ -4357,7 +4367,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitShowLogicalView(
       final ShowLogicalViewStatement showLogicalViewStatement, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    final Analysis analysis = new Analysis();
+    final Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(showLogicalViewStatement);
 
     final PathPatternTree patternTree = new PathPatternTree();
@@ -4374,7 +4384,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitShowCurrentTimestamp(
       ShowCurrentTimestampStatement showCurrentTimestampStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
+    Analysis analysis = new Analysis(internalRpcSession);
     analysis.setRealStatement(showCurrentTimestampStatement);
     analysis.setFinishQueryAfterAnalyze(true);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowCurrentTimestampHeader());

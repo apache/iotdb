@@ -62,6 +62,36 @@ public class SubscriptionTreeSessionBuilder extends AbstractSessionBuilder {
     return this;
   }
 
+  public SubscriptionTreeSessionBuilder useSSL(final boolean useSSL) {
+    super.useSSL = useSSL;
+    return this;
+  }
+
+  public SubscriptionTreeSessionBuilder trustStore(final String trustStore) {
+    super.trustStore = trustStore;
+    return this;
+  }
+
+  public SubscriptionTreeSessionBuilder trustStorePwd(final String trustStorePwd) {
+    super.trustStorePwd = trustStorePwd;
+    return this;
+  }
+
+  public SubscriptionTreeSessionBuilder keyStore(final String keyStore) {
+    super.keyStore = keyStore;
+    return this;
+  }
+
+  public SubscriptionTreeSessionBuilder keyStorePwd(final String keyStorePwd) {
+    super.keyStorePwd = keyStorePwd;
+    return this;
+  }
+
+  public SubscriptionTreeSessionBuilder sslProtocol(final String sslProtocol) {
+    super.sslProtocol = sslProtocol;
+    return this;
+  }
+
   public SubscriptionTreeSessionBuilder connectionTimeoutInMs(final int connectionTimeoutInMs) {
     super.connectionTimeoutInMs = connectionTimeoutInMs;
     return this;

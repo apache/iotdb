@@ -258,14 +258,16 @@ public class LoadTsFileDataTypeConverter {
               session,
               SESSION_MANAGER.requestQueryId(),
               new SessionInfo(
-                  session.getId(),
-                  new UserEntity(
-                      session.getUserId(), session.getUsername(), session.getClientAddress()),
-                  ZoneId.systemDefault(),
-                  session.getClientVersion(),
-                  databaseName,
-                  SqlDialect.TABLE,
-                  allowAutoCreateSchema && session.isEnableAutoCreateSchema()),
+                      session.getId(),
+                      new UserEntity(
+                          session.getUserId(), session.getUsername(), session.getClientAddress()),
+                      ZoneId.systemDefault(),
+                      session.getClientVersion(),
+                      databaseName,
+                      SqlDialect.TABLE,
+                      allowAutoCreateSchema && session.isEnableAutoCreateSchema())
+                  .setDatabaseInternalSession(isDatabaseInternalSessionContext())
+                  .setInternalRpcSession(isInternalRpcSessionContext()),
               "",
               LocalExecutionPlanner.getInstance().metadata,
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
@@ -323,18 +325,20 @@ public class LoadTsFileDataTypeConverter {
               isGeneratedByPipe ? new PipeEnrichedStatement(statement) : statement,
               SESSION_MANAGER.requestQueryId(),
               new SessionInfo(
-                  session.getId(),
-                  new UserEntity(
-                      session.getUserId(), session.getUsername(), session.getClientAddress()),
-                  ZoneId.systemDefault(),
-                  session.getClientVersion(),
-                  session.getDatabaseName(),
-                  SqlDialect.TREE,
-                  allowAutoCreateSchema
-                      && session.isEnableAutoCreateSchema()
-                      && (Objects.isNull(context)
-                          || Objects.isNull(context.getSession())
-                          || context.getSession().isEnableAutoCreateSchema())),
+                      session.getId(),
+                      new UserEntity(
+                          session.getUserId(), session.getUsername(), session.getClientAddress()),
+                      ZoneId.systemDefault(),
+                      session.getClientVersion(),
+                      session.getDatabaseName(),
+                      SqlDialect.TREE,
+                      allowAutoCreateSchema
+                          && session.isEnableAutoCreateSchema()
+                          && (Objects.isNull(context)
+                              || Objects.isNull(context.getSession())
+                              || context.getSession().isEnableAutoCreateSchema()))
+                  .setDatabaseInternalSession(isDatabaseInternalSessionContext())
+                  .setInternalRpcSession(isInternalRpcSessionContext()),
               "",
               ClusterPartitionFetcher.getInstance(),
               ClusterSchemaFetcher.getInstance(),
@@ -354,5 +358,17 @@ public class LoadTsFileDataTypeConverter {
         && (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
             || status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
             || status.getCode() == TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode());
+  }
+
+  private boolean isDatabaseInternalSessionContext() {
+    return Objects.nonNull(context)
+        && Objects.nonNull(context.getSession())
+        && context.getSession().isDatabaseInternalSession();
+  }
+
+  private boolean isInternalRpcSessionContext() {
+    return Objects.nonNull(context)
+        && Objects.nonNull(context.getSession())
+        && context.getSession().isInternalRpcSession();
   }
 }
