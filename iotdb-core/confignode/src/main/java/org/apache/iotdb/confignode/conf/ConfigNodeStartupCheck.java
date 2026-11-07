@@ -173,6 +173,9 @@ public class ConfigNodeStartupCheck extends StartupChecks {
               .EXCEPTION_SCHEMAREGION_DOESN_T_SUPPORT_ORG_APACHE_IOTDB_CONSENSUS_IOT_IOTCONSENSUSV2_BA353C6D);
     }
 
+    // An unrecognized class silently disables IoTConsensusV2 replication, so fail fast.
+    checkDataRegionConsensusProtocolClass();
+
     // The leader distribution policy is limited
     if (!AbstractLeaderBalancer.GREEDY_POLICY.equals(CONF.getLeaderDistributionPolicy())
         && !AbstractLeaderBalancer.CFS_POLICY.equals(CONF.getLeaderDistributionPolicy())
@@ -224,6 +227,28 @@ public class ConfigNodeStartupCheck extends StartupChecks {
       throw new ConfigurationException(
           ConfigNodeMessages.THE_TIMESTAMP_PRECISION_SHOULD_BE_MS_US_OR_NS);
     }
+  }
+
+  /** Rejects a data_region_consensus_protocol_class that this release cannot act on. */
+  static void checkDataRegionConsensusProtocolClass() throws ConfigurationException {
+    final String dataRegionConsensusProtocolClass = CONF.getDataRegionConsensusProtocolClass();
+    if (ConsensusFactory.SIMPLE_CONSENSUS.equals(dataRegionConsensusProtocolClass)
+        || ConsensusFactory.RATIS_CONSENSUS.equals(dataRegionConsensusProtocolClass)
+        || ConsensusFactory.IOT_CONSENSUS.equals(dataRegionConsensusProtocolClass)
+        || ConsensusFactory.IOT_CONSENSUS_V2.equals(dataRegionConsensusProtocolClass)) {
+      return;
+    }
+    throw new ConfigurationException(
+        ConfigNodeMessages.DATA_REGION_CONSENSUS_PROTOCOL_CLASS,
+        dataRegionConsensusProtocolClass,
+        String.format(
+            ConfigNodeMessages.EXCEPTION_ARG_ARG_ARG_OR_ARG_E950ED19,
+            ConsensusFactory.SIMPLE_CONSENSUS,
+            ConsensusFactory.RATIS_CONSENSUS,
+            ConsensusFactory.IOT_CONSENSUS,
+            ConsensusFactory.IOT_CONSENSUS_V2),
+        ConfigNodeMessages
+            .EXCEPTION_UNRECOGNIZED_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_IS_SET_DAB37EAF);
   }
 
   private void createDirsIfNecessary() throws IOException {
