@@ -86,6 +86,15 @@ public class SimpleQueryTerminator implements IQueryTerminator {
 
   @Override
   public Future<Boolean> terminate(final Throwable t) {
+    return terminate(t, TERMINATION_GRACE_PERIOD_IN_MS);
+  }
+
+  @Override
+  public Future<Boolean> terminateImmediately(final Throwable t) {
+    return terminate(t, 0L);
+  }
+
+  private Future<Boolean> terminate(final Throwable t, final long delayInMs) {
     // For the failure dispatch, the termination should not be triggered because of connection issue
     this.relatedHost =
         this.relatedHost.stream()
@@ -93,8 +102,7 @@ public class SimpleQueryTerminator implements IQueryTerminator {
             .collect(Collectors.toList());
     this.hasThrowable = Objects.nonNull(t);
 
-    return scheduledExecutor.schedule(
-        this::syncTerminate, TERMINATION_GRACE_PERIOD_IN_MS, TimeUnit.MILLISECONDS);
+    return scheduledExecutor.schedule(this::syncTerminate, delayInMs, TimeUnit.MILLISECONDS);
   }
 
   public Boolean syncTerminate() {
