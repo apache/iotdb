@@ -33,7 +33,6 @@ import org.apache.tsfile.write.chunk.ValueChunkWriter;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -64,9 +63,8 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
   }
 
   /**
-   * Override the encoding process to handle standalone Value Chunks without a Time Chunk. It uses
-   * ValueChunkWriter directly, writes a dummy time (0), and manually corrects the start/end time in
-   * the statistics.
+   * Encodes standalone value chunks while preserving the row and page positions of their time
+   * chunks.
    */
   protected void encodeAndBuildChunks() throws IOException, PageException {
     final long startTime = timePartitionSlot.getStartTime();
@@ -120,20 +118,14 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
       boolean hasBufferedData = false;
       for (PageBuffer page : chunkPages) {
         if (!page.needDecode) {
-          // An undecoded page may carry no data at all (for aligned series an all-null column is
-          // stored as an empty page). Writing its page header alone would produce a chunk whose
-          // data size does not describe a parsable page, so such a page is dropped.
-          if (page.pageData.remaining() > 0) {
-            valueChunkWriter.writePageHeaderAndDataIntoBuff(page.pageData, page.pageHeader);
-            hasBufferedData = true;
-          }
+          // Empty pages still occupy a slot opposite the corresponding time page. If every page
+          // is empty, the whole chunk is emitted without a body below.
+          hasBufferedData |= page.pageData.remaining() > 0;
+          valueChunkWriter.writePageHeaderAndDataIntoBuff(page.pageData, page.pageHeader);
           continue;
         }
 
-        // Keep track of actual bounds since we will write '0' as dummy time
-        long pageStartTime = Long.MAX_VALUE;
-        long pageEndTime = Long.MIN_VALUE;
-        boolean pageHasValue = false;
+        boolean pageHasRows = false;
 
         final TypeServices.TsPrimitiveValueChunkWriter valueChunkValueWriter =
             TypeServices.StorageEngine.TS_PRIMITIVE_VALUE_CHUNK_WRITER_SERVICE.call(
@@ -148,27 +140,16 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
                     || page.valueBatch[j] == null);
             if (!isNull) {
               hasBufferedData = true;
-              pageHasValue = true;
-              pageStartTime = Math.min(pageStartTime, time);
-              pageEndTime = Math.max(pageEndTime, time);
-
-              // Write 0 as a dummy time, valueChunkWriter will ignore it anyway for value columns
-              valueChunkValueWriter.write(valueChunkWriter, 0, page.valueBatch[j], false);
             }
-            // A standalone value chunk cannot store nulls: for aligned series a missing value is
-            // represented by the absence of the point, the time chunk still carries the row.
+            // The bitmap has one position per timestamp, including nulls. Use the real timestamp
+            // so the writer also computes the statistics of the non-null values correctly.
+            valueChunkValueWriter.write(
+                valueChunkWriter, time, isNull ? null : page.valueBatch[j], isNull);
+            pageHasRows = true;
           }
         }
 
-        // Correct the page statistics with the actual Start/End time
-        Statistics<? extends Serializable> statistics =
-            valueChunkWriter.getPageWriter().getStatistics();
-        if (pageStartTime <= pageEndTime) {
-          statistics.setStartTime(pageStartTime);
-          statistics.setEndTime(pageEndTime);
-        }
-
-        if (pageHasValue) {
+        if (pageHasRows) {
           valueChunkWriter.sealCurrentPage();
         }
       }

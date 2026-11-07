@@ -87,7 +87,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.LongPredicate;
 
 public class TsFileSplitterTest {
 
@@ -905,6 +907,167 @@ public class TsFileSplitterTest {
           Assert.assertTrue(targetTsFile.delete());
         }
       }
+    }
+  }
+
+  @Test
+  public void testSplitBatchedAlignedChunkPreservesNullRows() throws Exception {
+    final long interval = TimePartitionUtils.getTimePartitionInterval();
+    assertSparseBatchedAlignedChunkSplit(
+        new long[][] {{0, 1, 2, interval - 1, interval, interval + 1, interval + 2}},
+        time -> time % 2 == 0);
+  }
+
+  @Test
+  public void testSplitBatchedAlignedChunkPreservesCopiedEmptyPage() throws Exception {
+    final long interval = TimePartitionUtils.getTimePartitionInterval();
+    assertSparseBatchedAlignedChunkSplit(
+        new long[][] {{0, 1}, {interval - 2, interval - 1, interval, interval + 1}},
+        time -> time < 2);
+  }
+
+  @Test
+  public void testSplitBatchedAlignedChunkPreservesDecodedEmptyPage() throws Exception {
+    final long interval = TimePartitionUtils.getTimePartitionInterval();
+    assertSparseBatchedAlignedChunkSplit(
+        new long[][] {
+          {interval - 1, interval, interval + 1},
+          {interval + 2, 2 * interval - 1, 2 * interval}
+        },
+        time -> time <= interval + 1);
+  }
+
+  private void assertSparseBatchedAlignedChunkSplit(
+      final long[][] pages, final LongPredicate isNull) throws Exception {
+    final java.nio.file.Path directory = Files.createTempDirectory("split-sparse-batched");
+    final File source = directory.resolve("source.tsfile").toFile();
+    final List<File> targets = new ArrayList<>();
+    final IDeviceID device = new StringArrayDeviceID("table1", "tagA");
+    final Map<Long, Long> expected = new TreeMap<>();
+    final long interval = TimePartitionUtils.getTimePartitionInterval();
+    try {
+      try (final TsFileIOWriter writer = new TsFileIOWriter(source)) {
+        writer.setSchema(createBatchedSchema());
+        writer.startChunkGroup(device);
+        // Compaction writes the first series batch with all time chunks, then appends the
+        // remaining value chunks. Each value chunk must retain the rows and pages of its time
+        // chunk.
+        for (int window = 0; window < 2; window++) {
+          final long offset = window * 3 * interval;
+          final AlignedChunkWriterImpl alignedWriter =
+              new AlignedChunkWriterImpl(
+                  Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT64)));
+          for (final long[] page : pages) {
+            for (final long localTime : page) {
+              final long time = offset + localTime;
+              alignedWriter.getTimeChunkWriter().write(time);
+              alignedWriter.getValueChunkWriterByIndex(0).write(time, time, false);
+              expected.put(time, isNull.test(localTime) ? null : time + 1);
+            }
+            alignedWriter.sealCurrentPage();
+          }
+          alignedWriter.writeToFileWriter(writer);
+        }
+        for (int window = 0; window < 2; window++) {
+          final long offset = window * 3 * interval;
+          final ValueChunkWriter valueWriter =
+              new ValueChunkWriter(
+                  "s2",
+                  CompressionType.LZ4,
+                  TSDataType.INT64,
+                  TSEncoding.PLAIN,
+                  new PlainEncoder(TSDataType.INT64, 8));
+          for (final long[] page : pages) {
+            for (final long localTime : page) {
+              final long time = offset + localTime;
+              valueWriter.write(time, time + 1, isNull.test(localTime));
+            }
+            valueWriter.sealCurrentPage();
+          }
+          valueWriter.writeToFileWriter(writer);
+        }
+        writer.endChunkGroup();
+        writer.endFile();
+      }
+      // Check that the source itself has the expected sparse rows before exercising LOAD.
+      assertSparseAlignedRows(source, device, expected);
+      final List<ChunkData> chunks = splitSourceTsFile(source);
+      Assert.assertTrue(chunks.stream().anyMatch(BatchedAlignedValueChunkData.class::isInstance));
+      final Set<TTimePartitionSlot> expectedPartitions = new HashSet<>();
+      for (final long time : expected.keySet()) {
+        expectedPartitions.add(TimePartitionUtils.getTimePartitionSlot(time));
+      }
+      Assert.assertEquals(expectedPartitions, groupChunkDataByPartition(chunks).keySet());
+      for (final Map.Entry<TTimePartitionSlot, List<ChunkData>> entry :
+          groupChunkDataByPartition(chunks).entrySet()) {
+        final Map<Long, Long> partitionRows = new TreeMap<>();
+        for (final Map.Entry<Long, Long> row : expected.entrySet()) {
+          if (TimePartitionUtils.getTimePartitionSlot(row.getKey()).equals(entry.getKey())) {
+            partitionRows.put(row.getKey(), row.getValue());
+          }
+        }
+        final File target =
+            directory.resolve("target-" + entry.getKey().getStartTime() + ".tsfile").toFile();
+        targets.add(target);
+        assertSparseAlignedRows(writeTargetTsFile(target, entry.getValue()), device, partitionRows);
+      }
+    } finally {
+      for (final File target : targets) {
+        Files.deleteIfExists(target.toPath());
+      }
+      Files.deleteIfExists(source.toPath());
+      Files.deleteIfExists(directory);
+    }
+  }
+
+  private void assertSparseAlignedRows(
+      final File file, final IDeviceID device, final Map<Long, Long> expected) throws Exception {
+    try (final TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath())) {
+      long valueCount = 0;
+      long start = Long.MAX_VALUE;
+      long end = Long.MIN_VALUE;
+      for (final AbstractAlignedChunkMetadata metadata :
+          reader.getAlignedChunkMetadata(device, false)) {
+        for (final IChunkMetadata valueMetadata : metadata.getValueChunkMetadataList()) {
+          if (valueMetadata != null && "s2".equals(valueMetadata.getMeasurementUid())) {
+            valueCount += valueMetadata.getStatistics().getCount();
+            start = Math.min(start, valueMetadata.getStartTime());
+            end = Math.max(end, valueMetadata.getEndTime());
+          }
+        }
+      }
+      final List<Long> nonNullTimes = new ArrayList<>();
+      for (final Map.Entry<Long, Long> row : expected.entrySet()) {
+        if (row.getValue() != null) {
+          nonNullTimes.add(row.getKey());
+        }
+      }
+      Assert.assertEquals(nonNullTimes.size(), valueCount);
+      if (!nonNullTimes.isEmpty()) {
+        Assert.assertEquals(nonNullTimes.get(0).longValue(), start);
+        Assert.assertEquals(nonNullTimes.get(nonNullTimes.size() - 1).longValue(), end);
+      }
+    }
+    try (final TsFileReader reader = new TsFileReader(file)) {
+      final QueryDataSet rows =
+          reader.query(
+              QueryExpression.create(
+                  Arrays.asList(new Path(device, "s1", true), new Path(device, "s2", true)), null));
+      for (final Map.Entry<Long, Long> expectedRow : expected.entrySet()) {
+        Assert.assertTrue("missing row at " + expectedRow.getKey(), rows.hasNext());
+        final RowRecord row = rows.next();
+        Assert.assertEquals(expectedRow.getKey().longValue(), row.getTimestamp());
+        Assert.assertEquals(row.getTimestamp(), row.getField(0).getLongV());
+        final Field value = row.getField(1);
+        if (expectedRow.getValue() == null) {
+          Assert.assertTrue(value == null || value.getDataType() == null);
+        } else {
+          Assert.assertNotNull(value);
+          Assert.assertNotNull(value.getDataType());
+          Assert.assertEquals(expectedRow.getValue().longValue(), value.getLongV());
+        }
+      }
+      Assert.assertFalse(rows.hasNext());
     }
   }
 
