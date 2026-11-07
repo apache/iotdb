@@ -237,7 +237,10 @@ public class TableDiskUsageIndex {
     try {
       stop = true;
       // wake the worker from its queue poll (up to 1 s) so that it sees the stop flag
-      queue.offer(new WakeUpOperation());
+      if (!queue.offer(new WakeUpOperation())) {
+        // the queue is full, so the worker is not waiting in poll() and needs no wake-up; it sees
+        // the stop flag after its current operation
+      }
       scheduledExecutorService.shutdown();
       scheduledExecutorService.awaitTermination(5, TimeUnit.SECONDS);
       writerMap.values().forEach(DataRegionTableSizeIndexWriter::close);
