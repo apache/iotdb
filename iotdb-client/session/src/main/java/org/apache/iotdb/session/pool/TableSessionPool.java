@@ -36,6 +36,7 @@ public class TableSessionPool implements ITableSessionPool {
     return sessionPool.getPooledTableSession();
   }
 
+  /** Closes the underlying session pool and unblocks any waiting threads. */
   @Override
   public void close() {
     this.sessionPool.close();
