@@ -133,6 +133,7 @@ public class IoTDBEdgeBasicIT {
       if (edgeHome != null && Files.isRegularFile(edgeHome.resolve("sbin/stop-edge.sh"))) {
         try {
           runScript(edgeHome.resolve("sbin/stop-edge.sh"), STOP_SCRIPT_LOG);
+          assertEdgeProcessExited();
         } catch (Exception | AssertionError e) {
           stopFailure = new AssertionError("Failed to stop IoTDB Edge with stop-edge.sh", e);
         }
@@ -539,6 +540,21 @@ public class IoTDBEdgeBasicIT {
               + System.lineSeparator()
               + readLogTail(outputFile));
     }
+  }
+
+  private static void assertEdgeProcessExited() throws InterruptedException {
+    // stop-edge.sh also exits 0 when it finds no matching process, so check the process itself.
+    // The short wait covers its "kill -9" fallback, which does not wait for the exit.
+    if (edgePid <= 0) {
+      return;
+    }
+    final ProcessHandle process = ProcessHandle.of(edgePid).orElse(null);
+    for (int i = 0; i < 10 && process != null && process.isAlive(); i++) {
+      Thread.sleep(500);
+    }
+    assertFalse(
+        "IoTDB Edge process " + edgePid + " is still running after stop-edge.sh returned",
+        process != null && process.isAlive());
   }
 
   private static void stopProcessForciblyIfNeeded() throws InterruptedException {
