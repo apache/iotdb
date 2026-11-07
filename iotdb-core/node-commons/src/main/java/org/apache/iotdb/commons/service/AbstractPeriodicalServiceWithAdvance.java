@@ -89,6 +89,9 @@ public abstract class AbstractPeriodicalServiceWithAdvance {
 
   public void stopService() {
     allowSubmitListen = false;
+    // wake the loop from its interval wait, so that it ends now and its executor can
+    // terminate, instead of only after the next interval
+    advanceExecution();
 
     LOGGER.info(ServiceMessages.SERVICE_STOPPED_SUCCESSFULLY, getClass().getSimpleName());
   }
