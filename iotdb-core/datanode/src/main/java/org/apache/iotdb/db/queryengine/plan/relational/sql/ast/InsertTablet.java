@@ -98,7 +98,9 @@ public class InsertTablet extends WrappedInsertStatement {
       deviceID2AttributeValues.put(deviceID, new Object[attrColumnIndices.size()]);
     }
 
-    for (int rowIndex = 0; rowIndex < insertTabletStatement.getRowCount(); rowIndex++) {
+    final int[] submittedRowOrder = getSubmittedRowOrder();
+    for (int k = 0; k < insertTabletStatement.getRowCount(); k++) {
+      final int rowIndex = submittedRowOrder == null ? k : submittedRowOrder[k];
       final Object[] attrValues =
           deviceID2AttributeValues.get(insertTabletStatement.getTableDeviceID(rowIndex));
       for (int attrColNum = 0; attrColNum < attrColumnIndices.size(); attrColNum++) {
@@ -120,6 +122,24 @@ public class InsertTablet extends WrappedInsertStatement {
     return new ArrayList<>(deviceID2AttributeValues.values());
   }
 
+  /**
+   * The row indexes in the order the statement was submitted in. The coordinator sorts the rows
+   * before planning, but the attribute of a device is the last non-null value of the rows as the
+   * client sent them, so that order has to be restored here and in {@link
+   * #prepareDeviceID2LastIdxMap()}.
+   */
+  private int[] getSubmittedRowOrder() {
+    final int[] originalRowIndexes = getInnerTreeStatement().getOriginalRowIndexes();
+    if (originalRowIndexes == null) {
+      return null;
+    }
+    final int[] submittedRowOrder = new int[originalRowIndexes.length];
+    for (int row = 0; row < originalRowIndexes.length; row++) {
+      submittedRowOrder[originalRowIndexes[row]] = row;
+    }
+    return submittedRowOrder;
+  }
+
   // The map cannot be maintained during construction because the IDeviceID may be reset later.
   private void prepareDeviceID2LastIdxMap() {
     if (deviceID2LastIdxMap != null) {
@@ -127,9 +147,11 @@ public class InsertTablet extends WrappedInsertStatement {
     }
     InsertTabletStatement insertTabletStatement = getInnerTreeStatement();
     deviceID2LastIdxMap = new LinkedHashMap<>(insertTabletStatement.getRowCount());
-    for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
-      IDeviceID deviceID = insertTabletStatement.getTableDeviceID(i);
-      deviceID2LastIdxMap.put(deviceID, i);
+    final int[] submittedRowOrder = getSubmittedRowOrder();
+    for (int k = 0; k < insertTabletStatement.getRowCount(); k++) {
+      final int rowIndex = submittedRowOrder == null ? k : submittedRowOrder[k];
+      IDeviceID deviceID = insertTabletStatement.getTableDeviceID(rowIndex);
+      deviceID2LastIdxMap.put(deviceID, rowIndex);
     }
     if (deviceID2LastIdxMap.size() == 1) {
       insertTabletStatement.setSingleDevice();
