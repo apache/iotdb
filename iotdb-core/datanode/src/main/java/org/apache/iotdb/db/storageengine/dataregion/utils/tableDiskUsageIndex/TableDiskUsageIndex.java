@@ -236,6 +236,8 @@ public class TableDiskUsageIndex {
     }
     try {
       stop = true;
+      // wake the worker from its queue poll (up to 1 s) so that it sees the stop flag
+      queue.offer(new WakeUpOperation());
       scheduledExecutorService.shutdown();
       scheduledExecutorService.awaitTermination(5, TimeUnit.SECONDS);
       writerMap.values().forEach(DataRegionTableSizeIndexWriter::close);
@@ -300,6 +302,19 @@ public class TableDiskUsageIndex {
     @Override
     public String toString() {
       return this.getClass().getSimpleName();
+    }
+  }
+
+  /** Does nothing; {@link #close()} queues it to wake the worker. */
+  private static class WakeUpOperation extends Operation {
+
+    private WakeUpOperation() {
+      super(null, -1);
+    }
+
+    @Override
+    public void apply(TableDiskUsageIndex tableDiskUsageIndex) {
+      // nothing to do
     }
   }
 

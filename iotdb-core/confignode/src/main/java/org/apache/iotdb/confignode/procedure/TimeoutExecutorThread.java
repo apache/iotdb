@@ -39,6 +39,9 @@ public class TimeoutExecutorThread<Env> extends StoppableThread {
   private final DelayQueue<ProcedureDelayContainer<Env>> queue = new DelayQueue<>();
   private final Set<Procedure<Env>> registeredInternalProcedures = ConcurrentHashMap.newKeySet();
 
+  /** Queued by {@link #sendStopSignal()}; due at once, carries no procedure. */
+  private final ProcedureDelayContainer<Env> stopMarker = new ProcedureDelayContainer<>(null);
+
   public TimeoutExecutorThread(
       ProcedureExecutor<Env> envProcedureExecutor, ThreadGroup threadGroup, String name) {
     super(threadGroup, name);
@@ -78,7 +81,7 @@ public class TimeoutExecutorThread<Env> extends StoppableThread {
   public void run() {
     while (executor.isRunning()) {
       ProcedureDelayContainer<Env> delayTask = takeQuietly();
-      if (delayTask == null) {
+      if (delayTask == null || delayTask == stopMarker) {
         continue;
       }
       Procedure<Env> procedure = delayTask.getProcedure();
@@ -110,7 +113,15 @@ public class TimeoutExecutorThread<Env> extends StoppableThread {
     }
   }
 
-  public void sendStopSignal() {}
+  @Override
+  public void sendStopSignal() {
+    // wake run() from its queue poll (up to DELAY_QUEUE_TIMEOUT seconds), so that it
+    // sees the stopped executor at once. Before, join() waited until awaitTermination's eighth
+    // join round interrupted the thread, about 2 s per thread on every stop.
+    if (!queue.contains(stopMarker)) {
+      queue.add(stopMarker);
+    }
+  }
 
   private static class ProcedureDelayContainer<Env> implements Delayed {
 
@@ -143,6 +154,9 @@ public class TimeoutExecutorThread<Env> extends StoppableThread {
 
     @Override
     public long getDelay(TimeUnit unit) {
+      if (procedure == null) {
+        return 0; // the stop marker
+      }
       long delay = procedure.getTimeoutTimestamp() - System.currentTimeMillis();
       return unit.convert(delay, TimeUnit.MILLISECONDS);
     }
