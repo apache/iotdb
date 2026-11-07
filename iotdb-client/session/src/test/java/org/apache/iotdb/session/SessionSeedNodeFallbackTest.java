@@ -72,6 +72,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -574,13 +575,24 @@ public class SessionSeedNodeFallbackTest {
     }
   }
 
-  private void assertDiscoveryBufferThreshold(SessionPool pool, int threshold) {
+  private void assertDiscoveryBufferThreshold(SessionPool pool, int threshold)
+      throws InterruptedException {
     NodesSupplier current = Whitebox.getInternalState(pool, "availableNodes");
-    current.run();
-    ThriftConnection connection = Whitebox.getInternalState(current, "client");
-    AutoScalingBufferWriteTransport output = assertTransportBufferThreshold(connection, threshold);
-    if (threshold == 0) {
-      assertEquals(32, output.getBuffer().length);
+    // The pool starts its first discovery refresh immediately, and run() returns at once while
+    // another refresh holds refreshLock. Holding the reentrant lock waits for that refresh and
+    // keeps the discovery connection idle while run() refreshes it and its buffers are checked.
+    ReentrantLock refreshLock = Whitebox.getInternalState(current, "refreshLock");
+    assertTrue(refreshLock.tryLock(10, TimeUnit.SECONDS));
+    try {
+      current.run();
+      ThriftConnection connection = Whitebox.getInternalState(current, "client");
+      AutoScalingBufferWriteTransport output =
+          assertTransportBufferThreshold(connection, threshold);
+      if (threshold == 0) {
+        assertEquals(32, output.getBuffer().length);
+      }
+    } finally {
+      refreshLock.unlock();
     }
   }
 
