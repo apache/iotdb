@@ -44,6 +44,7 @@ import java.sql.Statement;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_USER_DEFINED_AGG_FUNC;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_USER_DEFINED_SCALAR_FUNC;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -129,6 +130,24 @@ public class IoTDBSQLFunctionManagementIT {
           ++count;
         }
         Assert.assertEquals(BUILTIN_FUNCTIONS_COUNT, count);
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testInformationSchemaFunctionsShowsExternalScalarType() {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create function udsf as 'org.apache.iotdb.db.query.udf.example.relational.ContainNull'");
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select function_type from information_schema.functions where function_table = 'UDSF'")) {
+        assertTrue(resultSet.next());
+        assertEquals(FUNCTION_TYPE_USER_DEFINED_SCALAR_FUNC, resultSet.getString(1));
+        assertFalse(resultSet.next());
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
