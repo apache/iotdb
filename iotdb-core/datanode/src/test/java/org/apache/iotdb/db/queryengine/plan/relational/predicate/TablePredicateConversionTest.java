@@ -21,9 +21,13 @@ package org.apache.iotdb.db.queryengine.plan.relational.predicate;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InListExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
@@ -31,14 +35,19 @@ import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.tsfile.read.common.type.IntType;
 import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.filter.factory.TimeFilterApi;
 import org.apache.tsfile.read.filter.operator.FalseLiteralFilter;
 import org.apache.tsfile.read.filter.operator.LongFilterOperators;
 import org.apache.tsfile.read.filter.operator.ValueIsNotNullOperator;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.time.ZoneId;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
 
@@ -502,5 +511,45 @@ public class TablePredicateConversionTest {
             predicate, int32MeasurementColumnsIndexMap, int32SchemaMap, null, null, null);
 
     Assert.assertEquals(new LongFilterOperators.ValueGtEq(0, 123), actualFilter);
+  }
+
+  @Test
+  public void testTimestampConstantAndTimeColumn() {
+    // A constant TIMESTAMP expression such as CAST(1000 AS TIMESTAMP) reaches the conversion as a
+    // folded GenericLiteral, not a LongLiteral.
+    SymbolReference time = new SymbolReference("time");
+    GenericLiteral ts1000 = new GenericLiteral("TIMESTAMP", "1000");
+    GenericLiteral ts2000 = new GenericLiteral("TIMESTAMP", "2000");
+
+    // time >= CAST(1000 AS TIMESTAMP)
+    Assert.assertEquals(
+        TimeFilterApi.gtEq(1000),
+        convertTimePredicate(
+            new ComparisonExpression(
+                ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL, time, ts1000)));
+    // CAST(1000 AS TIMESTAMP) < time
+    Assert.assertEquals(
+        TimeFilterApi.gt(1000),
+        convertTimePredicate(
+            new ComparisonExpression(ComparisonExpression.Operator.LESS_THAN, ts1000, time)));
+    // time IN (CAST(1000 AS TIMESTAMP), CAST(2000 AS TIMESTAMP))
+    Assert.assertEquals(
+        TimeFilterApi.in(new HashSet<>(Arrays.asList(1000L, 2000L))),
+        convertTimePredicate(
+            new InPredicate(time, new InListExpression(Arrays.asList(ts1000, ts2000)))));
+    // time BETWEEN CAST(1000 AS TIMESTAMP) AND CAST(2000 AS TIMESTAMP)
+    Assert.assertEquals(
+        TimeFilterApi.between(1000, 2000),
+        convertTimePredicate(new BetweenPredicate(time, ts1000, ts2000)));
+  }
+
+  private static Filter convertTimePredicate(Expression predicate) {
+    return PredicateUtils.convertPredicateToFilter(
+        predicate,
+        Collections.emptyMap(),
+        Collections.emptyMap(),
+        "time",
+        ZoneId.of("UTC"),
+        TimeUnit.MILLISECONDS);
   }
 }
