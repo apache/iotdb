@@ -62,7 +62,9 @@ public abstract class AbstractPeriodicalServiceWithAdvance {
     lock.lock();
     try {
       executeTask();
-      if (!skipNextSleep) {
+      // checked under the lock that stopService() signals under, so a stop that came before
+      // this iteration began (e.g. while it was still queued) is not missed
+      if (!skipNextSleep && allowSubmitListen) {
         condition.await(intervalMillis, TimeUnit.MILLISECONDS);
       }
       skipNextSleep = false;
@@ -89,6 +91,16 @@ public abstract class AbstractPeriodicalServiceWithAdvance {
 
   public void stopService() {
     allowSubmitListen = false;
+    // wake the loop from its interval wait, so that it ends now and its executor can
+    // terminate, instead of only after the next interval. Take the lock unconditionally (unlike
+    // advanceExecution()): a running iteration either sees the stopped state before it waits or
+    // is already waiting and gets this signal.
+    lock.lock();
+    try {
+      condition.signalAll();
+    } finally {
+      lock.unlock();
+    }
 
     LOGGER.info(ServiceMessages.SERVICE_STOPPED_SUCCESSFULLY, getClass().getSimpleName());
   }
