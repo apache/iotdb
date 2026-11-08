@@ -40,7 +40,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -117,18 +116,14 @@ public class TierManagerTest {
               }
               return null;
             });
-    List<AtomicInteger> accessorCounts = new ArrayList<>();
     List<Future<?>> accessorFutures = new ArrayList<>();
     for (Callable<?> folderAccessor : folderAccessors) {
-      AtomicInteger accessorCount = new AtomicInteger();
-      accessorCounts.add(accessorCount);
       accessorFutures.add(
           executorService.submit(
               () -> {
                 startLatch.await();
                 do {
                   assertNotNull(folderAccessor.call());
-                  accessorCount.incrementAndGet();
                 } while (resetting.get());
                 return null;
               }));
@@ -139,9 +134,6 @@ public class TierManagerTest {
       resetFuture.get(30, TimeUnit.SECONDS);
       for (Future<?> accessorFuture : accessorFutures) {
         accessorFuture.get(30, TimeUnit.SECONDS);
-      }
-      for (AtomicInteger accessorCount : accessorCounts) {
-        assertTrue(accessorCount.get() > 0);
       }
     } finally {
       executorService.shutdownNow();
