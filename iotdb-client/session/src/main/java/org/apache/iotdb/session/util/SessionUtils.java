@@ -84,7 +84,7 @@ public class SessionUtils {
   /**
    * @return Total bytes of values
    */
-  public static int getTotalValueOccupation(Tablet tablet) {
+  private static int getTotalValueOccupation(Tablet tablet) {
     int valueOccupation = 0;
     int columnIndex = 0;
     List<IMeasurementSchema> schemas = tablet.getSchemas();
@@ -200,6 +200,14 @@ public class SessionUtils {
   public static void encodePlainValue(
       TSDataType dataType, Tablet tablet, int i, ByteArrayOutputStream outputStream) {
     SessionTypeServices.tabletPlainValueWriter(dataType).write(tablet, i, outputStream);
+  }
+
+  /**
+   * @return the bytes per row of a column in the layout of {@link #encodePlainValue}, without the
+   *     bytes of binary values
+   */
+  public static int getPlainRowSize(TSDataType dataType) {
+    return SessionTypeServices.tabletPlainRowSize(dataType);
   }
 
   /**

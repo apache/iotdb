@@ -74,9 +74,8 @@ public class TabletEncoder {
   }
 
   public ByteBuffer encodeValues(Tablet tablet) {
-    // the PLAIN size of the tablet; other encodings need less
-    PublicBAOS baos = new PublicBAOS(SessionUtils.getTotalValueOccupation(tablet));
     List<IMeasurementSchema> schemas = tablet.getSchemas();
+    PublicBAOS baos = newValueStream(tablet, schemas);
     for (int j = 0, schemasSize = schemas.size(); j < schemasSize; j++) {
       TSDataType dataType = schemas.get(j).getType();
       TSEncoding encoding = encodingList.get(j + 1);
@@ -93,6 +92,31 @@ public class TabletEncoder {
 
     ByteBuffer buffer = ByteBuffer.wrap(baos.getBuf(), 0, baos.size());
     return compressBuffer(buffer);
+  }
+
+  /**
+   * Pre-sizes the stream for the PLAIN columns, whose size is known up front, and the bit maps
+   * after them, so that the stream does not have to double for the last few bytes. Other encodings
+   * and binary values let the stream grow, as does a size that does not fit in an array.
+   */
+  private PublicBAOS newValueStream(Tablet tablet, List<IMeasurementSchema> schemas) {
+    int rows = tablet.getRowSize();
+    long size = 0;
+    for (int j = 0, schemasSize = schemas.size(); j < schemasSize; j++) {
+      if (encodingList.get(j + 1) == TSEncoding.PLAIN) {
+        size += (long) rows * SessionUtils.getPlainRowSize(schemas.get(j).getType());
+      }
+    }
+    if (size == 0) {
+      return new PublicBAOS();
+    }
+    BitMap[] bitMaps = tablet.getBitMaps();
+    if (bitMaps != null) {
+      // at most a marker byte and the truncated bit map per column
+      size += bitMaps.length * (1L + rows / Byte.SIZE + 1);
+    }
+    // stay clear of the VM's array size limit
+    return size <= Integer.MAX_VALUE - 8 ? new PublicBAOS((int) size) : new PublicBAOS();
   }
 
   private void encodeBitMap(Tablet tablet, ByteArrayOutputStream baos) {

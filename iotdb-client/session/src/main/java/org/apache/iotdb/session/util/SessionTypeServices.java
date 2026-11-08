@@ -382,6 +382,22 @@ final class SessionTypeServices {
                 };
           };
 
+  /**
+   * Bytes per row of a column in the PLAIN layout of {@link #TABLET_PLAIN_VALUE_WRITER_SERVICE}, to
+   * pre-size the output. Binary types count only their length prefix, so that no values are read;
+   * the stream grows for their bytes.
+   */
+  private static final TypeService<Integer> TABLET_PLAIN_ROW_SIZE_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN -> Byte.BYTES;
+            case INT32, FLOAT, DATE -> Integer.BYTES;
+            case INT64, DOUBLE, TIMESTAMP -> Long.BYTES;
+            case TEXT, STRING, BLOB, OBJECT -> Integer.BYTES;
+            // the writer refuses these types
+            case ROW, UNKNOWN, VECTOR -> 0;
+          };
+
   private static final TypeService<ValueListSorter> VALUE_LIST_SORTER_SERVICE =
       type ->
           switch (type.getTypeEnum()) {
@@ -461,6 +477,7 @@ final class SessionTypeServices {
     TABLET_VALUE_WRITER_SERVICE.check();
     TABLET_VALUE_ENCODER_SERVICE.check();
     TABLET_PLAIN_VALUE_WRITER_SERVICE.check();
+    TABLET_PLAIN_ROW_SIZE_SERVICE.check();
     VALUE_LIST_SORTER_SERVICE.check();
   }
 
@@ -488,6 +505,10 @@ final class SessionTypeServices {
 
   static TabletPlainValueWriter tabletPlainValueWriter(TSDataType dataType) {
     return TABLET_PLAIN_VALUE_WRITER_SERVICE.call(Type.fromTsDataType(dataType));
+  }
+
+  static int tabletPlainRowSize(TSDataType dataType) {
+    return TABLET_PLAIN_ROW_SIZE_SERVICE.call(Type.fromTsDataType(dataType));
   }
 
   static ValueListSorter valueListSorter(TSDataType dataType) {

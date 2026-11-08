@@ -24,6 +24,7 @@ import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.encoding.encoder.Encoder;
 import org.apache.tsfile.encoding.encoder.PlainEncoder;
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -98,6 +99,58 @@ public class TabletEncoderPlainTest {
             expectedValues(tablet),
             uncompress(compressionType, encoder.encodeValues(tablet)));
       }
+    }
+  }
+
+  /**
+   * A table-model tablet built with the raw constructor may have no value array for a TAG column
+   * that is entirely null. Encoding must not read it, whatever the encodings.
+   */
+  @Test
+  public void allNullBinaryColumnWithoutValueArray() {
+    int rows = 10;
+    List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("tag", TSDataType.STRING),
+            new MeasurementSchema("value", TSDataType.INT64));
+    List<ColumnCategory> categories = Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD);
+    long[] timestamps = new long[rows];
+    long[] longs = new long[rows];
+    for (int row = 0; row < rows; row++) {
+      timestamps[row] = row;
+      longs[row] = row * 10L;
+    }
+    BitMap allNull = new BitMap(rows);
+    allNull.markAll();
+
+    Tablet withoutArray =
+        new Tablet(
+            "table1",
+            schemas,
+            categories,
+            timestamps,
+            new Object[] {null, longs},
+            new BitMap[] {allNull, null},
+            rows);
+    Tablet withArray =
+        new Tablet(
+            "table1",
+            schemas,
+            categories,
+            timestamps,
+            new Object[] {new Binary[rows], longs},
+            new BitMap[] {allNull, null},
+            rows);
+
+    for (TSEncoding valueEncoding : new TSEncoding[] {TSEncoding.PLAIN, TSEncoding.TS_2DIFF}) {
+      TabletEncoder encoder =
+          new TabletEncoder(
+              CompressionType.UNCOMPRESSED,
+              Arrays.asList(TSEncoding.PLAIN, TSEncoding.PLAIN, valueEncoding));
+      Assert.assertEquals(
+          "values, " + valueEncoding,
+          encoder.encodeValues(withArray),
+          encoder.encodeValues(withoutArray));
     }
   }
 
