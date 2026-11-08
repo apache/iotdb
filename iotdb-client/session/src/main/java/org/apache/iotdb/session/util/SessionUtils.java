@@ -84,7 +84,7 @@ public class SessionUtils {
   /**
    * @return Total bytes of values
    */
-  private static int getTotalValueOccupation(Tablet tablet) {
+  public static int getTotalValueOccupation(Tablet tablet) {
     int valueOccupation = 0;
     int columnIndex = 0;
     List<IMeasurementSchema> schemas = tablet.getSchemas();
@@ -191,6 +191,15 @@ public class SessionUtils {
     } catch (IOException e) {
       throw new IllegalStateException(e);
     }
+  }
+
+  /**
+   * Writes a tablet column in the PLAIN layout of the RPC tablet compression: fixed-width values
+   * big-endian (INT32 not as a var int), binary values with an int length prefix.
+   */
+  public static void encodePlainValue(
+      TSDataType dataType, Tablet tablet, int i, ByteArrayOutputStream outputStream) {
+    SessionTypeServices.tabletPlainValueWriter(dataType).write(tablet, i, outputStream);
   }
 
   /**
