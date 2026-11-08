@@ -34,6 +34,7 @@ import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
 
 import org.antlr.v4.runtime.ANTLRErrorListener;
+import org.antlr.v4.runtime.BailErrorStrategy;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonToken;
@@ -47,6 +48,7 @@ import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.atn.PredictionMode;
 import org.antlr.v4.runtime.misc.Pair;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.time.ZoneId;
@@ -158,7 +160,7 @@ public class SqlParser {
 
       // Override the default error strategy to not attempt inserting or deleting a token.
       // Otherwise, it messes up error reporting
-      parser.setErrorHandler(
+      DefaultErrorStrategy reportingErrorStrategy =
           new DefaultErrorStrategy() {
             @Override
             public Token recoverInline(Parser recognizer) throws RecognitionException {
@@ -167,7 +169,11 @@ public class SqlParser {
               }
               throw new InputMismatchException(recognizer, nextTokensState, nextTokensContext);
             }
-          });
+          };
+      // Any error in the SLL stage falls back to the LL stage, which reports it with the strategy
+      // above, so the SLL stage needs no recovery; BailErrorStrategy also skips the per-rule sync()
+      // checks.
+      parser.setErrorHandler(new BailErrorStrategy());
 
       parser.addParseListener(new PostProcessor(Arrays.asList(parser.getRuleNames()), parser));
 
@@ -183,10 +189,11 @@ public class SqlParser {
           // first, try parsing with potentially faster SLL mode
           parser.getInterpreter().setPredictionMode(PredictionMode.SLL);
           tree = parseFunction.apply(parser);
-        } catch (ParsingException ex) {
+        } catch (ParsingException | ParseCancellationException ex) {
           // if we fail, parse with LL mode
           tokenStream.seek(0); // rewind input stream
           parser.reset();
+          parser.setErrorHandler(reportingErrorStrategy);
 
           parser.getInterpreter().setPredictionMode(PredictionMode.LL);
           tree = parseFunction.apply(parser);
