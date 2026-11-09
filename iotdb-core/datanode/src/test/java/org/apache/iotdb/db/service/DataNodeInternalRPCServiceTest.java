@@ -28,7 +28,7 @@ import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
-import org.apache.thrift.TProcessor;
+import org.apache.thrift.TMultiplexedProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TMultiplexedProtocol;
 import org.apache.thrift.transport.TMemoryBuffer;
@@ -56,10 +56,11 @@ public class DataNodeInternalRPCServiceTest {
     when(controlHandler.testConnectionEmptyRPC())
         .thenReturn(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
 
-    final TProcessor processor =
-        DataNodeInternalRPCService.createMultiplexedProcessor(
-            new IDataNodeRPCService.Processor<>(controlHandler),
-            new IClientRPCService.Processor<>(clientHandler));
+    final TMultiplexedProcessor processor = new TMultiplexedProcessor();
+    processor.registerProcessor(
+        RpcServiceConstants.INTERNAL_CLIENT_RPC_SERVICE,
+        new IClientRPCService.Processor<>(clientHandler));
+    processor.registerDefault(new IDataNodeRPCService.Processor<>(controlHandler));
 
     final TMemoryBuffer clientRequest = new TMemoryBuffer(1024);
     final TMemoryBuffer clientResponse = new TMemoryBuffer(1024);

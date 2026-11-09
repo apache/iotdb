@@ -1642,7 +1642,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     return resp.setSessionId(openSessionResp.getSessionId()).setConfiguration(configuration);
   }
 
-  protected BasicOpenSessionResp login(
+  private BasicOpenSessionResp login(
       IClientSession session,
       TSOpenSessionReq req,
       IoTDBConstant.ClientVersion clientVersion,

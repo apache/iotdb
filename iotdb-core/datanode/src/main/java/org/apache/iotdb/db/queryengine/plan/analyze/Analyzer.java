@@ -79,6 +79,7 @@ public class Analyzer {
       // for test compatibility
       analysis.setDatabaseName(context.getDatabaseName().orElse(null));
     }
+
     if (statement.isQuery()) {
       long analyzeCost =
           System.nanoTime()

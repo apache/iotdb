@@ -29,15 +29,7 @@ final class InternalSession extends Session {
 
   private final INodeSupplier nodeSupplier;
 
-  InternalSession(final InternalSessionBuilder builder) {
-    this(builder, builder.getNodeSupplier());
-  }
-
-  InternalSession(final InternalTableSessionBuilder builder) {
-    this(builder, builder.getNodeSupplier());
-  }
-
-  private InternalSession(final AbstractSessionBuilder builder, final INodeSupplier nodeSupplier) {
+  InternalSession(final AbstractSessionBuilder builder, final INodeSupplier nodeSupplier) {
     super(builder);
     this.nodeSupplier = nodeSupplier;
   }

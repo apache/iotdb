@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.commons.client.internal.subscription;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.RpcServiceConstants;
-import org.apache.iotdb.session.subscription.consumer.base.AbstractSubscriptionProvider;
 import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePullConsumer;
 import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePullConsumerBuilder;
 
@@ -34,32 +32,5 @@ final class InternalSubscriptionTablePullConsumer extends SubscriptionTablePullC
   @Override
   protected String getRpcServiceName() {
     return RpcServiceConstants.INTERNAL_CLIENT_RPC_SERVICE;
-  }
-
-  @Override
-  protected AbstractSubscriptionProvider constructSubscriptionProvider(
-      final TEndPoint endPoint,
-      final String username,
-      final String password,
-      final String encryptedPassword,
-      final String consumerId,
-      final String consumerGroupId,
-      final String ownerId,
-      final Long ownerEpoch,
-      final int thriftMaxFrameSize,
-      final long heartbeatIntervalMs,
-      final int connectionTimeoutInMs) {
-    return super.constructSubscriptionProvider(
-        endPoint,
-        username,
-        "",
-        null,
-        consumerId,
-        consumerGroupId,
-        ownerId,
-        ownerEpoch,
-        thriftMaxFrameSize,
-        heartbeatIntervalMs,
-        connectionTimeoutInMs);
   }
 }

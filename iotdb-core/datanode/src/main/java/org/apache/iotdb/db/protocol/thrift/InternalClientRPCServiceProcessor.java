@@ -46,17 +46,11 @@ public class InternalClientRPCServiceProcessor extends ProcessorWithMetrics {
 
   @Override
   public void process(TProtocol in, TProtocol out) throws TException {
-    registerSessionIfNecessary(out);
-    super.process(in, out);
-  }
-
-  private void registerSessionIfNecessary(TProtocol protocol) {
-    if (SessionManager.getInstance().getCurrSession() != null) {
-      return;
+    if (SessionManager.getInstance().getCurrSession() == null) {
+      TTransport socketTransport = ((TElasticFramedTransport) out.getTransport()).getSocket();
+      Socket socket = ((TSocket) socketTransport).getSocket();
+      SessionManager.getInstance().registerSession(new ClientSession(socket));
     }
-
-    TTransport socketTransport = ((TElasticFramedTransport) protocol.getTransport()).getSocket();
-    Socket socket = ((TSocket) socketTransport).getSocket();
-    SessionManager.getInstance().registerSession(new ClientSession(socket));
+    super.process(in, out);
   }
 }

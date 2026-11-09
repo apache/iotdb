@@ -590,62 +590,72 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   public SessionInfo getSessionInfo(IClientSession session) {
-    return new SessionInfo(
+    final SessionInfo sessionInfo =
+        new SessionInfo(
             session.getId(),
             new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()),
             session.getZoneId(),
             session.getClientVersion(),
             session.getDatabaseName(),
             session.getSqlDialect(),
-            session.isEnableAutoCreateSchema())
-        .setInternalRpcSession(session.isInternalRpcSession());
+            session.isEnableAutoCreateSchema());
+    sessionInfo.setInternalRpcSession(session.isInternalRpcSession());
+    return sessionInfo;
   }
 
   // Sometimes we need to switch from table model to tree model,
   // e.g., when loading a tree model TsFile under table model dialect.
   public SessionInfo copySessionInfoForTreeModel(final SessionInfo sessionInfo) {
-    return new SessionInfo(
+    final SessionInfo copiedSessionInfo =
+        new SessionInfo(
             sessionInfo.getSessionId(),
             sessionInfo.getUserEntity(),
             ZoneId.systemDefault(),
             sessionInfo.getVersion(),
             sessionInfo.getDatabaseName().orElse(null),
-            SqlDialect.TREE)
-        .setDatabaseInternalSession(sessionInfo.isDatabaseInternalSession())
-        .setInternalRpcSession(sessionInfo.isInternalRpcSession());
+            SqlDialect.TREE);
+    copiedSessionInfo.setDatabaseInternalSession(sessionInfo.isDatabaseInternalSession());
+    copiedSessionInfo.setInternalRpcSession(sessionInfo.isInternalRpcSession());
+    return copiedSessionInfo;
   }
 
   public SessionInfo getSessionInfoOfTreeModel(IClientSession session) {
-    return new SessionInfo(
+    final SessionInfo sessionInfo =
+        new SessionInfo(
             session.getId(),
             new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()),
             ZoneId.systemDefault(),
             session.getClientVersion(),
             session.getDatabaseName(),
-            SqlDialect.TREE)
-        .setInternalRpcSession(session.isInternalRpcSession());
+            SqlDialect.TREE);
+    sessionInfo.setInternalRpcSession(session.isInternalRpcSession());
+    return sessionInfo;
   }
 
   public SessionInfo getSessionInfoOfTableModel(IClientSession session) {
-    return new SessionInfo(
+    final SessionInfo sessionInfo =
+        new SessionInfo(
             session.getId(),
             new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()),
             ZoneId.systemDefault(),
             session.getClientVersion(),
             session.getDatabaseName(),
-            SqlDialect.TABLE)
-        .setInternalRpcSession(session.isInternalRpcSession());
+            SqlDialect.TABLE);
+    sessionInfo.setInternalRpcSession(session.isInternalRpcSession());
+    return sessionInfo;
   }
 
   public SessionInfo getSessionInfoOfPipeReceiver(IClientSession session, String databaseName) {
-    return new SessionInfo(
+    final SessionInfo sessionInfo =
+        new SessionInfo(
             session.getId(),
             new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()),
             ZoneId.systemDefault(),
             session.getClientVersion(),
             databaseName,
-            SqlDialect.TABLE)
-        .setInternalRpcSession(session.isInternalRpcSession());
+            SqlDialect.TABLE);
+    sessionInfo.setInternalRpcSession(session.isInternalRpcSession());
+    return sessionInfo;
   }
 
   @Override

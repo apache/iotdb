@@ -47,10 +47,6 @@ public class InternalSessionBuilder extends Session.Builder {
             SessionMessages.EXCEPTION_INTERNAL_NODE_SUPPLIER_MUST_NOT_BE_NULL_C5CAF392);
   }
 
-  INodeSupplier getNodeSupplier() {
-    return nodeSupplier;
-  }
-
   @Override
   protected Session createSession() {
     if (enableAutoFetch && nodeSupplier == null) {
@@ -58,6 +54,6 @@ public class InternalSessionBuilder extends Session.Builder {
           SessionMessages
               .EXCEPTION_AN_INTERNAL_NODE_SUPPLIER_IS_REQUIRED_WHEN_AUTO_FETCH_IS_ENABLED_9CB6BA02);
     }
-    return new InternalSession(this);
+    return new InternalSession(this, nodeSupplier);
   }
 }

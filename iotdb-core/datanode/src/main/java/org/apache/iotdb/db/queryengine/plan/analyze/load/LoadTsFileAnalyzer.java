@@ -486,29 +486,29 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       if (isTableModelFile) {
         final SessionInfo newSessionInfo =
             new SessionInfo(
-                    sessionInfo.getSessionId(),
-                    sessionInfo.getUserEntity(),
-                    sessionInfo.getZoneId(),
-                    sessionInfo.getVersion(),
-                    sessionInfo.getDatabaseName().orElse(null),
-                    SqlDialect.TABLE,
-                    sessionInfo.isEnableAutoCreateSchema())
-                .setDatabaseInternalSession(sessionInfo.isDatabaseInternalSession())
-                .setInternalRpcSession(sessionInfo.isInternalRpcSession());
+                sessionInfo.getSessionId(),
+                sessionInfo.getUserEntity(),
+                sessionInfo.getZoneId(),
+                sessionInfo.getVersion(),
+                sessionInfo.getDatabaseName().orElse(null),
+                SqlDialect.TABLE,
+                sessionInfo.isEnableAutoCreateSchema());
+        newSessionInfo.setDatabaseInternalSession(sessionInfo.isDatabaseInternalSession());
+        newSessionInfo.setInternalRpcSession(sessionInfo.isInternalRpcSession());
         context.setSession(newSessionInfo);
         doAnalyzeSingleTableFile(tsFile, reader, timeseriesMetadataIterator, tableSchemaMap);
       } else {
         final SessionInfo newSessionInfo =
             new SessionInfo(
-                    sessionInfo.getSessionId(),
-                    sessionInfo.getUserEntity(),
-                    sessionInfo.getZoneId(),
-                    sessionInfo.getVersion(),
-                    sessionInfo.getDatabaseName().orElse(null),
-                    SqlDialect.TREE,
-                    sessionInfo.isEnableAutoCreateSchema())
-                .setDatabaseInternalSession(sessionInfo.isDatabaseInternalSession())
-                .setInternalRpcSession(sessionInfo.isInternalRpcSession());
+                sessionInfo.getSessionId(),
+                sessionInfo.getUserEntity(),
+                sessionInfo.getZoneId(),
+                sessionInfo.getVersion(),
+                sessionInfo.getDatabaseName().orElse(null),
+                SqlDialect.TREE,
+                sessionInfo.isEnableAutoCreateSchema());
+        newSessionInfo.setDatabaseInternalSession(sessionInfo.isDatabaseInternalSession());
+        newSessionInfo.setInternalRpcSession(sessionInfo.isInternalRpcSession());
         context.setSession(newSessionInfo);
         doAnalyzeSingleTreeFile(tsFile, reader, timeseriesMetadataIterator);
       }
