@@ -6070,7 +6070,8 @@ public class StatementAnalyzer {
           || TableBuiltinTableFunction.HIGHPASS.getFunctionName().equalsIgnoreCase(functionName)
           || TableBuiltinTableFunction.XCORR.getFunctionName().equalsIgnoreCase(functionName)
           || TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(functionName)
-          || TableBuiltinTableFunction.SAMPLE.getFunctionName().equalsIgnoreCase(functionName);
+          || TableBuiltinTableFunction.SAMPLE.getFunctionName().equalsIgnoreCase(functionName)
+          || TableBuiltinTableFunction.DERIVATIVE.getFunctionName().equalsIgnoreCase(functionName);
     }
 
     private void tryAppendFFTInternalArguments(

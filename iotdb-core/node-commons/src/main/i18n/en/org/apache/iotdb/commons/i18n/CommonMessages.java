@@ -312,6 +312,15 @@ public final class CommonMessages {
   public static final String
       EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_DATA_ARGUMENT_MUST_CONTAIN_EXACTLY_THE_TIME_COLUMN_SPECIFIED_BY_THE_TIMECOL_ARGUMENT_4375BAE9 =
           "The ORDER BY clause of the DATA argument must contain exactly the time column specified by the TIMECOL argument.";
+  public static final String
+      EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_DATA_ARGUMENT_MUST_CONTAIN_EXACTLY_ONE_TIMESTAMP_COLUMN_6B40C59B =
+          "The ORDER BY clause of the DATA argument must contain exactly one TIMESTAMP column.";
+  public static final String
+      EXCEPTION_THE_TIME_COLUMN_OF_THE_DATA_ARGUMENT_MUST_BE_MONOTONICALLY_INCREASING_WITHIN_EACH_PARTITION_68B8C2B7 =
+          "The time column of the DATA argument must be monotonically increasing within each partition.";
+  public static final String
+      EXCEPTION_DERIVATIVE_FUNCTION_UNIT_SHOULD_BE_A_POSITIVE_DURATION_OF_AT_LEAST_ONE_43D975B7 =
+          "should be a positive duration of at least 1 %s";
   public static final String EXCEPTION_UNSUPPORTED_M4_VALUE_TYPE_AF0EF286 =
       "Unsupported M4 value type: ";
   public static final String

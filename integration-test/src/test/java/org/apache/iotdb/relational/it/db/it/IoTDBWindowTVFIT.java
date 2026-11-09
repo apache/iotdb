@@ -109,6 +109,13 @@ public class IoTDBWindowTVFIT {
         "INSERT INTO table5(time, factory_id, device_id, s1) VALUES (1970-01-01T08:00:00.011+08:00, 'F1', 'device_2', 25.0)",
         "INSERT INTO table5(time, factory_id, device_id, s1) VALUES (1970-01-01T08:00:00.003+08:00, 'F2', 'device_1', 30.0)",
         "CREATE TABLE sample_empty(device_id STRING TAG, v DOUBLE FIELD)",
+        // derivative table function test data
+        "CREATE TABLE derivative_types(device_id STRING TAG, int_val INT32 FIELD, long_val INT64 FIELD, float_val FLOAT FIELD, double_val DOUBLE FIELD)",
+        "INSERT INTO derivative_types(time, device_id, int_val, long_val, float_val, double_val) VALUES (1, 'd1', 1, 10, 1.5, 1.25), (2, 'd1', 3, 30, 3.5, 3.75), (3, 'd1', 2, null, 2.5, null)",
+        "CREATE TABLE derivative_dup(device_id STRING TAG, v DOUBLE FIELD)",
+        "INSERT INTO derivative_dup(time, device_id, v) VALUES (1, 'd1', 1.0), (1, 'd2', 1.0), (2, 'd1', 2.0), (2, 'd2', 2.0), (3, 'd1', 3.0)",
+        "CREATE TABLE derivative_null_ts(device_id STRING TAG, v DOUBLE FIELD, ts TIMESTAMP FIELD)",
+        "INSERT INTO derivative_null_ts(time, device_id, v, ts) VALUES (1, 'd1', 1.0, 2021-01-01T00:00:01), (2, 'd1', 3.0, 2021-01-01T00:00:02), (3, 'd1', 100.0, null), (4, 'd1', 4.0, 2021-01-01T00:00:04)",
         "FLUSH",
         "CLEAR ATTRIBUTE CACHE",
       };
@@ -1913,6 +1920,115 @@ public class IoTDBWindowTVFIT {
     tableAssertTestFail(
         "SELECT * FROM SAMPLE(DATA => table1 PARTITION BY device_id ORDER BY time)",
         "Missing required argument: N",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testDerivativeFunctionWithUnit() {
+    String[] expectedHeader =
+        new String[] {"stock_id", "time", "derivative(price)", "derivative(s1)"};
+    String[] retArray =
+        new String[] {
+          "AAPL,2021-01-01T09:07:00.000Z,3.0,0.0,",
+          "AAPL,2021-01-01T09:09:00.000Z,-1.0,0.0,",
+          "TESL,2021-01-01T09:07:00.000Z,4.0,200.0,",
+          "TESL,2021-01-01T09:15:00.000Z,-1.75,32.5,"
+        };
+    // unit => 2m normalizes the change to (v2 - v1) / (delta time / 2 minutes), and the output
+    // time of a row is the time of the second point of the pair.
+    tableResultSetEqualWithTolerance(
+        "SELECT * FROM DERIVATIVE(DATA => bid PARTITION BY stock_id ORDER BY time, unit => 2m) "
+            + "ORDER BY stock_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testDerivativeFunctionWithAllNumericTypes() {
+    String[] expectedHeader =
+        new String[] {
+          "device_id",
+          "time",
+          "derivative(int_val)",
+          "derivative(long_val)",
+          "derivative(float_val)",
+          "derivative(double_val)"
+        };
+    String[] retArray =
+        new String[] {
+          "d1,1970-01-01T00:00:00.002Z,2000.0,20000.0,2000.0,2500.0,",
+          "d1,1970-01-01T00:00:00.003Z,-1000.0,null,-1000.0,null,"
+        };
+    // int32/int64/float/double columns all take part in the calculation, and a null on either side
+    // only nulls that column of the pair.
+    tableResultSetEqualWithTolerance(
+        "SELECT * FROM DERIVATIVE(DATA => derivative_types PARTITION BY device_id ORDER BY time) "
+            + "ORDER BY time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testDerivativeFunctionWhenTimestampIsDuplicated() {
+    String[] expectedHeader = new String[] {"time", "derivative(v)"};
+    String[] retArray =
+        new String[] {"1970-01-01T00:00:00.002Z,1000.0,", "1970-01-01T00:00:00.003Z,1000.0,"};
+    // Without PARTITION BY, d1 and d2 rows with the same timestamp are adjacent after sorting. The
+    // later row overwrites the earlier one, so the pair produces no output and the time never goes
+    // backwards.
+    tableResultSetEqualWithTolerance(
+        "SELECT * FROM DERIVATIVE(DATA => (SELECT time, v FROM derivative_dup) ORDER BY time) "
+            + "ORDER BY time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testDerivativeFunctionDropsNullTimestamp() {
+    String[] expectedHeader = new String[] {"device_id", "ts", "derivative(v)"};
+    String[] retArray =
+        new String[] {
+          "d1,2021-01-01T00:00:02.000Z,2.0,", "d1,2021-01-01T00:00:04.000Z,0.5,"
+        };
+    // The ORDER BY column does not have to be the time column of the table: here it is the
+    // nullable ts field, and the row whose ts is null is dropped before pairing.
+    tableResultSetEqualWithTolerance(
+        "SELECT * FROM DERIVATIVE(DATA => (SELECT device_id, v, ts FROM derivative_null_ts) "
+            + "PARTITION BY device_id ORDER BY ts) ORDER BY ts",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testDerivativeFunctionInvalidArguments() {
+    tableAssertTestFail(
+        "SELECT * FROM DERIVATIVE(DATA => (SELECT time, v FROM derivative_dup))",
+        "Table argument with set semantics requires an ORDER BY clause.",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM DERIVATIVE(DATA => (SELECT time, v FROM derivative_dup) ORDER BY (time, v))",
+        "The ORDER BY clause of the DATA argument must contain exactly one TIMESTAMP column.",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM DERIVATIVE(DATA => (SELECT time, v FROM derivative_dup) ORDER BY v)",
+        "The type of the column [v] is not as expected.",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM DERIVATIVE(DATA => (SELECT time FROM derivative_dup) ORDER BY time)",
+        "No columns could be calculated.",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM DERIVATIVE(DATA => (SELECT time, device_id, v FROM derivative_dup) "
+            + "ORDER BY time)",
+        "Only column with double, float, int32, int64 can be calculated by the function, device_id is the STRING.",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM DERIVATIVE(DATA => bid PARTITION BY stock_id ORDER BY time, unit => 0)",
+        "should be a positive duration of at least 1",
         DATABASE_NAME);
   }
 
