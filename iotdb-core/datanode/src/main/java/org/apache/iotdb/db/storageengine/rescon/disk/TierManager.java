@@ -318,9 +318,10 @@ public class TierManager {
 
   private FolderManager getFolderManager(int tierLevel, String folderName)
       throws DiskSpaceInsufficientException {
-    TierFolderManager entry = folderManagers.get(new TierDirectory(tierLevel, folderName));
+    TierDirectory key = new TierDirectory(tierLevel, folderName);
+    TierFolderManager entry = folderManagers.get(key);
     if (entry == null) {
-      throw new IndexOutOfBoundsException(tierLevel);
+      throw new IndexOutOfBoundsException(key.toString());
     }
     return entry.supplier.get();
   }

@@ -173,6 +173,11 @@ public class TierManagerTest {
 
       assertEquals(2, tierManager.getTiersNum());
       assertEquals(NodeStatus.ReadOnly, commonConfig.getNodeStatus());
+      IndexOutOfBoundsException missingTier =
+          assertThrows(
+              IndexOutOfBoundsException.class, () -> tierManager.getFolderManager(2, true));
+      assertTrue(missingTier.getMessage().contains("tierLevel=2"));
+      assertTrue(missingTier.getMessage().contains("folderName=sequence"));
       assertThrows(
           DiskSpaceInsufficientException.class, () -> tierManager.getFolderManager(0, true));
       assertThrows(
