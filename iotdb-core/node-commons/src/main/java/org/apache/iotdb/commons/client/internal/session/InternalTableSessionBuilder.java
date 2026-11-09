@@ -30,8 +30,8 @@ import java.util.Objects;
  * Server-side builder for table-model internal sessions.
  *
  * <p>Callers sharing an external {@link INodeSupplier} must return {@code true} from {@link
- * INodeSupplier#isExternalLifeCycleNodeSupplier()}; otherwise the created session may close it
- * during its lifecycle, including when the session is reopened.
+ * INodeSupplier#isCallerManaged()}; otherwise the created session may close it during its
+ * lifecycle, including when the session is reopened.
  */
 public class InternalTableSessionBuilder extends TableSessionBuilder {
 

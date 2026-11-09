@@ -229,9 +229,11 @@ public class SessionManager implements SessionManagerMBean {
   /**
    * Opens a session without password verification for trusted internal client RPC callers.
    *
-   * <p>This path intentionally does not emit failed-login audit records: it performs no credential
-   * verification, and access to the internal RPC endpoint is controlled at the network/transport
-   * boundary rather than by user login auditing.
+   * <p>This path is reachable only through the multiplexed client RPC service on the DataNode
+   * internal endpoint, which belongs to the trusted cluster/inter-node surface described in {@code
+   * THREAT_MODEL.md}. It intentionally does not emit failed-login audit records because it performs
+   * no credential verification; access is controlled by the network/transport boundary rather than
+   * by user login auditing.
    */
   public BasicOpenSessionResp loginInternal(
       final IClientSession session,

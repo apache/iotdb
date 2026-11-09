@@ -24,7 +24,10 @@ import org.apache.iotdb.rpc.RpcServiceConstants;
 import org.apache.iotdb.session.AbstractSessionBuilder;
 import org.apache.iotdb.session.Session;
 
-/** Base session for trusted server-to-server client RPC connections. */
+/**
+ * Server-side session for trusted node-to-node client RPC over the DataNode internal endpoint. This
+ * session is not intended for external clients.
+ */
 final class InternalSession extends Session {
 
   private final INodeSupplier nodeSupplier;

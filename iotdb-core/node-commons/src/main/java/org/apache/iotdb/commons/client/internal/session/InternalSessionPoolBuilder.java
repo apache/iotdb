@@ -29,8 +29,8 @@ import java.util.Objects;
  * Server-side builder for tree-model internal session pools.
  *
  * <p>Callers sharing an external {@link INodeSupplier} must return {@code true} from {@link
- * INodeSupplier#isExternalLifeCycleNodeSupplier()}; otherwise the created pool may close it when
- * the pool is closed.
+ * INodeSupplier#isCallerManaged()}; otherwise the created pool may close it when the pool is
+ * closed.
  */
 public class InternalSessionPoolBuilder extends SessionPool.Builder {
 

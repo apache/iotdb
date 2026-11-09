@@ -859,7 +859,7 @@ public class SessionPool implements ISessionPool {
       this.executorService = null;
     }
     if (availableNodes != null) {
-      if (!this.availableNodes.isExternalLifeCycleNodeSupplier()) {
+      if (!this.availableNodes.isCallerManaged()) {
         this.availableNodes.close();
       }
       this.availableNodes = null;

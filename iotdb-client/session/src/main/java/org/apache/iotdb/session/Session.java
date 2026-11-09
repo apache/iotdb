@@ -548,7 +548,7 @@ public class Session implements ISession {
       this.executorService = null;
     }
     if (this.availableNodes != null) {
-      if (!this.availableNodes.isExternalLifeCycleNodeSupplier()) {
+      if (!this.availableNodes.isCallerManaged()) {
         this.availableNodes.close();
       }
       this.availableNodes = null;
@@ -733,7 +733,7 @@ public class Session implements ISession {
       if (this.executorService != null) {
         this.executorService.shutdown();
         this.executorService = null;
-        if (!this.availableNodes.isExternalLifeCycleNodeSupplier()) {
+        if (!this.availableNodes.isCallerManaged()) {
           this.availableNodes.close();
         }
         this.availableNodes = null;

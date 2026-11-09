@@ -42,11 +42,6 @@ public class DummyNodesSupplier implements INodeSupplier {
   }
 
   @Override
-  public boolean isExternalLifeCycleNodeSupplier() {
-    return true;
-  }
-
-  @Override
   public Optional<TEndPoint> getQueryEndPoint() {
     if (availableNodes == null || availableNodes.isEmpty()) {
       return Optional.empty();

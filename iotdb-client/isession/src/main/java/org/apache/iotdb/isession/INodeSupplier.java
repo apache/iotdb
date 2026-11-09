@@ -43,14 +43,20 @@ public interface INodeSupplier extends Supplier<List<TEndPoint>> {
   }
 
   /**
-   * Whether this supplier's lifecycle is managed externally and must not be closed by IoTDB
-   * clients.
+   * Returns whether this supplier is managed by the caller instead of the IoTDB client.
    *
-   * <p>This flag is declarative and is not validated by internal session builders. Callers that
-   * share a supplier between multiple sessions or pools must return {@code true}; a supplier that
-   * returns {@code false} may be closed and invalidated by any session or pool using it.
+   * <p>When this returns {@code true}, the session or pool must not call {@link #close()} during
+   * its own close or reopen lifecycle. The caller remains responsible for closing or otherwise
+   * invalidating the supplier.
+   *
+   * <p>When this returns {@code false}, the session or pool owns the supplier lifecycle and may
+   * call {@link #close()} when the session or pool is closed or reopened. Implementations whose
+   * {@link #close()} is a no-op do not need to override this method.
+   *
+   * <p>Callers sharing one supplier between multiple sessions or pools should implement this method
+   * to return {@code true}. This flag is declarative and is not validated by the client.
    */
-  default boolean isExternalLifeCycleNodeSupplier() {
+  default boolean isCallerManaged() {
     return false;
   }
 }

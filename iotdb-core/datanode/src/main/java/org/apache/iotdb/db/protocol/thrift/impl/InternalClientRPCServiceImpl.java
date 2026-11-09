@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.protocol.thrift.impl;
 
-/** Client RPC handler exposed through the multiplexed internal endpoint. */
+/** Client RPC handler exposed only through the trusted internal RPC endpoint. */
 public class InternalClientRPCServiceImpl extends ClientRPCServiceImpl {
 
   @Override

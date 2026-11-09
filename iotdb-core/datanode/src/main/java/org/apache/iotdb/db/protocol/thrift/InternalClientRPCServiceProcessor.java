@@ -34,9 +34,10 @@ import java.net.Socket;
 /**
  * Registers a client session only for connections using the multiplexed client RPC service.
  *
- * <p>These sessions intentionally bypass the external {@code ServerContextFactory} admission hook.
- * The internal RPC port is a trusted cluster-internal transport boundary; deployments that expose
- * it must protect it through network policy or internal SSL.
+ * <p>This endpoint belongs to the trusted cluster/inter-node surface described in {@code
+ * THREAT_MODEL.md}; it is not a client-facing RPC endpoint. These sessions intentionally bypass the
+ * external {@code ServerContextFactory} admission hook. Deployments that expose the internal port
+ * must provide equivalent network isolation or enable internal SSL.
  */
 public class InternalClientRPCServiceProcessor extends ProcessorWithMetrics {
 
