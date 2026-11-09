@@ -132,6 +132,10 @@ public class DataNodeInternalRPCService extends ThriftService
   }
 
   public DataNodeInternalRPCServiceImpl getImpl() {
+    DataNodeInternalRPCServiceImpl current = impl.get();
+    if (current != null) {
+      return current;
+    }
     impl.compareAndSet(null, new DataNodeInternalRPCServiceImpl(dataNodeContext));
     return impl.get();
   }
@@ -146,6 +150,10 @@ public class DataNodeInternalRPCService extends ThriftService
   }
 
   protected IClientRPCServiceWithHandler getClientImpl() {
+    IClientRPCServiceWithHandler current = clientImpl.get();
+    if (current != null) {
+      return current;
+    }
     clientImpl.compareAndSet(null, new InternalClientRPCServiceImpl());
     return clientImpl.get();
   }
