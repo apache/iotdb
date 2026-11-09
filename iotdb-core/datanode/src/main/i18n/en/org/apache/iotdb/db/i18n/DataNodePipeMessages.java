@@ -354,6 +354,8 @@ public final class DataNodePipeMessages {
   public static final String SUBTASK_IS_CLOSED_IGNORE_EXCEPTION =
       "subtask {} is closed, ignore exception";
   public static final String SUBTASK_WORKER_IS_INTERRUPTED = "subtask worker is interrupted";
+  public static final String LOG_FAILED_TO_SUBMIT_PIPE_PROCESSOR_WORKER_BECAUSE_THE_WORKER_THREAD_POOL_HAS_BEEN_SHUT_DOWN_CA28ED14 =
+      "Failed to submit pipe processor worker because the worker thread pool has been shut down";
   public static final String SUCCESSFULLY_PERSISTED_ALL_PIPE_S_INFO_TO =
       "Successfully persisted all pipe's info to configNode.";
   public static final String THE_EXECUTOR_AND_HAS_BEEN_SUCCESSFULLY_SHUTDOWN =
