@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -148,7 +149,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualManualIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "list user",
-          "User,",
+          ColumnHeaderConstant.USER + ",",
           new HashSet<>(Arrays.asList("root,", "user,", "thulab,")));
       final Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add(
@@ -228,7 +229,10 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualManualIT {
           "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
           Collections.emptySet());
       TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "list user", "User,", Collections.singleton("root,"));
+          receiverEnv,
+          "list user",
+          ColumnHeaderConstant.USER + ",",
+          Collections.singleton("root,"));
     }
   }
 }
