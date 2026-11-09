@@ -2517,6 +2517,7 @@ public class IoTDBDescriptor {
       return;
     }
 
+    boolean wasReadOnlyForDiskFull = commonConfig.isReadOnlyForDiskFull();
     TrimProperties commonProperties = new TrimProperties();
     try (InputStream inputStream = url.openStream()) {
       LOGGER.info(DataNodeMiscMessages.START_RELOAD_CONFIG_FILE, url);
@@ -2534,6 +2535,9 @@ public class IoTDBDescriptor {
       ConfigurationFileUtils.releaseDefault();
     }
     reloadMetricProperties(commonProperties);
+    if (wasReadOnlyForDiskFull) {
+      commonConfig.setRunningIfDiskFull();
+    }
   }
 
   public void reloadMetricProperties(TrimProperties properties) {

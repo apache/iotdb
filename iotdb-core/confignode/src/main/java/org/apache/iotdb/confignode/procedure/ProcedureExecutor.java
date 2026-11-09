@@ -1103,7 +1103,11 @@ public class ProcedureExecutor<Env> {
         while (isRunning() && keepAlive(lastUpdated)) {
           Procedure<Env> procedure = workerScheduler.poll(keepAliveTime, TimeUnit.MILLISECONDS);
           if (procedure == null) {
-            Thread.sleep(1000);
+            // a stopped scheduler returns null at once; leave right away instead of
+            // sleeping another second first
+            if (isRunning()) {
+              Thread.sleep(1000);
+            }
             continue;
           }
           boolean executionAcquired = false;

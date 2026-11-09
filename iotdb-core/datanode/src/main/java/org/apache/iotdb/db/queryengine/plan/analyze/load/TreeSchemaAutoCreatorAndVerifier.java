@@ -39,6 +39,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeInvalidPathException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingDatabaseException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
@@ -421,6 +422,14 @@ public class TreeSchemaAutoCreatorAndVerifier {
     }
     databasesNeededToBeSet.removeAll(schemaCache.getAlreadySetDatabases());
 
+    if (!databasesNeededToBeSet.isEmpty() && !loadTsFileAnalyzer.isAutoCreateSchemaEnabled()) {
+      throw new LoadAnalyzeMissingDatabaseException(
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_THE_DATABASE_ARG_DOES_NOT_EXIST_AND_AUTO_CREATE_SCHEMA_IS_DISABLED_28F8D49A,
+              databasesNeededToBeSet.iterator().next()));
+    }
+
     // 2. create the databases that do not exist
     for (final PartialPath databasePath : databasesNeededToBeSet) {
       final DatabaseSchemaStatement statement =
@@ -540,7 +549,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
         encodingsList,
         compressionTypesList,
         isAlignedList,
-        loadTsFileAnalyzer.isAutoCreateSchemaRequested(),
+        loadTsFileAnalyzer.isAutoCreateSchemaEnabled(),
         loadTsFileAnalyzer.context);
   }
 

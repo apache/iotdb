@@ -22,6 +22,9 @@ package org.apache.iotdb.db.queryengine.plan.statement.crud;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
+import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.TypeFactory;
@@ -313,6 +316,120 @@ public class InsertStatementPartialInsertTest {
 
     Assert.assertEquals(1, result.get(statement.getDevicePath()).size());
     Assert.assertEquals("s1", result.get(statement.getDevicePath()).get(0).left);
+  }
+
+  @Test
+  public void testInsertRowsStatementAggregatesFailedMeasurements() throws Exception {
+    final InsertRowStatement statement1 = createInsertRowStatement();
+    final InsertRowStatement statement2 = createInsertRowStatement();
+    statement1.markFailedMeasurement(0, new RuntimeException("failed1"));
+    statement2.markFailedMeasurement(1, new RuntimeException("failed2"));
+
+    final InsertRowsStatement rowsStatement = new InsertRowsStatement();
+    rowsStatement.setInsertRowStatementList(Arrays.asList(statement1, statement2));
+
+    Assert.assertTrue(rowsStatement.hasFailedMeasurements());
+    Assert.assertEquals(2, rowsStatement.getFailedMeasurementNumber());
+    Assert.assertEquals(Arrays.asList("s1", "s2"), rowsStatement.getFailedMeasurements());
+    Assert.assertEquals(Arrays.asList("failed1", "failed2"), rowsStatement.getFailedMessages());
+  }
+
+  @Test
+  public void testInsertRowsStatementRetainsFailuresAfterRemovingInvalidRows() throws Exception {
+    final InsertRowStatement validRow = createInsertRowStatement();
+    final InsertRowStatement invalidRow = createInsertRowStatement();
+    final InsertRowStatement partiallyValidRow = createInsertRowStatement();
+    final RuntimeException failure1 = new RuntimeException("failed1");
+    final RuntimeException failure2 = new RuntimeException("failed2");
+    final RuntimeException failure3 = new RuntimeException("failed3");
+    invalidRow.markFailedMeasurement(0, failure1);
+    invalidRow.markFailedMeasurement(1, failure2);
+    partiallyValidRow.markFailedMeasurement(0, failure3);
+
+    final InsertRowsStatement rowsStatement = new InsertRowsStatement();
+    rowsStatement.setInsertRowStatementList(Arrays.asList(validRow, invalidRow, partiallyValidRow));
+    rowsStatement.updateAfterSchemaValidation(null);
+
+    final Analysis analysis = new Analysis();
+    AnalyzeUtils.validateSchema(
+        analysis,
+        rowsStatement,
+        () -> rowsStatement.setInsertRowStatementList(Arrays.asList(validRow, partiallyValidRow)));
+
+    Assert.assertEquals(
+        Arrays.asList(validRow, partiallyValidRow), rowsStatement.getInsertRowStatementList());
+    Assert.assertTrue(rowsStatement.hasFailedMeasurements());
+    Assert.assertEquals(3, rowsStatement.getFailedMeasurementNumber());
+    Assert.assertEquals(Arrays.asList("s1", "s2", "s1"), rowsStatement.getFailedMeasurements());
+    Assert.assertEquals(
+        Arrays.asList(failure1, failure2, failure3), rowsStatement.getFailedExceptions());
+    Assert.assertEquals(
+        Arrays.asList("failed1", "failed2", "failed3"), rowsStatement.getFailedMessages());
+    Assert.assertEquals(
+        String.format(
+            DataNodeQueryMessages.MESSAGE_FAIL_TO_INSERT_MEASUREMENTS_ARG_CAUSED_BY_ARG_B9858E6B,
+            "[s1, s2, s1]",
+            "[failed1, failed2, failed3]"),
+        analysis.getFailStatus().getMessage());
+  }
+
+  @Test
+  public void testValidateSchemaDeduplicatesFailedMeasurementMessage() throws Exception {
+    final InsertRowStatement statement1 = createInsertRowStatement();
+    final InsertRowStatement statement2 = createInsertRowStatement();
+    final InsertRowStatement statement3 = createInsertRowStatement();
+    statement1.markFailedMeasurement(0, new RuntimeException("failed1"));
+    statement2.markFailedMeasurement(0, new RuntimeException("failed1"));
+    statement3.markFailedMeasurement(1, new RuntimeException("failed2"));
+
+    final InsertRowsStatement rowsStatement = new InsertRowsStatement();
+    rowsStatement.setInsertRowStatementList(Arrays.asList(statement1, statement2, statement3));
+
+    final Analysis analysis = new Analysis();
+    AnalyzeUtils.validateSchema(analysis, rowsStatement, () -> {});
+
+    Assert.assertEquals(
+        String.format(
+            DataNodeQueryMessages.MESSAGE_FAIL_TO_INSERT_MEASUREMENTS_ARG_CAUSED_BY_ARG_B9858E6B,
+            "[s1, s2]",
+            "[failed1, failed2]"),
+        analysis.getFailStatus().getMessage());
+  }
+
+  @Test
+  public void testInsertRowsOfOneDeviceStatementAggregatesFailedMeasurements() throws Exception {
+    final InsertRowStatement statement1 = createInsertRowStatement();
+    final InsertRowStatement statement2 = createInsertRowStatement();
+    statement1.markFailedMeasurement(0, new RuntimeException("failed1"));
+    statement2.markFailedMeasurement(1, new RuntimeException("failed2"));
+
+    final InsertRowsOfOneDeviceStatement rowsOfOneDeviceStatement =
+        new InsertRowsOfOneDeviceStatement();
+    rowsOfOneDeviceStatement.setInsertRowStatementList(Arrays.asList(statement1, statement2));
+
+    Assert.assertTrue(rowsOfOneDeviceStatement.hasFailedMeasurements());
+    Assert.assertEquals(2, rowsOfOneDeviceStatement.getFailedMeasurementNumber());
+    Assert.assertEquals(
+        Arrays.asList("s1", "s2"), rowsOfOneDeviceStatement.getFailedMeasurements());
+    Assert.assertEquals(
+        Arrays.asList("failed1", "failed2"), rowsOfOneDeviceStatement.getFailedMessages());
+  }
+
+  @Test
+  public void testInsertMultiTabletsStatementAggregatesFailedMeasurements() throws Exception {
+    final InsertTabletStatement statement1 = createInsertTabletStatement();
+    final InsertTabletStatement statement2 = createInsertTabletStatement();
+    statement1.markFailedMeasurement(0, new RuntimeException("failed1"));
+    statement2.markFailedMeasurement(1, new RuntimeException("failed2"));
+
+    final InsertMultiTabletsStatement multiTabletsStatement = new InsertMultiTabletsStatement();
+    multiTabletsStatement.setInsertTabletStatementList(Arrays.asList(statement1, statement2));
+
+    Assert.assertTrue(multiTabletsStatement.hasFailedMeasurements());
+    Assert.assertEquals(2, multiTabletsStatement.getFailedMeasurementNumber());
+    Assert.assertEquals(Arrays.asList("s1", "s2"), multiTabletsStatement.getFailedMeasurements());
+    Assert.assertEquals(
+        Arrays.asList("failed1", "failed2"), multiTabletsStatement.getFailedMessages());
   }
 
   private static InsertRowStatement createInsertRowStatement() throws Exception {

@@ -1470,7 +1470,7 @@ public class TestUtils {
     int lastIndex = 0;
     Connection localConnection = null;
     Connection connectionToUse = defaultConnection;
-    Statement statement;
+    Statement statement = null;
     try {
       // create a new connection if default is not provided or the previous is broken
       if (connectionToUse == null) {
@@ -1491,16 +1491,9 @@ public class TestUtils {
         executeNonQueryAndWait(env, statement, sqlList.get(i), sqlDialect);
       }
     } catch (SQLException e) {
-      // the default connection should be closed by the upper level
-      // while the local connection should be closed here
-      if (connectionToUse == localConnection && localConnection != null) {
-        try {
-          localConnection.close();
-        } catch (SQLException ex) {
-          // ignore
-        }
-      }
       throw new RuntimeException(e);
+    } finally {
+      closeNonQueryResources(statement, localConnection);
     }
   }
 
@@ -1571,26 +1564,9 @@ public class TestUtils {
         }
         return true;
       } catch (SQLException e) {
-        if (statement != null) {
-          try {
-            statement.close();
-          } catch (Exception ex) {
-            // ignore
-          } finally {
-            statement = null;
-          }
-        }
-        // the default connection should be closed by the upper level
-        // while the local connection should be closed here
-        if (connectionToUse == localConnection && localConnection != null) {
-          try {
-            localConnection.close();
-          } catch (SQLException ex) {
-            // ignore
-          } finally {
-            localConnection = null;
-          }
-        }
+        closeNonQueryResources(statement, localConnection);
+        statement = null;
+        localConnection = null;
         connectionToUse = null;
 
         if (retryCountLeft > 0) {
@@ -1602,9 +1578,29 @@ public class TestUtils {
           e.printStackTrace();
           return false;
         }
+      } finally {
+        closeNonQueryResources(statement, localConnection);
       }
     }
     return false;
+  }
+
+  private static void closeNonQueryResources(Statement statement, Connection localConnection) {
+    if (statement != null) {
+      try {
+        statement.close();
+      } catch (Exception ignored) {
+        // ignore
+      }
+    }
+    // Caller-provided connections are never passed as localConnection.
+    if (localConnection != null) {
+      try {
+        localConnection.close();
+      } catch (SQLException ignored) {
+        // ignore
+      }
+    }
   }
 
   public static void executeNonQueryOnSpecifiedDataNodeWithRetry(

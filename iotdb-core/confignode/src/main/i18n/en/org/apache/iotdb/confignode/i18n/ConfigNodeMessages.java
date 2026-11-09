@@ -447,6 +447,9 @@ public final class ConfigNodeMessages {
   public static final String SUCCESSFULLY_ON_DATANODE = "Successfully {} on DataNode: {}";
   public static final String SUCCESSFULLY_REMOVE_CONFIGNODE_CURRENT_CONFIGNODEGROUP =
       "Successfully remove ConfigNode: {}. Current ConfigNodeGroup: {}";
+  public static final String
+      LOG_NORMALIZE_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_FROM_ARG_TO_ARG_FOR_COMPATIBILITY_6E662489 =
+          "Normalize data_region_consensus_protocol_class from {} to {} for compatibility.";
   public static final String SUCCESSFULLY_SETUP_INTERNAL_SERVICES =
       "Successfully setup internal services.";
   public static final String SUCCESSFULLY_UPDATE_NODE_S_VERSION =
@@ -625,6 +628,10 @@ public final class ConfigNodeMessages {
   public static final String EXCEPTION_MESSAGE_E81C4E4F = "or";
   public static final String EXCEPTION_AVAILABLE_ONLY_DATA_REPLICATION_FACTOR_SET_1_71748D3D = "available only when data_replication_factor is set to 1";
   public static final String EXCEPTION_ARG_ARG_6E068B23 = "%s or %s";
+  public static final String EXCEPTION_ARG_ARG_ARG_OR_ARG_E950ED19 = "%s, %s, %s or %s";
+  public static final String
+      EXCEPTION_UNRECOGNIZED_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_IS_SET_DAB37EAF =
+          "an unrecognized data_region_consensus_protocol_class is set";
   public static final String EXCEPTION_SCHEMAREGION_DOESN_T_SUPPORT_ORG_APACHE_IOTDB_CONSENSUS_IOT_IOTCONSENSUS_84350FD1 = "the SchemaRegion doesn't support org.apache.iotdb.consensus.iot.IoTConsensus";
   public static final String EXCEPTION_SCHEMAREGION_DOESN_T_SUPPORT_ORG_APACHE_IOTDB_CONSENSUS_IOT_IOTCONSENSUSV2_BA353C6D = "the SchemaRegion doesn't support org.apache.iotdb.consensus.iot.IoTConsensusV2";
   public static final String EXCEPTION_GREEDY_MIN_COST_FLOW_HASH_C07DA2EE = "GREEDY or MIN_COST_FLOW or HASH";

@@ -33,6 +33,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -86,6 +88,50 @@ public class DataNodeInternalRPCServiceImplDiskTest {
     Assert.assertNull(commonConfig.getStatusReason());
     Assert.assertEquals(104.0, loadSample.getFreeDiskSpace(), 0.0);
     Assert.assertEquals(0.48, loadSample.getDiskUsageRate(), 1e-10);
+  }
+
+  @Test
+  public void testHealthyAggregateStillRequiresEveryFailedSourceToRecover() {
+    AtomicBoolean sequenceAvailable = new AtomicBoolean(false);
+    AtomicBoolean snapshotAvailable = new AtomicBoolean(false);
+    commonConfig.setReadOnlyForDiskFull("sequence", sequenceAvailable::get);
+    commonConfig.setReadOnlyForDiskFull("snapshot", snapshotAvailable::get);
+    SystemMetrics systemMetrics = mock(SystemMetrics.class);
+    when(systemMetrics.getSystemDiskAvailableSpace()).thenReturn(104L);
+    when(systemMetrics.getSystemDiskTotalSpace()).thenReturn(200L);
+    DataNodeInternalRPCServiceImpl service =
+        new DataNodeInternalRPCServiceImpl(mock(DataNodeContext.class), systemMetrics);
+
+    service.sampleDiskLoad(new TLoadSample());
+    Assert.assertEquals(NodeStatus.ReadOnly, commonConfig.getNodeStatus());
+    Assert.assertEquals(NodeStatus.DISK_FULL, commonConfig.getStatusReason());
+    snapshotAvailable.set(true);
+    service.sampleDiskLoad(new TLoadSample());
+    Assert.assertEquals(NodeStatus.ReadOnly, commonConfig.getNodeStatus());
+    Assert.assertEquals(NodeStatus.DISK_FULL, commonConfig.getStatusReason());
+    sequenceAvailable.set(true);
+    service.sampleDiskLoad(new TLoadSample());
+    Assert.assertEquals(NodeStatus.Running, commonConfig.getNodeStatus());
+    Assert.assertNull(commonConfig.getStatusReason());
+  }
+
+  @Test
+  public void testRecoveredSourcesStillRequireHealthyAggregate() {
+    commonConfig.setReadOnlyForDiskFull("sequence", () -> true);
+    SystemMetrics systemMetrics = mock(SystemMetrics.class);
+    when(systemMetrics.getSystemDiskTotalSpace()).thenReturn(100L);
+    DataNodeInternalRPCServiceImpl service =
+        new DataNodeInternalRPCServiceImpl(mock(DataNodeContext.class), systemMetrics);
+    for (long available : new long[] {0, 4}) {
+      when(systemMetrics.getSystemDiskAvailableSpace()).thenReturn(available);
+      service.sampleDiskLoad(new TLoadSample());
+      Assert.assertEquals(NodeStatus.ReadOnly, commonConfig.getNodeStatus());
+      Assert.assertEquals(NodeStatus.DISK_FULL, commonConfig.getStatusReason());
+    }
+    when(systemMetrics.getSystemDiskAvailableSpace()).thenReturn(10L);
+    service.sampleDiskLoad(new TLoadSample());
+    Assert.assertEquals(NodeStatus.Running, commonConfig.getNodeStatus());
+    Assert.assertNull(commonConfig.getStatusReason());
   }
 
   @Test
