@@ -24,6 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
@@ -368,6 +370,13 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   @Override
   public void handleTimeout() {
     synchronized (this) {
+      final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+      if (commonConfig.getNodeStatus() == NodeStatus.Removing || commonConfig.isStopping()) {
+        // The SDK retires this node's connection while the consumer remains active elsewhere.
+        // Missing heartbeats here must not unsubscribe that consumer across the cluster. Keep
+        // the timeout state so ordinary cleanup can resume if the removal is rolled back.
+        return;
+      }
       final ConsumerConfig consumerConfig = sharedConsumerConfig;
       if (Objects.isNull(consumerConfig) || inFlightRequestCount.get() > 0) {
         return;

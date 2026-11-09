@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.subscription.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
@@ -66,6 +69,58 @@ public class SubscriptionReceiverV1Test {
 
     Assert.assertSame(consumerConfig, getField(receiver, "sharedConsumerConfig"));
     Assert.assertFalse((boolean) getField(receiver, "consumerInvalidated"));
+  }
+
+  @Test
+  public void testHandleTimeoutKeepsConsumerOnRemovingNode() throws Exception {
+    assertRetiringNodeKeepsConsumer(NodeStatus.Removing, false);
+  }
+
+  @Test
+  public void testHandleTimeoutKeepsConsumerOnStoppingNode() throws Exception {
+    assertRetiringNodeKeepsConsumer(NodeStatus.ReadOnly, true);
+  }
+
+  private void assertRetiringNodeKeepsConsumer(final NodeStatus status, final boolean stopping)
+      throws Exception {
+    final AtomicLong closeAttemptCount = new AtomicLong();
+    final SubscriptionReceiverV1 receiver =
+        new SubscriptionReceiverV1() {
+          @Override
+          void closeConsumer(final ConsumerConfig consumerConfig) {
+            closeAttemptCount.incrementAndGet();
+          }
+        };
+    final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+    setField(receiver, "sharedConsumerConfig", consumerConfig);
+    final long timeoutMs = invokeCalculateConsumerInactivityTimeoutMs(receiver, consumerConfig);
+    setField(receiver, "lastActivityTimeMs", System.currentTimeMillis() - timeoutMs - 1L);
+
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    final NodeStatus originalStatus = commonConfig.getNodeStatus();
+    final String originalReason = commonConfig.getStatusReason();
+    final boolean originalStopping = commonConfig.isStopping();
+    try {
+      commonConfig.setNodeStatus(status);
+      commonConfig.setStopping(stopping);
+      receiver.handleTimeout();
+
+      Assert.assertEquals(
+          "Retiring a node must not unsubscribe a live consumer", 0L, closeAttemptCount.get());
+      Assert.assertSame(consumerConfig, getField(receiver, "sharedConsumerConfig"));
+      Assert.assertTrue(receiver.hasActiveConsumer());
+
+      // A failed removal can restore this node. Normal inactivity cleanup must still work then,
+      // including on a read-only node that is not stopping.
+      commonConfig.setNodeStatus(NodeStatus.ReadOnly);
+      commonConfig.setStopping(false);
+      receiver.handleTimeout();
+      Assert.assertEquals(1L, closeAttemptCount.get());
+      Assert.assertFalse(receiver.hasActiveConsumer());
+    } finally {
+      commonConfig.setNodeStatusWithReason(originalStatus, originalReason);
+      commonConfig.setStopping(originalStopping);
+    }
   }
 
   @Test
