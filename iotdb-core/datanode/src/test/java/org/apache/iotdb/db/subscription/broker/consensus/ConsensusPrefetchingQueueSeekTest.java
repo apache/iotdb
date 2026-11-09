@@ -37,6 +37,7 @@ import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.resource.SubscriptionMemoryManager;
 import org.apache.iotdb.db.subscription.task.execution.ConsensusSubscriptionPrefetchExecutor;
 import org.apache.iotdb.db.subscription.task.execution.ConsensusSubscriptionPrefetchExecutorManager;
+import org.apache.iotdb.db.subscription.task.subtask.ConsensusPrefetchSubtask;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
@@ -64,6 +65,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -72,6 +74,7 @@ import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -139,6 +142,119 @@ public class ConsensusPrefetchingQueueSeekTest {
   public void testMultiWriterSeekReplaysAfterResettingOrderedReaders() throws Exception {
     assertBeginningReplay(
         Arrays.asList(createRequest(1L, 1L, 7), createRequest(-1L, 10L, 8)), 2L, 0L, true);
+  }
+
+  @Test(timeout = 20_000L)
+  public void testEmptyPollReplaysRemoteEntryAfterPrefetchBecomesDormant() throws Exception {
+    final int originalBatchMaxDelay = config.getSubscriptionConsensusBatchMaxDelayInMs();
+    final int originalPrefetchThreads =
+        config.getSubscriptionConsensusPrefetchExecutorMaxThreadNum();
+    final long originalWatermarkInterval = config.getSubscriptionConsensusWatermarkIntervalMs();
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder();
+    final ConcurrentLinkedQueue<IndexedConsensusRequest> readableEntries =
+        new ConcurrentLinkedQueue<>();
+    final AtomicReference<ConsensusPrefetchSubtask> registeredSubtask = new AtomicReference<>();
+    ConsensusSubscriptionPrefetchExecutor executor = null;
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      config.setSubscriptionConsensusBatchMaxDelayInMs(0);
+      config.setSubscriptionConsensusPrefetchExecutorMaxThreadNum(1);
+      config.setSubscriptionConsensusWatermarkIntervalMs(0L);
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(systemDir.getAbsolutePath());
+      executor =
+          new ConsensusSubscriptionPrefetchExecutor() {
+            @Override
+            public synchronized boolean register(final ConsensusPrefetchSubtask subtask) {
+              if (!super.register(subtask)) {
+                return false;
+              }
+              registeredSubtask.set(subtask);
+              return true;
+            }
+          };
+      when(manager.getExecutor()).thenReturn(executor);
+      when(walNode.getLogDirectory()).thenReturn(systemDir);
+      when(walNode.getCurrentSearchIndex()).thenReturn(0L);
+      when(server.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              new DataRegionId(1),
+              server,
+              new SubscriptionWalRetentionPolicy("topic", -1L, -1L),
+              converter,
+              new ConsensusSubscriptionCommitManager(
+                  (consumerGroupId, topicName, regionId) ->
+                      ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.absent()),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true) {
+            @Override
+            protected ProgressWALIterator createSubscriptionWALIterator(
+                final long startSearchIndex) {
+              return new ProgressWALIterator(systemDir, startSearchIndex) {
+                @Override
+                boolean hasNext(final ScanBudget scanBudget) {
+                  return !readableEntries.isEmpty();
+                }
+
+                @Override
+                public IndexedConsensusRequest next() {
+                  return readableEntries.remove();
+                }
+              };
+            }
+          };
+      queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(16L * 1024 * 1024));
+      queue.seekToBeginning();
+      await()
+          .atMost(5L, TimeUnit.SECONDS)
+          .until(
+              () ->
+                  registeredSubtask.get() != null
+                      && !registeredSubtask.get().isScheduledOrRunning());
+      assertEquals(0L, queue.getRawWalGap());
+
+      // Replication can make a WAL entry readable after the worker becomes idle without advancing
+      // the local search index or admitting a request to the local realtime queue.
+      readableEntries.add(createRequest(-1L, 10L, 8));
+      final ConsensusPrefetchingQueue pollingQueue = queue;
+      final AtomicReference<SubscriptionEvent> received = new AtomicReference<>();
+      await()
+          .atMost(5L, TimeUnit.SECONDS)
+          .until(
+              () -> {
+                received.set(pollingQueue.poll("consumer"));
+                return received.get() != null;
+              });
+      final SubscriptionEvent event = received.get();
+      assertEquals(
+          SubscriptionPollResponseType.TABLETS.getType(),
+          event.getCurrentResponse().getResponseType());
+      final List<Tablet> tablets =
+          ((TabletsPayload) event.getCurrentResponse().getPayload()).getTablets();
+      assertEquals(1, tablets.size());
+      assertEquals(1, tablets.get(0).getRowSize());
+      assertEquals(10L, tablets.get(0).getTimestamps()[0]);
+      assertTrue(queue.ack("consumer", event.getCommitContext()));
+      assertEquals(1L, queue.getCurrentReadSearchIndex());
+      assertEquals(0L, queue.getWalGapSkippedEntries());
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      if (executor != null) {
+        executor.shutdown();
+      }
+      config.setSubscriptionConsensusBatchMaxDelayInMs(originalBatchMaxDelay);
+      config.setSubscriptionConsensusPrefetchExecutorMaxThreadNum(originalPrefetchThreads);
+      config.setSubscriptionConsensusWatermarkIntervalMs(originalWatermarkInterval);
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
   }
 
   @Test(timeout = 20_000L)

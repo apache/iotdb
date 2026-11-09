@@ -943,7 +943,7 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
-  private boolean shouldRecoverPrefetchBindingAfterEmptyPoll() {
+  private boolean shouldWakePrefetchAfterEmptyPoll() {
     if (!prefetchInitialized || isClosed || closeRequested || pendingSeekRequest != null) {
       return false;
     }
@@ -962,7 +962,9 @@ public class ConsensusPrefetchingQueue {
             || prefetchExecutor.isShutdown()
             || prefetchExecutor != currentExecutor;
     if (!bindingMissing) {
-      return false;
+      // Replicated WAL entries do not update the local search index or enter the realtime queue.
+      // Wake an idle worker on empty polls to discover entries that arrived after its last scan.
+      return !currentSubtask.isScheduledOrRunning();
     }
 
     return hasImmediatePrefetchableWork()
@@ -1025,7 +1027,7 @@ public class ConsensusPrefetchingQueue {
       final SubscriptionEvent event = pollInternal(consumerId, timer);
       if (Objects.nonNull(event) && !hasReachedPrefetchLimit()) {
         requestPrefetch();
-      } else if (Objects.isNull(event) && shouldRecoverPrefetchBindingAfterEmptyPoll()) {
+      } else if (Objects.isNull(event) && shouldWakePrefetchAfterEmptyPoll()) {
         requestPrefetch();
       }
       // Deliver reserved events first so ACK can drain memory. An entry that cannot fit even in an
