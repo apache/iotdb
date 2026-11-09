@@ -77,6 +77,7 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
+import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -937,6 +938,27 @@ public class TsFileSplitterTest {
         time -> time <= interval + 1);
   }
 
+  @Test
+  public void testSplitBatchedAlignedChunkPreservesCopiedPageBeforeDecodedPage() throws Exception {
+    final long interval = TimePartitionUtils.getTimePartitionInterval();
+    // The first page stays inside its own time partition and is copied as it is, the second page
+    // crosses the boundary and is decoded: the statistics of the copied page have to be spliced
+    // into the chunk that the value chunk writer assembles from then on.
+    assertSparseBatchedAlignedChunkSplit(
+        new long[][] {{0, 1, 2}, {interval - 2, interval - 1, interval, interval + 1}},
+        time -> time % 2 == 0);
+  }
+
+  @Test
+  public void testSplitBatchedAlignedChunkPreservesEmptyPageAfterDataPages() throws Exception {
+    final long interval = TimePartitionUtils.getTimePartitionInterval();
+    // The third page is entirely null in both partitions it spans, so it is an empty page whose
+    // slot has to be kept behind the pages that carry data.
+    assertSparseBatchedAlignedChunkSplit(
+        new long[][] {{0, 1}, {2, 3}, {interval - 2, interval - 1, interval, interval + 1}},
+        time -> time >= interval - 2);
+  }
+
   private void assertSparseBatchedAlignedChunkSplit(
       final long[][] pages, final LongPredicate isNull) throws Exception {
     final java.nio.file.Path directory = Files.createTempDirectory("split-sparse-batched");
@@ -993,6 +1015,11 @@ public class TsFileSplitterTest {
       assertSparseAlignedRows(source, device, expected);
       final List<ChunkData> chunks = splitSourceTsFile(source);
       Assert.assertTrue(chunks.stream().anyMatch(BatchedAlignedValueChunkData.class::isInstance));
+      for (final List<ChunkData> chunkDataList : groupChunkDataByPartition(chunks).values()) {
+        for (final ChunkData chunkData : chunkDataList) {
+          assertChunkBytesMatchHeader(chunkData);
+        }
+      }
       final Set<TTimePartitionSlot> expectedPartitions = new HashSet<>();
       for (final long time : expected.keySet()) {
         expectedPartitions.add(TimePartitionUtils.getTimePartitionSlot(time));
@@ -1016,7 +1043,26 @@ public class TsFileSplitterTest {
         Files.deleteIfExists(target.toPath());
       }
       Files.deleteIfExists(source.toPath());
-      Files.deleteIfExists(directory);
+      try {
+        Files.deleteIfExists(directory);
+      } catch (final DirectoryNotEmptyException e) {
+        // A leftover file must not hide the failure that left it behind.
+      }
+    }
+  }
+
+  /**
+   * A chunk header has to declare exactly the bytes the chunk carries: a header that advertises
+   * fewer bytes than its pages hold produces a split TsFile whose chunks cannot be parsed back.
+   */
+  private void assertChunkBytesMatchHeader(final ChunkData chunkData) {
+    for (final Chunk chunk : chunkData.getChunks()) {
+      Assert.assertEquals(
+          "chunk of measurement '"
+              + chunk.getHeader().getMeasurementID()
+              + "' declares a data size that does not match the bytes it carries",
+          chunk.getHeader().getDataSize(),
+          chunk.getData().remaining());
     }
   }
 
