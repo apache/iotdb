@@ -37,6 +37,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.List;
 
 public class TabletEncoder {
@@ -140,14 +141,22 @@ public class TabletEncoder {
     if (compressionType != CompressionType.UNCOMPRESSED) {
       ICompressor compressor = ICompressor.getCompressor(compressionType);
       int uncompressedSize = buffer.remaining();
-      byte[] compressed = new byte[compressor.getMaxBytesForCompression(uncompressedSize) + 4];
+      int offset = buffer.arrayOffset() + buffer.position();
       try {
-        int compressedLength =
-            compressor.compress(
-                buffer.array(),
-                buffer.arrayOffset() + buffer.position(),
-                uncompressedSize,
-                compressed);
+        byte[] compressed;
+        int compressedLength;
+        // getMaxBytesForCompression is a real bound except for GZIP and LZMA2, whose output can
+        // outgrow it on data that hardly compresses. Those two size their own output instead; the
+        // others write straight into one buffer, which saves an array and a copy.
+        if (compressionType == CompressionType.GZIP || compressionType == CompressionType.LZMA2) {
+          byte[] output = compressor.compress(buffer.array(), offset, uncompressedSize);
+          compressedLength = output.length;
+          compressed = Arrays.copyOf(output, compressedLength + 4);
+        } else {
+          compressed = new byte[compressor.getMaxBytesForCompression(uncompressedSize) + 4];
+          compressedLength =
+              compressor.compress(buffer.array(), offset, uncompressedSize, compressed);
+        }
         buffer = ByteBuffer.wrap(compressed, 0, compressedLength + 4);
         buffer.position(compressedLength);
         buffer.putInt(uncompressedSize);
