@@ -49,6 +49,7 @@ import org.apache.iotdb.db.exception.metadata.template.TemplateIncompatibleExcep
 import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -3120,13 +3121,40 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     boolean hasFailedMeasurement = insertStatement.hasFailedMeasurements();
     String partialInsertMessage;
     if (hasFailedMeasurement) {
+      final List<String> failedMeasurements = new ArrayList<>();
+      final List<String> failedMessages = new ArrayList<>();
+      collectDistinctFailedMeasurementMessages(
+          insertStatement.getFailedMeasurements(),
+          insertStatement.getFailedMessages(),
+          failedMeasurements,
+          failedMessages);
       partialInsertMessage =
           String.format(
-              "Fail to insert measurements %s caused by %s",
-              insertStatement.getFailedMeasurements(), insertStatement.getFailedMessages());
+              DataNodeQueryMessages.MESSAGE_FAIL_TO_INSERT_MEASUREMENTS_ARG_CAUSED_BY_ARG_B9858E6B,
+              failedMeasurements,
+              failedMessages);
       logger.warn(partialInsertMessage);
       analysis.setFailStatus(
           RpcUtils.getStatus(TSStatusCode.METADATA_ERROR.getStatusCode(), partialInsertMessage));
+    }
+  }
+
+  private static void collectDistinctFailedMeasurementMessages(
+      List<String> rawFailedMeasurements,
+      List<String> rawFailedMessages,
+      List<String> failedMeasurements,
+      List<String> failedMessages) {
+    final Set<List<String>> distinctFailures = new LinkedHashSet<>();
+    for (int i = 0; i < rawFailedMeasurements.size(); i++) {
+      final String failedMeasurement = rawFailedMeasurements.get(i);
+      final String failedMessage = i < rawFailedMessages.size() ? rawFailedMessages.get(i) : null;
+      final List<String> failureKey = new ArrayList<>(2);
+      failureKey.add(failedMeasurement);
+      failureKey.add(failedMessage);
+      if (distinctFailures.add(failureKey)) {
+        failedMeasurements.add(failedMeasurement);
+        failedMessages.add(failedMessage);
+      }
     }
   }
 
