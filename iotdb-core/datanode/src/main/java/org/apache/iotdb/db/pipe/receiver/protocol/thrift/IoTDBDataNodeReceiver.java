@@ -45,6 +45,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.metric.receiver.PipeDataNodeReceiverMetrics;
@@ -79,6 +80,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DatabaseSchemaTask;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -199,6 +201,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         final TPipeTransferResp authResp = checkPipeTransferAuthenticated(requestType);
         if (Objects.nonNull(authResp)) {
           return authResp;
+        }
+        if (PipeDataNodeAgent.isRatisConsensus() && isDataInsertionRequest(requestType)) {
+          return pipeDataInsertionDisabledResponse();
         }
         switch (requestType) {
           case HANDSHAKE_DATANODE_V1:
@@ -420,6 +425,41 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
             : executeStatementAndAddRedirectInfo(statement));
+  }
+
+  private static TPipeTransferResp pipeDataInsertionDisabledResponse() {
+    return new TPipeTransferResp(
+        RpcUtils.getStatus(
+            TSStatusCode.UNSUPPORTED_OPERATION,
+            DataNodePipeMessages
+                .MESSAGE_PIPE_DATA_INSERTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_7D669ECC));
+  }
+
+  private static boolean isDataInsertionRequest(final PipeRequestType requestType) {
+    return switch (requestType) {
+      case TRANSFER_TABLET_INSERT_NODE,
+              TRANSFER_TABLET_RAW,
+              TRANSFER_TABLET_BINARY,
+              TRANSFER_TABLET_BATCH,
+              TRANSFER_TS_FILE_PIECE,
+              TRANSFER_TS_FILE_SEAL,
+              TRANSFER_TS_FILE_PIECE_WITH_MOD,
+              TRANSFER_TS_FILE_SEAL_WITH_MOD ->
+          true;
+      case HANDSHAKE_CONFIGNODE_V1,
+              HANDSHAKE_DATANODE_V1,
+              HANDSHAKE_CONFIGNODE_V2,
+              HANDSHAKE_DATANODE_V2,
+              TRANSFER_SCHEMA_PLAN,
+              TRANSFER_SCHEMA_SNAPSHOT_PIECE,
+              TRANSFER_SCHEMA_SNAPSHOT_SEAL,
+              TRANSFER_CONFIG_PLAN,
+              TRANSFER_CONFIG_SNAPSHOT_PIECE,
+              TRANSFER_CONFIG_SNAPSHOT_SEAL,
+              TRANSFER_COMPRESSED,
+              TRANSFER_SLICE ->
+          false;
+    };
   }
 
   private TPipeTransferResp handleTransferTabletBinary(final PipeTransferTabletBinaryReq req) {
@@ -840,6 +880,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TPipeTransferResp handleTransferSchemaPlan(final PipeTransferPlanNodeReq req) {
+    if (PipeDataNodeAgent.isRatisConsensus() && req.getPlanNode() instanceof InsertNode) {
+      return pipeDataInsertionDisabledResponse();
+    }
     // We may be able to skip the alter logical view's exception parsing because
     // the "AlterLogicalViewNode" is itself idempotent
     if (req.getPlanNode() instanceof AlterLogicalViewNode) {

@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiver;
 import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiverV1;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -59,6 +61,15 @@ public class SubscriptionReceiverAgent {
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
 
+  private static final TPipeSubscribeResp SUBSCRIPTION_DISABLED_BY_RATIS_RESP =
+      new TPipeSubscribeResp(
+          RpcUtils.getStatus(
+              TSStatusCode.UNSUPPORTED_OPERATION,
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_194CE431),
+          PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+          PipeSubscribeResponseType.ACK.getType());
+
   private final ThreadLocal<SubscriptionReceiver> receiverThreadLocal = new ThreadLocal<>();
   private final Set<SubscriptionReceiver> activeReceivers = ConcurrentHashMap.newKeySet();
   private final ScheduledExecutorService receiverTimeoutChecker =
@@ -68,12 +79,16 @@ public class SubscriptionReceiverAgent {
   SubscriptionReceiverAgent() {
     RECEIVER_CONSTRUCTORS.put(
         PipeSubscribeRequestVersion.VERSION_1.getVersion(), SubscriptionReceiverV1::new);
-    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-        receiverTimeoutChecker,
-        this::checkReceiverTimeouts,
-        Math.max(1_000L, SubscriptionConfig.getInstance().getSubscriptionDefaultTimeoutInMs() / 2L),
-        Math.max(1_000L, SubscriptionConfig.getInstance().getSubscriptionDefaultTimeoutInMs() / 2L),
-        TimeUnit.MILLISECONDS);
+    if (PipeDataNodeAgent.isSubscriptionFeatureEnabled()) {
+      ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+          receiverTimeoutChecker,
+          this::checkReceiverTimeouts,
+          Math.max(
+              1_000L, SubscriptionConfig.getInstance().getSubscriptionDefaultTimeoutInMs() / 2L),
+          Math.max(
+              1_000L, SubscriptionConfig.getInstance().getSubscriptionDefaultTimeoutInMs() / 2L),
+          TimeUnit.MILLISECONDS);
+    }
   }
 
   public TPipeSubscribeResp handle(final TPipeSubscribeReq req) {
@@ -86,6 +101,9 @@ public class SubscriptionReceiverAgent {
           RpcUtils.getStatus(TSStatusCode.NO_PERMISSION),
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
+    }
+    if (!PipeDataNodeAgent.isSubscriptionFeatureEnabled()) {
+      return SUBSCRIPTION_DISABLED_BY_RATIS_RESP;
     }
     if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
       return SUBSCRIPTION_NOT_ENABLED_ERROR_RESP;

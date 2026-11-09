@@ -140,6 +140,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -291,6 +292,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -316,6 +318,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   private static final SettableFuture<ConfigTaskResult> SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE;
+  private static final SettableFuture<ConfigTaskResult> SUBSCRIPTION_DISABLED_BY_RATIS_ERROR_FUTURE;
+  private static final SettableFuture<ConfigTaskResult>
+      PIPE_DATA_INSERTION_DISABLED_BY_RATIS_ERROR_FUTURE;
 
   static {
     SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE = SettableFuture.create();
@@ -323,6 +328,20 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         new IoTDBException(
             "Subscription is not enabled.",
             TSStatusCode.SUBSCRIPTION_NOT_ENABLED_ERROR.getStatusCode()));
+
+    SUBSCRIPTION_DISABLED_BY_RATIS_ERROR_FUTURE = SettableFuture.create();
+    SUBSCRIPTION_DISABLED_BY_RATIS_ERROR_FUTURE.setException(
+        new IoTDBException(
+            DataNodePipeMessages
+                .MESSAGE_SUBSCRIPTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_194CE431,
+            TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode()));
+
+    PIPE_DATA_INSERTION_DISABLED_BY_RATIS_ERROR_FUTURE = SettableFuture.create();
+    PIPE_DATA_INSERTION_DISABLED_BY_RATIS_ERROR_FUTURE.setException(
+        new IoTDBException(
+            DataNodePipeMessages
+                .MESSAGE_PIPE_DATA_INSERTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_7D669ECC,
+            TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode()));
   }
 
   public static ClusterConfigTaskExecutor getInstance() {
@@ -1826,6 +1845,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> createPipe(
       final CreatePipeStatement createPipeStatement) {
+    if (!PipeDataNodeAgent.isPipeDataInsertionEnabled(createPipeStatement.getSourceAttributes())) {
+      return PIPE_DATA_INSERTION_DISABLED_BY_RATIS_ERROR_FUTURE;
+    }
+
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     // Verify that Pipe is disabled if TSFile encryption is enabled
@@ -2044,6 +2067,20 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     // Construct temporary pipe static meta for validation
     final String pipeName = alterPipeStatement.getPipeName();
+    final PipeParameters sourceParameters =
+        alterPipeStatement.isReplaceAllExtractorAttributes()
+            ? new PipeParameters(alterPipeStatement.getExtractorAttributes())
+            : new PipeParameters(
+                    new HashMap<>(
+                        pipeMetaFromCoordinator
+                            .getStaticMeta()
+                            .getExtractorParameters()
+                            .getAttribute()))
+                .addOrReplaceEquivalentAttributes(
+                    new PipeParameters(alterPipeStatement.getExtractorAttributes()));
+    if (!PipeDataNodeAgent.isPipeDataInsertionEnabled(sourceParameters)) {
+      return PIPE_DATA_INSERTION_DISABLED_BY_RATIS_ERROR_FUTURE;
+    }
     try {
       if (!alterPipeStatement.getExtractorAttributes().isEmpty()) {
         if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
@@ -2311,6 +2348,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> createTopic(CreateTopicStatement createTopicStatement) {
     if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
       return SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE;
+    }
+    if (!PipeDataNodeAgent.isSubscriptionFeatureEnabled()) {
+      return SUBSCRIPTION_DISABLED_BY_RATIS_ERROR_FUTURE;
     }
 
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();

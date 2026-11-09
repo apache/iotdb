@@ -20,9 +20,12 @@
 package org.apache.iotdb.confignode.manager.pipe.coordinator.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
@@ -31,6 +34,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -39,6 +43,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeTaskCoordinator {
@@ -93,6 +98,10 @@ public class PipeTaskCoordinator {
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus createPipe(TCreatePipeReq req) {
+    if (!PipeConfigNodeAgent.isPipeDataInsertionEnabled(req.getExtractorAttributes())) {
+      return pipeDataInsertionDisabledStatus();
+    }
+
     final TSStatus status = configManager.getProcedureManager().createPipe(req);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn("Failed to create pipe {}. Result status: {}.", req.getPipeName(), status);
@@ -108,6 +117,22 @@ public class PipeTaskCoordinator {
           TSStatusCode.PIPE_ERROR,
           String.format("Failed to alter pipe %s, the pipe is being dropped", pipeName));
     }
+    final PipeMeta currentPipeMeta = pipeTaskInfo.getPipeMetaByPipeName(pipeName);
+    if (currentPipeMeta == null) {
+      return req.isSetIfExistsCondition() && req.isIfExistsCondition()
+          ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+          : RpcUtils.getStatus(
+              TSStatusCode.PIPE_NOT_EXIST_ERROR,
+              String.format(
+                  ConfigNodeMessages
+                      .MESSAGE_FAILED_TO_ALTER_PIPE_ARG_FAILURES_ARG_DOES_NOT_EXIST_169BDB85,
+                  pipeName,
+                  pipeName));
+    }
+    if (!PipeConfigNodeAgent.isPipeDataInsertionEnabled(
+        getUpdatedSourceParameters(req, currentPipeMeta))) {
+      return pipeDataInsertionDisabledStatus();
+    }
     final TSStatus status = configManager.getProcedureManager().alterPipe(req);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn("Failed to alter pipe {}. Result status: {}.", req.getPipeName(), status);
@@ -122,11 +147,51 @@ public class PipeTaskCoordinator {
           TSStatusCode.PIPE_ERROR,
           String.format("Failed to start pipe %s, the pipe is being dropped", pipeName));
     }
+    final PipeMeta pipeMeta = pipeTaskInfo.getPipeMetaByPipeName(pipeName);
+    if (pipeMeta == null) {
+      return RpcUtils.getStatus(
+          TSStatusCode.PIPE_ERROR,
+          String.format(
+              ConfigNodeMessages
+                  .MESSAGE_FAILED_TO_START_PIPE_ARG_FAILURES_ARG_DOES_NOT_EXIST_F13A63EE,
+              pipeName,
+              pipeName));
+    }
+    if (!PipeConfigNodeAgent.isPipeDataInsertionEnabled(
+        pipeMeta.getStaticMeta().getExtractorParameters())) {
+      return pipeDataInsertionDisabledStatus();
+    }
     final TSStatus status = configManager.getProcedureManager().startPipe(pipeName);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn("Failed to start pipe {}. Result status: {}.", pipeName, status);
     }
     return status;
+  }
+
+  private PipeParameters getUpdatedSourceParameters(
+      final TAlterPipeReq req, final PipeMeta currentPipeMeta) {
+    if (req.isReplaceAllExtractorAttributes) {
+      return new PipeParameters(
+          req.getExtractorAttributes() == null
+              ? Collections.emptyMap()
+              : req.getExtractorAttributes());
+    }
+
+    final PipeParameters sourceParameters =
+        new PipeParameters(
+            new HashMap<>(currentPipeMeta.getStaticMeta().getExtractorParameters().getAttribute()));
+    if (req.getExtractorAttributes() != null && !req.getExtractorAttributes().isEmpty()) {
+      sourceParameters.addOrReplaceEquivalentAttributes(
+          new PipeParameters(req.getExtractorAttributes()));
+    }
+    return sourceParameters;
+  }
+
+  private TSStatus pipeDataInsertionDisabledStatus() {
+    return RpcUtils.getStatus(
+        TSStatusCode.UNSUPPORTED_OPERATION,
+        ConfigNodeMessages
+            .MESSAGE_PIPE_DATA_INSERTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_7D669ECC);
   }
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */

@@ -22,6 +22,20 @@ package org.apache.iotdb.confignode.i18n;
 public final class ConfigNodeMessages {
 
   public static final String
+      MESSAGE_SUBSCRIPTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_194CE431 =
+          "当数据区域共识协议为 Ratis 时，Subscription 功能不可用。";
+
+  public static final String
+      MESSAGE_PIPE_DATA_INSERTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_7D669ECC =
+          "当数据区域共识协议为 Ratis 时，包含 data.insert 的 Pipe 同步不可用。";
+
+  public static final String MESSAGE_FAILED_TO_ALTER_PIPE_ARG_FAILURES_ARG_DOES_NOT_EXIST_169BDB85 =
+      "无法修改 Pipe %s。原因：%s 不存在。";
+
+  public static final String MESSAGE_FAILED_TO_START_PIPE_ARG_FAILURES_ARG_DOES_NOT_EXIST_F13A63EE =
+      "无法启动 Pipe %s。原因：%s 不存在。";
+
+  public static final String
       EXCEPTION_CONFIGNODE_SIMPLECONSENSUS_WRITES_ARE_DISABLED_AFTER_A_WAL_CLEANUP_FAILURE_RESTART_IS_REQUIRED_D52F0107 =
           "ConfigNode SimpleConsensus 因 WAL 清理失败已禁用写入，需要重启。";
   public static final String

@@ -22,6 +22,20 @@ package org.apache.iotdb.confignode.i18n;
 public final class ConfigNodeMessages {
 
   public static final String
+      MESSAGE_SUBSCRIPTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_194CE431 =
+          "Subscription is disabled when data region consensus protocol is Ratis.";
+
+  public static final String
+      MESSAGE_PIPE_DATA_INSERTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_7D669ECC =
+          "Pipe synchronization with data insertion is disabled when data region consensus protocol is Ratis.";
+
+  public static final String MESSAGE_FAILED_TO_ALTER_PIPE_ARG_FAILURES_ARG_DOES_NOT_EXIST_169BDB85 =
+      "Failed to alter pipe %s. Failures: %s does not exist.";
+
+  public static final String MESSAGE_FAILED_TO_START_PIPE_ARG_FAILURES_ARG_DOES_NOT_EXIST_F13A63EE =
+      "Failed to start pipe %s. Failures: %s does not exist.";
+
+  public static final String
       EXCEPTION_CONFIGNODE_SIMPLECONSENSUS_WRITES_ARE_DISABLED_AFTER_A_WAL_CLEANUP_FAILURE_RESTART_IS_REQUIRED_D52F0107 =
           "ConfigNode SimpleConsensus writes are disabled after a WAL cleanup failure; restart is required.";
   public static final String
