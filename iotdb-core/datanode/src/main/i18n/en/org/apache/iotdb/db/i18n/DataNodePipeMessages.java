@@ -21,6 +21,14 @@ package org.apache.iotdb.db.i18n;
 
 public final class DataNodePipeMessages {
 
+  public static final String
+      MESSAGE_SUBSCRIPTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_194CE431 =
+          "Subscription is disabled when data region consensus protocol is Ratis.";
+
+  public static final String
+      MESSAGE_PIPE_DATA_INSERTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_7D669ECC =
+          "Pipe synchronization with data insertion is disabled when data region consensus protocol is Ratis.";
+
   private DataNodePipeMessages() {}
 
   public static final String

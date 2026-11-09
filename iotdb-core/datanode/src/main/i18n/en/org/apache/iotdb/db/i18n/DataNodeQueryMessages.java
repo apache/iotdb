@@ -20,8 +20,17 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String MESSAGE_FAIL_TO_INSERT_MEASUREMENTS_ARG_CAUSED_BY_ARG_B9858E6B =
+      "Fail to insert measurements %s caused by %s";
 
   private DataNodeQueryMessages() {}
+
+  public static final String EXCEPTION_STATECHANGELISTENER_IS_NULL_B030E8A0 =
+      "stateChangeListener is null";
+  public static final String LOG_ERROR_NOTIFYING_STATE_CHANGE_LISTENER_FOR_ARG_00D668A9 =
+      "Error notifying state change listener for {}";
+  public static final String LOG_RELEASEMEMORY_RELEASE_ARG_CURRENT_REMAINING_MEMORY_ARG_4E7B461E =
+      "[ReleaseMemory] release: {}, current remaining memory: {}";
 
   public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477 =
       "Failed to convert TsFile %s to tablets. Status: %s";
@@ -58,4 +67,6 @@ public final class DataNodeQueryMessages {
   public static final String
       EXCEPTION_THE_DATABASE_ARG_DOES_NOT_EXIST_AND_AUTO_CREATE_SCHEMA_IS_DISABLED_28F8D49A =
           "The database %s does not exist and auto-create-schema is disabled.";
+  public static final String LOG_DELETE_AFTER_LOADING_ARG_ERROR_C606A060 =
+      "Delete After Loading {} error.";
 }

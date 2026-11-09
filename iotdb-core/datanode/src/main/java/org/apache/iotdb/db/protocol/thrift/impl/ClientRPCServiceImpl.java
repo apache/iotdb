@@ -44,6 +44,7 @@ import org.apache.iotdb.db.audit.AuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -2834,6 +2835,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
         return getNotLoggedInPipeSubscribeResp();
       }
+      if (!PipeDataNodeAgent.isSubscriptionFeatureEnabled()) {
+        return new TPipeSubscribeResp(
+            RpcUtils.getStatus(
+                TSStatusCode.UNSUPPORTED_OPERATION,
+                DataNodePipeMessages
+                    .MESSAGE_SUBSCRIPTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_194CE431),
+            PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+            PipeSubscribeResponseType.ACK.getType());
+      }
 
       return SubscriptionAgent.receiver().handle(req, clientSession.getUsername());
     } finally {
@@ -2973,7 +2983,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
     PipeDataNodeAgent.receiver().thrift().handleClientExit();
     PipeDataNodeAgent.receiver().legacy().handleClientExit();
-    SubscriptionAgent.receiver().handleClientExit();
+    if (PipeDataNodeAgent.isSubscriptionFeatureEnabled()) {
+      SubscriptionAgent.receiver().handleClientExit();
+    }
   }
 
   /**

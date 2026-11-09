@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -234,20 +235,25 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     if (!deleteAfterLoad) {
       return;
     }
-    deleteFile(tsFile);
+    // A retained source TsFile still needs its sidecars for any later explicit LOAD.
+    if (!deleteFile(tsFile)) {
+      return;
+    }
     deleteFile(new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
     deleteFile(new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX));
   }
 
-  private void deleteFile(final File file) {
+  private boolean deleteFile(final File file) {
     try {
       RetryUtils.retryOnException(
           () -> {
             Files.deleteIfExists(file.toPath());
             return null;
           });
+      return true;
     } catch (final Exception e) {
-      LOGGER.warn("Delete After Loading {} error.", file, e);
+      LOGGER.warn(DataNodeQueryMessages.LOG_DELETE_AFTER_LOADING_ARG_ERROR_C606A060, file, e);
+      return false;
     }
   }
 

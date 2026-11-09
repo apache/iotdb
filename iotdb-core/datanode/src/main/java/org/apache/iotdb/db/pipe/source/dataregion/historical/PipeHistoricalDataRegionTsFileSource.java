@@ -35,6 +35,8 @@ import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -654,6 +656,13 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
     }
 
     final ProgressIndex resourceProgressIndex = resource.getMaxProgressIndex();
+    // Ratis writes do not carry Pipe progress indexes. Minimum means unknown,
+    // so replay conservatively after a leader change.
+    if (resourceProgressIndex instanceof MinimumProgressIndex
+        && ConsensusFactory.RATIS_CONSENSUS.equals(
+            IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass())) {
+      return true;
+    }
     if (innerStartIndex.isEqualOrAfter(resourceProgressIndex)
         || isProgressIndexCoveredByTimePartitionProgressIndex(
             resource, resourceProgressIndex, innerStartIndex)) {

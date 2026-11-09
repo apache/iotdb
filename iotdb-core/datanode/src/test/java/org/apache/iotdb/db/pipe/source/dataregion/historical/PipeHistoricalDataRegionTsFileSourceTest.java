@@ -34,6 +34,8 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvi
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixPipePattern;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -608,6 +610,50 @@ public class PipeHistoricalDataRegionTsFileSourceTest {
     Assert.assertTrue(event instanceof ProgressReportEvent);
     Assert.assertEquals(expectedProgressIndex, ((ProgressReportEvent) event).getProgressIndex());
     Assert.assertFalse((Boolean) getPrivateField(source, "shouldReportMaxHistoricalProgressIndex"));
+  }
+
+  @Test
+  public void testRatisFilesWithoutPipeProgressAreNotCoveredByCheckpoint() throws Exception {
+    final String originalConsensus =
+        IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass();
+    final File tempDir = Files.createTempDirectory("pipeHistoricalRatisCoverage").toFile();
+    try {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+      assertMayTsFileContainUnprocessedData(
+          tempDir,
+          "unknown-initial.tsfile",
+          MinimumProgressIndex.INSTANCE,
+          MinimumProgressIndex.INSTANCE,
+          true);
+      assertMayTsFileContainUnprocessedData(
+          tempDir,
+          "unknown-recovery.tsfile",
+          new SimpleProgressIndex(0, 100),
+          MinimumProgressIndex.INSTANCE,
+          true);
+      assertMayTsFileContainUnprocessedData(
+          tempDir,
+          "indexed-covered.tsfile",
+          new SimpleProgressIndex(0, 100),
+          new SimpleProgressIndex(0, 50),
+          false);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+      assertMayTsFileContainUnprocessedData(
+          tempDir,
+          "other-consensus.tsfile",
+          MinimumProgressIndex.INSTANCE,
+          MinimumProgressIndex.INSTANCE,
+          false);
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(originalConsensus);
+      FileUtils.deleteFileOrDirectory(tempDir);
+    }
   }
 
   @Test

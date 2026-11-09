@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverFilePathUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.sink.payload.legacy.PipeData;
 import org.apache.iotdb.db.pipe.sink.payload.legacy.TsFilePipeData;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -112,6 +113,13 @@ public class IoTDBLegacyPipeReceiverAgent {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
   }
 
+  private TSStatus pipeDataInsertionDisabledStatus() {
+    return RpcUtils.getStatus(
+        TSStatusCode.UNSUPPORTED_OPERATION,
+        DataNodePipeMessages
+            .MESSAGE_PIPE_DATA_INSERTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_7D669ECC);
+  }
+
   private boolean validatePipeName(final TSyncIdentityInfo info) {
     return info.isSetPipeName()
         && Objects.isNull(FileUtils.getIllegalError4Directory(info.getPipeName()));
@@ -154,6 +162,9 @@ public class IoTDBLegacyPipeReceiverAgent {
       buff.get(byteArray);
       pipeData = PipeData.createPipeData(byteArray);
       if (pipeData instanceof TsFilePipeData) {
+        if (PipeDataNodeAgent.isRatisConsensus()) {
+          return pipeDataInsertionDisabledStatus();
+        }
         TsFilePipeData tsFilePipeData = (TsFilePipeData) pipeData;
         tsFilePipeData.setDatabase(identityInfo.getDatabase());
         handleTsFilePipeData(tsFilePipeData, fileDir);
@@ -256,6 +267,9 @@ public class IoTDBLegacyPipeReceiverAgent {
     SyncIdentityInfo identityInfo = getCurrentSyncIdentityInfo();
     if (identityInfo == null) {
       throw new TException("Thrift connection is not alive.");
+    }
+    if (PipeDataNodeAgent.isRatisConsensus()) {
+      return pipeDataInsertionDisabledStatus();
     }
     LOGGER.debug(
         "Invoke transportData method from client ip = {}", identityInfo.getRemoteAddress());

@@ -51,6 +51,7 @@ import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
@@ -130,7 +131,6 @@ import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
@@ -150,6 +150,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -219,6 +220,7 @@ public class DataRegion implements IDataRegionForQuery {
   private static final int MERGE_MOD_START_VERSION_NUM = 1;
 
   private static final Logger logger = LoggerFactory.getLogger(DataRegion.class);
+  private static final String LOAD_PENDING_SUFFIX = ".load-pending";
 
   /**
    * A read write lock for guaranteeing concurrent safety when accessing all fields in this class
@@ -760,6 +762,14 @@ public class DataRegion implements IDataRegionForQuery {
           } else {
             // some TsFileResource may be being persisted when the system crashed, try recovering
             // such resources
+            final File[] pendingLoads =
+                fsFactory.listFilesBySuffix(
+                    partitionFolder.getAbsolutePath(), TSFILE_SUFFIX + LOAD_PENDING_SUFFIX);
+            if (pendingLoads != null) {
+              for (File pendingLoad : pendingLoads) {
+                deleteUnpublishedLoad(pendingLoad);
+              }
+            }
             continueFailedRenames(partitionFolder, TEMP_SUFFIX);
             String partitionName = partitionFolder.getName();
             File[] tsFilesInThisFolder =
@@ -799,6 +809,20 @@ public class DataRegion implements IDataRegionForQuery {
         }
       }
     }
+  }
+
+  private void deleteUnpublishedLoad(File pendingFile) throws IOException {
+    final File targetFile =
+        new File(
+            pendingFile
+                .getPath()
+                .substring(0, pendingFile.getPath().length() - LOAD_PENDING_SUFFIX.length()));
+    if (!targetFile.exists()) {
+      Files.deleteIfExists(new File(targetFile + RESOURCE_SUFFIX).toPath());
+      Files.deleteIfExists(new File(targetFile + ModificationFile.FILE_SUFFIX).toPath());
+    }
+    // Keep the pending file until all sidecars are removed, so interrupted cleanup is retryable.
+    Files.deleteIfExists(pendingFile.toPath());
   }
 
   /** check if the tsfile's time is smaller than system current time. */
@@ -3535,116 +3559,93 @@ public class DataRegion implements IDataRegionForQuery {
     if (!targetFile.getParentFile().exists()) {
       targetFile.getParentFile().mkdirs();
     }
-    try {
-      if (deleteOriginFile) {
-        RetryUtils.retryOnException(
-            () -> {
-              FileUtils.moveFile(tsFileToLoad, targetFile);
-              return null;
-            });
-      } else {
-        RetryUtils.retryOnException(
-            () -> {
-              Files.copy(tsFileToLoad.toPath(), targetFile.toPath());
-              return null;
-            });
-      }
-    } catch (final IOException e) {
-      logger.warn(
-          "File renaming failed when loading tsfile. Origin: {}, Target: {}",
-          tsFileToLoad.getAbsolutePath(),
-          targetFile.getAbsolutePath(),
-          e);
-      throw new LoadFileException(
-          String.format(
-              "File renaming failed when loading tsfile. Origin: %s, Target: %s, because %s",
-              tsFileToLoad.getAbsolutePath(), targetFile.getAbsolutePath(), e.getMessage()));
-    }
-
+    // Recovery only discovers names ending in .tsfile. Keep the data invisible until its resource
+    // and every deletion are installed, including while the data is being copied.
+    final File pendingFile = new File(targetFile + LOAD_PENDING_SUFFIX);
     final File resourceFileToLoad =
         fsFactory.getFile(tsFileToLoad.getAbsolutePath() + RESOURCE_SUFFIX);
     final File targetResourceFile =
         fsFactory.getFile(targetFile.getAbsolutePath() + RESOURCE_SUFFIX);
+    boolean loadPublished = false;
     try {
-      if (deleteOriginFile) {
+      try {
+        if (pendingFile.exists()) {
+          deleteUnpublishedLoad(pendingFile);
+        }
         RetryUtils.retryOnException(
             () -> {
-              FileUtils.moveFile(resourceFileToLoad, targetResourceFile);
+              Files.copy(
+                  tsFileToLoad.toPath(), pendingFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
               return null;
             });
-      } else {
-        RetryUtils.retryOnException(
-            () -> {
-              Files.copy(resourceFileToLoad.toPath(), targetResourceFile.toPath());
-              return null;
-            });
+      } catch (final IOException e) {
+        logger.warn(
+            StorageEngineMessages
+                .LOG_FILE_RENAMING_FAILED_WHEN_LOADING_TSFILE_ORIGIN_ARG_TARGET_ARG_13205CEC,
+            tsFileToLoad.getAbsolutePath(),
+            targetFile.getAbsolutePath(),
+            e);
+        throw new LoadFileException(
+            String.format(
+                StorageEngineMessages
+                    .EXCEPTION_FILE_RENAMING_FAILED_WHEN_LOADING_TSFILE_ORIGIN_ARG_TARGET_ARG_BECAUSE_ARG_4A8CF51E,
+                tsFileToLoad.getAbsolutePath(),
+                targetFile.getAbsolutePath(),
+                e.getMessage()));
       }
-    } catch (final IOException e) {
-      logger.warn(
-          "File renaming failed when loading .resource file. Origin: {}, Target: {}",
-          resourceFileToLoad.getAbsolutePath(),
-          targetResourceFile.getAbsolutePath(),
-          e);
-      throw new LoadFileException(
-          String.format(
-              "File renaming failed when loading .resource file. Origin: %s, Target: %s, because %s",
-              resourceFileToLoad.getAbsolutePath(),
-              targetResourceFile.getAbsolutePath(),
-              e.getMessage()));
+
+      try {
+        RetryUtils.retryOnException(
+            () -> {
+              Files.copy(
+                  resourceFileToLoad.toPath(),
+                  targetResourceFile.toPath(),
+                  StandardCopyOption.REPLACE_EXISTING);
+              return null;
+            });
+      } catch (final IOException e) {
+        logger.warn(
+            StorageEngineMessages
+                .LOG_FILE_RENAMING_FAILED_WHEN_LOADING_RESOURCE_FILE_ORIGIN_ARG_TARGET_ARG_5589CD09,
+            resourceFileToLoad.getAbsolutePath(),
+            targetResourceFile.getAbsolutePath(),
+            e);
+        throw new LoadFileException(
+            String.format(
+                StorageEngineMessages
+                    .EXCEPTION_FILE_RENAMING_FAILED_WHEN_LOADING_RESOURCE_FILE_ORIGIN_ARG_TARGET_ARG_BECAUSE_ARG_77B1F6DE,
+                resourceFileToLoad.getAbsolutePath(),
+                targetResourceFile.getAbsolutePath(),
+                e.getMessage()));
+      }
+
+      // Keep all source files intact until the complete destination is published.
+      loadModFile(tsFileToLoad, targetFile);
+      try {
+        Files.move(pendingFile.toPath(), targetFile.toPath(), StandardCopyOption.ATOMIC_MOVE);
+      } catch (IOException e) {
+        throw new LoadFileException(e);
+      }
+      loadPublished = true;
+    } finally {
+      tsFileResource.setModFile(null);
+      if (!loadPublished && pendingFile.exists()) {
+        try {
+          deleteUnpublishedLoad(pendingFile);
+        } catch (IOException e) {
+          logger.warn(
+              StorageEngineMessages.LOG_FAILED_TO_DELETE_FILE_OR_DIRECTORY_ARG_7EC21473,
+              pendingFile,
+              e);
+        }
+      }
     }
 
-    final File modFileToLoad =
-        fsFactory.getFile(tsFileToLoad.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
-    try {
-      if (modFileToLoad.exists()) {
-        // when successfully loaded, the filepath of the resource will be changed to the IoTDB data
-        // dir, so we can add a suffix to find the old modification file.
-        final File targetModFile =
-            fsFactory.getFile(targetFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
-        try {
-          RetryUtils.retryOnException(
-              () -> {
-                Files.deleteIfExists(targetModFile.toPath());
-                return null;
-              });
-        } catch (final IOException e) {
-          logger.warn("Cannot delete localModFile {}", targetModFile, e);
-        }
-        try {
-          final long modFileSize = modFileToLoad.length();
-          if (deleteOriginFile) {
-            RetryUtils.retryOnException(
-                () -> {
-                  FileUtils.moveFile(modFileToLoad, targetModFile);
-                  return null;
-                });
-          } else {
-            RetryUtils.retryOnException(
-                () -> {
-                  Files.copy(modFileToLoad.toPath(), targetModFile.toPath());
-                  return null;
-                });
-          }
-
-          FileMetrics.getInstance().increaseModFileNum(1);
-          FileMetrics.getInstance().increaseModFileSize(modFileSize);
-        } catch (final IOException e) {
-          logger.warn(
-              "File renaming failed when loading .mod file. Origin: {}, Target: {}",
-              modFileToLoad.getAbsolutePath(),
-              targetModFile.getAbsolutePath(),
-              e);
-          throw new LoadFileException(
-              String.format(
-                  "File renaming failed when loading .mod file. Origin: %s, Target: %s, because %s",
-                  modFileToLoad.getAbsolutePath(),
-                  targetModFile.getAbsolutePath(),
-                  e.getMessage()));
-        }
-      }
-    } finally {
-      // ModFile will be updated during the next call to `getModFile`
-      tsFileResource.setModFile(null);
+    // Only published mods belong in FileMetrics. Also replace any cached source-side handle.
+    tsFileResource.setModFile(ModificationFile.getNormalMods(tsFileResource));
+    if (tsFileResource.modFileExists()) {
+      FileMetrics.getInstance().increaseModFileNum(1);
+      FileMetrics.getInstance().increaseModFileSize(tsFileResource.getModFile().getSize());
     }
 
     // Listen before the tsFile is added into tsFile manager to avoid it being compacted
@@ -3653,7 +3654,72 @@ public class DataRegion implements IDataRegionForQuery {
 
     tsFileManager.add(tsFileResource, false);
 
+    if (deleteOriginFile) {
+      for (File sourceFile :
+          new File[] {
+            tsFileToLoad, resourceFileToLoad, new File(tsFileToLoad + ModificationFile.FILE_SUFFIX)
+          }) {
+        try {
+          RetryUtils.retryOnException(
+              () -> {
+                Files.deleteIfExists(sourceFile.toPath());
+                return null;
+              });
+        } catch (IOException e) {
+          // The installed TsFile is already visible and registered; source cleanup cannot roll it
+          // back.
+          logger.warn(
+              StorageEngineMessages.LOG_FAILED_TO_DELETE_FILE_OR_DIRECTORY_ARG_7EC21473,
+              sourceFile,
+              e);
+          break;
+        }
+      }
+    }
+
     return true;
+  }
+
+  private void loadModFile(File tsFileToLoad, File targetFile) throws LoadFileException {
+    final File modFileToLoad =
+        fsFactory.getFile(tsFileToLoad.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
+    if (modFileToLoad.exists()) {
+      // when successfully loaded, the filepath of the resource will be changed to the IoTDB data
+      // dir, so we can add a suffix to find the old modification file.
+      final File targetModFile =
+          fsFactory.getFile(targetFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
+      try {
+        RetryUtils.retryOnException(
+            () -> {
+              Files.deleteIfExists(targetModFile.toPath());
+              return null;
+            });
+      } catch (final IOException e) {
+        logger.warn(
+            StorageEngineMessages.LOG_CANNOT_DELETE_LOCALMODFILE_ARG_F9CD0EA6, targetModFile, e);
+      }
+      try {
+        RetryUtils.retryOnException(
+            () -> {
+              Files.copy(modFileToLoad.toPath(), targetModFile.toPath());
+              return null;
+            });
+      } catch (final IOException e) {
+        logger.warn(
+            StorageEngineMessages
+                .LOG_FILE_RENAMING_FAILED_WHEN_LOADING_MOD_FILE_ORIGIN_ARG_TARGET_ARG_2493B8EE,
+            modFileToLoad.getAbsolutePath(),
+            targetModFile.getAbsolutePath(),
+            e);
+        throw new LoadFileException(
+            String.format(
+                StorageEngineMessages
+                    .EXCEPTION_FILE_RENAMING_FAILED_WHEN_LOADING_MOD_FILE_ORIGIN_ARG_TARGET_ARG_BECAUSE_ARG_93A853C4,
+                modFileToLoad.getAbsolutePath(),
+                targetModFile.getAbsolutePath(),
+                e.getMessage()));
+      }
+    }
   }
 
   /**

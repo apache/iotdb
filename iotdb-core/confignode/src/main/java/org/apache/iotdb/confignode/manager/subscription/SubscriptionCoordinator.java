@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopic
 import org.apache.iotdb.confignode.consensus.response.subscription.SubscriptionTableResp;
 import org.apache.iotdb.confignode.consensus.response.subscription.TopicTableResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.task.PipeTaskCoordinatorLock;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
@@ -116,7 +117,9 @@ public class SubscriptionCoordinator {
   /////////////////////////////// Meta sync ///////////////////////////////
 
   public void startSubscriptionMetaSync() {
-    subscriptionMetaSyncer.start();
+    if (PipeConfigNodeAgent.isSubscriptionFeatureEnabled()) {
+      subscriptionMetaSyncer.start();
+    }
   }
 
   public void stopSubscriptionMetaSync() {

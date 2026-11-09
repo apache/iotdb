@@ -803,7 +803,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     registerManager.register(CompactionTaskManager.getInstance());
 
     // Register subscription agent before pipe agent
-    registerManager.register(SubscriptionAgent.runtime());
+    if (PipeDataNodeAgent.isSubscriptionFeatureEnabled()) {
+      registerManager.register(SubscriptionAgent.runtime());
+    }
     registerManager.register(PipeDataNodeAgent.runtime());
   }
 

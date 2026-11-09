@@ -20,8 +20,17 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String MESSAGE_FAIL_TO_INSERT_MEASUREMENTS_ARG_CAUSED_BY_ARG_B9858E6B =
+      "测点 %s 插入失败，原因：%s";
 
   private DataNodeQueryMessages() {}
+
+  public static final String EXCEPTION_STATECHANGELISTENER_IS_NULL_B030E8A0 =
+      "stateChangeListener 为空";
+  public static final String LOG_ERROR_NOTIFYING_STATE_CHANGE_LISTENER_FOR_ARG_00D668A9 =
+      "通知 {} 的状态变更监听器时出错";
+  public static final String LOG_RELEASEMEMORY_RELEASE_ARG_CURRENT_REMAINING_MEMORY_ARG_4E7B461E =
+      "[ReleaseMemory] 释放：{}，当前剩余内存：{}";
 
   public static final String EXCEPTION_FAILED_TO_CONVERT_TSFILE_ARG_TO_TABLETS_STATUS_ARG_E7C9F477 =
       "将 TsFile %s 转换为 tablet 失败。状态：%s";
@@ -55,4 +64,5 @@ public final class DataNodeQueryMessages {
   public static final String
       EXCEPTION_THE_DATABASE_ARG_DOES_NOT_EXIST_AND_AUTO_CREATE_SCHEMA_IS_DISABLED_28F8D49A =
           "数据库 %s 不存在，且 auto-create-schema 已禁用。";
+  public static final String LOG_DELETE_AFTER_LOADING_ARG_ERROR_C606A060 = "加载后删除 {} 时出错。";
 }
