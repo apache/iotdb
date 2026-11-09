@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.session.it;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
+import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.internal.session.InternalSessionBuilder;
 import org.apache.iotdb.commons.client.internal.session.InternalSessionPoolBuilder;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -31,6 +35,8 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.it.utils.InternalSessionITUtils;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.pool.SessionPool;
 
@@ -44,6 +50,8 @@ import org.junit.runner.RunWith;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(IoTDBTestRunner.class)
@@ -101,6 +109,49 @@ public class InternalSessionIT {
         session.executeNonQueryStatement("DELETE DATABASE " + DATABASE);
       }
     }
+  }
+
+  @Test
+  public void testInternalEndpointServesDefaultAndClientServices() throws Exception {
+    final DataNodeWrapper dataNode = EnvFactory.getEnv().getDataNodeWrapper(0);
+    final TEndPoint internalEndPoint = InternalSessionITUtils.getInternalEndPoint(dataNode);
+
+    final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clients =
+        new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+            .createClientManager(
+                new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
+    try (final SyncDataNodeInternalServiceClient client = clients.borrowClient(internalEndPoint)) {
+      assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.testConnectionEmptyRPC().getCode());
+    } finally {
+      clients.close();
+    }
+
+    final INodeSupplier nodeSupplier = InternalSessionITUtils.createInternalNodeSupplier();
+    try (Session session =
+            new InternalSessionBuilder(nodeSupplier)
+                .host(dataNode.getInternalAddress())
+                .port(dataNode.getInternalPort())
+                .username(SessionConfig.DEFAULT_USER)
+                .build();
+        SessionDataSet dataSet = session.executeQueryStatement("SHOW DATABASES")) {
+      assertNotNull(dataSet);
+    }
+  }
+
+  @Test
+  public void testInternalLoginRejectsUnknownUser() throws Exception {
+    final DataNodeWrapper dataNode = EnvFactory.getEnv().getDataNodeWrapper(0);
+    final INodeSupplier nodeSupplier = InternalSessionITUtils.createInternalNodeSupplier();
+
+    assertThrows(
+        IoTDBConnectionException.class,
+        () ->
+            new InternalSessionBuilder(nodeSupplier)
+                .host(dataNode.getInternalAddress())
+                .port(dataNode.getInternalPort())
+                .username("missing_internal_session_user")
+                .build());
   }
 
   @Test

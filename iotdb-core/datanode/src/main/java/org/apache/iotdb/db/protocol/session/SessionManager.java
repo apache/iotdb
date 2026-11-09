@@ -231,9 +231,9 @@ public class SessionManager implements SessionManagerMBean {
    *
    * <p>This path is reachable only through the multiplexed client RPC service on the DataNode
    * internal endpoint, which belongs to the trusted cluster/inter-node surface described in {@code
-   * THREAT_MODEL.md}. It intentionally does not emit failed-login audit records because it performs
-   * no credential verification; access is controlled by the network/transport boundary rather than
-   * by user login auditing.
+   * THREAT_MODEL.md}. It intentionally emits no login audit records because it performs no
+   * credential verification; access is controlled by the network/transport boundary rather than by
+   * user login auditing.
    */
   public BasicOpenSessionResp loginInternal(
       final IClientSession session,
@@ -281,23 +281,6 @@ public class SessionManager implements SessionManagerMBean {
         .sessionId(session.getId())
         .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
         .setMessage(logInMessage);
-    AUDIT_LOGGER.log(
-        new AuditLogFields(
-            userId,
-            username,
-            session.getClientAddress(),
-            AuditEventType.LOGIN,
-            AuditLogOperation.CONTROL,
-            true),
-        () ->
-            String.format(
-                DataNodeMiscMessages
-                    .EXCEPTION_ARG_LOGIN_STATUS_ARG_USER_ARG_ID_ARG_OPENS_SESSION_ARG_70586F85,
-                IoTDBConstant.GLOBAL_DB_NAME,
-                openSessionResp.getMessage(),
-                username,
-                userId,
-                session));
     LOGGER.info(
         DataNodeMiscMessages.LOGIN_STATUS,
         IoTDBConstant.GLOBAL_DB_NAME,

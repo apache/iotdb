@@ -22,6 +22,7 @@ package org.apache.iotdb.subscription.it.consensus.local.tablemodel;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.internal.subscription.InternalSubscriptionTablePullConsumerBuilder;
 import org.apache.iotdb.commons.client.internal.subscription.InternalSubscriptionTableSessionBuilder;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.ITableSession;
@@ -48,6 +49,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -62,6 +64,16 @@ public class InternalSubscriptionTableIT extends AbstractSubscriptionIT {
 
   private static final int DEVICE_COUNT = 48;
   private static final String TABLE = "t";
+  private static final String KEY_DIR =
+      System.getProperty("user.dir")
+          + File.separator
+          + "target"
+          + File.separator
+          + "test-classes"
+          + File.separator;
+  private static final String TRUST_STORE = KEY_DIR + "test-truststore";
+  private static final String KEY_STORE = KEY_DIR + "test-keystore";
+  private static final String STORE_PASSWORD = "thrift";
 
   @Override
   @Before
@@ -79,15 +91,33 @@ public class InternalSubscriptionTableIT extends AbstractSubscriptionIT {
         .setDefaultDataRegionGroupNumPerDatabase(3)
         .setAutoCreateSchemaEnabled(true)
         .setPipeMemoryManagementEnabled(false)
-        .setIsPipeEnableMemoryCheck(false);
+        .setIsPipeEnableMemoryCheck(false)
+        .setEnableInternalSSL(true)
+        .setKeyStorePath(KEY_STORE)
+        .setKeyStorePwd(STORE_PASSWORD)
+        .setTrustStorePath(TRUST_STORE)
+        .setTrustStorePwd(STORE_PASSWORD);
+    CommonDescriptor.getInstance().getConfig().setEnableInternalSSL(true);
+    CommonDescriptor.getInstance().getConfig().setKeyStorePath(KEY_STORE);
+    CommonDescriptor.getInstance().getConfig().setKeyStorePwd(STORE_PASSWORD);
+    CommonDescriptor.getInstance().getConfig().setTrustStorePath(TRUST_STORE);
+    CommonDescriptor.getInstance().getConfig().setTrustStorePwd(STORE_PASSWORD);
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
   }
 
   @Override
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-    super.tearDown();
+    try {
+      EnvFactory.getEnv().cleanClusterEnvironment();
+      super.tearDown();
+    } finally {
+      CommonDescriptor.getInstance().getConfig().setEnableInternalSSL(false);
+      CommonDescriptor.getInstance().getConfig().setKeyStorePath("");
+      CommonDescriptor.getInstance().getConfig().setKeyStorePwd("");
+      CommonDescriptor.getInstance().getConfig().setTrustStorePath("");
+      CommonDescriptor.getInstance().getConfig().setTrustStorePwd("");
+    }
   }
 
   @Test
@@ -109,6 +139,11 @@ public class InternalSubscriptionTableIT extends AbstractSubscriptionIT {
               new InternalSubscriptionTablePullConsumerBuilder()
                   .host(internalSeedEndPoint.getIp())
                   .port(internalSeedEndPoint.getPort())
+                  .useSSL(true)
+                  .trustStore(TRUST_STORE)
+                  .trustStorePwd(STORE_PASSWORD)
+                  .keyStore(KEY_STORE)
+                  .keyStorePwd(STORE_PASSWORD)
                   .consumerId(identifiers.getConsumerId())
                   .consumerGroupId(identifiers.getConsumerGroupId())
                   .autoCommit(false)
@@ -157,6 +192,11 @@ public class InternalSubscriptionTableIT extends AbstractSubscriptionIT {
         new InternalSubscriptionTableSessionBuilder(nodeSupplier)
             .username(SessionConfig.DEFAULT_USER)
             .password(SessionConfig.DEFAULT_PASSWORD)
+            .useSSL(true)
+            .trustStore(TRUST_STORE)
+            .trustStorePwd(STORE_PASSWORD)
+            .keyStore(KEY_STORE)
+            .keyStorePwd(STORE_PASSWORD)
             .build()) {
       final Properties properties = new Properties();
       properties.put(TopicConstant.MODE_KEY, TopicConstant.MODE_INITIAL_VALUE);
