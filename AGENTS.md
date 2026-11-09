@@ -34,6 +34,9 @@ Any PR that implements a new feature or changes an existing feature's definition
 user-visible behavior must include at least one concrete example in its description. Show
 representative inputs and the resulting outputs or behavior; for a change to existing behavior,
 make the before-and-after difference clear.
+Bug-fix PRs should describe the scenario that triggers the bug, including relevant conditions or
+inputs and the incorrect behavior observed; explain the corrected behavior when it helps clarify
+the fix.
 
 ## Branch Relationship and Backports
 
