@@ -104,6 +104,21 @@ public class SessionInfo {
   }
 
   public SessionInfo(
+      long sessionId,
+      UserEntity userEntity,
+      ZoneId zoneId,
+      ClientVersion version,
+      @Nullable String databaseName,
+      SqlDialect sqlDialect,
+      boolean enableAutoCreateSchema,
+      boolean databaseInternalSession,
+      boolean internalRpcSession) {
+    this(sessionId, userEntity, zoneId, version, databaseName, sqlDialect, enableAutoCreateSchema);
+    this.databaseInternalSession = databaseInternalSession;
+    this.internalRpcSession = internalRpcSession;
+  }
+
+  public SessionInfo(
       final SessionInfo sessionInfo, final ZoneId zoneId, final SqlDialect sqlDialect) {
     this(
         sessionInfo.sessionId,
@@ -112,8 +127,9 @@ public class SessionInfo {
         sessionInfo.version,
         sessionInfo.databaseName,
         sqlDialect,
-        sessionInfo.enableAutoCreateSchema);
-    this.internalRpcSession = sessionInfo.internalRpcSession;
+        sessionInfo.enableAutoCreateSchema,
+        sessionInfo.databaseInternalSession,
+        sessionInfo.internalRpcSession);
   }
 
   @TestOnly

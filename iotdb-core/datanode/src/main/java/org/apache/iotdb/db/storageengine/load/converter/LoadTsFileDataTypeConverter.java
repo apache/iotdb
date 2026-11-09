@@ -250,6 +250,11 @@ public class LoadTsFileDataTypeConverter {
     final boolean needToCreateSession = Objects.isNull(currentSession);
     final IClientSession session =
         needToCreateSession ? createConversionSession(SqlDialect.TABLE) : currentSession;
+    final SessionInfo sourceSessionInfo = Objects.nonNull(context) ? context.getSession() : null;
+    final boolean databaseInternalSession =
+        Objects.nonNull(sourceSessionInfo) && sourceSessionInfo.isDatabaseInternalSession();
+    final boolean internalRpcSession =
+        Objects.nonNull(sourceSessionInfo) && sourceSessionInfo.isInternalRpcSession();
     final SessionInfo sessionInfo =
         new SessionInfo(
             session.getId(),
@@ -258,7 +263,9 @@ public class LoadTsFileDataTypeConverter {
             session.getClientVersion(),
             databaseName,
             SqlDialect.TABLE,
-            allowAutoCreateSchema && session.isEnableAutoCreateSchema());
+            allowAutoCreateSchema && session.isEnableAutoCreateSchema(),
+            databaseInternalSession,
+            internalRpcSession);
     try {
       return Coordinator.getInstance()
           .executeForTableModel(
@@ -317,6 +324,11 @@ public class LoadTsFileDataTypeConverter {
     final boolean needToCreateSession = Objects.isNull(currentSession);
     final IClientSession session =
         needToCreateSession ? createConversionSession(SqlDialect.TREE) : currentSession;
+    final SessionInfo sourceSessionInfo = Objects.nonNull(context) ? context.getSession() : null;
+    final boolean databaseInternalSession =
+        Objects.nonNull(sourceSessionInfo) && sourceSessionInfo.isDatabaseInternalSession();
+    final boolean internalRpcSession =
+        Objects.nonNull(sourceSessionInfo) && sourceSessionInfo.isInternalRpcSession();
     final SessionInfo sessionInfo =
         new SessionInfo(
             session.getId(),
@@ -329,7 +341,9 @@ public class LoadTsFileDataTypeConverter {
                 && session.isEnableAutoCreateSchema()
                 && (Objects.isNull(context)
                     || Objects.isNull(context.getSession())
-                    || context.getSession().isEnableAutoCreateSchema()));
+                    || context.getSession().isEnableAutoCreateSchema()),
+            databaseInternalSession,
+            internalRpcSession);
 
     try {
       return Coordinator.getInstance()
