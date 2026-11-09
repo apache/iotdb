@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -31,6 +30,7 @@ import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -104,12 +104,45 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
   }
 
   @Override
-  public void updateAfterSchemaValidation(MPPQueryContext context) {
-    for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
-      if (!this.hasFailedMeasurements() && insertTabletStatement.hasFailedMeasurements()) {
-        this.failedMeasurementIndex2Info = insertTabletStatement.failedMeasurementIndex2Info;
-      }
-    }
+  public boolean hasFailedMeasurements() {
+    return insertTabletStatementList != null
+        && insertTabletStatementList.stream().anyMatch(InsertBaseStatement::hasFailedMeasurements);
+  }
+
+  @Override
+  public int getFailedMeasurementNumber() {
+    return insertTabletStatementList == null
+        ? 0
+        : insertTabletStatementList.stream()
+            .mapToInt(InsertBaseStatement::getFailedMeasurementNumber)
+            .sum();
+  }
+
+  @Override
+  public List<String> getFailedMeasurements() {
+    return insertTabletStatementList == null
+        ? Collections.emptyList()
+        : insertTabletStatementList.stream()
+            .flatMap(statement -> statement.getFailedMeasurements().stream())
+            .collect(Collectors.toList());
+  }
+
+  @Override
+  public List<Exception> getFailedExceptions() {
+    return insertTabletStatementList == null
+        ? Collections.emptyList()
+        : insertTabletStatementList.stream()
+            .flatMap(statement -> statement.getFailedExceptions().stream())
+            .collect(Collectors.toList());
+  }
+
+  @Override
+  public List<String> getFailedMessages() {
+    return insertTabletStatementList == null
+        ? Collections.emptyList()
+        : insertTabletStatementList.stream()
+            .flatMap(statement -> statement.getFailedMessages().stream())
+            .collect(Collectors.toList());
   }
 
   @Override
