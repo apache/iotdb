@@ -123,7 +123,7 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
       // pages of a value chunk with the pages of its time chunk by position, so a missing page
       // shifts every later page onto the wrong timestamps. A chunk that covers no row at all keeps
       // the zero-page layout of an all-null column, which the metadata reader reports as null.
-      final boolean chunkHasRows = hasPageWithRows(chunkPages, startTime, endTime);
+      final boolean chunkHasRows = hasPageWithRows(chunkPages);
       for (final PageBuffer page : chunkPages) {
         if (!page.needDecode) {
           if (page.pageData.remaining() == 0) {
@@ -196,23 +196,13 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
    * chunk that holds no row at all keeps the zero-page layout. This is the counterpart of the rule
    * applied by the base class to the chunks it writes itself.
    */
-  private static boolean hasPageWithRows(
-      final List<PageBuffer> chunkPages, final long startTime, final long endTime) {
+  private static boolean hasPageWithRows(final List<PageBuffer> chunkPages) {
     for (final PageBuffer page : chunkPages) {
-      if (!page.needDecode) {
-        // A page copied as it is was read from this partition, so a page with a body always
-        // carries rows of the partition and only an all-null page has no body.
-        if (page.pageData.remaining() > 0) {
-          return true;
-        }
-        continue;
-      }
-      // A decoded page may be entirely outside the partition, and its timestamps are the only
-      // reliable record of the rows it contributes here.
-      for (final long time : page.timeBatch) {
-        if (time >= startTime && time <= endTime) {
-          return true;
-        }
+      // A decoded page already records how many of its rows belong to this partition, and a page
+      // copied as it is was read from this partition, so a body means rows and only an all-null
+      // page has no body.
+      if (page.needDecode ? page.satisfiedLength > 0 : page.pageData.remaining() > 0) {
+        return true;
       }
     }
     return false;
