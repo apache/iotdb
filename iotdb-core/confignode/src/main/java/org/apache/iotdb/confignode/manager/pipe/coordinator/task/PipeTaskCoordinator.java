@@ -461,6 +461,10 @@ public class PipeTaskCoordinator {
     return pipeTaskInfo.getConsensusPipeStatusMap();
   }
 
+  public int getConsensusPipeCount() {
+    return pipeTaskInfo.getConsensusPipeCount();
+  }
+
   /** Caller should ensure that the method is called in the write lock of {@link #pipeTaskInfo}. */
   public void updateLastSyncedVersion() {
     pipeTaskInfo.updateLastSyncedVersion();

@@ -877,6 +877,25 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
   }
 
+  /**
+   * Counts the consensus pipes without materializing their names. It is called on every pipe meta
+   * sync round, where building {@link #getConsensusPipeStatusMap()} would be far too expensive.
+   */
+  public int getConsensusPipeCount() {
+    acquireReadLock();
+    try {
+      int count = 0;
+      for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+        if (PipeType.CONSENSUS.equals(pipeMeta.getStaticMeta().getPipeType())) {
+          ++count;
+        }
+      }
+      return count;
+    } finally {
+      releaseReadLock();
+    }
+  }
+
   public Map<String, PipeStatus> getConsensusPipeStatusMap() {
     acquireReadLock();
     try {
