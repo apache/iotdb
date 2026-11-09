@@ -62,4 +62,6 @@ public final class DataNodeQueryMessages {
           "There is not enough memory for Query %s, the contextHolder is %s,current remaining free "
               + "memory is %dB, already reserved memory for this context in total is %dB, the memory "
               + "requested this time is %dB";
+  public static final String LOG_DELETE_AFTER_LOADING_ARG_ERROR_C606A060 =
+      "Delete After Loading {} error.";
 }
