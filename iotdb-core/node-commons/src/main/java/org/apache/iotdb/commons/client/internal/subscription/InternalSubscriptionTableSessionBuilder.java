@@ -24,7 +24,6 @@ import org.apache.iotdb.session.i18n.SessionMessages;
 import org.apache.iotdb.session.subscription.ISubscriptionTableSession;
 import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
 
-import java.util.List;
 import java.util.Objects;
 
 /**
@@ -47,11 +46,6 @@ public class InternalSubscriptionTableSessionBuilder extends SubscriptionTableSe
         Objects.requireNonNull(
             nodeSupplier,
             SessionMessages.EXCEPTION_INTERNAL_NODE_SUPPLIER_MUST_NOT_BE_NULL_C5CAF392);
-  }
-
-  public InternalSubscriptionTableSessionBuilder nodeUrls(final List<String> nodeUrls) {
-    this.nodeUrls = nodeUrls;
-    return this;
   }
 
   @Override
