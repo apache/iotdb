@@ -101,7 +101,7 @@ public class InternalSubscriptionTableIT extends AbstractSubscriptionIT {
     try {
       ConsensusSubscriptionTableITSupport.createDatabaseAndTable(
           database, TABLE, "tag1 STRING TAG, value INT64 FIELD");
-      createIncrementalTopic(nodeSupplier, identifiers.getTopic(), database, TABLE);
+      createInitialTopic(nodeSupplier, identifiers.getTopic(), database, TABLE);
 
       consumer =
           (SubscriptionTablePullConsumer)
@@ -144,7 +144,7 @@ public class InternalSubscriptionTableIT extends AbstractSubscriptionIT {
     }
   }
 
-  private static void createIncrementalTopic(
+  private static void createInitialTopic(
       final INodeSupplier nodeSupplier,
       final String topic,
       final String database,
@@ -156,7 +156,7 @@ public class InternalSubscriptionTableIT extends AbstractSubscriptionIT {
             .password(SessionConfig.DEFAULT_PASSWORD)
             .build()) {
       final Properties properties = new Properties();
-      properties.put(TopicConstant.MODE_KEY, TopicConstant.MODE_INCREMENTAL_VALUE);
+      properties.put(TopicConstant.MODE_KEY, TopicConstant.MODE_INITIAL_VALUE);
       properties.put(TopicConstant.DATABASE_KEY, database);
       properties.put(TopicConstant.TABLE_KEY, table);
       session.createTopic(topic, properties);

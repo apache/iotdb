@@ -38,6 +38,8 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
@@ -438,6 +440,16 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     // set consumer config thread local
     final ConsumerConfig existedConsumerConfig = consumerConfigThreadLocal.get();
     final ConsumerConfig consumerConfig = req.getConsumerConfig();
+    final IClientSession currentSession = SessionManager.getInstance().getCurrSession();
+    if (currentSession != null && currentSession.isInternalRpcSession()) {
+      if (currentSession.getUsername() != null) {
+        consumerConfig
+            .getAttribute()
+            .put(ConsumerConstant.USERNAME_KEY, currentSession.getUsername());
+      }
+      consumerConfig.getAttribute().remove(ConsumerConstant.PASSWORD_KEY);
+      consumerConfig.getAttribute().remove(ConsumerConstant.ENCRYPTED_PASSWORD_KEY);
+    }
 
     String consumerId = consumerConfig.getConsumerId();
     if (Objects.isNull(consumerId)) {
