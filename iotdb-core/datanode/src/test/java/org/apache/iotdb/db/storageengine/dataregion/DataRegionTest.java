@@ -37,6 +37,7 @@ import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
@@ -61,6 +62,8 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -192,6 +195,147 @@ public class DataRegionTest {
             false);
     insertRowNode.setMeasurementSchemas(measurementSchemas);
     return insertRowNode;
+  }
+
+  @Test
+  public void testLoadInstallationRetainsOrDeletesTheCompleteSourceGroup() throws Exception {
+    for (boolean deleteOrigin : new boolean[] {false, true}) {
+      for (boolean withMods : new boolean[] {false, true}) {
+        final File sourceDir =
+            new File(TestConstant.OUTPUT_DATA_DIR, "load-source-" + deleteOrigin + "-" + withMods);
+        Files.createDirectories(sourceDir.toPath());
+        final File source = new File(sourceDir, "1-1-0-0.tsfile");
+        final MeasurementSchema schema = new MeasurementSchema(measurementId, TSDataType.INT32);
+        try (TsFileWriter writer = new TsFileWriter(source)) {
+          writer.registerAlignedTimeseries(new Path(deviceId), Collections.singletonList(schema));
+          final Tablet tablet = new Tablet(deviceId, Collections.singletonList(schema), 3);
+          for (int row = 0; row < 3; row++) {
+            tablet.addTimestamp(row, row + 1L);
+            tablet.addValue(measurementId, row, row);
+          }
+          tablet.rowSize = 3;
+          writer.writeAligned(tablet);
+        }
+        final TsFileResource resource = Mockito.spy(new TsFileResource(source));
+        resource.setStatus(TsFileResourceStatus.NORMAL);
+        resource.updateStartTime(new PlainDeviceID(deviceId), 1);
+        resource.updateEndTime(new PlainDeviceID(deviceId), 3);
+        resource.serialize();
+        final File sourceMods = new File(source + ModificationFile.FILE_SUFFIX);
+        if (withMods) {
+          try (ModificationFile mods = resource.getModFile()) {
+            mods.write(
+                new Deletion(
+                    new MeasurementPath(deviceId + "." + measurementId), Long.MAX_VALUE, 2, 2));
+          }
+        }
+        // Exercise rebinding even when the source handle was cached before installation.
+        resource.getModFile();
+        final byte[] data = Files.readAllBytes(source.toPath());
+        final byte[] deletions = withMods ? Files.readAllBytes(sourceMods.toPath()) : null;
+        final File sourceResource = new File(source + TsFileResource.RESOURCE_SUFFIX);
+        final File savedResource = new File(sourceDir, "saved-resource");
+        Files.move(sourceResource.toPath(), savedResource.toPath());
+        try {
+          final LoadFileException failure =
+              Assert.assertThrows(
+                  LoadFileException.class,
+                  () -> dataRegion.loadNewTsFile(resource, deleteOrigin, false, true));
+          Assert.assertTrue(
+              failure.getMessage(),
+              failure.getMessage().contains(sourceResource.getAbsolutePath()));
+          final File rejectedTarget = resource.getTsFile();
+          Assert.assertNotEquals(source.getAbsolutePath(), rejectedTarget.getAbsolutePath());
+          Assert.assertFalse(rejectedTarget.exists());
+          Assert.assertFalse(new File(rejectedTarget + ".load-pending").exists());
+          Assert.assertFalse(new File(rejectedTarget + TsFileResource.RESOURCE_SUFFIX).exists());
+          Assert.assertFalse(new File(rejectedTarget + ModificationFile.FILE_SUFFIX).exists());
+          Assert.assertArrayEquals(data, Files.readAllBytes(source.toPath()));
+          Assert.assertEquals(withMods, sourceMods.exists());
+        } finally {
+          Files.move(savedResource.toPath(), sourceResource.toPath());
+          resource.setFile(source);
+        }
+        final int modFilesBeforeLoad = FileMetrics.getInstance().getModFileNum();
+        final long modSizeBeforeLoad = getModFileSize();
+        if (withMods) {
+          // A nonempty destination directory rejects atomic publication on Windows and Unix.
+          Mockito.doAnswer(
+                  invocation -> {
+                    invocation.callRealMethod();
+                    final File file = invocation.getArgument(0);
+                    if (!file.getParentFile()
+                        .getCanonicalFile()
+                        .equals(sourceDir.getCanonicalFile())) {
+                      Files.createDirectories(file.toPath());
+                      Files.write(file.toPath().resolve("block-publication"), new byte[] {1});
+                    }
+                    return null;
+                  })
+              .when(resource)
+              .setFile(Mockito.any(File.class));
+          File rejectedTarget = null;
+          try {
+            Assert.assertThrows(
+                LoadFileException.class,
+                () -> dataRegion.loadNewTsFile(resource, deleteOrigin, false, true));
+            rejectedTarget = resource.getTsFile();
+            Assert.assertTrue(rejectedTarget.isDirectory());
+            Assert.assertTrue(new File(rejectedTarget + TsFileResource.RESOURCE_SUFFIX).isFile());
+            Assert.assertTrue(new File(rejectedTarget + ModificationFile.FILE_SUFFIX).isFile());
+            Assert.assertFalse(new File(rejectedTarget + ".load-pending").exists());
+            Assert.assertEquals(modFilesBeforeLoad, FileMetrics.getInstance().getModFileNum());
+            Assert.assertEquals(modSizeBeforeLoad, getModFileSize());
+            Assert.assertArrayEquals(data, Files.readAllBytes(source.toPath()));
+            Assert.assertArrayEquals(deletions, Files.readAllBytes(sourceMods.toPath()));
+            Assert.assertTrue(sourceResource.isFile());
+          } finally {
+            Mockito.doCallRealMethod().when(resource).setFile(Mockito.any(File.class));
+            if (rejectedTarget != null) {
+              // Rollback preserves sidecars at an occupied target; remove this test's
+              // blocker/group.
+              Files.delete(rejectedTarget.toPath().resolve("block-publication"));
+              Files.delete(rejectedTarget.toPath());
+              Files.deleteIfExists(
+                  new File(rejectedTarget + TsFileResource.RESOURCE_SUFFIX).toPath());
+              Files.deleteIfExists(
+                  new File(rejectedTarget + ModificationFile.FILE_SUFFIX).toPath());
+            }
+            resource.setFile(source);
+          }
+        }
+        dataRegion.loadNewTsFile(resource, deleteOrigin, false, true);
+        final File installed = resource.getTsFile();
+        Assert.assertArrayEquals(data, Files.readAllBytes(installed.toPath()));
+        Assert.assertTrue(new File(installed + TsFileResource.RESOURCE_SUFFIX).isFile());
+        Assert.assertFalse(new File(installed + ".load-pending").exists());
+        final File installedMods = new File(installed + ModificationFile.FILE_SUFFIX);
+        Assert.assertEquals(
+            installedMods.getCanonicalFile(),
+            new File(resource.getModFile().getFilePath()).getCanonicalFile());
+        Assert.assertEquals(withMods ? 1 : 0, resource.getModFile().getModifications().size());
+        Assert.assertEquals(withMods, installedMods.exists());
+        Assert.assertEquals(
+            modFilesBeforeLoad + (withMods ? 1 : 0), FileMetrics.getInstance().getModFileNum());
+        Assert.assertEquals(modSizeBeforeLoad + installedMods.length(), getModFileSize());
+        if (withMods) {
+          Assert.assertArrayEquals(deletions, Files.readAllBytes(installedMods.toPath()));
+        }
+        Assert.assertEquals(!deleteOrigin, source.exists());
+        Assert.assertEquals(
+            !deleteOrigin, new File(source + TsFileResource.RESOURCE_SUFFIX).exists());
+        Assert.assertEquals(withMods && !deleteOrigin, sourceMods.exists());
+      }
+    }
+  }
+
+  private static long getModFileSize() throws Exception {
+    final Field metricsField = FileMetrics.class.getDeclaredField("MODS_FILE_METRICS");
+    metricsField.setAccessible(true);
+    final Object metrics = metricsField.get(null);
+    final Field sizeField = metrics.getClass().getDeclaredField("modFileSize");
+    sizeField.setAccessible(true);
+    return ((java.util.concurrent.atomic.AtomicLong) sizeField.get(metrics)).get();
   }
 
   @Test
