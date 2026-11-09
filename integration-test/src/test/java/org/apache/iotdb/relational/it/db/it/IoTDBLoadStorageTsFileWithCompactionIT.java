@@ -38,10 +38,14 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
@@ -238,6 +242,11 @@ public class IoTDBLoadStorageTsFileWithCompactionIT {
    * ones that store system records. Those databases are tree-model databases whose TsFiles
    * legitimately carry no table schema at all, so scanning the whole data directory would mix
    * unrelated TsFiles into the table-schema assertions of this test.
+   *
+   * <p>The listing must also tolerate files that disappear while it runs: the compaction assertions
+   * poll this directory exactly while compaction is deleting the source TsFiles and their {@code
+   * .resource} sidecars, and a lazily walked entry that is gone by the time it is stat'ed would
+   * abort the poll with a {@link NoSuchFileException}.
    */
   private static List<Path> listDatabaseTsFiles(final BaseEnv env) throws IOException {
     final Path dataPath = Paths.get(env.getDataNodeWrapper(0).getDataPath());
@@ -248,12 +257,28 @@ public class IoTDBLoadStorageTsFileWithCompactionIT {
       if (!Files.isDirectory(databaseDir)) {
         continue;
       }
-      try (final Stream<Path> paths = Files.walk(databaseDir)) {
-        paths
-            .filter(Files::isRegularFile)
-            .filter(path -> path.getFileName().toString().endsWith(TsFileConstant.TSFILE_SUFFIX))
-            .forEach(tsFiles::add);
-      }
+      Files.walkFileTree(
+          databaseDir,
+          new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) {
+              if (file.getFileName().toString().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+                tsFiles.add(file);
+              }
+              return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFileFailed(final Path file, final IOException exception)
+                throws IOException {
+              // The entry was listed but deleted by the concurrent compaction before it was
+              // stat'ed.
+              if (exception instanceof NoSuchFileException) {
+                return FileVisitResult.CONTINUE;
+              }
+              throw exception;
+            }
+          });
     }
     return tsFiles;
   }
