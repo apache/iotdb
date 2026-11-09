@@ -27,8 +27,10 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
@@ -55,11 +57,14 @@ import org.junit.Test;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 
 public class PipeConfigTreePrivilegeParseVisitorTest {
   private static final UserEntity FAKE_USER_ENTITY = new UserEntity(0L, "", "");
@@ -98,13 +103,13 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
                 && privilegeUnion.getPaths().stream().allMatch(path -> path.equals("root.db")));
     Assert.assertTrue(skipVisitor.canReadSysSchema("root.db", FAKE_USER_ENTITY, true));
     Assert.assertFalse(skipVisitor.canReadSysSchema("root.db", FAKE_USER_ENTITY, false));
-    Assert.assertFalse(
+    Assert.assertTrue(
         throwVisitor
             .visitCreateDatabase(
                 new DatabaseSchemaPlan(
                     ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.db1")),
                 FAKE_USER_ENTITY)
-            .isPresent());
+            .isEmpty());
 
     permissionManager.setUserPrivilege(
         (userName, privilegeUnion) ->
@@ -119,64 +124,64 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
     permissionManager.setUserPrivilege(
         (userName, privilegeUnion) ->
             privilegeUnion.getPrivilegeType() == PrivilegeType.MANAGE_USER);
-    Assert.assertTrue(
+    Assert.assertFalse(
         skipVisitor
             .visitGrantUser(new AuthorTreePlan(ConfigPhysicalPlanType.GrantUser), FAKE_USER_ENTITY)
-            .isPresent());
-    Assert.assertTrue(
+            .isEmpty());
+    Assert.assertFalse(
         skipVisitor
             .visitRevokeUser(
                 new AuthorTreePlan(ConfigPhysicalPlanType.RevokeUser), FAKE_USER_ENTITY)
-            .isPresent());
-    Assert.assertFalse(
+            .isEmpty());
+    Assert.assertTrue(
         skipVisitor
             .visitGrantRole(new AuthorTreePlan(ConfigPhysicalPlanType.GrantRole), FAKE_USER_ENTITY)
-            .isPresent());
-    Assert.assertFalse(
+            .isEmpty());
+    Assert.assertTrue(
         skipVisitor
             .visitRevokeRole(
                 new AuthorTreePlan(ConfigPhysicalPlanType.RevokeRole), FAKE_USER_ENTITY)
-            .isPresent());
+            .isEmpty());
 
     permissionManager.setUserPrivilege((userName, privilegeUnion) -> false);
     AuthorTreePlan plan = new AuthorTreePlan(ConfigPhysicalPlanType.GrantUser);
     plan.setUserName("");
-    Assert.assertTrue(skipVisitor.visitGrantUser(plan, FAKE_USER_ENTITY).isPresent());
-    Assert.assertTrue(skipVisitor.visitRevokeUser(plan, FAKE_USER_ENTITY).isPresent());
+    Assert.assertFalse(skipVisitor.visitGrantUser(plan, FAKE_USER_ENTITY).isEmpty());
+    Assert.assertFalse(skipVisitor.visitRevokeUser(plan, FAKE_USER_ENTITY).isEmpty());
     plan.setUserName("another");
-    Assert.assertFalse(skipVisitor.visitGrantUser(plan, FAKE_USER_ENTITY).isPresent());
-    Assert.assertFalse(skipVisitor.visitRevokeUser(plan, FAKE_USER_ENTITY).isPresent());
+    Assert.assertTrue(skipVisitor.visitGrantUser(plan, FAKE_USER_ENTITY).isEmpty());
+    Assert.assertTrue(skipVisitor.visitRevokeUser(plan, FAKE_USER_ENTITY).isEmpty());
 
     permissionManager.setUserPrivilege(
         (userName, privilegeUnion) ->
             privilegeUnion.getPrivilegeType() == PrivilegeType.MANAGE_ROLE);
-    Assert.assertFalse(
+    Assert.assertTrue(
         skipVisitor
             .visitGrantUser(new AuthorTreePlan(ConfigPhysicalPlanType.GrantUser), FAKE_USER_ENTITY)
-            .isPresent());
-    Assert.assertFalse(
+            .isEmpty());
+    Assert.assertTrue(
         skipVisitor
             .visitRevokeUser(
                 new AuthorTreePlan(ConfigPhysicalPlanType.RevokeUser), FAKE_USER_ENTITY)
-            .isPresent());
-    Assert.assertTrue(
+            .isEmpty());
+    Assert.assertFalse(
         skipVisitor
             .visitGrantRole(new AuthorTreePlan(ConfigPhysicalPlanType.GrantRole), FAKE_USER_ENTITY)
-            .isPresent());
-    Assert.assertTrue(
+            .isEmpty());
+    Assert.assertFalse(
         skipVisitor
             .visitRevokeRole(
                 new AuthorTreePlan(ConfigPhysicalPlanType.RevokeRole), FAKE_USER_ENTITY)
-            .isPresent());
+            .isEmpty());
 
     permissionManager.setUserPrivilege((userName, privilegeUnion) -> false);
     plan = new AuthorTreePlan(ConfigPhysicalPlanType.GrantUser);
     plan.setRoleName("");
-    Assert.assertTrue(skipVisitor.visitGrantRole(plan, FAKE_USER_ENTITY).isPresent());
-    Assert.assertTrue(skipVisitor.visitRevokeRole(plan, FAKE_USER_ENTITY).isPresent());
+    Assert.assertFalse(skipVisitor.visitGrantRole(plan, FAKE_USER_ENTITY).isEmpty());
+    Assert.assertFalse(skipVisitor.visitRevokeRole(plan, FAKE_USER_ENTITY).isEmpty());
     plan.setRoleName("another");
-    Assert.assertFalse(skipVisitor.visitGrantRole(plan, FAKE_USER_ENTITY).isPresent());
-    Assert.assertFalse(skipVisitor.visitRevokeRole(plan, FAKE_USER_ENTITY).isPresent());
+    Assert.assertTrue(skipVisitor.visitGrantRole(plan, FAKE_USER_ENTITY).isEmpty());
+    Assert.assertTrue(skipVisitor.visitRevokeRole(plan, FAKE_USER_ENTITY).isEmpty());
   }
 
   @Test
@@ -201,7 +206,7 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
                         skipVisitor
                             .visitPipeDeleteTimeSeries(
                                 new PipeDeleteTimeSeriesPlan(buffer), FAKE_USER_ENTITY)
-                            .get())
+                            .get(0))
                     .getPatternTreeBytes())
             .getAllPathPatterns());
     Assert.assertEquals(
@@ -211,7 +216,7 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
                         skipVisitor
                             .visitPipeDeleteLogicalView(
                                 new PipeDeleteLogicalViewPlan(buffer), FAKE_USER_ENTITY)
-                            .get())
+                            .get(0))
                     .getPatternTreeBytes())
             .getAllPathPatterns());
     Assert.assertEquals(
@@ -223,7 +228,7 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
                                 new PipeAlterEncodingCompressorPlan(
                                     buffer, (byte) 0, (byte) 0, false),
                                 FAKE_USER_ENTITY)
-                            .get())
+                            .get(0))
                     .getPatternTreeBytes())
             .getAllPathPatterns());
     Assert.assertThrows(
@@ -256,7 +261,7 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
                               }
                             }),
                         FAKE_USER_ENTITY)
-                    .get())
+                    .get(0))
             .getTemplateSetInfo()
             .keySet());
 
@@ -267,14 +272,14 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
                     .visitTTL(
                         new SetTTLPlan(new String[] {"root", "*", "device", "measurement"}, 100),
                         FAKE_USER_ENTITY)
-                    .get())
+                    .get(0))
             .getPathPattern());
-    Assert.assertFalse(
+    Assert.assertTrue(
         skipVisitor
             .visitTTL(
                 new SetTTLPlan(new String[] {"root", "db2", "device", "measurement"}, 100),
                 FAKE_USER_ENTITY)
-            .isPresent());
+            .isEmpty());
   }
 
   @Test
@@ -283,7 +288,7 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
         (SetTTLPlan)
             skipVisitor
                 .visitTTL(new SetTTLPlan(new String[] {"root", "db", "**"}, 100), FAKE_USER_ENTITY)
-                .orElseThrow(AssertionError::new);
+                .get(0);
 
     Assert.assertArrayEquals(
         new String[] {"root", "db", "device", "**"}, trimmedPlan.getPathPattern());
@@ -291,23 +296,78 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
   }
 
   @Test
-  public void testTTLSkipsMultipleAuthorizedPaths() {
+  public void testTTLTransfersMultipleAuthorizedPaths() {
     permissionManager.setAuthorizedPaths(
         List.of(
             new PartialPath(new String[] {"root", "db", "device1"}),
             new PartialPath(new String[] {"root", "db", "device2"})));
+    final SetTTLPlan plan = new SetTTLPlan(new String[] {"root", "db", "**"}, 100);
+    final List<ConfigPhysicalPlan> plans = skipVisitor.visitTTL(plan, FAKE_USER_ENTITY);
 
-    Assert.assertFalse(
-        skipVisitor
-            .visitTTL(new SetTTLPlan(new String[] {"root", "db", "**"}, 100), FAKE_USER_ENTITY)
-            .isPresent());
+    Assert.assertEquals(2, plans.size());
+    Assert.assertEquals(
+        new HashSet<>(Arrays.asList("root.db.device1", "root.db.device2")),
+        plans.stream()
+            .map(parsedPlan -> String.join(".", ((SetTTLPlan) parsedPlan).getPathPattern()))
+            .collect(Collectors.toSet()));
+    plans.forEach(parsedPlan -> Assert.assertEquals(100, ((SetTTLPlan) parsedPlan).getTTL()));
+    Assert.assertThrows(
+        AccessDeniedException.class, () -> throwVisitor.visitTTL(plan, FAKE_USER_ENTITY));
+  }
+
+  @Test
+  public void testTTLTrimsDatabaseCompatibilityPath() {
+    for (final long ttl : new long[] {100, -1}) {
+      final SetTTLPlan plan = new SetTTLPlan(new String[] {"root", "db"}, ttl);
+      plan.setDataBase(true);
+      final List<ConfigPhysicalPlan> plans = skipVisitor.visitTTL(plan, FAKE_USER_ENTITY);
+
+      Assert.assertEquals(1, plans.size());
+      final SetTTLPlan trimmed = (SetTTLPlan) plans.get(0);
+      Assert.assertArrayEquals(
+          new String[] {"root", "db", "device", "**"}, trimmed.getPathPattern());
+      Assert.assertEquals(ttl, trimmed.getTTL());
+      Assert.assertFalse(trimmed.isDataBase());
+      Assert.assertThrows(
+          AccessDeniedException.class, () -> throwVisitor.visitTTL(plan, FAKE_USER_ENTITY));
+      Assert.assertArrayEquals(new String[] {"root", "db"}, plan.getPathPattern());
+      Assert.assertTrue(plan.isDataBase());
+    }
+  }
+
+  @Test
+  public void testTTLRetainsFullyAuthorizedDatabasePlan() {
+    permissionManager.setAuthorizedPaths(
+        Collections.singletonList(new PartialPath(new String[] {"root", "db", "**"})));
+    final SetTTLPlan plan = new SetTTLPlan(new String[] {"root", "db"}, 100);
+    plan.setDataBase(true);
+
+    for (final PipeConfigTreePrivilegeParseVisitor visitor : List.of(skipVisitor, throwVisitor)) {
+      Assert.assertEquals(
+          Collections.singletonList(plan), visitor.visitTTL(plan, FAKE_USER_ENTITY));
+    }
+  }
+
+  @Test
+  public void testTTLDeduplicatesOverlappingAuthorizations() {
+    permissionManager.setAuthorizedPaths(
+        List.of(
+            new PartialPath(new String[] {"root", "db", "device", "**"}),
+            new PartialPath(new String[] {"root", "db", "device", "s1"})));
+    final List<ConfigPhysicalPlan> plans =
+        skipVisitor.visitTTL(
+            new SetTTLPlan(new String[] {"root", "db", "**"}, 100), FAKE_USER_ENTITY);
+
+    Assert.assertEquals(1, plans.size());
+    Assert.assertArrayEquals(
+        new String[] {"root", "db", "device", "**"}, ((SetTTLPlan) plans.get(0)).getPathPattern());
   }
 
   @Test
   public void testTTLSkipsAncestorOfAuthorizedPath() {
     final SetTTLPlan plan = new SetTTLPlan(new String[] {"root", "db"}, 100);
 
-    Assert.assertFalse(skipVisitor.visitTTL(plan, FAKE_USER_ENTITY).isPresent());
+    Assert.assertTrue(skipVisitor.visitTTL(plan, FAKE_USER_ENTITY).isEmpty());
     Assert.assertThrows(
         AccessDeniedException.class, () -> throwVisitor.visitTTL(plan, FAKE_USER_ENTITY));
   }
@@ -320,7 +380,7 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
 
     for (final PipeConfigTreePrivilegeParseVisitor visitor : List.of(skipVisitor, throwVisitor)) {
       final SetTTLPlan authorizedPlan =
-          (SetTTLPlan) visitor.visitTTL(plan, FAKE_USER_ENTITY).orElseThrow(AssertionError::new);
+          (SetTTLPlan) visitor.visitTTL(plan, FAKE_USER_ENTITY).get(0);
       Assert.assertArrayEquals(path, authorizedPlan.getPathPattern());
       Assert.assertEquals(100, authorizedPlan.getTTL());
     }
@@ -333,7 +393,7 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
             new SetTTLPlan(new String[] {"root", "db2", "device", "measurement"}, 100), false);
 
     final TestIoTDBConfigRegionSource skipSource = new TestIoTDBConfigRegionSource(true);
-    Assert.assertFalse(skipSource.trimRealtimeEventByPrivilege(unauthorizedTreeEvent).isPresent());
+    Assert.assertTrue(skipSource.trimRealtimeEventByPrivilege(unauthorizedTreeEvent).isEmpty());
 
     final PipeConfigRegionWritePlanEvent trimmedTreeEvent =
         (PipeConfigRegionWritePlanEvent)
@@ -342,7 +402,7 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
                     new PipeConfigRegionWritePlanEvent(
                         new SetTTLPlan(new String[] {"root", "*", "device", "measurement"}, 100),
                         false))
-                .get();
+                .get(0);
     Assert.assertArrayEquals(
         new String[] {"root", "db", "device", "measurement"},
         ((SetTTLPlan) trimmedTreeEvent.getConfigPhysicalPlan()).getPathPattern());
@@ -351,6 +411,42 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
     Assert.assertThrows(
         AccessDeniedException.class,
         () -> throwSource.trimRealtimeEventByPrivilege(unauthorizedTreeEvent));
+  }
+
+  @Test
+  public void testSourceTransfersAllAuthorizedTTLPlans() throws Exception {
+    permissionManager.setAuthorizedPaths(
+        List.of(
+            new PartialPath(new String[] {"root", "db", "device1"}),
+            new PartialPath(new String[] {"root", "db", "device2"})));
+    final TestIoTDBConfigRegionSource source = new TestIoTDBConfigRegionSource(true);
+    Assert.assertEquals(
+        2,
+        source
+            .trimRealtimeEventByPrivilege(
+                new PipeConfigRegionWritePlanEvent(
+                    new SetTTLPlan(new String[] {"root", "db", "**"}, 100), false))
+            .size());
+  }
+
+  @Test
+  public void testSourceTrimsDatabaseTTLAfterPipePattern() throws Exception {
+    final SetTTLPlan plan = new SetTTLPlan(new String[] {"root", "db"}, 100);
+    plan.setDataBase(true);
+    final ConfigPhysicalPlan parsedPlan =
+        IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
+            .visitTTL(plan, new IoTDBTreePattern("root.**"))
+            .orElseThrow(AssertionError::new);
+    Assert.assertTrue(((SetTTLPlan) parsedPlan).isDataBase());
+    final PipeConfigRegionWritePlanEvent trimmed =
+        (PipeConfigRegionWritePlanEvent)
+            new TestIoTDBConfigRegionSource(true)
+                .trimRealtimeEventByPrivilege(new PipeConfigRegionWritePlanEvent(parsedPlan, false))
+                .get(0);
+    Assert.assertArrayEquals(
+        new String[] {"root", "db", "device", "**"},
+        ((SetTTLPlan) trimmed.getConfigPhysicalPlan()).getPathPattern());
+    Assert.assertFalse(((SetTTLPlan) trimmed.getConfigPhysicalPlan()).isDataBase());
   }
 
   private static class TestIoTDBConfigRegionSource extends IoTDBConfigRegionSource {

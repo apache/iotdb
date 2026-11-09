@@ -477,6 +477,37 @@ public class PipeConfigTreePatternParseVisitorTest {
   }
 
   @Test
+  public void testSetDatabaseTTLTrimsToPipePattern() {
+    final SetTTLPlan plan = new SetTTLPlan(new String[] {"root", "db"}, 100);
+    plan.setDataBase(true);
+    final SetTTLPlan trimmed =
+        (SetTTLPlan)
+            IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
+                .visitTTL(plan, prefixPathPattern)
+                .orElseThrow(AssertionError::new);
+
+    Assert.assertArrayEquals(new String[] {"root", "db", "device", "**"}, trimmed.getPathPattern());
+    Assert.assertEquals(100, trimmed.getTTL());
+    Assert.assertFalse(trimmed.isDataBase());
+    Assert.assertArrayEquals(new String[] {"root", "db"}, plan.getPathPattern());
+    Assert.assertTrue(plan.isDataBase());
+  }
+
+  @Test
+  public void testSetDatabaseTTLRetainsCompatibilityFlag() {
+    final SetTTLPlan plan = new SetTTLPlan(new String[] {"root", "db"}, 100);
+    plan.setDataBase(true);
+    final SetTTLPlan parsed =
+        (SetTTLPlan)
+            IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
+                .visitTTL(plan, new IoTDBTreePattern("root.**"))
+                .orElseThrow(AssertionError::new);
+
+    Assert.assertEquals(plan, parsed);
+    Assert.assertNotSame(plan, parsed);
+  }
+
+  @Test
   public void testPipeAlterTimeSeries() throws IllegalPathException {
     final PipeAlterTimeSeriesPlan plan =
         ((PipeAlterTimeSeriesPlan)
