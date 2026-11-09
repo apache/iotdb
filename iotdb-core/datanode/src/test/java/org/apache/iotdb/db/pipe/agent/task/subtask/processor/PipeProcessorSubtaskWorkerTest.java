@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.agent.task.subtask.processor;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -28,6 +30,7 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager.TsFileParserMe
 
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
+import com.google.common.util.concurrent.MoreExecutors;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -36,18 +39,19 @@ import org.mockito.InOrder;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -90,8 +94,7 @@ public class PipeProcessorSubtaskWorkerTest {
         reservedBlockers[i] = true;
       }
       for (int i = 0; i < 5; i++) {
-        final PipeProcessorSubtaskWorker worker =
-            new PipeProcessorSubtaskWorker(new LinkedHashSet<>());
+        final PipeProcessorSubtaskWorker worker = newWorker(new LinkedHashSet<>());
         workers.add(worker);
         workerThreads.add(new AtomicReference<>());
       }
@@ -197,8 +200,7 @@ public class PipeProcessorSubtaskWorkerTest {
       config.setPipeTsFileParserInFlightMaxNumPerPipeRegion(1);
       blockerReserved = memoryManager.tryReserveTsFileParserMemory("blocker", 0, "0", blocker);
       Assert.assertTrue(blockerReserved);
-      final PipeProcessorSubtaskWorker worker =
-          new PipeProcessorSubtaskWorker(new LinkedHashSet<>());
+      final PipeProcessorSubtaskWorker worker = newWorker(new LinkedHashSet<>());
       final PipeProcessorSubtask subtask = createRunnableSubtask("waitingPipe");
       when(subtask.isWaitingForTsFileParserMemory())
           .thenAnswer(ignored -> request.isWaitingForSignal());
@@ -236,7 +238,7 @@ public class PipeProcessorSubtaskWorkerTest {
 
   @Test(timeout = 10000)
   public void testNotificationBeforeIdleWaitIsNotLost() throws Exception {
-    final PipeProcessorSubtaskWorker worker = new PipeProcessorSubtaskWorker(new LinkedHashSet<>());
+    final PipeProcessorSubtaskWorker worker = newWorker(new LinkedHashSet<>());
     worker.setSleepingTimeInMilliSecond(60000L);
     final PipeProcessorSubtask subtask = createRunnableSubtask("waitingPipe");
     final AtomicReference<Runnable> wakeUpCallback = new AtomicReference<>();
@@ -269,10 +271,8 @@ public class PipeProcessorSubtaskWorkerTest {
     final boolean[] reservedBlockers = new boolean[2];
     final TsFileParserMemoryReservation first = new TsFileParserMemoryReservation();
     final TsFileParserMemoryReservation second = new TsFileParserMemoryReservation();
-    final PipeProcessorSubtaskWorker firstWorker =
-        new PipeProcessorSubtaskWorker(new LinkedHashSet<>());
-    final PipeProcessorSubtaskWorker secondWorker =
-        new PipeProcessorSubtaskWorker(new LinkedHashSet<>());
+    final PipeProcessorSubtaskWorker firstWorker = newWorker(new LinkedHashSet<>());
+    final PipeProcessorSubtaskWorker secondWorker = newWorker(new LinkedHashSet<>());
     final CountDownLatch firstWorkerBusy = new CountDownLatch(1);
     final CountDownLatch unblockFirstWorker = new CountDownLatch(1);
     final CountDownLatch secondAdmitted = new CountDownLatch(1);
@@ -386,7 +386,7 @@ public class PipeProcessorSubtaskWorkerTest {
 
   @Test
   public void testYieldingPipesDoNotBlockAnotherPipeOnSameWorker() throws Exception {
-    final PipeProcessorSubtaskWorker worker = new PipeProcessorSubtaskWorker(new LinkedHashSet<>());
+    final PipeProcessorSubtaskWorker worker = newWorker(new LinkedHashSet<>());
     final PipeProcessorSubtask stoppedPipe = createRunnableSubtask("stoppedPipe");
     final PipeProcessorSubtask parserWaitingPipe = createRunnableSubtask("parserWaitingPipe");
     final PipeProcessorSubtask runningPipe = createRunnableSubtask("runningPipe");
@@ -415,7 +415,7 @@ public class PipeProcessorSubtaskWorkerTest {
 
   @Test
   public void testLongRunningEventReportIsRateLimited() {
-    final PipeProcessorSubtaskWorker worker = new PipeProcessorSubtaskWorker(new LinkedHashSet<>());
+    final PipeProcessorSubtaskWorker worker = newWorker(new LinkedHashSet<>());
     final long startTimeInNanos = 100;
     final PipeProcessorSubtask.EventProcessingContext context =
         new PipeProcessorSubtask.EventProcessingContext(
@@ -477,11 +477,156 @@ public class PipeProcessorSubtaskWorkerTest {
     final ListeningScheduledExecutorService watcherScheduledExecutor =
         mock(ListeningScheduledExecutorService.class);
 
-    new PipeProcessorSubtaskWorkerManager(workerThreadPoolExecutor, watcherScheduledExecutor);
+    final PipeProcessorSubtaskWorkerManager manager =
+        new PipeProcessorSubtaskWorkerManager(workerThreadPoolExecutor, watcherScheduledExecutor);
 
-    verify(workerThreadPoolExecutor, atLeastOnce()).submit(any(Runnable.class));
+    // Workers are started on demand, so no worker thread is submitted until a subtask is
+    // scheduled to the manager.
+    for (int i = 0; i < manager.getWorkerNumber(); ++i) {
+      Assert.assertFalse(manager.getWorker(i).isRunning());
+    }
+    verify(workerThreadPoolExecutor, never()).submit(any(Runnable.class));
     verify(watcherScheduledExecutor)
         .scheduleWithFixedDelay(any(Runnable.class), eq(1L), eq(1L), eq(TimeUnit.MINUTES));
+
+    final PipeProcessorSubtask subtask = createRunnableSubtask("scheduledSubtask");
+    manager.schedule(subtask);
+    verify(subtask).setWorkerWakeUpCallback(any(Runnable.class));
+    verify(workerThreadPoolExecutor, times(1)).submit(any(Runnable.class));
+    Assert.assertTrue(manager.getWorker(0).isRunning());
+  }
+
+  @Test(timeout = 60000)
+  @SuppressWarnings("unsafeThreadSchedule")
+  public void testWorkerThreadIsReleasedWhenIdleAndStartedAgainOnDemand() throws Exception {
+    final WrappedThreadPoolExecutor executor =
+        (WrappedThreadPoolExecutor)
+            IoTDBThreadPoolFactory.newFixedThreadPoolWithIdleThreadTimeout(
+                2, 100, TimeUnit.MILLISECONDS, "Pipe-Processor-Worker-Test-" + System.nanoTime());
+    final ListeningExecutorService listeningExecutor = MoreExecutors.listeningDecorator(executor);
+    try {
+      final PipeProcessorSubtaskWorker worker = new PipeProcessorSubtaskWorker(listeningExecutor);
+      worker.setSleepingTimeInMilliSecond(10);
+      Assert.assertFalse(worker.isRunning());
+      Assert.assertEquals(0, executor.getPoolSize());
+
+      final AtomicInteger calls = new AtomicInteger();
+      final PipeProcessorSubtask subtask = createRunnableSubtask("subtask");
+      doAnswer(
+              invocation -> {
+                calls.incrementAndGet();
+                return false;
+              })
+          .when(subtask)
+          .call();
+      worker.schedule(subtask);
+
+      await().atMost(10, TimeUnit.SECONDS).until(() -> worker.isRunning());
+      await().atMost(10, TimeUnit.SECONDS).until(() -> calls.get() > 0);
+      Assert.assertEquals(1, executor.getPoolSize());
+
+      // Close the only subtask of this worker. Both the worker and its thread should be released
+      // instead of being kept alive until the whole subtask executor is shut down.
+      when(subtask.isClosed()).thenReturn(true);
+      await().atMost(10, TimeUnit.SECONDS).until(() -> !worker.isRunning());
+      await().atMost(10, TimeUnit.SECONDS).until(() -> executor.getPoolSize() == 0);
+
+      // A newly scheduled subtask must start a new worker thread.
+      final AtomicInteger restartedCalls = new AtomicInteger();
+      final PipeProcessorSubtask restartedSubtask = createRunnableSubtask("restartedSubtask");
+      doAnswer(
+              invocation -> {
+                restartedCalls.incrementAndGet();
+                return false;
+              })
+          .when(restartedSubtask)
+          .call();
+      worker.schedule(restartedSubtask);
+
+      await().atMost(10, TimeUnit.SECONDS).until(() -> worker.isRunning());
+      await().atMost(10, TimeUnit.SECONDS).until(() -> restartedCalls.get() > 0);
+      Assert.assertEquals(1, executor.getPoolSize());
+
+      when(restartedSubtask.isClosed()).thenReturn(true);
+      await().atMost(10, TimeUnit.SECONDS).until(() -> !worker.isRunning());
+      await().atMost(10, TimeUnit.SECONDS).until(() -> executor.getPoolSize() == 0);
+    } finally {
+      executor.shutdownNow();
+      Assert.assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+    }
+  }
+
+  @Test(timeout = 30000)
+  public void testConcurrentSchedulesSubmitAtMostOneWorker() throws Exception {
+    final ListeningExecutorService executor = mock(ListeningExecutorService.class);
+    final AtomicInteger submissions = new AtomicInteger();
+    doAnswer(
+            invocation -> {
+              submissions.incrementAndGet();
+              return null;
+            })
+        .when(executor)
+        .submit(any(Runnable.class));
+
+    final PipeProcessorSubtaskWorker worker = new PipeProcessorSubtaskWorker(executor);
+    final int threadNum = 16;
+    final ExecutorService scheduleExecutor = Executors.newFixedThreadPool(threadNum);
+    try {
+      // Concurrent schedules must result in exactly one worker submission.
+      final List<PipeProcessorSubtask> subtasks = new ArrayList<>();
+      final CountDownLatch start = new CountDownLatch(1);
+      final List<Future<?>> futures = new ArrayList<>();
+      for (int i = 0; i < threadNum; ++i) {
+        final PipeProcessorSubtask subtask = createRunnableSubtask("concurrentSubtask" + i);
+        subtasks.add(subtask);
+        futures.add(
+            scheduleExecutor.submit(
+                () -> {
+                  start.await();
+                  worker.schedule(subtask);
+                  return null;
+                }));
+      }
+      start.countDown();
+      for (final Future<?> future : futures) {
+        future.get(10, TimeUnit.SECONDS);
+      }
+      Assert.assertEquals(1, submissions.get());
+
+      // Let the simulated worker exit because all its subtasks are closed.
+      for (final PipeProcessorSubtask subtask : subtasks) {
+        when(subtask.isClosed()).thenReturn(true);
+      }
+      worker.runMayThrow();
+      Assert.assertFalse(worker.isRunning());
+
+      // Concurrent schedules after the worker has exited must start exactly one new worker.
+      final CountDownLatch restart = new CountDownLatch(1);
+      futures.clear();
+      for (int i = 0; i < threadNum; ++i) {
+        final PipeProcessorSubtask subtask = createRunnableSubtask("restartSubtask" + i);
+        futures.add(
+            scheduleExecutor.submit(
+                () -> {
+                  restart.await();
+                  worker.schedule(subtask);
+                  return null;
+                }));
+      }
+      restart.countDown();
+      for (final Future<?> future : futures) {
+        future.get(10, TimeUnit.SECONDS);
+      }
+      Assert.assertEquals(2, submissions.get());
+      Assert.assertTrue(worker.isRunning());
+    } finally {
+      scheduleExecutor.shutdownNow();
+      Assert.assertTrue(scheduleExecutor.awaitTermination(10, TimeUnit.SECONDS));
+    }
+  }
+
+  private static PipeProcessorSubtaskWorker newWorker(final Set<PipeProcessorSubtask> subtasks) {
+    return new PipeProcessorSubtaskWorker(subtasks, mock(ListeningExecutorService.class));
   }
 
   private PipeProcessorSubtask createRunnableSubtask(final String mockName) {
