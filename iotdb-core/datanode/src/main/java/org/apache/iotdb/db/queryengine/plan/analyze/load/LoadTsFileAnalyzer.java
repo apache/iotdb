@@ -485,30 +485,12 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
       if (isTableModelFile) {
         final SessionInfo newSessionInfo =
-            new SessionInfo(
-                sessionInfo.getSessionId(),
-                sessionInfo.getUserEntity(),
-                sessionInfo.getZoneId(),
-                sessionInfo.getVersion(),
-                sessionInfo.getDatabaseName().orElse(null),
-                SqlDialect.TABLE,
-                sessionInfo.isEnableAutoCreateSchema());
-        newSessionInfo.setDatabaseInternalSession(sessionInfo.isDatabaseInternalSession());
-        newSessionInfo.setInternalRpcSession(sessionInfo.isInternalRpcSession());
+            new SessionInfo(sessionInfo, sessionInfo.getZoneId(), SqlDialect.TABLE);
         context.setSession(newSessionInfo);
         doAnalyzeSingleTableFile(tsFile, reader, timeseriesMetadataIterator, tableSchemaMap);
       } else {
         final SessionInfo newSessionInfo =
-            new SessionInfo(
-                sessionInfo.getSessionId(),
-                sessionInfo.getUserEntity(),
-                sessionInfo.getZoneId(),
-                sessionInfo.getVersion(),
-                sessionInfo.getDatabaseName().orElse(null),
-                SqlDialect.TREE,
-                sessionInfo.isEnableAutoCreateSchema());
-        newSessionInfo.setDatabaseInternalSession(sessionInfo.isDatabaseInternalSession());
-        newSessionInfo.setInternalRpcSession(sessionInfo.isInternalRpcSession());
+            new SessionInfo(sessionInfo, sessionInfo.getZoneId(), SqlDialect.TREE);
         context.setSession(newSessionInfo);
         doAnalyzeSingleTreeFile(tsFile, reader, timeseriesMetadataIterator);
       }

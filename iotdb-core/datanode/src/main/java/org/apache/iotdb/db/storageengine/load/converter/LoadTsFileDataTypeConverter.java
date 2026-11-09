@@ -259,8 +259,6 @@ public class LoadTsFileDataTypeConverter {
             databaseName,
             SqlDialect.TABLE,
             allowAutoCreateSchema && session.isEnableAutoCreateSchema());
-    sessionInfo.setDatabaseInternalSession(isDatabaseInternalSessionContext());
-    sessionInfo.setInternalRpcSession(isInternalRpcSessionContext());
     try {
       return Coordinator.getInstance()
           .executeForTableModel(
@@ -332,8 +330,6 @@ public class LoadTsFileDataTypeConverter {
                 && (Objects.isNull(context)
                     || Objects.isNull(context.getSession())
                     || context.getSession().isEnableAutoCreateSchema()));
-    sessionInfo.setDatabaseInternalSession(isDatabaseInternalSessionContext());
-    sessionInfo.setInternalRpcSession(isInternalRpcSessionContext());
 
     try {
       return Coordinator.getInstance()
@@ -360,17 +356,5 @@ public class LoadTsFileDataTypeConverter {
         && (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
             || status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
             || status.getCode() == TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode());
-  }
-
-  private boolean isDatabaseInternalSessionContext() {
-    return Objects.nonNull(context)
-        && Objects.nonNull(context.getSession())
-        && context.getSession().isDatabaseInternalSession();
-  }
-
-  private boolean isInternalRpcSessionContext() {
-    return Objects.nonNull(context)
-        && Objects.nonNull(context.getSession())
-        && context.getSession().isInternalRpcSession();
   }
 }

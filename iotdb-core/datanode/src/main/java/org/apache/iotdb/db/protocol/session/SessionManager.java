@@ -606,17 +606,7 @@ public class SessionManager implements SessionManagerMBean {
   // Sometimes we need to switch from table model to tree model,
   // e.g., when loading a tree model TsFile under table model dialect.
   public SessionInfo copySessionInfoForTreeModel(final SessionInfo sessionInfo) {
-    final SessionInfo copiedSessionInfo =
-        new SessionInfo(
-            sessionInfo.getSessionId(),
-            sessionInfo.getUserEntity(),
-            ZoneId.systemDefault(),
-            sessionInfo.getVersion(),
-            sessionInfo.getDatabaseName().orElse(null),
-            SqlDialect.TREE);
-    copiedSessionInfo.setDatabaseInternalSession(sessionInfo.isDatabaseInternalSession());
-    copiedSessionInfo.setInternalRpcSession(sessionInfo.isInternalRpcSession());
-    return copiedSessionInfo;
+    return new SessionInfo(sessionInfo, ZoneId.systemDefault(), SqlDialect.TREE);
   }
 
   public SessionInfo getSessionInfoOfTreeModel(IClientSession session) {

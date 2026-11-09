@@ -438,15 +438,7 @@ public class Coordinator {
       // The fragment planner selects its operators using the query's session dialect.
       final SessionInfo session = queryContext.getSession();
       final SessionInfo tableSessionInfo =
-          new SessionInfo(
-              session.getSessionId(),
-              session.getUserEntity(),
-              session.getZoneId(),
-              session.getVersion(),
-              session.getDatabaseName().orElse(null),
-              SqlDialect.TABLE);
-      tableSessionInfo.setDatabaseInternalSession(session.isDatabaseInternalSession());
-      tableSessionInfo.setInternalRpcSession(session.isInternalRpcSession());
+          new SessionInfo(session, session.getZoneId(), SqlDialect.TABLE);
       queryContext.setSession(tableSessionInfo);
       return createQueryExecutionForTableModel(
           statement,

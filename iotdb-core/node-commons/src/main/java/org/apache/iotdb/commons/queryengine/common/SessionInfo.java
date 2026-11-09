@@ -103,6 +103,19 @@ public class SessionInfo {
     this.enableAutoCreateSchema = enableAutoCreateSchema;
   }
 
+  public SessionInfo(
+      final SessionInfo sessionInfo, final ZoneId zoneId, final SqlDialect sqlDialect) {
+    this(
+        sessionInfo.sessionId,
+        sessionInfo.userEntity,
+        zoneId,
+        sessionInfo.version,
+        sessionInfo.databaseName,
+        sqlDialect,
+        sessionInfo.enableAutoCreateSchema);
+    this.internalRpcSession = sessionInfo.internalRpcSession;
+  }
+
   @TestOnly
   public SessionInfo(long sessionId, String username, ZoneId zoneId) {
     this(sessionId, new UserEntity(-1, username, ""), zoneId, null, SqlDialect.TREE);
