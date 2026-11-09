@@ -52,19 +52,28 @@ public class PageIOChannel {
     this.channel = channel;
     this.pmtFile = pmtFile;
     this.readChannel = FileChannel.open(pmtFile.toPath(), StandardOpenOption.READ);
-    if (flushWithLogging) {
-      // without RATIS, utilize physical logging for integrity
-      int pageAcc = (int) recoverFromLog(logPath) / SchemaFileConfig.PAGE_LENGTH;
-      this.logWriter = new SchemaFileLogWriter(logPath);
-      logCounter = new AtomicInteger(pageAcc);
-      flushDirtyPagesStrategy = this::flushDirtyPagesWithLogging;
-      singlePageFlushStrategy = this::flushSinglePageWithLogging;
-    } else {
-      // with RATIS enabled, integrity is guaranteed by consensus protocol
-      logCounter = new AtomicInteger();
-      logWriter = null;
-      flushDirtyPagesStrategy = this::flushDirtyPagesWithoutLogging;
-      singlePageFlushStrategy = this::flushSinglePageWithoutLogging;
+    try {
+      if (flushWithLogging) {
+        // without RATIS, utilize physical logging for integrity
+        int pageAcc = (int) recoverFromLog(logPath) / SchemaFileConfig.PAGE_LENGTH;
+        this.logWriter = new SchemaFileLogWriter(logPath);
+        logCounter = new AtomicInteger(pageAcc);
+        flushDirtyPagesStrategy = this::flushDirtyPagesWithLogging;
+        singlePageFlushStrategy = this::flushSinglePageWithLogging;
+      } else {
+        // with RATIS enabled, integrity is guaranteed by consensus protocol
+        logCounter = new AtomicInteger();
+        logWriter = null;
+        flushDirtyPagesStrategy = this::flushDirtyPagesWithoutLogging;
+        singlePageFlushStrategy = this::flushSinglePageWithoutLogging;
+      }
+    } catch (IOException | MetadataException e) {
+      try {
+        close();
+      } catch (IOException closeException) {
+        e.addSuppressed(closeException);
+      }
+      throw e;
     }
   }
 
@@ -74,9 +83,26 @@ public class PageIOChannel {
     }
   }
 
-  public void closeLogWriter() throws IOException {
+  public void close() throws IOException {
+    IOException failure = null;
     if (logWriter != null) {
-      logWriter.close();
+      try {
+        logWriter.close();
+      } catch (IOException e) {
+        failure = e;
+      }
+    }
+    try {
+      readChannel.close();
+    } catch (IOException e) {
+      if (failure == null) {
+        failure = e;
+      } else {
+        failure.addSuppressed(e);
+      }
+    }
+    if (failure != null) {
+      throw failure;
     }
   }
 
@@ -84,11 +110,21 @@ public class PageIOChannel {
   private long recoverFromLog(String logPath) throws IOException, MetadataException {
     SchemaFileLogReader reader = new SchemaFileLogReader(logPath);
     ISchemaPage page;
-    List<byte[]> res = reader.collectUpdatedEntries();
-    for (byte[] entry : res) {
-      // TODO check bytes semantic correctness with CRC32 or other way
-      page = ISchemaPage.loadSchemaPage(ByteBuffer.wrap(entry));
-      page.flushPageToChannel(this.channel);
+    List<byte[]> res;
+    try {
+      res = reader.collectUpdatedEntries();
+      for (byte[] entry : res) {
+        // TODO check bytes semantic correctness with CRC32 or other way
+        page = ISchemaPage.loadSchemaPage(ByteBuffer.wrap(entry));
+        page.flushPageToChannel(this.channel);
+      }
+    } catch (IOException | MetadataException e) {
+      try {
+        reader.close();
+      } catch (IOException closeException) {
+        e.addSuppressed(closeException);
+      }
+      throw e;
     }
     reader.close();
 

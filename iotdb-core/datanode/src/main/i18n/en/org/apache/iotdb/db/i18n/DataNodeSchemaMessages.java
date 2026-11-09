@@ -294,6 +294,11 @@ public final class DataNodeSchemaMessages {
       "PBTree File [{}] will be overwritten since already exists.";
   public static final String SCHEMA_FILE_WRONG_VERSION =
       "SchemaFile with wrong version, please check or upgrade.";
+  public static final String
+      EXCEPTION_SCHEMA_FILE_HEADER_WRITE_MADE_NO_PROGRESS_9AECE235 =
+          "Schema file header write made no progress";
+  public static final String EXCEPTION_SCHEMA_PAGE_WRITE_MADE_NO_PROGRESS_E79C13A1 =
+      "Schema page write made no progress";
   public static final String NODE_NO_CHILD_IN_PBTREE = "Node [%s] has no child in pbtree file.";
   public static final String SCHEMA_FILE_INSPECTED = "SchemaFile[%s] had been inspected.";
   public static final String FAILED_TO_CREATE_SCHEMA_FILE_SNAPSHOT =

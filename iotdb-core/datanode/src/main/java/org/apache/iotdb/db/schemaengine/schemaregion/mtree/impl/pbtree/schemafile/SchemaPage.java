@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafi
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -106,7 +107,15 @@ public abstract class SchemaPage implements ISchemaPage {
   @Override
   public void flushPageToChannel(FileChannel channel) throws IOException {
     this.pageBuffer.clear();
-    channel.write(pageBuffer, SchemaFile.getPageAddress(pageIndex));
+    long position = SchemaFile.getPageAddress(pageIndex);
+    while (pageBuffer.hasRemaining()) {
+      int written = channel.write(pageBuffer, position);
+      if (written <= 0) {
+        throw new IOException(
+            DataNodeSchemaMessages.EXCEPTION_SCHEMA_PAGE_WRITE_MADE_NO_PROGRESS_E79C13A1);
+      }
+      position += written;
+    }
     dirtyFlag = false;
   }
 

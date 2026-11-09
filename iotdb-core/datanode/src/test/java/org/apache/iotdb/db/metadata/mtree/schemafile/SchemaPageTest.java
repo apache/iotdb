@@ -20,9 +20,11 @@ package org.apache.iotdb.db.metadata.mtree.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaPage;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.RecordUtils;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFile;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaPage;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
@@ -38,6 +40,14 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class SchemaPageTest {
 
@@ -52,6 +62,107 @@ public class SchemaPageTest {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+  }
+
+  @Test
+  public void testFlushPageHandlesShortWrites() throws Exception {
+    ByteBuffer buffer = ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH);
+    for (int i = 0; i < buffer.capacity(); i++) {
+      buffer.put((byte) i);
+    }
+    ISchemaPage page = ISchemaPage.initSegmentedPage(buffer, 3);
+    page.syncPageBuffer();
+    page.setDirtyFlag();
+    byte[] expected = buffer.array().clone();
+    ByteBuffer persisted = ByteBuffer.allocate(buffer.capacity());
+    FileChannel channel = mock(FileChannel.class);
+    when(channel.write(any(ByteBuffer.class), anyLong()))
+        .thenAnswer(
+            invocation -> {
+              ByteBuffer source = invocation.getArgument(0);
+              long position = invocation.getArgument(1);
+              Assert.assertEquals(SchemaFile.getPageAddress(3) + persisted.position(), position);
+              Assert.assertTrue(page.isDirtyPage());
+              int written = Math.min(4093, source.remaining());
+              for (int i = 0; i < written; i++) {
+                persisted.put(source.get());
+              }
+              return written;
+            });
+
+    page.flushPageToChannel(channel);
+
+    Assert.assertEquals(buffer.capacity(), persisted.position());
+    Assert.assertArrayEquals(expected, persisted.array());
+    Assert.assertFalse(page.isDirtyPage());
+  }
+
+  @Test
+  public void testFlushPageWithNoProgressKeepsDirtyFlag() throws Exception {
+    ISchemaPage page =
+        ISchemaPage.initSegmentedPage(ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), 1);
+    page.setDirtyFlag();
+    FileChannel channel = mock(FileChannel.class);
+    when(channel.write(any(ByteBuffer.class), anyLong()))
+        .thenAnswer(
+            invocation -> {
+              ByteBuffer source = invocation.getArgument(0);
+              source.position(source.position() + 3);
+              return 3;
+            })
+        .thenReturn(0)
+        .thenThrow(new IOException("Page write was retried after making no progress"));
+
+    try {
+      page.flushPageToChannel(channel);
+      Assert.fail("Page write with no progress must fail");
+    } catch (IOException e) {
+      Assert.assertEquals(
+          DataNodeSchemaMessages.EXCEPTION_SCHEMA_PAGE_WRITE_MADE_NO_PROGRESS_E79C13A1,
+          e.getMessage());
+    }
+    verify(channel, times(2)).write(any(ByteBuffer.class), anyLong());
+    Assert.assertTrue(page.isDirtyPage());
+  }
+
+  @Test
+  public void testFlushPageRetriesWholePageAfterWriteFailure() throws Exception {
+    ISchemaPage page =
+        ISchemaPage.initSegmentedPage(ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), 2);
+    page.setDirtyFlag();
+    FileChannel channel = mock(FileChannel.class);
+    IOException failure = new IOException("Injected page write failure");
+    when(channel.write(any(ByteBuffer.class), anyLong()))
+        .thenAnswer(
+            invocation -> {
+              ByteBuffer source = invocation.getArgument(0);
+              source.position(source.position() + 3);
+              return 3;
+            })
+        .thenThrow(failure)
+        .thenAnswer(
+            invocation -> {
+              ByteBuffer source = invocation.getArgument(0);
+              Assert.assertEquals(SchemaFile.getPageAddress(2), (long) invocation.getArgument(1));
+              Assert.assertEquals(SchemaFileConfig.PAGE_LENGTH, source.remaining());
+              Assert.assertTrue(page.isDirtyPage());
+              int written = source.remaining();
+              source.position(source.limit());
+              return written;
+            });
+
+    try {
+      page.flushPageToChannel(channel);
+      Assert.fail("Page write failure must be reported");
+    } catch (IOException e) {
+      Assert.assertSame(failure, e);
+    }
+    Assert.assertTrue(page.isDirtyPage());
+
+    page.flushPageToChannel(channel);
+
+    verify(channel, times(3)).write(any(ByteBuffer.class), anyLong());
+    Assert.assertFalse(page.isDirtyPage());
   }
 
   @Test
