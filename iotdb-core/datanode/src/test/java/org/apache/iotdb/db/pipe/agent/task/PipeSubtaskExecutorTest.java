@@ -124,8 +124,9 @@ public abstract class PipeSubtaskExecutorTest {
    */
   @Test
   public void testStartWithRejectedSubmission() {
-    executor.register(subtask);
+    // Processor registration starts workers that also invoke this spy. Stub it before sharing it.
     Mockito.doThrow(new RejectedExecutionException()).when(subtask).submitSelf();
+    executor.register(subtask);
 
     try {
       executor.start(subtask.getTaskID());
