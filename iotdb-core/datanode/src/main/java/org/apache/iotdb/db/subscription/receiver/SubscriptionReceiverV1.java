@@ -576,6 +576,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     final Map<Integer, TEndPoint> endPoints = new HashMap<>();
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final IClientSession currentSession = SessionManager.getInstance().getCurrSession();
+      final boolean internalRpcSession =
+          Objects.nonNull(currentSession) && currentSession.isInternalRpcSession();
       final TShowDataNodesResp resp = configNodeClient.showDataNodes();
       // refer to org.apache.iotdb.session.NodesSupplier.updateDataNodeList
 
@@ -584,10 +587,25 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         if (Objects.equals(NodeStatus.Removing.getStatus(), dataNodeInfo.getStatus())) {
           continue;
         }
-        final String ip = dataNodeInfo.getRpcAddresss();
-        final int port = dataNodeInfo.getRpcPort();
-        if (ip != null && port != 0) {
-          endPoints.put(dataNodeInfo.getDataNodeId(), new TEndPoint(ip, port));
+        if (internalRpcSession) {
+          final TEndPoint internalRpcEndPoint = dataNodeInfo.getInternalRpcEndPoint();
+          if (Objects.isNull(internalRpcEndPoint)
+              || Objects.isNull(internalRpcEndPoint.getIp())
+              || internalRpcEndPoint.getIp().isEmpty()
+              || internalRpcEndPoint.getPort() <= 0) {
+            throw new SubscriptionException(
+                String.format(
+                    DataNodePipeMessages
+                        .EXCEPTION_INTERNAL_SUBSCRIPTION_ENDPOINT_DISCOVERY_FAILED_BECAUSE_DATANODE_ARG_DID_NOT_REPORT_AN_INTERNAL_RPC_ENDPOINT_45E4D232,
+                    dataNodeInfo.getDataNodeId()));
+          }
+          endPoints.put(dataNodeInfo.getDataNodeId(), internalRpcEndPoint);
+        } else {
+          final String ip = dataNodeInfo.getRpcAddresss();
+          final int port = dataNodeInfo.getRpcPort();
+          if (ip != null && port != 0) {
+            endPoints.put(dataNodeInfo.getDataNodeId(), new TEndPoint(ip, port));
+          }
         }
       }
     } catch (final ClientManagerException | TException e) {

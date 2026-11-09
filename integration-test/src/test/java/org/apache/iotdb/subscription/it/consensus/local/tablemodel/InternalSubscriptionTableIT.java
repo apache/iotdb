@@ -96,6 +96,7 @@ public class InternalSubscriptionTableIT extends AbstractSubscriptionIT {
         ConsensusSubscriptionTableITSupport.newIdentifiers("internal_pull_consumer");
     final String database = identifiers.getDatabase();
     final INodeSupplier nodeSupplier = InternalSessionITUtils.createInternalNodeSupplier();
+    final TEndPoint internalSeedEndPoint = nodeSupplier.getQueryEndPoint().orElseThrow();
     SubscriptionTablePullConsumer consumer = null;
 
     try {
@@ -105,7 +106,9 @@ public class InternalSubscriptionTableIT extends AbstractSubscriptionIT {
 
       consumer =
           (SubscriptionTablePullConsumer)
-              new InternalSubscriptionTablePullConsumerBuilder(nodeSupplier)
+              new InternalSubscriptionTablePullConsumerBuilder()
+                  .host(internalSeedEndPoint.getIp())
+                  .port(internalSeedEndPoint.getPort())
                   .consumerId(identifiers.getConsumerId())
                   .consumerGroupId(identifiers.getConsumerGroupId())
                   .autoCommit(false)

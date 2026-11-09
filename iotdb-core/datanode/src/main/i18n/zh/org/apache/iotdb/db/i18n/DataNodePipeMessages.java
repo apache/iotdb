@@ -2878,6 +2878,9 @@ public final class DataNodePipeMessages {
       EXCEPTION_SUBSCRIPTION_FAILED_TO_FETCH_ENDPOINTS_FOR_CONSUMER_ARG_IN_CONFIG_NODE_EXCEPTION_IS_ARG_267904CB =
           "Subscription：在 ConfigNode 中为 consumer %s 获取节点端点失败，异常：%s。";
   public static final String
+      EXCEPTION_INTERNAL_SUBSCRIPTION_ENDPOINT_DISCOVERY_FAILED_BECAUSE_DATANODE_ARG_DID_NOT_REPORT_AN_INTERNAL_RPC_ENDPOINT_45E4D232 =
+          "内部订阅 endpoint 发现失败，DataNode %d 未上报 internal RPC endpoint";
+  public static final String
       MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_SUBSCRIBING_WITH_REQUEST_ARG_ARG_084648A4 =
           "Subscription：处理 subscribe 请求 %s 时发生意外错误：%s";
   public static final String

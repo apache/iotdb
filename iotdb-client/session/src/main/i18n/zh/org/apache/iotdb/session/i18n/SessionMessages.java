@@ -27,6 +27,9 @@ public final class SessionMessages {
   public static final String EXCEPTION_AN_INTERNAL_NODE_SUPPLIER_IS_REQUIRED_WHEN_AUTO_FETCH_IS_ENABLED_9CB6BA02 =
       "启用自动发现时，内部节点 supplier 不能为空";
 
+  public static final String EXCEPTION_AN_INTERNAL_SUBSCRIPTION_PULL_CONSUMER_REQUIRES_AN_EXPLICIT_HOST_AND_PORT_7B82801E =
+      "内部订阅拉取消费者必须显式指定 host 和 port";
+
   // Session
   public static final String NODE_URLS_EMPTY = "nodeUrls 不能为空。";
   public static final String REDIRECT_TWICE_LOG = "重定向了两次";

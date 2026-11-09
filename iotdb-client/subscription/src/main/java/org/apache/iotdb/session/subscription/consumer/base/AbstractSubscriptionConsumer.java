@@ -20,7 +20,6 @@
 package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
@@ -598,11 +597,6 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   }
 
   /////////////////////////////// subscription provider ///////////////////////////////
-
-  /** Returns the complete internal endpoint source, or null to use server discovery. */
-  protected INodeSupplier getInternalNodeSupplier() {
-    return null;
-  }
 
   /** Returns the multiplexed client RPC service name for internal providers. */
   protected String getRpcServiceName() {

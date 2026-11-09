@@ -19,37 +19,25 @@
 
 package org.apache.iotdb.commons.client.internal.subscription;
 
-import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.session.i18n.SessionMessages;
 import org.apache.iotdb.session.subscription.consumer.ISubscriptionTablePullConsumer;
 import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePullConsumerBuilder;
 
-import java.util.Objects;
-
 /**
  * Server-side builder for table subscription pull consumers.
  *
- * <p>Callers sharing an external {@link INodeSupplier} must return {@code true} from {@link
- * INodeSupplier#isExternalLifeCycleNodeSupplier()}.
+ * <p>Callers must configure an explicit internal RPC seed endpoint with host and port.
  */
 public class InternalSubscriptionTablePullConsumerBuilder
     extends SubscriptionTablePullConsumerBuilder {
 
-  private final INodeSupplier nodeSupplier;
-
-  public InternalSubscriptionTablePullConsumerBuilder() {
-    this.nodeSupplier = null;
-  }
-
-  public InternalSubscriptionTablePullConsumerBuilder(final INodeSupplier nodeSupplier) {
-    this.nodeSupplier =
-        Objects.requireNonNull(
-            nodeSupplier,
-            SessionMessages.EXCEPTION_INTERNAL_NODE_SUPPLIER_MUST_NOT_BE_NULL_C5CAF392);
-  }
-
   @Override
   protected ISubscriptionTablePullConsumer createConsumer() {
-    return new InternalSubscriptionTablePullConsumer(this, nodeSupplier);
+    if (host == null || host.isEmpty() || port == null || port <= 0) {
+      throw new IllegalArgumentException(
+          SessionMessages
+              .EXCEPTION_AN_INTERNAL_SUBSCRIPTION_PULL_CONSUMER_REQUIRES_AN_EXPLICIT_HOST_AND_PORT_7B82801E);
+    }
+    return new InternalSubscriptionTablePullConsumer(this);
   }
 }

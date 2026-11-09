@@ -3102,6 +3102,9 @@ public final class DataNodePipeMessages {
       EXCEPTION_SUBSCRIPTION_FAILED_TO_FETCH_ENDPOINTS_FOR_CONSUMER_ARG_IN_CONFIG_NODE_EXCEPTION_IS_ARG_267904CB =
           "Subscription: Failed to fetch endpoints for consumer %s in config node, exception is %s.";
   public static final String
+      EXCEPTION_INTERNAL_SUBSCRIPTION_ENDPOINT_DISCOVERY_FAILED_BECAUSE_DATANODE_ARG_DID_NOT_REPORT_AN_INTERNAL_RPC_ENDPOINT_45E4D232 =
+          "Internal subscription endpoint discovery failed because DataNode %d did not report an internal RPC endpoint";
+  public static final String
       MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_SUBSCRIBING_WITH_REQUEST_ARG_ARG_084648A4 =
           "Subscription: something unexpected happened when subscribing with request %s: %s";
   public static final String
