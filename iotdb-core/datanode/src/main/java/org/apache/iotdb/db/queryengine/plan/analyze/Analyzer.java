@@ -54,8 +54,7 @@ public class Analyzer {
   public Analysis analyze(Statement statement) {
     long startTime = System.nanoTime();
     mutationJournal.prepareForAnalyze();
-    AnalyzeVisitor visitor =
-        new AnalyzeVisitor(partitionFetcher, schemaFetcher, mutationJournal);
+    AnalyzeVisitor visitor = new AnalyzeVisitor(partitionFetcher, schemaFetcher, mutationJournal);
     Analysis analysis = null;
     context.setReserveMemoryForSchemaTreeFunc(
         mem -> {

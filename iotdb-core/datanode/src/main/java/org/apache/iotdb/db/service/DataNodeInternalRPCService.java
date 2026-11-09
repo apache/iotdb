@@ -78,6 +78,9 @@ public class DataNodeInternalRPCService extends ThriftService
 
   @Override
   public void initThriftServiceThread() throws IllegalAccessException {
+    // Internal client sessions intentionally share this server with cluster RPC traffic. Their
+    // connection capacity is bounded together by rpcMaxConcurrentClientNum and must be sized for
+    // both workloads.
     try {
       thriftServiceThread =
           commonConfig.isEnableInternalSSL()

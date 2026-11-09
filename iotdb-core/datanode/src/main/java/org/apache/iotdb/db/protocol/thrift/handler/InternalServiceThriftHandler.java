@@ -37,8 +37,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class InternalServiceThriftHandler implements TServerEventHandler {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(InternalServiceThriftHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(InternalServiceThriftHandler.class);
 
   private final AtomicLong thriftConnectionNumber = new AtomicLong(0);
   private final IClientRPCServiceWithHandler eventHandler;

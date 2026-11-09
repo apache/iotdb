@@ -47,7 +47,8 @@ public class InternalSessionPoolBuilder extends SessionPool.Builder {
   public InternalSessionPool build() {
     if (enableAutoFetch && nodeSupplier == null) {
       throw new IllegalArgumentException(
-          SessionMessages.EXCEPTION_AN_INTERNAL_NODE_SUPPLIER_IS_REQUIRED_WHEN_AUTO_FETCH_IS_ENABLED_9CB6BA02);
+          SessionMessages
+              .EXCEPTION_AN_INTERNAL_NODE_SUPPLIER_IS_REQUIRED_WHEN_AUTO_FETCH_IS_ENABLED_9CB6BA02);
     }
     return new InternalSessionPool(this);
   }

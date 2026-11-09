@@ -31,7 +31,13 @@ import org.apache.thrift.transport.TTransport;
 
 import java.net.Socket;
 
-/** Registers a client session only for connections using the multiplexed client RPC service. */
+/**
+ * Registers a client session only for connections using the multiplexed client RPC service.
+ *
+ * <p>These sessions intentionally bypass the external {@code ServerContextFactory} admission hook.
+ * The internal RPC port is a trusted cluster-internal transport boundary; deployments that expose
+ * it must protect it through network policy or internal SSL.
+ */
 public class InternalClientRPCServiceProcessor extends ProcessorWithMetrics {
 
   public InternalClientRPCServiceProcessor(IClientRPCServiceWithHandler iface) {

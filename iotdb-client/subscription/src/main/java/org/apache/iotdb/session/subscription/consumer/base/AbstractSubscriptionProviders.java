@@ -583,7 +583,12 @@ final class AbstractSubscriptionProviders {
     }
   }
 
-  /** Reconciles providers against a complete endpoint list without server-side discovery. */
+  /**
+   * Reconciles providers against a complete endpoint list without server-side discovery.
+   *
+   * <p>The internal supplier is treated as an authoritative snapshot: endpoints absent from one
+   * refresh are intentionally removed, including when the snapshot is empty or temporarily partial.
+   */
   private void syncInternalProviders(final AbstractSubscriptionConsumer consumer) {
     final Set<TEndPoint> endpoints =
         consumer.getInternalNodeSupplier().get().stream()

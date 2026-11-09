@@ -94,13 +94,6 @@ public class InternalSessionRedirectIT {
           Collections.singletonList("s1"),
           Collections.singletonList(TSDataType.INT64),
           Collections.singletonList(42L));
-      // The first write only caches the leader endpoint; retry once to persist the setup value.
-      setupSession.insertRecord(
-          DEVICE,
-          1L,
-          Collections.singletonList("s1"),
-          Collections.singletonList(TSDataType.INT64),
-          Collections.singletonList(42L));
     }
 
     final Set<TEndPoint> leaderEndPoints;

@@ -226,7 +226,13 @@ public class SessionManager implements SessionManagerMBean {
     return openSessionResp;
   }
 
-  /** Opens a session without password verification for trusted internal client RPC callers. */
+  /**
+   * Opens a session without password verification for trusted internal client RPC callers.
+   *
+   * <p>This path intentionally does not emit failed-login audit records: it performs no credential
+   * verification, and access to the internal RPC endpoint is controlled at the network/transport
+   * boundary rather than by user login auditing.
+   */
   public BasicOpenSessionResp loginInternal(
       final IClientSession session,
       final String username,

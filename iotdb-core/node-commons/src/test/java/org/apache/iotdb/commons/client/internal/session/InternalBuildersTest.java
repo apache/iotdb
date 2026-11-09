@@ -41,7 +41,8 @@ public class InternalBuildersTest {
     final IllegalArgumentException exception =
         assertThrows(IllegalArgumentException.class, builder);
     assertEquals(
-        SessionMessages.EXCEPTION_AN_INTERNAL_NODE_SUPPLIER_IS_REQUIRED_WHEN_AUTO_FETCH_IS_ENABLED_9CB6BA02,
+        SessionMessages
+            .EXCEPTION_AN_INTERNAL_NODE_SUPPLIER_IS_REQUIRED_WHEN_AUTO_FETCH_IS_ENABLED_9CB6BA02,
         exception.getMessage());
   }
 }
