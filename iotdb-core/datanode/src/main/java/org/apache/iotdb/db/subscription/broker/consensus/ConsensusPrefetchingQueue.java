@@ -115,6 +115,8 @@ public class ConsensusPrefetchingQueue {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusPrefetchingQueue.class);
 
+  static final long EMPTY_POLL_PREFETCH_WAKEUP_INTERVAL_NANOS = TimeUnit.MILLISECONDS.toNanos(100L);
+
   private static final ExecutorService CLOSE_CLEANUP_EXECUTOR =
       IoTDBThreadPoolFactory.newCachedThreadPoolWithDaemon(
           ThreadName.SUBSCRIPTION_CONSENSUS_PREFETCH_EXECUTOR_POOL.getName() + "-Close-Cleanup");
@@ -306,6 +308,8 @@ public class ConsensusPrefetchingQueue {
   private final AtomicLong walPathAcceptedEntries = new AtomicLong(0);
 
   private final Object prefetchBindingLock = new Object();
+
+  private final AtomicLong lastEmptyPollPrefetchWakeupNanos = new AtomicLong(Long.MIN_VALUE);
 
   private volatile ConsensusPrefetchSubtask prefetchSubtask;
 
@@ -964,7 +968,8 @@ public class ConsensusPrefetchingQueue {
     if (!bindingMissing) {
       // Replicated WAL entries do not update the local search index or enter the realtime queue.
       // Wake an idle worker on empty polls to discover entries that arrived after its last scan.
-      return !currentSubtask.isScheduledOrRunning();
+      return !currentSubtask.isScheduledOrRunning()
+          && tryAcquireEmptyPollPrefetchWakeup(lastEmptyPollPrefetchWakeupNanos, System.nanoTime());
     }
 
     return hasImmediatePrefetchableWork()
@@ -973,6 +978,20 @@ public class ConsensusPrefetchingQueue {
         || !lingerBatch.isEmpty()
         || !inFlightEvents.isEmpty()
         || computeWatermarkDelayMs() > 0L;
+  }
+
+  static boolean tryAcquireEmptyPollPrefetchWakeup(
+      final AtomicLong lastWakeupNanos, final long currentTimeNanos) {
+    while (true) {
+      final long lastWakeupTimeNanos = lastWakeupNanos.get();
+      if (lastWakeupTimeNanos != Long.MIN_VALUE
+          && currentTimeNanos - lastWakeupTimeNanos < EMPTY_POLL_PREFETCH_WAKEUP_INTERVAL_NANOS) {
+        return false;
+      }
+      if (lastWakeupNanos.compareAndSet(lastWakeupTimeNanos, currentTimeNanos)) {
+        return true;
+      }
+    }
   }
 
   // ======================== Poll ========================

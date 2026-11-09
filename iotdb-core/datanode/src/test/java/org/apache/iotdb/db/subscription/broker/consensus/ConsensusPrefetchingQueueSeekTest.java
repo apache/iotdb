@@ -67,6 +67,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -142,6 +143,19 @@ public class ConsensusPrefetchingQueueSeekTest {
   public void testMultiWriterSeekReplaysAfterResettingOrderedReaders() throws Exception {
     assertBeginningReplay(
         Arrays.asList(createRequest(1L, 1L, 7), createRequest(-1L, 10L, 8)), 2L, 0L, true);
+  }
+
+  @Test
+  public void testEmptyPollWakeupRateLimit() {
+    final AtomicLong lastWakeupNanos = new AtomicLong(Long.MIN_VALUE);
+    assertTrue(ConsensusPrefetchingQueue.tryAcquireEmptyPollPrefetchWakeup(lastWakeupNanos, 0L));
+    assertFalse(
+        ConsensusPrefetchingQueue.tryAcquireEmptyPollPrefetchWakeup(
+            lastWakeupNanos,
+            ConsensusPrefetchingQueue.EMPTY_POLL_PREFETCH_WAKEUP_INTERVAL_NANOS - 1L));
+    assertTrue(
+        ConsensusPrefetchingQueue.tryAcquireEmptyPollPrefetchWakeup(
+            lastWakeupNanos, ConsensusPrefetchingQueue.EMPTY_POLL_PREFETCH_WAKEUP_INTERVAL_NANOS));
   }
 
   @Test(timeout = 20_000L)
