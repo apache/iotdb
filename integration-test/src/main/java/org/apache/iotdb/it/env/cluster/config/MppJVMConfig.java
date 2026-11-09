@@ -33,7 +33,17 @@ public class MppJVMConfig implements JVMConfig {
   private int maxHeapSize;
   private int maxDirectMemorySize;
   private String timezone;
+  private int debugPort;
   private List<String> jvmOptions = Collections.emptyList();
+
+  /** Enables loopback-only JDWP for tests that need to observe an exact node execution stage. */
+  public void setDebugPort(int debugPort) {
+    this.debugPort = debugPort;
+  }
+
+  public int getDebugPort() {
+    return debugPort;
+  }
 
   /** Additional arguments for child test-node JVMs, for example a test-only Java agent. */
   public void setJvmOptions(List<String> options) {
@@ -108,6 +118,7 @@ public class MppJVMConfig implements JVMConfig {
     this.setMaxHeapSize(config.getMaxHeapSize());
     this.setMaxDirectMemorySize(config.getMaxDirectMemorySize());
     this.setTimezone(config.getTimezone());
+    this.setDebugPort(config.getDebugPort());
     this.setJvmOptions(config.getJvmOptions());
   }
 
