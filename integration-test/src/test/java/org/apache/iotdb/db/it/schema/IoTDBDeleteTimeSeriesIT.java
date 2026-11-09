@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it.schema;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -65,6 +66,47 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
   }
 
   @Test
+  public void testAsynchronousDeletionProgress() throws Exception {
+    final String path = "root.async_progress.d.s";
+    final String sql = "DELETE TIMESERIES " + path;
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = TestUtils.createSingleNodeStatement(connection)) {
+      statement.execute("INSERT INTO root.async_progress.d(time,s) VALUES(1,1)");
+      statement.execute(sql);
+      boolean found = false;
+      try (ResultSet result = statement.executeQuery("SHOW DELETE TIMESERIES PROGRESS")) {
+        Assert.assertEquals(6, result.getMetaData().getColumnCount());
+        while (result.next()) {
+          if (("[" + path + "]").equals(result.getString("Paths"))) {
+            found = true;
+            Assert.assertTrue(result.getLong("ProcedureId") >= 0);
+            Assert.assertNotNull(result.getString("QueryId"));
+            Assert.assertNotNull(result.getString("Progress"));
+            Assert.assertTrue(
+                java.util.Arrays.asList("QUEUED", "RUNNING", "SUCCESS")
+                    .contains(result.getString("State")));
+            Assert.assertNull(result.getString("ErrorMessage"));
+          }
+        }
+      }
+      Assert.assertTrue("Accepted deletion must be visible immediately", found);
+      TestUtils.waitForTimeSeriesDeletion(statement, sql);
+      try (ResultSet result = statement.executeQuery("SHOW TIMESERIES " + path)) {
+        Assert.assertFalse(result.next());
+      }
+      // A nonexistent path is accepted too; the error belongs to the asynchronous task.
+      statement.execute(sql);
+      try {
+        TestUtils.waitForTimeSeriesDeletion(statement, sql);
+        Assert.fail("Expected the task to fail for a nonexistent path");
+      } catch (SQLException e) {
+        Assert.assertTrue(
+            e.getMessage().contains(Integer.toString(TSStatusCode.PATH_NOT_EXIST.getStatusCode())));
+      }
+    }
+  }
+
+  @Test
   public void deleteTimeSeriesAndCreateDifferentTypeTest() throws Exception {
     String[] retArray = new String[] {"1,1,", "2,1.1,"};
     int cnt = 0;
@@ -87,7 +129,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
           cnt++;
         }
       }
-      statement.execute("DELETE timeseries root.turbine1.d1.s1");
+      TestUtils.deleteTimeSeries(statement, "DELETE timeseries root.turbine1.d1.s1");
       statement.execute(
           "create timeseries root.turbine1.d1.s1 with datatype=DOUBLE, encoding=PLAIN, compression=SNAPPY");
       statement.execute("INSERT INTO root.turbine1.d1(timestamp,s1) VALUES(2,1.1)");
@@ -139,7 +181,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
           cnt++;
         }
       }
-      statement.execute("DELETE timeseries root.turbine1.d1.s1");
+      TestUtils.deleteTimeSeries(statement, "DELETE timeseries root.turbine1.d1.s1");
       statement.execute(
           "create timeseries root.turbine1.d1.s1 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
       statement.execute("INSERT INTO root.turbine1.d1(timestamp,s1) VALUES(2,5)");
@@ -225,7 +267,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
         Assert.assertEquals(retArray1.length, cnt);
       }
 
-      statement.execute("delete timeseries root.sg.d1.*");
+      TestUtils.deleteTimeSeries(statement, "delete timeseries root.sg.d1.*");
       try (ResultSet resultSet = statement.executeQuery("select * from root.sg.d1")) {
         Assert.assertFalse(resultSet.next());
       }
@@ -245,7 +287,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute("insert into root.sg.d1 (c1, c2) values (1, 1)");
-      statement.execute("delete timeSeries root.sg.d1.**");
+      TestUtils.deleteTimeSeries(statement, "delete timeSeries root.sg.d1.**");
       try (final ResultSet resultSet = statement.executeQuery("select c1, c2 from root.sg.d1")) {
         Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
         Assert.assertFalse(resultSet.next());
@@ -279,7 +321,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
         Assert.assertEquals(retArray1.length, cnt);
       }
 
-      statement.execute("delete timeseries root.sg.*.s1");
+      TestUtils.deleteTimeSeries(statement, "delete timeseries root.sg.*.s1");
       try (ResultSet resultSet = statement.executeQuery("select s1 from root.sg.*")) {
         Assert.assertFalse(resultSet.next());
       }
@@ -329,7 +371,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
         Assert.assertEquals(retArray1.length, cnt);
       }
 
-      statement.execute("delete timeseries root.*.d1.s1");
+      TestUtils.deleteTimeSeries(statement, "delete timeseries root.*.d1.s1");
       try (ResultSet resultSet = statement.executeQuery("select s1 from root.*.*")) {
         Assert.assertFalse(resultSet.next());
       }
@@ -351,7 +393,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
         Assert.assertEquals(retArray1.length, cnt);
       }
 
-      statement.execute("delete timeseries root.sg1.d1.s2, root.sg2.**");
+      TestUtils.deleteTimeSeries(statement, "delete timeseries root.sg1.d1.s2, root.sg2.**");
       try (ResultSet resultSet = statement.executeQuery("select s2 from root.sg1.*")) {
         Assert.assertFalse(resultSet.next());
       }
@@ -402,7 +444,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
         Assert.assertEquals(retArray1.length, cnt);
       }
 
-      statement.execute("delete timeseries root.*.d1.s1, root.*.d1.s2");
+      TestUtils.deleteTimeSeries(statement, "delete timeseries root.*.d1.s1, root.*.d1.s2");
       try (ResultSet resultSet = statement.executeQuery("select * from root.*.*")) {
         Assert.assertFalse(resultSet.next());
       }
@@ -422,7 +464,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
       statement.execute("SET DEVICE TEMPLATE t1 to root.db");
       statement.execute("CREATE TIMESERIES USING DEVICE TEMPLATE ON root.db.d1");
       try {
-        statement.execute("DELETE TIMESERIES root.db.**");
+        TestUtils.deleteTimeSeries(statement, "DELETE TIMESERIES root.db.**");
         Assert.fail();
       } catch (SQLException e) {
         Assert.assertTrue(
@@ -432,7 +474,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
                         + ": Timeseries [root.db.**] does not exist or is represented by device template"));
       }
       try {
-        statement.execute("DELETE TIMESERIES root.db.**");
+        TestUtils.deleteTimeSeries(statement, "DELETE TIMESERIES root.db.**");
         Assert.fail();
       } catch (SQLException e) {
         Assert.assertTrue(
@@ -449,7 +491,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try {
-        statement.execute("delete timeseries root.db.**");
+        TestUtils.deleteTimeSeries(statement, "delete timeseries root.db.**");
         Assert.fail();
       } catch (SQLException e) {
         Assert.assertTrue(
@@ -483,7 +525,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
       }
 
       try {
-        statement.execute("delete timeseries root.*.d1.s3");
+        TestUtils.deleteTimeSeries(statement, "delete timeseries root.*.d1.s3");
         Assert.fail();
       } catch (SQLException e) {
         Assert.assertTrue(
@@ -518,7 +560,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
           cnt++;
         }
       }
-      statement.execute("DROP timeseries root.turbine1.d1.s1");
+      TestUtils.deleteTimeSeries(statement, "DROP timeseries root.turbine1.d1.s1");
       statement.execute("FLUSH");
 
       try (ResultSet resultSet = statement.executeQuery("show timeseries root.turbine1.d1")) {

@@ -5625,4 +5625,8 @@ public final class DataNodeQueryMessages {
 
   public static final String EXCEPTION_ARG_ARG_MS_ARG_INVOCATIONS_ARG_APPLICATIONS_F056BD84 =
       "%s：%s ms，调用 %s 次，应用 %s 次";
+  public static final String MESSAGE_COLUMN_DELETION_IS_ASYNCHRONOUS_THE_SPECIFIED_TABLE_OR_COLUMN_DOES_NOT_EXIST_NO_TASK_WAS_SUBMITTED_08F7DB64 =
+      "列删除采用异步执行。指定的表或列不存在，未提交任务。";
+  public static final String MESSAGE_TABLE_DELETION_IS_ASYNCHRONOUS_THE_SPECIFIED_TABLE_DOES_NOT_EXIST_NO_TASK_WAS_SUBMITTED_74E6521A =
+      "表删除采用异步执行。指定的表不存在，未提交任务。";
 }

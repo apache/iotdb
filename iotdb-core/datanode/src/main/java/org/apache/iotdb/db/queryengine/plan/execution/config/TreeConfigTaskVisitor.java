@@ -113,6 +113,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.RepairDataParti
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetConfigurationTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetSystemStatusTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ShowConfigurationTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ShowDeleteTimeSeriesProgressTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ShowRepairDataPartitionTableProgressTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.StartRepairDataTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.StopRepairDataTask;
@@ -228,6 +229,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStateme
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDeleteTimeSeriesProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowRepairDataPartitionTableProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
@@ -434,6 +436,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitRepairDataPartitionTable(
       RepairDataPartitionTable repairDataPartitionTable, MPPQueryContext context) {
     return new RepairDataPartitionTableTask();
+  }
+
+  @Override
+  public IConfigTask visitShowDeleteTimeSeriesProgress(
+      ShowDeleteTimeSeriesProgressStatement statement, MPPQueryContext context) {
+    return new ShowDeleteTimeSeriesProgressTask();
   }
 
   @Override

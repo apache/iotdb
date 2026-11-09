@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.relational.it.db.it;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -202,7 +203,7 @@ public class IoTDBFlushQueryTableIT {
       statement.execute("use db1");
       statement.execute("create table t2(s1 text field, s2 text field)");
       statement.execute("insert into t2(time,s2) values(2,'t1')");
-      statement.execute("alter table t2 drop column s2");
+      TestUtils.dropColumn(statement, "alter table t2 drop column s2");
       statement.execute("flush");
       statement.execute("insert into t2(time,s1) values(2,'t1')");
     } catch (Exception e) {

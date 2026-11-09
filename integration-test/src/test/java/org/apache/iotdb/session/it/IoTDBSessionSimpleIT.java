@@ -65,6 +65,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -820,6 +821,14 @@ public class IoTDBSessionSimpleIT {
       try {
         session.deleteTimeseries(
             Arrays.asList("root.sg1.d1.t6", "root.sg1.d1.t2", "root.sg1.d1.t3"));
+        try {
+          TestUtils.waitForTimeSeriesDeletion(
+              EnvFactory.getEnv(),
+              "DELETE TIMESERIES root.sg1.d1.t6, root.sg1.d1.t2, root.sg1.d1.t3");
+          fail("Expected asynchronous deletion to fail for a nonexistent timeseries");
+        } catch (SQLException e) {
+          assertTrue(e.getMessage().contains("Path [root.sg1.d1.t6] does not exist;"));
+        }
       } catch (BatchExecutionException e) {
         assertTrue(e.getMessage().contains("Path [root.sg1.d1.t6] does not exist;"));
       }

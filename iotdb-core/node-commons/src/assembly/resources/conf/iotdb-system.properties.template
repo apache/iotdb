@@ -2381,6 +2381,22 @@ procedure_completed_clean_interval=30
 # Datatype: int
 procedure_completed_evict_ttl=60
 
+# Maximum number of tree-model timeseries deletion tasks waiting to execute on the ConfigNode.
+# effectiveMode: restart
+# Datatype: int, greater than 0
+timeseries_deletion_queue_capacity=1024
+
+# Minimum interval between starting tree-model timeseries deletion tasks, in milliseconds.
+# Measured when tasks leave the queue to start execution; submissions are not rate-limited.
+# effectiveMode: restart
+# Datatype: long, greater than 0
+timeseries_deletion_execution_interval_ms=1000
+
+# Maximum number of tree-model timeseries deletion tasks executing concurrently.
+# effectiveMode: restart
+# Datatype: int, greater than 0
+timeseries_deletion_max_concurrent_tasks=1
+
 ####################
 ### MQTT Broker Configuration
 ####################

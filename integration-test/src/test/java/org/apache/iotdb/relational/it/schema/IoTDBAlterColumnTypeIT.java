@@ -20,6 +20,7 @@
 package org.apache.iotdb.relational.it.schema;
 
 import org.apache.iotdb.commons.utils.MetadataUtils;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.ITableSession;
@@ -517,7 +518,7 @@ public class IoTDBAlterColumnTypeIT {
   }
 
   @Test
-  public void testDropAndAlter() throws IoTDBConnectionException, StatementExecutionException {
+  public void testDropAndAlter() throws Exception {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
       session.executeNonQueryStatement("SET CONFIGURATION enable_unseq_space_compaction='false'");
       session.executeNonQueryStatement("SET CONFIGURATION enable_seq_space_compaction='false'");
@@ -549,6 +550,7 @@ public class IoTDBAlterColumnTypeIT {
       tablet.reset();
 
       session.executeNonQueryStatement("ALTER TABLE drop_and_alter DROP COLUMN s1");
+      TestUtils.waitForColumnDeletion(EnvFactory.getEnv(), "test", "drop_and_alter", "s1");
 
       // time=3 and time=4 are STRING
       tablet =
@@ -1147,7 +1149,7 @@ public class IoTDBAlterColumnTypeIT {
     }
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      session.executeNonQueryStatement("DELETE TIMESERIES root.db.battery.**");
+      TestUtils.deleteTimeSeries(session, "DELETE TIMESERIES root.db.battery.**");
     }
   }
 
@@ -1332,7 +1334,7 @@ public class IoTDBAlterColumnTypeIT {
             resourceFile.delete();
           });
       filesToLoad.clear();
-      session.executeNonQueryStatement("DELETE TIMESERIES root.sg1.d1.s1");
+      TestUtils.deleteTimeSeries(session, "DELETE TIMESERIES root.sg1.d1.s1");
     }
   }
 

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -71,6 +72,10 @@ public class IoTDBExecuteBatchIT {
         statement.addBatch(
             "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600001,2.3)");
         statement.addBatch("delete timeseries root.ln.wf01.wt01.**");
+        statement.executeBatch();
+        statement.clearBatch();
+        TestUtils.waitForTimeSeriesDeletion(
+            EnvFactory.getEnv(), "delete timeseries root.ln.wf01.wt01.**");
         statement.addBatch(
             "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600002,3.4)");
         statement.executeBatch();
@@ -104,6 +109,10 @@ public class IoTDBExecuteBatchIT {
         statement.addBatch(
             "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600001,2.3)");
         statement.addBatch("delete timeseries root.ln.wf01.wt01.**");
+        statement.executeBatch();
+        statement.clearBatch();
+        TestUtils.waitForTimeSeriesDeletion(
+            EnvFactory.getEnv(), "delete timeseries root.ln.wf01.wt01.**");
         statement.addBatch(
             "create timeseries root.turbine.d1.s1(s1) with datatype=boolean, encoding=plain , compression=snappy "
                 + "tags('tag1'='v1', 'tag2'='v2') attributes('attr1'='v3', 'attr2'='v4')");

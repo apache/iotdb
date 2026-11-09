@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it.aligned;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -61,7 +62,7 @@ public class IoTDBAlignedSeriesQueryWithMisMatchIT {
 
       statement.execute("insert into root.sg1.d1(time, s1, s2) aligned values (1, 1, true)");
       statement.execute("flush");
-      statement.execute("delete timeseries root.sg1.d1.s2");
+      TestUtils.deleteTimeSeries(statement, "delete timeseries root.sg1.d1.s2");
       statement.execute("insert into root.sg1.d1(time, s1, s2) aligned values (10, 10, 100)");
       statement.execute("flush");
     } catch (Exception e) {

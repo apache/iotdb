@@ -97,6 +97,7 @@ utilityStatement
     | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
     | removeFile | unloadFile | setSqlDialect | showCurrentSqlDialect | showCurrentUser
     | repairDataPartitionTable | showRepairDataPartitionTableProgress
+    | showDeleteTimeSeriesProgress
     ;
 
 /**
@@ -1295,6 +1296,10 @@ repairDataPartitionTable
 // Show Repair Data Partition Table Progress
 showRepairDataPartitionTableProgress
     : SHOW REPAIR DATA PARTITION TABLE PROGRESS
+    ;
+
+showDeleteTimeSeriesProgress
+    : SHOW DELETE TIMESERIES PROGRESS
     ;
 
 // Explain

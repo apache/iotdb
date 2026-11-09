@@ -22,6 +22,7 @@ package org.apache.iotdb.db.it.audit;
 import org.apache.iotdb.commons.audit.AbstractAuditLogger;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.PrivilegeLevel;
+import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -48,6 +49,8 @@ import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static org.awaitility.Awaitility.await;
 
 /**
  * This test class ensures the audit log behave exactly the same as we expected, including the
@@ -2389,7 +2392,7 @@ public class IoTDBAuditLogBasicIT {
       Stream.of(7).collect(Collectors.toSet());
 
   @Test
-  public void basicAuditLogTestForTreeModel() throws SQLException, InterruptedException {
+  public void basicAuditLogTestForTreeModel() throws Exception {
     Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
     Statement statement = connection.createStatement();
     for (String sql : TREE_MODEL_AUDIT_SQLS_USER_ROOT) {
@@ -2417,7 +2420,47 @@ public class IoTDBAuditLogBasicIT {
     connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
     statement = connection.createStatement();
     for (String sql : TREE_MODEL_AUDIT_SQLS_USER_ROOT_FINAL) {
-      statement.execute(sql);
+      if (sql.startsWith("delete timeseries ") || sql.startsWith("drop timeseries ")) {
+        final String paths = "[" + sql.substring(sql.lastIndexOf(' ') + 1) + "]";
+        // Poll the ConfigNode directly so diagnostics do not add SQL audit records to this test.
+        try (SyncConfigNodeIServiceClient client =
+            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+          final long previousProcedureId =
+              client.showDeleteTimeSeriesProcedures().getProcedureInfoList().stream()
+                  .filter(p -> paths.equals(p.getPathPatterns()))
+                  .mapToLong(p -> p.getProcedureId())
+                  .max()
+                  .orElse(-1L);
+          statement.execute(sql);
+          await()
+              .atMost(60, TimeUnit.SECONDS)
+              .pollInSameThread()
+              .pollInterval(20, TimeUnit.MILLISECONDS)
+              .until(
+                  () -> {
+                    final java.util.Optional<
+                            org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesProcedureInfo>
+                        procedure =
+                            client.showDeleteTimeSeriesProcedures().getProcedureInfoList().stream()
+                                .filter(p -> paths.equals(p.getPathPatterns()))
+                                .filter(p -> p.getProcedureId() > previousProcedureId)
+                                .max(java.util.Comparator.comparingLong(p -> p.getProcedureId()));
+                    if (!procedure.isPresent()) {
+                      return false;
+                    }
+                    if ("ROLLEDBACK".equals(procedure.get().getState())) {
+                      throw new AssertionError(
+                          "Timeseries deletion procedure "
+                              + procedure.get().getProcedureId()
+                              + " rolled back: "
+                              + procedure.get().getErrorMessage());
+                    }
+                    return "SUCCESS".equals(procedure.get().getState());
+                  });
+        }
+      } else {
+        statement.execute(sql);
+      }
     }
     ResultSet resultSet =
         statement.executeQuery("SELECT * FROM root.__audit.log.** ORDER BY TIME ALIGN BY DEVICE");

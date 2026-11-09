@@ -382,7 +382,7 @@ public class IoTDBRestartIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("insert into root.turbine1.d1(timestamp,s1,s2) values(1,1.1,2.2)");
-      statement.execute("delete timeseries root.turbine1.d1.s1");
+      TestUtils.deleteTimeSeries(statement, "delete timeseries root.turbine1.d1.s1");
       statement.execute(
           "create timeseries root.turbine1.d1.s1 with datatype=INT32, encoding=RLE, compression=SNAPPY");
     }
@@ -412,7 +412,7 @@ public class IoTDBRestartIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("insert into root.turbine1.d1(timestamp,s1,s2) values(1,1.1,2.2)");
-      statement.execute("delete timeseries root.turbine1.d1.s1");
+      TestUtils.deleteTimeSeries(statement, "delete timeseries root.turbine1.d1.s1");
     }
 
     TestUtils.restartDataNodes();

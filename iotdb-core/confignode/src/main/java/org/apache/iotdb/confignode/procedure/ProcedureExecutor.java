@@ -22,10 +22,16 @@ package org.apache.iotdb.confignode.procedure;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewProcedure;
+import org.apache.iotdb.confignode.procedure.scheduler.DeleteTimeSeriesProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
@@ -77,6 +83,7 @@ public class ProcedureExecutor<Env> {
   // leader transition.
   private volatile CopyOnWriteArrayList<WorkerThread> workerThreads;
   private volatile CopyOnWriteArrayList<WorkerThread> dropTableWorkerThreads;
+  private volatile CopyOnWriteArrayList<WorkerThread> deleteTimeSeriesWorkerThreads;
 
   private TimeoutExecutorThread<Env> timeoutExecutor;
 
@@ -98,6 +105,7 @@ public class ProcedureExecutor<Env> {
   // Drop table can spend a long time deleting data on DataNodes. Keep its worker separate so
   // unrelated procedures can still make progress.
   private final ProcedureScheduler dropTableScheduler = new SimpleProcedureScheduler();
+  private DeleteTimeSeriesProcedureScheduler deleteTimeSeriesScheduler;
 
   private final AtomicLong workId = new AtomicLong(0);
   private final AtomicInteger activeExecutorCount = new AtomicInteger(0);
@@ -146,12 +154,26 @@ public class ProcedureExecutor<Env> {
       workerThreads.add(new WorkerThread(threadGroup, scheduler));
     }
     dropTableWorkerThreads = new CopyOnWriteArrayList<>();
+    deleteTimeSeriesWorkerThreads = new CopyOnWriteArrayList<>();
+    deleteTimeSeriesScheduler =
+        new DeleteTimeSeriesProcedureScheduler(
+            ConfigNodeDescriptor.getInstance().getConf().getTimeseriesDeletionMaxConcurrentTasks(),
+            ConfigNodeDescriptor.getInstance()
+                .getConf()
+                .getTimeseriesDeletionExecutionIntervalMs());
     // Add worker monitor
     workerMonitorExecutor.add(new WorkerMonitor());
 
+    // This executor is reused after leader changes. An interrupted deletion can still be active
+    // here even when another leader has since persisted its completion. Recover only store state.
+    procedures.clear();
+    completed.clear();
+    rollbackStack.clear();
+    scheduler.clear();
     dropTableScheduler.clear();
     scheduler.start();
     dropTableScheduler.start();
+    deleteTimeSeriesScheduler.start();
     recover();
   }
 
@@ -241,6 +263,7 @@ public class ProcedureExecutor<Env> {
     runnableList.forEach(procedure -> getScheduler(procedure).addBack(procedure));
     scheduler.signalAll();
     dropTableScheduler.signalAll();
+    deleteTimeSeriesScheduler.signalAll();
   }
 
   private List<Procedure<Env>> getProcedureListFromDifferentVersion() {
@@ -320,6 +343,9 @@ public class ProcedureExecutor<Env> {
       workerThread.start();
     }
     for (WorkerThread workerThread : dropTableWorkerThreads) {
+      workerThread.start();
+    }
+    for (WorkerThread workerThread : deleteTimeSeriesWorkerThreads) {
       workerThread.start();
     }
     LOG.info(ProcedureMessages.PROCEDURE_WORKERS_ARE_STARTED, workerThreads.size());
@@ -484,7 +510,8 @@ public class ProcedureExecutor<Env> {
    * @param rootProcStack procedure's root proc stack
    * @param proc procedure
    */
-  private void executeProcedure(RootProcedureStack rootProcStack, Procedure<Env> proc) {
+  private void executeProcedure(RootProcedureStack rootProcStack, Procedure<Env> proc)
+      throws InterruptedException {
     if (proc.getState() != ProcedureState.RUNNABLE) {
       LOG.error(
           ProcedureMessages
@@ -601,7 +628,14 @@ public class ProcedureExecutor<Env> {
   }
 
   private void updateStoreOnExecution(
-      RootProcedureStack rootProcStack, Procedure<Env> proc, Procedure<Env>[] subprocs) {
+      RootProcedureStack rootProcStack, Procedure<Env> proc, Procedure<Env>[] subprocs)
+      throws InterruptedException {
+    if (requiresDurableDeletionState(proc)) {
+      // In particular, persist RECREATE_DATABASES before recreating a database, and persist the
+      // terminal state before admitting a conflicting task or exposing successful completion.
+      persistDeletionState(proc);
+      return;
+    }
     if (subprocs != null && !proc.isFailed()) {
       if (LOG.isDebugEnabled()) {
         LOG.debug(ProcedureMessages.STORED_CHILDREN, proc, Arrays.toString(subprocs));
@@ -832,9 +866,13 @@ public class ProcedureExecutor<Env> {
       // The stack indexes and the states just dropped are persisted here, so that the rollback
       // recovered by a new leader leaves this procedure out. Endless retry since this step is not
       // idempotent.
-      RetryUtils.executeWithEndlessBackoffRetry(
-          () -> store.update(procedure),
-          ProcedureMessages.LOG_FINISH_PROCEDURE_WITHOUT_ROLLBACK_41F7A354);
+      if (requiresDurableDeletionState(procedure)) {
+        persistDeletionState(procedure);
+      } else {
+        RetryUtils.executeWithEndlessBackoffRetry(
+            () -> store.update(procedure),
+            ProcedureMessages.LOG_FINISH_PROCEDURE_WITHOUT_ROLLBACK_41F7A354);
+      }
       if (Thread.currentThread().isInterrupted()) {
         throw new InterruptedException();
       }
@@ -875,7 +913,7 @@ public class ProcedureExecutor<Env> {
    * @param procedure procedure
    * @return procedure lock state
    */
-  private ProcedureLockState executeRollback(Procedure<Env> procedure) {
+  private ProcedureLockState executeRollback(Procedure<Env> procedure) throws InterruptedException {
     boolean rollbackFailed = false;
     try {
       procedure.doRollback(this.environment);
@@ -904,7 +942,15 @@ public class ProcedureExecutor<Env> {
     return ProcedureLockState.LOCK_ACQUIRED;
   }
 
-  private void cleanupAfterRollback(Procedure<Env> procedure) {
+  private void cleanupAfterRollback(Procedure<Env> procedure) throws InterruptedException {
+    if (requiresDurableDeletionState(procedure)) {
+      if (procedure.removeStackIndex()) {
+        procedure.setState(ProcedureState.ROLLEDBACK);
+        procedure.updateMetricsOnFinish(getEnvironment(), procedure.elapsedTime(), false);
+      }
+      persistDeletionState(procedure);
+      return;
+    }
     if (procedure.removeStackIndex()) {
       if (!procedure.isSuccess()) {
         procedure.setState(ProcedureState.ROLLEDBACK);
@@ -954,12 +1000,41 @@ public class ProcedureExecutor<Env> {
     }
   }
 
+  private boolean requiresDurableDeletionState(Procedure<Env> procedure) {
+    return !procedure.hasParent()
+        && (procedure instanceof DeleteTimeSeriesProcedure
+            || procedure instanceof DeleteDatabaseProcedure
+            || (procedure instanceof DropTableColumnProcedure
+                && !(procedure instanceof DropViewColumnProcedure)));
+  }
+
+  private void persistDeletionState(Procedure<Env> procedure) throws InterruptedException {
+    long backoffMs = 100;
+    while (isRunning() && store.isRunning()) {
+      try {
+        store.update(procedure);
+        return;
+      } catch (InterruptedException e) {
+        throw e;
+      } catch (Exception e) {
+        LOG.warn(ProcedureMessages.FAILED_TO_UPDATE_PROCEDURE_ON_EXECUTION, e);
+        Thread.sleep(backoffMs);
+        backoffMs = Math.min(backoffMs * 2, 1000);
+      }
+    }
+    // Leave the last durable state for the next leader; do not clean up this root or its slot.
+    throw new InterruptedException();
+  }
+
   private void rootProcedureCleanup(Procedure<Env> proc) {
     executeCompletionCleanup(proc);
     CompletedProcedureContainer<Env> retainer = new CompletedProcedureContainer<>(proc);
     completed.put(proc.getProcId(), retainer);
     rollbackStack.remove(proc.getProcId());
     procedures.remove(proc.getProcId());
+    if (proc instanceof DeleteTimeSeriesProcedure) {
+      deleteTimeSeriesScheduler.completionCleanup(proc);
+    }
   }
 
   /**
@@ -1085,6 +1160,8 @@ public class ProcedureExecutor<Env> {
       }
       if (workerScheduler == dropTableScheduler) {
         dropTableWorkerThreads.remove(this);
+      } else if (workerScheduler == deleteTimeSeriesScheduler) {
+        deleteTimeSeriesWorkerThreads.remove(this);
       } else {
         workerThreads.remove(this);
       }
@@ -1216,6 +1293,7 @@ public class ProcedureExecutor<Env> {
     LOG.info(ProcedureMessages.STOPPING);
     scheduler.stop();
     dropTableScheduler.stop();
+    deleteTimeSeriesScheduler.stop();
     timeoutExecutor.sendStopSignal();
   }
 
@@ -1226,6 +1304,9 @@ public class ProcedureExecutor<Env> {
       workerThread.awaitTermination();
     }
     for (WorkerThread workerThread : dropTableWorkerThreads) {
+      workerThread.awaitTermination();
+    }
+    for (WorkerThread workerThread : deleteTimeSeriesWorkerThreads) {
       workerThread.awaitTermination();
     }
   }
@@ -1240,6 +1321,10 @@ public class ProcedureExecutor<Env> {
 
   public boolean isFinished(final long procId) {
     return !procedures.containsKey(procId);
+  }
+
+  public boolean isCompleted(final long procId) {
+    return completed.containsKey(procId);
   }
 
   public ConcurrentHashMap<Long, Procedure<Env>> getProcedures() {
@@ -1294,9 +1379,34 @@ public class ProcedureExecutor<Env> {
   }
 
   public ProcedureScheduler getScheduler(final Procedure<?> procedure) {
-    return procedure instanceof DropTableProcedure && !(procedure instanceof DropViewProcedure)
+    if (procedure instanceof DeleteTimeSeriesProcedure) {
+      return getDeleteTimeSeriesScheduler();
+    }
+    return (procedure instanceof DropTableProcedure && !(procedure instanceof DropViewProcedure))
+            || (procedure instanceof DropTableColumnProcedure
+                && !(procedure instanceof DropViewColumnProcedure))
         ? getDropTableScheduler()
         : scheduler;
+  }
+
+  public synchronized DeleteTimeSeriesProcedureScheduler getDeleteTimeSeriesScheduler() {
+    if (deleteTimeSeriesWorkerThreads.isEmpty()) {
+      for (int i = 0;
+          i
+              < ConfigNodeDescriptor.getInstance()
+                  .getConf()
+                  .getTimeseriesDeletionMaxConcurrentTasks();
+          i++) {
+        final WorkerThread worker =
+            new WorkerThread(
+                threadGroup, deleteTimeSeriesScheduler, "DeleteTimeSeriesProcedureWorker-");
+        deleteTimeSeriesWorkerThreads.add(worker);
+        if (isRunning()) {
+          worker.start();
+        }
+      }
+    }
+    return deleteTimeSeriesScheduler;
   }
 
   private synchronized ProcedureScheduler getDropTableScheduler() {
