@@ -103,8 +103,7 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
                     AuthorityChecker.SUPER_USER,
                     IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
                 ZoneId.systemDefault())
-            .setDatabaseInternalSession(true)
-            .setInternalRpcSession(true),
+            .setDatabaseInternalSession(true),
         ClusterPartitionFetcher.getInstance(),
         ClusterSchemaFetcher.getInstance());
 

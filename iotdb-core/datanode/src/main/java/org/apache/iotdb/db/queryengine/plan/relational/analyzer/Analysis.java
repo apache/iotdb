@@ -120,7 +120,7 @@ public class Analysis implements IAnalysis {
   private String databaseName;
   private List<TEndPoint> redirectNodeList;
 
-  private final boolean internalRpcSession;
+  private boolean internalRpcSession;
 
   @Nullable private Statement root;
   private boolean needSetHighestPriority;
@@ -270,19 +270,15 @@ public class Analysis implements IAnalysis {
   private SqlParser sqlParser;
 
   public Analysis(@Nullable Statement root, Map<NodeRef<Parameter>, Expression> parameters) {
-    this(root, parameters, false);
-  }
-
-  public Analysis(
-      @Nullable Statement root,
-      Map<NodeRef<Parameter>, Expression> parameters,
-      final boolean internalRpcSession) {
-    this.internalRpcSession = internalRpcSession;
     this.root = root;
     this.parameters =
         ImmutableMap.copyOf(
             requireNonNull(
                 parameters, DataNodeQueryMessages.EXCEPTION_PARAMETERS_IS_NULL_418C7892));
+  }
+
+  public void setInternalRpcSession(final boolean internalRpcSession) {
+    this.internalRpcSession = internalRpcSession;
   }
 
   public void updateNeedSetHighestPriority(QualifiedObjectName tableName) {

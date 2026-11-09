@@ -55,8 +55,7 @@ public class Analyzer {
     long startTime = System.nanoTime();
     mutationJournal.prepareForAnalyze();
     AnalyzeVisitor visitor =
-        new AnalyzeVisitor(
-            partitionFetcher, schemaFetcher, mutationJournal, context.isInternalRpcSession());
+        new AnalyzeVisitor(partitionFetcher, schemaFetcher, mutationJournal);
     Analysis analysis = null;
     context.setReserveMemoryForSchemaTreeFunc(
         mem -> {
@@ -66,6 +65,7 @@ public class Analyzer {
         });
     try {
       analysis = visitor.process(statement, context);
+      analysis.setInternalRpcSession(context.isInternalRpcSession());
     } catch (RuntimeException | Error e) {
       mutationJournal.rollback();
       throw e;

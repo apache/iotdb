@@ -35,8 +35,8 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.pool.SessionPool;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -52,13 +52,13 @@ public class InternalSessionIT {
 
   private static final String DATABASE = "root.internal_session_it";
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 

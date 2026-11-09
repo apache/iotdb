@@ -21,6 +21,7 @@ package org.apache.iotdb.db.protocol.thrift.handler;
 
 import org.apache.iotdb.commons.service.NoopServerContext;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.impl.IClientRPCServiceWithHandler;
@@ -29,10 +30,15 @@ import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.atomic.AtomicLong;
 
 public class InternalServiceThriftHandler implements TServerEventHandler {
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(InternalServiceThriftHandler.class);
 
   private final AtomicLong thriftConnectionNumber = new AtomicLong(0);
   private final IClientRPCServiceWithHandler eventHandler;
@@ -62,6 +68,11 @@ public class InternalServiceThriftHandler implements TServerEventHandler {
       if (session != null) {
         eventHandler.handleClientExit();
       }
+    } catch (RuntimeException e) {
+      LOGGER.warn(
+          DataNodeMiscMessages
+              .LOG_FAILED_TO_CLEAN_UP_INTERNAL_CLIENT_SESSION_AFTER_CONNECTION_CLOSED_9BD1700E,
+          e);
     } finally {
       SessionManager.getInstance().removeCurrSession();
       thriftConnectionNumber.decrementAndGet();

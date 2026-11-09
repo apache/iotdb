@@ -101,7 +101,7 @@ public class Analysis implements IAnalysis {
 
   private List<TEndPoint> redirectNodeList;
 
-  private final boolean internalRpcSession;
+  private boolean internalRpcSession;
 
   // map from output column name (for every node) to its datatype
   private final Map<NodeRef<Expression>, TSDataType> expressionTypes = new LinkedHashMap<>();
@@ -352,12 +352,11 @@ public class Analysis implements IAnalysis {
   private final Set<NodeRef<FilterNode>> fromWhereFilterNodes = new HashSet<>();
 
   public Analysis() {
-    this(false);
+    this.finishQueryAfterAnalyze = false;
   }
 
-  public Analysis(final boolean internalRpcSession) {
+  public void setInternalRpcSession(final boolean internalRpcSession) {
     this.internalRpcSession = internalRpcSession;
-    this.finishQueryAfterAnalyze = false;
   }
 
   public List<TRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {

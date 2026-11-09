@@ -93,6 +93,7 @@ public class InternalTableSessionRedirectIT {
       setupSession.executeNonQueryStatement("CREATE DATABASE " + DATABASE);
       setupSession.executeNonQueryStatement(
           "CREATE TABLE " + DATABASE + "." + TABLE + " (tag1 STRING TAG, value INT64 FIELD)");
+      setupSession.executeNonQueryStatement("USE " + DATABASE);
       // DataRegionGroups are allocated on the first data write, not when the database is created.
       setupSession.insert(createTablet(1L));
       leaderEndPoints =
