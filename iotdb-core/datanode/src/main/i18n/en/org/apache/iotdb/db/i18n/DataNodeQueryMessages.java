@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String MESSAGE_FAIL_TO_INSERT_MEASUREMENTS_ARG_CAUSED_BY_ARG_B9858E6B =
+      "Fail to insert measurements %s caused by %s";
 
   public static final String EXCEPTION_UNSUPPORTED_JOIN_CRETERIA_ARG_AFTER_PREDICATE_PUSH_DOWN_92BDB23B =
       "Unsupported Join creteria [%s] after predicate push down";
