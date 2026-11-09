@@ -129,13 +129,15 @@ public class InternalSessionIT {
 
     final INodeSupplier nodeSupplier = InternalSessionITUtils.createInternalNodeSupplier();
     try (Session session =
-            new InternalSessionBuilder(nodeSupplier)
-                .host(dataNode.getInternalAddress())
-                .port(dataNode.getInternalPort())
-                .username(SessionConfig.DEFAULT_USER)
-                .build();
-        SessionDataSet dataSet = session.executeQueryStatement("SHOW DATABASES")) {
-      assertNotNull(dataSet);
+        new InternalSessionBuilder(nodeSupplier)
+            .host(dataNode.getInternalAddress())
+            .port(dataNode.getInternalPort())
+            .username(SessionConfig.DEFAULT_USER)
+            .build()) {
+      session.open();
+      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW DATABASES")) {
+        assertNotNull(dataSet);
+      }
     }
   }
 
@@ -144,14 +146,14 @@ public class InternalSessionIT {
     final DataNodeWrapper dataNode = EnvFactory.getEnv().getDataNodeWrapper(0);
     final INodeSupplier nodeSupplier = InternalSessionITUtils.createInternalNodeSupplier();
 
-    assertThrows(
-        IoTDBConnectionException.class,
-        () ->
-            new InternalSessionBuilder(nodeSupplier)
-                .host(dataNode.getInternalAddress())
-                .port(dataNode.getInternalPort())
-                .username("missing_internal_session_user")
-                .build());
+    try (Session session =
+        new InternalSessionBuilder(nodeSupplier)
+            .host(dataNode.getInternalAddress())
+            .port(dataNode.getInternalPort())
+            .username("missing_internal_session_user")
+            .build()) {
+      assertThrows(IoTDBConnectionException.class, session::open);
+    }
   }
 
   @Test
