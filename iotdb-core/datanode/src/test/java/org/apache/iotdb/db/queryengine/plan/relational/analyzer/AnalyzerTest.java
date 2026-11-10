@@ -46,11 +46,14 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputN
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PivotRelation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.UnpivotRelation;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
@@ -1678,6 +1681,194 @@ public class AnalyzerTest {
         deviceTableScanNode.getAssignments().keySet().stream()
             .map(Symbol::toString)
             .collect(Collectors.toSet()));
+  }
+
+  @Test
+  public void staticPivotAnalysisAndPlanningTest() {
+    Analysis analysis =
+        analyzeSQL(
+            "PIVOT table1 ON tag1 IN ('a' AS north, NULL AS missing) "
+                + "USING COUNT(s1) AS count_s1, MAX(s2) AS max_s2 GROUP BY tag2",
+            TEST_MATADATA,
+            QUERY_CONTEXT);
+    PivotRelation pivot = (PivotRelation) ((Query) analysis.getStatement()).getQueryBody();
+    assertEquals(
+        Arrays.asList(
+            "tag2", "north_count_s1", "north_max_s2", "missing_count_s1", "missing_max_s2"),
+        analysis.getScope(pivot).getRelationType().getVisibleFields().stream()
+            .map(field -> field.getName().orElse(""))
+            .collect(Collectors.toList()));
+    assertEquals(4, analysis.getPivotBinding(pivot).getOutputs().size());
+    assertFalse(analysis.noAggregates());
+    SymbolAllocator allocator = new SymbolAllocator();
+    LogicalQueryPlan plan =
+        new TableLogicalPlanner(
+                QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, allocator, DEFAULT_WARNING)
+            .plan(analysis);
+    assertTrue(plan.getRootNode() instanceof OutputNode);
+    DistributedQueryPlan distributed =
+        new TableDistributedPlanner(analysis, allocator, plan, TEST_MATADATA, null).plan();
+    assertFalse(distributed.getFragments().isEmpty());
+  }
+
+  @Test
+  public void staticPivotImplicitGroupingAndNameCollisionTest() {
+    Analysis analysis =
+        analyzeSQL(
+            "PIVOT table1 ON tag1 IN ('a' AS tag2, 'b' AS tag2) USING COUNT(s1)",
+            TEST_MATADATA,
+            QUERY_CONTEXT);
+    PivotRelation pivot = (PivotRelation) ((Query) analysis.getStatement()).getQueryBody();
+    List<String> names =
+        analysis.getScope(pivot).getRelationType().getVisibleFields().stream()
+            .map(field -> field.getName().orElse(""))
+            .collect(Collectors.toList());
+    assertEquals("tag2_1", names.get(names.size() - 2));
+    assertEquals("tag2_2", names.get(names.size() - 1));
+    new TableLogicalPlanner(
+            QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, new SymbolAllocator(), DEFAULT_WARNING)
+        .plan(analysis);
+  }
+
+  @Test
+  public void staticPivotRejectsInvalidValuesTest() {
+    assertThrows(
+        SemanticException.class,
+        () ->
+            analyzeSQL(
+                "PIVOT table1 ON tag1 IN ('a', 'a') USING COUNT(s1) GROUP BY tag2",
+                TEST_MATADATA,
+                QUERY_CONTEXT));
+    assertThrows(
+        SemanticException.class,
+        () ->
+            analyzeSQL(
+                "PIVOT table1 ON tag1 IN (tag2) USING COUNT(s1) GROUP BY tag2",
+                TEST_MATADATA,
+                QUERY_CONTEXT));
+    assertThrows(
+        SemanticException.class,
+        () ->
+            analyzeSQL(
+                "PIVOT table1 ON tag1 IN ('a') USING COUNT(DISTINCT s1) GROUP BY tag2",
+                TEST_MATADATA,
+                QUERY_CONTEXT));
+  }
+
+  @Test
+  public void unpivotAnalysisAndDistributedPlanTest() {
+    Analysis analysis =
+        analyzeSQL(
+            "SELECT * FROM table1 UNPIVOT INCLUDE NULLS "
+                + "(val FOR metric IN (s1 AS first, s2 AS second))",
+            TEST_MATADATA,
+            QUERY_CONTEXT);
+    UnpivotRelation unpivot =
+        (UnpivotRelation)
+            ((org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuerySpecification)
+                    ((Query) analysis.getStatement()).getQueryBody())
+                .getFrom()
+                .orElseThrow();
+    assertEquals(INT64, analysis.getUnpivotBinding(unpivot).getValueTypes().get(0));
+    assertTrue(unpivot.isIncludeNulls());
+    SymbolAllocator allocator = new SymbolAllocator();
+    LogicalQueryPlan plan =
+        new TableLogicalPlanner(
+                QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, allocator, DEFAULT_WARNING)
+            .plan(analysis);
+    assertFalse(
+        new TableDistributedPlanner(analysis, allocator, plan, TEST_MATADATA, null)
+            .plan()
+            .getFragments()
+            .isEmpty());
+  }
+
+  @Test
+  public void unpivotColumnsAndInvalidSourcesTest() {
+    Analysis analysis =
+        analyzeSQL(
+            "UNPIVOT (SELECT s1,s2 FROM table1) ON COLUMNS(*) INTO NAME metric VALUE val",
+            TEST_MATADATA,
+            QUERY_CONTEXT);
+    UnpivotRelation unpivot = (UnpivotRelation) ((Query) analysis.getStatement()).getQueryBody();
+    assertEquals(2, analysis.getUnpivotBinding(unpivot).getSources().size());
+    assertThrows(
+        SemanticException.class,
+        () ->
+            analyzeSQL(
+                "UNPIVOT table1 ON s1 INTO NAME tag1 VALUE val", TEST_MATADATA, QUERY_CONTEXT));
+    assertThrows(
+        SemanticException.class,
+        () ->
+            analyzeSQL(
+                "UNPIVOT table1 ON s1,tag1 INTO NAME metric VALUE val",
+                TEST_MATADATA,
+                QUERY_CONTEXT));
+  }
+
+  @Test
+  public void unpivotMultiValueQualifiedSourceColumnsTest() {
+    Analysis analysis =
+        analyzeSQL(
+            "UNPIVOT table1 ON (table1.s1, table1.s2) AS g INTO NAME metric VALUES v1, v2",
+            TEST_MATADATA,
+            QUERY_CONTEXT);
+    UnpivotRelation unpivot = (UnpivotRelation) ((Query) analysis.getStatement()).getQueryBody();
+    assertEquals(2, analysis.getUnpivotBinding(unpivot).getValueTypes().size());
+    assertEquals(1, analysis.getUnpivotBinding(unpivot).getSources().size());
+  }
+
+  @Test
+  public void unpivotExcludeSourceColumnErrorsTest() {
+    SemanticException ambiguous =
+        assertThrows(
+            SemanticException.class,
+            () ->
+                analyzeSQL(
+                    "UNPIVOT (SELECT * FROM table1 x JOIN table1 y ON x.tag1 = y.tag1) "
+                        + "ON COLUMNS(* EXCLUDE (s1)) INTO NAME metric VALUE val",
+                    TEST_MATADATA,
+                    QUERY_CONTEXT));
+    assertEquals("UNPIVOT source column is ambiguous: s1", ambiguous.getMessage());
+
+    SemanticException missing =
+        assertThrows(
+            SemanticException.class,
+            () ->
+                analyzeSQL(
+                    "UNPIVOT table1 ON COLUMNS(* EXCLUDE (missing)) "
+                        + "INTO NAME metric VALUE val",
+                    TEST_MATADATA,
+                    QUERY_CONTEXT));
+    assertEquals("UNPIVOT source column does not exist: missing", missing.getMessage());
+  }
+
+  @Test
+  public void unpivotAmbiguousSourceExpressionTest() {
+    Analysis columnsStar =
+        analyzeSQL(
+            "UNPIVOT (SELECT * FROM (SELECT s1 FROM table1) x "
+                + "JOIN (SELECT s1 FROM table1) y ON x.s1 = y.s1) "
+                + "ON COLUMNS(*) INTO NAME metric VALUE val",
+            TEST_MATADATA,
+            QUERY_CONTEXT);
+    UnpivotRelation columnsStarUnpivot =
+        (UnpivotRelation) ((Query) columnsStar.getStatement()).getQueryBody();
+    UnpivotBinding columnsStarBinding = columnsStar.getUnpivotBinding(columnsStarUnpivot);
+    assertEquals(2, columnsStarBinding.getSources().size());
+    assertEquals(List.of(0), columnsStarBinding.getSourceFieldIndexes().get(0));
+    assertEquals(List.of(1), columnsStarBinding.getSourceFieldIndexes().get(1));
+
+    SemanticException explicit =
+        assertThrows(
+            SemanticException.class,
+            () ->
+                analyzeSQL(
+                    "UNPIVOT (SELECT * FROM table1 x JOIN table1 y ON x.tag1 = y.tag1) "
+                        + "ON s1 INTO NAME metric VALUE val",
+                    TEST_MATADATA,
+                    QUERY_CONTEXT));
+    assertEquals("UNPIVOT source column is ambiguous: s1", explicit.getMessage());
   }
 
   public static Analysis analyzeSQL(String sql, Metadata metadata, final MPPQueryContext context) {

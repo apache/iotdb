@@ -397,6 +397,8 @@ public class ConfigNodeDescriptor {
 
     // commons
     commonDescriptor.loadCommonProps(properties);
+    loadPivotConfiguration(properties);
+    overlayPivotConfiguration();
     commonDescriptor.initCommonConfigDir(conf.getSystemDir());
     commonDescriptor.initThriftSSL(properties);
 
@@ -960,7 +962,73 @@ public class ConfigNodeDescriptor {
     commonDescriptor.loadHotModifiedDiskSpaceWarningThreshold(properties);
     loadHotModifiedProcedureConfig(properties);
     loadPipeHotModifiedProp(properties);
+    loadPivotConfiguration(properties);
     ConfigurationFileUtils.updateAppliedProperties(properties, true);
+    overlayPivotConfiguration();
+  }
+
+  private void loadPivotConfiguration(TrimProperties properties) {
+    CommonConfig config = commonDescriptor.getConfig();
+    config.setPivotLimit(parsePositivePivotInt(properties, "pivot_limit", config.getPivotLimit()));
+    config.setPivotInputBufferSizeInBytes(
+        parsePositivePivotLong(
+            properties,
+            "pivot_input_buffer_size_in_bytes",
+            config.getPivotInputBufferSizeInBytes()));
+    config.setPivotInputMaxRows(
+        parsePositivePivotInt(properties, "pivot_input_max_rows", config.getPivotInputMaxRows()));
+  }
+
+  private int parsePositivePivotInt(TrimProperties properties, String key, int previous) {
+    String value = properties.getProperty(key);
+    if (value == null) {
+      return previous;
+    }
+    try {
+      int parsed = Integer.parseInt(value.trim());
+      if (parsed > 0) {
+        return parsed;
+      }
+    } catch (NumberFormatException ignored) {
+      // Preserve the last effective value for malformed or overflowing startup properties.
+    }
+    LOGGER.warn(
+        ConfigNodeMessages.LOG_INVALID_PIVOT_CONFIGURATION_VALUE_FOR_ARG_ARG_KEEPING_ARG_FCB21FF0,
+        key,
+        value,
+        previous);
+    return previous;
+  }
+
+  private long parsePositivePivotLong(TrimProperties properties, String key, long previous) {
+    String value = properties.getProperty(key);
+    if (value == null) {
+      return previous;
+    }
+    try {
+      long parsed = Long.parseLong(value.trim());
+      if (parsed > 0) {
+        return parsed;
+      }
+    } catch (NumberFormatException ignored) {
+      // Preserve the last effective value for malformed or overflowing startup properties.
+    }
+    LOGGER.warn(
+        ConfigNodeMessages.LOG_INVALID_PIVOT_CONFIGURATION_VALUE_FOR_ARG_ARG_KEEPING_ARG_FCB21FF0,
+        key,
+        value,
+        previous);
+    return previous;
+  }
+
+  private void overlayPivotConfiguration() {
+    CommonConfig config = commonDescriptor.getConfig();
+    ConfigurationFileUtils.updateAppliedProperties(
+        "pivot_limit", Integer.toString(config.getPivotLimit()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "pivot_input_buffer_size_in_bytes", Long.toString(config.getPivotInputBufferSizeInBytes()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "pivot_input_max_rows", Integer.toString(config.getPivotInputMaxRows()));
   }
 
   private void loadHotModifiedProcedureConfig(TrimProperties properties) throws IOException {

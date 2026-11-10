@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
@@ -74,10 +75,12 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NaturalJoin;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.OrderBy;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PivotRelation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
@@ -106,6 +109,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TableSubquer
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TimeDurationLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Union;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.UnpivotRelation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Values;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.VariableDefinition;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
@@ -131,6 +135,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext.ExplainType;
+import org.apache.iotdb.db.queryengine.common.PivotInputStore;
 import org.apache.iotdb.db.queryengine.execution.warnings.IoTDBWarning;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
@@ -214,6 +219,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.CompatibleResolver;
+import org.apache.iotdb.db.queryengine.plan.relational.type.UnpivotTypeUnifier;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
@@ -298,6 +304,7 @@ import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Join.
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Join.Type.LEFT;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Join.Type.RIGHT;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternRecognitionRelation.RowsPerMatch.ONE;
+import static org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignatureTranslator.toSqlType;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.queryengine.execution.warnings.StandardWarningCode.REDUNDANT_ORDER_BY;
@@ -4480,6 +4487,568 @@ public class StatementAnalyzer {
               .collect(toImmutableList());
 
       return createAndAssignScope(node, scope, fields);
+    }
+
+    @Override
+    public Scope visitPivotRelation(PivotRelation node, Optional<Scope> scope) {
+      Scope inputScope = process(node.getInput(), scope);
+      RelationType inputType = inputScope.getRelationType();
+      PivotInputStore dynamicInput =
+          node.isDynamic() ? queryContext.getPivotInputStore(node) : null;
+      if (node.isDynamic() && dynamicInput == null) {
+        throw new SemanticException(
+            DataNodeQueryMessages
+                .EXCEPTION_DYNAMIC_PIVOT_REQUIRES_INPUT_MATERIALIZATION_BEFORE_ANALYSIS_7867520A);
+      }
+      if (dynamicInput != null) {
+        validateDynamicPivotInput(dynamicInput, inputType);
+      }
+      List<Expression> onExpressions = new ArrayList<>();
+      List<List<PivotRelation.Value>> valueSets = new ArrayList<>();
+      Set<Integer> consumed = new HashSet<>();
+      int onIndex = 0;
+      for (PivotRelation.OnItem item : node.getOnItems()) {
+        Expression expression = item.expression();
+        if (!extractAggregateFunctions(ImmutableList.of(expression)).isEmpty()
+            || !extractWindowFunctions(ImmutableList.of(expression)).isEmpty()
+            || preOrder(expression).anyMatch(SubqueryExpression.class::isInstance)) {
+          throw new SemanticException(
+              DataNodeQueryMessages
+                  .EXCEPTION_PIVOT_ON_EXPRESSIONS_MUST_NOT_CONTAIN_AGGREGATES_WINDOW_FUNCTIONS_OR_SUBQUERIES_7871DB04);
+        }
+        analyzeExpression(expression, inputScope, CorrelationSupport.DISALLOWED);
+        consumed.addAll(pivotReferencedFields(expression));
+        Set<Object> distinct = new HashSet<>();
+        List<PivotRelation.Value> selectedValues =
+            item.values().isPresent() ? item.values().get() : dynamicInput.getValues().get(onIndex);
+        for (PivotRelation.Value value : selectedValues) {
+          Expression constant = value.expression();
+          if (preOrder(constant)
+              .filter(Expression.class::isInstance)
+              .map(Expression.class::cast)
+              .anyMatch(
+                  ref ->
+                      ref instanceof Identifier
+                          || ref instanceof DereferenceExpression
+                          || ref instanceof SubqueryExpression
+                          || ref instanceof Parameter)) {
+            throw new SemanticException(
+                DataNodeQueryMessages
+                    .EXCEPTION_PIVOT_IN_VALUES_MUST_BE_CONSTANT_AND_CONVERTIBLE_TO_THE_ON_EXPRESSION_TYPE_760875BC);
+          }
+          Object typed;
+          try {
+            typed =
+                evaluateConstantExpression(
+                    constant instanceof NullLiteral
+                        ? constant
+                        : new Cast(constant, toSqlType(analysis.getType(expression))),
+                    new PlannerContext(metadata, typeManager),
+                    sessionContext);
+          } catch (RuntimeException e) {
+            throw new SemanticException(
+                DataNodeQueryMessages
+                    .EXCEPTION_PIVOT_IN_VALUES_MUST_BE_CONSTANT_AND_CONVERTIBLE_TO_THE_ON_EXPRESSION_TYPE_760875BC);
+          }
+          if (!distinct.add(typed)) {
+            throw new SemanticException(
+                String.format(
+                    DataNodeQueryMessages.EXCEPTION_DUPLICATE_VALUE_IN_PIVOT_IN_LIST_ARG_9051FEC2,
+                    constant));
+          }
+        }
+        onExpressions.add(expression);
+        valueSets.add(selectedValues);
+        onIndex++;
+      }
+      List<FunctionCall> aggregates = new ArrayList<>();
+      List<Expression> finalExpressions = new ArrayList<>();
+      for (PivotRelation.UsingItem item : node.getUsingItems()) {
+        Expression expression = item.expression();
+        List<FunctionCall> found = extractAggregateFunctions(ImmutableList.of(expression));
+        if (found.size() != 1
+            || found.get(0).isDistinct()
+            || !extractWindowFunctions(ImmutableList.of(expression)).isEmpty()
+            || preOrder(expression).anyMatch(SubqueryExpression.class::isInstance)) {
+          throw new SemanticException(
+              DataNodeQueryMessages
+                  .EXCEPTION_PIVOT_USING_MUST_CONTAIN_EXACTLY_ONE_AGGREGATE_WITHOUT_DISTINCT_WINDOW_FUNCTIONS_OR_SUBQUERIES_C8F1E226);
+        }
+        FunctionCall aggregate = found.get(0);
+        analyzeExpression(expression, inputScope, CorrelationSupport.DISALLOWED);
+        // References outside the aggregate cannot be evaluated after grouping.
+        if (!pivotOutsideAggregateFields(expression, aggregate).isEmpty()) {
+          throw new SemanticException(
+              DataNodeQueryMessages
+                  .EXCEPTION_PIVOT_USING_CANNOT_REFERENCE_INPUT_COLUMNS_OUTSIDE_ITS_AGGREGATE_54DA6E29);
+        }
+        consumed.addAll(pivotReferencedFields(aggregate));
+        aggregates.add(aggregate);
+        finalExpressions.add(expression);
+      }
+      List<Integer> grouping = new ArrayList<>();
+      if (node.getGroupBy().isPresent()) {
+        for (Expression expression : node.getGroupBy().get()) {
+          if (!(expression instanceof Identifier || expression instanceof DereferenceExpression)) {
+            throw new SemanticException(
+                DataNodeQueryMessages
+                    .EXCEPTION_PIVOT_GROUP_BY_ACCEPTS_ONLY_INPUT_COLUMN_REFERENCES_4C143F37);
+          }
+          analyzeExpression(expression, inputScope, CorrelationSupport.DISALLOWED);
+          Set<Integer> indexes = pivotReferencedFields(expression);
+          if (indexes.size() != 1) {
+            throw new SemanticException(
+                DataNodeQueryMessages
+                    .EXCEPTION_PIVOT_GROUP_BY_ACCEPTS_ONLY_INPUT_COLUMN_REFERENCES_4C143F37);
+          }
+          int index = indexes.iterator().next();
+          if (!grouping.contains(index)) {
+            grouping.add(index);
+          }
+        }
+      } else {
+        for (Field field : inputType.getVisibleFields()) {
+          int index = inputType.indexOf(field);
+          if (!consumed.contains(index)) {
+            grouping.add(index);
+          }
+        }
+      }
+      if (dynamicInput != null) {
+        ensureDynamicPivotInputProjects(dynamicInput, inputType, consumed);
+        ensureDynamicPivotInputProjects(dynamicInput, inputType, grouping);
+      }
+      if (dynamicInput != null
+          && grouping.isEmpty()
+          && valueSets.stream().anyMatch(List::isEmpty)) {
+        throw new SemanticException(
+            DataNodeQueryMessages
+                .EXCEPTION_DYNAMIC_PIVOT_PRODUCED_NO_COLUMNS_AND_NO_ROW_DIMENSION_COLUMNS_ARE_AVAILABLE_25DD42E0);
+      }
+      PivotLimitValidator.validate(
+          grouping.size(),
+          aggregates.size(),
+          valueSets.stream().map(List::size).collect(Collectors.toList()),
+          CommonDescriptor.getInstance().getConfig().getPivotLimit());
+      List<Field> fields = new ArrayList<>();
+      Set<String> usedNames = new HashSet<>();
+      for (int index : grouping) {
+        Field field = inputType.getFieldByIndex(index);
+        fields.add(
+            Field.newUnqualified(field.getName(), field.getType(), field.getColumnCategory()));
+        field.getName().ifPresent(name -> usedNames.add(name.toLowerCase(Locale.ENGLISH)));
+      }
+      List<PivotBinding.Output> outputs = new ArrayList<>();
+      buildPivotOutputs(
+          node,
+          inputScope,
+          valueSets,
+          0,
+          new ArrayList<>(),
+          aggregates,
+          finalExpressions,
+          usedNames,
+          fields,
+          outputs);
+      analysis.setPivotBinding(
+          node, new PivotBinding(grouping, onExpressions, aggregates, finalExpressions, outputs));
+      return createAndAssignScope(node, scope, fields);
+    }
+
+    private void validateDynamicPivotInput(PivotInputStore input, RelationType inputType) {
+      if (input.getInputColumnNames().size() != input.getInputColumnCount()) {
+        throw new SemanticException(
+            DataNodeQueryMessages.EXCEPTION_DYNAMIC_PIVOT_INPUT_SCHEMA_CHANGED_6A26E6B0);
+      }
+      if (hasSameInputColumns(input, inputType)) {
+        if (input.getInputColumnCount() != inputType.getVisibleFields().size()) {
+          throw new SemanticException(
+              DataNodeQueryMessages.EXCEPTION_DYNAMIC_PIVOT_INPUT_SCHEMA_CHANGED_6A26E6B0);
+        }
+        for (int i = 0; i < input.getInputColumnCount(); i++) {
+          int physical = input.getData().getColumnIndex2TsBlockColumnIndexList().get(i);
+          if (!inputType
+              .getFieldByIndex(i)
+              .getType()
+              .equals(input.getData().getTableSchema().getColumns().get(physical).getType())) {
+            throw new SemanticException(
+                DataNodeQueryMessages.EXCEPTION_DYNAMIC_PIVOT_INPUT_SCHEMA_CHANGED_6A26E6B0);
+          }
+        }
+        return;
+      }
+
+      // A projected discovery input intentionally omits columns that the PIVOT cannot read. Match
+      // the materialized columns to the freshly analyzed input by name instead of by position.
+      for (int i = 0; i < input.getInputColumnCount(); i++) {
+        String name = input.getInputColumnNames().get(i);
+        List<Field> matches =
+            inputType.getVisibleFields().stream()
+                .filter(
+                    field ->
+                        field.getName().isPresent() && field.getName().get().equalsIgnoreCase(name))
+                .collect(Collectors.toList());
+        if (matches.size() != 1) {
+          throw new SemanticException(
+              DataNodeQueryMessages.EXCEPTION_DYNAMIC_PIVOT_INPUT_SCHEMA_CHANGED_6A26E6B0);
+        }
+        int physical = input.getData().getColumnIndex2TsBlockColumnIndexList().get(i);
+        if (!matches
+            .get(0)
+            .getType()
+            .equals(input.getData().getTableSchema().getColumns().get(physical).getType())) {
+          throw new SemanticException(
+              DataNodeQueryMessages.EXCEPTION_DYNAMIC_PIVOT_INPUT_SCHEMA_CHANGED_6A26E6B0);
+        }
+      }
+    }
+
+    private boolean hasSameInputColumns(PivotInputStore input, RelationType inputType) {
+      if (input.getInputColumnCount() != inputType.getVisibleFields().size()
+          || input.getInputColumnNames().size() != input.getInputColumnCount()) {
+        return false;
+      }
+      for (int i = 0; i < input.getInputColumnCount(); i++) {
+        Optional<String> name = inputType.getFieldByIndex(i).getName();
+        if (!name.isPresent() || !name.get().equals(input.getInputColumnNames().get(i))) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    private void ensureDynamicPivotInputProjects(
+        PivotInputStore input, RelationType inputType, Iterable<Integer> fieldIndexes) {
+      if (hasSameInputColumns(input, inputType)) {
+        return;
+      }
+      for (int fieldIndex : fieldIndexes) {
+        Optional<String> name = inputType.getFieldByIndex(fieldIndex).getName();
+        if (!name.isPresent()
+            || input.getInputColumnNames().stream()
+                .noneMatch(column -> column.equalsIgnoreCase(name.get()))) {
+          throw new SemanticException(
+              DataNodeQueryMessages.EXCEPTION_DYNAMIC_PIVOT_INPUT_SCHEMA_CHANGED_6A26E6B0);
+        }
+      }
+    }
+
+    private Set<Integer> pivotReferencedFields(Node node) {
+      Set<Integer> result = new HashSet<>();
+      preOrder(node)
+          .filter(Expression.class::isInstance)
+          .map(Expression.class::cast)
+          .map(ref -> analysis.getColumnReferenceFields().get(NodeRef.of(ref)))
+          .filter(java.util.Objects::nonNull)
+          .filter(ResolvedField::isLocal)
+          .forEach(ref -> result.add(ref.getRelationFieldIndex()));
+      return result;
+    }
+
+    private Set<Integer> pivotOutsideAggregateFields(Node node, FunctionCall aggregate) {
+      if (node == aggregate) {
+        return java.util.Collections.emptySet();
+      }
+      Set<Integer> result = new HashSet<>();
+      if (node instanceof Expression) {
+        ResolvedField ref = analysis.getColumnReferenceFields().get(NodeRef.of((Expression) node));
+        if (ref != null && ref.isLocal()) {
+          result.add(ref.getRelationFieldIndex());
+        }
+      }
+      for (Node child : node.getChildren()) {
+        result.addAll(pivotOutsideAggregateFields(child, aggregate));
+      }
+      return result;
+    }
+
+    private void buildPivotOutputs(
+        PivotRelation node,
+        Scope inputScope,
+        List<List<PivotRelation.Value>> valueSets,
+        int depth,
+        List<PivotRelation.Value> values,
+        List<FunctionCall> aggregates,
+        List<Expression> finalExpressions,
+        Set<String> usedNames,
+        List<Field> fields,
+        List<PivotBinding.Output> outputs) {
+      if (depth != valueSets.size()) {
+        for (PivotRelation.Value value : valueSets.get(depth)) {
+          values.add(value);
+          buildPivotOutputs(
+              node,
+              inputScope,
+              valueSets,
+              depth + 1,
+              values,
+              aggregates,
+              finalExpressions,
+              usedNames,
+              fields,
+              outputs);
+          values.remove(values.size() - 1);
+        }
+        return;
+      }
+      List<Expression> terms = new ArrayList<>();
+      List<String> names = new ArrayList<>();
+      for (int i = 0; i < values.size(); i++) {
+        PivotRelation.Value value = values.get(i);
+        Expression constant = value.expression();
+        terms.add(
+            constant instanceof NullLiteral
+                ? new IsNullPredicate(node.getOnItems().get(i).expression())
+                : new ComparisonExpression(
+                    ComparisonExpression.Operator.EQUAL,
+                    node.getOnItems().get(i).expression(),
+                    new Cast(
+                        constant,
+                        toSqlType(analysis.getType(node.getOnItems().get(i).expression())))));
+        names.add(
+            value.alias().map(Identifier::getValue).orElseGet(() -> pivotValueName(constant)));
+      }
+      Expression mask =
+          terms.size() == 1
+              ? terms.get(0)
+              : new LogicalExpression(LogicalExpression.Operator.AND, terms);
+      analyzeExpression(mask, inputScope, CorrelationSupport.DISALLOWED);
+      String prefix = String.join("_", names);
+      for (int i = 0; i < aggregates.size(); i++) {
+        PivotRelation.UsingItem using = node.getUsingItems().get(i);
+        String base = prefix;
+        if (aggregates.size() != 1 || using.alias().isPresent()) {
+          base +=
+              "_"
+                  + using
+                      .alias()
+                      .map(Identifier::getValue)
+                      .orElseGet(
+                          () ->
+                              org.apache.iotdb.commons.queryengine.plan.relational.sql.util
+                                  .ExpressionFormatter.formatExpression(using.expression())
+                                  .toLowerCase(Locale.ENGLISH));
+        }
+        String unique = base;
+        for (int suffix = 1; !usedNames.add(unique.toLowerCase(Locale.ENGLISH)); suffix++) {
+          unique = base + "_" + suffix;
+        }
+        fields.add(
+            Field.newUnqualified(
+                unique, analysis.getType(finalExpressions.get(i)), TsTableColumnCategory.FIELD));
+        outputs.add(new PivotBinding.Output(mask, i));
+      }
+    }
+
+    private String pivotValueName(Expression expression) {
+      if (expression instanceof NullLiteral) {
+        return "NULL";
+      }
+      if (expression instanceof StringLiteral) {
+        String value = ((StringLiteral) expression).getValue();
+        return value.isEmpty() ? "empty_string" : value;
+      }
+      return org.apache.iotdb.commons.queryengine.plan.relational.sql.util.ExpressionFormatter
+          .formatExpression(expression);
+    }
+
+    @Override
+    public Scope visitUnpivotRelation(UnpivotRelation node, Optional<Scope> scope) {
+      Scope inputScope = process(node.getInput(), scope);
+      RelationType inputType = inputScope.getRelationType();
+      if (node.isSimplified() && node.isIncludeNulls()) {
+        throw new SemanticException(
+            DataNodeQueryMessages
+                .EXCEPTION_INCLUDE_NULLS_IS_ONLY_SUPPORTED_IN_SQL_STYLE_UNPIVOT_055D9EEA);
+      }
+      if (node.getItems().stream().anyMatch(item -> item.excluded().isPresent())
+          && node.getValueColumns().size() != 1) {
+        throw new SemanticException(
+            DataNodeQueryMessages
+                .EXCEPTION_COLUMNS_EXPRESSIONS_CANNOT_BE_USED_TO_INFER_SOURCE_COLUMN_GROUPS_IN_A_MULTI_VALUE_UNPIVOT_D780C590);
+      }
+      List<UnpivotRelation.Item> items = new ArrayList<>();
+      // COLUMNS(*) items keep their input field index: duplicate names introduced by a join
+      // cannot be resolved back to a single field by name.
+      Map<NodeRef<Expression>, Integer> expandedFieldIndexes = new HashMap<>();
+      for (UnpivotRelation.Item item : node.getItems()) {
+        if (!item.excluded().isPresent()) {
+          items.add(item);
+          continue;
+        }
+        Set<Integer> excluded = new HashSet<>();
+        for (Identifier identifier : item.excluded().get()) {
+          excluded.add(resolveUnpivotColumn(inputType, identifier));
+        }
+        int countBeforeSelector = items.size();
+        for (Field field : inputType.getVisibleFields()) {
+          int index = inputType.indexOf(field);
+          if (!excluded.contains(index)) {
+            Expression source = new Identifier(field.getName().orElseThrow());
+            expandedFieldIndexes.put(NodeRef.of(source), index);
+            items.add(
+                new UnpivotRelation.Item(
+                    ImmutableList.of(source), Optional.empty(), Optional.empty()));
+          }
+        }
+        if (items.size() == countBeforeSelector) {
+          throw new SemanticException(
+              DataNodeQueryMessages
+                  .EXCEPTION_COLUMNS_EXPRESSION_IN_UNPIVOT_DID_NOT_SELECT_ANY_SOURCE_COLUMNS_933A605D);
+        }
+      }
+      List<List<Expression>> sources = new ArrayList<>();
+      List<List<Integer>> sourceFieldIndexes = new ArrayList<>();
+      List<String> names = new ArrayList<>();
+      List<Type> valueTypes = new ArrayList<>();
+      Set<Integer> consumed = new HashSet<>();
+      for (UnpivotRelation.Item item : items) {
+        List<Expression> expressions = item.expressions();
+        if (!sources.isEmpty() && expressions.size() != sources.get(0).size()) {
+          throw new SemanticException(
+              DataNodeQueryMessages
+                  .EXCEPTION_ALL_SOURCE_COLUMN_GROUPS_IN_A_MULTI_VALUE_UNPIVOT_MUST_CONTAIN_THE_SAME_NUMBER_OF_COLUMNS_3B42B00F);
+        }
+        if (expressions.size() != node.getValueColumns().size()) {
+          throw new SemanticException(
+              DataNodeQueryMessages
+                  .EXCEPTION_THE_NUMBER_OF_SOURCE_COLUMNS_IN_EACH_UNPIVOT_GROUP_MUST_MATCH_THE_NUMBER_OF_VALUE_COLUMNS_B6681F40);
+        }
+        List<String> sourceNames = new ArrayList<>();
+        List<Integer> groupFieldIndexes = new ArrayList<>();
+        for (int i = 0; i < expressions.size(); i++) {
+          Expression expression = expressions.get(i);
+          Integer expandedFieldIndex = expandedFieldIndexes.get(NodeRef.of(expression));
+          Type type;
+          int fieldIndex;
+          if (expandedFieldIndex != null) {
+            fieldIndex = expandedFieldIndex;
+            type = inputType.getFieldByIndex(fieldIndex).getType();
+          } else {
+            if (expressions.size() > 1
+                && !(expression instanceof Identifier)
+                && !(expression instanceof DereferenceExpression)) {
+              throw new SemanticException(
+                  DataNodeQueryMessages
+                      .EXCEPTION_SOURCE_COLUMN_GROUPS_IN_A_MULTI_VALUE_UNPIVOT_DO_NOT_SUPPORT_EXPRESSIONS_OR_CASTS_2234733C);
+            }
+            if (!extractAggregateFunctions(ImmutableList.of(expression)).isEmpty()
+                || !extractWindowFunctions(ImmutableList.of(expression)).isEmpty()
+                || preOrder(expression).anyMatch(SubqueryExpression.class::isInstance)) {
+              throw new SemanticException(
+                  DataNodeQueryMessages
+                      .EXCEPTION_UNPIVOT_SOURCE_EXPRESSIONS_CANNOT_CONTAIN_AGGREGATE_WINDOW_OR_SUBQUERY_EXPRESSIONS_D0BF754B);
+            }
+            if (expression instanceof Identifier) {
+              List<Field> candidates =
+                  inputType.resolveFields(QualifiedName.of(((Identifier) expression).getValue()));
+              if (candidates.size() > 1) {
+                throw new SemanticException(
+                    String.format(
+                        DataNodeQueryMessages
+                            .EXCEPTION_UNPIVOT_SOURCE_COLUMN_IS_AMBIGUOUS_ARG_8533957A,
+                        ((Identifier) expression).getValue()));
+              }
+            }
+            type =
+                analyzeExpression(expression, inputScope, CorrelationSupport.DISALLOWED)
+                    .getType(expression);
+            Set<Integer> references = new HashSet<>();
+            preOrder(expression)
+                .filter(Expression.class::isInstance)
+                .map(Expression.class::cast)
+                .map(ref -> analysis.getColumnReferenceFields().get(NodeRef.of(ref)))
+                .filter(java.util.Objects::nonNull)
+                .forEach(
+                    ref -> {
+                      if (ref.isLocal()) {
+                        references.add(ref.getRelationFieldIndex());
+                      }
+                    });
+            if (references.size() != 1) {
+              throw new SemanticException(
+                  DataNodeQueryMessages
+                      .EXCEPTION_EACH_SOURCE_EXPRESSION_IN_A_SINGLE_VALUE_UNPIVOT_MUST_REFERENCE_EXACTLY_ONE_INPUT_COLUMN_8A926C8E);
+            }
+            fieldIndex = references.iterator().next();
+          }
+          groupFieldIndexes.add(expandedFieldIndex == null ? -1 : expandedFieldIndex);
+          consumed.add(fieldIndex);
+          sourceNames.add(inputType.getFieldByIndex(fieldIndex).getName().orElseThrow());
+          if (valueTypes.size() <= i) {
+            valueTypes.add(type);
+          } else {
+            valueTypes.set(
+                i,
+                UnpivotTypeUnifier.getCommonType(valueTypes.get(i), type)
+                    .orElseThrow(
+                        () ->
+                            new SemanticException(
+                                DataNodeQueryMessages
+                                    .EXCEPTION_UNPIVOT_SOURCE_TYPES_ARE_NOT_COMPATIBLE_C171107C)));
+          }
+        }
+        sources.add(expressions);
+        sourceFieldIndexes.add(groupFieldIndexes);
+        names.add(item.alias().map(Identifier::getValue).orElse(String.join("_", sourceNames)));
+      }
+      List<Integer> retained = new ArrayList<>();
+      List<Field> output = new ArrayList<>();
+      for (Field field : inputType.getVisibleFields()) {
+        int index = inputType.indexOf(field);
+        if (!consumed.contains(index)) {
+          retained.add(index);
+          output.add(
+              Field.newUnqualified(
+                  field.getName(),
+                  field.getType(),
+                  field.getColumnCategory(),
+                  field.getOriginTable(),
+                  field.getOriginColumnName(),
+                  field.isAliased()));
+        }
+      }
+      output.add(
+          Field.newUnqualified(
+              node.getNameColumn().getValue(), StringType.STRING, TsTableColumnCategory.FIELD));
+      for (int i = 0; i < valueTypes.size(); i++) {
+        output.add(
+            Field.newUnqualified(
+                node.getValueColumns().get(i).getValue(),
+                valueTypes.get(i),
+                TsTableColumnCategory.FIELD));
+      }
+      Set<String> outputNames = new HashSet<>();
+      for (Field field : output) {
+        String name = field.getName().orElseThrow();
+        if (!outputNames.add(name.toLowerCase(Locale.ENGLISH))) {
+          throw new SemanticException(
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_DUPLICATE_COLUMN_NAME_IN_UNPIVOT_OUTPUT_ARG_75EC57F1,
+                  name));
+        }
+      }
+      analysis.setUnpivotBinding(
+          node, new UnpivotBinding(retained, sources, sourceFieldIndexes, names, valueTypes));
+      return createAndAssignScope(node, scope, output);
+    }
+
+    private int resolveUnpivotColumn(RelationType inputType, Identifier identifier) {
+      List<Field> fields = inputType.resolveFields(QualifiedName.of(identifier.getValue()));
+      if (fields.isEmpty()) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_UNPIVOT_SOURCE_COLUMN_DOES_NOT_EXIST_ARG_F62BA0EC,
+                identifier.getValue()));
+      }
+      if (fields.size() > 1) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_UNPIVOT_SOURCE_COLUMN_IS_AMBIGUOUS_ARG_8533957A,
+                identifier.getValue()));
+      }
+      return inputType.indexOf(fields.get(0));
     }
 
     @Override

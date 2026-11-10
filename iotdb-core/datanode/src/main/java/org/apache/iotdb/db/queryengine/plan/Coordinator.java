@@ -39,6 +39,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Parameter;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PivotRelation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
@@ -54,6 +55,7 @@ import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext.ExplainType;
+import org.apache.iotdb.db.queryengine.common.PivotInputStore;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.QueryIdGenerator;
 import org.apache.iotdb.db.queryengine.execution.QueryState;
@@ -241,6 +243,7 @@ public class Coordinator {
   private static final IMemoryBlock coordinatorMemoryBlock;
 
   private final ConcurrentHashMap<Long, IQueryExecution> queryExecutionMap;
+  private final ConcurrentHashMap<String, MPPQueryContext> queryContextMap;
 
   private final BlockingDeque<QueryInfo> currentQueriesInfo = new LinkedBlockingDeque<>();
   private final AtomicInteger[] currentQueriesCostHistogram = new AtomicInteger[61];
@@ -285,6 +288,7 @@ public class Coordinator {
 
   private Coordinator() {
     this.queryExecutionMap = new ConcurrentHashMap<>();
+    this.queryContextMap = new ConcurrentHashMap<>();
     this.typeManager = new InternalTypeManager();
     this.executor = getQueryExecutor();
     this.scheduledExecutor = getScheduledExecutor();
@@ -328,6 +332,26 @@ public class Coordinator {
       boolean debug,
       boolean readOnlyInternalQuery,
       BiFunction<MPPQueryContext, Long, IQueryExecution> iQueryExecutionFactory) {
+    return execution(
+        queryId,
+        session,
+        sql,
+        userQuery,
+        debug,
+        readOnlyInternalQuery,
+        null,
+        iQueryExecutionFactory);
+  }
+
+  private ExecutionResult execution(
+      long queryId,
+      SessionInfo session,
+      String sql,
+      boolean userQuery,
+      boolean debug,
+      boolean readOnlyInternalQuery,
+      MPPQueryContext parentQueryContext,
+      BiFunction<MPPQueryContext, Long, IQueryExecution> iQueryExecutionFactory) {
     long startTime = System.currentTimeMillis();
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
     MPPQueryContext queryContext = null;
@@ -345,7 +369,10 @@ public class Coordinator {
               DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT);
       queryContext.setUserQuery(userQuery);
       queryContext.setDebug(debug);
+      queryContext.setParentQueryContext(parentQueryContext);
+      queryContextMap.put(globalQueryId.getId(), queryContext);
       IQueryExecution execution = iQueryExecutionFactory.apply(queryContext, startTime);
+      queryContext.setQueryExecution(execution);
       if (readOnlyInternalQuery) {
         InternalQueryExecutor.validateReadOnlyQuery(execution);
       }
@@ -364,6 +391,7 @@ public class Coordinator {
       return result;
     } finally {
       if (queryContext != null) {
+        queryContextMap.remove(globalQueryId.getId(), queryContext);
         queryContext.releaseAllMemoryReservedForFrontEnd();
       }
       DataNodeSchemaLockManager.getInstance().releaseReadLock(queryContext);
@@ -502,15 +530,128 @@ public class Coordinator {
       boolean userQuery,
       boolean debug,
       boolean isVerbose) {
+    return executeForTableModel(
+        statement,
+        sqlParser,
+        clientSession,
+        queryId,
+        session,
+        sql,
+        metadata,
+        cteQueries,
+        Map.of(),
+        explainType,
+        explainOutputFormat,
+        timeOut,
+        userQuery,
+        debug,
+        isVerbose);
+  }
+
+  public ExecutionResult executeForTableModel(
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statement,
+      SqlParser sqlParser,
+      IClientSession clientSession,
+      long queryId,
+      SessionInfo session,
+      String sql,
+      Metadata metadata,
+      Map<NodeRef<Table>, Query> cteQueries,
+      Map<NodeRef<PivotRelation>, PivotInputStore> pivotInputStores,
+      ExplainType explainType,
+      ExplainOutputFormat explainOutputFormat,
+      long timeOut,
+      boolean userQuery,
+      boolean debug,
+      boolean isVerbose) {
+    return executeForTableModel(
+        statement,
+        sqlParser,
+        clientSession,
+        queryId,
+        session,
+        sql,
+        metadata,
+        cteQueries,
+        pivotInputStores,
+        explainType,
+        explainOutputFormat,
+        timeOut,
+        userQuery,
+        debug,
+        isVerbose,
+        null);
+  }
+
+  public ExecutionResult executeForTableModel(
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statement,
+      SqlParser sqlParser,
+      IClientSession clientSession,
+      long queryId,
+      SessionInfo session,
+      String sql,
+      Metadata metadata,
+      Map<NodeRef<Table>, Query> cteQueries,
+      Map<NodeRef<PivotRelation>, PivotInputStore> pivotInputStores,
+      ExplainType explainType,
+      ExplainOutputFormat explainOutputFormat,
+      long timeOut,
+      boolean userQuery,
+      boolean debug,
+      boolean isVerbose,
+      MPPQueryContext parentQueryContext) {
+    return executeForTableModel(
+        statement,
+        sqlParser,
+        clientSession,
+        queryId,
+        session,
+        sql,
+        metadata,
+        cteQueries,
+        pivotInputStores,
+        explainType,
+        explainOutputFormat,
+        timeOut,
+        userQuery,
+        debug,
+        isVerbose,
+        parentQueryContext,
+        Collections.emptyList(),
+        Collections.emptyMap());
+  }
+
+  public ExecutionResult executeForTableModel(
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statement,
+      SqlParser sqlParser,
+      IClientSession clientSession,
+      long queryId,
+      SessionInfo session,
+      String sql,
+      Metadata metadata,
+      Map<NodeRef<Table>, Query> cteQueries,
+      Map<NodeRef<PivotRelation>, PivotInputStore> pivotInputStores,
+      ExplainType explainType,
+      ExplainOutputFormat explainOutputFormat,
+      long timeOut,
+      boolean userQuery,
+      boolean debug,
+      boolean isVerbose,
+      MPPQueryContext parentQueryContext,
+      List<Expression> parameters,
+      Map<NodeRef<Parameter>, Expression> parameterLookup) {
     return execution(
         queryId,
         session,
         sql,
         userQuery,
         debug,
+        false,
+        parentQueryContext,
         ((queryContext, startTime) -> {
           queryContext.setInnerTriggeredQuery(true);
           queryContext.setCteQueries(cteQueries);
+          queryContext.borrowPivotInputStores(pivotInputStores);
           queryContext.setExplainType(explainType);
           queryContext.setExplainOutputFormat(explainOutputFormat);
           queryContext.setVerbose(isVerbose);
@@ -521,7 +662,9 @@ public class Coordinator {
               queryContext,
               metadata,
               timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
-              startTime);
+              startTime,
+              parameters,
+              parameterLookup);
         }));
   }
 
@@ -701,6 +844,28 @@ public class Coordinator {
       final Metadata metadata,
       final long timeOut,
       final long startTime) {
+    return createQueryExecutionForTableModel(
+        statement,
+        sqlParser,
+        clientSession,
+        queryContext,
+        metadata,
+        timeOut,
+        startTime,
+        Collections.emptyList(),
+        Collections.emptyMap());
+  }
+
+  private IQueryExecution createQueryExecutionForTableModel(
+      final org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statement,
+      final SqlParser sqlParser,
+      final IClientSession clientSession,
+      final MPPQueryContext queryContext,
+      final Metadata metadata,
+      final long timeOut,
+      final long startTime,
+      final List<Expression> initialParameters,
+      final Map<NodeRef<Parameter>, Expression> initialParameterLookup) {
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
     if (statement instanceof DropDB
@@ -786,8 +951,8 @@ public class Coordinator {
     // Initialize variables for TableModelPlanner
     org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statementToUse =
         statement;
-    List<Expression> parameters = Collections.emptyList();
-    Map<NodeRef<Parameter>, Expression> parameterLookup = Collections.emptyMap();
+    List<Expression> parameters = initialParameters;
+    Map<NodeRef<Parameter>, Expression> parameterLookup = initialParameterLookup;
 
     // Unwrap Explain/ExplainAnalyze to check for inner Execute/ExecuteImmediate
     org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement innerStatement =
@@ -883,6 +1048,14 @@ public class Coordinator {
 
   public IQueryExecution getQueryExecution(Long queryId) {
     return queryExecutionMap.get(queryId);
+  }
+
+  public MPPQueryContext getQueryContext(String queryId) {
+    return queryContextMap.get(queryId);
+  }
+
+  public List<MPPQueryContext> getAllQueryContexts() {
+    return new ArrayList<>(queryContextMap.values());
   }
 
   public List<IQueryExecution> getAllQueryExecutions() {

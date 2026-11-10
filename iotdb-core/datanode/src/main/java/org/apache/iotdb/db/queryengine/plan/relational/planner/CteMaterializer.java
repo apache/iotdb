@@ -212,7 +212,7 @@ public class CteMaterializer {
     return null;
   }
 
-  private TableSchema getTableSchema(DatasetHeader datasetHeader, String cteName) {
+  static TableSchema getTableSchema(DatasetHeader datasetHeader, String cteName) {
     final List<String> columnNames = datasetHeader.getRespColumns();
     final List<TSDataType> columnDataTypes = datasetHeader.getRespDataTypes();
     if (columnNames.size() != columnDataTypes.size()) {
@@ -254,7 +254,7 @@ public class CteMaterializer {
    * @param originalIndexList original column index list
    * @return adjusted column index list with sorted values preserving original positions
    */
-  private List<Integer> adjustColumnIndexMapping(List<Integer> originalIndexList) {
+  private static List<Integer> adjustColumnIndexMapping(List<Integer> originalIndexList) {
     if (originalIndexList == null || originalIndexList.isEmpty()) {
       return originalIndexList;
     }

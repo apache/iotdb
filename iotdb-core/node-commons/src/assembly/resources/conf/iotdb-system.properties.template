@@ -1354,6 +1354,25 @@ cte_buffer_size_in_bytes=131072
 # Privilege: SYSTEM
 max_rows_in_cte_buffer=1000
 
+# Maximum total output columns per PIVOT (including grouping columns). Non-positive values keep the effective default/current value.
+# effectiveMode: hot_reload
+# Datatype: int
+# Privilege: SYSTEM
+pivot_limit=100000
+
+# Maximum bytes buffered for each dynamic PIVOT input.
+# effectiveMode: hot_reload
+# Datatype: long
+# Privilege: SYSTEM
+# Unit: bytes
+pivot_input_buffer_size_in_bytes=67108864
+
+# Maximum rows buffered for each dynamic PIVOT input.
+# effectiveMode: hot_reload
+# Datatype: int
+# Privilege: SYSTEM
+pivot_input_max_rows=1000000
+
 # The maximum mod entries size that each FragmentInstance can cache.
 # if mods_cache_size_limit_per_fi_in_bytes <= 0, default value will be used, default value = min(32MB, memory for query operators / query_thread_count / 2)
 # if mods_cache_size_limit_per_fi_in_bytes > 0, the specified value will be used.

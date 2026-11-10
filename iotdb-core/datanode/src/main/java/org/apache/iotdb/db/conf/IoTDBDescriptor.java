@@ -1131,6 +1131,8 @@ public class IoTDBDescriptor {
       commonConfig.setMaxRowsInCteBuffer(maxRowsInCteBuffer);
     }
 
+    loadPivotConfiguration(properties);
+
     loadFixedSizeLimitForQuery(
         properties, "mods_cache_size_limit_per_fi_in_bytes", conf::setModsCacheSizeLimitPerFI);
 
@@ -2415,6 +2417,8 @@ public class IoTDBDescriptor {
         commonConfig.setMaxRowsInCteBuffer(maxRowsInCteBuffer);
       }
 
+      loadPivotConfiguration(properties);
+
       // max sub-task num for information table scan
       int maxSubTaskNumForInformationTableScan =
           Integer.parseInt(
@@ -2449,11 +2453,73 @@ public class IoTDBDescriptor {
   // in both the startup (loadProperties) and hot-reload (loadHotModifiedProps) paths, so that
   // local *and* remote `show configuration` (which reads each node's own map over RPC) stay
   // correct.
+  private void loadPivotConfiguration(Properties properties) {
+    commonConfig.setPivotLimit(
+        parsePositivePivotInt(properties, "pivot_limit", commonConfig.getPivotLimit()));
+    commonConfig.setPivotInputBufferSizeInBytes(
+        parsePositivePivotLong(
+            properties,
+            "pivot_input_buffer_size_in_bytes",
+            commonConfig.getPivotInputBufferSizeInBytes()));
+    commonConfig.setPivotInputMaxRows(
+        parsePositivePivotInt(
+            properties, "pivot_input_max_rows", commonConfig.getPivotInputMaxRows()));
+  }
+
+  private int parsePositivePivotInt(Properties properties, String key, int previous) {
+    String value = properties.getProperty(key);
+    if (value == null) {
+      return previous;
+    }
+    try {
+      int parsed = Integer.parseInt(value.trim());
+      if (parsed > 0) {
+        return parsed;
+      }
+    } catch (NumberFormatException ignored) {
+      // A malformed or overflowing value does not replace the current effective value.
+    }
+    LOGGER.warn(
+        DataNodeMiscMessages.LOG_INVALID_PIVOT_CONFIGURATION_VALUE_FOR_ARG_ARG_KEEPING_ARG_FCB21FF0,
+        key,
+        value,
+        previous);
+    return previous;
+  }
+
+  private long parsePositivePivotLong(Properties properties, String key, long previous) {
+    String value = properties.getProperty(key);
+    if (value == null) {
+      return previous;
+    }
+    try {
+      long parsed = Long.parseLong(value.trim());
+      if (parsed > 0) {
+        return parsed;
+      }
+    } catch (NumberFormatException ignored) {
+      // A malformed or overflowing value does not replace the current effective value.
+    }
+    LOGGER.warn(
+        DataNodeMiscMessages.LOG_INVALID_PIVOT_CONFIGURATION_VALUE_FOR_ARG_ARG_KEEPING_ARG_FCB21FF0,
+        key,
+        value,
+        previous);
+    return previous;
+  }
+
   private void overlayEffectiveConfigurationValues() {
     ConfigurationFileUtils.updateAppliedProperties(
         "cte_buffer_size_in_bytes", Long.toString(commonConfig.getCteBufferSize()));
     ConfigurationFileUtils.updateAppliedProperties(
         "max_rows_in_cte_buffer", Integer.toString(commonConfig.getMaxRowsInCteBuffer()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "pivot_limit", Integer.toString(commonConfig.getPivotLimit()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "pivot_input_buffer_size_in_bytes",
+        Long.toString(commonConfig.getPivotInputBufferSizeInBytes()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "pivot_input_max_rows", Integer.toString(commonConfig.getPivotInputMaxRows()));
     ConfigurationFileUtils.updateAppliedProperties(
         "max_sub_task_num_for_information_table_scan",
         Integer.toString(conf.getMaxSubTaskNumForInformationTableScan()));

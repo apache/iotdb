@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNod
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnpivotNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -163,6 +164,13 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
         }
         return newNode;
       }
+    }
+
+    @Override
+    public PlanNode visitUnpivot(UnpivotNode node, Context context) {
+      context.enablePushDown = false;
+      node.setChild(node.getChild().accept(this, new Context()));
+      return node;
     }
 
     @Override

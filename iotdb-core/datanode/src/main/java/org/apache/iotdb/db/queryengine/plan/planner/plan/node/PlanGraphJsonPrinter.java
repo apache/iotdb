@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputN
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnpivotNode;
 import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.tsfile.CopyToTsFileOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
@@ -120,6 +121,9 @@ public class PlanGraphJsonPrinter {
       ProjectNode n = (ProjectNode) node;
       properties.add("OutputSymbols", toJsonArray(n.getOutputSymbols()));
       properties.add("Expressions", toJsonArray(n.getAssignments().getMap().values()));
+    } else if (node instanceof UnpivotNode n) {
+      properties.add("Sources", toJsonArray(n.getNames()));
+      properties.addProperty("IncludeNulls", n.isIncludeNulls());
     } else if (node instanceof LimitNode) {
       LimitNode n = (LimitNode) node;
       properties.addProperty("Count", n.getCount());

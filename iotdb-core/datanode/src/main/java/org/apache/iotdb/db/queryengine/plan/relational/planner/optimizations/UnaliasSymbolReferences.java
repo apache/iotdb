@@ -53,6 +53,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFu
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnpivotNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
@@ -437,6 +438,25 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
       return new PlanAndMappings(
           node.replaceChildren(ImmutableList.of(rewrittenSource.getRoot())),
           rewrittenSource.getMappings());
+    }
+
+    @Override
+    public PlanAndMappings visitUnpivot(UnpivotNode node, UnaliasContext context) {
+      PlanAndMappings rewritten = node.getChild().accept(this, context);
+      Map<Symbol, Symbol> mapping = new HashMap<>(rewritten.getMappings());
+      SymbolMapper mapper = symbolMapper(mapping);
+      List<List<Symbol>> sources =
+          node.getSources().stream().map(mapper::map).collect(ImmutableList.toImmutableList());
+      return new PlanAndMappings(
+          new UnpivotNode(
+              node.getPlanNodeId(),
+              rewritten.getRoot(),
+              mapper.map(node.getRetained()),
+              sources,
+              node.getNames(),
+              mapper.map(node.getOutputSymbols()),
+              node.isIncludeNulls()),
+          mapping);
     }
 
     @Override

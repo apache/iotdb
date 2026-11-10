@@ -69,6 +69,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFu
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnpivotNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
@@ -516,6 +517,32 @@ public class TableDistributedPlanGenerator
   @Override
   public List<PlanNode> visitOffset(OffsetNode node, PlanContext context) {
     return dealWithPlainSingleChildNode(node, context);
+  }
+
+  @Override
+  public List<PlanNode> visitUnpivot(UnpivotNode node, PlanContext context) {
+    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    if (childrenNodes.size() == 1) {
+      node.setChild(childrenNodes.get(0));
+      return Collections.singletonList(node);
+    }
+
+    // Unpivot expands rows locally, so keep one copy per input fragment and let the parent collect
+    // the per-region results. Adding several children to the original single-child node would keep
+    // only the last child and silently drop the other regions.
+    List<PlanNode> resultNodeList = new ArrayList<>(childrenNodes.size());
+    for (PlanNode child : childrenNodes) {
+      resultNodeList.add(
+          new UnpivotNode(
+              queryId.genPlanNodeId(),
+              child,
+              node.getRetained(),
+              node.getSources(),
+              node.getNames(),
+              node.getOutputSymbols(),
+              node.isIncludeNulls()));
+    }
+    return resultNodeList;
   }
 
   @Override

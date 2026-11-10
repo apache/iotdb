@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.DataOrganiza
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ExceptNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.IntersectNode;
@@ -43,6 +44,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.RowsPer
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SkipToPosition;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnpivotNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.AggregationLabelSet;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.AggregationValuePointer;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.ClassifierValuePointer;
@@ -55,11 +57,13 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.M
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.ScalarValuePointer;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.ValuePointer;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AliasedRelation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DereferenceExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Intersect;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Join;
@@ -70,6 +74,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpre
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.MeasureDefinition;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PivotRelation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuerySpecification;
@@ -84,6 +89,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Union;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.UnpivotRelation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Values;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.VariableDefinition;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
@@ -91,6 +97,7 @@ import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.PivotInputStore;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileNode;
@@ -111,8 +118,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecogniti
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.MatchNumberDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.Navigation;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.ScalarInputDescriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PivotBinding;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.UnpivotBinding;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableArgumentAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.function.DataNodeTableBuiltinTableFunction;
@@ -176,6 +185,7 @@ import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Join.
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Join.Type.RIGHT;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternRecognitionRelation.RowsPerMatch.ONE;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SkipTo.Position.PAST_LAST;
+import static org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignatureTranslator.toSqlType;
 import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.NavigationAnchor.LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.NavigationMode.RUNNING;
@@ -439,6 +449,236 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
   public RelationPlan visitNode(final Node node, final Void context) {
     throw new IllegalStateException(
         DataNodeQueryMessages.UNSUPPORTED_NODE_TYPE + node.getClass().getName());
+  }
+
+  @Override
+  public RelationPlan visitPivotRelation(PivotRelation node, Void context) {
+    PivotInputStore dynamicInput = node.isDynamic() ? queryContext.getPivotInputStore(node) : null;
+    RelationPlan input =
+        dynamicInput == null
+            ? process(node.getInput(), context)
+            : planMaterializedPivotInput(node, dynamicInput);
+    PivotBinding binding = analysis.getPivotBinding(node);
+    Map<NodeRef<Expression>, Symbol> onMappings = new LinkedHashMap<>();
+    if (dynamicInput != null) {
+      List<Integer> columns = dynamicInput.getData().getColumnIndex2TsBlockColumnIndexList();
+      List<Symbol> symbols = input.getRoot().getOutputSymbols();
+      for (int i = 0; i < node.getOnItems().size(); i++) {
+        onMappings.put(
+            NodeRef.of(node.getOnItems().get(i).expression()),
+            symbols.get(columns.get(dynamicInput.getInputColumnCount() + i)));
+      }
+    }
+    List<Expression> projections = new ArrayList<>(binding.getOnExpressions());
+    for (FunctionCall aggregate : binding.getAggregates()) {
+      projections.addAll(aggregate.getArguments());
+    }
+    PlanBuilder prepared =
+        newPlanBuilder(input, analysis)
+            .withAdditionalIdentityMappings(onMappings)
+            .appendProjections(projections, symbolAllocator, queryContext);
+    List<Expression> masks =
+        binding.getOutputs().stream()
+            .map(PivotBinding.Output::mask)
+            .distinct()
+            .collect(Collectors.toList());
+    PlanBuilder withMasks = prepared.appendProjections(masks, symbolAllocator, queryContext);
+    List<Symbol> grouping =
+        binding.getGroupingFields().stream().map(input::getSymbol).collect(Collectors.toList());
+    Map<Symbol, AggregationNode.Aggregation> aggregations = new LinkedHashMap<>();
+    List<Symbol> results = new ArrayList<>();
+    for (PivotBinding.Output output : binding.getOutputs()) {
+      FunctionCall call = binding.getAggregates().get(output.aggregateIndex());
+      Symbol result = symbolAllocator.newSymbol(call, analysis.getType(call));
+      aggregations.put(
+          result,
+          new AggregationNode.Aggregation(
+              analysis.getResolvedFunction(call),
+              call.getArguments().stream()
+                  .map(withMasks::translate)
+                  .map(Symbol::toSymbolReference)
+                  .collect(Collectors.toList()),
+              false,
+              Optional.empty(),
+              Optional.empty(),
+              Optional.of(withMasks.translate(output.mask()))));
+      results.add(result);
+    }
+    PlanNode aggregate =
+        AggregationNode.singleAggregation(
+            idAllocator.genPlanNodeId(),
+            withMasks.getRoot(),
+            aggregations,
+            AggregationNode.singleGroupingSet(grouping));
+    Assignments.Builder assignments = Assignments.builder();
+    List<Symbol> outputSymbols = new ArrayList<>();
+    for (Symbol group : grouping) {
+      assignments.put(group, group.toSymbolReference());
+      outputSymbols.add(group);
+    }
+    for (int i = 0; i < binding.getOutputs().size(); i++) {
+      PivotBinding.Output output = binding.getOutputs().get(i);
+      FunctionCall call = binding.getAggregates().get(output.aggregateIndex());
+      Expression expression = binding.getFinalExpressions().get(output.aggregateIndex());
+      PlanBuilder finalPlan =
+          new PlanBuilder(
+              withMasks
+                  .getTranslations()
+                  .withAdditionalMappings(
+                      Collections.singletonMap(
+                          ScopeAware.scopeAwareKey(call, analysis, withMasks.getScope()),
+                          results.get(i))),
+              aggregate);
+      Symbol result =
+          symbolAllocator.newSymbol(
+              analysis.getScope(node).getRelationType().getFieldByIndex(outputSymbols.size()));
+      assignments.put(result, finalPlan.rewrite(expression));
+      outputSymbols.add(result);
+    }
+    return new RelationPlan(
+        new ProjectNode(idAllocator.genPlanNodeId(), aggregate, assignments.build()),
+        analysis.getScope(node),
+        outputSymbols,
+        outerContext);
+  }
+
+  private RelationPlan planMaterializedPivotInput(PivotRelation node, PivotInputStore input) {
+    CteDataStore data = input.getData();
+    List<Symbol> symbols =
+        data.getTableSchema().getColumns().stream()
+            .map(column -> symbolAllocator.newSymbol(column.getName(), column.getType()))
+            .collect(Collectors.toList());
+    CteScanNode scan =
+        new CteScanNode(
+            idAllocator.genPlanNodeId(), QualifiedName.of("__pivot_input"), symbols, data);
+    RelationType inputType = analysis.getScope(node.getInput()).getRelationType();
+    List<Symbol> fields = new ArrayList<>();
+    if (hasSameInputColumns(input, inputType)) {
+      for (int i = 0; i < input.getInputColumnCount(); i++) {
+        fields.add(symbols.get(data.getColumnIndex2TsBlockColumnIndexList().get(i)));
+      }
+    } else {
+      // The discovery query projected only the columns the PIVOT can read. Keep the field mapping
+      // indexed by the original input relation so the analyzer's grouping/ON/USING indexes still
+      // translate correctly; unused fields get symbols that never appear in the scan.
+      for (int i = 0; i < inputType.getAllFieldCount(); i++) {
+        Field field = inputType.getFieldByIndex(i);
+        int logicalIndex =
+            findInputColumn(input.getInputColumnNames(), field.getName().orElse(null));
+        if (logicalIndex >= 0) {
+          fields.add(symbols.get(data.getColumnIndex2TsBlockColumnIndexList().get(logicalIndex)));
+        } else {
+          fields.add(
+              symbolAllocator.newSymbol(
+                  field.getName().orElse("__pivot_unused_" + i), field.getType()));
+        }
+      }
+    }
+    return new RelationPlan(scan, analysis.getScope(node.getInput()), fields, outerContext);
+  }
+
+  private boolean hasSameInputColumns(PivotInputStore input, RelationType inputType) {
+    if (input.getInputColumnCount() != inputType.getVisibleFields().size()
+        || input.getInputColumnNames().size() != input.getInputColumnCount()) {
+      return false;
+    }
+    for (int i = 0; i < input.getInputColumnCount(); i++) {
+      Optional<String> name = inputType.getFieldByIndex(i).getName();
+      if (!name.isPresent() || !name.get().equals(input.getInputColumnNames().get(i))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private int findInputColumn(List<String> inputColumnNames, String name) {
+    if (name == null) {
+      return -1;
+    }
+    int found = -1;
+    for (int i = 0; i < inputColumnNames.size(); i++) {
+      if (inputColumnNames.get(i).equalsIgnoreCase(name)) {
+        if (found >= 0) {
+          return -1;
+        }
+        found = i;
+      }
+    }
+    return found;
+  }
+
+  @Override
+  public RelationPlan visitUnpivotRelation(UnpivotRelation node, Void context) {
+    RelationPlan input = process(node.getInput(), context);
+    UnpivotBinding binding = analysis.getUnpivotBinding(node);
+    List<Expression> expressions = new ArrayList<>();
+    for (int sourceIndex = 0; sourceIndex < binding.getSources().size(); sourceIndex++) {
+      for (int valueIndex = 0;
+          valueIndex < binding.getSources().get(sourceIndex).size();
+          valueIndex++) {
+        if (binding.getSourceFieldIndexes().get(sourceIndex).get(valueIndex) < 0) {
+          expressions.add(binding.getSources().get(sourceIndex).get(valueIndex));
+        }
+      }
+    }
+    PlanBuilder plan =
+        newPlanBuilder(input, analysis)
+            .appendProjections(expressions, symbolAllocator, queryContext);
+    Assignments.Builder assignments = Assignments.builder();
+    assignments.putIdentities(plan.getRoot().getOutputSymbols());
+    List<List<Symbol>> groups = new ArrayList<>();
+    for (int sourceIndex = 0; sourceIndex < binding.getSources().size(); sourceIndex++) {
+      List<Symbol> group = new ArrayList<>();
+      for (int valueIndex = 0; valueIndex < binding.getValueTypes().size(); valueIndex++) {
+        int sourceFieldIndex = binding.getSourceFieldIndexes().get(sourceIndex).get(valueIndex);
+        Symbol symbol;
+        Type actualType;
+        if (sourceFieldIndex >= 0) {
+          symbol = input.getSymbol(sourceFieldIndex);
+          actualType =
+              analysis
+                  .getScope(node.getInput())
+                  .getRelationType()
+                  .getFieldByIndex(sourceFieldIndex)
+                  .getType();
+        } else {
+          Expression expression = binding.getSources().get(sourceIndex).get(valueIndex);
+          symbol = plan.translate(expression);
+          actualType = analysis.getType(expression);
+        }
+        Type expectedType = binding.getValueTypes().get(valueIndex);
+        if (!actualType.equals(expectedType)) {
+          Symbol coerced = symbolAllocator.newSymbol(symbol.getName(), expectedType);
+          assignments.put(coerced, new Cast(symbol.toSymbolReference(), toSqlType(expectedType)));
+          symbol = coerced;
+        }
+        group.add(symbol);
+      }
+      groups.add(group);
+    }
+    PlanNode projected =
+        new ProjectNode(idAllocator.genPlanNodeId(), plan.getRoot(), assignments.build());
+    List<Symbol> retained =
+        binding.getRetained().stream().map(input::getSymbol).collect(Collectors.toList());
+    List<Symbol> output = new ArrayList<>(retained);
+    output.add(symbolAllocator.newSymbol(node.getNameColumn().getValue(), STRING));
+    for (int i = 0; i < binding.getValueTypes().size(); i++) {
+      output.add(
+          symbolAllocator.newSymbol(
+              node.getValueColumns().get(i).getValue(), binding.getValueTypes().get(i)));
+    }
+    return new RelationPlan(
+        new UnpivotNode(
+            idAllocator.genPlanNodeId(),
+            projected,
+            retained,
+            groups,
+            binding.getNames(),
+            output,
+            node.isIncludeNulls()),
+        analysis.getScope(node),
+        output,
+        outerContext);
   }
 
   @Override
