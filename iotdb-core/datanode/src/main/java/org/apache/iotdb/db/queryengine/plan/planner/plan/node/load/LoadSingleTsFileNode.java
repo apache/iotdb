@@ -59,6 +59,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   private final File tsFile;
   private final TsFileResource resource;
   private final boolean deleteAfterLoad;
+  private final boolean autoCreateSchema;
   private final long writePointCount;
   private boolean needDecodeTsFile;
 
@@ -66,11 +67,25 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   public LoadSingleTsFileNode(
       PlanNodeId id, TsFileResource resource, boolean deleteAfterLoad, long writePointCount) {
+    this(id, resource, deleteAfterLoad, writePointCount, true);
+  }
+
+  public LoadSingleTsFileNode(
+      PlanNodeId id,
+      TsFileResource resource,
+      boolean deleteAfterLoad,
+      long writePointCount,
+      boolean autoCreateSchema) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;
     this.deleteAfterLoad = deleteAfterLoad;
+    this.autoCreateSchema = autoCreateSchema;
     this.writePointCount = writePointCount;
+  }
+
+  public boolean isAutoCreateSchema() {
+    return autoCreateSchema;
   }
 
   public boolean isTsFileEmpty() {
@@ -255,11 +270,18 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         && Objects.equals(resource, loadSingleTsFileNode.resource)
         && Objects.equals(needDecodeTsFile, loadSingleTsFileNode.needDecodeTsFile)
         && Objects.equals(deleteAfterLoad, loadSingleTsFileNode.deleteAfterLoad)
+        && autoCreateSchema == loadSingleTsFileNode.autoCreateSchema
         && Objects.equals(localRegionReplicaSet, loadSingleTsFileNode.localRegionReplicaSet);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(tsFile, resource, needDecodeTsFile, deleteAfterLoad, localRegionReplicaSet);
+    return Objects.hash(
+        tsFile,
+        resource,
+        needDecodeTsFile,
+        deleteAfterLoad,
+        autoCreateSchema,
+        localRegionReplicaSet);
   }
 }

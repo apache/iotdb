@@ -31,6 +31,7 @@ import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
@@ -141,10 +142,6 @@ public class LoadTsFileDataTypeConverter {
   private final boolean isGeneratedByPipe;
   private final MPPQueryContext context;
 
-  private final LoadTreeStatementDataTypeConvertExecutionVisitor
-      treeStatementDataTypeConvertExecutionVisitor =
-          new LoadTreeStatementDataTypeConvertExecutionVisitor(this::executeForTreeModel);
-
   public LoadTsFileDataTypeConverter(
       final MPPQueryContext context, final boolean isGeneratedByPipe) {
     this.context = context;
@@ -157,7 +154,11 @@ public class LoadTsFileDataTypeConverter {
     try {
       getTabletConversionSemaphore().acquire();
       isPermitAcquired = true;
-      return loadTsFileTreeStatement.accept(treeStatementDataTypeConvertExecutionVisitor, null);
+      return loadTsFileTreeStatement.accept(
+          new LoadTreeStatementDataTypeConvertExecutionVisitor(
+              statement ->
+                  executeForTreeModel(statement, loadTsFileTreeStatement.isAutoCreateSchema())),
+          null);
     } catch (final InterruptedException e) {
       return getInterruptedConversionStatus(e);
     } catch (Exception e) {
@@ -177,7 +178,8 @@ public class LoadTsFileDataTypeConverter {
     }
   }
 
-  private TSStatus executeForTreeModel(final Statement statement) {
+  private TSStatus executeForTreeModel(
+      final Statement statement, final boolean allowAutoCreateSchema) {
     final IClientSession session;
     final boolean needToCreateSession = SESSION_MANAGER.getCurrSession() == null;
     if (needToCreateSession) {
@@ -195,11 +197,23 @@ public class LoadTsFileDataTypeConverter {
     }
 
     try {
+      final SessionInfo sessionInfo =
+          SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession());
       return Coordinator.getInstance()
           .executeForTreeModel(
               isGeneratedByPipe ? new PipeEnrichedStatement(statement) : statement,
               SESSION_MANAGER.requestQueryId(),
-              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
+              new SessionInfo(
+                  sessionInfo.getSessionId(),
+                  sessionInfo.getUserName(),
+                  sessionInfo.getZoneId(),
+                  sessionInfo.getVersion(),
+                  sessionInfo.getCliHostname(),
+                  allowAutoCreateSchema
+                      && sessionInfo.isEnableAutoCreateSchema()
+                      && (context == null
+                          || context.getSession() == null
+                          || context.getSession().isEnableAutoCreateSchema())),
               "",
               ClusterPartitionFetcher.getInstance(),
               ClusterSchemaFetcher.getInstance(),

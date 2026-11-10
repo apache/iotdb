@@ -34,23 +34,33 @@ public class SessionInfo {
   private final String userName;
   private final ZoneId zoneId;
   private final String cliHostname;
+  // LOAD conversion uses this policy during local schema analysis; keep the session wire format.
+  private final boolean enableAutoCreateSchema;
 
   private ClientVersion version = ClientVersion.V_1_0;
 
   public SessionInfo(long sessionId, String userName, ZoneId zoneId, String cliHostname) {
-    this.sessionId = sessionId;
-    this.userName = userName;
-    this.zoneId = zoneId;
-    this.cliHostname = cliHostname;
+    this(sessionId, userName, zoneId, ClientVersion.V_1_0, cliHostname);
   }
 
   public SessionInfo(
       long sessionId, String userName, ZoneId zoneId, ClientVersion version, String cliHostname) {
+    this(sessionId, userName, zoneId, version, cliHostname, true);
+  }
+
+  public SessionInfo(
+      long sessionId,
+      String userName,
+      ZoneId zoneId,
+      ClientVersion version,
+      String cliHostname,
+      boolean enableAutoCreateSchema) {
     this.sessionId = sessionId;
     this.userName = userName;
     this.zoneId = zoneId;
     this.version = version;
     this.cliHostname = cliHostname;
+    this.enableAutoCreateSchema = enableAutoCreateSchema;
   }
 
   public long getSessionId() {
@@ -71,6 +81,10 @@ public class SessionInfo {
 
   public String getCliHostname() {
     return cliHostname;
+  }
+
+  public boolean isEnableAutoCreateSchema() {
+    return enableAutoCreateSchema;
   }
 
   public static SessionInfo deserializeFrom(ByteBuffer buffer) {

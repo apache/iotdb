@@ -61,5 +61,8 @@ public final class DataNodeQueryMessages {
   public static final String
       QUERY_EXCEPTION_THERE_IS_NOT_ENOUGH_MEMORY_FOR_QUERY_S_THE_CONTEXTHOLDER_546CDD02 =
           "Query %s 内存不足，contextHolder 为 %s，当前剩余空闲内存为 %dB，该 context 已预留总内存为 %dB，本次请求内存为 %dB。";
+  public static final String
+      EXCEPTION_THE_DATABASE_ARG_DOES_NOT_EXIST_AND_AUTO_CREATE_SCHEMA_IS_DISABLED_28F8D49A =
+          "数据库 %s 不存在，且 auto-create-schema 已禁用。";
   public static final String LOG_DELETE_AFTER_LOADING_ARG_ERROR_C606A060 = "加载后删除 {} 时出错。";
 }

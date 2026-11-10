@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadAnalyzeInvalidPathException;
 import org.apache.iotdb.db.exception.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
@@ -32,6 +36,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.write.TsFileWriter;
+import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
@@ -40,12 +47,19 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class LoadTsFileAnalyzerTest {
 
@@ -165,6 +179,70 @@ public class LoadTsFileAnalyzerTest {
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setAutoCreateSchemaEnabled(originalAutoCreateSchemaEnabled);
+      Assert.assertTrue(tsFile.delete());
+    }
+  }
+
+  @Test
+  public void testTreeTsFileAnalysisPreservesSessionAutoCreateSchemaSetting() throws Exception {
+    final boolean originalEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    final long originalThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getLoadTabletConversionThresholdBytes();
+    final File tsFile = File.createTempFile("tree-load-session-schema", ".tsfile");
+    final List<MeasurementSchema> schemas =
+        Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT64));
+    try (final TsFileWriter writer = new TsFileWriter(tsFile)) {
+      writer.registerTimeseries(new Path("root.load_session_schema.d1"), schemas.get(0));
+      final Tablet tablet = new Tablet("root.load_session_schema.d1", schemas, 1);
+      tablet.addTimestamp(0, 1);
+      tablet.addValue("s1", 0, 1L);
+      tablet.rowSize = 1;
+      writer.write(tablet);
+    }
+    try {
+      IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(true);
+      IoTDBDescriptor.getInstance().getConfig().setLoadTabletConversionThresholdBytes(-1);
+      final SessionInfo session =
+          new SessionInfo(0, "root", ZoneOffset.UTC, IoTDBConstant.ClientVersion.V_1_0, "", false);
+      final MPPQueryContext context =
+          new MPPQueryContext("", new QueryId("tree_load_session_schema"), session, null, null);
+      final LoadTsFileStatement statement = LoadTsFileStatement.createUnchecked(tsFile.getPath());
+      statement.setAutoCreateSchema(true);
+      statement.setAutoCreateDatabase(false);
+      statement.setVerifySchema(true);
+      final ISchemaFetcher fetcher = mock(ISchemaFetcher.class);
+      final ClusterSchemaTree existing = new ClusterSchemaTree();
+      existing.appendSingleMeasurement(
+          new PartialPath("root.load_session_schema.d1.s1"),
+          schemas.get(0),
+          null,
+          null,
+          null,
+          false);
+      when(fetcher.fetchSchemaList(anyList(), anyList(), any(MPPQueryContext.class)))
+          .thenReturn(existing);
+      try (final LoadTsFileAnalyzer analyzer =
+          new LoadTsFileAnalyzer(statement, context, mock(IPartitionFetcher.class), fetcher)) {
+        Assert.assertFalse(analyzer.analyzeFileByFile(new Analysis()).isFailed());
+      }
+      verify(fetcher).fetchSchemaList(anyList(), anyList(), any(MPPQueryContext.class));
+      verify(fetcher, never())
+          .fetchSchemaListWithAutoCreate(
+              anyList(),
+              anyList(),
+              anyList(),
+              anyList(),
+              anyList(),
+              anyList(),
+              any(MPPQueryContext.class));
+      Assert.assertSame(session, context.getSession());
+      Assert.assertFalse(context.getSession().isEnableAutoCreateSchema());
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(originalEnabled);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setLoadTabletConversionThresholdBytes(originalThreshold);
       Assert.assertTrue(tsFile.delete());
     }
   }
