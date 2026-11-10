@@ -2362,6 +2362,12 @@ public final class DataNodeQueryMessages {
   public static final String AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_TWO_OR_THREE_ARGUMENTS =
 
       "聚合函数 [%s] 只能有两个或三个参数";
+  public static final String AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_ONE_TWO_OR_THREE_ARGUMENTS_C1ADA261 =
+
+      "聚合函数 [%s] 只能有一个、两个或三个参数";
+  public static final String SECOND_ARGUMENT_OF_AGGREGATE_FUNCTIONS_S_SHOULD_BE_A_POSITIVE_DURATION_STRING_DDAEF6E8 =
+
+      "聚合函数 [%s] 的第二个参数应为正的时间长度字符串（如 '1s'、'1m'、'1h'）";
   public static final String AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_TWO_ARGUMENTS =
 
       "聚合函数 [%s] 只能有两个参数";

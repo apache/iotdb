@@ -57,6 +57,8 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate.GroupedOrderedIncreaseAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate.GroupedOrderedIrateAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate.GroupedOrderedRateAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.integral.NaiveIntegralAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.integral.OrderedIntegralAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.NaiveDeltaAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.NaiveIncreaseAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.NaiveIrateAccumulator;
@@ -629,6 +631,10 @@ public class AccumulatorFactory {
         return useOrderedImplementation
             ? new OrderedDeltaAccumulator(inputDataTypes.get(0))
             : new NaiveDeltaAccumulator(inputDataTypes.get(0), memoryReservationManager);
+      case INTEGRAL:
+        return useOrderedImplementation
+            ? new OrderedIntegralAccumulator(inputDataTypes.get(0))
+            : new NaiveIntegralAccumulator(inputDataTypes.get(0), memoryReservationManager);
       default:
         throw new IllegalArgumentException(
             CalcMessages.INVALID_AGGREGATION_FUNCTION + aggregationType);

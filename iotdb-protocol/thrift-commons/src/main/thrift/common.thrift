@@ -331,6 +331,7 @@ enum TAggregationType {
   INCREASE,
   IRATE,
   DELTA,
+  INTEGRAL
 }
 
 struct TShowConfigurationTemplateResp {

@@ -581,6 +581,12 @@ public final class CalcMessages {
   public static final String
       EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_ARG_ARGUMENTS_BUT_GOT_ARG_D6249DD2 =
           "Aggregate function [%s] requires %d arguments, but got %d";
+  public static final String
+      EXCEPTION_THE_TIME_UNIT_ARGUMENT_OF_AGGREGATE_FUNCTION_ARG_IS_INVALID_89D17438 =
+          "The time unit argument of aggregate function [%s] is invalid: %s";
+  public static final String
+      EXCEPTION_AGGREGATE_FUNCTION_ARG_VALUE_EXCEEDS_THE_FINITE_RANGE_OF_DOUBLE_48936427 =
+          "The value of aggregate function [%s] exceeds the finite range of double: %s";
 
   public static final String EXCEPTION_UNSUPPORTED_TARGET_DATATYPE_ARG_AFE3789A =
       "Unsupported target dataType: %s";

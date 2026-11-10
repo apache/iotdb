@@ -2189,6 +2189,10 @@ public final class DataNodeQueryMessages {
       "Second argument of Aggregate functions [%s] should be orderable";
   public static final String AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_TWO_OR_THREE_ARGUMENTS =
       "Aggregate functions [%s] should only have two or three arguments";
+  public static final String AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_ONE_TWO_OR_THREE_ARGUMENTS_C1ADA261 =
+      "Aggregate functions [%s] should only have one, two or three arguments";
+  public static final String SECOND_ARGUMENT_OF_AGGREGATE_FUNCTIONS_S_SHOULD_BE_A_POSITIVE_DURATION_STRING_DDAEF6E8 =
+      "Second argument of Aggregate functions [%s] should be a positive duration string (e.g. '1s', '1m', '1h')";
   public static final String AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_TWO_ARGUMENTS =
       "Aggregate functions [%s] should only have two arguments";
   public static final String SECOND_ARGUMENT_OF_AGGREGATE_FUNCTIONS_S_SHOULD_BE_NUMBERIC_TYPE_AND_DO_NOT_USE =

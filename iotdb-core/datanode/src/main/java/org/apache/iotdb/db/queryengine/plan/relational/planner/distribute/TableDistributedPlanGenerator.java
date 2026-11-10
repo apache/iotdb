@@ -168,6 +168,7 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.DELTA;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.INCREASE;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.INTEGRAL;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.IRATE;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.RATE;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
@@ -2270,17 +2271,28 @@ public class TableDistributedPlanGenerator
       List<Symbol> groupingKeys,
       OrderingScheme childOrdering) {
     String functionName = aggregation.getResolvedFunction().getSignature().getName();
-    if (step != SINGLE
-        || childOrdering == null
-        || aggregation.getArguments().size() < 2
-        || !(RATE.equalsIgnoreCase(functionName)
-            || INCREASE.equalsIgnoreCase(functionName)
-            || IRATE.equalsIgnoreCase(functionName)
-            || DELTA.equalsIgnoreCase(functionName))) {
+    if (step != SINGLE || childOrdering == null) {
       return false;
     }
 
-    Symbol timeSymbol = Symbol.from(aggregation.getArguments().get(1));
+    // integral(value, time_unit, time) takes the time column as the third argument, while the
+    // rate family takes it as the second one
+    final int timeArgumentIndex;
+    if (INTEGRAL.equalsIgnoreCase(functionName)) {
+      timeArgumentIndex = 2;
+    } else if (RATE.equalsIgnoreCase(functionName)
+        || INCREASE.equalsIgnoreCase(functionName)
+        || IRATE.equalsIgnoreCase(functionName)
+        || DELTA.equalsIgnoreCase(functionName)) {
+      timeArgumentIndex = 1;
+    } else {
+      return false;
+    }
+    if (aggregation.getArguments().size() <= timeArgumentIndex) {
+      return false;
+    }
+
+    Symbol timeSymbol = Symbol.from(aggregation.getArguments().get(timeArgumentIndex));
     List<Symbol> orderBy = childOrdering.getOrderBy();
     int timeIndex = orderBy.indexOf(timeSymbol);
     if (timeIndex < 0 || !childOrdering.getOrdering(timeSymbol).isAscending()) {

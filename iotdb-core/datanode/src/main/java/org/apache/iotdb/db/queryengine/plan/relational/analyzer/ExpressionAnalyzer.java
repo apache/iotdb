@@ -103,6 +103,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StackableAstVisitor;
+import org.apache.iotdb.db.utils.DataNodeDateTimeUtils;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
@@ -113,6 +114,7 @@ import com.google.common.collect.Multimap;
 import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.TimeDuration;
 
 import javax.annotation.Nullable;
 
@@ -143,11 +145,13 @@ import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.integral.AbstractIntegralTableAccumulator.DEFAULT_INTEGRAL_TIME_UNIT;
 import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isCharType;
 import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isNumericType;
 import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isTwoTypeComparable;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.FIRST_AGGREGATION;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.INTEGRAL;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.LAST_AGGREGATION;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DereferenceExpression.isQualifiedAllFieldsReference;
@@ -1174,6 +1178,51 @@ public class ExpressionAnalyzer {
                       functionName));
             }
           }
+          break;
+        case INTEGRAL:
+          // Syntactic sugar: integral(c1) => integral(c1, '1s', time)
+          //                 integral(c1, time_unit) => integral(c1, time_unit, time)
+          if (argumentsNum == 1) {
+            node.getArguments().add(new StringLiteral(DEFAULT_INTEGRAL_TIME_UNIT));
+            addTimeArgument(node.getArguments(), getActualTimeFieldName(relationType));
+          } else if (argumentsNum == 2) {
+            addTimeArgument(node.getArguments(), getActualTimeFieldName(relationType));
+          } else if (argumentsNum == 3) {
+            if (!checkArgumentIsTimestamp(
+                node.getArguments().get(2), (List<Field>) relationType.getVisibleFields())) {
+              throw new SemanticException(
+                  String.format(
+                      DataNodeQueryMessages
+                          .THE_THIRD_ARGUMENT_OF_S_FUNCTION_MUST_BE_ACTUAL_TIME_NAME,
+                      functionName));
+            }
+          } else {
+            throw new SemanticException(
+                String.format(
+                    DataNodeQueryMessages
+                        .AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_ONE_TWO_OR_THREE_ARGUMENTS_C1ADA261,
+                    functionName));
+          }
+          // Normalize time_unit to ticks of the current timestamp precision once, so that the
+          // accumulator does not have to parse the duration string at execution time
+          Expression timeUnitArgument = node.getArguments().get(1);
+          if (!(timeUnitArgument instanceof LongLiteral)) {
+            if (!(timeUnitArgument instanceof StringLiteral)) {
+              throw new SemanticException(
+                  String.format(
+                      DataNodeQueryMessages
+                          .SECOND_ARGUMENT_OF_AGGREGATE_FUNCTIONS_S_SHOULD_BE_A_POSITIVE_DURATION_STRING_DDAEF6E8,
+                      functionName));
+            }
+            node.getArguments()
+                .set(
+                    1,
+                    new LongLiteral(
+                        String.valueOf(
+                            parseIntegralTimeUnit(
+                                ((StringLiteral) timeUnitArgument).getValue(), functionName))));
+          }
+          break;
       }
 
       List<Type> argumentTypes = getCallArgumentTypes(node.getArguments(), context);
@@ -1325,6 +1374,23 @@ public class ExpressionAnalyzer {
                   new SemanticException(
                       DataNodeQueryMessages
                           .MISSING_VALID_TIME_COLUMN_THE_TABLE_MUST_CONTAIN_EITHER_A_COLUMN_WITH_THE_TIME_CATEGORY));
+    }
+
+    /** Parses the time unit and converts it to ticks of the current timestamp precision. */
+    private long parseIntegralTimeUnit(String duration, String functionName) {
+      try {
+        TimeDuration timeUnit = DataNodeDateTimeUtils.constructTimeDuration(duration);
+        if (timeUnit.monthDuration == 0 && timeUnit.nonMonthDuration > 0) {
+          return timeUnit.nonMonthDuration;
+        }
+      } catch (IllegalArgumentException e) {
+        // fall through to report an invalid time unit
+      }
+      throw new SemanticException(
+          String.format(
+              DataNodeQueryMessages
+                  .SECOND_ARGUMENT_OF_AGGREGATE_FUNCTIONS_S_SHOULD_BE_A_POSITIVE_DURATION_STRING_DDAEF6E8,
+              functionName));
     }
 
     private Type analyzeMatchNumber(

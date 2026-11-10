@@ -147,8 +147,7 @@ public class DerivativeTableFunction implements TableFunction {
             .addProperty(OUTPUT_TYPES_PROPERTY, WindowTVFUtils.joinTypes(outputTypes))
             .addProperty(PARTITION_COLUMN_COUNT_PROPERTY, partitionIndexes.size())
             .addProperty(
-                UNIT_PROPERTY,
-                ((ScalarArgument) arguments.get(UNIT_PARAMETER_NAME)).getValue())
+                UNIT_PROPERTY, ((ScalarArgument) arguments.get(UNIT_PARAMETER_NAME)).getValue())
             .build();
 
     List<Integer> requiredColumns = new ArrayList<>(partitionIndexes);
@@ -204,8 +203,8 @@ public class DerivativeTableFunction implements TableFunction {
   }
 
   /**
-   * Streaming processor over one partition. Each row is paired with the previous one, so the
-   * output row is produced as soon as the pair is complete and {@code finish} is left empty.
+   * Streaming processor over one partition. Each row is paired with the previous one, so the output
+   * row is produced as soon as the pair is complete and {@code finish} is left empty.
    *
    * <p>The required input columns are the partition columns, the time column (the single ORDER BY
    * column of DATA) and the calculation columns, in that order, which is also the order of the
