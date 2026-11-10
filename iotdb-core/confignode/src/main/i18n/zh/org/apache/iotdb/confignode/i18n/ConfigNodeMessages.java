@@ -868,4 +868,7 @@ public final class ConfigNodeMessages {
       "序列化模式树时发生错误。";
 
   public static final String EXCEPTION_NO_SUCH_USER_9F8AB2B7 = "用户不存在：";
+  public static final String
+      EXCEPTION_REGIONGROUP_POLICY_HOT_RELOAD_REQUIRES_IDENTICAL_CONFIGNODE_VERSIONS_AND_BUILDS_FA3BBFEA =
+          "RegionGroup 策略热更新要求所有 ConfigNode 的版本及构建信息一致。";
 }
