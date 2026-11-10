@@ -519,11 +519,18 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "query_timeout_threshold", Long.toString(conf.getQueryTimeoutThreshold()))));
 
-    conf.setDeviceMetadataBatchScanRatio(
+    double deviceMetadataBatchScanRatio =
         Double.parseDouble(
             properties.getProperty(
                 "device_metadata_batch_scan_ratio",
-                Double.toString(conf.getDeviceMetadataBatchScanRatio()))));
+                Double.toString(conf.getDeviceMetadataBatchScanRatio())));
+    // a non-positive ratio would route every table scan, even single-column ones, through the
+    // batch path; keep the current value instead
+    deviceMetadataBatchScanRatio =
+        deviceMetadataBatchScanRatio <= 0
+            ? conf.getDeviceMetadataBatchScanRatio()
+            : deviceMetadataBatchScanRatio;
+    conf.setDeviceMetadataBatchScanRatio(deviceMetadataBatchScanRatio);
 
     conf.setCopyToAllowedExportDirs(
         Arrays.stream(

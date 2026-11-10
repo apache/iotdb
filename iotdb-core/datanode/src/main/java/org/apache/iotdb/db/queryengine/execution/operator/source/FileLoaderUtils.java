@@ -455,17 +455,6 @@ public class FileLoaderUtils {
     if (timeColumn == null) {
       return null;
     }
-    // only need time column, like count_time aggregation
-    if (valueMeasurementList.isEmpty()) {
-      return setModifications(
-          resource,
-          timeColumn,
-          Collections.emptyList(),
-          alignedPath,
-          context,
-          globalTimeFilter,
-          false);
-    }
     List<TimeseriesMetadata> valueTimeSeriesMetadataList =
         new ArrayList<>(valueMeasurementList.size());
     // if all the queried aligned sensors does not exist, we will return null
