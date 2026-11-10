@@ -4845,7 +4845,8 @@ public class StatementAnalyzer {
         return "NULL";
       }
       if (expression instanceof StringLiteral) {
-        return ((StringLiteral) expression).getValue();
+        String value = ((StringLiteral) expression).getValue();
+        return value.isEmpty() ? "empty_string" : value;
       }
       return org.apache.iotdb.commons.queryengine.plan.relational.sql.util.ExpressionFormatter
           .formatExpression(expression);

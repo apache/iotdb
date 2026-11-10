@@ -64,6 +64,18 @@ public class IoTDBPivotIT {
               + "(3,'d1',NULL,'on',30)");
       statement.execute("FLUSH");
       statement.execute(
+          "CREATE TABLE cc (device_id STRING TAG, region STRING FIELD, v INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO cc (time,device_id,region,v) VALUES " + "(1,'d1','',8),(2,'d1','x-y',16)");
+      statement.execute("FLUSH");
+      statement.execute(
+          "CREATE TABLE cc_name_collision "
+              + "(device_id STRING TAG, region STRING FIELD, v INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO cc_name_collision (time,device_id,region,v) VALUES "
+              + "(1,'d1','',8),(2,'d1','empty_string',16)");
+      statement.execute("FLUSH");
+      statement.execute(
           "CREATE TABLE ranked (device STRING TAG, region STRING FIELD, temp INT32 FIELD)");
       statement.execute(
           "INSERT INTO ranked (time,device,region,temp) VALUES "
@@ -103,6 +115,20 @@ public class IoTDBPivotIT {
             + "ORDER BY device LIMIT 1",
         new String[] {"device", "north", "south", "NULL"},
         new String[] {"d1,10.0,20.0,30.0,"},
+        DATABASE);
+  }
+
+  @Test
+  public void testStaticPivotEmptyStringAndNullValues() {
+    tableResultSetEqualTest(
+        "PIVOT cc ON region IN ('', NULL) USING SUM(v) GROUP BY device_id",
+        new String[] {"device_id", "empty_string", "NULL"},
+        new String[] {"d1,8.0,null,"},
+        DATABASE);
+    tableResultSetEqualTest(
+        "PIVOT cc ON region IN ('' AS blank_region) USING SUM(v) GROUP BY device_id",
+        new String[] {"device_id", "blank_region"},
+        new String[] {"d1,8.0,"},
         DATABASE);
   }
 
@@ -148,6 +174,35 @@ public class IoTDBPivotIT {
             + "SELECT device,north_off,north_on FROM p ORDER BY device",
         new String[] {"device", "north_off", "north_on"},
         new String[] {"d1,null,10.0,"},
+        DATABASE);
+  }
+
+  @Test
+  public void testDynamicPivotWithEmptyStringValue() {
+    tableResultSetEqualTest(
+        "PIVOT cc ON region USING SUM(v) GROUP BY device_id",
+        new String[] {"device_id", "empty_string", "x-y"},
+        new String[] {"d1,8.0,16.0,"},
+        DATABASE);
+    tableResultSetEqualTest(
+        "SELECT empty_string FROM (PIVOT cc ON region USING SUM(v) GROUP BY device_id)",
+        new String[] {"empty_string"},
+        new String[] {"8.0,"},
+        DATABASE);
+  }
+
+  @Test
+  public void testPivotGeneratedNameCollisionWithEmptyString() {
+    tableResultSetEqualTest(
+        "PIVOT cc_name_collision ON region IN ('','empty_string') "
+            + "USING SUM(v) GROUP BY device_id",
+        new String[] {"device_id", "empty_string", "empty_string_1"},
+        new String[] {"d1,8.0,16.0,"},
+        DATABASE);
+    tableResultSetEqualTest(
+        "PIVOT cc_name_collision ON region USING SUM(v) GROUP BY device_id",
+        new String[] {"device_id", "empty_string", "empty_string_1"},
+        new String[] {"d1,8.0,16.0,"},
         DATABASE);
   }
 
@@ -533,6 +588,17 @@ public class IoTDBPivotIT {
           "s_online_avg_temp"
         },
         new String[] {"device_1,null,21.0,32.0,null,", "device_2,17.0,null,30.0,null,"},
+        DATABASE);
+  }
+
+  @Test
+  public void testMixedStaticPivotValuesCanBeReferencedInSubquery() {
+    tableResultSetEqualTest(
+        "SELECT device_id,north,\"1\",\"NULL\" FROM ("
+            + "PIVOT device_metrics ON region IN ('north',1,NULL) "
+            + "USING AVG(temperature) GROUP BY device_id) ORDER BY device_id",
+        new String[] {"device_id", "north", "1", "NULL"},
+        new String[] {"device_1,21.0,null,26.0,", "device_2,17.0,null,24.0,"},
         DATABASE);
   }
 
