@@ -53,6 +53,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
 public class ChunkCacheTest {
@@ -128,8 +129,8 @@ public class ChunkCacheTest {
                   true),
               chunkMetadataKey.getDeleteIntervalList(),
               chunkMetadataKey.getStatistics());
-      Assert.assertEquals(chunk1.getHeader(), chunk2.getHeader());
-      Assert.assertEquals(chunk1.getData(), chunk2.getData());
+      assertThat(chunk1.getHeader()).usingRecursiveComparison().isEqualTo(chunk2.getHeader());
+      assertThat(chunk1.getData()).usingRecursiveComparison().isEqualTo(chunk2.getData());
     }
   }
 
