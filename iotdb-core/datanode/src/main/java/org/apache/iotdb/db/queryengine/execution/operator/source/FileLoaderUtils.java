@@ -360,8 +360,7 @@ public class FileLoaderUtils {
     // For a wide device (a table scan that selects almost all field columns), deserialize the
     // whole device's TimeSeriesMetadata in a single batch read instead of walking the device
     // metadata index once per column.
-    if (shouldUseDeviceMetadataBatchScan(valueMeasurementList.size(), totalFieldColumnCount)
-        && ignoreNotExists) {
+    if (shouldUseDeviceMetadataBatchScan(valueMeasurementList.size(), totalFieldColumnCount)) {
       return loadAlignedTimeSeriesMetadataBatch(
           resource,
           alignedPath,
@@ -369,6 +368,7 @@ public class FileLoaderUtils {
           context,
           globalTimeFilter,
           ignoreAllNullRows,
+          ignoreNotExists,
           cache,
           filePath,
           deviceId);
@@ -445,12 +445,27 @@ public class FileLoaderUtils {
       FragmentInstanceContext context,
       Filter globalTimeFilter,
       boolean ignoreAllNullRows,
+      boolean ignoreNotExists,
       TimeSeriesMetadataCache cache,
       String filePath,
       IDeviceID deviceId)
       throws IOException {
     Map<String, TimeseriesMetadata> deviceMetadata =
         cache.getDeviceTimeSeriesMetadata(filePath, resource.getTsFileID(), deviceId, context);
+    if (deviceMetadata.isEmpty()) {
+      // device not found in this file. With a file-level time index (or during recovery) that is
+      // expected, so skip; with a device-level time index the device should be present, so surface
+      // the inconsistency instead of silently dropping the device's data.
+      if (ignoreNotExists) {
+        return null;
+      }
+      throw new CorruptedTsFileException(
+          resource.getTsFile(),
+          CorruptedTsFileException.Stage.READ_TIMESERIES_METADATA,
+          DataNodeQueryMessages
+              .EXCEPTION_FAILED_TO_READ_TIMESERIES_METADATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_0B9E652E,
+          null);
+    }
     TimeseriesMetadata timeColumn = deviceMetadata.get("");
     if (timeColumn == null) {
       return null;
