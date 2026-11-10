@@ -32,7 +32,17 @@ import org.apache.thrift.transport.TTransport;
 import java.net.Socket;
 
 /**
- * Registers a client session only for connections using the multiplexed client RPC service.
+ * Processor for the multiplexed client RPC service on the DataNode internal endpoint.
+ *
+ * <p>Client session registration intentionally happens here instead of in the shared server context
+ * handler. The internal endpoint also serves the legacy unprefixed {@code IDataNodeRPCService};
+ * those requests must retain their existing stateless transport behavior and must not be wrapped in
+ * an {@code IClientSession}.
+ *
+ * <p>The paired cleanup is performed in {@link
+ * org.apache.iotdb.db.protocol.thrift.handler.InternalServiceThriftHandler#deleteContext}, which is
+ * installed as the server event handler by {@code
+ * DataNodeInternalRPCService#initThriftServiceThread}.
  *
  * <p>This endpoint belongs to the trusted cluster/inter-node surface described in {@code
  * THREAT_MODEL.md}; it is not a client-facing RPC endpoint. These sessions intentionally bypass the
@@ -48,6 +58,9 @@ public class InternalClientRPCServiceProcessor extends ProcessorWithMetrics {
   @Override
   public void process(TProtocol in, TProtocol out) throws TException {
     if (SessionManager.getInstance().getCurrSession() == null) {
+      // Register before forwarding so even the first openSession request has a session. The
+      // corresponding removal is handled by InternalServiceThriftHandler.deleteContext when the
+      // transport closes.
       TTransport socketTransport = ((TElasticFramedTransport) out.getTransport()).getSocket();
       Socket socket = ((TSocket) socketTransport).getSocket();
       SessionManager.getInstance().registerSession(new ClientSession(socket));

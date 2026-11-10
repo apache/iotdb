@@ -71,6 +71,8 @@ public class DataNodeInternalRPCService extends ThriftService
     IClientRPCServiceWithHandler clientService = getClientImpl();
     initSyncedServiceImpl(null);
     final TMultiplexedProcessor multiplexedProcessor = new TMultiplexedProcessor();
+    // This processor lazily registers an IClientSession. Its matching connection-close cleanup is
+    // installed through InternalServiceThriftHandler in initThriftServiceThread().
     multiplexedProcessor.registerProcessor(
         RpcServiceConstants.INTERNAL_CLIENT_RPC_SERVICE,
         new InternalClientRPCServiceProcessor(clientService));
@@ -83,6 +85,8 @@ public class DataNodeInternalRPCService extends ThriftService
     // Internal client sessions intentionally share this server with cluster RPC traffic. Their
     // connection capacity is bounded together by rpcMaxConcurrentClientNum and must be sized for
     // both workloads.
+    // InternalServiceThriftHandler is the transport-level counterpart to the lazy session
+    // registration in InternalClientRPCServiceProcessor.process().
     try {
       thriftServiceThread =
           commonConfig.isEnableInternalSSL()

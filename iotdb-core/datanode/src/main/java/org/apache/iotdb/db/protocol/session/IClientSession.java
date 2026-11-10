@@ -53,7 +53,9 @@ public abstract class IClientSession {
 
   private boolean login = false;
 
-  // Session uses the internal RPC endpoint family for redirects.
+  // True when this session was opened through the multiplexed IClientRPCService on the DataNode
+  // internal endpoint. This identifies the RPC endpoint family for redirects and internal transport
+  // behavior; it does not imply database-internal privileges.
   private boolean internalRpcSession = false;
 
   private long logInTime;

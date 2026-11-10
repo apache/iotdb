@@ -32,7 +32,7 @@ public class TreeAccessCheckContext implements IAuditEntity {
   private final long userId;
   private final String username;
   private final String cliHostname;
-  private boolean databaseInternalSession;
+  private boolean internalDatabaseSession;
 
   public TreeAccessCheckContext(long userId, String username, String cliHostname) {
     this.userId = userId;
@@ -56,12 +56,12 @@ public class TreeAccessCheckContext implements IAuditEntity {
   }
 
   @Override
-  public boolean isDatabaseInternalSession() {
-    return databaseInternalSession;
+  public boolean isInternalDatabaseSession() {
+    return internalDatabaseSession;
   }
 
-  public TreeAccessCheckContext setDatabaseInternalSession(final boolean databaseInternalSession) {
-    this.databaseInternalSession = databaseInternalSession;
+  public TreeAccessCheckContext setInternalDatabaseSession(final boolean internalDatabaseSession) {
+    this.internalDatabaseSession = internalDatabaseSession;
     return this;
   }
 

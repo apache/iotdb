@@ -227,13 +227,14 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   /**
-   * Opens a session without password verification for trusted internal client RPC callers.
+   * Opens an internal RPC session for trusted node-to-node callers.
    *
    * <p>This path is reachable only through the multiplexed client RPC service on the DataNode
    * internal endpoint, which belongs to the trusted cluster/inter-node surface described in {@code
-   * THREAT_MODEL.md}. It intentionally emits no login audit records because it performs no
-   * credential verification; access is controlled by the network/transport boundary rather than by
-   * user login auditing.
+   * THREAT_MODEL.md}. It is not a user login: it resolves an existing user identity for
+   * authorization but skips credentials and account login policies. Operation-level authorization,
+   * quota, and query-ownership checks still apply. No login audit record is emitted because no
+   * login is performed.
    */
   public BasicOpenSessionResp loginInternal(
       final IClientSession session,
@@ -251,16 +252,6 @@ public class SessionManager implements SessionManagerMBean {
               String.format(
                   DataNodeMiscMessages.MISC_EXCEPTION_USER_S_DOES_NOT_EXIST_0CE725D8, username));
       openSessionResp.sessionId(-1).setCode(status.getCode()).setMessage(status.getMessage());
-      return openSessionResp;
-    }
-
-    final TSStatus loginPolicyStatus =
-        AuthorityChecker.getAccessControl().allowUserToLogin(username);
-    if (loginPolicyStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      openSessionResp
-          .sessionId(-1)
-          .setCode(loginPolicyStatus.getCode())
-          .setMessage(loginPolicyStatus.getMessage());
       return openSessionResp;
     }
 

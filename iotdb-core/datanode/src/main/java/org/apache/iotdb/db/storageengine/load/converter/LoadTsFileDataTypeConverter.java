@@ -251,8 +251,8 @@ public class LoadTsFileDataTypeConverter {
     final IClientSession session =
         needToCreateSession ? createConversionSession(SqlDialect.TABLE) : currentSession;
     final SessionInfo sourceSessionInfo = Objects.nonNull(context) ? context.getSession() : null;
-    final boolean databaseInternalSession =
-        Objects.nonNull(sourceSessionInfo) && sourceSessionInfo.isDatabaseInternalSession();
+    final boolean internalDatabaseSession =
+        Objects.nonNull(sourceSessionInfo) && sourceSessionInfo.isInternalDatabaseSession();
     final boolean internalRpcSession =
         Objects.nonNull(sourceSessionInfo) && sourceSessionInfo.isInternalRpcSession();
     final SessionInfo sessionInfo =
@@ -264,7 +264,7 @@ public class LoadTsFileDataTypeConverter {
             databaseName,
             SqlDialect.TABLE,
             allowAutoCreateSchema && session.isEnableAutoCreateSchema(),
-            databaseInternalSession,
+            internalDatabaseSession,
             internalRpcSession);
     try {
       return Coordinator.getInstance()
@@ -325,8 +325,8 @@ public class LoadTsFileDataTypeConverter {
     final IClientSession session =
         needToCreateSession ? createConversionSession(SqlDialect.TREE) : currentSession;
     final SessionInfo sourceSessionInfo = Objects.nonNull(context) ? context.getSession() : null;
-    final boolean databaseInternalSession =
-        Objects.nonNull(sourceSessionInfo) && sourceSessionInfo.isDatabaseInternalSession();
+    final boolean internalDatabaseSession =
+        Objects.nonNull(sourceSessionInfo) && sourceSessionInfo.isInternalDatabaseSession();
     final boolean internalRpcSession =
         Objects.nonNull(sourceSessionInfo) && sourceSessionInfo.isInternalRpcSession();
     final SessionInfo sessionInfo =
@@ -342,7 +342,7 @@ public class LoadTsFileDataTypeConverter {
                 && (Objects.isNull(context)
                     || Objects.isNull(context.getSession())
                     || context.getSession().isEnableAutoCreateSchema()),
-            databaseInternalSession,
+            internalDatabaseSession,
             internalRpcSession);
 
     try {

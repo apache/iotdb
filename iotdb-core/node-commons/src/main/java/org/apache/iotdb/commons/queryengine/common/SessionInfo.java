@@ -50,12 +50,26 @@ public class SessionInfo {
   // SessionInfo is sent to execution nodes, so this field does not need serialization.
   private final transient boolean enableAutoCreateSchema;
 
-  // Whether the session is opened by the database itself. Like enableAutoCreateSchema, this is
-  // only consulted during analysis and therefore does not need serialization.
-  private transient boolean databaseInternalSession;
+  // These two flags are orthogonal and must not be used as substitutes for each other.
+  //
+  // True when the operation is executed as the database itself rather than as a regular client.
+  // It is used by analysis/security checks for dedicated internal writes and system-database
+  // access. Typical producers are database-owned maintenance/load paths and trusted internal RPC
+  // operations that explicitly mark their analysis context as database-internal. It does not
+  // indicate which RPC endpoint or service name was used.
+  //
+  // Like enableAutoCreateSchema, this state is only consulted during analysis and is not
+  // serialized.
+  private transient boolean internalDatabaseSession;
 
-  // Whether the session uses the internal RPC endpoint family. Used to select internal redirect
-  // endpoints without changing the meaning of internal database sessions.
+  // True when the session was opened through the multiplexed IClientRPCService on the DataNode
+  // internal endpoint, for example by SessionManager.loginInternal(). It identifies the RPC
+  // endpoint family and is used to select internal redirect endpoints and apply internal-only
+  // transport behavior. It does not grant database-internal privileges by itself.
+  //
+  // A normal client session on the internal endpoint therefore has internalRpcSession=true while
+  // internalDatabaseSession remains false unless its execution context explicitly represents a
+  // database-internal operation. This transient state is not serialized.
   private transient boolean internalRpcSession;
 
   public SessionInfo(long sessionId, UserEntity userEntity, ZoneId zoneId) {
@@ -111,10 +125,10 @@ public class SessionInfo {
       @Nullable String databaseName,
       SqlDialect sqlDialect,
       boolean enableAutoCreateSchema,
-      boolean databaseInternalSession,
+      boolean internalDatabaseSession,
       boolean internalRpcSession) {
     this(sessionId, userEntity, zoneId, version, databaseName, sqlDialect, enableAutoCreateSchema);
-    this.databaseInternalSession = databaseInternalSession;
+    this.internalDatabaseSession = internalDatabaseSession;
     this.internalRpcSession = internalRpcSession;
   }
 
@@ -128,7 +142,7 @@ public class SessionInfo {
         sessionInfo.databaseName,
         sqlDialect,
         sessionInfo.enableAutoCreateSchema,
-        sessionInfo.databaseInternalSession,
+        sessionInfo.internalDatabaseSession,
         sessionInfo.internalRpcSession);
   }
 
@@ -202,12 +216,12 @@ public class SessionInfo {
     return enableAutoCreateSchema;
   }
 
-  public boolean isDatabaseInternalSession() {
-    return databaseInternalSession;
+  public boolean isInternalDatabaseSession() {
+    return internalDatabaseSession;
   }
 
-  public SessionInfo setDatabaseInternalSession(final boolean databaseInternalSession) {
-    this.databaseInternalSession = databaseInternalSession;
+  public SessionInfo setInternalDatabaseSession(final boolean internalDatabaseSession) {
+    this.internalDatabaseSession = internalDatabaseSession;
     return this;
   }
 
