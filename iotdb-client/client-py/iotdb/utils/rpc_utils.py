@@ -17,6 +17,7 @@
 #
 import logging
 
+import numpy as np
 import pandas as pd
 from pandas._libs import OutOfBoundsDatetime
 from tzlocal import get_localzone_name
@@ -81,10 +82,12 @@ def convert_to_timestamp(time: int, precision: str, timezone: str):
     try:
         ts = pd.Timestamp(time, unit=precision, tz=timezone)
     except OutOfBoundsDatetime:
+        # Preserve the input unit: pandas 3.1 may overflow when constructing
+        # extreme millisecond timestamps directly from an integer.
         try:
-            ts = pd.Timestamp(time, unit=precision).tz_localize(timezone)
+            ts = pd.Timestamp(np.datetime64(int(time), precision)).tz_localize(timezone)
         except NotImplementedError:
-            return pd.Timestamp(time, unit=precision)
+            return pd.Timestamp(np.datetime64(int(time), precision))
     except ValueError:
         logger.warning(
             f"Timezone string '{timezone}' cannot be recognized by pandas. "
@@ -95,7 +98,7 @@ def convert_to_timestamp(time: int, precision: str, timezone: str):
         # Timestamp falls outside Python's stdlib datetime range (year < 1 or
         # > 9999). pandas >= 3.0 cannot attach a timezone to such Timestamps
         # because tz conversion relies on toordinal(). Return naive instead.
-        return pd.Timestamp(time, unit=precision)
+        return pd.Timestamp(np.datetime64(int(time), precision))
     # Construction succeeded but utcoffset() may still fail downstream (e.g.
     # in pd.DataFrame's tz alignment) when the Timestamp's year is outside
     # 1..9999 and tz is not the canonical UTC. Probe early and fall back to
@@ -105,7 +108,7 @@ def convert_to_timestamp(time: int, precision: str, timezone: str):
         try:
             ts.utcoffset()
         except NotImplementedError:
-            return pd.Timestamp(time, unit=precision)
+            return pd.Timestamp(np.datetime64(int(time), precision))
     return ts
 
 
