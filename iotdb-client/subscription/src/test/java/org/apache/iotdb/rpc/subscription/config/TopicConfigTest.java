@@ -29,6 +29,59 @@ import java.util.Map;
 public class TopicConfigTest {
 
   @Test
+  public void testFilterVersionIgnoresOwnerRetentionAndUnknownProperties() {
+    final TopicConfig original =
+        new TopicConfig(Collections.singletonMap("Tag-Filter", "region = \"north\""));
+    final Map<String, String> attributes = new HashMap<>(original.getAttribute());
+    attributes.put(TopicConstant.OWNER_ID_KEY, "owner-1");
+    attributes.put(TopicConstant.OWNER_EPOCH_KEY, "1");
+    attributes.put(TopicConstant.RETENTION_MS_KEY, "60000");
+    attributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, "1000");
+    attributes.put("future.non-filtering-property", "value");
+    final TopicConfig updated = new TopicConfig(attributes);
+    updated.inheritFilterVersion(original);
+
+    Assert.assertEquals(original.getFilterVersion(), updated.getFilterVersion());
+  }
+
+  @Test
+  public void testFilterVersionChangesForPredicateBindingAndTreeCapture() {
+    final TopicConfig original =
+        new TopicConfig(
+            Map.of(
+                TopicConstant.TAG_FILTER_KEY, "region = \"north\"",
+                TopicConstant.DATABASE_KEY, "db",
+                TopicConstant.TABLE_KEY, "weather"));
+    for (final Map.Entry<String, String> change :
+        Map.of(
+                TopicConstant.TAG_FILTER_KEY,
+                "region = \"North\"",
+                TopicConstant.DATABASE_KEY,
+                "db2",
+                TopicConstant.TABLE_KEY,
+                "weather2",
+                "source.capture.tree",
+                "true")
+            .entrySet()) {
+      final TopicConfig updated = new TopicConfig(original);
+      updated.getAttribute().put(change.getKey(), change.getValue());
+      updated.inheritFilterVersion(original);
+      Assert.assertNotEquals(original.getFilterVersion(), updated.getFilterVersion());
+    }
+  }
+
+  @Test
+  public void testSnapshotCopyPreservesFilterVersionAndOwnsAttributes() {
+    final TopicConfig original =
+        new TopicConfig(Collections.singletonMap(TopicConstant.TAG_FILTER_KEY, "false"));
+    final TopicConfig snapshot = new TopicConfig(original);
+    Assert.assertEquals(original.getFilterVersion(), snapshot.getFilterVersion());
+
+    snapshot.getAttribute().put(TopicConstant.TAG_FILTER_KEY, "true");
+    Assert.assertEquals("false", original.getTagFilter());
+  }
+
+  @Test
   public void testModeDefaultsToInitial() {
     final TopicConfig topicConfig = new TopicConfig();
 
@@ -130,6 +183,35 @@ public class TopicConfigTest {
     attributes.put("COLUMN-FILTER", " TRUE ");
 
     Assert.assertTrue(new TopicConfig(attributes).isColumnFilterTrivial());
+  }
+
+  @Test
+  public void testTagFilterKeyIsCaseInsensitive() {
+    final TopicConfig topicConfig =
+        new TopicConfig(Collections.singletonMap("Tag-Filter", "region = \"north\""));
+
+    Assert.assertTrue(topicConfig.hasTagFilter());
+    Assert.assertEquals("region = \"north\"", topicConfig.getTagFilter());
+    Assert.assertEquals(
+        "region = \"north\"",
+        topicConfig.getAttributesWithSourceTagFilter().get(TopicConstant.TAG_FILTER_KEY));
+  }
+
+  @Test
+  public void testTagFilterDefaultsToTrivialWhenAbsent() {
+    final TopicConfig topicConfig = new TopicConfig(new HashMap<>());
+
+    Assert.assertFalse(topicConfig.hasTagFilter());
+    Assert.assertTrue(topicConfig.isTagFilterTrivial());
+    Assert.assertEquals(TopicConstant.TAG_FILTER_DEFAULT_VALUE, topicConfig.getTagFilter());
+  }
+
+  @Test
+  public void testTagFilterTrivialWithMixedCaseKeyAndValue() {
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put("TAG-FILTER", " TRUE ");
+
+    Assert.assertTrue(new TopicConfig(attributes).isTagFilterTrivial());
   }
 
   @Test

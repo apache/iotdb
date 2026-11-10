@@ -49,6 +49,9 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   /**
    * Sets the list of node URLs for the IoTDB cluster.
    *
+   * <p>Use the same host/IP form as each DataNode's dn_rpc_address. Recovery deduplicates literal
+   * addresses, not DNS aliases.
+   *
    * @param nodeUrls a list of node URLs.
    * @return the current {@link TableSessionBuilder} instance.
    * @defaultValue Collection.singletonList(" localhost : 6667 ")
@@ -152,6 +155,20 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
    */
   public TableSessionBuilder thriftMaxFrameSize(int thriftMaxFrameSize) {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
+    return this;
+  }
+
+  /**
+   * Buffer requests larger than this threshold use temporary arrays and reset reusable buffers to
+   * {@code thriftDefaultBufferSize}. Applies to compressed and uncompressed transports. Zero makes
+   * every nonempty buffer request use temporary storage.
+   *
+   * @param thriftMaxReusableBufferSize the buffer reuse threshold in bytes.
+   * @return the current {@link TableSessionBuilder} instance.
+   * @defaultValue Integer.MAX_VALUE (keeps the original reuse policy)
+   */
+  public TableSessionBuilder thriftMaxReusableBufferSize(int thriftMaxReusableBufferSize) {
+    this.thriftMaxReusableBufferSize = thriftMaxReusableBufferSize;
     return this;
   }
 

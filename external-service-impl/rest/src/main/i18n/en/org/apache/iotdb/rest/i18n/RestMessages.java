@@ -126,4 +126,23 @@ public final class RestMessages {
   // ---------------------------------------------------------------------------
   public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_0521CEDE = "unsupported data type: ";
 
+  public static final String EXCEPTION_UNSUPPORTED_QUERY_DATA_TYPE_ARG_05BDDFBA =
+      "unsupported query data type: %s";
+
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_3D7368DD =
+      "unsupported data type: %s";
+
+  public static final String EXCEPTION_THIS_OPERATION_TYPE_IS_NOT_SUPPORTED_DD44BACE =
+      "This operation type is not supported";
+
+  public static final String EXCEPTION_ALL_INSERTED_DATA_IS_NULL_6B1A58B6 =
+      "All inserted data is null.";
+
+  public static final String EXCEPTION_THRIFT_SERVICE_IS_UNAVAILABLE_6DF40C0F =
+      "thrift service is unavailable";
+
+  public static final String EXCEPTION_ILLEGAL_FORMAT_OF_AUTHORIZATION_HEADER_D34F8A26 =
+      "Illegal format of authorization header.";
+
+  public static final String EXCEPTION_INVALID_TIME_ZONE_ARG_43D4C03A = "Invalid time zone: %s";
 }

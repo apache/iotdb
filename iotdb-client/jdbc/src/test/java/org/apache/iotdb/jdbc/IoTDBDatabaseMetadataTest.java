@@ -160,6 +160,26 @@ public class IoTDBDatabaseMetadataTest {
   }
 
   @Test
+  public void testGetColumnsToleratesConnectionWithoutCatalog() throws Exception {
+    // A connection that switched to the table dialect reports no catalog
+    when(connection.getCatalog()).thenReturn(null);
+    TSExecuteStatementResp showTimeseriesResp =
+        new TSExecuteStatementResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    showTimeseriesResp.setQueryId(1L);
+    showTimeseriesResp.setColumns(Collections.singletonList("Timeseries"));
+    showTimeseriesResp.setDataTypeList(Collections.singletonList("TEXT"));
+    showTimeseriesResp.setIgnoreTimeStamp(true);
+    showTimeseriesResp.setColumnIndex2TsBlockColumnIndexList(
+        new ArrayList<>(Collections.singletonList(0)));
+    showTimeseriesResp.setQueryResult(Collections.emptyList());
+    when(client.executeQueryStatementV2(any(TSExecuteStatementReq.class)))
+        .thenReturn(showTimeseriesResp);
+    when(client.closeOperation(any())).thenReturn(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+
+    Assert.assertNotNull(databaseMetaData.getColumns(null, "root.sg", null, null));
+  }
+
+  @Test
   public void testGetIndexInfo() throws SQLException {
     ResultSet resultSet = databaseMetaData.getIndexInfo(null, null, null, false, false);
     Assert.assertEquals("Time", resultSet.getMetaData().getColumnName(1));

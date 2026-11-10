@@ -35,10 +35,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.NavigableSet;
 import java.util.Objects;
-import java.util.PriorityQueue;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * Buffers chunks and deletions of one source TsFile per target region partition, managing
@@ -63,9 +67,13 @@ class PieceDispatcher {
   private final Map<PartitionKey, ChunkOffsetCalculator> partition2OffsetCalculator =
       new HashMap<>();
 
-  /** Max-heap tracking (partitionKey, bufferedSize) for memory budget eviction. */
-  private final PriorityQueue<HeapEntry> largestPieceRegions =
-      new PriorityQueue<>((a, b) -> Long.compare(b.dataSize(), a.dataSize()));
+  /** One ordered entry per non-empty partition, so tracking stays bounded as chunks stream in. */
+  private final NavigableSet<PieceSize> largestPieceRegions =
+      new TreeSet<>(
+          Comparator.comparingLong(PieceSize::dataSize)
+              .reversed()
+              .thenComparing(entry -> entry.key().regionId())
+              .thenComparingLong(entry -> entry.key().timePartitionStart()));
 
   PieceDispatcher(
       final LoadSingleTsFileNode singleTsFileNode,
@@ -116,23 +124,29 @@ class PieceDispatcher {
         partition2ReplicaSetAndNode.computeIfAbsent(
             key, k -> new Pair<>(replicaSet, createPieceNode(k)));
 
+    largestPieceRegions.remove(new PieceSize(key, targetPair.getRight().getDataSize()));
     targetPair.getRight().addTsFileData(chunkData);
-    trackHeapEntry(key, targetPair.getRight().getDataSize());
+    trackPieceSize(key, targetPair.getRight().getDataSize());
   }
 
-  /** Broadcasts deletion data across every active partition buffer. */
-  void addDeletionToAll(final DeletionData deletionData) {
+  /** Buffers one copy per region; its receiver applies the deletion to all staged partitions. */
+  void addDeletionToAllRegions(final DeletionData deletionData) {
     if (deletionData == null || partition2ReplicaSetAndNode.isEmpty()) {
       return;
     }
 
     final long deletionSize = deletionData.getDataSize();
+    final Set<TConsensusGroupId> regions = new HashSet<>();
     for (final Map.Entry<PartitionKey, Pair<TRegionReplicaSet, LoadTsFilePieceNode>> entry :
         partition2ReplicaSetAndNode.entrySet()) {
+      if (!regions.add(entry.getKey().regionId())) {
+        continue;
+      }
       memoryBuffer.add(deletionSize);
       final LoadTsFilePieceNode pieceNode = entry.getValue().getRight();
+      largestPieceRegions.remove(new PieceSize(entry.getKey(), pieceNode.getDataSize()));
       pieceNode.addTsFileData(deletionData);
-      trackHeapEntry(entry.getKey(), pieceNode.getDataSize());
+      trackPieceSize(entry.getKey(), pieceNode.getDataSize());
     }
   }
 
@@ -143,7 +157,7 @@ class PieceDispatcher {
   /** Progressively dispatches largest buffered pieces until memory usage is back within budget. */
   boolean dispatchLargestUntilMemoryEnough() throws LoadFileException {
     while (!memoryBuffer.isMemoryEnough()) {
-      final PartitionKey key = pollLargestValidPartition();
+      final PartitionKey key = pollLargestPartition();
       if (key == null) {
         break;
       }
@@ -158,6 +172,7 @@ class PieceDispatcher {
       final long pieceSize = pieceNode.getDataSize();
 
       if (!dispatchCallback.dispatch(pieceNode, pair.getLeft())) {
+        trackPieceSize(key, pieceSize);
         return false;
       }
 
@@ -192,10 +207,12 @@ class PieceDispatcher {
   }
 
   // -------------------------------------------------------------------------
-  // Helpers & Eviction Heap Management
+  // Helpers & Eviction Tracking
   // -------------------------------------------------------------------------
 
   private void replacePieceNode(final PartitionKey key, final TRegionReplicaSet replicaSet) {
+    largestPieceRegions.remove(
+        new PieceSize(key, partition2ReplicaSetAndNode.get(key).getRight().getDataSize()));
     partition2ReplicaSetAndNode.put(key, new Pair<>(replicaSet, createPieceNode(key)));
   }
 
@@ -208,25 +225,15 @@ class PieceDispatcher {
         pieceIndex);
   }
 
-  private void trackHeapEntry(final PartitionKey key, final long size) {
-    largestPieceRegions.offer(new HeapEntry(key, size));
+  private void trackPieceSize(final PartitionKey key, final long size) {
+    if (size > 0) {
+      largestPieceRegions.add(new PieceSize(key, size));
+    }
   }
 
-  private PartitionKey pollLargestValidPartition() {
-    while (!largestPieceRegions.isEmpty()) {
-      final HeapEntry entry = largestPieceRegions.poll();
-      final Pair<TRegionReplicaSet, LoadTsFilePieceNode> pair =
-          partition2ReplicaSetAndNode.get(entry.key());
-      if (pair == null) {
-        continue;
-      }
-
-      final long actualSize = pair.getRight().getDataSize();
-      if (entry.dataSize() == actualSize && actualSize > 0) {
-        return entry.key();
-      }
-    }
-    return null;
+  private PartitionKey pollLargestPartition() {
+    final PieceSize entry = largestPieceRegions.pollFirst();
+    return entry == null ? null : entry.key();
   }
 
   void clear() {
@@ -242,5 +249,5 @@ class PieceDispatcher {
 
   private record PartitionKey(TConsensusGroupId regionId, long timePartitionStart) {}
 
-  private record HeapEntry(PartitionKey key, long dataSize) {}
+  private record PieceSize(PartitionKey key, long dataSize) {}
 }

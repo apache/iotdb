@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.schemaengine.metric;
 
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.type.Timer;
@@ -83,7 +85,7 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
         Metric.SCHEMA_REGION.toString(),
         MetricLevel.IMPORTANT,
         regionStatistics,
-        i -> i.getSeriesNumber(true),
+        i -> i.getSeriesNumber(true) + getTableSeriesNumber(),
         Tag.NAME.toString(),
         SERIES_CNT,
         Tag.REGION.toString(),
@@ -94,7 +96,7 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
         Metric.SCHEMA_REGION.toString(),
         MetricLevel.IMPORTANT,
         regionStatistics,
-        i -> i.getSeriesNumber(false),
+        i -> i.getSeriesNumber(false) + getTableSeriesNumber(),
         Tag.NAME.toString(),
         NON_VIEW_SERIES_CNT,
         Tag.REGION.toString(),
@@ -152,6 +154,17 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
         database,
         SchemaEngineMemMetric.TABLE,
         tableName);
+  }
+
+  private long getTableSeriesNumber() {
+    return regionStatistics.getTable2DevicesNumMap().entrySet().stream()
+        .mapToLong(
+            entry -> {
+              final TsTable table =
+                  DataNodeTableCache.getInstance().getTableInCache(database, entry.getKey());
+              return table == null ? 0 : (long) table.getFieldNum() * entry.getValue();
+            })
+        .sum();
   }
 
   @Override

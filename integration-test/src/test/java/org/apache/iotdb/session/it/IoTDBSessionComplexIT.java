@@ -551,6 +551,7 @@ public class IoTDBSessionComplexIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertNotAutoCreateSchemaTest() {
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
@@ -599,6 +600,7 @@ public class IoTDBSessionComplexIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void testAuth() {
     // auth test
     try (ISession authSession = EnvFactory.getEnv().getSessionConnection("test", "test123123456")) {

@@ -158,19 +158,16 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
-      if (isRollbackSupported(state)) {
-        setFailure(new ProcedureException(ProcedureMessages.REMOVE_DATA_NODE_FAILED + state));
+      // Rollback support permits failure cleanup; transient execution errors still retry here.
+      LOG.error(
+          ProcedureMessages.LOG_RETRIEVABLE_ERROR_TRYING_REMOVE_DATA_NODE_ARG_STATE_ARG_4EFEB850,
+          removedDataNodes,
+          state,
+          e);
+      if (getCycles() > RETRY_THRESHOLD) {
+        setFailure(new ProcedureException(ProcedureMessages.STATE_STUCK_AT + state));
       } else {
-        LOG.error(
-            ProcedureMessages.LOG_RETRIEVABLE_ERROR_TRYING_REMOVE_DATA_NODE_ARG_STATE_ARG_4EFEB850,
-            removedDataNodes,
-            state,
-            e);
-        if (getCycles() > RETRY_THRESHOLD) {
-          setFailure(new ProcedureException(ProcedureMessages.STATE_STUCK_AT + state));
-        } else {
-          setNextState(state);
-        }
+        setNextState(state);
       }
     }
     return Flow.HAS_MORE_STATE;
@@ -291,7 +288,9 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
 
   @Override
   protected boolean isRollbackSupported(RemoveDataNodeState state) {
-    return false;
+    // A failed migration child must still trigger node cleanup. This restores node statuses and
+    // stops drained nodes without undoing completed region migrations.
+    return state == RemoveDataNodeState.STOP_DATA_NODE;
   }
 
   /**

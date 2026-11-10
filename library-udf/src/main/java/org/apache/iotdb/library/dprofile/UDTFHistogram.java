@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.dprofile;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -47,11 +48,12 @@ public class UDTFHistogram implements UDTF {
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             count -> (int) count > 0,
-            "parameter $count$ should be larger than 0",
+            LibraryUdfMessages.EXCEPTION_PARAMETER_COUNT_SHOULD_BE_LARGER_THAN_0_8E8FFF68,
             validator.getParameters().getIntOrDefault("count", 1))
         .validate(
             params -> (double) params[0] <= (double) params[1],
-            "parameter $end$ should be larger than or equal to $start$",
+            LibraryUdfMessages
+                .EXCEPTION_PARAMETER_END_SHOULD_BE_LARGER_THAN_OR_EQUAL_TO_START_FBDBED0B,
             validator.getParameters().getDoubleOrDefault("min", -Double.MAX_VALUE),
             validator.getParameters().getDoubleOrDefault("max", Double.MAX_VALUE));
   }

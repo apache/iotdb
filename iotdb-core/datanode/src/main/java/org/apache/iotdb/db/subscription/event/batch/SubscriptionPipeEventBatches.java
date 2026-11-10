@@ -25,14 +25,15 @@ import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTabletQueue;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTsFileQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -44,7 +45,7 @@ public class SubscriptionPipeEventBatches {
   protected final int maxDelayInMs;
   protected final long maxBatchSizeInBytes;
 
-  private final Map<Integer, SubscriptionPipeEventBatch> regionIdToBatch;
+  private final ConcurrentMap<Integer, SubscriptionPipeEventBatch> regionIdToBatch;
   private final SubscriptionPipeEventBatchSegmentLock segmentLock;
 
   public SubscriptionPipeEventBatches(
@@ -55,7 +56,7 @@ public class SubscriptionPipeEventBatches {
     this.maxDelayInMs = maxDelayInMs;
     this.maxBatchSizeInBytes = maxBatchSizeInBytes;
 
-    this.regionIdToBatch = new HashMap<>();
+    this.regionIdToBatch = new ConcurrentHashMap<>();
     this.segmentLock = new SubscriptionPipeEventBatchSegmentLock();
   }
 
@@ -77,6 +78,7 @@ public class SubscriptionPipeEventBatches {
           }
         } catch (final Exception e) {
           LOGGER.warn(DataNodeMiscMessages.EXCEPTION_SEALING_EVENTS, batch, e);
+          throw propagate(e);
         }
         if (hasNew.get()) {
           regionIdToBatch.remove(regionId);
@@ -103,33 +105,35 @@ public class SubscriptionPipeEventBatches {
       SubscriptionPipeEventBatch batch = regionIdToBatch.get(regionId);
       if (Objects.isNull(batch)) {
         try {
-          batch =
-              prefetchingQueue instanceof SubscriptionPrefetchingTabletQueue
-                  ? new SubscriptionPipeTabletEventBatch(
-                      regionId,
-                      (SubscriptionPrefetchingTabletQueue) prefetchingQueue,
-                      maxDelayInMs,
-                      maxBatchSizeInBytes)
-                  : new SubscriptionPipeTsFileEventBatch(
-                      regionId,
-                      (SubscriptionPrefetchingTsFileQueue) prefetchingQueue,
-                      maxDelayInMs,
-                      maxBatchSizeInBytes);
+          batch = createBatch(regionId);
         } catch (final Exception e) {
           LOGGER.warn(DataNodeMiscMessages.EXCEPTION_CONSTRUCT_NEW_BATCH, e);
           throw e; // rethrow exception for retry
         }
       }
 
+      if (!batch.isCompatibleWithCurrentTopicConfig() && batch.getPipeEventCount() > 0) {
+        if (!batch.emit(consumer)) {
+          throw new SubscriptionException(
+              DataNodeMiscMessages.EXCEPTION_FAILED_TO_SEAL_SUBSCRIPTION_EVENT_BATCH_1FB7E92C);
+        }
+        hasNew.set(true);
+        regionIdToBatch.remove(regionId);
+        batch = createBatch(regionId);
+      }
+
+      final boolean emittedCurrentBatch;
       try {
-        if (batch.onEvent(event, consumer)) {
+        emittedCurrentBatch = batch.onEvent(event, consumer);
+        if (emittedCurrentBatch) {
           hasNew.set(true);
         }
       } catch (final Exception e) {
         LOGGER.warn(DataNodeMiscMessages.EXCEPTION_SEALING_EVENTS, batch, e);
+        throw e;
       }
 
-      if (hasNew.get()) {
+      if (emittedCurrentBatch) {
         regionIdToBatch.remove(regionId);
       } else {
         regionIdToBatch.put(regionId, batch);
@@ -174,5 +178,27 @@ public class SubscriptionPipeEventBatches {
   public void cleanUp() {
     regionIdToBatch.values().forEach(batch -> batch.cleanUp(true));
     regionIdToBatch.clear();
+  }
+
+  private SubscriptionPipeEventBatch createBatch(final int regionId) {
+    return prefetchingQueue instanceof SubscriptionPrefetchingTabletQueue
+        ? new SubscriptionPipeTabletEventBatch(
+            regionId,
+            (SubscriptionPrefetchingTabletQueue) prefetchingQueue,
+            maxDelayInMs,
+            maxBatchSizeInBytes)
+        : new SubscriptionPipeTsFileEventBatch(
+            regionId,
+            (SubscriptionPrefetchingTsFileQueue) prefetchingQueue,
+            maxDelayInMs,
+            maxBatchSizeInBytes);
+  }
+
+  private static RuntimeException propagate(final Exception exception) {
+    return exception instanceof RuntimeException
+        ? (RuntimeException) exception
+        : new SubscriptionException(
+            DataNodeMiscMessages.EXCEPTION_FAILED_TO_SEAL_SUBSCRIPTION_EVENT_BATCH_1FB7E92C,
+            exception);
   }
 }

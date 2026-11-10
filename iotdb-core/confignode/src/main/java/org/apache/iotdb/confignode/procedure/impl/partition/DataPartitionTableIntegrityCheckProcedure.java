@@ -255,7 +255,8 @@ public class DataPartitionTableIntegrityCheckProcedure
               .LOG_DATAPARTITIONINTEGRITY_NO_DATANODES_REGISTERED_NO_WAY_COLLECT_EARLIEST_TIMESLOTS_WAITING_7025EB23);
       sleep(
           CHECK_ALL_DATANODE_IS_ALIVE_INTERVAL,
-          "[DataPartitionIntegrity] Error waiting for DataNode startup due to thread interruption.");
+          ProcedureMessages
+              .MESSAGE_DATAPARTITIONINTEGRITY_ERROR_WAITING_FOR_DATANODE_STARTUP_DUE_TO_THREAD_INTERRUPTION_6427FBB0);
       setNextState(DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
       return Flow.HAS_MORE_STATE;
     }
@@ -475,7 +476,8 @@ public class DataPartitionTableIntegrityCheckProcedure
               .LOG_DATAPARTITIONINTEGRITY_NO_DATANODES_REGISTERED_NO_WAY_REQUESTED_DATAPARTITIONTABLE_GENERATION_TERMINATING_);
       sleep(
           CHECK_ALL_DATANODE_IS_ALIVE_INTERVAL,
-          "[DataPartitionIntegrity] Error waiting for DataNode startup due to thread interruption.");
+          ProcedureMessages
+              .MESSAGE_DATAPARTITIONINTEGRITY_ERROR_WAITING_FOR_DATANODE_STARTUP_DUE_TO_THREAD_INTERRUPTION_6427FBB0);
       setNextState(DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
       return Flow.HAS_MORE_STATE;
     }
@@ -670,7 +672,8 @@ public class DataPartitionTableIntegrityCheckProcedure
 
     sleep(
         HEART_BEAT_REQUEST_INTERVAL,
-        "[DataPartitionIntegrity] Error checking DataPartitionTable status due to thread interruption.");
+        ProcedureMessages
+            .MESSAGE_DATAPARTITIONINTEGRITY_ERROR_CHECKING_DATAPARTITIONTABLE_STATUS_DUE_TO_THREAD_INTERRUPTION_4291648D);
     setNextState(
         DataPartitionTableIntegrityCheckProcedureState.REQUEST_PARTITION_TABLES_HEART_BEAT);
     return Flow.HAS_MORE_STATE;
@@ -842,7 +845,8 @@ public class DataPartitionTableIntegrityCheckProcedure
     sleep(
         ROLL_BACK_NEXT_STATE_INTERVAL,
         String.format(
-            "[DataPartitionIntegrity] Error waiting for roll back the %s state due to thread interruption.",
+            ProcedureMessages
+                .MESSAGE_DATAPARTITIONINTEGRITY_ERROR_WAITING_FOR_ROLL_BACK_THE_ARG_STATE_DUE_TO_THREAD_INTERRUPTION_C34DD7A4,
             state));
     setNextState(state);
   }
@@ -1187,7 +1191,9 @@ public class DataPartitionTableIntegrityCheckProcedure
       return new TShowRepairDataPartitionTableProgressResp(
               RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS), state, progress)
           .setMessage(
-              String.format("DataPartitionTable integrity check progress: %.1f%%", progress));
+              String.format(
+                  ProcedureMessages.MESSAGE_DATAPARTITIONTABLE_INTEGRITY_CHECK_PROGRESS_1F_88FF4383,
+                  progress));
     } catch (Exception e) {
       LOG.warn(
           ProcedureMessages
@@ -1197,7 +1203,9 @@ public class DataPartitionTableIntegrityCheckProcedure
               RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS),
               RepairDataPartitionTableProgressState.UNKNOWN.name(),
               0.0)
-          .setMessage("Failed to show DataPartitionTable integrity check progress");
+          .setMessage(
+              ProcedureMessages
+                  .MESSAGE_FAILED_TO_SHOW_DATAPARTITIONTABLE_INTEGRITY_CHECK_PROGRESS_5EE98694);
     }
   }
 

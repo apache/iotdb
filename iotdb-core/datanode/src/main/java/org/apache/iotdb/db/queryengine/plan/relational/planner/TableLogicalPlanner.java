@@ -29,12 +29,15 @@ import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchem
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
@@ -48,6 +51,7 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
+import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.tsfile.CopyToTsFileOptions;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
@@ -98,7 +102,10 @@ import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -247,7 +254,7 @@ public class TableLogicalPlanner {
       return createRelationPlan(analysis, (Query) statement);
     }
     if (statement instanceof Explain) {
-      return createRelationPlan(analysis, (Query) ((Explain) statement).getStatement());
+      return planStatementWithoutOutput(analysis, ((Explain) statement).getStatement());
     }
     if (statement instanceof WrappedStatement) {
       return createRelationPlan(analysis, ((WrappedStatement) statement));
@@ -346,14 +353,14 @@ public class TableLogicalPlanner {
     int columnNumber = 0;
     // TODO perfect the logic of outputDescriptor
     if (plan.getRoot() instanceof CopyToNode) {
+      outputs.addAll(plan.getRoot().getOutputSymbols());
       for (ColumnHeader columnHeader :
           ((CopyToNode) plan.getRoot()).getCopyToOptions().getRespColumnHeaders()) {
-        outputs.add(new Symbol(columnHeader.getColumnName()));
         names.add(columnHeader.getColumnName());
         columnHeaders.add(columnHeader);
       }
-    } else if (queryContext.isExplainAnalyze() && !queryContext.isInnerTriggeredQuery()) {
-      outputs.add(new Symbol(ColumnHeaderConstant.EXPLAIN_ANALYZE));
+    } else if (plan.getRoot() instanceof ExplainAnalyzeNode) {
+      outputs.addAll(plan.getRoot().getOutputSymbols());
       names.add(ColumnHeaderConstant.EXPLAIN_ANALYZE);
       columnHeaders.add(new ColumnHeader(ColumnHeaderConstant.EXPLAIN_ANALYZE, TSDataType.TEXT));
     } else {
@@ -621,8 +628,7 @@ public class TableLogicalPlanner {
   }
 
   private RelationPlan planExplainAnalyze(final ExplainAnalyze statement, final Analysis analysis) {
-    RelationPlan originalQueryPlan =
-        createRelationPlan(analysis, (Query) (statement.getStatement()));
+    RelationPlan originalQueryPlan = planStatementWithoutOutput(analysis, statement.getStatement());
     Symbol symbol =
         symbolAllocator.newSymbol(ColumnHeaderConstant.EXPLAIN_ANALYZE, StringType.getInstance());
 
@@ -635,7 +641,9 @@ public class TableLogicalPlanner {
             queryContext.getTimeOut(),
             symbol,
             // recording permittedOutputs of ExplainAnalyzeNode's child
-            getChildPermittedOutputs(analysis, statement.getStatement(), originalQueryPlan),
+            statement.getStatement() instanceof CopyTo
+                ? originalQueryPlan.getRoot().getOutputSymbols()
+                : getChildPermittedOutputs(analysis, statement.getStatement(), originalQueryPlan),
             statement.getOutputFormat());
     return new RelationPlan(
         newRoot,
@@ -656,17 +664,50 @@ public class TableLogicalPlanner {
         .infer(analysis, innerQueryRelationPlan, innerQueryRespDatasetHeader.getColumnHeaders());
     statement.getOptions().check(innerQueryRespDatasetHeader.getColumnHeaders());
 
+    PlanNode copyToSource = innerQueryRelationPlan.getRoot();
+    if (statement.getOptions() instanceof CopyToTsFileOptions tsFileOptions
+        && !tsFileOptions.isGenerateNewTimeColumn()) {
+      List<ColumnHeader> columnHeaders = innerQueryRespDatasetHeader.getColumnHeaders();
+      List<Symbol> outputSymbols = outputNode.getOutputSymbols();
+      Map<String, Symbol> columnSymbols = new HashMap<>();
+      for (int i = 0; i < columnHeaders.size(); i++) {
+        columnSymbols.put(columnHeaders.get(i).getColumnName(), outputSymbols.get(i));
+      }
+      Map<Symbol, SortOrder> orderings = new LinkedHashMap<>();
+      for (String tagColumn : tsFileOptions.getTargetTagColumns()) {
+        orderings.put(columnSymbols.get(tagColumn), SortOrder.ASC_NULLS_FIRST);
+      }
+      orderings.put(
+          columnSymbols.get(tsFileOptions.getTargetTimeColumn()), SortOrder.ASC_NULLS_FIRST);
+      // Sort the complete inner query result, after its LIMIT and OFFSET.
+      copyToSource =
+          new SortNode(
+              queryContext.getQueryId().genPlanNodeId(),
+              copyToSource,
+              new OrderingScheme(new ArrayList<>(orderings.keySet()), orderings),
+              false,
+              false);
+      analysis.setSortNode(true);
+    }
+
+    List<Symbol> outputSymbols = new ArrayList<>();
+    for (ColumnHeader columnHeader : statement.getOptions().getRespColumnHeaders()) {
+      outputSymbols.add(
+          symbolAllocator.newSymbol(
+              columnHeader.getColumnName(), TypeFactory.getType(columnHeader.getColumnType())));
+    }
     PlanNode newRoot =
         new CopyToNode(
             queryContext.getQueryId().genPlanNodeId(),
-            innerQueryRelationPlan.getRoot(),
+            copyToSource,
             statement.getTargetFileName(),
             statement.getOptions(),
             // recording permittedOutputs of CopyToNode's child
             getChildPermittedOutputs(
                 analysis, statement.getQueryStatement(), innerQueryRelationPlan),
             innerQueryRespDatasetHeader,
-            outputNode.getOutputSymbols());
+            outputNode.getOutputSymbols(),
+            outputSymbols);
     return new RelationPlan(
         newRoot,
         innerQueryRelationPlan.getScope(),

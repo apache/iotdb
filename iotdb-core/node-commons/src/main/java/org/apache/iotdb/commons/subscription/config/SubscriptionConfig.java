@@ -179,6 +179,10 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.isSubscriptionConsensusLagBasedPriority();
   }
 
+  public boolean isSubscriptionConsensusFallbackPollingEnabled() {
+    return COMMON_CONFIG.isSubscriptionConsensusFallbackPollingEnabled();
+  }
+
   public int getSubscriptionConsensusPrefetchingQueueCapacity() {
     return COMMON_CONFIG.getSubscriptionConsensusPrefetchingQueueCapacity();
   }

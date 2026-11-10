@@ -24,8 +24,9 @@ import org.apache.iotdb.commons.i18n.PipeMessages;
 public class PipeRPCMessageConstant {
   // These two message are used in multi-modules such as pipe and IoTV2
   public static final String PIPE_ALREADY_EXIST_MSG =
-      "the pipe with the same name has been created";
-  public static final String PIPE_NOT_EXIST_MSG = "the pipe does not exist";
+      PipeMessages.MESSAGE_THE_PIPE_WITH_THE_SAME_NAME_HAS_BEEN_CREATED_6D246B19;
+  public static final String PIPE_NOT_EXIST_MSG =
+      PipeMessages.MESSAGE_THE_PIPE_DOES_NOT_EXIST_91EBC1F4;
 
   private PipeRPCMessageConstant() {
     throw new IllegalStateException(PipeMessages.UTILITY_CLASS);

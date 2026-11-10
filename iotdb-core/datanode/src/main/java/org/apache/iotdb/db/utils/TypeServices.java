@@ -338,7 +338,10 @@ public class TypeServices {
               case BOOLEAN, DATE, TIMESTAMP, TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
                   (transformer, columns, builder) -> {
                     throw new UnsupportedOperationException(
-                        String.format("Unsupported source dataType: %s", type.getTypeEnum()));
+                        String.format(
+                            DataNodeQueryMessages
+                                .QUERY_EXCEPTION_UNSUPPORTED_SOURCE_DATATYPE_S_EA03E121,
+                            type.getTypeEnum()));
                   };
             };
 
@@ -783,12 +786,16 @@ public class TypeServices {
 
     private static CastColumnStrategy unsupportedSourceCastStrategy(final Type sourceType) {
       return unsupportedCastStrategy(
-          String.format("Unsupported source dataType: %s", sourceType.getTypeEnum()));
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_SOURCE_DATATYPE_S_EA03E121,
+              sourceType.getTypeEnum()));
     }
 
     private static CastColumnStrategy unsupportedTargetCastStrategy(final Type sourceType) {
       return unsupportedCastStrategy(
-          String.format("Unsupported target dataType: %s", sourceType.getTypeEnum()));
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_TARGET_DATATYPE_S_8DEFDAE6,
+              sourceType.getTypeEnum()));
     }
 
     private static CastColumnStrategy unsupportedCastStrategy(final String message) {
@@ -3671,7 +3678,9 @@ public class TypeServices {
                       value -> {
                         throw new UnsupportedOperationException(
                             String.format(
-                                "The type %s cannot be casted to int.", type.getTypeEnum()));
+                                DataNodePipeMessages
+                                    .PIPE_EXCEPTION_THE_TYPE_S_CANNOT_BE_CASTED_TO_INT_659069CC,
+                                type.getTypeEnum()));
                       };
                 };
 
@@ -3688,7 +3697,9 @@ public class TypeServices {
                       value -> {
                         throw new UnsupportedOperationException(
                             String.format(
-                                "The type %s cannot be casted to long.", type.getTypeEnum()));
+                                DataNodePipeMessages
+                                    .PIPE_EXCEPTION_THE_TYPE_S_CANNOT_BE_CASTED_TO_LONG_2D206561,
+                                type.getTypeEnum()));
                       };
                 };
 
@@ -3706,7 +3717,9 @@ public class TypeServices {
                       value -> {
                         throw new UnsupportedOperationException(
                             String.format(
-                                "The type %s cannot be casted to float.", type.getTypeEnum()));
+                                DataNodePipeMessages
+                                    .PIPE_EXCEPTION_THE_TYPE_S_CANNOT_BE_CASTED_TO_FLOAT_C15A8A95,
+                                type.getTypeEnum()));
                       };
                 };
 
@@ -3723,7 +3736,9 @@ public class TypeServices {
                       value -> {
                         throw new UnsupportedOperationException(
                             String.format(
-                                "The type %s cannot be casted to double.", type.getTypeEnum()));
+                                DataNodePipeMessages
+                                    .PIPE_EXCEPTION_THE_TYPE_S_CANNOT_BE_CASTED_TO_DOUBLE_E577C0D7,
+                                type.getTypeEnum()));
                       };
                 };
 
@@ -3753,7 +3768,9 @@ public class TypeServices {
                       value -> {
                         throw new UnsupportedOperationException(
                             String.format(
-                                "The type %s cannot be casted to string.", type.getTypeEnum()));
+                                DataNodePipeMessages
+                                    .PIPE_EXCEPTION_THE_TYPE_S_CANNOT_BE_CASTED_TO_STRING_34983FBD,
+                                type.getTypeEnum()));
                       };
                 };
 
@@ -4008,7 +4025,10 @@ public class TypeServices {
                           originNullValueColumnBitmap,
                           nullValueColumnBitmap) -> {
                         throw new UnSupportedDataTypeException(
-                            String.format("Data type %s is not supported.", type.getTypeEnum()));
+                            String.format(
+                                DataNodeMiscMessages
+                                    .MISC_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                                type.getTypeEnum()));
                       };
                 };
 

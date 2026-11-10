@@ -290,7 +290,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
                 new TagColumnSchema(columnHeader.getColumnName(), columnHeader.getColumnType())));
     testTable.addColumnSchema(new AttributeColumnSchema(attributeName, TSDataType.STRING));
     DataNodeTableCache.getInstance().preUpdateTable(database, testTable, null);
-    DataNodeTableCache.getInstance().commitUpdateTable(database, tableName, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database, tableName, null, null);
 
     schemaRegion.updateTableDeviceAttribute(
         new TableDeviceAttributeUpdateNode(
@@ -337,7 +337,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
     testTable.addColumnSchema(new AttributeColumnSchema("attr", TSDataType.STRING));
     testTable.addColumnSchema(new FieldColumnSchema("field", TSDataType.STRING));
     DataNodeTableCache.getInstance().preUpdateTable(database, testTable, null);
-    DataNodeTableCache.getInstance().commitUpdateTable(database, tableName, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database, tableName, null, null);
 
     try {
       final ISchemaRegion schemaRegion = getSchemaRegion(database, 0);

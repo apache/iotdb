@@ -443,12 +443,14 @@ public class WALBuffer extends AbstractWALBuffer {
                 identifier,
                 walEntries.size());
           }
-          boolean dataExists = totalSize > 0;
-          if (dataExists) {
+          // end this batch now. Returning false without data made serialize() wait out
+          // the async fsync delay (1 s by default) for entries that can no longer come, on every
+          // close. Pending data or checkpoints are synced here instead of after that wait.
+          if (totalSize > 0 || !info.checkpoints.isEmpty()) {
             fsyncWorkingBuffer(currentSearchIndex, currentFileStatus, info);
           }
           isClosed = true;
-          return dataExists;
+          return true;
         default:
           return false;
       }
@@ -893,6 +895,17 @@ public class WALBuffer extends AbstractWALBuffer {
     return writer == null ? new WALMetaData() : writer.snapshotMetaData();
   }
 
+  /** Returns null if rotation has already installed a writer for another file version. */
+  public WALMetaData getWALMetaDataSnapshot(final long fileVersionId) {
+    final WALWriter writer = currentWALFileWriter;
+    // The writer and currentWALFileVersion are published separately during rotation. Bind the
+    // snapshot to the captured writer itself, including while the version field is still old.
+    return writer != null
+            && WALFileUtils.parseVersionId(writer.getLogFile().getName()) == fileVersionId
+        ? writer.snapshotMetaData()
+        : null;
+  }
+
   public CheckpointManager getCheckpointManager() {
     return checkpointManager;
   }
@@ -919,7 +932,8 @@ public class WALBuffer extends AbstractWALBuffer {
                     .STORAGE_LOG_FAIL_TO_READ_MEMTABLE_IDS_FROM_THE_WAL_FILE_OF_WAL_NODE_54B0056E,
                 id,
                 identifier,
-                e.getMessage());
+                e.getMessage(),
+                e);
           } catch (IOException e) {
             logger.warn(
                 StorageEngineMessages

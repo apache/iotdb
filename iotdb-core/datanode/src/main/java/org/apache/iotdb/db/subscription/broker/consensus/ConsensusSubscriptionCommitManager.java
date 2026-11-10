@@ -79,7 +79,10 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.function.LongSupplier;
 
 /**
  * Manages committed progress for consensus-based subscriptions.
@@ -128,10 +131,12 @@ public class ConsensusSubscriptionCommitManager {
   /** Rate-limiting: last broadcast timestamp per key. */
   private final Map<String, Long> lastBroadcastTime = new ConcurrentHashMap<>();
 
-  /** Single-threaded executor for fire-and-forget broadcasts. */
-  private final ExecutorService broadcastExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadExecutor(
-          ThreadName.SUBSCRIPTION_CONSENSUS_PROGRESS_BROADCASTER.getName());
+  /** At most one scheduled broadcast per writer and commit-state generation. */
+  private final Map<String, ConsensusSubscriptionCommitState> pendingBroadcasts =
+      new ConcurrentHashMap<>();
+
+  private final ScheduledExecutorService broadcastExecutor;
+  private final LongSupplier broadcastClock;
 
   /** Key: versioned, encoded (consumerGroupId, topicName, regionId) -> progress tracking state. */
   private final Map<String, ConsensusSubscriptionCommitState> commitStates =
@@ -156,6 +161,13 @@ public class ConsensusSubscriptionCommitManager {
   /** New regions that may start from the beginning once ConfigNode explicitly reports no entry. */
   private final Set<String> pendingNewRegionProgressKeys = ConcurrentHashMap.newKeySet();
 
+  /** Broadcast progress received while a fresh local-tail proposal awaits ConfigNode resolution. */
+  private final Map<String, Map<WriterId, WriterProgress>> pendingInitialBroadcastProgress =
+      new ConcurrentHashMap<>();
+
+  /** Explicit seeks take precedence over stale, higher progress retained by ConfigNode. */
+  private final Set<String> explicitSeekResetKeys = ConcurrentHashMap.newKeySet();
+
   /**
    * Regions whose latest initialization/refresh obtained an authoritative ConfigNode resolution.
    * This includes an explicitly present field and explicit absence for a newly-created region.
@@ -174,6 +186,19 @@ public class ConsensusSubscriptionCommitManager {
   }
 
   ConsensusSubscriptionCommitManager(final ConfigNodeProgressFetcher configNodeProgressFetcher) {
+    this(
+        configNodeProgressFetcher,
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            ThreadName.SUBSCRIPTION_CONSENSUS_PROGRESS_BROADCASTER.getName()),
+        System::currentTimeMillis);
+  }
+
+  ConsensusSubscriptionCommitManager(
+      final ConfigNodeProgressFetcher configNodeProgressFetcher,
+      final ScheduledExecutorService broadcastExecutor,
+      final LongSupplier broadcastClock) {
+    this.broadcastExecutor = broadcastExecutor;
+    this.broadcastClock = broadcastClock;
     this.configNodeProgressFetcher =
         Objects.nonNull(configNodeProgressFetcher)
             ? configNodeProgressFetcher
@@ -259,11 +284,14 @@ public class ConsensusSubscriptionCommitManager {
               new StateSetupSnapshot(
                   new SubscriptionConsensusProgress(
                       copyRegionProgress(state.getCommittedRegionProgress()),
-                      state.getProgress().getPersistenceThrottleCounter()),
+                      state.getProgress().getPersistenceThrottleCounter(),
+                      state.getProgress().isExplicitSeekReset()),
                   pendingInitialProgressKeys.contains(entry.getKey()),
                   pendingNewRegionProgressKeys.contains(entry.getKey()),
                   configNodeProgressAvailableKeys.contains(entry.getKey()),
-                  tailProposalInitializedKeys.contains(entry.getKey())));
+                  tailProposalInitializedKeys.contains(entry.getKey()),
+                  explicitSeekResetKeys.contains(entry.getKey()),
+                  copyPendingInitialBroadcastProgress(entry.getKey())));
         }
         topicSnapshots.put(topicName, new TopicSetupSnapshot(topicFileKey, stateSnapshots));
       }
@@ -274,27 +302,47 @@ public class ConsensusSubscriptionCommitManager {
   /** Restores only attempted topics to their exact state before setup began. */
   void restoreSetupSnapshot(
       final SetupSnapshot setupSnapshot, final Set<String> attemptedTopicNames) {
+    restoreSetupSnapshot(setupSnapshot, attemptedTopicNames, Collections.emptyMap());
+  }
+
+  void restoreSetupSnapshot(
+      final SetupSnapshot setupSnapshot,
+      final Set<String> attemptedTopicNames,
+      final Map<String, Set<String>> existingQueueRegionIds) {
     for (final String topicName : attemptedTopicNames) {
       final TopicSetupSnapshot topicSnapshot = setupSnapshot.topicSnapshots.get(topicName);
       if (Objects.isNull(topicSnapshot)) {
         continue;
       }
       synchronized (getTopicPersistLock(topicSnapshot.topicFileKey)) {
-        removeTopicStateFromMemory(setupSnapshot.consumerGroupId, topicName);
+        final Set<String> preservedRegionIds =
+            existingQueueRegionIds.getOrDefault(topicName, Collections.emptySet());
+        // Existing queues can commit while setup is running. Keep their state objects, progress,
+        // and initialization markers instead of rewinding them to the setup snapshot.
+        removeTopicStateFromMemory(setupSnapshot.consumerGroupId, topicName, preservedRegionIds);
 
         CommitStateKey stateKeyForRewrite = null;
+        if (!preservedRegionIds.isEmpty()) {
+          stateKeyForRewrite =
+              getCommitStateKey(
+                  setupSnapshot.consumerGroupId, topicName, preservedRegionIds.iterator().next());
+        }
         for (final Map.Entry<String, StateSetupSnapshot> entry :
             topicSnapshot.stateSnapshots.entrySet()) {
+          if (preservedRegionIds.contains(entry.getKey())) {
+            continue;
+          }
           final CommitStateKey stateKey =
               getCommitStateKey(setupSnapshot.consumerGroupId, topicName, entry.getKey());
           final StateSetupSnapshot stateSnapshot = entry.getValue();
-          commitStates.put(
+          replaceCommitState(
               stateKey.encodedStateKey,
               new ConsensusSubscriptionCommitState(
                   stateKey.regionIdStr,
                   new SubscriptionConsensusProgress(
                       copyRegionProgress(stateSnapshot.progress.getCommittedRegionProgress()),
-                      stateSnapshot.progress.getPersistenceThrottleCounter())));
+                      stateSnapshot.progress.getPersistenceThrottleCounter(),
+                      stateSnapshot.explicitSeekReset)));
           restoreSetupMarker(
               pendingInitialProgressKeys,
               stateKey.encodedStateKey,
@@ -311,6 +359,10 @@ public class ConsensusSubscriptionCommitManager {
               tailProposalInitializedKeys,
               stateKey.encodedStateKey,
               stateSnapshot.tailProposalInitialized);
+          restoreSetupMarker(
+              explicitSeekResetKeys, stateKey.encodedStateKey, stateSnapshot.explicitSeekReset);
+          restorePendingInitialBroadcastProgress(
+              stateKey.encodedStateKey, stateSnapshot.pendingInitialBroadcastProgress);
           stateKeyForRewrite = stateKey;
         }
 
@@ -334,19 +386,23 @@ public class ConsensusSubscriptionCommitManager {
     }
   }
 
-  private void removeTopicStateFromMemory(final String consumerGroupId, final String topicName) {
+  private void removeTopicStateFromMemory(
+      final String consumerGroupId, final String topicName, final Set<String> preservedRegionIds) {
     final Iterator<Map.Entry<String, CommitStateKey>> keyIterator =
         commitStateKeys.entrySet().iterator();
     while (keyIterator.hasNext()) {
       final Map.Entry<String, CommitStateKey> entry = keyIterator.next();
-      if (!entry.getValue().sameTopic(consumerGroupId, topicName)) {
+      if (!entry.getValue().sameTopic(consumerGroupId, topicName)
+          || preservedRegionIds.contains(entry.getValue().regionIdStr)) {
         continue;
       }
-      commitStates.remove(entry.getKey());
+      removeCommitState(entry.getKey());
       pendingInitialProgressKeys.remove(entry.getKey());
       pendingNewRegionProgressKeys.remove(entry.getKey());
       configNodeProgressAvailableKeys.remove(entry.getKey());
       tailProposalInitializedKeys.remove(entry.getKey());
+      explicitSeekResetKeys.remove(entry.getKey());
+      pendingInitialBroadcastProgress.remove(entry.getKey());
       keyIterator.remove();
     }
   }
@@ -358,6 +414,71 @@ public class ConsensusSubscriptionCommitManager {
     } else {
       markerSet.remove(stateKey);
     }
+  }
+
+  private Map<WriterId, WriterProgress> copyPendingInitialBroadcastProgress(final String stateKey) {
+    final Map<WriterId, WriterProgress> progress = pendingInitialBroadcastProgress.get(stateKey);
+    return Objects.nonNull(progress) ? new LinkedHashMap<>(progress) : Collections.emptyMap();
+  }
+
+  private void restorePendingInitialBroadcastProgress(
+      final String stateKey, final Map<WriterId, WriterProgress> progress) {
+    if (Objects.isNull(progress) || progress.isEmpty()) {
+      pendingInitialBroadcastProgress.remove(stateKey);
+    } else {
+      pendingInitialBroadcastProgress.put(stateKey, new ConcurrentHashMap<>(progress));
+    }
+  }
+
+  private RegionProgress takePendingInitialBroadcastProgress(final String stateKey) {
+    final Map<WriterId, WriterProgress> progress = pendingInitialBroadcastProgress.remove(stateKey);
+    return new RegionProgress(
+        Objects.nonNull(progress) ? new LinkedHashMap<>(progress) : Collections.emptyMap());
+  }
+
+  private void recordPendingInitialBroadcastProgress(
+      final String stateKey, final WriterId writerId, final WriterProgress writerProgress) {
+    if (!pendingInitialProgressKeys.contains(stateKey)) {
+      return;
+    }
+    pendingInitialBroadcastProgress
+        .computeIfAbsent(stateKey, ignored -> new ConcurrentHashMap<>())
+        .merge(
+            writerId,
+            writerProgress,
+            (current, candidate) ->
+                new ProgressKey(writerId, candidate).compareTo(new ProgressKey(writerId, current))
+                        > 0
+                    ? candidate
+                    : current);
+  }
+
+  private void setExplicitSeekReset(
+      final String stateKey,
+      final ConsensusSubscriptionCommitState state,
+      final boolean explicitSeekReset) {
+    if (explicitSeekReset) {
+      explicitSeekResetKeys.add(stateKey);
+    } else {
+      explicitSeekResetKeys.remove(stateKey);
+    }
+    state.getProgress().setExplicitSeekReset(explicitSeekReset);
+  }
+
+  private RegionProgress resolveInitialProgress(
+      final String stateKey,
+      final ConsensusSubscriptionCommitState state,
+      final RegionProgress authoritativeProgress) {
+    final RegionProgress pendingBroadcastProgress = takePendingInitialBroadcastProgress(stateKey);
+    if (explicitSeekResetKeys.contains(stateKey)) {
+      final RegionProgress refreshedProgress =
+          mergeRegionProgress(state.getCommittedRegionProgress(), pendingBroadcastProgress);
+      setExplicitSeekReset(
+          stateKey, state, !isRegionProgressAtLeast(refreshedProgress, authoritativeProgress));
+      return refreshedProgress;
+    }
+    setExplicitSeekReset(stateKey, state, false);
+    return mergeRegionProgress(authoritativeProgress, pendingBroadcastProgress);
   }
 
   /**
@@ -387,18 +508,25 @@ public class ConsensusSubscriptionCommitManager {
               ignored ->
                   new ConsensusSubscriptionCommitState(
                       stateKey.regionIdStr, new SubscriptionConsensusProgress()));
-      final ConfigNodeProgressQueryResult queryResult =
-          configNodeProgressFetcher.fetch(consumerGroupId, topicName, regionId);
-      if (queryResult.isAvailable()) {
-        localState.resetForSeek(queryResult.getRegionProgress());
-        pendingInitialProgressKeys.remove(stateKey.encodedStateKey);
-        configNodeProgressAvailableKeys.add(stateKey.encodedStateKey);
-      } else {
-        if (!hasLocalPersistedState) {
-          localState.resetForSeek(copyRegionProgress(tailProposal));
+      synchronized (localState) {
+        if (!pendingInitialProgressKeys.contains(stateKey.encodedStateKey)) {
+          pendingInitialBroadcastProgress.remove(stateKey.encodedStateKey);
         }
         pendingInitialProgressKeys.add(stateKey.encodedStateKey);
-        configNodeProgressAvailableKeys.remove(stateKey.encodedStateKey);
+        final ConfigNodeProgressQueryResult queryResult =
+            configNodeProgressFetcher.fetch(consumerGroupId, topicName, regionId);
+        if (queryResult.isAvailable()) {
+          localState.resetForSeek(
+              resolveInitialProgress(
+                  stateKey.encodedStateKey, localState, queryResult.getRegionProgress()));
+          pendingInitialProgressKeys.remove(stateKey.encodedStateKey);
+          configNodeProgressAvailableKeys.add(stateKey.encodedStateKey);
+        } else {
+          if (!hasLocalPersistedState) {
+            localState.resetForSeek(copyRegionProgress(tailProposal));
+          }
+          configNodeProgressAvailableKeys.remove(stateKey.encodedStateKey);
+        }
       }
       persistRegionProgress(stateKey, localState);
     }
@@ -418,28 +546,39 @@ public class ConsensusSubscriptionCommitManager {
               ignored ->
                   new ConsensusSubscriptionCommitState(
                       stateKey.regionIdStr, new SubscriptionConsensusProgress()));
-      final ConfigNodeProgressQueryResult queryResult =
-          configNodeProgressFetcher.fetch(consumerGroupId, topicName, regionId);
-      if (queryResult.isAvailable()) {
-        localState.resetForSeek(queryResult.getRegionProgress());
-        pendingInitialProgressKeys.remove(stateKey.encodedStateKey);
-        pendingNewRegionProgressKeys.remove(stateKey.encodedStateKey);
-        configNodeProgressAvailableKeys.add(stateKey.encodedStateKey);
-        persistRegionProgress(stateKey, localState);
-      } else if (queryResult.getAvailability() == ConfigNodeProgressAvailability.ABSENT
-          && (!hasLocalPersistedState
-              || pendingNewRegionProgressKeys.contains(stateKey.encodedStateKey))) {
-        localState.resetForSeek(new RegionProgress(Collections.emptyMap()));
-        pendingInitialProgressKeys.remove(stateKey.encodedStateKey);
-        pendingNewRegionProgressKeys.add(stateKey.encodedStateKey);
-        configNodeProgressAvailableKeys.add(stateKey.encodedStateKey);
-        persistRegionProgress(stateKey, localState);
-      } else {
-        pendingInitialProgressKeys.add(stateKey.encodedStateKey);
-        if (!hasLocalPersistedState) {
-          pendingNewRegionProgressKeys.add(stateKey.encodedStateKey);
+      synchronized (localState) {
+        if (!pendingInitialProgressKeys.contains(stateKey.encodedStateKey)) {
+          pendingInitialBroadcastProgress.remove(stateKey.encodedStateKey);
         }
-        configNodeProgressAvailableKeys.remove(stateKey.encodedStateKey);
+        pendingInitialProgressKeys.add(stateKey.encodedStateKey);
+        final ConfigNodeProgressQueryResult queryResult =
+            configNodeProgressFetcher.fetch(consumerGroupId, topicName, regionId);
+        if (queryResult.isAvailable()) {
+          localState.resetForSeek(
+              resolveInitialProgress(
+                  stateKey.encodedStateKey, localState, queryResult.getRegionProgress()));
+          pendingInitialProgressKeys.remove(stateKey.encodedStateKey);
+          pendingNewRegionProgressKeys.remove(stateKey.encodedStateKey);
+          configNodeProgressAvailableKeys.add(stateKey.encodedStateKey);
+          persistRegionProgress(stateKey, localState);
+        } else if (queryResult.getAvailability() == ConfigNodeProgressAvailability.ABSENT
+            && (!hasLocalPersistedState
+                || pendingNewRegionProgressKeys.contains(stateKey.encodedStateKey))) {
+          localState.resetForSeek(
+              resolveInitialProgress(
+                  stateKey.encodedStateKey,
+                  localState,
+                  new RegionProgress(Collections.emptyMap())));
+          pendingInitialProgressKeys.remove(stateKey.encodedStateKey);
+          pendingNewRegionProgressKeys.add(stateKey.encodedStateKey);
+          configNodeProgressAvailableKeys.add(stateKey.encodedStateKey);
+          persistRegionProgress(stateKey, localState);
+        } else {
+          if (!hasLocalPersistedState) {
+            pendingNewRegionProgressKeys.add(stateKey.encodedStateKey);
+          }
+          configNodeProgressAvailableKeys.remove(stateKey.encodedStateKey);
+        }
       }
     }
   }
@@ -459,35 +598,39 @@ public class ConsensusSubscriptionCommitManager {
       if (!pendingInitialProgressKeys.contains(stateKey.encodedStateKey)) {
         return true;
       }
-      final ConfigNodeProgressQueryResult queryResult =
-          configNodeProgressFetcher.fetch(consumerGroupId, topicName, regionId);
-      final boolean startNewRegionFromBeginning =
-          queryResult.getAvailability() == ConfigNodeProgressAvailability.ABSENT
-              && pendingNewRegionProgressKeys.contains(stateKey.encodedStateKey);
-      if (!queryResult.isAvailable() && !startNewRegionFromBeginning) {
-        return false;
-      }
       final ConsensusSubscriptionCommitState state =
           commitStates.computeIfAbsent(
               stateKey.encodedStateKey,
               ignored ->
                   new ConsensusSubscriptionCommitState(
                       stateKey.regionIdStr, new SubscriptionConsensusProgress()));
-      state.resetForSeek(
-          startNewRegionFromBeginning
-              ? new RegionProgress(Collections.emptyMap())
-              : queryResult.getRegionProgress());
-      persistRegionProgress(stateKey, state);
-      pendingInitialProgressKeys.remove(stateKey.encodedStateKey);
-      if (!startNewRegionFromBeginning) {
-        pendingNewRegionProgressKeys.remove(stateKey.encodedStateKey);
+      synchronized (state) {
+        final ConfigNodeProgressQueryResult queryResult =
+            configNodeProgressFetcher.fetch(consumerGroupId, topicName, regionId);
+        final boolean startNewRegionFromBeginning =
+            queryResult.getAvailability() == ConfigNodeProgressAvailability.ABSENT
+                && pendingNewRegionProgressKeys.contains(stateKey.encodedStateKey);
+        if (!queryResult.isAvailable() && !startNewRegionFromBeginning) {
+          return false;
+        }
+        final RegionProgress authoritativeProgress =
+            startNewRegionFromBeginning
+                ? new RegionProgress(Collections.emptyMap())
+                : queryResult.getRegionProgress();
+        state.resetForSeek(
+            resolveInitialProgress(stateKey.encodedStateKey, state, authoritativeProgress));
+        pendingInitialProgressKeys.remove(stateKey.encodedStateKey);
+        if (!startNewRegionFromBeginning) {
+          pendingNewRegionProgressKeys.remove(stateKey.encodedStateKey);
+        }
+        configNodeProgressAvailableKeys.add(stateKey.encodedStateKey);
       }
-      configNodeProgressAvailableKeys.add(stateKey.encodedStateKey);
+      persistRegionProgress(stateKey, state);
       return true;
     }
   }
 
-  /** Refreshes an exact authoritative frontier for preferred-writer activation. */
+  /** Refreshes the activation frontier without regressing newer locally replicated progress. */
   public ConfigNodeProgressQueryResult refreshAuthoritativeProgress(
       final String consumerGroupId, final String topicName, final ConsensusGroupId regionId) {
     final CommitStateKey stateKey =
@@ -507,25 +650,53 @@ public class ConsensusSubscriptionCommitManager {
       if (!queryResult.isAvailable() && !startNewRegionFromBeginning) {
         return queryResult;
       }
-      final RegionProgress authoritativeProgress =
-          startNewRegionFromBeginning
-              ? new RegionProgress(Collections.emptyMap())
-              : queryResult.getRegionProgress();
       final ConsensusSubscriptionCommitState state =
           commitStates.computeIfAbsent(
               stateKey.encodedStateKey,
               ignored ->
                   new ConsensusSubscriptionCommitState(
                       stateKey.regionIdStr, new SubscriptionConsensusProgress()));
-      state.resetForSeek(authoritativeProgress);
+      final RegionProgress authoritativeProgress =
+          startNewRegionFromBeginning
+              ? new RegionProgress(Collections.emptyMap())
+              : queryResult.getRegionProgress();
+      final RegionProgress refreshedProgress;
+      synchronized (state) {
+        final RegionProgress localProgress = state.getCommittedRegionProgress();
+        if (explicitSeekResetKeys.contains(stateKey.encodedStateKey)) {
+          // Explicit seek is an intentional reset; ConfigNode can retain a higher pre-seek
+          // checkpoint until every DataNode has reported the replayed progress.
+          refreshedProgress =
+              mergeRegionProgress(
+                  localProgress, takePendingInitialBroadcastProgress(stateKey.encodedStateKey));
+          setExplicitSeekReset(
+              stateKey.encodedStateKey,
+              state,
+              !isRegionProgressAtLeast(refreshedProgress, authoritativeProgress));
+        } else if (pendingInitialProgressKeys.contains(stateKey.encodedStateKey)) {
+          // A pending local-tail proposal is not a committed checkpoint. ConfigNode must resolve
+          // it exactly, while broadcasts received during the wait remain committed progress.
+          refreshedProgress =
+              mergeRegionProgress(
+                  authoritativeProgress,
+                  takePendingInitialBroadcastProgress(stateKey.encodedStateKey));
+        } else {
+          refreshedProgress = mergeRegionProgress(localProgress, authoritativeProgress);
+        }
+        // Keep the snapshot, merge, and reset atomic with respect to progress broadcasts and ACKs.
+        state.resetForSeek(refreshedProgress);
+        if (!explicitSeekResetKeys.contains(stateKey.encodedStateKey)) {
+          setExplicitSeekReset(stateKey.encodedStateKey, state, false);
+        }
+        pendingInitialProgressKeys.remove(stateKey.encodedStateKey);
+      }
       persistRegionProgress(stateKey, state);
-      pendingInitialProgressKeys.remove(stateKey.encodedStateKey);
       if (!startNewRegionFromBeginning) {
         pendingNewRegionProgressKeys.remove(stateKey.encodedStateKey);
       }
       configNodeProgressAvailableKeys.add(stateKey.encodedStateKey);
       tailProposalInitializedKeys.add(stateKey.encodedStateKey);
-      return ConfigNodeProgressQueryResult.available(authoritativeProgress);
+      return ConfigNodeProgressQueryResult.available(refreshedProgress);
     }
   }
 
@@ -688,12 +859,14 @@ public class ConsensusSubscriptionCommitManager {
     final CommitStateKey stateKey =
         getCommitStateKey(consumerGroupId, topicName, regionId.toString());
     recoverTopicStatesIfNeeded(stateKey);
-    commitStates.remove(stateKey.encodedStateKey);
+    removeCommitState(stateKey.encodedStateKey);
     commitStateKeys.remove(stateKey.encodedStateKey);
     pendingInitialProgressKeys.remove(stateKey.encodedStateKey);
     pendingNewRegionProgressKeys.remove(stateKey.encodedStateKey);
     configNodeProgressAvailableKeys.remove(stateKey.encodedStateKey);
     tailProposalInitializedKeys.remove(stateKey.encodedStateKey);
+    explicitSeekResetKeys.remove(stateKey.encodedStateKey);
+    pendingInitialBroadcastProgress.remove(stateKey.encodedStateKey);
     rewriteTopicProgressFiles(stateKey);
   }
 
@@ -711,11 +884,13 @@ public class ConsensusSubscriptionCommitManager {
     while (keyIterator.hasNext()) {
       final Map.Entry<String, CommitStateKey> entry = keyIterator.next();
       if (entry.getValue().sameTopic(consumerGroupId, topicName)) {
-        commitStates.remove(entry.getKey());
+        removeCommitState(entry.getKey());
         pendingInitialProgressKeys.remove(entry.getKey());
         pendingNewRegionProgressKeys.remove(entry.getKey());
         configNodeProgressAvailableKeys.remove(entry.getKey());
         tailProposalInitializedKeys.remove(entry.getKey());
+        explicitSeekResetKeys.remove(entry.getKey());
+        pendingInitialBroadcastProgress.remove(entry.getKey());
         keyIterator.remove();
       }
     }
@@ -771,20 +946,58 @@ public class ConsensusSubscriptionCommitManager {
       final String topicName,
       final ConsensusGroupId regionId,
       final RegionProgress regionProgress) {
-    final String key = generateKey(consumerGroupId, topicName, regionId);
-    final ConsensusSubscriptionCommitState state = commitStates.get(key);
-    if (state == null) {
-      LOGGER.warn(
-          DataNodePipeMessages
-              .PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITMANAGER_CANNOT_RESET_UNKNOWN_C469052F,
-          consumerGroupId,
-          topicName,
-          regionId);
-      return;
+    resetState(consumerGroupId, topicName, regionId, regionProgress, true);
+  }
+
+  RegionProgress resetState(
+      final String consumerGroupId,
+      final String topicName,
+      final ConsensusGroupId regionId,
+      final RegionProgress regionProgress,
+      final boolean explicitSeek) {
+    return resetState(
+        consumerGroupId, topicName, regionId, regionProgress, explicitSeek, ignored -> {});
+  }
+
+  RegionProgress resetState(
+      final String consumerGroupId,
+      final String topicName,
+      final ConsensusGroupId regionId,
+      final RegionProgress regionProgress,
+      final boolean explicitSeek,
+      final Consumer<RegionProgress> afterReset) {
+    final CommitStateKey stateKey =
+        getCommitStateKey(consumerGroupId, topicName, regionId.toString());
+    synchronized (getTopicPersistLock(stateKey.topicFileKey)) {
+      final ConsensusSubscriptionCommitState state = commitStates.get(stateKey.encodedStateKey);
+      if (state == null) {
+        LOGGER.warn(
+            DataNodePipeMessages
+                .PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITMANAGER_CANNOT_RESET_UNKNOWN_C469052F,
+            consumerGroupId,
+            topicName,
+            regionId);
+        final RegionProgress resetProgress = copyRegionProgress(regionProgress);
+        afterReset.accept(resetProgress);
+        return resetProgress;
+      }
+      final RegionProgress resetProgress;
+      synchronized (state) {
+        // Activation applies its seek asynchronously, after the authoritative refresh. Preserve
+        // committed progress received since that refresh; only a user seek may rewind it.
+        resetProgress =
+            explicitSeek
+                ? copyRegionProgress(regionProgress)
+                : mergeRegionProgress(state.getCommittedRegionProgress(), regionProgress);
+        state.resetForSeek(resetProgress);
+        if (explicitSeek) {
+          setExplicitSeekReset(stateKey.encodedStateKey, state, true);
+        }
+        afterReset.accept(resetProgress);
+      }
+      persistRegionProgress(stateKey, state);
+      return resetProgress;
     }
-    state.resetForSeek(regionProgress);
-    persistRegionProgress(
-        getCommitStateKey(consumerGroupId, topicName, regionId.toString()), state);
   }
 
   /** Persists all states. Should be called during graceful shutdown. */
@@ -833,8 +1046,8 @@ public class ConsensusSubscriptionCommitManager {
   // ======================== Progress Broadcast (Leader → Follower) ========================
 
   /**
-   * Broadcasts committed progress to followers if enough time has elapsed since the last broadcast
-   * for this key. The broadcast is async and fire-and-forget.
+   * Coalesces committed progress while throttling broadcasts. The latest ACK is sent even when no
+   * further writes or ACKs arrive after the throttle window.
    */
   private void maybeBroadcast(
       final String key,
@@ -847,23 +1060,105 @@ public class ConsensusSubscriptionCommitManager {
       return;
     }
     final String broadcastKey = buildBroadcastKey(key, committedWriterId);
-    final long now = System.currentTimeMillis();
-    final Long last = lastBroadcastTime.get(broadcastKey);
-    if (last != null && now - last < MIN_BROADCAST_INTERVAL_MS) {
+    final ConsensusSubscriptionCommitState state = commitStates.get(key);
+    if (Objects.isNull(state)) {
       return;
     }
-    lastBroadcastTime.put(broadcastKey, now);
-    broadcastExecutor.submit(
-        () ->
-            doBroadcast(
-                consumerGroupId, topicName, regionId, committedWriterProgress, committedWriterId));
+    synchronized (lastBroadcastTime) {
+      if (commitStates.get(key) != state) {
+        return;
+      }
+      if (pendingBroadcasts.get(broadcastKey) == state) {
+        return;
+      }
+      final Long last = lastBroadcastTime.get(broadcastKey);
+      final long delay =
+          Objects.isNull(last)
+              ? 0L
+              : Math.max(0L, MIN_BROADCAST_INTERVAL_MS - (broadcastClock.getAsLong() - last));
+      pendingBroadcasts.put(broadcastKey, state);
+      try {
+        broadcastExecutor.schedule(
+            () -> {
+              synchronized (state.broadcastLifecycleLock) {
+                final WriterProgress latestProgress;
+                synchronized (lastBroadcastTime) {
+                  if (!pendingBroadcasts.remove(broadcastKey, state)
+                      || commitStates.get(key) != state) {
+                    return;
+                  }
+                  lastBroadcastTime.put(broadcastKey, broadcastClock.getAsLong());
+                  latestProgress =
+                      state
+                          .getCommittedRegionProgress()
+                          .getWriterPositions()
+                          .get(committedWriterId);
+                }
+                if (Objects.nonNull(latestProgress)) {
+                  doBroadcast(
+                      consumerGroupId, topicName, regionId, latestProgress, committedWriterId);
+                }
+              }
+            },
+            delay,
+            TimeUnit.MILLISECONDS);
+      } catch (final RuntimeException e) {
+        pendingBroadcasts.remove(broadcastKey, state);
+        throw e;
+      }
+    }
+  }
+
+  private void removeCommitState(final String stateKey) {
+    while (true) {
+      final ConsensusSubscriptionCommitState state = commitStates.get(stateKey);
+      if (Objects.isNull(state)) {
+        return;
+      }
+      synchronized (state.broadcastLifecycleLock) {
+        synchronized (lastBroadcastTime) {
+          if (commitStates.remove(stateKey, state)) {
+            clearBroadcastStateUnderLock(stateKey);
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  private void replaceCommitState(
+      final String stateKey, final ConsensusSubscriptionCommitState replacement) {
+    while (true) {
+      final ConsensusSubscriptionCommitState state = commitStates.get(stateKey);
+      if (Objects.isNull(state)) {
+        if (Objects.isNull(commitStates.putIfAbsent(stateKey, replacement))) {
+          return;
+        }
+        continue;
+      }
+      synchronized (state.broadcastLifecycleLock) {
+        synchronized (lastBroadcastTime) {
+          if (commitStates.replace(stateKey, state, replacement)) {
+            clearBroadcastStateUnderLock(stateKey);
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  /** Clears scheduled work and throttle history for one subscription state generation. */
+  private void clearBroadcastStateUnderLock(final String stateKey) {
+    final String broadcastKeyPrefix = stateKey + KEY_SEPARATOR;
+    pendingBroadcasts.keySet().removeIf(key -> key.startsWith(broadcastKeyPrefix));
+    lastBroadcastTime.keySet().removeIf(key -> key.startsWith(broadcastKeyPrefix));
   }
 
   /**
    * Sends committed progress to all follower replicas of the given region. Uses the partition cache
    * to discover replica endpoints and skips the local DataNode.
    */
-  private void doBroadcast(
+  void doBroadcast(
       final String consumerGroupId,
       final String topicName,
       final ConsensusGroupId regionId,
@@ -957,7 +1252,10 @@ public class ConsensusSubscriptionCommitManager {
     final ConsensusSubscriptionCommitState state = commitStates.get(stateKey.encodedStateKey);
     if (state != null) {
       // Update only if broadcast is ahead
-      state.updateFromBroadcast(writerId, writerProgress);
+      synchronized (state) {
+        state.updateFromBroadcast(writerId, writerProgress);
+        recordPendingInitialBroadcastProgress(stateKey.encodedStateKey, writerId, writerProgress);
+      }
       persistProgressIfNeeded(stateKey, state);
     } else {
       // Create a new state from the broadcast progress
@@ -1118,6 +1416,11 @@ public class ConsensusSubscriptionCommitManager {
           final CommitStateKey recoveredStateKey =
               getCommitStateKey(consumerGroupId, topicName, entry.getKey());
           commitStates.putIfAbsent(recoveredStateKey.encodedStateKey, entry.getValue());
+          final ConsensusSubscriptionCommitState recoveredState =
+              commitStates.get(recoveredStateKey.encodedStateKey);
+          if (recoveredState.getProgress().isExplicitSeekReset()) {
+            explicitSeekResetKeys.add(recoveredStateKey.encodedStateKey);
+          }
         }
         topicProgressIndexes.put(topicFileKey, snapshot.indexEntries);
       } catch (final IOException e) {
@@ -1458,6 +1761,64 @@ public class ConsensusSubscriptionCommitManager {
             : Collections.emptyMap());
   }
 
+  private static RegionProgress mergeRegionProgress(
+      final RegionProgress currentProgress, final RegionProgress refreshedProgress) {
+    final Map<WriterId, WriterProgress> mergedWriterPositions = new LinkedHashMap<>();
+    mergeWriterPositions(mergedWriterPositions, currentProgress);
+    mergeWriterPositions(mergedWriterPositions, refreshedProgress);
+    return new RegionProgress(mergedWriterPositions);
+  }
+
+  private static boolean isRegionProgressAtLeast(
+      final RegionProgress candidateProgress, final RegionProgress baselineProgress) {
+    if (Objects.isNull(baselineProgress)) {
+      return true;
+    }
+    final Map<WriterId, WriterProgress> candidatePositions =
+        Objects.nonNull(candidateProgress)
+            ? candidateProgress.getWriterPositions()
+            : Collections.emptyMap();
+    for (final Map.Entry<WriterId, WriterProgress> entry :
+        baselineProgress.getWriterPositions().entrySet()) {
+      if (Objects.isNull(entry.getKey()) || Objects.isNull(entry.getValue())) {
+        continue;
+      }
+      final WriterProgress candidate = candidatePositions.get(entry.getKey());
+      if (Objects.isNull(candidate)
+          || new ProgressKey(entry.getKey(), candidate)
+                  .compareTo(new ProgressKey(entry.getKey(), entry.getValue()))
+              < 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static void mergeWriterPositions(
+      final Map<WriterId, WriterProgress> mergedWriterPositions,
+      final RegionProgress regionProgress) {
+    if (Objects.isNull(regionProgress)) {
+      return;
+    }
+    regionProgress
+        .getWriterPositions()
+        .forEach(
+            (writerId, writerProgress) -> {
+              if (Objects.isNull(writerId) || Objects.isNull(writerProgress)) {
+                return;
+              }
+              mergedWriterPositions.merge(
+                  writerId,
+                  writerProgress,
+                  (current, refreshed) ->
+                      new ProgressKey(writerId, refreshed)
+                                  .compareTo(new ProgressKey(writerId, current))
+                              > 0
+                          ? refreshed
+                          : current);
+            });
+  }
+
   @FunctionalInterface
   interface ConfigNodeProgressFetcher {
 
@@ -1562,17 +1923,25 @@ public class ConsensusSubscriptionCommitManager {
 
     private final boolean tailProposalInitialized;
 
+    private final boolean explicitSeekReset;
+
+    private final Map<WriterId, WriterProgress> pendingInitialBroadcastProgress;
+
     private StateSetupSnapshot(
         final SubscriptionConsensusProgress progress,
         final boolean initialProgressPending,
         final boolean newRegionProgressPending,
         final boolean configNodeProgressAvailable,
-        final boolean tailProposalInitialized) {
+        final boolean tailProposalInitialized,
+        final boolean explicitSeekReset,
+        final Map<WriterId, WriterProgress> pendingInitialBroadcastProgress) {
       this.progress = progress;
       this.initialProgressPending = initialProgressPending;
       this.newRegionProgressPending = newRegionProgressPending;
       this.configNodeProgressAvailable = configNodeProgressAvailable;
       this.tailProposalInitialized = tailProposalInitialized;
+      this.explicitSeekReset = explicitSeekReset;
+      this.pendingInitialBroadcastProgress = pendingInitialBroadcastProgress;
     }
   }
 
@@ -1673,6 +2042,8 @@ public class ConsensusSubscriptionCommitManager {
    * tracked as ProgressKey objects rather than raw searchIndex values.
    */
   public static class ConsensusSubscriptionCommitState {
+
+    private final Object broadcastLifecycleLock = new Object();
 
     private final String regionId;
 

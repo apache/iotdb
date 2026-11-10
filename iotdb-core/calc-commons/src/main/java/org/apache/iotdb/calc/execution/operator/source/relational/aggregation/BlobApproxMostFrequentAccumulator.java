@@ -31,6 +31,10 @@ import java.util.stream.Collectors;
 public class BlobApproxMostFrequentAccumulator extends BinaryApproxMostFrequentAccumulator {
   @Override
   public void evaluateFinal(ColumnBuilder columnBuilder) {
+    if (state.getSpaceSaving() == null || state.getSpaceSaving().isEmpty()) {
+      columnBuilder.appendNull();
+      return;
+    }
     Map<Binary, Long> buckets = state.getSpaceSaving().getBuckets();
     Map<String, Long> formatedBuckets =
         buckets.entrySet().stream()

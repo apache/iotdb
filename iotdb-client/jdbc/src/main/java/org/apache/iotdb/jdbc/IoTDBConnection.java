@@ -73,8 +73,17 @@ public class IoTDBConnection implements Connection {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConnection.class);
   private static final TSProtocolVersion protocolVersion =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
-  private static final String NOT_SUPPORT_PREPARE_CALL = "Does not support prepareCall";
-  private static final String NOT_SUPPORT_PREPARE_STATEMENT = "Does not support prepareStatement";
+  // Match Thrift's fixed protocol text independently of the localized SQLException message.
+  private static final String MISSING_CLIENT_PROTOCOL_DIAGNOSTIC =
+      "Required field 'client_protocol' was not present!";
+  // Recognize server diagnostics in either supported language, regardless of the driver's locale.
+  private static final String[] PASSWORD_EXPIRATION_DIAGNOSTIC_PREFIXES = {
+    "Your password will expire at ", "密码将于以下时间过期："
+  };
+  private static final String NOT_SUPPORT_PREPARE_CALL =
+      JdbcMessages.EXCEPTION_DOES_NOT_SUPPORT_PREPARECALL_2E958060;
+  private static final String NOT_SUPPORT_PREPARE_STATEMENT =
+      JdbcMessages.EXCEPTION_DOES_NOT_SUPPORT_PREPARESTATEMENT_93B9FAF1;
   private static final String APACHE_IOTDB = "Apache IoTDB";
   private IClientRPCService.Iface client = null;
   private long sessionId = -1;
@@ -98,7 +107,10 @@ public class IoTDBConnection implements Connection {
   private ZoneId zoneId;
   private Charset charset;
 
-  private boolean autoCommit;
+  // IoTDB has no transactions, so every statement takes effect at once as JDBC auto-commit does
+  private boolean autoCommit = true;
+  // Recorded as the hint JDBC defines it to be; IoTDB has no read-only connection mode
+  private boolean readOnly;
   private String url;
 
   public String getUserName() {
@@ -143,7 +155,6 @@ public class IoTDBConnection implements Connection {
     openSession();
     // Wrap the client with a thread-safe proxy to serialize the RPC calls
     setClient(RpcUtils.newSynchronizedClient(getClient()));
-    autoCommit = false;
   }
 
   public String getUrl() {
@@ -270,13 +281,14 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public String getCatalog() {
-    return APACHE_IOTDB;
+    // The table model has no catalogs, matching the NULL TABLE_CAT of its DatabaseMetaData
+    return getSqlDialect().equals(Constant.TABLE_DIALECT) ? null : APACHE_IOTDB;
   }
 
   @Override
   public void setCatalog(String arg0) throws SQLException {
     if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
-      if (APACHE_IOTDB.equals(arg0)) {
+      if (arg0 == null || APACHE_IOTDB.equals(arg0)) {
         return;
       }
       for (String str : IoTDBRelationalDatabaseMetadata.allIotdbTableSQLKeywords) {
@@ -400,14 +412,12 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public boolean isReadOnly() {
-    return false;
+    return readOnly;
   }
 
   @Override
   public void setReadOnly(boolean readonly) throws SQLException {
-    if (readonly) {
-      throw new SQLException(JdbcMessages.NOT_SUPPORT_READ_ONLY);
-    }
+    this.readOnly = readonly;
   }
 
   @Override
@@ -567,6 +577,22 @@ public class IoTDBConnection implements Connection {
     }
   }
 
+  static String getPasswordExpirationDateToWarn(String message, LocalDateTime now) {
+    if (message == null) {
+      return null;
+    }
+    for (String expirationPrefix : PASSWORD_EXPIRATION_DIAGNOSTIC_PREFIXES) {
+      int expirationIndex = message.indexOf(expirationPrefix);
+      if (expirationIndex != -1) {
+        String expirationDateStr = message.substring(expirationIndex + expirationPrefix.length());
+        DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        LocalDateTime expirationDate = LocalDateTime.from(dateFormat.parse(expirationDateStr));
+        return now.isAfter(expirationDate.minusDays(3)) ? expirationDateStr : null;
+      }
+    }
+    return null;
+  }
+
   private void openSession() throws SQLException {
     TSOpenSessionReq openReq = new TSOpenSessionReq();
 
@@ -599,38 +625,32 @@ public class IoTDBConnection implements Connection {
                   openResp.getServerProtocolVersion().getValue()));
         }
       }
-      String expirationInformer = "Your password will expire at ";
-      String message = openResp.getStatus().getMessage();
-      int expirationIndex = message.indexOf(expirationInformer);
-      if (expirationIndex != -1) {
-        String expirationDateStr = message.substring(expirationIndex + expirationInformer.length());
-        DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        LocalDateTime expirationDate = LocalDateTime.from(dateFormat.parse(expirationDateStr));
-        LocalDateTime now = LocalDateTime.now();
-        if (now.isAfter(expirationDate.minusDays(3))) {
-          logger.warn(
-              JdbcMessages.LOG_ARG_ARG_PLEASE_CHANGE_IT_TIME_VIA_ALTER_USER_STATEMENT_6B67087C,
-              expirationInformer,
-              expirationDateStr);
-        }
+      String expirationDateStr =
+          getPasswordExpirationDateToWarn(openResp.getStatus().getMessage(), LocalDateTime.now());
+      if (expirationDateStr != null) {
+        logger.warn(
+            JdbcMessages.LOG_ARG_ARG_PLEASE_CHANGE_IT_TIME_VIA_ALTER_USER_STATEMENT_6B67087C,
+            JdbcMessages.EXCEPTION_YOUR_PASSWORD_WILL_EXPIRE_AT_49098220,
+            expirationDateStr);
       }
     } catch (TException e) {
       transport.close();
-      if (e.getMessage().contains("Required field 'client_protocol' was not present!")) {
+      String message = e.getMessage();
+      if (message != null && message.contains(MISSING_CLIENT_PROTOCOL_DIAGNOSTIC)) {
         // the server is an old version (less than 0.10)
         throw new SQLException(
             String.format(
                 JdbcMessages
                     .EXCEPTION_CAN_NOT_ESTABLISH_CONNECTION_ARG_YOU_MAY_TRY_CONNECT_OLD_8FC3703E,
                 params.getJdbcUriString(),
-                e.getMessage()),
+                message),
             e);
       }
       throw new SQLException(
           String.format(
               JdbcMessages.EXCEPTION_CAN_NOT_ESTABLISH_CONNECTION_ARG_ARG_D7246055,
               params.getJdbcUriString(),
-              e.getMessage()),
+              message),
           e);
     } catch (StatementExecutionException e) {
       // failed to connect, disconnect from the server

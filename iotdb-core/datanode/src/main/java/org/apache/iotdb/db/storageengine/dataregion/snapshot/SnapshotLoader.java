@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.snapshot;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.disk.FolderManager;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -308,7 +310,7 @@ public class SnapshotLoader {
     }
   }
 
-  private void createLinksFromSnapshotDirToDataDirWithoutLog(
+  void createLinksFromSnapshotDirToDataDirWithoutLog(
       File sourceDir, Map<String, String> fileTarget, boolean preferKeepSameDiskWhenLoading)
       throws IOException, DiskSpaceInsufficientException {
     if (!sourceDir.exists()) {
@@ -339,7 +341,8 @@ public class SnapshotLoader {
     FolderManager folderManager =
         new FolderManager(
             Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getLocalDataDirs()),
-            DirectoryStrategyType.SEQUENCE_STRATEGY);
+            DirectoryStrategyType.SEQUENCE_STRATEGY,
+            SnapshotLoader::reportDiskFull);
     File[] timePartitionFolders = seqFileDir.listFiles();
     if (timePartitionFolders != null) {
       for (File timePartitionFolder : timePartitionFolders) {
@@ -379,6 +382,16 @@ public class SnapshotLoader {
             targetSuffix, files, folderManager, fileTarget, preferKeepSameDiskWhenLoading);
       }
     }
+  }
+
+  private static void reportDiskFull() {
+    CommonDescriptor.getInstance()
+        .getConfig()
+        .setReadOnlyForDiskFull(
+            SnapshotLoader.class,
+            () ->
+                Arrays.stream(IoTDBDescriptor.getInstance().getConfig().getLocalDataDirs())
+                    .anyMatch(JVMCommonUtils::hasSpaceWithoutRetry));
   }
 
   private File createLinksFromSnapshotToSourceDir(
@@ -593,7 +606,7 @@ public class SnapshotLoader {
                 StorageEngineMessages.FAILED_TO_CREATE_DIR,
                 targetFile.getParentFile().getAbsolutePath()));
       }
-      Files.createLink(targetFile.toPath(), file.toPath());
+      SnapshotFileUtils.createLinkOrCopy(targetFile.toPath(), file.toPath());
     }
   }
 

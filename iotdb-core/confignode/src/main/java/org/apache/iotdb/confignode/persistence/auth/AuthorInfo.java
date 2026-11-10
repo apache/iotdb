@@ -55,7 +55,7 @@ public class AuthorInfo implements SnapshotProcessor {
   // Works at config node.
   private static final Logger LOGGER = LoggerFactory.getLogger(AuthorInfo.class);
   public static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
-  public static final String NO_USER_MSG = "No such user : ";
+  public static final String NO_USER_MSG = ConfigNodeMessages.EXCEPTION_NO_SUCH_USER_9F8AB2B7;
 
   protected IAuthorizer authorizer;
   protected volatile IAuthorPlanExecutor authorPlanExecutor;

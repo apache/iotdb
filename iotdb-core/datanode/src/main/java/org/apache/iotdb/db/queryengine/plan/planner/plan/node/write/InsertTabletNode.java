@@ -1373,7 +1373,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
             RpcUtils.getStatus(
                 TSStatusCode.OUT_OF_TTL,
                 String.format(
-                    "Insertion time [%s] is less than ttl time bound [%s]",
+                    DataNodeQueryMessages.OUT_OF_TTL_FMT,
                     DateTimeUtils.convertLongToDate(currTime),
                     DateTimeUtils.convertLongToDate(getTTLLowerBound(ttl))));
       } else {

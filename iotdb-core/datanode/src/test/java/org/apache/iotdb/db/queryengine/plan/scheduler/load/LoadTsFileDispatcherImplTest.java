@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -31,16 +32,19 @@ import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
+import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TElasticFramedTransport;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
@@ -246,13 +250,83 @@ public class LoadTsFileDispatcherImplTest {
         new LoadTsFilePieceNode(new PlanNodeId("piece"), new File("test.tsfile"));
     try (LoadTsFileDispatcherImpl dispatcher = new LoadTsFileDispatcherImpl(clientManager, false)) {
       dispatcher.setUuid("test-uuid");
-      Assert.assertFalse(
-          dispatcher
-              .dispatch(null, Collections.singletonList(createFragmentInstance(pieceNode)))
-              .get(10, TimeUnit.SECONDS)
-              .isSuccessful());
+      final FragmentInstance instance = createFragmentInstance(pieceNode);
+      final FragInstanceDispatchResult result =
+          dispatcher.dispatch(null, Collections.singletonList(instance)).get(10, TimeUnit.SECONDS);
+      Assert.assertFalse(result.isSuccessful());
+      Assert.assertEquals(
+          TSStatusCode.DISPATCH_ERROR.getStatusCode(), result.getFailureStatus().getCode());
+      Assert.assertTrue(result.getFailureStatus().getMessage().contains("test-uuid"));
+      Assert.assertTrue(
+          result
+              .getFailureStatus()
+              .getMessage()
+              .contains(instance.getRegionReplicaSet().getRegionId().toString()));
+      Assert.assertTrue(result.getFailureStatus().getMessage().contains("127.0.0.1"));
     }
     Mockito.verify(client, Mockito.never()).sendTsFilePieceNode(Mockito.any());
+  }
+
+  @Test
+  public void testRemoteRejectionPreservesOriginalStatus() throws Exception {
+    final TSStatus status =
+        new TSStatus(TSStatusCode.MULTIPLE_ERROR.getStatusCode())
+            .setMessage("tablet insertion rejected")
+            .setSubStatus(
+                Collections.singletonList(
+                    new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+                        .setMessage("missing WRITE_DATA privilege")))
+            .setRedirectNode(new TEndPoint("127.0.0.2", 10730))
+            .setNeedRetry(true);
+
+    final FragInstanceDispatchResult result =
+        dispatchWithResponse(new TLoadResp(false).setStatus(status));
+
+    Assert.assertFalse(result.isSuccessful());
+    Assert.assertEquals(status, result.getFailureStatus());
+  }
+
+  @Test
+  public void testRemoteRejectionWithoutStatusPreservesMessage() throws Exception {
+    final FragInstanceDispatchResult result =
+        dispatchWithResponse(new TLoadResp(false).setMessage("receiver disk is full"));
+
+    Assert.assertFalse(result.isSuccessful());
+    Assert.assertEquals(
+        TSStatusCode.DISPATCH_ERROR.getStatusCode(), result.getFailureStatus().getCode());
+    Assert.assertEquals("receiver disk is full", result.getFailureStatus().getMessage());
+  }
+
+  @Test
+  public void testRemoteRejectionWithoutDetailsHasExplicitReason() throws Exception {
+    final FragInstanceDispatchResult result = dispatchWithResponse(new TLoadResp(false));
+
+    Assert.assertFalse(result.isSuccessful());
+    Assert.assertEquals(
+        TSStatusCode.DISPATCH_ERROR.getStatusCode(), result.getFailureStatus().getCode());
+    Assert.assertEquals(
+        DataNodeQueryMessages
+            .MESSAGE_TARGET_NODE_REJECTED_LOAD_WITHOUT_A_STATUS_OR_A_MESSAGE_F4E4C645,
+        result.getFailureStatus().getMessage());
+  }
+
+  private static FragInstanceDispatchResult dispatchWithResponse(final TLoadResp response)
+      throws Exception {
+    final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager =
+        Mockito.mock(IClientManager.class);
+    final SyncDataNodeInternalServiceClient client =
+        Mockito.mock(SyncDataNodeInternalServiceClient.class);
+    Mockito.when(clientManager.borrowClient(Mockito.any())).thenReturn(client);
+    Mockito.when(client.getThriftMaxFrameSize()).thenReturn(4096);
+    Mockito.when(client.sendTsFilePieceNode(Mockito.any())).thenReturn(response);
+    final LoadTsFilePieceNode pieceNode =
+        new LoadTsFilePieceNode(new PlanNodeId("piece"), new File("test.tsfile"));
+    try (LoadTsFileDispatcherImpl dispatcher = new LoadTsFileDispatcherImpl(clientManager, false)) {
+      dispatcher.setUuid("test-uuid");
+      return dispatcher
+          .dispatch(null, Collections.singletonList(createFragmentInstance(pieceNode)))
+          .get(10, TimeUnit.SECONDS);
+    }
   }
 
   private static void assertFitsBothTransports(

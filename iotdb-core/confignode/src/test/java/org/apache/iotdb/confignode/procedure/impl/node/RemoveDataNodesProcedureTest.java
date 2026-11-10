@@ -137,17 +137,19 @@ public class RemoveDataNodesProcedureTest {
   }
 
   @Test
-  public void metadataRetryExhaustionCleansUpNodeRemoval() throws Exception {
-    assertFinalizationFailureCleanup(RemoveRegionPeerState.REMOVE_REGION_LOCATION_CACHE, false);
+  public void metadataRetryExhaustionRetriesFailedNodeStatusCleanup() throws Exception {
+    assertFinalizationExhaustionCleanup(RemoveRegionPeerState.REMOVE_REGION_LOCATION_CACHE, true);
   }
 
   @Test
-  public void peerListRetryExhaustionRetriesFailedNodeStatusCleanup() throws Exception {
-    assertFinalizationFailureCleanup(RemoveRegionPeerState.RESET_IOT_CONSENSUS_V1_PEER_LIST, true);
+  public void peerListRetryExhaustionCompletesNodeRemoval() throws Exception {
+    assertFinalizationExhaustionCleanup(
+        RemoveRegionPeerState.RESET_IOT_CONSENSUS_V1_PEER_LIST, false);
   }
 
-  private void assertFinalizationFailureCleanup(
+  private void assertFinalizationExhaustionCleanup(
       RemoveRegionPeerState failingState, boolean failFirstStatusRestoration) throws Exception {
+    boolean metadataFailure = failingState == RemoveRegionPeerState.REMOVE_REGION_LOCATION_CACHE;
     TDataNodeLocation runningNode = fromDataNodeLocation;
     TDataNodeLocation readOnlyNode = location(12);
     TDataNodeLocation drainedNode = location(13);
@@ -178,10 +180,12 @@ public class RemoveDataNodesProcedureTest {
         "root.remove",
         new TRegionReplicaSet(
             consensusGroupId, new ArrayList<>(Arrays.asList(runningNode, retainedNode))));
-    groups.addRegionGroup(
-        "root.remove",
-        new TRegionReplicaSet(
-            pendingRunningRegion, new ArrayList<>(Arrays.asList(runningNode, retainedNode))));
+    if (metadataFailure) {
+      groups.addRegionGroup(
+          "root.remove",
+          new TRegionReplicaSet(
+              pendingRunningRegion, new ArrayList<>(Arrays.asList(runningNode, retainedNode))));
+    }
     groups.addRegionGroup(
         "root.remove",
         new TRegionReplicaSet(
@@ -229,7 +233,7 @@ public class RemoveDataNodesProcedureTest {
     when(regionHandler.removeRegionLocation(consensusGroupId, runningNode))
         .thenAnswer(
             ignored ->
-                failingState == RemoveRegionPeerState.REMOVE_REGION_LOCATION_CACHE
+                metadataFailure
                     ? new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode())
                     : partitionInfo.removeRegionLocation(
                         new RemoveRegionLocationPlan(consensusGroupId, runningNode)));
@@ -302,36 +306,49 @@ public class RemoveDataNodesProcedureTest {
           new RemoveDataNodesProcedure(removalTargets, originalStatuses);
       long rootId = executor.submitProcedure(root);
       ProcedureTestUtil.waitForProcedure(executor, rootId);
-      Assert.assertTrue("Node removal must finish failure cleanup", executor.isFinished(rootId));
-      Assert.assertEquals(ProcedureState.ROLLEDBACK, root.getState());
-      Assert.assertFalse(root.isSuccess());
-      RemoveRegionPeerProcedure failedChild =
+      Assert.assertTrue("Node removal must finish cleanup", executor.isFinished(rootId));
+      RemoveRegionPeerProcedure removalChild =
           store.recorded.values().stream()
               .filter(RemoveRegionPeerProcedure.class::isInstance)
               .map(RemoveRegionPeerProcedure.class::cast)
               .findFirst()
               .get();
-      Procedure<?> migrationParent = store.recorded.get(failedChild.getParentProcId());
+      Procedure<?> migrationParent = store.recorded.get(removalChild.getParentProcId());
       Assert.assertTrue(migrationParent instanceof RegionMigrateProcedure);
       Assert.assertEquals(rootId, migrationParent.getParentProcId());
-      Assert.assertSame(failedChild.getException(), root.getException());
-      Assert.assertTrue(root.getException().getMessage().contains(failingState.name()));
-      if (failingState == RemoveRegionPeerState.REMOVE_REGION_LOCATION_CACHE) {
+      if (metadataFailure) {
+        Assert.assertEquals(ProcedureState.ROLLEDBACK, root.getState());
+        Assert.assertFalse(root.isSuccess());
+        Assert.assertSame(removalChild.getException(), root.getException());
+        Assert.assertTrue(root.getException().getMessage().contains(failingState.name()));
         verify(regionHandler, times(4)).removeRegionLocation(consensusGroupId, runningNode);
         verify(regionHandler, never()).resetPeerListAfterRemoveForIoTConsensusV1(any(), any());
       } else {
+        Assert.assertTrue(root.isSuccess());
+        Assert.assertTrue(migrationParent.isSuccess());
+        Assert.assertTrue(removalChild.isSuccess());
+        Assert.assertNull(root.getException());
+        Assert.assertNull(migrationParent.getException());
+        Assert.assertNull(removalChild.getException());
         verify(regionHandler).removeRegionLocation(consensusGroupId, runningNode);
         verify(regionHandler, times(4))
             .resetPeerListAfterRemoveForIoTConsensusV1(consensusGroupId, runningNode);
       }
 
-      // Failed children bypass STOP_DATA_NODE: root rollback must still finalize node statuses.
-      Assert.assertEquals(NodeStatus.Running, currentStatuses.get(runningNode.getDataNodeId()));
+      // Metadata failures use rollback cleanup; exhausted peer-list resets use normal
+      // STOP_DATA_NODE.
+      if (metadataFailure) {
+        Assert.assertEquals(NodeStatus.Running, currentStatuses.get(runningNode.getDataNodeId()));
+      }
       Assert.assertEquals(NodeStatus.ReadOnly, currentStatuses.get(readOnlyNode.getDataNodeId()));
-      Assert.assertTrue(registeredNodes.contains(runningNode.getDataNodeId()));
+      Assert.assertEquals(metadataFailure, registeredNodes.contains(runningNode.getDataNodeId()));
       Assert.assertTrue(registeredNodes.contains(readOnlyNode.getDataNodeId()));
       Assert.assertFalse(registeredNodes.contains(drainedNode.getDataNodeId()));
-      Assert.assertEquals(Collections.singleton(drainedNode.getDataNodeId()), stoppedNodes);
+      Assert.assertEquals(
+          metadataFailure
+              ? Collections.singleton(drainedNode.getDataNodeId())
+              : Set.of(runningNode.getDataNodeId(), drainedNode.getDataNodeId()),
+          stoppedNodes);
       Assert.assertEquals(failFirstStatusRestoration ? 2 : 1, restorationAttempts.get());
       if (failFirstStatusRestoration) {
         // A node-lock wakeup must not bypass the five-second rollback retry timeout.
@@ -339,16 +356,21 @@ public class RemoveDataNodesProcedureTest {
             "Status restoration must wait for the rollback retry timeout",
             restorationRetryDelay.get() >= TimeUnit.SECONDS.toNanos(4));
       }
-      verify(nodeHandler).broadcastDataNodeStatusChange(Arrays.asList(runningNode, readOnlyNode));
+      verify(nodeHandler)
+          .broadcastDataNodeStatusChange(
+              metadataFailure
+                  ? Arrays.asList(runningNode, readOnlyNode)
+                  : Collections.singletonList(readOnlyNode));
 
       // Cleanup must not undo the completed add peer or a committed removal.
       Assert.assertTrue(
           partitionManager.isDataNodeContainsRegion(
               toDataNodeLocation.getDataNodeId(), consensusGroupId));
       Assert.assertEquals(
-          failingState == RemoveRegionPeerState.REMOVE_REGION_LOCATION_CACHE,
+          metadataFailure,
           partitionManager.isDataNodeContainsRegion(runningNode.getDataNodeId(), consensusGroupId));
-      Assert.assertTrue(
+      Assert.assertEquals(
+          metadataFailure,
           partitionManager.isDataNodeContainsRegion(
               runningNode.getDataNodeId(), pendingRunningRegion));
       Assert.assertTrue(

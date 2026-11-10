@@ -44,7 +44,6 @@
         <module>iotdb-client</module>
         <module>iotdb-core</module>
         <module>iotdb-protocol</module>
-        <module>library-pipe</module>
         <module>distribution</module>
         <module>example</module>
         <module>library-udf</module>
@@ -125,7 +124,7 @@
         <reactor.version>3.7.19</reactor.version>
         <reflections.version>0.10.2</reflections.version>
         <slf4j.version>2.0.9</slf4j.version>
-        <snappy-java.version>1.1.10.5</snappy-java.version>
+        <snappy-java.version>1.1.10.9</snappy-java.version>
         <sonar.coverage.jacoco.xmlReportPaths>target/jacoco-merged-reports/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <!-- Exclude all generated code -->
         <sonar.exclusions>**/generated-sources</sonar.exclusions>
@@ -145,7 +144,7 @@
         <thrift.version>0.25.0</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>2.4.1-261009-SNAPSHOT</tsfile.version>
+        <tsfile.version>2.5.1-261023-SNAPSHOT</tsfile.version>
         <i18n.locale>en</i18n.locale>
         <tsfile.locale.opt/>
     </properties>
@@ -706,7 +705,6 @@
                             <exclude>**/.gitmodules</exclude>
                             <exclude>**/.git-blame-ignore-revs</exclude>
                             <exclude>**/git.properties</exclude>
-                            <exclude>AGENTS.md</exclude>
                             <!-- Maven related files -->
                             <exclude>**/target/**</exclude>
                             <!-- Eclipse related files -->

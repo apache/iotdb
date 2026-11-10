@@ -25,6 +25,8 @@ import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.Cr
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.junit.Test;
@@ -36,6 +38,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class AlterTopicProcedureTest {
 
@@ -58,6 +62,12 @@ public class AlterTopicProcedureTest {
             new TopicMeta("test_topic", 1, topicAttributes), updatedTopicAttributes));
   }
 
+  @Test
+  public void serializeDeserializeWithRetainedProgressStateTest() throws Exception {
+    final AlterTopicProcedure procedure = new AlterTopicProcedure(false, true);
+    assertSerializeDeserialize(procedure);
+  }
+
   private void assertSerializeDeserialize(final AlterTopicProcedure procedure) throws Exception {
     final PublicBAOS byteArrayOutputStream = new PublicBAOS();
     final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
@@ -67,6 +77,7 @@ public class AlterTopicProcedureTest {
     final AlterTopicProcedure deserializedProcedure =
         (AlterTopicProcedure) ProcedureFactory.getInstance().create(buffer);
     assertEquals(procedure, deserializedProcedure);
+    assertEquals(0, buffer.remaining());
   }
 
   @Test
@@ -104,5 +115,35 @@ public class AlterTopicProcedureTest {
 
     assertEquals("processor1", procedure.getUpdatedTopicMeta().getConfig().getString("processor"));
     assertEquals("source1", procedure.getUpdatedTopicMeta().getConfig().getString("source"));
+  }
+
+  @Test
+  public void testRejectCaseInsensitiveDuplicateAttributesBeforeMerge() throws Exception {
+    final String topicName = "test_table_topic";
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> initialAttributes = new HashMap<>();
+    initialAttributes.put("__system.sql-dialect", "table");
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        subscriptionInfo
+            .createTopic(new CreateTopicPlan(new TopicMeta(topicName, 1, initialAttributes)))
+            .getCode());
+
+    final Map<String, String> requestAttributes = new HashMap<>();
+    requestAttributes.put(TopicConstant.TAG_FILTER_KEY, "region = \"north\"");
+    requestAttributes.put("TAG-FILTER", "region = \"south\"");
+    final AlterTopicProcedure procedure =
+        new AlterTopicProcedure(
+            subscriptionInfo.deepCopyTopicMetaWithUpdatedAttributes(
+                topicName, requestAttributes, true),
+            requestAttributes,
+            new AtomicReference<>(subscriptionInfo));
+
+    try {
+      procedure.executeFromValidate(null);
+      fail("Expected duplicate tag-filter attributes to be rejected");
+    } catch (final SubscriptionException e) {
+      assertTrue(e.getMessage(), e.getMessage().contains("duplicate tag-filter"));
+    }
   }
 }

@@ -21,12 +21,15 @@ package org.apache.iotdb.db.subscription.broker.consensus;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.apache.iotdb.consensus.iot.WriterSafeFrontierTracker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
@@ -38,10 +41,13 @@ import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
+import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -59,8 +65,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -73,6 +84,38 @@ import static org.mockito.Mockito.when;
 public class ConsensusPrefetchingQueueSeekTest {
 
   @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+  private CommonConfig config;
+  private ConsensusSubscriptionPrefetchExecutorManager manager;
+  private WALNode walNode;
+  private IoTConsensusServerImpl server;
+  private ConsensusLogToTabletConverter converter;
+
+  @Before
+  public void setUp() {
+    // Keep cold PowerMock/Mockito initialization outside the seek and replay timeout.
+    config = CommonDescriptor.getInstance().getConfig();
+    // The worker first touches plan deserializers and the Pipe runtime while materializing entries.
+    // Initialize them here so cold class loading does not consume the replay polling deadline.
+    PlanNodeType.values();
+    PipeDataNodeAgent.runtime();
+    manager = mock(ConsensusSubscriptionPrefetchExecutorManager.class);
+    PowerMockito.mockStatic(ConsensusSubscriptionPrefetchExecutorManager.class);
+    PowerMockito.when(ConsensusSubscriptionPrefetchExecutorManager.getInstance())
+        .thenReturn(manager);
+
+    walNode = mock(WALNode.class);
+    server = mock(IoTConsensusServerImpl.class);
+    when(server.getConsensusReqReader()).thenReturn(walNode);
+    converter = mock(ConsensusLogToTabletConverter.class);
+    when(converter.getDatabaseName()).thenReturn("db");
+    when(converter.isTableModel()).thenReturn(true);
+    when(converter.convert(any()))
+        .thenAnswer(
+            invocation ->
+                Collections.singletonList(
+                    createTablet(((InsertRowNode) invocation.getArgument(0)).getTime())));
+  }
 
   @Test(timeout = 10_000L)
   public void testSeekToBeginningReplaysFirstLocalEntryWithoutWalGap() throws Exception {
@@ -98,6 +141,240 @@ public class ConsensusPrefetchingQueueSeekTest {
         Arrays.asList(createRequest(1L, 1L, 7), createRequest(-1L, 10L, 8)), 2L, 0L, true);
   }
 
+  @Test(timeout = 20_000L)
+  public void testResolvedSeekDoesNotMaskNewerConfigNodeProgress() throws Exception {
+    assertActivationProgress(false, false);
+  }
+
+  @Test(timeout = 20_000L)
+  public void testActivationSeekPreservesConcurrentProgressBroadcast() throws Exception {
+    assertActivationProgress(false, true);
+  }
+
+  @Test(timeout = 20_000L)
+  public void testExplicitSeekSurvivesActivationQueueReset() throws Exception {
+    assertActivationProgress(true, false);
+  }
+
+  @Test(timeout = 20_000L)
+  public void testExplicitSeekDuringActivationOverridesLocatedFrontier() throws Exception {
+    assertActivationProgress(false, false, true);
+  }
+
+  @Test(timeout = 20_000L)
+  public void testWorkerResetInstallsRecoveryFrontierAtomicallyWithBroadcast() throws Exception {
+    assertActivationProgress(false, false, false, true);
+  }
+
+  private void assertActivationProgress(
+      final boolean explicitSeek, final boolean broadcastDuringActivation) throws Exception {
+    assertActivationProgress(explicitSeek, broadcastDuringActivation, false, false);
+  }
+
+  private void assertActivationProgress(
+      final boolean explicitSeek,
+      final boolean broadcastDuringActivation,
+      final boolean seekDuringActivation)
+      throws Exception {
+    assertActivationProgress(explicitSeek, broadcastDuringActivation, seekDuringActivation, false);
+  }
+
+  private void assertActivationProgress(
+      final boolean explicitSeek,
+      final boolean broadcastDuringActivation,
+      final boolean seekDuringActivation,
+      final boolean broadcastDuringWorkerReset)
+      throws Exception {
+    final int originalPrefetchThreads =
+        config.getSubscriptionConsensusPrefetchExecutorMaxThreadNum();
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder();
+    ConsensusSubscriptionPrefetchExecutor executor = null;
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      config.setSubscriptionConsensusPrefetchExecutorMaxThreadNum(1);
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(systemDir.getAbsolutePath());
+      executor = new ConsensusSubscriptionPrefetchExecutor();
+      when(manager.getExecutor()).thenReturn(executor);
+      when(walNode.getCurrentSearchIndex()).thenReturn(10L);
+      when(walNode.getLogDirectory()).thenReturn(systemDir);
+      when(server.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+      final DataRegionId regionId = new DataRegionId(1);
+      final WriterId writerId = new WriterId(regionId.toString(), 7);
+      final RegionProgress emptyProgress = new RegionProgress(Collections.emptyMap());
+      final RegionProgress initialProgress =
+          broadcastDuringActivation
+                  || explicitSeek
+                  || seekDuringActivation
+                  || broadcastDuringWorkerReset
+              ? new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(100L, 1L)))
+              : emptyProgress;
+      final AtomicReference<RegionProgress> configNodeProgress =
+          new AtomicReference<>(initialProgress);
+      final RegionProgress broadcastProgress =
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(200L, 2L)));
+      final AtomicReference<ConsensusPrefetchingQueue> queueReference = new AtomicReference<>();
+      final AtomicReference<RegionProgress> recoveryProgressAtReset = new AtomicReference<>();
+      final AtomicReference<Thread> resetBroadcastThread = new AtomicReference<>();
+      final ConsensusSubscriptionCommitManager commitManager =
+          new ConsensusSubscriptionCommitManager(
+              (consumerGroupId, topicName, ignored) ->
+                  ConsensusSubscriptionCommitManager.ConfigNodeProgressQueryResult.available(
+                      configNodeProgress.get())) {
+            @Override
+            RegionProgress resetState(
+                final String consumerGroupId,
+                final String topicName,
+                final ConsensusGroupId regionId,
+                final RegionProgress regionProgress,
+                final boolean explicitSeek,
+                final Consumer<RegionProgress> afterReset) {
+              return super.resetState(
+                  consumerGroupId,
+                  topicName,
+                  regionId,
+                  regionProgress,
+                  explicitSeek,
+                  progress -> {
+                    afterReset.accept(progress);
+                    if (!explicitSeek && broadcastDuringWorkerReset) {
+                      recoveryProgressAtReset.set(progress);
+                      assertEquals(
+                          "1", queueReference.get().coreReportMessage().get("recoveryWriterCount"));
+                      final Thread broadcastThread =
+                          new Thread(
+                              () ->
+                                  receiveProgressBroadcast(
+                                      "consumerGroup",
+                                      "topic",
+                                      regionId.toString(),
+                                      writerId,
+                                      broadcastProgress.getWriterPositions().get(writerId)));
+                      broadcastThread.setDaemon(true);
+                      resetBroadcastThread.set(broadcastThread);
+                      broadcastThread.start();
+                      await()
+                          .pollInterval(1L, TimeUnit.MILLISECONDS)
+                          .atMost(5L, TimeUnit.SECONDS)
+                          .until(() -> broadcastThread.getState() == Thread.State.BLOCKED);
+                    }
+                  });
+            }
+          };
+      commitManager.getOrCreateState("consumerGroup", "topic", regionId);
+      final AtomicReference<Runnable> duringReplayLookup = new AtomicReference<>();
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              regionId,
+              server,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              converter,
+              commitManager,
+              initialProgress,
+              1L,
+              1L,
+              true) {
+            @Override
+            protected ReplayLocateDecision locateReplayStartForRegionProgress(
+                final RegionProgress progress, final boolean seekAfter) {
+              final Runnable callback = duringReplayLookup.getAndSet(null);
+              if (callback != null) {
+                callback.run();
+              }
+              final long startSearchIndex =
+                  progress.getWriterPositions().values().stream()
+                          .mapToLong(WriterProgress::getLocalSeq)
+                          .max()
+                          .orElse(0L)
+                      + 1L;
+              return ReplayLocateDecision.found(startSearchIndex, progress, "activation replay");
+            }
+
+            @Override
+            protected ProgressWALIterator createSubscriptionWALIterator(
+                final long startSearchIndex) {
+              return new ProgressWALIterator(systemDir, startSearchIndex) {
+                @Override
+                boolean hasNext(final ScanBudget scanBudget) {
+                  return false;
+                }
+              };
+            }
+          };
+      queueReference.set(queue);
+      queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(16L * 1024 * 1024));
+      queue.poll("consumer");
+      queue.setActive(false);
+      // A seek while inactive initializes the cursor, so activation must apply a worker seek.
+      if (broadcastDuringActivation || seekDuringActivation || broadcastDuringWorkerReset) {
+        queue.seekAfterRegionProgress(initialProgress);
+      } else {
+        queue.seekToBeginning();
+      }
+      if (broadcastDuringActivation) {
+        // Advance after the manager's activation refresh, before the worker applies the seek.
+        duringReplayLookup.set(
+            () ->
+                commitManager.receiveProgressBroadcast(
+                    "consumerGroup",
+                    "topic",
+                    regionId.toString(),
+                    writerId,
+                    broadcastProgress.getWriterPositions().get(writerId)));
+      }
+      if (seekDuringActivation) {
+        // Complete a user seek after activation captured its frontier, before it queues the
+        // automatic worker reset. The older lookup must not supersede this cursor and progress.
+        final ConsensusPrefetchingQueue activatedQueue = queue;
+        duringReplayLookup.set(activatedQueue::seekToBeginning);
+      }
+      queue.applyRuntimeState(
+          new ConsensusRegionRuntimeState(2L, 7, true, Collections.singleton(7)));
+      assertNull(duringReplayLookup.get());
+      if (broadcastDuringWorkerReset) {
+        final Thread broadcastThread = resetBroadcastThread.get();
+        broadcastThread.join(TimeUnit.SECONDS.toMillis(5L));
+        assertFalse(broadcastThread.isAlive());
+        assertEquals(initialProgress, recoveryProgressAtReset.get());
+      }
+      assertEquals(
+          explicitSeek || seekDuringActivation
+              ? emptyProgress
+              : broadcastDuringActivation || broadcastDuringWorkerReset
+                  ? broadcastProgress
+                  : initialProgress,
+          commitManager.getCommittedRegionProgress("consumerGroup", "topic", regionId));
+      if (seekDuringActivation) {
+        assertEquals(1L, queue.getCurrentReadSearchIndex());
+      }
+
+      final RegionProgress newerConfigNodeProgress =
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(300L, 3L)));
+      configNodeProgress.set(newerConfigNodeProgress);
+      queue.setActive(false);
+      queue.applyRuntimeState(
+          new ConsensusRegionRuntimeState(3L, 7, true, Collections.singleton(7)));
+      assertEquals(
+          explicitSeek || seekDuringActivation ? emptyProgress : newerConfigNodeProgress,
+          commitManager.getCommittedRegionProgress("consumerGroup", "topic", regionId));
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      if (executor != null) {
+        executor.shutdown();
+      }
+      config.setSubscriptionConsensusPrefetchExecutorMaxThreadNum(originalPrefetchThreads);
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
   private void assertBeginningReplay(
       final List<IndexedConsensusRequest> requests,
       final long expectedNextIndex,
@@ -112,7 +389,6 @@ public class ConsensusPrefetchingQueueSeekTest {
       final long expectedSkippedEntries,
       final boolean multiWriter)
       throws Exception {
-    final CommonConfig config = CommonDescriptor.getInstance().getConfig();
     final int originalBatchMaxDelay = config.getSubscriptionConsensusBatchMaxDelayInMs();
     final int originalPrefetchThreads =
         config.getSubscriptionConsensusPrefetchExecutorMaxThreadNum();
@@ -128,18 +404,10 @@ public class ConsensusPrefetchingQueueSeekTest {
       // Supply an isolated runtime even in builds where subscriptions are disabled. Seek reset
       // and replay still run through the real serial prefetch worker and the public queue API.
       executor = new ConsensusSubscriptionPrefetchExecutor();
-      final ConsensusSubscriptionPrefetchExecutorManager manager =
-          mock(ConsensusSubscriptionPrefetchExecutorManager.class);
-      PowerMockito.mockStatic(ConsensusSubscriptionPrefetchExecutorManager.class);
-      PowerMockito.when(ConsensusSubscriptionPrefetchExecutorManager.getInstance())
-          .thenReturn(manager);
       when(manager.getExecutor()).thenReturn(executor);
 
-      final WALNode walNode = mock(WALNode.class);
       when(walNode.getCurrentSearchIndex()).thenReturn(expectedNextIndex - 1L);
       when(walNode.getLogDirectory()).thenReturn(systemDir);
-      final IoTConsensusServerImpl server = mock(IoTConsensusServerImpl.class);
-      when(server.getConsensusReqReader()).thenReturn(walNode);
       final WriterSafeFrontierTracker tracker = new WriterSafeFrontierTracker();
       for (final IndexedConsensusRequest request : requests) {
         tracker.recordAppliedProgress(
@@ -148,14 +416,6 @@ public class ConsensusPrefetchingQueueSeekTest {
             3000L, request.getNodeId(), request.getProgressLocalSeq());
       }
       when(server.getWriterSafeFrontierTracker()).thenReturn(tracker);
-      final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
-      when(converter.getDatabaseName()).thenReturn("db");
-      when(converter.isTableModel()).thenReturn(true);
-      when(converter.convert(any()))
-          .thenAnswer(
-              invocation ->
-                  Collections.singletonList(
-                      createTablet(((InsertRowNode) invocation.getArgument(0)).getTime())));
 
       queue =
           new ConsensusPrefetchingQueue(
@@ -188,11 +448,18 @@ public class ConsensusPrefetchingQueueSeekTest {
                               request.getSearchIndex() < 0
                                   || request.getSearchIndex() >= startSearchIndex)
                       .iterator();
-              final ProgressWALIterator iterator = mock(ProgressWALIterator.class);
-              when(iterator.hasNext(any(ProgressWALIterator.ScanBudget.class)))
-                  .thenAnswer(ignored -> retainedEntries.hasNext());
-              when(iterator.next()).thenAnswer(ignored -> retainedEntries.next());
-              return iterator;
+              // Do not generate a Mockito class on the worker during timed replay.
+              return new ProgressWALIterator(systemDir, startSearchIndex) {
+                @Override
+                boolean hasNext(final ScanBudget scanBudget) {
+                  return retainedEntries.hasNext();
+                }
+
+                @Override
+                public IndexedConsensusRequest next() {
+                  return retainedEntries.next();
+                }
+              };
             }
           };
       queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(16L * 1024 * 1024));

@@ -171,7 +171,8 @@ public abstract class PipeTaskAgent {
       return new TPushPipeMetaRespExceptionMessage(
           pipeName,
           String.format(
-              "Timed out to wait for the pipe task agent write lock when handling single pipe meta changes for pipe %s.",
+              PipeMessages
+                  .MESSAGE_TIMED_OUT_TO_WAIT_FOR_THE_PIPE_TASK_AGENT_WRITE_LOCK_WHEN_HANDLING_SINGLE_PIPE_META_CHANGES_FOR_PIPE_ARG_BB90A99C,
               pipeName),
           System.currentTimeMillis());
     }
@@ -209,6 +210,10 @@ public abstract class PipeTaskAgent {
 
   protected abstract boolean isShutdown();
 
+  protected boolean isPipeDataInsertionEnabled(final PipeStaticMeta pipeStaticMeta) {
+    return true;
+  }
+
   private void executeSinglePipeMetaChanges(final PipeMeta metaFromCoordinator)
       throws IllegalPathException {
     final String pipeName = metaFromCoordinator.getStaticMeta().getPipeName();
@@ -228,6 +233,14 @@ public abstract class PipeTaskAgent {
 
     if (metaFromCoordinator.getRuntimeMeta().getStatus().get() == PipeStatus.DROPPED) {
       dropPipe(pipeName, creationTime);
+      return;
+    }
+
+    if (!isPipeDataInsertionEnabled(metaFromCoordinator.getStaticMeta())) {
+      final PipeMeta metaInAgent = pipeMetaKeeper.getPipeMeta(metaFromCoordinator.getStaticMeta());
+      if (metaInAgent != null) {
+        dropPipe(pipeName, metaInAgent.getStaticMeta().getCreationTime());
+      }
       return;
     }
 
@@ -388,7 +401,8 @@ public abstract class PipeTaskAgent {
       return new TPushPipeMetaRespExceptionMessage(
           pipeName,
           String.format(
-              "Timed out to wait for the pipe task agent write lock when dropping pipe %s.",
+              PipeMessages
+                  .MESSAGE_TIMED_OUT_TO_WAIT_FOR_THE_PIPE_TASK_AGENT_WRITE_LOCK_WHEN_DROPPING_PIPE_ARG_53CC5A3B,
               pipeName),
           System.currentTimeMillis());
     }
@@ -975,9 +989,40 @@ public abstract class PipeTaskAgent {
 
   private void startPipeTask(final int consensusGroupId, final PipeStaticMeta pipeStaticMeta) {
     final PipeTask pipeTask = pipeTaskManager.getPipeTask(pipeStaticMeta, consensusGroupId);
-    if (pipeTask != null) {
+    if (pipeTask == null) {
+      return;
+    }
+
+    try {
       pipeTask.start();
-      thawRate(pipeStaticMeta.getPipeName(), pipeStaticMeta.getCreationTime());
+    } catch (final Exception e) {
+      LOGGER.error(
+          PipeMessages
+              .LOG_FAILED_TO_START_THE_TASK_OF_CONSENSUS_GROUP_ARG_FOR_PIPE_ARG_THE_TASK_IS_DROPPED_AND_WILL_BE_RECREATED_BY_THE_FOLLOWING_META_SYNC_7594577C,
+          consensusGroupId,
+          pipeStaticMeta.getPipeName(),
+          e);
+
+      // A created task is never started again by the following meta sync. Drop it and remove its
+      // task meta so that the meta sync creates and starts the task again instead of keeping it
+      // "RUNNING" but dead until the node restarts.
+      rollbackPipeTask(consensusGroupId, pipeStaticMeta);
+      return;
+    }
+
+    thawRate(pipeStaticMeta.getPipeName(), pipeStaticMeta.getCreationTime());
+  }
+
+  private void rollbackPipeTask(final int consensusGroupId, final PipeStaticMeta pipeStaticMeta) {
+    try {
+      dropPipeTask(consensusGroupId, pipeStaticMeta);
+    } catch (final Exception e) {
+      LOGGER.warn(
+          PipeMessages
+              .LOG_FAILED_TO_DROP_THE_TASK_OF_CONSENSUS_GROUP_ARG_FOR_PIPE_ARG_AFTER_IT_FAILED_TO_START_394297EC,
+          consensusGroupId,
+          pipeStaticMeta.getPipeName(),
+          e);
     }
   }
 

@@ -40,26 +40,27 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class ColumnFilterBinderTest {
 
   @Test
-  public void testBindSnapshotKeepsOnlyBoundTagsAtRuntime() {
-    final BoundColumnFilter boundFilter =
-        new ColumnFilterBinder()
-            .bind(
-                createTableTopicConfig("column_name = \"temperature\""),
-                Collections.singletonMap(
-                    "db", Collections.singletonMap("sensors", createTableSchema())));
-    final ColumnFilterMatcher matcher = ColumnFilterMatcher.fromBoundColumnFilter(boundFilter);
+  public void testStreamingFilterKeepsNewTagsAtRuntime() {
+    final TsTable table = createTableSchema();
+    final ColumnFilterMatcher matcher =
+        ColumnFilterMatcher.fromTopicConfig(
+            createTableTopicConfig("column_name = \"temperature\""), (db, name) -> table);
+    final ColumnFilterMatcher compiled = matcher.forTable("db", "sensors");
 
     final Tablet prunedTablet =
         TabletColumnPruner.pruneTableModelTablet(createRuntimeTabletWithNewTag(), "db", matcher);
 
     Assert.assertNotNull(prunedTablet);
-    Assert.assertEquals(2, prunedTablet.getSchemas().size());
+    Assert.assertEquals(3, prunedTablet.getSchemas().size());
     Assert.assertEquals("device", prunedTablet.getSchemas().get(0).getMeasurementName());
-    Assert.assertEquals("temperature", prunedTablet.getSchemas().get(1).getMeasurementName());
+    Assert.assertEquals("new_tag", prunedTablet.getSchemas().get(1).getMeasurementName());
+    Assert.assertEquals("temperature", prunedTablet.getSchemas().get(2).getMeasurementName());
+    Assert.assertSame(compiled, matcher.forTable("db", "sensors"));
   }
 
   @Test
@@ -76,9 +77,78 @@ public class ColumnFilterBinderTest {
         TabletColumnPruner.pruneTableModelTablet(createRuntimeTabletWithNewTag(), "db", matcher);
 
     Assert.assertNotNull(prunedTablet);
-    Assert.assertEquals(1, prunedTablet.getSchemas().size());
+    Assert.assertEquals(2, prunedTablet.getSchemas().size());
     Assert.assertEquals("device", prunedTablet.getSchemas().get(0).getMeasurementName());
+    Assert.assertEquals("new_tag", prunedTablet.getSchemas().get(1).getMeasurementName());
     Assert.assertEquals(ColumnCategory.TAG, prunedTablet.getColumnTypes().get(0));
+  }
+
+  @Test
+  public void testStreamingFilterRefreshesChangedSchemaAndNewTables() {
+    final Map<String, TsTable> tables = new HashMap<>();
+    final TsTable initialTable = createTableSchema();
+    tables.put("sensors", initialTable);
+    final ColumnFilterMatcher matcher =
+        ColumnFilterMatcher.fromTopicConfig(
+            createTableTopicConfig("category = \"FIELD\" AND datatype = \"DOUBLE\""),
+            (db, name) -> tables.get(name));
+    final ColumnFilterMatcher initialPlan = matcher.forTable("db", "sensors");
+    Assert.assertTrue(initialPlan.match("db", "sensors", "temperature"));
+    Assert.assertFalse(initialPlan.match("db", "sensors", "new_field"));
+    Assert.assertSame(initialPlan, matcher.forTable("db", "sensors"));
+
+    final TsTable updatedTable = new TsTable(initialTable);
+    updatedTable.addColumnSchema(new FieldColumnSchema("new_field", TSDataType.DOUBLE));
+    updatedTable.addColumnSchema(new TagColumnSchema("new_tag", TSDataType.STRING));
+    tables.put("sensors", updatedTable);
+    final ColumnFilterMatcher updatedPlan = matcher.forTable("db", "sensors");
+    Assert.assertNotSame(initialPlan, updatedPlan);
+    Assert.assertTrue(updatedPlan.match("db", "sensors", "new_field"));
+    Assert.assertTrue(updatedPlan.match("db", "sensors", "new_tag"));
+    Assert.assertFalse(updatedPlan.match("db", "sensors", "status"));
+
+    Assert.assertFalse(matcher.match("db", "events", "temperature"));
+    tables.put("events", createTableSchema("events", "event_time"));
+    Assert.assertTrue(matcher.match("db", "events", "temperature"));
+    tables.remove("sensors");
+    Assert.assertFalse(matcher.match("db", "sensors", "temperature"));
+  }
+
+  @Test
+  public void testStreamingFilterUsesLatestDatatypeAndViewAlias() {
+    final AtomicReference<TsTable> schema = new AtomicReference<>(createTreeViewSchema());
+    final ColumnFilterMatcher matcher =
+        ColumnFilterMatcher.fromTopicConfig(
+            createTableTopicConfig("column_name = \"temp_alias\" AND datatype = \"INT64\""),
+            (db, name) -> schema.get());
+    Assert.assertFalse(matcher.match("db", "sensors_view", "temperature"));
+    final TsTable changed = createTreeViewSchema();
+    final FieldColumnSchema field = new FieldColumnSchema("temp_alias", TSDataType.INT64);
+    TreeViewSchema.setOriginalName(field, "temperature");
+    changed.removeColumnSchema("temp_alias");
+    changed.addColumnSchema(field);
+    schema.set(changed);
+    Assert.assertTrue(matcher.match("db", "sensors_view", "temperature"));
+    Assert.assertFalse(matcher.match("db", "sensors_view", "temp_alias"));
+    Assert.assertTrue(matcher.match("db", "sensors_view", "device_alias"));
+  }
+
+  @Test
+  public void testStreamingFilterKeepsTimeSelectionPerTable() {
+    final Map<String, TsTable> tables = new HashMap<>();
+    tables.put("sensors", createTableSchema());
+    tables.put("events", createTableSchema("events", "event_time"));
+    final TopicConfig config = createTableTopicConfig("column_name = \"time\"");
+    config.getAttribute().put(TopicConstant.DATABASE_KEY, "db");
+    final ColumnFilterMatcher matcher =
+        ColumnFilterMatcher.fromTopicConfig(config, (db, name) -> tables.get(name));
+    Assert.assertTrue(matcher.isTimeSelected("db", "sensors"));
+    Assert.assertFalse(matcher.isTimeSelected("db", "events"));
+    Assert.assertFalse(matcher.isTimeSelected("other", "sensors"));
+    Assert.assertTrue(matcher.isTimeSelected());
+    Assert.assertEquals(
+        Map.of("sensors", true, "events", false), matcher.getTimeSelectedByTable("db").get("db"));
+    Assert.assertTrue(matcher.getTimeSelectedByTable("other").isEmpty());
   }
 
   @Test

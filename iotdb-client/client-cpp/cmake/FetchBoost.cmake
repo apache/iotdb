@@ -30,7 +30,18 @@
 #   BOOST_INCLUDE_DIR - directory containing <boost/...> headers.
 # =============================================================================
 
+# Homebrew links include/boost into the formula's keg. Resolve that link,
+# not just the include directory: a shared prefix such as /opt/homebrew/include
+# also exposes unrelated OpenSSL headers ahead of Thrift's selected OpenSSL.
+function(_iotdb_set_boost_include_dir include_dir)
+    get_filename_component(_boost_headers "${include_dir}/boost" REALPATH)
+    get_filename_component(_boost_include "${_boost_headers}" DIRECTORY)
+    set(BOOST_INCLUDE_DIR "${_boost_include}" CACHE PATH "Boost include directory" FORCE)
+    set(BOOST_INCLUDE_DIR "${_boost_include}" PARENT_SCOPE)
+endfunction()
+
 if(DEFINED BOOST_INCLUDE_DIR AND EXISTS "${BOOST_INCLUDE_DIR}/boost/version.hpp")
+    _iotdb_set_boost_include_dir("${BOOST_INCLUDE_DIR}")
     message(STATUS "[Boost] reusing cached BOOST_INCLUDE_DIR=${BOOST_INCLUDE_DIR}")
     return()
 endif()
@@ -40,7 +51,7 @@ endif()
 # ---------------------------------------------------------------------------
 find_package(Boost QUIET)
 if(Boost_FOUND AND Boost_INCLUDE_DIRS)
-    set(BOOST_INCLUDE_DIR "${Boost_INCLUDE_DIRS}" CACHE PATH "Boost include directory" FORCE)
+    _iotdb_set_boost_include_dir("${Boost_INCLUDE_DIRS}")
     message(STATUS "[Boost] using system Boost at ${BOOST_INCLUDE_DIR}")
     return()
 endif()
@@ -50,11 +61,11 @@ foreach(_hint Boost_INCLUDE_DIR BOOST_INCLUDEDIR BOOST_ROOT)
     if(DEFINED ${_hint})
         set(_candidate "${${_hint}}")
         if(EXISTS "${_candidate}/boost/version.hpp")
-            set(BOOST_INCLUDE_DIR "${_candidate}" CACHE PATH "Boost include directory" FORCE)
+            _iotdb_set_boost_include_dir("${_candidate}")
             message(STATUS "[Boost] using hinted path ${BOOST_INCLUDE_DIR}")
             return()
         elseif(EXISTS "${_candidate}/include/boost/version.hpp")
-            set(BOOST_INCLUDE_DIR "${_candidate}/include" CACHE PATH "Boost include directory" FORCE)
+            _iotdb_set_boost_include_dir("${_candidate}/include")
             message(STATUS "[Boost] using hinted path ${BOOST_INCLUDE_DIR}")
             return()
         endif()

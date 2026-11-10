@@ -28,6 +28,8 @@ import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.and;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gt;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.intValue;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.longValue;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.time;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.timeSeries;
 import static org.apache.iotdb.db.queryengine.plan.optimization.OptimizationTestUtil.schemaMap;
 
@@ -35,6 +37,7 @@ public class PredicateUtilsTest {
 
   @Test
   public void testExtractPredicateSourceSymbol() {
+    Assert.assertNull(PredicateUtils.extractPredicateSourceSymbol(gt(time(), longValue(10))));
     Assert.assertEquals(
         schemaMap.get("root.sg.d1.s1"),
         PredicateUtils.extractPredicateSourceSymbol(

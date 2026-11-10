@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.commons.disk.strategy;
 
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.disk.FolderManager;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
@@ -33,6 +32,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BooleanSupplier;
 
 import static org.apache.iotdb.commons.disk.FolderManager.FolderState.HEALTHY;
 
@@ -48,6 +48,20 @@ public abstract class DirectoryStrategy {
   List<String> folders = new ArrayList<>();
 
   private boolean changeSystemStatusToReadOnly = true;
+
+  private Runnable diskFullHandler;
+
+  public void setDiskFullHandler(Runnable diskFullHandler) {
+    this.diskFullHandler = diskFullHandler;
+  }
+
+  public void reportDiskFull(Object source, BooleanSupplier recoveryCheck) {
+    if (diskFullHandler != null) {
+      diskFullHandler.run();
+    } else {
+      CommonDescriptor.getInstance().getConfig().setReadOnlyForDiskFull(source, recoveryCheck);
+    }
+  }
 
   public void setChangeSystemStatusToReadOnly(boolean changeSystemStatusToReadOnly) {
     this.changeSystemStatusToReadOnly = changeSystemStatusToReadOnly;
@@ -70,9 +84,9 @@ public abstract class DirectoryStrategy {
     if (!hasSpace) {
       if (changeSystemStatusToReadOnly) {
         LOGGER.error(UtilMessages.DISK_SPACE_INSUFFICIENT_READ_ONLY);
-        CommonDescriptor.getInstance()
-            .getConfig()
-            .setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
+        final List<String> fullFolders = List.copyOf(folders);
+        reportDiskFull(
+            fullFolders, () -> fullFolders.stream().anyMatch(JVMCommonUtils::hasSpaceWithoutRetry));
       } else {
         if (LoggerPeriodicalLogReducer.shouldLog(
             UtilMessages.MESSAGE_DISK_SPACE_INSUFFICIENT_DF6205B0)) {

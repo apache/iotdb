@@ -66,6 +66,11 @@ public interface SubscriptionReceiver {
    */
   void invalidateConsumer();
 
+  /** Invalidates a connection replaced by a reconnection from the same consumer instance. */
+  default void invalidateConnection() {
+    invalidateConsumer();
+  }
+
   /** Returns whether this receiver still owns an active consumer timeout state. */
   boolean hasActiveConsumer();
 

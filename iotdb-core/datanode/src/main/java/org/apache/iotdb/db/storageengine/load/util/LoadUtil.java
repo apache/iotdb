@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.load.util;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.disk.FolderManager;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -178,18 +180,31 @@ public class LoadUtil {
   }
 
   private static Map<String, String> appendCurrentUserIfAbsent(
-      final Map<String, String> loadAttributes) {
+      final Map<String, String> loadAttributes) throws IOException {
     final Map<String, String> attributes =
         Objects.nonNull(loadAttributes)
             ? new LinkedHashMap<>(loadAttributes)
             : new LinkedHashMap<>();
     if (!attributes.containsKey(ActiveLoadPathHelper.USER_KEY)) {
       final IClientSession session = SessionManager.getInstance().getCurrSession();
-      attributes.put(
-          ActiveLoadPathHelper.USER_KEY,
-          session == null || session.getUsername() == null
-              ? AuthorityChecker.SUPER_USER
-              : session.getUsername());
+      final String username = Objects.isNull(session) ? null : session.getUsername();
+      if (IoTDBDescriptor.getInstance().getConfig().isLoadRequireUserIdentity()) {
+        if (Objects.isNull(session)
+            || !session.isLogin()
+            || Objects.isNull(username)
+            || username.isEmpty()) {
+          throw new IOException(
+              StorageEngineMessages
+                  .EXCEPTION_FAILED_TO_DETERMINE_THE_USER_THAT_LOADS_THE_TSFILE_E47F7207);
+        }
+        attributes.put(ActiveLoadPathHelper.USER_KEY, username);
+      } else {
+        attributes.put(
+            ActiveLoadPathHelper.USER_KEY,
+            Objects.isNull(username) || username.isEmpty()
+                ? AuthorityChecker.SUPER_USER
+                : username);
+      }
     }
     return attributes;
   }
@@ -440,7 +455,10 @@ public class LoadUtil {
 
     try {
       folderManager =
-          new FolderManager(Arrays.asList(dirs), DirectoryStrategyType.SEQUENCE_STRATEGY);
+          new FolderManager(
+              Arrays.asList(dirs),
+              DirectoryStrategyType.SEQUENCE_STRATEGY,
+              LoadUtil::reportDiskFull);
     } catch (DiskSpaceInsufficientException e) {
       // It should be noted that if this exception is not ignored, the entire process may fail to
       // start.
@@ -463,5 +481,16 @@ public class LoadUtil {
 
     LoadUtil.loadDiskSelector = loadDiskSelector;
     return loadDiskSelector;
+  }
+
+  private static void reportDiskFull() {
+    CommonDescriptor.getInstance()
+        .getConfig()
+        .setReadOnlyForDiskFull(
+            LoadUtil.class,
+            () ->
+                Arrays.stream(
+                        IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs())
+                    .anyMatch(JVMCommonUtils::hasSpaceWithoutRetry));
   }
 }

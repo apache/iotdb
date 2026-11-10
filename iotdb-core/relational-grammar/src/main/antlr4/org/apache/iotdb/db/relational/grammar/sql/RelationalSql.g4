@@ -968,8 +968,8 @@ copyToStatementOption
 // ------------------------------------------- Query Statement ---------------------------------------------------------
 queryStatement
     : query                                                        #statementDefault
-    | EXPLAIN ('(' FORMAT identifier ')')? (query | executeStatement | executeImmediateStatement) #explain
-    | EXPLAIN ANALYZE VERBOSE? ('(' FORMAT identifier ')')? (query | executeStatement | executeImmediateStatement) #explainAnalyze
+    | EXPLAIN ('(' FORMAT identifier ')')? (query | copyToStatement | executeStatement | executeImmediateStatement) #explain
+    | EXPLAIN ANALYZE VERBOSE? ('(' FORMAT identifier ')')? (query | copyToStatement | executeStatement | executeImmediateStatement) #explainAnalyze
     ;
 
 query

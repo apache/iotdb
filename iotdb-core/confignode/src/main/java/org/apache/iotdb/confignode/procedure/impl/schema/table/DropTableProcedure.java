@@ -213,7 +213,7 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
 
   @Override
   protected String getActionMessage() {
-    return "drop table";
+    return ProcedureMessages.MESSAGE_DROP_TABLE_F5849AD7;
   }
 
   @Override
@@ -254,7 +254,9 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
               ProcedureMessages.COMMIT_RELEASE_DELETE_TABLE_WHEN_DROPPING_TABLE,
               database,
               tableName);
-          commitRelease(env);
+          // A DataNode that misses this commit keeps the table in its pre-delete state, which only
+          // a later read of that table repairs. Retry until every reachable DataNode acks.
+          commitReleaseWithHA(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException(ProcedureMessages.UNRECOGNIZED_DROPTABLESTATE + state));
@@ -324,7 +326,7 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     if (!relatedDataRegionGroup.isEmpty()) {
       modProgressRegionCount = relatedDataRegionGroup.size();
       new TableRegionTaskExecutor<>(
-              "delete data for drop table",
+              ProcedureMessages.MESSAGE_DELETE_DATA_FOR_DROP_TABLE_A678391E,
               env,
               relatedDataRegionGroup,
               CnToDnAsyncRequestType.DELETE_DATA_FOR_DROP_TABLE,
@@ -357,7 +359,7 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
 
     if (!relatedSchemaRegionGroup.isEmpty()) {
       new TableRegionTaskExecutor<>(
-              "delete devices for drop table",
+              ProcedureMessages.MESSAGE_DELETE_DEVICES_FOR_DROP_TABLE_A4F6E84E,
               env,
               relatedSchemaRegionGroup,
               CnToDnAsyncRequestType.DELETE_DEVICES_FOR_DROP_TABLE,
@@ -386,9 +388,22 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     }
   }
 
+  /**
+   * The data is deleted logically once DELETE_DATA has completed: the deletion is applied to every
+   * data region, and only the physical removal of the mod files continues in the background. The
+   * procedure is therefore not rolled back once it has moved on to DELETE_DEVICES. A view holds no
+   * data and goes straight to DROP_TABLE, see {@link DropViewProcedure}.
+   */
   @Override
   protected boolean isRollbackSupported(final DropTableState state) {
-    return state == DropTableState.CHECK_AND_INVALIDATE_TABLE || state == DropTableState.PRE_DELETE;
+    switch (state) {
+      case CHECK_AND_INVALIDATE_TABLE:
+      case PRE_DELETE:
+      case DELETE_DATA:
+        return true;
+      default:
+        return false;
+    }
   }
 
   @Override

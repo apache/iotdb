@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -50,6 +52,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Semaphore;
 
@@ -155,20 +158,11 @@ public class LoadTsFileDataTypeConverter {
   private final MPPQueryContext context;
 
   private final SqlParser relationalSqlParser = new SqlParser();
-  private final LoadTableStatementDataTypeConvertExecutionVisitor
-      tableStatementDataTypeConvertExecutionVisitor;
-  private final LoadTreeStatementDataTypeConvertExecutionVisitor
-      treeStatementDataTypeConvertExecutionVisitor;
 
   public LoadTsFileDataTypeConverter(
       final MPPQueryContext context, final boolean isGeneratedByPipe) {
     this.context = context;
     this.isGeneratedByPipe = isGeneratedByPipe;
-
-    tableStatementDataTypeConvertExecutionVisitor =
-        new LoadTableStatementDataTypeConvertExecutionVisitor(this::executeForTableModel);
-    treeStatementDataTypeConvertExecutionVisitor =
-        new LoadTreeStatementDataTypeConvertExecutionVisitor(this::executeForTreeModel);
   }
 
   public Optional<TSStatus> convertForTableModel(final LoadTsFile loadTsFileTableStatement) {
@@ -177,7 +171,11 @@ public class LoadTsFileDataTypeConverter {
       getTabletConversionSemaphore().acquire();
       isPermitAcquired = true;
       return loadTsFileTableStatement.accept(
-          tableStatementDataTypeConvertExecutionVisitor, loadTsFileTableStatement.getDatabase());
+          new LoadTableStatementDataTypeConvertExecutionVisitor(
+              (statement, databaseName) ->
+                  executeForTableModel(
+                      statement, databaseName, loadTsFileTableStatement.isAutoCreateSchema())),
+          loadTsFileTableStatement.getDatabase());
     } catch (final InterruptedException e) {
       return getInterruptedConversionStatus(e);
     } catch (Exception e) {
@@ -198,25 +196,60 @@ public class LoadTsFileDataTypeConverter {
     }
   }
 
-  private TSStatus executeForTableModel(final Statement statement, final String databaseName) {
-    final IClientSession session;
-    final boolean needToCreateSession = SESSION_MANAGER.getCurrSession() == null;
-    if (needToCreateSession) {
-      session =
-          new InternalClientSession(
-              String.format(
-                  "%s_%s",
-                  LoadTsFileDataTypeConverter.class.getSimpleName(),
-                  Thread.currentThread().getName()));
-      session.setUsername(AuthorityChecker.SUPER_USER);
-      session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
-      session.setZoneId(ZoneId.systemDefault());
-      session.setSqlDialect(SqlDialect.TABLE);
+  /**
+   * Creates and registers an internal session for a conversion that is executed outside of the
+   * request thread. The session inherits the identity of the load request, so the conversion is
+   * still authorized and audited as that user. A conversion without any identity is rejected
+   * instead of being executed as a privileged default user.
+   */
+  private IClientSession createConversionSession(final SqlDialect sqlDialect) {
+    final IClientSession session =
+        new InternalClientSession(
+            String.format(
+                "%s_%s",
+                LoadTsFileDataTypeConverter.class.getSimpleName(),
+                Thread.currentThread().getName()));
 
-      SESSION_MANAGER.registerSession(session);
-    } else {
-      session = SESSION_MANAGER.getCurrSession();
+    final UserEntity userEntity =
+        Objects.isNull(context) || Objects.isNull(context.getSession())
+            ? null
+            : context.getSession().getUserEntity();
+    if (Objects.isNull(userEntity)
+        || Objects.isNull(userEntity.getUsername())
+        || userEntity.getUsername().isEmpty()) {
+      throw new IllegalStateException(
+          StorageEngineMessages
+              .EXCEPTION_FAILED_TO_DETERMINE_THE_USER_FOR_THE_TSFILE_DATA_TYPE_CONVERSION_A221793E);
     }
+    // The user id carried by the session is not trusted: a session that only carries a user name
+    // keeps the default user id 0, which is the id of the super user. Resolve the id from the user
+    // name again, so that the conversion can never run as a privileged default user.
+    final long userId =
+        AuthorityChecker.getUserId(userEntity.getUsername())
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        StorageEngineMessages
+                            .EXCEPTION_FAILED_TO_DETERMINE_THE_USER_FOR_THE_TSFILE_DATA_TYPE_CONVERSION_A221793E));
+    session.setUserId(userId);
+    session.setUsername(userEntity.getUsername());
+    session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
+    session.setZoneId(ZoneId.systemDefault());
+    session.setSqlDialect(sqlDialect);
+    if (Objects.nonNull(context) && Objects.nonNull(context.getSession())) {
+      session.setEnableAutoCreateSchema(context.getSession().isEnableAutoCreateSchema());
+    }
+
+    SESSION_MANAGER.registerSession(session);
+    return session;
+  }
+
+  private TSStatus executeForTableModel(
+      final Statement statement, final String databaseName, final boolean allowAutoCreateSchema) {
+    final IClientSession currentSession = SESSION_MANAGER.getCurrSession();
+    final boolean needToCreateSession = Objects.isNull(currentSession);
+    final IClientSession session =
+        needToCreateSession ? createConversionSession(SqlDialect.TABLE) : currentSession;
     try {
       return Coordinator.getInstance()
           .executeForTableModel(
@@ -224,7 +257,15 @@ public class LoadTsFileDataTypeConverter {
               relationalSqlParser,
               session,
               SESSION_MANAGER.requestQueryId(),
-              SESSION_MANAGER.getSessionInfoOfPipeReceiver(session, databaseName),
+              new SessionInfo(
+                  session.getId(),
+                  new UserEntity(
+                      session.getUserId(), session.getUsername(), session.getClientAddress()),
+                  ZoneId.systemDefault(),
+                  session.getClientVersion(),
+                  databaseName,
+                  SqlDialect.TABLE,
+                  allowAutoCreateSchema && session.isEnableAutoCreateSchema()),
               "",
               LocalExecutionPlanner.getInstance().metadata,
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
@@ -242,7 +283,11 @@ public class LoadTsFileDataTypeConverter {
     try {
       getTabletConversionSemaphore().acquire();
       isPermitAcquired = true;
-      return loadTsFileTreeStatement.accept(treeStatementDataTypeConvertExecutionVisitor, null);
+      return loadTsFileTreeStatement.accept(
+          new LoadTreeStatementDataTypeConvertExecutionVisitor(
+              statement ->
+                  executeForTreeModel(statement, loadTsFileTreeStatement.isAutoCreateSchema())),
+          null);
     } catch (final InterruptedException e) {
       return getInterruptedConversionStatus(e);
     } catch (Exception e) {
@@ -265,32 +310,31 @@ public class LoadTsFileDataTypeConverter {
     }
   }
 
-  private TSStatus executeForTreeModel(final Statement statement) {
-    final IClientSession session;
-    final boolean needToCreateSession = SESSION_MANAGER.getCurrSession() == null;
-    if (needToCreateSession) {
-      session =
-          new InternalClientSession(
-              String.format(
-                  "%s_%s",
-                  LoadTsFileDataTypeConverter.class.getSimpleName(),
-                  Thread.currentThread().getName()));
-      session.setUsername(AuthorityChecker.SUPER_USER);
-      session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
-      session.setZoneId(ZoneId.systemDefault());
-      session.setSqlDialect(SqlDialect.TREE);
-
-      SESSION_MANAGER.registerSession(session);
-    } else {
-      session = SESSION_MANAGER.getCurrSession();
-    }
+  private TSStatus executeForTreeModel(
+      final Statement statement, final boolean allowAutoCreateSchema) {
+    final IClientSession currentSession = SESSION_MANAGER.getCurrSession();
+    final boolean needToCreateSession = Objects.isNull(currentSession);
+    final IClientSession session =
+        needToCreateSession ? createConversionSession(SqlDialect.TREE) : currentSession;
 
     try {
       return Coordinator.getInstance()
           .executeForTreeModel(
               isGeneratedByPipe ? new PipeEnrichedStatement(statement) : statement,
               SESSION_MANAGER.requestQueryId(),
-              SESSION_MANAGER.getSessionInfoOfTreeModel(session),
+              new SessionInfo(
+                  session.getId(),
+                  new UserEntity(
+                      session.getUserId(), session.getUsername(), session.getClientAddress()),
+                  ZoneId.systemDefault(),
+                  session.getClientVersion(),
+                  session.getDatabaseName(),
+                  SqlDialect.TREE,
+                  allowAutoCreateSchema
+                      && session.isEnableAutoCreateSchema()
+                      && (Objects.isNull(context)
+                          || Objects.isNull(context.getSession())
+                          || context.getSession().isEnableAutoCreateSchema())),
               "",
               ClusterPartitionFetcher.getInstance(),
               ClusterSchemaFetcher.getInstance(),

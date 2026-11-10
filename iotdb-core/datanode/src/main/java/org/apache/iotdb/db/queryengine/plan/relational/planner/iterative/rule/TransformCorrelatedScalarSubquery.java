@@ -184,7 +184,9 @@ public class TransformCorrelatedScalarSubquery implements Rule<CorrelatedJoinNod
                     new FunctionCall(
                         QualifiedName.of(FAIL_FUNCTION_NAME),
                         ImmutableList.of(
-                            new StringLiteral("Scalar sub-query has returned multiple rows."))),
+                            new StringLiteral(
+                                DataNodeQueryMessages
+                                    .EXCEPTION_SCALAR_SUB_QUERY_HAS_RETURNED_MULTIPLE_ROWS_0C87D6E6))),
                     toSqlType(BOOLEAN))));
 
     return Result.ofPlanNode(

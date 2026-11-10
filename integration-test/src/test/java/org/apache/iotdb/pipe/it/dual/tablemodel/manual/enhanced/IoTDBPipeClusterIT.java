@@ -165,9 +165,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
       TableModelUtils.assertCountData("test", "test", 1, receiverEnv);
       receiverEnv.getDataNodeWrapper(0).stop();
-
-      // Ensure that the kill -9 operation is completed
-      Thread.sleep(5000);
+      // stop() waits for process exit; verify it succeeded before checking failover.
+      Assert.assertFalse(receiverEnv.getDataNodeWrapper(0).isAlive());
       TableModelUtils.insertData("test", "test", 1, 2, senderEnv);
     } catch (Exception e) {
       fail(e.getMessage());

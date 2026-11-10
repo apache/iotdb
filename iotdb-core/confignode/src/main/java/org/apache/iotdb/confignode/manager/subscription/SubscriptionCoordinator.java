@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.consensus.response.subscription.SubscriptionT
 import org.apache.iotdb.confignode.consensus.response.subscription.TopicTableResp;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.task.PipeTaskCoordinatorLock;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
@@ -187,8 +188,10 @@ public class SubscriptionCoordinator {
   /////////////////////////////// Meta sync ///////////////////////////////
 
   public void startSubscriptionMetaSync() {
-    subscriptionMetaSyncer.start();
-    subscriptionOwnerLeaseSyncer.start();
+    if (PipeConfigNodeAgent.isSubscriptionFeatureEnabled()) {
+      subscriptionMetaSyncer.start();
+      subscriptionOwnerLeaseSyncer.start();
+    }
   }
 
   public void stopSubscriptionMetaSync() {
@@ -373,7 +376,10 @@ public class SubscriptionCoordinator {
           : RpcUtils.getStatus(
               TSStatusCode.TOPIC_NOT_EXIST_ERROR,
               String.format(
-                  "Failed to drop topic %s. Failures: %s does not exist.", topicName, topicName));
+                  ManagerMessages
+                      .MESSAGE_FAILED_TO_DROP_TOPIC_ARG_FAILURES_ARG_DOES_NOT_EXIST_BE8DCA00,
+                  topicName,
+                  topicName));
     }
     return configManager.getProcedureManager().dropTopic(topicName, req.isTableModel);
   }
@@ -467,8 +473,10 @@ public class SubscriptionCoordinator {
           : RpcUtils.getStatus(
               TSStatusCode.TOPIC_NOT_EXIST_ERROR,
               String.format(
-                  "Failed to drop subscription %s. Failures: %s does not exist.",
-                  subscriptionId, subscriptionId));
+                  ManagerMessages
+                      .MESSAGE_FAILED_TO_DROP_SUBSCRIPTION_ARG_FAILURES_ARG_DOES_NOT_EXIST_5F1F04CF,
+                  subscriptionId,
+                  subscriptionId));
     }
     return configManager
         .getProcedureManager()
