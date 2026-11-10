@@ -333,8 +333,18 @@ public class IoTDBLoadTsFileClusterIT {
       awaitPointCount(statement, expectedPointCount);
       statement.execute("delete database " + DATABASE);
     }
-
     awaitDatabaseDataRegionsDeleted();
+
+    final File reusedDatabaseDir = new File(tmpDir, "reused-database");
+    Assert.assertTrue(reusedDatabaseDir.mkdirs());
+    final long reusedPointCount =
+        generateTsFile(reusedDatabaseDir, "reuse-database.tsfile", 10, 1L);
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      createDatabaseAndSchema(statement);
+      statement.execute("load \"" + reusedDatabaseDir.getAbsolutePath() + "\"");
+      awaitPointCount(statement, reusedPointCount);
+    }
   }
 
   /**
@@ -620,26 +630,26 @@ public class IoTDBLoadTsFileClusterIT {
         .atMost(5, TimeUnit.MINUTES)
         .pollInterval(1, TimeUnit.SECONDS)
         .ignoreExceptions()
-        .until(
-            () -> {
-              for (int dataNodeIndex = 0; dataNodeIndex < DATA_NODE_NUM; dataNodeIndex++) {
-                final DataNodeWrapper dataNode =
-                    EnvFactory.getEnv().getDataNodeWrapper(dataNodeIndex);
-                for (final String order : TSFILE_DIRECTORIES) {
-                  final java.nio.file.Path databaseDir =
-                      Paths.get(dataNode.getDataNodeDir(), "data", order, DATABASE);
-                  if (!Files.isDirectory(databaseDir)) {
-                    continue;
-                  }
-                  try (Stream<java.nio.file.Path> regionDirs = Files.list(databaseDir)) {
-                    if (regionDirs.anyMatch(Files::isDirectory)) {
-                      return false;
-                    }
-                  }
-                }
-              }
-              return true;
-            });
+        .until(IoTDBLoadTsFileClusterIT::areDatabaseDataRegionsDeleted);
+  }
+
+  private static boolean areDatabaseDataRegionsDeleted() throws IOException {
+    for (int dataNodeIndex = 0; dataNodeIndex < DATA_NODE_NUM; dataNodeIndex++) {
+      final DataNodeWrapper dataNode = EnvFactory.getEnv().getDataNodeWrapper(dataNodeIndex);
+      for (final String order : TSFILE_DIRECTORIES) {
+        final java.nio.file.Path databaseDir =
+            Paths.get(dataNode.getDataNodeDir(), "data", order, DATABASE);
+        if (!Files.isDirectory(databaseDir)) {
+          continue;
+        }
+        try (Stream<java.nio.file.Path> regionDirs = Files.list(databaseDir)) {
+          if (regionDirs.anyMatch(Files::isDirectory)) {
+            return false;
+          }
+        }
+      }
+    }
+    return true;
   }
 
   /** The cluster id of the given DataNode, matched by its client RPC endpoint. */
