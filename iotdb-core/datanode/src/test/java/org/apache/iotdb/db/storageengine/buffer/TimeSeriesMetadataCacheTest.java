@@ -27,6 +27,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
@@ -44,7 +45,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -321,14 +321,16 @@ public class TimeSeriesMetadataCacheTest {
               Statistics.getStatsByType(TSDataType.INT32),
               new PublicBAOS());
 
-      Map<String, TimeseriesMetadata> deviceMetadata = new HashMap<>();
-      deviceMetadata.put("", timeColumn);
-      deviceMetadata.put("s1", s1);
-      deviceMetadata.put("s2", emptyS2);
+      List<TimeseriesMetadata> deviceMetadata = new ArrayList<>();
+      deviceMetadata.add(timeColumn);
+      deviceMetadata.add(s1);
+      deviceMetadata.add(emptyS2);
+      // the batch read must carry chunk metadata, otherwise the downstream chunk loader NPEs
+      s1.setChunkMetadataList(Collections.singletonList(new ChunkMetadata()));
 
       TsFileSequenceReader reader = Mockito.mock(TsFileSequenceReader.class);
       fileReaderManager.setReaderForTest(tsFileID, true, reader);
-      Mockito.when(reader.readDeviceMetadata(deviceID)).thenReturn(deviceMetadata);
+      Mockito.when(reader.getDeviceTimeseriesMetadata(deviceID)).thenReturn(deviceMetadata);
 
       Map<String, TimeseriesMetadata> result =
           cache.getDeviceTimeSeriesMetadata(
@@ -338,6 +340,8 @@ public class TimeSeriesMetadataCacheTest {
       assertEquals("", result.get("").getMeasurementId());
       assertNotNull(result.get("s1"));
       assertEquals("s1", result.get("s1").getMeasurementId());
+      // chunk metadata must flow through to the result (and the cached copy) unchanged
+      assertNotNull(result.get("s1").getChunkMetadataList());
       assertNull(result.get("s2"));
 
       // the non-empty entries should now be cached for per-measurement lookups

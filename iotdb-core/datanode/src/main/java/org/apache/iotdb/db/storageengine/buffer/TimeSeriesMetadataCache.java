@@ -346,19 +346,22 @@ public class TimeSeriesMetadataCache {
       TsFileSequenceReader reader =
           FileReaderManager.getInstance()
               .get(filePath, tsFileID, true, timeSeriesMetadataIoSizeRecorder, externalTsFile);
-      Map<String, TimeseriesMetadata> deviceMetadata = reader.readDeviceMetadata(device);
+      // Use the chunk-metadata-including variant: the returned TimeseriesMetadata are passed to
+      // setModifications and then to DiskAlignedChunkMetadataLoader, which dereferences the chunk
+      // metadata list, so readDeviceMetadata (which skips chunk metadata) would NPE at query time.
+      List<TimeseriesMetadata> deviceMetadataList = reader.getDeviceTimeseriesMetadata(device);
 
-      Map<String, TimeseriesMetadata> result = new HashMap<>(deviceMetadata.size());
-      for (Map.Entry<String, TimeseriesMetadata> entry : deviceMetadata.entrySet()) {
-        TimeseriesMetadata metadata = entry.getValue();
+      Map<String, TimeseriesMetadata> result = new HashMap<>(deviceMetadataList.size());
+      for (TimeseriesMetadata metadata : deviceMetadataList) {
+        String measurementId = metadata.getMeasurementId();
         if (metadata.getStatistics().getCount() == 0) {
-          result.put(entry.getKey(), null);
+          result.put(measurementId, null);
           continue;
         }
         if (CACHE_ENABLE && !externalTsFile) {
-          lruCache.put(new TimeSeriesMetadataCacheKey(tsFileID, device, entry.getKey()), metadata);
+          lruCache.put(new TimeSeriesMetadataCacheKey(tsFileID, device, measurementId), metadata);
         }
-        result.put(entry.getKey(), new TimeseriesMetadata(metadata));
+        result.put(measurementId, new TimeseriesMetadata(metadata));
       }
       return result;
     } finally {
