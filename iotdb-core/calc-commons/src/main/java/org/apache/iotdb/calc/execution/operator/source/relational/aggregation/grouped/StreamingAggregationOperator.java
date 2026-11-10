@@ -53,7 +53,7 @@ public class StreamingAggregationOperator extends AbstractOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(StreamingAggregationOperator.class);
 
-  private final Operator child;
+  protected final Operator child;
 
   private final List<TableAggregator> aggregators;
 
@@ -72,7 +72,7 @@ public class StreamingAggregationOperator extends AbstractOperator {
   // output because:
   // Input columns can be reused by multiple aggregations, so size of each row maybe larger than
   // input.
-  private final Deque<TsBlock> outputs = new LinkedList<>();
+  private final Deque<TsBlock> outputs;
 
   public StreamingAggregationOperator(
       CommonOperatorContext operatorContext,
@@ -96,7 +96,33 @@ public class StreamingAggregationOperator extends AbstractOperator {
                     aggregators.stream().map(TableAggregator::getType))
                 .collect(Collectors.toList()));
     this.resultColumnsBuilder = resultBuilder.getValueColumnBuilders();
+    this.outputs = new LinkedList<>();
     checkArgument(!spillEnabled, CalcMessages.EXCEPTION_SPILL_IS_NOT_SUPPORTED_E6E35549);
+  }
+
+  public StreamingAggregationOperator(
+      StreamingAggregationOperator streamingAggregationOperator, Operator child) {
+    this.operatorContext = streamingAggregationOperator.operatorContext;
+    this.child = child;
+    this.aggregators = streamingAggregationOperator.aggregators;
+    this.groupByChannels = streamingAggregationOperator.groupByChannels;
+    this.resultBuilder = streamingAggregationOperator.resultBuilder;
+    this.resultColumnsBuilder = streamingAggregationOperator.resultColumnsBuilder;
+    this.groupKeyComparator = streamingAggregationOperator.groupKeyComparator;
+    this.outputs = streamingAggregationOperator.outputs;
+    resetForReuse();
+  }
+
+  protected void resetForReuse() {
+    finished = false;
+    currentGroup = null;
+    outputs.clear();
+    resultBuilder.reset();
+    aggregators.forEach(TableAggregator::reset);
+    resultTsBlock = null;
+    retainedTsBlock = null;
+    startOffset = 0;
+    maxTupleSizeOfTsBlock = -1;
   }
 
   @Override

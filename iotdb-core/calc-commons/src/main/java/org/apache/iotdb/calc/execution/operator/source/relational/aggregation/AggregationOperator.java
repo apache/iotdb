@@ -45,20 +45,18 @@ public class AggregationOperator implements ProcessOperator {
 
   private final CommonOperatorContext operatorContext;
 
-  private final Operator child;
+  protected final Operator child;
 
-  private final List<TableAggregator> aggregators;
+  protected final List<TableAggregator> aggregators;
 
-  private final TsBlockBuilder resultBuilder;
-
-  private final ColumnBuilder[] resultColumnsBuilder;
+  protected final TsBlockBuilder resultBuilder;
 
   private final long maxReturnSize =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   protected MemoryReservationManager memoryReservationManager;
 
-  private boolean finished = false;
+  protected boolean finished = false;
 
   public AggregationOperator(
       CommonOperatorContext operatorContext, Operator child, List<TableAggregator> aggregators) {
@@ -68,8 +66,30 @@ public class AggregationOperator implements ProcessOperator {
     this.resultBuilder =
         new TsBlockBuilder(
             aggregators.stream().map(TableAggregator::getType).collect(toImmutableList()));
-    this.resultColumnsBuilder = resultBuilder.getValueColumnBuilders();
     this.memoryReservationManager = operatorContext.getMemoryReservationContext();
+  }
+
+  public AggregationOperator(AggregationOperator aggregationOperator, Operator child) {
+    this.operatorContext = aggregationOperator.operatorContext;
+    this.child = child;
+    this.aggregators = aggregationOperator.aggregators;
+    this.resultBuilder = aggregationOperator.resultBuilder;
+    this.memoryReservationManager = aggregationOperator.memoryReservationManager;
+    resetForReuse();
+  }
+
+  protected void resetForReuse() {
+    finished = false;
+    // AggregationOperator builds its single-row result by directly building value columns and
+    // wrapping them with TsBlock.wrapBlocksWithoutCopy, so resultBuilder.declaredPositions may
+    // still be 0 while its value column builders already contain data. In that case
+    // TsBlockBuilder.reset() would treat the builder as empty and skip clearing value builders.
+    resultBuilder.reset();
+    if (resultBuilder.isEmpty()) {
+      resultBuilder.declarePosition();
+      resultBuilder.reset();
+    }
+    aggregators.forEach(TableAggregator::reset);
   }
 
   @Override
@@ -97,6 +117,7 @@ public class AggregationOperator implements ProcessOperator {
       return null;
     } else {
       // evaluate output
+      ColumnBuilder[] resultColumnsBuilder = resultBuilder.getValueColumnBuilders();
       Column[] valueColumns = new Column[resultColumnsBuilder.length];
       for (int i = 0; i < aggregators.size(); i++) {
         aggregators.get(i).evaluate(resultColumnsBuilder[i]);

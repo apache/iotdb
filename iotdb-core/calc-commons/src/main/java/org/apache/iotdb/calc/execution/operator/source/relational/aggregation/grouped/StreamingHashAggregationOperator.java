@@ -54,7 +54,7 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(StreamingHashAggregationOperator.class);
 
-  private final Operator child;
+  protected final Operator child;
 
   private final int[] preGroupedChannels;
 
@@ -83,7 +83,7 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
   // input;
   // 2. There are many input has been added into HashAggregationBuilder before result produced of
   // this process, it may produce many rows which number is larger than limit.
-  private final Deque<TsBlock> outputs = new LinkedList<>();
+  private final Deque<TsBlock> outputs;
 
   private long maxUsedMemory;
 
@@ -129,6 +129,54 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
             maxPartialMemory,
             NOOP);
     this.memoryReservationManager = operatorContext.getMemoryReservationContext();
+    this.outputs = new LinkedList<>();
+    updateOccupiedMemorySize();
+  }
+
+  public StreamingHashAggregationOperator(
+      StreamingHashAggregationOperator streamingHashAggregationOperator,
+      Operator child,
+      List<Type> unPreGroupedTypes,
+      List<Integer> unPreGroupedChannels,
+      List<GroupedAggregator> aggregators,
+      AggregationNode.Step step,
+      int expectedGroups,
+      long maxPartialMemory) {
+    this.operatorContext = streamingHashAggregationOperator.operatorContext;
+    this.child = child;
+    this.preGroupedChannels = streamingHashAggregationOperator.preGroupedChannels;
+    this.preGroupedIndexInResult = streamingHashAggregationOperator.preGroupedIndexInResult;
+    this.unPreGroupedIndexInResult = streamingHashAggregationOperator.unPreGroupedIndexInResult;
+    this.valueColumnsCount = streamingHashAggregationOperator.valueColumnsCount;
+    this.resultColumnsCount = streamingHashAggregationOperator.resultColumnsCount;
+    this.aggregationBuilder =
+        new InMemoryHashAggregationBuilder(
+            aggregators,
+            step,
+            expectedGroups,
+            unPreGroupedTypes,
+            unPreGroupedChannels,
+            Optional.empty(),
+            this.operatorContext,
+            maxPartialMemory,
+            NOOP);
+    this.memoryReservationManager = streamingHashAggregationOperator.memoryReservationManager;
+    this.groupKeyComparator = streamingHashAggregationOperator.groupKeyComparator;
+    this.outputs = streamingHashAggregationOperator.outputs;
+    resetForReuse();
+  }
+
+  protected void resetForReuse() {
+    finished = false;
+    currentGroup = null;
+    outputs.clear();
+    aggregationBuilder.reset();
+    previousRetainedSize = 0;
+    maxUsedMemory = 0;
+    resultTsBlock = null;
+    retainedTsBlock = null;
+    startOffset = 0;
+    maxTupleSizeOfTsBlock = -1;
     updateOccupiedMemorySize();
   }
 
@@ -302,7 +350,7 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
     previousRetainedSize = memorySize;
   }
 
-  private void closeAggregationBuilder() {
+  protected void closeAggregationBuilder() {
     // outputPages = null;
     if (aggregationBuilder != null) {
       aggregationBuilder.close();

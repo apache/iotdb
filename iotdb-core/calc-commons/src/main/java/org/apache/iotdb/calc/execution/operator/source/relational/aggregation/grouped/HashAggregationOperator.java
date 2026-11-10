@@ -46,7 +46,7 @@ public class HashAggregationOperator extends AbstractOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(HashAggregationOperator.class);
 
-  private final Operator child;
+  protected final Operator child;
 
   private final List<Type> groupByTypes;
   private final List<Integer> groupByChannels;
@@ -91,6 +91,32 @@ public class HashAggregationOperator extends AbstractOperator {
     this.spillEnabled = spillEnabled;
     this.unspillMemoryLimit = unspillMemoryLimit;
     this.memoryReservationManager = operatorContext.getMemoryReservationContext();
+  }
+
+  public HashAggregationOperator(HashAggregationOperator hashAggregationOperator, Operator child) {
+    this.operatorContext = hashAggregationOperator.operatorContext;
+    this.child = child;
+    this.groupByTypes = hashAggregationOperator.groupByTypes;
+    this.groupByChannels = hashAggregationOperator.groupByChannels;
+    this.aggregators = hashAggregationOperator.aggregators;
+    this.step = hashAggregationOperator.step;
+    this.expectedGroups = hashAggregationOperator.expectedGroups;
+    this.maxPartialMemory = hashAggregationOperator.maxPartialMemory;
+    this.spillEnabled = hashAggregationOperator.spillEnabled;
+    this.unspillMemoryLimit = hashAggregationOperator.unspillMemoryLimit;
+    this.aggregationBuilder = null;
+    this.memoryReservationManager = hashAggregationOperator.memoryReservationManager;
+    resetForReuse();
+  }
+
+  protected void resetForReuse() {
+    finished = false;
+    aggregators.forEach(GroupedAggregator::reset);
+    previousRetainedSize = 0;
+    resultTsBlock = null;
+    retainedTsBlock = null;
+    startOffset = 0;
+    maxTupleSizeOfTsBlock = -1;
   }
 
   @Override
@@ -174,7 +200,7 @@ public class HashAggregationOperator extends AbstractOperator {
     return result;
   }
 
-  private void closeAggregationBuilder() {
+  protected void closeAggregationBuilder() {
     // outputPages = null;
     if (aggregationBuilder != null) {
       aggregationBuilder.close();
