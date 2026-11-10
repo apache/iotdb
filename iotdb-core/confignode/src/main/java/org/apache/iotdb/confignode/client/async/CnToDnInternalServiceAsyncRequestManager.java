@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
 import org.apache.iotdb.commons.client.request.DataNodeInternalServiceRequestManager;
 import org.apache.iotdb.commons.client.request.TestConnectionUtils;
 import org.apache.iotdb.commons.exception.UncheckedStartupException;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CheckTimeSeriesExistenceRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CountPathsUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAsyncRequestRPCHandler;
@@ -97,6 +98,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /** Asynchronously send RPC requests to DataNodes. See queryengine.thrift for more details. */
@@ -417,6 +419,12 @@ public class CnToDnInternalServiceAsyncRequestManager
       CnToDnAsyncRequestType CnToDnAsyncRequestType, AsyncDataNodeInternalServiceClient client) {
     if (CnToDnAsyncRequestType.SUBMIT_TEST_CONNECTION_TASK.equals(CnToDnAsyncRequestType)) {
       client.setTimeoutTemporarily(TestConnectionUtils.calculateCnLeaderToAllDnMaxTime());
+    } else if (CnToDnAsyncRequestType.PIPE_PUSH_SINGLE_META.equals(CnToDnAsyncRequestType)) {
+      // Use the metadata request's deadline instead of the shorter procedure-wait timeout.
+      client.setTimeoutTemporarily(
+          TimeUnit.MINUTES.toMillis(PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes())
+              * 2
+              / 3);
     }
   }
 
