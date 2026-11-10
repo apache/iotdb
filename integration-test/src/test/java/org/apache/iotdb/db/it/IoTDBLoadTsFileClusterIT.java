@@ -58,9 +58,11 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.junit.runners.MethodSorters;
 
 import java.io.File;
 import java.io.IOException;
@@ -90,6 +92,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 @RunWith(IoTDBTestRunner.class)
+// Keep the cleanup and immediate-reuse cases consecutive at the end of this shared-cluster suite.
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 @Category({ClusterIT.class})
 public class IoTDBLoadTsFileClusterIT {
 
@@ -324,26 +328,24 @@ public class IoTDBLoadTsFileClusterIT {
   }
 
   @Test
-  public void testDatabaseDataRegionsAreDeletedBeforeDatabaseNameIsReused() throws Exception {
+  public void testZDatabaseDataRegionsDeletedByTeardown() throws Exception {
     final long expectedPointCount = generateTsFile(tmpDir, "delete-database.tsfile", 10, 1L);
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       createDatabaseAndSchema(statement);
       statement.execute("load \"" + tmpDir.getAbsolutePath() + "\"");
       awaitPointCount(statement, expectedPointCount);
-      statement.execute("delete database " + DATABASE);
     }
-    awaitDatabaseDataRegionsDeleted();
+  }
 
-    final File reusedDatabaseDir = new File(tmpDir, "reused-database");
-    Assert.assertTrue(reusedDatabaseDir.mkdirs());
-    final long reusedPointCount =
-        generateTsFile(reusedDatabaseDir, "reuse-database.tsfile", 10, 1L);
+  @Test
+  public void testZZDatabaseNameCanBeReusedAfterTeardown() throws Exception {
+    final long expectedPointCount = generateTsFile(tmpDir, "reuse-database.tsfile", 10, 1L);
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       createDatabaseAndSchema(statement);
-      statement.execute("load \"" + reusedDatabaseDir.getAbsolutePath() + "\"");
-      awaitPointCount(statement, reusedPointCount);
+      statement.execute("load \"" + tmpDir.getAbsolutePath() + "\"");
+      awaitPointCount(statement, expectedPointCount);
     }
   }
 
