@@ -30,7 +30,9 @@ import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -42,7 +44,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -278,6 +282,78 @@ public class TimeSeriesMetadataCacheTest {
       IoTDBDescriptor.getInstance()
           .getMemoryConfig()
           .setMayCacheNonExistSeries(mayCacheNonExistSeries);
+    }
+  }
+
+  @Test
+  public void testGetDeviceTimeSeriesMetadata() throws Exception {
+    TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
+    FileReaderManager fileReaderManager = FileReaderManager.getInstance();
+    TsFileID tsFileID = new TsFileID();
+    cache.clear();
+    try {
+      String filePath = "target/batch-device.tsfile";
+      IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.device");
+
+      Statistics<?> timeStatistics = Statistics.getStatsByType(TSDataType.INT64);
+      timeStatistics.setCount(1);
+      timeStatistics.setStartTime(0);
+      timeStatistics.setEndTime(10);
+      TimeseriesMetadata timeColumn =
+          new TimeseriesMetadata(
+              (byte) 0, 0, "", TSDataType.INT64, timeStatistics, new PublicBAOS());
+
+      Statistics<?> s1Statistics = Statistics.getStatsByType(TSDataType.INT32);
+      s1Statistics.setCount(1);
+      s1Statistics.setStartTime(0);
+      s1Statistics.setEndTime(10);
+      TimeseriesMetadata s1 =
+          new TimeseriesMetadata(
+              (byte) 0, 0, "s1", TSDataType.INT32, s1Statistics, new PublicBAOS());
+
+      // an empty series (count == 0) must be mapped to null and not cached
+      TimeseriesMetadata emptyS2 =
+          new TimeseriesMetadata(
+              (byte) 0,
+              0,
+              "s2",
+              TSDataType.INT32,
+              Statistics.getStatsByType(TSDataType.INT32),
+              new PublicBAOS());
+
+      Map<String, TimeseriesMetadata> deviceMetadata = new HashMap<>();
+      deviceMetadata.put("", timeColumn);
+      deviceMetadata.put("s1", s1);
+      deviceMetadata.put("s2", emptyS2);
+
+      TsFileSequenceReader reader = Mockito.mock(TsFileSequenceReader.class);
+      fileReaderManager.setReaderForTest(tsFileID, true, reader);
+      Mockito.when(reader.readDeviceMetadata(deviceID)).thenReturn(deviceMetadata);
+
+      Map<String, TimeseriesMetadata> result =
+          cache.getDeviceTimeSeriesMetadata(
+              filePath, tsFileID, deviceID, new QueryContext(false, false));
+
+      assertNotNull(result.get(""));
+      assertEquals("", result.get("").getMeasurementId());
+      assertNotNull(result.get("s1"));
+      assertEquals("s1", result.get("s1").getMeasurementId());
+      assertNull(result.get("s2"));
+
+      // the non-empty entries should now be cached for per-measurement lookups
+      TimeseriesMetadata cached =
+          cache.get(
+              filePath,
+              new TimeSeriesMetadataCacheKey(tsFileID, deviceID, "s1"),
+              Collections.singleton("s1"),
+              true,
+              false,
+              new QueryContext(false, false));
+      assertNotNull(cached);
+      assertEquals("s1", cached.getMeasurementId());
+    } finally {
+      cache.clear();
+      fileReaderManager.closeFileAndRemoveReader(tsFileID);
     }
   }
 }

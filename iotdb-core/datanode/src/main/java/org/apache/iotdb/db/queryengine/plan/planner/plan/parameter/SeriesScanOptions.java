@@ -56,6 +56,7 @@ public class SeriesScanOptions implements Accountable {
   private PaginationController paginationController;
   private boolean isTableViewForTreeModel;
   private long ttlForTableView = Long.MAX_VALUE;
+  private int totalFieldColumnCount = 0;
   private final TopKRuntimeFilter topKRuntimeFilter;
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(
@@ -176,6 +177,14 @@ public class SeriesScanOptions implements Accountable {
 
   public void setIsTableViewForTreeModel(boolean isTableViewForTreeModel) {
     this.isTableViewForTreeModel = isTableViewForTreeModel;
+  }
+
+  public int getTotalFieldColumnCount() {
+    return totalFieldColumnCount;
+  }
+
+  public void setTotalFieldColumnCount(int totalFieldColumnCount) {
+    this.totalFieldColumnCount = totalFieldColumnCount;
   }
 
   /**

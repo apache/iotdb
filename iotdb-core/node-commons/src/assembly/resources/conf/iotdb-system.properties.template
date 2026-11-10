@@ -1267,6 +1267,12 @@ max_tsblock_line_number=1000
 # Datatype: long
 slow_query_threshold=10000
 
+# When a table scan queries at least this fraction of a table's field columns, deserialize all the
+# device's TimeSeriesMetadata in a single batch read instead of column by column.
+# effectiveMode: restart
+# Datatype: double
+device_metadata_batch_scan_ratio=0.8
+
 # Time window threshold(min) for record of history queries.
 # effectiveMode: hot_reload
 # Datatype: int

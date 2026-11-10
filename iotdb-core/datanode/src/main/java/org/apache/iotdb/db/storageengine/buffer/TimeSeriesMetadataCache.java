@@ -50,6 +50,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -313,6 +314,59 @@ public class TimeSeriesMetadataCache {
             .getLoadTimeSeriesMetadataFromDiskTime()
             .getAndAdd(System.nanoTime() - startTime - loadBloomFilterTime);
       }
+    }
+  }
+
+  /**
+   * Load all TimeseriesMetadata of a device in a single batch read and populate the per-measurement
+   * cache. This is used by wide-table scans (a device with many columns) to avoid walking the
+   * device metadata index once per column / leaf node.
+   *
+   * <p>The returned map holds copies of the cached metadata (or the freshly read objects when the
+   * cache is disabled / for external tsfiles), so the caller may apply {@code setModified} and
+   * {@code setChunkMetadataLoader} without corrupting cached entries — matching {@link #get}.
+   *
+   * @param filePath path of the tsfile
+   * @param tsFileID id of the tsfile
+   * @param device target device
+   * @param queryContext query context used for metrics and to detect external tsfiles
+   * @return map from measurementId (including the time column, keyed by "") to TimeseriesMetadata;
+   *     entries whose series is empty (count == 0) are mapped to null.
+   * @throws IOException if the metadata cannot be read from disk
+   */
+  public Map<String, TimeseriesMetadata> getDeviceTimeSeriesMetadata(
+      String filePath, TsFileID tsFileID, IDeviceID device, QueryContext queryContext)
+      throws IOException {
+    long startTime = System.nanoTime();
+    boolean externalTsFile = queryContext.isExternalTsFileScan();
+    LongConsumer timeSeriesMetadataIoSizeRecorder =
+        queryContext.getQueryStatistics().getLoadTimeSeriesMetadataActualIOSize()::addAndGet;
+
+    try {
+      TsFileSequenceReader reader =
+          FileReaderManager.getInstance()
+              .get(filePath, tsFileID, true, timeSeriesMetadataIoSizeRecorder, externalTsFile);
+      Map<String, TimeseriesMetadata> deviceMetadata = reader.readDeviceMetadata(device);
+
+      Map<String, TimeseriesMetadata> result = new HashMap<>(deviceMetadata.size());
+      for (Map.Entry<String, TimeseriesMetadata> entry : deviceMetadata.entrySet()) {
+        TimeseriesMetadata metadata = entry.getValue();
+        if (metadata.getStatistics().getCount() == 0) {
+          result.put(entry.getKey(), null);
+          continue;
+        }
+        if (CACHE_ENABLE && !externalTsFile) {
+          lruCache.put(new TimeSeriesMetadataCacheKey(tsFileID, device, entry.getKey()), metadata);
+        }
+        result.put(entry.getKey(), new TimeseriesMetadata(metadata));
+      }
+      return result;
+    } finally {
+      queryContext.getQueryStatistics().getLoadTimeSeriesMetadataFromDiskCount().incrementAndGet();
+      queryContext
+          .getQueryStatistics()
+          .getLoadTimeSeriesMetadataFromDiskTime()
+          .getAndAdd(System.nanoTime() - startTime);
     }
   }
 
