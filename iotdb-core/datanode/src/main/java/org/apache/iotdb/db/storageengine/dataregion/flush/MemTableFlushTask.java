@@ -142,18 +142,26 @@ public class MemTableFlushTask {
   }
 
   /**
+   * The encoded chunk buffers grow by doubling, so their capacity can reach twice the data they
+   * hold.
+   */
+  private static final int CHUNK_BUFFER_GROWTH_FACTOR = 2;
+
+  /**
    * Temporary memory of a flush: the bounded IO queue holds up to {@code ioTaskQueueSize} encoded
-   * series of average size. With no more series than queue slots the queue can't hold more than the
-   * memtable, so the estimate is capped at {@code memSize}. Without the cap a memtable of 3 series
+   * chunks of average size. With no more series than queue slots the queue can't hold more than the
+   * memtable, so the raw share is capped at {@code memSize}; without the cap a memtable of 3 series
    * reserved 3.3 times its size, which can exceed the whole MemTable budget and make the reject
-   * threshold negative.
+   * threshold negative. The share is doubled for the growth slack of the chunk buffers.
    */
   static long estimateTemporaryMemory(
       long memSize, int seriesNumber, int ioTaskQueueSize, boolean encodingFasterThanIo) {
     if (!encodingFasterThanIo || seriesNumber == 0) {
       return 0;
     }
-    return seriesNumber <= ioTaskQueueSize ? memSize : memSize / seriesNumber * ioTaskQueueSize;
+    long queuedShare =
+        seriesNumber <= ioTaskQueueSize ? memSize : memSize / seriesNumber * ioTaskQueueSize;
+    return queuedShare * CHUNK_BUFFER_GROWTH_FACTOR;
   }
 
   /** the function for flushing memtable. */
