@@ -48,6 +48,8 @@ import java.time.ZoneId;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -71,6 +73,36 @@ public class InsertValuesTest {
   @After
   public void tearDown() {
     DataNodeTableCache.getInstance().invalid(DATABASE);
+  }
+
+  @Test
+  public void testPreparedExecutionsMaterializeIndependentRows() {
+    for (String columns : new String[] {" (time, device_id, value)", ""}) {
+      InsertValues original = parse(columns + " VALUES (1 + 1, 'd1', 2 + 3)");
+      long originalSize = original.ramBytesUsed();
+      InsertRowStatement previousRow = null;
+      for (int i = 0; i < 2; i++) {
+        InsertValues execution = original.copyForPreparedExecution();
+        assertNotSame(original, execution);
+        assertEquals(DATABASE, execution.getDatabase());
+        assertTrue(execution.getInnerTreeStatement().getInsertRowStatementList().isEmpty());
+        execution.materialize(plannerContext, session);
+        InsertRowsStatement statement = execution.getInnerTreeStatement();
+        InsertRowStatement row = statement.getInsertRowStatementList().get(0);
+        assertNotSame(previousRow, row);
+        assertEquals(DATABASE, row.getDatabaseName().get());
+        assertEquals(2, row.getTime());
+        assertArrayEquals(new String[] {"device_id", "value"}, row.getMeasurements());
+        assertEquals(5, ((Number) row.getValues()[1]).intValue());
+        execution.materialize(plannerContext, session);
+        assertSame(statement, execution.getInnerTreeStatement());
+        row.getMeasurements()[0] = "changed";
+        row.getValues()[1] = -1;
+        previousRow = row;
+      }
+      assertTrue(original.getInnerTreeStatement().getInsertRowStatementList().isEmpty());
+      assertEquals(originalSize, original.ramBytesUsed());
+    }
   }
 
   @Test

@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import javax.annotation.Nullable;
@@ -51,9 +52,14 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper.getEstimatedSizeOfNodeList;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper.getEstimatedSizeOfStringList;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 
 public class InsertValues extends InsertRows {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(InsertValues.class);
 
   private final String databaseName;
   private final String tableName;
@@ -84,6 +90,36 @@ public class InsertValues extends InsertRows {
             .map(InsertValues::normalizeRow)
             .collect(Collectors.toList());
     this.zoneId = requireNonNull(zoneId, DataNodeQueryMessages.EXCEPTION_ZONEID_IS_NULL_7DAA5E2C);
+  }
+
+  private InsertValues(InsertValues original) {
+    super(createPlaceholderStatement(original.databaseName), null);
+    this.databaseName = original.databaseName;
+    this.tableName = original.tableName;
+    this.columnNames = original.columnNames;
+    this.rows = original.rows;
+    this.zoneId = original.zoneId;
+  }
+
+  @Override
+  public InsertValues copyForPreparedExecution() {
+    // Only the immutable parsed expressions are shared. Each execution materializes fresh rows.
+    return new InsertValues(this);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size =
+        INSTANCE_SIZE
+            + getInnerTreeStatement().ramBytesUsed()
+            + RamUsageEstimator.sizeOf(databaseName)
+            + RamUsageEstimator.sizeOf(tableName)
+            + getEstimatedSizeOfStringList(columnNames)
+            + RamUsageEstimator.shallowSizeOf(rows);
+    for (List<Expression> row : rows) {
+      size += getEstimatedSizeOfNodeList(row);
+    }
+    return size;
   }
 
   public void materialize(PlannerContext plannerContext, SessionInfo session) {
