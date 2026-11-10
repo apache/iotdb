@@ -19,16 +19,19 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 
 import org.apache.tsfile.utils.TimeDuration;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -256,6 +259,76 @@ public class DateTimeUtilsTest {
           DataNodeDateTimeUtils.convertDurationStrToLong(28857600000L, 1, "mo", "ms"));
     } finally {
       // clean up the session after test
+      SessionManager.getInstance().removeCurrSession();
+    }
+  }
+
+  /** "- Nmo" in a date expression must go back N calendar months from the original time. */
+  @Test
+  public void dateExpressionSubtractNaturalMonthTest() {
+    String[][] cases = {
+      // expression, expected
+      {"2024-03-15T00:00:00+00:00 - 1mo", "2024-02-15T00:00:00Z"},
+      {"2024-02-15T00:00:00+00:00 - 1mo", "2024-01-15T00:00:00Z"},
+      {"2025-03-15T00:00:00+00:00 - 1mo", "2025-02-15T00:00:00Z"},
+      {"2024-03-15T00:00:00+00:00 - 2mo", "2024-01-15T00:00:00Z"},
+      {"2024-01-15T00:00:00+00:00 - 1mo", "2023-12-15T00:00:00Z"},
+      // month end is clamped, the same as for "+ 1mo"
+      {"2024-03-31T00:00:00+00:00 - 1mo", "2024-02-29T00:00:00Z"},
+      {"2025-03-31T00:00:00+00:00 - 1mo", "2025-02-28T00:00:00Z"},
+      {"2024-05-31T00:00:00+00:00 - 1mo", "2024-04-30T00:00:00Z"},
+      // mixed units are applied from left to right (compound durations are tree syntax only)
+      {"2024-03-31T00:00:00+00:00 - 1mo1d", "2024-02-28T00:00:00Z", "tree"},
+      {"2024-03-15T00:00:00+00:00 - 1w2d", "2024-03-06T00:00:00Z", "tree"},
+      {"2024-03-31T00:00:00+00:00 - 1mo - 1d", "2024-02-28T00:00:00Z"},
+      // negative timestamp
+      {"1969-03-15T00:00:00+00:00 - 1mo", "1969-02-15T00:00:00Z"},
+      // subtraction is the inverse of addition
+      {"2024-02-15T00:00:00+00:00 + 1mo - 1mo", "2024-02-15T00:00:00Z"},
+      // addition is unchanged
+      {"2024-02-15T00:00:00+00:00 + 1mo", "2024-03-15T00:00:00Z"},
+      {"2024-01-31T00:00:00+00:00 + 1mo", "2024-02-29T00:00:00Z"},
+    };
+    assertDateExpressions("UTC", cases);
+  }
+
+  /** Natural months are counted in the session time zone, keeping the local time across DST. */
+  @Test
+  public void dateExpressionSubtractNaturalMonthWithTimeZoneTest() {
+    assertDateExpressions(
+        "America/New_York",
+        new String[][] {
+          {"2024-04-15T12:00:00-04:00 - 1mo", "2024-03-15T16:00:00Z"},
+          {"2024-03-15T12:00:00-04:00 - 1mo", "2024-02-15T17:00:00Z"},
+        });
+    assertDateExpressions(
+        "Asia/Kolkata",
+        new String[][] {{"2024-03-01T00:00:00+05:30 - 1mo", "2024-01-31T18:30:00Z"}});
+  }
+
+  private void assertDateExpressions(String sessionZone, String[][] cases) {
+    ZoneId zoneId = ZoneId.of(sessionZone);
+    IClientSession session = new InternalClientSession("dateExpressionNaturalMonthTest");
+    session.setZoneId(zoneId);
+    DateTimeUtils.initTimestampPrecision();
+    SqlParser tableParser = new SqlParser();
+    try {
+      SessionManager.getInstance().registerSession(session);
+      for (String[] c : cases) {
+        long expected = Instant.parse(c[1]).toEpochMilli();
+        Assert.assertEquals(
+            "tree: " + c[0],
+            expected,
+            (long) DataNodeDateTimeUtils.parseDateTimeExpressionToLong(c[0], zoneId));
+        if (c.length > 2) {
+          continue;
+        }
+        Assert.assertEquals(
+            "table: " + c[0],
+            expected,
+            ((LongLiteral) tableParser.createExpression(c[0], zoneId)).getParsedValue());
+      }
+    } finally {
       SessionManager.getInstance().removeCurrSession();
     }
   }
