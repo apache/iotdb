@@ -115,8 +115,144 @@ public class SubscriptionReceiverV1Test {
       commonConfig.setNodeStatus(NodeStatus.ReadOnly);
       commonConfig.setStopping(false);
       receiver.handleTimeout();
+      Assert.assertEquals(0L, closeAttemptCount.get());
+      Assert.assertTrue(receiver.hasActiveConsumer());
+
+      // Endpoint discovery may lag behind rollback. Only a new request can establish a fresh
+      // inactivity deadline on this node.
+      final ConsumerGroupMeta consumerGroupMeta =
+          new ConsumerGroupMeta(
+              consumerConfig.getConsumerGroupId(),
+              System.currentTimeMillis(),
+              new ConsumerMeta(
+                  consumerConfig.getConsumerId(),
+                  System.currentTimeMillis(),
+                  consumerConfig.getAttribute()));
+      Assert.assertNull(
+          SubscriptionAgent.consumer().handleSingleConsumerGroupMetaChanges(consumerGroupMeta));
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          receiver
+              .handle(PipeSubscribeHandshakeReq.toTPipeSubscribeReq(consumerConfig))
+              .getStatus()
+              .getCode());
+      receiver.handleTimeout();
+      Assert.assertEquals(0L, closeAttemptCount.get());
+
+      setField(receiver, "lastActivityTimeMs", System.currentTimeMillis() - timeoutMs - 1L);
+      receiver.handleTimeout();
       Assert.assertEquals(1L, closeAttemptCount.get());
       Assert.assertFalse(receiver.hasActiveConsumer());
+    } finally {
+      SubscriptionAgent.consumer().handleDropConsumerGroup(consumerConfig.getConsumerGroupId());
+      commonConfig.setNodeStatusWithReason(originalStatus, originalReason);
+      commonConfig.setStopping(originalStopping);
+    }
+  }
+
+  @Test
+  public void testHandleExitRetiresTimeoutStateOnRetiringNode() throws Exception {
+    assertExitRetiresTimeoutState(false, false);
+  }
+
+  @Test
+  public void testHandleTimeoutRetiresPreviouslyDisconnectedConsumer() throws Exception {
+    assertExitRetiresTimeoutState(true, false);
+  }
+
+  @Test
+  public void testHandleExitRetiresTimeoutStateAfterRemovalRollback() throws Exception {
+    assertExitRetiresTimeoutState(false, true);
+  }
+
+  @SuppressWarnings("unchecked")
+  private void assertExitRetiresTimeoutState(
+      final boolean exitBeforeRetirement, final boolean restoreBeforeExit) throws Exception {
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    final NodeStatus originalStatus = commonConfig.getNodeStatus();
+    final String originalReason = commonConfig.getStatusReason();
+    final boolean originalStopping = commonConfig.isStopping();
+    try {
+      for (final boolean stopping : new boolean[] {false, true}) {
+        commonConfig.setNodeStatus(NodeStatus.Running);
+        commonConfig.setStopping(false);
+        final AtomicLong closeAttemptCount = new AtomicLong();
+        final SubscriptionReceiverV1 receiver =
+            new SubscriptionReceiverV1() {
+              @Override
+              void closeConsumer(final ConsumerConfig consumerConfig) {
+                closeAttemptCount.incrementAndGet();
+              }
+            };
+        final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+        setField(receiver, "sharedConsumerConfig", consumerConfig);
+        ((ThreadLocal<ConsumerConfig>) getField(receiver, "consumerConfigThreadLocal"))
+            .set(consumerConfig);
+        final long timeoutMs = invokeCalculateConsumerInactivityTimeoutMs(receiver, consumerConfig);
+        setField(receiver, "lastActivityTimeMs", System.currentTimeMillis() - timeoutMs - 1L);
+
+        if (exitBeforeRetirement) {
+          receiver.handleExit();
+          Assert.assertTrue(receiver.hasActiveConsumer());
+        }
+        commonConfig.setNodeStatus(stopping ? NodeStatus.ReadOnly : NodeStatus.Removing);
+        commonConfig.setStopping(stopping);
+        receiver.handleTimeout();
+        if (restoreBeforeExit) {
+          commonConfig.setNodeStatus(NodeStatus.ReadOnly);
+          commonConfig.setStopping(false);
+        }
+        if (!exitBeforeRetirement) {
+          receiver.handleExit();
+        }
+
+        Assert.assertFalse(receiver.hasActiveConsumer());
+        Assert.assertNull(
+            ((ThreadLocal<ConsumerConfig>) getField(receiver, "consumerConfigThreadLocal")).get());
+        commonConfig.setNodeStatus(NodeStatus.ReadOnly);
+        commonConfig.setStopping(false);
+        receiver.handleTimeout();
+        Assert.assertEquals(0L, closeAttemptCount.get());
+      }
+    } finally {
+      commonConfig.setNodeStatusWithReason(originalStatus, originalReason);
+      commonConfig.setStopping(originalStopping);
+    }
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testExplicitCloseStillWorksOnRetiringNode() throws Exception {
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    final NodeStatus originalStatus = commonConfig.getNodeStatus();
+    final String originalReason = commonConfig.getStatusReason();
+    final boolean originalStopping = commonConfig.isStopping();
+    try {
+      for (final boolean stopping : new boolean[] {false, true}) {
+        final AtomicLong closeAttemptCount = new AtomicLong();
+        final SubscriptionReceiverV1 receiver =
+            new SubscriptionReceiverV1() {
+              @Override
+              void closeConsumer(final ConsumerConfig consumerConfig) {
+                closeAttemptCount.incrementAndGet();
+              }
+            };
+        final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+        setField(receiver, "sharedConsumerConfig", consumerConfig);
+        ((ThreadLocal<ConsumerConfig>) getField(receiver, "consumerConfigThreadLocal"))
+            .set(consumerConfig);
+        final long timeoutMs = invokeCalculateConsumerInactivityTimeoutMs(receiver, consumerConfig);
+        setField(receiver, "lastActivityTimeMs", System.currentTimeMillis() - timeoutMs - 1L);
+        commonConfig.setNodeStatus(stopping ? NodeStatus.ReadOnly : NodeStatus.Removing);
+        commonConfig.setStopping(stopping);
+        receiver.handleTimeout();
+
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+            receiver.handle(PipeSubscribeCloseReq.toTPipeSubscribeReq()).getStatus().getCode());
+        Assert.assertEquals(1L, closeAttemptCount.get());
+        Assert.assertFalse(receiver.hasActiveConsumer());
+      }
     } finally {
       commonConfig.setNodeStatusWithReason(originalStatus, originalReason);
       commonConfig.setStopping(originalStopping);

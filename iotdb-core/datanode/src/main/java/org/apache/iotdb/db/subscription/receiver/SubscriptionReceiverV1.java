@@ -165,6 +165,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private final PipeSubscribeSliceReqHandler sliceReqHandler =
       new PipeSubscribeSliceReqHandler(maxReassembledRequestBodySize);
   private long consumerStateVersion;
+  private boolean connectionExited;
+  private boolean timeoutCleanupSuspended;
 
   private static final String SQL_DIALECT_TABLE_VALUE = "table";
 
@@ -308,6 +310,12 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           }
         }
       } finally {
+        connectionExited = true;
+        if (timeoutCleanupSuspended || isNodeRetiring()) {
+          // Retiring this transport transfers timeout responsibility to the other DataNodes.
+          // Discard only the local receiver state, including when removal has already rolled back.
+          clearSharedConsumerState();
+        }
         sliceReqHandler.clear();
         consumerConfigThreadLocal.remove();
         pollTimerThreadLocal.remove();
@@ -370,11 +378,14 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   @Override
   public void handleTimeout() {
     synchronized (this) {
-      final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
-      if (commonConfig.getNodeStatus() == NodeStatus.Removing || commonConfig.isStopping()) {
+      timeoutCleanupSuspended |= isNodeRetiring();
+      if (timeoutCleanupSuspended) {
         // The SDK retires this node's connection while the consumer remains active elsewhere.
-        // Missing heartbeats here must not unsubscribe that consumer across the cluster. Keep
-        // the timeout state so ordinary cleanup can resume if the removal is rolled back.
+        // Rollback alone does not restore that connection: wait for a new request before allowing
+        // this receiver to close the cluster consumer again.
+        if (connectionExited) {
+          clearSharedConsumerState();
+        }
         return;
       }
       final ConsumerConfig consumerConfig = sharedConsumerConfig;
@@ -410,6 +421,11 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             e);
       }
     }
+  }
+
+  private static boolean isNodeRetiring() {
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    return commonConfig.getNodeStatus() == NodeStatus.Removing || commonConfig.isStopping();
   }
 
   @Override
@@ -1558,6 +1574,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
   private boolean beforeHandle(final short reqType) {
     synchronized (this) {
+      // A request on a restored node starts a fresh local inactivity deadline.
+      timeoutCleanupSuspended = isNodeRetiring();
+      connectionExited = false;
       final boolean isHandshake = PipeSubscribeRequestType.HANDSHAKE.getType() == reqType;
       // Replaced connections are terminal, even when the consumer instance itself is still valid.
       // An old connection must not handshake again and replace the current connection in turn.
