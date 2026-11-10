@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegionTest;
@@ -396,5 +397,111 @@ public class WALNodeTest {
                     + File.separator
                     + WALFileUtils.getLogFileName(1, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
             .exists());
+  }
+
+  @Test
+  public void testMemTableLargerThanAWalEntryIsFlushedInsteadOfSnapshotted() throws Exception {
+    // below the snapshot threshold, but larger than one WAL entry
+    RecordingDataRegion dataRegion = cleanUpOldestMemTableOfRamCost(2 * 1024 * 1024);
+    assertTrue(dataRegion.flushSubmitted);
+    assertFalse(dataRegion.writeLocked);
+  }
+
+  @Test
+  public void testMemTableWithinAWalEntryIsSnapshotted() throws Exception {
+    RecordingDataRegion dataRegion = cleanUpOldestMemTableOfRamCost(512 * 1024);
+    assertFalse(dataRegion.flushSubmitted);
+    assertTrue(dataRegion.writeLocked);
+  }
+
+  /**
+   * Lets the WAL cleanup pick an active memTable with the given TVList RAM cost in the latest time
+   * partition, with a WAL entry limit of 1 MB (as with the edge profile's wal_buffer_size_in_byte).
+   * The WAL is filled by a second memTable, which is flushed, so the effective information ratio is
+   * low and the cleanup has to snapshot or flush the oldest one.
+   */
+  private RecordingDataRegion cleanUpOldestMemTableOfRamCost(long tvListsRamCost) throws Exception {
+    int prevEntrySizeLimit = config.getWalEntrySizeLimitInByte();
+    config.setWalEntrySizeLimitInByte(1024 * 1024);
+    try {
+      assertTrue(tvListsRamCost < config.getWalMemTableSnapshotThreshold());
+      RecordingDataRegion dataRegion = new RecordingDataRegion(logDirectory, databasePath);
+      StorageEngine.getInstance().setDataRegion(new DataRegionId(1), dataRegion);
+
+      IMemTable oldest =
+          new PrimitiveMemTable(databasePath, dataRegionId) {
+            @Override
+            public long getTVListsRamCost() {
+              return tvListsRamCost;
+            }
+          };
+      walNode.onMemTableCreated(oldest, tsFilePathInLatestPartition(oldest));
+      List<WALFlushListener> listeners = new ArrayList<>();
+      for (long time = 1; time <= 10; time++) {
+        InsertTabletNode node = getInsertTabletNode(devicePath, new long[] {time});
+        listeners.add(
+            walNode.log(
+                oldest.getMemTableId(),
+                node,
+                Collections.singletonList(new int[] {0, node.getRowCount()})));
+      }
+
+      IMemTable filler = new PrimitiveMemTable(databasePath, dataRegionId);
+      walNode.onMemTableCreated(filler, tsFilePathInLatestPartition(filler));
+      for (long time = 1; time <= 20000; time++) {
+        InsertTabletNode node = getInsertTabletNode(devicePath, new long[] {time});
+        listeners.add(
+            walNode.log(
+                filler.getMemTableId(),
+                node,
+                Collections.singletonList(new int[] {0, node.getRowCount()})));
+      }
+      walNode.onMemTableFlushed(filler);
+      Awaitility.await().until(() -> walNode.isAllWALEntriesConsumed());
+      for (WALFlushListener listener : listeners) {
+        assertEquals(WALFlushListener.Status.SUCCESS, listener.waitForResult());
+      }
+
+      walNode.deleteOutdatedFiles();
+      return dataRegion;
+    } finally {
+      config.setWalEntrySizeLimitInByte(prevEntrySizeLimit);
+    }
+  }
+
+  private static String tsFilePathInLatestPartition(IMemTable memTable) {
+    return logDirectory
+        + File.separator
+        + databasePath
+        + File.separator
+        + dataRegionId
+        + File.separator
+        + "0"
+        + File.separator
+        + memTable.getMemTableId()
+        + ".tsfile";
+  }
+
+  /** Records whether the WAL cleanup flushed a memTable or took the write lock to snapshot it. */
+  private static class RecordingDataRegion extends DataRegionTest.DummyDataRegion {
+    private volatile boolean flushSubmitted;
+    private volatile boolean writeLocked;
+
+    private RecordingDataRegion(String systemInfoDir, String databaseName)
+        throws DataRegionException {
+      super(systemInfoDir, databaseName);
+    }
+
+    @Override
+    public boolean submitAFlushTask(long timeRangeId, boolean sequence, IMemTable memTable) {
+      flushSubmitted = true;
+      return false;
+    }
+
+    @Override
+    public void writeLock(String holder) {
+      writeLocked = true;
+      super.writeLock(holder);
+    }
   }
 }
