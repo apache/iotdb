@@ -115,6 +115,7 @@ import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionR
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.confignode.consensus.statemachine.ConfigRegionStateMachine;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
@@ -1899,6 +1900,10 @@ public class ConfigManager implements IManager {
     if (currentNodeId == req.getNodeId()
         || req.getNodeId() < 0
         || req.getNodeId() == NodeManager.APPLY_CONFIG_LOCALLY) {
+      TSStatus regionGroupPolicyStatus = checkRegionGroupPolicyHotReload(req);
+      if (regionGroupPolicyStatus != null) {
+        return regionGroupPolicyStatus;
+      }
       URL url = ConfigNodeDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
       boolean configurationFileFound = (url != null && new File(url.getFile()).exists());
       TrimProperties properties = new TrimProperties();
@@ -1959,6 +1964,23 @@ public class ConfigManager implements IManager {
     statusList.add(tsStatus);
     statusList.addAll(statusListOfOtherNodes);
     return RpcUtils.squashResponseStatusList(statusList);
+  }
+
+  private TSStatus checkRegionGroupPolicyHotReload(TSetConfigurationReq req) {
+    if (req.getNodeId() == NodeManager.APPLY_CONFIG_LOCALLY
+        || (!req.getConfigs().containsKey("schema_region_group_extension_policy")
+            && !req.getConfigs().containsKey("data_region_group_extension_policy"))) {
+      return null;
+    }
+    if (!getNodeManager()
+        .isConfigNodeVersionConsistentWith(
+            new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO))) {
+      return RpcUtils.getStatus(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR,
+          ConfigNodeMessages
+              .EXCEPTION_REGIONGROUP_POLICY_HOT_RELOAD_REQUIRES_IDENTICAL_CONFIGNODE_VERSIONS_AND_BUILDS_FA3BBFEA);
+    }
+    return null;
   }
 
   private TSStatus checkConsistentClusterConfigSetConfigurationTarget(TSetConfigurationReq req) {

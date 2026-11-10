@@ -838,4 +838,8 @@ public final class ConfigNodeMessages {
       "Get error when serialize pattern tree.";
 
   public static final String EXCEPTION_NO_SUCH_USER_9F8AB2B7 = "No such user : ";
+
+  public static final String
+      EXCEPTION_REGIONGROUP_POLICY_HOT_RELOAD_REQUIRES_IDENTICAL_CONFIGNODE_VERSIONS_AND_BUILDS_FA3BBFEA =
+          "RegionGroup policy hot reload requires identical ConfigNode versions and builds.";
 }
