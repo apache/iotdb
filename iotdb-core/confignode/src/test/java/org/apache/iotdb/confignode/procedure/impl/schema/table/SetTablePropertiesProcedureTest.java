@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -52,6 +53,75 @@ import java.util.Map;
 import static org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState.SET_PROPERTIES;
 
 public class SetTablePropertiesProcedureTest {
+  @Test
+  public void testSetInfiniteTtlAfterMaximumNumericTtl() throws Exception {
+    for (final String ttl : new String[] {IoTDBConstant.TTL_INFINITE, null}) {
+      final String database = "ttl_infinite_test";
+      final String tableName = "table1";
+      final String maximumTtl = String.valueOf(Long.MAX_VALUE);
+      final ClusterSchemaInfo schemaInfo = new ClusterSchemaInfo();
+      schemaInfo.createDatabase(
+          new DatabaseSchemaPlan(
+              ConfigPhysicalPlanType.CreateDatabase,
+              new TDatabaseSchema(database).setIsTableModel(true).setTTL(Long.MAX_VALUE)));
+      final TsTable table = new TsTable(tableName);
+      table.addProp(TsTable.TTL_PROPERTY, maximumTtl);
+      schemaInfo.preCreateTable(new PreCreateTablePlan(database, table));
+      schemaInfo.commitCreateTable(new CommitCreateTablePlan(database, tableName));
+      final ConfigManager configManager = Mockito.mock(ConfigManager.class);
+      final PartitionManager partitionManager = Mockito.mock(PartitionManager.class);
+      Mockito.when(configManager.getPartitionManager()).thenReturn(partitionManager);
+      Mockito.when(partitionManager.isDatabaseExist(database)).thenReturn(true);
+      final ClusterSchemaManager manager =
+          new ClusterSchemaManager(
+              configManager, schemaInfo, Mockito.mock(ClusterSchemaQuotaStatistics.class));
+      Mockito.when(configManager.getClusterSchemaManager()).thenReturn(manager);
+      final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);
+      Mockito.when(env.getConfigManager()).thenReturn(configManager);
+      final Map<String, String> properties = new HashMap<>();
+      properties.put(TsTable.TTL_PROPERTY, ttl);
+      final SetTablePropertiesProcedure procedure =
+          new SetTablePropertiesProcedure(database, tableName, "0", properties, false);
+
+      procedure.validateTable(env);
+      Assert.assertFalse(procedure.isFailed());
+      Assert.assertNotNull(procedure.table);
+      Assert.assertEquals(
+          IoTDBConstant.TTL_INFINITE, procedure.table.getPropValue(TsTable.TTL_PROPERTY).get());
+      Assert.assertEquals(maximumTtl, procedure.originalProperties.get(TsTable.TTL_PROPERTY));
+      Assert.assertEquals(
+          maximumTtl,
+          manager
+              .getTableIfExists(database, tableName)
+              .get()
+              .getPropValue(TsTable.TTL_PROPERTY)
+              .get());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          schemaInfo
+              .setTableProperties(
+                  (SetTablePropertiesPlan) procedure.createSetPropertiesPlan(properties, false))
+              .getCode());
+      Assert.assertEquals(
+          IoTDBConstant.TTL_INFINITE,
+          manager
+              .getTableIfExists(database, tableName)
+              .get()
+              .getPropValue(TsTable.TTL_PROPERTY)
+              .get());
+
+      // Repeating an infinite TTL should still be treated as an unchanged property.
+      final Map<String, String> repeatedProperties = new HashMap<>();
+      repeatedProperties.put(TsTable.TTL_PROPERTY, ttl);
+      final SetTablePropertiesProcedure repeated =
+          new SetTablePropertiesProcedure(database, tableName, "1", repeatedProperties, false);
+      repeated.validateTable(env);
+      Assert.assertFalse(repeated.isFailed());
+      Assert.assertNull(repeated.table);
+    }
+  }
+
   @Test
   public void testRollbackRestoresMissingTableTtlAfterDatabaseDefaultChanges() throws Exception {
     final String database = "ttl_rollback_test";

@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractL
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.confignode.manager.load.cache.IFailureDetector;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.NodeType;
 
@@ -52,6 +53,7 @@ import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.Objects;
 import java.util.Optional;
 
 public class ConfigNodeDescriptor {
@@ -213,9 +215,23 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "schema_replication_factor", String.valueOf(conf.getSchemaReplicationFactor()))));
 
-    conf.setDataRegionConsensusProtocolClass(
+    final String dataRegionConsensusProtocolClass =
         properties.getProperty(
-            "data_region_consensus_protocol_class", conf.getDataRegionConsensusProtocolClass()));
+            "data_region_consensus_protocol_class", conf.getDataRegionConsensusProtocolClass());
+    final String normalizedDataRegionConsensusProtocolClass =
+        ConsensusFactory.normalizeConsensusProtocolClass(dataRegionConsensusProtocolClass);
+    if (!Objects.equals(
+        dataRegionConsensusProtocolClass, normalizedDataRegionConsensusProtocolClass)) {
+      // DataNode already normalizes these names, so ConfigNode must do the same. Otherwise it
+      // treats an aliased IoTConsensusV2 configuration as "not V2", never creates the
+      // __consensus.* pipes that V2 replication depends on, and the degradation stays silent.
+      LOGGER.warn(
+          ConfigNodeMessages
+              .LOG_NORMALIZE_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_FROM_ARG_TO_ARG_FOR_COMPATIBILITY_6E662489,
+          dataRegionConsensusProtocolClass,
+          normalizedDataRegionConsensusProtocolClass);
+    }
+    conf.setDataRegionConsensusProtocolClass(normalizedDataRegionConsensusProtocolClass);
 
     conf.setIotConsensusV2Mode(
         properties.getProperty("iot_consensus_v2_mode", conf.getIotConsensusV2Mode()));

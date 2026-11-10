@@ -2012,6 +2012,10 @@ public final class DataNodeMiscMessages {
   public static final String LOG_TIMESERIES_ARG_OVERLAP_WITHIN_ONE_PAGE_A712F779 =
       "-------- Timeseries %s overlap within one page";
 
+  public static final String
+      LOG_FAILED_TO_CLEAN_UP_INTERNAL_CLIENT_SESSION_AFTER_CONNECTION_CLOSED_9BD1700E =
+          "Failed to clean up internal client session after connection closed";
+
   public static final String LOG_INVALID_PIVOT_CONFIGURATION_VALUE_FOR_ARG_ARG_KEEPING_ARG_FCB21FF0 =
       "Invalid PIVOT configuration value for {}: {}; keeping {}";
 }

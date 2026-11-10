@@ -268,6 +268,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
@@ -1517,9 +1518,12 @@ public class ConfigManager implements IManager {
                   .EXCEPTION_REJECT_REGISTER_PLEASE_ENSURE_THAT_THE_PARAMETER_ARG_IS_CONSISTENT_WITH_THE_SEED_CONFIGNODE_C072CE7C,
               ManagerMessages.MESSAGE_CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS_D0F437AF));
     }
-    if (!clusterParameters
-        .getDataRegionConsensusProtocolClass()
-        .equals(CONF.getDataRegionConsensusProtocolClass())) {
+    // Normalize the joining ConfigNode's value as well, so a legacy IoTConsensusV2 class name sent
+    // by a not-yet-upgraded ConfigNode is not mistaken for a different consensus protocol.
+    if (!Objects.equals(
+        ConsensusFactory.normalizeConsensusProtocolClass(
+            clusterParameters.getDataRegionConsensusProtocolClass()),
+        CONF.getDataRegionConsensusProtocolClass())) {
       return errorStatus.setMessage(
           String.format(
               ManagerMessages

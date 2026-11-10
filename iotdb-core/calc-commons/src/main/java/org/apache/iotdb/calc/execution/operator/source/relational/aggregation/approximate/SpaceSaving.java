@@ -124,6 +124,10 @@ public class SpaceSaving<K> {
     return buckets.buildOrThrow();
   }
 
+  public boolean isEmpty() {
+    return streamSummary.size() == 0;
+  }
+
   public byte[] serialize() {
     List<Counter<K>> counters = streamSummary.topK(capacity);
     // Calculate the size of the keys

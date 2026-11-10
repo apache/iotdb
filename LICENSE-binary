@@ -214,60 +214,99 @@ The binary distribution of this product bundles these dependencies under the
 following license. See licenses/ for text of these licenses.
 
 Apache License 2.0
---------------------------------------
-commons-cli:commons-cli:1.5.0
+------------------
+at.yawk.lz4:lz4-java:1.11.4
+cglib:cglib:3.3.0
+ch.qos.reload4j:reload4j:1.2.22
+com.fasterxml.jackson.core:jackson-annotations:2.18.11
+com.fasterxml.jackson.core:jackson-core:2.18.11 (bundles FastDoubleParser, MIT License, with portions of fast_double_parser, Boost Software License 1.0, fast_float, MIT License, and bigint, BSD 2-Clause; and Schubfach, MIT License)
+com.fasterxml.jackson.core:jackson-databind:2.18.11
+com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.21.1
+com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.11
+com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-base:2.18.11
+com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider:2.18.11
+com.fasterxml.jackson.module:jackson-module-jakarta-xmlbind-annotations:2.18.11
+com.github.ben-manes.caffeine:caffeine:2.9.3
+com.github.moquette-io.moquette:moquette-broker:0.18.0
+com.google.code.findbugs:jsr305:3.0.2
 com.google.code.gson:gson:2.13.1
-com.google.guava.guava:32.1.2-jre
-com.fasterxml.jackson.core:jackson-annotations:2.16.2
-com.fasterxml.jackson.core:jackson-core:2.16.2
-com.fasterxml.jackson.core:jackson-databind:2.16.2
-com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-base:2.18.6
-com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider:2.18.6
-com.fasterxml.jackson.module:jackson-module-jakarta-xmlbind-annotations:2.18.6
+com.google.errorprone:error_prone_annotations:2.18.0
+com.google.guava:failureaccess:1.0.1
+com.google.guava:guava:32.1.2-jre
+com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava
+com.google.j2objc:j2objc-annotations:2.8
+com.zaxxer:HikariCP:2.4.7
+commons-cli:commons-cli:1.5.0
+commons-codec:commons-codec:1.16.1
+io.airlift:airline:0.9
+io.airlift:units:1.7
+io.dropwizard.metrics:metrics-core:4.2.19
+io.micrometer:micrometer-commons:1.11.4
+io.micrometer:micrometer-core:1.11.4
+io.micrometer:micrometer-observation:1.11.4
+io.netty:netty-buffer:4.1.137.Final
+io.netty:netty-codec:4.1.137.Final
+io.netty:netty-codec-dns:4.1.137.Final
+io.netty:netty-codec-http:4.1.137.Final
+io.netty:netty-codec-http2:4.1.137.Final
+io.netty:netty-codec-mqtt:4.1.137.Final
+io.netty:netty-codec-socks:4.1.137.Final
+io.netty:netty-common:4.1.137.Final
+io.netty:netty-handler:4.1.137.Final
+io.netty:netty-handler-proxy:4.1.137.Final
+io.netty:netty-resolver:4.1.137.Final
+io.netty:netty-resolver-dns:4.1.137.Final
+io.netty:netty-resolver-dns-classes-macos:4.1.137.Final
+io.netty:netty-resolver-dns-native-macos:4.1.137.Final
+io.netty:netty-tcnative-boringssl-static:2.0.81.Final
+io.netty:netty-tcnative-classes:2.0.81.Final
+io.netty:netty-transport:4.1.137.Final
+io.netty:netty-transport-classes-epoll:4.1.137.Final
+io.netty:netty-transport-classes-kqueue:4.1.137.Final
+io.netty:netty-transport-native-epoll:4.1.137.Final
+io.netty:netty-transport-native-kqueue:4.1.137.Final
+io.netty:netty-transport-native-unix-common:4.1.137.Final
+io.projectreactor:reactor-core:3.7.19
+io.projectreactor.netty:reactor-netty-core:1.2.18
+io.projectreactor.netty:reactor-netty-http:1.2.18
 io.swagger.core.v3:swagger-annotations-jakarta:2.2.50
 io.swagger.core.v3:swagger-core-jakarta:2.2.50
 io.swagger.core.v3:swagger-integration-jakarta:2.2.50
 io.swagger.core.v3:swagger-jaxrs2-jakarta:2.2.50
 io.swagger.core.v3:swagger-models-jakarta:2.2.50
 jakarta.inject:jakarta.inject-api:2.0.1
-at.yawk.lz4:lz4-java:1.11.4
-com.github.ben-manes.caffeine:caffeine:2.9.3
+jakarta.validation:jakarta.validation-api:3.0.2
+net.java.dev.jna:jna:5.14.0
+net.java.dev.jna:jna-platform:5.14.0
+org.apache.commons:commons-csv:1.10.0
+org.apache.commons:commons-lang3:3.18.0
+org.apache.commons:commons-pool2:2.11.1
+org.apache.ratis:ratis-client:3.3.1
+org.apache.ratis:ratis-common:3.3.1
+org.apache.ratis:ratis-grpc:3.3.1
+org.apache.ratis:ratis-metrics-api:3.3.1
+org.apache.ratis:ratis-proto:3.3.1
+org.apache.ratis:ratis-server:3.3.1
+org.apache.ratis:ratis-server-api:3.3.1
+org.apache.ratis:ratis-thirdparty-misc:1.1.0
+org.apache.thrift:libthrift:0.25.0
 org.eclipse.jetty:jetty-http:12.0.36
 org.eclipse.jetty:jetty-io:12.0.36
 org.eclipse.jetty:jetty-security:12.0.36
 org.eclipse.jetty:jetty-server:12.0.36
 org.eclipse.jetty:jetty-session:12.0.36
-org.eclipse.jetty.ee10:jetty-ee10-servlet:12.0.36
 org.eclipse.jetty:jetty-util:12.0.36
-com.google.code.findbugs:jsr305:3.0.2
-com.librato.metrics:librato-java:2.1.0
-org.apache.thrift:libthrift:0.25.0
-io.dropwizard.metrics:metrics-core:4.2.19
-io.dropwizard.metrics:metrics-jvm:3.2.2
-com.librato.metrics:metrics-librato:5.1.0
-com.github.moquette-io.moquette:moquette-broker:0.18
-io.netty:netty-buffer:4.1.137.Final
-io.netty:netty-codec:4.1.137.Final
-io.netty:netty-codec-http:4.1.137.Final
-io.netty:netty-codec-mqtt:4.1.137.Final
-io.netty:netty-common:4.1.137.Final
-io.netty:netty-handler:4.1.137.Final
-io.netty:netty-resolver:4.1.137.Final
-io.netty:netty-transport:4.1.137.Final
-io.netty:netty-transport-native-epoll:4.1.137.Final:linux-aarch_64
-io.netty:netty-transport-native-epoll:4.1.137.Final:linux-x86_64
-io.netty:netty-transport-native-unix-common:4.1.137.Final
-org.jspecify:jspecify:1.0.0
-org.jctools:jctools-core:4.0.5
+org.eclipse.jetty.ee10:jetty-ee10-servlet:12.0.36
+org.javassist:javassist:3.30.2-GA
 org.xerial.snappy:snappy-java:1.1.10.9
-io.airlift.airline:0.9
+org.yaml:snakeyaml:2.6
 
 
 BSD 3-Clause
 ------------
 org.antlr:antlr4-runtime:4.13.2
-org.ow2.asm:asm:9.3
 org.jline:jline:3.26.2
+org.ow2.asm:asm:9.3
 
 
 BSD 2-Clause
@@ -277,14 +316,16 @@ com.github.luben:zstd-jni:1.5.6-3
 
 MIT License
 ------------
-org.slf4j:slf4j-api:2.0.9
-com.bugsnag:bugsnag:3.7.2
 io.github.classgraph:classgraph:4.8.184
+org.checkerframework:checker-qual:3.33.0
+org.java-websocket:Java-WebSocket:1.5.4
+org.slf4j:slf4j-api:2.0.9
+org.slf4j:slf4j-reload4j:1.7.36
 
 
-EPL 1.0
-------------
-com.h2database:h2-mvstore:2.1.212
+MIT No Attribution (MIT-0)
+--------------------------
+org.reactivestreams:reactive-streams:1.0.4
 
 
 EPL 2.0
@@ -293,19 +334,29 @@ ch.qos.logback:logback-classic:1.5.34
 ch.qos.logback:logback-core:1.5.34
 jakarta.annotation:jakarta.annotation-api:3.0.0
 jakarta.servlet:jakarta.servlet-api:6.0.0
+jakarta.ws.rs:jakarta.ws.rs-api:3.1.0
+org.glassfish.hk2:hk2-api:3.0.6
+org.glassfish.hk2:hk2-locator:3.0.6
+org.glassfish.hk2:hk2-utils:3.0.6
+org.glassfish.hk2:osgi-resource-locator:1.0.3
+org.glassfish.hk2.external:aopalliance-repackaged:3.0.6
+org.glassfish.jersey.containers:jersey-container-servlet-core:3.1.11
+org.glassfish.jersey.core:jersey-client:3.1.11
+org.glassfish.jersey.core:jersey-common:3.1.11 (includes repackaged parts of Guava, Apache License 2.0, and of JSR-166, Public Domain)
+org.glassfish.jersey.core:jersey-server:3.1.11 (includes repackaged ASM, BSD 3-Clause)
+org.glassfish.jersey.inject:jersey-hk2:3.1.11
+org.glassfish.jersey.media:jersey-media-multipart:3.1.11
+
 
 EDL 1.0
 ------------
 jakarta.activation:jakarta.activation-api:2.1.0
 jakarta.xml.bind:jakarta.xml.bind-api:3.0.1
-
-
-CDDL 1.1
-------------
-javax.xml.bind:jaxb-api:2.4.0-b180725.0427
-org.glassfish.jaxb:jaxb-runtime:2.3.6
+org.jvnet.mimepull:mimepull:1.9.15
 
 
 Public Domain
-------------
+-------------
+org.hdrhistogram:HdrHistogram:2.1.12 (CC0 1.0, alternatively BSD 2-Clause)
+org.latencyutils:LatencyUtils:2.0.3 (CC0 1.0)
 org.tukaani:xz:1.9

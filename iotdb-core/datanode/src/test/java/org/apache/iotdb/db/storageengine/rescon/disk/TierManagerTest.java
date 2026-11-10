@@ -19,7 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.rescon.disk;
 
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
@@ -40,9 +45,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class TierManagerTest {
@@ -117,18 +123,14 @@ public class TierManagerTest {
               }
               return null;
             });
-    List<AtomicInteger> accessorCounts = new ArrayList<>();
     List<Future<?>> accessorFutures = new ArrayList<>();
     for (Callable<?> folderAccessor : folderAccessors) {
-      AtomicInteger accessorCount = new AtomicInteger();
-      accessorCounts.add(accessorCount);
       accessorFutures.add(
           executorService.submit(
               () -> {
                 startLatch.await();
                 do {
                   assertNotNull(folderAccessor.call());
-                  accessorCount.incrementAndGet();
                 } while (resetting.get());
                 return null;
               }));
@@ -140,12 +142,52 @@ public class TierManagerTest {
       for (Future<?> accessorFuture : accessorFutures) {
         accessorFuture.get(30, TimeUnit.SECONDS);
       }
-      for (AtomicInteger accessorCount : accessorCounts) {
-        assertTrue(accessorCount.get() > 0);
-      }
     } finally {
       executorService.shutdownNow();
       assertTrue(executorService.awaitTermination(10, TimeUnit.SECONDS));
+    }
+  }
+
+  @Test
+  public void testInitiallyFullTiersRecoverWithoutLosingTierLevels() throws Exception {
+    CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    NodeStatus originalStatus = commonConfig.getNodeStatus();
+    String originalReason = commonConfig.getStatusReason();
+    double originalThreshold = commonConfig.getDiskSpaceWarningThreshold();
+    String tier0 = new File(temporaryFolder.getRoot(), "tier0").getAbsolutePath();
+    String tier1 = new File(temporaryFolder.getRoot(), "tier1").getAbsolutePath();
+
+    try {
+      config.setTierDataDirs(new String[][] {{tier0}, {tier1}});
+      commonConfig.setNodeStatus(NodeStatus.Running);
+      JVMCommonUtils.setDiskSpaceWarningThreshold(1.0);
+      tierManager.resetFolders();
+
+      assertEquals(2, tierManager.getTiersNum());
+      assertEquals(NodeStatus.ReadOnly, commonConfig.getNodeStatus());
+      IndexOutOfBoundsException missingTier =
+          assertThrows(
+              IndexOutOfBoundsException.class, () -> tierManager.getFolderManager(2, true));
+      assertTrue(missingTier.getMessage().contains("tierLevel=2"));
+      assertTrue(missingTier.getMessage().contains("folderName=sequence"));
+      assertThrows(
+          DiskSpaceInsufficientException.class, () -> tierManager.getFolderManager(0, true));
+      assertThrows(
+          DiskSpaceInsufficientException.class, () -> tierManager.getFolderManager(1, false));
+
+      JVMCommonUtils.setDiskSpaceWarningThreshold(0.0);
+      commonConfig.tryRecoverFromDiskFull();
+      assertEquals(NodeStatus.Running, commonConfig.getNodeStatus());
+      assertEquals(
+          new File(tier0, IoTDBConstant.SEQUENCE_FOLDER_NAME).getCanonicalPath(),
+          tierManager.getNextFolderForTsFile(0, true));
+      assertEquals(
+          new File(tier1, IoTDBConstant.UNSEQUENCE_FOLDER_NAME).getCanonicalPath(),
+          tierManager.getNextFolderForTsFile(1, false));
+    } finally {
+      JVMCommonUtils.setDiskSpaceWarningThreshold(originalThreshold);
+      commonConfig.setNodeStatus(NodeStatus.Running);
+      commonConfig.setNodeStatusWithReason(originalStatus, originalReason);
     }
   }
 

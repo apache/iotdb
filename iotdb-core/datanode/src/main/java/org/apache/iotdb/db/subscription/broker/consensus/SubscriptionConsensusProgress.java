@@ -46,14 +46,24 @@ public class SubscriptionConsensusProgress {
 
   private final AtomicLong persistenceThrottleCounter;
 
+  private volatile boolean explicitSeekReset;
+
   public SubscriptionConsensusProgress() {
     this(new RegionProgress(Collections.emptyMap()), 0L);
   }
 
   public SubscriptionConsensusProgress(
       final RegionProgress committedRegionProgress, final long persistenceThrottleCounter) {
+    this(committedRegionProgress, persistenceThrottleCounter, false);
+  }
+
+  public SubscriptionConsensusProgress(
+      final RegionProgress committedRegionProgress,
+      final long persistenceThrottleCounter,
+      final boolean explicitSeekReset) {
     this.committedRegionProgress = normalize(committedRegionProgress);
     this.persistenceThrottleCounter = new AtomicLong(persistenceThrottleCounter);
+    this.explicitSeekReset = explicitSeekReset;
   }
 
   public RegionProgress getCommittedRegionProgress() {
@@ -62,6 +72,14 @@ public class SubscriptionConsensusProgress {
 
   public void setCommittedRegionProgress(final RegionProgress committedRegionProgress) {
     this.committedRegionProgress = normalize(committedRegionProgress);
+  }
+
+  public boolean isExplicitSeekReset() {
+    return explicitSeekReset;
+  }
+
+  public void setExplicitSeekReset(final boolean explicitSeekReset) {
+    this.explicitSeekReset = explicitSeekReset;
   }
 
   public WriterId getCommittedWriterId() {
@@ -83,12 +101,15 @@ public class SubscriptionConsensusProgress {
   public void serialize(final DataOutputStream stream) throws IOException {
     committedRegionProgress.serialize(stream);
     ReadWriteIOUtils.write(persistenceThrottleCounter.get(), stream);
+    ReadWriteIOUtils.write(explicitSeekReset, stream);
   }
 
   public static SubscriptionConsensusProgress deserialize(final ByteBuffer buffer) {
     final RegionProgress committedRegionProgress = RegionProgress.deserialize(buffer);
     final long persistenceThrottleCounter = ReadWriteIOUtils.readLong(buffer);
-    return new SubscriptionConsensusProgress(committedRegionProgress, persistenceThrottleCounter);
+    final boolean explicitSeekReset = buffer.hasRemaining() && ReadWriteIOUtils.readBool(buffer);
+    return new SubscriptionConsensusProgress(
+        committedRegionProgress, persistenceThrottleCounter, explicitSeekReset);
   }
 
   @Override
@@ -101,12 +122,14 @@ public class SubscriptionConsensusProgress {
     }
     final SubscriptionConsensusProgress that = (SubscriptionConsensusProgress) o;
     return persistenceThrottleCounter.get() == that.persistenceThrottleCounter.get()
+        && explicitSeekReset == that.explicitSeekReset
         && Objects.equals(committedRegionProgress, that.committedRegionProgress);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(committedRegionProgress, persistenceThrottleCounter.get());
+    return Objects.hash(
+        committedRegionProgress, persistenceThrottleCounter.get(), explicitSeekReset);
   }
 
   @Override
@@ -116,6 +139,8 @@ public class SubscriptionConsensusProgress {
         + committedRegionProgress
         + ", persistenceThrottleCounter="
         + persistenceThrottleCounter.get()
+        + ", explicitSeekReset="
+        + explicitSeekReset
         + '}';
   }
 

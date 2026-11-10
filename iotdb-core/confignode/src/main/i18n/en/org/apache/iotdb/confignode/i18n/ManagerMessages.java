@@ -127,6 +127,8 @@ public final class ManagerMessages {
       "Failed to alter pipe {}. Result status: {}.";
   public static final String FAILED_TO_CHECK_AND_REPAIR_CONSENSUS_PIPES =
       "Failed to check and repair consensus pipes";
+  public static final String LOG_FAILED_TO_PROBE_THE_NUMBER_OF_CONSENSUS_PIPES_FALL_BACK_TO_THE_PERIODIC_CONSENSUS_PIPE_CHECK_E3E527AF =
+      "Failed to probe the number of consensus pipes, fall back to the periodic consensus pipe check.";
   public static final String FAILED_TO_CHECK_PASSWORD_FOR_PIPE =
       "Failed to check password for pipe %s.";
   public static final String FAILED_TO_CLOSE_CONSUMER_IN_CONSUMER_GROUP_RESULT_STATUS =
@@ -657,8 +659,9 @@ public final class ManagerMessages {
   public static final String
       MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_DEFAULT_ARGREGIONGROUPNUM_ARG_4C00E92C =
           "%s should be greater than or equal to default %sRegionGroupNum: %d.";
-  public static final String MESSAGE_COLUMN_ARG_ALREADY_EXIST_92F91B6A =
-      "Column '%s' already exist";
+  public static final String
+      MESSAGE_COLUMN_ARG_ALREADY_EXISTS_OR_ITS_SOURCE_MEASUREMENT_IS_ALREADY_MAPPED_8421FEAD =
+          "Column '%s' already exists or its source measurement is already mapped";
   public static final String MESSAGE_COLUMN_ARG_DOES_NOT_EXIST_FF67AE82 =
       "Column '%s' does not exist";
   public static final String

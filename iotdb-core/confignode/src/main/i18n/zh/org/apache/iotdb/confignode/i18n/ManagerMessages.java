@@ -126,6 +126,8 @@ public final class ManagerMessages {
       "修改 pipe {} 失败。结果状态：{}。";
   public static final String FAILED_TO_CHECK_AND_REPAIR_CONSENSUS_PIPES =
       "检查并修复 consensus pipe 失败";
+  public static final String LOG_FAILED_TO_PROBE_THE_NUMBER_OF_CONSENSUS_PIPES_FALL_BACK_TO_THE_PERIODIC_CONSENSUS_PIPE_CHECK_E3E527AF =
+      "探测 consensus pipe 数量失败，将回退到定期检查 consensus pipe。";
   public static final String FAILED_TO_CHECK_PASSWORD_FOR_PIPE =
       "检查 pipe %s 的密码失败。";
   public static final String FAILED_TO_CLOSE_CONSUMER_IN_CONSUMER_GROUP_RESULT_STATUS =
@@ -645,7 +647,9 @@ public final class ManagerMessages {
   public static final String
       MESSAGE_ARG_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_DEFAULT_ARGREGIONGROUPNUM_ARG_4C00E92C =
           "%s 应大于或等于默认的 %sRegionGroupNum：%d。";
-  public static final String MESSAGE_COLUMN_ARG_ALREADY_EXIST_92F91B6A = "列 '%s' 已存在";
+  public static final String
+      MESSAGE_COLUMN_ARG_ALREADY_EXISTS_OR_ITS_SOURCE_MEASUREMENT_IS_ALREADY_MAPPED_8421FEAD =
+          "列 '%s' 已存在，或它引用的源测点已被映射";
   public static final String MESSAGE_COLUMN_ARG_DOES_NOT_EXIST_FF67AE82 = "列 '%s' 不存在";
   public static final String
       MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_CLUSTER_HEARTBEAT_SAMPLING_EDB0331F =

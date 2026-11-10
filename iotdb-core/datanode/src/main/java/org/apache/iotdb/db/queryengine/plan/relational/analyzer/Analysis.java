@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.partition.DataPartition;
@@ -64,6 +65,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.commons.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -119,6 +121,8 @@ public class Analysis implements IAnalysis {
 
   private String databaseName;
   private List<TEndPoint> redirectNodeList;
+
+  private boolean internalRpcSession;
 
   @Nullable private Statement root;
   private boolean needSetHighestPriority;
@@ -293,6 +297,10 @@ public class Analysis implements IAnalysis {
         ImmutableMap.copyOf(
             requireNonNull(
                 parameters, DataNodeQueryMessages.EXCEPTION_PARAMETERS_IS_NULL_418C7892));
+  }
+
+  public void setInternalRpcSession(final boolean internalRpcSession) {
+    this.internalRpcSession = internalRpcSession;
   }
 
   public void updateNeedSetHighestPriority(QualifiedObjectName tableName) {
@@ -1076,16 +1084,21 @@ public class Analysis implements IAnalysis {
   }
 
   @Override
-  public void setRedirectNodeList(final List<TEndPoint> redirectNodeList) {
-    this.redirectNodeList = redirectNodeList;
+  public void setRedirectNodeList(final List<TDataNodeLocation> dataNodeLocations) {
+    redirectNodeList = new ArrayList<>(dataNodeLocations.size());
+    for (final TDataNodeLocation dataNodeLocation : dataNodeLocations) {
+      redirectNodeList.add(
+          DataNodeEndPoints.getRedirectEndPoint(dataNodeLocation, internalRpcSession));
+    }
   }
 
   @Override
-  public void addEndPointToRedirectNodeList(final TEndPoint endPoint) {
+  public void addEndPointToRedirectNodeList(final TDataNodeLocation dataNodeLocation) {
     if (redirectNodeList == null) {
       redirectNodeList = new ArrayList<>();
     }
-    redirectNodeList.add(endPoint);
+    redirectNodeList.add(
+        DataNodeEndPoints.getRedirectEndPoint(dataNodeLocation, internalRpcSession));
   }
 
   public void setTableFunctionAnalysis(

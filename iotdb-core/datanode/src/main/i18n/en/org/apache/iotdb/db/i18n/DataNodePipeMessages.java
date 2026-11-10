@@ -354,6 +354,8 @@ public final class DataNodePipeMessages {
   public static final String SUBTASK_IS_CLOSED_IGNORE_EXCEPTION =
       "subtask {} is closed, ignore exception";
   public static final String SUBTASK_WORKER_IS_INTERRUPTED = "subtask worker is interrupted";
+  public static final String LOG_FAILED_TO_SUBMIT_PIPE_PROCESSOR_WORKER_BECAUSE_THE_WORKER_THREAD_POOL_HAS_BEEN_SHUT_DOWN_CA28ED14 =
+      "Failed to submit pipe processor worker because the worker thread pool has been shut down";
   public static final String SUCCESSFULLY_PERSISTED_ALL_PIPE_S_INFO_TO =
       "Successfully persisted all pipe's info to configNode.";
   public static final String THE_EXECUTOR_AND_HAS_BEEN_SUCCESSFULLY_SHUTDOWN =
@@ -3101,6 +3103,9 @@ public final class DataNodePipeMessages {
   public static final String
       EXCEPTION_SUBSCRIPTION_FAILED_TO_FETCH_ENDPOINTS_FOR_CONSUMER_ARG_IN_CONFIG_NODE_EXCEPTION_IS_ARG_267904CB =
           "Subscription: Failed to fetch endpoints for consumer %s in config node, exception is %s.";
+  public static final String
+      EXCEPTION_INTERNAL_SUBSCRIPTION_ENDPOINT_DISCOVERY_FAILED_BECAUSE_DATANODE_ARG_DID_NOT_REPORT_AN_INTERNAL_RPC_ENDPOINT_45E4D232 =
+          "Internal subscription endpoint discovery failed because DataNode %d did not report an internal RPC endpoint";
   public static final String
       MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_SUBSCRIBING_WITH_REQUEST_ARG_ARG_084648A4 =
           "Subscription: something unexpected happened when subscribing with request %s: %s";

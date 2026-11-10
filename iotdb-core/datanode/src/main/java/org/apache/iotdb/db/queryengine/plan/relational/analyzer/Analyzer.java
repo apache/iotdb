@@ -124,6 +124,7 @@ public class Analyzer {
 
     try {
       Analysis analysis = new Analysis(rewrittenStatement, parameterLookup);
+      analysis.setInternalRpcSession(context.isInternalRpcSession());
       analysis.setSqlParser(statementAnalyzerFactory.getSqlParser());
       // Register CTE passed by parent query.
       context
