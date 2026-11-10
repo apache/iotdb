@@ -68,6 +68,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
+import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
@@ -1450,11 +1451,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
           TSStatus tsstatus = new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
           tsstatus.setRedirectNode(
-              regionReplicaSets
-                  .get(regionReplicaSets.size() - 1)
-                  .dataNodeLocations
-                  .get(0)
-                  .clientRpcEndPoint);
+              DataNodeEndPoints.getRedirectEndPoint(
+                  regionReplicaSets.get(regionReplicaSets.size() - 1).dataNodeLocations.get(0),
+                  clientSession.isInternalRpcSession()));
           resp.setStatus(tsstatus);
           finished = SELECT_RESULT.apply(resp, queryExecution, req.fetchSize);
           resp.setMoreData(!finished);
@@ -1627,16 +1626,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
     Optional<String> database = parseDatabase(req);
     IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-    BasicOpenSessionResp openSessionResp =
-        SESSION_MANAGER.login(
-            SESSION_MANAGER.getCurrSession(),
-            req.username,
-            req.password,
-            req.zoneId,
-            req.client_protocol,
-            clientVersion,
-            sqlDialect,
-            parseUseEncryptedPassword(req));
+    BasicOpenSessionResp openSessionResp = login(clientSession, req, clientVersion, sqlDialect);
     TSStatus tsStatus = RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
 
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -1650,6 +1640,30 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     configuration.put(
         TIME_PRECISION, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     return resp.setSessionId(openSessionResp.getSessionId()).setConfiguration(configuration);
+  }
+
+  private BasicOpenSessionResp login(
+      IClientSession session,
+      TSOpenSessionReq req,
+      IoTDBConstant.ClientVersion clientVersion,
+      SqlDialect sqlDialect) {
+    if (useInternalSessionLogin()) {
+      return SESSION_MANAGER.loginInternal(
+          session, req.username, req.zoneId, req.client_protocol, clientVersion, sqlDialect);
+    }
+    return SESSION_MANAGER.login(
+        session,
+        req.username,
+        req.password,
+        req.zoneId,
+        req.client_protocol,
+        clientVersion,
+        sqlDialect,
+        parseUseEncryptedPassword(req));
+  }
+
+  protected boolean useInternalSessionLogin() {
+    return false;
   }
 
   private IoTDBConstant.ClientVersion parseClientVersion(TSOpenSessionReq req) {

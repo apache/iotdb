@@ -560,9 +560,11 @@ public class SessionPool implements ISessionPool {
     this.queryTimeoutInMs = builder.timeOut;
     this.enableAutoCreateSchema = builder.enableAutoCreateSchema;
 
-    if (enableAutoFetch) {
+    final INodeSupplier suppliedNodes = builder.nodeSupplier;
+    if (enableAutoFetch && suppliedNodes == null) {
       initThreadPool();
     }
+    final List<TEndPoint> endPointList;
     if (builder.nodeUrls != null) {
       if (builder.nodeUrls.isEmpty()) {
         throw new IllegalArgumentException(SessionMessages.NODE_URLS_EMPTY);
@@ -571,23 +573,21 @@ public class SessionPool implements ISessionPool {
       this.host = null;
       this.port = -1;
       this.formattedNodeUrls = builder.nodeUrls.toString();
-      if (enableAutoFetch) {
-        initAvailableNodes(SessionUtils.parseSeedNodeUrls(nodeUrls));
-      } else {
-        this.availableNodes = new DummyNodesSupplier(SessionUtils.parseSeedNodeUrls(nodeUrls));
-      }
-
+      endPointList = SessionUtils.parseSeedNodeUrls(nodeUrls);
     } else {
       this.host = builder.host;
       this.port = builder.rpcPort;
       this.nodeUrls = null;
       this.formattedNodeUrls = UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port);
-      if (enableAutoFetch) {
-        initAvailableNodes(Collections.singletonList(new TEndPoint(host, port)));
-      } else {
-        this.availableNodes =
-            new DummyNodesSupplier(Collections.singletonList(new TEndPoint(host, port)));
-      }
+      endPointList = Collections.singletonList(new TEndPoint(host, port));
+    }
+
+    if (suppliedNodes != null) {
+      this.availableNodes = suppliedNodes;
+    } else if (enableAutoFetch) {
+      initAvailableNodes(endPointList);
+    } else {
+      this.availableNodes = new DummyNodesSupplier(endPointList);
     }
   }
 
@@ -596,7 +596,7 @@ public class SessionPool implements ISessionPool {
     if (nodeUrls == null) {
       // Construct custom Session
       session =
-          new Session.Builder()
+          createSessionBuilder()
               .host(host)
               .port(port)
               .username(user)
@@ -627,7 +627,7 @@ public class SessionPool implements ISessionPool {
     } else {
       // Construct redirect-able Session
       session =
-          new Session.Builder()
+          createSessionBuilder()
               .nodeUrls(nodeUrls)
               .username(user)
               .password(password)
@@ -657,6 +657,10 @@ public class SessionPool implements ISessionPool {
     }
     session.setEnableQueryRedirection(enableQueryRedirection);
     return session;
+  }
+
+  protected Session.Builder createSessionBuilder() {
+    return new Session.Builder();
   }
 
   private void initThreadPool() {
@@ -855,7 +859,9 @@ public class SessionPool implements ISessionPool {
       this.executorService = null;
     }
     if (availableNodes != null) {
-      this.availableNodes.close();
+      if (!this.availableNodes.isCallerManaged()) {
+        this.availableNodes.close();
+      }
       this.availableNodes = null;
     }
     LOGGER.info(SessionMessages.CLOSING_SESSION_POOL);

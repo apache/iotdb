@@ -64,6 +64,7 @@ public class Analyzer {
         });
     try {
       analysis = visitor.process(statement, context);
+      analysis.setInternalRpcSession(context.isInternalRpcSession());
     } catch (RuntimeException | Error e) {
       mutationJournal.rollback();
       throw e;
