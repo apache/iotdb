@@ -208,10 +208,12 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceId id,
       FragmentInstanceStateMachine stateMachine,
       SessionInfo sessionInfo,
+      long outerQueryDeadlineMs,
       boolean debug,
       boolean isVerbose) {
     FragmentInstanceContext instanceContext =
         new FragmentInstanceContext(id, stateMachine, sessionInfo, debug, isVerbose);
+    instanceContext.outerQueryDeadlineMs = outerQueryDeadlineMs;
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;

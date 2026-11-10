@@ -1960,4 +1960,8 @@ public final class DataNodeMiscMessages {
 
   public static final String LOG_TIMESERIES_ARG_OVERLAP_WITHIN_ONE_PAGE_A712F779 =
       "-------- 时间序列 %s 在同一 Page 内存在重叠";
+
+  public static final String
+      LOG_FAILED_TO_CLEAN_UP_INTERNAL_CLIENT_SESSION_AFTER_CONNECTION_CLOSED_9BD1700E =
+          "连接关闭后清理内部客户端会话失败";
 }

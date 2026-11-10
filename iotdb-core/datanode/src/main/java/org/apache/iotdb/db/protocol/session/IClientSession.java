@@ -53,6 +53,11 @@ public abstract class IClientSession {
 
   private boolean login = false;
 
+  // True when this session was opened through the multiplexed IClientRPCService on the DataNode
+  // internal endpoint. This identifies the RPC endpoint family for redirects and internal transport
+  // behavior; it does not imply database-internal privileges.
+  private boolean internalRpcSession = false;
+
   private long logInTime;
 
   private SqlDialect sqlDialect = SqlDialect.TREE;
@@ -120,6 +125,14 @@ public abstract class IClientSession {
 
   public void setLogin(boolean login) {
     this.login = login;
+  }
+
+  public boolean isInternalRpcSession() {
+    return internalRpcSession;
+  }
+
+  public void setInternalRpcSession(final boolean internalRpcSession) {
+    this.internalRpcSession = internalRpcSession;
   }
 
   public void setLogInTime(long logInTime) {

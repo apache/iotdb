@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -83,6 +84,8 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEnt
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
+import org.apache.iotdb.db.storageengine.dataregion.snapshot.SnapshotLoader;
+import org.apache.iotdb.db.storageengine.dataregion.snapshot.SnapshotTaker;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -612,6 +615,42 @@ public class DataRegionTest {
     final Field field = SystemInfo.class.getDeclaredField(name);
     field.setAccessible(true);
     field.set(SystemInfo.getInstance(), value);
+  }
+
+  @Test
+  public void testSnapshotAfterDeletingUnflushedData() throws Exception {
+    dataRegion.setAllowCompaction(false);
+    TSRecord record = new TSRecord(deviceId, 1);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, "10"));
+    dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    TsFileResource resource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    Assert.assertFalse(resource.isClosed());
+    MeasurementPath path = new MeasurementPath(deviceId, measurementId);
+    dataRegion.deleteByDevice(
+        path,
+        new DeleteDataNode(
+            new PlanNodeId("delete"),
+            Collections.singletonList(path),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE));
+
+    File snapshotDir = new File(TestConstant.OUTPUT_DATA_DIR, "snapshot-deleted-unflushed");
+    try {
+      Assert.assertTrue(
+          new SnapshotTaker(dataRegion).takeFullSnapshot(snapshotDir.getAbsolutePath(), true));
+      Assert.assertTrue(resource.isDeleted());
+      Assert.assertFalse(resource.tsFileExists());
+      Assert.assertTrue(resource.tryWriteLock());
+      resource.writeUnlock();
+      DataRegion loaded =
+          new SnapshotLoader(snapshotDir.getAbsolutePath(), storageGroup, "0")
+              .loadSnapshotForStateMachine();
+      Assert.assertNotNull(loaded);
+      Assert.assertTrue(loaded.getTsFileManager().getTsFileList(true).isEmpty());
+      Assert.assertTrue(loaded.getTsFileManager().getTsFileList(false).isEmpty());
+    } finally {
+      FileUtils.recursivelyDeleteFolder(snapshotDir.getAbsolutePath());
+    }
   }
 
   @Test

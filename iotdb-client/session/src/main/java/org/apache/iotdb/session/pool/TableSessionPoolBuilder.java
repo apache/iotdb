@@ -358,7 +358,10 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
           Collections.singletonList(SessionConfig.DEFAULT_HOST + ":" + SessionConfig.DEFAULT_PORT);
     }
     this.sqlDialect = "table";
-    SessionPool sessionPool = new SessionPool(this);
-    return new TableSessionPool(sessionPool);
+    return createSessionPool();
+  }
+
+  protected ITableSessionPool createSessionPool() {
+    return new TableSessionPool(new SessionPool(this));
   }
 }
