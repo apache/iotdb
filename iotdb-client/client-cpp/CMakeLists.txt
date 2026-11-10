@@ -117,6 +117,11 @@ endif()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 include(FetchBoost)        # -> BOOST_INCLUDE_DIR (Thrift build only)
+# Homebrew's shared include prefix can expose a different OpenSSL version before
+# the selected OpenSSL headers. Resolve Boost's symlink to its own include root.
+get_filename_component(_iotdb_boost_headers "${BOOST_INCLUDE_DIR}/boost" REALPATH)
+get_filename_component(_iotdb_boost_include "${_iotdb_boost_headers}" DIRECTORY)
+set(BOOST_INCLUDE_DIR "${_iotdb_boost_include}" CACHE PATH "Boost include directory" FORCE)
 include(FetchBuildTools)
 if(WITH_SSL)
     include(FetchOpenSSL)
