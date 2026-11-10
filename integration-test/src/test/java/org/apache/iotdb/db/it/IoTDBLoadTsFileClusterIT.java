@@ -66,6 +66,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -86,6 +87,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
@@ -184,6 +186,7 @@ public class IoTDBLoadTsFileClusterIT {
       statement.execute("delete database " + DATABASE);
     } catch (final Exception ignored) {
     }
+    awaitDatabaseDataRegionsDeleted();
 
     final File[] files = tmpDir.listFiles();
     if (files != null) {
@@ -318,6 +321,20 @@ public class IoTDBLoadTsFileClusterIT {
       }
       Assert.assertEquals(expectedPointCount, actualPointCount);
     }
+  }
+
+  @Test
+  public void testDatabaseDataRegionsAreDeletedBeforeDatabaseNameIsReused() throws Exception {
+    final long expectedPointCount = generateTsFile(tmpDir, "delete-database.tsfile", 10, 1L);
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      createDatabaseAndSchema(statement);
+      statement.execute("load \"" + tmpDir.getAbsolutePath() + "\"");
+      awaitPointCount(statement, expectedPointCount);
+      statement.execute("delete database " + DATABASE);
+    }
+
+    awaitDatabaseDataRegionsDeleted();
   }
 
   /**
@@ -595,6 +612,34 @@ public class IoTDBLoadTsFileClusterIT {
             + regionId
             + " holds a different number of points on its replicas: "
             + pointCounts);
+  }
+
+  /** Waits for asynchronous region deletion before the next test reuses this database name. */
+  private static void awaitDatabaseDataRegionsDeleted() {
+    Awaitility.await()
+        .atMost(5, TimeUnit.MINUTES)
+        .pollInterval(1, TimeUnit.SECONDS)
+        .ignoreExceptions()
+        .until(
+            () -> {
+              for (int dataNodeIndex = 0; dataNodeIndex < DATA_NODE_NUM; dataNodeIndex++) {
+                final DataNodeWrapper dataNode =
+                    EnvFactory.getEnv().getDataNodeWrapper(dataNodeIndex);
+                for (final String order : TSFILE_DIRECTORIES) {
+                  final java.nio.file.Path databaseDir =
+                      Paths.get(dataNode.getDataNodeDir(), "data", order, DATABASE);
+                  if (!Files.isDirectory(databaseDir)) {
+                    continue;
+                  }
+                  try (Stream<java.nio.file.Path> regionDirs = Files.list(databaseDir)) {
+                    if (regionDirs.anyMatch(Files::isDirectory)) {
+                      return false;
+                    }
+                  }
+                }
+              }
+              return true;
+            });
   }
 
   /** The cluster id of the given DataNode, matched by its client RPC endpoint. */
