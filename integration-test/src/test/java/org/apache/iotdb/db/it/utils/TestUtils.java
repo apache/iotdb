@@ -567,7 +567,7 @@ public class TestUtils {
     int lastIndex = 0;
     Connection localConnection = null;
     Connection connectionToUse = defaultConnection;
-    Statement statement;
+    Statement statement = null;
     try {
       // create a new connection if default is not provided or the previous is broken
       if (connectionToUse == null) {
@@ -579,16 +579,27 @@ public class TestUtils {
         statement.execute(sqlList.get(i));
       }
     } catch (SQLException e) {
-      // the default connection should be closed by the upper level
-      // while the local connection should be closed here
-      if (connectionToUse == localConnection && localConnection != null) {
-        try {
-          localConnection.close();
-        } catch (SQLException ex) {
-          // ignore
-        }
-      }
       throw new RuntimeException(e);
+    } finally {
+      closeNonQueryResources(statement, localConnection);
+    }
+  }
+
+  private static void closeNonQueryResources(Statement statement, Connection localConnection) {
+    if (statement != null) {
+      try {
+        statement.close();
+      } catch (Exception ignored) {
+        // ignore
+      }
+    }
+    // Caller-provided connections are never passed as localConnection.
+    if (localConnection != null) {
+      try {
+        localConnection.close();
+      } catch (SQLException ignored) {
+        // ignore
+      }
     }
   }
 
