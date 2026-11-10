@@ -122,10 +122,15 @@ public class ParallelizeGrouping implements PlanOptimizer {
     /**
      * We need to make sure: context#partitionKey can be satisfied by the prefix of childOrder.
      *
-     * <p>The prefix is compared as a column set: partition columns are identified by their values,
-     * so a different writing order still clusters rows into the same partitions. This lets nested
-     * set-semantic table functions reuse their input clustering when the same PARTITION BY columns
-     * are listed in a different order.
+     * <p>When the child exposes exactly the partition keys, the prefix is compared as a column set:
+     * partition columns are identified by their values, so a different writing order still produces
+     * the same partitions. This lets nested set-semantic table functions reuse their input
+     * clustering when the same PARTITION BY columns are listed in a different order. The set
+     * comparison is deliberately limited to this case: for a strict subset the child's partitions
+     * are only a refinement of the required ones, and after a fan-in over unordered sources
+     * (multiple DataRegions, hash aggregation) the subset need not be contiguous in the input.
+     *
+     * <p>Otherwise the prefix is compared positionally, as before.
      *
      * <p>The ORDER BY part of the requirement needs no check here. A group node sorts within every
      * partition run by its full ordering scheme, so the input only has to be clustered; whatever
@@ -142,10 +147,11 @@ public class ParallelizeGrouping implements PlanOptimizer {
       }
       List<Symbol> requiredPrefix = context.sortKey.getOrderBy().subList(0, partitionKeyCount);
       List<Symbol> actualPrefix = childOrder.subList(0, partitionKeyCount);
+      boolean sameKeySet =
+          partitionKeyCount == childOrder.size()
+              && ImmutableSet.copyOf(requiredPrefix).equals(ImmutableSet.copyOf(actualPrefix));
       context.canOptimized =
-          ImmutableSet.copyOf(requiredPrefix).equals(ImmutableSet.copyOf(actualPrefix))
-              ? ENABLE_PARALLEL
-              : TO_SORT;
+          sameKeySet || requiredPrefix.equals(actualPrefix) ? ENABLE_PARALLEL : TO_SORT;
     }
 
     @Override

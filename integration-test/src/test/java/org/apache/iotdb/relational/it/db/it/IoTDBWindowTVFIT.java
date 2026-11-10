@@ -331,7 +331,7 @@ public class IoTDBWindowTVFIT {
           "1970-01-01T00:00:00.011Z,1970-01-01T00:00:00.011Z,1970-01-01T00:00:00.011Z,F1,device_2,25.0,",
           "1970-01-01T00:00:00.003Z,1970-01-01T00:00:00.003Z,1970-01-01T00:00:00.003Z,F2,device_1,30.0,"
         };
-    // Three levels list the same PARTITION BY columns in three different orders.
+    // Adjacent levels list the same PARTITION BY columns in different orders.
     String sql =
         "SELECT window_start, window_end, time, factory_id, device_id, s1 "
             + "FROM SESSION(DATA => ("

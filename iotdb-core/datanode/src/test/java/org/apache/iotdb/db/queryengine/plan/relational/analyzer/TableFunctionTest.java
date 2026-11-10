@@ -278,7 +278,7 @@ public class TableFunctionTest {
                     tableFunctionProcessor(
                         inner,
                         group(orderBy("tag1", "tag2", "tag3", "time"), 3, scanAllColumns()))))));
-    // Both levels are split per region; only regions with several devices need a merged stream.
+    // Both levels are split per region; only cross-region devices need a merged stream.
     assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
     assertPlan(
         planTester.getFragmentPlan(1),
@@ -295,6 +295,32 @@ public class TableFunctionTest {
                 mergeSort(orderBy("tag3", "tag2", "tag1", "time"), exchange(), exchange()))));
     assertPlan(planTester.getFragmentPlan(4), scanAllColumns());
     assertPlan(planTester.getFragmentPlan(5), scanAllColumns());
+  }
+
+  @Test
+  public void testNestedSetSemanticReorderedSubsetFallsBackToSort() {
+    PlanTester planTester = new PlanTester();
+    String sql =
+        "SELECT * FROM SESSION(DATA => (SELECT * FROM SESSION(DATA => table1 "
+            + "PARTITION BY (tag1, tag2, tag3) ORDER BY time, GAP => 1m)) "
+            + "PARTITION BY (tag2, tag1) ORDER BY time, GAP => 2m)";
+    planTester.createPlan(sql);
+    Consumer<TableFunctionProcessorMatcher.Builder> outer =
+        sessionMatcher("window_start", "window_end", 120_000L);
+    Consumer<TableFunctionProcessorMatcher.Builder> inner =
+        sessionMatcher("window_start_0", "window_end_1", 60_000L);
+    // A reordered strict subset must not reuse the inner partitioning: one outer partition can
+    // span several inner ones, which a fan-in does not keep contiguous. The outer function stays
+    // single-instance above a full merge sort, as before this optimization.
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(
+            tableFunctionProcessor(
+                outer,
+                mergeSort(orderBy("tag2", "tag1", "time"), exchange(), exchange(), exchange()))));
+    assertPlan(
+        planTester.getFragmentPlan(1),
+        sort(orderBy("tag2", "tag1", "time"), tableFunctionProcessor(inner, scanAllColumns())));
   }
 
   @Test
@@ -329,8 +355,7 @@ public class TableFunctionTest {
   @Test
   public void testNestedSetSemanticGlobalOrderByDeclaredOrder() {
     PlanTester planTester = new PlanTester();
-    LogicalQueryPlan logicalQueryPlan =
-        planTester.createPlan(NESTED_SESSION_SQL + " ORDER BY tag3, tag2, tag1, time");
+    planTester.createPlan(NESTED_SESSION_SQL + " ORDER BY tag3, tag2, tag1, time");
     Consumer<TableFunctionProcessorMatcher.Builder> outer =
         sessionMatcher("window_start", "window_end", 120_000L);
     Consumer<TableFunctionProcessorMatcher.Builder> inner =
@@ -359,8 +384,7 @@ public class TableFunctionTest {
     PlanTester planTester = new PlanTester();
     // The global order permutes the partition columns again; the distributed planner must prove it
     // by rewriting grouping/device comparators instead of reusing the TVF declared order.
-    LogicalQueryPlan logicalQueryPlan =
-        planTester.createPlan(NESTED_SESSION_SQL + " ORDER BY tag2, tag3, tag1, time");
+    planTester.createPlan(NESTED_SESSION_SQL + " ORDER BY tag2, tag3, tag1, time");
     Consumer<TableFunctionProcessorMatcher.Builder> outer =
         sessionMatcher("window_start", "window_end", 120_000L);
     Consumer<TableFunctionProcessorMatcher.Builder> inner =
@@ -418,6 +442,29 @@ public class TableFunctionTest {
                                     orderBy("tag1", "tag2", "tag3", "time"),
                                     3,
                                     scanAllColumns()))))))));
+    // Every level is split per region; only cross-region devices need a merged stream.
+    assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
+    assertPlan(
+        planTester.getFragmentPlan(1),
+        tableFunctionProcessor(
+            outerMost,
+            tableFunctionProcessor(middle, tableFunctionProcessor(inner, scanAllColumns()))));
+    assertPlan(
+        planTester.getFragmentPlan(2),
+        tableFunctionProcessor(
+            outerMost,
+            tableFunctionProcessor(middle, tableFunctionProcessor(inner, scanAllColumns()))));
+    assertPlan(
+        planTester.getFragmentPlan(3),
+        tableFunctionProcessor(
+            outerMost,
+            tableFunctionProcessor(
+                middle,
+                tableFunctionProcessor(
+                    inner,
+                    mergeSort(orderBy("tag2", "tag1", "tag3", "time"), exchange(), exchange())))));
+    assertPlan(planTester.getFragmentPlan(4), scanAllColumns());
+    assertPlan(planTester.getFragmentPlan(5), scanAllColumns());
   }
 
   @Test
