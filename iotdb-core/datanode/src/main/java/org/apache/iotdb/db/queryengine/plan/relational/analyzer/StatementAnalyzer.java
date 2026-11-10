@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils;
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
@@ -118,6 +119,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.commons.queryengine.plan.statement.component.FillPolicy;
+import org.apache.iotdb.commons.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -979,6 +981,7 @@ public class StatementAnalyzer {
           sessionContext.getUserName(),
           new QualifiedObjectName(node.getDatabase(), node.getTableName()),
           queryContext);
+      queryContext.setUdfForbidden(true);
       final TranslationMap translationMap = analyzeTraverseDevice(node, context, true);
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
@@ -1029,6 +1032,7 @@ public class StatementAnalyzer {
                     })
                 .collect(Collectors.toList()));
       } else {
+        validateNoUdfInPreAnalyzedUpdate(node);
         final Set<String> attributeNames = new HashSet<>();
         node.getAssignments()
             .forEach(
@@ -1052,6 +1056,35 @@ public class StatementAnalyzer {
         return null;
       }
       return null;
+    }
+
+    /**
+     * Validates an UPDATE whose expressions were analyzed by the sender and are reused directly by
+     * the receiver. This happens for pipe-transferred UPDATE statements, which have no source
+     * location and also store their predicate in {@link Update#getTagFuzzyPredicate()} instead of
+     * the regular WHERE expression.
+     */
+    private void validateNoUdfInPreAnalyzedUpdate(final Update node) {
+      final List<Expression> expressions =
+          node.getAssignments().stream()
+              .map(UpdateAssignment::getValue)
+              .collect(Collectors.toList());
+      node.getWhere().ifPresent(expressions::add);
+      if (Objects.nonNull(node.getTagFuzzyPredicate())) {
+        expressions.add(node.getTagFuzzyPredicate());
+      }
+      for (final FunctionCall functionCall :
+          ExpressionTreeUtils.extractExpressions(expressions, FunctionCall.class)) {
+        final String functionName = functionCall.getName().getSuffix();
+        if (UDFManagementService.getInstance().getUDFInformation(Model.TABLE, functionName)
+            != null) {
+          throw new SemanticException(
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_EXTERNAL_USER_DEFINED_FUNCTION_ARG_IS_NOT_SUPPORTED_IN_THIS_WRITE_STATEMENT_8329DC8E,
+                  functionName));
+        }
+      }
     }
 
     private void validateUpdateAttributeColumn(
@@ -1164,6 +1197,7 @@ public class StatementAnalyzer {
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       DataNodeTreeViewSchemaUtils.checkTableInWrite(node.getDatabase(), table);
+      queryContext.setUdfForbidden(true);
       node.parseModEntries(table, node.getDatabase(), queryContext);
       analyzeTraverseDevice(node, context, node.getWhere().isPresent());
       node.parseWhere(

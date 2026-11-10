@@ -351,4 +351,52 @@ public class IoTDBSQLFunctionManagementIT {
       }
     }
   }
+
+  @Test
+  public void testUdfRejectedInUpdateAndDeleteDevice() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create database udf_write_guard");
+      try {
+        statement.execute("use udf_write_guard");
+        statement.execute(
+            "create table t(device_id STRING TAG, attr1 STRING ATTRIBUTE, v INT64 FIELD)");
+        statement.execute(
+            "insert into t(time, device_id, attr1, v) values(1, 'd1', 'a', 1), (2, 'd2', 'b', 2)");
+        statement.execute(
+            "create function write_guard_udf as 'org.apache.iotdb.db.query.udf.example.relational.ContainNull'");
+
+        assertUdfRejected(
+            statement, "update t set attr1 = write_guard_udf(device_id) where device_id = 'd1'");
+        assertUdfRejected(
+            statement, "update t set attr1 = 'x' where write_guard_udf(device_id) = true");
+        assertUdfRejected(statement, "delete devices from t where write_guard_udf(device_id)");
+
+        try (ResultSet resultSet =
+            statement.executeQuery(
+                "select write_guard_udf(device_id) from t where device_id = 'd1'")) {
+          assertTrue(resultSet.next());
+        }
+
+        statement.execute("update t set attr1 = upper(device_id) where device_id = 'd2'");
+        try (ResultSet resultSet =
+            statement.executeQuery("select attr1 from t where device_id = 'd2'")) {
+          assertTrue(resultSet.next());
+          assertEquals("D2", resultSet.getString(1));
+        }
+      } finally {
+        statement.execute("drop function write_guard_udf");
+        statement.execute("drop database udf_write_guard");
+      }
+    }
+  }
+
+  private static void assertUdfRejected(final Statement statement, final String sql) {
+    try {
+      statement.execute(sql);
+      fail("Expected external UDF to be rejected in write statement: " + sql);
+    } catch (SQLException e) {
+      assertTrue(e.getMessage(), e.getMessage().contains("External user-defined function"));
+    }
+  }
 }
