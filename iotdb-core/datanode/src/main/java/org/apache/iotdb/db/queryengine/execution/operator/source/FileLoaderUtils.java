@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.execution.operator.source;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ChunkTypeInconsistentException;
 import org.apache.iotdb.db.exception.CorruptedTsFileException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
@@ -73,6 +72,12 @@ public class FileLoaderUtils {
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
+
+  /**
+   * Fraction of a table's field columns that a scan must select for it to use the batch
+   * device-metadata read instead of the per-column path.
+   */
+  private static final double DEVICE_METADATA_BATCH_SCAN_RATIO = 0.6;
 
   private FileLoaderUtils() {
     // util class
@@ -434,8 +439,7 @@ public class FileLoaderUtils {
   private static boolean shouldUseDeviceMetadataBatchScan(
       int selectedColumnCount, int totalFieldColumnCount) {
     return totalFieldColumnCount > 0
-        && (double) selectedColumnCount / totalFieldColumnCount
-            >= IoTDBDescriptor.getInstance().getConfig().getDeviceMetadataBatchScanRatio();
+        && (double) selectedColumnCount / totalFieldColumnCount >= DEVICE_METADATA_BATCH_SCAN_RATIO;
   }
 
   private static AbstractAlignedTimeSeriesMetadata loadAlignedTimeSeriesMetadataBatch(

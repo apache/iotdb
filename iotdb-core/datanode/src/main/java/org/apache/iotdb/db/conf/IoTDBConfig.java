@@ -853,12 +853,6 @@ public class IoTDBConfig implements DefaultEncodingProvider {
   /** time cost(ms) threshold for slow query. Unit: millisecond */
   private long slowQueryThreshold = 10000;
 
-  /**
-   * When a table scan queries at least this fraction of a table's field columns, deserialize all
-   * the device's TimeSeriesMetadata in a single batch read instead of column by column.
-   */
-  private double deviceMetadataBatchScanRatio = 0.8;
-
   /** time window threshold for record of history queries. Unit: minute */
   private int queryCostStatWindow = 0;
 
@@ -2966,14 +2960,6 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   public void setSlowQueryThreshold(long slowQueryThreshold) {
     this.slowQueryThreshold = slowQueryThreshold;
-  }
-
-  public double getDeviceMetadataBatchScanRatio() {
-    return deviceMetadataBatchScanRatio;
-  }
-
-  public void setDeviceMetadataBatchScanRatio(double deviceMetadataBatchScanRatio) {
-    this.deviceMetadataBatchScanRatio = deviceMetadataBatchScanRatio;
   }
 
   public int getQueryCostStatWindow() {
