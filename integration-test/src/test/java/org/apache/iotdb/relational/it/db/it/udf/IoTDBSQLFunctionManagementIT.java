@@ -370,7 +370,10 @@ public class IoTDBSQLFunctionManagementIT {
             statement, "update t set attr1 = write_guard_udf(device_id) where device_id = 'd1'");
         assertUdfRejected(
             statement, "update t set attr1 = 'x' where write_guard_udf(device_id) = true");
-        assertUdfRejected(statement, "delete devices from t where write_guard_udf(device_id)");
+
+        // DELETE DEVICE currently rejects function expressions before the UDF-specific check.
+        // Keep this assertion message-agnostic so future changes cannot allow UDFs here.
+        assertRejected(statement, "delete devices from t where write_guard_udf(device_id)");
 
         try (ResultSet resultSet =
             statement.executeQuery(
@@ -397,6 +400,15 @@ public class IoTDBSQLFunctionManagementIT {
       fail("Expected external UDF to be rejected in write statement: " + sql);
     } catch (SQLException e) {
       assertTrue(e.getMessage(), e.getMessage().contains("External user-defined function"));
+    }
+  }
+
+  private static void assertRejected(final Statement statement, final String sql) {
+    try {
+      statement.execute(sql);
+      fail("Expected statement to be rejected: " + sql);
+    } catch (SQLException ignored) {
+      // The current error may come from an earlier expression validation.
     }
   }
 }

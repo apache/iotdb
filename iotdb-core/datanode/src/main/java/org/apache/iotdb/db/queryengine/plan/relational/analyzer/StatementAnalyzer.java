@@ -1073,6 +1073,10 @@ public class StatementAnalyzer {
       if (Objects.nonNull(node.getTagFuzzyPredicate())) {
         expressions.add(node.getTagFuzzyPredicate());
       }
+      validateNoUdfInExpressions(expressions);
+    }
+
+    private void validateNoUdfInExpressions(final Iterable<? extends Expression> expressions) {
       for (final FunctionCall functionCall :
           ExpressionTreeUtils.extractExpressions(expressions, FunctionCall.class)) {
         final String functionName = functionCall.getName().getSuffix();
@@ -1197,6 +1201,8 @@ public class StatementAnalyzer {
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       DataNodeTreeViewSchemaUtils.checkTableInWrite(node.getDatabase(), table);
+      // DELETE DEVICE currently rejects function expressions before expression analysis. Keep the
+      // guard so future changes cannot silently allow external UDFs into this schema-write path.
       queryContext.setUdfForbidden(true);
       node.parseModEntries(table, node.getDatabase(), queryContext);
       analyzeTraverseDevice(node, context, node.getWhere().isPresent());
