@@ -332,6 +332,7 @@ public class WALNodeTest {
 
   @Test
   public void testDeleteOutdatedFiles() throws Exception {
+    List<WALFlushListener> walFlushListeners = new ArrayList<>();
     // write data to make the first WAL file non-empty
     IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     long memTableId = memTable.getMemTableId();
@@ -353,10 +354,12 @@ public class WALNodeTest {
     for (long time = 1; time <= 100; ++time) {
       InsertTabletNode insertTabletNode =
           getInsertTabletNode(devicePath + memTableId, new long[] {time});
-      walNode.log(
-          memTableId,
-          insertTabletNode,
-          Collections.singletonList(new int[] {0, insertTabletNode.getRowCount()}));
+      WALFlushListener walFlushListener =
+          walNode.log(
+              memTableId,
+              insertTabletNode,
+              Collections.singletonList(new int[] {0, insertTabletNode.getRowCount()}));
+      walFlushListeners.add(walFlushListener);
     }
     walNode.onMemTableFlushed(memTable);
     walNode.rollWALFile();
