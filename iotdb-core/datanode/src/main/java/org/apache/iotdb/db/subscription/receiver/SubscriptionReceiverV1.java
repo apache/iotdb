@@ -152,6 +152,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
 
+  private static final AtomicLong NODE_RETIREMENT_VERSION = new AtomicLong();
+
   private final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal = new ThreadLocal<>();
   private final ThreadLocal<PollTimer> pollTimerThreadLocal = new ThreadLocal<>();
   private volatile String authenticatedUsername;
@@ -167,6 +169,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private long consumerStateVersion;
   private boolean connectionExited;
   private boolean timeoutCleanupSuspended;
+  private long observedNodeRetirementVersion = NODE_RETIREMENT_VERSION.get();
 
   private static final String SQL_DIALECT_TABLE_VALUE = "table";
 
@@ -311,7 +314,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         }
       } finally {
         connectionExited = true;
-        if (timeoutCleanupSuspended || isNodeRetiring()) {
+        if (timeoutCleanupSuspended || hasNodeRetired()) {
           // Retiring this transport transfers timeout responsibility to the other DataNodes.
           // Discard only the local receiver state, including when removal has already rolled back.
           clearSharedConsumerState();
@@ -378,7 +381,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   @Override
   public void handleTimeout() {
     synchronized (this) {
-      timeoutCleanupSuspended |= isNodeRetiring();
+      timeoutCleanupSuspended |= hasNodeRetired();
       if (timeoutCleanupSuspended) {
         // The SDK retires this node's connection while the consumer remains active elsewhere.
         // Rollback alone does not restore that connection: wait for a new request before allowing
@@ -426,6 +429,15 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private static boolean isNodeRetiring() {
     final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
     return commonConfig.getNodeStatus() == NodeStatus.Removing || commonConfig.isStopping();
+  }
+
+  public static void handleNodeRetirement() {
+    // A removal and rollback can both occur between timeout checks, requests, and exit callbacks.
+    NODE_RETIREMENT_VERSION.incrementAndGet();
+  }
+
+  private boolean hasNodeRetired() {
+    return observedNodeRetirementVersion != NODE_RETIREMENT_VERSION.get() || isNodeRetiring();
   }
 
   @Override
@@ -1575,6 +1587,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private boolean beforeHandle(final short reqType) {
     synchronized (this) {
       // A request on a restored node starts a fresh local inactivity deadline.
+      observedNodeRetirementVersion = NODE_RETIREMENT_VERSION.get();
       timeoutCleanupSuspended = isNodeRetiring();
       connectionExited = false;
       final boolean isHandshake = PipeSubscribeRequestType.HANDSHAKE.getType() == reqType;

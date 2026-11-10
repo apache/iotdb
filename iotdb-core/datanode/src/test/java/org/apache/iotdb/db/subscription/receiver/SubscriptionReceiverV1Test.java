@@ -27,7 +27,10 @@ import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.protocol.thrift.impl.DataNodeInternalRPCServiceImpl;
+import org.apache.iotdb.db.service.DataNode.DataNodeContext;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
@@ -45,6 +48,7 @@ import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -163,6 +167,62 @@ public class SubscriptionReceiverV1Test {
   @Test
   public void testHandleExitRetiresTimeoutStateAfterRemovalRollback() throws Exception {
     assertExitRetiresTimeoutState(false, true);
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testRemovalRollbackRetiresConsumerWithoutTimeoutTick() throws Exception {
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    final NodeStatus originalStatus = commonConfig.getNodeStatus();
+    final String originalReason = commonConfig.getStatusReason();
+    final boolean originalStopping = commonConfig.isStopping();
+    final int originalDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    try {
+      // Coordinator requires a registered DataNode ID when the internal RPC service initializes.
+      IoTDBDescriptor.getInstance().getConfig().setDataNodeId(0);
+      final DataNodeInternalRPCServiceImpl service =
+          new DataNodeInternalRPCServiceImpl(Mockito.mock(DataNodeContext.class));
+      for (final boolean exitBeforeRemoval : new boolean[] {false, true}) {
+        commonConfig.setNodeStatus(NodeStatus.Running);
+        commonConfig.setStopping(false);
+        final AtomicLong closeAttemptCount = new AtomicLong();
+        final SubscriptionReceiverV1 receiver =
+            new SubscriptionReceiverV1() {
+              @Override
+              void closeConsumer(final ConsumerConfig consumerConfig) {
+                closeAttemptCount.incrementAndGet();
+              }
+            };
+        final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+        setField(receiver, "sharedConsumerConfig", consumerConfig);
+        ((ThreadLocal<ConsumerConfig>) getField(receiver, "consumerConfigThreadLocal"))
+            .set(consumerConfig);
+        final long timeoutMs = invokeCalculateConsumerInactivityTimeoutMs(receiver, consumerConfig);
+        setField(receiver, "lastActivityTimeMs", System.currentTimeMillis() - timeoutMs - 1L);
+        if (exitBeforeRemoval) {
+          receiver.handleExit();
+        }
+        // The entire Removing interval can fall between two scheduled timeout checks and between
+        // requests. A delayed transport-exit callback may only run after the removal rolls back.
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+            service.setSystemStatus(NodeStatus.Removing.getStatus()).getCode());
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+            service.setSystemStatus(NodeStatus.Running.getStatus()).getCode());
+        if (!exitBeforeRemoval) {
+          receiver.handleExit();
+        }
+        receiver.handleTimeout();
+
+        Assert.assertEquals(0L, closeAttemptCount.get());
+        Assert.assertFalse(receiver.hasActiveConsumer());
+      }
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setDataNodeId(originalDataNodeId);
+      commonConfig.setNodeStatusWithReason(originalStatus, originalReason);
+      commonConfig.setStopping(originalStopping);
+    }
   }
 
   @SuppressWarnings("unchecked")
