@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.i18n.UtilMessages;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
-import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaPage;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.RecordUtils;
@@ -118,8 +118,7 @@ public class SchemaPageTest {
       Assert.fail("Page write with no progress must fail");
     } catch (IOException e) {
       Assert.assertEquals(
-          DataNodeSchemaMessages.EXCEPTION_SCHEMA_PAGE_WRITE_MADE_NO_PROGRESS_E79C13A1,
-          e.getMessage());
+          UtilMessages.EXCEPTION_FILE_CHANNEL_WRITE_MADE_NO_PROGRESS_B0F24ACD, e.getMessage());
     }
     verify(channel, times(2)).write(any(ByteBuffer.class), anyLong());
     Assert.assertTrue(page.isDirtyPage());

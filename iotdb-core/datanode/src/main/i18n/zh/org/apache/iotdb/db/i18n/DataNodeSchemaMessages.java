@@ -289,11 +289,6 @@ public final class DataNodeSchemaMessages {
       "PBTree 文件 [{}] 已存在，将被覆盖。";
   public static final String SCHEMA_FILE_WRONG_VERSION =
       "SchemaFile 版本错误，请检查或升级。";
-  public static final String
-      EXCEPTION_SCHEMA_FILE_HEADER_WRITE_MADE_NO_PROGRESS_9AECE235 =
-          "SchemaFile 头部写入没有进展";
-  public static final String EXCEPTION_SCHEMA_PAGE_WRITE_MADE_NO_PROGRESS_E79C13A1 =
-      "SchemaPage 写入没有进展";
   public static final String NODE_NO_CHILD_IN_PBTREE =
       "节点 [%s] 在 pbtree 文件中没有子节点。";
   public static final String SCHEMA_FILE_INSPECTED = "SchemaFile[%s] 已被检查。";

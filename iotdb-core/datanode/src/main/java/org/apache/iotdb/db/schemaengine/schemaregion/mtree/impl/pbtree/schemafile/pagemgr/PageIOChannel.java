@@ -136,7 +136,8 @@ public class PageIOChannel {
               StandardOpenOption.CREATE,
               StandardOpenOption.WRITE,
               StandardOpenOption.APPEND)) {
-        logChannel.write(ByteBuffer.wrap(new byte[] {SchemaFileConfig.SF_COMMIT_MARK}));
+        IOUtils.writeFully(
+            logChannel, ByteBuffer.wrap(new byte[] {SchemaFileConfig.SF_COMMIT_MARK}));
         return logChannel.size();
       }
     }

@@ -433,15 +433,7 @@ public class SchemaFile implements ISchemaFile {
     ReadWriteIOUtils.write(SchemaFileConfig.SCHEMA_FILE_VERSION, headerContent);
 
     headerContent.flip();
-    long position = 0;
-    while (headerContent.hasRemaining()) {
-      int written = channel.write(headerContent, position);
-      if (written <= 0) {
-        throw new IOException(
-            DataNodeSchemaMessages.EXCEPTION_SCHEMA_FILE_HEADER_WRITE_MADE_NO_PROGRESS_9AECE235);
-      }
-      position += written;
-    }
+    IOUtils.writeFully(channel, headerContent, 0);
   }
 
   private void closeAfterInitializationFailure(Exception failure) {
