@@ -597,6 +597,8 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_LOAD_SNAPSHOT_FROM_BYTEBUFFER =
       "Failed to load snapshot from byteBuffer {}.";
   public static final String FAILED_TO_START_SOURCES = "failed to start sources.";
+  public static final String EXCEPTION_HISTORY_WAIT_FOR_REPLICATION_TIMEOUT_MS_MUST_BE_GREATER_THAN_0_4A4E80CB =
+      "history.wait-for-replication.timeout-ms must be greater than 0.";
   public static final String HEARTBEAT_EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE =
       "Heartbeat Event {} can not be supplied because the reference count can not be increased";
   public static final String EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE_DATA_IS_LOST =
