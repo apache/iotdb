@@ -112,7 +112,7 @@ public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer 
     while (iterator.hasNext()) {
       try {
         Record input = iterator.next();
-        if (selection[i++]) {
+        if (!selection[i++]) {
           builder.appendNull();
           continue;
         }
@@ -129,6 +129,14 @@ public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer 
             e);
       }
     }
+  }
+
+  @Override
+  public boolean canEvaluateWithSelection() {
+    // User code has no purity contract: it may keep state across rows, so a masked evaluation
+    // cannot be assumed equivalent to a full one. This is a conservative default for future
+    // consumers; schema UPDATE does not currently execute scalar UDFs.
+    return false;
   }
 
   @Override

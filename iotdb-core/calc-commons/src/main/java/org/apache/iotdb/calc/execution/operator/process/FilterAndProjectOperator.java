@@ -67,6 +67,10 @@ public class FilterAndProjectOperator implements ProcessOperator {
 
   private final List<ColumnTransformer> projectOutputTransformerList;
 
+  private final ColumnTransformer[] filterCacheTransformers;
+
+  private final ColumnTransformer[] projectCacheTransformers;
+
   private final TsBlockBuilder filterTsBlockBuilder;
 
   private final boolean hasNonMappableUDF;
@@ -100,6 +104,13 @@ public class FilterAndProjectOperator implements ProcessOperator {
     this.hasNonMappableUDF = hasNonMappableUDF;
     this.filterTsBlockBuilder = new TsBlockBuilder(8, filterOutputDataTypes);
     this.hasFilter = hasFilter;
+    List<ColumnTransformer> filterRoots = new ArrayList<>(commonTransformerList);
+    if (filterOutputTransformer != null) {
+      filterRoots.add(filterOutputTransformer);
+    }
+    this.filterCacheTransformers = ColumnTransformer.collectTransformers(filterRoots);
+    this.projectCacheTransformers =
+        ColumnTransformer.collectTransformers(projectOutputTransformerList);
   }
 
   public FilterAndProjectOperator(
@@ -111,6 +122,8 @@ public class FilterAndProjectOperator implements ProcessOperator {
     this.projectLeafColumnTransformerList =
         filterAndProjectOperator.projectLeafColumnTransformerList;
     this.projectOutputTransformerList = filterAndProjectOperator.projectOutputTransformerList;
+    this.filterCacheTransformers = filterAndProjectOperator.filterCacheTransformers;
+    this.projectCacheTransformers = filterAndProjectOperator.projectCacheTransformers;
     this.hasNonMappableUDF = filterAndProjectOperator.hasNonMappableUDF;
     this.hasFilter = filterAndProjectOperator.hasFilter;
     this.filterTsBlockBuilder = filterAndProjectOperator.filterTsBlockBuilder;
@@ -152,6 +165,12 @@ public class FilterAndProjectOperator implements ProcessOperator {
   private TsBlock getFilterTsBlock(TsBlock input) {
     final Column originTimeColumn = input.getTimeColumn();
     final int positionCount = originTimeColumn.getPositionCount();
+    // Short-circuit evaluation can reset cache reference counts when a shared expression is
+    // recomputed. Invalidate the whole DAG before feeding a new block, including intermediate
+    // expressions whose caches may still have unconsumed references from the previous block.
+    for (ColumnTransformer columnTransformer : filterCacheTransformers) {
+      columnTransformer.clearCacheForNewInput();
+    }
     // feed Filter ColumnTransformer, including TimeStampColumnTransformer and constant
     for (LeafColumnTransformer leafColumnTransformer : filterLeafColumnTransformerList) {
       leafColumnTransformer.initFromTsBlock(input);
@@ -174,8 +193,8 @@ public class FilterAndProjectOperator implements ProcessOperator {
     if (!hasNonMappableUDF) {
       // get result of calculated common sub expressions
       for (ColumnTransformer columnTransformer : commonTransformerList) {
-        // CASE WHEN clause would clear all its cache
-        // evaluate again to acquire cache
+        // CASE evaluation can clear a common expression after the filter used it. Recompute it
+        // before materializing the column for projection within this same input block.
         columnTransformer.tryEvaluate();
         resultColumns.add(columnTransformer.getColumn());
       }
@@ -265,6 +284,11 @@ public class FilterAndProjectOperator implements ProcessOperator {
   private TsBlock getTransformedTsBlock(TsBlock input) {
     final Column originTimeColumn = input.getTimeColumn();
     final int positionCount = originTimeColumn.getPositionCount();
+    // The flat array was deduplicated at construction; clear each node before evaluating any
+    // output.
+    for (ColumnTransformer columnTransformer : projectCacheTransformers) {
+      columnTransformer.clearCacheForNewInput();
+    }
     // feed pre calculated data
     for (LeafColumnTransformer leafColumnTransformer : projectLeafColumnTransformerList) {
       leafColumnTransformer.initFromTsBlock(input);
@@ -441,6 +465,8 @@ public class FilterAndProjectOperator implements ProcessOperator {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(inputOperator)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + RamUsageEstimator.shallowSizeOf(filterCacheTransformers)
+        + RamUsageEstimator.shallowSizeOf(projectCacheTransformers)
         + filterTsBlockBuilder.getRetainedSizeInBytes();
   }
 }

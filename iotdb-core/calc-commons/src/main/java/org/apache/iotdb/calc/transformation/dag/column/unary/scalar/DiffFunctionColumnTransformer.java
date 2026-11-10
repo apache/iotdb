@@ -39,6 +39,10 @@ public class DiffFunctionColumnTransformer extends UnaryColumnTransformer {
   // indicate whether lastValue is null
   private boolean lastValueIsNull = true;
 
+  // Re-evaluation in the same block must start from the state before this input.
+  private double lastValueBeforeCurrentInput;
+  private boolean lastValueIsNullBeforeCurrentInput = true;
+
   public DiffFunctionColumnTransformer(
       Type returnType, ColumnTransformer childColumnTransformer, boolean ignoreNull) {
     super(returnType, childColumnTransformer);
@@ -59,7 +63,15 @@ public class DiffFunctionColumnTransformer extends UnaryColumnTransformer {
   }
 
   @Override
+  protected void resetForNewInput() {
+    lastValueBeforeCurrentInput = lastValue;
+    lastValueIsNullBeforeCurrentInput = lastValueIsNull;
+  }
+
+  @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
+    lastValue = lastValueBeforeCurrentInput;
+    lastValueIsNull = lastValueIsNullBeforeCurrentInput;
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (column.isNull(i)) {
         columnBuilder.appendNull(); // currValue is null, append null
