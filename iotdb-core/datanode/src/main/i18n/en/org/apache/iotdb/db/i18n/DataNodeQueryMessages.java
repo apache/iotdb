@@ -901,6 +901,9 @@ public final class DataNodeQueryMessages {
   public static final String
       EXCEPTION_CANNOT_REFERENCE_ARG_COLUMN_ARG_IN_AN_UPDATE_VALUE_UPDATE_VALUES_CAN_ONLY_REFERENCE_ATTRIBUTE_OR_TAG_COLUMNS_C01BE71A =
           "Cannot reference %s column '%s' in an UPDATE value. UPDATE values can only reference ATTRIBUTE or TAG columns.";
+  public static final String
+      EXCEPTION_EXTERNAL_USER_DEFINED_FUNCTION_ARG_IS_NOT_SUPPORTED_IN_THIS_WRITE_STATEMENT_8329DC8E =
+          "External user-defined function %s is not supported in this write statement";
   public static final String DROP_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
       "Drop Function statement is not supported yet.";
   public static final String SHOW_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =

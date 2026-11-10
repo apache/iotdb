@@ -881,6 +881,9 @@ public final class DataNodeQueryMessages {
   public static final String
       EXCEPTION_CANNOT_REFERENCE_ARG_COLUMN_ARG_IN_AN_UPDATE_VALUE_UPDATE_VALUES_CAN_ONLY_REFERENCE_ATTRIBUTE_OR_TAG_COLUMNS_C01BE71A =
           "无法在 UPDATE 值中引用 %s 列 '%s'。UPDATE 值只能引用 ATTRIBUTE 或 TAG 列。";
+  public static final String
+      EXCEPTION_EXTERNAL_USER_DEFINED_FUNCTION_ARG_IS_NOT_SUPPORTED_IN_THIS_WRITE_STATEMENT_8329DC8E =
+          "外部用户自定义函数 %s 不支持在当前写语句中使用";
   public static final String DROP_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
       "暂不支持 Drop Function 语句。";
   public static final String SHOW_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
