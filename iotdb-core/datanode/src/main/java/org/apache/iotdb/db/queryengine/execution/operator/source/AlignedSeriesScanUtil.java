@@ -101,7 +101,8 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
         scanOptions.getGlobalTimeFilter(),
         isSeq,
         ignoreAllNullRows,
-        null);
+        null,
+        scanOptions.getTotalFieldColumnCount());
   }
 
   @Override

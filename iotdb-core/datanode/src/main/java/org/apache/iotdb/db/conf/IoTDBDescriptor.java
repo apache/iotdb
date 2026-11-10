@@ -519,6 +519,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "query_timeout_threshold", Long.toString(conf.getQueryTimeoutThreshold()))));
 
+    conf.setDeviceMetadataBatchScanRatio(
+        Double.parseDouble(
+            properties.getProperty(
+                "device_metadata_batch_scan_ratio",
+                Double.toString(conf.getDeviceMetadataBatchScanRatio()))));
+
     conf.setCopyToAllowedExportDirs(
         Arrays.stream(
                 properties
