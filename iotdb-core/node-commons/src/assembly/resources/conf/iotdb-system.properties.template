@@ -1269,6 +1269,7 @@ slow_query_threshold=10000
 
 # When a table scan queries at least this fraction of a table's field columns, deserialize all the
 # device's TimeSeriesMetadata in a single batch read instead of column by column.
+# Value must be in (0, 1]; a non-positive value falls back to the default.
 # effectiveMode: restart
 # Datatype: double
 device_metadata_batch_scan_ratio=0.8
