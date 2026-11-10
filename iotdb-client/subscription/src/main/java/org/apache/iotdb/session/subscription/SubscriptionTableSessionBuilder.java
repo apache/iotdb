@@ -63,14 +63,48 @@ public class SubscriptionTableSessionBuilder extends AbstractSessionBuilder {
     return this;
   }
 
+  public SubscriptionTableSessionBuilder useSSL(final boolean useSSL) {
+    super.useSSL = useSSL;
+    return this;
+  }
+
+  public SubscriptionTableSessionBuilder trustStore(final String trustStore) {
+    super.trustStore = trustStore;
+    return this;
+  }
+
+  public SubscriptionTableSessionBuilder trustStorePwd(final String trustStorePwd) {
+    super.trustStorePwd = trustStorePwd;
+    return this;
+  }
+
+  public SubscriptionTableSessionBuilder keyStore(final String keyStore) {
+    super.keyStore = keyStore;
+    return this;
+  }
+
+  public SubscriptionTableSessionBuilder keyStorePwd(final String keyStorePwd) {
+    super.keyStorePwd = keyStorePwd;
+    return this;
+  }
+
+  public SubscriptionTableSessionBuilder sslProtocol(final String sslProtocol) {
+    super.sslProtocol = sslProtocol;
+    return this;
+  }
+
   public SubscriptionTableSessionBuilder connectionTimeoutInMs(final int connectionTimeoutInMs) {
     super.connectionTimeoutInMs = connectionTimeoutInMs;
     return this;
   }
 
   public ISubscriptionTableSession build() throws IoTDBConnectionException {
-    final ISubscriptionTableSession session = new SubscriptionTableSession(this);
+    final ISubscriptionTableSession session = createSubscriptionSession();
     session.open();
     return session;
+  }
+
+  protected ISubscriptionTableSession createSubscriptionSession() {
+    return new SubscriptionTableSession(this);
   }
 }

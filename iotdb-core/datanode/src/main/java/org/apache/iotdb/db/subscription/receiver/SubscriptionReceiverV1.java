@@ -38,6 +38,8 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
@@ -135,6 +137,15 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
 
+  private static final TPipeSubscribeResp SUBSCRIPTION_CONNECTION_REPLACED_RESP =
+      new TPipeSubscribeResp(
+          RpcUtils.getStatus(
+              TSStatusCode.SUBSCRIPTION_CONNECTION_REPLACED,
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_CONNECTION_WAS_REPLACED_BY_A_RECONNECTION_FROM_THE_SAME_CONSUMER_INSTANCE_RETRY_ON_THE_CURRENT_CONNECTION_687C78B4),
+          PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+          PipeSubscribeResponseType.ACK.getType());
+
   private static final TPipeSubscribeResp SUBSCRIPTION_SLICE_ACK_RESP =
       new TPipeSubscribeResp(
           new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
@@ -147,6 +158,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private volatile ConsumerConfig sharedConsumerConfig;
   private volatile boolean consumerInvalidated;
   private volatile boolean consumerFenced;
+  private volatile boolean connectionReplaced;
   private volatile long lastActivityTimeMs = System.currentTimeMillis();
   private final AtomicLong inFlightRequestCount = new AtomicLong(0);
   private final int maxReassembledRequestBodySize = getMaxReassembledRequestBodySize();
@@ -162,10 +174,12 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     if (PipeSubscribeRequestType.SLICE.getType() != reqType) {
       sliceReqHandler.clear();
     }
-    final boolean isFencedRequest = beforeHandle(reqType);
+    final boolean isObsoleteRequest = beforeHandle(reqType);
     try {
-      if (isFencedRequest) {
-        return SUBSCRIPTION_CONSUMER_FENCED_RESP;
+      if (isObsoleteRequest) {
+        return consumerFenced
+            ? SUBSCRIPTION_CONSUMER_FENCED_RESP
+            : SUBSCRIPTION_CONNECTION_REPLACED_RESP;
       }
       if (PipeSubscribeRequestType.isValidatedRequestType(reqType)) {
         switch (PipeSubscribeRequestType.valueOf(reqType)) {
@@ -248,6 +262,15 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   public void invalidateConsumer() {
     synchronized (this) {
       consumerFenced = true;
+      sliceReqHandler.clear();
+      clearSharedConsumerState();
+    }
+  }
+
+  @Override
+  public void invalidateConnection() {
+    synchronized (this) {
+      connectionReplaced = true;
       sliceReqHandler.clear();
       clearSharedConsumerState();
     }
@@ -417,6 +440,16 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     // set consumer config thread local
     final ConsumerConfig existedConsumerConfig = consumerConfigThreadLocal.get();
     final ConsumerConfig consumerConfig = req.getConsumerConfig();
+    final IClientSession currentSession = SessionManager.getInstance().getCurrSession();
+    if (currentSession != null && currentSession.isInternalRpcSession()) {
+      if (currentSession.getUsername() != null) {
+        consumerConfig
+            .getAttribute()
+            .put(ConsumerConstant.USERNAME_KEY, currentSession.getUsername());
+      }
+      consumerConfig.getAttribute().remove(ConsumerConstant.PASSWORD_KEY);
+      consumerConfig.getAttribute().remove(ConsumerConstant.ENCRYPTED_PASSWORD_KEY);
+    }
 
     String consumerId = consumerConfig.getConsumerId();
     if (Objects.isNull(consumerId)) {
@@ -543,6 +576,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     final Map<Integer, TEndPoint> endPoints = new HashMap<>();
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final IClientSession currentSession = SessionManager.getInstance().getCurrSession();
+      final boolean internalRpcSession =
+          Objects.nonNull(currentSession) && currentSession.isInternalRpcSession();
       final TShowDataNodesResp resp = configNodeClient.showDataNodes();
       // refer to org.apache.iotdb.session.NodesSupplier.updateDataNodeList
 
@@ -551,10 +587,25 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         if (Objects.equals(NodeStatus.Removing.getStatus(), dataNodeInfo.getStatus())) {
           continue;
         }
-        final String ip = dataNodeInfo.getRpcAddresss();
-        final int port = dataNodeInfo.getRpcPort();
-        if (ip != null && port != 0) {
-          endPoints.put(dataNodeInfo.getDataNodeId(), new TEndPoint(ip, port));
+        if (internalRpcSession) {
+          final TEndPoint internalRpcEndPoint = dataNodeInfo.getInternalRpcEndPoint();
+          if (Objects.isNull(internalRpcEndPoint)
+              || Objects.isNull(internalRpcEndPoint.getIp())
+              || internalRpcEndPoint.getIp().isEmpty()
+              || internalRpcEndPoint.getPort() <= 0) {
+            throw new SubscriptionException(
+                String.format(
+                    DataNodePipeMessages
+                        .EXCEPTION_INTERNAL_SUBSCRIPTION_ENDPOINT_DISCOVERY_FAILED_BECAUSE_DATANODE_ARG_DID_NOT_REPORT_AN_INTERNAL_RPC_ENDPOINT_45E4D232,
+                    dataNodeInfo.getDataNodeId()));
+          }
+          endPoints.put(dataNodeInfo.getDataNodeId(), internalRpcEndPoint);
+        } else {
+          final String ip = dataNodeInfo.getRpcAddresss();
+          final int port = dataNodeInfo.getRpcPort();
+          if (ip != null && port != 0) {
+            endPoints.put(dataNodeInfo.getDataNodeId(), new TEndPoint(ip, port));
+          }
         }
       }
     } catch (final ClientManagerException | TException e) {
@@ -1529,20 +1580,19 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private boolean beforeHandle(final short reqType) {
     synchronized (this) {
       final boolean isHandshake = PipeSubscribeRequestType.HANDSHAKE.getType() == reqType;
-      // A receiver fenced by a newer connection is terminal. In particular, do not allow the old
-      // connection to handshake again and reclaim the consumer identity. A normal disconnected
-      // receiver remains recoverable through the existing consumerInvalidated handshake path.
-      final boolean isFencedRequest = consumerFenced;
+      // Replaced connections are terminal, even when the consumer instance itself is still valid.
+      // An old connection must not handshake again and replace the current connection in turn.
+      final boolean isObsoleteRequest = consumerFenced || connectionReplaced;
       if (consumerInvalidated) {
         consumerConfigThreadLocal.remove();
         pollTimerThreadLocal.remove();
-        if (isHandshake && !consumerFenced) {
+        if (isHandshake && !isObsoleteRequest) {
           consumerInvalidated = false;
         }
       }
       inFlightRequestCount.incrementAndGet();
       lastActivityTimeMs = System.currentTimeMillis();
-      return isFencedRequest;
+      return isObsoleteRequest;
     }
   }
 

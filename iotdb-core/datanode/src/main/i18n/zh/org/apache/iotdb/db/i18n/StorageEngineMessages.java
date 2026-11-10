@@ -616,7 +616,7 @@ public final class StorageEngineMessages {
   public static final String CANNOT_SNAPSHOT_UNCLOSED_TSFILE =
       "无法创建快照，因为 TsFile {} 尚未关闭";
   public static final String HARD_LINK_TARGET_DIR_NOT_EXIST = "硬链接目标目录 {} 不存在";
-  public static final String HARD_LINK_SOURCE_FILE_NOT_EXIST = "硬链接源文件 {} 不存在，该文件将被忽略。";
+  public static final String HARD_LINK_SOURCE_FILE_NOT_EXIST = "硬链接源文件 {} 不存在。";
   public static final String COPY_TARGET_DIR_NOT_EXIST = "复制目标目录 {} 不存在";
   public static final String COPY_SOURCE_FILE_NOT_EXIST = "复制源文件 {} 不存在";
   public static final String CANNOT_CREATE_DIRECTORY = "无法创建目录: ";

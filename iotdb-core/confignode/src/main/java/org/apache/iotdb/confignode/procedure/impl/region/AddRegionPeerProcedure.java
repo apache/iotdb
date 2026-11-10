@@ -55,6 +55,8 @@ import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
 
 public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPeerState> {
   private static final Logger LOGGER = LoggerFactory.getLogger(AddRegionPeerProcedure.class);
+  private static final int MAX_RESET_PEER_LIST_RETRY = 3;
+  private static final long RESET_PEER_LIST_RETRY_INTERVAL_MS = 5_000;
 
   private TDataNodeLocation coordinator;
 
@@ -252,6 +254,21 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
 
     Map<Integer, TSStatus> resultMap =
         handler.resetPeerList(regionId, correctDataNodeLocations, relatedDataNodeLocationMap);
+    for (int retry = 0; retry < MAX_RESET_PEER_LIST_RETRY; retry++) {
+      if (resultMap.keySet().containsAll(relatedDataNodeLocationMap.keySet())
+          && resultMap.values().stream()
+              .allMatch(status -> status.getCode() == SUCCESS_STATUS.getStatusCode())) {
+        break;
+      }
+      try {
+        Thread.sleep(RESET_PEER_LIST_RETRY_INTERVAL_MS);
+      } catch (InterruptedException interruptedException) {
+        Thread.currentThread().interrupt();
+        break;
+      }
+      resultMap =
+          handler.resetPeerList(regionId, correctDataNodeLocations, relatedDataNodeLocationMap);
+    }
 
     resultMap.forEach(
         (dataNodeId, resetResult) -> {

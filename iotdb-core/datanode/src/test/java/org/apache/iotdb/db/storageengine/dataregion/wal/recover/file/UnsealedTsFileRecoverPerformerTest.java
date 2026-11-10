@@ -145,7 +145,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     // vsg processor is used to test IdTable, don't test IdTable here
     try (UnsealedTsFileRecoverPerformer recoverPerformer =
         new UnsealedTsFileRecoverPerformer(
-            tsFileResource, true, performer -> assertFalse(performer.canWrite()))) {
+            tsFileResource, true, false, performer -> assertFalse(performer.canWrite()))) {
       recoverPerformer.startRecovery();
       assertTrue(recoverPerformer.hasCrashed());
       assertTrue(recoverPerformer.canWrite());
@@ -201,9 +201,11 @@ public class UnsealedTsFileRecoverPerformerTest {
     WALEntry walEntry = new WALInfoEntry(fakeMemTableId, insertTabletNode);
     // recover
     tsFileResource = new TsFileResource(file);
+    // the owner of this TsFile is a table-model DataRegion, so pass its model explicitly instead of
+    // letting the performer derive the model from the database name
     try (UnsealedTsFileRecoverPerformer recoverPerformer =
         new UnsealedTsFileRecoverPerformer(
-            tsFileResource, true, performer -> assertFalse(performer.canWrite()))) {
+            tsFileResource, true, true, performer -> assertFalse(performer.canWrite()))) {
       recoverPerformer.startRecovery();
       assertTrue(recoverPerformer.hasCrashed());
       assertTrue(recoverPerformer.canWrite());
@@ -240,7 +242,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     // vsg processor is used to test IdTable, don't test IdTable here
     try (UnsealedTsFileRecoverPerformer recoverPerformer =
         new UnsealedTsFileRecoverPerformer(
-            tsFileResource, true, performer -> assertFalse(performer.canWrite()))) {
+            tsFileResource, true, false, performer -> assertFalse(performer.canWrite()))) {
       recoverPerformer.startRecovery();
       assertTrue(recoverPerformer.hasCrashed());
       assertTrue(recoverPerformer.canWrite());
@@ -367,7 +369,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     // vsg processor is used to test IdTable, don't test IdTable here
     try (UnsealedTsFileRecoverPerformer recoverPerformer =
         new UnsealedTsFileRecoverPerformer(
-            tsFileResource, true, performer -> assertFalse(performer.canWrite()))) {
+            tsFileResource, true, false, performer -> assertFalse(performer.canWrite()))) {
       recoverPerformer.startRecovery();
       assertTrue(recoverPerformer.hasCrashed());
       assertTrue(recoverPerformer.canWrite());
@@ -431,7 +433,8 @@ public class UnsealedTsFileRecoverPerformerTest {
     WALEntry normalWalEntry = new WALInfoEntry(fakeMemTableId++, insertRowNode2);
 
     try (UnsealedTsFileRecoverPerformer performer =
-        new UnsealedTsFileRecoverPerformer(tsFileResource, true, p -> assertFalse(p.canWrite()))) {
+        new UnsealedTsFileRecoverPerformer(
+            tsFileResource, true, false, p -> assertFalse(p.canWrite()))) {
       performer.startRecovery();
       performer.redoLog(duplicateMemTableSnapshotWalEntry);
       performer.redoLog(duplicateWalEntry);

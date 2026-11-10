@@ -295,11 +295,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       splitInfo.replicaSets = replicaSets;
       // collect redirectInfo
       analysis.addEndPointToRedirectNodeList(
-          replicaSets
-              .get(replicaSets.size() - 1)
-              .getDataNodeLocations()
-              .get(0)
-              .getClientRpcEndPoint());
+          replicaSets.get(replicaSets.size() - 1).getDataNodeLocations().get(0));
       for (int i = 0; i < replicaSets.size(); i++) {
         List<Integer> subRanges =
             splitMap.computeIfAbsent(replicaSets.get(i), x -> new ArrayList<>());

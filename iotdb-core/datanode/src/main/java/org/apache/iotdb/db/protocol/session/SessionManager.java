@@ -226,6 +226,62 @@ public class SessionManager implements SessionManagerMBean {
     return openSessionResp;
   }
 
+  /**
+   * Opens an internal RPC session for trusted node-to-node callers.
+   *
+   * <p>This path is reachable only through the multiplexed client RPC service on the DataNode
+   * internal endpoint, which belongs to the trusted cluster/inter-node surface described in {@code
+   * THREAT_MODEL.md}. It is not a user login: it resolves an existing user identity for
+   * authorization but skips credentials and account login policies. Operation-level authorization,
+   * quota, and query-ownership checks still apply. No login audit record is emitted because no
+   * login is performed.
+   */
+  public BasicOpenSessionResp loginInternal(
+      final IClientSession session,
+      final String username,
+      final String zoneId,
+      final TSProtocolVersion tsProtocolVersion,
+      final IoTDBConstant.ClientVersion clientVersion,
+      final SqlDialect sqlDialect) {
+    final BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
+    final long userId = AuthorityChecker.getUserId(username).orElse(-1L);
+    if (userId == -1) {
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.USER_NOT_EXIST,
+              String.format(
+                  DataNodeMiscMessages.MISC_EXCEPTION_USER_S_DOES_NOT_EXIST_0CE725D8, username));
+      openSessionResp.sessionId(-1).setCode(status.getCode()).setMessage(status.getMessage());
+      return openSessionResp;
+    }
+
+    if (!tsProtocolVersion.equals(CURRENT_RPC_VERSION)) {
+      openSessionResp
+          .sessionId(-1)
+          .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode())
+          .setMessage(
+              DataNodeMiscMessages.VERSION_INCOMPATIBLE_PLEASE_UPGRADE_TO + IoTDBConstant.VERSION);
+      return openSessionResp;
+    }
+
+    session.setInternalRpcSession(true);
+    session.setSqlDialect(sqlDialect);
+    supplySession(session, userId, username, ZoneId.of(zoneId), clientVersion);
+    final String logInMessage = DataNodeMiscMessages.EXCEPTION_LOGIN_SUCCESSFULLY_1C2EF670;
+    openSessionResp
+        .sessionId(session.getId())
+        .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        .setMessage(logInMessage);
+    LOGGER.info(
+        DataNodeMiscMessages.LOGIN_STATUS,
+        IoTDBConstant.GLOBAL_DB_NAME,
+        openSessionResp.getMessage(),
+        username,
+        session);
+    updateIdleTime();
+    return openSessionResp;
+  }
+
   public boolean closeSession(IClientSession session, LongConsumer releaseByQueryId) {
     return closeSession(session, releaseByQueryId, true);
   }
@@ -510,56 +566,62 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   public SessionInfo getSessionInfo(IClientSession session) {
-    return new SessionInfo(
-        session.getId(),
-        new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()),
-        session.getZoneId(),
-        session.getClientVersion(),
-        session.getDatabaseName(),
-        session.getSqlDialect(),
-        session.isEnableAutoCreateSchema());
+    final SessionInfo sessionInfo =
+        new SessionInfo(
+            session.getId(),
+            new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()),
+            session.getZoneId(),
+            session.getClientVersion(),
+            session.getDatabaseName(),
+            session.getSqlDialect(),
+            session.isEnableAutoCreateSchema());
+    sessionInfo.setInternalRpcSession(session.isInternalRpcSession());
+    return sessionInfo;
   }
 
   // Sometimes we need to switch from table model to tree model,
   // e.g., when loading a tree model TsFile under table model dialect.
   public SessionInfo copySessionInfoForTreeModel(final SessionInfo sessionInfo) {
-    return new SessionInfo(
-        sessionInfo.getSessionId(),
-        sessionInfo.getUserEntity(),
-        ZoneId.systemDefault(),
-        sessionInfo.getVersion(),
-        sessionInfo.getDatabaseName().orElse(null),
-        SqlDialect.TREE);
+    return new SessionInfo(sessionInfo, ZoneId.systemDefault(), SqlDialect.TREE);
   }
 
   public SessionInfo getSessionInfoOfTreeModel(IClientSession session) {
-    return new SessionInfo(
-        session.getId(),
-        new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()),
-        ZoneId.systemDefault(),
-        session.getClientVersion(),
-        session.getDatabaseName(),
-        SqlDialect.TREE);
+    final SessionInfo sessionInfo =
+        new SessionInfo(
+            session.getId(),
+            new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()),
+            ZoneId.systemDefault(),
+            session.getClientVersion(),
+            session.getDatabaseName(),
+            SqlDialect.TREE);
+    sessionInfo.setInternalRpcSession(session.isInternalRpcSession());
+    return sessionInfo;
   }
 
   public SessionInfo getSessionInfoOfTableModel(IClientSession session) {
-    return new SessionInfo(
-        session.getId(),
-        new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()),
-        ZoneId.systemDefault(),
-        session.getClientVersion(),
-        session.getDatabaseName(),
-        SqlDialect.TABLE);
+    final SessionInfo sessionInfo =
+        new SessionInfo(
+            session.getId(),
+            new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()),
+            ZoneId.systemDefault(),
+            session.getClientVersion(),
+            session.getDatabaseName(),
+            SqlDialect.TABLE);
+    sessionInfo.setInternalRpcSession(session.isInternalRpcSession());
+    return sessionInfo;
   }
 
   public SessionInfo getSessionInfoOfPipeReceiver(IClientSession session, String databaseName) {
-    return new SessionInfo(
-        session.getId(),
-        new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()),
-        ZoneId.systemDefault(),
-        session.getClientVersion(),
-        databaseName,
-        SqlDialect.TABLE);
+    final SessionInfo sessionInfo =
+        new SessionInfo(
+            session.getId(),
+            new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()),
+            ZoneId.systemDefault(),
+            session.getClientVersion(),
+            databaseName,
+            SqlDialect.TABLE);
+    sessionInfo.setInternalRpcSession(session.isInternalRpcSession());
+    return sessionInfo;
   }
 
   @Override

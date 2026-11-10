@@ -25,12 +25,15 @@ import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.commons.schema.table.TsFileTableSchemaUtil;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingDatabaseException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
@@ -97,9 +100,14 @@ public class LoadTsFileTableSchemaCache {
   private String database;
   private boolean needToCreateDatabase;
   private Map<String, org.apache.tsfile.file.metadata.TableSchema> tableSchemaMap;
+
+  /** Tables whose schema has already been created and verified for the file being analyzed. */
+  private final Set<String> verifiedTables = new HashSet<>();
+
   private final Metadata metadata;
   private final MPPQueryContext context;
   private final boolean shouldVerifyDataType;
+  private final boolean allowAutoCreateSchema;
 
   private Map<String, Set<IDeviceID>> currentBatchTable2Devices;
 
@@ -123,12 +131,28 @@ public class LoadTsFileTableSchemaCache {
       final boolean needToCreateDatabase,
       final boolean shouldVerifyDataType)
       throws LoadRuntimeOutOfMemoryException {
+    this(metadata, context, needToCreateDatabase, shouldVerifyDataType, true);
+  }
+
+  public LoadTsFileTableSchemaCache(
+      final Metadata metadata,
+      final MPPQueryContext context,
+      final boolean needToCreateDatabase,
+      final boolean shouldVerifyDataType,
+      final boolean allowAutoCreateSchema)
+      throws LoadRuntimeOutOfMemoryException {
     this.block =
         LoadTsFileMemoryManager.getInstance()
             .allocateMemoryBlock(ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES);
     this.metadata = metadata;
     this.context = context;
     this.shouldVerifyDataType = shouldVerifyDataType;
+    this.allowAutoCreateSchema =
+        allowAutoCreateSchema
+            && IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
+            && (context == null
+                || context.getSession() == null
+                || context.getSession().isEnableAutoCreateSchema());
     this.currentBatchTable2Devices = new HashMap<>();
     this.currentModifications = PatternTreeMapFactory.getModsPatternTreeMap();
     this.needToCreateDatabase = needToCreateDatabase;
@@ -141,6 +165,7 @@ public class LoadTsFileTableSchemaCache {
   public void setTableSchemaMap(
       final Map<String, org.apache.tsfile.file.metadata.TableSchema> tableSchemaMap) {
     this.tableSchemaMap = tableSchemaMap;
+    this.verifiedTables.clear();
   }
 
   public void autoCreateAndVerify(final IDeviceID device) throws LoadAnalyzeException {
@@ -296,9 +321,44 @@ public class LoadTsFileTableSchemaCache {
 
   public void createTableAndDatabaseIfNecessary(final String tableName)
       throws LoadAnalyzeException {
-    final org.apache.tsfile.file.metadata.TableSchema schema = tableSchemaMap.remove(tableName);
-    if (Objects.isNull(schema)) {
+    final Map<String, org.apache.tsfile.file.metadata.TableSchema> fileTableSchemaMap =
+        this.tableSchemaMap;
+    org.apache.tsfile.file.metadata.TableSchema schema =
+        Objects.isNull(fileTableSchemaMap) ? null : fileTableSchemaMap.remove(tableName);
+    if (!verifiedTables.add(tableName)) {
+      // Another device of this table has already triggered the creation and verification.
       return;
+    }
+    if (Objects.isNull(schema)) {
+      // The TsFile has no schema entry for this table. Complete it from the table in IoTDB so that
+      // the table is still created and verified and the tag column mapping stays correct, instead
+      // of silently skipping the whole check.
+      schema = resolveTableSchemaFromCache(tableName);
+      if (Objects.isNull(schema)) {
+        throw new LoadAnalyzeException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_THE_SCHEMA_OF_TABLE_ARG_IS_MISSING_IN_THE_TSFILE_AND_THE_TABLE_DOES_NOT_EXIST_IN_DATABASE_ARG_SO_THE_FILE_CANNOT_BE_LOADED_D910A1AA,
+                tableName,
+                database));
+      }
+      LOGGER.warn(
+          DataNodeQueryMessages
+              .LOG_TABLE_ARG_HAS_NO_SCHEMA_ENTRY_IN_THE_TSFILE_WILL_USE_THE_SCHEMA_OF_THE_TABLE_IN_IOTDB_F7ED883F,
+          tableName);
+    } else if (isTimeOnlyTableSchema(schema)) {
+      // The schema entry keeps no column other than time (e.g. it was completed after the table
+      // had been dropped or a pipe-built file carries only the table name). Such a schema cannot
+      // pass the header validation, complete it from the table in IoTDB when the table exists.
+      final org.apache.tsfile.file.metadata.TableSchema cachedSchema =
+          resolveTableSchemaFromCache(tableName);
+      if (Objects.nonNull(cachedSchema)) {
+        schema = cachedSchema;
+        LOGGER.warn(
+            DataNodeQueryMessages
+                .LOG_TABLE_ARG_HAS_NO_COLUMN_OTHER_THAN_TIME_IN_ITS_SCHEMA_ENTRY_IN_THE_TSFILE_WILL_USE_THE_SCHEMA_OF_THE_TABLE_IN_IOTDB_EB6C0BE1,
+            tableName);
+      }
     }
 
     // Check on creation, do not auto-create tables or database that cannot be inserted
@@ -316,7 +376,12 @@ public class LoadTsFileTableSchemaCache {
     final TableSchema realSchema =
         metadata
             .validateTableHeaderSchema4TsFile(
-                database, fileSchema, context, true, true, needDecode4DifferentTimeColumn)
+                database,
+                fileSchema,
+                context,
+                allowAutoCreateSchema,
+                true,
+                needDecode4DifferentTimeColumn)
             .orElse(null);
     if (Objects.isNull(realSchema)) {
       throw new LoadAnalyzeException(
@@ -333,17 +398,30 @@ public class LoadTsFileTableSchemaCache {
     return needDecode4DifferentTimeColumn.get();
   }
 
+  private org.apache.tsfile.file.metadata.TableSchema resolveTableSchemaFromCache(
+      final String tableName) {
+    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName, false);
+    return Objects.isNull(table)
+        ? null
+        : TsFileTableSchemaUtil.toTsFileTableSchemaNoAttribute(table);
+  }
+
+  private static boolean isTimeOnlyTableSchema(
+      final org.apache.tsfile.file.metadata.TableSchema schema) {
+    return Objects.isNull(schema.getColumnSchemas()) || schema.getColumnSchemas().isEmpty();
+  }
+
   private void autoCreateTableDatabaseIfAbsent(final String database) throws LoadAnalyzeException {
     validateDatabaseName(database);
     if (DataNodeTableCache.getInstance().isDatabaseExist(database)) {
       return;
     }
 
-    if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
-      throw new LoadAnalyzeException(
+    if (!allowAutoCreateSchema) {
+      throw new LoadAnalyzeMissingDatabaseException(
           String.format(
               DataNodeQueryMessages
-                  .QUERY_EXCEPTION_THE_DATABASE_S_DOES_NOT_EXIST_PLEASE_ENABLE_ENABLE_AUTO_B6683D0E,
+                  .EXCEPTION_THE_DATABASE_ARG_DOES_NOT_EXIST_AND_AUTO_CREATE_SCHEMA_IS_DISABLED_28F8D49A,
               database));
     }
 
@@ -488,6 +566,7 @@ public class LoadTsFileTableSchemaCache {
     clearDevices();
     clearTagColumnMapper();
     clearModificationsAndTimeIndex();
+    verifiedTables.clear();
 
     block.close();
 

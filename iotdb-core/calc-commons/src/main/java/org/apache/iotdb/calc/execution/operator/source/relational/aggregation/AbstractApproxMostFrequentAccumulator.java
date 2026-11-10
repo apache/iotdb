@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.SpaceSaving;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.SpaceSavingStateFactory;
 import org.apache.iotdb.calc.i18n.CalcMessages;
 
@@ -36,13 +37,23 @@ public abstract class AbstractApproxMostFrequentAccumulator<T> implements TableA
 
   @Override
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
-    columnBuilder.writeBinary(new Binary(state.getSpaceSaving().serialize()));
+    SpaceSaving<T> spaceSaving = state.getSpaceSaving();
+    if (spaceSaving == null || spaceSaving.isEmpty()) {
+      columnBuilder.appendNull();
+      return;
+    }
+    columnBuilder.writeBinary(new Binary(spaceSaving.serialize()));
   }
 
   @Override
   public void evaluateFinal(ColumnBuilder columnBuilder) {
+    SpaceSaving<T> spaceSaving = state.getSpaceSaving();
+    if (spaceSaving == null || spaceSaving.isEmpty()) {
+      columnBuilder.appendNull();
+      return;
+    }
     columnBuilder.writeBinary(
-        new Binary(new Gson().toJson(state.getSpaceSaving().getBuckets()), StandardCharsets.UTF_8));
+        new Binary(new Gson().toJson(spaceSaving.getBuckets()), StandardCharsets.UTF_8));
   }
 
   @Override
@@ -58,6 +69,8 @@ public abstract class AbstractApproxMostFrequentAccumulator<T> implements TableA
 
   @Override
   public void reset() {
-    state.getSpaceSaving().reset();
+    if (state.getSpaceSaving() != null) {
+      state.getSpaceSaving().reset();
+    }
   }
 }

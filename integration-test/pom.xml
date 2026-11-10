@@ -348,7 +348,7 @@
                                 <TestEnv>${integrationTest.testEnv}</TestEnv>
                                 <RandomSelectWriteNode>${integrationTest.randomSelectWriteNode}</RandomSelectWriteNode>
                                 <ReadAndVerifyWithMultiNode>${integrationTest.readAndVerifyWithMultiNode}</ReadAndVerifyWithMultiNode>
-                                <DataRegionPerDataNode>${integrationTest.dataRegionPerDataNode}</DataRegionPerDataNode>
+                                <integrationTest.dataRegionPerDataNode>${integrationTest.dataRegionPerDataNode}</integrationTest.dataRegionPerDataNode>
                                 <lightWeightStandaloneMode.configNodeNumber>${lightWeightStandaloneMode.configNodeNumber}</lightWeightStandaloneMode.configNodeNumber>
                                 <lightWeightStandaloneMode.dataNodeNumber>${lightWeightStandaloneMode.dataNodeNumber}</lightWeightStandaloneMode.dataNodeNumber>
                                 <lightWeightStandaloneMode.configNodeConsensus>${lightWeightStandaloneMode.configNodeConsensus}</lightWeightStandaloneMode.configNodeConsensus>

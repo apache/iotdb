@@ -1087,8 +1087,12 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   @Override
-  public boolean isInternal() {
-    return session != null && session.isInternal();
+  public boolean isInternalDatabaseSession() {
+    return session != null && session.isInternalDatabaseSession();
+  }
+
+  public boolean isInternalRpcSession() {
+    return session != null && session.isInternalRpcSession();
   }
 
   @Override

@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -757,6 +758,11 @@ public class NodeManager {
                 registeredDataNode.getLocation().getClientRpcEndPoint().getIp());
             dataNodeInfo.setRpcPort(
                 registeredDataNode.getLocation().getClientRpcEndPoint().getPort());
+            final TEndPoint internalRpcEndPoint =
+                registeredDataNode.getLocation().getInternalEndPoint();
+            if (internalRpcEndPoint != null) {
+              dataNodeInfo.setInternalRpcEndPoint(internalRpcEndPoint);
+            }
             dataNodeInfo.setDataRegionNum(0);
             dataNodeInfo.setSchemaRegionNum(0);
             dataNodeInfo.setCpuCoreNum(registeredDataNode.getResource().getCpuCoreNum());
