@@ -270,6 +270,38 @@ public class InsertTabletNodeSerdeTest {
   }
 
   @Test
+  public void testSerializedSizeWithNullBinaryValue() throws IllegalPathException, IOException {
+    for (TSDataType dataType :
+        new TSDataType[] {TSDataType.TEXT, TSDataType.STRING, TSDataType.BLOB, TSDataType.OBJECT}) {
+      InsertTabletNode insertTabletNode = getInsertTabletNodeWithSchema();
+      insertTabletNode.getDataTypes()[0] = dataType;
+      insertTabletNode.getMeasurementSchemas()[0] =
+          new MeasurementSchema(insertTabletNode.getMeasurements()[0], dataType);
+      Binary value = new Binary(new byte[] {1, 2, 3});
+      insertTabletNode.getColumns()[0] = new Binary[] {value, null, Binary.EMPTY_VALUE, null};
+      BitMap bitMap = new BitMap(insertTabletNode.getRowCount());
+      bitMap.mark(1);
+      bitMap.mark(3);
+      insertTabletNode.setBitMaps(new BitMap[] {bitMap});
+
+      byte[] bytes = new byte[insertTabletNode.serializedSize()];
+      WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+      insertTabletNode.serializeToWAL(walBuffer);
+      Assert.assertFalse(walBuffer.getBuffer().hasRemaining());
+
+      DataInputStream input = new DataInputStream(new ByteArrayInputStream(bytes));
+      Assert.assertEquals(PlanNodeType.INSERT_TABLET.getNodeType(), input.readShort());
+      InsertTabletNode restored = InsertTabletNode.deserializeFromWAL(input);
+      Assert.assertArrayEquals(
+          new Binary[] {value, Binary.EMPTY_VALUE, Binary.EMPTY_VALUE, Binary.EMPTY_VALUE},
+          (Binary[]) restored.getColumns()[0]);
+      Assert.assertTrue(restored.getBitMaps()[0].isMarked(1));
+      Assert.assertTrue(restored.getBitMaps()[0].isMarked(3));
+      Assert.assertFalse(restored.getBitMaps()[0].isMarked(2));
+    }
+  }
+
+  @Test
   public void testSerializeToWALWithoutMeasurementSchemas() throws Exception {
     InsertTabletNode insertTabletNode = getInsertTabletNode();
 
