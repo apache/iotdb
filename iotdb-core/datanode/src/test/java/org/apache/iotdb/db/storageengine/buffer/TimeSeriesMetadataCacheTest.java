@@ -58,6 +58,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 public class TimeSeriesMetadataCacheTest {
 
@@ -334,7 +335,7 @@ public class TimeSeriesMetadataCacheTest {
 
       Map<String, TimeseriesMetadata> result =
           cache.getDeviceTimeSeriesMetadata(
-              filePath, tsFileID, deviceID, new QueryContext(false, false));
+              filePath, tsFileID, deviceID, new QueryContext(false, false), false);
 
       assertNotNull(result.get(""));
       assertEquals("", result.get("").getMeasurementId());
@@ -355,6 +356,34 @@ public class TimeSeriesMetadataCacheTest {
               new QueryContext(false, false));
       assertNotNull(cached);
       assertEquals("s1", cached.getMeasurementId());
+    } finally {
+      cache.clear();
+      fileReaderManager.closeFileAndRemoveReader(tsFileID);
+    }
+  }
+
+  @Test
+  public void testGetDeviceTimeSeriesMetadataForAbsentDevice() throws Exception {
+    TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
+    FileReaderManager fileReaderManager = FileReaderManager.getInstance();
+    TsFileID tsFileID = new TsFileID();
+    cache.clear();
+    try {
+      String filePath = "target/batch-absent-device.tsfile";
+      IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.absent");
+
+      TsFileSequenceReader reader = Mockito.mock(TsFileSequenceReader.class);
+      fileReaderManager.setReaderForTest(tsFileID, true, reader);
+      Mockito.when(reader.getDeviceTimeseriesMetadata(deviceID))
+          .thenReturn(Collections.emptyList());
+
+      Map<String, TimeseriesMetadata> result =
+          cache.getDeviceTimeSeriesMetadata(
+              filePath, tsFileID, deviceID, new QueryContext(false, false), false);
+
+      // an absent device yields an empty map, which loadAlignedTimeSeriesMetadataBatch then
+      // distinguishes from "present but empty time column"
+      assertTrue(result.isEmpty());
     } finally {
       cache.clear();
       fileReaderManager.closeFileAndRemoveReader(tsFileID);
