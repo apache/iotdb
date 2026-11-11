@@ -19,14 +19,25 @@
 
 package org.apache.iotdb.confignode.procedure.env;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.client.async.DataNodeTransportFailureUtils;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
+import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.lang.reflect.Method;
+import java.util.Map;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -89,5 +100,53 @@ public class ConfigNodeProcedureEnvTest {
     when(loadManager.getNodeStatus(-1)).thenReturn(NodeStatus.Running);
 
     Assert.assertFalse(env.isRuntimeActiveWriterNode(-1));
+  }
+
+  @Test
+  public void testMissingPipeResponsesAreMarkedAsTransportTimeouts() throws Exception {
+    final DataNodeAsyncRequestContext<Object, TPushPipeMetaResp> context =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.PIPE_PUSH_MULTI_META,
+            Map.of(1, new TDataNodeLocation(), 2, new TDataNodeLocation()));
+    final TPushPipeMetaResp rejected =
+        new TPushPipeMetaResp(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()));
+    context.getResponseMap().put(2, rejected);
+
+    fillMissingResponses("fillMissingPipePushMetaResponses", context);
+
+    Assert.assertTrue(
+        DataNodeTransportFailureUtils.isTransportFailure(
+            context.getResponseMap().get(1).getStatus()));
+    Assert.assertSame(rejected, context.getResponseMap().get(2));
+    Assert.assertFalse(DataNodeTransportFailureUtils.isTransportFailure(rejected.getStatus()));
+  }
+
+  @Test
+  public void testMissingConsumerGroupResponsesAreMarkedAsTransportTimeouts() throws Exception {
+    final DataNodeAsyncRequestContext<Object, TPushConsumerGroupMetaResp> context =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.CONSUMER_GROUP_PUSH_SINGLE_META,
+            Map.of(1, new TDataNodeLocation(), 2, new TDataNodeLocation()));
+    final TPushConsumerGroupMetaResp rejected =
+        new TPushConsumerGroupMetaResp(
+            new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode()));
+    context.getResponseMap().put(2, rejected);
+
+    fillMissingResponses("fillMissingConsumerGroupPushMetaResponses", context);
+
+    Assert.assertTrue(
+        DataNodeTransportFailureUtils.isTransportFailure(
+            context.getResponseMap().get(1).getStatus()));
+    Assert.assertSame(rejected, context.getResponseMap().get(2));
+    Assert.assertFalse(DataNodeTransportFailureUtils.isTransportFailure(rejected.getStatus()));
+  }
+
+  private static void fillMissingResponses(
+      final String methodName, final DataNodeAsyncRequestContext<?, ?> context) throws Exception {
+    final Method method =
+        ConfigNodeProcedureEnv.class.getDeclaredMethod(
+            methodName, DataNodeAsyncRequestContext.class, long.class);
+    method.setAccessible(true);
+    method.invoke(null, context, 1L);
   }
 }

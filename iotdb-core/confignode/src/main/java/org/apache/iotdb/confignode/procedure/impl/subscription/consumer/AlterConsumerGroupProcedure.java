@@ -127,6 +127,17 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
   @Override
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException, IOException {
+    executeFromOperateOnDataNodes(env, false);
+  }
+
+  public void executeFromOperateOnDataNodesForUnsubscribe(ConfigNodeProcedureEnv env)
+      throws SubscriptionException, IOException {
+    executeFromOperateOnDataNodes(env, true);
+  }
+
+  private void executeFromOperateOnDataNodes(
+      ConfigNodeProcedureEnv env, boolean ignoreOfflineDataNodeTransportFailures)
+      throws SubscriptionException, IOException {
     LOGGER.info(
         ProcedureMessages.ALTERCONSUMERGROUPPROCEDURE_EXECUTEFROMOPERATEONDATANODES,
         updatedConsumerGroupMeta.getConsumerGroupId());
@@ -138,7 +149,19 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
         .getSubscriptionReadyDataNodeTracker()
         .recordSinglePush(existingConsumerGroupMeta, updatedConsumerGroupMeta, responseMap);
     final List<TSStatus> statuses =
-        responseMap.values().stream().map(TPushConsumerGroupMetaResp::getStatus).toList();
+        responseMap.entrySet().stream()
+            .filter(
+                entry ->
+                    !ignoreOfflineDataNodeTransportFailures
+                        || !isOfflineDataNodeTransportFailure(
+                            env,
+                            entry.getKey(),
+                            entry.getValue().getStatus(),
+                            TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode(),
+                            entry.getValue().isSetExceptionMessages()
+                                && !entry.getValue().getExceptionMessages().isEmpty()))
+            .map(entry -> entry.getValue().getStatus())
+            .toList();
     if (RpcUtils.squashResponseStatusList(statuses).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // throw exception instead of logging warn, do not rely on metadata synchronization
@@ -188,6 +211,17 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
   @Override
   public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException, IOException {
+    rollbackFromOperateOnDataNodes(env, false);
+  }
+
+  public void rollbackFromOperateOnDataNodesForUnsubscribe(ConfigNodeProcedureEnv env)
+      throws SubscriptionException, IOException {
+    rollbackFromOperateOnDataNodes(env, true);
+  }
+
+  private void rollbackFromOperateOnDataNodes(
+      ConfigNodeProcedureEnv env, boolean ignoreOfflineDataNodeTransportFailures)
+      throws SubscriptionException, IOException {
     LOGGER.info(ProcedureMessages.ALTERCONSUMERGROUPPROCEDURE_ROLLBACKFROMOPERATEONDATANODES);
 
     final Map<Integer, TPushConsumerGroupMetaResp> responseMap =
@@ -197,7 +231,19 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
         .getSubscriptionReadyDataNodeTracker()
         .recordSinglePush(updatedConsumerGroupMeta, existingConsumerGroupMeta, responseMap);
     final List<TSStatus> statuses =
-        responseMap.values().stream().map(TPushConsumerGroupMetaResp::getStatus).toList();
+        responseMap.entrySet().stream()
+            .filter(
+                entry ->
+                    !ignoreOfflineDataNodeTransportFailures
+                        || !isOfflineDataNodeTransportFailure(
+                            env,
+                            entry.getKey(),
+                            entry.getValue().getStatus(),
+                            TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode(),
+                            entry.getValue().isSetExceptionMessages()
+                                && !entry.getValue().getExceptionMessages().isEmpty()))
+            .map(entry -> entry.getValue().getStatus())
+            .toList();
     if (RpcUtils.squashResponseStatusList(statuses).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // throw exception instead of logging warn, do not rely on metadata synchronization
