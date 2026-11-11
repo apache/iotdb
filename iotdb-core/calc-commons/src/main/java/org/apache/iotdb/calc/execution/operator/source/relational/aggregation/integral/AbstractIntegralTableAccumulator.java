@@ -20,13 +20,10 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.integral;
 
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.TableAccumulator;
-import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
-
-import static org.apache.iotdb.calc.utils.constant.SqlConstant.INTEGRAL;
 
 public abstract class AbstractIntegralTableAccumulator implements TableAccumulator {
 
@@ -47,29 +44,7 @@ public abstract class AbstractIntegralTableAccumulator implements TableAccumulat
   }
 
   protected final double readValue(Column column, int position) {
-    final double value =
-        switch (valueDataType) {
-          case INT32 -> column.getInt(position);
-          case INT64 -> column.getLong(position);
-          case FLOAT -> column.getFloat(position);
-          case DOUBLE -> column.getDouble(position);
-          default ->
-              throw new SemanticException(
-                  String.format(
-                      CalcMessages
-                          .EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_VALUE_TYPE_ARG_9DD7388D,
-                      INTEGRAL,
-                      valueDataType));
-        };
-    if (!Double.isFinite(value)) {
-      throw new SemanticException(
-          String.format(
-              CalcMessages
-                  .EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_NON_FINITE_VALUE_COL_ARG_AC2AAC62,
-              INTEGRAL,
-              value));
-    }
-    return value;
+    return IntegralFunctionUtils.readValue(valueDataType, column, position);
   }
 
   /**
@@ -77,7 +52,8 @@ public abstract class AbstractIntegralTableAccumulator implements TableAccumulat
    * analyzer, so only the first value has to be read.
    */
   protected final void initializeOrValidateTimeUnit(Column timeUnitColumn) {
-    if (timeUnit != 0) {
+    // an empty block carries no value to read, and there is nothing to integrate either
+    if (timeUnit != 0 || timeUnitColumn.getPositionCount() == 0) {
       return;
     }
     initializeOrValidateTimeUnit(timeUnitColumn.getLong(0));
@@ -98,29 +74,14 @@ public abstract class AbstractIntegralTableAccumulator implements TableAccumulat
   }
 
   protected static SemanticException invalidTimeUnit(String text) {
-    return new SemanticException(
-        String.format(
-            CalcMessages
-                .EXCEPTION_THE_TIME_UNIT_ARGUMENT_OF_AGGREGATE_FUNCTION_ARG_IS_INVALID_89D17438,
-            INTEGRAL,
-            text));
+    return IntegralFunctionUtils.invalidTimeUnit(text);
   }
 
   protected static SemanticException orderedInputViolation(long time, long previousTime) {
-    return new SemanticException(
-        String.format(
-            CalcMessages
-                .EXCEPTION_AGGREGATE_FUNCTION_ARG_EXPECTED_TIME_COL_IN_STRICTLY_ASCENDING_ORDER_BUT_GOT_ARG_AFTER_ARG_9289E0F9,
-            INTEGRAL,
-            time,
-            previousTime));
+    return IntegralFunctionUtils.orderedInputViolation(time, previousTime);
   }
 
   protected static UnsupportedOperationException unsupportedIntermediate() {
-    return new UnsupportedOperationException(
-        String.format(
-            CalcMessages
-                .EXCEPTION_ORDERED_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_INTERMEDIATE_STATE_6B4B2B1B,
-            INTEGRAL));
+    return IntegralFunctionUtils.unsupportedIntermediate();
   }
 }

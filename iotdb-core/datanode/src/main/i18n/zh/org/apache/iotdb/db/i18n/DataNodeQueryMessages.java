@@ -2703,6 +2703,8 @@ public final class DataNodeQueryMessages {
   public static final String INVALID_ARGUMENT_S_ORDERING_CAN_NOT_BE_SPECIFIED_FOR_TABLE_ARGUMENT_WITH_ROW_SEMANTICS =
 
       "无效参数 %s。不能为 row 语义的表参数指定 Ordering";
+  public static final String EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_ARGUMENT_S_MUST_BE_IN_ASCENDING_ORDER_5E26E74A = "参数 %s 的 ORDER BY 子句必须为升序。";
+  public static final String EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_ARGUMENT_S_MUST_BE_IN_DESCENDING_ORDER_C2B688D7 = "参数 %s 的 ORDER BY 子句必须为降序。";
   public static final String INVALID_SCALAR_ARGUMENT_S_EXPECTED_TYPE_S_GOT_S =
 
       "无效标量参数 '%s'。期望类型 %s，实际为 %s";

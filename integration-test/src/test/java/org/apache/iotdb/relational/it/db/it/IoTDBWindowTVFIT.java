@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.itbase.runtime.ClusterTestResultSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
@@ -1480,7 +1481,7 @@ public class IoTDBWindowTVFIT {
   public void testM4DescendingOrderByRejected() {
     tableAssertTestFail(
         "SELECT * FROM M4(DATA => table1 PARTITION BY device_id ORDER BY time DESC, TIMECOL => 'time', SIZE => 10ms)",
-        "701: The ORDER BY clause of the DATA argument must sort the time column in ascending order.",
+        "701: The ORDER BY clause of the DATA argument must be in ascending order.",
         DATABASE_NAME);
   }
 
@@ -1867,26 +1868,29 @@ public class IoTDBWindowTVFIT {
                 "device_1,1970-01-01T00:00:00.009Z,10.0,null,OK",
                 "device_1,1970-01-01T00:00:00.020Z,40.0,35.0,CRIT"));
 
-    List<String[]> rows =
-        queryRows(
+    List<List<String[]>> rowsPerNode =
+        queryRowsPerNode(
             "SELECT * FROM SAMPLE(DATA => (SELECT time, device_id, s1, s2, s3 FROM table1 "
                 + "WHERE device_id = 'device_1') PARTITION BY device_id ORDER BY time, N => 2)",
             expectedHeader);
 
-    // Sampling is random, so only the row count, the integrity of each row and the relative order
-    // of the sampled rows can be asserted.
-    assertEquals(2, rows.size());
-    Set<String> sampledTimes = new HashSet<>();
-    Instant previousTime = null;
-    for (String[] row : rows) {
-      String joinedRow = String.join(",", row);
-      assertTrue("unexpected sampled row: " + joinedRow, validRows.contains(joinedRow));
-      assertTrue("duplicate sampled row: " + row[1], sampledTimes.add(row[1]));
-      Instant time = Instant.parse(row[1]);
-      if (previousTime != null) {
-        assertTrue("sampled rows are not in input order", previousTime.isBefore(time));
+    // Each node may sample different rows. Check the row count, row integrity and relative order
+    // independently for every node instead of requiring identical samples across nodes.
+    assertTrue("no node results", !rowsPerNode.isEmpty());
+    for (List<String[]> rows : rowsPerNode) {
+      assertEquals(2, rows.size());
+      Set<String> sampledTimes = new HashSet<>();
+      Instant previousTime = null;
+      for (String[] row : rows) {
+        String joinedRow = String.join(",", row);
+        assertTrue("unexpected sampled row: " + joinedRow, validRows.contains(joinedRow));
+        assertTrue("duplicate sampled row: " + row[1], sampledTimes.add(row[1]));
+        Instant time = Instant.parse(row[1]);
+        if (previousTime != null) {
+          assertTrue("sampled rows are not in input order", previousTime.isBefore(time));
+        }
+        previousTime = time;
       }
-      previousTime = time;
     }
   }
 
@@ -1990,9 +1994,7 @@ public class IoTDBWindowTVFIT {
   public void testDerivativeFunctionDropsNullTimestamp() {
     String[] expectedHeader = new String[] {"device_id", "ts", "derivative(v)"};
     String[] retArray =
-        new String[] {
-          "d1,2021-01-01T00:00:02.000Z,2.0,", "d1,2021-01-01T00:00:04.000Z,0.5,"
-        };
+        new String[] {"d1,2021-01-01T00:00:02.000Z,2.0,", "d1,2021-01-01T00:00:04.000Z,0.5,"};
     // The ORDER BY column does not have to be the time column of the table: here it is the
     // nullable ts field, and the row whose ts is null is dropped before pairing.
     tableResultSetEqualWithTolerance(
@@ -2018,6 +2020,10 @@ public class IoTDBWindowTVFIT {
         "The type of the column [v] is not as expected.",
         DATABASE_NAME);
     tableAssertTestFail(
+        "SELECT * FROM DERIVATIVE(DATA => (SELECT time, v FROM derivative_dup) ORDER BY time DESC)",
+        "The ORDER BY clause of the DATA argument must be in ascending order.",
+        DATABASE_NAME);
+    tableAssertTestFail(
         "SELECT * FROM DERIVATIVE(DATA => (SELECT time FROM derivative_dup) ORDER BY time)",
         "No columns could be calculated.",
         DATABASE_NAME);
@@ -2032,31 +2038,35 @@ public class IoTDBWindowTVFIT {
         DATABASE_NAME);
   }
 
-  private static List<String[]> queryRows(String sql, String[] expectedHeader) {
-    List<String[]> rows = new ArrayList<>();
+  private static List<List<String[]>> queryRowsPerNode(String sql, String[] expectedHeader) {
+    List<List<String[]>> rowsPerNode = new ArrayList<>();
     try (Connection connection = EnvFactory.getEnv().getTableConnection()) {
       connection.setClientInfo("time_zone", "+00:00");
       try (Statement statement = connection.createStatement()) {
         statement.execute("USE " + DATABASE_NAME);
-        try (ResultSet resultSet = statement.executeQuery(sql)) {
-          ResultSetMetaData metaData = resultSet.getMetaData();
-          assertEquals(expectedHeader.length, metaData.getColumnCount());
-          for (int i = 1; i <= metaData.getColumnCount(); i++) {
-            assertEquals(expectedHeader[i - 1], metaData.getColumnName(i));
-          }
-          while (resultSet.next()) {
-            String[] row = new String[expectedHeader.length];
-            for (int i = 1; i <= expectedHeader.length; i++) {
-              row[i - 1] = resultSet.getString(i);
+        try (ResultSet clusterResultSet = statement.executeQuery(sql)) {
+          for (ResultSet resultSet : ClusterTestResultSet.getNodeResultSets(clusterResultSet)) {
+            List<String[]> rows = new ArrayList<>();
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            assertEquals(expectedHeader.length, metaData.getColumnCount());
+            for (int i = 1; i <= metaData.getColumnCount(); i++) {
+              assertEquals(expectedHeader[i - 1], metaData.getColumnName(i));
             }
-            rows.add(row);
+            while (resultSet.next()) {
+              String[] row = new String[expectedHeader.length];
+              for (int i = 1; i <= expectedHeader.length; i++) {
+                row[i - 1] = resultSet.getString(i);
+              }
+              rows.add(row);
+            }
+            rowsPerNode.add(rows);
           }
         }
       }
     } catch (SQLException e) {
       fail(e.getMessage());
     }
-    return rows;
+    return rowsPerNode;
   }
 
   private static void assertTimeWindowOrdering(

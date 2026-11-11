@@ -2416,6 +2416,12 @@ public final class DataNodeQueryMessages {
       "Invalid argument %s. Partitioning can not be specified for table argument with row semantics";
   public static final String INVALID_ARGUMENT_S_ORDERING_CAN_NOT_BE_SPECIFIED_FOR_TABLE_ARGUMENT_WITH_ROW_SEMANTICS =
       "Invalid argument %s. Ordering can not be specified for table argument with row semantics";
+  public static final String
+      EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_ARGUMENT_S_MUST_BE_IN_ASCENDING_ORDER_5E26E74A =
+          "The ORDER BY clause of the %s argument must be in ascending order.";
+  public static final String
+      EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_ARGUMENT_S_MUST_BE_IN_DESCENDING_ORDER_C2B688D7 =
+          "The ORDER BY clause of the %s argument must be in descending order.";
   public static final String INVALID_SCALAR_ARGUMENT_S_EXPECTED_TYPE_S_GOT_S =
       "Invalid scalar argument '%s'. Expected type %s, got %s";
   public static final String INVALID_SCALAR_ARGUMENT_S_S =

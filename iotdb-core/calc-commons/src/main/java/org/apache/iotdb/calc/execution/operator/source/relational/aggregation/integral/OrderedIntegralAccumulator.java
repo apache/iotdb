@@ -38,8 +38,13 @@ public final class OrderedIntegralAccumulator extends AbstractIntegralTableAccum
       RamUsageEstimator.shallowSizeOfInstance(OrderedIntegralAccumulator.class);
 
   private int sampleCount;
-  private long previousTime;
-  private double previousValue;
+  // "start" is the last point whose value can no longer change, "end" is the newest point. The
+  // area of the segment between them is added only once a larger timestamp proves that "end" will
+  // not be overwritten by a later row of the same timestamp.
+  private long startTime;
+  private double startValue;
+  private long endTime;
+  private double endValue;
   private double area;
 
   public OrderedIntegralAccumulator(TSDataType valueDataType) {
@@ -72,18 +77,25 @@ public final class OrderedIntegralAccumulator extends AbstractIntegralTableAccum
       double value = readValue(valueColumn, position);
       long time = timeColumn.getLong(position);
       if (sampleCount == 0) {
-        previousTime = time;
-        previousValue = value;
+        startTime = time;
+        startValue = value;
+        endTime = time;
+        endValue = value;
         sampleCount = 1;
-      } else if (time < previousTime) {
-        throw orderedInputViolation(time, previousTime);
-      } else if (time == previousTime) {
-        // the later point overwrites the earlier one when timestamps are duplicated
-        previousValue = value;
+      } else if (time < endTime) {
+        throw orderedInputViolation(time, endTime);
+      } else if (time == endTime) {
+        // the later point overwrites the earlier one, so the segment ending at this timestamp is
+        // added only after its value is final
+        endValue = value;
       } else {
-        area += (previousValue + value) / 2.0 * (time - previousTime);
-        previousTime = time;
-        previousValue = value;
+        if (sampleCount >= 2) {
+          area += (startValue + endValue) / 2.0 * (endTime - startTime);
+        }
+        startTime = endTime;
+        startValue = endValue;
+        endTime = time;
+        endValue = value;
         sampleCount++;
       }
     }
@@ -101,8 +113,14 @@ public final class OrderedIntegralAccumulator extends AbstractIntegralTableAccum
 
   @Override
   public void evaluateFinal(ColumnBuilder columnBuilder) {
-    // fewer than two effective points have no time span, so the area is 0
-    columnBuilder.writeDouble(sampleCount < 2 ? 0.0 : area / timeUnit);
+    // fewer than two distinct timestamps have no time span, so the area is 0
+    if (sampleCount < 2) {
+      columnBuilder.writeDouble(0.0);
+      return;
+    }
+    // the newest point is final because there is no later input to overwrite it
+    double finalArea = area + (startValue + endValue) / 2.0 * (endTime - startTime);
+    columnBuilder.writeDouble(finalArea / timeUnit);
   }
 
   @Override
@@ -119,8 +137,10 @@ public final class OrderedIntegralAccumulator extends AbstractIntegralTableAccum
   public void reset() {
     resetTimeUnit();
     sampleCount = 0;
-    previousTime = 0;
-    previousValue = 0.0;
+    startTime = 0;
+    startValue = 0.0;
+    endTime = 0;
+    endValue = 0.0;
     area = 0.0;
   }
 }

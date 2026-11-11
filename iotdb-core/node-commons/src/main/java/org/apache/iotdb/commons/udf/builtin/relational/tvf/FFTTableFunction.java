@@ -100,7 +100,11 @@ public class FFTTableFunction implements TableFunction {
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
     return Arrays.asList(
-        TableParameterSpecification.builder().name(DATA_PARAMETER_NAME).setSemantics().build(),
+        TableParameterSpecification.builder()
+            .name(DATA_PARAMETER_NAME)
+            .setSemantics()
+            .ascendingOrder()
+            .build(),
         ScalarParameterSpecification.builder()
             .name(SAMPLE_INTERVAL_PARAMETER_NAME)
             .type(Type.INT64)

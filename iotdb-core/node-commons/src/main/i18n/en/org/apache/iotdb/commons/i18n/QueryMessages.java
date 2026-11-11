@@ -562,7 +562,6 @@ public final class QueryMessages {
   public static final String EXCEPTION_INVALID_ARGUMENT_ARG_EXPECTED_SCALAR_ARGUMENT_4AD4E32F = "Invalid argument %s. Expected scalar argument";
   public static final String EXCEPTION_THE_SLIDE_ARGUMENT_MUST_HAVE_THE_SAME_WINDOW_MODE_AS_THE_SIZE_ARGUMENT_419C9844 = "The SLIDE argument must have the same window mode as the SIZE argument.";
   public static final String EXCEPTION_THE_ORIGIN_ARGUMENT_IS_ONLY_SUPPORTED_IN_TIME_WINDOW_MODE_B3F358B9 = "The ORIGIN argument is only supported in time window mode.";
-  public static final String EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_DATA_ARGUMENT_MUST_SORT_THE_TIME_COLUMN_IN_ASCENDING_ORDER_C3FD0F6A = "The ORDER BY clause of the DATA argument must sort the time column in ascending order.";
   public static final String EXCEPTION_ARGUMENTS_SHOULD_NEVER_BE_EMPTY_WHEN_RESOLVING_M4_MODE_F982EA1C = "Arguments should never be empty when resolving M4 mode";
   public static final String EXCEPTION_MISSING_REQUIRED_ARGUMENT_ARG_1308D0DC = "Missing required argument: %s";
   public static final String EXCEPTION_UNKNOWN_ARGUMENT_ARG_F40E9394 = "Unknown argument: %s";
@@ -598,8 +597,6 @@ public final class QueryMessages {
       "The SAMPLE_INTERVAL argument of FFT must be a duration literal.";
   public static final String FFT_N_MUST_BE_POSITIVE_INTEGER =
       "The N argument of FFT must be a positive integer.";
-  public static final String FFT_ORDER_BY_MUST_SORT_ASCENDING =
-      "The ORDER BY clause of the DATA argument must sort the time column in ascending order.";
   public static final String EXCEPTION_FFT_LENGTH_MUST_BE_A_POSITIVE_INT_SIZED_VALUE_A000D3BB =
       "FFT length must be a positive int-sized value.";
   public static final String

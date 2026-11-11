@@ -66,7 +66,11 @@ public class DerivativeTableFunction implements TableFunction {
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
     return Arrays.asList(
-        TableParameterSpecification.builder().name(DATA_PARAMETER_NAME).setSemantics().build(),
+        TableParameterSpecification.builder()
+            .name(DATA_PARAMETER_NAME)
+            .setSemantics()
+            .ascendingOrder()
+            .build(),
         ScalarParameterSpecification.builder()
             .name(UNIT_PARAMETER_NAME)
             .type(Type.INT64)
@@ -203,8 +207,11 @@ public class DerivativeTableFunction implements TableFunction {
   }
 
   /**
-   * Streaming processor over one partition. Each row is paired with the previous one, so the output
-   * row is produced as soon as the pair is complete and {@code finish} is left empty.
+   * Streaming processor over one partition. Each row is paired with the previous one, but the pair
+   * is not complete until the time of its second point is known to be final, because a later row
+   * may share that timestamp and overwrite its values. The newest point is therefore buffered and
+   * the pair ending at it is emitted when a larger timestamp arrives; {@code finish} emits the last
+   * pair.
    *
    * <p>The required input columns are the partition columns, the time column (the single ORDER BY
    * column of DATA) and the calculation columns, in that order, which is also the order of the
@@ -217,7 +224,15 @@ public class DerivativeTableFunction implements TableFunction {
     private final int timeColumnIndex;
     private final int calculationColumnCount;
     private final long unit;
-    private final LastFieldValues lastFieldValues;
+
+    // all rows of a partition share the same partition values, so they are captured from the first
+    // row and reused for every output row, including the one emitted in finish where no input row
+    // is available.
+    private Object[] partitionValues;
+    // "previous" is the finalized point right before "current". "current" is the newest point,
+    // whose values may still be overwritten by a later row with the same timestamp.
+    private Point previous;
+    private Point current;
 
     private DerivativeDataProcessor(int partitionColumnCount, Type[] outputTypes, long unit) {
       this.outputTypes = outputTypes;
@@ -225,7 +240,6 @@ public class DerivativeTableFunction implements TableFunction {
       this.timeColumnIndex = partitionColumnCount;
       this.calculationColumnCount = outputTypes.length - partitionColumnCount - 1;
       this.unit = unit;
-      this.lastFieldValues = new LastFieldValues(calculationColumnCount);
     }
 
     @Override
@@ -240,75 +254,92 @@ public class DerivativeTableFunction implements TableFunction {
       }
       long timestamp = input.getLong(timeColumnIndex);
 
-      if (!lastFieldValues.present) {
-        lastFieldValues.update(input, timestamp, timeColumnIndex);
+      if (current == null) {
+        capturePartitionValues(input);
+        current = snapshot(input, timestamp);
         return;
       }
-      if (timestamp < lastFieldValues.timestamp) {
+      if (timestamp < current.timestamp) {
         throw new SemanticException(
             CommonMessages
                 .EXCEPTION_THE_TIME_COLUMN_OF_THE_DATA_ARGUMENT_MUST_BE_MONOTONICALLY_INCREASING_WITHIN_EACH_PARTITION_68B8C2B7);
       }
-      if (timestamp == lastFieldValues.timestamp) {
-        // the same timestamp may appear across devices: the later row overwrites the earlier one
-        // and this pair produces no output.
-        lastFieldValues.update(input, timestamp, timeColumnIndex);
+      if (timestamp == current.timestamp) {
+        // the same timestamp may appear across devices: the later row overwrites the earlier one,
+        // and the pair ending at this timestamp is not emitted until its value is final
+        current = snapshot(input, timestamp);
         return;
       }
 
-      emitDerivative(input, timestamp, properColumnBuilders);
-      lastFieldValues.update(input, timestamp, timeColumnIndex);
+      // a larger timestamp proves that no row can overwrite "current" anymore, so the pair ending
+      // at it is final and can be emitted
+      if (previous != null) {
+        emitDerivative(previous, current, properColumnBuilders);
+      }
+      previous = current;
+      current = snapshot(input, timestamp);
     }
 
-    private void emitDerivative(
-        Record input, long timestamp, List<ColumnBuilder> properColumnBuilders) {
-      // all rows of a partition share the same partition values, so they are copied from the
-      // current row instead of being cached.
-      for (int i = 0; i < partitionColumnCount; i++) {
-        ColumnBuilder builder = properColumnBuilders.get(i);
-        if (input.isNull(i)) {
-          builder.appendNull();
-        } else {
-          WindowTVFUtils.writeValue(
-              builder, WindowTVFUtils.readValue(input, i, outputTypes[i]), outputTypes[i]);
-        }
+    @Override
+    public void finish(
+        List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
+      if (previous != null && current != null) {
+        emitDerivative(previous, current, properColumnBuilders);
+        // clear the buffered point so that a repeated finish emits nothing
+        previous = null;
       }
-      properColumnBuilders.get(timeColumnIndex).writeLong(timestamp);
+    }
 
-      long timeDelta = timestamp - lastFieldValues.timestamp;
+    private Point snapshot(Record input, long timestamp) {
+      Object[] values = new Object[calculationColumnCount];
+      for (int i = 0; i < calculationColumnCount; i++) {
+        int columnIndex = timeColumnIndex + 1 + i;
+        // native boxed values of the calculation columns, null when the value is null
+        values[i] = input.isNull(columnIndex) ? null : input.getObject(columnIndex);
+      }
+      return new Point(timestamp, values);
+    }
+
+    private void capturePartitionValues(Record input) {
+      partitionValues = new Object[partitionColumnCount];
+      for (int i = 0; i < partitionColumnCount; i++) {
+        partitionValues[i] =
+            input.isNull(i) ? null : WindowTVFUtils.readValue(input, i, outputTypes[i]);
+      }
+    }
+
+    private void emitDerivative(Point start, Point end, List<ColumnBuilder> properColumnBuilders) {
+      for (int i = 0; i < partitionColumnCount; i++) {
+        WindowTVFUtils.writeValue(properColumnBuilders.get(i), partitionValues[i], outputTypes[i]);
+      }
+      properColumnBuilders.get(timeColumnIndex).writeLong(end.timestamp);
+
+      long timeDelta = end.timestamp - start.timestamp;
       for (int i = 0; i < calculationColumnCount; i++) {
         int columnIndex = timeColumnIndex + 1 + i;
         ColumnBuilder builder = properColumnBuilders.get(columnIndex);
-        Object lastValue = lastFieldValues.values[i];
+        Object startValue = start.values[i];
+        Object endValue = end.values[i];
         // a null on either side only makes this column null for this pair; pairing and time still
         // advance normally.
-        if (lastValue == null || input.isNull(columnIndex)) {
+        if (startValue == null || endValue == null) {
           builder.appendNull();
         } else {
-          double valueDelta = input.getDouble(columnIndex) - ((Number) lastValue).doubleValue();
+          double valueDelta =
+              ((Number) endValue).doubleValue() - ((Number) startValue).doubleValue();
           builder.writeDouble(valueDelta * unit / timeDelta);
         }
       }
     }
 
-    private static class LastFieldValues {
+    private static final class Point {
 
-      private boolean present;
-      private long timestamp;
-      // native boxed values of the calculation columns, null when the value is null
+      private final long timestamp;
       private final Object[] values;
 
-      private LastFieldValues(int fieldCount) {
-        this.values = new Object[fieldCount];
-      }
-
-      private void update(Record input, long timestamp, int timeColumnIndex) {
-        this.present = true;
+      private Point(long timestamp, Object[] values) {
         this.timestamp = timestamp;
-        for (int i = 0; i < values.length; i++) {
-          int columnIndex = timeColumnIndex + 1 + i;
-          values[i] = input.isNull(columnIndex) ? null : input.getObject(columnIndex);
-        }
+        this.values = values;
       }
     }
   }

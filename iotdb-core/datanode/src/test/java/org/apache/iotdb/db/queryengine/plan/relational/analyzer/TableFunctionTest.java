@@ -626,7 +626,7 @@ public class TableFunctionTest {
         "Table argument with set semantics requires an ORDER BY clause.");
     assertAnalyzeFails(
         "SELECT * FROM FFT(DATA => table1 PARTITION BY tag1 ORDER BY time DESC, SAMPLE_INTERVAL => 1ms)",
-        "The ORDER BY clause of the DATA argument must sort the time column in ascending order.");
+        "The ORDER BY clause of the DATA argument must be in ascending order.");
     assertAnalyzeFails(
         "SELECT * FROM FFT(DATA => table1 PARTITION BY tag1 ORDER BY s1, SAMPLE_INTERVAL => 1ms)",
         "The ORDER BY clause of the DATA argument must contain exactly the time column specified by the TIMECOL argument.");
@@ -849,8 +849,7 @@ public class TableFunctionTest {
       fail();
     } catch (SemanticException e) {
       assertEquals(
-          "The ORDER BY clause of the DATA argument must sort the time column in ascending order.",
-          e.getMessage());
+          "The ORDER BY clause of the DATA argument must be in ascending order.", e.getMessage());
     }
   }
 }

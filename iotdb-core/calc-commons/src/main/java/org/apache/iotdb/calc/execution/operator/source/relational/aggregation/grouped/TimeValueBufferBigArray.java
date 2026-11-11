@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate;
+package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped;
 
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.ObjectBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.TimeValueBuffer;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-final class TimeValueBufferBigArray {
+public final class TimeValueBufferBigArray {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TimeValueBufferBigArray.class);

@@ -156,6 +156,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -185,6 +186,27 @@ import static org.apache.tsfile.utils.Preconditions.checkArgument;
 public class TableDistributedPlanGenerator
     implements PlanVisitor<List<PlanNode>, TableDistributedPlanGenerator.PlanContext> {
   private static final Logger LOGGER = LoggerFactory.getLogger(TableDistributedPlanGenerator.class);
+
+  // Functions that keep per-partition state and therefore require every partition to be handled
+  // by a single processor. A partition is not guaranteed to be confined to one child of the
+  // distributed plan: PARTITION BY may use non-device columns, and a device itself may span
+  // regions. These functions are collected before being evaluated instead of being cloned for
+  // every child.
+  private static final Set<String> NON_SPLITTABLE_TABLE_FUNCTIONS =
+      ImmutableSet.of(
+          TableBuiltinTableFunction.M4.getFunctionName(),
+          TableBuiltinTableFunction.FFT.getFunctionName(),
+          TableBuiltinTableFunction.FORECAST.getFunctionName(),
+          TableBuiltinTableFunction.PATTERN_MATCH.getFunctionName(),
+          TableBuiltinTableFunction.CLASSIFY.getFunctionName(),
+          TableBuiltinTableFunction.LOWPASS.getFunctionName(),
+          TableBuiltinTableFunction.HIGHPASS.getFunctionName(),
+          TableBuiltinTableFunction.XCORR.getFunctionName(),
+          TableBuiltinTableFunction.SAMPLE.getFunctionName(),
+          TableBuiltinTableFunction.DERIVATIVE.getFunctionName(),
+          TableBuiltinTableFunction.SESSION.getFunctionName(),
+          TableBuiltinTableFunction.VARIATION.getFunctionName(),
+          TableBuiltinTableFunction.CAPACITY.getFunctionName());
 
   private final MPPQueryContext queryContext;
   private final QueryId queryId;
@@ -3243,8 +3265,7 @@ public class TableDistributedPlanGenerator
       node.setChild(childrenNodes.get(0));
       result = Collections.singletonList(node);
     } else if (!canSplitPushDown) {
-      OrderingScheme childOrdering = commonOrdering(childrenNodes);
-      node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
+      node.setChild(mergeChildrenForSingleProcessor(node, childrenNodes));
       result = Collections.singletonList(node);
     } else {
       result = splitForEachChild(node, childrenNodes);
@@ -3264,7 +3285,7 @@ public class TableDistributedPlanGenerator
     if (!isPartitionedGroup(node.getChild())) {
       return false;
     }
-    return !TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(node.getName());
+    return !NON_SPLITTABLE_TABLE_FUNCTIONS.contains(node.getName().toLowerCase(Locale.ROOT));
   }
 
   private boolean isPartitionedGroup(PlanNode node) {
@@ -3350,6 +3371,49 @@ public class TableDistributedPlanGenerator
         new CollectNode(queryId.genPlanNodeId(), firstChild.getOutputSymbols());
     childrenNodes.forEach(collectNode::addChild);
     return collectNode;
+  }
+
+  /**
+   * Merges the inputs of a table function processor that has to run once. The processor recognizes
+   * a partition only while its rows arrive consecutively, so the merged stream must be ordered by
+   * the GROUP clause: partition keys followed by the in-partition ordering. A merge sort is used
+   * when every child already carries that ordering; otherwise the merged stream is sorted
+   * explicitly, because concatenating the children may interleave the rows of a partition that
+   * spans several of them.
+   */
+  private PlanNode mergeChildrenForSingleProcessor(
+      TableFunctionProcessorNode node, List<PlanNode> childrenNodes) {
+    OrderingScheme requiredOrdering = null;
+    if (node.getChild() instanceof GroupNode) {
+      requiredOrdering = ((GroupNode) node.getChild()).getOrderingScheme();
+    }
+    if (requiredOrdering == null || requiredOrdering.getOrderBy().isEmpty()) {
+      return mergeChildrenViaCollectOrMergeSort(commonOrdering(childrenNodes), childrenNodes);
+    }
+    if (orderedByAllChildren(requiredOrdering, childrenNodes)) {
+      return mergeChildrenViaCollectOrMergeSort(requiredOrdering, childrenNodes);
+    }
+    SortNode sortNode =
+        new SortNode(
+            queryId.genPlanNodeId(),
+            mergeChildrenViaCollectOrMergeSort(null, childrenNodes),
+            requiredOrdering,
+            false,
+            false);
+    nodeOrderingMap.put(sortNode.getPlanNodeId(), requiredOrdering);
+    return sortNode;
+  }
+
+  private boolean orderedByAllChildren(
+      OrderingScheme requiredOrdering, List<PlanNode> childrenNodes) {
+    int prefixSize = requiredOrdering.getOrderBy().size();
+    for (PlanNode child : childrenNodes) {
+      if (!hasOrderingPrefix(
+          requiredOrdering, nodeOrderingMap.get(child.getPlanNodeId()), prefixSize)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private void processSortProperty(

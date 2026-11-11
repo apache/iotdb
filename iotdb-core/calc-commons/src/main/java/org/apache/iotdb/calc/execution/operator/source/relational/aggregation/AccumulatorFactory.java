@@ -49,6 +49,8 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedSumAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedUserDefinedAggregateAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedVarianceAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.integral.GroupedNaiveIntegralAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.integral.GroupedOrderedIntegralAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate.GroupedNaiveDeltaAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate.GroupedNaiveIncreaseAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate.GroupedNaiveIrateAccumulator;
@@ -503,6 +505,10 @@ public class AccumulatorFactory {
         return useOrderedImplementation
             ? new GroupedOrderedDeltaAccumulator(inputDataTypes.get(0))
             : new GroupedNaiveDeltaAccumulator(inputDataTypes.get(0), memoryReservationManager);
+      case INTEGRAL:
+        return useOrderedImplementation
+            ? new GroupedOrderedIntegralAccumulator(inputDataTypes.get(0))
+            : new GroupedNaiveIntegralAccumulator(inputDataTypes.get(0), memoryReservationManager);
       default:
         throw new IllegalArgumentException(
             CalcMessages.INVALID_AGGREGATION_FUNCTION + aggregationType);
