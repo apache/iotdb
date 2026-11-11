@@ -92,6 +92,28 @@ public class IoTDBComplexQueryIT {
   }
 
   @Test
+  public void testTimeFilterWithTimestampCast() {
+    String[] expectedHeader = new String[] {"time", "name"};
+    tableResultSetEqualTest(
+        "SELECT time, name FROM employees"
+            + " WHERE time >= CAST(2 AS TIMESTAMP) AND time < CAST(5 AS TIMESTAMP)"
+            + " ORDER BY time",
+        expectedHeader,
+        new String[] {
+          "1970-01-01T00:00:00.002Z,John,",
+          "1970-01-01T00:00:00.003Z,Nancy,",
+          "1970-01-01T00:00:00.004Z,Jack,"
+        },
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT time, name FROM employees"
+            + " WHERE time IN (CAST(2 AS TIMESTAMP), CAST(4 AS TIMESTAMP)) ORDER BY time",
+        expectedHeader,
+        new String[] {"1970-01-01T00:00:00.002Z,John,", "1970-01-01T00:00:00.004Z,Jack,"},
+        DATABASE_NAME);
+  }
+
+  @Test
   public void testTableLessQuery() {
     String[] expectedHeader;
     String[] retArray;
