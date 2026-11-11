@@ -115,7 +115,7 @@ public class PageIOChannel {
     try {
       res = reader.collectUpdatedEntries();
       for (byte[] entry : res) {
-        // TODO check bytes semantic correctness with CRC32 or other way
+        // Check byte semantics with CRC32 or another method.
         page = ISchemaPage.loadSchemaPage(ByteBuffer.wrap(entry));
         page.flushPageToChannel(this.channel);
       }
