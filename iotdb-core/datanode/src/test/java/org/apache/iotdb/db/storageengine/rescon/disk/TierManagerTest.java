@@ -85,6 +85,24 @@ public class TierManagerTest {
   }
 
   @Test
+  public void testTierDiskTotalSpaceFollowsTheTiersAndIsCopied() {
+    config.setTierDataDirs(
+        new String[][] {
+          {new File(temporaryFolder.getRoot(), "tier0").getAbsolutePath()},
+          {new File(temporaryFolder.getRoot(), "tier1").getAbsolutePath()}
+        });
+    tierManager.resetFolders();
+
+    long[] totalSpace = tierManager.getTierDiskTotalSpace();
+    assertEquals(2, totalSpace.length);
+    assertEquals(tierManager.getTiersNum(), totalSpace.length);
+    assertTrue(totalSpace[0] > 0 && totalSpace[1] > 0);
+
+    totalSpace[0] = -1;
+    assertTrue(tierManager.getTierDiskTotalSpace()[0] > 0);
+  }
+
+  @Test
   public void testConcurrentResetFoldersAndGetNextFolder() throws Exception {
     List<Callable<?>> folderAccessors =
         Arrays.asList(
