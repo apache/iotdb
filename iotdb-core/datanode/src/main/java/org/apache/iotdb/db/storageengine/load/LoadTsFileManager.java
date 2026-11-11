@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
+import org.apache.iotdb.db.exception.load.LoadFileNotReadyException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusOp;
@@ -426,13 +427,23 @@ public class LoadTsFileManager {
       throws IOException, LoadFileException {
     if (!uuid2WriterManager.containsKey(node.getLoadId())) {
       // A lost PREPARE acknowledgement can be retried after the follower applied COMMIT or ABORT.
-      return node.isGeneratedByRemoteConsensusLeader() && getTerminalOp(node.getLoadId()) != null;
+      if (node.isGeneratedByRemoteConsensusLeader()) {
+        if (getTerminalOp(node.getLoadId()) != null) {
+          return true;
+        }
+        throw new LoadFileNotReadyException();
+      }
+      return false;
     }
     if (!uuid2WriterManager.get(node.getLoadId()).hasStagedData()) {
-      throw new LoadFileException(
+      final String message =
           String.format(
               StorageEngineMessages.MESSAGE_LOAD_CONSENSUS_PREPARE_WITHOUT_STAGED_DATA_FE8ADC37,
-              node.getLoadId()));
+              node.getLoadId());
+      if (node.isGeneratedByRemoteConsensusLeader()) {
+        throw new LoadFileNotReadyException(message);
+      }
+      throw new LoadFileException(message);
     }
     LOGGER.info(
         StorageEngineMessages
@@ -457,7 +468,14 @@ public class LoadTsFileManager {
       final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
       throws IOException, LoadFileException {
     if (!uuid2WriterManager.containsKey(node.getLoadId())) {
-      return getTerminalOp(node.getLoadId()) == LoadTsFileConsensusOp.COMMIT;
+      final LoadTsFileConsensusOp terminalOp = getTerminalOp(node.getLoadId());
+      if (terminalOp == LoadTsFileConsensusOp.COMMIT) {
+        return true;
+      }
+      if (terminalOp == null && node.isGeneratedByRemoteConsensusLeader()) {
+        throw new LoadFileNotReadyException();
+      }
+      return false;
     }
     LOGGER.info(
         StorageEngineMessages

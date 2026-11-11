@@ -31,7 +31,6 @@ import org.apache.iotdb.consensus.common.request.DeserializedBatchIndexedConsens
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -49,19 +48,6 @@ public class IoTConsensusDataRegionStateMachine extends DataRegionStateMachine {
 
   public IoTConsensusDataRegionStateMachine(DataRegion region) {
     super(region);
-  }
-
-  @Override
-  protected TSStatus write(final PlanNode planNode) {
-    final TSStatus status = super.write(planNode);
-    if (planNode instanceof LoadTsFileConsensusNode
-        && ((LoadTsFileConsensusNode) planNode).isGeneratedByRemoteConsensusLeader()
-        && status.getCode() == TSStatusCode.LOAD_FILE_ERROR.getStatusCode()) {
-      // A reconnect can deliver PREPARE or COMMIT before an earlier piece finishes retrying.
-      // Keep the batch pending so replication cannot discard the command and its staged bytes.
-      status.setCode(TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode());
-    }
-    return status;
   }
 
   @Override
