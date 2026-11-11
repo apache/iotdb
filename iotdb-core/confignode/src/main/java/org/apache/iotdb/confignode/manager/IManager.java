@@ -934,6 +934,8 @@ public interface IManager {
 
   TShowDropTableProceduresResp showDropTableProcedures();
 
+  TShowDropTableProceduresResp showDropTableColumnProcedures();
+
   TDescTableResp describeTable(
       final String database, final String tableName, final boolean isDetails);
 

@@ -1518,6 +1518,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TShowDropTableProceduresResp showDropTableColumnProcedures() {
+    return configManager.showDropTableColumnProcedures();
+  }
+
+  @Override
   public TDescTableResp describeTable(
       final String database, final String tableName, final boolean isDetails) {
     return configManager.describeTable(database, tableName, isDetails);

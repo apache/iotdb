@@ -3470,6 +3470,15 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TShowDropTableProceduresResp showDropTableColumnProcedures() {
+    final TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? new TShowDropTableProceduresResp(status)
+            .setDropTableProcedureInfoList(procedureManager.getDropTableColumnProcedures())
+        : new TShowDropTableProceduresResp(status);
+  }
+
+  @Override
   public TDescTableResp describeTable(
       final String database, final String tableName, final boolean isDetails) {
     final TSStatus status = confirmLeader();

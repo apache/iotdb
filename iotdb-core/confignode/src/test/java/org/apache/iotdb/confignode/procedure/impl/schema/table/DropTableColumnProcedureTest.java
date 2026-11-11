@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.procedure.state.ProcedureState;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.procedure.util.ProcedureTestUtil;
+import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -36,6 +37,7 @@ import org.junit.Test;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -153,5 +155,53 @@ public class DropTableColumnProcedureTest {
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(dropTableColumnProcedure, deserializedProcedure);
+  }
+
+  @Test
+  public void modProgressSurvivesSerialization() throws Exception {
+    for (final boolean isGeneratedByPipe : new boolean[] {false, true}) {
+      for (final TDropTableModProgress progress :
+          new TDropTableModProgress[] {
+            new TDropTableModProgress(4),
+            new TDropTableModProgress(4).setRemainingModFileCount(6),
+            new TDropTableModProgress(10).setRemainingModFileCount(0)
+          }) {
+        final DropTableColumnProcedure procedure =
+            new DropTableColumnProcedure(
+                "database", "table", "query", "reading", isGeneratedByPipe);
+        final Field trackerField = DropTableColumnProcedure.class.getDeclaredField("modProgress");
+        trackerField.setAccessible(true);
+        final Field progressField =
+            TableDeletionModProgress.class.getDeclaredField("modFileProgress");
+        progressField.setAccessible(true);
+        progressField.set(trackerField.get(procedure), progress);
+        final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        procedure.serialize(new DataOutputStream(bytes));
+        final ByteBuffer buffer = ByteBuffer.wrap(bytes.toByteArray());
+        buffer.getShort();
+        final DropTableColumnProcedure recovered = new DropTableColumnProcedure(isGeneratedByPipe);
+        recovered.deserialize(buffer);
+        Assert.assertEquals("reading", recovered.getColumnName());
+        Assert.assertEquals(progress, recovered.getModFileProgress());
+        Assert.assertFalse(buffer.hasRemaining());
+        recovered.getModFileProgress().setWrittenModFileCount(0);
+        Assert.assertEquals(progress, recovered.getModFileProgress());
+      }
+    }
+  }
+
+  @Test
+  public void deserializeProcedureWithoutModProgress() throws Exception {
+    final DropTableColumnProcedure procedure =
+        new DropTableColumnProcedure("database", "table", "query", "reading", false);
+    final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    // The old column procedure format ended after the column name and category.
+    procedure.innerSerialize(new DataOutputStream(bytes));
+    final ByteBuffer buffer = ByteBuffer.wrap(bytes.toByteArray());
+    final DropTableColumnProcedure recovered = new DropTableColumnProcedure(false);
+    recovered.deserialize(buffer);
+    Assert.assertEquals(procedure, recovered);
+    Assert.assertNull(recovered.getModFileProgress());
+    Assert.assertFalse(buffer.hasRemaining());
   }
 }

@@ -1343,6 +1343,7 @@ struct TDropTableProcedureInfo {
    6: optional string errorMessage
    7: optional i64 writtenModFileCount
    8: optional i64 remainingModFileCount
+   9: optional string columnName
 }
 
 struct TDescTableResp {
@@ -2193,6 +2194,8 @@ service IConfigNodeRPCService {
 
   TShowTable4InformationSchemaResp showTables4InformationSchema()
   TShowDropTableProceduresResp showDropTableProcedures()
+
+  TShowDropTableProceduresResp showDropTableColumnProcedures()
 
   TDescTableResp describeTable(string database, string tableName, bool isDetails)
 

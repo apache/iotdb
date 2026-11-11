@@ -1061,8 +1061,8 @@ public final class ManagerMessages {
               + " Seed-ConfigNode.";
   public static final String MESSAGE_TIMESERIES_DELETION_TASK_ARG_HAS_BEEN_SUBMITTED_FOR_ASYNCHRONOUS_EXECUTION_USE_SHOW_DELETE_TIMESERIES_PROGRESS_TO_CHECK_ITS_PROGRESS_75958076 =
       "Timeseries deletion task %s has been submitted for asynchronous execution. Use SHOW DELETE TIMESERIES PROGRESS to check its progress.";
-  public static final String MESSAGE_COLUMN_DELETION_TASK_ARG_HAS_BEEN_SUBMITTED_FOR_ASYNCHRONOUS_EXECUTION_USE_DESCRIBE_DETAILS_TO_CHECK_ITS_PROGRESS_A0578678 =
-      "Column deletion task %s has been submitted for asynchronous execution. Use DESCRIBE ... DETAILS to check its progress.";
+  public static final String MESSAGE_COLUMN_DELETION_TASK_ARG_HAS_BEEN_SUBMITTED_FOR_ASYNCHRONOUS_EXECUTION_QUERY_INFORMATION_SCHEMA_DROP_TABLE_COLUMN_PROCEDURES_TO_CHECK_ITS_PROGRESS_41DCFDC3 =
+      "Column deletion task %s has been submitted for asynchronous execution. Query information_schema.drop_table_column_procedures to check its progress.";
   public static final String MESSAGE_TABLE_DELETION_TASK_ARG_HAS_BEEN_SUBMITTED_FOR_ASYNCHRONOUS_EXECUTION_QUERY_INFORMATION_SCHEMA_DROP_TABLE_PROCEDURES_TO_CHECK_ITS_PROGRESS_D7AB21D3 =
       "Table deletion task %s has been submitted for asynchronous execution. Query information_schema.drop_table_procedures to check its progress.";
   public static final String MESSAGE_THE_ASYNCHRONOUS_TIMESERIES_DELETION_QUEUE_IS_FULL_ARG_WAITING_TASKS_RETRY_LATER_93F6F407 =

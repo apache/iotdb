@@ -2701,7 +2701,7 @@ public class ProcedureManager {
             TSStatusCode.SUCCESS_STATUS,
             String.format(
                 ManagerMessages
-                    .MESSAGE_COLUMN_DELETION_TASK_ARG_HAS_BEEN_SUBMITTED_FOR_ASYNCHRONOUS_EXECUTION_USE_DESCRIBE_DETAILS_TO_CHECK_ITS_PROGRESS_A0578678,
+                    .MESSAGE_COLUMN_DELETION_TASK_ARG_HAS_BEEN_SUBMITTED_FOR_ASYNCHRONOUS_EXECUTION_QUERY_INFORMATION_SCHEMA_DROP_TABLE_COLUMN_PROCEDURES_TO_CHECK_ITS_PROGRESS_41DCFDC3,
                 completedId));
       }
       final Pair<Long, Boolean> duplicate =
@@ -2717,7 +2717,7 @@ public class ProcedureManager {
             TSStatusCode.SUCCESS_STATUS,
             String.format(
                 ManagerMessages
-                    .MESSAGE_COLUMN_DELETION_TASK_ARG_HAS_BEEN_SUBMITTED_FOR_ASYNCHRONOUS_EXECUTION_USE_DESCRIBE_DETAILS_TO_CHECK_ITS_PROGRESS_A0578678,
+                    .MESSAGE_COLUMN_DELETION_TASK_ARG_HAS_BEEN_SUBMITTED_FOR_ASYNCHRONOUS_EXECUTION_QUERY_INFORMATION_SCHEMA_DROP_TABLE_COLUMN_PROCEDURES_TO_CHECK_ITS_PROGRESS_41DCFDC3,
                 duplicate.getLeft()));
       }
       if (Boolean.TRUE.equals(duplicate.getRight())) {
@@ -2764,7 +2764,7 @@ public class ProcedureManager {
             TSStatusCode.SUCCESS_STATUS,
             String.format(
                 ManagerMessages
-                    .MESSAGE_COLUMN_DELETION_TASK_ARG_HAS_BEEN_SUBMITTED_FOR_ASYNCHRONOUS_EXECUTION_USE_DESCRIBE_DETAILS_TO_CHECK_ITS_PROGRESS_A0578678,
+                    .MESSAGE_COLUMN_DELETION_TASK_ARG_HAS_BEEN_SUBMITTED_FOR_ASYNCHRONOUS_EXECUTION_QUERY_INFORMATION_SCHEMA_DROP_TABLE_COLUMN_PROCEDURES_TO_CHECK_ITS_PROGRESS_41DCFDC3,
                 procedure.getProcId()));
       } catch (Exception e) {
         return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
@@ -2990,6 +2990,46 @@ public class ProcedureManager {
                       procedure.getProcId(),
                       procedure.getState().name(),
                       procedure.getDropProgress());
+              final TDropTableModProgress modProgress = procedure.getModFileProgress();
+              if (modProgress != null) {
+                info.setWrittenModFileCount(modProgress.getWrittenModFileCount());
+                if (modProgress.isSetRemainingModFileCount()) {
+                  info.setRemainingModFileCount(modProgress.getRemainingModFileCount());
+                }
+              }
+              if (procedure.hasException()) {
+                info.setErrorMessage(procedure.getException().getMessage());
+              }
+              return info;
+            })
+        .collect(Collectors.toList());
+  }
+
+  /** Returns running drops and completed results retained by the executor's shared TTL cleaner. */
+  public List<TDropTableProcedureInfo> getDropTableColumnProcedures() {
+    final Map<Long, DropTableColumnProcedure> dropProcedures = new HashMap<>();
+    Stream.concat(
+            executor.getProcedures().values().stream(), executor.getCompletedProcedures().stream())
+        .filter(
+            procedure ->
+                procedure instanceof DropTableColumnProcedure
+                    && !(procedure instanceof DropViewColumnProcedure))
+        .map(procedure -> (DropTableColumnProcedure) procedure)
+        .forEach(procedure -> dropProcedures.put(procedure.getProcId(), procedure));
+    dropProcedures.values().stream()
+        .filter(procedure -> !procedure.isFinished())
+        .forEach(DropTableColumnProcedure::updateModFileProgress);
+    return dropProcedures.values().stream()
+        .map(
+            procedure -> {
+              final TDropTableProcedureInfo info =
+                  new TDropTableProcedureInfo(
+                          procedure.getDatabase(),
+                          procedure.getTableName(),
+                          procedure.getProcId(),
+                          procedure.getState().name(),
+                          procedure.getDropProgress())
+                      .setColumnName(procedure.getColumnName());
               final TDropTableModProgress modProgress = procedure.getModFileProgress();
               if (modProgress != null) {
                 info.setWrittenModFileCount(modProgress.getWrittenModFileCount());

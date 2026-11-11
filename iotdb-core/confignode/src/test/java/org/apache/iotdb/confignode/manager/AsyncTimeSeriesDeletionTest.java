@@ -36,14 +36,18 @@ import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.scheduler.DeleteTimeSeriesProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.state.ProcedureState;
 import org.apache.iotdb.confignode.procedure.store.ConfigProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTableProcedureInfo;
+import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -64,6 +68,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
@@ -415,5 +420,50 @@ public class AsyncTimeSeriesDeletionTest {
     } finally {
       config.setTimeseriesDeletionQueueCapacity(capacity);
     }
+  }
+
+  @Test
+  public void testColumnProgressIncludesRunningAndRetainedTasks() {
+    final DropTableColumnProcedure active = mock(DropTableColumnProcedure.class);
+    when(active.getProcId()).thenReturn(1L);
+    when(active.getDatabase()).thenReturn("test");
+    when(active.getTableName()).thenReturn("t");
+    when(active.getColumnName()).thenReturn("reading");
+    when(active.getState()).thenReturn(ProcedureState.RUNNABLE);
+    when(active.getDropProgress()).thenReturn("EXECUTE_ON_REGIONS");
+    when(active.getModFileProgress()).thenReturn(new TDropTableModProgress(2));
+    running.put(1L, active);
+
+    final DropTableColumnProcedure failed = mock(DropTableColumnProcedure.class);
+    when(failed.getProcId()).thenReturn(2L);
+    when(failed.getDatabase()).thenReturn("test");
+    when(failed.getTableName()).thenReturn("t");
+    when(failed.getColumnName()).thenReturn("other");
+    when(failed.isFinished()).thenReturn(true);
+    when(failed.getState()).thenReturn(ProcedureState.ROLLEDBACK);
+    when(failed.getDropProgress()).thenReturn("ROLLEDBACK");
+    when(failed.hasException()).thenReturn(true);
+    when(failed.getException()).thenReturn(new ProcedureException("deletion failed"));
+    completed.add(failed);
+    // A task observed in both executor snapshots is still listed once.
+    completed.add(active);
+    running.put(3L, mock(DropViewColumnProcedure.class));
+
+    final List<TDropTableProcedureInfo> infos = manager.getDropTableColumnProcedures();
+    assertEquals(2, infos.size());
+    final TDropTableProcedureInfo runningInfo =
+        infos.stream().filter(info -> info.getProcedureId() == 1).findFirst().get();
+    assertEquals("test", runningInfo.getDatabase());
+    assertEquals("t", runningInfo.getTableName());
+    assertEquals("reading", runningInfo.getColumnName());
+    assertEquals("EXECUTE_ON_REGIONS", runningInfo.getProgress());
+    assertEquals(2, runningInfo.getWrittenModFileCount());
+    assertFalse(runningInfo.isSetRemainingModFileCount());
+    final TDropTableProcedureInfo failedInfo =
+        infos.stream().filter(info -> info.getProcedureId() == 2).findFirst().get();
+    assertEquals("deletion failed", failedInfo.getErrorMessage());
+    assertFalse(failedInfo.isSetWrittenModFileCount());
+    verify(active).updateModFileProgress();
+    verify(failed, times(0)).updateModFileProgress();
   }
 }

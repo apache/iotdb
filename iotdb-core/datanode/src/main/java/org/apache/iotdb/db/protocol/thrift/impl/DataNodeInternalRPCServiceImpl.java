@@ -2241,7 +2241,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                     .execute(
                         new DataRegionId(consensusGroupId.getId()),
                         new RelationalDeleteDataNode(
-                            new PlanNodeId(""),
+                            req.isSetProcedureId()
+                                ? DropTableModProgress.planNodeId(req.getProcedureId())
+                                : new PlanNodeId(""),
                             new TableDeletionEntry(
                                 new DeletionPredicate(
                                     req.getTableName(),

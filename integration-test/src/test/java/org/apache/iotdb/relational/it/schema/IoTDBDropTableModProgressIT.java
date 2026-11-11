@@ -103,4 +103,97 @@ public class IoTDBDropTableModProgressIT {
           Collections.singleton("d1,20,"));
     }
   }
+
+  @Test
+  public void testDropColumnModFileProgress() throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement();
+        final Statement procedureStatement = TestUtils.createSingleNodeStatement(connection)) {
+      statement.execute("create database async_drop_column_mod_db");
+      statement.execute("use async_drop_column_mod_db");
+      statement.execute(
+          "create table target (device string tag, label string attribute, reading int32, retained int32)");
+      statement.execute(
+          "insert into target(time, device, label, reading, retained) values (1, 'd1', 'label', 10, 20)");
+      statement.execute("flush");
+      statement.execute("alter table target drop column reading");
+      awaitColumnDrop(procedureStatement, "async_drop_column_mod_db", "reading", 1);
+      statement.execute("alter table target drop column label");
+      awaitColumnDrop(procedureStatement, "async_drop_column_mod_db", "label", 0);
+      // A later deletion must not overwrite the retained result for the earlier column.
+      awaitColumnDrop(procedureStatement, "async_drop_column_mod_db", "reading", 1);
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select device, retained from target"),
+          "device,retained,",
+          Collections.singleton("d1,20,"));
+      try (final ResultSet resultSet = statement.executeQuery("describe target details")) {
+        while (resultSet.next()) {
+          assertFalse("reading".equals(resultSet.getString(1)));
+          assertFalse("label".equals(resultSet.getString(1)));
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testDropColumnWithoutDataModFileProgress() throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement();
+        final Statement procedureStatement = TestUtils.createSingleNodeStatement(connection)) {
+      statement.execute("create database async_drop_empty_column_db");
+      statement.execute("use async_drop_empty_column_db");
+      statement.execute("create table target (device string tag, reading int32, retained int32)");
+      statement.execute("alter table target drop column reading");
+      awaitColumnDrop(procedureStatement, "async_drop_empty_column_db", "reading", 0);
+    }
+  }
+
+  private static void awaitColumnDrop(
+      final Statement statement,
+      final String database,
+      final String column,
+      final long writtenModFiles) {
+    await()
+        .atMost(60, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              try (final ResultSet resultSet =
+                  statement.executeQuery(
+                      "select * from information_schema.drop_table_column_procedures "
+                          + "where database = '"
+                          + database
+                          + "' and table_name = 'target' "
+                          + "and column_name = '"
+                          + column
+                          + "'")) {
+                final String[] columns = {
+                  "database",
+                  "table_name",
+                  "column_name",
+                  "procedure_id",
+                  "state",
+                  "progress",
+                  "error_message",
+                  "written_mod_file_count",
+                  "remaining_mod_file_count"
+                };
+                assertEquals(columns.length, resultSet.getMetaData().getColumnCount());
+                for (int i = 0; i < columns.length; i++) {
+                  assertEquals(columns[i], resultSet.getMetaData().getColumnLabel(i + 1));
+                }
+                assertTrue(resultSet.next());
+                assertTrue(resultSet.getLong("procedure_id") >= 0);
+                assertEquals("SUCCESS", resultSet.getString("state"));
+                assertEquals("SUCCESS", resultSet.getString("progress"));
+                assertEquals(null, resultSet.getString("error_message"));
+                assertEquals(writtenModFiles, resultSet.getLong("written_mod_file_count"));
+                assertFalse(resultSet.wasNull());
+                assertEquals(0, resultSet.getLong("remaining_mod_file_count"));
+                assertFalse(resultSet.wasNull());
+                assertFalse(resultSet.next());
+              }
+            });
+  }
 }

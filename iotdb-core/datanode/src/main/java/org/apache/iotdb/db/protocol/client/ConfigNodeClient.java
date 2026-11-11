@@ -1292,6 +1292,12 @@ public class ConfigNodeClient extends AbstractConfigNodeClient<ConfigNodeClient>
   }
 
   @Override
+  public TShowDropTableProceduresResp showDropTableColumnProcedures() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showDropTableColumnProcedures(), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
   public TDescTableResp describeTable(
       final String database, final String tableName, final boolean isDetails) throws TException {
     return executeRemoteCallWithRetry(
