@@ -52,4 +52,6 @@ public final class DataNodeSchemaMessages {
   public static final String GET_TEMPLATE_INFO_ERROR =
       "Failed to get schema template [%s] from ConfigNode: %s";
   public static final String ILLEGAL_PATH_LOG = "illegal path {}";
+  public static final String SCHEMA_FILE_WRONG_VERSION =
+      "SchemaFile with wrong version, please check or upgrade.";
 }

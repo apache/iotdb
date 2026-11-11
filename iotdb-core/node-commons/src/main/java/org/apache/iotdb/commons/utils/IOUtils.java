@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PriPrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.i18n.UtilMessages;
 import org.apache.iotdb.commons.path.PartialPath;
 
 import com.google.common.base.Supplier;
@@ -116,6 +117,42 @@ public class IOUtils {
       }
       currentPosition += readBytes;
     }
+  }
+
+  /**
+   * Writes all remaining bytes without changing the channel's current position.
+   *
+   * @return the number of bytes written
+   * @throws IOException if a write fails or makes no progress
+   */
+  public static int writeFully(FileChannel fileChannel, ByteBuffer buffer, long position)
+      throws IOException {
+    final int size = buffer.remaining();
+    while (buffer.hasRemaining()) {
+      final int written = fileChannel.write(buffer, position);
+      if (written <= 0) {
+        throw new IOException(UtilMessages.EXCEPTION_FILE_CHANNEL_WRITE_MADE_NO_PROGRESS_B0F24ACD);
+      }
+      position += written;
+    }
+    return size;
+  }
+
+  /**
+   * Writes all remaining bytes at the channel's current position, advancing it as bytes are
+   * written.
+   *
+   * @return the number of bytes written
+   * @throws IOException if a write fails or makes no progress
+   */
+  public static int writeFully(FileChannel fileChannel, ByteBuffer buffer) throws IOException {
+    final int size = buffer.remaining();
+    while (buffer.hasRemaining()) {
+      if (fileChannel.write(buffer) <= 0) {
+        throw new IOException(UtilMessages.EXCEPTION_FILE_CHANNEL_WRITE_MADE_NO_PROGRESS_B0F24ACD);
+      }
+    }
+    return size;
   }
 
   /**
