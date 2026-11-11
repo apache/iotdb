@@ -393,7 +393,9 @@ public class IoTDBSQLFunctionManagementIT {
   public void testTableUdfLazyDependencySurvivesTreeModelRegistration() throws Exception {
     Path jarPath = buildCrossModelUDFJar();
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
-        Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement();
+        Connection treeConnection = EnvFactory.getEnv().getConnection();
+        Statement treeStatement = treeConnection.createStatement()) {
       statement.execute("create database udf_cross_model");
       try {
         statement.execute("use udf_cross_model");
@@ -403,7 +405,8 @@ public class IoTDBSQLFunctionManagementIT {
             String.format(
                 "create function lazy_f as '%s.LazyScalarFunction' using URI '%s'",
                 GENERATED_UDF_PACKAGE, jarPath.toUri()));
-        statement.execute(
+        // The function model is determined by the SQL dialect, not by the implemented class.
+        treeStatement.execute(
             String.format(
                 "create function tree_f as '%s.TreeIdentity' using URI '%s'",
                 GENERATED_UDF_PACKAGE, jarPath.toUri()));
@@ -414,6 +417,8 @@ public class IoTDBSQLFunctionManagementIT {
           assertFalse(resultSet.next());
         }
       } finally {
+        treeStatement.execute("drop function tree_f");
+        statement.execute("drop function lazy_f");
         statement.execute("drop database udf_cross_model");
       }
     }
