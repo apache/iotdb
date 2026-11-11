@@ -23,9 +23,12 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.request.IConsensusRequest;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.statemachine.dataregion.IoTConsensusDataRegionStateMachine;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -45,6 +48,7 @@ import org.apache.iotdb.db.storageengine.load.splitter.ChunkPayloadRef;
 import org.apache.iotdb.db.storageengine.load.splitter.ChunkPayloadUnavailableException;
 import org.apache.iotdb.db.storageengine.load.splitter.NonAlignedChunkData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.header.ChunkHeader;
@@ -499,6 +503,88 @@ public class LoadTsFileManagerTest {
         second.getChunkLayout().offset() + second.getChunkLayout().length(), staged.length());
     assertTrue(progress.isReady(staged.length()));
     assertTrue(manager.prepare(prepareNode(loadId), Collections.emptyMap()));
+  }
+
+  @Test
+  public void testReplicatedLoadRetriesCommandsThatOvertakePieces() throws Exception {
+    final String loadId = "replicated-out-of-order-load";
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    final IoTConsensusDataRegionStateMachine stateMachine =
+        new IoTConsensusDataRegionStateMachine(dataRegion);
+    Mockito.when(dataRegion.writeLoadTsFilePrepare(Mockito.any(), Mockito.anyMap()))
+        .thenAnswer(
+            invocation -> manager.prepare(invocation.getArgument(0), invocation.getArgument(1)));
+    Mockito.when(dataRegion.writeLoadTsFileCommit(Mockito.any(), Mockito.anyMap()))
+        .thenAnswer(
+            invocation -> manager.loadAll(invocation.getArgument(0), invocation.getArgument(1)));
+    emulateStagedFileImport();
+
+    final LoadTsFileConsensusNode prepare = prepareNode(loadId);
+    final LoadTsFileConsensusNode commit = commitNode(loadId);
+    prepare.markAsGeneratedByRemoteConsensusLeader();
+    commit.markAsGeneratedByRemoteConsensusLeader();
+    try {
+      // Neither command may be acknowledged while the piece is still retrying after reconnect.
+      assertTrue(
+          RetryUtils.needRetryForWrite(stateMachine.write((IConsensusRequest) prepare).getCode()));
+      assertTrue(
+          RetryUtils.needRetryForWrite(stateMachine.write((IConsensusRequest) commit).getCode()));
+
+      final NonAlignedChunkData[] chunks = twoChunksOfTheSamePartition();
+      final List<LoadTsFileConsensusNode.PieceRef> refs =
+          manager.writePiece(loadId, toTsFileDataList(Collections.singletonList(chunks[1])));
+      final File staged = new File(tempDir, refs.get(0).getRelativePath());
+      // A partially received piece set must remain retryable as well.
+      assertTrue(
+          RetryUtils.needRetryForWrite(stateMachine.write((IConsensusRequest) prepare).getCode()));
+      manager.writePiece(loadId, toTsFileDataList(Collections.singletonList(chunks[0])));
+      assertTrue(
+          RetryUtils.needRetryForWrite(stateMachine.write((IConsensusRequest) commit).getCode()));
+
+      assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          stateMachine.write((IConsensusRequest) prepare).getCode());
+      assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          stateMachine.write((IConsensusRequest) commit).getCode());
+      final File imported = new File(new File(tempDir, "data"), staged.getName());
+      assertAllSeriesReadable(
+          imported,
+          java.util.Arrays.asList(
+              new SeriesExpectation(
+                  new StringArrayDeviceID("root", "load_manager_test", "d0"), "s0", 10, 0, 9),
+              new SeriesExpectation(
+                  new StringArrayDeviceID("root", "load_manager_test", "d1"), "s1", 10, 100, 109)));
+
+      // Losing an acknowledgement must not leave PREPARE retrying forever after COMMIT succeeds.
+      assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          stateMachine.write((IConsensusRequest) prepare).getCode());
+      assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          stateMachine.write((IConsensusRequest) commit).getCode());
+    } finally {
+      manager.stop();
+    }
+  }
+
+  @Test
+  public void testReplicatedPrepareAfterAbortIsANoOp() throws Exception {
+    final String loadId = "replicated-aborted-load";
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    final LoadTsFileConsensusNode prepare = prepareNode(loadId);
+    try {
+      manager.writePiece(loadId, Collections.singletonList(laidOutChunk()));
+      assertTrue(manager.prepare(prepare, Collections.emptyMap()));
+      assertTrue(manager.deleteAll(abortNode(loadId)));
+
+      assertFalse(manager.prepare(prepare, Collections.emptyMap()));
+      prepare.markAsGeneratedByRemoteConsensusLeader();
+      assertTrue(manager.prepare(prepare, Collections.emptyMap()));
+      assertFalse(manager.loadAll(commitNode(loadId), Collections.emptyMap()));
+    } finally {
+      manager.stop();
+    }
   }
 
   /**

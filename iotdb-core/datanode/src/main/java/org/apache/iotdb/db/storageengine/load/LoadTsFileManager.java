@@ -99,7 +99,7 @@ public class LoadTsFileManager {
   private final LoadTaskRetention retention;
 
   /**
-   * The tasks this region finished committing, most recent last, to answer a repeated COMMIT.
+   * The tasks this region finished, most recent last, to answer repeated consensus commands.
    *
    * <p>The coordinator cannot tell a lost answer from a lost command - an RPC that timed out may
    * have applied - so it has to be able to re-send the COMMIT that ended a task. A task this region
@@ -110,14 +110,15 @@ public class LoadTsFileManager {
    * forget it: a repeated COMMIT of a task that committed before the restart is then reported as
    * unknown again, which is what it is.
    */
-  private static final int COMMITTED_TASK_HISTORY = 256;
+  private static final int FINISHED_TASK_HISTORY = 256;
 
-  private final Map<String, Boolean> committedLoadIds =
+  private final Map<String, LoadTsFileConsensusOp> finishedLoadIds =
       Collections.synchronizedMap(
-          new LinkedHashMap<String, Boolean>(16, 0.75f, true) {
+          new LinkedHashMap<String, LoadTsFileConsensusOp>(16, 0.75f, true) {
             @Override
-            protected boolean removeEldestEntry(final Map.Entry<String, Boolean> eldest) {
-              return size() > COMMITTED_TASK_HISTORY;
+            protected boolean removeEldestEntry(
+                final Map.Entry<String, LoadTsFileConsensusOp> eldest) {
+              return size() > FINISHED_TASK_HISTORY;
             }
           });
 
@@ -384,10 +385,11 @@ public class LoadTsFileManager {
     return result;
   }
 
-  /** Whether this region already committed the task, so that a repeated COMMIT is a no-op. */
-  private boolean isAlreadyCommitted(final String loadId) {
-    if (committedLoadIds.containsKey(loadId)) {
-      return true;
+  /** The terminal command this region already applied to the task, or null if it is unknown. */
+  private LoadTsFileConsensusOp getTerminalOp(final String loadId) {
+    final LoadTsFileConsensusOp finishedOp = finishedLoadIds.get(loadId);
+    if (finishedOp != null) {
+      return finishedOp;
     }
     for (final String baseDir : LoadStagingDirs.baseDirs()) {
       final File taskDir =
@@ -404,8 +406,8 @@ public class LoadTsFileManager {
       for (final File file : files) {
         try {
           final LoadTsFileProgress.TerminalRecord terminal = LoadTsFileProgress.readTerminal(file);
-          if (terminal != null && terminal.op() == LoadTsFileConsensusOp.COMMIT) {
-            return true;
+          if (terminal != null) {
+            return terminal.op();
           }
         } catch (final IOException e) {
           LOGGER.warn(
@@ -415,7 +417,7 @@ public class LoadTsFileManager {
         }
       }
     }
-    return false;
+    return null;
   }
 
   public boolean prepare(
@@ -423,7 +425,8 @@ public class LoadTsFileManager {
       final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
       throws IOException, LoadFileException {
     if (!uuid2WriterManager.containsKey(node.getLoadId())) {
-      return false;
+      // A lost PREPARE acknowledgement can be retried after the follower applied COMMIT or ABORT.
+      return node.isGeneratedByRemoteConsensusLeader() && getTerminalOp(node.getLoadId()) != null;
     }
     if (!uuid2WriterManager.get(node.getLoadId()).hasStagedData()) {
       throw new LoadFileException(
@@ -454,7 +457,7 @@ public class LoadTsFileManager {
       final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
       throws IOException, LoadFileException {
     if (!uuid2WriterManager.containsKey(node.getLoadId())) {
-      return isAlreadyCommitted(node.getLoadId());
+      return getTerminalOp(node.getLoadId()) == LoadTsFileConsensusOp.COMMIT;
     }
     LOGGER.info(
         StorageEngineMessages
@@ -470,7 +473,7 @@ public class LoadTsFileManager {
         .get(node.getLoadId())
         .loadAll(node.isGeneratedByPipe(), !mustRetainStagedFiles);
     finishConsensusTask(node, mustRetainStagedFiles, LoadTsFileConsensusOp.COMMIT);
-    committedLoadIds.put(node.getLoadId(), Boolean.TRUE);
+    finishedLoadIds.put(node.getLoadId(), LoadTsFileConsensusOp.COMMIT);
     logLoadNodeToWAL(node);
     dataRegion.insertSeparatorToWAL(node);
     return true;
@@ -482,6 +485,7 @@ public class LoadTsFileManager {
     }
     finishConsensusTask(
         node, retention.mustRetain(node.getSearchIndex()), LoadTsFileConsensusOp.ABORT);
+    finishedLoadIds.put(node.getLoadId(), LoadTsFileConsensusOp.ABORT);
     logLoadNodeToWAL(node);
     dataRegion.insertSeparatorToWAL(node);
     return true;

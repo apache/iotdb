@@ -25,14 +25,19 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.utils.RetryUtils;
+import org.apache.iotdb.db.exception.load.LoadFileException;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -42,6 +47,36 @@ import java.util.Collections;
 import java.util.List;
 
 public class DataRegionStateMachineTest {
+
+  @Test
+  public void testOnlyReplicatedLoadFailuresAreRetried() throws Exception {
+    final DataRegion dataRegion = Mockito.mock(DataRegion.class);
+    final LoadFileException failure = new LoadFileException("injected incomplete LOAD");
+    Mockito.when(dataRegion.writeLoadTsFilePrepare(Mockito.any(), Mockito.anyMap()))
+        .thenThrow(failure);
+    final IoTConsensusDataRegionStateMachine stateMachine =
+        new IoTConsensusDataRegionStateMachine(dataRegion);
+    final LoadTsFileConsensusNode prepare =
+        LoadTsFileConsensusNode.prepare(
+            new PlanNodeId("prepare"), "load", 1, 1L, false, Collections.emptyMap());
+    final LoadTsFileConsensusNode commit =
+        LoadTsFileConsensusNode.commit(
+            new PlanNodeId("commit"), "load", false, Collections.emptyMap());
+    for (final LoadTsFileConsensusNode node : new LoadTsFileConsensusNode[] {prepare, commit}) {
+      final TSStatus localStatus = stateMachine.write(node);
+      Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), localStatus.getCode());
+      Assert.assertFalse(RetryUtils.needRetryForWrite(localStatus.getCode()));
+
+      node.markAsGeneratedByRemoteConsensusLeader();
+      final TSStatus remoteStatus = stateMachine.write(node);
+      Assert.assertTrue(RetryUtils.needRetryForWrite(remoteStatus.getCode()));
+      Assert.assertEquals(localStatus.getMessage(), remoteStatus.getMessage());
+    }
+    Mockito.verify(dataRegion, Mockito.times(2))
+        .writeLoadTsFilePrepare(Mockito.any(), Mockito.anyMap());
+    Mockito.verify(dataRegion, Mockito.times(2))
+        .writeLoadTsFileCommit(Mockito.any(), Mockito.anyMap());
+  }
 
   @Test
   public void testMergeInsertRowNodes() throws IllegalPathException {
