@@ -162,7 +162,7 @@ public class QueryExecution implements IQueryExecution {
                 LOGGER.debug(DataNodeQueryMessages.RELEASE_QUERY_RESOURCE_STATE, state);
               }
               cause = stateMachine.getFailureException();
-              releaseResource(cause);
+              releaseResource(cause, false);
 
               this.cleanUpCoordinatorContextMapIfNeeded(cause);
             }
@@ -473,16 +473,20 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public void stopAndCleanup(Throwable t) {
     stop(t);
-    releaseResource(t);
+    releaseResource(t, false);
   }
 
   private void cleanupForRetry(Throwable t) {
     stop(t);
-    releaseResource(t);
+    releaseResource(t, true);
   }
 
-  /** Release the resources that current QueryExecution hold with a specified exception */
-  private void releaseResource(Throwable t) {
+  /**
+   * Release the resources that the current QueryExecution holds.
+   *
+   * @param isRetry whether cleanup is for retry; the UDF query scope remains reusable in this case
+   */
+  private void releaseResource(Throwable t, boolean isRetry) {
     context.recordDeviceEntryDiskIOMetricsOnRelease();
     // close ResultHandle to unblock client's getResult request
     // Actually, we should not close the ResultHandle when the QueryExecution is Finished.
@@ -510,6 +514,9 @@ public class QueryExecution implements IQueryExecution {
                     .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
                 context.getQueryId().getId()));
       }
+    }
+    if (!isRetry) {
+      finalizeUDFClassLoader();
     }
   }
 

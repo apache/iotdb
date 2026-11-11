@@ -98,6 +98,7 @@ import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -279,6 +280,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
@@ -3596,7 +3598,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     createLogicalViewStatement.setSourcePaths(alterLogicalViewStatement.getSourcePaths());
     createLogicalViewStatement.setQueryStatement(alterLogicalViewStatement.getQueryStatement());
 
-    final Analysis analysis = Analyzer.analyze(createLogicalViewStatement, context);
+    final Analysis analysis = analyzeWithUDFQueryScope(createLogicalViewStatement, context);
     analysis.setDatabaseName(context.getDatabaseName().orElse(null));
     if (analysis.isFailed()) {
       future.setException(
@@ -4176,7 +4178,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     final String queryBody = createContinuousQueryStatement.getQueryBody();
     // TODO Do not modify Statement in Analyzer
-    Analyzer.analyze(createContinuousQueryStatement.getQueryBodyStatement(), context);
+    analyzeWithUDFQueryScope(createContinuousQueryStatement.getQueryBodyStatement(), context);
 
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
@@ -4203,6 +4205,22 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
     return future;
+  }
+
+  private static Analysis analyzeWithUDFQueryScope(
+      final Statement statement, final MPPQueryContext context) {
+    final UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
+    if (classLoaderManager == null) {
+      return Analyzer.analyze(statement, context);
+    }
+    final UDFClassLoaderManager.QueryScope queryScope =
+        classLoaderManager.openQueryScope(context.getQueryId().getId());
+    try {
+      return classLoaderManager.withQueryScope(
+          queryScope, () -> Analyzer.analyze(statement, context));
+    } finally {
+      classLoaderManager.finalizeUDFQuery(queryScope);
+    }
   }
 
   @Override

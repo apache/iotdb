@@ -110,6 +110,19 @@ public class QueryExecutionRetryTest {
   }
 
   @Test
+  public void testReadQueryScopeIsClosedByStopAndCleanup() throws Exception {
+    MPPQueryContext context = createQueryContext("read_stop_cleanup");
+    context.setQueryType(QueryType.READ);
+    QueryExecution execution =
+        new QueryExecution(new RecordingPlanner(false), context, stateMachineExecutor);
+
+    assertUDFQueryScopeOpen(execution);
+    execution.stopAndCleanup(null);
+
+    assertUDFQueryScopeClosed(execution);
+  }
+
+  @Test
   public void testAnalysisAttemptIsRolledBackWhenRetryLimitIsReached() throws Exception {
     RecordingPlanner planner = new RecordingPlanner(true);
     QueryExecution execution =
@@ -202,6 +215,15 @@ public class QueryExecutionRetryTest {
     assertThrows(
         IllegalStateException.class,
         () -> UDFClassLoaderManager.getInstance().withQueryScope(queryScope, () -> null));
+  }
+
+  private static void assertUDFQueryScopeOpen(QueryExecution execution) throws Exception {
+    Field queryScopeField = QueryExecution.class.getDeclaredField("udfQueryScope");
+    queryScopeField.setAccessible(true);
+    UDFClassLoaderManager.QueryScope queryScope =
+        (UDFClassLoaderManager.QueryScope) queryScopeField.get(execution);
+    assertNotNull(queryScope);
+    UDFClassLoaderManager.getInstance().withQueryScope(queryScope, () -> null);
   }
 
   private static class RecordingPlanner implements IPlanner {
