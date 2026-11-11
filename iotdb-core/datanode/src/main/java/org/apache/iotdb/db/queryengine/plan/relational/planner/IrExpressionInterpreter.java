@@ -984,26 +984,20 @@ public class IrExpressionInterpreter {
     private int evaluateIntArithmetic(
         ArithmeticBinaryExpression.Operator operator, int left, int right) {
       try {
-        switch (operator) {
-          case ADD:
-            return Math.addExact(left, right);
-          case SUBTRACT:
-            return Math.subtractExact(left, right);
-          case MULTIPLY:
-            return Math.multiplyExact(left, right);
-          case DIVIDE:
+        return switch (operator) {
+          case ADD -> Math.addExact(left, right);
+          case SUBTRACT -> Math.subtractExact(left, right);
+          case MULTIPLY -> Math.multiplyExact(left, right);
+          case DIVIDE -> {
             if (left == Integer.MIN_VALUE && right == -1) {
               throw new SemanticException(
                   String.format(
                       DataNodeQueryMessages.EXCEPTION_INT_OVERFLOW_ARG_ARG_BB287017, left, right));
             }
-            return left / right;
-          case MODULUS:
-            return left % right;
-          default:
-            throw new UnsupportedOperationException(
-                DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + operator);
-        }
+            yield left / right;
+          }
+          case MODULUS -> left % right;
+        };
       } catch (ArithmeticException e) {
         throw new SemanticException(e.getMessage());
       }
@@ -1012,27 +1006,21 @@ public class IrExpressionInterpreter {
     private long evaluateLongArithmetic(
         ArithmeticBinaryExpression.Operator operator, long left, Type leftType, long right) {
       try {
-        switch (operator) {
-          case ADD:
-            return Math.addExact(left, right);
-          case SUBTRACT:
-            return Math.subtractExact(left, right);
-          case MULTIPLY:
-            return Math.multiplyExact(left, right);
-          case DIVIDE:
+        return switch (operator) {
+          case ADD -> Math.addExact(left, right);
+          case SUBTRACT -> Math.subtractExact(left, right);
+          case MULTIPLY -> Math.multiplyExact(left, right);
+          case DIVIDE -> {
             if ((leftType.equals(INT32) && left == Integer.MIN_VALUE && right == -1)
                 || (leftType.equals(INT64) && left == Long.MIN_VALUE && right == -1)) {
               throw new SemanticException(
                   String.format(
                       DataNodeQueryMessages.EXCEPTION_LONG_OVERFLOW_ARG_ARG_46CC95E2, left, right));
             }
-            return left / right;
-          case MODULUS:
-            return left % right;
-          default:
-            throw new UnsupportedOperationException(
-                DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + operator);
-        }
+            yield left / right;
+          }
+          case MODULUS -> left % right;
+        };
       } catch (ArithmeticException e) {
         throw new SemanticException(e.getMessage());
       }
@@ -1040,40 +1028,24 @@ public class IrExpressionInterpreter {
 
     private float evaluateFloatArithmetic(
         ArithmeticBinaryExpression.Operator operator, float left, float right) {
-      switch (operator) {
-        case ADD:
-          return left + right;
-        case SUBTRACT:
-          return left - right;
-        case MULTIPLY:
-          return left * right;
-        case DIVIDE:
-          return left / right;
-        case MODULUS:
-          return left % right;
-        default:
-          throw new UnsupportedOperationException(
-              DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + operator);
-      }
+      return switch (operator) {
+        case ADD -> left + right;
+        case SUBTRACT -> left - right;
+        case MULTIPLY -> left * right;
+        case DIVIDE -> left / right;
+        case MODULUS -> left % right;
+      };
     }
 
     private double evaluateDoubleArithmetic(
         ArithmeticBinaryExpression.Operator operator, double left, double right) {
-      switch (operator) {
-        case ADD:
-          return left + right;
-        case SUBTRACT:
-          return left - right;
-        case MULTIPLY:
-          return left * right;
-        case DIVIDE:
-          return left / right;
-        case MODULUS:
-          return left % right;
-        default:
-          throw new UnsupportedOperationException(
-              DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + operator);
-      }
+      return switch (operator) {
+        case ADD -> left + right;
+        case SUBTRACT -> left - right;
+        case MULTIPLY -> left * right;
+        case DIVIDE -> left / right;
+        case MODULUS -> left % right;
+      };
     }
 
     private Object normalizeArithmeticValue(Object value, Type type) {
@@ -1114,7 +1086,8 @@ public class IrExpressionInterpreter {
         case NOT_EQUAL:
           return comparison != 0;
         default:
-          return null;
+          throw new UnsupportedOperationException(
+              DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + operator);
       }
     }
 
