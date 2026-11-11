@@ -439,7 +439,9 @@ public class FileLoaderUtils {
 
   private static boolean shouldUseDeviceMetadataBatchScan(
       int selectedColumnCount, int totalFieldColumnCount) {
-    return totalFieldColumnCount > 0
+    // a single-column device gains nothing from a batch read (one leaf either way), and it would
+    // bypass the per-column cache's debug logging
+    return totalFieldColumnCount > 1
         && (double) selectedColumnCount / totalFieldColumnCount >= DEVICE_METADATA_BATCH_SCAN_RATIO;
   }
 
