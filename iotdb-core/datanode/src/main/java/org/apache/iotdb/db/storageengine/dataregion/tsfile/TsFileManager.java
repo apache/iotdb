@@ -351,17 +351,14 @@ public class TsFileManager {
       writeUnlock();
     }
 
-    // Currently disable
-    if (false) {
-      PipeDataNodeResourceManager.compaction()
-          .emitResult(
-              storageGroupName,
-              dataRegionId,
-              timePartition,
-              seqFileResources,
-              unseqFileResources,
-              targetFileResources);
-    }
+    PipeDataNodeResourceManager.compaction()
+        .emitResult(
+            storageGroupName,
+            dataRegionId,
+            timePartition,
+            seqFileResources,
+            unseqFileResources,
+            targetFileResources);
   }
 
   public boolean contains(TsFileResource tsFileResource, boolean sequence) {
