@@ -1379,7 +1379,10 @@ public class QueryPlanner {
     GapFillStartAndEndTimeExtractVisitor.Context context =
         new GapFillStartAndEndTimeExtractVisitor.Context();
     GapFillStartAndEndTimeExtractVisitor visitor =
-        new GapFillStartAndEndTimeExtractVisitor(timeColumn);
+        new GapFillStartAndEndTimeExtractVisitor(
+            timeColumn,
+            new PlannerContext(new TableMetadataImpl(), new InternalTypeManager()),
+            session);
     if (!Boolean.TRUE.equals(wherePredicate.accept(visitor, context))) {
       throw new SemanticException(CAN_NOT_INFER_TIME_RANGE);
     } else {
