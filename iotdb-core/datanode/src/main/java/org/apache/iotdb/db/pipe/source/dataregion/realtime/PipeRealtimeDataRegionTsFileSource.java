@@ -210,7 +210,8 @@ public class PipeRealtimeDataRegionTsFileSource extends PipeRealtimeDataRegionSo
         final PipeRealtimeEvent event = iterator.next();
         if (event.getEvent() instanceof PipeHeartbeatEvent) {
           if (((PipeHeartbeatEvent) event.getEvent()).isCompletionBarrier()) {
-            return null;
+            // Completion barriers stay ordered, but do not prevent retry-triggering heartbeats.
+            continue;
           }
           iterator.remove();
           return event;
