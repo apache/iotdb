@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -209,14 +210,17 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
             .map(TsFileResource::getTsFile)
             .map(PipeRealtimePriorityBlockingQueue::normalizePath)
             .collect(Collectors.toSet());
-
-    final Map<CommitterKey, Set<PipeTsFileInsertionEvent>> eventsToBeRemovedGroupByCommitterKey =
+    final List<PipeTsFileInsertionEvent> regionEventsInQueue =
         tsfileInsertEventDeque.stream()
             .filter(
                 event ->
                     event instanceof PipeTsFileInsertionEvent
                         && ((PipeTsFileInsertionEvent) event).getRegionId() == regionId)
             .map(event -> (PipeTsFileInsertionEvent) event)
+            .collect(Collectors.toList());
+
+    final Map<CommitterKey, Set<PipeTsFileInsertionEvent>> eventsToBeRemovedGroupByCommitterKey =
+        regionEventsInQueue.stream()
             .filter(event -> sourceFilePaths.contains(normalizePath(event.getSourceTsFile())))
             .collect(
                 Collectors.groupingBy(
@@ -232,6 +236,10 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
                         .map(PipeRealtimePriorityBlockingQueue::normalizePath)
                         .collect(Collectors.toSet())
                         .equals(sourceFilePaths))
+            .filter(
+                entry ->
+                    areSourceEventsAtQueueHead(
+                        regionEventsInQueue, entry.getKey(), entry.getValue()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     if (eventsToBeRemovedGroupByCommitterKey.isEmpty()) {
       LOGGER.info(
@@ -243,13 +251,13 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       return;
     }
 
-    final Map<CommitterKey, Set<PipeTsFileInsertionEvent>> eventsToBeAddedGroupByCommitterKey =
+    final Map<CommitterKey, List<PipeTsFileInsertionEvent>> eventsToBeAddedGroupByCommitterKey =
         new HashMap<>();
     for (final Map.Entry<CommitterKey, Set<PipeTsFileInsertionEvent>> entry :
         eventsToBeRemovedGroupByCommitterKey.entrySet()) {
       final CommitterKey committerKey = entry.getKey();
       final PipeTsFileInsertionEvent anyEvent = entry.getValue().stream().findFirst().orElse(null);
-      final Set<PipeTsFileInsertionEvent> newEvents = new HashSet<>();
+      final List<PipeTsFileInsertionEvent> newEvents = new ArrayList<>();
       for (int i = 0; i < targetFiles.size(); i++) {
         newEvents.add(
             new PipeCompactedTsFileInsertionEvent(
@@ -262,10 +270,11 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       eventsToBeAddedGroupByCommitterKey.put(committerKey, newEvents);
     }
 
-    final Set<PipeTsFileInsertionEvent> successfullyReferenceIncreasedEvents = new HashSet<>();
+    final List<PipeTsFileInsertionEvent> successfullyReferenceIncreasedEvents = new ArrayList<>();
     boolean allSuccess = true;
     outerLoop:
-    for (final Set<PipeTsFileInsertionEvent> events : eventsToBeAddedGroupByCommitterKey.values()) {
+    for (final List<PipeTsFileInsertionEvent> events :
+        eventsToBeAddedGroupByCommitterKey.values()) {
       for (final PipeTsFileInsertionEvent event : events) {
         try {
           if (!event.increaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName())) {
@@ -302,9 +311,14 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     // hot-path throughput over strict de-duplication.
     final Set<PipeTsFileInsertionEvent> removedEvents =
         eventsToRemove.stream().filter(tsfileInsertEventDeque::remove).collect(Collectors.toSet());
-    for (final PipeTsFileInsertionEvent event : successfullyReferenceIncreasedEvents) {
-      tsfileInsertEventDeque.add(event);
-      eventCounter.increaseEventCount(event);
+    for (final List<PipeTsFileInsertionEvent> events :
+        eventsToBeAddedGroupByCommitterKey.values()) {
+      // Insert outputs at the oldest source position while preserving their file order.
+      for (int i = events.size() - 1; i >= 0; i--) {
+        final PipeTsFileInsertionEvent event = events.get(i);
+        tsfileInsertEventDeque.addFirst(event);
+        eventCounter.increaseEventCount(event);
+      }
     }
 
     for (final PipeTsFileInsertionEvent event : removedEvents) {
@@ -324,9 +338,21 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
             .map(PipeTsFileInsertionEvent::coreReportMessage)
             .collect(Collectors.joining(", ")),
         eventsToBeAddedGroupByCommitterKey.values().stream()
-            .flatMap(Set::stream)
+            .flatMap(List::stream)
             .map(PipeTsFileInsertionEvent::coreReportMessage)
             .collect(Collectors.joining(", ")));
+  }
+
+  private static boolean areSourceEventsAtQueueHead(
+      final List<PipeTsFileInsertionEvent> regionEventsInQueue,
+      final CommitterKey committerKey,
+      final Set<PipeTsFileInsertionEvent> sourceEvents) {
+    final List<PipeTsFileInsertionEvent> eventsFromCommitter =
+        regionEventsInQueue.stream()
+            .filter(event -> committerKey.equals(event.getCommitterKey()))
+            .collect(Collectors.toList());
+    return eventsFromCommitter.size() >= sourceEvents.size()
+        && new HashSet<>(eventsFromCommitter.subList(0, sourceEvents.size())).equals(sourceEvents);
   }
 
   @Override

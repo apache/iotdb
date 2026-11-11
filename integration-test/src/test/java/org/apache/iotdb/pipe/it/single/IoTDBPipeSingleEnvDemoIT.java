@@ -21,7 +21,10 @@ package org.apache.iotdb.pipe.it.single;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT1;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -32,6 +35,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
@@ -57,6 +61,31 @@ public class IoTDBPipeSingleEnvDemoIT extends AbstractPipeSingleIT {
                   .setExtractorAttributes(extractorAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      final TShowPipeInfo defaultPipeInfo =
+          client.showPipe(new TShowPipeReq().setUserName("root")).getPipeInfoList().stream()
+              .filter(info -> "testPipe".equals(info.getId()))
+              .findFirst()
+              .orElseThrow();
+      Assert.assertTrue(defaultPipeInfo.getPipeConnector().contains("enable-compaction=true"));
+
+      final Map<String, String> disabledConnectorAttributes = new HashMap<>(connectorAttributes);
+      disabledConnectorAttributes.put(
+          PipeSinkConstant.SINK_ENABLE_COMPACTION_KEY, Boolean.FALSE.toString());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client
+              .createPipe(new TCreatePipeReq("disabledCompactionPipe", disabledConnectorAttributes))
+              .getCode());
+
+      final List<TShowPipeInfo> pipeInfoList =
+          client.showPipe(new TShowPipeReq().setUserName("root")).getPipeInfoList();
+      final TShowPipeInfo disabledPipeInfo =
+          pipeInfoList.stream()
+              .filter(info -> "disabledCompactionPipe".equals(info.getId()))
+              .findFirst()
+              .orElseThrow();
+      Assert.assertTrue(disabledPipeInfo.getPipeConnector().contains("enable-compaction=false"));
     }
   }
 }
