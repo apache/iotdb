@@ -514,4 +514,33 @@ public class AsyncTimeSeriesDeletionTest {
       assertEquals(state.name(), finished.getProgress());
     }
   }
+
+  @Test
+  public void testColumnProgressTransitionDuringListingWaitsForDurableCompletion() {
+    for (final ProcedureState terminalState :
+        new ProcedureState[] {ProcedureState.SUCCESS, ProcedureState.ROLLEDBACK}) {
+      final DropTableColumnProcedure procedure =
+          new DropTableColumnProcedure("test", "t", "query", "reading", false) {
+            @Override
+            public String getDropProgress() {
+              // Model completion between the listing's separate state and progress reads.
+              setState(terminalState);
+              return super.getDropProgress();
+            }
+          };
+      procedure.setProcId(10L);
+      procedure.setProcRunnable();
+      running.put(10L, procedure);
+      when(executor.isCompleted(10L)).thenReturn(false);
+
+      final TDropTableProcedureInfo finalizing = manager.getDropTableColumnProcedures().get(0);
+      assertEquals("RUNNABLE", finalizing.getState());
+      assertEquals("FINALIZING", finalizing.getProgress());
+
+      when(executor.isCompleted(10L)).thenReturn(true);
+      final TDropTableProcedureInfo finished = manager.getDropTableColumnProcedures().get(0);
+      assertEquals(terminalState.name(), finished.getState());
+      assertEquals(terminalState.name(), finished.getProgress());
+    }
+  }
 }

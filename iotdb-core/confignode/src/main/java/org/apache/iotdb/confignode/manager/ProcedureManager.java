@@ -3025,17 +3025,19 @@ public class ProcedureManager {
     return dropProcedures.values().stream()
         .map(
             procedure -> {
+              // Read progress before the terminal-state guard: execution may finish between reads.
+              final String progress = procedure.getDropProgress();
               final ProcedureState state = procedure.getState();
-              final boolean finalizing =
-                  (state == ProcedureState.SUCCESS || state == ProcedureState.ROLLEDBACK)
-                      && !executor.isCompleted(procedure.getProcId());
+              final boolean terminal =
+                  state == ProcedureState.SUCCESS || state == ProcedureState.ROLLEDBACK;
+              final boolean finalizing = terminal && !executor.isCompleted(procedure.getProcId());
               final TDropTableProcedureInfo info =
                   new TDropTableProcedureInfo(
                           procedure.getDatabase(),
                           procedure.getTableName(),
                           procedure.getProcId(),
                           finalizing ? ProcedureState.RUNNABLE.name() : state.name(),
-                          finalizing ? "FINALIZING" : procedure.getDropProgress())
+                          finalizing ? "FINALIZING" : terminal ? state.name() : progress)
                       .setColumnName(procedure.getColumnName());
               final TDropTableModProgress modProgress = procedure.getModFileProgress();
               if (modProgress != null) {
