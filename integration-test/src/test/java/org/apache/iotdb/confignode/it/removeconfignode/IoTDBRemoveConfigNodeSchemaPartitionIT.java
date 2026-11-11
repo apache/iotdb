@@ -35,6 +35,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransport;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -125,16 +126,7 @@ public class IoTDBRemoveConfigNodeSchemaPartitionIT {
           .filter(endpoint -> !endpoint.equals(removedEndpoint))
           .forEach(staleEndpoints::add);
       // Use the actual DN retry client against real CN processes. This client is not pooled.
-      try (ConfigNodeClient retryClient =
-          new ConfigNodeClient(
-              staleEndpoints,
-              new ThriftClientProperty.Builder().setConnectionTimeoutMs(30_000).build(),
-              null) {
-            @Override
-            public void close() {
-              invalidate();
-            }
-          }) {
+      try (TestConfigNodeClient retryClient = new TestConfigNodeClient(staleEndpoints)) {
         assertEquals(removedEndpoint, retryClient.getConfigNode());
         final TTransport oldTransport = retryClient.getTransport();
         oldConnection.setTimeout(30_000);
@@ -257,6 +249,25 @@ public class IoTDBRemoveConfigNodeSchemaPartitionIT {
       assertTrue(result.hasNext());
       assertEquals(expected, result.next().getFields().get(0).getLongV());
       assertFalse(result.hasNext());
+    }
+  }
+
+  private static class TestConfigNodeClient extends ConfigNodeClient {
+
+    private TestConfigNodeClient(List<TEndPoint> configNodes) throws TException {
+      super(
+          configNodes,
+          new ThriftClientProperty.Builder().setConnectionTimeoutMs(30_000).build(),
+          null);
+    }
+
+    private TEndPoint getConfigNode() {
+      return configNode;
+    }
+
+    @Override
+    public void close() {
+      invalidate();
     }
   }
 }
