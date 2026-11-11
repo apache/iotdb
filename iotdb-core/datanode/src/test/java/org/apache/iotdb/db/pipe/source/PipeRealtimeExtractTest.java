@@ -1377,13 +1377,16 @@ public class PipeRealtimeExtractTest {
       Assert.assertTrue(completionBarrier.increaseReferenceCount(TEST_REFERENCE_HOLDER));
       extractor.extract(completionBarrier);
 
-      // The source may coalesce a periodic heartbeat behind a pending completion barrier. Once
-      // supply drains that queue, future heartbeats must still reach the sink until retry succeeds.
+      // Keep one retry-triggering heartbeat after the barrier; subsequent heartbeats can still be
+      // coalesced behind it to bound the pending queue.
       final PipeRealtimeEvent coalescedHeartbeat =
-          PipeRealtimeEventFactory.createRealtimeEvent(dataRegion1, false);
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(dataRegion1, false),
+              extractor,
+              pipeTaskMeta);
       Assert.assertTrue(coalescedHeartbeat.increaseReferenceCount(TEST_REFERENCE_HOLDER));
       extractor.extract(coalescedHeartbeat);
-      Assert.assertTrue(coalescedHeartbeat.getEvent().isReleased());
+      Assert.assertFalse(coalescedHeartbeat.getEvent().isReleased());
 
       // Queue a later heartbeat behind the completion barrier while the first TsFile remains in
       // flight.
@@ -1398,6 +1401,7 @@ public class PipeRealtimeExtractTest {
       extractor.extract(heartbeatAfterCompletionBarrier);
 
       Assert.assertSame(heartbeat.getEvent(), extractor.supply());
+      Assert.assertSame(coalescedHeartbeat.getEvent(), extractor.supply());
       Assert.assertSame(heartbeatAfterCompletionBarrier.getEvent(), extractor.supply());
       Assert.assertNull(extractor.supply());
       Assert.assertFalse(secondEvent.getEvent().isReleased());
