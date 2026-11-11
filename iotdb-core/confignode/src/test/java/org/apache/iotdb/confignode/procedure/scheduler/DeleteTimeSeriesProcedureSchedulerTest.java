@@ -124,6 +124,30 @@ public class DeleteTimeSeriesProcedureSchedulerTest {
   }
 
   @Test
+  public void testIncreasingIntervalDoesNotThrottleAnActiveTask() {
+    final DeleteTimeSeriesProcedureScheduler scheduler =
+        new DeleteTimeSeriesProcedureScheduler(2, 1);
+    final Procedure first = procedure(1);
+    final Procedure second = procedure(2);
+    scheduler.start();
+    try {
+      scheduler.addBack(first);
+      scheduler.addBack(second);
+      assertSame(first, scheduler.poll());
+      scheduler.setExecutionIntervalMs(TimeUnit.HOURS.toMillis(1));
+      assertNull(scheduler.poll(0, TimeUnit.MILLISECONDS));
+      scheduler.addFront(first);
+      assertSame(first, scheduler.poll(0, TimeUnit.MILLISECONDS));
+      scheduler.completionCleanup(first);
+      assertNull(scheduler.poll(0, TimeUnit.MILLISECONDS));
+      scheduler.setExecutionIntervalMs(1);
+      assertSame(second, scheduler.poll(1, TimeUnit.SECONDS));
+    } finally {
+      scheduler.stop();
+    }
+  }
+
+  @Test
   public void testEnqueueDoesNotWaitForExecutionInterval() throws Exception {
     final DeleteTimeSeriesProcedureScheduler scheduler =
         new DeleteTimeSeriesProcedureScheduler(1, TimeUnit.HOURS.toMillis(1));

@@ -20,6 +20,9 @@
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.ProcedureManager;
+import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.NoopProcedureStore;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
@@ -29,6 +32,7 @@ import org.apache.iotdb.confignode.procedure.state.ProcedureState;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.procedure.util.ProcedureTestUtil;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTableProcedureInfo;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 
 import org.junit.Assert;
@@ -46,6 +50,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.mockito.Mockito.mock;
 
 public class DropTableColumnProcedureTest {
   @Test
@@ -74,6 +80,7 @@ public class DropTableColumnProcedureTest {
           }
         };
     final ProcedureExecutor<ConfigNodeProcedureEnv> executor = new ProcedureExecutor<>(null, store);
+    final ProcedureManager manager = progressManager(executor);
     final ExecutorService joiner = Executors.newSingleThreadExecutor();
     store.start();
     executor.init(1);
@@ -81,6 +88,10 @@ public class DropTableColumnProcedureTest {
     try {
       executor.submitProcedureAndPersist(procedure);
       Assert.assertTrue(completionRetried.await(10, TimeUnit.SECONDS));
+      final TDropTableProcedureInfo progress = manager.getDropTableColumnProcedures().get(0);
+      Assert.assertEquals("RUNNABLE", progress.getState());
+      Assert.assertEquals("FINALIZING", progress.getProgress());
+      Assert.assertEquals("column deletion failed", progress.getErrorMessage());
       executor.stop();
       final Future<?> stopped = joiner.submit(executor::join);
       stopped.get(5, TimeUnit.SECONDS);
@@ -120,6 +131,7 @@ public class DropTableColumnProcedureTest {
           }
         };
     final ProcedureExecutor<ConfigNodeProcedureEnv> executor = new ProcedureExecutor<>(null, store);
+    final ProcedureManager manager = progressManager(executor);
     store.start();
     executor.init(1);
     executor.startWorkers();
@@ -127,14 +139,26 @@ public class DropTableColumnProcedureTest {
       executor.submitProcedureAndPersist(procedure);
       Assert.assertTrue(completionRetried.await(10, TimeUnit.SECONDS));
       Assert.assertFalse(executor.isCompleted(procedure.getProcId()));
+      final TDropTableProcedureInfo progress = manager.getDropTableColumnProcedures().get(0);
+      Assert.assertEquals("RUNNABLE", progress.getState());
+      Assert.assertEquals("FINALIZING", progress.getProgress());
       allowCompletion.set(true);
       ProcedureTestUtil.waitForProcedure(executor, procedure.getProcId());
       Assert.assertTrue(executor.isCompleted(procedure.getProcId()));
+      Assert.assertEquals("SUCCESS", manager.getDropTableColumnProcedures().get(0).getState());
     } finally {
       executor.stop();
       executor.join();
       store.stop();
     }
+  }
+
+  private static ProcedureManager progressManager(
+      final ProcedureExecutor<ConfigNodeProcedureEnv> executor) {
+    final ProcedureManager manager =
+        new ProcedureManager(mock(ConfigManager.class), mock(ProcedureInfo.class));
+    manager.setExecutor(executor);
+    return manager;
   }
 
   @Test

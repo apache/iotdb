@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.scheduler.DeleteTimeSeriesProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.state.ProcedureState;
@@ -442,6 +443,7 @@ public class AsyncTimeSeriesDeletionTest {
     when(failed.isFinished()).thenReturn(true);
     when(failed.getState()).thenReturn(ProcedureState.ROLLEDBACK);
     when(failed.getDropProgress()).thenReturn("ROLLEDBACK");
+    when(executor.isCompleted(2L)).thenReturn(true);
     when(failed.hasException()).thenReturn(true);
     when(failed.getException()).thenReturn(new ProcedureException("deletion failed"));
     completed.add(failed);
@@ -465,5 +467,51 @@ public class AsyncTimeSeriesDeletionTest {
     assertFalse(failedInfo.isSetWrittenModFileCount());
     verify(active).updateModFileProgress();
     verify(failed, times(0)).updateModFileProgress();
+  }
+
+  @Test
+  public void testDeletionProgressIncludesTasksCompletingDuringSnapshot() {
+    final DropTableColumnProcedure column =
+        new DropTableColumnProcedure("test", "t", "query", "reading", false);
+    column.setProcId(1L);
+    column.setProcRunnable();
+    running.put(1L, column);
+    completeDuringSnapshot();
+    assertEquals(1, manager.getDropTableColumnProcedures().size());
+
+    running.clear();
+    completed.clear();
+    final DropTableProcedure table = new DropTableProcedure("test", "t", "query", false);
+    table.setProcId(1L);
+    table.setProcRunnable();
+    running.put(1L, table);
+    completeDuringSnapshot();
+    assertEquals(1, manager.getDropTableProcedures().size());
+  }
+
+  @Test
+  public void testColumnProgressWaitsForDurableCompletion() {
+    for (final ProcedureState state :
+        new ProcedureState[] {ProcedureState.SUCCESS, ProcedureState.ROLLEDBACK}) {
+      final DropTableColumnProcedure procedure = mock(DropTableColumnProcedure.class);
+      when(procedure.getProcId()).thenReturn(10L);
+      when(procedure.getDatabase()).thenReturn("test");
+      when(procedure.getTableName()).thenReturn("t");
+      when(procedure.getColumnName()).thenReturn("reading");
+      when(procedure.isFinished()).thenReturn(true);
+      when(procedure.getState()).thenReturn(state);
+      when(procedure.getDropProgress()).thenReturn(state.name());
+      when(executor.isCompleted(10L)).thenReturn(false);
+      running.put(10L, procedure);
+
+      final TDropTableProcedureInfo finalizing = manager.getDropTableColumnProcedures().get(0);
+      assertEquals("RUNNABLE", finalizing.getState());
+      assertEquals("FINALIZING", finalizing.getProgress());
+
+      when(executor.isCompleted(10L)).thenReturn(true);
+      final TDropTableProcedureInfo finished = manager.getDropTableColumnProcedures().get(0);
+      assertEquals(state.name(), finished.getState());
+      assertEquals(state.name(), finished.getProgress());
+    }
   }
 }

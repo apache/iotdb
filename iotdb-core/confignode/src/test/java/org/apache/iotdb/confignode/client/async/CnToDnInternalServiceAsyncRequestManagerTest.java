@@ -39,6 +39,7 @@ import java.lang.reflect.Field;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -120,6 +121,14 @@ public class CnToDnInternalServiceAsyncRequestManagerTest {
     try {
       clientManagerField.set(requestManager, clientManager);
       when(clientManager.borrowClient(endpoint)).thenReturn(client);
+      doAnswer(
+              invocation -> {
+                assertTrue(client.hasTimeout());
+                assertEquals(DEFAULT_TIMEOUT_MS, client.getTimeout());
+                return null;
+              })
+          .when(clientManager)
+          .returnClient(endpoint, client);
       final DataNodeAsyncRequestContext<Object, TSStatus> context =
           new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.DELETE_COLUMN_DATA);
       context.putNodeLocation(

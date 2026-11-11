@@ -148,6 +148,7 @@ import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure
 import org.apache.iotdb.confignode.procedure.impl.trigger.DropTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
+import org.apache.iotdb.confignode.procedure.state.ProcedureState;
 import org.apache.iotdb.confignode.procedure.store.ConfigProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
@@ -2973,8 +2974,7 @@ public class ProcedureManager {
   /** Returns running drops and completed results retained by the executor's shared TTL cleaner. */
   public List<TDropTableProcedureInfo> getDropTableProcedures() {
     final Map<Long, DropTableProcedure> dropProcedures = new HashMap<>();
-    Stream.concat(
-            executor.getProcedures().values().stream(), executor.getCompletedProcedures().stream())
+    snapshotProcedures().stream()
         .filter(
             procedure ->
                 procedure instanceof DropTableProcedure
@@ -3012,8 +3012,7 @@ public class ProcedureManager {
   /** Returns running drops and completed results retained by the executor's shared TTL cleaner. */
   public List<TDropTableProcedureInfo> getDropTableColumnProcedures() {
     final Map<Long, DropTableColumnProcedure> dropProcedures = new HashMap<>();
-    Stream.concat(
-            executor.getProcedures().values().stream(), executor.getCompletedProcedures().stream())
+    snapshotProcedures().stream()
         .filter(
             procedure ->
                 procedure instanceof DropTableColumnProcedure
@@ -3026,13 +3025,17 @@ public class ProcedureManager {
     return dropProcedures.values().stream()
         .map(
             procedure -> {
+              final ProcedureState state = procedure.getState();
+              final boolean finalizing =
+                  (state == ProcedureState.SUCCESS || state == ProcedureState.ROLLEDBACK)
+                      && !executor.isCompleted(procedure.getProcId());
               final TDropTableProcedureInfo info =
                   new TDropTableProcedureInfo(
                           procedure.getDatabase(),
                           procedure.getTableName(),
                           procedure.getProcId(),
-                          procedure.getState().name(),
-                          procedure.getDropProgress())
+                          finalizing ? ProcedureState.RUNNABLE.name() : state.name(),
+                          finalizing ? "FINALIZING" : procedure.getDropProgress())
                       .setColumnName(procedure.getColumnName());
               final TDropTableModProgress modProgress = procedure.getModFileProgress();
               if (modProgress != null) {
