@@ -560,7 +560,11 @@ public class WALNode implements IWALNode {
       if (TsFileUtils.getTimePartition(new File(oldestMemTableInfo.getTsFilePath()))
               < dataRegion.getLatestTimePartition()
           || snapshotCount >= config.getMaxWalMemTableSnapshotNum()
-          || oldestMemTableTVListsRamCost > config.getWalMemTableSnapshotThreshold()) {
+          || oldestMemTableTVListsRamCost > config.getWalMemTableSnapshotThreshold()
+          // a snapshot larger than one WAL entry is refused by WALBuffer.write. With a small
+          // wal_buffer_size_in_byte (the entry limit's default), the limit is below the snapshot
+          // threshold, so flush right away instead of failing a snapshot first.
+          || oldestMemTableTVListsRamCost > config.getWalEntrySizeLimitInByte()) {
         flushMemTable(dataRegion, oldestTsFile, oldestMemTable);
         WRITING_METRICS.recordWalFlushMemTableCount(1);
         WRITING_METRICS.recordMemTableRamWhenCauseFlush(identifier, oldestMemTableTVListsRamCost);
