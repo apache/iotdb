@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.relational.it.query.recent;
 
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -151,7 +153,15 @@ public class IoTDBComplexQueryIT {
   }
 
   private static void assertHasTimePredicate(String query) throws Exception {
-    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+    // EXPLAIN coordinates and node IDs may differ by DataNode, so verify the plan on one node
+    // instead of comparing all cluster plans as regular query results.
+    try (Connection connection =
+            EnvFactory.getEnv()
+                .getConnection(
+                    EnvFactory.getEnv().getDataNodeWrapper(0),
+                    SessionConfig.DEFAULT_USER,
+                    SessionConfig.DEFAULT_PASSWORD,
+                    BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("USE " + DATABASE_NAME);
       try (ResultSet resultSet = statement.executeQuery("EXPLAIN (FORMAT JSON) " + query)) {
